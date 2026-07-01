@@ -71,8 +71,6 @@ async def get_resolved_limits(
         effective_output_limit=limits.effective_output_limit,
         tier_percentages=limits.tier_percentages or dict(DEFAULT_TIER_PERCENTAGES),
         ws_timeout=limits.ws_timeout,
-        retry_max_attempts=limits.retry_max_attempts,
-        retry_base_delay=limits.retry_base_delay,
         metadata=build_catalog(),
         calibration=calibration,
         suitability=suitability,

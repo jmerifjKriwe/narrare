@@ -1,34 +1,16 @@
-import Placeholder from "@tiptap/extension-placeholder";
-import { useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import type { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { mapSSEError } from "@/lib/api/ai-error-mapping";
-import {
-  type RewriteAlternative,
-  type RewriteConfig,
-  streamRewrite,
-  writingApi,
-} from "@/lib/api/generation";
-import { createSseSuggestionFetcher } from "@/lib/api/suggest";
-import { type AIErrorResponse, useAIOperation } from "@/lib/hooks/use-ai-operation";
-import { useRecordFeedback } from "@/lib/hooks/useMemory";
-import { useEditorStore } from "@/lib/stores/editorStore";
-import { markdownToHtml } from "@/lib/utils";
-import type { FeedbackRequest } from "@/types";
-import {
-  AIAnnotationExtension,
-  AIAnnotationMark,
-  insertAIContentAt,
-  replaceSelectionWithAIContent,
-} from "./extensions/AIAnnotation";
-import { Autosave } from "./extensions/Autosave";
-import { DialogueMark } from "./extensions/DialogueMark";
-import { GhostText, simulateSuggestion } from "./extensions/GhostText";
-import { NarrareDocument } from "./extensions/NarrareDocument";
-import { SceneBreak } from "./extensions/SceneBreak";
 import { useGhostTextOnboarding } from "./GhostTextOnboarding";
-import { useStyleVariantRegeneration } from "./useStyleVariantRegeneration";
+import { useEditorAutosave } from "./useEditorAutosave";
+import { useEditorInstance } from "./useEditorInstance";
+import { useGhostTextConfig } from "./useGhostTextConfig";
+import { useGhostTextOnboardingAnchor } from "./useGhostTextOnboardingAnchor";
+import { MAX_SELECTION_LENGTH, MIN_SELECTION_LENGTH, useRewriteFlow } from "./useRewriteFlow";
+
+// Re-export the selection-length constants so existing consumers
+// (e.g. TipTapBubbleMenu) keep resolving them from this module — the public
+// import surface is unchanged. They are defined in useRewriteFlow, the rewrite
+// feature that owns selection-length validation.
+export { MAX_SELECTION_LENGTH, MIN_SELECTION_LENGTH };
 
 type StudioTranslator = ReturnType<typeof useTranslations>;
 
@@ -60,9 +42,20 @@ interface ControllerParams {
   t: StudioTranslator;
 }
 
-export const MIN_SELECTION_LENGTH = 50;
-export const MAX_SELECTION_LENGTH = 2000;
-
+/**
+ * Thin composer for the studio editor's controller surface.
+ *
+ * Responsibilities are delegated to focused sub-hooks (RULE-04 / RULE-06):
+ *
+ * - {@link useEditorAutosave} — Autosave extension config + implicit-accept feedback.
+ * - {@link useGhostTextConfig} — GhostText extension config (SSE fetcher + i18n strings).
+ * - {@link useEditorInstance} — TipTap editor creation, content sync, store registration.
+ * - {@link useGhostTextOnboardingAnchor} — DOM anchor for the onboarding callout.
+ * - {@link useRewriteFlow} — AI rewrite state machine (trigger → stream → resolve).
+ *
+ * The public return shape is the stable contract consumed by `TipTapEditor`;
+ * the sub-hooks are wired here and their outputs spread onto that shape.
+ */
 export function useTipTapEditorController({
   content,
   onChange,
@@ -73,291 +66,19 @@ export function useTipTapEditorController({
   locale,
   t,
 }: ControllerParams) {
-  const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
-  const [selectedSuggestion, setSelectedSuggestion] = useState(0);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [showRejectionInput, setShowRejectionInput] = useState(false);
-  const [rewritePhase, setRewritePhase] = useState<RewritePhase>("idle");
-  const [rewriteSelection, setRewriteSelection] = useState<RewriteSelection | null>(null);
-  const [rewriteError, setRewriteError] = useState<AIErrorResponse | null>(null);
-  const rewriteConfigRef = useRef<RewriteConfig | null>(null);
-  const rewriteSelectionRef = useRef<RewriteSelection | null>(null);
   const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useGhostTextOnboarding();
-  const [onboardingAnchor, setOnboardingAnchor] = useState<HTMLElement | null>(null);
-  const recordFeedback = useRecordFeedback(novelId ?? "");
-  const saveFnRef = useRef(onAutosave ?? (async () => {}));
 
-  useEffect(() => {
-    saveFnRef.current = onAutosave ?? (async () => {});
-  }, [onAutosave]);
-
-  const autosaveConfig = useMemo(
-    () => ({
-      interval: autosaveInterval ?? 30_000,
-      saveFn: (value: string) => saveFnRef.current(value),
-      enabled: !!onAutosave,
-      onImplicitAccept: novelId
-        ? (data: {
-            requestId: string;
-            source: string;
-            originalText: string;
-            action: "accept" | "modify";
-            currentText?: string;
-          }) => {
-            const feedbackData: FeedbackRequest = {
-              action: data.action,
-              suggestion_id: data.requestId,
-              intent: data.source,
-              suggestion_text: data.originalText,
-              modification: data.currentText ?? null,
-              project_id: novelId,
-              chapter_id: chapterId ?? null,
-              mode: data.source,
-            };
-            recordFeedback.mutate(feedbackData, { onError: () => {} });
-            writingApi.acceptDraft(data.requestId, data.currentText).catch(() => {});
-          }
-        : undefined,
-    }),
-    [autosaveInterval, novelId, chapterId, recordFeedback, onAutosave],
-  );
-
-  const fetchSuggestionRef = useRef<
-    | ((params: { textBefore: string; textAfter: string; signal: AbortSignal }) => Promise<string>)
-    | undefined
-  >(undefined);
-  useEffect(() => {
-    fetchSuggestionRef.current = chapterId
-      ? createSseSuggestionFetcher(chapterId, locale)
-      : undefined;
-  }, [chapterId, locale]);
-  const ghostTextConfig = useMemo(
-    () =>
-      ({
-        fetchSuggestion: (params: { textBefore: string; textAfter: string; signal: AbortSignal }) =>
-          fetchSuggestionRef.current?.(params) ?? simulateSuggestion(params),
-        enabled: true,
-        minChars: 5,
-        suggestionDelay: 800,
-        hintText: t("ghostText.hint"),
-        // Localized fetching status — injected into the non-React extension via
-        // options so no hardcoded English appears in ProseMirror DOM
-        // (CR-AUFG-07-10, ADR-043 Note 7).
-        fetchingStatusText: t("aiActions.aiThinking"),
-        // Localized transient error text for non-AbortError fetch failures
-        // (CR-AUFG-07-15). Low-noise, non-blocking, auto-clears after 4s.
-        errorStatusText: t("ghostText.errorUnavailable"),
-        errorStatusDurationMs: 4000,
-      }) satisfies Partial<import("./extensions/GhostText").GhostTextOptions>,
-    [t],
-  );
-
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({ document: false, heading: { levels: [1, 2, 3] } }),
-      NarrareDocument,
-      SceneBreak,
-      DialogueMark,
-      AIAnnotationMark,
-      AIAnnotationExtension,
-      Autosave.configure(autosaveConfig),
-      GhostText.configure(ghostTextConfig),
-      Placeholder.configure({ placeholder: t("editor.placeholder") }),
-    ],
-    content,
-    onUpdate: ({ editor: ed }) => onChange(ed.getHTML()),
-    editorProps: { attributes: { class: "max-w-none focus:outline-none min-h-[70vh] py-6 pr-8" } },
+  const autosaveConfig = useEditorAutosave({
+    onAutosave,
+    autosaveInterval,
+    novelId,
+    chapterId,
   });
+  const ghostTextConfig = useGhostTextConfig({ chapterId, locale, t });
+  const editor = useEditorInstance({ content, onChange, autosaveConfig, ghostTextConfig, t });
+  const onboardingAnchor = useGhostTextOnboardingAnchor({ editor, showOnboarding });
+  const rewrite = useRewriteFlow({ editor, chapterId, novelId, locale });
 
-  useEffect(() => {
-    if (editor && content !== editor.getHTML())
-      editor.commands.setContent(
-        content.trim().startsWith("<") ? content : markdownToHtml(content),
-      );
-  }, [content, editor]);
-  useEffect(() => {
-    if (!editor) return;
-    useEditorStore.getState().setEditor(editor);
-    if (typeof window !== "undefined")
-      (window as unknown as Window & { __narrareEditor: unknown }).__narrareEditor = editor;
-  }, [editor]);
-  useEffect(() => {
-    if (!showOnboarding || !editor) return;
-    const checkForGhostText = () => {
-      const ghostEl = document.querySelector(".ghost-text-suggestion");
-      if (ghostEl) setOnboardingAnchor(ghostEl as HTMLElement);
-    };
-    const observer = new MutationObserver(checkForGhostText);
-    observer.observe(editor.view.dom, { childList: true, subtree: true });
-    const handler = () => {
-      setTimeout(checkForGhostText, 50);
-    };
-    editor.on("update", handler);
-    editor.on("transaction", handler);
-    return () => {
-      observer.disconnect();
-      editor.off("update", handler);
-      editor.off("transaction", handler);
-    };
-  }, [editor, showOnboarding]);
-
-  // --- Rewrite AI Operation (§16 lifecycle management) ---
-
-  const rewriteAiOp = useAIOperation<RewriteAlternative[]>({
-    execute: async (signal) => {
-      const config = rewriteConfigRef.current;
-      const sel = rewriteSelectionRef.current;
-      if (!sel || !chapterId || !novelId || !config) {
-        return [];
-      }
-
-      const alternatives: RewriteAlternative[] = [];
-
-      await streamRewrite(
-        chapterId,
-        novelId,
-        {
-          selection_text: sel.text,
-          context_before: sel.contextBefore,
-          context_after: sel.contextAfter,
-          mode: config.mode,
-          options: config.mode !== "custom" ? { option: config.option } : undefined,
-          count: config.count,
-          custom_instructions: config.customInstructions,
-          language: locale,
-        },
-        {
-          onAlternative: (label, text) => {
-            alternatives.push({ label, text });
-            setAiSuggestion((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    suggestions: alternatives.map((a) => a.text),
-                    labels: alternatives.map((a) => a.label),
-                  }
-                : {
-                    original: sel.text,
-                    suggestions: alternatives.map((a) => a.text),
-                    labels: alternatives.map((a) => a.label),
-                    position: { from: sel.from, to: sel.to },
-                  },
-            );
-            if (alternatives.length === 1) setSelectedSuggestion(0);
-            setRewritePhase("showing-alternatives");
-          },
-          onAlternativeFinal: () => {
-            // Stream complete — alternatives already accumulated
-          },
-          onError: (error: Error) => {
-            // Let useAIOperation's error mapper handle it
-            throw error;
-          },
-        },
-        signal,
-      );
-
-      return alternatives;
-    },
-    errorMapper: mapSSEError,
-    onSuccess: () => {
-      setRewriteError(null);
-    },
-    onError: (error) => {
-      setRewriteError(error);
-      // If no alternatives were generated, go back to idle
-      setAiSuggestion((prev) => {
-        if (!prev || prev.suggestions.length === 0) {
-          setRewritePhase("idle");
-          return null;
-        }
-        return prev;
-      });
-    },
-    connectionLossTimeout: 20_000,
-  });
-
-  const getSelectionContext = useCallback(
-    (from: number, to: number) => {
-      if (!editor) return { contextBefore: "", contextAfter: "" };
-      const contextRadius = 800;
-      return {
-        contextBefore: editor.state.doc.textBetween(Math.max(0, from - contextRadius), from, " "),
-        contextAfter: editor.state.doc.textBetween(
-          to,
-          Math.min(editor.state.doc.content.size, to + contextRadius),
-          " ",
-        ),
-      };
-    },
-    [editor],
-  );
-
-  const handleAIRewrite = useCallback(() => {
-    if (!editor) return;
-    const { from, to } = editor.state.selection;
-    const selectedText = editor.state.doc.textBetween(from, to, " ");
-    const trimmedLength = selectedText.trim().length;
-    if (trimmedLength < MIN_SELECTION_LENGTH || trimmedLength > MAX_SELECTION_LENGTH) return;
-    setRewriteSelection({ text: selectedText, from, to, ...getSelectionContext(from, to) });
-    setRewritePhase("selecting-mode");
-  }, [editor, getSelectionContext]);
-
-  const handleRewriteGenerate = useCallback(
-    (config: RewriteConfig) => {
-      if (!editor || !rewriteSelection || !chapterId || !novelId) return;
-      rewriteConfigRef.current = config;
-      rewriteSelectionRef.current = rewriteSelection;
-      setRewritePhase("streaming");
-      setRewriteError(null);
-      rewriteAiOp.start();
-    },
-    [editor, rewriteSelection, chapterId, novelId, rewriteAiOp],
-  );
-
-  const variantRegen = useStyleVariantRegeneration({
-    context: { chapterId, locale, novelId, rewriteSelectionRef },
-    setters: { setAiSuggestion, setSelectedSuggestion, setRewriteError, setRewritePhase },
-  });
-
-  const resetRewriteState = useCallback(() => {
-    variantRegen.handleVariantCancel();
-    setAiSuggestion(null);
-    setRewritePhase("idle");
-    setRewriteSelection(null);
-    setShowRejectionInput(false);
-    setRejectionReason("");
-    setRewriteError(null);
-    rewriteAiOp.reset();
-  }, [rewriteAiOp, variantRegen]);
-  const acceptSuggestion = useCallback(() => {
-    if (!editor || !aiSuggestion) return;
-    replaceSelectionWithAIContent(
-      editor,
-      `rewrite-${Date.now()}`,
-      "rewrite",
-      aiSuggestion.suggestions[selectedSuggestion],
-      aiSuggestion.position.from,
-      aiSuggestion.position.to,
-    );
-    resetRewriteState();
-  }, [editor, aiSuggestion, selectedSuggestion, resetRewriteState]);
-  const insertAsNew = useCallback(() => {
-    if (!editor || !aiSuggestion) return;
-    insertAIContentAt(
-      editor,
-      `rewrite-${Date.now()}`,
-      "rewrite",
-      aiSuggestion.suggestions[selectedSuggestion],
-      aiSuggestion.position.to,
-    );
-    resetRewriteState();
-  }, [editor, aiSuggestion, selectedSuggestion, resetRewriteState]);
-  const rejectSuggestion = useCallback(() => {
-    if (rejectionReason.trim()) resetRewriteState();
-    else setShowRejectionInput(true);
-  }, [rejectionReason, resetRewriteState]);
   const selectionLength = editor
     ? editor.state.doc
         .textBetween(editor.state.selection.from, editor.state.selection.to, " ")
@@ -366,35 +87,29 @@ export function useTipTapEditorController({
 
   return {
     editor,
-    aiSuggestion,
-    selectedSuggestion,
-    setSelectedSuggestion,
-    rejectionReason,
-    setRejectionReason,
-    showRejectionInput,
-    rewritePhase,
-    rewriteSelection,
-    rewriteError,
+    aiSuggestion: rewrite.aiSuggestion,
+    selectedSuggestion: rewrite.selectedSuggestion,
+    setSelectedSuggestion: rewrite.setSelectedSuggestion,
+    rejectionReason: rewrite.rejectionReason,
+    setRejectionReason: rewrite.setRejectionReason,
+    showRejectionInput: rewrite.showRejectionInput,
+    rewritePhase: rewrite.rewritePhase,
+    rewriteSelection: rewrite.rewriteSelection,
+    rewriteError: rewrite.rewriteError,
     showOnboarding,
     dismissOnboarding,
     onboardingAnchor,
     selectionLength,
     isRewriteEnabled:
       selectionLength >= MIN_SELECTION_LENGTH && selectionLength <= MAX_SELECTION_LENGTH,
-    isRewriteStreaming:
-      rewritePhase === "streaming" || rewriteAiOp.isLoading || rewriteAiOp.isStreaming,
-    handleAIRewrite,
-    handleRewriteGenerate,
-    styleVariant: variantRegen.styleVariant,
-    handleStyleVariantRegenerate: variantRegen.handleStyleVariantRegenerate,
-    handleRewriteCancel: () => {
-      variantRegen.handleVariantCancel();
-      rewriteAiOp.cancel();
-      setRewritePhase("idle");
-      setRewriteSelection(null);
-    },
-    acceptSuggestion,
-    insertAsNew,
-    rejectSuggestion,
+    isRewriteStreaming: rewrite.isRewriteStreaming,
+    handleAIRewrite: rewrite.handleAIRewrite,
+    handleRewriteGenerate: rewrite.handleRewriteGenerate,
+    styleVariant: rewrite.styleVariant,
+    handleStyleVariantRegenerate: rewrite.handleStyleVariantRegenerate,
+    handleRewriteCancel: rewrite.handleRewriteCancel,
+    acceptSuggestion: rewrite.acceptSuggestion,
+    insertAsNew: rewrite.insertAsNew,
+    rejectSuggestion: rewrite.rejectSuggestion,
   };
 }

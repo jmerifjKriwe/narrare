@@ -25,8 +25,6 @@ VALID_OVERRIDE_FIELDS: set[str] = {
     "token_profile",
     "tier_percentages",
     "ws_timeout",
-    "retry_max_attempts",
-    "retry_base_delay",
     # Legacy migration key — stores old-format per-category overrides
     # during the SET-005 dual-write transition period.
     "legacy_per_category_overrides",

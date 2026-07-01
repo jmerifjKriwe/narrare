@@ -85,10 +85,6 @@ class TokenLimitOverrides:
     """
     ws_timeout: int = 1800
     """WebSocket idle timeout in seconds."""
-    retry_max_attempts: int = 3
-    """Maximum retry attempts for LLM calls."""
-    retry_base_delay: float = 1.0
-    """Base delay in seconds for retry backoff."""
     legacy_per_category_overrides: dict[str, object] | None = None
     """Temporary legacy field for SET-005 dual-write migration.
     Stores old-format per-category overrides during transition.
@@ -176,8 +172,7 @@ class TokenLimitsServiceProtocol(Protocol):
         Args:
             user_id: The user's ID.
             overrides: Dict of fields to update (output_limit, token_profile,
-                tier_percentages, ws_timeout, retry_max_attempts,
-                retry_base_delay).
+                tier_percentages, ws_timeout).
         """
         ...
 

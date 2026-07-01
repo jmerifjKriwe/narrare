@@ -123,8 +123,9 @@
 > live `SpeechPatterns` schema, hybrid metrics per ADR-021, self-contained dialogue
 > attribution) and the VOICE prompt-surface route (makes `LLMIntent.VOICE`
 > routeable). Status → `stable` (validated: `just check` 9/9, 8341 backend + 2287
-> frontend tests green). `character_voice` runtime adoption = governed debt
-> (static-verified; runtime evidence pending CI/integration). The earlier lossy
+> frontend tests green). `character_voice` runtime adoption is **runtime-verified**
+> (probes landed in `ee1cfc50`; local commit-gate runtime-evidence-aware via ADR-056).
+> The earlier lossy
 > field-mapping (quotes in `body_language` etc.) was removed.
 
 > **WRITE-010 (Voice Consistency Checker):** Implemented + runtime-verified

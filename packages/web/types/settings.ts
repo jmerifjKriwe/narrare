@@ -152,8 +152,6 @@ export interface TokenLimitsResponse {
   effective_output_limit: number;
   tier_percentages: Record<ContextTier, number>;
   ws_timeout: number;
-  retry_max_attempts: number;
-  retry_base_delay: number;
   /** Core-derived profile catalogue + caps (CR-08 P1 D1/D4). */
   metadata: TokenLimitsCatalog;
   /** Provider/model calibration evidence, populated when provider/model supplied. */
@@ -168,8 +166,6 @@ export interface UpdateTokenLimitsRequest {
   token_profile?: TokenLimitProfile;
   tier_percentages?: Partial<Record<ContextTier, number>>;
   ws_timeout?: number;
-  retry_max_attempts?: number;
-  retry_base_delay?: number;
 }
 
 export interface UserAiSettings {

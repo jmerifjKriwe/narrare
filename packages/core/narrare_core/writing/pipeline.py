@@ -9,6 +9,31 @@ MODES:
 
 RULE-01b: All LLM calls go through the injected registry.
 RULE-02: All prompts built through the injected composer.
+
+Stage contracts (AUFG-01-08):
+    ``WritingPipeline.generate()`` is a thin orchestrator. Each stage has a
+    single responsibility and a documented input→output contract, so new
+    writing features can dock onto a named stage rather than onto the body of
+    ``generate()`` itself:
+
+    1. Voice-profile resolution — :meth:`_resolve_voice_profile_consumer`
+       in:  ``kb_entities`` (list[KBEntity] | None)
+       out: ``VoiceProfileConsumer | None``  (``None`` when no factory/entities)
+    2. Context assembly — :meth:`_assemble_writing_context`
+       in:  request + context inputs (chapter text, KB, recent chapters, …)
+            + the Stage-1 consumer
+       out: ``WritingContext``  (fully tiered; NO prompt built here — RULE-02)
+    3. Metadata emission — inline in ``generate()``
+       in:  assembled ``WritingContext``
+       out: first ``StreamChunk`` carrying ``context_meta`` (CR-07 Context Inspector)
+    4. Mode dispatch + invocation — :func:`_mode_dispatch.stream_for_mode`
+       in:  pipeline, request, context, config, mode-specific params
+       out: ``AsyncIterator[StreamChunk]``  (routes to the mode module; budget
+            resolution, prompt build and the LLM call all happen INSIDE each
+            mode module — never in ``generate()``)
+
+    The ``finally`` block always discards the request's stop signal, so an
+    interrupted generation cannot leak state into the next one.
 """
 
 from __future__ import annotations
@@ -19,9 +44,8 @@ import structlog
 
 from narrare_core.llm.result import StreamChunk
 from narrare_core.prompts.context import PromptContext
-from narrare_core.shared.errors import WritingError
-from narrare_core.writing._enums import GenerationMode
 from narrare_core.writing._invocation_adapter import build_and_validate_prompt
+from narrare_core.writing._mode_dispatch import stream_for_mode
 from narrare_core.writing._tone_data import TONE_INSTRUCTIONS
 
 if TYPE_CHECKING:
@@ -143,11 +167,120 @@ class WritingPipeline:
                 prompt via ``{{style_variant_instructions}}``.  ``None``
                 renders the variable as empty (backward compatible).
         """
-        voice_profile_consumer = None
-        if self._voice_profile_consumer_factory is not None and kb_entities:
-            voice_profile_consumer = self._voice_profile_consumer_factory(kb_entities)
+        # Stage 1 — voice-profile consumer resolution
+        voice_profile_consumer = self._resolve_voice_profile_consumer(kb_entities)
 
-        context = await self._context_assembler.assemble(
+        # Stage 2 — context assembly
+        context = await self._assemble_writing_context(
+            request,
+            voice_profile_consumer=voice_profile_consumer,
+            chapter_content=chapter_content,
+            chapter_frontmatter=chapter_frontmatter,
+            chapter_outline=chapter_outline,
+            recent_chapters=recent_chapters,
+            kb_entities=kb_entities,
+            entity_connections=entity_connections,
+            kb_relationships=kb_relationships,
+            project_title=project_title,
+            genre=genre,
+            user_preferences=user_preferences,
+            avoidance_patterns=avoidance_patterns,
+        )
+
+        # Stage 3 — emit assembled context metadata (CR-07 Context Inspector)
+        yield StreamChunk(text="", context_meta=context.to_metadata().to_dict())
+
+        # Stage 4 — mode dispatch + invocation. Budget resolution, prompt
+        # build and the LLM call all happen INSIDE the selected mode module;
+        # see :func:`narrare_core.writing._mode_dispatch.stream_for_mode`.
+        try:
+            async for chunk in stream_for_mode(
+                self,
+                request,
+                context,
+                config,
+                api_key=api_key,
+                base_url=base_url,
+                selection_text=selection_text,
+                context_before=context_before,
+                context_after=context_after,
+                rewrite_mode=rewrite_mode,
+                custom_instructions=custom_instructions,
+                rewrite_count=rewrite_count,
+                custom_tone_instructions=custom_tone_instructions,
+                co_author_focus=co_author_focus,
+                style_variant=style_variant,
+            ):
+                yield chunk
+        finally:
+            self._stop_signals.discard(request.id)
+
+    # -- Generation stages (single-responsibility helpers for generate()) --
+
+    def _resolve_voice_profile_consumer(
+        self,
+        kb_entities: list[KBEntity] | None,
+    ) -> VoiceProfileConsumer | None:
+        """Stage 1 — voice-profile consumer resolution.
+
+        Builds a :class:`VoiceProfileConsumer` from the supplied KB entities
+        when (a) a consumer factory is wired and (b) KB entities are present.
+        Otherwise returns ``None`` (voice profiling disabled for this request).
+
+        Args:
+            kb_entities: KB entities available for the request, or ``None``.
+
+        Returns:
+            A VoiceProfileConsumer, or ``None`` when profiling is disabled.
+        """
+        if self._voice_profile_consumer_factory is not None and kb_entities:
+            return self._voice_profile_consumer_factory(kb_entities)
+        return None
+
+    async def _assemble_writing_context(
+        self,
+        request: GenerationRequest,
+        *,
+        voice_profile_consumer: VoiceProfileConsumer | None,
+        chapter_content: str,
+        chapter_frontmatter: str,
+        chapter_outline: str,
+        recent_chapters: list[RecentChapter] | None,
+        kb_entities: list[KBEntity] | None,
+        entity_connections: dict[str, set[str]] | None,
+        kb_relationships: str,
+        project_title: str,
+        genre: str,
+        user_preferences: str,
+        avoidance_patterns: str,
+    ) -> WritingContext:
+        """Stage 2 — context assembly.
+
+        Bundles the request- and call-level context inputs and delegates to
+        the injected :class:`WritingContextAssembler` to produce a fully
+        assembled :class:`WritingContext` (KB tiering, voice profiles, recent
+        chapters, project metadata). No prompt is constructed here (RULE-02).
+
+        Args:
+            request: The generation request (source of project_id, language,
+                tone, word_target and the stringified mode).
+            voice_profile_consumer: Optional consumer from Stage 1.
+            chapter_content: Existing chapter text for continuation.
+            chapter_frontmatter: Chapter metadata / frontmatter.
+            chapter_outline: Chapter outline or structure notes.
+            recent_chapters: Recent chapters for context.
+            kb_entities: Knowledge base entities for reference.
+            entity_connections: Adjacency map of entity IDs for classification.
+            kb_relationships: Pre-formatted relationship text (FIND-009).
+            project_title: Title of the project / novel.
+            genre: Genre of the writing project.
+            user_preferences: User's writing preference string.
+            avoidance_patterns: Patterns the user wants to avoid.
+
+        Returns:
+            The assembled WritingContext ready for prompt construction.
+        """
+        return await self._context_assembler.assemble(
             chapter_content=chapter_content,
             chapter_frontmatter=chapter_frontmatter,
             chapter_outline=chapter_outline,
@@ -167,117 +300,6 @@ class WritingPipeline:
             mode=str(request.mode),
             voice_profile_consumer=voice_profile_consumer,
         )
-
-        # CR-07: Send context metadata as first chunk (Context Inspector)
-        meta_dict = context.to_metadata().to_dict()
-        yield StreamChunk(text="", context_meta=meta_dict)
-
-        try:
-            if request.mode == GenerationMode.FULL_DRAFT:
-                from narrare_core.writing.pipeline_graph import stream_via_writing_graph
-
-                async for chunk in stream_via_writing_graph(
-                    request,
-                    context,
-                    config,
-                    registry=self._registry,
-                    composer=self._composer,
-                    context_assembler=self._context_assembler,
-                    api_key=api_key,
-                    base_url=base_url,
-                    agent_registry=self._agent_registry,
-                    invocation_pipeline=self._invocation_pipeline,
-                ):
-                    yield chunk
-
-            elif request.mode == GenerationMode.EXTEND:
-                from narrare_core.writing.pipeline_extend import stream_extend
-
-                async for chunk in stream_extend(
-                    self,
-                    request,
-                    context,
-                    config,
-                    api_key=api_key,
-                    base_url=base_url,
-                    custom_tone_instructions=custom_tone_instructions,
-                ):
-                    yield chunk
-
-            elif request.mode == GenerationMode.REWRITE:
-                from narrare_core.writing.pipeline_rewrite import stream_rewrite
-
-                async for chunk in stream_rewrite(
-                    self,
-                    request,
-                    context,
-                    config,
-                    api_key=api_key,
-                    base_url=base_url,
-                    selection_text=selection_text,
-                    context_before=context_before,
-                    context_after=context_after,
-                    rewrite_mode=rewrite_mode,
-                    custom_instructions=custom_instructions,
-                    count=rewrite_count,
-                    style_variant=style_variant,
-                ):
-                    yield chunk
-
-            elif request.mode == GenerationMode.SCENE_BY_SCENE:
-                from narrare_core.writing.pipeline_scene import stream_scene_by_scene
-
-                async for chunk in stream_scene_by_scene(
-                    self,
-                    request,
-                    context,
-                    config,
-                    api_key=api_key,
-                    base_url=base_url,
-                ):
-                    yield chunk
-
-            elif request.mode == GenerationMode.INTERVIEW_ASSISTED:
-                from narrare_core.writing.pipeline_interview import stream_interview_assisted
-
-                async for chunk in stream_interview_assisted(
-                    self,
-                    request,
-                    context,
-                    config,
-                    api_key=api_key,
-                    base_url=base_url,
-                ):
-                    yield chunk
-
-            elif request.mode == GenerationMode.INTERACTIVE_SESSION:
-                raise ValueError("Interactive session uses WebSocket, not pipeline.generate()")
-
-            elif request.mode == GenerationMode.CO_AUTHOR:
-                from narrare_core.writing.pipeline_coauthor import stream_coauthor
-
-                async for chunk in stream_coauthor(
-                    self,
-                    request,
-                    context,
-                    config,
-                    api_key=api_key,
-                    base_url=base_url,
-                    selection_text=selection_text,
-                    context_before=context_before,
-                    context_after=context_after,
-                    focus=co_author_focus,
-                    style_variant=style_variant,
-                ):
-                    yield chunk
-
-            else:
-                raise WritingError(
-                    f"Unsupported generation mode: {request.mode}",
-                    code="UNSUPPORTED_MODE",
-                )
-        finally:
-            self._stop_signals.discard(request.id)
 
     async def stop(self, request_id: UUID) -> None:
         """Flag an in-progress generation for stopping."""

@@ -16808,16 +16808,6 @@
             "title": "Ws Timeout",
             "default": 1800
           },
-          "retry_max_attempts": {
-            "type": "integer",
-            "title": "Retry Max Attempts",
-            "default": 3
-          },
-          "retry_base_delay": {
-            "type": "number",
-            "title": "Retry Base Delay",
-            "default": 1.0
-          },
           "metadata": {
             "$ref": "#/components/schemas/TokenLimitsCatalog"
           },
@@ -17323,32 +17313,6 @@
               }
             ],
             "title": "Ws Timeout"
-          },
-          "retry_max_attempts": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 20.0,
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Retry Max Attempts"
-          },
-          "retry_base_delay": {
-            "anyOf": [
-              {
-                "type": "number",
-                "maximum": 60.0,
-                "minimum": 0.1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Retry Base Delay"
           }
         },
         "type": "object",

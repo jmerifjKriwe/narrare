@@ -14,10 +14,12 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
+from openai import AsyncOpenAI
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from narrare_core.llm._providers.registry import register
+from narrare_core.llm._transport_retry import get_transport_max_retries
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
@@ -34,6 +36,10 @@ def _make_ollama(
     When ``base_url`` is provided, uses it directly. Otherwise falls
     back to the ``OLLAMA_BASE_URL`` environment variable.
 
+    Transport retry (transient 429/5xx/timeout) is governed at the provider
+    layer via :func:`get_transport_max_retries` (ADR-060) and applied to the
+    SDK client's ``max_retries`` — uniformly for ``run()`` and ``stream()``.
+
     Args:
         model_id: Model identifier (may include "ollama/" prefix).
         api_key: Ignored for Ollama (uses dummy key).
@@ -42,14 +48,17 @@ def _make_ollama(
     Returns:
         Configured OpenAIChatModel pointing at Ollama endpoint.
     """
+    max_retries = get_transport_max_retries()
     resolved_base = base_url or os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-    # Ollama's OpenAI-compatible endpoint
+    # Ollama's OpenAI-compatible endpoint.
+    client = AsyncOpenAI(
+        api_key="ollama",  # Ollama ignores the key but the SDK requires one
+        base_url=f"{resolved_base.rstrip('/')}/v1",
+        max_retries=max_retries,
+    )
     return OpenAIChatModel(
         model_id.removeprefix("ollama/"),
-        provider=OpenAIProvider(
-            base_url=f"{resolved_base.rstrip('/')}/v1",
-            api_key="ollama",  # Ollama ignores the key but pydantic-ai requires one
-        ),
+        provider=OpenAIProvider(openai_client=client),
     )
 
 

@@ -1,13 +1,16 @@
 /**
- * SystemTimeouts tests — timeout configuration inputs.
+ * SystemTimeouts tests — WebSocket timeout configuration input.
+ *
+ * Only the WebSocket idle timeout is user-configurable; the former retry
+ * controls were a false surface removed end-to-end per ADR-060.
  *
  * Tests:
- * 1. Renders all three timeout inputs
- * 2. Renders labels for each input
- * 3. Calls onChange with correct values
- * 4. Ignores NaN input
- * 5. Ignores values below minimum
- * 6. Disables inputs when disabled=true
+ * 1. Renders the ws timeout input with its label
+ * 2. Calls onChange with the rounded value when ws timeout changes
+ * 3. Ignores NaN input
+ * 4. Ignores values below the 60-second minimum
+ * 5. Disables the input when disabled=true
+ * 6. Renders the ws timeout hint text
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -20,8 +23,6 @@ import { SystemTimeouts } from "@/components/studio/settings/SystemTimeouts";
 
 const defaultProps = {
   wsTimeout: 120,
-  retryMaxAttempts: 3,
-  retryBaseDelay: 1.0,
   onChange: vi.fn(),
   disabled: false,
 };
@@ -42,56 +43,39 @@ describe("SystemTimeouts", () => {
     expect(screen.getByDisplayValue("120")).toBeDefined();
   });
 
-  it("renders retry attempts input with label", () => {
+  it("renders exactly one configurable timeout input", () => {
     render(<SystemTimeouts {...defaultProps} />);
 
-    expect(screen.getByText("settings.ai.systemTimeouts.retryAttempts")).toBeDefined();
-    expect(screen.getByDisplayValue("3")).toBeDefined();
-  });
-
-  it("renders retry delay input with label", () => {
-    render(<SystemTimeouts {...defaultProps} />);
-
-    expect(screen.getByText("settings.ai.systemTimeouts.retryDelay")).toBeDefined();
-    expect(screen.getByDisplayValue("1")).toBeDefined();
+    // The retry inputs were removed (ADR-060); only ws_timeout remains.
+    expect(screen.getAllByRole("spinbutton")).toHaveLength(1);
   });
 
   it("calls onChange when ws timeout changes", () => {
     const onChange = vi.fn();
     render(<SystemTimeouts {...defaultProps} onChange={onChange} />);
 
-    const inputs = screen.getAllByRole("spinbutton");
-    fireEvent.change(inputs[0], { target: { value: "180" } });
+    const input = screen.getByDisplayValue("120");
+    fireEvent.change(input, { target: { value: "180" } });
 
     expect(onChange).toHaveBeenCalledWith({ ws_timeout: 180 });
   });
 
-  it("calls onChange when retry attempts changes", () => {
+  it("rounds fractional ws timeout to an integer", () => {
     const onChange = vi.fn();
     render(<SystemTimeouts {...defaultProps} onChange={onChange} />);
 
-    const inputs = screen.getAllByRole("spinbutton");
-    fireEvent.change(inputs[1], { target: { value: "5" } });
+    const input = screen.getByDisplayValue("120");
+    fireEvent.change(input, { target: { value: "150.7" } });
 
-    expect(onChange).toHaveBeenCalledWith({ retry_max_attempts: 5 });
-  });
-
-  it("calls onChange when retry delay changes", () => {
-    const onChange = vi.fn();
-    render(<SystemTimeouts {...defaultProps} onChange={onChange} />);
-
-    const inputs = screen.getAllByRole("spinbutton");
-    fireEvent.change(inputs[2], { target: { value: "2.5" } });
-
-    expect(onChange).toHaveBeenCalledWith({ retry_base_delay: 2.5 });
+    expect(onChange).toHaveBeenCalledWith({ ws_timeout: 151 });
   });
 
   it("ignores NaN input", () => {
     const onChange = vi.fn();
     render(<SystemTimeouts {...defaultProps} onChange={onChange} />);
 
-    const inputs = screen.getAllByRole("spinbutton");
-    fireEvent.change(inputs[0], { target: { value: "abc" } });
+    const input = screen.getByDisplayValue("120");
+    fireEvent.change(input, { target: { value: "abc" } });
 
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -100,40 +84,22 @@ describe("SystemTimeouts", () => {
     const onChange = vi.fn();
     render(<SystemTimeouts {...defaultProps} onChange={onChange} />);
 
-    const inputs = screen.getAllByRole("spinbutton");
-    fireEvent.change(inputs[0], { target: { value: "30" } });
+    const input = screen.getByDisplayValue("120");
+    fireEvent.change(input, { target: { value: "30" } });
 
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("ignores retry attempts outside range", () => {
-    const onChange = vi.fn();
-    render(<SystemTimeouts {...defaultProps} onChange={onChange} />);
-
-    const inputs = screen.getAllByRole("spinbutton");
-    fireEvent.change(inputs[1], { target: { value: "15" } });
-
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
-  it("disables all inputs when disabled=true", () => {
+  it("disables the input when disabled=true", () => {
     render(<SystemTimeouts {...defaultProps} disabled />);
 
-    const inputs = screen.getAllByRole("spinbutton");
-    for (const input of inputs) {
-      expect(input).toHaveProperty("disabled", true);
-    }
+    const input = screen.getByDisplayValue("120");
+    expect(input).toHaveProperty("disabled", true);
   });
 
   it("renders hint text for ws timeout", () => {
     render(<SystemTimeouts {...defaultProps} />);
 
     expect(screen.getByText("settings.ai.systemTimeouts.wsTimeoutHint")).toBeDefined();
-  });
-
-  it("renders hint text for retry delay", () => {
-    render(<SystemTimeouts {...defaultProps} />);
-
-    expect(screen.getByText("settings.ai.systemTimeouts.retryDelayHint")).toBeDefined();
   });
 });

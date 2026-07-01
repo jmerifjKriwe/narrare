@@ -202,8 +202,6 @@ class TokenLimitsService:
             token_profile=base.token_profile,
             tier_percentages=base.tier_percentages,
             ws_timeout=cfg.ws_idle_timeout_seconds,
-            retry_max_attempts=cfg.retry_max_attempts,
-            retry_base_delay=cfg.retry_base_delay,
             max_chapter_tokens=cfg.consistency_max_chapter_tokens,
             max_kb_entries=cfg.consistency_max_kb_entries,
             max_selection_words=cfg.default_max_selection_words,
@@ -276,12 +274,6 @@ class TokenLimitsService:
                 overrides.get("tier_percentages", base.tier_percentages),
             ),
             ws_timeout=cast("int", overrides.get("ws_timeout", base.ws_timeout)),
-            retry_max_attempts=cast(
-                "int", overrides.get("retry_max_attempts", base.retry_max_attempts)
-            ),
-            retry_base_delay=cast(
-                "float", overrides.get("retry_base_delay", base.retry_base_delay)
-            ),
             max_chapter_tokens=cast(
                 "int", overrides.get("max_chapter_tokens", base.max_chapter_tokens)
             ),

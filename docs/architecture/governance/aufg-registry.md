@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-30 — 29 resolved items consolidated into dedicated section below
+> **Last updated:** 2026-07-01 — review-01 remediation: AUFG-01-01 metadata corrected (source/path) + ADR-060 governing decision linked; AUFG-01-02 (character_voice status sync) added → **resolved** (`docs/features/INDEX.md:126` + `docs/_shared/GLOSSARY.md:232` corrected to runtime-verified; `check-adoption` PASS 0.97 + `check-health` feature_adoption 0.87/1 verified 2026-07-01); AUFG-01-08 (editor/writing-hotspots) added as non-colliding re-issue of the review-01 `AUFG-01-03` collision, then → **resolved** (2026-07-01) after Core+Frontend modularization (`useTipTapEditorController` 400→115 lines + 8 extracted modules; `WritingPipeline.generate` stage-dispatch extracted to `_mode_dispatch.py` with documented AUFG-01-08 stage-4 contract) and full Platform validation. (Prior: 2026-06-30 — 29 resolved items consolidated into dedicated section below.)
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -91,25 +91,141 @@ remains a deferred strategic enhancement (paired with AUFG-01-03).
 |-------|-------|
 | ID | AUFG-01-01 |
 | Title | Retry-Settings Runtime-Wirkung prüfen und governance-sicher klassifizieren |
-| Source | review-05-release.md §5 Schwächen item 2, review-05-release.md §6 Roadmap |
-| Status | `open` |
+| Source | review-01-architektur.md §5 + §Aufgaben AUFG-01-01 (dependency path corrected from `_retry.py` to `retry.py`; source corrected from `review-05-release.md`). |
+| Status | `resolved` (2026-07-01) — Option B (ADR-060 ✅ Implemented) remediation complete across Core/Backend/Frontend/Platform waves |
 | Priority | P1 |
-| Area | Core, Configuration, Governance (RULE-18b Effect Integrity) |
-| Owner role | Core Specialist |
-| Dependencies | `packages/core/narrare_core/llm/_retry.py` (`with_retry`); Config-Matrix retry entries; RULE-18b |
+| Area | Core, Configuration, Governance (RULE-18b Effect Integrity, RULE-20) |
+| Owner role | Core Specialist (remediation); Architecture Specialist (decision) |
+| Dependencies | `packages/core/narrare_core/llm/retry.py` (`with_retry` — zero production callers, Gateway v1 vestige); `packages/core/narrare_core/llm/gateway.py` (Gateway v2 `ModelRegistry.run`/`stream`); `apps/api/narrare/settings/token_limits/service.py` (resolves `retry_max_attempts`/`retry_base_delay` to no consumer); Configuration Adoption Matrix entry `websocket_idle_retry_cascade`; RULE-18b |
 | Review trigger/date | Re-review before the next release-readiness claim or when retry configuration changes |
+
+**Confirmed finding (2026-07-01, graph-verified):** `with_retry` has **zero** production
+callers; `RetryConfig` is referenced only inside `retry.py`. `TokenLimitsService` resolves
+`retry_max_attempts`/`retry_base_delay` but no LLM/SSE/WebSocket retry boundary consumes
+the resolved values. The two retry settings are confirmed false controls (RULE-18b
+violation #1). The matrix entry `websocket_idle_retry_cascade` aggregates three settings
+while its evidence covers only `ws_idle_timeout_seconds`.
+
+**Governing decision:** [ADR-060](../../decisions/ADR-060-retry-false-control-resolution.md)
+✅ Implemented (2026-07-01) — Option B (Reclassify): transport retry is governed at the provider layer
+(`core/llm/_providers/`); the false user `retry_*` surface is removed end-to-end; the
+Gateway v1 `with_retry` vestige is retired; the aggregated matrix entry is split (P2).
+Prevention for the class of defect is ADR-061 (matrix effect-integrity hardening).
 
 **Acceptance criteria:**
 
-- `with_retry` has at least one production caller (service or agent) with runtime-effect evidence.
-- If `retry_max_attempts` / `retry_base_delay` are confirmed as false controls (no production consumer), they are reclassified in the Config-Matrix as `governed_debt` or `accepted_risk` with documented rationale.
-- RULE-18b Effect-Integrity is satisfied for all retry material settings.
+- `retry_max_attempts` / `retry_base_delay` are removed from the user/project token-limit
+  surface (UI, API, DB override keys, resolver); `ws_timeout` is retained.
+- LLM transport retry is real and proven at the provider layer (governed_default /
+  operator_default) with a fail-if-changed effect test.
+- `with_retry` / `RetryConfig` (Gateway v1 vestige) is retired (no production caller).
+- The `websocket_idle_retry_cascade` matrix entry is split into per-setting rows
+  (`ws_idle_timeout` adopted; provider `max_retries` governed_default).
+- RULE-18b Effect-Integrity is satisfied for transport retry at the correct boundary.
 
 **Definition of Done:**
 
-- Production caller identified or settings reclassified with governance documentation.
-- Config-Matrix updated to reflect the actual runtime effect.
-- This registry entry updated with exit evidence and status `resolved`, `accepted_risk`, or `governed_debt`.
+- Provider-layer retry implemented + effect-tested; false user surface removed in all
+  layers; matrix split; `with_retry` retired.
+- Config-Matrix updated per the split; ADR-061's per-setting checker (once baseline) does
+  not flag the retry entries.
+- This registry entry updated with exit evidence and status `resolved` or `accepted_risk`.
+
+**Exit evidence (2026-07-01):** Resolved — Option B (ADR-060 ✅ Implemented) complete across all layers.
+
+- **Provider-layer retry (proven at the runtime boundary):** `packages/core/narrare_core/llm/_transport_retry.py` (`TRANSPORT_MAX_RETRIES_DEFAULT = 2`; env `NARRARE_LLM_TRANSPORT_MAX_RETRIES`; `get_transport_max_retries()`); all 7 provider factories wired (`core/llm/_providers/`); fail-if-changed effect test `tests/unit/core/llm/test_transport_retry.py`.
+- **False user surface removed (all layers):** Backend (`token_limits/` contracts/schemas/router/validators/service + `_app/settings_model.py` `NARRARE_RETRY_*`); Frontend (`retry_*` inputs/types/i18n — 9 keys × 3 locales). `ws_timeout` retained (real `WritingSessionHandler` consumer).
+- **Gateway v1 vestige retired:** `packages/core/narrare_core/llm/retry.py` (`with_retry` / `RetryConfig`) and `tests/unit/core/llm/test_retry.py` deleted; code graph confirms `with_retry` has **zero** remaining callers post-deletion.
+- **Matrix split (P2):** `configuration-adoption-matrix.yaml` `websocket_idle_retry_cascade` → `ws_idle_timeout` (adopted) + `llm_transport_retry` (adopted, operator governed default); `just check-configuration-matrix` PASSES (26 entries, 0 violations).
+- **RULE-18b Effect Integrity:** satisfied for transport retry at the correct boundary (provider layer), with evidence; the false control no longer exists to be lied about.
+
+---
+
+### AUFG-01-02 — character_voice Adoption-/Health-Status synchronisieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-01-02 |
+| Title | character_voice Adoption-/Health-Status synchronisieren |
+| Source | review-01-architektur.md §5 (status drift across multiple status surfaces). |
+| Status | `resolved` (2026-07-01) — runtime adoption resolved via ADR-055/ADR-057 (✅ Implemented) + WRITE-010 (→ `stable`); the residual derived-doc status text (`docs/features/INDEX.md:126` and `docs/_shared/GLOSSARY.md:232`) is corrected to runtime-verified. |
+| Priority | P2 |
+| Area | Governance, SSOT consistency, analysis (character voice) |
+| Owner role | Architecture Specialist (this entry / decision); Docs Specialist (derived-doc status-text fix — `docs/features/INDEX.md:126` is owned by Stage-3b) |
+| Dependencies | [ADR-055](../decisions/ADR-055-character-voice-contract.md); [ADR-057](../decisions/ADR-057-voice-check-checking-path-contract.md); WRITE-010; `docs/features/INDEX.md:126`; `docs/_shared/CURRENT_STATE.md`; ANAL-008 spec; [ADR-062](../decisions/ADR-062-governance-drift-phase2-status-ssot.md) P3 checker (status-SSOT consistency) |
+| Review trigger/date | Re-review when ADR-062's P3 status-consistency checker is blocking, or before the next release-readiness claim. |
+
+**Confirmed residual (2026-07-01):** `character_voice` runtime adoption is described as
+`runtime-verified` in `CURRENT_STATE.md`, the `ANAL-008` spec, and `check-adoption` output
+(ADR-057 ✅ Implemented; `voice_check` static/runtime/adopted; adoption_debt 5 → 1 true
+debt), but `docs/features/INDEX.md:126` still states "`character_voice` runtime adoption =
+governed debt". The status surface therefore contradicts the runtime reality. This entry
+exists because the registry was previously missing AUFG-01-02.
+
+**Acceptance criteria:**
+
+- `docs/features/INDEX.md:126` (and any other derived status surface) reconciles with the
+  runtime-verified adoption state recorded by ADR-055/057 and `check-adoption`.
+- ADR-062's P3 status-SSOT consistency checker passes for `character_voice` (no
+  `adopted`/`runtime_verified` ↔ `governed_debt` contradiction).
+- No status surface describes `character_voice` as `governed debt` while the
+  registry/runtime evidence says otherwise.
+
+**Definition of Done:**
+
+- Derived-doc status text corrected by Stage-3b (Docs owns `docs/features/INDEX.md`).
+- P3 checker passes for the `character_voice` subject.
+- This registry entry updated with exit evidence and status `resolved`.
+
+**Exit evidence (2026-07-01):** Resolved — runtime adoption and derived-doc status text both reconciled to runtime-verified.
+
+- **Runtime adoption (resolved via ADR-055/057/WRITE-010):** `character_voice` is runtime-verified — runtime probes landed in `ee1cfc50`; `voice_check` is static ✅/runtime ✅/adopted ✅ (WRITE-010 → `stable`, adoption_debt 5 → 1 — true debt only). `just check-adoption` reports PASS 0.97 (verified 2026-07-01); `just check-health` reports `feature_adoption` 0.87/1 baseline.
+- **Derived-doc status text (sole residual class, corrected 2026-07-01):** `docs/features/INDEX.md:126` changed from "`character_voice` runtime adoption = governed debt (static-verified; runtime evidence pending CI/integration)" to runtime-verified (probes landed in `ee1cfc50`; local commit-gate runtime-evidence-aware via ADR-056), consistent with `CURRENT_STATE.md` and the `ANAL-008` spec. A second stale surface was found during resolution and also corrected: `docs/_shared/GLOSSARY.md:232` removed `character_voice` from the governed-debt examples list (it is no longer governed debt).
+- **Consistency:** No remaining (non-ADR, non-review) status surface describes `character_voice` as `governed debt` against the runtime-verified evidence. The `governed_debt` ↔ `runtime_verified` contradiction that ADR-062's P3 status-SSOT checker is designed to flag is removed from the derived docs; that checker's baseline-blocking status is tracked under ADR-062, not relied on for this resolution.
+
+---
+
+### AUFG-01-08 — Editor-/Writing-Hotspots Review-Aufgabe (non-colliding ID)
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-01-08 |
+| Title | Editor-/Writing-Hotspots Review-Aufgabe (review-01) |
+| Source | review-01-architektur.md §Aufgaben (review-01 AUFG-01-03, re-homed to avoid collision). |
+| Status | `resolved` (2026-07-01) — Core+Frontend modularization complete and Platform-validated (TipTapEditorController 400→115 + 8 modules; WritingPipeline.generate 206→118 + `_mode_dispatch.py` with documented stage-4 contract); all acceptance criteria + DoD met. |
+| Priority | P2 |
+| Area | Frontend architecture, editor, writing hotspots |
+| Owner role | Architecture Specialist (id/lifecycle); Frontend Specialist (implementation once scoped) |
+| Dependencies | `review-01-architektur.md` §Aufgaben (editor/writing-hotspots); [ADR-062](../decisions/ADR-062-governance-drift-phase2-status-ssot.md) P5 review→registry linking checker (would have caught the original collision). |
+| Review trigger/date | Re-review when the editor/writing-hotspots scope is confirmed and scoped for implementation, or when ADR-062's P5 checker is blocking. |
+
+**Rationale for the new ID:** review-01's editor/writing-hotspots task must not reuse
+`AUFG-01-03` (held by the MCP/A2A accepted enhancement). `AUFG-01-04`/`01-05`/`01-07`
+are also taken (useExtractionPhase, NameGenerator harness, adoption/health ratchet).
+`AUFG-01-08` is the next free sequential id and is used to guarantee no collision.
+*(Coordinator confirmation requested against the review-01 source numbering — see
+Architecture handoff.)*
+
+**Acceptance criteria:**
+
+- Für `TipTapEditorController` existiert ein Refactoring-Plan mit stabiler öffentlicher Hook-API und extrahierten Verantwortlichkeiten.
+- Für `WritingPipeline.generate` sind Stage-Verantwortlichkeiten/Contracts dokumentiert, bevor neue Writing-Features daran andocken.
+- Refactoring erfolgt durch Modularisierung, nicht durch Kommentar-/Whitespace-Reduktion.
+- Bestehende Editor-/Writing-Tests und Architekturchecks bleiben grün.
+
+**Definition of Done:**
+
+- Scope confirmed from `review-01-architektur.md`; implementation + evidence (or accepted
+  reclassification) recorded.
+- No `AUFG-01-03` collision remains between the MCP/A2A entry and this task.
+- This registry entry updated with exit evidence.
+
+**Exit evidence (2026-07-01):** Resolved — modularization performed by modular extraction (not minification), stage contracts documented, all gates green.
+
+- **`useTipTapEditorController` (TipTapEditorController.ts):** 400 → 115 lines (thin composer); 8 new focused modules extracted — `useEditorInstance`, `useEditorAutosave`, `useGhostTextConfig`, `useGhostTextOnboardingAnchor`, `useRewriteActions`, `useRewriteFlow`, `useRewriteOperation`, `rewriteStream` — plus `useRewriteActions.test.tsx`. Public hook API preserved (consumer/`TipTapEditor` surface unchanged); `just check-frontend-size` PASS (0 debt growth) and editor test suite green (602 frontend tests passed scoped to editor/settings/i18n).
+- **`WritingPipeline.generate` (pipeline.py):** 206 → ~118 lines; mode if/elif dispatch extracted to `packages/core/narrare_core/writing/_mode_dispatch.py` (`stream_for_mode`), whose module docstring documents the **Contract (AUFG-01-08 stage 4 — dispatch + invocation)** with in/out semantics and the `GenerationMode` → streamer mapping table. Prompt/agent/registry abstractions are not bypassed (per-mode streamers unchanged). `just check-python-size` PASS (0 debt growth); `tests/unit/core/writing/test_pipeline_stages.py` added.
+- **Acceptance criteria:** (1) refactoring plan with stable public hook API + extracted responsibilities ✅; (2) stage responsibilities/contracts documented before new writing features dock ✅; (3) modularization, not comment/whitespace reduction ✅; (4) editor/writing tests + architecture checks green ✅.
+- **Validation (2026-07-01):** `just check-architecture` (0 new violations), `check-python-size`/`check-frontend-size` (0 new), `uv run pyright packages/core apps/api tests/unit` (0 errors), `uv run ruff check` (clean), `pytest tests/unit` (8616 passed).
 
 ---
 

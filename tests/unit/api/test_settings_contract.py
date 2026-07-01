@@ -153,8 +153,6 @@ class TestTokenLimitOverridesContract:
             "token_profile",
             "tier_percentages",
             "ws_timeout",
-            "retry_max_attempts",
-            "retry_base_delay",
         }
         missing = expected - field_names
         assert not missing, f"TokenLimitOverrides is missing fields: {missing}"

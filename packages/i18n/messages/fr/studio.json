@@ -482,12 +482,9 @@
       },
       "systemTimeouts": {
         "title": "Délais Système",
-        "description": "Comportement de connexion et de relance pour les opérations IA",
+        "description": "Délai de connexion pour les opérations IA",
         "wsTimeout": "Délai WebSocket (secondes)",
-        "wsTimeoutHint": "Minimum 60 secondes",
-        "retryAttempts": "Tentatives de Relance Max",
-        "retryDelay": "Délai de Base (secondes)",
-        "retryDelayHint": "Backoff exponentiel à partir de cette valeur"
+        "wsTimeoutHint": "Minimum 60 secondes"
       }
     },
     "prompts": {
