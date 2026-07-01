@@ -190,3 +190,51 @@ class TestSuggestRelevanceScore:
 
         scores = [s.relevance_score for s in suggestions]
         assert scores == sorted(scores, reverse=True)
+
+
+# ---------------------------------------------------------------------------
+# _build_candidates — name-only matches without metadata are skipped
+# ---------------------------------------------------------------------------
+
+
+class TestBuildCandidatesNameMatchWithoutMetadata:
+    """A name-matched entry that is absent from embedding results AND has no
+    entity metadata cannot be scored, so it is dropped (line 174 branch)."""
+
+    def test_name_matched_entry_without_metadata_is_skipped(self) -> None:
+        service = ProactiveContextService(embedding_store=FakeEmbeddingStore())
+        orphan_id = _uuid()
+
+        candidates = service._build_candidates(
+            search_results=[],
+            matched_entry_ids={orphan_id},
+            entity_metadata=None,
+        )
+
+        assert orphan_id not in candidates
+        assert candidates == {}
+
+    def test_name_matched_entry_missing_from_metadata_dict_is_skipped(self) -> None:
+        service = ProactiveContextService(embedding_store=FakeEmbeddingStore())
+        orphan_id = _uuid()
+
+        candidates = service._build_candidates(
+            search_results=[],
+            matched_entry_ids={orphan_id},
+            entity_metadata={},
+        )
+
+        assert candidates == {}
+
+    def test_name_matched_entry_with_metadata_becomes_candidate(self) -> None:
+        service = ProactiveContextService(embedding_store=FakeEmbeddingStore())
+        matched_id = _uuid()
+
+        candidates = service._build_candidates(
+            search_results=[],
+            matched_entry_ids={matched_id},
+            entity_metadata={matched_id: _meta(name="Aria")},
+        )
+
+        assert matched_id in candidates
+        assert candidates[matched_id].usage_count == 0

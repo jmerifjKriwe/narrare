@@ -12,7 +12,11 @@ from uuid import UUID, uuid4
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-from narrare.chapters.kb_lifecycle_consumer import ChapterFrontmatterRefConsumerImpl
+from narrare.chapters.kb_lifecycle_consumer import (
+    ChapterFrontmatterRefConsumerImpl,
+    _frontmatter_refs,
+    _iter_scalar_refs,
+)
 from narrare.chapters.models import Chapter
 from narrare.consistency.ref_integrity_sink import InMemoryRefIntegrityIssueSink
 from narrare_core.context.integration_contracts import (
@@ -116,3 +120,26 @@ class TestChapterFrontmatterDeprecate:
         assert chapter.content == original
         assert len(sink.issues) == 1
         assert sink.issues[0].reason == "deprecated_ref_in_active_context"
+
+
+class TestFrontmatterRefHelpers:
+    """Unit tests for the pure ref-flattening helpers."""
+
+    def test_iter_scalar_refs_dict_extracts_id_and_name(self) -> None:
+        assert _iter_scalar_refs({"id": "x", "name": "y"}) == ["x", "y"]
+
+    def test_iter_scalar_refs_dict_skips_non_string_fields(self) -> None:
+        assert _iter_scalar_refs({"id": 5, "name": None}) == []  # type: ignore[dict-item]
+
+    def test_iter_scalar_refs_other_types_return_empty(self) -> None:
+        assert _iter_scalar_refs(42) == []
+        assert _iter_scalar_refs(None) == []
+        assert _iter_scalar_refs(3.14) == []
+
+    def test_frontmatter_refs_empty_for_content_without_frontmatter(self) -> None:
+        chapter = _chapter(content="Just plain prose with no frontmatter.")
+        assert list(_frontmatter_refs(chapter)) == []
+
+    def test_frontmatter_refs_empty_when_no_known_ref_keys(self) -> None:
+        chapter = _chapter(content="---\ntitle: Hello\nsummary: text\n---\nBody")
+        assert list(_frontmatter_refs(chapter)) == []

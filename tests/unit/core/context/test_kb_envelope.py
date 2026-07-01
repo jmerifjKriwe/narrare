@@ -318,3 +318,35 @@ class TestKBContextEnvelopeProtocol:
         result = renderer.render([], tier="tier5_pinned")
         assert result.text == ""
         assert result.entry_count == 0
+
+
+# =====================================================================
+# RenderedKBContext — string-protocol helpers (__str__, split, contains)
+# =====================================================================
+
+
+class TestRenderedKBContextStringProtocol:
+    """``RenderedKBContext`` interoperates with str-only consumers."""
+
+    def test_str_returns_prompt_bound_text(self) -> None:
+        result = RenderedKBContext(
+            text="### Character: Alice\nA brave hero.",
+            preserved_fields=frozenset({"provenance"}),
+        )
+        assert str(result) == "### Character: Alice\nA brave hero."
+
+    def test_split_delegates_to_text(self) -> None:
+        result = RenderedKBContext(
+            text="line one\nline two\nline three",
+            preserved_fields=frozenset(),
+        )
+        assert result.split("\n") == ["line one", "line two", "line three"]
+        assert result.split(sep=None, maxsplit=1) == ["line", "one\nline two\nline three"]
+
+    def test_contains_checks_text(self) -> None:
+        result = RenderedKBContext(
+            text="### Character: Alice",
+            preserved_fields=frozenset(),
+        )
+        assert "Alice" in result
+        assert "Bob" not in result

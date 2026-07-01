@@ -143,3 +143,80 @@ def test_suggest_max_tokens_is_immutable_ux_cap() -> None:
     from narrare_core.llm.run_limits import SUGGEST_MAX_TOKENS
 
     assert SUGGEST_MAX_TOKENS == 60
+
+
+class TestMergeModelSettings:
+    """``merge_model_settings`` merges cache/provider settings with run limits."""
+
+    def test_returns_none_when_both_none(self) -> None:
+        from narrare_core.llm.run_limits import merge_model_settings
+
+        assert merge_model_settings(None, None) is None
+
+    def test_base_only_passes_through(self) -> None:
+        from narrare_core.llm.run_limits import merge_model_settings
+
+        assert merge_model_settings({"temperature": 0.7}, None) == {"temperature": 0.7}
+
+    def test_limits_only_applies_model_settings(self) -> None:
+        from narrare_core.llm.run_limits import ResolvedRunLimits, merge_model_settings
+
+        limits = MagicMock(spec=ResolvedRunLimits)
+        limits.model_settings = {"max_tokens": 100}
+        assert merge_model_settings(None, limits) == {"max_tokens": 100}
+
+    def test_limits_override_base_values(self) -> None:
+        from narrare_core.llm.run_limits import ResolvedRunLimits, merge_model_settings
+
+        limits = MagicMock(spec=ResolvedRunLimits)
+        limits.model_settings = {"max_tokens": 200}
+        result = merge_model_settings({"max_tokens": 50, "temperature": 0.5}, limits)
+        assert result == {"max_tokens": 200, "temperature": 0.5}
+
+
+class TestResolveRuntimeLimits:
+    """``resolve_runtime_limits`` short-circuits pre-resolved limits and skips
+    resolution when neither budget nor profile is set."""
+
+    def test_pre_resolved_limits_returned_unchanged(self) -> None:
+        from narrare_core.llm.run_limits import resolve_runtime_limits
+
+        resolver = DefaultRunLimitResolver(model_limits_provider=lambda _p, _m: None)
+        config = ResolvedModelConfig(provider_name="anthropic", model_id="claude", max_tokens=4096)
+        pre = resolver.resolve(
+            config=config, budget=_budget(1000, "balanced"), invocation_id=uuid4()
+        )
+
+        result = resolve_runtime_limits(
+            resolver, config=config, resolved_limits=pre, output_budget=None
+        )
+
+        assert result is pre
+
+    def test_returns_none_when_no_budget_and_no_profile(self) -> None:
+        from narrare_core.llm.run_limits import resolve_runtime_limits
+
+        resolver = DefaultRunLimitResolver(model_limits_provider=lambda _p, _m: None)
+        config = ResolvedModelConfig(provider_name="anthropic", model_id="claude", max_tokens=4096)
+
+        result = resolve_runtime_limits(
+            resolver, config=config, resolved_limits=None, output_budget=None
+        )
+
+        assert result is None
+
+    def test_resolves_from_budget_when_not_pre_resolved(self) -> None:
+        from narrare_core.llm.run_limits import resolve_runtime_limits
+
+        resolver = DefaultRunLimitResolver(model_limits_provider=lambda _p, _m: None)
+        config = ResolvedModelConfig(provider_name="anthropic", model_id="claude", max_tokens=4096)
+
+        result = resolve_runtime_limits(
+            resolver,
+            config=config,
+            resolved_limits=None,
+            output_budget=_budget(2000, "balanced"),
+        )
+
+        assert result is not None
+        assert result.effective_output_tokens == 2000

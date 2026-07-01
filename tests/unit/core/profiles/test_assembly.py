@@ -215,3 +215,17 @@ class TestProfileAssemblerCheckingSurfacesVoiceMetrics:
         assembler = ProfileAssembler(provider=None)
         result = await assembler.assemble_for_checking(project_id=uuid4())
         assert result == []
+
+
+class TestProfileAssemblerProviderAccessor:
+    """The ``provider`` property guards runtime binding requirements."""
+
+    def test_provider_property_raises_when_not_configured(self) -> None:
+        assembler = ProfileAssembler(provider=None)
+        with pytest.raises(RuntimeError, match="VoiceProfileProvider is not configured"):
+            _ = assembler.provider
+
+    def test_provider_property_returns_bound_provider(self) -> None:
+        provider = FakeVoiceProfileProvider()
+        assembler = ProfileAssembler(provider=provider)
+        assert assembler.provider is provider
