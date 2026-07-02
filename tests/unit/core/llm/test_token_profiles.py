@@ -8,7 +8,9 @@ from narrare_core.llm.token_profiles import (
     TOKEN_OUTPUT_UX_RECOMMENDED_MAX,
     TokenLimitProfile,
     get_preset_output_limit,
+    get_usage_limit_preset,
     is_custom_token_limit_profile,
+    is_public_token_profile,
     normalize_legacy_token_profile,
     public_token_profile_values,
     resolve_output_limit_for_profile,
@@ -52,3 +54,31 @@ def test_conservative_is_not_public_but_normalizes_for_legacy_boundaries() -> No
     assert get_preset_output_limit("conservative") is None
     assert normalize_legacy_token_profile("conservative") == "balanced"
     assert normalize_legacy_token_profile("quick") == "quick"
+
+
+def test_is_public_token_profile_classifies_vocabulary() -> None:
+    """The public helper recognises the canonical profile vocabulary."""
+    assert is_public_token_profile("balanced") is True
+    assert is_public_token_profile("custom") is True
+    # Legacy aliases and unknown values are not part of the public vocabulary.
+    assert is_public_token_profile("conservative") is False
+    assert is_public_token_profile("nonsense") is False
+
+
+def test_legacy_normalization_passes_none_through() -> None:
+    """``None`` (no profile selected) is preserved unchanged."""
+    assert normalize_legacy_token_profile(None) is None
+
+
+def test_custom_check_returns_false_for_no_profile() -> None:
+    """No profile selection is not custom manual mode."""
+    assert is_custom_token_limit_profile(None) is False
+
+
+def test_usage_limit_preset_for_none_and_known_profile() -> None:
+    """No profile yields no run-level limits; a known profile yields its preset."""
+    assert get_usage_limit_preset(None) is None
+    preset = get_usage_limit_preset("balanced")
+    assert preset is not None
+    assert preset.request_limit == 25
+    assert preset.total_tokens_limit == 64000

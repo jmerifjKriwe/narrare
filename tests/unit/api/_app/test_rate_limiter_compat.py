@@ -26,7 +26,7 @@ exact failure condition — an app whose ``request.app.routes`` contains a
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.testclient import TestClient
@@ -36,7 +36,6 @@ from narrare._app.rate_limiter_dep import RateLimiter
 
 if TYPE_CHECKING:
     from starlette.requests import Request
-
 # Short window so exhausted-limit tests reset quickly between tests. Each test
 # builds its own Limiter to avoid cross-test state accumulation (same pattern
 # as ``test_rate_limits.py``).
@@ -239,3 +238,52 @@ class TestIdentifier:
             second = client.get("/api/v1/y")
         assert first.status_code == 200
         assert second.status_code == 429
+
+
+# ---------------------------------------------------------------------------
+# Default identifier key derivation (X-Forwarded-For / loopback fallback)
+# ---------------------------------------------------------------------------
+
+
+class _FakeClient:
+    def __init__(self, host: str) -> None:
+        self.host = host
+
+
+class _FakeURL:
+    def __init__(self, path: str) -> None:
+        self.path = path
+
+
+class _FakeRequest:
+    """Minimal request stand-in for the default identifier (pure unit test).
+
+    Only the attributes ``_identifier`` reads are implemented: ``headers``
+    (``.get``), ``client`` (``.host`` or ``None``), and ``url.path``.
+    """
+
+    def __init__(self, *, forwarded_for: str | None, client: _FakeClient | None) -> None:
+        headers: dict[str, str] = {}
+        if forwarded_for is not None:
+            headers["X-Forwarded-For"] = forwarded_for
+        self.headers = headers
+        self.client = client
+        self.url = _FakeURL("/api/v1/ping")
+
+
+class TestIdentifierKeyDerivation:
+    """The default identifier derives the bucket key from request IP + path."""
+
+    async def test_x_forwarded_for_first_hop_is_used(self) -> None:
+        """When present, the first X-Forwarded-For hop is the client IP."""
+        limiter = RateLimiter(Limiter(Rate(1, _SHORT_WINDOW)))
+        request = _FakeRequest(
+            forwarded_for="203.0.113.1, 198.51.100.2", client=_FakeClient("ignored")
+        )
+        assert await limiter._identifier(cast("Request", request)) == "203.0.113.1:/api/v1/ping"
+
+    async def test_no_client_falls_back_to_loopback(self) -> None:
+        """No X-Forwarded-For and no client -> 127.0.0.1 loopback fallback."""
+        limiter = RateLimiter(Limiter(Rate(1, _SHORT_WINDOW)))
+        request = _FakeRequest(forwarded_for=None, client=None)
+        assert await limiter._identifier(cast("Request", request)) == "127.0.0.1:/api/v1/ping"

@@ -10,14 +10,11 @@ Exercises both ``_make_zai`` (General API) and ``make_zai_coding``
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
+import pytest
+from openai import OpenAIError
 from pydantic_ai.models.openai import OpenAIChatModel
 
 from narrare_core.llm._providers.zai import _make_zai, make_zai_coding
-
-if TYPE_CHECKING:
-    import pytest
 
 
 class TestMakeZai:
@@ -43,6 +40,17 @@ class TestMakeZai:
         assert isinstance(model, OpenAIChatModel)
         assert model.model_name == "glm-z1-32b"
 
+    def test_no_credentials_raises_openai_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """No key arg and no env var -> General-endpoint construction fails fast.
+
+        Z.AI passes the (empty) resolved key to ``OpenAIProvider``, which raises
+        an ``OpenAIError`` at construction. Correct fail-fast behaviour: an LLM
+        client cannot be built without a credential.
+        """
+        monkeypatch.delenv("ZAI_API_KEY", raising=False)
+        with pytest.raises(OpenAIError):
+            _make_zai("glm-4-flash")
+
 
 class TestMakeZaiCoding:
     """``make_zai_coding`` creates ``OpenAIChatModel`` via Z.AI Coding API."""
@@ -66,3 +74,9 @@ class TestMakeZaiCoding:
         model = make_zai_coding("glm-z1-32b")
         assert isinstance(model, OpenAIChatModel)
         assert model.model_name == "glm-z1-32b"
+
+    def test_no_credentials_raises_openai_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """No key arg and no env var -> Coding-endpoint construction fails fast."""
+        monkeypatch.delenv("ZAI_API_KEY", raising=False)
+        with pytest.raises(OpenAIError):
+            make_zai_coding("glm-4-flash")

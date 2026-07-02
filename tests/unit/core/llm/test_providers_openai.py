@@ -8,14 +8,11 @@ Exercises the actual ``_make_openai`` factory body to verify:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
+import pytest
+from openai import OpenAIError
 from pydantic_ai.models.openai import OpenAIChatModel
 
 from narrare_core.llm._providers.openai import _make_openai
-
-if TYPE_CHECKING:
-    import pytest
 
 
 class TestMakeOpenAI:
@@ -42,3 +39,30 @@ class TestMakeOpenAI:
         model = _make_openai("gpt-4o")
         assert isinstance(model, OpenAIChatModel)
         assert model.model_name == "gpt-4o"
+
+    def test_no_credentials_with_base_url_defers_to_pydantic_ai(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No key arg, no env var, but base_url set -> construction defers.
+
+        ``OpenAIProvider(api_key=None, base_url=...)`` accepts a null key and
+        defers credential resolution, so a model is returned (it would only
+        fail if a real call were attempted without a key). This deterministically
+        exercises the no-credential + base_url branch.
+        """
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        model = _make_openai("gpt-4o", base_url="https://proxy.example.com/v1")
+        assert isinstance(model, OpenAIChatModel)
+        assert model.model_name == "gpt-4o"
+
+    def test_no_credentials_bare_raises_openai_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """No key, no env var, no base_url -> bare construction fails fast.
+
+        ``OpenAIChatModel(model_id)`` with no provider cannot resolve a
+        credential and raises a clear OpenAI SDK error at construction. This is
+        the desired fail-fast behaviour: an LLM client cannot be built without a
+        credential.
+        """
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        with pytest.raises(OpenAIError):
+            _make_openai("gpt-4o")
