@@ -48,7 +48,7 @@ export function KBCategorySidebar({
   const wikiPendingCount = wikiIndex?.pending_count ?? 0;
 
   return (
-    <div className="w-56 border-r border-border bg-card flex flex-col">
+    <div className="w-full lg:w-56 border-r border-border bg-card flex flex-col">
       <div className="p-4 border-b border-border">
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
           {t("kb.title")}

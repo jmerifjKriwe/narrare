@@ -182,33 +182,16 @@ export function EditorRightPanelSlot({
     }
   })();
 
-  const renderPanelFrameContent = (titleId: string) => (
-    <>
-      <h2 id={titleId} className="sr-only">
+  return (
+    <section
+      data-testid="editor-right-panel"
+      aria-labelledby="editor-right-panel-title"
+      className="fixed inset-x-0 bottom-0 z-30 flex max-h-[85vh] flex-col overflow-y-auto rounded-t-xl border border-border bg-card shadow-2xl lg:static lg:z-auto lg:flex lg:h-full lg:max-h-none lg:w-96 lg:shrink-0 lg:overflow-hidden lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l lg:shadow-none"
+    >
+      <h2 id="editor-right-panel-title" className="sr-only">
         {t("shell.editorRightPanel")}
       </h2>
       {panelContent}
-    </>
-  );
-
-  return (
-    <>
-      <section
-        data-testid="editor-right-panel-desktop"
-        aria-labelledby="editor-right-panel-title-desktop"
-        className="hidden h-full w-96 shrink-0 border-l border-border bg-card lg:flex lg:flex-col"
-      >
-        {renderPanelFrameContent("editor-right-panel-title-desktop")}
-      </section>
-      <div
-        data-testid="editor-right-panel-mobile"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="editor-right-panel-title-mobile"
-        className="fixed inset-x-0 bottom-0 z-30 max-h-[85vh] overflow-y-auto rounded-t-xl border border-border bg-card shadow-2xl lg:hidden"
-      >
-        {renderPanelFrameContent("editor-right-panel-title-mobile")}
-      </div>
-    </>
+    </section>
   );
 }

@@ -57,7 +57,7 @@ export function KBEntryList({
   }
 
   return (
-    <div className="w-64 border-r border-border bg-muted/30 flex flex-col">
+    <div className="w-full lg:w-64 border-r border-border bg-muted/30 flex flex-col">
       {/* Action buttons */}
       <div className="p-3 border-b border-border space-y-2">
         <button

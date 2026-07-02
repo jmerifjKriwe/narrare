@@ -70,7 +70,7 @@ const baseProps = {
 describe("EditorRightPanelSlot", () => {
   it("renders exactly the active panel occupant", () => {
     render(<EditorRightPanelSlot {...baseProps} activePanel="readability" />);
-    expect(screen.getAllByTestId("readability-panel")).toHaveLength(2);
+    expect(screen.getAllByTestId("readability-panel")).toHaveLength(1);
     expect(screen.queryByTestId("metadata-sidebar")).not.toBeInTheDocument();
   });
 
@@ -99,10 +99,15 @@ describe("EditorRightPanelSlot", () => {
     returnFocusTo.remove();
   });
 
-  it("keeps a mobile drawer representation for the active panel", () => {
+  it("uses one responsive shell for desktop and mobile panel layouts", () => {
     render(<EditorRightPanelSlot {...baseProps} activePanel="metadata" />);
 
-    expect(screen.getByTestId("editor-right-panel-mobile").className).toContain("lg:hidden");
-    expect(screen.getByTestId("editor-right-panel-desktop").className).toContain("lg:flex");
+    const panel = screen.getByTestId("editor-right-panel");
+    expect(panel.className).toContain("fixed");
+    expect(panel.className).toContain("lg:static");
+    expect(panel.className).toContain("lg:w-96");
+    expect(panel.className).toContain("lg:flex");
+    expect(screen.queryByTestId("editor-right-panel-mobile")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("editor-right-panel-desktop")).not.toBeInTheDocument();
   });
 });

@@ -57,3 +57,14 @@ Workspace panels still used desktop-first single-row or single-panel containers 
 - GREEN: `pnpm --dir packages/web exec biome check components/studio/editor-view/EditorRightPanelSlot.tsx` passed (`Checked 1 file in 6ms. No fixes applied.`).
 - Regression: `pnpm --dir packages/web test components/studio/editor-view/EditorRightPanelSlot.test.tsx` passed (1 file, 5 tests).
 - Type-check: `pnpm --dir packages/web type-check` passed (`tsc --noEmit`).
+
+## Review Fix — Task 5 Findings
+
+- Root cause: Task 5 added responsive wrappers, but the KB child panels still carried fixed desktop widths (`w-56`/`w-64`), and `EditorRightPanelSlot` mounted the active panel twice behind desktop/mobile CSS wrappers.
+- Fix: `KBCategorySidebar` and `KBEntryList` now use mobile-first widths (`w-full lg:w-56` / `w-full lg:w-64`) so stacked layout can fill the available width while desktop keeps intended column sizing.
+- Fix: `EditorRightPanelSlot` now uses one semantic responsive `<section>` shell with mobile drawer classes and desktop `lg:*` layout classes, so active panel content mounts exactly once. No lint suppression and no Phase B `PanelShell` primitive added.
+- Test updates: `WorldBuildingLayout.test.tsx` now renders real KB panel components and asserts responsive child width classes; `EditorRightPanelSlot.test.tsx` now asserts a single active panel occupant and a single responsive shell.
+- RED: `pnpm --dir packages/web test components/studio/_components/WorldBuildingLayout.test.tsx components/studio/editor-view/EditorRightPanelSlot.test.tsx components/studio/planning/__tests__/PlanningPanel.test.tsx` failed before implementation with 3 expected failures: KB category missing `w-full`, duplicated readability panel mounts, and missing single `editor-right-panel` shell.
+- GREEN: `pnpm --dir packages/web test components/studio/_components/WorldBuildingLayout.test.tsx components/studio/editor-view/EditorRightPanelSlot.test.tsx components/studio/planning/__tests__/PlanningPanel.test.tsx` passed (3 files, 10 tests).
+- Type-check: `pnpm --dir packages/web type-check` passed (`tsc --noEmit`).
+- Biome: `pnpm --dir packages/web exec biome check ../../.superpowers/sdd/task-5-report.md components/studio/_components/WorldBuildingLayout.test.tsx components/studio/editor-view/EditorRightPanelSlot.tsx components/studio/editor-view/EditorRightPanelSlot.test.tsx components/studio/kb/KBCategorySidebar.tsx components/studio/kb/KBEntryList.tsx` passed (`Checked 5 files in 34ms. No fixes applied.`).
