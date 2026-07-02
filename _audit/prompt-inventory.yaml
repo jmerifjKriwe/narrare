@@ -1,0 +1,693 @@
+# _audit/prompt-inventory.yaml
+# Automatically generated prompt inventory.
+# Last updated: 2026-06-01
+# Validate with: check_architecture.py --prompt-integrity
+#
+# Schema:
+#   category:
+#     mode:
+#       intent: LLMIntent.<NAME>
+#       bundled:
+#         en: relative/path/to/en/system.md
+#         de: relative/path/to/de/system.md
+#         fr: relative/path/to/fr/system.md
+#       lite:        (optional — EN-only variant)
+#       variables:   list of {{variable}} names used in the prompt
+#       notes:       (optional — e.g. EN-only rationale, known gaps)
+
+meta:
+  system:
+    intent: null  # prepended by PromptComposer, not an LLMIntent itself
+    bundled:
+      en: meta/en/system.md
+      de: meta/de/system.md
+      fr: meta/fr/system.md
+    lite:
+      en: meta/en/system.lite.md
+      # DE/FR: no lite variants — EN-only documented
+    variables:
+      - author_name
+      - genre
+      - project_title
+      - tone
+      - story_structure
+      - writing_language
+      - avoidance_patterns
+
+writing:
+  new_chapter:
+    intent: LLMIntent.WRITE
+    bundled:
+      en: writing/en/new_chapter/system.md
+      de: writing/de/new_chapter/system.md
+      fr: writing/fr/new_chapter/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - timeline_position
+      - story_structure
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - recent_chapters
+      - novel_synopsis
+      - style_profile
+      - character_voice_profiles
+      - chapter_outline
+      - author_instructions  (USER_CONTENT)
+      - word_target
+      - tone_instructions
+      - user_preferences
+      - avoidance_patterns
+      - writing_language
+      - culture_guidelines
+
+  extend_chapter:
+    intent: LLMIntent.EXTEND
+    bundled:
+      en: writing/en/extend_chapter/system.md
+      de: writing/de/extend_chapter/system.md
+      fr: writing/fr/extend_chapter/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - timeline_position
+      - story_structure
+      - existing_content  (USER_CONTENT)
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - recent_chapters
+      - novel_synopsis
+      - style_profile
+      - character_voice_profiles
+      - author_instructions  (USER_CONTENT)
+      - extend_length
+      - tone_instructions
+      - user_preferences
+      - avoidance_patterns
+      - writing_language
+      - culture_guidelines
+
+  rewrite_selection:
+    intent: LLMIntent.REWRITE
+    bundled:
+      en: writing/en/rewrite_selection/system.md
+      de: writing/de/rewrite_selection/system.md
+      fr: writing/fr/rewrite_selection/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - timeline_position
+      - story_structure
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - recent_chapters
+      - style_profile
+      - character_voice_profiles
+      - context_before  (USER_CONTENT)
+      - selection_text  (USER_CONTENT)
+      - context_after  (USER_CONTENT)
+      - rewrite_mode_instructions
+      - author_instructions  (USER_CONTENT)
+      - tone_instructions
+      - count
+      - user_preferences
+      - avoidance_patterns
+      - writing_language
+      - culture_guidelines
+
+  co_author:
+    intent: LLMIntent.CO_AUTHOR
+    bundled:
+      en: writing/en/co_author/system.md
+      de: writing/de/co_author/system.md
+      fr: writing/fr/co_author/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - timeline_position
+      - story_structure
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - recent_chapters
+      - style_profile
+      - context_before  (USER_CONTENT)
+      - selection_text  (USER_CONTENT)
+      - context_after  (USER_CONTENT)
+      - co_author_focus_instructions
+      - user_preferences
+      - avoidance_patterns
+      - writing_language
+      - culture_guidelines
+
+  scene_by_scene:
+    intent: LLMIntent.WRITE  # same intent as new_chapter, different mode
+    bundled:
+      en: writing/en/scene_by_scene/system.md
+      de: writing/de/scene_by_scene/system.md
+      fr: writing/fr/scene_by_scene/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - timeline_position
+      - story_structure
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - recent_chapters
+      - novel_synopsis
+      - character_voice_profiles
+      - chapter_outline
+      - author_instructions  (USER_CONTENT)
+      - word_target
+      - tone_instructions
+      - user_preferences
+      - avoidance_patterns
+      - writing_language
+      - culture_guidelines
+
+  interactive_session:
+    intent: null  # no dedicated LLMIntent; used via WRITE or CHAT
+    bundled:
+      en: writing/en/interactive_session/system.md
+      de: writing/de/interactive_session/system.md
+      fr: writing/fr/interactive_session/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - timeline_position
+      - story_structure
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - recent_chapters
+      - character_voice_profiles
+      - chapter_outline
+      - author_instructions  (USER_CONTENT)
+      - word_target
+      - tone_instructions
+      - user_preferences
+      - avoidance_patterns
+      - writing_language
+      - culture_guidelines
+
+  story_suggest:
+    intent: LLMIntent.SUGGEST
+    bundled:
+      en: writing/en/story_suggest/system.md
+      de: writing/de/story_suggest/system.md
+      fr: writing/fr/story_suggest/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - timeline_position
+      - story_structure
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - recent_chapters
+      - novel_synopsis
+      - chapter_outline
+      - author_instructions  (USER_CONTENT)
+      - tone_instructions
+      - user_preferences
+      - avoidance_patterns
+      - writing_language
+      - culture_guidelines
+
+  inline_suggest:
+    intent: LLMIntent.SUGGEST
+    bundled:
+      en: writing/en/inline_suggest/system.md
+      de: writing/de/inline_suggest/system.md
+      fr: writing/fr/inline_suggest/system.md
+    variables:
+      - project_title
+      - genre
+      - writing_language
+      - timeline_position
+      - story_structure
+      - chapter_context
+      - text_before  (USER_CONTENT)
+      - text_after  (USER_CONTENT)
+      - user_preferences
+      - avoidance_patterns
+      - culture_guidelines
+
+  interview:
+    intent: null  # no dedicated LLMIntent; pre-writing interview flow
+    bundled:
+      en: writing/en/interview/system.md
+      de: writing/de/interview/system.md
+      fr: writing/fr/interview/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - timeline_position
+      - story_structure
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - recent_chapters
+      - character_voice_profiles
+      - chapter_outline
+      - author_instructions  (USER_CONTENT)
+      - tone_instructions
+      - user_preferences
+      - avoidance_patterns
+      - writing_language
+      - culture_guidelines
+
+  chat:
+    intent: LLMIntent.CHAT
+    bundled:
+      en: writing/en/chat/system.md
+      de: writing/de/chat/system.md
+      fr: writing/fr/chat/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - timeline_position
+      - story_structure
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - recent_chapters
+      - conversation_history  (USER_CONTENT)
+      - culture_guidelines
+      - avoidance_patterns
+      - user_preferences
+      - writing_language
+
+kb:
+  consistency:
+    intent: LLMIntent.KB_CONSISTENCY
+    bundled:
+      en: kb/en/consistency/system.md
+      de: kb/de/consistency/system.md
+      fr: kb/fr/consistency/system.md
+    variables:
+      - entity_type
+      - template_structure
+      - entry_content  (USER_CONTENT)
+      - user_preferences
+      - avoidance_patterns
+
+  enhance:
+    intent: LLMIntent.KB_ENHANCE
+    bundled:
+      en: kb/en/enhance/system.md
+      de: kb/de/enhance/system.md
+      fr: kb/fr/enhance/system.md
+    variables:
+      - entity_type
+      - template_structure
+      - existing_answers  (USER_CONTENT)
+      - world_context
+      - user_preferences
+      - avoidance_patterns
+
+  extract:
+    intent: LLMIntent.KB_EXTRACT
+    bundled:
+      en: kb/en/extract/system.md
+      de: kb/de/extract/system.md
+      fr: kb/fr/extract/system.md
+    variables:
+      - chapter_title
+      - genre
+      - existing_entity_names
+      - user_preferences
+      - avoidance_patterns
+
+  improve:
+    intent: LLMIntent.KB_IMPROVE
+    bundled:
+      en: kb/en/improve/system.md
+      de: kb/de/improve/system.md
+      fr: kb/fr/improve/system.md
+    variables:
+      - entity_type
+      - template_structure
+      - entry_content  (USER_CONTENT)
+      - existing_relationships
+      - world_context
+      - user_preferences
+      - avoidance_patterns
+
+  interview:
+    intent: LLMIntent.KB_INTERVIEW
+    bundled:
+      en: kb/en/interview/system.md
+      de: kb/de/interview/system.md
+      fr: kb/fr/interview/system.md
+    variables:
+      - template_structure
+      - existing_answers  (USER_CONTENT)
+      - world_context
+      - user_preferences
+      - avoidance_patterns
+
+  merge:
+    intent: null  # merge is a backend operation, not an LLMIntent
+    bundled:
+      en: kb/en/merge/system.md
+      de: kb/de/merge/system.md
+      fr: kb/fr/merge/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - writing_language
+      - world_context
+      - entity_type
+      - candidate_pairs
+      - user_preferences
+      - avoidance_patterns
+
+  suggest:
+    intent: LLMIntent.KB_SUGGEST
+    bundled:
+      en: kb/en/suggest/system.md
+      de: kb/de/suggest/system.md
+      fr: kb/fr/suggest/system.md
+    variables:
+      - template_structure
+      - existing_answers  (USER_CONTENT)
+      - world_context
+      - target_field
+      - target_field_description
+      - user_preferences
+      - avoidance_patterns
+
+  worldbuilding_phase1:
+    intent: LLMIntent.KB_WORLDBUILD
+    bundled:
+      en: kb/en/worldbuilding/phase1/system.md
+      de: kb/de/worldbuilding/phase1/system.md
+      fr: kb/fr/worldbuilding/phase1/system.md
+    variables:
+      - entity_summaries
+      - template_structures
+      - existing_relationships
+      - available_rel_types
+      - world_context
+      - avoidance_patterns
+      - user_preferences
+
+  worldbuilding_phase2:
+    intent: LLMIntent.KB_CONSISTENCY  # shared mode with kb/consistency
+    bundled:
+      en: kb/en/worldbuilding/phase2/system.md
+      de: kb/de/worldbuilding/phase2/system.md
+      fr: kb/fr/worldbuilding/phase2/system.md
+    variables:
+      - candidate_pairs
+      - entity_details
+      - existing_relationships
+      - avoidance_patterns
+      - user_preferences
+
+analysis:
+  consistency:
+    intent: LLMIntent.CONSISTENCY
+    bundled:
+      en: analysis/en/consistency/system.md
+      de: analysis/de/consistency/system.md
+      fr: analysis/fr/consistency/system.md
+    variables:
+      - chapter_texts  (USER_CONTENT)
+      - kb_entities
+      - check_types
+      - timeline_position
+      - story_structure
+      - user_preferences
+      - writing_language
+      - avoidance_patterns
+      - culture_guidelines
+
+  review:
+    intent: null  # review uses LLMIntent.ANALYSE (general analysis)
+    bundled:
+      en: analysis/en/review/system.md
+      de: analysis/de/review/system.md
+      fr: analysis/fr/review/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - word_target
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - user_preferences
+      - writing_language
+      - avoidance_patterns
+      - culture_guidelines
+
+  beta_reader:
+    intent: LLMIntent.BETA_READ
+    bundled:
+      en: analysis/en/beta_reader/system.md
+      de: analysis/de/beta_reader/system.md
+      fr: analysis/fr/beta_reader/system.md
+    variables:
+      - chapter_text  (USER_CONTENT)
+      - chapter_titles
+      - word_count
+      - previous_summaries
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - genre
+      - focus_categories
+      - user_preferences
+      - avoidance_patterns
+      - writing_language
+
+  beta_reader_deepdive:
+    intent: null  # continuation of BETA_READ, not a separate intent
+    bundled:
+      en: analysis/en/beta_reader_deepdive/system.md
+      de: analysis/de/beta_reader_deepdive/system.md
+      fr: analysis/fr/beta_reader_deepdive/system.md
+    variables:
+      - deepdive_category
+      - phase1_strengths_summary
+      - phase1_feedback_summary
+      - chapter_text  (USER_CONTENT)
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - user_preferences
+      - avoidance_patterns
+      - writing_language
+      - category_focus_instructions
+
+  preferences:
+    intent: null  # uses LLMIntent.ANALYSE
+    bundled:
+      en: analysis/en/preferences/system.md
+      de: analysis/de/preferences/system.md
+      fr: analysis/fr/preferences/system.md
+    variables:
+      - genre
+      - language
+      - event_count
+      - user_preferences
+      - writing_language
+      - avoidance_patterns
+      - culture_guidelines
+
+  remap:
+    intent: null  # uses LLMIntent.ANALYSE
+    bundled:
+      en: analysis/en/remap/system.md
+      de: analysis/de/remap/system.md
+      fr: analysis/fr/remap/system.md
+    variables:
+      - structure_type
+      - summary
+      - avoidance_patterns
+      - user_preferences
+
+  summarize:
+    intent: LLMIntent.SUMMARIZE
+    bundled:
+      en: analysis/en/summarize/system.md
+      de: analysis/de/summarize/system.md
+      fr: analysis/fr/summarize/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - chapter_title
+      - kb_characters
+      - kb_locations
+      - user_preferences
+      - writing_language
+      - avoidance_patterns
+      - culture_guidelines
+
+planning:
+  outline:
+    intent: LLMIntent.PLAN
+    bundled:
+      en: planning/en/outline/system.md
+      de: planning/de/outline/system.md
+      fr: planning/fr/outline/system.md
+    variables:
+      - project_title
+      - genre
+      - tone
+      - language
+      - variant_count
+      - kb_characters
+      - kb_locations
+      - user_preferences
+      - writing_language
+      - avoidance_patterns
+      - culture_guidelines
+
+  timeline:
+    intent: null  # uses LLMIntent.PLAN
+    bundled:
+      en: planning/en/timeline/system.md
+      de: planning/de/timeline/system.md
+      fr: planning/fr/timeline/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - writing_language
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - chapter_summaries
+      - entity_events
+      - culture_guidelines
+      - user_preferences
+      - avoidance_patterns
+
+  character_arc:
+    intent: null  # uses LLMIntent.PLAN
+    bundled:
+      en: planning/en/character_arc/system.md
+      de: planning/de/character_arc/system.md
+      fr: planning/fr/character_arc/system.md
+    variables:
+      - project_title
+      - genre
+      - language
+      - writing_language
+      - character_name
+      - character_current_state
+      - character_goal_state
+      - existing_plot_points
+      - kb_characters
+      - kb_locations
+      - kb_factions
+      - kb_relationships
+      - culture_guidelines
+      - user_preferences
+      - avoidance_patterns
+
+generation:
+  names:
+    intent: LLMIntent.NAME_GENERATE
+    bundled:
+      en: generation/en/names/system.md
+      de: generation/de/names/system.md
+      fr: generation/fr/names/system.md
+    variables:
+      - count
+      - name_type
+      - gender
+      - writing_language
+      - explanation_language
+      - existing_names
+      - user_preferences
+      - avoidance_patterns
+      - culture_guidelines
+
+  name_styles:
+    intent: null  # content files, not prompt templates
+    bundled:
+      en: generation/name-styles/en/fantasy.md
+      de: generation/name-styles/de/fantasy.md
+      fr: generation/name-styles/fr/fantasy.md
+      en_modern: generation/name-styles/en/modern.md
+      de_modern: generation/name-styles/de/modern.md
+      fr_modern: generation/name-styles/fr/modern.md
+      en_scifi: generation/name-styles/en/scifi.md
+      de_scifi: generation/name-styles/de/scifi.md
+      fr_scifi: generation/name-styles/fr/scifi.md
+    variables: []
+    notes: "Language-neutral style reference files, not prompt templates"
+
+chat:
+  system:
+    intent: LLMIntent.CHAT
+    bundled:
+      en: chat/en/system.md
+      de: chat/de/system.md
+      fr: chat/fr/system.md
+    variables:
+      - project_title
+      - genre
+      - writing_language
+      - kb_characters
+      - kb_locations
+      - user_preferences
+      - avoidance_patterns
+
+wiki:
+  chapter_summary:
+    intent: null  # wiki is backend-generated, not an LLMIntent
+    bundled:
+      en: wiki/en/chapter_summary/system.md
+      de: wiki/de/chapter_summary/system.md
+      fr: wiki/fr/chapter_summary/system.md
+    variables:
+      - chapter_title
+      - genre
+      - entities_in_chapter
+
+  entity_summary:
+    intent: null  # wiki is backend-generated, not an LLMIntent
+    bundled:
+      en: wiki/en/entity_summary/system.md
+      de: wiki/de/entity_summary/system.md
+      fr: wiki/fr/entity_summary/system.md
+    variables:
+      - entity_type
+      - entity_name
+      - entity_body
+      - entity_metadata
+      - relationships
+      - chapter_context
