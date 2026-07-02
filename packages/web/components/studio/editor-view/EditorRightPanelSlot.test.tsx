@@ -103,8 +103,10 @@ describe("EditorRightPanelSlot", () => {
     const opener = document.createElement("button");
     opener.textContent = "open";
     document.body.appendChild(opener);
-    opener.focus();
-    const closePanel = vi.fn(() => opener.focus());
+    // No side effect on closePanel AND opener is not pre-focused, so the
+    // activeElement assertion can only pass via the slot's own returnFocusTo
+    // focus-return on Escape (a deleted returnFocusTo.focus() fails this).
+    const closePanel = vi.fn();
 
     render(
       <EditorRightPanelSlot
@@ -114,6 +116,9 @@ describe("EditorRightPanelSlot", () => {
         returnFocusTo={opener}
       />,
     );
+
+    // Move focus off the opener so the assertion isolates the slot's behavior.
+    document.body.focus();
 
     fireEvent.keyDown(window, { key: "Escape" });
 
@@ -126,6 +131,15 @@ describe("EditorRightPanelSlot", () => {
     render(<EditorRightPanelSlot {...baseProps} activePanel="metadata" />);
 
     expect(screen.getByRole("status")).toHaveTextContent("shell.panelOpened");
+  });
+
+  it("announces panel close in the status region when the active panel is cleared", () => {
+    const { rerender } = render(<EditorRightPanelSlot {...baseProps} activePanel="metadata" />);
+    expect(screen.getByRole("status")).toHaveTextContent("shell.panelOpened");
+
+    rerender(<EditorRightPanelSlot {...baseProps} activePanel={null} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("shell.panelClosed");
   });
 
   it("uses one responsive shell for desktop and mobile panel layouts", () => {

@@ -42,8 +42,10 @@ export function EditorToolbar({
     <div
       className="border-b border-border px-8 py-2 bg-card flex items-center gap-1"
       onClickCapture={(event) => {
-        if (!(event.target instanceof HTMLElement)) return;
-        const opener = event.target.closest("button");
+        // Element (not HTMLElement) so SVG icon clicks — whose target is an
+        // SVGElement/SVGPathElement — still resolve to their enclosing button.
+        if (!(event.target instanceof Element)) return;
+        const opener = event.target.closest<HTMLElement>("button");
         if (opener) onRightPanelOpenerChange(opener);
       }}
     >

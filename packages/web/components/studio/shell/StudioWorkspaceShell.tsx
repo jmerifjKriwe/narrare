@@ -36,7 +36,7 @@ export function StudioWorkspaceShell({ children }: StudioWorkspaceShellProps) {
             type="button"
             aria-label={t("sidebar.openMenu")}
             onClick={() => setSidebarOpen(true)}
-            className="rounded-md p-2 text-foreground hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring"
+            className="rounded-md p-2 text-foreground hover:bg-accent focus:outline-none focus:ring-1 focus:ring-ring"
           >
             <Menu className="h-5 w-5" />
           </button>

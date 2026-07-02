@@ -70,7 +70,17 @@ export function EditorRightPanelSlot({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activePanel, closePanel, returnFocusTo]);
 
-  if (activePanel === null) return null;
+  // Shell-owned live region, always mounted so screen readers receive the
+  // close transition (the section below unmounts when the panel is cleared,
+  // which would otherwise swallow the "closed" announcement). Mirrors the
+  // status announcement pattern in StudioWorkspaceShell.
+  const statusRegion = (
+    <div role="status" aria-live="polite" className="sr-only">
+      {activePanel === null ? t("shell.panelClosed") : t("shell.panelOpened")}
+    </div>
+  );
+
+  if (activePanel === null) return statusRegion;
 
   const panelContent = (() => {
     switch (activePanel) {
@@ -183,18 +193,18 @@ export function EditorRightPanelSlot({
   })();
 
   return (
-    <section
-      data-testid="editor-right-panel"
-      aria-labelledby="editor-right-panel-title"
-      className="fixed inset-x-0 bottom-0 z-30 flex max-h-[85vh] flex-col overflow-y-auto rounded-t-xl border border-border bg-card shadow-2xl lg:static lg:z-auto lg:flex lg:h-full lg:max-h-none lg:w-96 lg:shrink-0 lg:overflow-hidden lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l lg:shadow-none"
-    >
-      <h2 id="editor-right-panel-title" className="sr-only">
-        {t("shell.editorRightPanel")}
-      </h2>
-      <div role="status" aria-live="polite" className="sr-only">
-        {t("shell.panelOpened")}
-      </div>
-      {panelContent}
-    </section>
+    <>
+      {statusRegion}
+      <section
+        data-testid="editor-right-panel"
+        aria-labelledby="editor-right-panel-title"
+        className="fixed inset-x-0 bottom-0 z-30 flex max-h-[85vh] flex-col overflow-y-auto rounded-t-xl border border-border bg-card shadow-2xl lg:static lg:z-auto lg:flex lg:h-full lg:max-h-none lg:w-96 lg:shrink-0 lg:overflow-hidden lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l lg:shadow-none"
+      >
+        <h2 id="editor-right-panel-title" className="sr-only">
+          {t("shell.editorRightPanel")}
+        </h2>
+        {panelContent}
+      </section>
+    </>
   );
 }
