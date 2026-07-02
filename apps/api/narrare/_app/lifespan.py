@@ -284,13 +284,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         except Exception:
             logger.warning("event_bus_shutdown_failed", exc_info=True)
 
-    try:
-        _broker_mod = __import__("narrare.tasks.broker", fromlist=["broker"])
-        broker: Any = _broker_mod.broker
-        if not broker.is_worker_process:
-            await broker.shutdown()
-    except ImportError:
-        pass
+    # TaskIQ broker shutdown — skip in test environment (same rationale as
+    # event bus and database: the test infrastructure handles cleanup, and
+    # broker.shutdown() triggers redis.asyncio connection-pool disconnect
+    # which raises "Future attached to a different loop" under pytest-asyncio).
+    if not settings.is_test:
+        try:
+            _broker_mod = __import__("narrare.tasks.broker", fromlist=["broker"])
+            broker: Any = _broker_mod.broker
+            if not broker.is_worker_process:
+                await broker.shutdown()
+        except ImportError:
+            pass
 
     # Database engine shutdown — close all pooled connections.
     # Skip in test environment: the test infrastructure handles cleanup
