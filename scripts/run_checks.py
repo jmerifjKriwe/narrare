@@ -73,6 +73,9 @@ def _build_steps() -> list[Step]:
                 (["uv", "run", "python", "scripts/check_python_file_size.py"], None),
                 (["uv", "run", "python", "scripts/check_prompt_surface_contract.py"], None),
                 (["uv", "run", "python", "scripts/check_configuration_matrix.py"], None),
+                # ADR-061: P2 aggregation prohibition (BLOCKING) + P1 effect
+                # integrity (WARNING-only) over the configuration adoption matrix.
+                (["uv", "run", "python", "scripts/check_matrix_effect_integrity.py"], None),
             ],
         ),
         Step(

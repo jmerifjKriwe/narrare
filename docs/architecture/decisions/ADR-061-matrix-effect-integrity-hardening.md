@@ -1,6 +1,6 @@
 # ADR-061 — Configuration Adoption Matrix Effect-Integrity Hardening (P1 + P2)
 
-> **Status:** 🔄 Proposed
+> **Status:** ✅ Implemented (Implemented 2026-07-02)
 > **Date:** 2026-07-01
 > **Deciders:** Architecture Specialist (recommendation; awaits Coordinator + User approval)
 > **Supersedes:** —
@@ -202,6 +202,84 @@ and it only needs to be *grounded* in the code, not relocated into it.
 
 **ADR Implementation Completeness Gate (Gate 12):** P2 blocking + P1 baseline before
 marking ✅ Implemented; P1 ratchets to blocking in a follow-up once clean.
+
+---
+
+## Implementation Evidence (2026-07-02)
+
+Implemented as Option B (Platform wave). The Gate-12 completeness checks are
+satisfied — P2 ships **blocking**, P1 ships **warning-only** with a clean
+baseline. The current 26-entry matrix PASSES both measures (`just
+check-matrix-effect-integrity` green; `just check-architecture`, `just check`,
+`ruff`, `pyright` clean).
+
+- **P2 — aggregation prohibition (BLOCKING):**
+  `scripts/governance/_matrix_aggregation.py::validate_aggregation`. Two
+  complementary, **high-precision** (conservative) detection signals:
+  1. `setting_id` cascade/joiner name analysis — the historical ADR-060
+     signature (`*_cascade`, via `_CASCADE_RE`) plus the mid-name joiner
+     `_MID_RETRY_RE` (`*_retry_*` where retry sits **between** two distinct
+     concerns, e.g. `idle_retry_timeout`). A trailing `_retry`
+     (`llm_transport_retry`) is a single concern and passes.
+  2. Opt-in explicit `settings:` declaration — when an author declares the
+     covered settings, `len > 1` without an approved `composite_rationale` is
+     rejected (`declared_multi_setting`); a single declared id must equal the
+     row `setting_id` (`settings_mismatch`). This is the structured,
+     high-precision path for future rows.
+  - **Governed escape hatch:** a legitimately inseparable compound requires
+    **both** an Architecture-approved `composite_allowlist` entry **and** a
+    row-level `composite_rationale` (neither alone suffices — prevents a silent
+    waiver). Allowlist seeded **empty** (the post-ADR-060 matrix has no
+    composites).
+  - **Rejected mechanism:** a prose token-scan over `source` /
+    `runtime_consumer` / `effect_semantics`. Evaluated and rejected for the
+    blocking phase: rows like `operator_default_governance` legitimately
+    enumerate many distinct named constants while remaining a single governance
+    unit, so a prose scan would generate the false positives the ADR explicitly
+    warns against. The explicit `settings:` declaration is its structured
+    replacement. Schema fields (`settings`, `composite_rationale`) added to
+    `scripts/governance/_matrix_types.py`.
+
+- **P1 — per-setting effect-integrity (WARNING-only baseline):**
+  `scripts/governance/_matrix_effect_integrity.py::validate_effect_integrity`.
+  For every `user` / `project` / `adopted` entry it grounds the
+  `runtime_consumer` claim against the filesystem (presence **AND** truth —
+  closes RC1): the cited `consumer_file` exists, the `consumer_symbol` is
+  present in it, and at least one cited `test_file` exists **and references
+  THIS setting/consumer** (not a sibling — closes the ADR-060 sibling-evidence
+  gap). Outcomes: `verified` / `consumer_only` / `gap` / `broken`.
+  - Evidence manifest: `docs/architecture/governance/matrix-effect-evidence.yaml`
+    binds each `setting_id` → consumer file + symbol + named test, and records
+    `verification: graph|manifest`.
+  - **Baseline (clean):** 14 in-scope entries, **14/14 verified** — 2
+    **graph-grounded** (`ws_idle_timeout` → `WritingSessionHandler`
+    [resolver `router_sessions.py` data-flow proven by
+    `test_router_sessions_basic.py`]; `llm_transport_retry` →
+    `get_transport_max_retries` [called by all provider factories; behavioural
+    `test_transport_retry.py` proves `max_retries` drives observable HTTP
+    attempt count]) and 12 **manifest-grounded**. 0 gaps, 0 broken, 0
+    consumer-only. Unproven entries would become governed debt (ADR-056
+    semantics), reported non-blocking.
+  - **P1 ratchets to BLOCKING in a follow-up** once every entry is graph-proven
+    (some manifest entries currently rely on structural file/symbol/test
+    presence rather than a runtime data-flow check).
+
+- **Entrypoint + wiring:**
+  - `scripts/check_matrix_effect_integrity.py` — exits 1 on P2 violations, 0
+    otherwise; P1 never fails the gate.
+  - `just check-matrix-effect-integrity`; P2 added to the **blocking**
+    `just check-architecture` set + `just check-full`; P1 in the warning path.
+  - CI: `check_matrix_effect_integrity.py` is gate **G3f** in the architecture
+    job (`.github/workflows/ci.yml`); also wired into `scripts/run_checks.py`.
+  - RULE-07 honoured: the checkers read manifests and the cited source/test
+    **files as text** and import **no** application runtime modules.
+
+- **Tests (TDD):** `tests/unit/scripts/governance/test_matrix_aggregation.py`
+  (cascade/joiner rejection, explicit-`settings` paths, allowlist/rationale
+  escape hatch, real-matrix integration) and
+  `test_matrix_effect_integrity.py` (manifest-fallback PASS, sibling-evidence
+  FAIL, broken-consumer FAIL, graph-level recording, report-count
+  consistency). 110 governance unit tests pass.
 
 ---
 

@@ -13,6 +13,7 @@ name: CI
 # | G3b  | check_exception_baseline.py            | ✅ Blocking  | architecture Job                   |
 # | G3d  | check_prompt_surface_contract.py       | ✅ Blocking  | architecture Job (ADR-037 + ADR-049 Phase D) |
 # | G3e  | check_configuration_matrix.py          | ✅ Blocking  | architecture Job (ADR-051 / CR-AUFG-08-09) |
+# | G3f  | check_matrix_effect_integrity.py (P2)  | ✅ Blocking  | architecture Job (ADR-061 P2 aggregation prohibition; P1 warning) |
 # | G3c  | export_openapi.py --check              | ✅ Blocking  | architecture Job                   |
 # | G4   | test_fake_conformance.py               | ✅ Blocking  | test-unit Job (via pytest)         |
 # | G5   | Cross-layer contract tests             | ✅ Blocking  | test-unit Job (via pytest)         |
@@ -117,6 +118,9 @@ jobs:
 
       - name: Check configuration adoption matrix (ADR-051 / CR-AUFG-08-09)
         run: uv run python scripts/check_configuration_matrix.py
+
+      - name: Check matrix effect-integrity (ADR-061 P2 blocking + P1 warning)
+        run: uv run python scripts/check_matrix_effect_integrity.py
 
       - name: Check OpenAPI spec drift
         run: uv run python scripts/export_openapi.py --check
