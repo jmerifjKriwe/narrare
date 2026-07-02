@@ -1,10 +1,12 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { StorySuggestion } from "@/lib/api/story-suggest-stream";
 import { useEditorStore } from "@/lib/stores/editorStore";
+import { searchParamsHref, setOptionalSearchParam } from "@/lib/url-state/searchParams";
 import { UnblockPanel } from "./editor/UnblockPanel";
 import { EditorHeader } from "./editor-view/EditorHeader";
 import { EditorOverlays } from "./editor-view/EditorOverlays";
@@ -12,6 +14,10 @@ import { EditorRightPanelSlot } from "./editor-view/EditorRightPanelSlot";
 import { EditorEmptyState, EditorLoadingState } from "./editor-view/EditorStates";
 import { EditorToolbar } from "./editor-view/EditorToolbar";
 import { EditorWorkspace } from "./editor-view/EditorWorkspace";
+import {
+  parseEditorRightPanelParam,
+  serializeEditorRightPanelParam,
+} from "./editor-view/editorRightPanelUrlState";
 import { useActiveEditorRightPanel } from "./editor-view/useActiveEditorRightPanel";
 import { useEditorChapterData } from "./editor-view/useEditorChapterData";
 import { useEditorCommandPalette } from "./editor-view/useEditorCommandPalette";
@@ -37,6 +43,8 @@ export function EditorView({ novelId }: EditorViewProps) {
   const toggleExtractionPanel = useEditorStore((s) => s.toggleExtractionPanel);
   const toggleRightPanel = useEditorStore((s) => s.toggleRightPanel);
   const closeRightPanel = useEditorStore((s) => s.closeRightPanel);
+  const openRightPanel = useEditorStore((s) => s.openRightPanel);
+  const openerRef = useRef<HTMLElement | null>(null);
   const [nameGeneratorOpen, setNameGeneratorOpen] = useState(false);
 
   const writingSteps = useWritingGraphSteps(isGenerating, activeChapterId);
@@ -64,6 +72,29 @@ export function EditorView({ novelId }: EditorViewProps) {
     handleRejectDraft: generationActions.handleRejectDraft,
   });
   const activeRightPanel = useActiveEditorRightPanel(activeChapterId);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchParamsSnapshot = searchParams.toString();
+  const parsedUrlPanel = useMemo(
+    () => parseEditorRightPanelParam(new URLSearchParams(searchParamsSnapshot).get("panel")),
+    [searchParamsSnapshot],
+  );
+
+  useEffect(() => {
+    if (parsedUrlPanel !== null && activeRightPanel !== parsedUrlPanel) {
+      openRightPanel(parsedUrlPanel, "url");
+    }
+  }, [activeRightPanel, openRightPanel, parsedUrlPanel]);
+
+  useEffect(() => {
+    if (parsedUrlPanel !== null && activeRightPanel !== parsedUrlPanel) return;
+    const currentParams = new URLSearchParams(searchParamsSnapshot);
+    const serializedPanel = serializeEditorRightPanelParam(activeRightPanel);
+    if (currentParams.get("panel") === serializedPanel) return;
+    const nextParams = setOptionalSearchParam(currentParams, "panel", serializedPanel);
+    router.replace(searchParamsHref(pathname, nextParams), { scroll: false });
+  }, [activeRightPanel, parsedUrlPanel, pathname, router, searchParamsSnapshot]);
 
   // Writer's Unblock (WRITE-009): insert the accepted story-direction title into
   // the manuscript at the cursor and persist — mirrors handleDraftAccepted.
@@ -122,6 +153,7 @@ export function EditorView({ novelId }: EditorViewProps) {
         <EditorRightPanelSlot
           activePanel={activeRightPanel}
           closePanel={closeRightPanel}
+          returnFocusTo={openerRef.current}
           novelId={novelId}
           activeChapterId={activeChapterId}
           content={chapterData.content}

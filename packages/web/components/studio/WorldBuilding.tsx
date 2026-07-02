@@ -11,15 +11,19 @@
  * that replace the detail panel.
  */
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useKBEntries, useKBEntry, useKBRelationships } from "@/lib/hooks/useKB";
+import { searchParamsHref } from "@/lib/url-state/searchParams";
 import { WorldBuildingLayout } from "./_components/WorldBuildingLayout";
 import { useWorldBuildingState } from "./_components/worldBuildingState";
 import { ConsistencyCheckPanel } from "./kb/ConsistencyCheckPanel";
 import { KBAssistedCreationPanel } from "./kb/KBAssistedCreationPanel";
 import { KBDetailPanel } from "./kb/KBDetailPanel";
 import { KnowledgeGraphView } from "./kb/KnowledgeGraphView";
+import { type KBUrlState, parseKBUrlState, serializeKBUrlState } from "./kb/kbUrlState";
 import { WikiOverviewPanel } from "./kb/WikiOverviewPanel";
 import { WorldbuildingAnalysisPanel } from "./kb/WorldbuildingAnalysisPanel";
 
@@ -29,7 +33,15 @@ interface WorldBuildingProps {
 
 export function WorldBuilding({ novelId }: WorldBuildingProps) {
   const t = useTranslations("studio");
-  const state = useWorldBuildingState(novelId);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchParamsSnapshot = searchParams.toString();
+  const urlState = useMemo(
+    () => parseKBUrlState(new URLSearchParams(searchParamsSnapshot)),
+    [searchParamsSnapshot],
+  );
+  const state = useWorldBuildingState(novelId, urlState);
 
   const { data: entriesData, isLoading: entriesLoading } = useKBEntries(novelId, {
     entity_type: state.activeType ?? undefined,
@@ -39,6 +51,96 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
 
   const entries = entriesData?.items ?? [];
 
+  const buildKBHref = (nextState: KBUrlState) => {
+    const nextParams = new URLSearchParams(searchParamsSnapshot);
+    nextParams.delete("type");
+    nextParams.delete("mode");
+    nextParams.delete("entry");
+    nextParams.delete("q");
+    const serializedState = serializeKBUrlState(nextState);
+    serializedState.forEach((value, key) => {
+      nextParams.set(key, value);
+    });
+    return searchParamsHref(pathname, nextParams);
+  };
+
+  const pushKBState = (nextState: KBUrlState) => {
+    router.push(buildKBHref(nextState), { scroll: false });
+  };
+
+  const replaceKBState = (nextState: KBUrlState) => {
+    router.replace(buildKBHref(nextState), { scroll: false });
+  };
+
+  const handleTypeChange = (type: KBUrlState["type"]) => {
+    state.handleTypeChange(type);
+    pushKBState({ type, mode: "detail", entryId: null, query: urlState.query });
+  };
+
+  const handleSelectEntry = (entryId: string) => {
+    state.handleSelectEntry(entryId);
+    pushKBState({ ...urlState, mode: "detail", entryId });
+  };
+
+  const handleCreateNew = () => {
+    state.handleCreateNew();
+    pushKBState({ ...urlState, mode: "create", entryId: null });
+  };
+
+  const handleCreateAssisted = () => {
+    state.handleCreateAssisted();
+    pushKBState({ ...urlState, mode: "assist", entryId: null });
+  };
+
+  const handleAnalyze = () => {
+    state.handleShowAnalysis();
+    pushKBState({ ...urlState, mode: "analysis" });
+  };
+
+  const handleConsistencyCheck = () => {
+    state.handleShowConsistency();
+    pushKBState({ ...urlState, mode: "consistency" });
+  };
+
+  const handleShowGraph = () => {
+    state.handleShowGraph();
+    pushKBState({ ...urlState, mode: "graph" });
+  };
+
+  const handleShowWiki = () => {
+    state.handleShowWiki();
+    pushKBState({ ...urlState, mode: "wiki" });
+  };
+
+  const handleSearchQueryChange = (query: string) => {
+    replaceKBState({ ...urlState, query });
+  };
+
+  const handleCloseMode = () => {
+    state.setMode("detail");
+    pushKBState({ ...urlState, mode: "detail" });
+  };
+
+  const handleCreateCancel = () => {
+    state.handleCreateCancel();
+    pushKBState({ ...urlState, mode: "detail", entryId: null });
+  };
+
+  const handleCreated = (entryId: string) => {
+    state.handleCreated(entryId);
+    pushKBState({ ...urlState, mode: "detail", entryId });
+  };
+
+  const handleDeleted = () => {
+    state.handleDeleted();
+    pushKBState({ ...urlState, mode: "detail", entryId: null });
+  };
+
+  const handleAssistedCancel = () => {
+    state.handleAssistedCancel();
+    pushKBState({ ...urlState, mode: "detail", entryId: null });
+  };
+
   // --- Shared layout props ---
 
   const layoutProps = {
@@ -47,16 +149,18 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     entries,
     entriesLoading,
     selectedEntryId: state.selectedEntryId,
-    onSelectEntry: state.handleSelectEntry,
-    onCreateNew: state.handleCreateNew,
-    onCreateAssisted: state.handleCreateAssisted,
-    onTypeChange: state.handleTypeChange,
-    onAnalyze: state.handleShowAnalysis,
-    onConsistencyCheck: state.handleShowConsistency,
-    onShowGraph: state.handleShowGraph,
-    onShowWiki: state.handleShowWiki,
+    onSelectEntry: handleSelectEntry,
+    onCreateNew: handleCreateNew,
+    onCreateAssisted: handleCreateAssisted,
+    onTypeChange: handleTypeChange,
+    onAnalyze: handleAnalyze,
+    onConsistencyCheck: handleConsistencyCheck,
+    onShowGraph: handleShowGraph,
+    onShowWiki: handleShowWiki,
     showGraph: state.showGraph,
     showWiki: state.showWiki,
+    searchQuery: urlState.query,
+    onSearchQueryChange: handleSearchQueryChange,
   };
 
   // --- Third-column rendering ---
@@ -67,8 +171,8 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
         <KBAssistedCreationPanel
           novelId={novelId}
           entityType={state.assistedEntityType}
-          onComplete={state.handleAssistedComplete}
-          onCancel={state.handleAssistedCancel}
+          onComplete={handleCreated}
+          onCancel={handleAssistedCancel}
           resumeSessionId={state.resumeSessionId}
         />
       </WorldBuildingLayout>
@@ -78,10 +182,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
   if (state.showAnalysis) {
     return (
       <WorldBuildingLayout {...layoutProps}>
-        <WorldbuildingAnalysisPanel
-          novelId={novelId}
-          onClose={() => state.setShowAnalysis(false)}
-        />
+        <WorldbuildingAnalysisPanel novelId={novelId} onClose={handleCloseMode} />
       </WorldBuildingLayout>
     );
   }
@@ -91,10 +192,10 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
       <WorldBuildingLayout {...layoutProps}>
         <ConsistencyCheckPanel
           novelId={novelId}
-          onClose={() => state.setShowConsistency(false)}
+          onClose={handleCloseMode}
           onEntityClick={(entityId) => {
-            state.handleSelectEntry(entityId);
-            state.setShowConsistency(false);
+            handleSelectEntry(entityId);
+            state.setMode("detail");
           }}
         />
       </WorldBuildingLayout>
@@ -104,7 +205,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
   if (state.showGraph) {
     return (
       <WorldBuildingLayout {...layoutProps}>
-        <KnowledgeGraphView novelId={novelId} onSelectEntry={state.handleSelectEntry} />
+        <KnowledgeGraphView novelId={novelId} onSelectEntry={handleSelectEntry} />
       </WorldBuildingLayout>
     );
   }
@@ -112,7 +213,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
   if (state.showWiki) {
     return (
       <WorldBuildingLayout {...layoutProps}>
-        <WikiOverviewPanel novelId={novelId} onClose={state.handleCloseWiki} />
+        <WikiOverviewPanel novelId={novelId} onClose={handleCloseMode} />
       </WorldBuildingLayout>
     );
   }
@@ -126,9 +227,9 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
         relationships={relationships}
         isCreating={state.isCreating}
         initialEntityType={state.activeType ?? undefined}
-        onCreateCancel={state.handleCreateCancel}
-        onCreated={state.handleCreated}
-        onDeleted={state.handleDeleted}
+        onCreateCancel={handleCreateCancel}
+        onCreated={handleCreated}
+        onDeleted={handleDeleted}
       />
       <ConfirmDialog
         open={state.showResumeDialog}

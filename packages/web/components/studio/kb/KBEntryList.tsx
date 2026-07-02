@@ -8,7 +8,7 @@
 
 import { ChevronRight, Plus, Search, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { KBEntityType, KBEntry } from "@/lib/api/kb";
 import { useKBDebouncedSearch } from "@/lib/hooks/useKB";
 import { formatRelativeTime, STATUS_COLORS, TYPE_ICONS } from "./constants";
@@ -22,6 +22,8 @@ interface KBEntryListProps {
   onSelectEntry: (entryId: string) => void;
   onCreateNew: () => void;
   onCreateAssisted: () => void;
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
 }
 
 export function KBEntryList({
@@ -33,10 +35,17 @@ export function KBEntryList({
   onSelectEntry,
   onCreateNew,
   onCreateAssisted,
+  searchQuery: initialSearchQuery = "",
+  onSearchQueryChange,
 }: KBEntryListProps) {
   const t = useTranslations("studio");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const { setQuery, data: searchResults, isLoading: isSearching } = useKBDebouncedSearch(novelId);
+
+  useEffect(() => {
+    setSearchQuery(initialSearchQuery);
+    setQuery(initialSearchQuery);
+  }, [initialSearchQuery, setQuery]);
 
   const displayEntries = searchQuery.length > 0 ? (searchResults?.items ?? []) : entries;
   const ActiveIcon = activeType ? TYPE_ICONS[activeType] : Search;
@@ -44,6 +53,7 @@ export function KBEntryList({
   function handleSearchChange(value: string) {
     setSearchQuery(value);
     setQuery(value);
+    onSearchQueryChange?.(value);
   }
 
   return (

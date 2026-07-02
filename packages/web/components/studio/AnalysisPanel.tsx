@@ -1,8 +1,11 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { searchParamsHref, setOptionalSearchParam } from "@/lib/url-state/searchParams";
+import { parseAnalysisPanelParam, serializeAnalysisPanelParam } from "./analysis/analysisUrlState";
 import {
   ANALYSIS_TYPES,
   type AnalysisType,
@@ -21,15 +24,37 @@ export function AnalysisPanel({ novelId }: AnalysisPanelProps) {
 
   // novelId is available for future API calls to fetch novel-specific data
   void novelId;
-  const [activeAnalysis, setActiveAnalysis] = useState<AnalysisType | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchParamsSnapshot = searchParams.toString();
+  const parsedPanel = useMemo(
+    () => parseAnalysisPanelParam(new URLSearchParams(searchParamsSnapshot).get("panel")),
+    [searchParamsSnapshot],
+  );
+  const [activeAnalysis, setActiveAnalysis] = useState<AnalysisType | null>(parsedPanel);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  function handleAnalyze(type: AnalysisType) {
-    if (activeAnalysis === type) {
-      setActiveAnalysis(null);
-      return;
+  useEffect(() => {
+    setActiveAnalysis(parsedPanel);
+    const currentParams = new URLSearchParams(searchParamsSnapshot);
+    const currentValue = currentParams.get("panel");
+    if (currentValue !== null && parsedPanel === null) {
+      const normalizedParams = setOptionalSearchParam(currentParams, "panel", null);
+      router.replace(searchParamsHref(pathname, normalizedParams), { scroll: false });
     }
-    setActiveAnalysis(type);
+  }, [parsedPanel, pathname, router, searchParamsSnapshot]);
+
+  function handleAnalysisSelect(analysisId: AnalysisType) {
+    const nextPanel = activeAnalysis === analysisId ? null : analysisId;
+    setActiveAnalysis(nextPanel);
+    const nextParams = setOptionalSearchParam(
+      new URLSearchParams(searchParamsSnapshot),
+      "panel",
+      serializeAnalysisPanelParam(nextPanel),
+    );
+    router.push(searchParamsHref(pathname, nextParams), { scroll: false });
+    if (nextPanel === null) return;
     setIsAnalyzing(true);
     // Mock delay
     setTimeout(() => {
@@ -75,7 +100,7 @@ export function AnalysisPanel({ novelId }: AnalysisPanelProps) {
                 {/* Card header */}
                 <button
                   type="button"
-                  onClick={() => handleAnalyze(analysis.id)}
+                  onClick={() => handleAnalysisSelect(analysis.id)}
                   className="w-full p-6 flex items-start gap-4 hover:bg-accent transition-colors text-left"
                 >
                   <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">

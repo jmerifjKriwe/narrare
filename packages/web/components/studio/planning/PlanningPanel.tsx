@@ -1,15 +1,20 @@
 "use client";
 
 import { Clock, LayoutGrid, Users } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useEditorStore } from "@/lib/stores/editorStore";
+import { searchParamsHref, setOptionalSearchParam } from "@/lib/url-state/searchParams";
 import { cn } from "@/lib/utils";
 import { CharacterArcPanel } from "./CharacterArcPanel";
+import {
+  type PlanningTab,
+  parsePlanningUrlState,
+  serializePlanningUrlState,
+} from "./planningUrlState";
 import { StoryboardPanel } from "./StoryboardPanel";
 import { TimelinePanel } from "./timeline/TimelinePanel";
-
-type PlanningTab = "storyboard" | "timeline" | "characterArc";
 
 interface PlanningPanelProps {
   novelId: string;
@@ -19,16 +24,55 @@ interface PlanningPanelProps {
 export function PlanningPanel({ novelId }: PlanningPanelProps) {
   const t = useTranslations("studio");
   const tTimeline = useTranslations("timeline");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchParamsSnapshot = searchParams.toString();
   const storyboardOpen = useEditorStore((s) => s.storyboardOpen);
   const toggleStoryboard = useEditorStore((s) => s.toggleStoryboard);
-  const [activeTab, setActiveTab] = useState<PlanningTab>("storyboard");
+  const urlState = useMemo(
+    () => parsePlanningUrlState(new URLSearchParams(searchParamsSnapshot)),
+    [searchParamsSnapshot],
+  );
+  const [activeTab, setActiveTab] = useState<PlanningTab>(urlState.tab);
+  const isPlanningOpen = storyboardOpen || urlState.open;
+  const previousSearchParamsSnapshotRef = useRef(searchParamsSnapshot);
+
+  const pushPlanningState = (open: boolean, tab: PlanningTab) => {
+    const serializedState = serializePlanningUrlState({ open, tab });
+    const nextParams = new URLSearchParams(searchParamsSnapshot);
+    nextParams.delete("planning");
+    nextParams.delete("planningTab");
+    const planningParam = serializedState.get("planning");
+    const planningTabParam = serializedState.get("planningTab");
+    const mergedParams = setOptionalSearchParam(
+      setOptionalSearchParam(nextParams, "planning", planningParam),
+      "planningTab",
+      planningTabParam,
+    );
+    router.push(searchParamsHref(pathname, mergedParams), { scroll: false });
+  };
+
+  useEffect(() => {
+    setActiveTab(urlState.tab);
+    const previousParams = new URLSearchParams(previousSearchParamsSnapshotRef.current);
+    const currentParams = new URLSearchParams(searchParamsSnapshot);
+    const planningParamChanged = previousParams.get("planning") !== currentParams.get("planning");
+    previousSearchParamsSnapshotRef.current = searchParamsSnapshot;
+
+    if (urlState.open && !storyboardOpen) toggleStoryboard();
+    if (!urlState.open && storyboardOpen && planningParamChanged) toggleStoryboard();
+  }, [searchParamsSnapshot, storyboardOpen, toggleStoryboard, urlState.open, urlState.tab]);
 
   // Collapsed state
-  if (!storyboardOpen) {
+  if (!isPlanningOpen) {
     return (
       <button
         type="button"
-        onClick={toggleStoryboard}
+        onClick={() => {
+          if (!storyboardOpen) toggleStoryboard();
+          pushPlanningState(true, activeTab);
+        }}
         className="w-full flex items-center gap-3 px-6 py-2 border-b border-border bg-card hover:bg-accent transition-colors text-sm"
       >
         <LayoutGrid className="w-4 h-4 text-muted-foreground" />
@@ -43,7 +87,10 @@ export function PlanningPanel({ novelId }: PlanningPanelProps) {
       <div className="flex items-center gap-3 px-6 py-2 border-b border-border">
         <button
           type="button"
-          onClick={() => setActiveTab("storyboard")}
+          onClick={() => {
+            setActiveTab("storyboard");
+            pushPlanningState(true, "storyboard");
+          }}
           className={cn(
             "flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-colors",
             activeTab === "storyboard"
@@ -56,7 +103,10 @@ export function PlanningPanel({ novelId }: PlanningPanelProps) {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("timeline")}
+          onClick={() => {
+            setActiveTab("timeline");
+            pushPlanningState(true, "timeline");
+          }}
           className={cn(
             "flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-colors",
             activeTab === "timeline"
@@ -69,7 +119,10 @@ export function PlanningPanel({ novelId }: PlanningPanelProps) {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("characterArc")}
+          onClick={() => {
+            setActiveTab("characterArc");
+            pushPlanningState(true, "characterArc");
+          }}
           className={cn(
             "flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-colors",
             activeTab === "characterArc"

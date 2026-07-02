@@ -31,6 +31,8 @@ interface WorldBuildingLayoutProps {
   onShowWiki: () => void;
   showGraph: boolean;
   showWiki: boolean;
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
   children?: ReactNode;
 }
 
@@ -50,6 +52,8 @@ export function WorldBuildingLayout({
   onShowWiki,
   showGraph,
   showWiki,
+  searchQuery,
+  onSearchQueryChange,
   children,
 }: WorldBuildingLayoutProps) {
   return (
@@ -75,6 +79,8 @@ export function WorldBuildingLayout({
           onSelectEntry={onSelectEntry}
           onCreateNew={onCreateNew}
           onCreateAssisted={onCreateAssisted}
+          searchQuery={searchQuery}
+          onSearchQueryChange={onSearchQueryChange}
         />
       )}
       {children}

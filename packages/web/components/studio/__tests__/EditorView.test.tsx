@@ -57,6 +57,13 @@ const mockCloseRightPanel = vi.fn();
 const mockOpenRightPanel = vi.fn();
 const mockSetEditor = vi.fn();
 
+const navigationMocks = vi.hoisted(() => ({
+  pathname: "/novel/novel-1",
+  push: vi.fn(),
+  replace: vi.fn(),
+  searchParams: new URLSearchParams(),
+}));
+
 let editorStoreState: Record<string, unknown> = {};
 
 vi.mock("@/lib/stores/editorStore", () => ({
@@ -98,6 +105,12 @@ vi.mock("@/lib/stores/editorStore", () => ({
     };
     return selector ? selector(state) : state;
   }),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => navigationMocks.pathname,
+  useRouter: () => ({ push: navigationMocks.push, replace: navigationMocks.replace }),
+  useSearchParams: () => navigationMocks.searchParams,
 }));
 
 // Mock API client
@@ -265,6 +278,7 @@ describe("EditorView", () => {
     vi.clearAllMocks();
     // Reset editorStoreState to defaults
     editorStoreState = {};
+    navigationMocks.searchParams = new URLSearchParams();
   });
 
   it("renders 'select chapter' message when no chapter is active", () => {
@@ -473,6 +487,28 @@ describe("EditorView", () => {
       expect(screen.getByDisplayValue("Test Chapter")).toBeDefined();
     });
     expect(screen.queryByTestId("voice-check-panel")).toBeNull();
+  });
+
+  it("opens a safe editor right panel from URL state", async () => {
+    navigationMocks.searchParams = new URLSearchParams("panel=metadata");
+    editorStoreState = { activeChapterId: "chapter-1" };
+
+    renderWithProviders(<EditorView novelId="novel-1" />);
+
+    await waitFor(() => {
+      expect(mockOpenRightPanel).toHaveBeenCalledWith("metadata", "url");
+    });
+  });
+
+  it("normalizes unsafe session panel URL state out of the URL", async () => {
+    navigationMocks.searchParams = new URLSearchParams("panel=session");
+    editorStoreState = { activeChapterId: "chapter-1" };
+
+    renderWithProviders(<EditorView novelId="novel-1" />);
+
+    await waitFor(() => {
+      expect(navigationMocks.replace).toHaveBeenCalledWith("/novel/novel-1", { scroll: false });
+    });
   });
 
   it("title input updates on change", async () => {
