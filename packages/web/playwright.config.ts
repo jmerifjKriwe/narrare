@@ -55,6 +55,10 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         channel: "chromium",
+        launchOptions: {
+          // Use headless shell which has lighter deps (works on Ubuntu 26.04)
+          executablePath: "/home/kiesow/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell",
+        },
         screenshot: "on",
       },
     },

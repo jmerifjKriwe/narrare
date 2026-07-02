@@ -1,6 +1,6 @@
 """RULE-17 contract tests for WRITE-005 WebSocket session messages.
 
-The frontend consumes ``SessionResponse`` from ``packages/web/lib/api/generation.ts``.
+The frontend consumes ``SessionResponse`` from ``packages/web/lib/api/writing-session-socket.ts``.
 ADR-052 added stop/recovery WebSocket messages, so the backend payload keys for
 those messages must remain representable by the TypeScript contract.
 """
@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SESSION_RESPONSE_PATH = REPO_ROOT / "packages/web/lib/api/generation.ts"
+SESSION_RESPONSE_PATH = REPO_ROOT / "packages/web/lib/api/writing-session-socket.ts"
 BACKEND_MESSAGE_SOURCES = (
     REPO_ROOT / "apps/api/narrare/writing/ws_payloads.py",
     REPO_ROOT / "apps/api/narrare/writing/ws_message_router.py",

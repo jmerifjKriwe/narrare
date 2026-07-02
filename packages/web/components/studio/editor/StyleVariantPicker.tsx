@@ -4,7 +4,7 @@
  * StyleVariantPicker — dropdown for selecting a creative direction and
  * triggering style-variant regeneration (CR-AUFG-07-22).
  *
- * Renders a native `<select>` ("Regenerate as…") listing the 6 approved
+ * Renders a native styled select ("Regenerate as…") listing the 6 approved
  * style variants. Selecting a variant fires {@link StyleVariantPickerProps.onSelect},
  * which the parent wires to `streamStyleVariantRegeneration`.
  *
@@ -49,6 +49,7 @@ export function StyleVariantPicker({
       onChange={(e) => onSelect(e.target.value as StyleVariant)}
       disabled={isStreaming}
       aria-label={t("styleVariants.regenerateAs")}
+      data-testid="style-variant-picker"
       className="px-3 py-2 bg-input-background border border-border rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary"
     >
       <option value="" disabled>

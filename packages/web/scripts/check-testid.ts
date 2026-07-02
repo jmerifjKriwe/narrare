@@ -191,7 +191,7 @@ function checkFile(filePath: string): MarkerViolation[] {
   // We need to handle multi-line JSX elements — collect the full element
   // starting from the opening tag. For simplicity, we check the opening tag
   // line plus a small lookahead for attributes on the next few lines.
-  const LOOKAHEAD = 3;
+  const LOOKAHEAD = 8;
 
   for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
     const line = lines[lineIdx];

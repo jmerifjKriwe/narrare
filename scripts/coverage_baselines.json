@@ -1,6 +1,6 @@
 {
   "_comment": "Ratcheted coverage baselines. Updated by check_module_coverage.py --update-baselines.",
-  "updated": "2026-07-01",
+  "updated": "2026-07-02",
   "packages": {
     "_app": 97.1,
     "agents": 94.7,
@@ -14,17 +14,17 @@
     "analysis.services": 97.1,
     "auth": 85.0,
     "cache": 100.0,
-    "chapters": 89.2,
+    "chapters": 91.0,
     "chat": 90.0,
-    "consistency": 87.8,
-    "context": 97.9,
-    "embeddings": 88.4,
+    "consistency": 89.9,
+    "context": 98.1,
+    "embeddings": 92.4,
     "events": 95.2,
     "evidence": 99.0,
     "generation": 91.8,
     "kb": 83.9,
     "kb.schemas": 100.0,
-    "llm": 96.0,
+    "llm": 97.3,
     "llm._providers": 100.0,
     "memory": 89.7,
     "metrics": 100.0,
@@ -37,7 +37,7 @@
     "novels": 83.8,
     "planning": 84.5,
     "planning.adapters": 100.0,
-    "profiles": 99.1,
+    "profiles": 99.4,
     "project": 100.0,
     "prompts": 98.4,
     "schemas": 100.0,
@@ -49,7 +49,7 @@
     "templates": 82.4,
     "templates.defaults": 100.0,
     "volumes": 84.0,
-    "wiki": 91.9,
+    "wiki": 92.1,
     "writing": 88.0
   }
 }

@@ -208,14 +208,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     except ImportError:
         pass  # Tasks not yet configured in Phase 2
 
-    # Event bus startup (graceful — won't block if Redis is unavailable)
-    try:
-        from narrare._app.events import init_event_bus
+    # Event bus startup (graceful — won't block if Redis is unavailable).
+    # Skip in test environment: the CI test infrastructure does not manage
+    # a Redis connection, and event-bus startup/shutdown creates asyncio
+    # tasks that reference a destroyed event loop during TestClient teardown.
+    if not settings.is_test:
+        try:
+            from narrare._app.events import init_event_bus
 
-        await init_event_bus(settings.redis_url)
-        logger.info("event_bus_initialized")
-    except Exception:
-        logger.warning("event_bus_init_failed", exc_info=True)
+            await init_event_bus(settings.redis_url)
+            logger.info("event_bus_initialized")
+        except Exception:
+            logger.warning("event_bus_init_failed", exc_info=True)
 
     # Wiki event listeners — register typed handlers on a global EventPublisher
     try:
@@ -271,13 +275,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             await cleanup_task
         logger.info("periodic_cleanup_cancelled")
 
-    # Event bus shutdown
-    try:
-        from narrare._app.events import shutdown_event_bus
+    # Event bus shutdown — skip in test environment (see startup comment).
+    if not settings.is_test:
+        try:
+            from narrare._app.events import shutdown_event_bus
 
-        await shutdown_event_bus()
-    except Exception:
-        logger.warning("event_bus_shutdown_failed", exc_info=True)
+            await shutdown_event_bus()
+        except Exception:
+            logger.warning("event_bus_shutdown_failed", exc_info=True)
 
     try:
         _broker_mod = __import__("narrare.tasks.broker", fromlist=["broker"])

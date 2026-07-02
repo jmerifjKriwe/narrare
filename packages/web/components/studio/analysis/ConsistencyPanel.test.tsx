@@ -343,7 +343,7 @@ describe("ConsistencyPanel", () => {
   it("retry button triggers re-check", async () => {
     const user = userEvent.setup();
     const runMock = vi.fn();
-    const error = new Error("fail");
+    const error = { userMessage: "fail" };
     mockHook = {
       isIdle: false,
       isError: true,
