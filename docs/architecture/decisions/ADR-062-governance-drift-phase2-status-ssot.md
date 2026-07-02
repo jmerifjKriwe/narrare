@@ -2,7 +2,7 @@
 
 > **Status:** ✅ Implemented
 > **Date:** 2026-07-01 (proposed) · 2026-07-02 (implemented — Platform, warning-only baseline)
-> **Deciders:** Architecture Specialist (recommendation; awaits Coordinator + User approval)
+> **Deciders:** Architecture Specialist (approved and implemented in PR #101)
 > **Supersedes:** —
 > **Related:** ADR-047 (Governance Drift Automation — extends Phase 2/3 scope), ADR-041 (typed manifests / doc-drift), ADR-051 (RULE-18b matrix), ADR-060 / ADR-061, AUFG-01-01 / AUFG-01-02, CONSTRAINTS.md §8 (SSOT hierarchy)
 
@@ -152,8 +152,10 @@ long-form docs authorable while making their *status claims* checkable.
 ## Consequences
 
 **Positive:**
-- Doc↔registry status drift becomes CI-visible (P3); review↔registry metadata errors and
-  id collisions become CI-visible (P5).
+- Doc↔registry status drift is visible via ``just check-governance-drift`` (P3) and
+  surfaced as governed debt in CI via ``check-governance-health`` →
+  ``aggregate_ssot_gate_health``; review↔registry metadata errors and id collisions
+  are surfaced through the same path (P5).
 - A single status SSOT is now defensible: derived docs cannot silently contradict it.
 
 **Negative / Trade-offs:**

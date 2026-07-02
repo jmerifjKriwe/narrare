@@ -15,11 +15,16 @@
 # evidence gap). Unproven entries become governed debt, reported but
 # non-blocking. P1 ratchets to blocking in a follow-up once the baseline is
 # clean. ``verification`` records HOW the entry was proven:
-#   graph    — verified against the code knowledge graph at authoring time
-#              (consumer symbol resolves and the value reaches it).
+#   graph    — author traced the consumer data-flow via the code knowledge
+#              graph AT AUTHORING TIME (consumer symbol resolves and the value
+#              reaches it). The checker does NOT re-verify the graph at runtime;
+#              it performs the same structural file/symbol/test checks as
+#              ``manifest`` entries. P6 (deferred) will add runtime graph
+#              verification and promote this from an authoring claim to a
+#              checker-verified property.
 #   manifest — evidence-manifest fallback; the checker asserts the cited
 #              file/symbol/test exist on disk. The follow-up ratchet upgrades
-#              these to graph-grounded data-flow checks.
+#              these to runtime data-flow checks.
 # =============================================================================
 
 version: "1.0.0"
@@ -36,7 +41,11 @@ composite_allowlist: []
 
 # ── Per-setting evidence ──────────────────────────────────────────────────────
 entries:
-  # ── Graph-grounded (verified via the code knowledge graph) ─────────────────
+  # ── Author graph-traced (data-flow verified at authoring time) ─────────────
+  # NB: the checker performs structural file/symbol/test verification for ALL
+  # entries (graph and manifest alike). The ``graph`` label records that the
+  # author additionally traced the consumer data-flow via the code knowledge
+  # graph — it does NOT mean the checker itself queries the graph at runtime.
   - setting_id: ws_idle_timeout
     verification: graph
     consumer_file: apps/api/narrare/writing/ws_handler.py
@@ -48,7 +57,7 @@ entries:
       - tests/unit/api/writing/test_ws_handler.py
     notes: >-
       WritingSessionHandler.__init__(ws_idle_timeout=1800) drives the
-      _handle_timeout wait; graph-verified resolver (router_sessions.py) +
+      _handle_timeout wait; author graph-traced resolver (router_sessions.py) +
       behavioural effect test. NB: the matrix also cites test_ws_turn_budget.py,
       which tests WritingTurnService token budgets (NOT idle timeout) — surfaced
       by this checker as a sibling-evidence citation to reconcile in a follow-up.

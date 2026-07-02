@@ -14,8 +14,11 @@ behaviour. A plausible-looking lie (``WritingSessionHandler`` pointing at a file
 that does not contain it) is now detectable.
 
 Two verification strategies (per the ADR):
-  * **graph** — verified against the code knowledge graph at authoring time
-    (consumer symbol resolves and the resolved value reaches it).
+  * **graph** — the author traced the consumer data-flow via the code knowledge
+    graph at authoring time (consumer symbol resolves and the resolved value
+    reaches it). The checker does NOT re-verify the graph at runtime; it
+    performs the same structural file/symbol/test checks as ``manifest``.
+    Runtime graph verification is deferred to P6.
   * **manifest** — the evidence-manifest fallback for indirect / DI / async
     consumers; the checker asserts the manifest entry exists AND the cited
     consumer file/symbol and test exist on disk.

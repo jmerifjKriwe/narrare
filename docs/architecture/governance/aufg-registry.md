@@ -229,7 +229,46 @@ Architecture handoff.)*
 
 ---
 
-### AUFG-02-03 — Frontend-Test-Laufzeit und React-Warnings reduzieren
+### AUFG-01-09 — Ratchet ADR-061/062 warning-only checkers to blocking
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-01-09 |
+| Title | Promote P1 (effect-integrity), P3 (status-consistency), and P5 (review→registry) checkers from warning-only to blocking |
+| Source | ADR-061 §Enforcement phasing (P1 warning → blocking); ADR-062 §Enforcement phasing (P3/P5 warning → blocking). Created during PR #101 review to give the ratchet a concrete owner + trigger. |
+| Status | `open` (governed follow-up — warning-only baseline is clean as of 2026-07-02) |
+| Priority | P2 |
+| Area | Governance, CI gates, configuration adoption |
+| Owner role | Platform Specialist (implementation); Architecture Specialist (baseline-clean verification) |
+| Dependencies | [ADR-061](../decisions/ADR-061-matrix-effect-integrity-hardening.md) P1; [ADR-062](../decisions/ADR-062-governance-drift-phase2-status-ssot.md) P3 + P5; `matrix-effect-evidence.yaml` baseline; `status_vocabulary.yaml` |
+| Review trigger/date | **Before the next release-readiness claim**, or after P1/P3/P5 have been warning-only with a clean baseline for one full review cycle (whichever comes first). Not optional — the warning-only state must not become permanent (architectural-discipline §0). |
+
+**Rationale:** ADR-061 P2 (aggregation prohibition) ships blocking and closes the ADR-060
+defect class. P1 (per-setting effect-integrity), P3 (doc↔status-SSOT consistency), and P5
+(review→registry linking) ship warning-only (exit 0) to establish a clean baseline before
+enforcement. Without a concrete trigger, the warning-only state risks becoming permanent —
+the exact failure mode this governance system exists to prevent.
+
+**Acceptance criteria:**
+
+- P1 (`check_matrix_effect_integrity.py`): promoted to `exit 1` on unproven entries
+  (consumer_only / gap / broken); governed-debt baseline is empty or explicitly waived.
+- P3 (`_status_consistency.py`): promoted to `exit 1` on doc↔SSOT contradictions;
+  `status_vocabulary.yaml` covers all status-bearing surfaces.
+- P5 (`_review_registry_link.py`): promoted to `exit 1` on missing/mismatched review→registry
+  metadata; bare-filename dependency-path gap closed (paths must be repo-rooted).
+- P6 (runtime graph verification for `verification: graph` entries): implemented OR an
+  equivalent checker-verified data-flow proof replaces the authoring-time claim.
+- All promotions validated against a clean baseline (no false positives that would block
+  legitimate work).
+
+**Definition of Done:**
+
+- Each checker (P1/P3/P5) exits non-zero on violations in CI.
+- Baseline verified clean by Platform + Architecture before the flip.
+- This registry entry updated with exit evidence and status `resolved`.
+
+---
 
 | Field | Value |
 |-------|-------|

@@ -2,7 +2,7 @@
 
 > **Status:** ✅ Implemented (Implemented 2026-07-02)
 > **Date:** 2026-07-01
-> **Deciders:** Architecture Specialist (recommendation; awaits Coordinator + User approval)
+> **Deciders:** Architecture Specialist (approved and implemented in PR #101)
 > **Supersedes:** —
 > **Related:** ADR-051 (Configuration Effect Adoption Contract / RULE-18b), ADR-060 (Retry False-Control Resolution — the triggering instance), AUFG-01-01, CONSTRAINTS.md RULE-18b / RULE-22
 
@@ -117,8 +117,11 @@ governance tooling); high blast radius for a checker-hardening goal. Rejected fo
   value. Verification strategy (chosen at implementation, may combine):
   1. **Graph-grounded** (preferred where unambiguous): resolve the consumer symbol via
      the code graph and confirm the resolved setting value reaches it (data-flow or
-     call-site check). This is P6 ("graph-grounded adopted proof") in its first concrete
-     form — see Deferred section.
+     call-site check). This is P6 ("graph-grounded adopted proof") — see Deferred
+     section. In the current implementation, ``verification: graph`` records that the
+     **author** traced the data-flow at authoring time; the checker itself performs
+     structural file/symbol/test verification for all entries (graph and manifest
+     alike). Runtime graph verification is deferred to P6.
   2. **Evidence-manifest fallback** (required for indirect/DI/async-generator consumers
      that the graph cannot statically prove): a machine-readable evidence record that
      binds the `setting_id` to (a) the exact call site that applies it and (b) the named
@@ -251,16 +254,18 @@ check-matrix-effect-integrity` green; `just check-architecture`, `just check`,
   - Evidence manifest: `docs/architecture/governance/matrix-effect-evidence.yaml`
     binds each `setting_id` → consumer file + symbol + named test, and records
     `verification: graph|manifest`.
-  - **Baseline (clean):** 14 in-scope entries, **14/14 verified** — 2
-    **graph-grounded** (`ws_idle_timeout` → `WritingSessionHandler`
-    [resolver `router_sessions.py` data-flow proven by
-    `test_router_sessions_basic.py`]; `llm_transport_retry` →
+  - **Baseline (clean):** 14 in-scope entries, **14/14 verified** (structurally:
+    consumer file exists, symbol present, test exists and references THIS setting)
+    — 2 **author graph-traced** (`ws_idle_timeout` → `WritingSessionHandler`
+    [resolver `router_sessions.py` data-flow traced by the author;
+    `test_router_sessions_basic.py` behavioural]; `llm_transport_retry` →
     `get_transport_max_retries` [called by all provider factories; behavioural
     `test_transport_retry.py` proves `max_retries` drives observable HTTP
     attempt count]) and 12 **manifest-grounded**. 0 gaps, 0 broken, 0
     consumer-only. Unproven entries would become governed debt (ADR-056
     semantics), reported non-blocking.
-  - **P1 ratchets to BLOCKING in a follow-up** once every entry is graph-proven
+  - **P1 ratchets to BLOCKING in a follow-up** once every entry has runtime
+    graph verification (P6) or an equivalent checker-verified data-flow proof
     (some manifest entries currently rely on structural file/symbol/test
     presence rather than a runtime data-flow check).
 

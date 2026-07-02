@@ -322,7 +322,7 @@ Gate-12 completeness checks are satisfied:
   PASSES.
 - **Registry:** AUFG-01-01 → `resolved` (exit evidence below).
 - Prevention for the class of defect is ADR-061 (effect-integrity hardening,
-  remains 🔄 Proposed).
+  ✅ Implemented).
 
 ---
 
