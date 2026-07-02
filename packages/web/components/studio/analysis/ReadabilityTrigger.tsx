@@ -19,20 +19,21 @@ interface ReadabilityTriggerProps {
 
 export function ReadabilityTrigger({ disabled = false }: ReadabilityTriggerProps) {
   const t = useTranslations("analysis");
-  const readabilityPanelOpen = useEditorStore((s) => s.readabilityPanelOpen);
-  const toggleReadabilityPanel = useEditorStore((s) => s.toggleReadabilityPanel);
+  const activeRightPanel = useEditorStore((s) => s.rightPanel.active);
+  const toggleRightPanel = useEditorStore((s) => s.toggleRightPanel);
+  const isReadabilityActive = activeRightPanel === "readability";
 
   return (
     <button
       type="button"
-      onClick={toggleReadabilityPanel}
+      onClick={() => toggleRightPanel("readability", "toolbar")}
       disabled={disabled}
       className={`flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-orange-600 dark:text-orange-400 ${
-        readabilityPanelOpen ? "bg-accent" : ""
+        isReadabilityActive ? "bg-accent" : ""
       } disabled:opacity-50`}
       title={t("readability.triggerTooltip")}
       aria-label={t("readability.triggerTooltip")}
-      aria-pressed={readabilityPanelOpen}
+      aria-pressed={isReadabilityActive}
     >
       <BookOpen className="w-3.5 h-3.5" />
       <span>{t("readability.trigger")}</span>

@@ -1,14 +1,10 @@
 import { create } from "zustand";
 import {
-  toggleBetaReaderPanel,
-  toggleCharacterVoicePanel,
-  toggleConsistencyPanel,
-  toggleCoreferencePanel,
-  togglePovPanel,
-  toggleReadabilityPanel,
-  toggleSentimentPanel,
-  toggleVoiceCheckPanel,
-} from "./editorPanelToggles";
+  CLOSED_EDITOR_RIGHT_PANEL_STATE,
+  closeEditorRightPanel,
+  openEditorRightPanel,
+  toggleEditorRightPanel,
+} from "./editorRightPanelState";
 import type { EditorState } from "./editorStoreTypes";
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -17,7 +13,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   saveStatus: "idle",
   lastSavedAt: null,
   sidebarOpen: true,
-  contextPanelOpen: false,
+  rightPanel: CLOSED_EDITOR_RIGHT_PANEL_STATE,
   focusMode: false,
   storyboardOpen: false,
   editor: null,
@@ -27,31 +23,57 @@ export const useEditorStore = create<EditorState>((set) => ({
   generationMode: null,
   draftText: "",
   sessionActive: false,
-  generationPanelOpen: false,
   extractionPanelOpen: false,
-  betaReaderPanelOpen: false,
   betaReaderResult: null,
   betaReaderLoading: false,
-  sentimentPanelOpen: false,
   sentimentResult: null,
   sentimentLoading: false,
-  consistencyPanelOpen: false,
   consistencyResult: null,
   consistencyLoading: false,
-  readabilityPanelOpen: false,
-  povPanelOpen: false,
-  coreferencePanelOpen: false,
-  characterVoicePanelOpen: false,
-  voiceCheckPanelOpen: false,
+
+  openRightPanel: (panel, requestedBy) =>
+    set((s) => ({ rightPanel: openEditorRightPanel(s.rightPanel, panel, requestedBy) })),
+  closeRightPanel: (panel) =>
+    set((s) => ({ rightPanel: closeEditorRightPanel(s.rightPanel, panel ?? s.rightPanel.active) })),
+  toggleRightPanel: (panel, requestedBy) =>
+    set((s) => ({ rightPanel: toggleEditorRightPanel(s.rightPanel, panel, requestedBy) })),
+  toggleContextPanel: () =>
+    set((s) => ({ rightPanel: toggleEditorRightPanel(s.rightPanel, "metadata", "toolbar") })),
+  toggleGenerationPanel: () =>
+    set((s) => ({ rightPanel: toggleEditorRightPanel(s.rightPanel, "generation", "toolbar") })),
+  setSessionActive: (sessionActive) =>
+    set((s) => ({
+      sessionActive,
+      rightPanel: sessionActive
+        ? openEditorRightPanel(s.rightPanel, "session", "recovery")
+        : closeEditorRightPanel(s.rightPanel, "session"),
+    })),
+  toggleBetaReaderPanel: () =>
+    set((s) => ({ rightPanel: toggleEditorRightPanel(s.rightPanel, "beta_reader", "toolbar") })),
+  toggleSentimentPanel: () =>
+    set((s) => ({ rightPanel: toggleEditorRightPanel(s.rightPanel, "sentiment", "toolbar") })),
+  toggleConsistencyPanel: () =>
+    set((s) => ({ rightPanel: toggleEditorRightPanel(s.rightPanel, "consistency", "toolbar") })),
+  toggleReadabilityPanel: () =>
+    set((s) => ({ rightPanel: toggleEditorRightPanel(s.rightPanel, "readability", "toolbar") })),
+  togglePovPanel: () =>
+    set((s) => ({ rightPanel: toggleEditorRightPanel(s.rightPanel, "pov", "toolbar") })),
+  toggleCoreferencePanel: () =>
+    set((s) => ({ rightPanel: toggleEditorRightPanel(s.rightPanel, "coreference", "toolbar") })),
+  toggleCharacterVoicePanel: () =>
+    set((s) => ({
+      rightPanel: toggleEditorRightPanel(s.rightPanel, "character_voice", "toolbar"),
+    })),
+  toggleVoiceCheckPanel: () =>
+    set((s) => ({ rightPanel: toggleEditorRightPanel(s.rightPanel, "voice_check", "toolbar") })),
 
   setActiveChapterId: (id) => set({ activeChapterId: id }),
   setActiveVolumeId: (id) => set({ activeVolumeId: id }),
   setSaveStatus: (saveStatus) =>
-    set({ saveStatus, lastSavedAt: saveStatus === "saved" ? new Date() : undefined }),
+    set({ saveStatus, lastSavedAt: saveStatus === "saved" ? new Date() : null }),
   setEditor: (editor) => set({ editor }),
   setIsDragging: (isDragging) => set({ isDragging }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  toggleContextPanel: () => set((s) => ({ contextPanelOpen: !s.contextPanelOpen })),
   toggleFocusMode: () =>
     set((s) => ({
       focusMode: !s.focusMode,
@@ -67,26 +89,11 @@ export const useEditorStore = create<EditorState>((set) => ({
   setActiveRequestId: (activeRequestId) => set({ activeRequestId }),
   setGenerationMode: (generationMode) => set({ generationMode }),
   setDraftText: (draftText) => set({ draftText }),
-  setSessionActive: (sessionActive) => set({ sessionActive }),
-  toggleGenerationPanel: () => set((s) => ({ generationPanelOpen: !s.generationPanelOpen })),
-  toggleExtractionPanel: () =>
-    set((s) => ({
-      extractionPanelOpen: !s.extractionPanelOpen,
-      generationPanelOpen: s.extractionPanelOpen ? s.generationPanelOpen : false,
-    })),
-
-  toggleBetaReaderPanel: () => set(toggleBetaReaderPanel),
+  toggleExtractionPanel: () => set((s) => ({ extractionPanelOpen: !s.extractionPanelOpen })),
   setBetaReaderResult: (betaReaderResult) => set({ betaReaderResult }),
   setBetaReaderLoading: (betaReaderLoading) => set({ betaReaderLoading }),
-  toggleSentimentPanel: () => set(toggleSentimentPanel),
   setSentimentResult: (sentimentResult) => set({ sentimentResult }),
   setSentimentLoading: (sentimentLoading) => set({ sentimentLoading }),
-  toggleConsistencyPanel: () => set(toggleConsistencyPanel),
   setConsistencyResult: (consistencyResult) => set({ consistencyResult }),
   setConsistencyLoading: (consistencyLoading) => set({ consistencyLoading }),
-  toggleReadabilityPanel: () => set(toggleReadabilityPanel),
-  togglePovPanel: () => set(togglePovPanel),
-  toggleCoreferencePanel: () => set(toggleCoreferencePanel),
-  toggleCharacterVoicePanel: () => set(toggleCharacterVoicePanel),
-  toggleVoiceCheckPanel: () => set(toggleVoiceCheckPanel),
 }));

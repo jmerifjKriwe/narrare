@@ -1,6 +1,10 @@
 import type { Editor } from "@tiptap/react";
 import { Database, Sparkles, Wand2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import type {
+  EditorRightPanelId,
+  EditorRightPanelRequestSource,
+} from "@/lib/stores/editorRightPanelState";
 import { BetaReaderTrigger } from "../analysis/BetaReaderTrigger";
 import { CharacterVoiceTrigger } from "../analysis/CharacterVoiceTrigger";
 import { ConsistencyTrigger } from "../analysis/ConsistencyTrigger";
@@ -13,21 +17,19 @@ import { GhostTextConfig } from "../editor/GhostTextConfig";
 
 interface EditorToolbarProps {
   editor: Editor | null;
-  generationPanelOpen: boolean;
+  activeRightPanel: EditorRightPanelId | null;
   extractionPanelOpen: boolean;
-  toggleGenerationPanel: () => void;
+  toggleRightPanel: (panel: EditorRightPanelId, requestedBy: EditorRightPanelRequestSource) => void;
   toggleExtractionPanel: () => void;
-  toggleVoiceCheckPanel: () => void;
   openNameGenerator: () => void;
 }
 
 export function EditorToolbar({
   editor,
-  generationPanelOpen,
+  activeRightPanel,
   extractionPanelOpen,
-  toggleGenerationPanel,
+  toggleRightPanel,
   toggleExtractionPanel,
-  toggleVoiceCheckPanel,
   openNameGenerator,
 }: EditorToolbarProps) {
   const t = useTranslations("studio");
@@ -101,9 +103,9 @@ export function EditorToolbar({
       <ToolbarSeparator />
       <button
         type="button"
-        onClick={toggleGenerationPanel}
+        onClick={() => toggleRightPanel("generation", "toolbar")}
         className={`flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-primary ${
-          generationPanelOpen ? "bg-accent" : ""
+          activeRightPanel === "generation" ? "bg-accent" : ""
         }`}
         title={t("editor.generate")}
       >
@@ -130,7 +132,7 @@ export function EditorToolbar({
       <POVTrigger />
       <CoreferenceTrigger />
       <CharacterVoiceTrigger />
-      <VoiceCheckTrigger onClick={toggleVoiceCheckPanel} />
+      <VoiceCheckTrigger onClick={() => toggleRightPanel("voice_check", "toolbar")} />
       <ToolbarSeparator />
       <GhostTextConfig editor={editor} />
     </div>

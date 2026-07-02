@@ -9,7 +9,7 @@
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { ReadabilityTrigger } from "@/components/studio/analysis/ReadabilityTrigger";
 import { useEditorStore } from "@/lib/stores/editorStore";
 
@@ -20,10 +20,7 @@ import { useEditorStore } from "@/lib/stores/editorStore";
 describe("ReadabilityTrigger", () => {
   beforeEach(() => {
     useEditorStore.setState({
-      readabilityPanelOpen: false,
-      toggleReadabilityPanel: vi.fn(() => {
-        useEditorStore.setState((s) => ({ readabilityPanelOpen: !s.readabilityPanelOpen }));
-      }),
+      rightPanel: { active: null, previous: null, requestedBy: null },
     });
   });
 
@@ -45,11 +42,11 @@ describe("ReadabilityTrigger", () => {
     const button = screen.getByText("readability.trigger").closest("button")!;
     fireEvent.click(button);
 
-    expect(useEditorStore.getState().readabilityPanelOpen).toBe(true);
+    expect(useEditorStore.getState().rightPanel.active).toBe("readability");
   });
 
   it("reflects closed state as aria-pressed=false", () => {
-    useEditorStore.setState({ readabilityPanelOpen: false });
+    useEditorStore.setState({ rightPanel: { active: null, previous: null, requestedBy: null } });
     render(<ReadabilityTrigger />);
 
     const button = screen.getByText("readability.trigger").closest("button")!;
@@ -57,7 +54,9 @@ describe("ReadabilityTrigger", () => {
   });
 
   it("reflects open state as aria-pressed=true", () => {
-    useEditorStore.setState({ readabilityPanelOpen: true });
+    useEditorStore.setState({
+      rightPanel: { active: "readability", previous: null, requestedBy: "toolbar" },
+    });
     render(<ReadabilityTrigger />);
 
     const button = screen.getByText("readability.trigger").closest("button")!;

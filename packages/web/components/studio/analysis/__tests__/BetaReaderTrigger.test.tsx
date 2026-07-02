@@ -9,7 +9,7 @@
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { BetaReaderTrigger } from "@/components/studio/analysis/BetaReaderTrigger";
 import { useEditorStore } from "@/lib/stores/editorStore";
 
@@ -20,10 +20,7 @@ import { useEditorStore } from "@/lib/stores/editorStore";
 describe("BetaReaderTrigger", () => {
   beforeEach(() => {
     useEditorStore.setState({
-      betaReaderPanelOpen: false,
-      toggleBetaReaderPanel: vi.fn(() => {
-        useEditorStore.setState((s) => ({ betaReaderPanelOpen: !s.betaReaderPanelOpen }));
-      }),
+      rightPanel: { active: null, previous: null, requestedBy: null },
     });
   });
 
@@ -45,11 +42,11 @@ describe("BetaReaderTrigger", () => {
     const button = screen.getByText("trigger").closest("button")!;
     fireEvent.click(button);
 
-    expect(useEditorStore.getState().betaReaderPanelOpen).toBe(true);
+    expect(useEditorStore.getState().rightPanel.active).toBe("beta_reader");
   });
 
   it("reflects closed state as aria-pressed=false", () => {
-    useEditorStore.setState({ betaReaderPanelOpen: false });
+    useEditorStore.setState({ rightPanel: { active: null, previous: null, requestedBy: null } });
     render(<BetaReaderTrigger />);
 
     const button = screen.getByText("trigger").closest("button")!;
@@ -57,7 +54,9 @@ describe("BetaReaderTrigger", () => {
   });
 
   it("reflects open state as aria-pressed=true", () => {
-    useEditorStore.setState({ betaReaderPanelOpen: true });
+    useEditorStore.setState({
+      rightPanel: { active: "beta_reader", previous: null, requestedBy: "toolbar" },
+    });
     render(<BetaReaderTrigger />);
 
     const button = screen.getByText("trigger").closest("button")!;

@@ -8,14 +8,14 @@ import { useEditorStore } from "@/lib/stores/editorStore";
 import { UnblockPanel } from "./editor/UnblockPanel";
 import { EditorHeader } from "./editor-view/EditorHeader";
 import { EditorOverlays } from "./editor-view/EditorOverlays";
-import { EditorSidePanels } from "./editor-view/EditorSidePanels";
+import { EditorRightPanelSlot } from "./editor-view/EditorRightPanelSlot";
 import { EditorEmptyState, EditorLoadingState } from "./editor-view/EditorStates";
 import { EditorToolbar } from "./editor-view/EditorToolbar";
 import { EditorWorkspace } from "./editor-view/EditorWorkspace";
+import { useActiveEditorRightPanel } from "./editor-view/useActiveEditorRightPanel";
 import { useEditorChapterData } from "./editor-view/useEditorChapterData";
 import { useEditorCommandPalette } from "./editor-view/useEditorCommandPalette";
 import { useEditorGenerationActions } from "./editor-view/useEditorGenerationActions";
-import { useEditorPanelVisibility } from "./editor-view/useEditorPanelVisibility";
 import { useEditorPersistence } from "./editor-view/useEditorPersistence";
 import { useWritingGraphSteps } from "./editor-view/useWritingGraphSteps";
 import { PlanningPanel } from "./planning/PlanningPanel";
@@ -33,18 +33,10 @@ export function EditorView({ novelId }: EditorViewProps) {
   const editor = useEditorStore((s) => s.editor);
   const isGenerating = useEditorStore((s) => s.isGenerating);
   const setSaveStatus = useEditorStore((s) => s.setSaveStatus);
-  const generationPanelOpen = useEditorStore((s) => s.generationPanelOpen);
-  const toggleGenerationPanel = useEditorStore((s) => s.toggleGenerationPanel);
   const extractionPanelOpen = useEditorStore((s) => s.extractionPanelOpen);
   const toggleExtractionPanel = useEditorStore((s) => s.toggleExtractionPanel);
-  const toggleBetaReaderPanel = useEditorStore((s) => s.toggleBetaReaderPanel);
-  const toggleSentimentPanel = useEditorStore((s) => s.toggleSentimentPanel);
-  const toggleConsistencyPanel = useEditorStore((s) => s.toggleConsistencyPanel);
-  const toggleReadabilityPanel = useEditorStore((s) => s.toggleReadabilityPanel);
-  const togglePovPanel = useEditorStore((s) => s.togglePovPanel);
-  const toggleCoreferencePanel = useEditorStore((s) => s.toggleCoreferencePanel);
-  const toggleCharacterVoicePanel = useEditorStore((s) => s.toggleCharacterVoicePanel);
-  const toggleVoiceCheckPanel = useEditorStore((s) => s.toggleVoiceCheckPanel);
+  const toggleRightPanel = useEditorStore((s) => s.toggleRightPanel);
+  const closeRightPanel = useEditorStore((s) => s.closeRightPanel);
   const [nameGeneratorOpen, setNameGeneratorOpen] = useState(false);
 
   const writingSteps = useWritingGraphSteps(isGenerating, activeChapterId);
@@ -71,7 +63,7 @@ export function EditorView({ novelId }: EditorViewProps) {
     handleAcceptDraft: generationActions.handleAcceptDraft,
     handleRejectDraft: generationActions.handleRejectDraft,
   });
-  const panelVisibility = useEditorPanelVisibility(activeChapterId);
+  const activeRightPanel = useActiveEditorRightPanel(activeChapterId);
 
   // Writer's Unblock (WRITE-009): insert the accepted story-direction title into
   // the manuscript at the cursor and persist — mirrors handleDraftAccepted.
@@ -105,11 +97,10 @@ export function EditorView({ novelId }: EditorViewProps) {
       />
       <EditorToolbar
         editor={editor}
-        generationPanelOpen={generationPanelOpen}
+        activeRightPanel={activeRightPanel}
         extractionPanelOpen={extractionPanelOpen}
-        toggleGenerationPanel={toggleGenerationPanel}
+        toggleRightPanel={toggleRightPanel}
         toggleExtractionPanel={toggleExtractionPanel}
-        toggleVoiceCheckPanel={toggleVoiceCheckPanel}
         openNameGenerator={() => setNameGeneratorOpen(true)}
       />
       <div className="flex-1 flex min-h-0">
@@ -128,8 +119,9 @@ export function EditorView({ novelId }: EditorViewProps) {
             onAccept={handleUnblockAccept}
           />
         </div>
-        <EditorSidePanels
-          visibility={panelVisibility}
+        <EditorRightPanelSlot
+          activePanel={activeRightPanel}
+          closePanel={closeRightPanel}
           novelId={novelId}
           activeChapterId={activeChapterId}
           content={chapterData.content}
@@ -144,15 +136,6 @@ export function EditorView({ novelId }: EditorViewProps) {
           handleSessionClose={generationActions.handleSessionClose}
           handleDraftAccepted={generationActions.handleDraftAccepted}
           handleStartSession={generationActions.handleStartSession}
-          toggleGenerationPanel={toggleGenerationPanel}
-          toggleBetaReaderPanel={toggleBetaReaderPanel}
-          toggleReadabilityPanel={toggleReadabilityPanel}
-          togglePovPanel={togglePovPanel}
-          toggleCoreferencePanel={toggleCoreferencePanel}
-          toggleCharacterVoicePanel={toggleCharacterVoicePanel}
-          toggleVoiceCheckPanel={toggleVoiceCheckPanel}
-          toggleSentimentPanel={toggleSentimentPanel}
-          toggleConsistencyPanel={toggleConsistencyPanel}
         />
       </div>
       <EditorOverlays

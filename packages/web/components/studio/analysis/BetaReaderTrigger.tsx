@@ -18,20 +18,21 @@ interface BetaReaderTriggerProps {
 
 export function BetaReaderTrigger({ disabled = false }: BetaReaderTriggerProps) {
   const t = useTranslations("analysis");
-  const betaReaderPanelOpen = useEditorStore((s) => s.betaReaderPanelOpen);
-  const toggleBetaReaderPanel = useEditorStore((s) => s.toggleBetaReaderPanel);
+  const activeRightPanel = useEditorStore((s) => s.rightPanel.active);
+  const toggleRightPanel = useEditorStore((s) => s.toggleRightPanel);
+  const isBetaReaderActive = activeRightPanel === "beta_reader";
 
   return (
     <button
       type="button"
-      onClick={toggleBetaReaderPanel}
+      onClick={() => toggleRightPanel("beta_reader", "toolbar")}
       disabled={disabled}
       className={`flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-primary ${
-        betaReaderPanelOpen ? "bg-accent" : ""
+        isBetaReaderActive ? "bg-accent" : ""
       } disabled:opacity-50`}
       title={t("triggerTooltip")}
       aria-label={t("triggerTooltip")}
-      aria-pressed={betaReaderPanelOpen}
+      aria-pressed={isBetaReaderActive}
     >
       <BookOpen className="w-3.5 h-3.5" />
       <span>{t("trigger")}</span>

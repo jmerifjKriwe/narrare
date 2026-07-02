@@ -3,6 +3,10 @@
 import type { Editor } from "@tiptap/react";
 import { Database, Sparkles, Wand2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import type {
+  EditorRightPanelId,
+  EditorRightPanelRequestSource,
+} from "@/lib/stores/editorRightPanelState";
 
 import { BetaReaderTrigger } from "../analysis/BetaReaderTrigger";
 import { ConsistencyTrigger } from "../analysis/ConsistencyTrigger";
@@ -13,8 +17,8 @@ import { GhostTextConfig } from "../editor/GhostTextConfig";
 
 interface EditorToolbarProps {
   editor: Editor;
-  generationPanelOpen: boolean;
-  toggleGenerationPanel: () => void;
+  activeRightPanel: EditorRightPanelId | null;
+  toggleRightPanel: (panel: EditorRightPanelId, requestedBy: EditorRightPanelRequestSource) => void;
   extractionPanelOpen: boolean;
   toggleExtractionPanel: () => void;
   onOpenNameGenerator: () => void;
@@ -22,8 +26,8 @@ interface EditorToolbarProps {
 
 export function EditorToolbar({
   editor,
-  generationPanelOpen,
-  toggleGenerationPanel,
+  activeRightPanel,
+  toggleRightPanel,
   extractionPanelOpen,
   toggleExtractionPanel,
   onOpenNameGenerator,
@@ -100,9 +104,9 @@ export function EditorToolbar({
       <div className="w-px h-5 bg-border mx-1" />
       <button
         type="button"
-        onClick={toggleGenerationPanel}
+        onClick={() => toggleRightPanel("generation", "toolbar")}
         className={`flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-primary ${
-          generationPanelOpen ? "bg-accent" : ""
+          activeRightPanel === "generation" ? "bg-accent" : ""
         }`}
         title={t("editor.generate")}
       >

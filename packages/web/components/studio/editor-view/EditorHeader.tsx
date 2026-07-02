@@ -11,7 +11,7 @@ interface EditorHeaderProps {
 
 export function EditorHeader({ title, setTitle, lastSaved, handleSave }: EditorHeaderProps) {
   const t = useTranslations("studio");
-  const contextPanelOpen = useEditorStore((s) => s.contextPanelOpen);
+  const activeRightPanel = useEditorStore((s) => s.rightPanel.active);
   const storyboardOpen = useEditorStore((s) => s.storyboardOpen);
   const toggleContextPanel = useEditorStore((s) => s.toggleContextPanel);
   const toggleStoryboard = useEditorStore((s) => s.toggleStoryboard);
@@ -46,7 +46,7 @@ export function EditorHeader({ title, setTitle, lastSaved, handleSave }: EditorH
           type="button"
           onClick={toggleContextPanel}
           className={`p-2 rounded-md hover:bg-accent transition-colors ${
-            contextPanelOpen ? "bg-accent" : ""
+            activeRightPanel === "metadata" ? "bg-accent" : ""
           }`}
           title={t("metadataSidebar.toggle")}
           aria-label={t("metadataSidebar.toggle")}

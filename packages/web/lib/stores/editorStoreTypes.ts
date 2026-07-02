@@ -5,6 +5,11 @@ import type {
   SentimentOverview,
 } from "@/lib/api/analysis";
 import type { ChapterSummary, SaveStatus } from "@/types";
+import type {
+  EditorRightPanelId,
+  EditorRightPanelRequestSource,
+  EditorRightPanelState,
+} from "./editorRightPanelState";
 
 export interface EditorState {
   activeChapterId: string | null;
@@ -12,7 +17,7 @@ export interface EditorState {
   saveStatus: SaveStatus;
   lastSavedAt: Date | null;
   sidebarOpen: boolean;
-  contextPanelOpen: boolean;
+  rightPanel: EditorRightPanelState;
   focusMode: boolean;
   storyboardOpen: boolean;
   editor: Editor | null;
@@ -22,23 +27,17 @@ export interface EditorState {
   generationMode: string | null;
   draftText: string;
   sessionActive: boolean;
-  generationPanelOpen: boolean;
   extractionPanelOpen: boolean;
-  betaReaderPanelOpen: boolean;
   betaReaderResult: BetaReaderResponse | null;
   betaReaderLoading: boolean;
-  sentimentPanelOpen: boolean;
   sentimentResult: SentimentOverview[] | null;
   sentimentLoading: boolean;
-  consistencyPanelOpen: boolean;
   consistencyResult: ConsistencyResponse | null;
   consistencyLoading: boolean;
-  readabilityPanelOpen: boolean;
-  povPanelOpen: boolean;
-  coreferencePanelOpen: boolean;
-  characterVoicePanelOpen: boolean;
-  voiceCheckPanelOpen: boolean;
 
+  openRightPanel: (panel: EditorRightPanelId, requestedBy: EditorRightPanelRequestSource) => void;
+  closeRightPanel: (panel?: EditorRightPanelId) => void;
+  toggleRightPanel: (panel: EditorRightPanelId, requestedBy: EditorRightPanelRequestSource) => void;
   setActiveChapterId: (id: string | null) => void;
   setActiveVolumeId: (id: string | null) => void;
   setSaveStatus: (status: SaveStatus) => void;

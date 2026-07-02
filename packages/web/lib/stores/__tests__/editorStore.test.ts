@@ -11,7 +11,7 @@ describe("editorStore", () => {
       saveStatus: "idle",
       lastSavedAt: null,
       sidebarOpen: true,
-      contextPanelOpen: false,
+      rightPanel: { active: null, previous: null, requestedBy: null },
       focusMode: false,
       editor: null,
       isDragging: false,
@@ -20,7 +20,6 @@ describe("editorStore", () => {
       generationMode: null,
       draftText: "",
       sessionActive: false,
-      generationPanelOpen: false,
     });
   });
 
@@ -60,7 +59,7 @@ describe("editorStore", () => {
   it("sets save status — error without updating lastSavedAt", () => {
     useEditorStore.getState().setSaveStatus("error");
     expect(useEditorStore.getState().saveStatus).toBe("error");
-    expect(useEditorStore.getState().lastSavedAt).toBeUndefined();
+    expect(useEditorStore.getState().lastSavedAt).toBeNull();
   });
 
   it("sets save status — resets to idle", () => {
@@ -89,9 +88,9 @@ describe("editorStore", () => {
   });
 
   it("toggles context panel", () => {
-    expect(useEditorStore.getState().contextPanelOpen).toBe(false);
+    expect(useEditorStore.getState().rightPanel.active).toBeNull();
     useEditorStore.getState().toggleContextPanel();
-    expect(useEditorStore.getState().contextPanelOpen).toBe(true);
+    expect(useEditorStore.getState().rightPanel.active).toBe("metadata");
   });
 
   it("toggles focus mode and manages sidebar", () => {
@@ -132,28 +131,29 @@ describe("editorStore", () => {
   });
 
   it("toggles generation panel", () => {
-    expect(useEditorStore.getState().generationPanelOpen).toBe(false);
+    expect(useEditorStore.getState().rightPanel.active).toBeNull();
     useEditorStore.getState().toggleGenerationPanel();
-    expect(useEditorStore.getState().generationPanelOpen).toBe(true);
+    expect(useEditorStore.getState().rightPanel.active).toBe("generation");
   });
 
   // --- Voice Check panel (WRITE-010) — mirrors the CharacterVoice toggle ---
 
   it("toggles voice-check panel open/closed", () => {
-    useEditorStore.setState({ voiceCheckPanelOpen: false });
-    expect(useEditorStore.getState().voiceCheckPanelOpen).toBe(false);
+    useEditorStore.setState({ rightPanel: { active: null, previous: null, requestedBy: null } });
+    expect(useEditorStore.getState().rightPanel.active).toBeNull();
     useEditorStore.getState().toggleVoiceCheckPanel();
-    expect(useEditorStore.getState().voiceCheckPanelOpen).toBe(true);
+    expect(useEditorStore.getState().rightPanel.active).toBe("voice_check");
     useEditorStore.getState().toggleVoiceCheckPanel();
-    expect(useEditorStore.getState().voiceCheckPanelOpen).toBe(false);
+    expect(useEditorStore.getState().rightPanel.active).toBeNull();
   });
 
   it("opening voice-check panel closes the other right panels (mutual exclusion)", () => {
-    useEditorStore.setState({ characterVoicePanelOpen: true, voiceCheckPanelOpen: false });
+    useEditorStore.setState({
+      rightPanel: { active: "character_voice", previous: null, requestedBy: "toolbar" },
+    });
     useEditorStore.getState().toggleVoiceCheckPanel();
-    expect(useEditorStore.getState().voiceCheckPanelOpen).toBe(true);
-    // closeRightPanels must clear the sibling voice analysis panel.
-    expect(useEditorStore.getState().characterVoicePanelOpen).toBe(false);
+    expect(useEditorStore.getState().rightPanel.active).toBe("voice_check");
+    expect(useEditorStore.getState().rightPanel.previous).toBe("character_voice");
   });
 
   it("updateChapterWordCount updates the specified chapter", () => {

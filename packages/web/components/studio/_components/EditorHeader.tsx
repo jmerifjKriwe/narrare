@@ -10,7 +10,7 @@ interface EditorHeaderProps {
   onSave: () => void;
   storyboardOpen: boolean;
   toggleStoryboard: () => void;
-  contextPanelOpen: boolean;
+  metadataPanelActive: boolean;
   toggleContextPanel: () => void;
 }
 
@@ -21,7 +21,7 @@ export function EditorHeader({
   onSave,
   storyboardOpen,
   toggleStoryboard,
-  contextPanelOpen,
+  metadataPanelActive,
   toggleContextPanel,
 }: EditorHeaderProps) {
   const t = useTranslations("studio");
@@ -53,7 +53,7 @@ export function EditorHeader({
         <button
           type="button"
           onClick={toggleContextPanel}
-          className={`p-2 rounded-md hover:bg-accent transition-colors ${contextPanelOpen ? "bg-accent" : ""}`}
+          className={`p-2 rounded-md hover:bg-accent transition-colors ${metadataPanelActive ? "bg-accent" : ""}`}
           title={t("metadataSidebar.toggle")}
           aria-label={t("metadataSidebar.toggle")}
         >
