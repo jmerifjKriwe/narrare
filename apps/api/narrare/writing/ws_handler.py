@@ -124,13 +124,18 @@ class WritingSessionHandler:
             # Mark connection as connected
             await self._mark_connection_state(active_session_id, ConnectionState.CONNECTED)
 
-            # Message loop with configurable idle timeout
+            # Message loop with configurable idle timeout.
+            # route() returns False for end_session so we break cleanly
+            # before the next receive_json() would raise a RuntimeError
+            # on a closed WebSocket.
             while True:
                 data = await asyncio.wait_for(
                     websocket.receive_json(),
                     timeout=self._ws_idle_timeout,
                 )
-                await self._message_router.route(websocket, context, data)
+                should_continue = await self._message_router.route(websocket, context, data)
+                if not should_continue:
+                    break
 
         except WebSocketDisconnect:
             logger.info(

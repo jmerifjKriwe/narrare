@@ -77,13 +77,17 @@ class WritingSessionMessageRouter:
         websocket: WebSocket,
         context: WritingSessionContext,
         data: dict[str, object],
-    ) -> None:
+    ) -> bool:
         """Route a parsed WebSocket message to the appropriate dispatcher.
 
         Args:
             websocket: Active WebSocket connection.
             context: Connection-scoped identifiers and session mode.
             data: Parsed JSON message payload.
+
+        Returns:
+            ``True`` to continue the message loop, ``False`` to end it
+            (currently only ``end_session`` returns ``False``).
         """
         msg_type = data.get("type")
 
@@ -110,6 +114,7 @@ class WritingSessionMessageRouter:
             await self._route_generate_draft(websocket, context)
         elif msg_type == "end_session":
             await websocket.close()
+            return False
         else:
             await websocket.send_json(
                 {
@@ -117,6 +122,8 @@ class WritingSessionMessageRouter:
                     "message": f"Unknown message type: {msg_type}",
                 }
             )
+
+        return True
 
     async def _route_direction(
         self,
