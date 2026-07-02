@@ -569,6 +569,24 @@ jobs:
       - name: Check component markers (data-testid)
         run: cd packages/web && npx tsx scripts/check-testid.ts --fail
 
+      - name: Install Playwright Chromium
+        run: cd packages/web && pnpm playwright install chromium
+
+      - name: VRT Screenshot Tests
+        id: vrt-tests
+        run: |
+          start_time=$(date +%s)
+          trap 'end_time=$(date +%s); echo "duration=$((end_time - start_time))" >> "$GITHUB_OUTPUT"' EXIT
+          cd packages/web && pnpm playwright test --project=vrt
+
+      - name: Upload VRT diffs
+        if: failure() && steps.vrt-tests.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: vrt-test-results
+          path: packages/web/test-results/
+          retention-days: 7
+
       - name: Build
         run: cd packages/web && pnpm build
 
