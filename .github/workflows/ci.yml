@@ -348,6 +348,7 @@ jobs:
           title: "Unit Test Coverage"
           badge-title: "Coverage"
           hide-emoji: true
+          hide-report: true
           report-only-changed-files: true
           remove-links-to-files: true
           remove-links-to-lines: true
