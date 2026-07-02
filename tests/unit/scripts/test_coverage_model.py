@@ -1,9 +1,9 @@
-"""Tests for ``scripts/_coverage_model.py`` — ModuleCoverage.status ratchet logic.
+"""Tests for ``scripts/_coverage_model.py`` — ModuleCoverage.status logic.
 
-The ratchet contract: coverage below the highest-achieved baseline is ALWAYS a
-regression, regardless of whether the RULE-10 target is met. The baseline may
-only go UP. See docs/_shared/CONSTRAINTS.md (RULE-10) and the ratchet semantics
-in ``scripts/check_module_coverage.py``.
+The RULE-10 target is the hard floor: coverage below the target is always
+a failure (blocking in --fail mode). The ratcheted baseline is a soft
+warning: coverage below the baseline (but still above target) is a
+non-blocking regression warning. See docs/_shared/CONSTRAINTS.md (RULE-10).
 """
 
 from __future__ import annotations
@@ -48,25 +48,31 @@ class TestStatusMeetsTarget:
 
 
 class TestStatusRegression:
-    """Coverage below baseline is ALWAYS a regression (the ratchet)."""
+    """Coverage below baseline but above target — a non-blocking warning."""
 
     def test_above_target_but_below_baseline_is_regression(self) -> None:
-        """The bug case: 85% coverage, target=80, baseline=88.
+        """85% coverage, target=80, baseline=88.
 
         The module beats its RULE-10 target (80%) yet sits below its
-        ratcheted baseline (88%). This MUST be a regression — the ratchet is
-        CI-blocking, not advisory.
+        ratcheted baseline (88%). This is a regression WARNING, not a
+        hard failure — the target is met.
         """
         m = _module(line_rate=0.85, baseline=88.0, target=80)
         assert m.status == STATUS_REGRESSION
 
-    def test_below_both_baseline_and_target_is_regression(self) -> None:
-        m = _module(line_rate=0.70, baseline=75.0, target=80)
+    def test_exactly_one_below_baseline_still_regression(self) -> None:
+        """Edge case: coverage 87.9% vs baseline 88.0, target 80 → regression."""
+        m = _module(line_rate=0.879, baseline=88.0, target=80)
         assert m.status == STATUS_REGRESSION
 
 
 class TestStatusBelowTarget:
-    """Coverage above baseline but below target — a warning, not a regression."""
+    """Coverage below the RULE-10 target — a blocking failure."""
+
+    def test_below_both_baseline_and_target_is_below_target(self) -> None:
+        """70% coverage, baseline=75, target=80 → below target (hard fail)."""
+        m = _module(line_rate=0.70, baseline=75.0, target=80)
+        assert m.status == STATUS_BELOW_TARGET
 
     def test_above_baseline_but_below_target_returns_below_target(self) -> None:
         m = _module(line_rate=0.82, baseline=78.0, target=90)

@@ -2,18 +2,20 @@
 """Check per-module coverage against ratcheted baselines and RULE-10 minimums.
 
 Reads pytest's coverage XML report and checks each module against
-(a) its ratcheted baseline (no regression) and (b) its RULE-10 threshold.
+(a) its RULE-10 target (hard floor — blocking) and (b) its ratcheted
+baseline (soft ratchet — warning on regression, non-blocking as long
+as the target is met).
 
 Usage:
-    python scripts/check_module_coverage.py               (ratchet + target warnings)
-    python scripts/check_module_coverage.py --fail         (strict: regression = exit 1)
+    python scripts/check_module_coverage.py               (warnings for regressions + below-target)
+    python scripts/check_module_coverage.py --fail         (strict: below target = exit 1)
     python scripts/check_module_coverage.py --warning-only (all warnings, never fails)
     python scripts/check_module_coverage.py --update-baselines
     python scripts/check_module_coverage.py --json         (machine-readable)
 
 Exit codes:
-    0: All modules at or above baselines (or --warning-only)
-    1: At least one module below baseline (--fail mode only)
+    0: All modules at or above RULE-10 targets (or --warning-only)
+    1: At least one module below its RULE-10 target (--fail mode only)
     2: Coverage XML not found or invalid
 
 See: docs/_shared/CONSTRAINTS.md (RULE-10)
@@ -65,8 +67,8 @@ def _format_text_report(report: CoverageReport) -> str:
     lines.append(
         f"Summary: {report.total} modules — "
         f"{report.passing} meet target, "
-        f"{report.warned} below target (no regression), "
-        f"{report.failed} regressed"
+        f"{report.warned} regressed (above target), "
+        f"{report.failed} below target"
     )
     lines.append("")
 
@@ -108,8 +110,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Exit codes:\n"
-            "  0  All modules at or above baselines (or --warning-only)\n"
-            "  1  At least one module regressed below baseline (--fail only)\n"
+            "  0  All modules at or above RULE-10 targets (or --warning-only)\n"
+            "  1  At least one module below its RULE-10 target (--fail only)\n"
             "  2  Coverage XML not found or invalid\n"
             "\n"
             "RULE-10 targets (aspirational — warnings until met):\n"
@@ -134,7 +136,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--fail",
         action="store_true",
-        help="Exit 1 if any module regressed below its ratcheted baseline",
+        help="Exit 1 if any module is below its RULE-10 target (hard floor)",
     )
     parser.add_argument(
         "--update-baselines",
@@ -201,17 +203,18 @@ def main(argv: list[str] | None = None) -> int:
 
     # ── GitHub Actions annotations ─────────────────────────
     for mod in report.modules:
-        if mod.status == STATUS_REGRESSION:
+        if mod.status == STATUS_BELOW_TARGET:
             annotation = "::error::" if strict else "::warning::"
             print(
-                f"{annotation}REGRESSION: {mod.display_path} coverage "
-                f"{mod.coverage_pct:.1f}% dropped below baseline {mod.baseline:.1f}%"
-            )
-        elif mod.status == STATUS_BELOW_TARGET:
-            print(
-                f"::warning::RULE-10: {mod.display_path} coverage "
+                f"{annotation}BELOW_TARGET: {mod.display_path} coverage "
                 f"{mod.coverage_pct:.1f}% is below {mod.target}% target "
                 f"(baseline: {mod.baseline:.1f}%)"
+            )
+        elif mod.status == STATUS_REGRESSION:
+            print(
+                f"::warning::REGRESSION: {mod.display_path} coverage "
+                f"{mod.coverage_pct:.1f}% dropped below baseline {mod.baseline:.1f}% "
+                f"(still above {mod.target}% target)"
             )
 
     # ── Exit code ──────────────────────────────────────────
