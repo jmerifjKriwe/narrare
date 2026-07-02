@@ -47,6 +47,12 @@ describe("AnalysisPanel", () => {
       // Should render the main container
       expect(document.querySelector("div.flex-1.overflow-y-auto.p-8")).toBeInTheDocument();
     });
+
+    it("labels the analysis view section with its title", () => {
+      render(<AnalysisPanel novelId="novel-1" />);
+
+      expect(screen.getByRole("region", { name: "analysis.title" })).toBeInTheDocument();
+    });
   });
 
   describe("interactions", () => {

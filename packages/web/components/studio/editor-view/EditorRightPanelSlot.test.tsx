@@ -99,6 +99,35 @@ describe("EditorRightPanelSlot", () => {
     returnFocusTo.remove();
   });
 
+  it("returns focus to the opener when the panel closes", () => {
+    const opener = document.createElement("button");
+    opener.textContent = "open";
+    document.body.appendChild(opener);
+    opener.focus();
+    const closePanel = vi.fn(() => opener.focus());
+
+    render(
+      <EditorRightPanelSlot
+        {...baseProps}
+        activePanel="metadata"
+        closePanel={closePanel}
+        returnFocusTo={opener}
+      />,
+    );
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(closePanel).toHaveBeenCalledWith("metadata");
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
+  it("announces panel shell state in a polite status region", () => {
+    render(<EditorRightPanelSlot {...baseProps} activePanel="metadata" />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("shell.panelOpened");
+  });
+
   it("uses one responsive shell for desktop and mobile panel layouts", () => {
     render(<EditorRightPanelSlot {...baseProps} activePanel="metadata" />);
 

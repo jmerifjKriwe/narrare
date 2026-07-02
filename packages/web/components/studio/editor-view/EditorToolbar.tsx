@@ -22,6 +22,7 @@ interface EditorToolbarProps {
   toggleRightPanel: (panel: EditorRightPanelId, requestedBy: EditorRightPanelRequestSource) => void;
   toggleExtractionPanel: () => void;
   openNameGenerator: () => void;
+  onRightPanelOpenerChange: (element: HTMLElement) => void;
 }
 
 export function EditorToolbar({
@@ -31,13 +32,21 @@ export function EditorToolbar({
   toggleRightPanel,
   toggleExtractionPanel,
   openNameGenerator,
+  onRightPanelOpenerChange,
 }: EditorToolbarProps) {
   const t = useTranslations("studio");
 
   if (!editor) return null;
 
   return (
-    <div className="border-b border-border px-8 py-2 bg-card flex items-center gap-1">
+    <div
+      className="border-b border-border px-8 py-2 bg-card flex items-center gap-1"
+      onClickCapture={(event) => {
+        if (!(event.target instanceof HTMLElement)) return;
+        const opener = event.target.closest("button");
+        if (opener) onRightPanelOpenerChange(opener);
+      }}
+    >
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleBold().run()}

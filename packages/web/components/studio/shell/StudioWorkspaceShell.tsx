@@ -36,7 +36,7 @@ export function StudioWorkspaceShell({ children }: StudioWorkspaceShellProps) {
             type="button"
             aria-label={t("sidebar.openMenu")}
             onClick={() => setSidebarOpen(true)}
-            className="rounded-md p-2 text-foreground hover:bg-accent focus:outline-none focus:ring-1 focus:ring-ring"
+            className="rounded-md p-2 text-foreground hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -44,6 +44,9 @@ export function StudioWorkspaceShell({ children }: StudioWorkspaceShellProps) {
         <main className="flex-1 min-h-0 min-w-0" aria-label={t("shell.workspaceMain")}>
           {children}
         </main>
+      </div>
+      <div role="status" aria-live="polite" className="sr-only">
+        {sidebarOpen ? t("shell.panelOpened") : t("shell.panelClosed")}
       </div>
       {sidebarOpen && (
         <div

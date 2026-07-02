@@ -88,7 +88,13 @@ describe("SettingsView", () => {
 
   it("renders settings title", () => {
     render(<SettingsView novelId="novel-1" />);
-    expect(screen.getByText("settings.title")).toBeDefined();
+    expect(screen.getAllByText("settings.title").length).toBeGreaterThan(0);
+  });
+
+  it("labels the settings view section with its title", () => {
+    render(<SettingsView novelId="novel-1" />);
+
+    expect(screen.getByRole("region", { name: "settings.title" })).toBeInTheDocument();
   });
 
   it("renders all category buttons", () => {

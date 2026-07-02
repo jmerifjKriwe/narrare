@@ -13,7 +13,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useKBEntries, useKBEntry, useKBRelationships } from "@/lib/hooks/useKB";
 import { searchParamsHref } from "@/lib/url-state/searchParams";
@@ -163,64 +163,63 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     onSearchQueryChange: handleSearchQueryChange,
   };
 
+  const renderWorldBuildingView = (children: ReactNode) => (
+    <section className="flex-1 min-h-0" aria-labelledby="kb-view-title">
+      <h1 id="kb-view-title" className="sr-only">
+        {t("worldbuilding.title")}
+      </h1>
+      <WorldBuildingLayout {...layoutProps}>{children}</WorldBuildingLayout>
+    </section>
+  );
+
   // --- Third-column rendering ---
 
   if (state.isAssistedSession && state.assistedEntityType) {
-    return (
-      <WorldBuildingLayout {...layoutProps}>
-        <KBAssistedCreationPanel
-          novelId={novelId}
-          entityType={state.assistedEntityType}
-          onComplete={handleCreated}
-          onCancel={handleAssistedCancel}
-          resumeSessionId={state.resumeSessionId}
-        />
-      </WorldBuildingLayout>
+    return renderWorldBuildingView(
+      <KBAssistedCreationPanel
+        novelId={novelId}
+        entityType={state.assistedEntityType}
+        onComplete={handleCreated}
+        onCancel={handleAssistedCancel}
+        resumeSessionId={state.resumeSessionId}
+      />,
     );
   }
 
   if (state.showAnalysis) {
-    return (
-      <WorldBuildingLayout {...layoutProps}>
-        <WorldbuildingAnalysisPanel novelId={novelId} onClose={handleCloseMode} />
-      </WorldBuildingLayout>
+    return renderWorldBuildingView(
+      <WorldbuildingAnalysisPanel novelId={novelId} onClose={handleCloseMode} />,
     );
   }
 
   if (state.showConsistency) {
-    return (
-      <WorldBuildingLayout {...layoutProps}>
-        <ConsistencyCheckPanel
-          novelId={novelId}
-          onClose={handleCloseMode}
-          onEntityClick={(entityId) => {
-            handleSelectEntry(entityId);
-            state.setMode("detail");
-          }}
-        />
-      </WorldBuildingLayout>
+    return renderWorldBuildingView(
+      <ConsistencyCheckPanel
+        novelId={novelId}
+        onClose={handleCloseMode}
+        onEntityClick={(entityId) => {
+          handleSelectEntry(entityId);
+          state.setMode("detail");
+        }}
+      />,
     );
   }
 
   if (state.showGraph) {
-    return (
-      <WorldBuildingLayout {...layoutProps}>
-        <KnowledgeGraphView novelId={novelId} onSelectEntry={handleSelectEntry} />
-      </WorldBuildingLayout>
+    return renderWorldBuildingView(
+      <KnowledgeGraphView novelId={novelId} onSelectEntry={handleSelectEntry} />,
     );
   }
 
   if (state.showWiki) {
-    return (
-      <WorldBuildingLayout {...layoutProps}>
-        <WikiOverviewPanel novelId={novelId} onClose={handleCloseMode} />
-      </WorldBuildingLayout>
+    return renderWorldBuildingView(
+      <WikiOverviewPanel novelId={novelId} onClose={handleCloseMode} />,
     );
   }
 
   // Default: detail panel + resume dialog
-  return (
-    <WorldBuildingLayout {...layoutProps}>
+  return renderWorldBuildingView(
+    <>
       <KBDetailPanel
         novelId={novelId}
         entry={selectedEntry ?? null}
@@ -243,6 +242,6 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
         cancelLabel={t("kb.interview.startNew")}
         onConfirm={state.handleResumeInterview}
       />
-    </WorldBuildingLayout>
+    </>,
   );
 }

@@ -152,7 +152,7 @@ export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="p-3 border-b border-border space-y-0.5">
+      <nav aria-label={t("sidebar.navigation")} className="p-3 border-b border-border space-y-0.5">
         {navItems.map((item) => {
           const active = isActiveNav(item.href);
           return (

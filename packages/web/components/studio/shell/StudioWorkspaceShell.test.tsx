@@ -50,6 +50,27 @@ describe("StudioWorkspaceShell", () => {
     expect(screen.getByTestId("feature-tour")).toBeInTheDocument();
   });
 
+  it("uses main and navigation landmarks for workspace chrome", () => {
+    render(
+      <StudioWorkspaceShell>
+        <div>workspace</div>
+      </StudioWorkspaceShell>,
+    );
+
+    expect(screen.getByRole("main", { name: "shell.workspaceMain" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation")).toBeInTheDocument();
+  });
+
+  it("announces mobile drawer state changes in a polite status region", () => {
+    render(<StudioWorkspaceShell>workspace</StudioWorkspaceShell>);
+
+    expect(screen.getByRole("status")).toHaveTextContent("shell.panelClosed");
+
+    fireEvent.click(screen.getByRole("button", { name: "sidebar.openMenu" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent("shell.panelOpened");
+  });
+
   it("opens the mobile drawer from the menu button and closes it from the drawer callback", () => {
     render(<StudioWorkspaceShell>workspace</StudioWorkspaceShell>);
 

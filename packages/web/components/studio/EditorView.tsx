@@ -80,6 +80,9 @@ export function EditorView({ novelId }: EditorViewProps) {
     () => parseEditorRightPanelParam(new URLSearchParams(searchParamsSnapshot).get("panel")),
     [searchParamsSnapshot],
   );
+  const rememberRightPanelOpener = useCallback((element: HTMLElement) => {
+    openerRef.current = element;
+  }, []);
 
   useEffect(() => {
     if (parsedUrlPanel !== null && activeRightPanel !== parsedUrlPanel) {
@@ -133,6 +136,7 @@ export function EditorView({ novelId }: EditorViewProps) {
         toggleRightPanel={toggleRightPanel}
         toggleExtractionPanel={toggleExtractionPanel}
         openNameGenerator={() => setNameGeneratorOpen(true)}
+        onRightPanelOpenerChange={rememberRightPanelOpener}
       />
       <div className="flex-1 flex min-h-0">
         <EditorWorkspace

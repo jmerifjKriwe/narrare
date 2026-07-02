@@ -115,6 +115,12 @@ describe("WorldBuilding", () => {
     expect(screen.getByTestId("kb-category-sidebar")).toBeDefined();
   });
 
+  it("labels the worldbuilding view section with its title", () => {
+    render(<WorldBuilding novelId="novel-1" />);
+
+    expect(screen.getByRole("region", { name: "worldbuilding.title" })).toBeInTheDocument();
+  });
+
   it("renders KBEntryList by default", () => {
     render(<WorldBuilding novelId="novel-1" />);
 

@@ -64,10 +64,12 @@ export function AnalysisPanel({ novelId }: AnalysisPanelProps) {
 
   return (
     <div className="flex-1 overflow-y-auto p-8">
-      <div className="max-w-4xl mx-auto">
+      <section className="max-w-4xl mx-auto" aria-labelledby="analysis-view-title">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-medium mb-2">{t("analysis.title")}</h1>
+          <h1 id="analysis-view-title" className="text-2xl font-medium mb-2">
+            {t("analysis.title")}
+          </h1>
           <p className="text-muted-foreground">{t("analysis.description")}</p>
         </div>
 
@@ -175,7 +177,7 @@ export function AnalysisPanel({ novelId }: AnalysisPanelProps) {
             );
           })}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

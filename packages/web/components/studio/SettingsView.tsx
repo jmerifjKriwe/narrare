@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AboutTab } from "@/components/studio/settings/AboutTab";
 import { AiTab } from "@/components/studio/settings/AiTab";
@@ -32,6 +33,7 @@ interface SettingsViewProps {
 // --- Main Component ---
 
 export function SettingsView({ novelId }: SettingsViewProps) {
+  const t = useTranslations("studio");
   const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
@@ -122,11 +124,14 @@ export function SettingsView({ novelId }: SettingsViewProps) {
   }
 
   return (
-    <div className="flex-1 flex h-full">
+    <section className="flex-1 flex h-full" aria-labelledby="settings-view-title">
+      <h1 id="settings-view-title" className="sr-only">
+        {t("settings.title")}
+      </h1>
       <SettingsSidebar activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
       <div className="flex-1 overflow-y-auto bg-background p-8">
         <div className="max-w-3xl">{renderContent()}</div>
       </div>
-    </div>
+    </section>
   );
 }

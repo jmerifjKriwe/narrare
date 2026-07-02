@@ -191,6 +191,9 @@ export function EditorRightPanelSlot({
       <h2 id="editor-right-panel-title" className="sr-only">
         {t("shell.editorRightPanel")}
       </h2>
+      <div role="status" aria-live="polite" className="sr-only">
+        {t("shell.panelOpened")}
+      </div>
       {panelContent}
     </section>
   );
