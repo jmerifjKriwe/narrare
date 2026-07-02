@@ -61,7 +61,6 @@
       "!**/coverage",
       "!**/playwright-report",
       "!**/test-results",
-      "!**/playwright.config.ts",
       "!**/test-results/"
     ]
   },
