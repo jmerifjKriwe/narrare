@@ -96,11 +96,7 @@ export function useAiTabData() {
     });
   }
 
-  function handleSystemTimeoutsChange(values: {
-    ws_timeout?: number;
-    retry_max_attempts?: number;
-    retry_base_delay?: number;
-  }) {
+  function handleSystemTimeoutsChange(values: { ws_timeout?: number }) {
     updateTokenLimitsMutation.mutate(values);
   }
 

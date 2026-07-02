@@ -81,9 +81,11 @@ RULE10_TARGETS: dict[str, int] = {
 _SKIP_PACKAGES: set[str] = {".", "__pycache__"}
 
 # Status constants.
+# BELOW_TARGET is the hard floor (RULE-10 target) — blocking in --fail mode.
+# REGRESSION is below baseline but above target — non-blocking warning.
 STATUS_MEETS_TARGET = "PASS"
-STATUS_BELOW_TARGET = "WARN"
-STATUS_REGRESSION = "FAIL"
+STATUS_REGRESSION = "WARN"
+STATUS_BELOW_TARGET = "FAIL"
 
 
 # ── Source classification ──────────────────────────────────────
@@ -174,14 +176,14 @@ class ModuleCoverage:
 
     @property
     def status(self) -> str:
-        # Ratchet first: coverage below the highest-achieved baseline is ALWAYS
-        # a regression, even when the RULE-10 target is met. The baseline may
-        # only go UP. Checking the target first made the ratchet advisory only.
+        # Target is the hard floor: below the RULE-10 target is always a
+        # failure, regardless of baseline. The baseline is a ratchet — a
+        # drop below baseline (but still above target) is only a warning.
+        if self.coverage_pct < self.target:
+            return STATUS_BELOW_TARGET
         if self.coverage_pct < self.baseline:
             return STATUS_REGRESSION
-        if self.coverage_pct >= self.target:
-            return STATUS_MEETS_TARGET
-        return STATUS_BELOW_TARGET
+        return STATUS_MEETS_TARGET
 
     @property
     def meets_target(self) -> bool:
@@ -208,11 +210,11 @@ class CoverageReport:
 
     @property
     def warned(self) -> int:
-        return sum(1 for m in self.modules if m.status == STATUS_BELOW_TARGET)
+        return sum(1 for m in self.modules if m.status == STATUS_REGRESSION)
 
     @property
     def failed(self) -> int:
-        return sum(1 for m in self.modules if m.status == STATUS_REGRESSION)
+        return sum(1 for m in self.modules if m.status == STATUS_BELOW_TARGET)
 
 
 # ── XML parsing ────────────────────────────────────────────────

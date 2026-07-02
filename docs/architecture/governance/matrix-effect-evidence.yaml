@@ -1,0 +1,183 @@
+# =============================================================================
+# Narrare Configuration Matrix — Per-Setting Effect-Integrity Evidence (ADR-061 P1)
+# =============================================================================
+# Machine-readable manifest binding each in-scope Configuration Adoption Matrix
+# ``setting_id`` (user/project classification OR adopted lifecycle) to:
+#   * the real runtime consumer code location (file + symbol), and
+#   * the named test that proves changing the value changes behaviour.
+#
+# Loaded by: scripts/check_matrix_effect_integrity.py
+# ADR:  docs/architecture/decisions/ADR-061-matrix-effect-integrity-hardening.md
+#
+# WARNING-only baseline (ADR-061 P1 phasing): the checker asserts each cited
+# consumer file/symbol and test exist on disk (presence AND truth — closes
+# RC1) and that the cited test references THIS setting (closes the sibling
+# evidence gap). Unproven entries become governed debt, reported but
+# non-blocking. P1 ratchets to blocking in a follow-up once the baseline is
+# clean. ``verification`` records HOW the entry was proven:
+#   graph    — author traced the consumer data-flow via the code knowledge
+#              graph AT AUTHORING TIME (consumer symbol resolves and the value
+#              reaches it). The checker does NOT re-verify the graph at runtime;
+#              it performs the same structural file/symbol/test checks as
+#              ``manifest`` entries. P6 (deferred) will add runtime graph
+#              verification and promote this from an authoring claim to a
+#              checker-verified property.
+#   manifest — evidence-manifest fallback; the checker asserts the cited
+#              file/symbol/test exist on disk. The follow-up ratchet upgrades
+#              these to runtime data-flow checks.
+# =============================================================================
+
+version: "1.0.0"
+adr: "ADR-061"
+description: >-
+  Per-setting effect-integrity evidence for the Configuration Adoption Matrix
+  (ADR-061 P1). WARNING-only baseline.
+
+# ── ADR-061 P2 composite allowlist ────────────────────────────────────────────
+# Architecture-approved composite setting_ids that MAY aggregate multiple
+# inseparable settings. EACH must ALSO carry a ``composite_rationale`` on its
+# matrix row. Seed: EMPTY — the post-ADR-060 matrix has no composites.
+composite_allowlist: []
+
+# ── Per-setting evidence ──────────────────────────────────────────────────────
+entries:
+  # ── Author graph-traced (data-flow verified at authoring time) ─────────────
+  # NB: the checker performs structural file/symbol/test verification for ALL
+  # entries (graph and manifest alike). The ``graph`` label records that the
+  # author additionally traced the consumer data-flow via the code knowledge
+  # graph — it does NOT mean the checker itself queries the graph at runtime.
+  - setting_id: ws_idle_timeout
+    verification: graph
+    consumer_file: apps/api/narrare/writing/ws_handler.py
+    consumer_symbol: WritingSessionHandler
+    test_file:
+      # Behavioural: ws_idle_timeout_seconds=900 -> ws_idle_timeout==900 reaches
+      # WritingSessionHandler (router_sessions_basic). Consumer wiring (ws_handler).
+      - tests/unit/api/writing/test_router_sessions_basic.py
+      - tests/unit/api/writing/test_ws_handler.py
+    notes: >-
+      WritingSessionHandler.__init__(ws_idle_timeout=1800) drives the
+      _handle_timeout wait; author graph-traced resolver (router_sessions.py) +
+      behavioural effect test. NB: the matrix also cites test_ws_turn_budget.py,
+      which tests WritingTurnService token budgets (NOT idle timeout) — surfaced
+      by this checker as a sibling-evidence citation to reconcile in a follow-up.
+
+  - setting_id: llm_transport_retry
+    verification: graph
+    consumer_file: packages/core/narrare_core/llm/_transport_retry.py
+    consumer_symbol: get_transport_max_retries
+    test_file:
+      - tests/unit/core/llm/test_transport_retry.py
+    notes: >-
+      get_transport_max_retries() is called by all 7 provider factories
+      (anthropic/openai/google/groq/ollama/openrouter/zai); behavioural test
+      proves changing the governed value changes observable HTTP attempt count.
+
+  # ── Manifest-grounded (file/symbol/test asserted on disk) ──────────────────
+  - setting_id: output_limit_enforcement
+    verification: manifest
+    consumer_file: packages/core/narrare_core/llm/run_limits.py
+    consumer_symbol: DefaultRunLimitResolver
+    test_file:
+      - tests/unit/core/llm/test_run_limits.py
+    notes: DefaultRunLimitResolver.resolve -> ModelRegistry run/stream max_tokens.
+
+  - setting_id: tier_percentages_consumption
+    verification: manifest
+    consumer_file: packages/core/narrare_core/writing/context_assembler.py
+    consumer_symbol: WritingContextAssembler
+    test_file:
+      - tests/unit/core/writing/test_context_assembler_tier_overrides.py
+    notes: tier_overrides -> TokenBudgetManager -> emitted tier budgets.
+
+  - setting_id: configuration_adoption_matrix
+    verification: manifest
+    consumer_file: scripts/governance/configuration_matrix.py
+    consumer_symbol: validate_matrix
+    test_file:
+      - tests/unit/scripts/governance/test_configuration_matrix.py
+    notes: The matrix checker is itself the governed consumer (RULE-07).
+
+  - setting_id: token_profile_vocabulary
+    verification: manifest
+    consumer_file: packages/core/narrare_core/llm/token_profiles.py
+    consumer_symbol: TokenLimitProfile
+    test_file:
+      - tests/unit/core/llm/test_token_profiles.py
+    notes: Canonical public profile vocabulary + preset limits.
+
+  - setting_id: token_settings_ui_api_parity
+    verification: manifest
+    consumer_file: apps/api/narrare/settings/token_limits/metadata_service.py
+    consumer_symbol: TokenLimitsMetadataService
+    test_file:
+      - tests/unit/api/settings/test_cr08_p1_token_limit_metadata.py
+    notes: Shared token-settings metadata (absolute + ux-recommended caps).
+
+  - setting_id: model_limit_calibration
+    verification: manifest
+    consumer_file: packages/core/narrare_core/llm/model_calibration.py
+    consumer_symbol: ModelLimitCalibration
+    test_file:
+      - tests/unit/core/llm/test_model_limit_calibration.py
+    notes: Typed calibration source status capping known provider max.
+
+  - setting_id: model_suitability_policy
+    verification: manifest
+    consumer_file: packages/core/narrare_core/llm/model_suitability.py
+    consumer_symbol: evaluate_model_suitability
+    test_file:
+      - tests/unit/core/llm/test_model_suitability.py
+    notes: Advisory/warning/hard_block severity from intent + calibration.
+
+  - setting_id: inline_suggest_cap
+    verification: manifest
+    consumer_file: packages/core/narrare_core/llm/run_limits.py
+    consumer_symbol: SUGGEST_MAX_TOKENS
+    test_file:
+      - tests/unit/core/llm/test_run_limits.py
+    notes: SUGGEST_MAX_TOKENS=60 named UX-latency cap (ADR-045 D3 C).
+
+  - setting_id: setup_fallback_catalogs
+    verification: manifest
+    consumer_file: apps/api/narrare/setup/constants.py
+    consumer_symbol: OLLAMA_DEFAULT_URL
+    test_file:
+      # Evidence of record is the named-constant source (no dedicated
+      # behavioural test) — structural proof; add a behavioural test at the
+      # P1->blocking ratchet.
+      - apps/api/narrare/setup/constants.py
+    notes: >-
+      OLLAMA_DEFAULT_URL single-source constant; structural evidence (consumer
+      file references the symbol). Candidate for a behavioural test at the
+      P1 ratchet.
+
+  - setting_id: system_background_model_defaults
+    verification: manifest
+    consumer_file: apps/api/narrare/_app/dependencies_services.py
+    consumer_symbol: SystemModelCategory
+    test_file:
+      - tests/unit/api/_app/test_dependencies_services.py
+    notes: Typed SystemModelCategory enum -> build_system_default_config.
+
+  - setting_id: default_model_per_feature
+    verification: manifest
+    consumer_file: apps/api/narrare/settings/model_routing_resolver.py
+    consumer_symbol: ModelRoutingResolverImpl
+    test_file:
+      # Evidence of record is the resolver implementation (cascade reaches
+      # runtime) — structural proof; add a behavioural test at the P1->blocking
+      # ratchet.
+      - apps/api/narrare/settings/model_routing_resolver.py
+    notes: >-
+      ModelRoutingResolverImpl cascade (project intent -> ... -> fail-fast);
+      structural evidence (resolver file references the symbol). Candidate for
+      a behavioural test at the P1 ratchet.
+
+  - setting_id: status_doc_taxonomy
+    verification: manifest
+    consumer_file: scripts/governance/_matrix_review_gate.py
+    consumer_symbol: validate_review_finding_matrix_coverage
+    test_file:
+      - tests/unit/scripts/governance/test_configuration_matrix_review_gate.py
+    notes: Review-finding coverage gate enforces the status taxonomy.

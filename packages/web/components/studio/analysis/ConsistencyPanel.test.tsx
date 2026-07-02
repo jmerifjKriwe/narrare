@@ -16,6 +16,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConsistencyResponse } from "@/lib/api/analysis";
+import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
 import { ConsistencyPanel } from "./ConsistencyPanel";
 
 // ---------------------------------------------------------------------------
@@ -316,7 +317,13 @@ describe("ConsistencyPanel", () => {
   // -------------------------------------------------------------------------
 
   it("renders error state with retry button when check fails", async () => {
-    const error = { userMessage: "Server error" };
+    const error: AIErrorResponse = {
+      kind: "network",
+      i18nKey: "aiActions.errorConnection",
+      userMessage: "Server error",
+      retryable: true,
+      cause: new Error("Server error"),
+    };
     mockHook = {
       isIdle: false,
       isError: true,

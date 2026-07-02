@@ -333,6 +333,7 @@ check-architecture:
     uv run python scripts/check_architecture.py
     uv run python scripts/check_exception_baseline.py
     uv run python scripts/check_prompt_surface_contract.py
+    uv run python scripts/check_matrix_effect_integrity.py
 
 # Run ruff linter (with auto-fix)
 lint:
@@ -488,6 +489,19 @@ check-configuration-matrix:
     @echo "📐 Checking configuration adoption matrix (ADR-051)..."
     uv run python scripts/check_configuration_matrix.py
 
+# Check matrix effect-integrity (ADR-061): P2 aggregation prohibition (BLOCKING,
+# one setting per row) + P1 per-setting effect-integrity (WARNING-only baseline).
+check-matrix-effect-integrity:
+    @echo "🛡️  Checking matrix effect-integrity (ADR-061 P1+P2)..."
+    uv run python scripts/check_matrix_effect_integrity.py
+
+# Check governance drift (ADR-062): P3 doc↔status-SSOT consistency + P5
+# review→registry linking. WARNING-only baseline (always exits 0); ratchets to
+# blocking in a follow-up once the baseline is proven stable.
+check-governance-drift:
+    @echo "🔍 Checking governance drift (ADR-062 P3+P5, WARNING-only)..."
+    uv run python scripts/check_governance_drift.py
+
 # List all bundled prompt modes with locale coverage
 prompt-list:
     #!/usr/bin/env bash
@@ -606,6 +620,6 @@ hooks-update:
 #
 # check-ssot is warn-only: it reports discrepancies but does not block the merge.
 # The `|| true` prevents its non-zero exit code from failing the entire recipe.
-check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-configuration-matrix check-models check-governance check-health
+check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-configuration-matrix check-matrix-effect-integrity check-governance-drift check-models check-governance check-health
     -uv run python scripts/check_current_state_facts.py || true
     @echo "✅ All checks passed — ready to merge"

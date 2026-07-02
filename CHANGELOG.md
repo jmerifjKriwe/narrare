@@ -169,6 +169,13 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   - Co-Author: `FLOW` focus area removed from `CoAuthorFocus` enum (not implemented)
   - Co-Author: `character_id` removed from `CoAuthorRequest` (deferred for future KB context assembly)
 
+- **SET-005 / ADR-060 — LLM retry settings removed from user/project configuration**
+  - `retry_max_attempts` and `retry_base_delay` are removed from the user/project token-limit surface: frontend inputs (`SystemTimeouts`), frontend types (`types/settings.ts`), API DTO (`token_limits/schemas.py`), router mapping, validator allow-list, DB override keys, and the resolver (`TokenLimitsService`). They were a false control — resolved but never consumed by any LLM/SSE/WebSocket retry boundary (RULE-18b violation #1).
+  - LLM transport retry is now governed at the provider layer (`core/llm/_providers/`) via the operator env var `NARRARE_LLM_TRANSPORT_MAX_RETRIES` (default `2`), read by `core/llm/_transport_retry.py::get_transport_max_retries()` and applied as the SDK client `max_retries` (uniform for `run()` and `stream()`).
+  - The Gateway v1 `with_retry` / `RetryConfig` vestige (`packages/core/narrare_core/llm/retry.py`) is retired (zero production callers).
+  - `ws_timeout` (WebSocket idle timeout) is **unchanged** — it has a real runtime consumer (`WritingSessionHandler`).
+  - Migration: no destructive migration required. Any stored `retry_*` DB overrides are orphan keys, ignored gracefully by the resolver's unknown-key drop behavior; operators should use `NARRARE_LLM_TRANSPORT_MAX_RETRIES` instead.
+
 ---
 
 ## [0.1.0] - 2026-05-12

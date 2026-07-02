@@ -124,19 +124,13 @@ class Settings(BaseSettings):
     )
     """WebSocket connection idle timeout in seconds (default: 30 min)."""
 
-    # ---------------------------------------------------------------------------
-    # Retry (optional override — retry.py defaults used when unset)
-    # ---------------------------------------------------------------------------
-    retry_max_attempts: int = Field(
-        default=3,
-        alias="NARRARE_RETRY_MAX_ATTEMPTS",
-    )
-    """Default maximum retry attempts for LLM calls."""
-    retry_base_delay: float = Field(
-        default=1.0,
-        alias="NARRARE_RETRY_BASE_DELAY",
-    )
-    """Base delay in seconds for retry backoff."""
+    # NOTE (ADR-060): operator-level LLM transport retry is NO LONGER a
+    # token-limits / app-Settings concern. It is governed at the provider layer
+    # (``packages/core/narrare_core/llm/_providers/``) via the operator env
+    # ``NARRARE_LLM_TRANSPORT_MAX_RETRIES``. The former ``retry_max_attempts`` /
+    # ``retry_base_delay`` app-Settings fields (envs ``NARRARE_RETRY_*``) were a
+    # false control with no runtime consumer and have been removed. Do not
+    # re-add per-user/project retry here — see ADR-060 (RULE-18b).
 
     # ---------------------------------------------------------------------------
     # Consistency Token Limits (Operator-Config)

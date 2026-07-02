@@ -35,8 +35,6 @@ class _FakeConfig:
 
     default_max_tokens: int = 4096
     ws_idle_timeout_seconds: int = 1800
-    retry_max_attempts: int = 3
-    retry_base_delay: float = 1.0
     consistency_max_chapter_tokens: int = 2000
     consistency_max_kb_entries: int = 100
     default_max_selection_words: int = 2000
@@ -196,8 +194,6 @@ class TestGetResolvedLimits:
         assert limits.output_limit == 4096
         assert limits.token_profile == "balanced"
         assert limits.ws_timeout == 1800
-        assert limits.retry_max_attempts == 3
-        assert limits.retry_base_delay == 1.0
 
     async def test_user_overrides_override_code_defaults(
         self, store: _FakeStore, service: Any
@@ -217,7 +213,7 @@ class TestGetResolvedLimits:
         """Project overrides apply when user has no overrides."""
         user_id = "user_no_overrides"
         project_id = "project_1"
-        store.seed_project(project_id, {"ws_timeout": 3600, "retry_max_attempts": 5})
+        store.seed_project(project_id, {"ws_timeout": 3600})
 
         limits = await service.get_resolved_limits(
             user_id=user_id,
@@ -225,9 +221,31 @@ class TestGetResolvedLimits:
         )
 
         assert limits.ws_timeout == 3600
-        assert limits.retry_max_attempts == 5
         assert limits.output_limit == 4096
         assert limits.token_profile == "balanced"
+
+    async def test_legacy_retry_overrides_are_ignored(
+        self, store: _FakeStore, service: Any
+    ) -> None:
+        """ADR-060: legacy persisted ``retry_*`` keys must be silently dropped.
+
+        Transport retry is no longer a token-limits override. A stored
+        ``retry_max_attempts`` / ``retry_base_delay`` JSONB key left over from a
+        pre-ADR-060 row must not raise and must not surface on the resolved
+        ``TokenLimitOverrides`` (unknown-key drop in ``_merge_overrides``). A
+        sibling real override (``ws_timeout``) alongside them still resolves.
+        """
+        user_id = "legacy_retry_user"
+        store.seed_user(
+            user_id,
+            {"ws_timeout": 600, "retry_max_attempts": 9, "retry_base_delay": 7.5},
+        )
+
+        limits = await service.get_resolved_limits(user_id=user_id)
+
+        assert limits.ws_timeout == 600
+        assert not hasattr(limits, "retry_max_attempts")
+        assert not hasattr(limits, "retry_base_delay")
 
     async def test_user_overrides_win_over_project(self, store: _FakeStore, service: Any) -> None:
         """User overrides have higher priority than project overrides."""
@@ -275,17 +293,6 @@ class TestGetResolvedLimits:
         limits = await service.get_resolved_limits(user_id=user_id)
 
         assert limits.tier_percentages == custom_tiers
-
-    async def test_retry_base_delay_from_env(
-        self, store: _FakeStore, fake_config: _FakeConfig, service: Any
-    ) -> None:
-        """Env retry_base_delay is used when no overrides exist."""
-        fake_config.retry_base_delay = 2.5
-        user_id = "retry_user"
-
-        limits = await service.get_resolved_limits(user_id=user_id)
-
-        assert limits.retry_base_delay == 2.5
 
     async def test_project_id_none_skips_project_layer(self, service: Any) -> None:
         """When project_id is None, no project overrides are loaded."""

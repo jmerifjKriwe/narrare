@@ -484,12 +484,9 @@
       },
       "systemTimeouts": {
         "title": "System Timeouts",
-        "description": "Connection and retry behavior for AI operations",
+        "description": "Connection timeout for AI operations",
         "wsTimeout": "WebSocket Timeout (seconds)",
-        "wsTimeoutHint": "Minimum 60 seconds",
-        "retryAttempts": "Max Retry Attempts",
-        "retryDelay": "Base Retry Delay (seconds)",
-        "retryDelayHint": "Exponential backoff from this value"
+        "wsTimeoutHint": "Minimum 60 seconds"
       }
     },
     "prompts": {

@@ -228,8 +228,7 @@ Preferred over the deprecated `Graph()` constructor. Factory function:
 Architektur- oder Adoption-Schulden, die explizit registriert, owned und durch
 CI-Checks überwacht werden. Anders als "tolerierte" Schulden haben governed debts
 eine Ratchet-Baseline und dürfen nicht wachsen — jeder neue oder unapproved Gap
-fails the gate. Governed debt ≠ `PASS`. Beispiele: `INLINE-FEATURE-PROMPT`-Baseline,
-character_voice runtime adoption (static-verified, runtime evidence pending CI).
+fails the gate. Governed debt ≠ `PASS`. Beispiele: `INLINE-FEATURE-PROMPT`-Baseline.
 
 **Gateway (LLM Gateway)**
 The single entry point for all LLM calls in the system.
@@ -642,6 +641,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-06-30 — Corrected "Voice Check" definition to match ADR-057/WRITE-010 (character dialogue checked against stored per-character voice profiles, not the author's style profile). 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
+> Last updated: 2026-07-01 — Removed stale `character_voice` governed-debt example (it is runtime-verified per ADR-055/057, no longer governed debt). 2026-06-30 — Corrected "Voice Check" definition to match ADR-057/WRITE-010 (character dialogue checked against stored per-character voice profiles, not the author's style profile). 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist

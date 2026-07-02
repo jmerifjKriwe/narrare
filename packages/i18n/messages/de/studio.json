@@ -484,12 +484,9 @@
       },
       "systemTimeouts": {
         "title": "System-Timeouts",
-        "description": "Verbindungs- und Retry-Verhalten für KI-Operationen",
+        "description": "Verbindungs-Timeout für KI-Operationen",
         "wsTimeout": "WebSocket-Timeout (Sekunden)",
-        "wsTimeoutHint": "Minimum 60 Sekunden",
-        "retryAttempts": "Max. Wiederholungsversuche",
-        "retryDelay": "Basis-Wiederholungsverzögerung (Sekunden)",
-        "retryDelayHint": "Exponentielles Backoff ab diesem Wert"
+        "wsTimeoutHint": "Minimum 60 Sekunden"
       }
     },
     "prompts": {

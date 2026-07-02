@@ -8,14 +8,11 @@ Exercises the actual ``_make_anthropic`` factory body to verify:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
+import pytest
+from pydantic_ai.exceptions import UserError
 from pydantic_ai.models.anthropic import AnthropicModel
 
 from narrare_core.llm._providers.anthropic import _make_anthropic
-
-if TYPE_CHECKING:
-    import pytest
 
 
 class TestMakeAnthropic:
@@ -47,3 +44,29 @@ class TestMakeAnthropic:
         model = _make_anthropic("claude-opus-4-20250514")
         assert isinstance(model, AnthropicModel)
         assert model.model_name == "claude-opus-4-20250514"
+
+    def test_no_credentials_raises_user_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """No key arg and no env var -> Anthropic requires a credential at construction.
+
+        Unlike OpenAI, ``AnthropicProvider`` does not accept a null key, so
+        construction fails fast with a pydantic-ai ``UserError``. This is the
+        correct fail-fast behaviour for a provider that cannot operate without
+        credentials.
+        """
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        with pytest.raises(UserError):
+            _make_anthropic("claude-sonnet-4-5-20251020")
+
+    def test_no_credentials_with_base_url_also_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """base_url alone is insufficient for Anthropic - a key is mandatory.
+
+        Deterministically exercises the no-credential + base_url branch (the
+        non-deterministic ``test_with_base_url_returns_anthropic_model`` may
+        route through the credential branch when ANTHROPIC_API_KEY is set in
+        the ambient environment).
+        """
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        with pytest.raises(UserError):
+            _make_anthropic("claude-sonnet-4-5", base_url="https://proxy.anthropic.example.com")

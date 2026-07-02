@@ -59,7 +59,8 @@ expected_setting_ids:
   - name_dedup_context_cap            # CR-AUFG-08-13
   - sse_connect_retry_defaults        # CR-AUFG-08-13
   # P4 / covered-by-existing
-  - websocket_idle_retry_cascade      # settings cascade + UI
+  - ws_idle_timeout                    # WebSocket idle timeout (ADR-060 split)
+  - llm_transport_retry                # provider-SDK transport max_retries (ADR-060)
   - default_model_per_feature         # ModelRoutingResolverImpl cascade
   - mem0_defaults                     # Settings/mem0 config
   - feature_flags_kill_switches       # per current config paths
@@ -653,25 +654,61 @@ entries:
       enforcement tests delivered in CR-AUFG-08-13.
 
   # ── P4 / covered-by-existing ──────────────────────────────────────────────
-  - setting_id: websocket_idle_retry_cascade
+  # ADR-060 split: the former aggregated `websocket_idle_retry_cascade` entry
+  # covered three settings while its evidence reached only the idle timeout.
+  # Decomposed into per-setting rows so RULE-18b is enforceable per entry.
+  - setting_id: ws_idle_timeout
     classification: operator
     lifecycle: adopted
     source: >-
       Settings.ws_idle_timeout_seconds -> TokenLimitsService ->
       WritingSessionHandler.
-    resolver_service: TokenLimitsService
+    resolver_service: TokenLimitsService.get_resolved_limits
     runtime_consumer: WritingSessionHandler (WebSocket idle timeout).
     effect_semantics: >-
-      Controls WebSocket idle timeout and retry cascade.
-    fallback_policy: Operator/user/project via token limits.
+      Controls the WebSocket idle-timeout (how long an idle writing session
+      is kept open before the handler tears it down).
+    fallback_policy: >-
+      Operator env (Settings.ws_idle_timeout_seconds) overridden by resolved
+      token-limit overrides.
     enforcement_evidence:
       - "tests/unit/api/writing/test_ws_turn_budget.py"
       - "tests/unit/api/writing/test_ws_handler.py"
     cross_layer_evidence:
-      - "Settings -> TokenLimitsService -> handler cascade."
+      - "Settings -> TokenLimitsService -> WritingSessionHandler cascade."
     phase: P4
     rationale: >-
-      Settings cascade reaches the handler with tests; adopted.
+      Real runtime consumer with regression evidence; adopted.
+
+  - setting_id: llm_transport_retry
+    classification: operator
+    lifecycle: adopted
+    source: >-
+      NARRARE_LLM_TRANSPORT_MAX_RETRIES ->
+      core/llm/_transport_retry.py::get_transport_max_retries() ->
+      provider SDK client max_retries.
+    resolver_service: >-
+      Provider factories (packages/core/narrare_core/llm/_providers/) call
+      get_transport_max_retries() at client construction.
+    runtime_consumer: >-
+      SDK client max_retries (OpenAI/Anthropic/Google/Groq/Ollama/OpenRouter/
+      Z.AI) — uniform for ModelRegistry.run() and ModelRegistry.stream().
+    effect_semantics: >-
+      SDK transport-retry attempt count on transient 429 / 5xx / timeout at
+      connection / first-token establishment.
+    fallback_policy: >-
+      Operator env NARRARE_LLM_TRANSPORT_MAX_RETRIES; governed default 2
+      (TRANSPORT_MAX_RETRIES_DEFAULT) when unset/invalid.
+    enforcement_evidence:
+      - "tests/unit/core/llm/test_transport_retry.py"
+    cross_layer_evidence:
+      - "ADR-060: transport retry governed at the provider layer; the removed
+        user/project retry_* surface never reached a runtime boundary."
+    phase: P4
+    rationale: >-
+      Transport retry is governed at the provider layer per ADR-060 (not
+      user/project-configurable). Proven at the runtime boundary by the
+      effect test; uniform for run() and stream().
 
   - setting_id: default_model_per_feature
     classification: project

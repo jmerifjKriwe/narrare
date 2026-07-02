@@ -170,19 +170,23 @@ def test_aggregate_all_pass_with_mocks(tmp_path: Path) -> None:
         patch("governance.ssot_aggregation._check_current_state_facts") as mock_csf,
         patch("governance.ssot_aggregation._check_registry_drift") as mock_reg,
         patch("governance.ssot_aggregation._check_finding_coverage") as mock_fc,
+        patch("governance.ssot_aggregation._check_status_consistency") as mock_sc,
+        patch("governance.ssot_aggregation._check_review_registry_link") as mock_rr,
     ):
         mock_doc.return_value = _make_result("check_doc_drift", HealthStatus.PASS)
         mock_gate.return_value = _make_result("check_gate_drift", HealthStatus.PASS)
         mock_csf.return_value = _make_result("check_current_state_facts", HealthStatus.PASS)
         mock_reg.return_value = _make_result("check_registry_drift", HealthStatus.PASS)
         mock_fc.return_value = _make_result("finding_coverage", HealthStatus.PASS)
+        mock_sc.return_value = _make_result("status_consistency", HealthStatus.PASS)
+        mock_rr.return_value = _make_result("review_registry_link", HealthStatus.PASS)
 
         from governance.ssot_aggregation import aggregate_ssot_gate_health
 
         report = aggregate_ssot_gate_health(tmp_path)
 
     assert report.status == HealthStatus.PASS
-    assert len(report.checkers) == 5
+    assert len(report.checkers) == 7
     assert report.total_issues == 0
 
 
@@ -194,6 +198,8 @@ def test_aggregate_one_warn_with_mocks(tmp_path: Path) -> None:
         patch("governance.ssot_aggregation._check_current_state_facts") as mock_csf,
         patch("governance.ssot_aggregation._check_registry_drift") as mock_reg,
         patch("governance.ssot_aggregation._check_finding_coverage") as mock_fc,
+        patch("governance.ssot_aggregation._check_status_consistency") as mock_sc,
+        patch("governance.ssot_aggregation._check_review_registry_link") as mock_rr,
     ):
         mock_doc.return_value = _make_result(
             "check_doc_drift", HealthStatus.GOVERNED_DEBT, issues=5, detail="5 warnings"
@@ -202,6 +208,8 @@ def test_aggregate_one_warn_with_mocks(tmp_path: Path) -> None:
         mock_csf.return_value = _make_result("check_current_state_facts", HealthStatus.PASS)
         mock_reg.return_value = _make_result("check_registry_drift", HealthStatus.PASS)
         mock_fc.return_value = _make_result("finding_coverage", HealthStatus.PASS)
+        mock_sc.return_value = _make_result("status_consistency", HealthStatus.PASS)
+        mock_rr.return_value = _make_result("review_registry_link", HealthStatus.PASS)
 
         from governance.ssot_aggregation import aggregate_ssot_gate_health
 
@@ -219,6 +227,8 @@ def test_aggregate_one_fail_with_mocks(tmp_path: Path) -> None:
         patch("governance.ssot_aggregation._check_current_state_facts") as mock_csf,
         patch("governance.ssot_aggregation._check_registry_drift") as mock_reg,
         patch("governance.ssot_aggregation._check_finding_coverage") as mock_fc,
+        patch("governance.ssot_aggregation._check_status_consistency") as mock_sc,
+        patch("governance.ssot_aggregation._check_review_registry_link") as mock_rr,
     ):
         mock_doc.return_value = _make_result("check_doc_drift", HealthStatus.PASS)
         mock_gate.return_value = _make_result("check_gate_drift", HealthStatus.PASS)
@@ -227,6 +237,8 @@ def test_aggregate_one_fail_with_mocks(tmp_path: Path) -> None:
         )
         mock_reg.return_value = _make_result("check_registry_drift", HealthStatus.PASS)
         mock_fc.return_value = _make_result("finding_coverage", HealthStatus.PASS)
+        mock_sc.return_value = _make_result("status_consistency", HealthStatus.PASS)
+        mock_rr.return_value = _make_result("review_registry_link", HealthStatus.PASS)
 
         from governance.ssot_aggregation import aggregate_ssot_gate_health
 
@@ -235,3 +247,92 @@ def test_aggregate_one_fail_with_mocks(tmp_path: Path) -> None:
     assert report.status == HealthStatus.FAIL
     assert len(report.failing_checkers) == 1
     assert report.failing_checkers[0].checker_name == "check_current_state_facts"
+
+
+# ---------------------------------------------------------------------------
+# ADR-062 — P3/P5 are WARNING-only: findings → GOVERNED_DEBT, never FAIL.
+# ---------------------------------------------------------------------------
+
+
+def test_aggregate_adr062_warning_checkers_never_fail_gate(tmp_path: Path) -> None:
+    """Both ADR-062 drift checkers reporting findings → GOVERNED_DEBT, not FAIL.
+
+    The P3/P5 checkers ship WARNING-only (ADR-062 enforcement phasing): even
+    when they find contradictions / linking errors, the overall gate must stay
+    GOVERNED_DEBT (tracked debt), never FAIL — so they cannot break CI green.
+    """
+    with (
+        patch("governance.ssot_aggregation._check_doc_drift") as mock_doc,
+        patch("governance.ssot_aggregation._check_gate_drift") as mock_gate,
+        patch("governance.ssot_aggregation._check_current_state_facts") as mock_csf,
+        patch("governance.ssot_aggregation._check_registry_drift") as mock_reg,
+        patch("governance.ssot_aggregation._check_finding_coverage") as mock_fc,
+        patch("governance.ssot_aggregation._check_status_consistency") as mock_sc,
+        patch("governance.ssot_aggregation._check_review_registry_link") as mock_rr,
+    ):
+        mock_doc.return_value = _make_result("check_doc_drift", HealthStatus.PASS)
+        mock_gate.return_value = _make_result("check_gate_drift", HealthStatus.PASS)
+        mock_csf.return_value = _make_result("check_current_state_facts", HealthStatus.PASS)
+        mock_reg.return_value = _make_result("check_registry_drift", HealthStatus.PASS)
+        mock_fc.return_value = _make_result("finding_coverage", HealthStatus.PASS)
+        mock_sc.return_value = _make_result(
+            "status_consistency", HealthStatus.GOVERNED_DEBT, issues=3, detail="3 contradictions"
+        )
+        mock_rr.return_value = _make_result(
+            "review_registry_link", HealthStatus.GOVERNED_DEBT, issues=2, detail="2 link findings"
+        )
+
+        from governance.ssot_aggregation import aggregate_ssot_gate_health
+
+        report = aggregate_ssot_gate_health(tmp_path)
+
+    assert report.status == HealthStatus.GOVERNED_DEBT
+    assert report.status != HealthStatus.FAIL
+    assert {c.checker_name for c in report.warning_checkers} == {
+        "status_consistency",
+        "review_registry_link",
+    }
+
+
+def test_status_consistency_wrapper_maps_findings_to_governed_debt(tmp_path: Path) -> None:
+    """The P3 wrapper classifies contradictions as GOVERNED_DEBT, never FAIL."""
+    from governance._status_consistency import StatusConsistencyReport
+    from governance.ssot_aggregation import _check_status_consistency
+
+    fake = StatusConsistencyReport(contradictions=("x", "y", "z"), claims_scanned=5)  # type: ignore[arg-type]
+
+    with (
+        patch("governance._status_consistency.scan_repo_docs", return_value={}),
+        patch("governance._status_consistency.check_status_consistency", return_value=fake),
+        patch("governance._status_vocab.load_status_vocabulary"),
+    ):
+        result = _check_status_consistency(tmp_path)
+
+    assert result.checker_name == "status_consistency"
+    assert result.status == HealthStatus.GOVERNED_DEBT
+    assert result.status != HealthStatus.FAIL
+    assert result.issue_count == 3
+
+
+def test_review_registry_link_wrapper_maps_findings_to_governed_debt(tmp_path: Path) -> None:
+    """The P5 wrapper classifies link findings as GOVERNED_DEBT, never FAIL."""
+    from governance._review_registry_link import ReviewLinkReport
+    from governance.ssot_aggregation import _check_review_registry_link
+
+    # The wrapper reads the registry file; provide a minimal one so parsing runs.
+    reg = tmp_path / "docs" / "architecture" / "governance" / "aufg-registry.md"
+    reg.parent.mkdir(parents=True, exist_ok=True)
+    reg.write_text("### AUFG-01-01 — Title\n\n| Source | review-x.md |\n\n", encoding="utf-8")
+
+    fake = ReviewLinkReport(findings=("a", "b"), headers_scanned=4, entries_scanned=10)  # type: ignore[arg-type]
+
+    with (
+        patch("governance._review_registry_link.collect_review_headers", return_value=[]),
+        patch("governance._review_registry_link.check_review_registry_link", return_value=fake),
+    ):
+        result = _check_review_registry_link(tmp_path)
+
+    assert result.checker_name == "review_registry_link"
+    assert result.status == HealthStatus.GOVERNED_DEBT
+    assert result.status != HealthStatus.FAIL
+    assert result.issue_count == 2

@@ -52,6 +52,24 @@ def test_provider_cap_below_minimum_floor_hard_blocks() -> None:
     assert any(issue.code == "provider_cap_below_minimum_floor" for issue in result.issues)
 
 
+def test_known_context_window_below_required_floor_hard_blocks() -> None:
+    """Required input + minimum floor exceeding a known context window hard-blocks."""
+    result = evaluate_model_suitability(
+        intent=LLMIntent.WRITE,
+        calibration=_calibration(
+            ModelLimitCalibrationStatus.KNOWN_FRESH, output=8192, context=4096
+        ),
+        requested_output_tokens=8192,
+        effective_output_tokens=8192,
+        model_capability_tier="creative",
+        required_input_tokens=8192,  # 8192 + WRITE minimum floor > 4096 context
+    )
+
+    assert result.severity is SuitabilitySeverity.HARD_BLOCK
+    assert result.is_allowed is False
+    assert any(issue.code == "context_window_below_required_floor" for issue in result.issues)
+
+
 def test_unknown_model_is_warning_not_hard_block() -> None:
     result = evaluate_model_suitability(
         intent=LLMIntent.WRITE,

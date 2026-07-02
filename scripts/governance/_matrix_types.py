@@ -130,6 +130,13 @@ class MatrixEntry:
     phase: str | None = None
     review_trigger: str | None = None
     rationale: str | None = None
+    # ADR-061 P2 — aggregation prohibition. Optional declaration of the exact
+    # setting(s) this row covers; when absent, ``setting_id`` IS the setting.
+    settings: tuple[str, ...] = ()
+    # ADR-061 P2 — opt-in rationale for a legitimately inseparable compound
+    # ``setting_id``. Requires Architecture approval + allowlist entry. Absent
+    # for every ordinary single-setting row.
+    composite_rationale: str | None = None
 
 
 @dataclass(frozen=True)
@@ -215,6 +222,8 @@ def _parse_entry(raw: dict[str, Any]) -> MatrixEntry:
         phase=_opt_str(raw.get("phase")),
         review_trigger=_opt_str(raw.get("review_trigger")),
         rationale=_opt_str(raw.get("rationale")),
+        settings=_to_str_tuple(raw.get("settings")),
+        composite_rationale=_opt_str(raw.get("composite_rationale")),
     )
 
 

@@ -24,8 +24,6 @@ const { baseSettings, mockGetResolved, mockUpdateUser } = vi.hoisted(() => ({
       pinned: 0.1,
     },
     ws_timeout: 1800,
-    retry_max_attempts: 3,
-    retry_base_delay: 1.0,
     metadata: {
       catalogue: [
         { value: "quick", preset_output_limit: 500, is_custom: false },

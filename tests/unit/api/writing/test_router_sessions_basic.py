@@ -138,8 +138,6 @@ async def test_success_path_calls_handler_handle(
         mock_settings.csrf_trusted_origins = ["http://localhost:3000"]
         mock_settings.default_max_tokens = 4096
         mock_settings.ws_idle_timeout_seconds = 900
-        mock_settings.retry_max_attempts = 3
-        mock_settings.retry_base_delay = 1.0
         mock_settings.consistency_max_chapter_tokens = 2000
         mock_settings.consistency_max_kb_entries = 100
         mock_settings.default_max_selection_words = 2000
@@ -266,8 +264,6 @@ async def test_success_path_with_explicit_session_id(
         mock_settings.csrf_trusted_origins = ["http://localhost:3000"]
         mock_settings.default_max_tokens = 4096
         mock_settings.ws_idle_timeout_seconds = 1800
-        mock_settings.retry_max_attempts = 3
-        mock_settings.retry_base_delay = 1.0
         mock_settings.consistency_max_chapter_tokens = 2000
         mock_settings.consistency_max_kb_entries = 100
         mock_settings.default_max_selection_words = 2000

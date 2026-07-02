@@ -34,7 +34,6 @@ from narrare_core.llm.override_schemas import (
     TokenLimitOverride,
 )
 from narrare_core.llm.result import LLMResult, LLMStream, StreamChunk, TokenUsage
-from narrare_core.llm.retry import DEFAULT_RETRY, FAST_RETRY, NO_RETRY, PATIENT_RETRY, RetryConfig
 from narrare_core.llm.run_limits import SUGGEST_MAX_TOKENS
 from narrare_core.llm.token_profiles import (
     PROFILE_OUTPUT_LIMITS,
@@ -45,11 +44,7 @@ from narrare_core.llm.token_profiles import (
 )
 
 __all__ = [
-    "DEFAULT_RETRY",
-    "FAST_RETRY",
     "INTENT_CATEGORY_MAP",
-    "NO_RETRY",
-    "PATIENT_RETRY",
     "PROFILE_OUTPUT_LIMITS",
     "SUGGEST_MAX_TOKENS",
     "TOKEN_OUTPUT_ABSOLUTE_MAX",
@@ -76,7 +71,6 @@ __all__ = [
     "ModelSuitabilityResult",
     "ResolvedModel",
     "ResolvedModelConfig",
-    "RetryConfig",
     "StreamChunk",
     "SuitabilitySeverity",
     "TokenLimitOverride",

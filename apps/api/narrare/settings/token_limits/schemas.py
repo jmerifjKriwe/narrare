@@ -131,8 +131,6 @@ class TokenLimitOverridesResponse(BaseModel):
         default_factory=lambda: dict(DEFAULT_TIER_PERCENTAGES)
     )
     ws_timeout: int = 1800
-    retry_max_attempts: int = 3
-    retry_base_delay: float = 1.0
     metadata: TokenLimitsCatalog
     calibration: CalibrationSourceMetadata | None = None
     suitability: SuitabilityMetadata | None = None
@@ -155,8 +153,6 @@ class UpdateTokenLimitsRequest(BaseModel):
     token_profile: str | None = Field(default=None, pattern=_TOKEN_PROFILE_PATTERN)
     tier_percentages: dict[str, float] | None = None
     ws_timeout: int | None = Field(default=None, ge=60, le=86400)
-    retry_max_attempts: int | None = Field(default=None, ge=1, le=20)
-    retry_base_delay: float | None = Field(default=None, ge=0.1, le=60.0)
 
 
 def build_catalog() -> TokenLimitsCatalog:

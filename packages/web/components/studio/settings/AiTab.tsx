@@ -169,8 +169,6 @@ export function AiTab() {
           </div>
           <SystemTimeouts
             wsTimeout={tokenLimitsData?.ws_timeout ?? 1800}
-            retryMaxAttempts={tokenLimitsData?.retry_max_attempts ?? 3}
-            retryBaseDelay={tokenLimitsData?.retry_base_delay ?? 1.0}
             onChange={handleSystemTimeoutsChange}
             disabled={!tokenLimitsData}
           />

@@ -18,9 +18,14 @@ from narrare._app.database import Base
 #   "token_profile": "balanced",
 #   "tier_percentages": {"immediate": 0.30, ...},
 #   "ws_timeout": 1800,
-#   "retry_max_attempts": 3,
-#   "retry_base_delay": 1.0
 # }
+#
+# ADR-060: the legacy ``retry_max_attempts`` / ``retry_base_delay`` keys are no
+# longer part of the override vocabulary. There are no dedicated SQLAlchemy
+# columns for them (overrides live in the single JSONB ``overrides`` dict);
+# any such keys persisted in existing rows are silently ignored by the resolver
+# (unknown-key drop in ``TokenLimitsService._merge_overrides``). Transport retry
+# is now governed at the provider layer — no destructive migration is required.
 
 
 class UserTokenLimits(Base):

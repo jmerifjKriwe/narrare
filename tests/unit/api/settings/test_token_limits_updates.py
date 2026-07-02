@@ -32,8 +32,6 @@ class _FakeConfig:
 
     default_max_tokens: int = 4096
     ws_idle_timeout_seconds: int = 1800
-    retry_max_attempts: int = 3
-    retry_base_delay: float = 1.0
     consistency_max_chapter_tokens: int = 2000
     consistency_max_kb_entries: int = 100
     default_max_selection_words: int = 2000
@@ -245,12 +243,12 @@ class TestUpdateProjectLimits:
         project_id = "update_project"
         await service.update_project_limits(
             project_id,
-            {"ws_timeout": 7200, "retry_max_attempts": 10},
+            {"ws_timeout": 7200, "output_limit": 6000},
         )
 
         entity = await store.get_project_entity(project_id)
         assert entity.overrides.get("ws_timeout") == 7200
-        assert entity.overrides.get("retry_max_attempts") == 10
+        assert entity.overrides.get("output_limit") == 6000
 
     async def test_update_project_limits_partial_merge(
         self, store: _FakeStore, service: Any
