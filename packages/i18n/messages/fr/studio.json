@@ -13,7 +13,9 @@
     "newChapterTitle": "Nouveau chapitre",
     "words": "{count} mots",
     "allNovels": "Tous les romans",
-    "logout": "Se déconnecter"
+    "logout": "Se déconnecter",
+    "devTools": "Outils de développement",
+    "designTokens": "Design Tokens"
   },
   "dashboard": {
     "title": "Mes romans",

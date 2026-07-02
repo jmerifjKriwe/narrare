@@ -308,6 +308,10 @@ test-frontend:
 test-frontend-coverage:
     cd packages/web && pnpm test:coverage
 
+# Run Playwright VRT screenshot tests (frontend only, no backend needed)
+test-vrt:
+    cd packages/web && pnpm playwright test --project=vrt
+
 # Run all tests (backend + frontend)
 test-all: test test-frontend
 

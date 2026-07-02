@@ -8,6 +8,7 @@ import {
   Library,
   MessageCircle,
   Package,
+  Ruler,
   Settings,
 } from "lucide-react";
 import type { Route } from "next";
@@ -158,6 +159,22 @@ export function Sidebar() {
 
       {/* When no novel selected, fill remaining space */}
       {!novelId && <div className="flex-1" />}
+
+      {/* Dev Tools — only in development mode */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="border-t border-border px-3 py-2">
+          <p className="px-4 py-1 text-xs text-muted-foreground uppercase tracking-wider">
+            {t("sidebar.devTools")}
+          </p>
+          <Link
+            href={"/dev/design-tokens" as Route}
+            className="w-full flex items-center gap-3 px-4 py-2 rounded-md text-sm hover:bg-accent transition-colors"
+          >
+            <Ruler className="w-4 h-4 text-muted-foreground" />
+            <span>{t("sidebar.designTokens")}</span>
+          </Link>
+        </div>
+      )}
 
       {/* User info + logout */}
       <SidebarUserFooter user={user} onLogout={logout} />

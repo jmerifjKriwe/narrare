@@ -26,23 +26,29 @@ test.describe("Design Tokens Page Screenshots", () => {
         }),
       });
     });
+
+    // Suppress the feature tour overlay that blocks pointer events
+    // The tour activates on first visit when narrare:featureTourCompleted isn't "true"
+    await page.addInitScript(() => {
+      localStorage.setItem("narrare:featureTourCompleted", "true");
+    });
   });
 
   test("light mode full page", async ({ page }) => {
     await page.goto("/dev/design-tokens");
 
     // Wait for the page to fully render
-    await expect(page.locator("h1")).toHaveText("Design Tokens");
+    await expect(page.getByRole("heading", { name: "Design Tokens" })).toHaveText("Design Tokens");
 
     // Full-page screenshot in light mode
-    await expect(page).toHaveScreenshot("light-mode-full", { fullPage: true });
+    await expect(page).toHaveScreenshot("light-mode-full.png", { fullPage: true });
   });
 
   test("dark mode full page", async ({ page }) => {
     await page.goto("/dev/design-tokens");
 
     // Wait for the page to fully render
-    await expect(page.locator("h1")).toHaveText("Design Tokens");
+    await expect(page.getByRole("heading", { name: "Design Tokens" })).toHaveText("Design Tokens");
 
     // Toggle dark mode — button reads "Dark Mode" when previewDark is false
     await page.click('button:has-text("Dark Mode")');
@@ -51,40 +57,40 @@ test.describe("Design Tokens Page Screenshots", () => {
     await expect(page.locator("html")).toHaveClass(/dark/);
 
     // Full-page screenshot in dark mode
-    await expect(page).toHaveScreenshot("dark-mode-full", { fullPage: true });
+    await expect(page).toHaveScreenshot("dark-mode-full.png", { fullPage: true });
   });
 
   test("light mode colors section", async ({ page }) => {
     await page.goto("/dev/design-tokens");
-    await expect(page.locator("h1")).toHaveText("Design Tokens");
+    await expect(page.getByRole("heading", { name: "Design Tokens" })).toHaveText("Design Tokens");
 
     // Focused screenshot of the Color Palette section
-    await expect(page.locator("#colors")).toHaveScreenshot("light-colors-section");
+    await expect(page.locator("#colors")).toHaveScreenshot("light-colors-section.png");
   });
 
   test("light mode radii-typo section", async ({ page }) => {
     await page.goto("/dev/design-tokens");
-    await expect(page.locator("h1")).toHaveText("Design Tokens");
+    await expect(page.getByRole("heading", { name: "Design Tokens" })).toHaveText("Design Tokens");
 
     // Focused screenshot of the Radii & Typography section
-    await expect(page.locator("#radii-typo")).toHaveScreenshot("light-radii-typo-section");
+    await expect(page.locator("#radii-typo")).toHaveScreenshot("light-radii-typo-section.png");
   });
 
   test("light mode theme-comparison section", async ({ page }) => {
     await page.goto("/dev/design-tokens");
-    await expect(page.locator("h1")).toHaveText("Design Tokens");
+    await expect(page.getByRole("heading", { name: "Design Tokens" })).toHaveText("Design Tokens");
 
     // Focused screenshot of the Theme Comparison section
     await expect(page.locator("#theme-comparison")).toHaveScreenshot(
-      "light-theme-comparison-section",
+      "light-theme-comparison-section.png",
     );
   });
 
   test("light mode mapping section", async ({ page }) => {
     await page.goto("/dev/design-tokens");
-    await expect(page.locator("h1")).toHaveText("Design Tokens");
+    await expect(page.getByRole("heading", { name: "Design Tokens" })).toHaveText("Design Tokens");
 
     // Focused screenshot of the Tailwind Mapping section
-    await expect(page.locator("#mapping")).toHaveScreenshot("light-mapping-section");
+    await expect(page.locator("#mapping")).toHaveScreenshot("light-mapping-section.png");
   });
 });

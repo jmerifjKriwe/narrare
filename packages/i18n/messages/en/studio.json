@@ -13,7 +13,9 @@
     "newChapterTitle": "New Chapter",
     "words": "{count} words",
     "allNovels": "All Novels",
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "devTools": "Dev Tools",
+    "designTokens": "Design Tokens"
   },
   "dashboard": {
     "title": "My Novels",
