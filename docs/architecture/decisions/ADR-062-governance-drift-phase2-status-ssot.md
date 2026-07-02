@@ -1,7 +1,7 @@
 # ADR-062 — Governance Drift Automation Phase 2: Status SSOT Consistency & Review→Registry Linking (P3 + P5)
 
-> **Status:** 🔄 Proposed
-> **Date:** 2026-07-01
+> **Status:** ✅ Implemented
+> **Date:** 2026-07-01 (proposed) · 2026-07-02 (implemented — Platform, warning-only baseline)
 > **Deciders:** Architecture Specialist (recommendation; awaits Coordinator + User approval)
 > **Supersedes:** —
 > **Related:** ADR-047 (Governance Drift Automation — extends Phase 2/3 scope), ADR-041 (typed manifests / doc-drift), ADR-051 (RULE-18b matrix), ADR-060 / ADR-061, AUFG-01-01 / AUFG-01-02, CONSTRAINTS.md §8 (SSOT hierarchy)
@@ -200,6 +200,68 @@ already scope graph-grounded verification as the target end state for P1.
 | SSOT §8 | ✅ | Registry/matrix authoritative; derived docs reconcile or fail. |
 | RULE-04/06/07 | ✅ | Modular, single-purpose checkers; file/structured-data only. |
 | RULE-10/11 | ✅ | Failures testable and visible; no silent drift. |
+
+---
+
+## Implementation Evidence (2026-07-02 — Platform; ✅ Implemented, WARNING-only)
+
+Both measures ship **WARNING-only with a clean baseline**, satisfying Gate-12
+(both warning-only + clean baseline before ✅ Implemented). Both ratchet to
+blocking in a follow-up.
+
+### Files delivered
+
+- `docs/architecture/governance/status_vocabulary.yaml` — status vocabulary:
+  canonical tokens, the contradiction table, governed subjects with their
+  authoritative SSOT status, and the (seeded-empty) per-doc allowlist.
+- `scripts/governance/_status_vocab.py` — vocabulary loader/normalizer (P3 data layer).
+- `scripts/governance/_status_consistency.py` — P3 doc↔status-SSOT consistency checker.
+- `scripts/governance/_review_registry_link.py` — P5 review→registry metadata linking checker
+  (header/registry parsing, claimant resolution, re-homing recognition, dependency validation,
+  `collect_review_headers` repo-wide glob).
+- `scripts/check_governance_drift.py` — standalone WARNING-only CLI (detailed report, exit 0).
+- `scripts/governance/ssot_aggregation.py` — P3/P5 wired into the governance-health aggregator
+  (WARNING-only: findings → `GOVERNED_DEBT`, never `FAIL`).
+- `justfile` (`check-governance-drift`), `scripts/run_checks.py` (Architecture step, non-blocking),
+  `check-full` — runnable surfaces.
+
+### Contradiction pairs seeded (conservative — clear adoption-state conflicts only)
+
+`runtime_verified`/`adopted`/`stable` ↔ `governed_debt`; `runtime_verified` ↔ `pending`;
+`runtime_verified` ↔ `static_only`. `stable`↔`runtime_verified` and `adopted`↔`runtime_verified`
+are **not** contradictions (progression is allowed). Bare `static verified` (without `only`) is
+deliberately not mapped.
+
+### P3 baseline (clean)
+
+98 derived docs scanned · 14 governed-subject status claims · **0 contradictions**.
+Governed subjects seeded: `character_voice` (SSOT `runtime_verified`), `voice_check` (SSOT `adopted`).
+
+### P5 baseline (clean) + AUFG-01-03 → AUFG-01-08 re-homing
+
+3 review headers (`AUFG-01-01`, `AUFG-01-02`, `AUFG-01-03` from `review-01-architektur.md`) ·
+54 registry entries · **0 findings**. The documented re-homing is recognized without a false
+positive: review-01's editor/writing-hotspots `### [AUFG-01-03]` is claimed by registry entry
+`AUFG-01-08` (whose `Source` references `review-01-architektur.md` and whose section documents the
+re-homing from `AUFG-01-03`); `AUFG-01-03` itself remains the MCP/A2A accepted enhancement — no
+collision. The checker reports this as a recognized re-homing; the review's historical id is **not**
+rewritten. Dependency-path validation runs for `open`/`in_progress`/`blocked` entries only
+(resolved/not-applicable entries hold historical paths).
+
+### Known limitation (deferred to the blocking ratchet)
+
+The registry `Status` cell parser extracts the backtick-wrapped token but returns `''` for *rich*
+Status cells (e.g. `` `resolved` (2026-07-01) — note ``). This fragility is shared with the existing
+`governance/aufg_registry.py` parser, has **zero effect on the clean baseline** (all review-header
+claimants are resolved, so dependency validation is correctly skipped regardless), and is
+intentionally deferred to the blocking-ratchet follow-up rather than expanding scope to consolidate
+the two registry parsers (RULE-07).
+
+### Ratchet follow-up (tracked)
+
+Promote both checkers from WARNING (`GOVERNED_DEBT`) to blocking (`FAIL` on findings) once the
+baseline is proven stable across a full review cycle; at that point also harden the rich-Status-cell
+parsing and the `### [AUFG-XX-YY]` header convention per the Review Trigger.
 
 ---
 

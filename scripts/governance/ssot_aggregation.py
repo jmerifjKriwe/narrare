@@ -11,6 +11,8 @@ Aggregated checkers:
     - ``check_current_state_facts`` — CURRENT_STATE.md volatility policy
     - ``check_registry_drift`` — adoption-registry vs prompt filesystem
     - Review-finding coverage (Phase 2, via :mod:`governance_health`)
+    - ``status_consistency`` — doc↔status-SSOT consistency (ADR-062 P3, WARNING)
+    - ``review_registry_link`` — review→registry metadata linking (ADR-062 P5, WARNING)
 
 Each checker is classified as PASS / GOVERNED_DEBT / FAIL:
     - PASS: no issues
@@ -232,6 +234,90 @@ def _check_finding_coverage(
     )
 
 
+def _check_status_consistency(project_root: Path) -> CheckerResult:
+    """Run the ADR-062 P3 doc↔status-SSOT consistency checker.
+
+    WARNING-only this cycle (ADR-062 enforcement phasing): contradictions are
+    reported as GOVERNED_DEBT and NEVER fail the gate. A missing status
+    vocabulary (a tracked baseline file) is reported as PASS/skipped rather than
+    erroring — the checker is non-blocking by design this cycle.
+    """
+    from governance._status_consistency import check_status_consistency, scan_repo_docs
+    from governance._status_vocab import load_status_vocabulary
+
+    vocab_path = project_root / "docs" / "architecture" / "governance" / "status_vocabulary.yaml"
+    try:
+        vocab = load_status_vocabulary(vocab_path)
+    except FileNotFoundError:
+        return CheckerResult(
+            "status_consistency", HealthStatus.PASS, 0, "status vocabulary not found (skipped)"
+        )
+
+    docs = scan_repo_docs(project_root, vocab)
+    report = check_status_consistency(docs, vocab)
+
+    # WARNING-only: findings map to GOVERNED_DEBT, never FAIL.
+    if report.has_contradictions:
+        status = HealthStatus.GOVERNED_DEBT
+        detail = f"{len(report.contradictions)} status contradiction(s) across {len(docs)} docs"
+    else:
+        status = HealthStatus.PASS
+        detail = f"{report.claims_scanned} claim(s), no contradictions"
+
+    return CheckerResult(
+        checker_name="status_consistency",
+        status=status,
+        issue_count=len(report.contradictions),
+        detail=detail,
+    )
+
+
+def _check_review_registry_link(project_root: Path) -> CheckerResult:
+    """Run the ADR-062 P5 review→registry metadata linking checker.
+
+    WARNING-only this cycle (ADR-062 enforcement phasing): linking errors /
+    collisions are reported as GOVERNED_DEBT and NEVER fail the gate. A missing
+    registry (a tracked baseline file) is reported as PASS/skipped.
+    """
+    from governance._review_registry_link import (
+        check_review_registry_link,
+        collect_review_headers,
+        parse_registry_meta,
+    )
+
+    headers = collect_review_headers(project_root)
+    registry_path = project_root / "docs" / "architecture" / "governance" / "aufg-registry.md"
+    try:
+        registry = parse_registry_meta(registry_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return CheckerResult(
+            "review_registry_link", HealthStatus.PASS, 0, "aufg registry not found (skipped)"
+        )
+
+    report = check_review_registry_link(headers, registry, project_root)
+
+    # WARNING-only: findings map to GOVERNED_DEBT, never FAIL.
+    if report.findings:
+        status = HealthStatus.GOVERNED_DEBT
+        detail = (
+            f"{len(report.findings)} review→registry link issue(s) "
+            f"({len(report.rehomings_recognized)} re-homing(s) recognized)"
+        )
+    else:
+        status = HealthStatus.PASS
+        detail = (
+            f"{report.headers_scanned} header(s) → {report.entries_scanned} entries, "
+            f"{len(report.rehomings_recognized)} re-homing(s) recognized"
+        )
+
+    return CheckerResult(
+        checker_name="review_registry_link",
+        status=status,
+        issue_count=len(report.findings),
+        detail=detail,
+    )
+
+
 def aggregate_ssot_gate_health(project_root: Path) -> SsotAggregationReport:
     """Aggregate all drift checkers into a unified governance health report.
 
@@ -251,6 +337,9 @@ def aggregate_ssot_gate_health(project_root: Path) -> SsotAggregationReport:
         _check_current_state_facts(project_root),
         _check_registry_drift(),
         _check_finding_coverage(project_root),
+        # ADR-062 — WARNING-only drift checkers (ratchet to blocking in a follow-up).
+        _check_status_consistency(project_root),
+        _check_review_registry_link(project_root),
     ]
 
     result_tuple = tuple(results)
