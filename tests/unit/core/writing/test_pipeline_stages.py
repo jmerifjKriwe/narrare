@@ -1,9 +1,10 @@
 """Stage-level tests for WritingPipeline.generate()'s extracted stages.
 
-Covers the single-responsibility stage helpers introduced by AUFG-01-08:
+Covers the single-responsibility stage helpers introduced by AUFG-01-08,
+extracted into :mod:`narrare_core.writing._stages` (RULE-04):
 
-1. :meth:`WritingPipeline._resolve_voice_profile_consumer` (Stage 1)
-2. :meth:`WritingPipeline._assemble_writing_context` (Stage 2)
+1. :func:`narrare_core.writing._stages.resolve_voice_profile_consumer` (Stage 1)
+2. :func:`narrare_core.writing._stages.assemble_writing_context` (Stage 2)
 
 The Stage-4 dispatch (:func:`narrare_core.writing._mode_dispatch.stream_for_mode`)
 is covered behaviourally by the per-mode test modules (test_pipeline.py,
@@ -23,6 +24,10 @@ import pytest
 from narrare_core.profiles.contracts import VoiceProfileConsumer
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 from narrare_core.writing import GenerationMode
+from narrare_core.writing._stages import (
+    assemble_writing_context,
+    resolve_voice_profile_consumer,
+)
 from narrare_core.writing.context_assembler import WritingContextAssembler
 from narrare_core.writing.context_models import KBEntity
 from narrare_core.writing.draft_processor import DraftProcessor
@@ -71,7 +76,7 @@ class TestResolveVoiceProfileConsumer:
     def test_no_factory_returns_none(self) -> None:
         """Without a wired factory, profiling is disabled regardless of entities."""
         pipeline = _make_pipeline()
-        assert pipeline._resolve_voice_profile_consumer([_entity()]) is None
+        assert resolve_voice_profile_consumer(pipeline, [_entity()]) is None
 
     def test_factory_with_entities_returns_consumer(self) -> None:
         """Factory + non-empty entities → consumer built from those entities."""
@@ -80,7 +85,7 @@ class TestResolveVoiceProfileConsumer:
         pipeline = _make_pipeline(voice_factory=factory)
 
         entities = [_entity()]
-        result = pipeline._resolve_voice_profile_consumer(entities)
+        result = resolve_voice_profile_consumer(pipeline, entities)
 
         assert result is consumer
         factory.assert_called_once_with(entities)
@@ -90,7 +95,7 @@ class TestResolveVoiceProfileConsumer:
         factory: Any = MagicMock(spec=Callable, return_value=MagicMock(spec=VoiceProfileConsumer))
         pipeline = _make_pipeline(voice_factory=factory)
 
-        assert pipeline._resolve_voice_profile_consumer(None) is None
+        assert resolve_voice_profile_consumer(pipeline, None) is None
         factory.assert_not_called()
 
     def test_factory_with_empty_entities_returns_none(self) -> None:
@@ -98,7 +103,7 @@ class TestResolveVoiceProfileConsumer:
         factory: Any = MagicMock(spec=Callable, return_value=MagicMock(spec=VoiceProfileConsumer))
         pipeline = _make_pipeline(voice_factory=factory)
 
-        assert pipeline._resolve_voice_profile_consumer([]) is None
+        assert resolve_voice_profile_consumer(pipeline, []) is None
         factory.assert_not_called()
 
 
@@ -113,7 +118,8 @@ class TestAssembleWritingContext:
         consumer: Any = MagicMock(spec=VoiceProfileConsumer, name="VoiceProfileConsumer")
         request = _request()
 
-        await pipeline._assemble_writing_context(
+        await assemble_writing_context(
+            pipeline,
             request,
             voice_profile_consumer=consumer,
             chapter_content="Existing text.",
@@ -158,7 +164,8 @@ class TestAssembleWritingContext:
             draft_processor=MagicMock(spec=DraftProcessor),
         )
 
-        result = await pipeline._assemble_writing_context(
+        result = await assemble_writing_context(
+            pipeline,
             _request(),
             voice_profile_consumer=None,
             chapter_content="",

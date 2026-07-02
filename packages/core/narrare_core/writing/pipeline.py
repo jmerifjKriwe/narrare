@@ -16,10 +16,10 @@ Stage contracts (AUFG-01-08):
     writing features can dock onto a named stage rather than onto the body of
     ``generate()`` itself:
 
-    1. Voice-profile resolution — :meth:`_resolve_voice_profile_consumer`
+    1. Voice-profile resolution — :func:`_stages.resolve_voice_profile_consumer`
        in:  ``kb_entities`` (list[KBEntity] | None)
        out: ``VoiceProfileConsumer | None``  (``None`` when no factory/entities)
-    2. Context assembly — :meth:`_assemble_writing_context`
+    2. Context assembly — :func:`_stages.assemble_writing_context`
        in:  request + context inputs (chapter text, KB, recent chapters, …)
             + the Stage-1 consumer
        out: ``WritingContext``  (fully tiered; NO prompt built here — RULE-02)
@@ -46,6 +46,10 @@ from narrare_core.llm.result import StreamChunk
 from narrare_core.prompts.context import PromptContext
 from narrare_core.writing._invocation_adapter import build_and_validate_prompt
 from narrare_core.writing._mode_dispatch import stream_for_mode
+from narrare_core.writing._stages import (
+    assemble_writing_context,
+    resolve_voice_profile_consumer,
+)
 from narrare_core.writing._tone_data import TONE_INSTRUCTIONS
 
 if TYPE_CHECKING:
@@ -168,10 +172,11 @@ class WritingPipeline:
                 renders the variable as empty (backward compatible).
         """
         # Stage 1 — voice-profile consumer resolution
-        voice_profile_consumer = self._resolve_voice_profile_consumer(kb_entities)
+        voice_profile_consumer = resolve_voice_profile_consumer(self, kb_entities)
 
         # Stage 2 — context assembly
-        context = await self._assemble_writing_context(
+        context = await assemble_writing_context(
+            self,
             request,
             voice_profile_consumer=voice_profile_consumer,
             chapter_content=chapter_content,
@@ -214,92 +219,6 @@ class WritingPipeline:
                 yield chunk
         finally:
             self._stop_signals.discard(request.id)
-
-    # -- Generation stages (single-responsibility helpers for generate()) --
-
-    def _resolve_voice_profile_consumer(
-        self,
-        kb_entities: list[KBEntity] | None,
-    ) -> VoiceProfileConsumer | None:
-        """Stage 1 — voice-profile consumer resolution.
-
-        Builds a :class:`VoiceProfileConsumer` from the supplied KB entities
-        when (a) a consumer factory is wired and (b) KB entities are present.
-        Otherwise returns ``None`` (voice profiling disabled for this request).
-
-        Args:
-            kb_entities: KB entities available for the request, or ``None``.
-
-        Returns:
-            A VoiceProfileConsumer, or ``None`` when profiling is disabled.
-        """
-        if self._voice_profile_consumer_factory is not None and kb_entities:
-            return self._voice_profile_consumer_factory(kb_entities)
-        return None
-
-    async def _assemble_writing_context(
-        self,
-        request: GenerationRequest,
-        *,
-        voice_profile_consumer: VoiceProfileConsumer | None,
-        chapter_content: str,
-        chapter_frontmatter: str,
-        chapter_outline: str,
-        recent_chapters: list[RecentChapter] | None,
-        kb_entities: list[KBEntity] | None,
-        entity_connections: dict[str, set[str]] | None,
-        kb_relationships: str,
-        project_title: str,
-        genre: str,
-        user_preferences: str,
-        avoidance_patterns: str,
-    ) -> WritingContext:
-        """Stage 2 — context assembly.
-
-        Bundles the request- and call-level context inputs and delegates to
-        the injected :class:`WritingContextAssembler` to produce a fully
-        assembled :class:`WritingContext` (KB tiering, voice profiles, recent
-        chapters, project metadata). No prompt is constructed here (RULE-02).
-
-        Args:
-            request: The generation request (source of project_id, language,
-                tone, word_target and the stringified mode).
-            voice_profile_consumer: Optional consumer from Stage 1.
-            chapter_content: Existing chapter text for continuation.
-            chapter_frontmatter: Chapter metadata / frontmatter.
-            chapter_outline: Chapter outline or structure notes.
-            recent_chapters: Recent chapters for context.
-            kb_entities: Knowledge base entities for reference.
-            entity_connections: Adjacency map of entity IDs for classification.
-            kb_relationships: Pre-formatted relationship text (FIND-009).
-            project_title: Title of the project / novel.
-            genre: Genre of the writing project.
-            user_preferences: User's writing preference string.
-            avoidance_patterns: Patterns the user wants to avoid.
-
-        Returns:
-            The assembled WritingContext ready for prompt construction.
-        """
-        return await self._context_assembler.assemble(
-            chapter_content=chapter_content,
-            chapter_frontmatter=chapter_frontmatter,
-            chapter_outline=chapter_outline,
-            project_id=request.project_id,
-            recent_chapters=recent_chapters,
-            kb_entities=kb_entities,
-            entity_connections=entity_connections,
-            kb_relationships=kb_relationships,
-            project_title=project_title,
-            genre=genre,
-            language=request.writing_language,
-            writing_language=request.writing_language,
-            tone=request.tone,
-            word_target=request.word_target,
-            user_preferences=user_preferences,
-            avoidance_patterns=avoidance_patterns,
-            mode=str(request.mode),
-            voice_profile_consumer=voice_profile_consumer,
-        )
 
     async def stop(self, request_id: UUID) -> None:
         """Flag an in-progress generation for stopping."""
