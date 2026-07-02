@@ -82,9 +82,12 @@ export function PlanningPanel({ novelId }: PlanningPanelProps) {
   }
 
   return (
-    <div className="w-full border-b border-border bg-card">
+    <section className="w-full border-b border-border bg-card" aria-label={t("storyboard.title")}>
       {/* Header with tabs */}
-      <div className="flex items-center gap-3 px-6 py-2 border-b border-border">
+      <div
+        data-testid="planning-tab-scroller"
+        className="flex items-center gap-2 overflow-x-auto border-b border-border px-3 py-2 sm:px-6"
+      >
         <button
           type="button"
           onClick={() => {
@@ -136,9 +139,14 @@ export function PlanningPanel({ novelId }: PlanningPanelProps) {
       </div>
 
       {/* Tab content */}
-      {activeTab === "storyboard" && <StoryboardPanel novelId={novelId} hideHeader />}
-      {activeTab === "timeline" && <TimelinePanel novelId={novelId} />}
-      {activeTab === "characterArc" && <CharacterArcPanel novelId={novelId} />}
-    </div>
+      <div
+        data-testid="planning-tab-content"
+        className="max-h-[45vh] overflow-auto lg:max-h-[36vh]"
+      >
+        {activeTab === "storyboard" && <StoryboardPanel novelId={novelId} hideHeader />}
+        {activeTab === "timeline" && <TimelinePanel novelId={novelId} />}
+        {activeTab === "characterArc" && <CharacterArcPanel novelId={novelId} />}
+      </div>
+    </section>
   );
 }

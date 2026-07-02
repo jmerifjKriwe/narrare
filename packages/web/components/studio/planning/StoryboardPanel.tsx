@@ -144,7 +144,7 @@ export function StoryboardPanel({ novelId, hideHeader = false }: StoryboardPanel
       ) : storyboard ? (
         <div className="relative px-4 py-3">
           <StoryboardScrollArrows scrollContainerRef={scrollRef} />
-          <div ref={scrollRef} className="flex gap-3 overflow-x-auto scrollbar-none">
+          <div ref={scrollRef} className="flex min-w-0 gap-3 overflow-x-auto scrollbar-none">
             <DndContext
               sensors={sensors}
               onDragStart={handleDragStart}

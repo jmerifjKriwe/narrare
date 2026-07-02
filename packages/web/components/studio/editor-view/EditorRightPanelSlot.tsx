@@ -72,7 +72,6 @@ export function EditorRightPanelSlot({
 
   if (activePanel === null) return null;
 
-  const panelTitleId = "editor-right-panel-title";
   const panelContent = (() => {
     switch (activePanel) {
       case "session":
@@ -183,15 +182,33 @@ export function EditorRightPanelSlot({
     }
   })();
 
-  return (
-    <section
-      aria-labelledby={panelTitleId}
-      className="hidden h-full w-96 shrink-0 border-l border-border bg-card lg:flex lg:flex-col"
-    >
-      <h2 id={panelTitleId} className="sr-only">
+  const renderPanelFrameContent = (titleId: string) => (
+    <>
+      <h2 id={titleId} className="sr-only">
         {t("shell.editorRightPanel")}
       </h2>
       {panelContent}
-    </section>
+    </>
+  );
+
+  return (
+    <>
+      <section
+        data-testid="editor-right-panel-desktop"
+        aria-labelledby="editor-right-panel-title-desktop"
+        className="hidden h-full w-96 shrink-0 border-l border-border bg-card lg:flex lg:flex-col"
+      >
+        {renderPanelFrameContent("editor-right-panel-title-desktop")}
+      </section>
+      <div
+        data-testid="editor-right-panel-mobile"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="editor-right-panel-title-mobile"
+        className="fixed inset-x-0 bottom-0 z-30 max-h-[85vh] overflow-y-auto rounded-t-xl border border-border bg-card shadow-2xl lg:hidden"
+      >
+        {renderPanelFrameContent("editor-right-panel-title-mobile")}
+      </div>
+    </>
   );
 }

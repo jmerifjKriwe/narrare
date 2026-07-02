@@ -87,4 +87,22 @@ describe("PlanningPanel URL state", () => {
       },
     );
   });
+
+  it("uses responsive tab scroller and bounded content region when expanded", () => {
+    mocks.state.storyboardOpen = true;
+    mocks.searchParams = new URLSearchParams("planning=1");
+
+    render(<PlanningPanel novelId="novel-1" />);
+
+    const panel = screen.getByRole("region", { name: "storyboard.title" });
+    expect(panel.className).toContain("w-full");
+    expect(panel.className).toContain("border-b");
+
+    const tabScroller = screen.getByTestId("planning-tab-scroller");
+    expect(tabScroller.className).toContain("overflow-x-auto");
+
+    const content = screen.getByTestId("planning-tab-content");
+    expect(content.className).toContain("max-h-[45vh]");
+    expect(content.className).toContain("lg:max-h-[36vh]");
+  });
 });
