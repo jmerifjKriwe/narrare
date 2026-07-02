@@ -316,7 +316,7 @@ describe("ConsistencyPanel", () => {
   // -------------------------------------------------------------------------
 
   it("renders error state with retry button when check fails", async () => {
-    const error = new Error("Server error");
+    const error = { userMessage: "Server error" };
     mockHook = {
       isIdle: false,
       isError: true,
@@ -336,7 +336,7 @@ describe("ConsistencyPanel", () => {
   it("retry button triggers re-check", async () => {
     const user = userEvent.setup();
     const runMock = vi.fn();
-    const error = new Error("fail");
+    const error = { userMessage: "fail" };
     mockHook = {
       isIdle: false,
       isError: true,
