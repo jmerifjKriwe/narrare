@@ -333,9 +333,7 @@ mitnehmen.
 
 ## Ursachenanalyse & Prävention (Re-Check 2026-07-01)
 
-> Warum traten diese Probleme trotz umfangreicher Dokumentation auf? Sechs
-> verifizierte Ursachen (RC1–RC6) und ein Präventionsplan (P1–P6). Die ADRs zu
-> P1/P3/P6 werden parallel durch Architecture entworfen.
+> Warum traten diese Probleme trotz umfangreicher Dokumentation auf? Sechs verifizierte Ursachen (RC1–RC6) und ein Präventionsplan (P1–P6). Die ADRs zu P1/P2 (ADR-061) und P3/P5 (ADR-062) sind umgesetzt (✅ Implemented); P4 ist bewusst zurückgestellt, P6 in ADR-061s P1 integriert.
 
 ### Ursachen (RC1–RC6)
 
@@ -386,9 +384,7 @@ mitnehmen.
   einen graph-verifizierten setting→resolver→consumer-Pfad, nicht nur eine
   YAML-Assertion.
 
-> **Hinweis:** Die korrespondierenden ADRs werden parallel durch Architecture
-> entworfen; dieser Abschnitt dokumentiert Ursache und Präventionsplan
-> vorab, ohne die ADR-Arbeit vorwegzunehmen.
+> **Hinweis:** Die Präventions-ADRs sind umgesetzt — ADR-061 ✅ *Implemented* (P1+P2; P2 blockierend, P1 warning-only mit Clean-Baseline, ratchets später zu blockierend) und ADR-062 ✅ *Implemented* (P3+P5; beide warning-only, ratchets später zu blockierend). P4 (Health↔Adoption-Reconcile) ist als `accepted_enhancement` zurückgestellt; P6 ist als graph-groundeter Pfad in ADR-061s P1 integriert.
 
 ## Aufgaben
 
@@ -440,10 +436,7 @@ am 2026-07-01 — siehe pro Aufgabe):
 - **AUFG-01-02 (`character_voice`):** ERLEDIGT — INDEX.md + GLOSSARY.md auf runtime-verified korrigiert; `check-adoption` PASS 0.97; `check-health` feature_adoption 0.87/1; beide konsistent.
 - **AUFG-01-03 / AUFG-01-08 (Editor-/Writing-Hotspots):** ERLEDIGT — `useTipTapEditorController` 400→115 + 8 Module; `WritingPipeline.generate` 206→118 + `_mode_dispatch.py` (Stage-4-Contract dokumentiert); öffentliche API stabil; Modularisierung, keine Minifikation.
 
-**Governing decisions:** ADR-060 ✅ *Implemented* (Retry-Reklassifizierung). ADR-061
-(Matrix-Effect-Integrity-Hardening, Prävention P1) und ADR-062 (Governance-Drift
-Phase-2 Status-SSOT, Prävention P3/P5) bleiben 🔄 *Proposed* als Präventions-Entwürfe
-und sind nicht Teil dieser Runtime-Remediation.
+**Governing decisions:** ADR-060 ✅ *Implemented* (Retry-Reklassifizierung). ADR-061 ✅ *Implemented* (Matrix-Effect-Integrity-Hardening, Prävention P1+P2; Commit `817a3643`). ADR-062 ✅ *Implemented* (Governance-Drift Phase-2 Status-SSOT + Review→Registry-Linking, Prävention P3+P5; Commit `6b2ef523`). P4 (Health↔Adoption-Reconcile) bewusst als `accepted_enhancement` zurückgestellt (weitgehend selbst-korrigiert, Teilmenge von P3); P6 in ADR-061s P1 (graph-groundeter Pfad) integriert.
 
 **Validierung 2026-07-01 (alle Gates grün):** `check-architecture` (0 new), `check-python-size`
 /`check-frontend-size` (0 new), `check-streaming`, `check-ai-ux`, `check-prompts-strict`,
