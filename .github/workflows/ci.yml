@@ -611,6 +611,7 @@ jobs:
         with:
           name: warnings-frontend
           path: /tmp/warnings/
+          if-no-files-found: ignore
           retention-days: 7
 
   # -------------------------------------------------------------------------
@@ -770,7 +771,9 @@ jobs:
     needs: [architecture, test-unit, frontend]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v8
+      - name: Download warning artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           pattern: warnings-*
           merge-multiple: true
