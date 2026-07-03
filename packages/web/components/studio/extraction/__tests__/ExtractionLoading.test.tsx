@@ -25,11 +25,16 @@ describe("ExtractionLoading", () => {
     expect(screen.getByText("kb.extractionPhase.analysing")).toBeDefined();
   });
 
-  it("renders with purple styling", () => {
+  // The bespoke purple title styling is now standardised onto the
+  // StatusMessage primitive's semantic tokens; assert the accessible
+  // loading contract (busy live region) instead.
+  it("announces loading via a busy, polite status region", () => {
     render(<ExtractionLoading />);
 
-    const title = screen.getByText("aiThinking");
-    expect(title.className).toContain("font-medium");
+    const region = screen.getByRole("status");
+    expect(region).toHaveAttribute("aria-live", "polite");
+    expect(region).toHaveAttribute("aria-busy", "true");
+    expect(region).toHaveTextContent("aiThinking");
   });
 
   it("renders centered layout", () => {

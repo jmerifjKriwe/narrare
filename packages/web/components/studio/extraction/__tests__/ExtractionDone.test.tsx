@@ -23,10 +23,13 @@ describe("ExtractionDone", () => {
     expect(screen.getByText("kb.extractionAppliedDesc")).toBeDefined();
   });
 
-  it("renders with green text styling", () => {
+  // The bespoke green palette is now standardised onto the StatusMessage
+  // primitive's semantic tokens; assert the accessible contract instead.
+  it("announces success via a polite status region", () => {
     render(<ExtractionDone />);
 
-    const title = screen.getByText("kb.extractionAppliedTitle");
-    expect(title.className).toContain("text-green-600");
+    const region = screen.getByRole("status");
+    expect(region).toHaveAttribute("aria-live", "polite");
+    expect(region).toHaveTextContent("kb.extractionAppliedTitle");
   });
 });
