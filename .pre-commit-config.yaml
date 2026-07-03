@@ -67,6 +67,16 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Frontend File Size — RULE-04 enforcement (mirrors python-file-size;
+      # closes the pre-commit gap that surfaced recurring CI-only failures)
+      - id: frontend-file-size
+        name: Frontend File Size (RULE-04)
+        entry: uv run python scripts/check_frontend_file_size.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Prompt Surface Contract — ADR-037 enforcement
       - id: prompt-surface-contract
         name: Prompt Surface Contract (ADR-037)

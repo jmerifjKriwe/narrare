@@ -1,33 +1,17 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  BarChart3,
-  FileText,
-  Library,
-  MessageCircle,
-  Package,
-  Ruler,
-  Settings,
-} from "lucide-react";
+import { ArrowLeft, Ruler } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams, usePathname } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { authApi } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { SidebarChapterList } from "./SidebarChapterList";
-import { SidebarKBBadge } from "./SidebarKBBadge";
+import { SidebarNav } from "./SidebarNav";
 import { SidebarUserFooter } from "./SidebarUserFooter";
-
-interface NavItem {
-  href: Route;
-  label: string;
-  icon: typeof FileText;
-  key: string;
-}
 
 interface SidebarProps {
   variant?: "desktop" | "drawer";
@@ -37,7 +21,6 @@ interface SidebarProps {
 
 export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
   const t = useTranslations("studio");
-  const pathname = usePathname();
   const params = useParams();
   const logout = useAuthStore((s) => s.logout);
 
@@ -48,62 +31,6 @@ export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
     queryFn: authApi.me,
     // Deduplicated — already running in layout
   });
-
-  const navItems: NavItem[] = novelId
-    ? [
-        {
-          href: `/novel/${novelId}` as Route,
-          label: t("sidebar.editor"),
-          icon: FileText,
-          key: "editor",
-        },
-        {
-          href: `/novel/${novelId}/volumes` as Route,
-          label: t("sidebar.volumes"),
-          icon: Library,
-          key: "volumes",
-        },
-        {
-          href: `/novel/${novelId}/worldbuilding` as Route,
-          label: t("sidebar.worldbuilding"),
-          icon: Package,
-          key: "worldbuilding",
-        },
-        {
-          href: `/novel/${novelId}/analysis` as Route,
-          label: t("sidebar.analysis"),
-          icon: BarChart3,
-          key: "analysis",
-        },
-        {
-          href: `/novel/${novelId}/chat` as Route,
-          label: t("sidebar.chat"),
-          icon: MessageCircle,
-          key: "chat",
-        },
-        {
-          href: `/novel/${novelId}/settings` as Route,
-          label: t("sidebar.settings"),
-          icon: Settings,
-          key: "settings",
-        },
-      ]
-    : [];
-
-  function isActiveNav(href: Route): boolean {
-    const hrefStr = String(href);
-    if (
-      hrefStr.startsWith("/novel/") &&
-      !hrefStr.includes("/worldbuilding") &&
-      !hrefStr.includes("/analysis") &&
-      !hrefStr.includes("/chat") &&
-      !hrefStr.includes("/volumes") &&
-      !hrefStr.includes("/settings")
-    ) {
-      return pathname === hrefStr;
-    }
-    return pathname.startsWith(hrefStr);
-  }
 
   const handleNavigate = () => {
     if (variant === "drawer") onClose?.();
@@ -153,27 +80,7 @@ export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav aria-label={t("sidebar.navigation")} className="p-3 border-b border-border space-y-0.5">
-        {navItems.map((item) => {
-          const active = isActiveNav(item.href);
-          return (
-            <Link
-              key={item.key}
-              href={item.href}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all text-sm ${
-                active ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-accent"
-              }`}
-              onClick={handleNavigate}
-            >
-              <item.icon className="w-4 h-4" />
-              <span className="flex-1">{item.label}</span>
-              {item.key === "worldbuilding" && novelId && (
-                <SidebarKBBadge novelId={novelId} active={active} />
-              )}
-            </Link>
-          );
-        })}
-      </nav>
+      <SidebarNav novelId={novelId} onNavigate={handleNavigate} />
 
       {/* Chapter list — show for all novel routes */}
       {novelId && <SidebarChapterList novelId={novelId} />}
