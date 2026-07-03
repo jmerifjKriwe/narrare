@@ -127,7 +127,7 @@ repos:
       # OpenAPI spec auto-regeneration — mutates docs/openapi.json when API surface changes
       - id: openapi-regenerate
         name: OpenAPI Spec (auto-regenerate)
-        entry: uv run python scripts/export_openapi.py
+        entry: uv run --package narrare python scripts/export_openapi.py
         language: system
         pass_filenames: false
         files: ^(apps/api/|packages/core/)

@@ -442,7 +442,7 @@ check-commit-msg msg:
 # Export OpenAPI schema to docs/
 export-openapi:
     @echo "📤 Exporting OpenAPI schema..."
-    cd apps/api && uv run python ../../scripts/export_openapi.py
+    uv run --package narrare python scripts/export_openapi.py
 
 # ---------------------------------------------------------------------------
 # Prompts
