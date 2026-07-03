@@ -22,7 +22,7 @@ import pytest
 from narrare.writing.coauthor_service import CoAuthorService
 from narrare.writing.schemas_coauthor import CoAuthorFocus, CoAuthorRequest
 from narrare_core.llm import ResolvedModelConfig
-from narrare_core.shared.errors import ValidationError
+from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -175,3 +175,77 @@ class TestValidationBehavior:
         service = _make_service()
         req = _request()
         await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+
+
+# ---------------------------------------------------------------------------
+# Tests: basic validation (selection_text, focus, chapter existence, conflicts)
+# ---------------------------------------------------------------------------
+
+
+class TestBasicValidation:
+    """Basic validation logic in validate_coauthor."""
+
+    async def test_empty_selection_text_raises_validation_error(self) -> None:
+        """Whitespace-only selection_text after strip raises MISSING_INPUT."""
+        service = _make_service()
+        # 50+ spaces pass Pydantic min_length but strip to empty
+        req = _request(selection_text=" " * 50)
+        with pytest.raises(ValidationError, match="selection_text must not be empty") as exc:
+            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+        assert exc.value.code == "MISSING_INPUT"
+
+    async def test_empty_focus_raises_validation_error(self) -> None:
+        """Empty focus list raises MISSING_INPUT (defensive check after Pydantic)."""
+        service = _make_service()
+        # Use model_construct to bypass Pydantic's min_length validation on focus
+        req = CoAuthorRequest.model_construct(
+            selection_text=_SHORT_SELECTION,
+            focus=[],
+            tone="balanced",
+            language="en",
+        )
+        with pytest.raises(ValidationError, match="focus must contain at least one area") as exc:
+            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+        assert exc.value.code == "MISSING_INPUT"
+
+    async def test_chapter_not_found_raises_not_found(self) -> None:
+        """When chapter does not exist, NotFoundError is raised."""
+        repo = AsyncMock()
+        repo.chapter_exists = AsyncMock(return_value=False)
+        repo.get_active_for_chapter = AsyncMock(return_value=None)
+
+        pipeline = AsyncMock()
+        proc = MagicMock(spec=["process"])
+        proc.process = MagicMock(spec=[], side_effect=lambda text, **kw: text)
+
+        service = CoAuthorService(
+            repo=repo,
+            pipeline=pipeline,
+            draft_processor=proc,
+            config=CONFIG,
+        )
+        req = _request()
+        with pytest.raises(NotFoundError, match="Chapter"):
+            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+        repo.chapter_exists.assert_called_once()
+
+    async def test_active_generation_raises_conflict(self) -> None:
+        """When an active generation exists, ConflictError is raised."""
+        repo = AsyncMock()
+        repo.chapter_exists = AsyncMock(return_value=True)
+        repo.get_active_for_chapter = AsyncMock(return_value=object())  # non-None = active
+
+        pipeline = AsyncMock()
+        proc = MagicMock(spec=["process"])
+        proc.process = MagicMock(spec=[], side_effect=lambda text, **kw: text)
+
+        service = CoAuthorService(
+            repo=repo,
+            pipeline=pipeline,
+            draft_processor=proc,
+            config=CONFIG,
+        )
+        req = _request()
+        with pytest.raises(ConflictError, match="active"):
+            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+        repo.get_active_for_chapter.assert_called_once()
