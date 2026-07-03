@@ -68,7 +68,7 @@ class TestAiSuggestStage:
             adapter=ThreeActAdapter(),
         )
         # ThreeActAdapter returns stage names
-        assert result  # Should return a non-empty stage name
+        assert isinstance(result, str) and result != ""
 
     async def test_ai_suggest_stage_without_service_and_non_adapter_returns_empty(
         self,

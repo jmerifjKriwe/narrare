@@ -57,7 +57,7 @@ class TestRunStreamErrorClassification:
         )
         agent = make_agent(model)
 
-        with pytest.raises(ModelRetryExhaustedError) as exc_info:
+        with pytest.raises(ModelRetryExhaustedError, match="retries exhausted") as exc_info:
             await self._collect_stream(agent)
 
         assert "retries exhausted" in str(exc_info.value).lower()
@@ -74,7 +74,7 @@ class TestRunStreamErrorClassification:
         )
         agent = make_agent(model)
 
-        with pytest.raises(ModelExecutionError) as exc_info:
+        with pytest.raises(ModelExecutionError, match="HTTP 503") as exc_info:
             await self._collect_stream(agent)
 
         assert "HTTP 503" in str(exc_info.value)
@@ -89,7 +89,7 @@ class TestRunStreamErrorClassification:
         model = make_error_model(asyncio.CancelledError(), stream=True)
         agent = make_agent(model)
 
-        with pytest.raises(AgentCancelledError) as exc_info:
+        with pytest.raises(AgentCancelledError, match="cancelled") as exc_info:
             await self._collect_stream(agent)
 
         assert exc_info.value.error_type == "agent_cancelled"
@@ -103,7 +103,7 @@ class TestRunStreamErrorClassification:
         model = make_error_model(TimeoutError(), stream=True)
         agent = make_agent(model)
 
-        with pytest.raises(AgentTimeoutError) as exc_info:
+        with pytest.raises(AgentTimeoutError, match="timed out") as exc_info:
             await self._collect_stream(agent)
 
         assert exc_info.value.error_type == "agent_timeout"
@@ -117,7 +117,7 @@ class TestRunStreamErrorClassification:
         model = make_error_model(RuntimeError("Mystery error"), stream=True)
         agent = make_agent(model)
 
-        with pytest.raises(AgentError) as exc_info:
+        with pytest.raises(AgentError, match="Mystery error") as exc_info:
             await self._collect_stream(agent)
 
         assert exc_info.value.error_type == "unknown"
@@ -134,7 +134,7 @@ class TestRunStreamErrorClassification:
         )
         agent = make_agent(model)
 
-        with pytest.raises(ModelExecutionError) as exc_info:
+        with pytest.raises(ModelExecutionError, match="Unexpected model behavior") as exc_info:
             await self._collect_stream(agent)
 
         assert "_SimpleAgent" in exc_info.value.agent_name

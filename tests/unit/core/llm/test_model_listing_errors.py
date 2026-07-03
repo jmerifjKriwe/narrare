@@ -63,7 +63,7 @@ class TestErrorHandling:
                 "narrare_core.llm.model_listing.httpx.AsyncClient",
                 return_value=fake,
             ),
-            pytest.raises(ModelCatalogError) as exc_info,
+            pytest.raises(ModelCatalogError, match="HTTP 401") as exc_info,
         ):
             await catalog.list_models("openai", api_key="bad-key")
 
@@ -80,7 +80,7 @@ class TestErrorHandling:
                 "narrare_core.llm.model_listing.httpx.AsyncClient",
                 return_value=fake,
             ),
-            pytest.raises(ModelCatalogError) as exc_info,
+            pytest.raises(ModelCatalogError, match="Network error") as exc_info,
         ):
             await catalog.list_models("anthropic", api_key="test")
 
@@ -97,7 +97,7 @@ class TestErrorHandling:
                 "narrare_core.llm.model_listing.httpx.AsyncClient",
                 return_value=fake,
             ),
-            pytest.raises(ModelCatalogError) as exc_info,
+            pytest.raises(ModelCatalogError, match="Network error") as exc_info,
         ):
             await catalog.list_models("openai", api_key="test")
 
@@ -114,7 +114,7 @@ class TestErrorHandling:
                 "narrare_core.llm.model_listing.httpx.AsyncClient",
                 return_value=fake,
             ),
-            pytest.raises(ModelCatalogError) as exc_info,
+            pytest.raises(ModelCatalogError, match="Unexpected error") as exc_info,
         ):
             await catalog.list_models("openai", api_key="test")
 
@@ -134,7 +134,7 @@ class TestErrorHandling:
                 "narrare_core.llm.model_listing.httpx.AsyncClient",
                 return_value=fake,
             ),
-            pytest.raises(ModelCatalogError) as exc_info,
+            pytest.raises(ModelCatalogError, match="Network error") as exc_info,
         ):
             await catalog.list_models("groq", api_key="test")
 

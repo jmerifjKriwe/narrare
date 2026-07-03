@@ -1,0 +1,177 @@
+name: Mutation Testing (Monthly)
+
+on:
+  schedule:
+    - cron: '0 6 1 * *'   # 1. jedes Monats, 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Module scope to mutate'
+        default: 'core'
+        type: choice
+        options:
+          - core
+          - api
+          - all
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  mutmut:
+    name: MutMut Mutation Score
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: narrare
+          POSTGRES_PASSWORD: narrare
+          POSTGRES_DB: narrare_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_test
+      TEST_DATABASE_URL: postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_test
+      REDIS_URL: redis://localhost:6379/0
+      ENVIRONMENT: test
+      SECRET_KEY: test-secret-key-not-for-production
+      ANTHROPIC_API_KEY: sk-test-dummy
+      OPENAI_API_KEY: sk-test-dummy
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-packages --group dev
+
+      - name: Install just
+        uses: extractions/setup-just@v4
+
+      - name: Run migrations
+        run: cd apps/api && uv run alembic upgrade head
+
+      - name: Determine scope
+        id: scope
+        run: |
+          if [[ "${{ inputs.scope }}" == "" ]]; then
+            echo "paths=packages/core/narrare_core/prompts/ packages/core/narrare_core/writing/ packages/core/narrare_core/llm/intents.py" >> $GITHUB_OUTPUT
+            echo "label=core (prompts, writing, intents)" >> $GITHUB_OUTPUT
+          else
+            case "${{ inputs.scope }}" in
+              core)
+                echo "paths=packages/core/narrare_core/prompts/ packages/core/narrare_core/writing/ packages/core/narrare_core/llm/intents.py" >> $GITHUB_OUTPUT
+                echo "label=core (prompts, writing, intents)" >> $GITHUB_OUTPUT
+                ;;
+              api)
+                echo "paths=apps/api/narrare/" >> $GITHUB_OUTPUT
+                echo "label=api (all backend modules)" >> $GITHUB_OUTPUT
+                ;;
+              all)
+                echo "paths=packages/core/narrare_core/ apps/api/narrare/" >> $GITHUB_OUTPUT
+                echo "label=all (core + api)" >> $GITHUB_OUTPUT
+                ;;
+            esac
+          fi
+
+      - name: Run MutMut
+        id: mutmut
+        continue-on-error: true
+        run: |
+          uv run mutmut run \
+            --paths-to-mutate ${{ steps.scope.outputs.paths }} \
+            --runner "uv run pytest tests/ -x --timeout=30 -q -n auto" \
+            --use-coverage \
+            2>&1 | tee mutmut-output.txt
+
+      - name: Generate report
+        if: always()
+        run: |
+          echo "## MutMut Mutation Testing Report" > mutation-report.md
+          echo "" >> mutation-report.md
+          echo "**Scope:** ${{ steps.scope.outputs.label }}" >> mutation-report.md
+          echo "**Date:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> mutation-report.md
+          echo "" >> mutation-report.md
+
+          if grep -q "Mutation score" mutmut-output.txt 2>/dev/null; then
+            grep "Mutation score" mutmut-output.txt >> mutation-report.md
+            echo "" >> mutation-report.md
+            echo "### Survived Mutants" >> mutation-report.md
+            echo '```' >> mutation-report.md
+            uv run mutmut results 2>/dev/null | head -50 >> mutation-report.md
+            echo '```' >> mutation-report.md
+          else
+            echo "⚠️ MutMut run did not complete successfully." >> mutation-report.md
+            echo "" >> mutation-report.md
+            echo "### Raw output" >> mutation-report.md
+            echo '```' >> mutation-report.md
+            cat mutmut-output.txt >> mutation-report.md
+            echo '```' >> mutation-report.md
+          fi
+
+      - name: Create Issue
+        if: always() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('mutation-report.md', 'utf8');
+
+            // Find existing open issue for mutation testing
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['mutation-testing'],
+            });
+
+            const title = `Mutation Testing Report (${new Date().toISOString().slice(0, 7)})`;
+
+            if (issues.data.length > 0) {
+              // Update existing issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                title: title,
+                body: body,
+              });
+            } else {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['mutation-testing'],
+              });
+            }
+
+      - name: Report summary
+        if: always()
+        run: |
+          echo "### Mutation Testing Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat mutation-report.md >> $GITHUB_STEP_SUMMARY

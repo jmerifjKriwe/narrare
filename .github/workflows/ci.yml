@@ -41,6 +41,7 @@ name: CI
 # | --   | check_pytest_collection_performance.py  | ⚠️ Warning   | test-unit Job (WARNING-only)       |
 # | --   | check_current_state_facts.py (SSOT)    | ✅ Blocking  | architecture Job                   |
 # | --   | check_governance_health.py (ADR-047)   | ✅ Blocking  | architecture Job (Phase 3+4 aggregation) |
+# | MutMut Mutation Score       | mutation-testing-monthly.yml    | 📅 Monthly  | Nicht-blockierend, Issue-Report |
 # ---------------------------------------------------------------------------
 
 on:

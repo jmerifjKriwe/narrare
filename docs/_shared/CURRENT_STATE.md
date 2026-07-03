@@ -91,6 +91,13 @@ Alembic migrations 0001 through 0030 (0028: invocation_evidence table; 0030: evi
 - OpenTelemetry-only trace standard for API and LLM/agent observability (ADR-031)
 - Pydantic Evals as the evaluation SSOT for AI runtime quality (ADR-032; implemented)
 
+### Mutation Testing (MutMut)
+- **Status:** ✅ Monthly CI (optional, nicht-blockierend)
+- **Dokumentation:** `docs/development/mutation-testing.md`
+- **Workflow:** `.github/workflows/mutation-testing-monthly.yml`
+- **Scope:** core/prompts/, core/writing/, core/llm/intents.py (default)
+- **Ergebnisse:** GitHub Issue mit Label mutation-testing
+
 ### AI Feature Freeze / Post-Freeze Governance
 
 - **Status:** Freeze fully lifted after Architecture freeze-lift review (2026-06-03).

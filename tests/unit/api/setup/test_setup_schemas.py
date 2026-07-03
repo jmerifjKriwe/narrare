@@ -26,15 +26,15 @@ class TestStep1LocationRequest:
             Step1LocationRequest(project_name="Novel/Project", writing_language="en")
 
     def test_slash_rejected(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="invalid characters"):
             Step1LocationRequest(project_name="a/b", writing_language="en")
 
     def test_backslash_rejected(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="invalid characters"):
             Step1LocationRequest(project_name="a\\b", writing_language="en")
 
     def test_empty_name_rejected(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="at least 1"):
             Step1LocationRequest(project_name="", writing_language="en")
 
     def test_autosave_defaults_to_30(self) -> None:
@@ -46,7 +46,7 @@ class TestStep1LocationRequest:
         assert req.autosave_interval == 0
 
     def test_autosave_above_max_rejected(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="less than or equal to 3600"):
             Step1LocationRequest(
                 project_name="Novel", writing_language="en", autosave_interval=3601
             )
@@ -73,7 +73,7 @@ class TestAIProviderEnum:
 
 class TestStep4ProviderRequest:
     def test_requires_model(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="at least 1"):
             Step4ProviderRequest(provider=AIProvider.ANTHROPIC, api_key="key", model="")
 
     def test_valid_request(self) -> None:

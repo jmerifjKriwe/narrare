@@ -21,6 +21,7 @@ from httpx import ASGITransport, AsyncClient
 from narrare._app.database import get_async_session
 from narrare._app.dependencies import get_current_user_id
 from narrare._app.main import create_app
+from narrare.writing.schemas import AcceptResponse, GenerationStatsResponse, SceneNextResponse
 
 TEST_USER_ID = "00000000-0000-0000-0000-0000000000ff"
 
@@ -99,6 +100,7 @@ class TestSceneNext:
             )
 
         assert response.status_code == status.HTTP_200_OK
+        SceneNextResponse.model_validate(response.json())
         data = response.json()
         assert data["scene_number"] == 3
         assert data["status"] == "generated"
@@ -187,6 +189,7 @@ class TestSceneAccept:
             )
 
         assert response.status_code == status.HTTP_200_OK
+        AcceptResponse.model_validate(response.json())
         data = response.json()
         assert data["word_count"] == 500
         assert str(data["request_id"]) == str(request_id)
@@ -277,6 +280,7 @@ class TestGenerationStats:
             )
 
         assert response.status_code == status.HTTP_200_OK
+        GenerationStatsResponse.model_validate(response.json())
         data = response.json()
         assert data["total_generations"] == 42
         assert data["success_rate"] == 0.85

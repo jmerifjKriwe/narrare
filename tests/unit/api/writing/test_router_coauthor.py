@@ -17,6 +17,7 @@ from narrare._app.database import get_async_session
 from narrare._app.dependencies import get_current_user_id
 from narrare._app.main import create_app
 from narrare._app.rate_limits import AI_WRITE_LIMITER
+from narrare.chapters.schemas import ChapterResponse
 
 TEST_USER_ID = "00000000-0000-0000-0000-0000000000ff"
 
@@ -126,6 +127,7 @@ class TestApplyCoAuthorChanges:
             )
 
         assert response.status_code == status.HTTP_200_OK
+        ChapterResponse.model_validate(response.json())
         data = response.json()
         assert data["title"] == "Revised Chapter"
         assert str(data["id"]) == str(chapter_id)

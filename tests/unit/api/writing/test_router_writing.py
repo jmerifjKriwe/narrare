@@ -133,6 +133,7 @@ class TestStartGeneration:
             )
 
         assert response.status_code == status.HTTP_200_OK
+        GenerateResponse.model_validate(response.json())
         data = response.json()
         assert data["status"] == "pending"
         assert "request_id" in data
@@ -255,6 +256,7 @@ class TestStopGeneration:
             )
 
         assert response.status_code == status.HTTP_200_OK
+        StopResponse.model_validate(response.json())
         data = response.json()
         assert data["status"] == "stopped"
         assert data["word_count"] == 100
@@ -322,6 +324,7 @@ class TestAcceptDraft:
             )
 
         assert response.status_code == status.HTTP_200_OK
+        AcceptResponse.model_validate(response.json())
         data = response.json()
         assert data["word_count"] == 200
         assert "chapter_id" in data

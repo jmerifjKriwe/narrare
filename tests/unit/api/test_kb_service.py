@@ -115,14 +115,14 @@ class TestKBServiceCreate:
         repo.get_by_slug = AsyncMock(return_value=MagicMock(spec=KBEntry))
 
         data = KBEntryCreate(entity_type="character", name="John")
-        with pytest.raises(ConflictError):
+        with pytest.raises(ConflictError, match="already exists"):
             await service.create(uuid.uuid4(), uuid.uuid4(), data)
 
     async def test_create_forbidden_novel(self) -> None:
         service, _, _ = _make_service(novel_owned=False)
 
         data = KBEntryCreate(entity_type="character", name="John")
-        with pytest.raises(ForbiddenError):
+        with pytest.raises(ForbiddenError, match="access to this novel"):
             await service.create(uuid.uuid4(), uuid.uuid4(), data)
 
     async def test_create_with_invalid_metadata_raises_validation(self) -> None:
@@ -135,7 +135,7 @@ class TestKBServiceCreate:
             metadata={"age": "not_a_number"},
         )
         # This should raise ValidationError from schema validation
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="Invalid metadata"):
             await service.create(uuid.uuid4(), uuid.uuid4(), data)
 
 
@@ -154,7 +154,7 @@ class TestKBServiceGet:
         service, repo, _ = _make_service()
         repo.get_by_id = AsyncMock(return_value=None)
 
-        with pytest.raises(NotFoundError):
+        with pytest.raises(NotFoundError, match="KBEntry"):
             await service.get(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
 
     async def test_get_wrong_novel_raises_not_found(self) -> None:
@@ -165,7 +165,7 @@ class TestKBServiceGet:
         repo.get_by_id = AsyncMock(return_value=entry)
 
         different_novel = uuid.uuid4()
-        with pytest.raises(NotFoundError):
+        with pytest.raises(NotFoundError, match="KBEntry"):
             await service.get(different_novel, uuid.uuid4(), uuid.uuid4())
 
 
@@ -197,7 +197,7 @@ class TestKBServiceUpdate:
         repo.get_by_slug = AsyncMock(return_value=MagicMock(spec=KBEntry))
 
         data = KBEntryUpdate(slug="taken-slug")
-        with pytest.raises(ConflictError):
+        with pytest.raises(ConflictError, match="already exists"):
             await service.update(entry.novel_id, uuid.uuid4(), uuid.uuid4(), data)
 
 

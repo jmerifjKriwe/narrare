@@ -51,7 +51,7 @@ class TestNovelServiceGet:
         assert result == novel
 
     async def test_get_raises_404_when_not_found(self, service: NovelService) -> None:
-        with pytest.raises(NotFoundError):
+        with pytest.raises(NotFoundError, match="Novel"):
             await service.get(uuid.uuid4(), uuid.uuid4())
 
 
@@ -128,7 +128,7 @@ class TestNovelServiceUpdate:
         assert result.title == "Updated Title"
 
     async def test_update_raises_404_when_not_found(self, service: NovelService) -> None:
-        with pytest.raises(NotFoundError):
+        with pytest.raises(NotFoundError, match="Novel"):
             await service.update(uuid.uuid4(), uuid.uuid4(), UpdateNovelRequest())
 
 
@@ -144,5 +144,5 @@ class TestNovelServiceDelete:
         fake_repo.assert_called_once("delete")
 
     async def test_delete_raises_404_when_not_found(self, service: NovelService) -> None:
-        with pytest.raises(NotFoundError):
+        with pytest.raises(NotFoundError, match="Novel"):
             await service.delete(uuid.uuid4(), uuid.uuid4())

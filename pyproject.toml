@@ -22,6 +22,7 @@ dev = [
   "pytest-randomly==4.1.0",
   "pytest-timeout>=2.3",
   "hypothesis>=6.100",
+  "mutmut==3.6.0",
   "pytest-playwright>=0.7",
   "pydantic-evals==2.0.0",
 ]
@@ -224,6 +225,14 @@ exclude_dirs = [
   ".agents",
 ]
 skips = ["B101"]  # assert_used is fine in tests
+
+# ---------------------------------------------------------------------------
+# MutMut (Mutation Testing)
+# ---------------------------------------------------------------------------
+[tool.mutmut]
+source_paths = ["packages/core/narrare_core", "apps/api/narrare"]
+# Default runner for mutation testing (overridable via CLI --runner)
+pytest_add_cli_args = ["-x", "--timeout=30", "-q"]
 
 # ---------------------------------------------------------------------------
 # Architecture constraints (read by scripts/check_architecture.py)

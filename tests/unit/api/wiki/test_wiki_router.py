@@ -152,6 +152,7 @@ class TestListSummaries:
         response = await client.get(f"/api/v1/novels/{novel_id}/wiki/summaries")
 
         assert response.status_code == status.HTTP_200_OK
+        WikiSummaryListResponse.model_validate(response.json())
         data = response.json()
         assert data["total"] == 1
         assert len(data["items"]) == 1
@@ -174,6 +175,7 @@ class TestListSummaries:
         )
 
         assert response.status_code == status.HTTP_200_OK
+        WikiSummaryListResponse.model_validate(response.json())
         mock_service.get_summaries.assert_called_once()
         call_args = mock_service.get_summaries.call_args
         # Verify entity_ids were parsed correctly (3rd positional arg)
@@ -203,6 +205,7 @@ class TestGetSingleSummary:
         response = await client.get(f"/api/v1/novels/{novel_id}/wiki/summaries/{entity_id}")
 
         assert response.status_code == status.HTTP_200_OK
+        WikiSummaryResponse.model_validate(response.json())
         data = response.json()
         assert data["narrative_summary"] == "A brave warrior who fights for justice."
 
@@ -243,6 +246,7 @@ class TestGetChapterSummary:
         response = await client.get(f"/api/v1/novels/{novel_id}/wiki/chapters/{chapter_id}/summary")
 
         assert response.status_code == status.HTTP_200_OK
+        WikiChapterSummaryResponse.model_validate(response.json())
         data = response.json()
         assert data["narrative_summary"] == "The hero enters the dark forest."
         assert data["key_events"] == ["Hero enters forest", "Finds ancient relic"]
@@ -287,6 +291,7 @@ class TestRefreshSummary:
         )
 
         assert response.status_code == status.HTTP_200_OK
+        WikiRefreshResponse.model_validate(response.json())
         data = response.json()
         assert data["status"] == "fresh"
         assert data["message"] == "Summary refreshed successfully."
@@ -319,6 +324,7 @@ class TestGetWikiIndex:
         response = await client.get(f"/api/v1/novels/{novel_id}/wiki/index")
 
         assert response.status_code == status.HTTP_200_OK
+        WikiIndexResponse.model_validate(response.json())
         data = response.json()
         assert data["total_summaries"] == 5
         assert data["fresh_count"] == 3

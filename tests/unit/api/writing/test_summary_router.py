@@ -102,6 +102,7 @@ class TestSummarizeChapter:
         )
 
         assert response.status_code == status.HTTP_200_OK
+        SummaryResultDataclass(**response.json())
         data = response.json()
         assert data["summary"] == "A test summary."
         assert data["word_count"] == 4

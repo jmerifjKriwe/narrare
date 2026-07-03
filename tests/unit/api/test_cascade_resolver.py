@@ -72,6 +72,7 @@ class TestCascadeResolver:
 
         mock_repo.get_override.assert_called_once()
         assert result is not None
+        assert result.meta.template_type == "character"
 
     @patch("narrare.templates.cascade_resolver.load_default_template")
     @patch("narrare.templates.cascade_resolver.parse_template")
@@ -120,6 +121,7 @@ class TestCascadeResolver:
         )
 
         assert result is not None
+        assert result.meta.template_version == "1.0.0"
         mock_load.assert_not_called()
 
     def test_resolve_sync_returns_bundled(self) -> None:
@@ -137,6 +139,7 @@ class TestCascadeResolver:
             resolver = CascadeResolver()
             result = resolver.resolve_sync("character")
             assert result is not None
+            assert result.meta.template_type == "character"
 
     @patch("narrare.templates.cascade_resolver.load_default_template")
     @patch("narrare.templates.cascade_resolver.parse_template")

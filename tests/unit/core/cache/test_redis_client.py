@@ -80,16 +80,17 @@ class TestProtocolCompliance:
         result = await cache.get("some_key")
         assert isinstance(result, str) or result is None
 
-    async def test_has_set(self, cache: RedisSessionCache) -> None:
+    async def test_has_set(self, cache: RedisSessionCache, mock_redis_client: MagicMock) -> None:
         """set() accepts str and optional TTL."""
         await cache.set("key", "value")
         await cache.set("key", "value", ttl_seconds=300)
-        assert True
+        mock_redis_client.set.assert_awaited_once_with("key", "value")
+        mock_redis_client.setex.assert_awaited_once_with("key", 300, "value")
 
-    async def test_has_delete(self, cache: RedisSessionCache) -> None:
+    async def test_has_delete(self, cache: RedisSessionCache, mock_redis_client: MagicMock) -> None:
         """delete() accepts str."""
         await cache.delete("some_key")
-        assert True
+        mock_redis_client.delete.assert_awaited_once_with("some_key")
 
 
 # ---------------------------------------------------------------------------
@@ -204,10 +205,13 @@ class TestGracefulDegradation:
         mock_redis_client.get.return_value = "recovered"
         assert await cache.get("key") == "recovered"
 
-    async def test_set_silent_on_redis_error(self, unreachable_cache: RedisSessionCache) -> None:
+    async def test_set_silent_on_redis_error(
+        self, cache: RedisSessionCache, mock_redis_client: MagicMock
+    ) -> None:
         """set() does not raise when Redis is unreachable."""
-        await unreachable_cache.set("any", "value")
-        assert True
+        mock_redis_client.set.side_effect = ConnectionError("Redis unreachable")
+        await cache.set("any", "value")
+        mock_redis_client.set.assert_awaited_once_with("any", "value")
 
     async def test_set_with_ttl_silent_on_error(
         self, cache: RedisSessionCache, mock_redis_client: MagicMock
@@ -215,12 +219,15 @@ class TestGracefulDegradation:
         """set() with TTL does not raise on exception."""
         mock_redis_client.setex.side_effect = RuntimeError("Unexpected")
         await cache.set("key", "value", ttl_seconds=60)
-        assert True
+        mock_redis_client.setex.assert_awaited_once_with("key", 60, "value")
 
-    async def test_delete_silent_on_redis_error(self, unreachable_cache: RedisSessionCache) -> None:
+    async def test_delete_silent_on_redis_error(
+        self, cache: RedisSessionCache, mock_redis_client: MagicMock
+    ) -> None:
         """delete() does not raise when Redis is unreachable."""
-        await unreachable_cache.delete("any")
-        assert True
+        mock_redis_client.delete.side_effect = ConnectionError("Redis unreachable")
+        await cache.delete("any")
+        mock_redis_client.delete.assert_awaited_once_with("any")
 
     async def test_delete_silent_on_generic_error(
         self, cache: RedisSessionCache, mock_redis_client: MagicMock
@@ -228,7 +235,7 @@ class TestGracefulDegradation:
         """delete() does not raise on any exception."""
         mock_redis_client.delete.side_effect = RuntimeError("Unexpected")
         await cache.delete("key")
-        assert True
+        mock_redis_client.delete.assert_awaited_once_with("key")
 
 
 # ---------------------------------------------------------------------------

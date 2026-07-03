@@ -98,6 +98,7 @@ class TestRejectDraft:
             )
 
         assert response.status_code == status.HTTP_200_OK
+        RejectResponse.model_validate(response.json())
         data = response.json()
         assert data["status"] == "rejected"
         assert data["request_id"] == str(request_id)

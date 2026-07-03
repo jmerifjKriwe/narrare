@@ -59,11 +59,11 @@ class TestKBSuggestedEntityValidation:
         assert entity.relevance_score == 1.0
 
     def test_relevance_score_above_one_rejected(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="less than or equal to 1"):
             _valid_entity(relevance_score=1.5)
 
     def test_relevance_score_below_zero_rejected(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="greater than or equal to 0"):
             _valid_entity(relevance_score=-0.1)
 
     def test_token_count_zero_is_valid(self) -> None:
@@ -71,11 +71,11 @@ class TestKBSuggestedEntityValidation:
         assert entity.token_count == 0
 
     def test_token_count_negative_rejected(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="greater than or equal to 0"):
             _valid_entity(token_count=-1)
 
     def test_missing_required_field_rejected(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="Field required"):
             KBSuggestedEntity(  # type: ignore[call-arg]
                 name="John",
                 entity_type="character",
@@ -87,12 +87,12 @@ class TestKBSuggestedEntityValidation:
 
     def test_frozen_model_rejects_mutation(self) -> None:
         entity = _valid_entity()
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="Instance is frozen"):
             entity.name = "Changed"  # type: ignore[misc]
 
     def test_frozen_model_rejects_del(self) -> None:
         entity = _valid_entity()
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="Instance is frozen"):
             del entity.entity_id  # type: ignore[misc]
 
 
@@ -129,7 +129,7 @@ class TestKBSuggestionResultValidation:
         assert result.total_token_count == 0
 
     def test_total_token_count_negative_rejected(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="greater than or equal to 0"):
             KBSuggestionResult(source="kb", total_token_count=-1)
 
     def test_query_metadata_defaults_to_empty_dict(self) -> None:
@@ -147,7 +147,7 @@ class TestKBSuggestionResultValidation:
 
     def test_frozen_result_rejects_mutation(self) -> None:
         result = KBSuggestionResult(source="kb", total_token_count=0)
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="Instance is frozen"):
             result.source = "other"  # type: ignore[misc]
 
     def test_frozen_result_entities_immutable(self) -> None:
@@ -157,9 +157,9 @@ class TestKBSuggestionResultValidation:
             total_token_count=100,
             source="kb",
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="Instance is frozen"):
             result.entities = ()  # type: ignore[misc]
 
     def test_source_is_required(self) -> None:
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match="Field required"):
             KBSuggestionResult(total_token_count=0)  # type: ignore[call-arg]

@@ -72,7 +72,7 @@ class TestAuthServiceRegister:
         existing = make_user(email="taken@example.com")
         fake_repo.seed(existing)
 
-        with pytest.raises(ConflictError) as exc:
+        with pytest.raises(ConflictError, match="already registered") as exc:
             await service.register(RegisterRequest(email="taken@example.com", password="secret123"))
         assert "already registered" in str(exc.value)
 
@@ -117,12 +117,12 @@ class TestAuthServiceLogin:
 
         with (
             patch("narrare.auth.service.verify_password", return_value=False),
-            pytest.raises(AuthenticationError),
+            pytest.raises(AuthenticationError, match="Invalid email or password"),
         ):
             await service.login(LoginRequest(email="test@example.com", password="wrong"))
 
     async def test_login_with_unknown_email_raises_401(self, service: AuthService) -> None:
-        with pytest.raises(AuthenticationError):
+        with pytest.raises(AuthenticationError, match="Invalid email or password"):
             await service.login(LoginRequest(email="nobody@example.com", password="secret"))
 
     async def test_login_with_inactive_user_raises_401(
@@ -133,7 +133,7 @@ class TestAuthServiceLogin:
 
         with (
             patch("narrare.auth.service.verify_password", return_value=True),
-            pytest.raises(AuthenticationError) as exc,
+            pytest.raises(AuthenticationError, match="disabled") as exc,
         ):
             await service.login(LoginRequest(email="test@example.com", password="secret"))
         assert "disabled" in str(exc.value)
@@ -161,7 +161,7 @@ class TestAuthServiceRefresh:
     async def test_refresh_with_invalid_token_raises_401(self, service: AuthService) -> None:
         with (
             patch("narrare.auth.service.verify_refresh_token", return_value=None),
-            pytest.raises(AuthenticationError),
+            pytest.raises(AuthenticationError, match="Invalid or expired"),
         ):
             await service.refresh("bad-token")
 
@@ -170,7 +170,7 @@ class TestAuthServiceRefresh:
 
         with (
             patch("narrare.auth.service.verify_refresh_token", return_value=payload),
-            pytest.raises(AuthenticationError),
+            pytest.raises(AuthenticationError, match="Invalid token payload"),
         ):
             await service.refresh("token-without-sub")
 
@@ -179,7 +179,7 @@ class TestAuthServiceRefresh:
 
         with (
             patch("narrare.auth.service.verify_refresh_token", return_value=payload),
-            pytest.raises(AuthenticationError),
+            pytest.raises(AuthenticationError, match="not found or inactive"),
         ):
             await service.refresh("valid-token")
 
@@ -192,7 +192,7 @@ class TestAuthServiceRefresh:
 
         with (
             patch("narrare.auth.service.verify_refresh_token", return_value=payload),
-            pytest.raises(AuthenticationError),
+            pytest.raises(AuthenticationError, match="not found or inactive"),
         ):
             await service.refresh("valid-token")
 
@@ -254,7 +254,7 @@ class TestAuthServiceExplicitNoneChecks:
         # checks by email, so store it at the expected key.
         fake_repo._by_email["taken@example.com"] = broken_user  # type: ignore[attr-defined]
 
-        with pytest.raises(ConflictError) as exc:
+        with pytest.raises(ConflictError, match="already registered") as exc:
             await service.register(RegisterRequest(email="taken@example.com", password="secret123"))
         assert "already registered" in str(exc.value)
 
@@ -266,7 +266,7 @@ class TestAuthServiceExplicitNoneChecks:
         during the falsy path (unknown email).
         """
         # Unknown email → repo returns None → should raise AuthenticationError
-        with pytest.raises(AuthenticationError):
+        with pytest.raises(AuthenticationError, match="Invalid email or password"):
             await service.login(LoginRequest(email="nobody@example.com", password="secret"))
 
     async def test_refresh_uses_is_none_for_user_check(
@@ -277,6 +277,6 @@ class TestAuthServiceExplicitNoneChecks:
 
         with (
             patch("narrare.auth.service.verify_refresh_token", return_value=payload),
-            pytest.raises(AuthenticationError),
+            pytest.raises(AuthenticationError, match="not found or inactive"),
         ):
             await service.refresh("valid-token")

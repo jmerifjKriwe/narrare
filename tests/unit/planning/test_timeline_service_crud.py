@@ -121,7 +121,7 @@ class TestGetEvent:
     ) -> None:
         mock_event_repo.get_by_id.return_value = None
 
-        with pytest.raises(NotFoundError):
+        with pytest.raises(NotFoundError, match="TimelineEvent"):
             await service.get_event(uuid.uuid4(), user_id)
 
 
@@ -156,7 +156,7 @@ class TestUpdateEvent:
         mock_event_repo.get_by_id.return_value = None
 
         request = TimelineEventUpdateRequest(event_name="New Name")
-        with pytest.raises(NotFoundError):
+        with pytest.raises(NotFoundError, match="TimelineEvent"):
             await service.update_event(uuid.uuid4(), user_id, request)
 
 
@@ -202,5 +202,5 @@ class TestDeleteEvent:
         mock_event_repo.get_by_id.return_value = event
         mock_novel_repo.get_by_id.return_value = None
 
-        with pytest.raises(NotFoundError):
+        with pytest.raises(NotFoundError, match="Novel"):
             await service.delete_event(event.id, user_id)
