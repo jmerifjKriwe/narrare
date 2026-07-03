@@ -27,6 +27,18 @@ test.describe("Design Tokens Page Screenshots", () => {
       });
     });
 
+    // Mock auth refresh — the auth provider also calls /api/v1/auth/refresh during init
+    await page.route("/api/v1/auth/refresh", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          access_token: "mock-access-token-for-vrt-tests",
+          token_type: "bearer",
+        }),
+      });
+    });
+
     // Suppress the feature tour overlay that blocks pointer events
     // The tour activates on first visit when narrare:featureTourCompleted isn't "true"
     await page.addInitScript(() => {
