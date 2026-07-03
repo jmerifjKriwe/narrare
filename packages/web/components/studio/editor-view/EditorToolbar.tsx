@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/react";
-import { Database, Sparkles, Wand2 } from "lucide-react";
+import { Bold, Database, Heading2, Heading3, Italic, Quote, Sparkles, Wand2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { ToolbarButton } from "@/components/ui/toolbar-button";
 import type {
   EditorRightPanelId,
   EditorRightPanelRequestSource,
@@ -49,58 +50,38 @@ export function EditorToolbar({
         if (opener) onRightPanelOpenerChange(opener);
       }}
     >
-      <button
-        type="button"
+      <ToolbarButton
+        label={t("editor.bold")}
+        icon={Bold}
+        active={editor.isActive("bold")}
         onClick={() => editor.chain().focus().toggleBold().run()}
-        className={`p-1.5 rounded hover:bg-accent transition-colors text-sm ${
-          editor.isActive("bold") ? "bg-accent" : ""
-        }`}
-        title={t("editor.bold")}
-      >
-        <strong>{"B"}</strong>
-      </button>
-      <button
-        type="button"
+      />
+      <ToolbarButton
+        label={t("editor.italic")}
+        icon={Italic}
+        active={editor.isActive("italic")}
         onClick={() => editor.chain().focus().toggleItalic().run()}
-        className={`p-1.5 rounded hover:bg-accent transition-colors text-sm ${
-          editor.isActive("italic") ? "bg-accent" : ""
-        }`}
-        title={t("editor.italic")}
-      >
-        <em>{"I"}</em>
-      </button>
+      />
       <ToolbarSeparator />
-      <button
-        type="button"
+      <ToolbarButton
+        label={t("editor.heading2")}
+        icon={Heading2}
+        active={editor.isActive("heading", { level: 2 })}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        className={`p-1.5 rounded hover:bg-accent transition-colors text-sm ${
-          editor.isActive("heading", { level: 2 }) ? "bg-accent" : ""
-        }`}
-        title={t("editor.heading2")}
-      >
-        {"H2"}
-      </button>
-      <button
-        type="button"
+      />
+      <ToolbarButton
+        label={t("editor.heading3")}
+        icon={Heading3}
+        active={editor.isActive("heading", { level: 3 })}
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-        className={`p-1.5 rounded hover:bg-accent transition-colors text-sm ${
-          editor.isActive("heading", { level: 3 }) ? "bg-accent" : ""
-        }`}
-        title={t("editor.heading3")}
-      >
-        {"H3"}
-      </button>
+      />
       <ToolbarSeparator />
-      <button
-        type="button"
+      <ToolbarButton
+        label={t("editor.blockquote")}
+        icon={Quote}
+        active={editor.isActive("blockquote")}
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        className={`p-1.5 rounded hover:bg-accent transition-colors text-sm ${
-          editor.isActive("blockquote") ? "bg-accent" : ""
-        }`}
-        title={t("editor.blockquote")}
-      >
-        {"\u201C"}
-      </button>
+      />
       <ToolbarSeparator />
       <button
         type="button"
