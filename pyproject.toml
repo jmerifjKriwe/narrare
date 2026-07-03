@@ -227,12 +227,48 @@ exclude_dirs = [
 skips = ["B101"]  # assert_used is fine in tests
 
 # ---------------------------------------------------------------------------
-# MutMut (Mutation Testing)
+# MutMut 3.x (Mutation Testing)
 # ---------------------------------------------------------------------------
+# MutMut 3.x reads ALL configuration from this table. The CLI (`mutmut run`)
+# only accepts `--max-children` — there are NO --paths-to-mutate / --runner /
+# --use-coverage flags (those were MutMut 2.x).
+#
+# This is the DEFAULT scope (core domain logic). For other scopes use
+# scripts/run_mutmut.py --scope api|all|custom, which rewrites this table
+# temporarily and restores it afterwards.
+#
+# IMPORTANT: source_paths use symlink names (narrare_core, narrare), NOT the
+# real workspace paths (packages/core/narrare_core). The wrapper creates
+# temporary symlinks so MutMut's path-derived module keys match the Python
+# import paths. See scripts/run_mutmut.py docstring for details.
+#
+# NOTE: we deliberately do NOT add `-n auto` (pytest-xdist) to
+# pytest_add_cli_args. MutMut 3.x parallelizes itself via os.fork() +
+# max-children; nesting xdist workers inside the forked mutant processes is
+# fragile. pytest-randomly is disabled automatically by MutMut.
 [tool.mutmut]
-source_paths = ["packages/core/narrare_core", "apps/api/narrare"]
-# Default runner for mutation testing (overridable via CLI --runner)
+# What gets mutated (walked recursively). Uses symlink name, not workspace path.
+source_paths = ["narrare_core"]
+# Glob restriction on what is actually mutated (must end in `*` or `.py`):
+only_mutate = [
+    "narrare_core/prompts/*",
+    "narrare_core/writing/*",
+    "narrare_core/llm/intents.py",
+]
+# Glob exclusions (must end in `*` or `.py`):
+do_not_mutate = [
+    "*/migrations/*",
+    "*/__pycache__/*",
+]
+# Non-Python assets copied into the mutants/ sandbox (MutMut 3.x copies only
+# .py files by default). Bundled prompts are read at runtime via
+# Path(__file__).resolve().parents[N] / "_bundled", so the asset tree must be
+# mirrored under mutants/packages/core/narrare_core/prompts/_bundled/.
+also_copy = ["packages/core/narrare_core/prompts/_bundled"]
+# Extra pytest args appended to every pytest invocation:
 pytest_add_cli_args = ["-x", "--timeout=30", "-q"]
+# Which tests to run during stats collection (when no specific tests given):
+pytest_add_cli_args_test_selection = ["tests/unit/core/"]
 
 # ---------------------------------------------------------------------------
 # Architecture constraints (read by scripts/check_architecture.py)

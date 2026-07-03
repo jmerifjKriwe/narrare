@@ -64,9 +64,19 @@ Ein separater GitHub Actions Workflow läuft monatlich (1. des Monats, 06:00 UTC
 
 ```bash
 # Manuell via GitHub UI: Actions → Mutation Testing (Monthly) → Run workflow
-# Oder lokal:
-uv run mutmut run --paths-to-mutate packages/core/narrare_core/prompts/
+# Oder lokal (MutMut 3.x ist config-driven — nutze den Wrapper für Scopes):
+uv run python scripts/run_mutmut.py                       # core (default)
+uv run python scripts/run_mutmut.py --scope api            # api scope
+uv run python scripts/run_mutmut.py --scope all            # all scopes
+uv run python scripts/run_mutmut.py --scope custom \
+    --paths "narrare_core/prompts/*" \
+    --tests "tests/unit/core/prompts/"
 ```
+
+> **Hinweis:** Der Wrapper erstellt temporäre Symlinks (`narrare_core → packages/core/narrare_core`),
+> damit MutMut's pfadbasierte Modul-Schlüssel mit den Python-Import-Pfaden
+> übereinstimmen. Symlinks und `pyproject.toml` werden nach dem Lauf (auch bei
+> Fehlern) automatisch wiederhergestellt.
 
 **Der Job ist NIEMALS blockierend** (`continue-on-error: true`). Ergebnisse werden als GitHub Issue mit Label `mutation-testing` veröffentlicht.
 

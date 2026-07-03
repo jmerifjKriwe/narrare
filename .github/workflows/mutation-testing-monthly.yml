@@ -73,38 +73,24 @@ jobs:
       - name: Run migrations
         run: cd apps/api && uv run alembic upgrade head
 
-      - name: Determine scope
+      - name: Determine scope label
         id: scope
         run: |
-          if [[ "${{ inputs.scope }}" == "" ]]; then
-            echo "paths=packages/core/narrare_core/prompts/ packages/core/narrare_core/writing/ packages/core/narrare_core/llm/intents.py" >> $GITHUB_OUTPUT
-            echo "label=core (prompts, writing, intents)" >> $GITHUB_OUTPUT
-          else
-            case "${{ inputs.scope }}" in
-              core)
-                echo "paths=packages/core/narrare_core/prompts/ packages/core/narrare_core/writing/ packages/core/narrare_core/llm/intents.py" >> $GITHUB_OUTPUT
-                echo "label=core (prompts, writing, intents)" >> $GITHUB_OUTPUT
-                ;;
-              api)
-                echo "paths=apps/api/narrare/" >> $GITHUB_OUTPUT
-                echo "label=api (all backend modules)" >> $GITHUB_OUTPUT
-                ;;
-              all)
-                echo "paths=packages/core/narrare_core/ apps/api/narrare/" >> $GITHUB_OUTPUT
-                echo "label=all (core + api)" >> $GITHUB_OUTPUT
-                ;;
-            esac
-          fi
+          SCOPE="${{ inputs.scope || 'core' }}"
+          case "$SCOPE" in
+            core) LABEL="core (prompts, writing, intents)" ;;
+            api)  LABEL="api (all backend modules)" ;;
+            all)  LABEL="all (core + api)" ;;
+            *)    LABEL="$SCOPE" ;;
+          esac
+          echo "label=$LABEL" >> $GITHUB_OUTPUT
 
       - name: Run MutMut
         id: mutmut
         continue-on-error: true
         run: |
-          uv run mutmut run \
-            --paths-to-mutate ${{ steps.scope.outputs.paths }} \
-            --runner "uv run pytest tests/ -x --timeout=30 -q -n auto" \
-            --use-coverage \
-            2>&1 | tee mutmut-output.txt
+          SCOPE="${{ inputs.scope || 'core' }}"
+          uv run python scripts/run_mutmut.py --scope "$SCOPE" 2>&1 | tee mutmut-output.txt
 
       - name: Generate report
         if: always()
@@ -115,21 +101,25 @@ jobs:
           echo "**Date:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> mutation-report.md
           echo "" >> mutation-report.md
 
-          if grep -q "Mutation score" mutmut-output.txt 2>/dev/null; then
-            grep "Mutation score" mutmut-output.txt >> mutation-report.md
-            echo "" >> mutation-report.md
-            echo "### Survived Mutants" >> mutation-report.md
-            echo '```' >> mutation-report.md
-            uv run mutmut results 2>/dev/null | head -50 >> mutation-report.md
-            echo '```' >> mutation-report.md
-          else
-            echo "⚠️ MutMut run did not complete successfully." >> mutation-report.md
-            echo "" >> mutation-report.md
-            echo "### Raw output" >> mutation-report.md
-            echo '```' >> mutation-report.md
-            cat mutmut-output.txt >> mutation-report.md
-            echo '```' >> mutation-report.md
-          fi
+          # MutMut 3.x CI/CD stats (JSON, designed for CI consumption)
+          echo "### CI/CD Stats" >> mutation-report.md
+          echo '```json' >> mutation-report.md
+          uv run mutmut export-cicd-stats 2>/dev/null >> mutation-report.md || true
+          echo '```' >> mutation-report.md
+          echo "" >> mutation-report.md
+
+          # Survived / timed-out mutants
+          echo "### Mutant Results" >> mutation-report.md
+          echo '```' >> mutation-report.md
+          uv run mutmut results 2>/dev/null | head -100 >> mutation-report.md || true
+          echo '```' >> mutation-report.md
+          echo "" >> mutation-report.md
+
+          # Raw run output (always included for debugging)
+          echo "### Raw Output (last 50 lines)" >> mutation-report.md
+          echo '```' >> mutation-report.md
+          tail -50 mutmut-output.txt >> mutation-report.md
+          echo '```' >> mutation-report.md
 
       - name: Create Issue
         if: always() && github.event_name == 'schedule'
