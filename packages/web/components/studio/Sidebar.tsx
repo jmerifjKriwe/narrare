@@ -17,9 +17,9 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { authApi } from "@/lib/api/client";
-import { useKBTotalCount } from "@/lib/hooks/useKB";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { SidebarChapterList } from "./SidebarChapterList";
+import { SidebarKBBadge } from "./SidebarKBBadge";
 import { SidebarUserFooter } from "./SidebarUserFooter";
 
 interface NavItem {
@@ -29,7 +29,13 @@ interface NavItem {
   key: string;
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  variant?: "desktop" | "drawer";
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
   const t = useTranslations("studio");
   const pathname = usePathname();
   const params = useParams();
@@ -99,11 +105,24 @@ export function Sidebar() {
     return pathname.startsWith(hrefStr);
   }
 
+  const handleNavigate = () => {
+    if (variant === "drawer") onClose?.();
+  };
+
+  const containerClassName =
+    variant === "drawer"
+      ? "w-72 bg-card flex flex-col h-full"
+      : "w-72 bg-card border-r border-border flex flex-col h-full";
+
   return (
-    <div className="w-72 bg-card border-r border-border flex flex-col h-full">
+    <div className={containerClassName}>
       {/* Logo area */}
       <div className="p-6 border-b border-border">
-        <Link href="/" className="flex items-center gap-3 no-underline group">
+        <Link
+          href="/"
+          className="flex items-center gap-3 no-underline group"
+          onClick={handleNavigate}
+        >
           <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center transition-transform group-hover:scale-105 overflow-hidden">
             <Image
               src="/logo.png"
@@ -126,6 +145,7 @@ export function Sidebar() {
         <Link
           href="/"
           className="w-full flex items-center gap-2 px-4 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors"
+          onClick={handleNavigate}
         >
           <ArrowLeft className="w-4 h-4" />
           <span>{t("sidebar.allNovels")}</span>
@@ -133,7 +153,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="p-3 border-b border-border space-y-0.5">
+      <nav aria-label={t("sidebar.navigation")} className="p-3 border-b border-border space-y-0.5">
         {navItems.map((item) => {
           const active = isActiveNav(item.href);
           return (
@@ -143,6 +163,7 @@ export function Sidebar() {
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all text-sm ${
                 active ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-accent"
               }`}
+              onClick={handleNavigate}
             >
               <item.icon className="w-4 h-4" />
               <span className="flex-1">{item.label}</span>
@@ -179,21 +200,5 @@ export function Sidebar() {
       {/* User info + logout */}
       <SidebarUserFooter user={user} onLogout={logout} />
     </div>
-  );
-}
-
-// --- KB entry count badge for sidebar ---
-
-function SidebarKBBadge({ novelId, active }: { novelId: string; active: boolean }) {
-  const kbCount = useKBTotalCount(novelId);
-  if (kbCount === 0) return null;
-  return (
-    <span
-      className={`text-xs px-1.5 py-0.5 rounded ${
-        active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"
-      }`}
-    >
-      {kbCount}
-    </span>
   );
 }

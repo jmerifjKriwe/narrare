@@ -15,7 +15,16 @@
     "allNovels": "All Novels",
     "logout": "Sign out",
     "devTools": "Dev Tools",
-    "designTokens": "Design Tokens"
+    "designTokens": "Design Tokens",
+    "openMenu": "Open navigation",
+    "closeMenu": "Close navigation",
+    "navigation": "Workspace navigation"
+  },
+  "shell": {
+    "workspaceMain": "Workspace content",
+    "editorRightPanel": "Editor side panel",
+    "panelOpened": "Panel opened",
+    "panelClosed": "Panel closed"
   },
   "dashboard": {
     "title": "My Novels",

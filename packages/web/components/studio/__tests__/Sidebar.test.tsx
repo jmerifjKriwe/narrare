@@ -63,4 +63,9 @@ describe("Sidebar", () => {
     expect(screen.getByText("sidebar.analysis")).toBeDefined();
     expect(screen.getByText("sidebar.settings")).toBeDefined();
   });
+
+  it("exposes the navigation landmark with an accessible name", () => {
+    render(<Sidebar />);
+    expect(screen.getByRole("navigation", { name: "sidebar.navigation" })).toBeDefined();
+  });
 });

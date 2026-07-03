@@ -17,7 +17,6 @@ export function useEditorGenerationActions({
 }: UseEditorGenerationActionsParams): EditorGenerationActions {
   const activeRequestId = useEditorStore((s) => s.activeRequestId);
   const draftText = useEditorStore((s) => s.draftText);
-  const generationPanelOpen = useEditorStore((s) => s.generationPanelOpen);
   const setGenerating = useEditorStore((s) => s.setGenerating);
   const setActiveRequestId = useEditorStore((s) => s.setActiveRequestId);
   const setGenerationMode = useEditorStore((s) => s.setGenerationMode);
@@ -47,11 +46,8 @@ export function useEditorGenerationActions({
       setGenerationMode(mode);
       setSessionMode(mode as "interactive_session" | "interview_assisted");
       setSessionActive(true);
-      if (generationPanelOpen) {
-        toggleGenerationPanel();
-      }
     },
-    [setGenerationMode, setSessionActive, generationPanelOpen, toggleGenerationPanel],
+    [setGenerationMode, setSessionActive],
   );
 
   const handleSessionClose = useCallback(() => {

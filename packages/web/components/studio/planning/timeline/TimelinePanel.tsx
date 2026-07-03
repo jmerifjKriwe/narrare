@@ -33,7 +33,7 @@ export function TimelinePanel({ novelId, onClose }: TimelinePanelProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header with tabs */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-card">
+      <div className="flex items-center gap-2 overflow-x-auto px-4 py-2 border-b border-border bg-card">
         <h3 className="text-sm font-medium flex-1">{t("title")}</h3>
         {onClose && (
           <button
@@ -45,7 +45,7 @@ export function TimelinePanel({ novelId, onClose }: TimelinePanelProps) {
             <X className="w-4 h-4" />
           </button>
         )}
-        <div className="flex rounded-md border border-border overflow-hidden">
+        <div className="flex shrink-0 rounded-md border border-border overflow-hidden">
           {tabs.map((tab) => (
             <button
               key={tab.key}

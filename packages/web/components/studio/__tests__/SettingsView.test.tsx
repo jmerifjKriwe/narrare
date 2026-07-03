@@ -1,12 +1,18 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsView } from "@/components/studio/SettingsView";
 
 // --- Hoisted mocks ---
 
-const { mockGetUser, mockUpdateUser } = vi.hoisted(() => ({
+const { mockGetUser, mockUpdateUser, navigationMocks } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockUpdateUser: vi.fn(),
+  navigationMocks: {
+    pathname: "/novel/novel-1/settings",
+    push: vi.fn(),
+    replace: vi.fn(),
+    searchParams: new URLSearchParams(),
+  },
 }));
 
 // --- Mocks ---
@@ -37,6 +43,21 @@ vi.mock("@tanstack/react-query", () => ({
     if (queryKey[0] === "settings" && queryKey[1] === "user") {
       return { data: { display_name: "Test User", ui_language: "en" }, isLoading: false };
     }
+    if (queryKey[0] === "novels") {
+      return {
+        data: {
+          author: "Test Author",
+          genre: "Fantasy",
+          logline: "A test logline",
+          synopsis: "A test synopsis",
+          story_structure: "three_act",
+          title: "Test Novel",
+          tone: "adventurous",
+          writing_language: "en",
+        },
+        isLoading: false,
+      };
+    }
     if (queryKey[0] === "settings" && queryKey[1] === "ai" && queryKey[2] === "providers") {
       return { data: [], isLoading: false };
     }
@@ -52,10 +73,28 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
 }));
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => navigationMocks.pathname,
+  useRouter: () => ({ push: navigationMocks.push, replace: navigationMocks.replace }),
+  useSearchParams: () => navigationMocks.searchParams,
+}));
+
 describe("SettingsView", () => {
+  beforeEach(() => {
+    navigationMocks.push.mockClear();
+    navigationMocks.replace.mockClear();
+    navigationMocks.searchParams = new URLSearchParams();
+  });
+
   it("renders settings title", () => {
     render(<SettingsView novelId="novel-1" />);
-    expect(screen.getByText("settings.title")).toBeDefined();
+    expect(screen.getAllByText("settings.title").length).toBeGreaterThan(0);
+  });
+
+  it("labels the settings view section with its title", () => {
+    render(<SettingsView novelId="novel-1" />);
+
+    expect(screen.getByRole("region", { name: "settings.title" })).toBeInTheDocument();
   });
 
   it("renders all category buttons", () => {
@@ -103,5 +142,23 @@ describe("SettingsView", () => {
 
     // AiTab renders provider and model sections
     expect(screen.getByText("settings.ai.title")).toBeDefined();
+  });
+
+  it("initializes category from URL state", () => {
+    navigationMocks.searchParams = new URLSearchParams("category=ai");
+
+    render(<SettingsView novelId="novel-1" />);
+
+    expect(screen.getByText("settings.ai.title")).toBeDefined();
+  });
+
+  it("normalizes invalid category URL state", () => {
+    navigationMocks.searchParams = new URLSearchParams("category=missing");
+
+    render(<SettingsView novelId="novel-1" />);
+
+    expect(navigationMocks.replace).toHaveBeenCalledWith("/novel/novel-1/settings", {
+      scroll: false,
+    });
   });
 });

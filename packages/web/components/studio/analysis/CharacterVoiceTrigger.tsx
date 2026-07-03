@@ -18,20 +18,21 @@ interface CharacterVoiceTriggerProps {
 
 export function CharacterVoiceTrigger({ disabled = false }: CharacterVoiceTriggerProps) {
   const t = useTranslations("analysis");
-  const characterVoicePanelOpen = useEditorStore((s) => s.characterVoicePanelOpen);
-  const toggleCharacterVoicePanel = useEditorStore((s) => s.toggleCharacterVoicePanel);
+  const activeRightPanel = useEditorStore((s) => s.rightPanel.active);
+  const toggleRightPanel = useEditorStore((s) => s.toggleRightPanel);
+  const isCharacterVoiceActive = activeRightPanel === "character_voice";
 
   return (
     <button
       type="button"
-      onClick={toggleCharacterVoicePanel}
+      onClick={() => toggleRightPanel("character_voice", "toolbar")}
       disabled={disabled}
       className={`flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-violet-600 dark:text-violet-400 ${
-        characterVoicePanelOpen ? "bg-accent" : ""
+        isCharacterVoiceActive ? "bg-accent" : ""
       } disabled:opacity-50`}
       title={t("characterVoice.triggerTooltip")}
       aria-label={t("characterVoice.triggerTooltip")}
-      aria-pressed={characterVoicePanelOpen}
+      aria-pressed={isCharacterVoiceActive}
     >
       <AudioLines className="w-3.5 h-3.5" />
       <span>{t("characterVoice.trigger")}</span>

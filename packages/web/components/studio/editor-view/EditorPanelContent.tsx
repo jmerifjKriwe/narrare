@@ -1,3 +1,6 @@
+"use client";
+
+import type { EditorRightPanelId } from "@/lib/stores/editorRightPanelState";
 import type { Chapter, ChapterSummary, VolumeStats } from "@/types";
 import { BetaReaderPanel } from "../analysis/BetaReaderPanel";
 import { CharacterVoicePanel } from "../analysis/CharacterVoicePanel";
@@ -11,10 +14,10 @@ import { GenerationPanel } from "../editor/GenerationPanel";
 import { MetadataSidebar } from "../editor/MetadataSidebar";
 import { SessionPanel } from "../editor/SessionPanel";
 import { WikiChapterSummaryPanel } from "../kb/WikiChapterSummaryPanel";
-import type { EditorPanelVisibility } from "./useEditorPanelVisibility";
 
-interface EditorSidePanelsProps {
-  visibility: EditorPanelVisibility;
+export interface EditorPanelContentProps {
+  activePanel: EditorRightPanelId;
+  closePanel: (panel?: EditorRightPanelId) => void;
   novelId: string;
   activeChapterId: string;
   content: string;
@@ -29,19 +32,19 @@ interface EditorSidePanelsProps {
   handleSessionClose: () => void;
   handleDraftAccepted: (text: string) => void;
   handleStartSession: (mode: string) => void;
-  toggleGenerationPanel: () => void;
-  toggleBetaReaderPanel: () => void;
-  toggleReadabilityPanel: () => void;
-  togglePovPanel: () => void;
-  toggleCoreferencePanel: () => void;
-  toggleCharacterVoicePanel: () => void;
-  toggleVoiceCheckPanel: () => void;
-  toggleSentimentPanel: () => void;
-  toggleConsistencyPanel: () => void;
 }
 
-export function EditorSidePanels({
-  visibility,
+/**
+ * Renders the single occupant of the editor right-panel slot.
+ *
+ * Extracted from {@link EditorRightPanelSlot} so the slot stays a thin
+ * accessibility/ownership shell (Escape handling, shell live region,
+ * responsive frame) while this module owns the exhaustive panel switch.
+ * Keeps both files under the RULE-04 200-line component limit.
+ */
+export function EditorPanelContent({
+  activePanel,
+  closePanel,
   novelId,
   activeChapterId,
   content,
@@ -56,38 +59,31 @@ export function EditorSidePanels({
   handleSessionClose,
   handleDraftAccepted,
   handleStartSession,
-  toggleGenerationPanel,
-  toggleBetaReaderPanel,
-  toggleReadabilityPanel,
-  togglePovPanel,
-  toggleCoreferencePanel,
-  toggleCharacterVoicePanel,
-  toggleVoiceCheckPanel,
-  toggleSentimentPanel,
-  toggleConsistencyPanel,
-}: EditorSidePanelsProps) {
-  return (
-    <>
-      {visibility.showSessionPanel && (
+}: EditorPanelContentProps) {
+  switch (activePanel) {
+    case "session":
+      return (
         <SessionPanel
           chapterId={activeChapterId}
           novelId={novelId}
           mode={sessionMode}
           onClose={handleSessionClose}
         />
-      )}
-      {visibility.showGenerationPanel && (
+      );
+    case "generation":
+      return (
         <GenerationPanel
           novelId={novelId}
           chapterId={activeChapterId}
           chapterContent={content}
           onDraftAccepted={handleDraftAccepted}
-          onClose={toggleGenerationPanel}
+          onClose={() => closePanel("generation")}
           onStartSession={handleStartSession}
         />
-      )}
-      {visibility.showMetadataSidebar && (
-        <div className="w-80 border-l border-border bg-card overflow-y-auto">
+      );
+    case "metadata":
+      return (
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <MetadataSidebar
             wordCount={wordCount}
             charCount={charCount}
@@ -105,55 +101,70 @@ export function EditorSidePanels({
             />
           </div>
         </div>
-      )}
-      {visibility.showBetaReaderPanel && (
+      );
+    case "beta_reader":
+      return (
         <BetaReaderPanel
           novelId={novelId}
           chapterIds={[activeChapterId]}
-          onClose={toggleBetaReaderPanel}
+          onClose={() => closePanel("beta_reader")}
         />
-      )}
-      {visibility.showReadabilityPanel && (
+      );
+    case "readability":
+      return (
         <ReadabilityPanel
           novelId={novelId}
           chapterIds={[activeChapterId]}
-          onClose={toggleReadabilityPanel}
+          onClose={() => closePanel("readability")}
         />
-      )}
-      {visibility.showPOVPanel && (
-        <POVPanel novelId={novelId} chapterIds={[activeChapterId]} onClose={togglePovPanel} />
-      )}
-      {visibility.showCoreferencePanel && (
+      );
+    case "pov":
+      return (
+        <POVPanel
+          novelId={novelId}
+          chapterIds={[activeChapterId]}
+          onClose={() => closePanel("pov")}
+        />
+      );
+    case "coreference":
+      return (
         <CoreferencePanel
           novelId={novelId}
           chapterIds={[activeChapterId]}
-          onClose={toggleCoreferencePanel}
+          onClose={() => closePanel("coreference")}
         />
-      )}
-      {visibility.showCharacterVoicePanel && (
+      );
+    case "character_voice":
+      return (
         <CharacterVoicePanel
           novelId={novelId}
           chapterIds={[activeChapterId]}
-          onClose={toggleCharacterVoicePanel}
+          onClose={() => closePanel("character_voice")}
         />
-      )}
-      {visibility.showVoiceCheckPanel && (
-        <VoiceCheckPanel chapterId={activeChapterId} onClose={toggleVoiceCheckPanel} />
-      )}
-      {visibility.showSentimentPanel && (
+      );
+    case "voice_check":
+      return (
+        <VoiceCheckPanel chapterId={activeChapterId} onClose={() => closePanel("voice_check")} />
+      );
+    case "sentiment":
+      return (
         <SentimentPanel
           novelId={novelId}
           chapterIds={[activeChapterId]}
-          onClose={toggleSentimentPanel}
+          onClose={() => closePanel("sentiment")}
         />
-      )}
-      {visibility.showConsistencyPanel && (
+      );
+    case "consistency":
+      return (
         <ConsistencyPanel
           novelId={novelId}
           chapterIds={[activeChapterId]}
-          onClose={toggleConsistencyPanel}
+          onClose={() => closePanel("consistency")}
         />
-      )}
-    </>
-  );
+      );
+    default: {
+      const _exhaustive: never = activePanel;
+      return _exhaustive;
+    }
+  }
 }

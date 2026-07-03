@@ -8,7 +8,7 @@
  * 4. Save button triggers handleSave
  * 5. Cmd+K opens command palette
  * 6. Cmd+S triggers save
- * 7. Context panel toggle button is visible
+ * 7. Metadata panel toggle button is visible
  * 8. Storyboard toggle button is visible
  * 9. Generation panel toggle button is visible
  */
@@ -52,7 +52,17 @@ const mockSetSessionActive = vi.fn();
 const mockToggleGenerationPanel = vi.fn();
 const mockToggleExtractionPanel = vi.fn();
 const mockToggleVoiceCheckPanel = vi.fn();
+const mockToggleRightPanel = vi.fn();
+const mockCloseRightPanel = vi.fn();
+const mockOpenRightPanel = vi.fn();
 const mockSetEditor = vi.fn();
+
+const navigationMocks = vi.hoisted(() => ({
+  pathname: "/novel/novel-1",
+  push: vi.fn(),
+  replace: vi.fn(),
+  searchParams: new URLSearchParams(),
+}));
 
 let editorStoreState: Record<string, unknown> = {};
 
@@ -64,7 +74,7 @@ vi.mock("@/lib/stores/editorStore", () => ({
       editor: null,
       saveStatus: "idle",
       sidebarOpen: true,
-      contextPanelOpen: false,
+      rightPanel: { active: null, previous: null, requestedBy: null },
       focusMode: false,
       storyboardOpen: false,
       isDragging: false,
@@ -73,8 +83,10 @@ vi.mock("@/lib/stores/editorStore", () => ({
       generationMode: null,
       draftText: "",
       sessionActive: false,
-      generationPanelOpen: false,
       extractionPanelOpen: false,
+      toggleRightPanel: mockToggleRightPanel,
+      closeRightPanel: mockCloseRightPanel,
+      openRightPanel: mockOpenRightPanel,
       setSaveStatus: mockSetSaveStatus,
       toggleSidebar: mockToggleSidebar,
       toggleFocusMode: mockToggleFocusMode,
@@ -93,6 +105,12 @@ vi.mock("@/lib/stores/editorStore", () => ({
     };
     return selector ? selector(state) : state;
   }),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => navigationMocks.pathname,
+  useRouter: () => ({ push: navigationMocks.push, replace: navigationMocks.replace }),
+  useSearchParams: () => navigationMocks.searchParams,
 }));
 
 // Mock API client
@@ -260,6 +278,7 @@ describe("EditorView", () => {
     vi.clearAllMocks();
     // Reset editorStoreState to defaults
     editorStoreState = {};
+    navigationMocks.searchParams = new URLSearchParams();
   });
 
   it("renders 'select chapter' message when no chapter is active", () => {
@@ -354,7 +373,7 @@ describe("EditorView", () => {
     });
   });
 
-  it("context panel toggle button is visible", async () => {
+  it("metadata panel toggle button is visible", async () => {
     editorStoreState = { activeChapterId: "chapter-1" };
     renderWithProviders(<EditorView novelId="novel-1" />);
 
@@ -406,12 +425,10 @@ describe("EditorView", () => {
     expect(screen.getByText("editor.generate")).toBeDefined();
   });
 
-  it("shows metadata sidebar when contextPanelOpen is true", async () => {
+  it("shows metadata sidebar when metadata is the active right panel", async () => {
     editorStoreState = {
       activeChapterId: "chapter-1",
-      contextPanelOpen: true,
-      sessionActive: false,
-      generationPanelOpen: false,
+      rightPanel: { active: "metadata", previous: null, requestedBy: "toolbar" },
     };
     renderWithProviders(<EditorView novelId="novel-1" />);
 
@@ -424,8 +441,7 @@ describe("EditorView", () => {
     editorStoreState = {
       activeChapterId: "chapter-1",
       sessionActive: true,
-      generationPanelOpen: false,
-      contextPanelOpen: false,
+      rightPanel: { active: "session", previous: null, requestedBy: "recovery" },
     };
     renderWithProviders(<EditorView novelId="novel-1" />);
 
@@ -434,12 +450,10 @@ describe("EditorView", () => {
     });
   });
 
-  it("shows generation panel when generationPanelOpen is true and no session", async () => {
+  it("shows generation panel when generation is the active right panel", async () => {
     editorStoreState = {
       activeChapterId: "chapter-1",
-      sessionActive: false,
-      generationPanelOpen: true,
-      contextPanelOpen: false,
+      rightPanel: { active: "generation", previous: null, requestedBy: "toolbar" },
     };
     renderWithProviders(<EditorView novelId="novel-1" />);
 
@@ -448,12 +462,10 @@ describe("EditorView", () => {
     });
   });
 
-  it("shows voice-check panel when voiceCheckPanelOpen is true", async () => {
+  it("shows voice-check panel when voice-check is the active right panel", async () => {
     editorStoreState = {
       activeChapterId: "chapter-1",
-      sessionActive: false,
-      generationPanelOpen: false,
-      voiceCheckPanelOpen: true,
+      rightPanel: { active: "voice_check", previous: null, requestedBy: "toolbar" },
     };
     renderWithProviders(<EditorView novelId="novel-1" />);
 
@@ -464,10 +476,10 @@ describe("EditorView", () => {
     expect(screen.getByTestId("voice-check-panel-chapter").textContent).toBe("chapter-1");
   });
 
-  it("does not show voice-check panel when voiceCheckPanelOpen is false", async () => {
+  it("does not show voice-check panel when no right panel is active", async () => {
     editorStoreState = {
       activeChapterId: "chapter-1",
-      voiceCheckPanelOpen: false,
+      rightPanel: { active: null, previous: null, requestedBy: null },
     };
     renderWithProviders(<EditorView novelId="novel-1" />);
 
@@ -475,6 +487,28 @@ describe("EditorView", () => {
       expect(screen.getByDisplayValue("Test Chapter")).toBeDefined();
     });
     expect(screen.queryByTestId("voice-check-panel")).toBeNull();
+  });
+
+  it("opens a safe editor right panel from URL state", async () => {
+    navigationMocks.searchParams = new URLSearchParams("panel=metadata");
+    editorStoreState = { activeChapterId: "chapter-1" };
+
+    renderWithProviders(<EditorView novelId="novel-1" />);
+
+    await waitFor(() => {
+      expect(mockOpenRightPanel).toHaveBeenCalledWith("metadata", "url");
+    });
+  });
+
+  it("normalizes unsafe session panel URL state out of the URL", async () => {
+    navigationMocks.searchParams = new URLSearchParams("panel=session");
+    editorStoreState = { activeChapterId: "chapter-1" };
+
+    renderWithProviders(<EditorView novelId="novel-1" />);
+
+    await waitFor(() => {
+      expect(navigationMocks.replace).toHaveBeenCalledWith("/novel/novel-1", { scroll: false });
+    });
   });
 
   it("title input updates on change", async () => {

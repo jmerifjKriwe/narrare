@@ -9,7 +9,7 @@
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { POVTrigger } from "@/components/studio/analysis/POVTrigger";
 import { useEditorStore } from "@/lib/stores/editorStore";
 
@@ -20,10 +20,7 @@ import { useEditorStore } from "@/lib/stores/editorStore";
 describe("POVTrigger", () => {
   beforeEach(() => {
     useEditorStore.setState({
-      povPanelOpen: false,
-      togglePovPanel: vi.fn(() => {
-        useEditorStore.setState((s) => ({ povPanelOpen: !s.povPanelOpen }));
-      }),
+      rightPanel: { active: null, previous: null, requestedBy: null },
     });
   });
 
@@ -45,11 +42,11 @@ describe("POVTrigger", () => {
     const button = screen.getByText("pov.trigger").closest("button")!;
     fireEvent.click(button);
 
-    expect(useEditorStore.getState().povPanelOpen).toBe(true);
+    expect(useEditorStore.getState().rightPanel.active).toBe("pov");
   });
 
   it("reflects closed state as aria-pressed=false", () => {
-    useEditorStore.setState({ povPanelOpen: false });
+    useEditorStore.setState({ rightPanel: { active: null, previous: null, requestedBy: null } });
     render(<POVTrigger />);
 
     const button = screen.getByText("pov.trigger").closest("button")!;
@@ -57,7 +54,9 @@ describe("POVTrigger", () => {
   });
 
   it("reflects open state as aria-pressed=true", () => {
-    useEditorStore.setState({ povPanelOpen: true });
+    useEditorStore.setState({
+      rightPanel: { active: "pov", previous: null, requestedBy: "toolbar" },
+    });
     render(<POVTrigger />);
 
     const button = screen.getByText("pov.trigger").closest("button")!;

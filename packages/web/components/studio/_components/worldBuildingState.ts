@@ -1,25 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { KBEntityType } from "@/lib/api/kb";
 import { clearPendingInterview, getPendingInterview } from "@/lib/hooks/use-kb-interview-resume";
+import type { KBMode, KBUrlState } from "../kb/kbUrlState";
 
-export function useWorldBuildingState(novelId: string) {
-  const [activeType, setActiveType] = useState<KBEntityType | null>(null);
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isAssistedSession, setIsAssistedSession] = useState(false);
-  const [assistedEntityType, setAssistedEntityType] = useState<KBEntityType | null>(null);
+export function useWorldBuildingState(novelId: string, initialUrlState: KBUrlState) {
+  const [activeType, setActiveType] = useState<KBEntityType | null>(initialUrlState.type);
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(initialUrlState.entryId);
+  const [isCreating, setIsCreating] = useState(initialUrlState.mode === "create");
+  const [isAssistedSession, setIsAssistedSession] = useState(initialUrlState.mode === "assist");
+  const [assistedEntityType, setAssistedEntityType] = useState<KBEntityType | null>(
+    initialUrlState.mode === "assist" ? (initialUrlState.type ?? "character") : null,
+  );
+  const [mode, setMode] = useState<KBMode>(initialUrlState.mode);
   const [resumeSessionId, setResumeSessionId] = useState<string | null>(null);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
-  const [showAnalysis, setShowAnalysis] = useState(false);
-  const [showConsistency, setShowConsistency] = useState(false);
-  const [showGraph, setShowGraph] = useState(false);
-  const [showWiki, setShowWiki] = useState(false);
+
+  useEffect(() => {
+    setActiveType(initialUrlState.type);
+    setSelectedEntryId(initialUrlState.entryId);
+    setMode(initialUrlState.mode);
+    setIsCreating(initialUrlState.mode === "create");
+    setIsAssistedSession(initialUrlState.mode === "assist");
+    setAssistedEntityType(
+      initialUrlState.mode === "assist" ? (initialUrlState.type ?? "character") : null,
+    );
+    setResumeSessionId(null);
+  }, [initialUrlState.entryId, initialUrlState.mode, initialUrlState.type]);
 
   function resetModes() {
-    setShowAnalysis(false);
-    setShowConsistency(false);
-    setShowGraph(false);
-    setShowWiki(false);
+    setMode("detail");
   }
 
   function resetSelectionForMode() {
@@ -38,16 +47,14 @@ export function useWorldBuildingState(novelId: string) {
     setSelectedEntryId(entryId);
     setIsCreating(false);
     setIsAssistedSession(false);
-    setShowAnalysis(false);
-    setShowConsistency(false);
+    setMode("detail");
   }
 
   function handleCreateNew() {
     setIsCreating(true);
     setSelectedEntryId(null);
     setIsAssistedSession(false);
-    setShowAnalysis(false);
-    setShowConsistency(false);
+    setMode("create");
   }
 
   function startNewAssistedSession() {
@@ -57,8 +64,7 @@ export function useWorldBuildingState(novelId: string) {
     setResumeSessionId(null);
     setIsCreating(false);
     setSelectedEntryId(null);
-    setShowAnalysis(false);
-    setShowConsistency(false);
+    setMode("assist");
   }
 
   function handleCreateAssisted() {
@@ -74,8 +80,7 @@ export function useWorldBuildingState(novelId: string) {
       setResumeSessionId(pending.sessionId);
       setIsCreating(false);
       setSelectedEntryId(null);
-      setShowAnalysis(false);
-      setShowConsistency(false);
+      setMode("assist");
     }
     setShowResumeDialog(false);
   }
@@ -87,31 +92,27 @@ export function useWorldBuildingState(novelId: string) {
   }
 
   function handleShowAnalysis() {
-    setShowAnalysis(true);
+    setMode("analysis");
     resetSelectionForMode();
-    setShowConsistency(false);
   }
 
   function handleShowConsistency() {
-    setShowConsistency(true);
+    setMode("consistency");
     resetSelectionForMode();
-    setShowAnalysis(false);
   }
 
   function handleShowGraph() {
-    setShowGraph(true);
+    setMode("graph");
     resetSelectionForMode();
-    setShowAnalysis(false);
-    setShowConsistency(false);
-    setShowWiki(false);
   }
 
   function handleShowWiki() {
-    setShowWiki(true);
+    setMode("wiki");
     resetSelectionForMode();
-    setShowAnalysis(false);
-    setShowConsistency(false);
-    setShowGraph(false);
+  }
+
+  function handleCloseWiki() {
+    setMode("detail");
   }
 
   return {
@@ -129,32 +130,38 @@ export function useWorldBuildingState(novelId: string) {
     handleTypeChange,
     isAssistedSession,
     isCreating,
+    mode,
     resumeSessionId,
     selectedEntryId,
-    setShowAnalysis,
-    setShowConsistency,
+    setMode,
     setShowResumeDialog,
-    showAnalysis,
-    showConsistency,
-    showGraph,
+    showAnalysis: mode === "analysis",
+    showConsistency: mode === "consistency",
+    showGraph: mode === "graph",
     showResumeDialog,
-    showWiki,
+    showWiki: mode === "wiki",
     handleAssistedCancel: () => {
       setIsAssistedSession(false);
       setAssistedEntityType(null);
       setResumeSessionId(null);
+      setMode("detail");
     },
     handleAssistedComplete: (entryId: string) => {
       setIsAssistedSession(false);
       setAssistedEntityType(null);
       setResumeSessionId(null);
       setSelectedEntryId(entryId);
+      setMode("detail");
     },
-    handleCloseWiki: () => setShowWiki(false),
-    handleCreateCancel: () => setIsCreating(false),
+    handleCloseWiki,
+    handleCreateCancel: () => {
+      setIsCreating(false);
+      setMode("detail");
+    },
     handleCreated: (entryId: string) => {
       setIsCreating(false);
       setSelectedEntryId(entryId);
+      setMode("detail");
     },
     handleDeleted: () => setSelectedEntryId(null),
   };

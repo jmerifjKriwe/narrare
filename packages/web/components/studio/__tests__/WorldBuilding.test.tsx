@@ -15,12 +15,25 @@
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WorldBuilding } from "@/components/studio/WorldBuilding";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
+
+const navigationMocks = vi.hoisted(() => ({
+  pathname: "/novel/novel-1/worldbuilding",
+  push: vi.fn(),
+  replace: vi.fn(),
+  searchParams: new URLSearchParams(),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => navigationMocks.pathname,
+  useRouter: () => ({ push: navigationMocks.push, replace: navigationMocks.replace }),
+  useSearchParams: () => navigationMocks.searchParams,
+}));
 
 vi.mock("@/lib/hooks/useKB", () => ({
   useKBEntries: () => ({
@@ -90,10 +103,22 @@ vi.mock("@/components/studio/kb/KnowledgeGraphView", () => ({
 // ---------------------------------------------------------------------------
 
 describe("WorldBuilding", () => {
+  beforeEach(() => {
+    navigationMocks.push.mockClear();
+    navigationMocks.replace.mockClear();
+    navigationMocks.searchParams = new URLSearchParams();
+  });
+
   it("renders KBCategorySidebar by default", () => {
     render(<WorldBuilding novelId="novel-1" />);
 
     expect(screen.getByTestId("kb-category-sidebar")).toBeDefined();
+  });
+
+  it("labels the worldbuilding view section with its title", () => {
+    render(<WorldBuilding novelId="novel-1" />);
+
+    expect(screen.getByRole("region", { name: "worldbuilding.title" })).toBeInTheDocument();
   });
 
   it("renders KBEntryList by default", () => {
@@ -142,5 +167,26 @@ describe("WorldBuilding", () => {
 
     expect(screen.getByTestId("kb-assisted-panel")).toBeDefined();
     expect(screen.queryByTestId("kb-detail-panel")).toBeNull();
+  });
+
+  it("initializes mode from URL state", () => {
+    navigationMocks.searchParams = new URLSearchParams("mode=analysis");
+
+    render(<WorldBuilding novelId="novel-1" />);
+
+    expect(screen.getByTestId("analysis-panel")).toBeDefined();
+  });
+
+  it("pushes URL state when mode changes", () => {
+    render(<WorldBuilding novelId="novel-1" />);
+
+    fireEvent.click(screen.getByTestId("btn-analyze"));
+
+    expect(navigationMocks.push).toHaveBeenCalledWith(
+      "/novel/novel-1/worldbuilding?mode=analysis",
+      {
+        scroll: false,
+      },
+    );
   });
 });

@@ -10,17 +10,14 @@
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { CharacterVoiceTrigger } from "@/components/studio/analysis/CharacterVoiceTrigger";
 import { useEditorStore } from "@/lib/stores/editorStore";
 
 describe("CharacterVoiceTrigger", () => {
   beforeEach(() => {
     useEditorStore.setState({
-      characterVoicePanelOpen: false,
-      toggleCharacterVoicePanel: vi.fn(() => {
-        useEditorStore.setState((s) => ({ characterVoicePanelOpen: !s.characterVoicePanelOpen }));
-      }),
+      rightPanel: { active: null, previous: null, requestedBy: null },
     });
   });
 
@@ -42,11 +39,11 @@ describe("CharacterVoiceTrigger", () => {
     const button = screen.getByText("characterVoice.trigger").closest("button")!;
     fireEvent.click(button);
 
-    expect(useEditorStore.getState().characterVoicePanelOpen).toBe(true);
+    expect(useEditorStore.getState().rightPanel.active).toBe("character_voice");
   });
 
   it("reflects closed state as aria-pressed=false", () => {
-    useEditorStore.setState({ characterVoicePanelOpen: false });
+    useEditorStore.setState({ rightPanel: { active: null, previous: null, requestedBy: null } });
     render(<CharacterVoiceTrigger />);
 
     const button = screen.getByText("characterVoice.trigger").closest("button")!;
@@ -54,7 +51,9 @@ describe("CharacterVoiceTrigger", () => {
   });
 
   it("reflects open state as aria-pressed=true", () => {
-    useEditorStore.setState({ characterVoicePanelOpen: true });
+    useEditorStore.setState({
+      rightPanel: { active: "character_voice", previous: null, requestedBy: "toolbar" },
+    });
     render(<CharacterVoiceTrigger />);
 
     const button = screen.getByText("characterVoice.trigger").closest("button")!;

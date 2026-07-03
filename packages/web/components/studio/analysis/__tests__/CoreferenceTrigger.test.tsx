@@ -9,7 +9,7 @@
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { CoreferenceTrigger } from "@/components/studio/analysis/CoreferenceTrigger";
 import { useEditorStore } from "@/lib/stores/editorStore";
 
@@ -20,10 +20,7 @@ import { useEditorStore } from "@/lib/stores/editorStore";
 describe("CoreferenceTrigger", () => {
   beforeEach(() => {
     useEditorStore.setState({
-      coreferencePanelOpen: false,
-      toggleCoreferencePanel: vi.fn(() => {
-        useEditorStore.setState((s) => ({ coreferencePanelOpen: !s.coreferencePanelOpen }));
-      }),
+      rightPanel: { active: null, previous: null, requestedBy: null },
     });
   });
 
@@ -45,11 +42,11 @@ describe("CoreferenceTrigger", () => {
     const button = screen.getByText("coreference.trigger").closest("button")!;
     fireEvent.click(button);
 
-    expect(useEditorStore.getState().coreferencePanelOpen).toBe(true);
+    expect(useEditorStore.getState().rightPanel.active).toBe("coreference");
   });
 
   it("reflects closed state as aria-pressed=false", () => {
-    useEditorStore.setState({ coreferencePanelOpen: false });
+    useEditorStore.setState({ rightPanel: { active: null, previous: null, requestedBy: null } });
     render(<CoreferenceTrigger />);
 
     const button = screen.getByText("coreference.trigger").closest("button")!;
@@ -57,7 +54,9 @@ describe("CoreferenceTrigger", () => {
   });
 
   it("reflects open state as aria-pressed=true", () => {
-    useEditorStore.setState({ coreferencePanelOpen: true });
+    useEditorStore.setState({
+      rightPanel: { active: "coreference", previous: null, requestedBy: "toolbar" },
+    });
     render(<CoreferenceTrigger />);
 
     const button = screen.getByText("coreference.trigger").closest("button")!;

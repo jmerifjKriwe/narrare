@@ -15,7 +15,16 @@
     "allNovels": "Tous les romans",
     "logout": "Se déconnecter",
     "devTools": "Outils de développement",
-    "designTokens": "Design Tokens"
+    "designTokens": "Design Tokens",
+    "openMenu": "Ouvrir la navigation",
+    "closeMenu": "Fermer la navigation",
+    "navigation": "Navigation de l’espace de travail"
+  },
+  "shell": {
+    "workspaceMain": "Contenu de l’espace de travail",
+    "editorRightPanel": "Panneau latéral de l’éditeur",
+    "panelOpened": "Panneau ouvert",
+    "panelClosed": "Panneau fermé"
   },
   "dashboard": {
     "title": "Mes romans",

@@ -31,6 +31,8 @@ interface WorldBuildingLayoutProps {
   onShowWiki: () => void;
   showGraph: boolean;
   showWiki: boolean;
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
   children?: ReactNode;
 }
 
@@ -50,34 +52,42 @@ export function WorldBuildingLayout({
   onShowWiki,
   showGraph,
   showWiki,
+  searchQuery,
+  onSearchQueryChange,
   children,
 }: WorldBuildingLayoutProps) {
   return (
-    <div className="flex-1 flex h-full">
-      <KBCategorySidebar
-        novelId={novelId}
-        activeType={activeType}
-        onTypeChange={onTypeChange}
-        onAnalyze={onAnalyze}
-        onConsistencyCheck={onConsistencyCheck}
-        onShowGraph={onShowGraph}
-        onShowWiki={onShowWiki}
-        showGraph={showGraph}
-        showWiki={showWiki}
-      />
-      {!showGraph && (
-        <KBEntryList
+    <div data-testid="kb-responsive-layout" className="flex-1 flex min-h-0 flex-col lg:flex-row">
+      <div className="shrink-0 border-b border-border lg:w-56 lg:border-b-0 lg:border-r">
+        <KBCategorySidebar
           novelId={novelId}
-          entries={entries}
-          isLoading={entriesLoading}
-          selectedEntryId={selectedEntryId}
           activeType={activeType}
-          onSelectEntry={onSelectEntry}
-          onCreateNew={onCreateNew}
-          onCreateAssisted={onCreateAssisted}
+          onTypeChange={onTypeChange}
+          onAnalyze={onAnalyze}
+          onConsistencyCheck={onConsistencyCheck}
+          onShowGraph={onShowGraph}
+          onShowWiki={onShowWiki}
+          showGraph={showGraph}
+          showWiki={showWiki}
         />
+      </div>
+      {!showGraph && (
+        <div className="shrink-0 border-b border-border lg:w-64 lg:border-b-0 lg:border-r">
+          <KBEntryList
+            novelId={novelId}
+            entries={entries}
+            isLoading={entriesLoading}
+            selectedEntryId={selectedEntryId}
+            activeType={activeType}
+            onSelectEntry={onSelectEntry}
+            onCreateNew={onCreateNew}
+            onCreateAssisted={onCreateAssisted}
+            searchQuery={searchQuery}
+            onSearchQueryChange={onSearchQueryChange}
+          />
+        </div>
       )}
-      {children}
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
     </div>
   );
 }

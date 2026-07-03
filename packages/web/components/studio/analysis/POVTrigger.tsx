@@ -19,20 +19,21 @@ interface POVTriggerProps {
 
 export function POVTrigger({ disabled = false }: POVTriggerProps) {
   const t = useTranslations("analysis");
-  const povPanelOpen = useEditorStore((s) => s.povPanelOpen);
-  const togglePovPanel = useEditorStore((s) => s.togglePovPanel);
+  const activeRightPanel = useEditorStore((s) => s.rightPanel.active);
+  const toggleRightPanel = useEditorStore((s) => s.toggleRightPanel);
+  const isPovActive = activeRightPanel === "pov";
 
   return (
     <button
       type="button"
-      onClick={togglePovPanel}
+      onClick={() => toggleRightPanel("pov", "toolbar")}
       disabled={disabled}
       className={`flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-purple-600 dark:text-purple-400 ${
-        povPanelOpen ? "bg-accent" : ""
+        isPovActive ? "bg-accent" : ""
       } disabled:opacity-50`}
       title={t("pov.triggerTooltip")}
       aria-label={t("pov.triggerTooltip")}
-      aria-pressed={povPanelOpen}
+      aria-pressed={isPovActive}
     >
       <Eye className="w-3.5 h-3.5" />
       <span>{t("pov.trigger")}</span>

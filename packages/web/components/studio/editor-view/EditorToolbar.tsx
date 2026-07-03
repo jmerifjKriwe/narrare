@@ -1,6 +1,10 @@
 import type { Editor } from "@tiptap/react";
 import { Database, Sparkles, Wand2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import type {
+  EditorRightPanelId,
+  EditorRightPanelRequestSource,
+} from "@/lib/stores/editorRightPanelState";
 import { BetaReaderTrigger } from "../analysis/BetaReaderTrigger";
 import { CharacterVoiceTrigger } from "../analysis/CharacterVoiceTrigger";
 import { ConsistencyTrigger } from "../analysis/ConsistencyTrigger";
@@ -13,29 +17,38 @@ import { GhostTextConfig } from "../editor/GhostTextConfig";
 
 interface EditorToolbarProps {
   editor: Editor | null;
-  generationPanelOpen: boolean;
+  activeRightPanel: EditorRightPanelId | null;
   extractionPanelOpen: boolean;
-  toggleGenerationPanel: () => void;
+  toggleRightPanel: (panel: EditorRightPanelId, requestedBy: EditorRightPanelRequestSource) => void;
   toggleExtractionPanel: () => void;
-  toggleVoiceCheckPanel: () => void;
   openNameGenerator: () => void;
+  onRightPanelOpenerChange: (element: HTMLElement) => void;
 }
 
 export function EditorToolbar({
   editor,
-  generationPanelOpen,
+  activeRightPanel,
   extractionPanelOpen,
-  toggleGenerationPanel,
+  toggleRightPanel,
   toggleExtractionPanel,
-  toggleVoiceCheckPanel,
   openNameGenerator,
+  onRightPanelOpenerChange,
 }: EditorToolbarProps) {
   const t = useTranslations("studio");
 
   if (!editor) return null;
 
   return (
-    <div className="border-b border-border px-8 py-2 bg-card flex items-center gap-1">
+    <div
+      className="border-b border-border px-8 py-2 bg-card flex items-center gap-1"
+      onClickCapture={(event) => {
+        // Element (not HTMLElement) so SVG icon clicks — whose target is an
+        // SVGElement/SVGPathElement — still resolve to their enclosing button.
+        if (!(event.target instanceof Element)) return;
+        const opener = event.target.closest<HTMLElement>("button");
+        if (opener) onRightPanelOpenerChange(opener);
+      }}
+    >
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -101,9 +114,9 @@ export function EditorToolbar({
       <ToolbarSeparator />
       <button
         type="button"
-        onClick={toggleGenerationPanel}
+        onClick={() => toggleRightPanel("generation", "toolbar")}
         className={`flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-primary ${
-          generationPanelOpen ? "bg-accent" : ""
+          activeRightPanel === "generation" ? "bg-accent" : ""
         }`}
         title={t("editor.generate")}
       >
@@ -130,7 +143,7 @@ export function EditorToolbar({
       <POVTrigger />
       <CoreferenceTrigger />
       <CharacterVoiceTrigger />
-      <VoiceCheckTrigger onClick={toggleVoiceCheckPanel} />
+      <VoiceCheckTrigger onClick={() => toggleRightPanel("voice_check", "toolbar")} />
       <ToolbarSeparator />
       <GhostTextConfig editor={editor} />
     </div>
