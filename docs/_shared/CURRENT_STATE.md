@@ -347,7 +347,7 @@ Full details: `docs/architecture/questions/INDEX.md`
 | TipTap v3 API changes | Medium | Pin exact version |
 | Editor h-full in flex container | Low | Follow DashboardView pattern |
 | System Health Score | Medium | Run `just check-health` for current score. feature_adoption gate reflects ratcheted baseline debt (no new above ratchet floor). CI remains warning-only for DEGRADED and fails on CRITICAL. CI coverage gate target documented in `gate-exceptions.json`. |
-| Frontend RULE-04 regressions | Low | All 37 legacy violations resolved (53→0). `check_frontend_file_size.py` enforces limits in CI. New violations blocked by ratchet. |
+| Frontend RULE-04 regressions | Low | All 37 legacy violations resolved (53→0). `check_frontend_file_size.py` enforces limits in CI and pre-commit (hook `frontend-file-size`). New violations blocked by ratchet. |
 | Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup. The remaining adoption baseline class is the registered inline fallback. RULE-19 sync remains enforced by `--check-sync`. |
 | Code Knowledge Graph MCP intermittently unavailable | Medium | Agents fall back to Read/Glob/Grep, losing structural context (callers, dependents, test coverage). Fallback protocol documented in `graph-exploration.md`. Session startup check via available graph tools (e.g. `list_graph_stats_tool` / `search_graph`) recommended. Reported in Reviews 01–04. |
 
