@@ -95,6 +95,8 @@ packages/web/playwright-report/
 packages/web/test-results/
 skills-lock.json
 clawpatch-report.md
+.superpowers/
+
 
 # Evidence store (CI artifacts)
 .evidence/*.jsonl
