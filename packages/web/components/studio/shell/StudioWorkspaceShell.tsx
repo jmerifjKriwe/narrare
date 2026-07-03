@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/studio/Sidebar";
 import { FeatureTour } from "@/components/ui/feature-tour";
+import { IconButton } from "@/components/ui/icon-button";
 import { Toaster } from "@/components/ui/toaster";
 import { FEATURE_TOUR_STEPS } from "@/lib/config/feature-tour-steps";
 
@@ -32,14 +33,11 @@ export function StudioWorkspaceShell({ children }: StudioWorkspaceShellProps) {
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center border-b border-border bg-card px-3 py-2 lg:hidden">
-          <button
-            type="button"
-            aria-label={t("sidebar.openMenu")}
+          <IconButton
+            label={t("sidebar.openMenu")}
+            icon={Menu}
             onClick={() => setSidebarOpen(true)}
-            className="rounded-md p-2 text-foreground hover:bg-accent focus:outline-none focus:ring-1 focus:ring-ring"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          />
         </div>
         <main className="flex-1 min-h-0 min-w-0" aria-label={t("shell.workspaceMain")}>
           {children}

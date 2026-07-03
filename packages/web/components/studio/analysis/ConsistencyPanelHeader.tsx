@@ -1,5 +1,6 @@
 import { ArrowLeft, Info, Loader2, RefreshCw, Shield, X } from "lucide-react";
 import type { useTranslations } from "next-intl";
+import { IconButton } from "@/components/ui/icon-button";
 
 type ViewState = "idle" | "loading" | "results" | "error";
 type StudioTranslator = ReturnType<typeof useTranslations>;
@@ -30,14 +31,7 @@ export function ConsistencyPanelHeader({
     <>
       <div className="flex items-center justify-between p-4 border-b border-border bg-card">
         <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
-            aria-label={t("close")}
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
+          <IconButton label={t("close")} icon={ArrowLeft} onClick={onClose} />
           <div className="flex items-center gap-2 min-w-0">
             <Shield className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
             <h3 className="font-medium truncate">{t("consistency.title")}</h3>
@@ -68,14 +62,7 @@ export function ConsistencyPanelHeader({
               {t("refresh")}
             </button>
           )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
-            aria-label={t("close")}
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <IconButton label={t("close")} icon={X} onClick={onClose} />
         </div>
       </div>
       <div className="px-4 py-1.5 border-b border-border bg-muted/30">
