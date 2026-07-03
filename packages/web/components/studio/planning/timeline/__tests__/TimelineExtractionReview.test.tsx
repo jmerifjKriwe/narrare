@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TimelineExtractionReview } from "@/components/studio/planning/timeline/TimelineExtractionReview";
 import type { ExtractedEvent } from "@/types/timeline";
@@ -90,6 +90,7 @@ describe("TimelineExtractionReview", () => {
   it("renders extraction review with title", async () => {
     render(<TimelineExtractionReview novelId="novel-1" />);
     expect(screen.getByText("extractTitle")).toBeDefined();
+    await act(async () => {});
   });
 
   it("shows chapter selection after loading chapters", async () => {
@@ -100,6 +101,7 @@ describe("TimelineExtractionReview", () => {
       expect(screen.getByText("Chapter 2")).toBeDefined();
       expect(screen.getByText("Chapter 3")).toBeDefined();
     });
+    await act(async () => {});
   });
 
   it("disables extract button when no chapters are selected", async () => {
@@ -108,6 +110,7 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText("Chapter 1")).toBeDefined();
     });
+    await act(async () => {});
 
     const extractButton = screen.getByText("extractButton");
     expect(extractButton.closest("button")?.disabled).toBe(true);
@@ -119,6 +122,7 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText("Chapter 1")).toBeDefined();
     });
+    await act(async () => {});
 
     fireEvent.click(screen.getByText("Chapter 1"));
     const extractButton = screen.getByText("extractButton");
@@ -131,6 +135,7 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText("Chapter 1")).toBeDefined();
     });
+    await act(async () => {});
 
     // Select a chapter
     fireEvent.click(screen.getByText("Chapter 1"));
@@ -148,6 +153,7 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText("extracting")).toBeDefined();
     });
+    await act(async () => {});
   });
 
   it("shows a visible stop button while extracting (CR-AUFG-07-09 §16.2)", async () => {
@@ -157,6 +163,7 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText("extracting")).toBeDefined();
     });
+    await act(async () => {});
 
     // The cancel button is visible during extraction
     const stopButton = screen.getByTestId("timeline-extract-stop");
@@ -170,6 +177,7 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByTestId("timeline-extract-stop")).toBeDefined();
     });
+    await act(async () => {});
 
     fireEvent.click(screen.getByTestId("timeline-extract-stop"));
 
@@ -183,6 +191,7 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText("Chapter 1")).toBeDefined();
     });
+    await act(async () => {});
 
     expect(screen.queryByTestId("timeline-extract-stop")).toBeNull();
   });
@@ -196,6 +205,7 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText("extracting")).toBeDefined();
     });
+    await act(async () => {});
   });
 
   it("shows extraction count during SSE streaming", async () => {
@@ -207,6 +217,7 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText("extractedCount")).toBeDefined();
     });
+    await act(async () => {});
   });
 
   it("shows error state when extraction fails", async () => {
@@ -216,11 +227,13 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText("Failed to extract temporal expressions.")).toBeDefined();
     });
+    await act(async () => {});
   });
 
-  it("shows empty state when no extractions found", () => {
+  it("shows empty state when no extractions found", async () => {
     render(<TimelineExtractionReview novelId="novel-1" />);
     expect(screen.getByText("noExtractions")).toBeDefined();
+    await act(async () => {});
   });
 
   it("renders extracted events with accept/reject buttons", async () => {
@@ -231,6 +244,7 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText(/Chapter 1/)).toBeDefined();
     });
+    await act(async () => {});
 
     // Check extracted events are rendered
     await waitFor(() => {
@@ -239,6 +253,7 @@ describe("TimelineExtractionReview", () => {
       expect(screen.getByText("Aragorn")).toBeDefined();
       expect(screen.getByText("Legolas")).toBeDefined();
     });
+    await act(async () => {});
 
     // Accept/reject buttons should be visible
     const acceptButtons = screen.getAllByText("accept");
@@ -254,10 +269,12 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText(/Chapter 1/)).toBeDefined();
     });
+    await act(async () => {});
 
     await waitFor(() => {
       expect(screen.getAllByText("accept").length).toBe(2);
     });
+    await act(async () => {});
 
     // Accept first event
     const acceptButtons = screen.getAllByText("accept");
@@ -274,10 +291,12 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText(/Chapter 1/)).toBeDefined();
     });
+    await act(async () => {});
 
     await waitFor(() => {
       expect(screen.getAllByText("reject").length).toBe(2);
     });
+    await act(async () => {});
 
     // Reject first event
     const rejectButtons = screen.getAllByText("reject");
@@ -287,9 +306,10 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText("rejected")).toBeDefined();
     });
+    await act(async () => {});
   });
 
-  it("shows onClose button when onClose is provided", () => {
+  it("shows onClose button when onClose is provided", async () => {
     const onClose = vi.fn();
     render(<TimelineExtractionReview novelId="novel-1" onClose={onClose} />);
 
@@ -298,5 +318,6 @@ describe("TimelineExtractionReview", () => {
 
     fireEvent.click(closeButton);
     expect(onClose).toHaveBeenCalledOnce();
+    await act(async () => {});
   });
 });

@@ -6,7 +6,7 @@
  * so the hook is tested in isolation (mirrors useKB.test.tsx).
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -99,6 +99,7 @@ describe("usePromptHistory", () => {
     });
 
     await waitFor(() => expect(result.current.list.isSuccess).toBe(true));
+    await act(async () => {});
     expect(mockList).toHaveBeenCalledWith(PROMPT_ID);
     expect(result.current.list.data?.revisions).toHaveLength(2);
   });
@@ -109,14 +110,22 @@ describe("usePromptHistory", () => {
     });
 
     await waitFor(() => expect(result.current.list.isSuccess).toBe(true));
+    await act(async () => {});
     expect(result.current.compare.fetchStatus).toBe("idle");
     expect(mockCompare).not.toHaveBeenCalled();
 
-    result.current.setFromId("rev-1");
+    await act(async () => {
+      result.current.setFromId("rev-1");
+    });
     expect(mockCompare).not.toHaveBeenCalled();
+    await act(async () => {}); // flush TanStack Query internal updates
 
-    result.current.setToId("rev-2");
+    await act(async () => {
+      result.current.setToId("rev-2");
+    });
     await waitFor(() => expect(mockCompare).toHaveBeenCalledWith(PROMPT_ID, "rev-1", "rev-2"));
+    await act(async () => {});
+    await act(async () => {}); // double-flush for TanStack Query state machine
   });
 
   it("restoreRevision calls the API, records the id, and refreshes the list + onRestored", async () => {
@@ -126,14 +135,21 @@ describe("usePromptHistory", () => {
     });
 
     await waitFor(() => expect(result.current.list.isSuccess).toBe(true));
+    await act(async () => {});
 
-    await result.current.restoreMutation.mutateAsync("rev-1");
+    await act(async () => {
+      await result.current.restoreMutation.mutateAsync("rev-1");
+    });
 
     expect(mockRestore).toHaveBeenCalledWith(PROMPT_ID, "rev-1");
     await waitFor(() => expect(result.current.lastRestoredRevisionId).toBe("rev-3"));
+    await act(async () => {});
+    await act(async () => {});
     expect(onRestored).toHaveBeenCalledTimes(1);
     // list refetched after restore
     await waitFor(() => expect(mockList.mock.calls.length).toBeGreaterThanOrEqual(2));
+    await act(async () => {});
+    await act(async () => {});
   });
 
   it("clearHistory calls the API and refreshes the list + onCleared", async () => {
@@ -143,11 +159,16 @@ describe("usePromptHistory", () => {
     });
 
     await waitFor(() => expect(result.current.list.isSuccess).toBe(true));
+    await act(async () => {});
 
-    await result.current.clearMutation.mutateAsync();
+    await act(async () => {
+      await result.current.clearMutation.mutateAsync();
+    });
 
     expect(mockClear).toHaveBeenCalledWith(PROMPT_ID);
     expect(onCleared).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(mockList.mock.calls.length).toBeGreaterThanOrEqual(2));
+    await act(async () => {});
+    await act(async () => {});
   });
 });

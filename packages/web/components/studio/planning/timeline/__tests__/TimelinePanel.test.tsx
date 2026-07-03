@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TimelinePanel } from "@/components/studio/planning/timeline/TimelinePanel";
 
@@ -107,6 +107,11 @@ describe("TimelinePanel", () => {
     fireEvent.click(extractTab);
     // Extract panel renders with title
     expect(screen.getByText("extractTitle")).toBeDefined();
+    // Wait for chapter loading (TimelineExtractionReview child loads async)
+    await waitFor(() => {
+      expect(screen.getByText("Chapter 1")).toBeDefined();
+    });
+    await act(async () => {});
   });
 
   it("shows all five tabs", () => {

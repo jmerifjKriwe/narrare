@@ -8,7 +8,7 @@
  * - Requesting next question after successful answer
  */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { KBInterviewView } from "@/components/studio/kb/KBInterviewView";
 import type { KBCreationSession, KBInterviewResult } from "@/lib/api/kb-sessions";
@@ -88,6 +88,7 @@ describe("KBInterviewView — Interactions & Flows", () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText("kb.yourAnswer")).toBeDefined();
     });
+    await act(async () => {});
 
     // Type an answer
     const textarea = screen.getByPlaceholderText("kb.yourAnswer");
@@ -99,6 +100,7 @@ describe("KBInterviewView — Interactions & Flows", () => {
     await waitFor(() => {
       expect(onSubmitAnswer).toHaveBeenCalledWith("name", "Anna Schmidt");
     });
+    await act(async () => {});
   });
 
   it("shows error state with retry", async () => {
@@ -119,6 +121,7 @@ describe("KBInterviewView — Interactions & Flows", () => {
       // Error is now mapped to AIErrorResponse with i18n key
       expect(screen.getByText("aiActions.errorConnection")).toBeDefined();
     });
+    await act(async () => {});
 
     expect(screen.getByText("aiActions.retry")).toBeDefined();
   });
@@ -143,16 +146,19 @@ describe("KBInterviewView — Interactions & Flows", () => {
     await waitFor(() => {
       expect(screen.getByText("aiActions.errorConnection")).toBeDefined();
     });
+    await act(async () => {});
 
     fireEvent.click(screen.getByText("aiActions.retry"));
 
     await waitFor(() => {
       expect(onRequestQuestion).toHaveBeenCalledTimes(2);
     });
+    await act(async () => {});
 
     await waitFor(() => {
       expect(screen.getByText("What is this character's name?")).toBeDefined();
     });
+    await act(async () => {});
   });
 
   it("shows complete state when enough questions asked", async () => {
@@ -204,6 +210,7 @@ describe("KBInterviewView — Interactions & Flows", () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText("kb.yourAnswer")).toBeDefined();
     });
+    await act(async () => {});
 
     // Type and submit answer
     const textarea = screen.getByPlaceholderText("kb.yourAnswer");
@@ -248,6 +255,7 @@ describe("KBInterviewView — Interactions & Flows", () => {
       />,
     );
     unmount();
+    await act(async () => {});
 
     // Test separately — see the 'requests next question' test below
   });
@@ -273,6 +281,7 @@ describe("KBInterviewView — Interactions & Flows", () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText("kb.yourAnswer")).toBeDefined();
     });
+    await act(async () => {});
 
     // Type and submit answer
     const textarea = screen.getByPlaceholderText("kb.yourAnswer");
@@ -283,6 +292,7 @@ describe("KBInterviewView — Interactions & Flows", () => {
       // Should have requested next question
       expect(onRequestQuestion).toHaveBeenCalledTimes(2);
     });
+    await act(async () => {});
   });
 
   describe("keyboard shortcuts", () => {
@@ -308,6 +318,7 @@ describe("KBInterviewView — Interactions & Flows", () => {
       await waitFor(() => {
         expect(screen.getByPlaceholderText("kb.yourAnswer")).toBeDefined();
       });
+      await act(async () => {});
 
       // Fire Escape — should call onBack since not loading
       fireEvent.keyDown(window, { key: "Escape" });
@@ -334,6 +345,7 @@ describe("KBInterviewView — Interactions & Flows", () => {
       await waitFor(() => {
         expect(screen.getByText("aiActions.aiThinking")).toBeDefined();
       });
+      await act(async () => {});
 
       // Fire Escape to cancel loading
       fireEvent.keyDown(window, { key: "Escape" });
@@ -342,6 +354,7 @@ describe("KBInterviewView — Interactions & Flows", () => {
       await waitFor(() => {
         expect(screen.queryByText("aiActions.aiThinking")).toBeNull();
       });
+      await act(async () => {});
 
       // Now !isLoading, so Escape should trigger onBack
       fireEvent.keyDown(window, { key: "Escape" });

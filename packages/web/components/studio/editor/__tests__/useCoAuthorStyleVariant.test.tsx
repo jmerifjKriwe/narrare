@@ -13,7 +13,7 @@
  * 4. No request fires when streamedText is empty (guards against 422)
  */
 
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useCoAuthorStyleVariant } from "@/components/studio/editor/_components/useCoAuthorStyleVariant";
@@ -74,11 +74,13 @@ describe("useCoAuthorStyleVariant", () => {
       }),
     );
 
-    result.current.handleVariantSelect("more_sensory");
+    act(() => result.current.handleVariantSelect("more_sensory"));
 
     await waitFor(() => {
       expect(capturedBody).not.toBeNull();
     });
+
+    await act(async () => {});
 
     // The core Increment-B contract: the Co-Author surface MUST select the
     // co_author source mode so the backend uses the CO_AUTHOR pipeline.
@@ -115,7 +117,7 @@ describe("useCoAuthorStyleVariant", () => {
     expect(result.current.selectedVariant).toBeNull();
     expect(result.current.variantText).toBe("");
 
-    result.current.handleVariantSelect("more_lyrical");
+    act(() => result.current.handleVariantSelect("more_lyrical"));
 
     await waitFor(() => {
       // Variant is selected and the regenerated alternative flows in; streaming
@@ -124,6 +126,8 @@ describe("useCoAuthorStyleVariant", () => {
       expect(result.current.variantText).toContain("ribbons of light");
       expect(result.current.isVariantStreaming).toBe(false);
     });
+
+    await act(async () => {});
   });
 
   it("maps an HTTP failure to variantError and clears isVariantStreaming", async () => {
@@ -142,12 +146,14 @@ describe("useCoAuthorStyleVariant", () => {
       }),
     );
 
-    result.current.handleVariantSelect("leaner");
+    act(() => result.current.handleVariantSelect("leaner"));
 
     await waitFor(() => {
       expect(result.current.variantError).not.toBeNull();
       expect(result.current.isVariantStreaming).toBe(false);
     });
+
+    await act(async () => {});
   });
 
   it("does not fire a request when streamedText is empty", async () => {
@@ -171,7 +177,7 @@ describe("useCoAuthorStyleVariant", () => {
       }),
     );
 
-    result.current.handleVariantSelect("more_tense");
+    act(() => result.current.handleVariantSelect("more_tense"));
 
     // Allow any pending microtasks to flush.
     await Promise.resolve();

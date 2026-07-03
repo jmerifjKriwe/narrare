@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { WizardStep4 } from "@/components/studio/wizard/WizardStep4";
 
@@ -85,36 +85,41 @@ describe("WizardStep4", () => {
     mockValidateStep4.mockReset();
   });
 
-  it("renders step title and description", () => {
+  it("renders step title and description", async () => {
     render(<WizardStep4 onNext={onNext} onBack={onBack} />);
     expect(screen.getByText("wizard.step4.title")).toBeDefined();
     expect(screen.getByText("wizard.step4.description")).toBeDefined();
+    await act(async () => {});
   });
 
-  it("renders provider select with options", () => {
+  it("renders provider select with options", async () => {
     render(<WizardStep4 onNext={onNext} onBack={onBack} />);
     const select = screen.getByLabelText("wizard.step4.provider");
     const options = select.querySelectorAll("option");
     expect(options.length).toBeGreaterThanOrEqual(4);
+    await act(async () => {});
   });
 
-  it("shows API key input for non-ollama providers", () => {
+  it("shows API key input for non-ollama providers", async () => {
     render(<WizardStep4 onNext={onNext} onBack={onBack} />);
     expect(screen.getByLabelText("wizard.step4.apiKey")).toBeDefined();
     expect(screen.queryByLabelText("wizard.step4.ollamaUrl")).toBeNull();
+    await act(async () => {});
   });
 
-  it("shows ollama URL input when provider is ollama", () => {
+  it("shows ollama URL input when provider is ollama", async () => {
     mockUseWizardStoreFn.mockReturnValueOnce(makeStoreState({ provider: "ollama" }));
     render(<WizardStep4 onNext={onNext} onBack={onBack} />);
     expect(screen.getByLabelText("wizard.step4.ollamaUrl")).toBeDefined();
     expect(screen.queryByLabelText("wizard.step4.apiKey")).toBeNull();
+    await act(async () => {});
   });
 
-  it("calls onBack when back button is clicked", () => {
+  it("calls onBack when back button is clicked", async () => {
     render(<WizardStep4 onNext={onNext} onBack={onBack} />);
     fireEvent.click(getBackButton());
     expect(onBack).toHaveBeenCalledOnce();
+    await act(async () => {});
   });
 
   it("disables next button when no model is selected", () => {
@@ -133,6 +138,7 @@ describe("WizardStep4", () => {
     await waitFor(() => {
       expect(getNextButton().disabled).toBe(false);
     });
+    await act(async () => {});
   });
 
   it("calls validateStep4 and onNext when next is clicked", async () => {
@@ -147,12 +153,14 @@ describe("WizardStep4", () => {
     await waitFor(() => {
       expect(getNextButton().disabled).toBe(false);
     });
+    await act(async () => {});
 
     fireEvent.click(getNextButton());
 
     await waitFor(() => {
       expect(mockValidateStep4).toHaveBeenCalled();
     });
+    await act(async () => {});
 
     expect(mockUpdateStep4).toHaveBeenCalled();
     expect(onNext).toHaveBeenCalledOnce();
@@ -169,12 +177,14 @@ describe("WizardStep4", () => {
     await waitFor(() => {
       expect(getNextButton().disabled).toBe(false);
     });
+    await act(async () => {});
 
     fireEvent.click(getNextButton());
 
     await waitFor(() => {
       expect(screen.getByText("API key is required")).toBeDefined();
     });
+    await act(async () => {});
 
     expect(onNext).not.toHaveBeenCalled();
   });
@@ -188,6 +198,7 @@ describe("WizardStep4", () => {
     await waitFor(() => {
       expect(screen.getByText("wizard.step4.modelLoading")).toBeDefined();
     });
+    await act(async () => {});
   });
 
   it("renders model select when models are available", async () => {
@@ -201,6 +212,7 @@ describe("WizardStep4", () => {
       const el = screen.getByLabelText("wizard.step4.model");
       expect(el.tagName).toBe("SELECT");
     });
+    await act(async () => {});
   });
 
   it("renders model text input when no models are available", async () => {
@@ -212,6 +224,7 @@ describe("WizardStep4", () => {
       const el = screen.getByLabelText("wizard.step4.model");
       expect(el.tagName).toBe("INPUT");
     });
+    await act(async () => {});
   });
 
   it("renders offline fallback notice with reviewed date when provenance is bundled-fallback", async () => {
@@ -226,6 +239,7 @@ describe("WizardStep4", () => {
     await waitFor(() => {
       expect(getNextButton().disabled).toBe(false);
     });
+    await act(async () => {});
 
     const notice = screen.getByTestId("fallback-catalog-notice");
     expect(notice).toBeDefined();
@@ -246,6 +260,7 @@ describe("WizardStep4", () => {
     await waitFor(() => {
       expect(getNextButton().disabled).toBe(false);
     });
+    await act(async () => {});
 
     expect(screen.queryByTestId("fallback-catalog-notice")).toBeNull();
     expect(screen.queryByTestId("fallback-reviewed-date")).toBeNull();
