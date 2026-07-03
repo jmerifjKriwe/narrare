@@ -64,6 +64,96 @@ adapter spec.
 
 ---
 
+### AUFG-03-01 — Writing-Interview-Pfad von `ModelRegistry.run()` auf `NarrareAgent` umstellen
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-03-01 |
+| Title | Writing-Interview-Pfad von `ModelRegistry.run()` auf `NarrareAgent` umstellen |
+| Source | review-03-ai-features.md §Aufgaben |
+| Status | `open` |
+| Priority | P2 |
+| Area | AI / Architecture |
+| Owner role | Core Specialist (LLM/Agent layer) |
+| Dependencies | `packages/core/narrare_core/writing/pipeline_interview.py`; `packages/core/narrare_core/agents/` |
+| Review trigger/date | Re-review when Writing-Interview architecture is migrated or by 2026-09-30 |
+
+**Acceptance criteria:**
+
+- [ ] Interview-Fragen-Generierung läuft über einen `NarrareAgent`-Subtypen (z. B. Wiederverwendung von `ChatAgent` oder ein dedizierter `InterviewQuestionAgent`), sodass Meta/Universal/Observability garantiert injiziert werden.
+- [ ] Kein `# pyright: ignore[reportPrivateUsage]` mehr in `pipeline_interview.py` für `_registry`/`_build_and_validate_prompt`.
+- [ ] `check-adoption`-Report zeigt 0 inline fallback(s) für `writing/interactive_session` oder der verbleibende Fallback ist mit ADR + Reason im Adoption-Registry explizit gouvernement.
+- [ ] Bestehende Writing-/Interview-Tests bleiben grün; neu: Test, dass Interview-Antworten unter NarrareMeta/UniversalRules entstehen (Capability-Injection-Regressionstest).
+
+**Definition of Done:**
+
+- Writing-Interview-Pfad nutzt `NarrareAgent` statt direktem `ModelRegistry.run()`.
+- `check-adoption` zeigt keine inline fallbacks für interactive_session.
+- Tests grün.
+- This registry entry updated with exit evidence.
+
+---
+
+### AUFG-03-02 — KB-Assist Invocation-Fallback semantisch verhärten oder als gouvernierte Ausnahme klassifizieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-03-02 |
+| Title | KB-Assist Invocation-Fallback semantisch verhärten oder als gouvernierte Ausnahme klassifizieren |
+| Source | review-03-ai-features.md §Aufgaben |
+| Status | `open` |
+| Priority | P2 |
+| Area | AI / Invocation-Integrity |
+| Owner role | Core Specialist |
+| Dependencies | `apps/api/narrare/kb/assist_service.py`; `packages/core/narrare_core/prompts/`; ADR-048 |
+| Review trigger/date | Re-review when KB-Assist invocation architecture changes or by 2026-09-30 |
+
+**Acceptance criteria:**
+
+- [ ] Root-Cause-Klassifikation: Welche konkreten Exceptions kann `compose_invocation()` werfen, und welche sind echte Pipeline-Fehler vs. legitime NotFound-/Validation-Fehler?
+- [ ] Fallback ist entweder auf konkrete, benannte Exception-Typen eingeschränkt (kein bare `except Exception`) ODER als gouvernierte Ausnahme mit Reason im Adoption-/Invocation-Registry klassifiziert.
+- [ ] Runtime-`assert` (Zeile 193) ist durch echtes Fehler-Handling ersetzt (typed Exception + Logging).
+- [ ] Bei Fallback bleibt Evidence-Recording best-effort erhalten oder der Fallback wird im Invocation-Evidence-Stream als `degraded_mode` markiert.
+- [ ] Unit-Test deckt beide Pfade (Erfolg + Fallback) mit konkreten Fehlertypen ab.
+
+**Definition of Done:**
+
+- KB-Assist Invocation-Fallback ist auf konkrete Exception-Typen eingeschränkt oder als gouvernierte Ausnahme klassifiziert.
+- Runtime-`assert` ist durch echtes Fehler-Handling ersetzt.
+- Tests decken beide Pfade ab.
+- This registry entry updated with exit evidence.
+
+---
+
+### AUFG-03-03 — A2A/MCP-Feature-Dateien: Status- und Pfadgenauigkeit korrigieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-03-03 |
+| Title | A2A/MCP-Feature-Dateien: Status- und Pfadgenauigkeit korrigieren |
+| Source | review-03-ai-features.md §Aufgaben |
+| Status | `open` |
+| Priority | P3 |
+| Area | Governance / Docs |
+| Owner role | Docs Specialist |
+| Dependencies | `docs/features/infra/INFRA-006-a2a-integration.md`; `docs/features/infra/INFRA-008-mcp-integration.md`; `docs/features/INDEX.md` |
+| Review trigger/date | Re-review when A2A/MCP feature documentation is updated or by 2026-09-30 |
+
+**Acceptance criteria:**
+
+- [ ] `INFRA-006`-Status auf `planned` gesetzt (oder `blocked` auf Q-002), konsistent mit Feature-Index-Adapter-Abschnitt und Review-00 CTX-004.
+- [ ] Phantom-Pfade in INFRA-006/INFRA-008 entweder entfernt oder als „geplant, Pfad noch unverbindlich" markiert; insbesondere keine Pfade im alten `apps/api/routers/`-Schema.
+- [ ] Feature-Index und Adapter-Abschnitt verwenden dieselbe Statussemantik für A2A/MCP wie die Feature-Dateien.
+- [ ] Optional: ein `check_feature_path_accuracy`-Skript (oder Erweiterung eines bestehenden Drift-Checkers) validiert, dass referenzierte `service:`/`router:`/`contract:`-Pfade in Feature-Frontmatter existieren oder als `planned` markiert sind.
+
+**Definition of Done:**
+
+- A2A/MCP Feature-Dateien haben korrekten Status und gültige Pfade.
+- Feature-Index ist konsistent.
+- This registry entry updated with exit evidence.
+
+---
+
 ### AUFG-03-04 — MCP/A2A als geplante Adapter konkretisieren oder aus Review-Scope entfernen
 
 | Field | Value |
@@ -270,11 +360,42 @@ the exact failure mode this governance system exists to prevent.
 
 ---
 
+### AUFG-02-01 — Prompt-Modul-Coverage-Ratchet-Regression beheben
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-02-01 |
+| Title | Prompt-Modul-Coverage-Ratchet-Regression beheben |
+| Source | review-02-testing.md §Aufgaben |
+| Status | `open` |
+| Priority | P1 |
+| Area | Testing / CI |
+| Owner role | Platform Specialist (testing/CI) |
+| Dependencies | `scripts/check_module_coverage.py`; `packages/core+apps/api/prompts/` coverage config |
+| Review trigger/date | Re-review when Prompt-Modul coverage baseline is restored or coverage governance changes |
+
+**Acceptance criteria:**
+
+- [ ] Root Cause der Prompt-Modul-Regression ist identifiziert: echte fehlende Tests, Coverage-Gruppierung oder bewusst geänderte Prompt-Fläche.
+- [ ] Falls echte Testlücke: gezielte Unit-/Integrationstests für betroffene Prompt-Router/Deps/Preview-Pfade ergänzen, ohne Coverage-Gaming.
+- [ ] Falls Gruppierungsproblem: `scripts/_coverage_model.py`/Baselines sauber korrigieren und mit Tests absichern.
+- [ ] `uv run pytest tests/unit/ --cov --cov-report=xml --cov-report=term-missing:skip-covered --cov-fail-under=80 -n auto -q` und `uv run python scripts/check_module_coverage.py --fail` sind grün.
+
+**Definition of Done:**
+
+- Prompt-Modul-Coverage-Ratchet-Regression is identified and fixed.
+- CI module-coverage gate passes cleanly.
+- This registry entry updated with exit evidence.
+
+---
+
+### AUFG-02-03 — Frontend-Vitest-Laufzeit und React-Test-Warnings reduzieren
+
 | Field | Value |
 |-------|-------|
 | ID | AUFG-02-03 |
-| Title | Frontend-Test-Laufzeit und React-Warnings reduzieren |
-| Source | review-05-release.md §5 Schwächen item 7, review-05-release.md §6 Roadmap |
+| Title | Frontend-Vitest-Laufzeit und React-Test-Warnings reduzieren |
+| Source | review-02-testing.md §Aufgaben, review-05-release.md §5 Schwächen item 7, review-05-release.md §6 Roadmap |
 | Status | `open` |
 | Priority | P2 |
 | Area | Frontend, Testing, CI |
@@ -302,7 +423,7 @@ the exact failure mode this governance system exists to prevent.
 |-------|-------|
 | ID | AUFG-02-04 |
 | Title | Testing-/Deployment-Dokumentation gegen aktuelle CI synchronisieren |
-| Source | review-05-release.md §5 Schwächen item 8, review-05-release.md §6 Roadmap |
+| Source | review-02-testing.md §Aufgaben, review-05-release.md §5 Schwächen item 8, review-05-release.md §6 Roadmap |
 | Status | `open` |
 | Priority | P2 |
 | Area | Documentation, Testing, CI |
@@ -330,7 +451,7 @@ the exact failure mode this governance system exists to prevent.
 |-------|-------|
 | ID | AUFG-04-08 |
 | Title | TECH_STACK.md SSOT-Versionen mit pyproject.toml synchronisieren |
-| Source | review-05-release.md §5 Schwächen item 3, review-05-release.md §6 Roadmap |
+| Source | review-04-dx-tooling.md §Aufgaben, review-05-release.md §5 Schwächen item 3, review-05-release.md §6 Roadmap |
 | Status | `open` |
 | Priority | P1 |
 | Area | Documentation, Governance, Developer Experience |
@@ -358,12 +479,12 @@ the exact failure mode this governance system exists to prevent.
 |-------|-------|
 | ID | AUFG-04-09 |
 | Title | Layer-AGENTS.md mit aktueller Architektur synchronisieren |
-| Source | review-05-release.md §5 Schwächen item 8, review-05-release.md §6 Roadmap |
+| Source | review-04-dx-tooling.md §Aufgaben, review-05-release.md §5 Schwächen item 8, review-05-release.md §6 Roadmap |
 | Status | `open` |
 | Priority | P2 |
 | Area | Documentation, Developer Experience |
 | Owner role | Docs Specialist |
-| Dependencies | `apps/api/AGENTS.md`; `packages/core/AGENTS.md`; `packages/web/AGENTS.md`; current agent architecture |
+| Dependencies | `apps/api/AGENTS.md`; `packages/core/AGENTS.md`; current agent architecture |
 | Review trigger/date | Re-review when agent architecture changes materially or after 2026-09-30 |
 
 **Acceptance criteria:**
@@ -380,13 +501,41 @@ the exact failure mode this governance system exists to prevent.
 
 ---
 
+### AUFG-04-10 — ADR-Dateinamen-Konvention vereinheitlichen
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-04-10 |
+| Title | ADR-Dateinamen-Konvention vereinheitlichen |
+| Source | review-04-dx-tooling.md §Aufgaben |
+| Status | `open` |
+| Priority | P3 |
+| Area | Docs / DX / Tooling |
+| Owner role | Docs Specialist |
+| Dependencies | `docs/architecture/decisions/INDEX.md` |
+| Review trigger/date | Re-review when ADR naming convention drift is detected or by 2026-09-30 |
+
+**Acceptance criteria:**
+
+- [ ] Alle ADR-Dateien folgen derselben Namenskonvention (`ADR-XXX-name.md`), oder die abweichenden 7 werden bewusst als „historisch, nicht umbenennen" markiert (z. B. in INDEX.md dokumentiert).
+- [ ] Bei Umbenennung: INDEX.md, alle Querverweise in CURRENT_STATE.md, Feature-Specs, .opencode/context und anderen ADRs werden aktualisiert.
+- [ ] Optional: ein `scripts/check_adr_naming.py` validiert die Namenskonvention maschinell.
+
+**Definition of Done:**
+
+- ADR-Dateinamen-Konvention ist entweder vereinheitlicht oder die Abweichungen sind als historisch dokumentiert.
+- Querverweise sind aktualisiert.
+- This registry entry updated with exit evidence.
+
+---
+
 ### AUFG-04-11 — Lookup-Kontextdateien synchronisieren oder automatisch aus SSOT generieren
 
 | Field | Value |
 |-------|-------|
 | ID | AUFG-04-11 |
 | Title | Lookup-Kontextdateien synchronisieren oder automatisch aus SSOT generieren |
-| Source | review-05-release.md §5 Schwächen item 8, review-05-release.md §6 Roadmap |
+| Source | review-04-dx-tooling.md §Aufgaben, review-05-release.md §5 Schwächen item 8, review-05-release.md §6 Roadmap |
 | Status | `open` |
 | Priority | P2 |
 | Area | Documentation, Developer Experience, Governance |
@@ -404,6 +553,35 @@ the exact failure mode this governance system exists to prevent.
 
 - Context files updated or auto-generation mechanism implemented.
 - Doc-drift gate reports a governed/reduced warning count.
+- This registry entry updated with exit evidence.
+
+---
+
+### AUFG-05-06 — Rollback-Prozess dokumentieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-05-06 |
+| Title | Rollback-Prozess dokumentieren |
+| Source | review-05-release.md §Operative Schwächen |
+| Status | `open` |
+| Priority | P3 |
+| Area | Release / Operations |
+| Owner role | Platform Specialist (deployment) |
+| Dependencies | `docs/development/deployment-guide.md`; Docker Compose; Alembic migrations |
+| Review trigger/date | Re-review when deployment-guide.md is updated for release or after 2026-09-30 |
+
+**Acceptance criteria:**
+
+- [ ] Deployment Guide enthält einen Rollback-Abschnitt mit konkreten Befehlen (Pull alte Version, `docker compose up -d`).
+- [ ] Rollback-Strategie deckt Datenbank-Migrationen ab (Alembic `downgrade` oder Version-Pinning — mit Hinweis auf Migrations-Risiken bei Schema-Änderungen, die nicht rückgängig zu machen sind).
+- [ ] Mindestens ein Szenario dokumentiert: Rollback auf vorherige Minor-Version.
+- [ ] Hinweis auf Digest-basiertes Pullen für unveränderliche Referenzen.
+
+**Definition of Done:**
+
+- Deployment Guide enthält Rollback-Abschnitt.
+- Rollback-Strategie ist dokumentiert und getestet.
 - This registry entry updated with exit evidence.
 
 ---
