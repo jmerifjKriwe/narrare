@@ -92,7 +92,7 @@ Each job that has warning-only steps (architecture, test-unit, frontend) gets:
       # capture any structured output for the aggregated summary
       echo "See annotations in the job log for details." >> /tmp/warnings/warnings-report.txt
 
-  - uses: actions/upload-artifact@v8
+  - uses: actions/upload-artifact@v7
     if: always()
     with:
       name: warnings-architecture
@@ -157,7 +157,7 @@ Then upload:
 ```yaml
 - name: Upload warnings
   if: always()
-  uses: actions/upload-artifact@v8
+  uses: actions/upload-artifact@v7
   with:
     name: warnings-${{ github.job }}
     path: /tmp/warnings/
