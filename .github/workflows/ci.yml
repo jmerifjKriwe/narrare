@@ -334,7 +334,11 @@ jobs:
 
       - name: Check pytest collection performance
         if: always() && steps.tests.outcome != 'cancelled'
-        run: uv run python scripts/check_pytest_collection_performance.py
+        run: |
+          mkdir -p /tmp/warnings
+          uv run python scripts/check_pytest_collection_performance.py \
+            | tee -a /tmp/warnings/report.txt
+          exit ${PIPESTATUS[0]}
 
       - name: Pytest coverage comment
         if: github.event_name == 'pull_request'
@@ -362,6 +366,14 @@ jobs:
             pytest-coverage.txt
             pytest.xml
           retention-days: 1
+
+      - name: Upload warnings
+        if: always() && steps.tests.outcome != 'cancelled'
+        uses: actions/upload-artifact@v8
+        with:
+          name: warnings-test-unit
+          path: /tmp/warnings/
+          retention-days: 7
 
   # -------------------------------------------------------------------------
   # Integration tests (< 5 min, with Docker)
@@ -556,14 +568,18 @@ jobs:
       - name: Check frontend test performance
         if: always() && steps.frontend-tests.outcome != 'cancelled'
         run: |
+          mkdir -p /tmp/warnings
           threshold=240
           duration=${{ steps.frontend-tests.outputs.duration }}
           if [ -z "$duration" ]; then
             echo "⚠️ Could not determine test duration (step may have been cancelled)"
+            echo "⚠️ Frontend test duration unavailable (cancelled)" >> /tmp/warnings/report.txt
             exit 0
           fi
           uv run python scripts/check_test_performance.py \
-            --duration "$duration" --threshold "$threshold"
+            --duration "$duration" --threshold "$threshold" \
+            | tee -a /tmp/warnings/report.txt
+          exit ${PIPESTATUS[0]}
 
       - name: Check component markers (data-testid)
         run: cd packages/web && npx tsx scripts/check-testid.ts --fail
@@ -588,6 +604,14 @@ jobs:
 
       - name: Build
         run: cd packages/web && pnpm build
+
+      - name: Upload warnings
+        if: always()
+        uses: actions/upload-artifact@v8
+        with:
+          name: warnings-frontend
+          path: /tmp/warnings/
+          retention-days: 7
 
   # -------------------------------------------------------------------------
   # E2E tests (main branch only, full stack)
@@ -737,3 +761,31 @@ jobs:
           echo ""
           echo "=== Frontend Server Logs ==="
           cat /tmp/frontend-server.log || echo "No frontend logs found"
+
+  # -------------------------------------------------------------------------
+  # Warning summary — aggregates ::warning:: annotations across all jobs
+  # -------------------------------------------------------------------------
+  warnings-summary:
+    if: always()
+    needs: [architecture, test-unit, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: warnings-*
+          merge-multiple: true
+
+      - name: Build warning summary
+        run: |
+          echo "# ⚠️ CI Warning Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f report.txt ] && [ -s report.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat report.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "See individual job steps for full ::warning:: annotation details." \
+              >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No warnings across all jobs." >> $GITHUB_STEP_SUMMARY
+          fi
