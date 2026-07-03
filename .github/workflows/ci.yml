@@ -459,19 +459,22 @@ jobs:
         with:
           name: coverage-artifacts
 
-      - name: Pytest coverage comment
+      - name: Extract coverage percentage
         id: coverage
-        uses: MishaKav/pytest-coverage-comment@v1
-        with:
-          pytest-coverage-path: ./pytest-coverage.txt
-          junitxml-path: ./pytest.xml
-          hide-comment: true
-
-      - name: Update README badge
         run: |
           python3 -c "
-          import re
-          coverage = int(float('${{ steps.coverage.outputs.coverage }}'.strip('%')))
+          import xml.etree.ElementTree as ET
+          rate = float(ET.parse('coverage.xml').getroot().attrib['line-rate'])
+          print(f'coverage={int(round(rate * 100))}')
+          "
+
+      - name: Update README badge
+        env:
+          COVERAGE: ${{ steps.coverage.outputs.coverage }}
+        run: |
+          python3 -c "
+          import os, re
+          coverage = int(os.environ['COVERAGE'])
           if coverage >= 90:
               color = 'brightgreen'
           elif coverage >= 80:
