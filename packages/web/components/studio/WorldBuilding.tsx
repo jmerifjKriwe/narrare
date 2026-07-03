@@ -11,19 +11,19 @@
  * that replace the detail panel.
  */
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useMemo } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useKBEntries, useKBEntry, useKBRelationships } from "@/lib/hooks/useKB";
-import { searchParamsHref } from "@/lib/url-state/searchParams";
+import { useWorldBuildingUrlSync } from "./_components/useWorldBuildingUrlSync";
 import { WorldBuildingLayout } from "./_components/WorldBuildingLayout";
 import { useWorldBuildingState } from "./_components/worldBuildingState";
 import { ConsistencyCheckPanel } from "./kb/ConsistencyCheckPanel";
 import { KBAssistedCreationPanel } from "./kb/KBAssistedCreationPanel";
 import { KBDetailPanel } from "./kb/KBDetailPanel";
 import { KnowledgeGraphView } from "./kb/KnowledgeGraphView";
-import { type KBUrlState, parseKBUrlState, serializeKBUrlState } from "./kb/kbUrlState";
+import { parseKBUrlState } from "./kb/kbUrlState";
 import { WikiOverviewPanel } from "./kb/WikiOverviewPanel";
 import { WorldbuildingAnalysisPanel } from "./kb/WorldbuildingAnalysisPanel";
 
@@ -33,8 +33,6 @@ interface WorldBuildingProps {
 
 export function WorldBuilding({ novelId }: WorldBuildingProps) {
   const t = useTranslations("studio");
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchParamsSnapshot = searchParams.toString();
   const urlState = useMemo(
@@ -43,6 +41,23 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
   );
   const state = useWorldBuildingState(novelId, urlState);
 
+  const {
+    handleAnalyze,
+    handleAssistedCancel,
+    handleCloseMode,
+    handleConsistencyCheck,
+    handleCreateAssisted,
+    handleCreateCancel,
+    handleCreateNew,
+    handleCreated,
+    handleDeleted,
+    handleSearchQueryChange,
+    handleSelectEntry,
+    handleShowGraph,
+    handleShowWiki,
+    handleTypeChange,
+  } = useWorldBuildingUrlSync(state, urlState);
+
   const { data: entriesData, isLoading: entriesLoading } = useKBEntries(novelId, {
     entity_type: state.activeType ?? undefined,
   });
@@ -50,96 +65,6 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
   const { data: relationships = [] } = useKBRelationships(novelId, state.selectedEntryId);
 
   const entries = entriesData?.items ?? [];
-
-  const buildKBHref = (nextState: KBUrlState) => {
-    const nextParams = new URLSearchParams(searchParamsSnapshot);
-    nextParams.delete("type");
-    nextParams.delete("mode");
-    nextParams.delete("entry");
-    nextParams.delete("q");
-    const serializedState = serializeKBUrlState(nextState);
-    serializedState.forEach((value, key) => {
-      nextParams.set(key, value);
-    });
-    return searchParamsHref(pathname, nextParams);
-  };
-
-  const pushKBState = (nextState: KBUrlState) => {
-    router.push(buildKBHref(nextState), { scroll: false });
-  };
-
-  const replaceKBState = (nextState: KBUrlState) => {
-    router.replace(buildKBHref(nextState), { scroll: false });
-  };
-
-  const handleTypeChange = (type: KBUrlState["type"]) => {
-    state.handleTypeChange(type);
-    pushKBState({ type, mode: "detail", entryId: null, query: urlState.query });
-  };
-
-  const handleSelectEntry = (entryId: string) => {
-    state.handleSelectEntry(entryId);
-    pushKBState({ ...urlState, mode: "detail", entryId });
-  };
-
-  const handleCreateNew = () => {
-    state.handleCreateNew();
-    pushKBState({ ...urlState, mode: "create", entryId: null });
-  };
-
-  const handleCreateAssisted = () => {
-    state.handleCreateAssisted();
-    pushKBState({ ...urlState, mode: "assist", entryId: null });
-  };
-
-  const handleAnalyze = () => {
-    state.handleShowAnalysis();
-    pushKBState({ ...urlState, mode: "analysis" });
-  };
-
-  const handleConsistencyCheck = () => {
-    state.handleShowConsistency();
-    pushKBState({ ...urlState, mode: "consistency" });
-  };
-
-  const handleShowGraph = () => {
-    state.handleShowGraph();
-    pushKBState({ ...urlState, mode: "graph" });
-  };
-
-  const handleShowWiki = () => {
-    state.handleShowWiki();
-    pushKBState({ ...urlState, mode: "wiki" });
-  };
-
-  const handleSearchQueryChange = (query: string) => {
-    replaceKBState({ ...urlState, query });
-  };
-
-  const handleCloseMode = () => {
-    state.setMode("detail");
-    pushKBState({ ...urlState, mode: "detail" });
-  };
-
-  const handleCreateCancel = () => {
-    state.handleCreateCancel();
-    pushKBState({ ...urlState, mode: "detail", entryId: null });
-  };
-
-  const handleCreated = (entryId: string) => {
-    state.handleCreated(entryId);
-    pushKBState({ ...urlState, mode: "detail", entryId });
-  };
-
-  const handleDeleted = () => {
-    state.handleDeleted();
-    pushKBState({ ...urlState, mode: "detail", entryId: null });
-  };
-
-  const handleAssistedCancel = () => {
-    state.handleAssistedCancel();
-    pushKBState({ ...urlState, mode: "detail", entryId: null });
-  };
 
   // --- Shared layout props ---
 

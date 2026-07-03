@@ -16,9 +16,9 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { authApi } from "@/lib/api/client";
-import { useKBTotalCount } from "@/lib/hooks/useKB";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { SidebarChapterList } from "./SidebarChapterList";
+import { SidebarKBBadge } from "./SidebarKBBadge";
 import { SidebarUserFooter } from "./SidebarUserFooter";
 
 interface NavItem {
@@ -183,21 +183,5 @@ export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
       {/* User info + logout */}
       <SidebarUserFooter user={user} onLogout={logout} />
     </div>
-  );
-}
-
-// --- KB entry count badge for sidebar ---
-
-function SidebarKBBadge({ novelId, active }: { novelId: string; active: boolean }) {
-  const kbCount = useKBTotalCount(novelId);
-  if (kbCount === 0) return null;
-  return (
-    <span
-      className={`text-xs px-1.5 py-0.5 rounded ${
-        active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"
-      }`}
-    >
-      {kbCount}
-    </span>
   );
 }
