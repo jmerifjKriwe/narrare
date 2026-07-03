@@ -1,3 +1,5 @@
+import type { Route } from "next";
+
 export function cloneSearchParams(searchParams: URLSearchParams): URLSearchParams {
   return new URLSearchParams(searchParams.toString());
 }
@@ -13,7 +15,7 @@ export function setOptionalSearchParam(
   return next;
 }
 
-export function searchParamsHref(pathname: string, searchParams: URLSearchParams): string {
+export function searchParamsHref(pathname: string, searchParams: URLSearchParams): Route {
   const query = searchParams.toString();
-  return query.length > 0 ? `${pathname}?${query}` : pathname;
+  return (query.length > 0 ? `${pathname}?${query}` : pathname) as Route;
 }
