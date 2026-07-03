@@ -81,7 +81,7 @@ def main() -> int:
             f"exceeding {args.threshold}s threshold by {over_by:.1f}s"
         )
         print("TODO: WARNING-only gate — transition to blocking after baseline is established.")
-        return 1
+        return 0
 
     print(f"✅ Under {args.threshold}s collection threshold")
     return 0

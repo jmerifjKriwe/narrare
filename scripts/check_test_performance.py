@@ -50,7 +50,7 @@ def check_threshold(duration: float, threshold: int) -> int:
             f"exceeding {threshold}s threshold by {over_by:.1f}s"
         )
         print("TODO: WARNING-only gate — transition to blocking after baseline is established.")
-        return 1
+        return 0
 
     print(f"✅ Under {threshold}s performance threshold")
     return 0
