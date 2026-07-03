@@ -175,6 +175,16 @@ repos:
         types_or: [ts, tsx]
         files: ^packages/web/
 
+      # data-testid / aria-label marker gate — E2E test stability (mirrors CI frontend job)
+      - id: check-testid
+        name: Component Markers (data-testid)
+        entry: bash -c 'cd packages/web && npx tsx scripts/check-testid.ts --fail' --
+        language: system
+        types_or: [ts, tsx]
+        files: ^packages/web/
+        pass_filenames: false
+        stages: [pre-commit]
+
       # i18n validation — catches hardcoded user-facing strings
       - id: validate-i18n
         name: i18n Validation
