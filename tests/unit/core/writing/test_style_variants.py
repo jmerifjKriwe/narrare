@@ -86,6 +86,19 @@ class TestStyleVariantInstructions:
     def test_none_returns_empty(self) -> None:
         assert get_style_variant_instructions(None) == ""
 
+    def test_default_fallback_is_empty_string(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Default must return "" — downstream code does string operations
+        (concatenation, template rendering). None or other values would break.
+
+        This kills the 3 MutMut surviving mutants that change the .get() default.
+        """
+        monkeypatch.setattr(
+            "narrare_core.writing.style_variants._STYLE_VARIANT_INSTRUCTIONS",
+            {},
+        )
+        result = get_style_variant_instructions(StyleVariant.LEANER)
+        assert result == ""
+
 
 class TestTemplateVariable:
     def test_template_contains_style_variant_variable(self) -> None:
