@@ -80,7 +80,7 @@ def main() -> int:
             f"::warning::Pytest collection took {elapsed:.1f}s, "
             f"exceeding {args.threshold}s threshold by {over_by:.1f}s"
         )
-        print("TODO: WARNING-only gate — transition to blocking after baseline is established.")
+        print("WARNING-only: performance gate does not block CI (annotates via ::warning::).")
         return 0
 
     print(f"✅ Under {args.threshold}s collection threshold")

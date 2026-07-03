@@ -373,6 +373,7 @@ jobs:
         with:
           name: warnings-test-unit
           path: /tmp/warnings/
+          if-no-files-found: ignore
           retention-days: 7
 
   # -------------------------------------------------------------------------

@@ -49,7 +49,7 @@ def check_threshold(duration: float, threshold: int) -> int:
             f"::warning::Frontend tests took {duration:.1f}s, "
             f"exceeding {threshold}s threshold by {over_by:.1f}s"
         )
-        print("TODO: WARNING-only gate — transition to blocking after baseline is established.")
+        print("WARNING-only: performance gate does not block CI (annotates via ::warning::).")
         return 0
 
     print(f"✅ Under {threshold}s performance threshold")
