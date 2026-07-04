@@ -113,7 +113,7 @@ export function useSlashCommandState({
   const selectIndex = useCallback(
     (index: number) => {
       const item = items[index];
-      if (!item || item.availability !== "available") return;
+      if (item?.availability !== "available") return;
       const ed = editor;
       const slashPos = slashPosRef.current;
       // Remove the `/query` so dispatching does not leave stray command text.

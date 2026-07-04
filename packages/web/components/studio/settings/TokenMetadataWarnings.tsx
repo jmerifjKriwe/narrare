@@ -127,7 +127,7 @@ function isCalibrated(
   calibration: CalibrationMetadata | null,
   suitability: SuitabilityMetadata | null,
 ): boolean {
-  if (!calibration || calibration.status !== "known_fresh") return false;
+  if (calibration?.status !== "known_fresh") return false;
   if (suitability) {
     return suitability.issues.every((i) => i.severity === "advisory");
   }
