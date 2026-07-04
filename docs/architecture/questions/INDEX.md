@@ -42,3 +42,4 @@
 | [Q-010](Q-009-to-Q-010.md#q-010--should-the-chat-prompt-support-defr-from-day-one-or-english-only-v1) | Should the Chat Prompt Support DE/FR from Day One or English-Only v1? | → English-only v1 (Option A) | ADR-024 |
 | [Q-012](Q-012-prompt-variable-ux.md) | Wie erklären wir dem Nutzer Prompt-Variablen und ermöglichen Reset-to-Default? | → Option A (Manifest) via PROMPT-003 (Post-MVP) | — |
 | [Q-013](Q-013-i18n-tone-drift.md) | i18n Tone Drift in Bundled Universal/Meta Prompts (DE/FR) | → universal/{de,fr} aligned to Du/tu (matching meta prompts); §8 Formality Register added to prompt-content-standards.md | — |
+| [Q-014](Q-014-cascade-policy-location.md) | Sollte die Model-Routing-Cascade-Logik in Core oder API leben? | → Cascade bleibt in API (Protocol in core, DB-Impl in API ist korrekt per RULE-07) | — |
