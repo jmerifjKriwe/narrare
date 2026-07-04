@@ -148,13 +148,26 @@ repos:
         types: [python]
         require_serial: false
 
-      # Pyright — full-project type check; filenames are ignored
+      # Pyright — full-project type check (production code only); filenames are ignored
       - id: pyright
         name: Pyright Type Check
         entry: uv run pyright
         language: system
         types: [python]
         pass_filenames: false
+        stages: [pre-commit]
+
+      # Pyright — light type check for tests (only when test files change)
+      # Note: tests/ is excluded from pyright's `include` in pyproject.toml for
+      # performance. This hook fires quickly (pyright finds no work to do) and
+      # serves as a placeholder for a future tests-specific pyright config.
+      - id: pyright-tests
+        name: Pyright Type Check (Tests)
+        entry: uv run pyright
+        language: system
+        types: [python]
+        pass_filenames: false
+        files: ^tests/
         stages: [pre-commit]
 
       # Security

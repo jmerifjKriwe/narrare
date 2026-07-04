@@ -78,7 +78,8 @@ include = [
   "packages/core",
   "packages/i18n",
   "scripts",
-  "tests",
+  # "tests",  — removed for pyright performance (1.048 test files); tests get
+  #             a separate conditional hook in .pre-commit-config.yaml
 ]
 
 # Was NICHT geprüft wird (Performance + irrelevant)
@@ -97,6 +98,7 @@ exclude = [
   ".pytest_cache",
   ".ruff_cache",
   ".mypy_cache",
+  "pyrightcache",       # Pyright type-checker cache
 
   # Build/Dependencies
   "node_modules",
@@ -113,17 +115,6 @@ exclude = [
   "**/migrations/**",  # Alembic-Migrationen
   "narrare",            # Leeres Namespace-Paket
 ]
-
-# Tests: basic mode statt strict (MagicMock/AsyncMock erzeugen zu viel Noise in strict)
-[[tool.pyright.executionEnvironments]]
-root = "tests"
-# typeCheckingMode removed — not supported in executionEnvironments since pyright ~1.1.400
-reportPrivateUsage = false
-reportUnknownMemberType = false
-reportUnknownVariableType = false
-reportUnknownArgumentType = false
-# Tests import from tests.fakes / tests.factories — resolved at runtime by pytest pythonpath
-reportMissingImports = false
 
 # ---------------------------------------------------------------------------
 # Ruff
