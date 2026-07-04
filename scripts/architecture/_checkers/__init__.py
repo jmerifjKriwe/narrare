@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 from scripts.architecture._checkers.exceptions import check_bare_except
 from scripts.architecture._checkers.file_size import check_file_size
 from scripts.architecture._checkers.hardcoded_values import check_hardcoded_constants
+from scripts.architecture._checkers.import_direction import check_import_direction
 from scripts.architecture._checkers.inline_prompts import check_inline_prompts
 from scripts.architecture._checkers.llm import check_llm_imports, check_llm_urls
 from scripts.architecture._checkers.model_config import check_hardcoded_model_config
@@ -47,6 +48,7 @@ __all__ = [
     "check_file_size",
     "check_hardcoded_constants",
     "check_hardcoded_model_config",
+    "check_import_direction",
     "check_inline_prompts",
     "check_llm_imports",
     "check_llm_urls",
@@ -166,6 +168,7 @@ def scan_file(
         + check_router_queries(rel_path, tree, source_lines)
         + check_hardcoded_model_config(rel_path, tree, source_lines)
         + check_hardcoded_constants(rel_path, tree, source_lines, hardcoded_config)
+        + check_import_direction(rel_path, tree, source_lines)
     )
 
     approved_before = len(result.approved_exceptions)
