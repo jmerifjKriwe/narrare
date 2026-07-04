@@ -80,6 +80,7 @@ PROMPT_PATH_COMPLIANCE_REGISTRY: dict[str, str] = {
     sorted(PROMPT_PATH_COMPLIANCE_REGISTRY.items()),
     ids=lambda val: val.split(".")[-1] if "." in val else val,
 )
+@pytest.mark.mutation_inert
 def test_prompt_path_compliance_test_exists(service: str, test_file: str) -> None:
     """Each registered prompt-resolving service has a compliance test file.
 

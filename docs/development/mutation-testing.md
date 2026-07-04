@@ -1,6 +1,6 @@
 # Mutation Testing & Assertion Quality Audit
 
-> **Stand:** 2026-07-03
+> **Stand:** 2026-07-04
 > **Maintainer:** Platform Agent
 
 ## Überblick
@@ -80,6 +80,70 @@ uv run python scripts/run_mutmut.py --scope custom \
 
 **Der Job ist NIEMALS blockierend** (`continue-on-error: true`). Ergebnisse werden als GitHub Issue mit Label `mutation-testing` veröffentlicht.
 
+### Sandbox-Kompatibilität: Zwei Konventionen für Test-Autoren
+
+MutMut arbeitet in einer **kopiebasierten Sandbox**: Das instrumentierte Paket
+liegt unter `mutants/narrare_core/` (bzw. `mutants/narrare/`), und es gibt
+**kein** `mutants/packages/`-Mirror des Repo-Worktrees. Wer Tests schreibt,
+die im Mutation-Run mitlaufen sollen, muss zwei Konventionen einhalten:
+
+#### 1. Bundled-Assets via `importlib.resources` auflösen
+
+Tests, die gebündelte Paket-Assets lesen (Prompts unter `_bundled/`,
+Templates), **MÜSSEN** den Pfad paket-relativ via `importlib.resources`
+auflösen — und **DÜRFEN NICHT** repo-root-relativ über
+`Path(__file__).parents[N] / "packages/..."` referenzieren.
+
+```python
+# RICHTIG — paket-relativ, funktioniert in Sandbox und Normal-Lauf:
+from tests.unit.core._bundled import bundled_prompts_root
+
+root = bundled_prompts_root()   # → .../narrare_core/prompts/_bundled
+text = (root / "write" / "default.md").read_text()
+
+# FALSCH — bricht im Mutation-Run (Pfad existiert in der Sandbox nicht):
+root = Path(__file__).parents[3] / "packages/core/narrare_core/prompts/_bundled"
+```
+
+**Warum:** Die Sandbox enthält nur das importierbare Paket unter
+`mutants/narrare_core/`. Repo-root-relative Pfade (`packages/...`) zeigen dort
+ins Leere. Der Helper `tests/unit/core/_bundled.py::bundled_prompts_root()`
+spiegelt die Produktionsauflösung (`registry.py`) und resolved in normalem
+Dev/CI auf dieselben Dateien wie früher.
+
+#### 2. `@pytest.mark.mutation_inert` für statische Repo-Struktur-Tests
+
+Tests, deren Assertion-Ziel **statische Repo-Struktur** ist — nicht mutiertes
+Laufzeitverhalten — können keine Mutanten killen **und** sind mit der Sandbox
+inkompatibel. Beispiele: Quelldatei-Existenz-Checks, `pyproject.toml`-Inhalte,
+AST-Scans der Quelle auf verbotene Imports.
+
+Markiere solche Tests **pro Funktion**:
+
+```python
+@pytest.mark.mutation_inert
+def test_prompt_files_ship_under_bundled():
+    ...
+```
+
+MutMut's Test-Auswahl (`pytest_add_cli_args_test_selection`) deselektiert sie
+über `-m "not mutation_inert"`. Normale CI-Läufe sind **nicht** betroffen — der
+Marker wirkt ausschließlich im Mutation-Run.
+
+**Kriterium:** Trifft zu, wenn die Assertion repo-Struktur prüft, nicht
+Runtime-Verhalten. Im Zweifel: Mutation laufen lassen und prüfen, ob der Test
+im Sandbox-Kontext überhaupt ausgeführt wird / sinnvoll killen kann.
+
+#### Warum es kein `also_copy` / `mutants/packages/` gibt
+
+Früher spiegelte ein redundanter `also_copy` den `packages/`-Baum in die
+Sandbox, damit repo-root-relative Test-Pfade funktionierten. Das ist
+bewusst entfernt: MutMut's `source_paths` kopiert ohnehin den **gesamten**
+Paket-Baum (inkl. `.md`-Assets) nach `mutants/narrare_core/`. Ein zusätzlicher
+`packages/`-Mirror war doppelt und hielt die falsche Auflösungs-Konvention
+(Konvention 1 oben) künstlich am Leben. `also_copy` bleibt absichtlich leer
+bzw. weg — `mutants/packages/` darf **nicht** wieder entstehen.
+
 ### Aktuelle Scope-Definition
 
 | Scope | Pfade | Geschätzte Mutanten |
@@ -127,3 +191,4 @@ Assertion-Audit (findet schwache Tests)     MutMut (findet ungetestetes Verhalte
 - **2026-07-03:** Erster Audit: 782 Files gescannt, 586 Funde in unit/, 474 in integration/
 - **2026-07-03:** Top-Schwachstellen gefixt: 49x `match=` ergänzt, 10x schwache Assertions, 6x `model_validate`
 - **2026-07-03:** MutMut CI-Workflow eingerichtet (`mutation-testing-monthly.yml`)
+- **2026-07-04:** Sandbox-Aufräumung: redundanten `also_copy`/`mutants/packages/`-Mirror entfernt; `mutation_inert`-Marker + `bundled_prompts_root()`-Helper eingeführt; 12 Tests auf paket-relative Asset-Auflösung umgestellt (Konventionen siehe § Sandbox-Kompatibilität)

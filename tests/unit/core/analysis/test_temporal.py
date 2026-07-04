@@ -15,8 +15,7 @@ Moved to separate test files:
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from narrare_core.analysis.temporal import (
     DuplicateEventCheck,
@@ -28,8 +27,12 @@ from narrare_core.analysis.temporal_types import (
     TemporalIssue,
     TemporalIssueSeverity,
 )
+from tests.unit.core._bundled import bundled_prompts_root
 
-PROMPTS_DIR = Path(__file__).parents[4] / "packages/core/narrare_core/prompts/_bundled"
+if TYPE_CHECKING:
+    from pathlib import Path
+
+PROMPTS_DIR = bundled_prompts_root()
 
 # ---------------------------------------------------------------------------
 # A. TemporalOrderingCheck

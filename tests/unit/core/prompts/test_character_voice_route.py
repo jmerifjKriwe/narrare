@@ -20,8 +20,6 @@ See:
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from narrare_core.llm import LLMIntent
@@ -36,8 +34,9 @@ from narrare_core.prompts.route_table import (
 )
 from narrare_core.prompts.routes import resolve_prompt_route
 from narrare_core.shared.errors import PromptRouteNotConfiguredError
+from tests.unit.core._bundled import bundled_prompts_root
 
-_BUNDLED_ROOT = Path(__file__).resolve().parents[4] / "packages/core/narrare_core/prompts/_bundled"
+_BUNDLED_ROOT = bundled_prompts_root()
 _CHARACTER_VOICE_TEMPLATE = _BUNDLED_ROOT / "analysis" / "en" / "character_voice" / "system.md"
 
 

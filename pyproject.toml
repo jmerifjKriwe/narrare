@@ -187,6 +187,7 @@ markers = [
   "integration: integration tests (real DB, mocked LLM)",
   "e2e: end-to-end tests (full stack, main branch only)",
   "requires_db: marks tests requiring database connection",
+  "mutation_inert: test inspects static repo structure (source tree, manifests, file existence) — cannot kill mutants and is incompatible with the MutMut copy-based sandbox; excluded from mutation runs via `-m 'not mutation_inert'`",
 ]
 norecursedirs = ["e2e", ".venv", "node_modules", ".git", "dist", "build", "__pycache__", "*.egg-info", ".hypothesis", ".pytest_cache"]
 
@@ -260,15 +261,10 @@ do_not_mutate = [
     "*/migrations/*",
     "*/__pycache__/*",
 ]
-# Non-Python assets copied into the mutants/ sandbox (MutMut 3.x copies only
-# .py files by default). Bundled prompts are read at runtime via
-# Path(__file__).resolve().parents[N] / "_bundled", so the asset tree must be
-# mirrored under mutants/packages/core/narrare_core/prompts/_bundled/.
-also_copy = ["packages/core/narrare_core/prompts/_bundled"]
 # Extra pytest args appended to every pytest invocation:
 pytest_add_cli_args = ["-x", "--timeout=30", "-q"]
 # Which tests to run during stats collection (when no specific tests given):
-pytest_add_cli_args_test_selection = ["tests/unit/core/"]
+pytest_add_cli_args_test_selection = ["-m", "not mutation_inert", "tests/unit/core/"]
 
 # ---------------------------------------------------------------------------
 # Architecture constraints (read by scripts/check_architecture.py)

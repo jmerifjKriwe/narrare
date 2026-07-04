@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -18,8 +17,9 @@ from narrare_core.prompts.routes import (
     _NON_ROUTEABLE_INTENTS,
 )
 from narrare_core.shared.errors import PromptRouteNotConfiguredError, PromptVariableError
+from tests.unit.core._bundled import bundled_prompts_root
 
-_BUNDLED_ROOT = Path(__file__).parents[4] / "packages/core/narrare_core/prompts/_bundled"
+_BUNDLED_ROOT = bundled_prompts_root()
 _CR02_TARGETS = {
     LLMIntent.KB_CREATE,
     LLMIntent.ANALYSE,

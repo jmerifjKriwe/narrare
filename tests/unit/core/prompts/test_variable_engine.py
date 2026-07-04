@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 import pytest
 
@@ -22,8 +21,9 @@ from narrare_core.prompts.variable_registry import (
     get_variable_classification,
 )
 from narrare_core.shared.errors import PromptVariableError
+from tests.unit.core._bundled import bundled_prompts_root
 
-_BUNDLED_ROOT = Path(__file__).parents[4] / "packages/core/narrare_core/prompts/_bundled"
+_BUNDLED_ROOT = bundled_prompts_root()
 
 
 class TestExtractVariables:

@@ -18,27 +18,15 @@ the enum so they do not depend on the private dict's export surface.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from narrare_core.writing.style_variants import (
     StyleVariant,
     get_style_variant_instructions,
 )
+from tests.unit.core._bundled import bundled_prompts_root
 
-_REWRITE_TEMPLATE = (
-    Path(__file__).resolve().parents[4]
-    / "packages"
-    / "core"
-    / "narrare_core"
-    / "prompts"
-    / "_bundled"
-    / "writing"
-    / "en"
-    / "rewrite_selection"
-    / "system.md"
-)
+_REWRITE_TEMPLATE = bundled_prompts_root() / "writing" / "en" / "rewrite_selection" / "system.md"
 
 
 class TestStyleVariantEnum:

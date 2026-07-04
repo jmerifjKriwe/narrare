@@ -7,15 +7,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, cast
 
 from narrare_core.llm import LLMIntent
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 from narrare_core.prompts.context import PromptContext
 from narrare_core.prompts.registry import ResolvedPrompt
+from tests.unit.core._bundled import bundled_prompts_root
 
-_BUNDLED_ROOT = Path(__file__).parents[4] / "packages/core/narrare_core/prompts/_bundled"
+_BUNDLED_ROOT = bundled_prompts_root()
 
 
 def _make_resolved(system: str = "System.", first: str | None = "Hello!") -> ResolvedPrompt:

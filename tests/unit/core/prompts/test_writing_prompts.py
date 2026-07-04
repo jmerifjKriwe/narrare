@@ -7,17 +7,19 @@ Also verifies all bundled tone variant files exist with valid frontmatter.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from narrare_core.prompts.registry import PromptRegistry
 from narrare_core.shared.frontmatter import parse_frontmatter
+from tests.unit.core._bundled import bundled_prompts_root
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # Root of bundled prompts
-_BUNDLED_ROOT = Path(__file__).parent.parent.parent.parent.parent / (
-    "packages/core/narrare_core/prompts/_bundled"
-)
+_BUNDLED_ROOT = bundled_prompts_root()
 
 # Canonical bundled feature prompt language under ADR-026 Phase 5.
 # DE/FR feature copies may exist only as explicit localized families/overrides.

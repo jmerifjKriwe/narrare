@@ -6,16 +6,13 @@ contain required placeholders, and have correct metadata fields.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from narrare_core.shared.frontmatter import parse_frontmatter
+from tests.unit.core._bundled import bundled_prompts_root
 
 # Root of bundled prompts
-_BUNDLED_ROOT = Path(__file__).parent.parent.parent.parent.parent / (
-    "packages/core/narrare_core/prompts/_bundled"
-)
+_BUNDLED_ROOT = bundled_prompts_root()
 
 # Canonical name generation feature prompt language under ADR-026 Phase 5.
 # DE/FR feature copies are not required unless explicitly approved.

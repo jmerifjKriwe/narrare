@@ -6,19 +6,17 @@ contain required variable placeholders, and include output format instructions.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.unit.core._bundled import bundled_prompts_root
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
 # Root of bundled prompts
-_BUNDLED_ROOT = (
-    Path(__file__).parent.parent.parent.parent.parent
-    / "packages"
-    / "core"
-    / "narrare_core"
-    / "prompts"
-    / "_bundled"
-)
+_BUNDLED_ROOT = bundled_prompts_root()
 
 _KB_PROMPT_MODES = ("interview", "suggest", "enhance", "extract")
 

@@ -21,7 +21,6 @@ This file is intentionally self-contained (helpers + fixtures) so that
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -39,6 +38,7 @@ from narrare_core.writing.draft_processor import DraftProcessor
 from narrare_core.writing.models import GenerationRequest, WritingContext
 from narrare_core.writing.pipeline import WritingPipeline
 from narrare_core.writing.style_variants import StyleVariant
+from tests.unit.core._bundled import bundled_prompts_root
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -47,18 +47,7 @@ from narrare_core.writing.style_variants import StyleVariant
 CONFIG = ResolvedModelConfig(provider_name="test", model_id="test-model", max_tokens=2000)
 USAGE = TokenUsage(prompt_tokens=10, completion_tokens=50, total_tokens=60)
 
-_COAUTHOR_TEMPLATE = (
-    Path(__file__).resolve().parents[4]
-    / "packages"
-    / "core"
-    / "narrare_core"
-    / "prompts"
-    / "_bundled"
-    / "writing"
-    / "en"
-    / "co_author"
-    / "system.md"
-)
+_COAUTHOR_TEMPLATE = bundled_prompts_root() / "writing" / "en" / "co_author" / "system.md"
 
 
 def _req(**kw: Any) -> GenerationRequest:

@@ -13,6 +13,8 @@ import tomllib
 from importlib.util import find_spec
 from pathlib import Path
 
+import pytest
+
 import narrare_core.llm as llm
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -32,6 +34,7 @@ class TestCoreObservabilityMigration:
         """The former Langfuse adapter module is absent rather than dormant."""
         assert find_spec("narrare_core.llm.observability") is None
 
+    @pytest.mark.mutation_inert
     def test_core_package_does_not_depend_on_langfuse(self) -> None:
         """The core package metadata has no Langfuse runtime dependency."""
         pyproject = tomllib.loads((CORE_PACKAGE_ROOT / "pyproject.toml").read_text())
@@ -39,6 +42,7 @@ class TestCoreObservabilityMigration:
 
         assert all(not dependency.lower().startswith("langfuse") for dependency in dependencies)
 
+    @pytest.mark.mutation_inert
     def test_core_python_sources_do_not_import_langfuse(self) -> None:
         """No core Python source imports Langfuse after ADR-031 migration."""
         offending_imports: list[str] = []

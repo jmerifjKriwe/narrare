@@ -22,8 +22,8 @@ coverage.xml
 htmlcov/
 .tox/
 
-# MutMut (mutation testing) — generated mutant copies and wrapper backup
-mutants/
+# MutMut (mutation testing) — regenerable mutant copies, backups, and sandbox artifacts
+mutants*/
 .mutmut.pyproject.toml.bak
 # Temporary symlinks created by scripts/run_mutmut.py (e.g. narrare_core -> packages/core/narrare_core)
 /narrare_core

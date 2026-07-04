@@ -5,6 +5,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
 _PREVIEW_MODULES = (
     Path("packages/core/narrare_core/prompts/preview.py"),
     Path("packages/core/narrare_core/prompts/preview_types.py"),
@@ -33,6 +35,7 @@ def _imported_modules(source: str) -> set[str]:
     return imported
 
 
+@pytest.mark.mutation_inert
 def test_preview_modules_do_not_import_providers() -> None:
     root = Path(__file__).parents[4]
     for rel_path in _PREVIEW_MODULES:

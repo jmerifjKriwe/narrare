@@ -61,6 +61,11 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "unit: unit tests (fast, no I/O, mocked dependencies)")
     config.addinivalue_line("markers", "integration: integration tests (real DB, mocked LLM)")
     config.addinivalue_line("markers", "requires_db: marks tests requiring database connection")
+    config.addinivalue_line(
+        "markers",
+        "mutation_inert: static repo-structure test; cannot kill mutants, "
+        "excluded from mutation runs",
+    )
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:

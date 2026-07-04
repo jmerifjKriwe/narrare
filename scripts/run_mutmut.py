@@ -64,17 +64,6 @@ SYMLINK_MAP: dict[str, str] = {
     "narrare": "apps/api/narrare",
 }
 
-# Non-Python assets MutMut must copy into the mutants/ sandbox. MutMut 3.x
-# copies only .py files by default, so tests that read bundled prompt assets
-# (``.md`` files) via ``Path(__file__).resolve().parents[N] / "_bundled"``
-# hit FileNotFoundError in the sandbox. ``also_copy`` is MutMut's designed
-# mechanism for this: it copytree's each listed path into
-# ``mutants/<same-relative-path>``. The path must be the REAL workspace path
-# (not the symlink name) because MutMut resolves the symlink when placing the
-# copied .py files, so the asset destination must match that resolved layout.
-# See: docs/development/mutation-testing.md
-ALSO_COPY: list[str] = ["packages/core/narrare_core/prompts/_bundled"]
-
 # Each scope defines the full [tool.mutmut] table (excluding the header line).
 # Glob patterns must end in `*` or `.py` (MutMut warns otherwise).
 # NOTE: source_paths use symlink names (see SYMLINK_MAP) so MutMut's
@@ -87,18 +76,16 @@ SCOPE_CORE: dict[str, object] = {
         "narrare_core/llm/intents.py",
     ],
     "do_not_mutate": ["*/migrations/*", "*/__pycache__/*"],
-    "also_copy": ALSO_COPY,
     "pytest_add_cli_args": ["-x", "--timeout=30", "-q"],
-    "pytest_add_cli_args_test_selection": ["tests/unit/core/"],
+    "pytest_add_cli_args_test_selection": ["-m", "not mutation_inert", "tests/unit/core/"],
 }
 
 SCOPE_API: dict[str, object] = {
     "source_paths": ["narrare"],
     "only_mutate": ["narrare/*"],
     "do_not_mutate": ["*/migrations/*", "*/__pycache__/*"],
-    "also_copy": ALSO_COPY,
     "pytest_add_cli_args": ["-x", "--timeout=30", "-q"],
-    "pytest_add_cli_args_test_selection": ["tests/unit/api/"],
+    "pytest_add_cli_args_test_selection": ["-m", "not mutation_inert", "tests/unit/api/"],
 }
 
 SCOPE_ALL: dict[str, object] = {
@@ -106,9 +93,8 @@ SCOPE_ALL: dict[str, object] = {
     # Empty only_mutate = mutate everything under source_paths (except do_not_mutate).
     "only_mutate": [],
     "do_not_mutate": ["*/migrations/*", "*/__pycache__/*"],
-    "also_copy": ALSO_COPY,
     "pytest_add_cli_args": ["-x", "--timeout=30", "-q"],
-    "pytest_add_cli_args_test_selection": ["tests/unit/"],
+    "pytest_add_cli_args_test_selection": ["-m", "not mutation_inert", "tests/unit/"],
 }
 
 SCOPES: dict[str, dict[str, object]] = {
@@ -289,9 +275,8 @@ def main() -> int:
             "source_paths": ["narrare_core"],
             "only_mutate": globs,
             "do_not_mutate": ["*/migrations/*", "*/__pycache__/*"],
-            "also_copy": ALSO_COPY,
             "pytest_add_cli_args": ["-x", "--timeout=30", "-q"],
-            "pytest_add_cli_args_test_selection": [tests],
+            "pytest_add_cli_args_test_selection": ["-m", "not mutation_inert", tests],
         }
     else:
         scope = SCOPES[args.scope]

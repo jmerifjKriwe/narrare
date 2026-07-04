@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from tests.unit.core._bundled import bundled_prompts_root
 
-_BUNDLED_ROOT = Path(__file__).parents[4] / "packages/core/narrare_core/prompts/_bundled"
+_BUNDLED_ROOT = bundled_prompts_root()
 
 
 def test_consistency_prompt_contains_false_positive_controls() -> None:
