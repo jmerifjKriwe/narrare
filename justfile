@@ -558,13 +558,7 @@ changelog:
 
 # Remove build artifacts and caches
 clean:
-    find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-    find . -type f -name "*.pyc" -delete 2>/dev/null || true
-    find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-    find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
-    find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
-    find . -type f -name ".coverage" -delete 2>/dev/null || true
-    @echo "✅ Cleaned"
+    uv run python scripts/clean_caches.py
 
 # Aggressive cleanup: free disk space by clearing caches and dangling data
 cleanup:
