@@ -102,12 +102,19 @@ class TestPytestConfigureMarkerRegistration:
         pytest_configure(cast("Any", config))
         assert any("requires_db:" in line for line in lines)
 
-    def test_all_three_markers_registered(self) -> None:
-        """All three markers are registered in a single call."""
+    def test_mutation_inert_marker_registered(self) -> None:
+        """The 'mutation_inert' marker is added to config."""
         lines: list[str] = []
         config = _FakeConfig(addinivalue_lines=lines)
         pytest_configure(cast("Any", config))
-        assert len(lines) == 3
+        assert any("mutation_inert:" in line for line in lines)
+
+    def test_all_four_markers_registered(self) -> None:
+        """All four markers are registered in a single call."""
+        lines: list[str] = []
+        config = _FakeConfig(addinivalue_lines=lines)
+        pytest_configure(cast("Any", config))
+        assert len(lines) == 4
 
 
 # ---------------------------------------------------------------------------

@@ -22,9 +22,14 @@ import type { KBEntityType, KBEntry } from "@/lib/api/kb";
 // Mocks
 // ---------------------------------------------------------------------------
 
+// Stable setQuery reference so the component's useEffect([..., setQuery]) does
+// not re-run on every render and clobber the typed value. The real hook returns
+// a useCallback-stable setQuery; the mock must match that contract.
+const { setQuery } = vi.hoisted(() => ({ setQuery: vi.fn() }));
+
 vi.mock("@/lib/hooks/useKB", () => ({
   useKBDebouncedSearch: () => ({
-    setQuery: vi.fn(),
+    setQuery,
     data: null,
     isLoading: false,
   }),
