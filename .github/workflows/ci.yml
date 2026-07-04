@@ -471,9 +471,12 @@ jobs:
         id: coverage
         run: |
           python3 -c "
-          import xml.etree.ElementTree as ET
+          import os, xml.etree.ElementTree as ET
           rate = float(ET.parse('coverage.xml').getroot().attrib['line-rate'])
-          print(f'coverage={int(round(rate * 100))}')
+          pct = int(round(rate * 100))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+              fh.write(f'coverage={pct}\n')
+          print(f'coverage={pct}')
           "
 
       - name: Update README badge
