@@ -67,6 +67,21 @@ def pytest_configure(config: pytest.Config) -> None:
         "excluded from mutation runs",
     )
 
+    # MutMut↔Hypothesis fix: MutMut's stats phase injects a StatsCollector
+    # pytest plugin that the clean-tests/per-mutant phases do not, changing the
+    # test "executor" fingerprint Hypothesis records → FailedHealthCheck:
+    # differing_executors. Gated on MUTMUT_RUN (set by scripts/run_mutmut.py) so
+    # normal CI keeps the health check sharp. Import is guarded so non-mutmut
+    # runs pay zero cost and hypothesis stays unimported here.
+    if os.environ.get("MUTMUT_RUN"):
+        from hypothesis import HealthCheck, settings
+
+        settings.register_profile(
+            "mutmut",
+            suppress_health_check=[HealthCheck.differing_executors],
+        )
+        settings.load_profile("mutmut")
+
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     """Auto-tag tests based on directory path.

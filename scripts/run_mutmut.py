@@ -305,6 +305,10 @@ def main() -> int:
     # Backup pyproject, create symlinks, rewrite config, run, restore — ALWAYS.
     shutil.copy2(PYPROJECT, BACKUP)
     created_symlinks: list[str] = []
+    # Set MUTMUT_RUN before spawning `mutmut run` so forked/spawned pytest
+    # workers inherit it; tests/conftest.py gates the mutmut hypothesis profile
+    # (suppresses HealthCheck.differing_executors) on this env var.
+    os.environ["MUTMUT_RUN"] = "1"
     try:
         replace_mutmut_section(scope)
         source_paths_raw = scope.get("source_paths", [])

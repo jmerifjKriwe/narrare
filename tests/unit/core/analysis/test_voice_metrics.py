@@ -246,7 +246,13 @@ class TestProperties:
     """Determinism + metric bounds hold for arbitrary word sequences."""
 
     @given(words=st.lists(_WORD_STRATEGY, min_size=1, max_size=25))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.differing_executors,
+        ],
+    )
     def test_ttr_in_bounds(self, analyzer: VoiceMetricsAnalyzer, words: list[str]) -> None:
         text = " ".join(words) + "."
         metrics = analyzer.analyze([_utt(text, "Elena")])["Elena"]
@@ -254,7 +260,13 @@ class TestProperties:
         assert 0.0 <= metrics.type_token_ratio <= 1.0
 
     @given(words=st.lists(_WORD_STRATEGY, min_size=1, max_size=25))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.differing_executors,
+        ],
+    )
     def test_std_non_negative(self, analyzer: VoiceMetricsAnalyzer, words: list[str]) -> None:
         text = " ".join(words) + "."
         metrics = analyzer.analyze([_utt(text, "Elena")])["Elena"]
@@ -262,7 +274,13 @@ class TestProperties:
         assert metrics.sentence_length_std >= 0.0
 
     @given(words=st.lists(_WORD_STRATEGY, min_size=1, max_size=25))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.differing_executors,
+        ],
+    )
     def test_deterministic(self, analyzer: VoiceMetricsAnalyzer, words: list[str]) -> None:
         text = " ".join(words) + "."
         utterances = [_utt(text, "Elena")]
@@ -271,7 +289,13 @@ class TestProperties:
         assert first == second
 
     @given(words=st.lists(_WORD_STRATEGY, min_size=2, max_size=25))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.differing_executors,
+        ],
+    )
     def test_stable_across_minor_whitespace(
         self, analyzer: VoiceMetricsAnalyzer, words: list[str]
     ) -> None:
