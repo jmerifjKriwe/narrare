@@ -89,6 +89,9 @@ def _make_provider(
         from narrare_core.crypto import encrypt
 
         api_key_encrypted = encrypt("sk-test-key")
+    # Conditional reassignment (str | None param → Unknown from encrypt())
+    # widens the inferred type; narrow back to str before construction.
+    assert api_key_encrypted is not None
     return FakeProvider(
         id=provider_id,
         user_id=user_id,

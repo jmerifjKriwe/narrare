@@ -117,6 +117,7 @@ class TestInvocationComposition:
 
         kwargs = mock_compose.call_args.kwargs
         ctx = kwargs.get("prompt_context")
+        assert ctx is not None
         assert isinstance(ctx, PromptContext)
         assert ctx.language == "en"
         assert ctx.mode == "names"

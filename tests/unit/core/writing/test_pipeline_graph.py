@@ -306,9 +306,10 @@ class TestRunWithPersistence:
                 )
             )
         assert len(store.saved_calls) == 1
-        saved_run_id, saved_state = store.saved_calls[0]
+        saved_run_id, saved_obj = store.saved_calls[0]
         assert saved_run_id == "save-test"
-        assert isinstance(saved_state, WritingState)
+        assert isinstance(saved_obj, WritingState)
+        saved_state: WritingState = saved_obj
         assert saved_state.final == "final text"
 
     @pytest.mark.asyncio

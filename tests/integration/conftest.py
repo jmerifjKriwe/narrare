@@ -276,6 +276,10 @@ def _get_test_password_hash() -> str:
         from narrare.auth.security import hash_password
 
         _cached_password_hash = hash_password("testpassword123")
+    # Global narrowing does not persist across the hash_password() call above
+    # (any function could rebind a module-level name), so narrow explicitly
+    # before returning to satisfy pyright strict mode.
+    assert _cached_password_hash is not None
     return _cached_password_hash
 
 
