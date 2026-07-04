@@ -125,9 +125,11 @@ repos:
         stages: [pre-commit]
 
       # OpenAPI spec auto-regeneration — mutates docs/openapi.json when API surface changes
+      # Uses --no-sync to rely on the already-synced venv (deterministic-venv contract;
+      # see ci.yml architecture job). Run from repo root so the script path is canonical.
       - id: openapi-regenerate
         name: OpenAPI Spec (auto-regenerate)
-        entry: uv run --directory apps/api python ../../scripts/export_openapi.py
+        entry: uv run --no-sync python scripts/export_openapi.py
         language: system
         pass_filenames: false
         files: ^(apps/api/|packages/core/)

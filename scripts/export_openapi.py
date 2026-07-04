@@ -7,11 +7,11 @@ This allows external tools (MCP, A2A, third-party) to consume the API
 spec without running the server.
 
 Usage:
-    uv run --package narrare python scripts/export_openapi.py
+    uv run --no-sync python scripts/export_openapi.py
         # Write to docs/reference/openapi.json
-    uv run --package narrare python scripts/export_openapi.py --output path
+    uv run --no-sync python scripts/export_openapi.py --output path
         # Custom output path
-    uv run --package narrare python scripts/export_openapi.py --check
+    uv run --no-sync python scripts/export_openapi.py --check
         # CI drift detection (exit 1 on drift)
 
 The script does NOT require Docker, PostgreSQL, or Redis — it only
@@ -67,7 +67,7 @@ def _check_drift(schema: dict[str, object], reference_path: Path) -> bool:
             f"❌ OpenAPI spec not found: {reference_path}",
             file=sys.stderr,
         )
-        print("   Run: uv run --package narrare python scripts/export_openapi.py", file=sys.stderr)
+        print("   Run: uv run --no-sync python scripts/export_openapi.py", file=sys.stderr)
         return True
 
     try:
@@ -85,7 +85,7 @@ def _check_drift(schema: dict[str, object], reference_path: Path) -> bool:
         file=sys.stderr,
     )
     print(
-        "   Regenerate with: uv run --package narrare python scripts/export_openapi.py",
+        "   Regenerate with: uv run --no-sync python scripts/export_openapi.py",
         file=sys.stderr,
     )
     return True

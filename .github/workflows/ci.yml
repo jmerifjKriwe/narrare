@@ -102,85 +102,93 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --all-packages --group dev
 
+      # ── Deterministic venv contract ──────────────────────────────────
+      # The venv is synced ONCE above via `uv sync --all-packages`. Every
+      # check below uses `uv run --no-sync` so uv never re-reconciles the
+      # workspace between steps. Without --no-sync, a version-sensitive uv
+      # reconciliation can evict the `narrare` workspace member (it is not a
+      # declared dependency of the root project), causing
+      # `No module named 'narrare'` flakes.
+      # ─────────────────────────────────────────────────────────────────
       - name: Check architecture constraints
-        run: uv run python scripts/check_architecture.py
+        run: uv run --no-sync python scripts/check_architecture.py
 
       - name: Check prompt surface contract (ADR-037 + ADR-049 Phase D)
-        run: uv run python scripts/check_prompt_surface_contract.py
+        run: uv run --no-sync python scripts/check_prompt_surface_contract.py
 
       - name: Check version consistency (workspace drift)
-        run: uv run python scripts/check_version_consistency.py
+        run: uv run --no-sync python scripts/check_version_consistency.py
 
       - name: Check exception baseline (no-growth gate)
-        run: uv run python scripts/check_exception_baseline.py
+        run: uv run --no-sync python scripts/check_exception_baseline.py
 
       - name: Check exception sync (pyproject ↔ CONSTRAINTS.md)
-        run: uv run python scripts/check_exception_baseline.py --check-sync
+        run: uv run --no-sync python scripts/check_exception_baseline.py --check-sync
 
       - name: Check configuration adoption matrix (ADR-051 / CR-AUFG-08-09)
-        run: uv run python scripts/check_configuration_matrix.py
+        run: uv run --no-sync python scripts/check_configuration_matrix.py
 
       - name: Check matrix effect-integrity (ADR-061 P2 blocking + P1 warning)
-        run: uv run python scripts/check_matrix_effect_integrity.py
+        run: uv run --no-sync python scripts/check_matrix_effect_integrity.py
 
       - name: Check OpenAPI spec drift
-        run: uv run --directory apps/api python ../../scripts/export_openapi.py --check
+        run: uv run --no-sync python scripts/export_openapi.py --check
 
       - name: Check prompt structure
-        run: uv run python scripts/check_prompt_structure.py
+        run: uv run --no-sync python scripts/check_prompt_structure.py
 
       - name: Run invocation probes
-        run: uv run python scripts/probes/run_all_probes.py --evidence-dir .evidence
+        run: uv run --no-sync python scripts/probes/run_all_probes.py --evidence-dir .evidence
 
       - name: Check feature adoption
-        run: uv run python scripts/check_adoption.py --evidence-dir .evidence
+        run: uv run --no-sync python scripts/check_adoption.py --evidence-dir .evidence
 
       - name: Check locale sync
-        run: uv run python scripts/check_locale_sync.py
+        run: uv run --no-sync python scripts/check_locale_sync.py
 
       - name: Check documentation drift
-        run: uv run python scripts/check_doc_drift.py
+        run: uv run --no-sync python scripts/check_doc_drift.py
 
       - name: Check registry drift (P3)
-        run: uv run python scripts/check_registry_drift.py
+        run: uv run --no-sync python scripts/check_registry_drift.py
 
       - name: Quality metrics (P3, opt-in)
-        run: uv run python scripts/check_quality_metrics.py --quality
+        run: uv run --no-sync python scripts/check_quality_metrics.py --quality
 
       - name: Check gate exceptions expiry
-        run: uv run python scripts/check_gate_expirations.py
+        run: uv run --no-sync python scripts/check_gate_expirations.py
 
       - name: Check gate drift (docs vs CI)
-        run: uv run python scripts/check_gate_drift.py
+        run: uv run --no-sync python scripts/check_gate_drift.py
 
       - name: Check governance health (ADR-047)
-        run: uv run python scripts/check_governance_health.py
+        run: uv run --no-sync python scripts/check_governance_health.py
 
       - name: Check streaming compliance (RULE-20)
         run: |
-          uv run python scripts/check_streaming_compliance.py
+          uv run --no-sync python scripts/check_streaming_compliance.py
 
       - name: Check AI interaction compliance (ADR-043 / §16)
         run: |
-          uv run python scripts/checks/check_ai_interaction_compliance.py
+          uv run --no-sync python scripts/checks/check_ai_interaction_compliance.py
 
       - name: System health aggregation
-        run: uv run python scripts/check_system_health.py
+        run: uv run --no-sync python scripts/check_system_health.py
 
       - name: Check test coverage gaps (RULE-10)
-        run: uv run python scripts/check_test_coverage_gaps.py --fail-on-missing
+        run: uv run --no-sync python scripts/check_test_coverage_gaps.py --fail-on-missing
 
       # Eval smoke tests — deterministic, no provider secrets needed.
       # Runtime evals (with real LLM calls) run in nightly workflow, not PR CI.
       # See docs/development/testing-standards.md § "LLM Prompt Evaluation".
       - name: Run eval smoke tests
-        run: uv run python -m evals run --suite all --mode smoke
+        run: uv run --no-sync python -m evals run --suite all --mode smoke
 
       - name: Check eval drift
-        run: uv run python scripts/check_eval_drift.py
+        run: uv run --no-sync python scripts/check_eval_drift.py
 
       - name: Check SSOT facts (CURRENT_STATE.md)
-        run: uv run python scripts/check_current_state_facts.py
+        run: uv run --no-sync python scripts/check_current_state_facts.py
 
   # -------------------------------------------------------------------------
   # Lint & format (< 60s)
