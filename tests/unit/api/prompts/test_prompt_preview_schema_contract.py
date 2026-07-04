@@ -26,6 +26,7 @@ import json
 import re
 from pathlib import Path
 
+import pytest
 from pydantic import TypeAdapter
 
 from narrare.prompts.schemas_prompt_ux import (
@@ -33,6 +34,8 @@ from narrare.prompts.schemas_prompt_ux import (
     PreviewResponse,
     ResetResponse,
 )
+
+pytestmark = pytest.mark.mutation_inert
 
 _ROOT = Path(__file__).parents[4]
 _TS_PROMPTS = (_ROOT / "packages" / "web" / "types" / "prompts.ts").read_text(encoding="utf-8")

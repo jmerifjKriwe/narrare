@@ -11,6 +11,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.mutation_inert
+
 # Files known to have contained the hardcoded string
 _OLLAMA_FILES: list[str] = [
     "apps/api/narrare/setup/provider_service.py",

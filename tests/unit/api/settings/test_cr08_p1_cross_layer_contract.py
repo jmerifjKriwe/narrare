@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 from narrare.settings.token_limits._validators import VALID_PROFILES
 from narrare.settings.token_limits.metadata_service import TokenLimitsMetadataService
 from narrare_core.llm.token_profiles import (
@@ -18,6 +20,8 @@ from narrare_core.llm.token_profiles import (
     TOKEN_OUTPUT_UX_RECOMMENDED_MAX,
     public_token_profile_values,
 )
+
+pytestmark = pytest.mark.mutation_inert
 
 _ROOT = Path(__file__).resolve().parents[4]
 _WEB_TOKEN_PROFILES = _ROOT / "packages" / "web" / "lib" / "token-profiles.ts"

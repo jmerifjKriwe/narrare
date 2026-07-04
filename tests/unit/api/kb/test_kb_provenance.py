@@ -23,6 +23,8 @@ from narrare.kb.service import KBService
 if TYPE_CHECKING:
     from narrare.kb.relationship_repository import RelationshipRepository
 
+pytestmark = pytest.mark.mutation_inert
+
 # ---------------------------------------------------------------------------
 # Schema defaults
 # ---------------------------------------------------------------------------

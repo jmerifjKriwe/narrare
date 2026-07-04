@@ -11,6 +11,10 @@ import importlib.util
 import inspect
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.mutation_inert
+
 
 def _load_migration_module():  # type: ignore[no-untyped-def]
     """Load the migration module directly from file path."""
