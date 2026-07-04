@@ -78,7 +78,8 @@ describe("PlanningPanel URL state", () => {
     mocks.searchParams = new URLSearchParams("planning=1");
     render(<PlanningPanel novelId="novel-1" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "title" }));
+    // The timeline tab is now a role="tab" (PanelTabs ARIA pattern).
+    fireEvent.click(screen.getByRole("tab", { name: "title" }));
 
     expect(mocks.routerPush).toHaveBeenCalledWith(
       "/novel/novel-1?planning=1&planningTab=timeline",
@@ -88,21 +89,26 @@ describe("PlanningPanel URL state", () => {
     );
   });
 
-  it("uses responsive tab scroller and bounded content region when expanded", () => {
+  it("renders an accessible ARIA tablist with bounded content when expanded", () => {
     mocks.state.storyboardOpen = true;
     mocks.searchParams = new URLSearchParams("planning=1");
 
     render(<PlanningPanel novelId="novel-1" />);
 
+    // The section keeps its full-width bordered layout.
     const panel = screen.getByRole("region", { name: "storyboard.title" });
     expect(panel.className).toContain("w-full");
     expect(panel.className).toContain("border-b");
 
-    const tabScroller = screen.getByTestId("planning-tab-scroller");
-    expect(tabScroller.className).toContain("overflow-x-auto");
+    // PanelTabs renders a tablist with one tab per planning surface.
+    expect(screen.getByRole("tablist")).toBeDefined();
+    expect(screen.getAllByRole("tab")).toHaveLength(3);
 
-    const content = screen.getByTestId("planning-tab-content");
-    expect(content.className).toContain("max-h-[45vh]");
-    expect(content.className).toContain("lg:max-h-[36vh]");
+    // The active tab's content lives in a labelled tabpanel.
+    expect(screen.getByRole("tabpanel")).toBeDefined();
+
+    // The content region is bounded so it scrolls within the editor.
+    const scroller = panel.querySelector(".h-\\[45vh\\]");
+    expect(scroller).not.toBeNull();
   });
 });

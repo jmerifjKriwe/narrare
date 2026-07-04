@@ -24,7 +24,7 @@ export function ExtractionError({ message, onRetry }: ExtractionErrorProps) {
       state="error"
       message={message}
       action={
-        <button type="button" onClick={onRetry}>
+        <button type="button" onClick={onRetry} aria-label={t("kb.extractionRetry")}>
           {t("kb.extractionRetry")}
         </button>
       }

@@ -54,7 +54,7 @@ export function ExtractionLoading({ onCancel }: ExtractionLoadingProps) {
         message={tAction("aiThinking")}
         action={
           onCancel ? (
-            <button type="button" onClick={onCancel}>
+            <button type="button" onClick={onCancel} aria-label={tAction("stop")}>
               {tAction("stop")}
             </button>
           ) : undefined
