@@ -151,6 +151,7 @@ This approach leverages zero new dependencies (Playwright is already configured,
 - New CSS variable additions should be reflected in the dev-route (documented as part of the CSS variable definition)
 - `/dev/` routes are production-excluded (guarded by `process.env.NODE_ENV === 'development'` or build-time exclusion)
 - Snapshot test files live in `packages/web/tests/screenshots/` (or `tests/e2e/screenshots/`) — clearly separated from functional E2E tests
+- Cross-OS font rendering differences are handled via `maxDiffPixelRatio: 0.02` in the vrt project config; dimension changes require baseline regeneration from CI artifacts
 
 ---
 
@@ -229,6 +230,23 @@ test.describe("Settings — General — Visual Regression", () => {
 ```bash
 npx playwright test --project=vrt --update-snapshots
 ```
+
+**Cross-OS tolerance:**
+- Font anti-aliasing differs between Ubuntu minor versions (e.g., 24.04 vs 26.04), causing ~1-2% pixel drift
+- VRT project config uses `maxDiffPixelRatio: 0.02` to tolerate this while still catching real visual regressions
+- This is the industry-standard approach for cross-OS VRT
+- The 2% threshold is set in `playwright.config.ts` in the `vrt` project's `expect.toHaveScreenshot` configuration
+
+**Regenerating baselines from CI artifacts:**
+- When screenshot dimensions differ between environments (not just pixel values), `maxDiffPixelRatio` does not help — Playwright requires matching image dimensions
+- The canonical fix: run CI, download the failed test's `actual.png` render from the `vrt-test-results` artifact, and use it as the new baseline
+- Workflow:
+  1. Trigger CI run (push to main or PR branch)
+  2. If VRT fails, download artifact: `gh run download <run-id> -n vrt-test-results`
+  3. Find `actual.png` files in the downloaded artifact directory
+  4. Copy each `actual.png` to the matching `*-vrt-linux.png` in `packages/web/tests/screenshots/design-tokens.spec.ts-snapshots/`
+  5. Commit with message documenting the CI run ID and reason
+- This ensures baselines match the exact CI rendering environment (Ubuntu 24.04, CI Playwright version, CI Chromium version)
 
 **Flakiness mitigation:**
 - Mock all API responses for snapshot test pages (`page.route()`)
@@ -312,6 +330,7 @@ Alternatively, the entire `/dev` route segment can be conditionally excluded at 
 - [ ] When a genuine `ui/` presentational component layer emerges (>10 reusable components) — reconsider Option C (Storybook scoped to ui/)
 - [ ] When cross-browser visual issues are reported — evaluate adding Firefox/WebKit Playwright projects for VRT
 - [ ] When the team grows beyond 3 frontend developers — reconsider if a richer design documentation tool (ZeroHeight, Figma Tokens) adds value
+- [ ] When GitHub Actions runner image updates to a new Ubuntu LTS (e.g., 26.04) — regenerate all VRT baselines in CI to match the new rendering environment
 
 ---
 
