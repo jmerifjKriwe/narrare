@@ -83,39 +83,28 @@ export function EditorToolbar({
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
       />
       <ToolbarSeparator />
-      <button
-        type="button"
+      <ToolbarButton
+        label={t("editor.nameGenerator")}
+        icon={Sparkles}
+        showLabel
         onClick={openNameGenerator}
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-primary"
-        title={t("editor.nameGenerator")}
-      >
-        <Sparkles className="w-3.5 h-3.5" />
-        <span>{t("editor.nameGenerator")}</span>
-      </button>
+      />
       <ToolbarSeparator />
-      <button
-        type="button"
+      <ToolbarButton
+        label={t("editor.generate")}
+        icon={Wand2}
+        showLabel
+        active={activeRightPanel === "generation"}
         onClick={() => toggleRightPanel("generation", "toolbar")}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-primary ${
-          activeRightPanel === "generation" ? "bg-accent" : ""
-        }`}
-        title={t("editor.generate")}
-      >
-        <Wand2 className="w-3.5 h-3.5" />
-        <span>{t("editor.generate")}</span>
-      </button>
+      />
       <ToolbarSeparator />
-      <button
-        type="button"
+      <ToolbarButton
+        label={t("kb.extract")}
+        icon={Database}
+        showLabel
+        active={extractionPanelOpen}
         onClick={toggleExtractionPanel}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-primary ${
-          extractionPanelOpen ? "bg-accent" : ""
-        }`}
-        title={t("kb.extract")}
-      >
-        <Database className="w-3.5 h-3.5" />
-        <span>{t("kb.extract")}</span>
-      </button>
+      />
       <ToolbarSeparator />
       <BetaReaderTrigger />
       <SentimentTrigger />
