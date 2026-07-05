@@ -43,8 +43,8 @@ export function useUrlParam({ paramName, allowed, defaultValue }: UseUrlParamOpt
       }
       const query = params.toString();
       const url = query ? `${pathname}?${query}` : pathname;
-      if (mode === "push") router.push(url);
-      else router.replace(url);
+      if (mode === "push") router.push(url as never);
+      else router.replace(url as never);
     },
     [searchParams, paramName, defaultValue, pathname, router],
   );
