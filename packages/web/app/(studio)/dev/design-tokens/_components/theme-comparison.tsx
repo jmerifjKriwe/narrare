@@ -22,12 +22,12 @@ const COMPARE_TOKENS = [
 ];
 
 function ThemePanel({
-  label,
   theme,
+  mode,
   values,
 }: {
-  label: string;
   theme: "neutral" | "narrare";
+  mode: "light" | "dark";
   values: Record<string, string>;
 }) {
   return (
@@ -36,6 +36,9 @@ function ThemePanel({
       <div className="bg-background px-4 py-2.5 border-b border-border">
         <p className="text-sm font-medium text-foreground">
           {theme === "neutral" ? "Neutral" : "Narrare"}
+          <span className="text-xs text-muted-foreground font-normal ml-2">
+            {mode === "light" ? "Light" : "Dark"}
+          </span>
         </p>
         <p className="text-[11px] text-muted-foreground font-mono">{`data-theme="${theme}"`}</p>
       </div>
@@ -64,10 +67,17 @@ function ThemePanel({
   );
 }
 
-function ThemePanelWrapper({ label, theme }: { label: string; theme: "neutral" | "narrare" }) {
+function ThemePanelWrapper({
+  theme,
+  mode,
+}: {
+  theme: "neutral" | "narrare";
+  mode: "light" | "dark";
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [values, setValues] = useState<Record<string, string>>({});
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mode/theme ARE valid deps (props that trigger re-render)
   useEffect(() => {
     if (!ref.current) return;
     const style = getComputedStyle(ref.current);
@@ -76,22 +86,23 @@ function ThemePanelWrapper({ label, theme }: { label: string; theme: "neutral" |
         COMPARE_TOKENS.map((t) => [t.cssVar, style.getPropertyValue(t.cssVar).trim()]),
       ),
     );
-  }, []);
+  }, [mode, theme]);
 
   return (
-    <div ref={ref} data-theme={theme}>
-      <ThemePanel label={label} theme={theme} values={values} />
+    <div ref={ref} data-theme={theme} className={mode === "dark" ? "dark" : ""}>
+      <ThemePanel theme={theme} mode={mode} values={values} />
     </div>
   );
 }
 
-export function ThemeComparison() {
+export function ThemeComparison({ previewDark }: { previewDark: boolean }) {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-medium flex items-center gap-2">
         Theme Comparison
         <span className="text-xs text-muted-foreground font-normal">
-          — Neutral vs Narrare side-by-side (light mode)
+          — Neutral vs Narrare side-by-side
+          {previewDark ? " (all modes)" : " (light mode)"}
         </span>
       </h2>
       <p className="text-sm text-muted-foreground -mt-2">
@@ -100,8 +111,14 @@ export function ThemeComparison() {
         read from the computed style of elements inside each panel.
       </p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ThemePanelWrapper label="Neutral (Default)" theme="neutral" />
-        <ThemePanelWrapper label="Narrare (Premium)" theme="narrare" />
+        <ThemePanelWrapper theme="neutral" mode="light" />
+        <ThemePanelWrapper theme="narrare" mode="light" />
+        {previewDark && (
+          <>
+            <ThemePanelWrapper theme="neutral" mode="dark" />
+            <ThemePanelWrapper theme="narrare" mode="dark" />
+          </>
+        )}
       </div>
     </div>
   );

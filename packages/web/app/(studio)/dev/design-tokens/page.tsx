@@ -1,6 +1,6 @@
 "use client";
 
-import { Contrast, Palette, Ruler, Table2, Type } from "lucide-react";
+import { Contrast, Moon, Palette, Ruler, Sun, Table2, Type } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ColorPalette } from "./_components/color-palette";
 import { RadiiTypography } from "./_components/radii-typography";
@@ -16,6 +16,7 @@ const SECTIONS = [
 
 export default function DesignTokensPage() {
   const [previewDark, setPreviewDark] = useState(false);
+  const [previewTheme, setPreviewTheme] = useState<"neutral" | "narrare">("neutral");
 
   useEffect(() => {
     const root = document.documentElement;
@@ -49,7 +50,7 @@ export default function DesignTokensPage() {
             onClick={() => setPreviewDark((p) => !p)}
             className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-accent transition-colors"
           >
-            {previewDark ? "☀️" : "🌙"}
+            {previewDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             {previewDark ? "Light Mode" : "Dark Mode"}
           </button>
         </div>
@@ -71,7 +72,11 @@ export default function DesignTokensPage() {
 
       {/* ── Sections ── */}
       <section id="colors">
-        <ColorPalette previewDark={previewDark} />
+        <ColorPalette
+          previewDark={previewDark}
+          theme={previewTheme}
+          onThemeChange={setPreviewTheme}
+        />
       </section>
 
       <section id="radii-typo">
@@ -79,7 +84,7 @@ export default function DesignTokensPage() {
       </section>
 
       <section id="theme-comparison">
-        <ThemeComparison />
+        <ThemeComparison previewDark={previewDark} />
       </section>
 
       <section id="mapping">

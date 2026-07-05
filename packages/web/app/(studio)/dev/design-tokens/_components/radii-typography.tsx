@@ -1,19 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-/* ─── Radius Section ─── */
-
-const RADII = [
-  { name: "sm", cssVar: "--radius-sm", tailwind: "rounded-sm" },
-  { name: "md", cssVar: "--radius-md", tailwind: "rounded-md" },
-  { name: "lg", cssVar: "--radius-lg", tailwind: "rounded-lg" },
-  { name: "xl", cssVar: "--radius-xl", tailwind: "rounded-xl" },
-];
+import { useEffect, useRef, useState } from "react";
+import { EDITOR_TOKENS, HEADINGS, type HeadingValue, RADII } from "../_data/typography-tokens";
 
 function RadiusPreview({ dark }: { dark: boolean }) {
   const [values, setValues] = useState<Record<string, string>>({});
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: dark is a valid dep (prop change triggers re-render)
   useEffect(() => {
     const style = getComputedStyle(document.documentElement);
     setValues(
@@ -45,14 +38,27 @@ function RadiusPreview({ dark }: { dark: boolean }) {
 
 /* ─── Typography Section ─── */
 
-const HEADINGS = [
-  { tag: "h1" as const, label: "h1", tailwind: "text-2xl" },
-  { tag: "h2" as const, label: "h2", tailwind: "text-xl" },
-  { tag: "h3" as const, label: "h3", tailwind: "text-lg" },
-  { tag: "h4" as const, label: "h4", tailwind: "text-base" },
-];
+function TypographyPreview({ dark }: { dark: boolean }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [values, setValues] = useState<Record<string, HeadingValue>>({});
 
-function TypographyPreview() {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: dark is a valid dep (prop change triggers re-render)
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const els = containerRef.current.querySelectorAll("h1, h2, h3, h4");
+    const newValues: Record<string, HeadingValue> = {};
+    els.forEach((el) => {
+      const tag = el.tagName.toLowerCase();
+      const style = getComputedStyle(el);
+      newValues[tag] = {
+        fontSize: style.fontSize,
+        lineHeight: style.lineHeight,
+        fontWeight: style.fontWeight,
+      };
+    });
+    setValues(newValues);
+  }, [dark]);
+
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-medium flex items-center gap-2">
@@ -62,13 +68,41 @@ function TypographyPreview() {
           <code className="bg-accent px-1 rounded text-[11px]">font-weight-medium</code>
         </span>
       </h3>
-      <div className="space-y-4 bg-card border border-border rounded-lg p-4">
-        {HEADINGS.map(({ tag: Tag, label, tailwind }) => (
-          <div key={label} className="flex items-baseline justify-between gap-4">
-            <Tag className="font-medium">{label}. The quick brown fox jumps over the lazy dog.</Tag>
-            <span className="shrink-0 text-[11px] text-muted-foreground font-mono">{tailwind}</span>
-          </div>
-        ))}
+      <div ref={containerRef} className="space-y-4 bg-card border border-border rounded-lg p-4">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-muted-foreground border-b border-border">
+              <th className="text-left font-medium pb-2 pr-4">Tag</th>
+              <th className="text-left font-medium pb-2 pr-4">Sample</th>
+              <th className="text-left font-medium pb-2 pr-4">Font Size</th>
+              <th className="text-left font-medium pb-2 pr-4">Line Height</th>
+              <th className="text-left font-medium pb-2">Weight</th>
+            </tr>
+          </thead>
+          <tbody>
+            {HEADINGS.map(({ tag: Tag, label }) => (
+              <tr key={label}>
+                <td className="font-mono text-xs text-muted-foreground py-2 pr-4 align-baseline">
+                  {label}
+                </td>
+                <td className="py-2 pr-4 align-baseline">
+                  <Tag className="font-medium">
+                    {label}. The quick brown fox jumps over the lazy dog.
+                  </Tag>
+                </td>
+                <td className="font-mono text-xs text-muted-foreground py-2 pr-4 align-baseline whitespace-nowrap">
+                  {values[label]?.fontSize ?? "—"}
+                </td>
+                <td className="font-mono text-xs text-muted-foreground py-2 pr-4 align-baseline whitespace-nowrap">
+                  {values[label]?.lineHeight ?? "—"}
+                </td>
+                <td className="font-mono text-xs text-muted-foreground py-2 align-baseline whitespace-nowrap">
+                  {values[label]?.fontWeight ?? "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
         <div className="pt-3 border-t border-border">
           <p className="text-xs text-muted-foreground">
             Body copy uses the system font stack at{" "}
@@ -84,15 +118,10 @@ function TypographyPreview() {
 
 /* ─── Editor Tokens Section ─── */
 
-const EDITOR_TOKENS = [
-  { name: "Max Width", cssVar: "--editor-max-width", desc: "Maximum width of editor content area" },
-  { name: "Line Height", cssVar: "--editor-line-height", desc: "Line height for editor prose" },
-  { name: "Font Size", cssVar: "--editor-font-size", desc: "Base font size in the editor" },
-];
-
 function EditorTokenPreview({ dark }: { dark: boolean }) {
   const [values, setValues] = useState<Record<string, string>>({});
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: dark is a valid dep (prop change triggers re-render)
   useEffect(() => {
     const style = getComputedStyle(document.documentElement);
     setValues(
@@ -131,7 +160,7 @@ export function RadiiTypography({ previewDark }: { previewDark: boolean }) {
     <div className="space-y-8">
       <h2 className="text-xl font-medium">Radii &amp; Typography</h2>
       <RadiusPreview dark={previewDark} />
-      <TypographyPreview />
+      <TypographyPreview dark={previewDark} />
       <EditorTokenPreview dark={previewDark} />
     </div>
   );
