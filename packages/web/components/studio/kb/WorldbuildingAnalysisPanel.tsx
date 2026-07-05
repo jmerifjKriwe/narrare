@@ -13,6 +13,7 @@
 import { ArrowLeft, Check, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ConnectionLostBanner } from "@/components/ui/connection-lost-banner";
+import { IconButton } from "@/components/ui/icon-button";
 import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import { AnalysisError } from "./AnalysisError";
 import { AnalysisLoading } from "./AnalysisLoading";
@@ -62,13 +63,12 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-card">
         <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
+          <IconButton
+            label={t("worldbuilding.back")}
+            icon={ArrowLeft}
             onClick={onClose}
-            className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
+            variant="ghost"
+          />
           <Sparkles className="w-5 h-5 text-purple-500 flex-shrink-0" />
           <h3 className="font-medium truncate">{t("worldbuilding.analysisTitle")}</h3>
         </div>
@@ -86,13 +86,7 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
               {t("worldbuilding.refresh")}
             </button>
           )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <IconButton label={t("worldbuilding.close")} icon={X} onClick={onClose} variant="ghost" />
         </div>
       </div>
       {isConnectionLost && (

@@ -37,12 +37,6 @@ export const ANALYSIS_TYPES: AnalysisTypeConfig[] = [
   },
 ];
 
-export const MOCK_STATS = {
-  totalWords: 65,
-  chapters: 2,
-  characters: 2,
-};
-
 export const MOCK_RESULTS: Record<AnalysisType, Record<string, string | number>> = {
   readability: {
     score: 78,

@@ -40,6 +40,16 @@ export function GeneralTab({ displayName, uiLanguage, isLoading, onSaveProfile }
     setDirty(true);
   }
 
+  // NOTE: An explicit Save button is intentionally kept here, deviating from the
+  // "settings persist without save buttons" principle. Rationale: changing the
+  // UI language performs `router.refresh()` (a full server re-render with the
+  // new locale) and sets the NEXT_LOCALE cookie. Auto-saving the language select
+  // on change would trigger that full refresh mid-interaction, and debounced
+  // auto-save of the display-name text field would race with it. The two fields
+  // share a single mutation and one `dirty` flag, so a unified explicit apply is
+  // safer than two divergent auto-save models. Revisit with Option A (auto-save
+  // + debounced StatusMessage feedback) once the language switch is decoupled
+  // from the full router refresh.
   function handleSave() {
     onSaveProfile({ display_name: localDisplayName, ui_language: localLanguage });
 

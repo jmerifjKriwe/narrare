@@ -4,6 +4,7 @@ import { Sparkles } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
+import { StatusMessage } from "@/components/ui/status-message";
 import { searchParamsHref, setOptionalSearchParam } from "@/lib/url-state/searchParams";
 import { parseAnalysisPanelParam, serializeAnalysisPanelParam } from "./analysis/analysisUrlState";
 import {
@@ -12,7 +13,6 @@ import {
   getDetailRows,
   getScore,
   getSuggestions,
-  MOCK_STATS,
 } from "./analysis-data";
 
 interface AnalysisPanelProps {
@@ -56,7 +56,8 @@ export function AnalysisPanel({ novelId }: AnalysisPanelProps) {
     router.push(searchParamsHref(pathname, nextParams), { scroll: false });
     if (nextPanel === null) return;
     setIsAnalyzing(true);
-    // Mock delay
+    // TODO: replace with a real analysis API call; this placeholder drives the
+    // loading StatusMessage until async analysis is wired (no mock stat numbers).
     setTimeout(() => {
       setIsAnalyzing(false);
     }, 1500);
@@ -73,18 +74,9 @@ export function AnalysisPanel({ novelId }: AnalysisPanelProps) {
           <p className="text-muted-foreground">{t("analysis.description")}</p>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          {[
-            { value: MOCK_STATS.totalWords, label: t("analysis.totalWords") },
-            { value: MOCK_STATS.chapters, label: t("analysis.chapters") },
-            { value: MOCK_STATS.characters, label: t("analysis.characters") },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-card border border-border rounded-lg p-6">
-              <div className="text-3xl font-medium mb-1">{stat.value}</div>
-              <div className="text-sm text-muted-foreground">{stat.label}</div>
-            </div>
-          ))}
+        {/* Stats row — placeholder until analysis is wired to real novel data (no mock numbers) */}
+        <div className="mb-8">
+          <StatusMessage state="empty" message={t("analysis.statsEmpty")} />
         </div>
 
         {/* Analysis cards */}
@@ -122,10 +114,7 @@ export function AnalysisPanel({ novelId }: AnalysisPanelProps) {
                 {isExpanded && (
                   <div className="border-t border-border p-6 bg-muted/20">
                     {isAnalyzing ? (
-                      <div className="flex items-center justify-center py-8 text-muted-foreground">
-                        <Sparkles className="w-5 h-5 animate-pulse mr-2" />
-                        <span>{t("analysis.analyzing")}</span>
-                      </div>
+                      <StatusMessage state="loading" message={t("analysis.analyzing")} />
                     ) : (
                       <div>
                         {/* Score bar */}

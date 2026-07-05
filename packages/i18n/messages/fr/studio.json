@@ -214,6 +214,7 @@
     "analyzeButton": "Analyser le worldbuilding",
     "refresh": "Actualiser",
     "close": "Fermer",
+    "back": "Retour",
     "gaps": "Lacunes",
     "connections": "Connexions",
     "consistency": "Cohérence",
@@ -264,6 +265,7 @@
     "analyze": "Analyser",
     "insights": "Constatations et suggestions",
     "score": "Score",
+    "statsEmpty": "Les statistiques agrégées apparaîtront ici une fois l'analyse connectée à votre roman.",
     "readability": {
       "title": "Lisibilité",
       "description": "Analyser la longueur des phrases, la diversité du vocabulaire et la lisibilité",

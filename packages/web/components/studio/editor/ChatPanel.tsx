@@ -15,6 +15,7 @@
 import { Bot, Loader2, MessageSquare, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { StatusMessage } from "@/components/ui/status-message";
 import { useChat } from "@/lib/hooks/useChat";
 import { ChatInputArea } from "./ChatInputArea";
 import { ChatMessage } from "./ChatMessage";
@@ -132,13 +133,7 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
           </div>
         )}
 
-        {error && (
-          <div className="flex justify-center">
-            <span className="px-3 py-1 rounded-full bg-destructive/10 text-xs text-destructive">
-              {t("chatPanel.errorConnecting")}
-            </span>
-          </div>
-        )}
+        {error && <StatusMessage state="error" message={t("chatPanel.errorConnecting")} />}
 
         <div ref={chatEndRef} />
       </div>

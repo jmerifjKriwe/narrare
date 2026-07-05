@@ -214,6 +214,7 @@
     "analyzeButton": "Worldbuilding analysieren",
     "refresh": "Aktualisieren",
     "close": "Schließen",
+    "back": "Zurück",
     "gaps": "Lücken",
     "connections": "Verbindungen",
     "consistency": "Konsistenz",
@@ -264,6 +265,7 @@
     "analyze": "Analysieren",
     "insights": "Erkenntnisse & Vorschläge",
     "score": "Score",
+    "statsEmpty": "Aggregierte Statistiken erscheinen hier, sobald die Analyse mit deinem Roman verknüpft ist.",
     "readability": {
       "title": "Lesbarkeit",
       "description": "Analysiere Satzlänge, Wortvielfalt und Lesbarkeit",

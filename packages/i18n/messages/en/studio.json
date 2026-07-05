@@ -214,6 +214,7 @@
     "analyzeButton": "Analyze Worldbuilding",
     "refresh": "Refresh",
     "close": "Close",
+    "back": "Back",
     "gaps": "Gaps",
     "connections": "Connections",
     "consistency": "Consistency",
@@ -264,6 +265,7 @@
     "analyze": "Analyze",
     "insights": "Insights & suggestions",
     "score": "Score",
+    "statsEmpty": "Aggregated stats will appear here once analysis is connected to your novel.",
     "readability": {
       "title": "Readability",
       "description": "Analyze sentence length, vocabulary diversity and readability",
