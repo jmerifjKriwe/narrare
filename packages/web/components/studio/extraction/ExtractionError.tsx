@@ -3,33 +3,31 @@
 /**
  * ExtractionError — Error state with retry button.
  *
- * Follows KBEnhanceReview error pattern.
+ * Rendered via the shared `StatusMessage` primitive, which provides the
+ * accessible `role="alert"` / assertive live region and standardised
+ * destructive styling. The caller resolves the i18n message and retry label.
  */
 
-import { RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { StatusMessage } from "@/components/ui/status-message";
 
 interface ExtractionErrorProps {
-  message: string;
-  onRetry: () => void;
+  readonly message: string;
+  readonly onRetry: () => void;
 }
 
 export function ExtractionError({ message, onRetry }: ExtractionErrorProps) {
   const t = useTranslations("studio");
 
   return (
-    <div className="p-4 border border-red-200 dark:border-red-900/50 rounded-lg bg-red-50 dark:bg-red-950/20">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-red-600 dark:text-red-400">{message}</p>
-        <button
-          type="button"
-          onClick={onRetry}
-          className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700"
-        >
-          <RotateCcw className="w-3 h-3" />
+    <StatusMessage
+      state="error"
+      message={message}
+      action={
+        <button type="button" onClick={onRetry} aria-label={t("kb.extractionRetry")}>
           {t("kb.extractionRetry")}
         </button>
-      </div>
-    </div>
+      }
+    />
   );
 }

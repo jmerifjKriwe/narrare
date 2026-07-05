@@ -4,9 +4,9 @@ import { Clock, LayoutGrid, Users } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { PanelTabs } from "@/components/ui/panel-tabs";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { searchParamsHref, setOptionalSearchParam } from "@/lib/url-state/searchParams";
-import { cn } from "@/lib/utils";
 import { CharacterArcPanel } from "./CharacterArcPanel";
 import {
   type PlanningTab,
@@ -83,69 +83,42 @@ export function PlanningPanel({ novelId }: PlanningPanelProps) {
 
   return (
     <section className="w-full border-b border-border bg-card" aria-label={t("storyboard.title")}>
-      {/* Header with tabs */}
-      <div
-        data-testid="planning-tab-scroller"
-        className="flex items-center gap-2 overflow-x-auto border-b border-border px-3 py-2 sm:px-6"
-      >
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("storyboard");
-            pushPlanningState(true, "storyboard");
+      {/*
+        Storyboard / Timeline / Character Arc tabs. The bounded viewport height
+        lets PanelTabs' tabpanel scroll internally (mirroring the previous
+        max-h content region). `value`/`onValueChange` stay wired to the
+        existing planningUrlState adapter (combined open+tab URL scheme).
+      */}
+      <div className="h-[45vh] lg:h-[36vh]">
+        <PanelTabs
+          ariaLabel={t("storyboard.title")}
+          value={activeTab}
+          onValueChange={(id) => {
+            const tab = id as PlanningTab;
+            setActiveTab(tab);
+            pushPlanningState(true, tab);
           }}
-          className={cn(
-            "flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-colors",
-            activeTab === "storyboard"
-              ? "bg-[var(--color-accent)] text-white"
-              : "text-muted-foreground hover:bg-[var(--color-bg-secondary)]",
-          )}
-        >
-          <LayoutGrid className="w-3.5 h-3.5" />
-          {t("storyboard.title")}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("timeline");
-            pushPlanningState(true, "timeline");
-          }}
-          className={cn(
-            "flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-colors",
-            activeTab === "timeline"
-              ? "bg-[var(--color-accent)] text-white"
-              : "text-muted-foreground hover:bg-[var(--color-bg-secondary)]",
-          )}
-        >
-          <Clock className="w-3.5 h-3.5" />
-          {tTimeline("title")}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("characterArc");
-            pushPlanningState(true, "characterArc");
-          }}
-          className={cn(
-            "flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-colors",
-            activeTab === "characterArc"
-              ? "bg-[var(--color-accent)] text-white"
-              : "text-muted-foreground hover:bg-[var(--color-bg-secondary)]",
-          )}
-        >
-          <Users className="w-3.5 h-3.5" />
-          {t("characterArc.title")}
-        </button>
-      </div>
-
-      {/* Tab content */}
-      <div
-        data-testid="planning-tab-content"
-        className="max-h-[45vh] overflow-auto lg:max-h-[36vh]"
-      >
-        {activeTab === "storyboard" && <StoryboardPanel novelId={novelId} hideHeader />}
-        {activeTab === "timeline" && <TimelinePanel novelId={novelId} />}
-        {activeTab === "characterArc" && <CharacterArcPanel novelId={novelId} />}
+          tabs={[
+            {
+              id: "storyboard",
+              label: t("storyboard.title"),
+              icon: LayoutGrid,
+              content: <StoryboardPanel novelId={novelId} hideHeader />,
+            },
+            {
+              id: "timeline",
+              label: tTimeline("title"),
+              icon: Clock,
+              content: <TimelinePanel novelId={novelId} />,
+            },
+            {
+              id: "characterArc",
+              label: t("characterArc.title"),
+              icon: Users,
+              content: <CharacterArcPanel novelId={novelId} />,
+            },
+          ]}
+        />
       </div>
     </section>
   );

@@ -9,6 +9,7 @@
 import { ChevronRight, Plus, Search, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { SearchInput } from "@/components/ui/search-input";
 import type { KBEntityType, KBEntry } from "@/lib/api/kb";
 import { useKBDebouncedSearch } from "@/lib/hooks/useKB";
 import { formatRelativeTime, STATUS_COLORS, TYPE_ICONS } from "./constants";
@@ -76,16 +77,15 @@ export function KBEntryList({
           <Sparkles className="w-4 h-4" />
           <span>{t("kb.newWithAI")}</span>
         </button>
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder={t("kb.search")}
-            className="w-full pl-8 pr-3 py-2 bg-input-background border border-border rounded-md text-sm"
-          />
-        </div>
+        <SearchInput
+          label={t("kb.search")}
+          placeholder={t("kb.search")}
+          value={searchQuery}
+          onValueChange={handleSearchChange}
+          onClear={() => handleSearchChange("")}
+          clearLabel={t("kb.clearSearch")}
+          visibleLabel={false}
+        />
       </div>
 
       {/* Entry list */}

@@ -888,6 +888,7 @@
   "kb": {
     "title": "Knowledge Base",
     "search": "Search entries...",
+    "clearSearch": "Clear search",
     "newEntry": "New Entry",
     "allTypes": "All",
     "noEntries": "No entries yet",

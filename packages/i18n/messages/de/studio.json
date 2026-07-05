@@ -888,6 +888,7 @@
   "kb": {
     "title": "Wissensdatenbank",
     "search": "Einträge durchsuchen...",
+    "clearSearch": "Suche leeren",
     "newEntry": "Neuer Eintrag",
     "allTypes": "Alle",
     "noEntries": "Noch keine Einträge",

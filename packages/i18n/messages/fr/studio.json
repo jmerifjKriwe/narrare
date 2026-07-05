@@ -888,6 +888,7 @@
   "kb": {
     "title": "Base de connaissances",
     "search": "Rechercher des entrées...",
+    "clearSearch": "Effacer la recherche",
     "newEntry": "Nouvelle entrée",
     "allTypes": "Tout",
     "noEntries": "Aucune entrée",

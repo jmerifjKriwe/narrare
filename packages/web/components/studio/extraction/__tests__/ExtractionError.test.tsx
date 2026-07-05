@@ -32,10 +32,13 @@ describe("ExtractionError", () => {
     expect(onRetry).toHaveBeenCalled();
   });
 
-  it("renders with red error styling", () => {
+  // The bespoke red palette is now standardised onto the StatusMessage
+  // primitive's destructive tokens; assert the accessible contract instead.
+  it("announces the error via an assertive alert region", () => {
     render(<ExtractionError message="Error" onRetry={vi.fn()} />);
 
-    const messageEl = screen.getByText("Error");
-    expect(messageEl.className).toContain("text-red-600");
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveAttribute("aria-live", "assertive");
+    expect(alert).toHaveTextContent("Error");
   });
 });

@@ -5,12 +5,15 @@
  * analyzes the chapter text.
  *
  * Shows phased progress (Analysing → Extracting → Finalizing) with
- * animated progress bar. Uses studio.aiActions.aiThinking label (§16.3).
+ * animated progress bar. The accessible `role="status"` / polite live
+ * region, `aria-busy`, and loading spinner are provided by the
+ * `StatusMessage` primitive (§16.3). The cancel control (when present)
+ * is passed as the live region's actionable `action`.
  */
 
-import { Loader2, StopCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { StatusMessage } from "@/components/ui/status-message";
 
 const PHASES = ["analysing", "extracting", "finalizing"] as const;
 type ProgressPhase = (typeof PHASES)[number];
@@ -46,29 +49,26 @@ export function ExtractionLoading({ onCancel }: ExtractionLoadingProps) {
 
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="relative mb-6">
-        <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
-        </div>
-      </div>
-      <p className="text-lg font-medium mb-2">{tAction("aiThinking")}</p>
-      <p className="text-sm text-muted-foreground max-w-sm">{t(`kb.extractionPhase.${phase}`)}</p>
-      <div className="w-64 h-1.5 bg-muted rounded-full overflow-hidden mt-6">
+      <StatusMessage
+        state="loading"
+        message={tAction("aiThinking")}
+        action={
+          onCancel ? (
+            <button type="button" onClick={onCancel} aria-label={tAction("stop")}>
+              {tAction("stop")}
+            </button>
+          ) : undefined
+        }
+      />
+      <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+        {t(`kb.extractionPhase.${phase}`)}
+      </p>
+      <div className="mt-6 h-1.5 w-64 overflow-hidden rounded-full bg-muted">
         <div
-          className="h-full bg-purple-500 rounded-full transition-all duration-1000 ease-out"
+          className="h-full rounded-full bg-purple-500 transition-all duration-1000 ease-out"
           style={{ width: progressWidth }}
         />
       </div>
-      {onCancel && (
-        <button
-          type="button"
-          onClick={onCancel}
-          className="mt-6 flex items-center gap-1.5 px-4 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-muted transition-colors"
-        >
-          <StopCircle className="w-4 h-4" />
-          {tAction("stop")}
-        </button>
-      )}
     </div>
   );
 }
