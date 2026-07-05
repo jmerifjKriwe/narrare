@@ -19,6 +19,10 @@ interface IconButtonProps {
   readonly variant?: IconButtonVariant;
   /** Touch target size. Defaults to "md". */
   readonly size?: IconButtonSize;
+  /** Additional CSS classes merged into the button (positioning, layout, etc.). */
+  readonly className?: string;
+  /** Optional data-testid for integration tests. */
+  readonly "data-testid"?: string;
 }
 
 const VARIANT_CLASSES: Record<IconButtonVariant, string> = {
@@ -46,6 +50,8 @@ export function IconButton({
   loading = false,
   variant = "ghost",
   size = "md",
+  className,
+  ...rest
 }: IconButtonProps) {
   const isDisabled = disabled || loading;
   return (
@@ -61,7 +67,9 @@ export function IconButton({
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         VARIANT_CLASSES[variant],
         SIZE_CLASSES[size],
+        className,
       )}
+      {...("data-testid" in rest ? { "data-testid": rest["data-testid"] } : {})}
     >
       {loading ? (
         <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />

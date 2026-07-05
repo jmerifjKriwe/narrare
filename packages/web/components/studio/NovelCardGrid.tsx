@@ -72,6 +72,8 @@ export function NovelCardGrid({
             onClick={() => onEdit(novel.id)}
             variant="ghost"
             size="sm"
+            className="absolute top-4 right-14 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity"
+            data-testid="edit-novel-btn"
           />
 
           {/* Delete button */}
@@ -82,6 +84,8 @@ export function NovelCardGrid({
             disabled={isDeleting}
             variant="ghost"
             size="sm"
+            className="absolute top-4 right-4 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity"
+            data-testid="delete-novel-btn"
           />
 
           {/* Card content — clickable */}
