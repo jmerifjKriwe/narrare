@@ -2,6 +2,7 @@
 
 import { BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { IconButton } from "@/components/ui/icon-button";
 import type { NovelSummary } from "@/types";
 
 /**
@@ -65,32 +66,23 @@ export function NovelCardGrid({
           className="group bg-card border border-border rounded-lg p-6 hover:shadow-md transition-shadow relative"
         >
           {/* Edit button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(novel.id);
-            }}
-            className="absolute top-4 right-14 p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 hover:bg-accent rounded-md transition-opacity"
-            aria-label={t("dashboard.edit")}
-          >
-            <Pencil className="w-4 h-4 text-muted-foreground" />
-          </button>
+          <IconButton
+            label={t("dashboard.edit")}
+            icon={Pencil}
+            onClick={() => onEdit(novel.id)}
+            variant="ghost"
+            size="sm"
+          />
 
           {/* Delete button */}
-          <button
-            type="button"
-            data-testid="delete-novel-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(novel.id, novel.title);
-            }}
+          <IconButton
+            label={t("dashboard.delete")}
+            icon={Trash2}
+            onClick={() => onDelete(novel.id, novel.title)}
             disabled={isDeleting}
-            className="absolute top-4 right-4 p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 hover:bg-destructive/10 rounded-md transition-opacity"
-            aria-label={t("dashboard.delete")}
-          >
-            <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-          </button>
+            variant="ghost"
+            size="sm"
+          />
 
           {/* Card content — clickable */}
           <a href={`/novel/${novel.id}`} className="block">
