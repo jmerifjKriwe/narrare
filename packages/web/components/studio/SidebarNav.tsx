@@ -96,7 +96,7 @@ export function SidebarNav({ novelId, onNavigate }: SidebarNavProps) {
           <Link
             key={item.key}
             href={item.href}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all text-sm ${
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-colors text-sm ${
               active ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-accent"
             }`}
             onClick={onNavigate}

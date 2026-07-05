@@ -5,14 +5,11 @@
   font-synthesis-small-caps: none;
   font-synthesis-style: none;
   font-synthesis-weight: none;
-  color: rgb(26, 26, 26);
+  color: var(--foreground);
   padding-left: 48px;
 }
 
-/* Dark mode override */
-.dark .ProseMirror {
-  color: rgb(250, 250, 250);
-}
+/* Dark mode override — var(--foreground) already inverts, so no separate rule needed */
 
 .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
@@ -95,9 +92,9 @@
   padding: 0;
 }
 
-/* Selection styling — semi-transparent blue works in both light and dark */
+/* Selection styling — semi-transparent primary works in both light and dark */
 .ProseMirror ::selection {
-  background-color: rgba(59, 130, 246, 0.3);
+  background-color: color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
 /* Focus styling */
@@ -117,18 +114,18 @@
 
 /* Ghost Text Inline Suggestion */
 .ghost-text-suggestion {
-  color: #9ca3af;          /* Tailwind: text-gray-400 */
+  color: var(--muted-foreground);
   font-style: italic;
   opacity: 0.6;
-  pointer-events: none;    /* Don't interfere with cursor / selection */
-  user-select: none;       /* Prevent text selection */
+  pointer-events: none;
+  user-select: none;
 }
 
 /* Ghost Text Keyboard Shortcut Hint */
 .ghost-text-hint {
   display: block;
   font-size: 0.75rem;       /* text-xs */
-  color: #9ca3af;           /* text-gray-400 */
+  color: var(--muted-foreground);
   opacity: 0;
   pointer-events: none;
   user-select: none;
@@ -142,7 +139,7 @@
 .ghost-text-fetching {
   display: inline-block;
   font-size: 0.75rem;        /* text-xs */
-  color: #6b7280;            /* text-gray-500 */
+  color: var(--muted-foreground);
   font-style: italic;
   opacity: 0.7;
   pointer-events: none;
@@ -168,7 +165,7 @@
 .ghost-text-error {
   display: inline-block;
   font-size: 0.75rem;        /* text-xs */
-  color: #d97706;            /* text-amber-600 */
+  color: var(--destructive);
   font-style: italic;
   opacity: 0.8;
   pointer-events: none;
@@ -178,13 +175,13 @@
 
 /* AI Annotation — pending AI-generated text highlight */
 .ai-generated-text.ai-generated-pending {
-  background-color: rgba(59, 130, 246, 0.08);
+  background-color: color-mix(in srgb, var(--primary) 8%, transparent);
   border-radius: 2px;
   transition: background-color 0.2s ease;
 }
 
 .dark .ai-generated-text.ai-generated-pending {
-  background-color: rgba(59, 130, 246, 0.15);
+  background-color: color-mix(in srgb, var(--primary) 15%, transparent);
 }
 
 /* AI Annotation — anchor for floating actions (invisible) */
