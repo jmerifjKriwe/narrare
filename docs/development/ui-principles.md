@@ -3,9 +3,10 @@
 > This document defines the visual and interaction design rules for Narrare's frontend.
 > All frontend work MUST follow these principles.
 >
-> **Last updated:** 2026-05-26
-> **Source:** Design-first rebuild — all values extracted from production code
+> **Last updated:** 2026-07-05
+> **Source:** Design-first rebuild — values extracted from production code; shell/panel/primitive model reflects Phase C (Panel/Shell Architecture) and Phase B (Shared UI Primitives) implementation
 > **Applies to:** `packages/web/` (Next.js App Router + TypeScript + Tailwind CSS v4)
+> **Architecture specs:** `docs/features/remediation/ui-ux-remediation-panel-shell-architecture.md` (Phase C), `docs/features/remediation/ui-ux-remediation-phase-b-ui-primitives.md` (Phase B)
 
 ---
 
@@ -22,94 +23,100 @@
 
 ## 2. Layout Paradigm
 
-### Sidebar-based navigation (NOT header bar)
+### 2.1 Three-shell taxonomy
 
-The app uses a persistent sidebar on the left with the main content area filling the remaining space. There is no header bar, no top navigation, and no body-level scrolling.
+Narrare uses **three distinct route shells**. A route belongs to exactly one shell, declared by its file location and the layout component that owns its chrome. The earlier "persistent sidebar on every app area" model is **no longer accurate** — it is replaced by the taxonomy below (Phase C §5).
 
-### Shell Structure
+| Shell | Routes | Chrome | Layout/Component |
+|---|---|---|---|
+| **Dashboard shell** | `/` | Top header (`DashboardHeader`), app identity + account controls. **No** persistent studio sidebar. Body scrolls vertically. | `app/page.tsx` → `DashboardView` |
+| **Wizard/setup shell** | `/wizard` | Minimal logo-only top bar. **No** persistent studio sidebar. Centered, scrollable, step-oriented content. | `app/(studio)/wizard/layout.tsx` → inline header; `WizardShell` for step flow |
+| **Studio workspace shell** | `/novel/[id]/**` | Persistent left sidebar (`Sidebar`) with novel-scoped navigation. No top app header inside the shell; route-level headers live inside workspace content. Shell owns viewport sizing. | `app/(studio)/novel/[id]/layout.tsx` → `StudioWorkspaceShell` |
+
+**Rationale:** Before a novel is selected (dashboard) or during guided setup (wizard), the novel-scoped studio sidebar is not meaningful. Only the novel-scoped workspace gets the persistent sidebar.
+
+**Auth:** All routes under the `(studio)` route group are wrapped by `AuthGate` (`app/(studio)/layout.tsx`), which redirects to `/login` when the session check fails. The dashboard (`/`) and auth pages (`/login`, `/register`) sit outside this wrapper.
+
+#### Studio workspace shell layout
 
 ```
 ┌──────────────────────────────────────────────────┐
 │ Sidebar (w-72 = 288px) │ Main Content (flex-1)   │
-│                         │                         │
+│                         │ min-h-0 min-w-0         │
 │ ┌─────────────────────┐ │                         │
 │ │ Logo + App Name     │ │                         │
 │ ├─────────────────────┤ │                         │
-│ │ Nav Buttons         │ │   [View content here]   │
-│ │  · Editor           │ │                         │
-│ │  · Welt & Chars     │ │                         │
-│ │  · Analysis         │ │                         │
-│ │  · Settings         │ │                         │
+│ │ ← All Novels        │ │   [Workspace content]   │
+│ │ Nav (novel-scoped)  │ │                         │
 │ ├─────────────────────┤ │                         │
 │ │ Chapter List        │ │                         │
-│ │  (editor view only) │ │                         │
-│ │                     │ │                         │
 │ ├─────────────────────┤ │                         │
-│ │ [+ New Chapter]     │ │                         │
+│ │ User footer         │ │                         │
 │ └─────────────────────┘ │                         │
 └──────────────────────────────────────────────────┘
 ```
 
-**Implementation** (`app/(studio)/layout.tsx`):
+**Implementation** (`StudioWorkspaceShell.tsx`):
 ```tsx
-<div className="size-full flex">
-  <Sidebar />
-  <main className="flex-1 min-h-0 min-w-0">{children}</main>
+<div className="size-full flex bg-background">
+  <div className="hidden lg:flex lg:shrink-0"><Sidebar variant="desktop" /></div>
+  <div className="flex min-w-0 flex-1 flex-col">
+    <div className="... lg:hidden"><IconButton icon={Menu} ... /></div>  {/* mobile menu */}
+    <main className="flex-1 min-h-0 min-w-0" aria-label={...}>{children}</main>
+  </div>
+  {/* mobile sidebar drawer: role="dialog" aria-modal="true" */}
 </div>
 ```
 
-- **Full-height app:** Root is `size-full flex` (100vw x 100vh, no scrolling on shell)
-- **No header bar:** All navigation is in the sidebar
-- **No page-level scrolling:** Each view manages its own scroll internally via `overflow-y-auto`
+- **Full-height app:** Root is `size-full flex` (100vw × 100vh, no shell-level scrolling).
+- **No top header bar in the workspace shell:** all navigation is in the sidebar.
+- **Responsive sidebar:** persistent (`hidden lg:flex`) on desktop; a menu `IconButton` opens a drawer (`role="dialog" aria-modal="true"`) below the `lg` breakpoint (tablet/mobile).
+- **No page-level scrolling:** each view manages its own scroll internally via `overflow-y-auto`.
 
-### Sidebar
+> **Panel primitives:** new workspace side panels and responsive drawers are built on the shared primitives in `components/ui/` (see §17). Panel taxonomy, editor right-slot arbitration, and the URL-state policy are documented in §13.
 
-Source: `components/studio/Sidebar.tsx`
+### 2.2 Sidebar
 
-The sidebar is persistent across all views with four sections:
+Source: `components/studio/Sidebar.tsx` (delegates to `SidebarNav`, `SidebarChapterList`, `SidebarUserFooter`).
+
+The sidebar is **novel-scoped** and renders only inside the studio workspace shell. It has these regions:
 
 **1. Logo area** (`p-6 border-b border-border`):
-- Logo icon: `w-10 h-10 rounded-lg bg-primary` with `BookOpen` icon (`w-5 h-5 text-primary-foreground`)
-- App name: `text-lg font-medium` — "Narrare" via `t("sidebar.appName")`
-- Tagline: `text-xs text-muted-foreground` — via `t("sidebar.subtitle")`
+- Logo image (`/logo.png`) in a `w-10 h-10 rounded-lg bg-primary` container; links to `/` (dashboard).
 
-**2. Nav buttons** (`p-3 border-b border-border space-y-0.5`):
-- 4 buttons, each: `w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all text-sm`
-- **Active:** `bg-primary text-primary-foreground shadow-sm`
-- **Inactive:** `hover:bg-accent`
+**2. "All Novels" back link** — `text-muted-foreground hover:bg-accent`, links to `/`.
+
+**3. Nav buttons** (`SidebarNav.tsx`, `p-3 border-b border-border space-y-0.5`):
+- Each: `w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all text-sm`
+- **Active:** `bg-primary text-primary-foreground shadow-sm` · **Inactive:** `hover:bg-accent`
 - Icon size: `w-4 h-4`
+- Nav items render only when a `novelId` is present.
 
-| Label (de)        | Icon       | Route           |
-|-------------------|------------|-----------------|
-| Editor            | `FileText` | `/`             |
-| Welt & Charaktere | `Package`  | `/worldbuilding` |
-| Analyse           | `BarChart3`| `/analysis`     |
-| Einstellungen     | `Settings` | `/settings`     |
+**4. Chapter list** (`SidebarChapterList`) — renders for all novel routes when a `novelId` is present.
 
-**3. Chapter list** (editor view only, shown when `pathname === "/"`):
-- Header: `px-3 py-2 border-b border-border` with label `text-xs text-muted-foreground px-4 py-1 uppercase`
-- Scrollable list: `flex-1 overflow-y-auto p-3`, items in `space-y-1`
-- Chapter button: `w-full text-left px-4 py-3 rounded-md transition-all`
-  - **Active:** `bg-card shadow-sm border border-border`
-  - **Inactive:** `hover:bg-accent border border-transparent`
-  - Title: `truncate text-sm`
-  - Word count: `text-xs text-muted-foreground mt-1`
-- Footer: `p-4 border-t border-border` with "New Chapter" button
+**5. Dev Tools** (development only) — link to `/dev/design-tokens`.
 
-**4. New Chapter button:**
-- `w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity shadow-sm`
-- Icon: `Plus` (`w-4 h-4`), label: `text-sm`
+**6. User footer** (`SidebarUserFooter`) — user identity + logout.
 
-### View Routing
+### 2.3 View Routing
 
-All routes live under `app/(studio)/`. Pages are thin wrappers that import a single view component.
+Routes are split across three route groups. Pages are thin wrappers that import a single view component.
 
-| URL             | Page file                           | View Component              | Description                    |
-|-----------------|-------------------------------------|-----------------------------|--------------------------------|
-| `/`             | `app/(studio)/page.tsx`             | `EditorView`                | Default, TipTap editor         |
-| `/worldbuilding`| `app/(studio)/worldbuilding/page.tsx`| `WorldBuilding`             | 3-column entity management     |
-| `/analysis`     | `app/(studio)/analysis/page.tsx`    | `AnalysisPanel`             | Stats + AI analysis cards      |
-| `/settings`     | `app/(studio)/settings/page.tsx`    | `SettingsView`              | 2-column settings with tabs    |
+| URL | Group / file | View Component | Shell |
+|---|---|---|---|
+| `/` | `app/page.tsx` | `DashboardView` | Dashboard |
+| `/login` | `app/(auth)/login/page.tsx` | login form | (auth) |
+| `/register` | `app/(auth)/register/page.tsx` | registration form | (auth) |
+| `/wizard` | `app/(studio)/wizard/page.tsx` | wizard step flow (`WizardShell`) | Wizard |
+| `/novel/[id]` | `app/(studio)/novel/[id]/page.tsx` | `EditorView` | Workspace |
+| `/novel/[id]/volumes` | `.../volumes/page.tsx` | volumes view | Workspace |
+| `/novel/[id]/worldbuilding` | `.../worldbuilding/page.tsx` | `WorldBuilding` | Workspace |
+| `/novel/[id]/analysis` | `.../analysis/page.tsx` | `AnalysisPanel` | Workspace |
+| `/novel/[id]/chat` | `.../chat/page.tsx` | chat view | Workspace |
+| `/novel/[id]/settings` | `.../settings/page.tsx` | `SettingsView` | Workspace |
+| `/dev/design-tokens` | `app/(studio)/dev/design-tokens/page.tsx` | live token reference | Workspace (dev only) |
+
+> **Workspace navigation** is novel-scoped: every workspace nav target is `/novel/[id]/...`. There is no global non-scoped nav inside the workspace shell.
 
 ---
 
@@ -307,6 +314,10 @@ components/editor/
 - Currently using custom components matching the design prototype
 - When adding new interactive elements, prefer shadcn/ui
 
+### Shared UI Primitives (preferred for new components)
+
+New interactive surfaces MUST prefer the shared primitives in `packages/web/components/ui/` (`IconButton`, `PanelHeader`, `PanelShell`, `PanelTabs`, `ToolbarButton`, `SearchInput`, `StatusMessage`) over hand-rolled markup. These primitives encode the Phase C accessibility and panel contracts (focus-visible, required `aria-label`, `type="button"`, Escape/return-focus, live-region roles) so that each call site does not re-derive them. The full primitive catalogue, props, and when-to-use guidance is in **§17**. Icon-only buttons, panel headers, status/live regions, and URL-addressable tabs/search in particular MUST use the corresponding primitive rather than inline `<button>`/`<div role="status">` markup.
+
 ### Component Structure
 
 ```typescript
@@ -388,7 +399,7 @@ const t = useTranslations("studio");
 
 ## 6. View-Specific Rules
 
-### Editor (`/`)
+### Editor (`/novel/[id]`)
 
 Source: `EditorView.tsx` + `TipTapEditor.tsx`
 
@@ -453,7 +464,7 @@ const charCount = text.length;
 const readingTime = Math.ceil(wordCount / 250);  // 250 words/minute
 ```
 
-### WorldBuilding (`/worldbuilding`)
+### WorldBuilding (`/novel/[id]/worldbuilding`)
 
 Source: `WorldBuilding.tsx`
 
@@ -510,7 +521,7 @@ Each type has keys: `label`, `singular`, `article`, `subtitleLabel`, `subtitlePl
 - Modal: `bg-card border border-border rounded-xl shadow-2xl max-w-xl w-full`
 - Structure: header (icon + title + close) → textarea input → footer (cancel + create)
 
-### Analysis (`/analysis`)
+### Analysis (`/novel/[id]/analysis`)
 
 Source: `AnalysisPanel.tsx`
 
@@ -543,7 +554,7 @@ Source: `AnalysisPanel.tsx`
 | `characters`   | `Users`      | `analysis.characterAnalysis.title` |
 | `timeline`     | `Clock`      | `analysis.timeline.title`        |
 
-### Settings (`/settings`)
+### Settings (`/novel/[id]/settings`)
 
 Source: `SettingsView.tsx`
 
@@ -593,19 +604,37 @@ Source: `SettingsView.tsx`
 
 ---
 
-## 7. State Management (Current)
+## 7. State Management
 
-**Local state only** — `useState` for all view state. No external stores connected yet.
+State is split by lifetime and shareability across three layers. (The earlier "local state only / mock data / no API calls" note is obsolete and retained only as history below.)
 
-- **Mock data** defined as constants in components (e.g., `MOCK_CHAPTERS`, `MOCK_ENTITIES`)
-- **No API calls** — all interactions are simulated (mock delay with `setTimeout`)
-- **No Zustand stores** connected
-- **No TanStack Query** connected
+### 7.1 Server state — TanStack Query
 
-**Future reconnection plan:**
-- Server state (chapters, entities, settings) → TanStack Query
-- UI state (active views, toggles) → Zustand
-- Ephemeral state (form inputs, selections) → `useState`
+Chapters, entities, settings, analysis results, auth session, and all API-backed data are fetched and cached via **TanStack Query** (`@tanstack/react-query`). Components read server data through `useQuery`/`useMutation`; the query cache is the single source of truth for server data.
+
+- Example: `AuthGate` runs a `useQuery({ queryKey: ["auth","me"], queryFn: authApi.me })`; `Sidebar` dedupes the same key.
+- Do not duplicate server data into local/Zustand state. Cache invalidation stays query-key based.
+
+### 7.2 UI state — Zustand
+
+Cross-component UI state that does not belong in the URL lives in **Zustand** stores under `packages/web/lib/stores/`:
+
+| Store | Owns |
+|---|---|
+| `authStore` | session/logout actions |
+| `editorStore` (+ `editorRightPanelState`) | editor UI flags + typed editor right-panel occupant (see §13.2) |
+| `themeStore` | light/dark theme |
+| `wizardStore` | wizard step/field state |
+
+### 7.3 Shareable workspace state — URL search params
+
+State that the user considers "where I am" and that should survive reload/share/back-forward is stored in the URL via `useUrlParam` (§13.3) or per-surface URL adapters, not in memory. One adapter instance per surface. Ephemeral state (unsaved input text, loading flags, hover/focus, destructive-confirm open state) stays in local `useState`.
+
+### 7.4 Ephemeral state — `useState`
+
+Form input before explicit save, transient popover/tooltip open state, and in-flight request flags remain local `useState`. Do not promote these to the URL.
+
+> **History (obsolete):** the MVP prototype used `useState` for everything with mock data and no API calls. That stage is complete; do not re-introduce mock data or REST-only flows where a query/SSE path exists.
 
 ---
 
@@ -708,6 +737,100 @@ All icons from `lucide-react`:
 | `Cpu`           | AI provider settings                       |
 | `MessageSquare` | System prompts settings                    |
 | `PanelRight`   | Metadata sidebar toggle button        |
+
+---
+
+## 13. Panel Architecture and Workspace Orchestration
+
+> **Source:** Phase C spec §6–§10. **Implementation:** typed panel registry in `lib/stores/editorRightPanelState.ts`, editor right slot in `components/studio/editor-view/`, per-surface URL adapters. **Primitives** that render these panels live in §17.
+
+### 13.1 Panel taxonomy
+
+A feature MUST classify its panel under one of the five types below before building it. If none fits, Architecture re-review is required (Phase C §6).
+
+| Type | Allowed use | Not allowed for | Owner |
+|---|---|---|---|
+| **Workspace side panel** | Long-lived, route/workspace-scoped companion beside the main surface: editor metadata, AI analysis results, writing session, generation review. | Tiny actions, destructive confirmation, transient menus. | Workspace panel registry + arbitration (§13.2). |
+| **Inspector panel** | Object-specific detail/editing for the current route's selected item: KB detail, volume detail. | Global app state or cross-route flows. | Owning route/view. |
+| **Modal/dialog** | Blocking confirmation or constrained task with explicit completion/cancel: delete confirmation, AI rewrite modal. | Long-running side work that should stay visible while editing. | Owning component; must meet dialog accessibility. |
+| **Drawer/sheet** | Mobile/tablet transformation of a workspace side panel or sidebar; slides from side/bottom. | Desktop primary pattern when side-by-side space exists. | Same owner as the panel it transforms from. |
+| **Inline popover** | Small anchored, dismissible controls: bubble menu, compact filters, tooltips. | Long-running AI lifecycle, complex forms, persistent navigation. | Owning component; ephemeral state only. |
+
+Every workspace side panel and inspector has a programmatic title (header + `aria-labelledby`), optional status slot, and a close button when closeable. Long-running AI panels additionally announce loading/streaming/completion/actionable errors via `StatusMessage` (§17.7). AI panels keep their own SSE streaming/cancel lifecycle (RULE-13); the panel chrome is presentation only.
+
+### 13.2 Editor right-panel arbitration
+
+The editor has **one canonical right workspace side-panel slot**. Exactly one occupant is active at a time on desktop; on tablet/mobile the same slot transforms into a drawer/sheet but still has one active occupant (`PanelShell`, §17.3).
+
+**Typed registry** (`lib/stores/editorRightPanelState.ts`) — a list of booleans is NOT an acceptable arbitration contract because it makes invalid multi-open states representable:
+
+```ts
+type EditorRightPanelId =
+  | "metadata" | "session" | "generation" | "beta_reader" | "readability"
+  | "pov" | "coreference" | "character_voice" | "voice_check"
+  | "sentiment" | "consistency";
+
+interface EditorRightPanelState {
+  active: EditorRightPanelId | null;
+  previous: EditorRightPanelId | null;        // for deterministic close recovery
+  requestedBy: "toolbar" | "sidebar" | "ai_result" | "recovery" | "url" | null;
+}
+```
+
+**Priority order** (`EDITOR_RIGHT_PANEL_PRIORITY`, used as deterministic conflict recovery, not product ranking):
+
+`session > generation > beta_reader > readability > pov > coreference > character_voice > voice_check > sentiment > consistency > metadata`
+
+Arbitration rules (encoded in `openEditorRightPanel` / `closeEditorRightPanel` / `toggleEditorRightPanel`):
+
+- `session` is highest priority (active conversational turn, may have recovery/stop semantics).
+- `generation` is next (may carry draft accept/reject state).
+- Analysis panels are mutually exclusive; the priority order resolves conflicts deterministically.
+- `metadata` is the **fallback** occupant: it renders when the right slot is open and no higher-priority occupant is active. It is an inspector for the current chapter, **not** an AI operation panel — it owns no SSE/cancel/accept-reject lifecycle.
+- Opening any analysis/generation panel closes metadata and any other right-slot occupant.
+- Closing the active panel restores `previous` if one was set (deterministic recovery); otherwise the slot closes. Session close follows the session lifecycle and must not silently discard unsaved/partial output.
+
+**Consumed by:** `useActiveEditorRightPanel` (reads `editorStore.rightPanel.active`) and `EditorRightPanelSlot` (renders the active occupant).
+
+### 13.3 URL-state policy
+
+URL state is required when state changes what the user considers their current place in the product and should survive reload/share/back-forward. One URL adapter per surface; ephemeral state stays local.
+
+**Required URL state (currently wired):**
+
+| Surface | Param(s) | Adapter / consumer | Example |
+|---|---|---|---|
+| Settings | `category` | `SettingsView` (parse/normalise → valid `SettingsCategory`, fallback `general`) | `/novel/{id}/settings?category=ai` |
+| Planning panel | `planning`, `planningTab` | `PlanningPanel` | `?planning=1&planningTab=timeline` |
+| Editor right panel | `panel` | `editorRightPanelUrlState.ts` (`parseEditorRightPanelParam`); **`session` is excluded from deep-linking** for recovery safety | `?panel=metadata`, `?panel=readability`, `?panel=voice_check` |
+| Analysis route | `panel` | `AnalysisPanel` (parse/normalise) | `/novel/{id}/analysis?panel=readability` |
+| KB/worldbuilding | `type`, `mode`, `entry`, `q` | `useWorldBuildingUrlSync`; `mode ∈ graph\|wiki\|analysis\|consistency\|detail\|create\|assist` | `?type=character&mode=detail&entry={id}&q=ada` |
+
+**Shared adapter:** `lib/hooks/use-url-param.ts` (`useUrlParam`) — reads/normalises a search param, writes with explicit `replace` (default, for transient typing) or `push` (for explicit selection changes), and fails safe to a default for invalid/out-of-allowlist values. `PanelTabs` (§17.4) and `SearchInput` (§17.6) bind to it; each surface owns one adapter instance.
+
+**Ephemeral (keep local):** unsaved form input, loading/in-flight flags (except session recovery IDs governed by ADR-052/053), hover/focus/drag overlays, transient popover open state, destructive-confirm dialog open state.
+
+**Adapter rules:** parsing is centralized per surface (not repeated per component); invalid params fail safe (normalise to default, or show empty/not-found for a deleted selection); back/forward updates the visible panel without data loss; URL state selects/filters server state, it does not duplicate it.
+
+### 13.4 Responsive policy
+
+Panel identity and URL state are preserved across breakpoints. A desktop `?panel=voice_check` URL opens the voice-check drawer/sheet on mobile — it does not drop the panel.
+
+| Surface | Desktop | Tablet | Mobile |
+|---|---|---|---|
+| Studio sidebar | Persistent left, 288px. | Collapsible rail or drawer. | Drawer from menu button. |
+| Editor right slot | Fixed side panel (~400px). | Overlay drawer from right; one occupant. | Bottom sheet / full-height drawer; focus trapped while open. |
+| KB 3-column | Category + list + detail. | Category/list collapse to stacked master/detail or drawer. | Single-column progressive disclosure: category → list → detail. |
+
+### 13.5 Accessibility obligations
+
+Phase C §10 / ui-principles §11, enforced via the §17 primitives:
+
+- Workspace side panels/drawers have a programmatic title (`role="region"` + `aria-labelledby` on desktop; `role="dialog" aria-modal="true"` for drawer transformations).
+- Icon-only buttons require localized `aria-label` + visible focus ring (via `IconButton`).
+- `Escape` closes the active panel/drawer when no text-entry/editor shortcut has higher priority; closing via Escape equals the visible close button.
+- Focus on open → panel header / first meaningful control; focus on close → returns to the opener (via `usePanelFocus`).
+- Keyboard tab order follows visual order; drawer overlays must not let focus move behind the overlay while open.
 
 ---
 
@@ -999,3 +1122,81 @@ Structural exceptions (non-React extensions, callback-SSE transports) are tracke
 governed baseline debt in `.ai_interaction_exclude` with owner, reason, exit criteria, and
 an AUFG link; Check 8 rejects stale or unlinked exceptions. Current state: `just check-ai-ux`
 reports 0 violations and 3 governed exclusions; Check 11 validates all resolved AUFG entries.
+
+---
+
+## 17. Shared UI Primitives
+
+> **Source:** Phase B spec §5. **Implementation:** the seven primitives below live in `packages/web/components/ui/` (one component per file, ui-principles §4 / §15 file-size limits). They implement the Phase C §10 accessibility contract so that call sites do not re-derive focus, labels, or live-region behaviour. All visible text is i18n-backed (RULE-16); `label`/`aria-label` is a **required** prop wherever accessibility depends on it. No new runtime dependency — only existing tokens (§3) and Tailwind.
+
+New interactive surfaces MUST prefer these primitives over hand-rolled markup (see §4 "Shared UI Primitives"). Adding an eighth primitive or changing any primitive's accessibility contract requires Architecture re-review (Phase B §12).
+
+| # | Primitive | File | Replaces |
+|---|---|---|---|
+| 17.1 | `IconButton` | `components/ui/icon-button.tsx` | Inline `<button type="button" aria-label=... className="p-1.5 ...">` (close/toggle/menu). |
+| 17.2 | `PanelHeader` | `components/ui/panel-header.tsx` | Duplicated panel headers (`ConsistencyPanelHeader`, `BetaReaderHeader`, inline headers). |
+| 17.3 | `PanelShell` | `components/ui/panel-shell.tsx` | Shell-specific drawer code; absence of a shared responsive wrapper for editor right panels / KB. |
+| 17.4 | `PanelTabs` | `components/ui/panel-tabs.tsx` | Local `useState` tab switching (settings/analysis). |
+| 17.5 | `ToolbarButton` | `components/ui/toolbar-button.tsx` | Repeated toolbar `<button type="button">` entries (editor toolbar, analysis triggers). |
+| 17.6 | `SearchInput` | `components/ui/search-input.tsx` | KB/worldbuilding inline search boxes. |
+| 17.7 | `StatusMessage` | `components/ui/status-message.tsx` | Inline `role="status" aria-live="polite"` blocks and bespoke loading/error/empty surfaces. |
+
+### 17.1 `IconButton`
+
+Single icon action with an accessible name, focus ring, and disabled/loading state — the atomic building block for close, refresh, toggle, and menu buttons.
+
+- **Use when:** an icon-only action button is needed (panel close, sidebar menu, refresh).
+- **Always** renders `type="button"`. Required props: `label` (i18n → `aria-label`), `icon` (Lucide component), `onClick`. Optional: `disabled?`, `loading?` (spinner + `aria-busy`), `variant?` (`'ghost' | 'destructive' | 'default'`), `size?`.
+- **Accessibility:** visible focus (`focus-visible:ring-1 ring-ring`); `aria-label` mandatory; `aria-disabled`/`disabled` when disabled; spinner has `aria-hidden`.
+
+### 17.2 `PanelHeader`
+
+Accessible header for any workspace side panel / inspector: title, optional description/status slot, leading icon, trailing actions, optional close. Wires `aria-labelledby`.
+
+- **Use when:** any panel that needs a title bar (§13 taxonomy: workspace side panels, inspectors).
+- Required prop: `title` (i18n). Optional: `icon?`, `description?`, `statusSlot?` (ReactNode — integration point for `StatusMessage`), `actions?` (ReactNode — refresh/stop), `onClose?` (renders an `IconButton` close when provided). Generates a stable `id` for `aria-labelledby` consumers (`PanelShell`).
+- **Accessibility:** heading element with `id`; close uses `IconButton`. Satisfies §13.5 / Phase C §10.1 (programmatic title + close button).
+
+### 17.3 `PanelShell`
+
+Desktop side-panel container and responsive drawer/sheet transformation for a single workspace side panel. Generalises the workspace-shell mobile-dialog pattern into a reusable, panel-scoped wrapper.
+
+- **Use when:** rendering an editor right-slot occupant or any workspace side panel that must become a drawer on tablet/mobile (§13.4).
+- Props: `titleId` (links to `PanelHeader` id → `aria-labelledby`), `side?` (`'right' | 'left'`), `children`, `responsive?` (default true), `open`, `onClose`. Desktop renders `<section role="region" aria-labelledby={titleId}>`; below the breakpoint renders a dialog/drawer (`role="dialog" aria-modal="true"`).
+- **Accessibility (§13.5):** Escape closes; focus moves to header/first control on open and returns to the opener on close (via `lib/hooks/use-panel-focus.ts`); focus is trapped while the drawer is open. **Presentation only** — does not own SSE; AI panels keep their streaming/cancel via existing hooks (RULE-13).
+
+### 17.4 `PanelTabs`
+
+URL-addressable tab list that renders the active tab and keeps a search-param in sync — the component §13.3 binds settings/analysis navigation to.
+
+- **Use when:** a tab list whose active tab should be shareable/reload-safe (settings categories, analysis tabs).
+- Props: `tabs: {id, label, content}[]`, `value`, `onValueChange`, `paramName?` + URL adapter (bind `onValueChange` to `useUrlParam`), `aria-label`.
+- **Accessibility:** ARIA tabs pattern (`role="tablist"`/`tab`/`tabpanel`); active tab `aria-selected`; arrow-key / Home / End navigation.
+
+### 17.5 `ToolbarButton`
+
+Editor/panel toolbar action with icon + optional visible label (or icon-only with tooltip). Distinct from `IconButton`: toolbar buttons are a labelled, horizontally-grouped set (formatting, AI triggers).
+
+- **Use when:** grouped toolbar actions in the editor or analysis panels.
+- Required prop: `label` (visible, or tooltip/`aria-label` when icon-only). Optional: `icon`, `onClick`, `disabled?`, `loading?`, `showLabel?` (icon-only on narrow, label on wide), `variant?`, `active?` (pressed state, e.g. active formatting). `type="button"` enforced.
+- **Accessibility:** `aria-pressed` when `active`; a tooltip is supplemental, never the sole accessible name; focus-visible ring.
+
+### 17.6 `SearchInput`
+
+Labelled text search with a clear button and hooks for URL sync. Backs KB `?q=` (§13.3) and any future filter surface.
+
+- **Use when:** a search/filter field whose value should persist in the URL (KB search) — or local-only search where appropriate.
+- Required prop: `label` (→ `<label htmlFor>`, visible or `sr-only`). Optional: `value`, `onValueChange`, `onClear?`, `placeholder?`, `paramName?` + URL adapter. Clear control uses `IconButton`.
+- **Accessibility:** `<label>` + `htmlFor`; `type="search"` semantics; clear is an `IconButton` with i18n label; result-count announcements delegate to the consumer's `StatusMessage`.
+
+### 17.7 `StatusMessage`
+
+Non-blocking loading/error/empty/success/live-region display — the single source for the status announcements §13.5 requires of long-running panels.
+
+- **Use when:** any loading/error/empty/success state that must be announced to assistive tech, and all AI-panel lifecycle status (complements §16). Must NOT be used as a modal (§1.5).
+- Props: `state: 'idle' | 'loading' | 'success' | 'error' | 'empty'`, `message?`, `action?` (retry/reconnect button), `politeness?` (`'polite' | 'assertive'`, default polite; assertive for errors).
+- **Accessibility:** correct `aria-live`/`role` per state; loading uses `aria-busy`. Errors are actionable (`[what happened] [what to do]`, §16.5) and i18n-backed.
+
+### Migration
+
+Existing panels migrate onto the primitives gradually, panel-by-panel, behind tests (lowest blast radius first): `IconButton` → `StatusMessage` → `PanelHeader` → `PanelShell` → `ToolbarButton` → `PanelTabs` → `SearchInput`. New panels adopt the primitives from the start. The workspace shell itself (`StudioWorkspaceShell`, §2.1) is **not** rewritten onto `PanelShell` — it remains the shell owner; only its buttons adopt `IconButton`.
