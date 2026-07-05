@@ -879,7 +879,7 @@ asserting anything passes coverage. We check assertion quality in PR review.
 
 ## Frontend Tests — packages/web/
 
-**Runner:** Vitest 3.x
+**Runner:** Vitest 4.x
 **Environment:** happy-dom
 **Component Testing:** `@testing-library/react` + `@testing-library/user-event`
 **API Mocking:** MSW v2.14.6 (Mock Service Worker)
@@ -898,9 +898,12 @@ asserting anything passes coverage. We check assertion quality in PR review.
 
 ### Runtime Baseline and Vitest Configuration
 
-Frontend tests are expected to complete in **<120 seconds** for the full suite.
-The current stable baseline is 186 test files / 1,683 tests passing in
-`112.43s`, `115.04s`, and `111.95s` across three consecutive runs.
+Frontend tests have a **warning-only** CI budget of **240 seconds** for the full
+suite (`.github/workflows/ci.yml` frontend job). The current baseline is around
+197 test files / ~223s on the 4-core CI runner; per-file setup overhead dominates
+(~90% of runtime), so consolidating test files is the most effective lever toward
+faster runs. The gate is warning-only — it does not block CI — but should be
+revalidated whenever the suite grows substantially.
 
 Vitest uses `happy-dom`, `pool: threads`, and `maxWorkers: 6` to keep the browser-like
 environment lightweight while preserving parallelism. Do not switch back to heavier
