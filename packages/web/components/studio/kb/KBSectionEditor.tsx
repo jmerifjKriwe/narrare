@@ -99,7 +99,7 @@ export function KBSectionEditor({
             w-full px-3 py-2.5 rounded-md text-sm resize-y min-h-[100px]
             bg-gradient-to-b from-input-background via-input-background to-muted/20
             border border-border/50
-            transition-all duration-150
+            transition-colors duration-150
             placeholder:text-muted-foreground/40 placeholder:italic
             focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/10
             ${error ? "border-destructive focus:border-destructive focus:ring-destructive/20" : ""}

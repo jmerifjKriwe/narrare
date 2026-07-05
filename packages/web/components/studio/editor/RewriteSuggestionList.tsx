@@ -33,7 +33,7 @@ export function RewriteSuggestionList({
           type="button"
           key={`suggestion-${suggestion.slice(0, 32)}`}
           onClick={() => onSelectedSuggestionChange(index)}
-          className={`w-full text-left p-4 rounded-lg border-2 transition-all ${selectedSuggestion === index ? "border-primary bg-accent" : "border-border hover:border-primary/50"}`}
+          className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${selectedSuggestion === index ? "border-primary bg-accent" : "border-border hover:border-primary/50"}`}
         >
           {aiSuggestion.labels[index] && (
             <p className="text-xs font-medium text-muted-foreground mb-2">

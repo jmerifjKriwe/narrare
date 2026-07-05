@@ -114,7 +114,7 @@ export function SidebarChapterList({ novelId }: { novelId: string }) {
                 key={chapter.id}
                 data-testid="chapter-item"
                 onClick={() => setActiveChapterId(chapter.id)}
-                className={`w-full text-left px-4 py-3 rounded-md transition-all ${
+                className={`w-full text-left px-4 py-3 rounded-md transition-colors ${
                   isActive
                     ? "bg-card shadow-sm border border-border"
                     : "hover:bg-accent border border-transparent"

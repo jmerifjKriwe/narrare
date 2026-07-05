@@ -66,7 +66,7 @@ export function KBEntryHeader({
           onClick={onSave}
           disabled={isSaving}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg
-            hover:opacity-90 transition-all duration-150 shadow-sm text-sm font-medium
+            hover:opacity-90 transition-colors duration-150 shadow-sm text-sm font-medium
             disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

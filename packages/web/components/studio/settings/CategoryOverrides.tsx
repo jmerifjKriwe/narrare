@@ -91,7 +91,7 @@ export function CategoryOverrides({
           <div
             key={catValue}
             className={cn(
-              "border border-border rounded-md p-4 transition-all",
+              "border border-border rounded-md p-4 transition-colors",
               isActive && "border-primary/30 bg-accent/20",
             )}
           >

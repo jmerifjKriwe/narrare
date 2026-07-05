@@ -135,7 +135,7 @@ function EntryCard({ entry, isSelected, onClick }: EntryCardProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left px-3 py-2.5 rounded-md transition-all ${
+      className={`w-full text-left px-3 py-2.5 rounded-md transition-colors ${
         isSelected ? "bg-card shadow-sm border border-border" : "hover:bg-card/50"
       }`}
     >

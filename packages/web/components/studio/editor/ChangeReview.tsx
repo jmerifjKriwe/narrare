@@ -61,7 +61,7 @@ export function ChangeReview({
 
   return (
     <div
-      className={`rounded-lg border transition-all ${
+      className={`rounded-lg border transition-colors ${
         isAccepted ? "border-green-500/50 bg-green-500/5" : "border-border hover:border-primary/30"
       }`}
     >
@@ -73,7 +73,7 @@ export function ChangeReview({
             type="button"
             onClick={() => onToggle(change.id)}
             aria-label={isAccepted ? t("aiDiff.rejectChange") : t("aiDiff.acceptChange")}
-            className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-all ${
+            className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-colors ${
               isAccepted
                 ? "bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20"
                 : "bg-muted text-muted-foreground hover:bg-accent"

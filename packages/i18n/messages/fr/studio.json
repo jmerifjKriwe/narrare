@@ -1589,6 +1589,8 @@
     "collapse": "Réduire le storyboard",
     "toggleStoryboard": "Afficher/masquer le storyboard",
     "emptySlot": "Déposer le chapitre ici",
+    "openChapter": "Ouvrir le chapitre : {title}",
+    "dragChapter": "Glisser pour réordonner : {title}",
     "status": {
       "empty": "Vide",
       "planned": "Planifié",

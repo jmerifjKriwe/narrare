@@ -45,7 +45,7 @@ export function CoAuthorFocusSelector({
                 key={opt.value}
                 type="button"
                 onClick={() => onToggle(opt.value)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all ${
+                className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                   active
                     ? "border-primary bg-primary/10 text-primary shadow-sm"
                     : "border-border hover:border-primary/50 text-foreground"

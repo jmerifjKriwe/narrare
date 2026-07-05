@@ -1589,6 +1589,8 @@
     "collapse": "Storyboard zuklappen",
     "toggleStoryboard": "Storyboard umschalten",
     "emptySlot": "Kapitel hier ablegen",
+    "openChapter": "Kapitel öffnen: {title}",
+    "dragChapter": "Zum Umsortieren ziehen: {title}",
     "status": {
       "empty": "Leer",
       "planned": "Geplant",

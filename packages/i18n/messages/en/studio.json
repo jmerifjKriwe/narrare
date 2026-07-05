@@ -1589,6 +1589,8 @@
     "collapse": "Collapse Storyboard",
     "toggleStoryboard": "Toggle Storyboard",
     "emptySlot": "Drop chapter here",
+    "openChapter": "Open chapter: {title}",
+    "dragChapter": "Drag to reorder: {title}",
     "status": {
       "empty": "Empty",
       "planned": "Planned",

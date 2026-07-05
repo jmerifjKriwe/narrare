@@ -1,6 +1,7 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
+import { GripVertical } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { ChapterInStoryboard } from "@/types";
@@ -22,11 +23,8 @@ export function StoryboardCard({ chapter, onNavigate }: StoryboardCardProps) {
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
       className={cn(
-        "w-[100px] p-2 rounded-md border bg-card border-border cursor-pointer",
-        "hover:shadow-sm transition-shadow",
+        "w-[100px] rounded-md border bg-card border-border",
         "flex flex-col gap-1.5 text-left",
         isDragging && "opacity-30 border-dashed border-muted-foreground/30",
       )}
@@ -34,15 +32,30 @@ export function StoryboardCard({ chapter, onNavigate }: StoryboardCardProps) {
       <button
         type="button"
         onClick={() => onNavigate(chapter.chapter_id)}
-        className="text-left w-full"
-        aria-label={chapter.title}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onNavigate(chapter.chapter_id);
+          }
+        }}
+        className="text-left w-full px-2 pt-2 hover:bg-accent transition-colors rounded-t-md"
+        aria-label={t("planning.openChapter", { title: chapter.title })}
       >
         <p className="text-xs font-medium truncate">{chapter.title}</p>
       </button>
-      <SyncStatusBadge status={chapter.sync_status} className="self-start" />
-      <p className="text-[10px] text-muted-foreground">
+      <SyncStatusBadge status={chapter.sync_status} className="self-start px-2" />
+      <p className="text-[10px] text-muted-foreground px-2 pb-1">
         {t("editor.words", { count: chapter.word_count })}
       </p>
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="flex items-center justify-center py-1 border-t border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-grab active:cursor-grabbing rounded-b-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        aria-label={t("planning.dragChapter", { title: chapter.title })}
+      >
+        <GripVertical className="w-3 h-3" aria-hidden="true" />
+      </button>
     </div>
   );
 }
