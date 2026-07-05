@@ -138,8 +138,38 @@ def load_baselines() -> dict[str, float]:
         return {}
 
 
+class BaselineShrinkError(RuntimeError):
+    """Raised when updating baselines would shrink the tracked package set.
+
+    Triggered when the new package keys form a strict subset of the previously
+    persisted ones — almost always a sign that ``--update-baselines`` was run
+    against a reduced-scope coverage.xml (e.g. only one test directory) and
+    would silently drop the ratchet protection for the omitted modules.
+    """
+
+
 def save_baselines(packages: dict[str, float]) -> None:
-    """Save per-package coverage baselines to JSON file."""
+    """Save per-package coverage baselines to JSON file.
+
+    Aborts with :class:`BaselineShrinkError` if *packages* is a strict subset
+    of the currently persisted package set — see the class docstring for why.
+    """
+    existing = load_baselines()
+    new_keys = set(packages)
+    existing_keys = set(existing)
+    if existing_keys and new_keys < existing_keys:
+        missing = sorted(existing_keys - new_keys)
+        raise BaselineShrinkError(
+            "Refusing to shrink coverage baselines: the new package set "
+            f"({len(new_keys)} packages) is a strict subset of the existing "
+            f"{len(existing_keys)} packages. This usually means "
+            "--update-baselines was run against a reduced-scope coverage.xml "
+            "(e.g. only one test directory). Omitted packages: "
+            + ", ".join(missing[:10])
+            + (f" (+{len(missing) - 10} more)" if len(missing) > 10 else "")
+            + ". Run pytest over the full tests/unit/ tree before updating."
+        )
+
     data = {
         "_comment": (
             "Ratcheted coverage baselines. Updated by check_module_coverage.py --update-baselines."

@@ -135,28 +135,49 @@ Automated versioning via **release-please**:
 
 ### CI Pipeline Specification
 
-7-job pipeline with staged execution. Job details are maintained in
-`.github/workflows/ci.yml`; this table is a quick orientation only.
+The CI workflow (`.github/workflows/ci.yml`) defines a 9-job pipeline with
+staged execution. Job details are maintained in the workflow file; this table
+is a quick orientation only and may lag behind the canonical source.
 
-| Job | Target | Commands |
-|-----|--------|----------|
-| `architecture-check` | <30s | `python scripts/check_architecture.py` + `check_exception_baseline.py` + `check_adoption.py` + `check_prompt_structure.py` + `check_streaming_compliance.py` |
-| `lint` | <60s | `ruff check` + `ruff format --check` (Python) |
-| `typecheck` | <2min | `pyright --strict` |
-| `test-unit` | <5min | `pytest tests/unit/` |
-| `test-integration` | <5min | `pytest tests/integration/` |
-| `frontend` | <3min | `check_frontend_file_size.py` + non-mutating frontend lint/format checks + i18n validation + `pnpm type-check` + `pnpm test` + `pnpm build` |
-| `security` | <60s | `bandit -r` + `pip-audit` |
+| Job | Purpose | Notes |
+|-----|---------|-------|
+| `architecture` | Architecture, prompt surface/structure, version drift, exception sync, configuration matrix, OpenAPI drift, invocation probes, adoption, locale, doc/registry/gate drift, governance, streaming, AI-interaction, system health, test-coverage gaps, eval-smoke (blocking), eval-drift (warning), SSOT-facts (warning) | Fail-fast root; downstream jobs depend on it |
+| `lint` | `ruff check` + `ruff format --check` (Python) | Runs after `architecture` |
+| `typecheck` | `pyright --strict` | Runs after `architecture` |
+| `security` | `bandit -r` + `pip-audit` (with documented ignore-IDs) + `check_secrets.py`/Gitleaks | Runs after `architecture` |
+| `test-unit` | `pytest tests/unit/` with global `--cov-fail-under=80`, then `check_module_coverage.py --fail` (RULE-10 module targets + ratcheted baselines) | Runs after lint/typecheck |
+| `test-integration` | `pytest tests/integration/` against `pgvector/pgvector:pg17` and `redis:8-alpine` services | Runs after lint/typecheck |
+| `update-coverage-badge` | Refreshes coverage badge | Non-blocking helper job |
+| `frontend` | `check_frontend_file_size.py`, biome, i18n validation, `pnpm type-check`, `pnpm test`, component marker (`check-testid.ts`), `pnpm build`; test performance is warning-only (threshold 240s) | Runs after `architecture` |
+| `test-e2e` | Full-stack end-to-end tests | Runs only on pushes to `main` |
 
-**Job ordering:**
+A `warnings-summary` step aggregates non-blocking warnings from all jobs.
+
+**Job ordering (simplified):**
 
 ```
-architecture-check → lint + typecheck (parallel) → test-unit → test-integration → frontend + security
+architecture → lint + typecheck + security + frontend (parallel)
+             → test-unit + test-integration (after lint/typecheck)
+             → test-e2e (main branch only)
 ```
 
 Tests run only if lint and typecheck pass (saves CI minutes).
 
-**PR merge requires ALL jobs green. No bypass.**
+**PR merge requires ALL applicable jobs green. No bypass.**
+
+### Workflow: Eval Nightly (`.github/workflows/eval-nightly.yml`)
+
+Scheduled runtime evaluations of the LLM features (separate from PR-CI).
+Runs on a schedule and via `workflow_dispatch`; requires the
+`NARRARE_EVAL_API_KEY` repository secret. Smoke-evals (secret-free) run in
+PR-CI inside the `architecture` job; the nightly workflow covers the
+real-provider runtime evaluations (LLM-as-judge, tone-of-voice, prose
+quality). Runtime evals skip warning-only when the secret is unavailable
+(relevant for forks).
+
+### Workflow: Mutation Testing (`.github/workflows/mutation-testing-monthly.yml`)
+
+Monthly mutation-testing run. Non-blocking; tracks test quality over time.
 
 ## Pre-commit Hooks
 

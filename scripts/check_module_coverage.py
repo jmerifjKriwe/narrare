@@ -34,6 +34,7 @@ from _coverage_model import (  # type: ignore[import-untyped]
     DEFAULT_COVERAGE_XML,
     STATUS_BELOW_TARGET,
     STATUS_REGRESSION,
+    BaselineShrinkError,
     CoverageReport,
     parse_coverage_xml,
     save_baselines,
@@ -181,7 +182,11 @@ def main(argv: list[str] | None = None) -> int:
     # ── Update baselines mode ──────────────────────────────
     if args.update_baselines:
         packages = {m.package: m.coverage_pct for m in raw_report.modules}
-        save_baselines(packages)
+        try:
+            save_baselines(packages)
+        except BaselineShrinkError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
         print(f"Updated {len(packages)} package baselines in {BASELINES_FILE}")
         return 0
 

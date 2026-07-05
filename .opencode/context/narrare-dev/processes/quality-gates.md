@@ -87,25 +87,30 @@ for the authoritative source.
 | 8 | `export_openapi.py --check` | ✅ Blocking | `architecture` Job |
 | 9 | `pyright` | ⚠️ Partial | `pyright` in CI aktiv (RULE-09). Pyright is the sole type checker. |
 | 10 | `pytest` unit tests | ✅ Blocking | `test-unit` Job |
-| 11 | Coverage threshold | ⚠️ Warning (≥60%) | **Übergangsausnahme**: Hard floor 60%, Target 80% |
+| 11 | Coverage threshold | ✅ Blocking (≥80%) + Modul-Ratchet | Global `--cov-fail-under=80` (`ci.yml`) + `check_module_coverage.py --fail` (RULE-10 Targets) + ratcheted Baselines (`scripts/coverage_baselines.json`, siehe `_coverage_model.py`) |
 | 12 | `pytest` integration tests | ✅ Blocking | `test-integration` Job |
 | 13 | `pnpm test` (frontend) | ✅ Blocking | `frontend` Job |
 | 14 | `bandit` + `pip-audit` | ✅ Blocking | `security` Job |
 
-### Übergangsausnahme: Coverage-Gate (Hart ab 60%, Warning ab 80%)
+### Coverage-Gate (Global 80% + Regelbasierte Modul-Schwellen + Ratchet)
 
-**Entscheidung:** Coverage läuft mit `--cov-fail-under=60` (harte Schwelle) und
-einem separaten Check-Step, der bei 60-80% eine GitHub-Warning ausgibt.
-Der Test-Job schlägt bei Unterschreitung von 60% **fehl** (< 60% = CI-Failure),
-60-80% = Warning, ≥ 80% = Target erreicht.
+**Entscheidung:** Der `test-unit` Job erzwingt global `--cov-fail-under=80`
+(harte Schwelle, blocking). Anschließend prüft `scripts/check_module_coverage.py
+--fail` die modularen RULE-10-Targets aus `docs/_shared/CONSTRAINTS.md` (Core
+90% bzw. 95% für `llm`/`prompts`, API 80%, shared 80%) als harte Untergrenze
+und zusätzlich einen Ratchet (`scripts/coverage_baselines.json`): ein Modul,
+das zwischenzeitlich deutlich über seinem Target lag, wird gegen seinen
+High-Water-Mark geprüft – ein Rückfall unter die Baseline (aber noch über dem
+Target) liefert eine `REGRESSION`-Warning. Der `--update-baselines`-Aufruf
+wird durch einen Subset-Guard in `_coverage_model.py::save_baselines` davor
+bewahrt, die Baselines bei versehentlich reduziertem Scope stillschweigend zu
+verwerfen (siehe `_audit/results/technical-review/review-02-testing.md`
+AUFG-02-05).
 
-**Begründung:** Die Test-Suite ist stabil (AUFG-02-01 behoben, 0 Failures).
-Coverage liegt bei 76% — unter dem dokumentierten Target von 80% für api bzw.
-90% für core. Die 60%-Schwelle verhindert weiteren Verfall, während der
-Coverage schrittweise auf die dokumentierten Modul-Schwellen angehoben wird.
-
-**Aufzuheben wenn:** Coverage stabil ≥ 80% global und modulare Schwellen
-(core ≥ 90%, api ≥ 80%) in CI aktiv sind. Erfordert explizite User-Freigabe.
+**Frühere Übergangsausnahme `coverage-threshold`:** Resolved am 2026-06-14
+(`scripts/gate-exceptions.json`). Damals galt ein temporärer 60%-Hard-Floor;
+die Aufhebungsbedingung (Coverage stabil ≥ 80% global + modulare Schwellen
+in CI aktiv) ist erfüllt.
 
 ### Additional CI-only Gates
 
