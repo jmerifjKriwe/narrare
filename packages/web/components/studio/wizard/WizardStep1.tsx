@@ -2,20 +2,19 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { setupApi } from "@/lib/api/client";
 import { useWizardStore } from "@/lib/stores/wizardStore";
 
-const schema = z.object({
-  project_name: z
-    .string()
-    .min(1, "Project name is required")
-    .regex(/^[^/\\:*?"<>|]*$/, "Project name contains invalid characters"),
-  writing_language: z.string().max(100, "Language must be 100 characters or less"),
-  autosave_interval: z.number().min(0).max(3600),
-});
-type FormData = z.infer<typeof schema>;
+// Validation messages are localized, so the schema is built inside the
+// component (see useMemo below) and only the form shape is typed here.
+type FormData = {
+  project_name: string;
+  writing_language: string;
+  autosave_interval: number;
+};
 
 interface WizardStep1Props {
   onNext: () => void;
@@ -25,6 +24,21 @@ export function WizardStep1({ onNext }: WizardStep1Props) {
   const t = useTranslations("studio");
   const tCommon = useTranslations("common");
   const { updateStep1, state } = useWizardStore();
+
+  // Build the Zod schema inside the component so validation messages can be
+  // localized. Memoized on `t` so it rebuilds when the locale changes.
+  const schema = useMemo(
+    () =>
+      z.object({
+        project_name: z
+          .string()
+          .min(1, t("wizard.validation.projectNameRequired"))
+          .regex(/^[^/\\:*?"<>|]*$/, t("wizard.validation.projectNameInvalidChars")),
+        writing_language: z.string().max(100, t("wizard.validation.languageTooLong")),
+        autosave_interval: z.number().min(0).max(3600),
+      }),
+    [t],
+  );
 
   const {
     register,

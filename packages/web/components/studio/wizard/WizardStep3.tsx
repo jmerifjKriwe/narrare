@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { setupApi } from "@/lib/api/client";
@@ -10,16 +11,17 @@ import { useWizardStore } from "@/lib/stores/wizardStore";
 import type { StoryStructure, StoryTone } from "@/types";
 import { NovelMetadataFields } from "./NovelMetadataFields";
 
-const schema = z.object({
-  title: z.string().min(1, "Title is required"),
-  author: z.string(),
-  genre: z.string(),
-  writing_language: z.string().max(100, "Language must be 100 characters or less"),
-  logline: z.string(),
-  story_structure: z.string(),
-  tone: z.string(),
-});
-type FormData = z.infer<typeof schema>;
+// Validation messages are localized, so the schema is built inside the
+// component (see useMemo below) and only the form shape is typed here.
+type FormData = {
+  title: string;
+  author: string;
+  genre: string;
+  writing_language: string;
+  logline: string;
+  story_structure: string;
+  tone: string;
+};
 
 interface WizardStep3Props {
   onNext: () => void;
@@ -31,6 +33,22 @@ export function WizardStep3({ onNext, onBack }: WizardStep3Props) {
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const { updateStep2, state } = useWizardStore();
+
+  // Build the Zod schema inside the component so validation messages can be
+  // localized. Memoized on `t` so it rebuilds when the locale changes.
+  const schema = useMemo(
+    () =>
+      z.object({
+        title: z.string().min(1, t("wizard.validation.titleRequired")),
+        author: z.string(),
+        genre: z.string(),
+        writing_language: z.string().max(100, t("wizard.validation.languageTooLong")),
+        logline: z.string(),
+        story_structure: z.string(),
+        tone: z.string(),
+      }),
+    [t],
+  );
 
   const {
     register,

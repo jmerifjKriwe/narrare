@@ -735,6 +735,12 @@
       "heros_journey": "Heldenreise",
       "save_the_cat": "Save the Cat",
       "seven_point": "Sieben-Punkt-Struktur"
+    },
+    "validation": {
+      "projectNameRequired": "Projektname ist erforderlich",
+      "projectNameInvalidChars": "Projektname enthält ungültige Zeichen",
+      "languageTooLong": "Sprache darf höchstens 100 Zeichen lang sein",
+      "titleRequired": "Titel ist erforderlich"
     }
   },
   "tones": {
@@ -1763,7 +1769,8 @@
     "send": "Senden",
     "sendHint": "Strg+Enter zum Senden",
     "errorConnecting": "Verbindungsfehler",
-    "clearConversation": "Gespräch löschen"
+    "clearConversation": "Gespräch löschen",
+    "clearConversationConfirm": "Dadurch werden alle Nachrichten dieser Unterhaltung dauerhaft entfernt. Diese Aktion kann nicht rückgängig gemacht werden."
   },
   "tokenSettings": {
     "title": "Token-Einstellungen",

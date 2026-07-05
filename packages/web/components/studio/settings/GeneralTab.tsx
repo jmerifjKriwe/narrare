@@ -88,6 +88,8 @@ export function GeneralTab({ displayName, uiLanguage, isLoading, onSaveProfile }
               type="text"
               value={localDisplayName}
               onChange={(e) => handleDisplayNameChange(e.target.value)}
+              autoComplete="off"
+              aria-label={t("settings.generalSection.displayName")}
               className="w-full max-w-md px-4 py-2 bg-background border border-border rounded-md text-sm"
             />
           </div>
@@ -110,6 +112,8 @@ export function GeneralTab({ displayName, uiLanguage, isLoading, onSaveProfile }
             <select
               value={localLanguage}
               onChange={(e) => handleLanguageChange(e.target.value)}
+              autoComplete="off"
+              aria-label={t("settings.generalSection.language")}
               className="px-4 py-2 bg-background border border-border rounded-md text-sm"
             >
               <option value="de">{t("settings.generalSection.langDe")}</option>

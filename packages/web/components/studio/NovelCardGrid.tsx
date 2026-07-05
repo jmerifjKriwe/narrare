@@ -71,7 +71,7 @@ export function NovelCardGrid({
               e.stopPropagation();
               onEdit(novel.id);
             }}
-            className="absolute top-4 right-14 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-accent rounded-md transition-opacity"
+            className="absolute top-4 right-14 p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 hover:bg-accent rounded-md transition-opacity"
             aria-label={t("dashboard.edit")}
           >
             <Pencil className="w-4 h-4 text-muted-foreground" />
@@ -86,7 +86,7 @@ export function NovelCardGrid({
               onDelete(novel.id, novel.title);
             }}
             disabled={isDeleting}
-            className="absolute top-4 right-4 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 rounded-md transition-opacity"
+            className="absolute top-4 right-4 p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 hover:bg-destructive/10 rounded-md transition-opacity"
             aria-label={t("dashboard.delete")}
           >
             <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />

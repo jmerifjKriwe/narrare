@@ -23,7 +23,7 @@ export function EditorHeader({ title, setTitle, lastSaved, handleSave }: EditorH
         data-testid="chapter-title-input"
         value={title}
         onChange={(event) => setTitle(event.target.value)}
-        className="bg-transparent border-none outline-none flex-1 mr-4 text-lg font-medium"
+        className="bg-transparent border-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring flex-1 mr-4 text-lg font-medium"
         placeholder={t("editor.chapterTitlePlaceholder")}
       />
       <div className="flex items-center gap-4">

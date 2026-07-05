@@ -735,6 +735,12 @@
       "heros_journey": "Le voyage du héros",
       "save_the_cat": "Save the Cat",
       "seven_point": "Structure en sept points"
+    },
+    "validation": {
+      "projectNameRequired": "Le nom du projet est requis",
+      "projectNameInvalidChars": "Le nom du projet contient des caractères non valides",
+      "languageTooLong": "La langue ne doit pas dépasser 100 caractères",
+      "titleRequired": "Le titre est requis"
     }
   },
   "tones": {
@@ -1763,7 +1769,8 @@
     "send": "Envoyer",
     "sendHint": "Ctrl+Entrée pour envoyer",
     "errorConnecting": "Erreur de connexion",
-    "clearConversation": "Effacer la conversation"
+    "clearConversation": "Effacer la conversation",
+    "clearConversationConfirm": "Cela supprimera définitivement tous les messages de cette conversation. Cette action est irréversible."
   },
   "tokenSettings": {
     "title": "Paramètres de tokens",

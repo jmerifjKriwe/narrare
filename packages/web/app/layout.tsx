@@ -9,6 +9,9 @@ import "@/styles/globals.css";
 export const metadata: Metadata = {
   title: { default: "Narrare", template: "%s | Narrare" },
   description: "AI-assisted creative writing environment",
+  // Tell the browser the page is designed for dark and light color schemes so
+  // native controls (scrollbars, form widgets) adapt to the active theme.
+  colorScheme: "dark light",
   icons: {
     icon: "/favicon.png",
   },

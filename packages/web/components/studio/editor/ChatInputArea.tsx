@@ -8,6 +8,8 @@
  */
 
 import { Send, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface ChatInputAreaProps {
   readonly inputRef: React.RefObject<HTMLInputElement | null>;
@@ -34,6 +36,10 @@ export function ChatInputArea({
   hasMessages,
   t,
 }: ChatInputAreaProps) {
+  // Clearing the conversation is destructive — guard it with a confirmation
+  // dialog so a stray click does not wipe the whole chat.
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+
   return (
     <>
       <div className="border-t border-border px-4 py-3">
@@ -78,7 +84,7 @@ export function ChatInputArea({
         <div className="border-t border-border px-4 py-2 flex justify-center">
           <button
             type="button"
-            onClick={onClearConversation}
+            onClick={() => setClearConfirmOpen(true)}
             disabled={isStreaming}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
           >
@@ -87,6 +93,19 @@ export function ChatInputArea({
           </button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={clearConfirmOpen}
+        onOpenChange={setClearConfirmOpen}
+        title={t("chatPanel.clearConversation")}
+        description={t("chatPanel.clearConversationConfirm")}
+        confirmLabel={t("chatPanel.clearConversation")}
+        variant="destructive"
+        onConfirm={() => {
+          onClearConversation();
+          setClearConfirmOpen(false);
+        }}
+      />
     </>
   );
 }

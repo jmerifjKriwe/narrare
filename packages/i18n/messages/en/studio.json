@@ -735,6 +735,12 @@
       "heros_journey": "Hero's Journey",
       "save_the_cat": "Save the Cat",
       "seven_point": "Seven-Point Structure"
+    },
+    "validation": {
+      "projectNameRequired": "Project name is required",
+      "projectNameInvalidChars": "Project name contains invalid characters",
+      "languageTooLong": "Language must be 100 characters or less",
+      "titleRequired": "Title is required"
     }
   },
   "tones": {
@@ -1763,7 +1769,8 @@
     "send": "Send",
     "sendHint": "Ctrl+Enter to send",
     "errorConnecting": "Connection error",
-    "clearConversation": "Clear conversation"
+    "clearConversation": "Clear conversation",
+    "clearConversationConfirm": "This will permanently remove all messages in this conversation. This action cannot be undone."
   },
   "tokenSettings": {
     "title": "Token Settings",
