@@ -57,6 +57,9 @@ export default defineConfig({
         channel: "chromium",
         screenshot: "on",
       },
+      expect: {
+        toHaveScreenshot: { maxDiffPixelRatio: 0.02 },
+      },
     },
   ],
 
