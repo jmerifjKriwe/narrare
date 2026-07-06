@@ -149,8 +149,8 @@ describe("StoryboardPanel", () => {
     useEditorStore.setState({ storyboardOpen: true, activeChapterId: null });
     render(<StoryboardPanel novelId="novel-1" />);
 
-    // Click the chapter card button
-    const chapterButton = screen.getByRole("button", { name: "The Beginning" });
+    // Click the chapter card button (aria-label from i18n mock)
+    const chapterButton = screen.getByRole("button", { name: /openChapter/i });
     fireEvent.click(chapterButton);
 
     expect(useEditorStore.getState().activeChapterId).toBe("ch-1");
