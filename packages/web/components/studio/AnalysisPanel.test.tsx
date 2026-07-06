@@ -63,11 +63,17 @@ describe("AnalysisPanel", () => {
       const buttons = await screen.findAllByRole("button", { name: /analyze/i });
       expect(buttons.length).toBeGreaterThan(0);
 
-      // Click the first analyze button
+      // Click the first analyze button (readability card)
       await userEvent.click(buttons[0]);
 
-      // Should now show some analysis content (we don't check specifics due to i18n)
-      expect(document.querySelector("div")).toBeInTheDocument();
+      // Clicking toggles the panel on by pushing it into the URL. We assert on
+      // the navigation call rather than expanded DOM because the test's router
+      // mock returns a fresh object each render, so the panel state is owned by
+      // the URL between renders rather than held in component state.
+      expect(navigationMocks.push).toHaveBeenCalledWith(
+        expect.stringContaining("panel=readability"),
+        { scroll: false },
+      );
     });
 
     it("toggles analysis panel closed when clicking analyze button again", async () => {
@@ -85,12 +91,15 @@ describe("AnalysisPanel", () => {
       expect(document.querySelector("div.flex-1.overflow-y-auto.p-8")).toBeInTheDocument();
     });
 
-    it("initializes active panel from URL state", () => {
+    it("initializes active panel from URL state and shows the editor hint", () => {
       navigationMocks.searchParams = new URLSearchParams("panel=readability");
 
       render(<AnalysisPanel novelId="novel-1" />);
 
-      expect(screen.getByText("analysis.score")).toBeInTheDocument();
+      // The expanded panel no longer renders mock scores/details; it shows an
+      // editor hint and an "Open in Editor" link until real analysis is wired.
+      expect(screen.getByText("analysis.readability.editorHint")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "analysis.openInEditor" })).toBeInTheDocument();
     });
 
     it("removes invalid panel URL state with replace", () => {

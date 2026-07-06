@@ -7,13 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { StatusMessage } from "@/components/ui/status-message";
 import { searchParamsHref, setOptionalSearchParam } from "@/lib/url-state/searchParams";
 import { parseAnalysisPanelParam, serializeAnalysisPanelParam } from "./analysis/analysisUrlState";
-import {
-  ANALYSIS_TYPES,
-  type AnalysisType,
-  getDetailRows,
-  getScore,
-  getSuggestions,
-} from "./analysis-data";
+import { ANALYSIS_TYPES, type AnalysisType } from "./analysis-data";
 
 interface AnalysisPanelProps {
   novelId: string;
@@ -84,7 +78,6 @@ export function AnalysisPanel({ novelId }: AnalysisPanelProps) {
           {ANALYSIS_TYPES.map((analysis) => {
             const Icon = analysis.icon;
             const isExpanded = activeAnalysis === analysis.id;
-            const score = getScore(analysis.id);
 
             return (
               <div
@@ -116,48 +109,15 @@ export function AnalysisPanel({ novelId }: AnalysisPanelProps) {
                     {isAnalyzing ? (
                       <StatusMessage state="loading" message={t("analysis.analyzing")} />
                     ) : (
-                      <div>
-                        {/* Score bar */}
-                        {score > 0 && (
-                          <div className="mb-6">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium">{t("analysis.score")}</span>
-                              <span className="text-2xl font-medium">{score}</span>
-                            </div>
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div className="h-full bg-primary rounded-full transition-all" />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Detail rows */}
-                        <div className="grid grid-cols-3 gap-4 mb-6">
-                          {getDetailRows(t, analysis.id).map((row) => (
-                            <div
-                              key={`${analysis.id}-detail-${row.label}`}
-                              className="bg-background rounded-lg p-3"
-                            >
-                              <div className="text-xs text-muted-foreground mb-1">{row.label}</div>
-                              <div className="text-sm font-medium">{row.value}</div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Suggestions */}
-                        <div>
-                          <h4 className="text-sm font-medium mb-3">{t("analysis.insights")}</h4>
-                          <ul className="space-y-2">
-                            {getSuggestions(t, analysis.id).map((suggestion) => (
-                              <li
-                                key={`${analysis.id}-${suggestion.slice(0, 40)}`}
-                                className="flex items-start gap-2 text-sm text-muted-foreground"
-                              >
-                                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground flex-shrink-0" />
-                                <span>{suggestion}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
+                      <div className="flex flex-col items-start gap-3 py-4">
+                        <StatusMessage state="empty" message={t(analysis.editorHintKey)} />
+                        <a
+                          href={`/novel/${novelId}`}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-sm shadow-sm"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          <span>{t("analysis.openInEditor")}</span>
+                        </a>
                       </div>
                     )}
                   </div>
