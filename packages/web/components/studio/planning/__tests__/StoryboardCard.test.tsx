@@ -53,8 +53,8 @@ describe("StoryboardCard", () => {
     const onNavigate = vi.fn();
     render(<StoryboardCard chapter={baseChapter} onNavigate={onNavigate} />);
 
-    // Click the inner button
-    const button = screen.getByRole("button", { name: "The Beginning" });
+    // Click the inner button (aria-label from i18n mock)
+    const button = screen.getByRole("button", { name: /openChapter/i });
     fireEvent.click(button);
     expect(onNavigate).toHaveBeenCalledWith("ch-1");
   });
