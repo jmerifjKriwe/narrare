@@ -41,6 +41,8 @@ name: CI
 # | --   | check_pytest_collection_performance.py  | ⚠️ Warning   | test-unit Job (WARNING-only)       |
 # | --   | check_current_state_facts.py (SSOT)    | ✅ Blocking  | architecture Job                   |
 # | --   | check_governance_health.py (ADR-047)   | ✅ Blocking  | architecture Job (Phase 3+4 aggregation) |
+# | --   | check_adr_naming.py (review-04 AUFG-04-10) | ✅ Blocking | architecture Job (ADR-XXX-*.md convention) |
+# | --   | check_context_freshness.py (review-04 AUFG-04-14) | ✅ Blocking | architecture Job (stale `Updated:` frontmatter) |
 # | MutMut Mutation Score       | mutation-testing-monthly.yml    | 📅 Monthly  | Nicht-blockierend, Issue-Report |
 # ---------------------------------------------------------------------------
 
@@ -148,6 +150,12 @@ jobs:
 
       - name: Check documentation drift
         run: uv run --no-sync python scripts/check_doc_drift.py
+
+      - name: Check ADR naming convention (review-04 AUFG-04-10)
+        run: uv run --no-sync python scripts/check_adr_naming.py
+
+      - name: Check context freshness (review-04 AUFG-04-14)
+        run: uv run --no-sync python scripts/check_context_freshness.py
 
       - name: Check registry drift (P3)
         run: uv run --no-sync python scripts/check_registry_drift.py

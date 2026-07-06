@@ -144,6 +144,26 @@ repos:
         pass_filenames: false
         files: ^(apps/api/|packages/core/)
 
+      # ADR naming convention — every ADR file must follow `ADR-XXX-*.md`
+      # (review-04 AUFG-04-10 / Strategie 5). Fast, only relevant when
+      # the decisions directory changes.
+      - id: adr-naming
+        name: ADR Naming Convention
+        entry: uv run --no-sync python scripts/check_adr_naming.py
+        language: system
+        pass_filenames: false
+        files: ^docs/architecture/decisions/
+
+      # Context freshness — `.opencode/context/narrare-dev/**` files declare
+      # an `Updated:` date that AI agents treat as truth. This gate fails when
+      # a file's declared date is implausibly old (review-04 AUFG-04-14 / Strategie 3).
+      - id: context-freshness
+        name: Context Freshness (`Updated:` frontmatter)
+        entry: uv run --no-sync python scripts/check_context_freshness.py
+        language: system
+        pass_filenames: false
+        files: ^\.opencode/context/narrare-dev/
+
       # Ruff lint + fix
       - id: ruff-lint
         name: Ruff Lint

@@ -11,6 +11,7 @@ Check families:
   - ADR cross-reference and status consistency
   - Spec/RULE-XX reference alignment
   - Checker terminology alignment
+  - Lookup-context drift (pydantic-ai/mem0/coverage/phantom commands — review-04 AUFG-04-13)
 
 Exit codes:
   0: No drift detected — all checks passed.
@@ -38,6 +39,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from doc_drift.adr_checks import DocDriftFinding, check_adr_consistency
+from doc_drift.lookup_drift_checks import check_lookup_drift
 from doc_drift.spec_checks import check_spec_references
 from doc_drift.terminology_checks import check_terminology_alignment
 from doc_drift.tool_version_checks import CheckResult, register_tool_checks
@@ -74,6 +76,7 @@ def _run_governance_checks() -> list[DocDriftFinding]:
     findings.extend(check_adr_consistency())
     findings.extend(check_spec_references())
     findings.extend(check_terminology_alignment())
+    findings.extend(check_lookup_drift())
     return findings
 
 
