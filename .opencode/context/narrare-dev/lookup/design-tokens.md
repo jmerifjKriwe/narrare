@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/design-tokens | Priority: P2 | Source: docs/development/ui-principles.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/lookup/design-tokens | Priority: P2 | Source: docs/development/ui-principles.md | Updated: 2026-06-12 -->
 
 # Design Tokens
 

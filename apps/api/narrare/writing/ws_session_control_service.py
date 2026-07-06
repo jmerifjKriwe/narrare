@@ -7,7 +7,7 @@ Owns the coordination between the :class:`ActiveTurnRegistry`
 (task cancellation), :class:`SessionTurnStateStore` (partial prose),
 and :class:`SessionManager` (session validation / reattach).
 
-See: docs/architecture/decisions/052-session-stop-recovery.md
+See: docs/architecture/decisions/ADR-052-session-stop-recovery.md
 """
 
 from __future__ import annotations

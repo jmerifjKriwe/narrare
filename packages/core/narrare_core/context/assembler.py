@@ -6,7 +6,7 @@ sources, but share ``TokenBudgetManager`` for budget enforcement.
 
 Per ADR-025 Decision 3 (RULE-03: contract before implementation).
 
-See: docs/architecture/decisions/025-feature-adoption-infrastructure.md
+See: docs/architecture/decisions/ADR-025-feature-adoption-infrastructure.md
 """
 
 from __future__ import annotations

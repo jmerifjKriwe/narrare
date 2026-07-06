@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/concepts/project-vision | Priority: critical | Source: docs/reference/project-vision.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/concepts/project-vision | Priority: critical | Source: docs/reference/project-vision.md | Updated: 2026-06-12 -->
 
 # Project Vision
 

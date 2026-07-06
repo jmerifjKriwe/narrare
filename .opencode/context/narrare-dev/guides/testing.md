@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/guides/testing | Priority: P1 | Source: docs/development/testing-standards.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/guides/testing | Priority: P1 | Source: docs/development/testing-standards.md | Updated: 2026-06-12 -->
 
 # Testing Guide
 

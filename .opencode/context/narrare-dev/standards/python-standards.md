@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/standards/python-standards | Priority: high | Source: docs/development/coding-standards.md (Python section) | Updated: 2026-05-31 -->
+<!-- Context: narrare-dev/standards/python-standards | Priority: high | Source: docs/development/coding-standards.md (Python section) | Updated: 2026-06-12 -->
 
 # Python Standards — Quick Reference
 

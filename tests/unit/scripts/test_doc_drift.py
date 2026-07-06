@@ -39,7 +39,10 @@ class TestExtractADRId:
         assert _extract_adr_id("ADR-001-llm-gateway.md") == "ADR-001"
 
     def test_no_prefix(self) -> None:
-        assert _extract_adr_id("017-embedding-cascade.md") == "ADR-017"
+        # The extractor tolerates the legacy (prefixless) form even though
+        # all current ADR files now use the `ADR-XXX-` prefix (see
+        # scripts/check_adr_naming.py for enforcement).
+        assert _extract_adr_id("017-some-legacy-name.md") == "ADR-017"
 
     def test_template_excluded(self) -> None:
         assert _extract_adr_id("_TEMPLATE.md") is None

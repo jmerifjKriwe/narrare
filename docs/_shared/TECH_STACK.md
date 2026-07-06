@@ -30,11 +30,14 @@ and remove them aggressively.
 We use `3.14` as minimum.
 **Not:** `3.13` or lower — we depend on 3.14 features.
 
-### FastAPI `>=0.135`
+### FastAPI (App Router) — `>=0.135`, see `apps/api/pyproject.toml` for exact pin
 **Why:** Best-in-class async Python web framework. Pydantic-native.
 OpenAPI generation is free. SSE support is clean.
 **Role:** HTTP transport layer only. No business logic in routers.
 **Not:** Django, Flask, Starlette directly — FastAPI gives us everything we need.
+**Canonical source:** `apps/api/pyproject.toml` (`fastapi` pin). This document
+intentionally records only the major-version commitment so the prose does not
+drift between releases; check the manifest for the installed version.
 
 ### Uvicorn `[standard]`
 **Why:** ASGI server. The `[standard]` extra gives us uvloop + httptools.
@@ -75,13 +78,19 @@ We need transactions. We need pgvector. Postgres does both well.
 
 ## LLM & AI
 
-### pydantic-ai `>=1.93`
+### pydantic-ai (v2.x, slim variant)
 **Why:** Type-safe LLM agent framework. Native Pydantic integration.
 Supports OpenAI, Anthropic, and other providers via a unified interface.
 **Role:** The underlying agent runtime inside `core/llm/`. Not used outside it.
+**Canonical source:** `packages/core/pyproject.toml` pins
+`pydantic-ai-slim[openai,anthropic,google,groq]`. This document records only the
+major-version commitment (v2.x) — the slim variant is intentional (we vendor only
+the providers we use); check the manifest for the installed patch version.
 **Not:** LangChain (too heavy, too much magic), raw SDK calls (no type safety, no retry).
-**Migration note:** v1.93+ requires `OpenAIProvider` wrapper around `base_url`/`api_key`
-and `output_type` parameter (formerly `result_type`) on Agent construction.
+**v2 migration notes:** pydantic-ai v2 changed `result_type` → `output_type` on
+`Agent` construction and requires `OpenAIProvider(...)` around `base_url`/`api_key`.
+The v1.x `result_type` field is no longer accepted. See the pydantic-ai v2
+changelog when upgrading the pin.
 
 ### LLM Gateway (`core/llm/gateway.py`) — our own abstraction
 **Why:** pydantic-ai is the runtime, but the gateway is our policy layer.
@@ -94,7 +103,7 @@ No exceptions without a documented ADR and inline `# narrare: allow-direct-llm` 
 |----------|----------|-------|
 | OpenAI (GPT-4o, o3) | High-quality generation, complex analysis | Higher cost |
 | Anthropic (Claude Sonnet/Haiku) | Long-context, instruction following | Good cost/quality |
-| GLM-5.1 (z.ai) | Cost-efficient primary workhorse | General API and Coding API endpoints supported via wizard endpoint selector |
+| z.ai (GLM family) | Cost-efficient primary workhorse | General API and Coding API endpoints supported via wizard endpoint selector. Concrete model ids (e.g. `glm-4-plus`, `glm-4-flash`, `glm-z1-32b`) are registered in `apps/api/narrare/setup/provider_service.py` and `packages/core/narrare_core/llm/_providers/zai.py` — read those for the live model list rather than relying on a version string here. |
 | OpenAI-compatible (custom) | Future: self-hosted models | Via provider registry |
 
 **Intent → Model routing** is defined in `core/llm/intents.py`, not hardcoded in services.
@@ -104,6 +113,9 @@ Changing the model for an intent requires only one file change.
 **Why:** Persistent memory layer for writing preferences, style patterns,
 rejection feedback, and session history across conversations.
 **Role:** Powers the learning system — user and project-level preference accumulation.
+**Canonical source:** `packages/core/pyproject.toml` pins `mem0ai` (2.0.x line).
+This document records only the major-version commitment (2.0.x); check the manifest
+for the installed patch version.
 **Architecture:**
   - Uses `AsyncMemory` with pgvector backend for semantic search over memories
   - LLM provider is configurable — reuses user's settings (stored in `user_ai_settings`)
@@ -143,11 +155,14 @@ See ADR-033 for full rationale.
 
 ## Background Processing
 
-### TaskIQ `[redis]` `>=0.11.0`
+### TaskIQ `[redis]` (0.12.x)
 **Why:** Async-native task queue with FastAPI DI integration via TaskiqDepends.
 Redis broker is already in our stack. See ADR-007 for full rationale.
 **Role:** Long-running tasks: batch embedding, consistency checks, chapter summarization,
 fact extraction, timeline analysis, wiki generation.
+**Canonical source:** `apps/api/pyproject.toml` pins `taskiq`, `taskiq-redis`,
+and `taskiq-fastapi`. This document records only the major-version commitment
+(0.12.x); check the manifest for the installed patch versions.
 **Architecture (INFRA-007, stable):**
 - `ListQueueBroker` über Redis + `RedisAsyncResultBackend`
 - 7 registrierte Tasks in `kb/embedding_hooks.py` + `wiki/tasks.py`: embed_source,
@@ -165,50 +180,74 @@ asyncio background tasks (no persistence, no retry, no visibility).
 
 ## Validation & Configuration
 
-### Pydantic `v2 >=2.12`
+### Pydantic `v2`
 **Why:** Runtime type validation. Native FastAPI integration. v2 is 5-10x faster than v1.
 **Role:** All request/response schemas, internal domain types, configuration.
 **Rule:** We use Pydantic v2 API exclusively. No v1 compatibility shims.
+**Canonical source:** `packages/core/pyproject.toml` pins `pydantic` (2.x line).
+This document records only the major-version commitment (v2); check the manifest
+for the installed patch version.
 **Not:** attrs, dataclasses alone — we need runtime validation, not just type hints.
 
-### pydantic-settings `>=2.13`
+### pydantic-settings (2.x)
 **Why:** Environment variable loading with Pydantic validation.
 **Role:** All application configuration via `Settings` classes.
+**Canonical source:** `packages/core/pyproject.toml` pins `pydantic-settings`
+(2.x line). This document records only the major-version commitment.
 **Not:** dynaconf, python-decouple — pydantic-settings is already in our stack.
 
 ---
 
 ## Auth & Security
 
-### PyJWT `>=2.10`
+### PyJWT (2.x)
 **Why:** Lightweight, well-maintained JWT library.
 **Role:** JWT creation and verification in `auth/security.py`.
+**Canonical source:** `apps/api/pyproject.toml` pins `PyJWT` (2.x line).
 
-### argon2-cffi `>=23.1.0`
+### argon2-cffi (25.x)
 **Why:** Password hashing with argon2id — the Password Hashing Competition (PHC) winner.
 Stronger against GPU/ASIC attacks than bcrypt. Backward-compatible bcrypt verification
 for existing hashes during migration.
 **Role:** Password hashing and verification in `auth/security.py`.
+**Canonical source:** `apps/api/pyproject.toml` declares `argon2-cffi>=25.1.0`
+(25.x line). This document records only the major-version commitment.
 
-### fastapi-limiter `>=0.1.6`
-**Why:** Async-native rate limiting for FastAPI via `pyrate_limiter`.
-**Role:** Per-endpoint rate limits for AI-cost-bearing endpoints (AUFG-05-12). Currently in-memory only (no Redis init) — accepted risk AR-05-02 for local-first single-user deployment. Redis backend can be enabled when multi-user deployment requires distributed rate tracking.
+### pyrate-limiter (4.x) — async rate limiting, used directly
+**Why:** Per-endpoint rate limits for AI-cost-bearing endpoints. We use
+`pyrate-limiter` **directly** (not via the abandoned `fastapi-limiter`
+wrapper, which is incompatible with current FastAPI versions).
+**Role:** Rate-limit dependency for the AI cost surface. Currently in-memory only
+(no Redis backend init) — accepted risk AR-05-02 for local-first single-user
+deployment. A Redis backend can be enabled when multi-user deployment requires
+distributed rate tracking.
+**Location:** `apps/api/narrare/_app/rate_limiter_dep.py` (thin async adapter
+around `pyrate_limiter`), consumed via `apps/api/narrare/_app/rate_limits.py`.
+**Canonical source:** `apps/api/pyproject.toml` declares `pyrate-limiter>=4.0,<5`.
+**Not:** `fastapi-limiter` (unmaintained, breaks on FastAPI ≥0.116), `slowapi`
+(replaced — async-incompatible).
 
 ---
 
 ## Observability
 
-### structlog `>=25.5`
+### structlog (26.x)
 **Why:** Structured logging with consistent context propagation.
 **Role:** All logging throughout the codebase. Never `print()`, never stdlib `logging` directly.
 **Pattern:** Every log event is a dictionary, not a string.
+**Canonical source:** `apps/api/pyproject.toml` and `packages/core/pyproject.toml`
+pin `structlog` (26.x line).
 
-### OpenTelemetry (`opentelemetry-api >=1.30`, `opentelemetry-sdk >=1.30`, `opentelemetry-instrumentation-fastapi >=0.51`, `opentelemetry-exporter-otlp >=1.30`)
+### OpenTelemetry (`opentelemetry-*`, 1.39.x SDK line)
 **Why:** Vendor-neutral distributed tracing and metrics. Standard instrumentation
 for FastAPI, HTTP, and database calls. Exports to any OTLP-compatible backend.
 **Role:** Sole trace standard for API requests, DB queries, external calls, and
 Pydantic-AI agent/model/tool spans (ADR-031). Optional local backends are OTel
 Collector + Grafana/Tempo/Loki/Prometheus.
+**Canonical source:** `apps/api/pyproject.toml` pins the four
+`opentelemetry-*` artifacts (`api`, `sdk`, `instrumentation-fastapi`,
+`exporter-otlp`) on the 1.39.x SDK line with `<1.44.0` upper bounds. This document
+records only the major line; check the manifest for the installed patch versions.
 **Location:** Setup in `apps/api/narrare/_app/telemetry.py`; shared tracer helpers
 in `apps/api/narrare/_app/observability.py`; Pydantic-AI instrumentation helper in
 `packages/core/narrare_core/agents/instrumentation.py`. Prompt/completion capture
@@ -219,15 +258,17 @@ No Langfuse/Logfire dependency for core runtime observability.
 
 ## HTTP & External Services
 
-### httpx `>=0.28`
+### httpx (0.28.x)
 **Why:** Async HTTP client. Used for external provider calls (research, web search).
 **Role:** External HTTP only. Never to LLM provider endpoints (gateway handles that).
+**Canonical source:** `packages/core/pyproject.toml` pins `httpx` (0.28.x line).
 **Not:** aiohttp — httpx has better typing and a cleaner API.
 
-### aiosmtplib `>=4.0`
+### aiosmtplib (5.x)
 **Why:** Async SMTP. Fits our async-first architecture.
 **Role:** Email delivery (auth flows, notifications).
 **Location:** Only via `core/notifications/email.py`.
+**Canonical source:** `apps/api/pyproject.toml` pins `aiosmtplib` (5.x line).
 
 ---
 
@@ -321,7 +362,16 @@ behavior.
 
 ### pre-commit
 **Why:** Local enforcement before code reaches CI.
-**Role:** Runs: `check_architecture.py`, ruff, pyright, bandit, test subset.
+**Role:** Runs the full local gate suite — architecture constraints, prompt
+structure, adoption score, AI-interaction compliance, exception baseline, file
+sizes, prompt-surface contract, streaming compliance, configuration matrix,
+locale sync, OpenAPI regeneration, ruff (lint + format), pyright (+ tests),
+bandit, biome, testid, i18n, frontend typecheck, conventional commits, plus the
+standard `pre-commit-hooks` hygiene set.
+**Canonical source:** `.pre-commit-config.yaml` is the SSOT for the exact, current
+hook list. This document intentionally does **not** reproduce the hook count,
+because it drifts whenever a hook is added or removed — run
+`pre-commit run --all-files` (or read the config) for the live set.
 
 ### pytest + pytest-asyncio + pytest-cov
 **Why:** Standard Python test stack with async support.
@@ -353,9 +403,9 @@ Selection, Preference Analysis, and future suites that run through Narrare agent
 | node_semver | Was in dependencies, purpose unclear, removed |
 | `axios` | Native `fetch` handles all HTTP + SSE streaming — no extra library needed |
 | `styled-jsx` | Tailwind CSS v4 is the sole styling system — no CSS-in-JS |
-| `slowapi` | Replaced by fastapi-limiter (async-native, in-memory via pyrate_limiter) |
+| `slowapi` | Replaced by `pyrate-limiter` used directly via `_app/rate_limiter_dep.py` (async-native; the earlier `fastapi-limiter` wrapper is unmaintained and breaks on FastAPI ≥0.116, so it is itself not used) |
 | `bcrypt` | Replaced by argon2-cffi (PHC winner, stronger against GPU/ASIC) |
-| `prometheus-client` | Replaced by OpenTelemetry SDK (vendor-neutral, distributed tracing) |
+| `prometheus-client` | Replaced by OpenTelemetry SDK (vendor-neutral, distributed tracing) as the *application* observability path. A `prometheus-client` pin remains in `packages/core/pyproject.toml` only because a transitive/optional consumer may export Prometheus metrics; it is not a core application dependency and must not be imported for primary observability. See ADR-031. |
 | Langfuse | Superseded by OpenTelemetry-only tracing (ADR-031); no core runtime dependency |
 | Logfire | Not local-first for core observability; optional external service only, not a product requirement |
 | promptfoo | Superseded by Pydantic Evals as eval SSOT (ADR-032) |
@@ -371,6 +421,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: 2026-06-29 — INFRA-007 stable with TaskIQ broker, result backend, 7 tasks, monitoring API, Docker worker. Updated TaskIQ architecture details. prometheus-client verified correct in "Do Not Use".
+> Last updated: 2026-07-05 — Drift fix (review-04 AUFG-04-08): replaced hard version pins with major-version commitments + `pyproject.toml`/`package.json` as canonical source (Strategy: no hard numbers in prose); corrected `fastapi-limiter` → `pyrate-limiter` used directly; clarified `prometheus-client` Do-Not-Use rationale; replaced GLM-5.1 prose with pointer to provider registry; pointed pre-commit section at `.pre-commit-config.yaml` as SSOT for the hook list.
 > Maintained by: Architecture Agent
 > Changes require ADR

@@ -15,7 +15,7 @@ Usage:
     python scripts/check_adoption.py --json
     python scripts/check_adoption.py --help
 
-See: docs/architecture/decisions/025-feature-adoption-infrastructure.md
+See: docs/architecture/decisions/ADR-025-feature-adoption-infrastructure.md
 """
 
 from __future__ import annotations

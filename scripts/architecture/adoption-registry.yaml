@@ -3,7 +3,7 @@
 # =============================================================================
 # Machine-readable definition of which features MUST adopt which core infrastructure.
 # Loaded by: scripts/check_adoption.py, scripts/check_prompt_structure.py
-# Spec: docs/architecture/decisions/025-feature-adoption-infrastructure.md
+# Spec: docs/architecture/decisions/ADR-025-feature-adoption-infrastructure.md
 # =============================================================================
 
 version: "2.0.0"

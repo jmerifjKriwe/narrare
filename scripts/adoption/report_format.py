@@ -7,7 +7,7 @@ RULE-04 limit. Contains human-readable and JSON formatting for
 
 See:
     - ``scripts/check_adoption.py`` (the main CI entry point)
-    - ``docs/architecture/decisions/025-feature-adoption-infrastructure.md``
+    - ``docs/architecture/decisions/ADR-025-feature-adoption-infrastructure.md``
 """
 
 from __future__ import annotations

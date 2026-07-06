@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/guides/agent-creation | Priority: high | Source: docs/development/how-to-add-an-agent.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/guides/agent-creation | Priority: high | Source: docs/development/how-to-add-an-agent.md | Updated: 2026-06-12 -->
 
 # How to Add a New Agent
 

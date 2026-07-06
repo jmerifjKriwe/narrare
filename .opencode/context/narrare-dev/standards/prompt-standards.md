@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/standards/prompt-standards | Priority: high | Version: 1.2 | Updated: 2026-06-12 -->
+<!-- Context: narrare-dev/standards/prompt-standards | Priority: high | Version: 1.2 | Updated: 2026-06-17 -->
 
 # Prompt Engineering Standard — Quick Reference
 

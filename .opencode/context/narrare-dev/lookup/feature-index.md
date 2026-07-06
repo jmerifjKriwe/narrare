@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/feature-index | Priority: high | Source: docs/features/INDEX.md | Updated: 2026-06-06 -->
+<!-- Context: narrare-dev/lookup/feature-index | Priority: high | Source: docs/features/INDEX.md | Updated: 2026-06-12 -->
 
 # Feature Registry — Index
 

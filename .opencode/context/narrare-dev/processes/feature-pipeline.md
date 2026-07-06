@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/processes/feature-pipeline | Priority: high | Source: .opencode/agents/subagents/narrare-dev/architecture.md + AGENTS.md | Updated: 2026-05-31 -->
+<!-- Context: narrare-dev/processes/feature-pipeline | Priority: high | Source: .opencode/agents/subagents/narrare-dev/architecture.md + AGENTS.md | Updated: 2026-06-16 -->
 
 # Feature Development Pipeline
 

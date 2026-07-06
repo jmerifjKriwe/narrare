@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/concepts/design-philosophy | Priority: P1 | Source: docs/development/ui-principles.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/concepts/design-philosophy | Priority: P1 | Source: docs/development/ui-principles.md | Updated: 2026-06-12 -->
 
 # Design Philosophy
 

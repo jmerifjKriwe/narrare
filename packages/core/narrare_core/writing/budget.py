@@ -4,7 +4,7 @@ TokenBudgetManager and TierBudget were moved to ``core/context/`` per
 ADR-025 Decision 3.  This module re-exports them so existing imports
 continue to work without changes.
 
-See: docs/architecture/decisions/025-feature-adoption-infrastructure.md
+See: docs/architecture/decisions/ADR-025-feature-adoption-infrastructure.md
 """
 
 from __future__ import annotations

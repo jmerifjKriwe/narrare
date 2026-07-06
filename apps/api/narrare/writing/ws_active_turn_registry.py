@@ -19,7 +19,7 @@ Design notes
   :class:`SessionTransportSink`, not a WebSocket — so SSE/MCP transports
   can reuse the same registry.
 
-See: docs/architecture/decisions/052-session-stop-recovery.md
+See: docs/architecture/decisions/ADR-052-session-stop-recovery.md
 """
 
 from __future__ import annotations

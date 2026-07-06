@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/standards/typescript-standards | Priority: high | Source: docs/development/coding-standards.md (TypeScript section) | Updated: 2026-05-31 -->
+<!-- Context: narrare-dev/standards/typescript-standards | Priority: high | Source: docs/development/coding-standards.md (TypeScript section) | Updated: 2026-06-12 -->
 
 # TypeScript/React Standards — Quick Reference
 

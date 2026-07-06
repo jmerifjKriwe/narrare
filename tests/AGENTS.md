@@ -46,21 +46,27 @@ Für jeden Router-Endpoint:
 
 ## LLM mocken (immer in Unit Tests)
 
+**Standard ist Fake-basiert, nicht MagicMock** (ADR-030). Domain-Dependencies
+(LLMGateway, Repositories, Services) bekommen eine echte Fake-Implementierung
+aus `tests/fakes/`. `MagicMock(spec=...)` ist **nur** für Nicht-Domain-
+Infrastruktur erlaubt (z. B. reine Wert-Container ohne Verhalten).
+
 ```python
-# tests/conftest.py stellt MockLLMGateway bereit
-from unittest.mock import AsyncMock, MagicMock
+# tests/fakes/fake_llm_gateway.py ist der Kanon — bevorzugt für neue Tests.
+# Für pydantic-ai-Agent-Tests gibt es zusätzlich tests/fakes/fake_pydantic_agent.py.
+from tests.fakes.fake_llm_gateway import FakeLLMGateway
 
 @pytest.fixture
-def mock_gateway() -> MagicMock:
-    gateway = MagicMock(spec=LLMGateway)
-    gateway.run = AsyncMock(return_value=LLMResult(
-        text="Generated text.",
-        usage=TokenUsage(prompt_tokens=10, completion_tokens=50, total_tokens=60),
-        model="claude-haiku",
-        intent="write",
-    ))
+def fake_gateway() -> FakeLLMGateway:
+    gateway = FakeLLMGateway()
+    gateway.returns("Generated text.", model="claude-haiku")
     return gateway
 ```
+
+`FakeLLMGateway` zeichnet Calls auf (`gateway.calls`), lässt sich über
+`.returns()` / `.returns_stream()` / `.raises()` konfigurieren und
+implementiert das echte `LLMGateway`-Protokoll — kein verhaltensbasierter
+MagicMock, der bei Refactors silently green wird.
 
 **Niemals** einen echten LLM-Call in Unit Tests. Nie.
 
@@ -68,16 +74,30 @@ def mock_gateway() -> MagicMock:
 
 ## DB in Integration Tests
 
+**Schema entsteht ausschließlich über echte Alembic-Migrationen** (RULE-14).
+`Base.metadata.create_all()` ist in Integration-Tests **verboten** — es
+würde das Migrations-Setup umgehen und Maskierungen von Migrationsfehlern
+erlauben. Das session-scierte Setup in `tests/integration/conftest.py`
+führt `alembic upgrade head` einmal pro Session via Subprocess aus
+(idempotent, läuft in CI vor den Tests durch).
+
 ```python
+# Fixture-Nutzung (Pattern aus tests/integration/conftest.py):
+# - Session wird pro Test bezogen, nicht pro Modul.
+# - Jeder Test läuft in einer Transaction, die am Ende zurückgerollt wird
+#   → Isolation ohne create_all().
 @pytest.fixture
-async def db_session(db_engine):
+async def db_session(db_session_factory):
     """Rolled-back session — isoliert jeden Test."""
-    async with db_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        async with AsyncSession(conn) as session:
-            yield session
-            await conn.rollback()
+    async with db_session_factory() as session:
+        yield session
+        await session.rollback()
 ```
+
+Das zugrundeliegende Engine-/Migration-Setup liegt in
+`tests/integration/conftest.py` (`alembic upgrade head` per Subprocess,
+weil `alembic/env.py` asyncio.run nutzt). Neue Fixtures sollten dieses
+Pattern wiederverwenden, nicht ihr eigenes Schema aufbauen.
 
 ---
 
@@ -107,17 +127,27 @@ Coverage unter Minimum = CI-Fehler.
 
 ---
 
-## Architecture-Constraint Test
+## Architecture-Constraint Enforcement
 
-Dieser Test läuft immer mit:
+Architektur-Constraints (RULE-01b, 02, 04, 11, …) werden **nicht** über
+einen pytest-Subprocess-Test durchgesetzt, sondern über zwei dedizierte
+Gates — das ist robuster als ein Test, der `check_architecture.py` nur
+als returncode-0-Assertion aufruft:
 
-```python
-# In tests/conftest.py bereits definiert
-def test_architecture_constraints() -> None:
-    """RULE-01b, 02, 04, 11: Alle Architektur-Constraints bestehen."""
-    result = subprocess.run(["python", "scripts/check_architecture.py"])
-    assert result.returncode == 0
+1. **Pre-commit-Hook** `architecture-constraints`
+   (`.pre-commit-config.yaml`) — läuft pro Commit lokal.
+2. **CI-Job** `architecture`
+   (`.github/workflows/ci.yml`) — läuft blockierend pro Push/PR, inkl.
+   Exception-Baseline-Sync gegen `CONSTRAINTS.md §7`.
+
+```bash
+# Lokaler Check vor dem Commit (das, was früher der subprocess-Test tat):
+just check-architecture
 ```
+
+Tests, die Architektur-Verhalten prüfen sollen, verwenden stattdessen
+zielgerichtete Assertions (z. B. „dieses Modul importiert kein `openai`
+direkt") über die echten Domain-Fakes, nicht einen Subprocess-Aufruf.
 
 ---
 

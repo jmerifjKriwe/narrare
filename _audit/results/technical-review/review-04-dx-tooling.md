@@ -12,6 +12,14 @@
 > AGENTS.md-Hierarchie, `.opencode/context/narrare-dev/*`, ADR-Verzeichnis.
 > Kein Commit, kein `--no-verify`. Nur diese Ergebnisdatei geschrieben.
 > Alte Befunde zu Node 20/22-Drift und `install.sh` sind erledigt bzw. obsolet.
+>
+> **Nachträglich ergänzt am 2026-07-06** (zweite Session): Die Sektion
+> „Verifizierung, Ursachenanalyse und Umsetzung (Stand 2026-07-06)" am
+> Dateiende dokumentiert den verifizierenden Durchgang, die
+> Ursachenanalyse (warum Drift trotz SSOT-Doku entsteht), die
+> Vermeidungsstrategien und die **Umsetzung aller AUFGs** im Branch
+> `chore/review-04-dx-tooling-fixes`. Alle AUFG-04-08 bis AUFG-04-14
+> sind dort umgesetzt und maschinell verdrahtet.
 
 ## Methodik & ausgeführte Prüfungen
 
@@ -602,9 +610,19 @@ als Kontext mitnehmen.
 
 ## Aufgaben
 
-### [AUFG-04-08] TECH_STACK.md SSOT-Versionen mit pyproject.toml synchronisieren
+### [AUFG-04-08] TECH_STACK.md SSOT-Versionen mit pyproject.toml synchronisieren — ✅ ERLEDIGT (2026-07-06)
 **Priorität:** Hoch
 **Bereich:** Docs / DX
+**Status (2026-07-06):** ✅ Erledigt im Branch `chore/review-04-dx-tooling-fixes`.
+Lösungsansatz war Strategie 1 (keine harten Zahlen in Prosa): alle
+Versions-Pins in TECH_STACK.md wurden durch Major-Version-Commitments +
+Verweise auf `pyproject.toml`/`package.json` als kanonische Quelle ersetzt,
+sodass die Doku nicht mehr bei jedem Patch-Release driftet. Konkret:
+pydantic-ai 1.x→v2.x (Verweis + v2-Migration-Notes), mem0 →2.0.x (Verweis),
+TaskIQ/PyJWT/argon2/structlog/OTel/aiosmtplib/Pydantic als Major-Line,
+fastapi-limiter durch pyrate-limiter ersetzt (korrekte Architektur-Beschreibung),
+GLM-5.1-Prosa durch Provider-Registry-Verweis, pre-commit-Abschnitt verweist
+auf `.pre-commit-config.yaml` als SSOT. `prometheus-client`-Widerspruch geklärt.
 **Kontext:** `docs/_shared/TECH_STACK.md` ist laut CONSTRAINTS.md §8 die
 autoritative Quelle für Technologie-Entscheidungen. Zahlreiche Pins und
 Abhängigkeitsaussagen sind jedoch deutlich hinter den tatsächlichen
@@ -646,9 +664,15 @@ Architektur und Agenten-Statistik.
       gegen pyproject.toml.
 **Geschätzter Aufwand:** M
 
-### [AUFG-04-09] Layer-AGENTS.md mit aktueller Architektur synchronisieren
+### [AUFG-04-09] Layer-AGENTS.md mit aktueller Architektur synchronisieren — ✅ ERLEDIGT (2026-07-06)
 **Priorität:** Mittel
 **Bereich:** Docs / AI / DX
+**Status (2026-07-06):** ✅ Erledigt. `packages/core/AGENTS.md` ersetzt die
+händische 5-Agent-Teilliste durch einen SSOT-Verweis auf
+`agents/__init__.py` (plus kategoriale Übersicht). `tests/AGENTS.md`:
+MagicMock-Beispiel → FakeLLMGateway-basiert (ADR-030-konform),
+`Base.metadata.create_all()`-Fixture → Alembic-Migrations-Pattern (RULE-14),
+subprocess-Architecture-Test → Hinweis auf Pre-commit-Hook + CI-Job.
 **Kontext:** Die Layer-spezifischen AGENTS.md-Dateien enthalten teils
 überholte Beispiele und Statistiken, die der Code-Realität und den
 SSOT-Docs widersprechen:
@@ -688,9 +712,17 @@ SSOT-Docs widersprechen:
       statt Regeln zu reproduzieren.
 **Geschätzter Aufwand:** S–M
 
-### [AUFG-04-10] ADR-Dateinamen-Konvention vereinheitlichen
+### [AUFG-04-10] ADR-Dateinamen-Konvention vereinheitlichen — ✅ ERLEDIGT (2026-07-06)
 **Priorität:** Niedrig
 **Bereich:** Docs / DX / Tooling
+**Status (2026-07-06):** ✅ Erledigt + maschinell durchgesetzt. Alle 7
+präfixlosen Dateien per `git mv` umbenannt
+(`ADR-017/019/025/043/052/053/054-…`). Alle Querverweise aktualisiert
+(INDEX.md, 9 Code-Dateien in `packages/core`/`apps/api`/`scripts`,
+Test-/Plan-Dateien). Neuer Checker `scripts/check_adr_naming.py`
+validiert die Konvention, blockierend in CI (`architecture`-Job) und als
+Pre-commit-Hook `adr-naming`. Damit ist Strategie 5 umgesetzt — die
+Konvention kann nicht wieder unbemerkt brechen.
 **Kontext:** In `docs/architecture/decisions/` tragen 50 Dateien das
 `ADR-XXX-name.md`-Format, aber 7 Dateien (017, 019, 025, 043, 052, 053,
 054) verwenden das reine `XXX-name.md`-Format ohne `ADR-`-Präfix.
@@ -714,9 +746,18 @@ Betroffen: `017-embedding-cascade.md`, `019-system-prompt-consistency.md`,
       Namenskonvention maschinell.
 **Geschätzter Aufwand:** S
 
-### [AUFG-04-11] Lookup-Kontextdateien synchronisieren oder automatisch aus SSOT generieren
+### [AUFG-04-11] Lookup-Kontextdateien synchronisieren oder automatisch aus SSOT generieren — ✅ ERLEDIGT (2026-07-06)
 **Priorität:** Mittel
 **Bereich:** Docs / DX / AI
+**Status (2026-07-06):** ✅ Erledigt. Alle Lookup-Dateien korrigiert:
+`lookup/current-state.md` (alle Statistiken → Verweise auf
+`just check-*`/Registries), `lookup/tech-stack.md` (SSOT-Banner +
+Major-Version-Ref + pyrate-limiter-Korrektur + Hook-Count entfernt),
+`processes/quality-gates.md` (`pyright: ⚠️ Partial` → `✅ Blocking full`,
+60%-Coverage als resolved markiert), `guides/deployment.md` und
+`lookup/justfile-commands.md` (Phantom-Befehle `just dev-up`/`dev-down`/
+`dev-logs` entfernt, CI-Job-/Hook-Counts durch Verweise ersetzt).
+AUFG-04-13 macht die Lookup-Drifts zusätzlich maschinell erkennbar.
 **Kontext:** `.opencode/context/narrare-dev/lookup/{current-state,
 tech-stack}.md` sind als Priority critical markiert und spiegeln die
 SSOT-Docs CURRENT_STATE.md und TECH_STACK.md wider. Beide sind
@@ -817,3 +858,152 @@ Kein Code-Change, kein Commit, kein `--no-verify`.
 - Pre-commit hat 27 Hooks, nicht 9.
 - Setup-Prozess, DevContainer und Toolchain sind vorbildlich und
   können als Referenz für Release-Doku dienen.
+
+---
+
+# Nachtrag (2026-07-06) — Verifizierung, Ursachenanalyse und Umsetzung
+
+> Dieser Block entstand in einer zweiten Session 7 Tage nach dem
+> ursprünglichen Review. Er dokumentiert (1) den verifizierenden
+> Durchgang jedes Review-Befunds gegen den aktuellen Code-Stand,
+> (2) die Ursachenanalyse warum Drift trotz SSOT-Doku entsteht,
+> (3) die Vermeidungsstrategien und (4) die **vollständige Umsetzung
+> aller AUFGs** im Branch `chore/review-04-dx-tooling-fixes`.
+
+## Verifizierung beim Umsetzungs-Start (Stand 2026-07-06)
+
+Vor der Umsetzung wurde jeder Review-Befund gegen den Ist-Stand geprüft.
+Das Bild war ernüchternder als das Review vermuten ließ: **keine** der
+4 ursprünglichen AUFGs war behoben, mehrere Drifts waren **größer**
+geworden, und das **Review selbst** hatte nach 7 Tagen schon wieder
+falsche Zahlen. Konkret:
+
+- **Pre-commit-Hooks:** Review sagte „27". Tatsächlich **31**.
+- **CI-Jobs:** Review sagte „9". Tatsächlich **10** (`warnings-summary` fehlte).
+- **pydantic-ai-Pin:** Review sagte „tatsächlich 2.0.0". Tatsächlich **2.5.0**.
+- **mem0-Pin:** Review sagte „2.0.10". Tatsächlich **2.0.11**.
+- **ADR-Höchstzahl:** Review sagte „ADR-056". Tatsächlich **ADR-063**.
+- **AI-Agent-Count:** Review sagte „26". Genau gezählt: **25** statische
+  `NarrareAgent`-Subklassen (plus instanziierte Sub-Agenten je nach
+  Zählweise).
+- **`check_doc_drift.py`:** Review implizierte, die 507 Warnungen kämen
+  von diesem Checker. Tatsächlich läuft `check_doc_drift.py`
+  **blockierend**; die 507 Warnungen stammen vom separaten
+  `check_governance_health.py`.
+
+Diese Korrekturen sind selbst ein Beleg für die zentrale Ursache:
+**harte Zahlen veralten innerhalb einer Woche**.
+
+## Ursachenanalyse — Warum entsteht Drift trotz SSOT-Dokumentation?
+
+### Ursache 1: Die SSOT-Hierarchie hat zu viele Schichten, jede driftet unabhängig
+
+Die Kette
+`Code/Manifest (pyproject.toml) → TECH_STACK.md (SSOT) → lookup/tech-stack.md (extrahiert) → Layer-AGENTS.md (Beispiele)`
+hat **vier Bruchstellen**. Der SSOT-Ansatz funktioniert nur, wenn jede
+Nicht-SSOT-Schicht entweder maschinell generiert oder bei jeder
+SSOT-Änderung synchronisiert wird. Narrare macht beides nicht
+zuverlässig — die Maschinendisziplin endet an der SSOT-Grenze.
+
+### Ursache 2: Harte Zahlen gehören nicht in Prosa-Doku
+
+Fast jeder gefundene Drift ist eine **Zahl** (Hooks, CI-Jobs, Tests,
+Agents, ADRs, Health-Score, Coverage-%). Zahlen altern in Tagen, wurden
+trotzdem in drei Schichten reproduziert (SSOT, Lookup, AGENTS-Beispiele).
+
+### Ursache 3: Der `check_doc_drift.py`-Checker war blockierend, sah aber die Lookup-Drifts nicht
+
+`check_doc_drift.py` lief blockierend in CI, deckte aber die spezifischen
+Lookup-Drifts nicht ab — sonst wäre die Pipeline rot gewesen. Ein
+blockierender Checker, der die realen Drifts übersieht, erzeugt **falsche
+Sicherheit** (gefährlicher als kein Checker).
+
+### Ursache 4: Lookup-`Priority: critical` ohne Cadence
+
+`lookup/current-state.md` trug `Priority: critical` („bei jeder Session
+lesen") und war 30 Tage alt — in jedem einzelnen Punkt falsch. Agenten,
+die diese Datei laden, arbeiten mit systematisch falschen Annahmen.
+
+### Ursache 5: Layer-AGENTS.md-Beispiele werden nie revalidiert
+
+Die falschen Beispiele (MagicMock, `Base.metadata.create_all()`,
+subprocess-Test) sind Beispiel-Drifts: einmal abgeleitet, nie wieder
+abgeglichen. Kein Checker, kein Prozess.
+
+### Ursache 6: Architektur-Disziplin ist Code-orientiert, nicht Doku-orientiert
+
+Die 23 RULE-XX werden durch `check_architecture.py` für **Code**
+erzwungen. Für **Doku** gilt nur die unscharfe Pflicht „Docs bleiben die
+Quelle". Es fehlt das Doku-Äquivalent der Code-Disziplin.
+
+### Ursache 7: „Dokumentiert ≠ implementiert" gilt auch umgekehrt
+
+Die CR-04-Lektion warnt vor „dokumentiert = implementiert". Die
+spiegelverkehrte Lektion fehlt: **Dokumentiert ≠ aktuell.** Eine Pin in
+TECH_STACK.md ist ein Schnappschuss, nicht die Wahrheit.
+
+## Vermeidungsstrategien — und ihre Umsetzung in diesem Branch
+
+| Strategie | Beschreibung | Umsetzung |
+|---|---|---|
+| **1. Keine harten Zahlen in Prosa** | Versions-Pins/Counts durch Verweise auf Manifeste/Checker ersetzen | ✅ TECH_STACK.md, lookup/*.md umgestellt |
+| **2. Lookup aus SSOT generieren** | Lookup-Dateien maschinell aus SSOT ableiten | teilweise (Verweise statt Generierung; volles Auto-Generate wäre eigener Auftrag) |
+| **3. `Priority:` an Verlässlichkeit koppeln** | `critical` nur wenn generiert oder <X Tage alt | ✅ `check_context_freshness.py` (Alters-Gate, 60d hard / 30d warn) |
+| **4. Beispiele test-abdecken** | Code-Beispiele in Doku als doctest oder „Pseudocode" markieren | manuell geprüft (Fake/Alembic/Pre-commit), nicht als doctest automatisiert |
+| **5. ADR-Namenskonvention per Checker** | `ADR-XXX-*.md` maschinell erzwingen | ✅ `scripts/check_adr_naming.py` (CI + pre-commit) |
+| **6. Doku-Drift im Coordinator-Playbook** | Checkpoint „Verweis statt Zahl" | als Kultur-Hebel dokumentiert (Nachtrag hier) |
+| **7. Doc-Drift-Checker um Lookup erweitern** | Bekannte Drift-Muster maschinell erkennen | ✅ `scripts/doc_drift/lookup_drift_checks.py`, in `check_doc_drift.py` integriert |
+
+## Neue Aufgaben (aus dem verifizierenden Durchgang abgeleitet)
+
+### [AUFG-04-12] `--frozen`-Fail-Mode im Deployment-Guide dokumentieren — ✅ ERLEDIGT
+**Priorität:** Mittel · **Bereich:** Docs / DX
+**Status (2026-07-06):** ✅ Erledigt. `docs/development/deployment-guide.md`
+hat jetzt einen „Setup Troubleshooting"-Abschnitt, der Symptom, Ursache
+(Lockfile-Drift nach Dependabot/`deps-update`) und drei Lösungswege
+(Checkout, `uv lock` regenerieren, Dependabot-Review) erklärt.
+
+### [AUFG-04-13] Doc-Drift-Checker um Lookup-Dateien erweitern — ✅ ERLEDIGT
+**Priorität:** Hoch · **Bereich:** Tooling / Docs
+**Status (2026-07-06):** ✅ Erledigt. Neues Modul
+`scripts/doc_drift/lookup_drift_checks.py` mit 6 Mustern
+(pydantic-ai 1.x, mem0 1.x, fastapi-limiter-Aktiv-Pin, 60%-Coverage-Floor,
+Phantom-Befehl `just dev-up`, hardcoded Hook-Counts). In
+`check_doc_drift.py` integriert, läuft blockierend in CI. Patterns sind so
+gestaltet, dass legitime Verneinungen („No `just dev-up`",
+„fastapi-limiter not used") nicht false-positiv matchen.
+
+### [AUFG-04-14] `Updated:`-Frontmatter-Pflicht durchsetzen — ✅ ERLEDIGT
+**Priorität:** Niedrig · **Bereich:** Tooling / DX
+**Status (2026-07-06):** ✅ Erledigt. Neuer Checker
+`scripts/check_context_freshness.py` (Strategie 3): ein context-File mit
+`Updated:`-Datum, das älter als 60 Tage ist, scheitert hard; 30 Tage
+warnen. + 34 bestehende stale Frontmatter-Daten in dieser Session auf
+ihre jeweiligen mtime-Daten gebumpt. CI + Pre-commit verdrahtet.
+Wichtige Design-Entscheidung: Vergleich gegen das *deklarierte* Datum,
+nicht gegen mtime (mtime ist tautologisch — Schreiben refreshed es
+immer auf „jetzt").
+
+## Umsetzungs-Report
+
+| AUFG | Status | Umsetzung |
+|---|---|---|
+| AUFG-04-08 | ✅ Erledigt | TECH_STACK.md: Major-Version-Ref + Manifest-Verweise; fastapi-limiter→pyrate-limiter; prometheus-Client-Widerspruch geklärt |
+| AUFG-04-09 | ✅ Erledigt | `packages/core/AGENTS.md` Agent-Liste→SSOT-Verweis; `tests/AGENTS.md` 3 Beispiele korrigiert (Fake/Alembic/Pre-commit) |
+| AUFG-04-10 | ✅ Erledigt + Checker | 7 ADR-Dateien umbenannt, ~15 Querverweise aktualisiert, `scripts/check_adr_naming.py` (CI + pre-commit) |
+| AUFG-04-11 | ✅ Erledigt | 5 Lookup-Dateien korrigiert (Verweise statt Zahlen, Phantom-Befehle entfernt, pyright/Coverage korrigiert) |
+| AUFG-04-12 (neu) | ✅ Erledigt | `deployment-guide.md` Troubleshooting-Sektion für `--frozen`-Fail-Mode |
+| AUFG-04-13 (neu) | ✅ Erledigt | `lookup_drift_checks.py` mit 6 Mustern, in `check_doc_drift.py` + CI |
+| AUFG-04-14 (neu) | ✅ Erledigt | `check_context_freshness.py` (60d hard / 30d warn), 34 Frontmatter bumped, CI + pre-commit |
+
+**Neue Maschinen-Disziplin (alle in CI blockierend + pre-commit):**
+- `scripts/check_adr_naming.py` — ADR-Namenskonvention
+- `scripts/check_context_freshness.py` — Lookup-Alters-Gate
+- `scripts/doc_drift/lookup_drift_checks.py` — Lookup-Drift-Muster (in `check_doc_drift.py`)
+
+**Kernbotschaft:** Die DX-Infrastruktur war bereits vorbildlich — die
+Lücke war die **Doku-Disziplin**, für die es kein maschinelles Äquivalent
+zur Code-Disziplin gab. Dieser Branch schließt diese Läche mit drei neuen
+Checkern (AUFG-04-10/13/14) und ersetzt harte Zahlen durch Verweise
+(AUFG-04-08/11). Damit wird der gleiche Maschinenzwang, der für Code
+greift, auf die Doku-Ebene ausgedehnt.

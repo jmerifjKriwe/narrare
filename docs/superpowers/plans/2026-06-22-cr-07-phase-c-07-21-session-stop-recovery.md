@@ -15,7 +15,7 @@
 **Tech Stack:** Python 3.14 + FastAPI + Pydantic v2 + asyncio (backend); Next.js 16 + React 19 + TypeScript strict + next-intl (frontend); pytest + Vitest + Testing Library (tests).
 
 **Reference spec:** `docs/features/ai-ux/CR-AUFG-07-21-session-stop-websocket-recovery.md`
-**Reference ADR (authored in Pre-Task):** `docs/architecture/decisions/052-session-stop-recovery.md`
+**Reference ADR (authored in Pre-Task):** `docs/architecture/decisions/ADR-052-session-stop-recovery.md`
 
 ---
 
@@ -48,7 +48,7 @@
 ## File structure (decomposition)
 
 ### ADR (Pre-Task)
-- **Create:** `docs/architecture/decisions/052-session-stop-recovery.md` — Accepted ADR documenting the three architectural moves.
+- **Create:** `docs/architecture/decisions/ADR-052-session-stop-recovery.md` — Accepted ADR documenting the three architectural moves.
 - **Modify:** `docs/architecture/decisions/INDEX.md` — add ADR-052 row.
 
 ### Core (`packages/core/narrare_core/writing/`)
@@ -123,12 +123,12 @@
 # Pre-Task: ADR-052 authoring
 
 **Files:**
-- Create: `docs/architecture/decisions/052-session-stop-recovery.md`
+- Create: `docs/architecture/decisions/ADR-052-session-stop-recovery.md`
 - Modify: `docs/architecture/decisions/INDEX.md`
 
 - [ ] **Step 1: Author ADR-052**
 
-Create `docs/architecture/decisions/052-session-stop-recovery.md` with Status `Accepted`, Date `2026-06-22`, Deciders `Architecture Specialist`. The body MUST cover:
+Create `docs/architecture/decisions/ADR-052-session-stop-recovery.md` with Status `Accepted`, Date `2026-06-22`, Deciders `Architecture Specialist`. The body MUST cover:
 
 - **Context:** CR-AUFG-07-21 symptom (UI-only stop, per-connection cache -> reconnect starts fresh) -> 2x "Warum?" -> root cause (transport lifecycle treated as connection-local instead of recoverable server session with cancellable active turns). Cite ADR-043 Review-Trigger #1 (WebSocket flow needs its own lifecycle ADR) and ADR-045 Decision 6 (turn-service/transport split).
 - **Decision drivers:** RULE-03, RULE-04, RULE-11, RULE-12, RULE-17, RULE-20, Section 16.2/16.7, ADR-043 RT#1.
@@ -151,7 +151,7 @@ Create `docs/architecture/decisions/052-session-stop-recovery.md` with Status `A
 Append after the ADR-051 row in the Decision Log table:
 
 ```markdown
-| [ADR-052](052-session-stop-recovery.md) | SessionPanel Server-side Stop and WebSocket Recovery | PASS-Accepted | 2026-06-22 | `apps/api/narrare/writing/ws_*`, `packages/core/narrare_core/writing/session_*`, `packages/web/components/studio/editor/*`, WRITE-005, CR-AUFG-07-21, ADR-043 RT#1 |
+| [ADR-052](ADR-052-session-stop-recovery.md) | SessionPanel Server-side Stop and WebSocket Recovery | PASS-Accepted | 2026-06-22 | `apps/api/narrare/writing/ws_*`, `packages/core/narrare_core/writing/session_*`, `packages/web/components/studio/editor/*`, WRITE-005, CR-AUFG-07-21, ADR-043 RT#1 |
 ```
 
 - [ ] **Step 3: Checkpoint**

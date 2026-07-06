@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/standards/architecture-rules | Priority: critical | Version: 1.0 | Updated: 2026-05-31 -->
+<!-- Context: narrare-dev/standards/architecture-rules | Priority: critical | Version: 1.0 | Updated: 2026-06-20 -->
 
 # Architecture Rules — Behavioral Standard
 

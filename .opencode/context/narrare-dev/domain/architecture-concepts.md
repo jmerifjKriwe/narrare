@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/domain/architecture-concepts | Priority: high | Source: docs/_shared/CONSTRAINTS.md + docs/_shared/TECH_STACK.md | Updated: 2026-05-31 -->
+<!-- Context: narrare-dev/domain/architecture-concepts | Priority: high | Source: docs/_shared/CONSTRAINTS.md + docs/_shared/TECH_STACK.md | Updated: 2026-06-12 -->
 
 # Architecture Concepts
 

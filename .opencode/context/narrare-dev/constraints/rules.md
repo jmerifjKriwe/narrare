@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/constraints/rules | Priority: critical | Source: docs/_shared/CONSTRAINTS.md | Updated: 2026-06-17 -->
+<!-- Context: narrare-dev/constraints/rules | Priority: critical | Source: docs/_shared/CONSTRAINTS.md | Updated: 2026-06-21 -->
 
 # Architecture Constraints — Rules Summary
 

@@ -306,6 +306,10 @@ ignored_modules = [
   "scripts/checks/_ai_interaction_checks/check_8_stale_exclude.py",
   "scripts/prompt_checks.py",
   "scripts/run_checks.py",
+  # review-04 AUFG-04-14: freshness thresholds (60d hard / 30d warn) are
+  # CLI defaults overridable via --max-age-days / --warn-age-days, not
+  # runtime configuration. Treated as tooling constants like STALE_WINDOW_DAYS.
+  "scripts/check_context_freshness.py",
 ]
 
 [tool.narrare.architecture.exceptions]

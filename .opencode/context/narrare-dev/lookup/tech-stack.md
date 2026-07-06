@@ -1,6 +1,8 @@
-<!-- Context: narrare-dev/lookup/tech-stack | Priority: critical | Source: docs/_shared/TECH_STACK.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/lookup/tech-stack | Priority: critical | Source: docs/_shared/TECH_STACK.md | Updated: 2026-07-06 -->
 
 # Tech Stack Reference
+
+> **This file mirrors `docs/_shared/TECH_STACK.md` (SSOT).** If anything here conflicts with TECH_STACK.md or the manifests, those win. For exact version pins, always read `pyproject.toml` / `package.json` — this file intentionally records only major-version commitments to avoid drift.
 
 > Complete reference: `docs/_shared/TECH_STACK.md`
 
@@ -32,13 +34,13 @@ Three questions before adding any dependency:
 
 | Tech | Role | Constraint |
 |------|------|------------|
-| pydantic-ai >=1.93 | Agent runtime inside `core/llm/` | Not used outside it |
+| pydantic-ai (v2.x, slim variant) | Agent runtime inside `core/llm/` | Not used outside it. Exact pin in `packages/core/pyproject.toml` (`pydantic-ai-slim`) |
 | LLM Gateway (`core/llm/gateway.py`) | Policy layer: routing, cost, retry, telemetry | Every LLM call goes through it (RULE-01) |
-| mem0 >=1.0 | Persistent memory for preferences/style/feedback | Graceful degradation via NullMemoryClient |
+| mem0 (2.0.x line) | Persistent memory for preferences/style/feedback | Graceful degradation via NullMemoryClient. Exact pin in `packages/core/pyproject.toml` (`mem0ai`) |
 | OpenAI embeddings | `text-embedding-3-small` for similarity tasks | Only via `core/llm/embeddings.py` |
 | sentence-transformers | Local fallback `all-MiniLM-L6-v2` | Optional, for users without OpenAI |
 
-**Providers:** OpenAI (GPT-4o, o3), Anthropic (Claude Sonnet/Haiku), GLM-5.1 (z.ai), OpenAI-compatible (custom). Intent→Model routing in `core/llm/intents.py`.
+**Providers:** OpenAI, Anthropic, z.ai (GLM family), OpenAI-compatible (custom). Concrete model ids are registered in `apps/api/narrare/setup/provider_service.py` and `packages/core/narrare_core/llm/_providers/` — read those for the live model list. Intent→Model routing in `core/llm/intents.py`.
 
 **Embedding Cascade** (ADR-017): OpenAI → provider-native (future) → local sentence-transformers → disabled.
 
@@ -61,7 +63,7 @@ Three questions before adding any dependency:
 |------|------|
 | PyJWT >=2.10 | JWT creation/verification |
 | argon2-cffi >=23.1.0 | Password hashing (argon2id, PHC winner) |
-| fastapi-limiter >=0.1.6 | Redis-based async rate limiting |
+| pyrate-limiter (4.x) | Async rate limiting for AI-cost-bearing endpoints | Used **directly** via `apps/api/narrare/_app/rate_limiter_dep.py` (thin adapter around `pyrate_limiter`). `fastapi-limiter` is **not** used (unmaintained). Exact pin in `apps/api/pyproject.toml` |
 
 ## Observability
 
@@ -94,7 +96,7 @@ Three questions before adding any dependency:
 | Ruff | Linter + formatter (replaces flake8 + isort + black) |
 | pyright | Strict type checking, CI gate |
 | Bandit | Security linting |
-| pre-commit | 9 hooks: architecture, ruff, pyright, bandit, biome, i18n, tsc |
+| pre-commit | Architecture/lint/type/security + frontend checks. See `.pre-commit-config.yaml` for the authoritative hook list. Run `pre-commit run --all-files` for the current set |
 | pytest + pytest-asyncio | Unit + integration + e2e tests |
 
 ## Explicitly NOT Used
@@ -111,7 +113,8 @@ Three questions before adding any dependency:
 | Separate vector DB (Pinecone etc.) | pgvector sufficient |
 | axios | Native fetch handles all HTTP + SSE |
 | styled-jsx | Tailwind v4 is sole styling |
-| slowapi | Replaced by fastapi-limiter |
+| slowapi | Replaced by pyrate-limiter (used directly) |
+| fastapi-limiter | Not used (unmaintained, breaks on FastAPI ≥0.116); pyrate-limiter is used directly via `_app/rate_limiter_dep.py` |
 | bcrypt | Replaced by argon2-cffi |
 | prometheus-client | Replaced by OpenTelemetry SDK |
 

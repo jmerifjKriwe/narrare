@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/templates/review-changes-template | Priority: medium | Source: RULE-21 in CONSTRAINTS.md | Updated: 2026-06-12 -->
+<!-- Context: narrare-dev/templates/review-changes-template | Priority: medium | Source: RULE-21 in CONSTRAINTS.md | Updated: 2026-06-16 -->
 
 # Material Changes from Previous Review (RULE-21)
 

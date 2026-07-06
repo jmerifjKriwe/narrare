@@ -32,7 +32,7 @@ Utility:
 - match_entity_names: Standalone name matching function.
 
 See: docs/_shared/CONSTRAINTS.md (RULE-03 contracts first, RULE-07 dependency direction)
-See: docs/architecture/decisions/025-feature-adoption-infrastructure.md (Decision 3)
+See: docs/architecture/decisions/ADR-025-feature-adoption-infrastructure.md (Decision 3)
 """
 
 from __future__ import annotations

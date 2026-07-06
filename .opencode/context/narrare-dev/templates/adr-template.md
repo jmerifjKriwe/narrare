@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/templates/adr-template | Priority: medium | Source: docs/architecture/decisions/_TEMPLATE.md | Updated: 2026-05-31 -->
+<!-- Context: narrare-dev/templates/adr-template | Priority: medium | Source: docs/architecture/decisions/_TEMPLATE.md | Updated: 2026-06-12 -->
 
 # ADR Template
 

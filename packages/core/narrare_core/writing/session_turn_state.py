@@ -22,7 +22,7 @@ Design notes
   responsible for persisting the final snapshot onto :class:`SessionState`
   via the :class:`SessionManager` when a turn completes or is cancelled.
 
-See: docs/architecture/decisions/052-session-stop-recovery.md (ADR-052)
+See: docs/architecture/decisions/ADR-052-session-stop-recovery.md (ADR-052)
 """
 
 from __future__ import annotations

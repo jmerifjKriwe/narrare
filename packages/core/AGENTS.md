@@ -94,13 +94,24 @@ and `NarrareMeta` — no manual meta-prompt loading needed.
 5. Service im Backend schreiben (siehe `apps/api/AGENTS.md`)
 6. Tests: Agent-Level (TestModel) + Service-Level (Fake)
 
-**Bestehende Agents:**
-- `ChapterSummaryAgent` — Kapitel zusammenfassen
-- `DraftAgent` — Entwürfe schreiben
-- `OutlineAgent` — Gliederungen erstellen
-- `ReviewAgent` — Texte reviewen
-- `KBAgent` — Knowledge-Base-Operationen
-- WritingGraph — Multi-Step-Workflow orchestriert mehrere Agents
+**Bestehende Agents (SSOT-Verweis, keine händische Teilliste):**
+
+Die Agent-Palette ist gewachsen; eine händische Liste hier driftet
+schnell (siehe Review-04 AUFG-04-09). **SSOT ist
+`packages/core/narrare_core/agents/__init__.py`** — dort sind alle
+produktiven `NarrareAgent`-Subklassen exportiert. Öffne die Datei oder
+laufe `ls packages/core/narrare_core/agents/*_agent.py` für die
+autoritative Liste. Eine Abstraktion über alle Agents bildet der
+`WritingGraph` (Multi-Step-Workflow, orchestriert mehrere Agents).
+
+Kategorien (Beispiele, nicht erschöpfend — siehe `__init__.py`):
+- **Schreiben/Review:** Draft, Outline, ChapterSummary, Review, BetaReader
+- **Knowledge Base:** KB, KBAssist, KBImprove, KBMerge
+- **Analyse:** Consistency, Readability, POVDetection, CharacterArc,
+  CharacterVoice (+ Checker), Coreference, TemporalExtraction, Timeline,
+  Extraction, FactExtractor, PreferenceAnalysis, Worldbuilding
+- **Assistenz:** InlineSuggest, StorySuggest, Chat (in `core/chat`),
+  PromptLiveTest (Test-Only)
 
 **Provider hinzufügen** (altes Gateway-Zeug):
 1. `llm/_providers/{name}.py` erstellen

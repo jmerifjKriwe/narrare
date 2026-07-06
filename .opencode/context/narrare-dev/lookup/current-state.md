@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/current-state | Priority: critical | Source: docs/_shared/CURRENT_STATE.md | Updated: 2026-06-05 -->
+<!-- Context: narrare-dev/lookup/current-state | Priority: critical | Source: docs/_shared/CURRENT_STATE.md | Updated: 2026-07-06 -->
 
 # Current State — Live Project Status
 
@@ -22,16 +22,17 @@
 
 ---
 
-## Codebase Stats (verified 2026-06-03)
+## Codebase Stats
 
-- Knowledge Graph: 15,527 nodes, 112,368 edges, risk medium
-- Backend tests: 4,273 (3,750 unit + 495 integration) across 396 test files
-- Frontend tests: 1,683 across 186 test files (Vitest + MSW)
-- Total tests: ~5,900+
-- Architecture rules: 23 (RULE-01b through RULE-23, plus sub-rules 02a/02b/18b)
-- ADRs: 50 (ADR-001 through ADR-038, ADR-040 through ADR-051; ADR-039 gap)
-- Feature specs: 75 individual files + INDEX.md
-- Open questions: 11 (Q-001 through Q-011)
+> **Counts below are intentionally not pinned here** — they drift within days. Run the cited command or read the cited SSOT for the current value.
+
+- Knowledge Graph: Run `just check-architecture` or query the code-review-graph MCP for current node/edge counts.
+- Backend tests: Run `just test --collect-only -q | tail -1` or `pytest --collect-only -q` for the current test count.
+- Frontend tests: Run `pnpm test --list` or see Review 02 for the current frontend test count.
+- Architecture rules: RULE-01b through RULE-23 (plus sub-rules 02a/02b/18b); see `constraints/rules.md` for the authoritative rule list.
+- ADRs: See `docs/architecture/decisions/INDEX.md` for the authoritative ADR list (`ls docs/architecture/decisions/ADR-*.md | wc -l` for the count).
+- Feature specs: See `docs/features/INDEX.md` for the authoritative feature-spec list.
+- Open questions: See the open-questions index for the current set and status.
 
 ---
 
@@ -39,10 +40,10 @@
 
 | Layer | Contents |
 |-------|----------|
-| `packages/core/` | 17 submodules, 18 AI agents (pydantic-ai) |
-| `apps/api/` | 20 domain modules, 38 router files, Alembic 0001-~0023 |
+| `packages/core/` | Submodules + AI agents (pydantic-ai); see `packages/core/narrare_core/agents/__init__.py` for the authoritative agent registry |
+| `apps/api/` | Domain modules + routers; Alembic migrations. See `apps/api/narrare/` and the Alembic `versions/` directory for the current structure |
 | `packages/web/` | Next.js 16, TipTap v3, 3 demo novels, 3 locales (en/de/fr) |
-| `docs/` | 50 ADRs + 2 impl plans, 11 open questions in 6 files, 75 feature specs |
+| `docs/` | ADRs + impl plans, open questions, feature specs; see `docs/architecture/decisions/INDEX.md` and `docs/features/INDEX.md` for the authoritative lists |
 
 ---
 
@@ -50,7 +51,7 @@
 
 - **Status:** Freeze fully lifted (2026-06-03). Ratcheted post-freeze governance retained.
 - **Resolved blockers:** AUFG-02-01 (backend unit failures 7→0), AUFG-02-03 (frontend tests stable <120s), AUFG-03-01 (prompt warnings 79→35), AUFG-03-02 (KB adoption 0.78→0.90 PASS).
-- **Ratcheted debt:** Frontend RULE-04 legacy violations ratcheted 53→38; no new violations allowed.
+- **Ratcheted debt:** Frontend RULE-04 legacy violations are ratcheted (no growth allowed); run `just check-frontend-size` for the current baseline count.
 - **Still blocked:** new prompt/adoption warning growth, new architecture exceptions without ADR, new frontend file-size violations, REST-only frontend paths for SSE-capable backends, workaround/quick-fix implementations.
 
 ---
@@ -65,7 +66,7 @@
 
 1. ✅ AI Feature Freeze lifted — new AI work may resume under ratcheted governance
 2. ✅ AUFG-02-01, AUFG-02-03, AUFG-03-01, AUFG-03-02 resolved
-3. ⏳ Frontend RULE-04 debt — continue modularizing (38 ratcheted legacy violations remain)
+3. ⏳ Frontend RULE-04 debt — continue modularizing (ratcheted baseline; run `just check-frontend-size` for the remaining count)
 4. ⏳ E2E test patterns
 5. ⏳ ANAL-005: Coreference Analysis — resumes under post-freeze governance
 
@@ -96,8 +97,8 @@
 | Python 3.14 missing type stubs | Low | Documented in pyproject.toml |
 | TipTap v3 API changes | Medium | Pin exact version |
 | Editor h-full in flex container | Low | Follow DashboardView pattern |
-| System Health 0.73 (DEGRADED) | Medium | Metric floor/baseline artifact. CI warning-only for DEGRADED; CRITICAL blocks. Baseline debt must shrink for ≥0.85. |
-| 38 frontend RULE-04 legacy violations | Medium | Ratcheted: no new violations; reductions only unless ADR/user-approved exception. |
+| System Health (score/score band) | Medium | Metric floor/baseline artifact. Run `just check-health` for the current score. CI warning-only for DEGRADED; CRITICAL blocks. Baseline debt must shrink for ≥0.85. |
+| Frontend RULE-04 legacy violations | Medium | Ratcheted: no new violations; reductions only unless ADR/user-approved exception. Run `just check-frontend-size` for the current baseline. |
 
 ---
 

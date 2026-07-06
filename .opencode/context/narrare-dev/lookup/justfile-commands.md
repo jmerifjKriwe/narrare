@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/justfile-commands | Priority: critical | Source: docs/development/deployment-guide.md | Updated: 2026-06-24 -->
+<!-- Context: narrare-dev/lookup/justfile-commands | Priority: critical | Source: docs/development/deployment-guide.md | Updated: 2026-07-06 -->
 
 # Justfile Command Catalog
 
@@ -15,13 +15,15 @@
 
 | Command | Description |
 |---------|-------------|
-| `just dev` | Start all services (API + frontend + workers) |
+| `just dev` | Start all services (API + frontend + workers). Internally calls `_ensure-services`, so PostgreSQL + Redis are brought up automatically |
 | `just dev-api` | Start API only |
 | `just dev-frontend` | Start frontend only |
 | `just dev-worker` | Start background worker |
-| `just dev-up` | Start Docker services (PostgreSQL + Redis) |
-| `just dev-down` | Stop Docker services |
-| `just dev-logs` | View Docker service logs |
+| `just dev-services` | Start Docker services only (PostgreSQL + Redis). Use this when you want the backing services without the app |
+| `just dev-services-stop` | Stop Docker services |
+| `just logs` | Tail Docker service logs |
+
+> **No `just dev-up`.** There is no separate `dev-up` recipe. `just dev` already ensures backing services via `_ensure-services`; for a pure service start use `just dev-services`.
 
 ## Database
 
