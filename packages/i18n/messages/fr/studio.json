@@ -266,6 +266,7 @@
     "insights": "Constatations et suggestions",
     "score": "Score",
     "statsEmpty": "Les statistiques agrégées apparaîtront ici une fois l'analyse connectée à votre roman.",
+    "openInEditor": "Ouvrir dans l'éditeur",
     "readability": {
       "title": "Lisibilité",
       "description": "Analyser la longueur des phrases, la diversité du vocabulaire et la lisibilité",
@@ -274,7 +275,8 @@
       "complexWords": "Mots complexes",
       "suggestion1": "Certaines phrases dépassent 30 mots. Envisagez de les diviser.",
       "suggestion2": "Bonne variation dans la longueur des phrases.",
-      "suggestion3": "Le texte est facilement compréhensible pour un large public."
+      "suggestion3": "Le texte est facilement compréhensible pour un large public.",
+      "editorHint": "Ouvrez un chapitre dans l'éditeur et utilisez l'outil Lisibilité pour analyser la complexité des phrases, le niveau de lecture et les suggestions."
     },
     "pacing": {
       "title": "Rythme narratif",
@@ -284,7 +286,8 @@
       "descriptionScenes": "Scènes descriptives",
       "suggestion1": "Bon équilibre entre action et dialogue.",
       "suggestion2": "Envisagez d'ajouter plus de passages descriptifs.",
-      "suggestion3": "Le rythme pourrait être légèrement plus rapide dans la partie centrale."
+      "suggestion3": "Le rythme pourrait être légèrement plus rapide dans la partie centrale.",
+      "editorHint": "Ouvrez un chapitre dans l'éditeur et utilisez les outils Sentiment ou Lecture bêta pour évaluer le rythme narratif via l'équilibre entre action, dialogue et description."
     },
     "characterAnalysis": {
       "title": "Analyse des personnages",
@@ -292,7 +295,8 @@
       "mainCharacters": "Personnages principaux",
       "appearances": "Apparitions",
       "suggestion1": "Anna apparaît dans tous les chapitres — bonne présence.",
-      "suggestion2": "Dr. Stein pourrait bénéficier de plus de contexte."
+      "suggestion2": "Dr. Stein pourrait bénéficier de plus de contexte.",
+      "editorHint": "Ouvrez un chapitre dans l'éditeur et utilisez les outils Voix du personnage ou Coréférence pour analyser la présence des personnages et la cohérence des voix."
     },
     "timeline": {
       "title": "Chronologie",
@@ -300,7 +304,8 @@
       "timespan": "Période",
       "inconsistencies": "Incohérences",
       "suggestion1": "La période est représentée de manière cohérente.",
-      "suggestion2": "Aucune contradiction temporelle trouvée."
+      "suggestion2": "Aucune contradiction temporelle trouvée.",
+      "editorHint": "Ouvrez le panneau Planification pour afficher la chronologie, ou utilisez le Vérificateur de cohérence dans l'éditeur pour détecter les incohérences temporelles."
     }
   },
   "settings": {
