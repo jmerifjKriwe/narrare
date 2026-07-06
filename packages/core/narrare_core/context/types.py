@@ -3,7 +3,7 @@
 Contains data classes used across all context assembler implementations.
 Moved from ``writing/budget.py`` per ADR-025 Decision 3.
 
-See: docs/architecture/decisions/025-feature-adoption-infrastructure.md
+See: docs/architecture/decisions/ADR-025-feature-adoption-infrastructure.md
 """
 
 from __future__ import annotations

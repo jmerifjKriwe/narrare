@@ -9,7 +9,7 @@ recovery keys) and ADR-052 payloads deserialize correctly — recovery
 fields use ``data.get(key, default)`` so older cache entries load with
 safe defaults.
 
-See: docs/architecture/decisions/052-session-stop-recovery.md (ADR-052)
+See: docs/architecture/decisions/ADR-052-session-stop-recovery.md (ADR-052)
 """
 
 from __future__ import annotations

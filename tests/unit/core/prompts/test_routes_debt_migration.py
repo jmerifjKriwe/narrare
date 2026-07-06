@@ -12,7 +12,7 @@ Verifies:
   * The three new templates exist and are loadable by ``PromptRegistry``
     (the single cascade resolver), with valid frontmatter.
 
-See: ``docs/architecture/decisions/054-inline-feature-prompt-debt-migration.md``
+See: ``docs/architecture/decisions/ADR-054-inline-feature-prompt-debt-migration.md``
 """
 
 from __future__ import annotations

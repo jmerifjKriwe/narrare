@@ -14,7 +14,7 @@ disconnects are expected during stop/cancel, and the registry handles
 cancellation — not the sink.  Swallowing prevents a dead-socket
 ``ConnectionError`` from masking the cancellation path.
 
-See: docs/architecture/decisions/052-session-stop-recovery.md
+See: docs/architecture/decisions/ADR-052-session-stop-recovery.md
 """
 
 from __future__ import annotations

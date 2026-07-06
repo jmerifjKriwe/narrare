@@ -14,7 +14,7 @@ Per CONSTRAINTS.md RULE-02: No prompt building outside ``core/prompts/``.
 This module only truncates and returns strings — it does not construct
 prompt templates.
 
-See: docs/architecture/decisions/025-feature-adoption-infrastructure.md
+See: docs/architecture/decisions/ADR-025-feature-adoption-infrastructure.md
 """
 
 from __future__ import annotations
