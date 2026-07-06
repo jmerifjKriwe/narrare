@@ -3,14 +3,26 @@
 Split from pipeline.py to respect RULE-04 (file size limit).
 Generates interview questions via LLM; the API layer collects answers
 and calls the pipeline again in ``full_draft`` mode.
+
+AUFG-03-01: the question round now runs through ``InterviewQuestionAgent``
+(a ``NarrareAgent`` subtype) instead of calling ``ModelRegistry.run()``
+directly. This guarantees the ADR-026 capabilities
+(``NarrareMeta`` / ``NarrareUniversalRules`` / ``NarrareObservability``)
+are injected, and routes through the ``AgentRegistry`` cache when wired.
+The prompt is still composed upstream via ``_build_and_validate_prompt``
+(Mode 1, ADR-048) so evidence/enrichment/limits continue to flow.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
+from narrare_core.agents.interview_question_agent import (
+    InterviewDeps,
+    InterviewQuestionAgent,
+)
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.result import StreamChunk
 from narrare_core.prompts.context import PromptContext
@@ -24,6 +36,29 @@ if TYPE_CHECKING:
     from narrare_core.writing.pipeline import WritingPipeline
 
 logger = structlog.get_logger(__name__)
+
+
+async def _get_or_create_interview_agent(
+    pipeline: WritingPipeline,
+    model: Any,
+    system_prompt: str | None,
+) -> InterviewQuestionAgent:
+    """Resolve the interview agent via the registry when wired.
+
+    Mirrors the ``get_or_create_agent`` pattern from
+    ``agents/writing_graph_prompts.py``: if ``WritingPipeline`` has an
+    ``AgentRegistry``, the agent is cached by ``(type, model, system_prompt)``
+    (prompt-caching friendly, ADR-016 Phase 0); otherwise it is
+    instantiated directly (test/standalone path).
+    """
+    registry = pipeline._agent_registry  # pyright: ignore[reportPrivateUsage]
+    if registry is not None:
+        return await registry.get_or_create(  # type: ignore[no-any-return]
+            InterviewQuestionAgent,
+            model,
+            system_prompt=system_prompt,
+        )
+    return InterviewQuestionAgent(model=model, system_prompt=system_prompt)
 
 
 async def stream_interview_assisted(
@@ -55,6 +90,9 @@ async def stream_interview_assisted(
             "recent_chapters": context.recent_chapters,
         },
     )
+    # Keep prompt composition upstream so Mode 1 (ADR-048) evidence,
+    # enrichment and limits continue to flow — the migration only
+    # replaces the LLM-call boundary, not the prompt path.
     prompt = await pipeline._build_and_validate_prompt(  # pyright: ignore[reportPrivateUsage]
         LLMIntent.CHAT,
         prompt_context,
@@ -63,20 +101,27 @@ async def stream_interview_assisted(
     )
 
     try:
-        result_text: str = await pipeline._registry.run(  # pyright: ignore[reportPrivateUsage,reportUnknownVariableType]
-            LLMIntent.CHAT,
-            prompt=prompt.user,
-            config=config,
-            system_prompt=prompt.system,
+        model = await pipeline._registry.get_model(  # pyright: ignore[reportPrivateUsage]
+            config,
             api_key=api_key,
             base_url=base_url,
         )
+        agent = await _get_or_create_interview_agent(
+            pipeline,
+            model=model,
+            system_prompt=prompt.system or None,
+        )
+        deps = InterviewDeps(
+            language=context.language,
+            user_id=str(request.user_id),
+            project_id=str(request.project_id),
+        )
+        result_text: str = await agent.run(prompt=prompt.user, deps=deps)
     except Exception as e:
         raise WritingError(
             f"Interview question generation failed: {e}",
             code="INTERVIEW_FAILED",
         ) from e
 
-    # ModelRegistry.run() returns str, not LLMResult — wrap for compatibility
     yield StreamChunk(text=result_text)
     yield StreamChunk(text="", is_final=True, usage=None)

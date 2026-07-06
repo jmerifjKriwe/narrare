@@ -13,6 +13,11 @@ import structlog
 
 from narrare_core.agents.kb_assist_agent import KBAssistAgent, KBAssistDeps
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.shared.errors import (
+    ConfigurationError,
+    InvocationValidationError,
+    PromptError,
+)
 
 from .assist_contracts import (
     KBAssistEnhancementResponse,
@@ -171,7 +176,7 @@ class KBAssistService:
     ) -> KBAssistOutput:
         """Run KBAssistAgent with composer-driven system prompt (Mode 1).
 
-        Composes the invocation through the pipeline (ADR-048 Mode 1) so
+        Composes the invocation via the pipeline (ADR-048 Mode 1) so
         enrichment flows through the composer into the system prompt.
         """
         from narrare._app.invocation_context import build_invocation_context
@@ -190,12 +195,21 @@ class KBAssistService:
                 prompt_context=prompt_context,
                 intent=intent,
             )
-            assert invocation_result.composed_prompt is not None  # Mode 1 always composes
-            system_prompt = invocation_result.composed_prompt.system
-        except Exception:
+            # Mode 1 invariant (ADR-048): composed_prompt is non-None.
+            # Guard replaces a prior runtime `assert` (RULE-11: typed error).
+            composed_prompt = invocation_result.composed_prompt
+            if composed_prompt is None:  # pragma: no cover
+                raise ConfigurationError(
+                    "Prompt composition produced no system prompt for KB assist.",
+                    code="COMPOSITION_EMPTY",
+                )
+            system_prompt = composed_prompt.system
+        except (InvocationValidationError, PromptError, ConfigurationError) as exc:
+            # Graceful degradation: named composition-failure modes fall back.
             logger.warning(
-                "invocation_composition_failed",
+                "invocation_composition_degraded",
                 feature_id="kb_assist",
+                error_code=getattr(exc, "code", type(exc).__name__),
                 exc_info=True,
             )
             composed = await self._prompt_composer.build(intent, prompt_context)

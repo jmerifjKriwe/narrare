@@ -14,10 +14,13 @@ ui_help_long: |
   It helps you write dialogue that sounds natural, reveals character, and moves the story forward.
 ui_available_in: ["editor", "cli", "mcp", "api"]
 
-service: packages/core/ai_assist/dialogue_coach.py
-contract: packages/core/ai_assist/contracts.py#DialogueCoach
-router: apps/api/routers/ai_assist/dialogue.py
-prompt: core/prompts/_bundled/ai_assist/en/dialogue_coach/system.md
+# Planned feature — implementation paths intentionally empty. Will be set
+# when the feature lands, following the current router schema
+# apps/api/narrare/<domain>/router.py (not the legacy apps/api/routers/).
+service: ""
+contract: ""
+router: ""
+prompt: ""
 requires: []
 ---
 

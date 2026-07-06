@@ -409,6 +409,11 @@ check-frontend-size:
     @echo "📏 Checking frontend file-size limits..."
     uv run python scripts/check_frontend_file_size.py
 
+# Check feature-file frontmatter paths exist on disk (prevents phantom paths)
+check-feature-paths:
+    @echo "🛣️  Checking feature-file path accuracy..."
+    uv run python scripts/check_feature_path_accuracy.py
+
 # Check Python file-size hard limits (RULE-04) with no-growth baseline
 check-python-size:
     @echo "📏 Checking Python file-size limits..."
@@ -614,6 +619,6 @@ hooks-update:
 #
 # check-ssot is warn-only: it reports discrepancies but does not block the merge.
 # The `|| true` prevents its non-zero exit code from failing the entire recipe.
-check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-configuration-matrix check-matrix-effect-integrity check-governance-drift check-models check-governance check-health
+check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-configuration-matrix check-matrix-effect-integrity check-governance-drift check-models check-governance check-health check-feature-paths
     -uv run python scripts/check_current_state_facts.py || true
     @echo "✅ All checks passed — ready to merge"

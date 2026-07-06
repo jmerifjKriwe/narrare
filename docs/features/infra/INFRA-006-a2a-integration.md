@@ -1,7 +1,7 @@
 ---
 id: INFRA-006
 title: "A2A Integration"
-status: in progress
+status: planned
 area: infra
 mvp: false
 
@@ -14,9 +14,12 @@ ui_help_long: |
   Your AI agent discovers Narrare via its Agent Card, sends tasks, and processes results iteratively.
 ui_available_in: ["api", "cli"]
 
-service: apps/api/a2a/server.py
-contract: apps/api/a2a/contracts.py
-router: apps/api/routers/a2a.py
+# Implementation paths intentionally empty — A2A is planned (post-MVP),
+# blocked on Q-002 (A2A streaming decision). No skeleton exists yet; paths
+# will be set when the adapter spec is written. See AUFG-01-03 / AUFG-03-04.
+service: ""
+contract: ""
+router: ""
 prompt: ""
 requires: []
 ---
@@ -40,15 +43,19 @@ To allow external, third-party, or personalized AI agents to natively access and
 
 ## How it works (Technical)
 
-**Entry point:** apps/api/routers/a2a.py
+**Entry point:** _planned_ — no implementation exists yet. The future A2A
+adapter will live under `apps/api/narrare/a2a/` following the current
+router schema (`apps/api/narrare/<domain>/router.py`), not the legacy
+`apps/api/routers/` schema.
 **Service:** A2A integration server handling standardized requests.
-**Streaming:** yes (for stateful interactions)
+**Streaming:** yes (for stateful interactions) — pending Q-002 decision.
 
 Narrare exposes skills covering the full novel-writing workflow to external agents (writing, KB CRUD, analysis, etc.).
 
 ## Constraints & Edge Cases
 
-- Requires the A2A server to be running (`just run-a2a`).
+- Status: **planned, blocked on [Q-002](../../architecture/questions/INDEX.md)** (A2A streaming decision). No server skeleton exists yet.
+- Requires the A2A server to be running (`just run-a2a`) — recipe to be added with the implementation.
 - Relies on external AI agents understanding and supporting the A2A protocol.
 
 ## Related Features

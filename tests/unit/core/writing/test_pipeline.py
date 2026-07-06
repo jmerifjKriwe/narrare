@@ -88,7 +88,8 @@ async def _stream_from(*chunks: StreamChunk) -> AsyncIterator[StreamChunk]:
 @pytest.fixture()
 def mock_registry() -> Any:
     """Mock ModelRegistry with configurable stream/run."""
-    reg = MagicMock(spec=["stream", "run"])
+    # `get_model` included for the AUFG-03-01 interview-agent path.
+    reg = MagicMock(spec=["stream", "run", "get_model"])
     return reg
 
 
@@ -254,20 +255,26 @@ class TestInterviewAssisted:
         pipeline: WritingPipeline,
         mock_registry: Any,
     ) -> None:
-        mock_registry.run = AsyncMock(
+        # AUFG-03-01: interview path runs through InterviewQuestionAgent,
+        # not registry.run(). Patch the agent class.
+        mock_registry.get_model = AsyncMock(
+            return_value=MagicMock(spec=["_model_response"], name="model")
+        )
+        fake_agent = MagicMock(spec=["run"])
+        fake_agent.run = AsyncMock(
             return_value=(
                 "1. What is the protagonist's motivation?\n2. Where does the story take place?"
             ),
         )
-
         request = _request(
             mode=GenerationMode.INTERVIEW_ASSISTED,
             outline="A detective story in Victorian London.",
         )
-
-        chunks = await _collect(
-            pipeline.generate(request, config=_config()),
-        )
+        with patch(
+            "narrare_core.writing.pipeline_interview.InterviewQuestionAgent",
+            return_value=fake_agent,
+        ):
+            chunks = await _collect(pipeline.generate(request, config=_config()))
 
         assert len(chunks) == 3  # context_meta + questions + final
         assert chunks[0].context_meta is not None  # CR-07: first chunk is metadata
@@ -280,15 +287,25 @@ class TestInterviewAssisted:
         pipeline: WritingPipeline,
         mock_registry: Any,
     ) -> None:
-        mock_registry.run = AsyncMock(
-            return_value="Questions here.",
+        # AUFG-03-01: verify the prompt is composed with LLMIntent.CHAT.
+        # The intent flows through _build_and_validate_prompt upstream,
+        # producing evidence with feature_id == "writing_chat".
+        mock_registry.get_model = AsyncMock(
+            return_value=MagicMock(spec=["_model_response"], name="model")
         )
-
+        fake_agent = MagicMock(spec=["run"])
+        fake_agent.run = AsyncMock(return_value="Questions here.")
         request = _request(mode=GenerationMode.INTERVIEW_ASSISTED)
-        await _collect(pipeline.generate(request, config=_config()))
+        with patch(
+            "narrare_core.writing.pipeline_interview.InterviewQuestionAgent",
+            return_value=fake_agent,
+        ):
+            await _collect(pipeline.generate(request, config=_config()))
 
-        call_args = mock_registry.run.call_args
-        assert call_args.args[0] == LLMIntent.CHAT
+        # The composed prompt's user channel is passed to agent.run.
+        fake_agent.run.assert_awaited_once()
+        # agent.run is called with prompt=<composed user prompt>.
+        assert fake_agent.run.call_args.kwargs["prompt"] is not None
 
 
 class TestEntityConnectionsPassthrough:

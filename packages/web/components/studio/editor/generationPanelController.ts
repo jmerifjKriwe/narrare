@@ -1,32 +1,27 @@
 "use client";
 
 /**
- * Generation panel controller — manages chapter generation lifecycle via useAIOperation.
+ * Generation panel controller — thin composer (RULE-04 / AUFG-03-04).
  *
- * Replaces the previous manual AbortController + useMutation pattern with the shared
- * AI operation primitive (§16, ADR-043). Provides:
- * - Unified lifecycle: idle → loading → streaming → complete → error | connection_lost
- * - Server-side cancel via writingApi.stopGeneration + hook-level AbortController
- * - Structured AIErrorResponse instead of raw error.message mapping
- * - Connection-loss detection with partial output preservation
+ * Replaces the previous manual AbortController + useMutation pattern with
+ * the shared AI operation primitive (§16, ADR-043). Responsibilities are
+ * delegated to focused sub-hooks:
+ *
+ * - {@link useGenerationConfig} — form state + request builder.
+ * - {@link useGenerationStream} — AI streaming lifecycle (useAIOperation).
+ * - {@link useGenerationRating} — accept/reject feedback to memory service.
+ * - {@link useGenerationActions} — stop/regenerate/retry coordination.
  */
 
-import { useMutation } from "@tanstack/react-query";
-import { useCallback, useRef, useState } from "react";
-
-import {
-  type ContextMeta,
-  type GenerateRequest,
-  type GenerationMode,
-  streamGeneration,
-  writingApi,
-} from "@/lib/api/generation";
-import { useAIOperation } from "@/lib/hooks/use-ai-operation";
-import { useMemoryStatus, useRecordFeedback } from "@/lib/hooks/useMemory";
-import type { FeedbackRequest, TokenUsage } from "@/types";
-
-type PanelPhase = "config" | "streaming" | "review" | "error";
-type RatingAction = "accept" | "reject";
+import { useRef, useState } from "react";
+import type { ContextMeta, GenerateRequest } from "@/lib/api/generation";
+import { useMemoryStatus } from "@/lib/hooks/useMemory";
+import type { TokenUsage } from "@/types";
+import { useGenerationActions } from "./useGenerationActions";
+import { useGenerationConfig } from "./useGenerationConfig";
+import { useGenerationMutations } from "./useGenerationMutations";
+import { useGenerationRating } from "./useGenerationRating";
+import { useGenerationStream } from "./useGenerationStream";
 
 interface ControllerArgs {
   novelId: string;
@@ -41,228 +36,109 @@ export function useGenerationPanelController({
   onDraftAccepted,
   t: _t,
 }: ControllerArgs) {
-  const [mode, setMode] = useState<GenerationMode>("full_draft");
-  const [outline, setOutline] = useState("");
-  const [prompt, setPrompt] = useState("");
-  const [wordTarget, setWordTarget] = useState<number>(0);
-  const [tone, setTone] = useState("balanced");
+  const config = useGenerationConfig();
   const [draftText, setDraftText] = useState("");
   const [requestId, setRequestId] = useState<string | null>(null);
   const [wordCount, setWordCount] = useState(0);
   const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
   const [contextMeta, setContextMeta] = useState<ContextMeta | null>(null);
-  const [showRating, setShowRating] = useState<RatingAction | null>(null);
   const [stoppedWithOutput, setStoppedWithOutput] = useState(false);
   const lastParamsRef = useRef<GenerateRequest | null>(null);
   const originalTextRef = useRef<string>("");
-  const recordFeedback = useRecordFeedback(novelId);
   const { eventCount } = useMemoryStatus(novelId);
 
-  const buildRequest = useCallback((): GenerateRequest => {
-    const req: GenerateRequest = {
-      mode,
-      word_target: wordTarget > 0 ? wordTarget : null,
-      tone,
-    };
-    if (mode === "full_draft" || mode === "scene_by_scene") req.outline = outline || null;
-    if (mode === "full_draft" || mode === "interview_assisted") req.prompt = prompt || null;
-    if (mode === "interview_assisted") req.auto_continue = true;
-    return req;
-  }, [mode, outline, prompt, wordTarget, tone]);
-
-  const {
-    state,
-    start,
-    cancel,
-    notifyData,
-    retry,
-    isIdle,
-    isLoading,
-    isStreaming,
-    isComplete,
-    isConnectionLost,
-  } = useAIOperation<null>({
-    execute: async (signal) => {
-      const req = lastParamsRef.current!;
-      const data = await writingApi.startGeneration(chapterId, novelId, req);
-      const rid = data.request_id;
-
-      setRequestId(rid);
-      setDraftText("");
-      setWordCount(0);
-      setTokenUsage(null);
-      setContextMeta(null);
-      setShowRating(null);
+  const stream = useGenerationStream({
+    chapterId,
+    novelId,
+    lastParamsRef,
+    setRequestId,
+    setDraftText,
+    setWordCount,
+    setTokenUsage,
+    setContextMeta,
+    onChunkNotify: () => {
       setStoppedWithOutput(false);
       originalTextRef.current = "";
-
-      await streamGeneration(
-        rid,
-        (chunk) => {
-          notifyData();
-          setDraftText((prev) => prev + chunk.text);
-          setWordCount((prev) => prev + chunk.text.split(/\s+/).filter(Boolean).length);
-        },
-        undefined,
-        (err) => {
-          throw err;
-        },
-        signal,
-        setTokenUsage,
-        setContextMeta,
-      );
-
-      return null;
-    },
-    connectionLossTimeout: 15_000,
-  });
-
-  // -- Derived phase from hook state + stopped-with-output flag --
-
-  const phase: PanelPhase = stoppedWithOutput
-    ? "review"
-    : isIdle
-      ? "config"
-      : isLoading || isStreaming
-        ? "streaming"
-        : isComplete
-          ? "review"
-          : "error";
-
-  // -- Mutation wrappers for accept/reject (REST calls, not AI operations) --
-
-  const acceptMutation = useMutation({
-    mutationFn: () => writingApi.acceptDraft(requestId!),
-    onSuccess: () => {
-      if (!originalTextRef.current) originalTextRef.current = draftText;
-      onDraftAccepted(draftText);
-      setShowRating("accept");
-    },
-  });
-  const rejectMutation = useMutation({
-    mutationFn: () => writingApi.rejectDraft(requestId!),
-    onSuccess: () => {
-      if (!originalTextRef.current) originalTextRef.current = draftText;
-      setShowRating("reject");
     },
   });
 
-  // -- Handlers --
+  const rating = useGenerationRating({
+    novelId,
+    chapterId,
+    mode: config.mode,
+    draftText,
+    requestId,
+    originalTextRef,
+  });
 
-  const handleGenerate = useCallback(() => {
+  const actions = useGenerationActions({
+    requestId,
+    draftText,
+    lastParamsRef,
+    buildRequest: config.buildRequest,
+    start: stream.start,
+    cancel: stream.cancel,
+    retry: stream.retry,
+    setStoppedWithOutput,
+    setDraftText,
+    setRequestId,
+    setContextMeta,
+    setShowRating: rating.setShowRating,
+    originalTextRef,
+  });
+
+  const phase = useGenerationMutations({
+    requestId,
+    draftText,
+    stoppedWithOutput,
+    stream,
+    rating,
+    onDraftAccepted,
+  });
+
+  const handleGenerate = () => {
     setStoppedWithOutput(false);
-    const req = buildRequest();
-    lastParamsRef.current = req;
-    start();
-  }, [buildRequest, start]);
-
-  const handleStop = useCallback(async () => {
-    if (requestId) {
-      await writingApi.stopGeneration(requestId).catch(() => {});
-    }
-    cancel();
-
-    if (draftText) {
-      setStoppedWithOutput(true);
-    }
-  }, [requestId, draftText, cancel]);
-
-  const handleRegenerate = useCallback(async () => {
-    if (requestId) {
-      await writingApi.rejectDraft(requestId).catch(() => {});
-    }
-    setDraftText("");
-    setRequestId(null);
-    setStoppedWithOutput(false);
-    setContextMeta(null);
-    setShowRating(null);
-    originalTextRef.current = "";
-
-    if (lastParamsRef.current) {
-      lastParamsRef.current = buildRequest();
-      start();
-    }
-  }, [requestId, buildRequest, start]);
-
-  const handleRetry = useCallback(() => {
-    setStoppedWithOutput(false);
-    retry();
-  }, [retry]);
-
-  const handleRatingDone = useCallback(
-    (rating?: number, reason?: string) => {
-      if (showRating) {
-        const originalText = originalTextRef.current;
-        const isModified = originalText !== draftText && originalText.length > 0;
-        const action: FeedbackRequest["action"] =
-          showRating === "accept" ? (isModified ? "modify" : "accept") : "reject";
-        recordFeedback.mutate(
-          {
-            action,
-            suggestion_id: requestId ?? "",
-            intent: mode,
-            suggestion_text: originalText || draftText,
-            modification: isModified ? draftText : undefined,
-            rating: rating ?? undefined,
-            context: reason ? { reject_reason: reason } : undefined,
-            project_id: novelId,
-            chapter_id: chapterId,
-            mode,
-          },
-          { onError: () => undefined },
-        );
-      }
-      setStoppedWithOutput(false);
-      setDraftText("");
-      setRequestId(null);
-      setShowRating(null);
-      originalTextRef.current = "";
-      setContextMeta(null);
-    },
-    [showRating, draftText, requestId, mode, novelId, chapterId, recordFeedback],
-  );
+    lastParamsRef.current = config.buildRequest();
+    stream.start();
+  };
 
   return {
-    acceptMutation,
-    connectionLost: isConnectionLost,
+    acceptMutation: phase.acceptMutation,
+    acceptDraft: () => {
+      rating.captureOriginal();
+      phase.acceptMutation.mutate();
+    },
+    connectionLost: stream.isConnectionLost,
     contextMeta,
     draftText,
-    /** Structured AIErrorResponse (null when no error). §16.5 */
-    error: state.error,
-    /** Resolved user-visible error message string (null when no error). */
-    errorMsg: state.error?.userMessage ?? null,
+    error: stream.state.error,
+    errorMsg: stream.state.error?.userMessage ?? null,
     eventCount,
-    /** True while the AI operation is loading (before first streaming chunk). */
-    isLoading,
     handleGenerate,
-    handleRatingDone,
-    handleRegenerate,
-    handleRetry,
-    handleStop,
-    mode,
-    outline,
-    /** Derived panel phase from AI operation status. */
-    phase,
-    prompt,
-    rejectMutation,
-    setMode,
-    setOutline,
-    setPrompt,
-    setTone,
-    setWordTarget,
-    showRating,
-    tokenUsage,
-    tone,
-    wordCount,
-    wordTarget,
-    targetNum: wordTarget > 0 ? wordTarget : 3000,
-    acceptDraft: () => {
-      if (!originalTextRef.current) originalTextRef.current = draftText;
-      acceptMutation.mutate();
-    },
+    handleRatingDone: rating.handleRatingDone,
+    handleRegenerate: actions.handleRegenerate,
+    handleRetry: actions.handleRetry,
+    handleStop: actions.handleStop,
+    isLoading: stream.isLoading,
+    mode: config.mode,
+    outline: config.outline,
+    phase: phase.phase,
+    prompt: config.prompt,
     rejectDraft: () => {
-      if (!originalTextRef.current) originalTextRef.current = draftText;
-      rejectMutation.mutate();
+      rating.captureOriginal();
+      phase.rejectMutation.mutate();
     },
+    rejectMutation: phase.rejectMutation,
+    setMode: config.setMode,
+    setOutline: config.setOutline,
+    setPrompt: config.setPrompt,
+    setTone: config.setTone,
+    setWordTarget: config.setWordTarget,
+    showRating: rating.showRating,
+    targetNum: config.wordTarget > 0 ? config.wordTarget : 3000,
+    tokenUsage,
+    tone: config.tone,
+    wordCount,
+    wordTarget: config.wordTarget,
   };
 }

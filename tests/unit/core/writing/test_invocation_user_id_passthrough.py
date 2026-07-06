@@ -11,8 +11,9 @@ See: ADR-040 Decision 4, INFRA-013, CONSTRAINTS.md RULE-04/RULE-10.
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -41,7 +42,8 @@ from tests.unit.core.writing._invocation_helpers import (
 
 @pytest.fixture()
 def mock_registry() -> Any:
-    return MagicMock(spec=["stream", "run"])
+    # `get_model` included for the AUFG-03-01 interview-agent path.
+    return MagicMock(spec=["stream", "run", "get_model"])
 
 
 @pytest.fixture()
@@ -133,7 +135,21 @@ class TestUserIdProjectIdPassThrough:
         gen_kwargs: dict[str, Any] = {"config": CONFIG}
         if generate_extra:
             gen_kwargs.update(generate_extra)
-        await _collect(pipeline.generate(_req(mode, **req_kwargs), **gen_kwargs))
+
+        # AUFG-03-01: interview path runs through InterviewQuestionAgent.
+        interview_ctx: contextlib.AbstractContextManager[Any] = (
+            contextlib.nullcontext()
+            if mode != GenerationMode.INTERVIEW_ASSISTED
+            else patch(
+                "narrare_core.writing.pipeline_interview.InterviewQuestionAgent",
+                return_value=MagicMock(
+                    spec=["run"],
+                    run=AsyncMock(return_value="Question?"),
+                ),
+            )
+        )
+        with interview_ctx:
+            await _collect(pipeline.generate(_req(mode, **req_kwargs), **gen_kwargs))
         assert len(captured) >= min_captures
         assert captured[0].user_id == user_id
         assert captured[0].project_id == project_id
@@ -214,11 +230,18 @@ class TestUserIdProjectIdPassThrough:
         mock_assembler: Any,
         mock_processor: Any,
     ) -> None:
+        from tests.unit.core.writing._invocation_helpers import (
+            setup_interview_registry,
+        )
+
         await self._verify_ids(
             mock_registry,
             mock_composer,
             mock_assembler,
             mock_processor,
             GenerationMode.INTERVIEW_ASSISTED,
-            setup_fn=lambda reg: _setup_run(reg, "Question?"),
+            setup_fn=lambda reg: (
+                _setup_run(reg, "Question?"),
+                setup_interview_registry(reg),
+            ),
         )

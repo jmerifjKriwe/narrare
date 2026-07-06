@@ -49,22 +49,47 @@ class FileSizeViolation:
         return stable_fingerprint(self.path.as_posix(), self.kind, self.limit)
 
 
-def _limit_for(path: Path) -> tuple[str, int]:
+def _limit_for(path: Path, content: str | None = None) -> tuple[str, int]:
+    """Return (kind, hard-limit lines) for a frontend file.
+
+    Hooks are detected two ways (AUFG-03-04):
+    1. By filename prefix ``use*.ts`` (e.g. ``useContinueStream.ts``).
+    2. By export signature: any ``.ts`` file whose top-level exports
+       include ``export function use*`` / ``export const use*`` is a
+       hook regardless of filename (e.g. ``TipTapEditorController.ts``
+       exports ``useTipTapEditorController``).
+
+    The ``content`` arg lets callers pass pre-read file text (avoids a
+    double-read in the scan loop); when omitted, the file is read lazily.
+    """
     name = path.name
     if name == "page.tsx":
         return "page", 100
     if path.suffix == ".tsx":
         return "component", 200
-    if name.startswith("use") and path.suffix == ".ts":
-        return "hook", 150
-    if name.endswith("Store.ts"):
-        return "store", 150
+    if path.suffix == ".ts":
+        if name.startswith("use") or name.endswith("Store.ts"):
+            return "hook" if name.startswith("use") else "store", 150
+        if _exports_hook(path, content):
+            return "hook", 150
     return "typescript", 400
 
 
-def _count_lines(path: Path) -> int:
-    with path.open("r", encoding="utf-8") as fh:
-        return sum(1 for _ in fh)
+# Matches `export function useFoo`, `export const useFoo =`, `export async function useFoo`.
+_HOOK_EXPORT_RE = __import__("re").compile(
+    r"^export\s+(?:async\s+)?(?:function|const)\s+use[A-Z]\w*",
+    __import__("re").MULTILINE,
+)
+
+
+def _exports_hook(path: Path, content: str | None) -> bool:
+    """True if the file exports a ``useXxx`` hook (top-level exports only)."""
+    if content is None:
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError:
+            return False
+    return bool(_HOOK_EXPORT_RE.search(content))
 
 
 def _iter_frontend_sources(web_dir: Path) -> list[Path]:
@@ -84,8 +109,13 @@ def collect_violations(web_dir: Path = WEB_DIR) -> list[FileSizeViolation]:
     """Collect TS/TSX files exceeding frontend RULE-04 hard limits."""
     violations: list[FileSizeViolation] = []
     for path in _iter_frontend_sources(web_dir):
-        kind, limit = _limit_for(path)
-        lines = _count_lines(path)
+        # Read once and reuse for both line-counting and hook-export detection.
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        kind, limit = _limit_for(path, content)
+        lines = content.count("\n") + (0 if content.endswith("\n") else 1)
         if lines > limit:
             violations.append(
                 FileSizeViolation(

@@ -35,7 +35,7 @@
 | [INFRA-003](infra/INFRA-003-context-assembly.md) | Context Assembly Pipeline | ✅ | ✅ |
 | [INFRA-004](infra/INFRA-004-embedding-store.md) | Embedding Store | ✅ | ❌ |
 | [INFRA-005](infra/INFRA-005-memory-layer.md) | Memory Layer (mem0) | ✅ | ✅ |
-| [INFRA-006](infra/INFRA-006-a2a-integration.md) | A2A Integration | 🔨 | ❌ |
+| [INFRA-006](infra/INFRA-006-a2a-integration.md) | A2A Integration | 📋 | ❌ |
 | [INFRA-007](infra/INFRA-007-background-tasks.md) | Background Tasks | ✅ | ❌ |
 | [INFRA-008](infra/INFRA-008-mcp-integration.md) | MCP Integration | 📋 | ❌ |
 | [INFRA-009](infra/INFRA-009-proactive-context.md) | Proactive Context Loading | ⛔ | ❌ |

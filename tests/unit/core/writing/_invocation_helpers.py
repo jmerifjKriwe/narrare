@@ -113,8 +113,30 @@ def _setup_stream(mock_registry: Any, *texts: str) -> None:
 
 
 def _setup_run(mock_registry: Any, text: str = "Interview result.") -> None:
-    """Wire mock_registry.run to return a string result."""
+    """Wire mock_registry.run to return a string result.
+
+    Note: After AUFG-03-01, the interview path no longer calls
+    ``registry.run()`` — it goes through ``InterviewQuestionAgent``.
+    Tests that exercise the interview path should patch the agent
+    directly (see ``test_invocation_wiring_extra.py`` for the pattern).
+    ``_setup_run`` is retained for any non-interview callers that still
+    use ``registry.run()``.
+    """
     mock_registry.run = AsyncMock(return_value=text)
+
+
+def setup_interview_registry(mock_registry: Any) -> None:
+    """Wire a registry mock for the AUFG-03-01 agent-based interview path.
+
+    Adds ``get_model`` (returning a fake Model) so the interview path
+    can resolve the model. The mock must already be a ``MagicMock`` —
+    this helper only attaches ``get_model``. ``InterviewQuestionAgent.run``
+    itself is patched separately at the test level (its return value is
+    the question text).
+    """
+    mock_registry.get_model = AsyncMock(
+        return_value=MagicMock(spec=["_model_response"], name="fake_model")
+    )
 
 
 def _make_pipeline(
