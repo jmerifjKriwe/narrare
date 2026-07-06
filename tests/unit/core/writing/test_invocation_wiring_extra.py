@@ -11,7 +11,7 @@ See: ADR-040 Decision 4, INFRA-013, CONSTRAINTS.md RULE-10/RULE-11.
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -27,8 +27,8 @@ from tests.unit.core.writing._invocation_helpers import (
     _make_pipeline,
     _mock_pipeline_with_sink,
     _req,
-    _setup_run,
     _setup_stream,
+    setup_interview_registry,
 )
 
 # ---------------------------------------------------------------------------
@@ -38,7 +38,9 @@ from tests.unit.core.writing._invocation_helpers import (
 
 @pytest.fixture()
 def mock_registry() -> Any:
-    return MagicMock(spec=["stream", "run"])
+    # `get_model` is included so the AUFG-03-01 interview-agent path can
+    # resolve a model without AttributeError under the spec lock.
+    return MagicMock(spec=["stream", "run", "get_model"])
 
 
 @pytest.fixture()
@@ -167,7 +169,15 @@ class TestSceneBySceneInvocationWiring:
 
 
 class TestInterviewInvocationWiring:
-    """stream_interview_assisted produces evidence when invocation_pipeline is wired."""
+    """stream_interview_assisted produces evidence when invocation_pipeline is wired.
+
+    AUFG-03-01: the question round now runs through ``InterviewQuestionAgent``
+    (a ``NarrareAgent`` subtype) rather than ``ModelRegistry.run()``. The
+    tests therefore patch the agent class in the production module so the
+    constructor is not invoked against a mock model — only ``run`` is
+    stubbed, while a real ``InvocationPipeline`` still flows so the
+    Mode-1 evidence assertions remain meaningful.
+    """
 
     @pytest.mark.asyncio
     async def test_with_pipeline_produces_evidence(
@@ -185,10 +195,16 @@ class TestInterviewInvocationWiring:
             mock_processor,
             invocation_pipeline=_mock_pipeline_with_sink(sink),
         )
-        _setup_run(mock_registry, "What is the main conflict?")
-        chunks = await _collect(
-            pipeline.generate(_req(GenerationMode.INTERVIEW_ASSISTED), config=CONFIG),
-        )
+        setup_interview_registry(mock_registry)
+        fake_agent = MagicMock(spec=["run"])
+        fake_agent.run = AsyncMock(return_value="What is the main conflict?")
+        with patch(
+            "narrare_core.writing.pipeline_interview.InterviewQuestionAgent",
+            return_value=fake_agent,
+        ):
+            chunks = await _collect(
+                pipeline.generate(_req(GenerationMode.INTERVIEW_ASSISTED), config=CONFIG),
+            )
         assert any(c.is_final for c in chunks)
         assert len(sink.records) == 1
 
@@ -207,10 +223,16 @@ class TestInterviewInvocationWiring:
             mock_processor,
             invocation_pipeline=None,
         )
-        _setup_run(mock_registry, "What is the main conflict?")
-        chunks = await _collect(
-            pipeline.generate(_req(GenerationMode.INTERVIEW_ASSISTED), config=CONFIG),
-        )
+        setup_interview_registry(mock_registry)
+        fake_agent = MagicMock(spec=["run"])
+        fake_agent.run = AsyncMock(return_value="What is the main conflict?")
+        with patch(
+            "narrare_core.writing.pipeline_interview.InterviewQuestionAgent",
+            return_value=fake_agent,
+        ):
+            chunks = await _collect(
+                pipeline.generate(_req(GenerationMode.INTERVIEW_ASSISTED), config=CONFIG),
+            )
         assert any(c.is_final for c in chunks)
         assert mock_composer.build.call_count == 1
 
@@ -230,10 +252,16 @@ class TestInterviewInvocationWiring:
             mock_processor,
             invocation_pipeline=_mock_pipeline_with_sink(sink),
         )
-        _setup_run(mock_registry, "Question?")
-        await _collect(
-            pipeline.generate(_req(GenerationMode.INTERVIEW_ASSISTED), config=CONFIG),
-        )
+        setup_interview_registry(mock_registry)
+        fake_agent = MagicMock(spec=["run"])
+        fake_agent.run = AsyncMock(return_value="Question?")
+        with patch(
+            "narrare_core.writing.pipeline_interview.InterviewQuestionAgent",
+            return_value=fake_agent,
+        ):
+            await _collect(
+                pipeline.generate(_req(GenerationMode.INTERVIEW_ASSISTED), config=CONFIG),
+            )
         assert sink.records[0].feature_id == "writing_chat"
 
 

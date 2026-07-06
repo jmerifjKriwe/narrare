@@ -14,7 +14,7 @@ ui_help_long: |
 ui_available_in: ["editor", "cli", "api"]
 
 service: packages/core/narrare_core/prompts/management.py
-contract: packages/core/prompts/contracts.py#PromptManager
+contract: packages/core/narrare_core/prompts/contracts.py#PromptPreviewProtocol
 router: apps/api/narrare/prompts/router.py
 prompt: ""
 requires: []

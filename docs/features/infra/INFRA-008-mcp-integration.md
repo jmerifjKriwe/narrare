@@ -14,7 +14,10 @@ ui_help_long: |
   Narrare exposes dozens of MCP tools organized into categories like Knowledge Base, Writing, Context, Analysis, and more.
 ui_available_in: ["mcp"]
 
-service: tools/mcp-server/narrare_mcp/server.py
+# Implementation path intentionally empty — MCP is planned (post-MVP),
+# blocked on Q-001 (MCP auth decision). No skeleton exists yet; path will
+# be set when the adapter spec is written. See AUFG-01-03 / AUFG-03-04.
+service: ""
 contract: ""
 router: ""
 prompt: ""
@@ -40,7 +43,8 @@ Many writers use tools like Claude Desktop for brainstorming and assistance. By 
 
 ## How it works (Technical)
 
-**Entry point:** `tools/mcp-server/narrare_mcp/server.py`
+**Entry point:** _planned_ — no implementation exists yet. The future MCP
+server path will be set when the adapter spec is written.
 **Service:** MCP Server wrapping Narrare API endpoints.
 **Streaming:** stdio or http transport modes.
 
@@ -48,7 +52,8 @@ The MCP server connects to the running Narrare API, bridging standard MCP tool c
 
 ## Constraints & Edge Cases
 
-- Requires a valid authentication token (`narrare auth login`).
+- Status: **planned, blocked on [Q-001](../../architecture/questions/INDEX.md)** (MCP auth: Service-Account-Token vs. User-Delegated-JWT vs. OAuth). No server skeleton exists yet.
+- Requires a valid authentication token — exact mechanism pending Q-001 (a `narrare auth login` CLI is one option being considered, not yet implemented).
 - Requires the Narrare API to be running and accessible by the MCP server.
 - AI-powered tools executed via MCP consume API calls to the LLM provider configured in Narrare (or the client, depending on architecture).
 

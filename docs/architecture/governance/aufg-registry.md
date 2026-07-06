@@ -3,7 +3,22 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-07-01 — review-01 remediation: AUFG-01-01 metadata corrected (source/path) + ADR-060 governing decision linked; AUFG-01-02 (character_voice status sync) added → **resolved** (`docs/features/INDEX.md:126` + `docs/_shared/GLOSSARY.md:232` corrected to runtime-verified; `check-adoption` PASS 0.97 + `check-health` feature_adoption 0.87/1 verified 2026-07-01); AUFG-01-08 (editor/writing-hotspots) added as non-colliding re-issue of the review-01 `AUFG-01-03` collision, then → **resolved** (2026-07-01) after Core+Frontend modularization (`useTipTapEditorController` 400→115 lines + 8 extracted modules; `WritingPipeline.generate` stage-dispatch extracted to `_mode_dispatch.py` with documented AUFG-01-08 stage-4 contract) and full Platform validation. (Prior: 2026-06-30 — 29 resolved items consolidated into dedicated section below.)
+> **Last updated:** 2026-07-05 — review-03 remediation: AUFG-03-01 (Writing-Interview →
+> InterviewQuestionAgent), AUFG-03-02 (KB-Assist typed fallback + ConfigurationError), AUFG-03-03
+> (A2A/MCP feature files + new `check_feature_path_accuracy.py` CI gate; P7/RC8 closed), all →
+> **resolved** (2026-07-05). AUFG-03-04 (File-Size-Gate hook-export detection + 4 controller
+> modularizations; P10/RC10 closed) → **resolved** (2026-07-05); note: AUFG-03-04 ID is also used
+> for "MCP/A2A als geplante Adapter" (line 157, `accepted_enhancement`) — ID collision remains
+> as P8/RC9 governance follow-up. (Prior: 2026-07-01 — review-01 remediation: AUFG-01-01 metadata
+> corrected (source/path) + ADR-060 governing decision linked; AUFG-01-02 (character_voice status
+> sync) added → **resolved** (`docs/features/INDEX.md:126` + `docs/_shared/GLOSSARY.md:232`
+> corrected to runtime-verified; `check-adoption` PASS 0.97 + `check-health` feature_adoption
+> 0.87/1 verified 2026-07-01); AUFG-01-08 (editor/writing-hotspots) added as non-colliding
+> re-issue of the review-01 `AUFG-01-03` collision, then → **resolved** (2026-07-01) after
+> Core+Frontend modularization (`useTipTapEditorController` 400→115 lines + 8 extracted modules;
+> `WritingPipeline.generate` stage-dispatch extracted to `_mode_dispatch.py` with documented
+> AUFG-01-08 stage-4 contract) and full Platform validation. (Prior: 2026-06-30 — 29 resolved
+> items consolidated into dedicated section below.))
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -71,7 +86,7 @@ adapter spec.
 | ID | AUFG-03-01 |
 | Title | Writing-Interview-Pfad von `ModelRegistry.run()` auf `NarrareAgent` umstellen |
 | Source | review-03-ai-features.md §Aufgaben |
-| Status | `open` |
+| Status | `resolved` (2026-07-05) — InterviewQuestionAgent + capability regression test |
 | Priority | P2 |
 | Area | AI / Architecture |
 | Owner role | Core Specialist (LLM/Agent layer) |
@@ -80,17 +95,23 @@ adapter spec.
 
 **Acceptance criteria:**
 
-- [ ] Interview-Fragen-Generierung läuft über einen `NarrareAgent`-Subtypen (z. B. Wiederverwendung von `ChatAgent` oder ein dedizierter `InterviewQuestionAgent`), sodass Meta/Universal/Observability garantiert injiziert werden.
-- [ ] Kein `# pyright: ignore[reportPrivateUsage]` mehr in `pipeline_interview.py` für `_registry`/`_build_and_validate_prompt`.
-- [ ] `check-adoption`-Report zeigt 0 inline fallback(s) für `writing/interactive_session` oder der verbleibende Fallback ist mit ADR + Reason im Adoption-Registry explizit gouvernement.
-- [ ] Bestehende Writing-/Interview-Tests bleiben grün; neu: Test, dass Interview-Antworten unter NarrareMeta/UniversalRules entstehen (Capability-Injection-Regressionstest).
+- [x] Interview-Fragen-Generierung läuft über einen `NarrareAgent`-Subtypen (`InterviewQuestionAgent`), sodass Meta/Universal/Observability garantiert injiziert werden.
+- [x] Kein `# pyright: ignore[reportPrivateUsage]` mehr in `pipeline_interview.py` für `_registry` (nur noch der etablierte `_agent_registry`-Zugriff).
+- [x] `check-adoption`-Report: 0 inline fallbacks für `writing/interactive_session` (PASS 0.97).
+- [x] Bestehende Writing-/Interview-Tests grün + Capability-Injection-Regressionstest in `tests/unit/core/agents/test_interview_question_agent.py`.
 
 **Definition of Done:**
 
-- Writing-Interview-Pfad nutzt `NarrareAgent` statt direktem `ModelRegistry.run()`.
-- `check-adoption` zeigt keine inline fallbacks für interactive_session.
-- Tests grün.
-- This registry entry updated with exit evidence.
+- Writing-Interview-Pfad nutzt `NarrareAgent` statt direktem `ModelRegistry.run()`. ✅
+- `check-adoption` zeigt keine inline fallbacks für interactive_session. ✅
+- Tests grün. ✅ (570 tests in scope)
+- This registry entry updated with exit evidence. ✅
+
+**Exit evidence (2026-07-05):** New `InterviewQuestionAgent(NarrareAgent[InterviewDeps, str])` in
+`packages/core/narrare_core/agents/interview_question_agent.py`; `pipeline_interview.py` rewritten to
+use `pipeline._registry.get_model()` + `_get_or_create_interview_agent()` (AgentRegistry-cached when
+wired, direct instantiation otherwise — mirrors `writing_graph_prompts.py`). Mode-1 prompt composition
+upstream preserved (`feature_id == "writing_chat"` evidence intact). Capability regression test added.
 
 ---
 
@@ -101,7 +122,7 @@ adapter spec.
 | ID | AUFG-03-02 |
 | Title | KB-Assist Invocation-Fallback semantisch verhärten oder als gouvernierte Ausnahme klassifizieren |
 | Source | review-03-ai-features.md §Aufgaben |
-| Status | `open` |
+| Status | `resolved` (2026-07-05) — typed exceptions + ConfigurationError + 4 fallback tests |
 | Priority | P2 |
 | Area | AI / Invocation-Integrity |
 | Owner role | Core Specialist |
@@ -110,18 +131,23 @@ adapter spec.
 
 **Acceptance criteria:**
 
-- [ ] Root-Cause-Klassifikation: Welche konkreten Exceptions kann `compose_invocation()` werfen, und welche sind echte Pipeline-Fehler vs. legitime NotFound-/Validation-Fehler?
-- [ ] Fallback ist entweder auf konkrete, benannte Exception-Typen eingeschränkt (kein bare `except Exception`) ODER als gouvernierte Ausnahme mit Reason im Adoption-/Invocation-Registry klassifiziert.
-- [ ] Runtime-`assert` (Zeile 193) ist durch echtes Fehler-Handling ersetzt (typed Exception + Logging).
-- [ ] Bei Fallback bleibt Evidence-Recording best-effort erhalten oder der Fallback wird im Invocation-Evidence-Stream als `degraded_mode` markiert.
-- [ ] Unit-Test deckt beide Pfade (Erfolg + Fallback) mit konkreten Fehlertypen ab.
+- [x] Root-Cause-Klassifikation: `compose_invocation()` wirft laut docstring `InvocationValidationError` und `ValueError`; intern zusätzlich `PromptError`-Subklassen aus `composer.build()`.
+- [x] Fallback auf `(InvocationValidationError, PromptError, ConfigurationError)` eingeschränkt (kein bare `except Exception` mehr).
+- [x] Runtime-`assert` ersetzt durch typed `ConfigurationError(code="COMPOSITION_EMPTY")` (analog `story_suggest_service.py`).
+- [x] Log-Event `invocation_composition_failed` → `invocation_composition_degraded` mit `error_code` für eindeutige Log-Triage.
+- [x] Unit-Test deckt beide Pfade ab: `tests/unit/api/kb/test_assist_service_fallback.py` (4 Tests).
 
 **Definition of Done:**
 
-- KB-Assist Invocation-Fallback ist auf konkrete Exception-Typen eingeschränkt oder als gouvernierte Ausnahme klassifiziert.
-- Runtime-`assert` ist durch echtes Fehler-Handling ersetzt.
-- Tests decken beide Pfade ab.
-- This registry entry updated with exit evidence.
+- KB-Assist Invocation-Fallback ist auf konkrete Exception-Typen eingeschränkt. ✅
+- Runtime-`assert` ist durch echtes Fehler-Handling ersetzt. ✅
+- Tests decken beide Pfade ab. ✅
+- This registry entry updated with exit evidence. ✅
+
+**Exit evidence (2026-07-05):** Narrowed handler in `assist_service.py:_run_agent`,
+typed `ConfigurationError` for the Mode-1 invariant, structured `invocation_composition_degraded`
+log event. 4 tests in `test_assist_service_fallback.py`: InvocationValidationError, PromptError,
+RuntimeError-propagation (fail-fast), composed_prompt=None → ConfigurationError → fallback.
 
 ---
 
@@ -132,7 +158,7 @@ adapter spec.
 | ID | AUFG-03-03 |
 | Title | A2A/MCP-Feature-Dateien: Status- und Pfadgenauigkeit korrigieren |
 | Source | review-03-ai-features.md §Aufgaben |
-| Status | `open` |
+| Status | `resolved` (2026-07-05) — feature files corrected + new CI-blocking path checker |
 | Priority | P3 |
 | Area | Governance / Docs |
 | Owner role | Docs Specialist |
@@ -141,16 +167,22 @@ adapter spec.
 
 **Acceptance criteria:**
 
-- [ ] `INFRA-006`-Status auf `planned` gesetzt (oder `blocked` auf Q-002), konsistent mit Feature-Index-Adapter-Abschnitt und Review-00 CTX-004.
-- [ ] Phantom-Pfade in INFRA-006/INFRA-008 entweder entfernt oder als „geplant, Pfad noch unverbindlich" markiert; insbesondere keine Pfade im alten `apps/api/routers/`-Schema.
-- [ ] Feature-Index und Adapter-Abschnitt verwenden dieselbe Statussemantik für A2A/MCP wie die Feature-Dateien.
-- [ ] Optional: ein `check_feature_path_accuracy`-Skript (oder Erweiterung eines bestehenden Drift-Checkers) validiert, dass referenzierte `service:`/`router:`/`contract:`-Pfade in Feature-Frontmatter existieren oder als `planned` markiert sind.
+- [x] `INFRA-006`-Status auf `planned` gesetzt, konsistent mit Feature-Index-Adapter-Abschnitt und Review-00 CTX-004.
+- [x] Phantom-Pfade in INFRA-006/INFRA-008 entfernt (Frontmatter leer für geplante Features, Body als „planned, blocked on Q-001/Q-002" markiert).
+- [x] Feature-Index aktualisiert (INFRA-006 🔨 → 📋).
+- [x] `check_feature_path_accuracy`-Skript implementiert (CI-blockierend über `just check-feature-paths` + `check-full` + pre-commit) — 38 Unit-Tests, fängt zusätzlich 5 bisherige Phantom-Pfade (ASSIST-004, SET-004, INFRA-010) ab.
 
 **Definition of Done:**
 
-- A2A/MCP Feature-Dateien haben korrekten Status und gültige Pfade.
-- Feature-Index ist konsistent.
-- This registry entry updated with exit evidence.
+- A2A/MCP Feature-Dateien haben korrekten Status und gültige Pfade. ✅
+- Feature-Index ist konsistent. ✅
+- This registry entry updated with exit evidence. ✅
+
+**Exit evidence (2026-07-05):** New `scripts/check_feature_path_accuracy.py` validates
+`service:`/`router:`/`contract:`/`prompt:` frontmatter paths against the filesystem (with
+brace-expansion, anchor, and class-suffix normalization; skips deprecated/merged features and
+empty markers). Wired into `justfile` (`check-feature-paths`, `check-full`) and `.pre-commit-config.yaml`.
+Implements prevention P7 (closes RC8). 38 tests in `test_check_feature_path_accuracy.py`.
 
 ---
 

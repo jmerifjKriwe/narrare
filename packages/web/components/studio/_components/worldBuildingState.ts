@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { KBEntityType } from "@/lib/api/kb";
 import { clearPendingInterview, getPendingInterview } from "@/lib/hooks/use-kb-interview-resume";
 import type { KBMode, KBUrlState } from "../kb/kbUrlState";
+import { useWorldBuildingNavigation } from "./worldBuildingNavigation";
 
 export function useWorldBuildingState(novelId: string, initialUrlState: KBUrlState) {
   const [activeType, setActiveType] = useState<KBEntityType | null>(initialUrlState.type);
@@ -91,29 +92,7 @@ export function useWorldBuildingState(novelId: string, initialUrlState: KBUrlSta
     startNewAssistedSession();
   }
 
-  function handleShowAnalysis() {
-    setMode("analysis");
-    resetSelectionForMode();
-  }
-
-  function handleShowConsistency() {
-    setMode("consistency");
-    resetSelectionForMode();
-  }
-
-  function handleShowGraph() {
-    setMode("graph");
-    resetSelectionForMode();
-  }
-
-  function handleShowWiki() {
-    setMode("wiki");
-    resetSelectionForMode();
-  }
-
-  function handleCloseWiki() {
-    setMode("detail");
-  }
+  const navigation = useWorldBuildingNavigation({ mode, setMode, resetSelectionForMode });
 
   return {
     activeType,
@@ -123,10 +102,6 @@ export function useWorldBuildingState(novelId: string, initialUrlState: KBUrlSta
     handleDiscardResume,
     handleResumeInterview,
     handleSelectEntry,
-    handleShowAnalysis,
-    handleShowConsistency,
-    handleShowGraph,
-    handleShowWiki,
     handleTypeChange,
     isAssistedSession,
     isCreating,
@@ -135,11 +110,8 @@ export function useWorldBuildingState(novelId: string, initialUrlState: KBUrlSta
     selectedEntryId,
     setMode,
     setShowResumeDialog,
-    showAnalysis: mode === "analysis",
-    showConsistency: mode === "consistency",
-    showGraph: mode === "graph",
     showResumeDialog,
-    showWiki: mode === "wiki",
+    ...navigation,
     handleAssistedCancel: () => {
       setIsAssistedSession(false);
       setAssistedEntityType(null);
@@ -153,7 +125,6 @@ export function useWorldBuildingState(novelId: string, initialUrlState: KBUrlSta
       setSelectedEntryId(entryId);
       setMode("detail");
     },
-    handleCloseWiki,
     handleCreateCancel: () => {
       setIsCreating(false);
       setMode("detail");

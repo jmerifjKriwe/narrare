@@ -952,7 +952,18 @@ ANAL-001 establishes the foundational patterns for the entire analysis suite (AN
 | Hook (`use*.ts`)       | 150 lines  |
 | Store (`*Store.ts`)    | 150 lines  |
 
+A file is classified as a **hook** if it matches any of:
+
+- Filename starts with `use` and ends with `.ts` (e.g. `useContinueStream.ts`).
+- Filename ends with `Store.ts`.
+- The file **exports** `function use*` / `const use*` / `async function use*`
+  at the top level (AUFG-03-04). This catches controller files named without
+  the `use` prefix (e.g. `TipTapEditorController.ts` exports
+  `useTipTapEditorController`) — they are functionally hooks and must obey
+  the 150-line hook limit.
+
 Large components are a sign of mixed responsibilities. Split them per RULE-06.
+The gate `just check-frontend-size` enforces these limits.
 
 ---
 

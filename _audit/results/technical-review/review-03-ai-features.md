@@ -11,6 +11,26 @@
 > (26.084 Nodes, Stand 2026-06-29) und Checker-Evidenz aus Review 01/02.
 > Kein Commit, kein `--no-verify`. Nur diese Ergebnisdatei geschrieben.
 
+> **Re-Check 2026-07-05 (Coordinator):** Wiederabgleich der Aufgaben gegen
+> HEAD nach 6 Tagen. Ergebnis: **1 Teilerledigung** (TipTapEditorController
+> via AUFG-01-08), **3 AUFGs weiterhin offen** (03-01, 03-02, 03-03),
+> **1 ID-Kollision** (AUFG-03-04 — siehe dort), **2 Nebenpunkte offen**
+> (editorStore-Smell, generation-streams DRY). Die 60%-Coverage-Drift aus
+> §2 (AUFG-02-04) ist mittlerweile als formalisierte governed exception
+> eingeordnet. Vollständige Status-Tabelle, Ursachenanalyse (RC7–RC11) und
+> Präventionsplan (P7–P11) im neuen Abschnitt
+> [Re-Check & Ursachenanalyse (2026-07-05)](#re-check--ursachenanalyse-2026-07-05)
+> am Dateiende.
+>
+> **Re-Mediation 2026-07-05 (Coordinator):** Alle 4 Substanz-AUFGs
+> nachträglich umgesetzt: AUFG-03-01 (InterviewQuestionAgent), AUFG-03-02
+> (typed Fallback), AUFG-03-03 (Feature-Pfade + neuer Checker), AUFG-03-04
+> (Hook-Export-Erkennung + 4 Controller modularisiert). Prävention P7
+> (`check_feature_path_accuracy`) und P10 (Hook-Export-Klassifikation)
+> umgesetzt. Verbleibend: P8 (ID-Kollisions-Check), P9 (Adoption-Ratchet
+> zu blockierend), P11 (ADR-048-Invocation-Fallback-Check). Alle Checker
+> grün, 570 betroffene Unit-Tests + 2476 Frontend-Tests grün.
+
 ## Methodik & ausgeführte Prüfungen
 
 - **Graph-first ausgeführt:** `get_minimal_context`, `get_architecture_overview`
@@ -152,6 +172,15 @@
   (Stand Juni 2026). Die in Review 02 festgestellte Drift in
   `processes/quality-gates.md` (60%-Coverage-Übergang) bleibt als
   AUFG-02-04 bestehen und wird hier nicht erneut geführt.
+
+> **Re-Check 2026-07-05:** Die damals als „Drift" beschriebene 60%-Coverage-
+> Übergangsregel ist mittlerweile als **formalisierte governed exception**
+> eingeordnet — `quality-gates.md:90,95-107,125-161` (Gate 11) mit hartem
+> Floor 60 %, Target 80 %/90 %, Registration in
+> `scripts/gate-exceptions.json` mit Ablaufdatum und explizitem
+> Entfernungs-Kriterium (Coverage stabil ≥ 80 % global). Damit ist der
+> Ad-hoc-Drift in ein governance-fähiges Objekt überführt; AUFG-02-04
+> bleibt dennoch offen, bis der Target-Zustand erreicht ist.
 
 | Datei/Verzeichnis | Inhalt | Qualität | Anmerkung |
 |---|---|---|---|
@@ -620,6 +649,15 @@
   Sub-Hooks zerlegt werden, bei stabiler öffentlicher Hook-API. Siehe
   AUFG-01-03 (aktualisiert).
 
+> **Re-Check 2026-07-05: ✅ ERLEDIGT via AUFG-01-08** —
+> `TipTapEditorController.ts` wurde von 400 → **115 Zeilen** als dünner
+> Composer reduziert, mit 8 fokussierten extrahierten Modulen
+> (`useEditorInstance`, `useEditorAutosave`, `useGhostTextConfig`,
+> `useGhostTextOnboardingAnchor`, `useRewriteActions`, `useRewriteFlow`,
+> `useRewriteOperation`, `rewriteStream`); öffentliche Hook-API stabil.
+> Parallel: `WritingPipeline.generate` 206→118 + neues `_mode_dispatch.py`.
+> Siehe `review-01-architektur.md` AUFG-01-08 (Re-Check 2026-07-01).
+
 ---
 
 ## 9. AI-Verbesserungspotenzial für den Nutzer
@@ -728,6 +766,29 @@ für ohne-`use`-Präfix benannte Hook-Dateien), keine Defekte.
 ## Aufgaben
 
 ### [AUFG-03-01] Writing-Interview-Pfad von `ModelRegistry.run()` auf `NarrareAgent` umstellen
+
+> **Re-Check 2026-07-05:** ❌ **Offen** — `pipeline_interview.py:58,66`
+> nutzt weiterhin `pipeline._registry.run()` (ModelRegistry) direkt mit
+> `# pyright: ignore[reportPrivateUsage]` (Zeilen 58 und 66). Kein
+> `NarrareAgent`-Subtyp involviert, kein Capability-Injection-Regressionstest
+> vorhanden. Registry-Status: `open` (P2).
+>
+> **Re-Mediation 2026-07-05:** ✅ **ERLEDIGT** — Neuer
+> `InterviewQuestionAgent(NarrareAgent[InterviewDeps, str])` in
+> `packages/core/narrare_core/agents/interview_question_agent.py`;
+> `pipeline_interview.py` nutzt jetzt `pipeline._registry.get_model()` +
+> `_get_or_create_interview_agent()` (AgentRegistry-Cache, falls
+> gewired, sonst Direktinstanziierung — analog `writing_graph_prompts.py`).
+> `_build_and_validate_prompt` bleibt upstream (Mode-1-Evidence
+> erhalten, `feature_id == "writing_chat"` weiterhin sichergestellt).
+> `# pyright: ignore[reportPrivateUsage]` reduziert auf den im Projekt
+> etablierten `_agent_registry`/`_build_and_validate_prompt`-Zugriff
+> (Test-Helper-Muster). Capability-Injection-Regressionstest in
+> `tests/unit/core/agents/test_interview_question_agent.py`
+> (`TestInterviewQuestionAgentCapabilities` prüft NarrareMeta/
+> NarrareUniversalRules/NarrareObservability). `check-adoption` PASS 0.97,
+> `check-architecture` grün.
+
 **Priorität:** Mittel
 **Bereich:** AI / Architektur
 **Kontext:** `packages/core/narrare_core/writing/pipeline_interview.py:58-78`
@@ -758,6 +819,28 @@ das alle 26 anderen produktiven Agenten konsequent leben.
 **Geschätzter Aufwand:** M
 
 ### [AUFG-03-02] KB-Assist Invocation-Fallback semantisch verhärten oder als gouvernierte Ausnahme klassifizieren
+
+> **Re-Check 2026-07-05:** ❌ **Offen** — `assist_service.py:195` noch
+> `except Exception:` (breit); Runtime-`assert` in Zeile 193 noch da;
+> Fallback auf `self._prompt_composer.build()` unverändert.
+> Behavioural Unit-Tests decken beide Pfade
+> (`test_run_agent_calls_compose_invocation_mode1`,
+> `test_run_agent_compose_invocation_failure_is_graceful`), pinnen aber
+> weder Exception-Verhärtung noch `degraded_mode`-Markierung. Registry-
+> Status: `open` (P2).
+>
+> **Re-Mediation 2026-07-05:** ✅ **ERLEDIGT** — Breit-Broad-Exception
+> ersetzt durch `except (InvocationValidationError, PromptError,
+> ConfigurationError)`; Runtime-`assert` ersetzt durch typed
+> `ConfigurationError(code="COMPOSITION_EMPTY")` (analog
+> `story_suggest_service.py`); Log-Event `invocation_composition_failed`
+> → `invocation_composition_degraded` mit `error_code` für eindeutige
+> Log-Triage. Generische Exceptions propagieren fail-fast. Tests in
+> `tests/unit/api/kb/test_assist_service_fallback.py` (4 Tests:
+> InvocationValidationError, PromptError, RuntimeError-Propagation,
+> composed_prompt=None → ConfigurationError). `assist_service.py`
+> bleibt unter 300 Zeilen (RULE-04).
+
 **Priorität:** Mittel
 **Bereich:** AI / Invocation-Integrity (ADR-048)
 **Kontext:** `apps/api/narrare/kb/assist_service.py:185-202` fängt einen
@@ -789,6 +872,30 @@ das在生产 Code für echte Fehlerorte ungeeignet ist.
 **Geschätzter Aufwand:** S–M
 
 ### [AUFG-03-03] A2A/MCP-Feature-Dateien: Status- und Pfadgenauigkeit korrigieren
+
+> **Re-Check 2026-07-05:** ❌ **Offen** — `INFRA-006` frontmatter
+> weiterhin `status: in progress` (Zeile 4); Phantom-Pfade weiterhin
+> vorhanden (`apps/api/a2a/server.py`, `apps/api/a2a/contracts.py`,
+> `apps/api/routers/a2a.py` — Zeilen 17–19, 43). `apps/api/routers/`
+> existiert nicht; aktuelles Schema ist `apps/api/narrare/<domain>/router.py`.
+> `INFRA-008` referenziert weiterhin `tools/mcp-server/narrare_mcp/server.py`
+> (Zeile 17, 43) und `narrare auth login`-CLI (Zeile 51) — beides nicht
+> vorhanden. Feature-Index (`docs/features/INDEX.md:38`) listet INFRA-006
+> als 🔨 „in progress". Kein `check_feature_path_accuracy`-Skript
+> existiert. Registry-Status: `open` (P3).
+>
+> **Re-Mediation 2026-07-05:** ✅ **ERLEDIGT** — INFRA-006 `status:
+> planned`, Phantom-Pfade geleert + Body als „planned, blocked on Q-002"
+> markiert; INFRA-008 Phantom-Pfade geleert + Body als „planned, blocked
+> on Q-001" markiert; Feature-Index INFRA-006 🔨→📋. Zusätzlich 5 weitere
+> Phantom-Pfade korrigiert (ASSIST-004, SET-004, INFRA-010).
+> Neues Skript `scripts/check_feature_path_accuracy.py` (CI-blockierend
+> über `just check-feature-paths` + `check-full` + pre-commit) validiert
+> `service:`/`contract:`/`router:`/`prompt:`-Pfade gegen das Dateisystem
+> (mit Brace-Expansion-, Anchor- und Class-Suffix-Auflösung).
+> 38 Unit-Tests in `tests/unit/scripts/test_check_feature_path_accuracy.py`.
+> Implementiert auch Präventionsmaßnahme **P7** (RC8 geschlossen).
+
 **Priorität:** Niedrig
 **Bereich:** Governance / Docs
 **Kontext:** `docs/features/infra/INFRA-006-a2a-integration.md` trägt
@@ -819,6 +926,42 @@ und „Dokumentiert ≠ Implementiert" unterläuft.
 **Geschätzter Aufwand:** S
 
 ### [AUFG-03-04] File-Size-Gate: Hook-Dateien ohne `use`-Präfix entgehen der 150-Zeilen-Hook-Grenze
+
+> **Re-Check 2026-07-05:** ⚠️ **ID-Kollision + Teilerledigung** — Diese
+> ID ist in `docs/architecture/governance/aufg-registry.md:157` bereits
+> mit anderem Inhalt belegt („MCP/A2A als geplante Adapter konkretisieren
+> oder aus Review-Scope entfernen", Status `accepted_enhancement`, P3).
+> Die Review-Datei hat die ID reused — dasselbe Muster wie die frühere
+> AUFG-01-03↔AUFG-01-08-Kollision.
+>
+> **Teilerledigung:** Der `TipTapEditorController.ts`-Teil der Aufgabe ist
+> via **AUFG-01-08 erledigt** (2026-07-01): Datei von 400 → 115 Zeilen,
+> 8 Module extrahiert (siehe §8 Re-Check oben).
+>
+> **Re-Mediation 2026-07-05:** ✅ **ERLEDIGT** — File-Size-Gate-Logik
+> `_limit_for` (`scripts/check_frontend_file_size.py`) erkennt jetzt
+> Hook-Exporte (`export function use*` / `const use*` / `async function
+> use*`) zusätzlich zum Dateinamen-Präfix. ui-principles §15 aktualisiert.
+> 4 davon-betroffene Controller-Dateien modularisiert (ohne technischen
+> Schulden als Baseline):
+> - `worldBuildingState.ts` 168 → 139 (neu: `worldBuildingNavigation.ts`)
+> - `KnowledgeGraphController.ts` 188 → 120 (neu: `useGraphCytoscape.ts`,
+>   `useGraphShortestPath.ts`)
+> - `KBAssistedCreationController.ts` 234 → 149 (neu:
+>   `useKBAssistedSession.ts`, `useKBFieldSuggest.ts`)
+> - `generationPanelController.ts` 268 → 147 (neu: `useGenerationStream.ts`,
+>   `useGenerationRating.ts`, `useGenerationActions.ts`,
+>   `useGenerationConfig.ts`, `useGenerationMutations.ts`)
+> 20 Unit-Tests in `tests/unit/scripts/test_check_frontend_file_size.py`.
+> `check-frontend-size`: 0 current / 0 baseline / 0 new. Frontend-Tests:
+> 304 Dateien / 2476 Tests grün. Implementiert Präventionsmaßnahme **P10**
+> (RC10 geschlossen).
+>
+> **Hinweis zur ID-Kollision:** Die Substanz dieser Aufgabe ist erledigt,
+> aber die ID-Kollision mit `aufg-registry.md:157` (MCP/A2A-Adapter)
+> bleibt als Governance-Punkt bestehen — Coordinator muss die ID in der
+> Registry aufräumen (P8 / RC9).
+
 **Priorität:** Mittel
 **Bereich:** Frontend / Governance / Tooling
 **Kontext:** `scripts/check_frontend_file_size.py:_limit_for` (Zeilen 52–62)
@@ -832,7 +975,9 @@ betroffen (Frontend-Review, Stand 2026-06-29):
 - `packages/web/components/studio/editor/TipTapEditorController.ts` =
   400 Zeilen (exportiert `useTipTapEditorController`, Graph-Degree 117);
   exakt an der typescript-400-Grenze (`lines > limit` = `400 > 400` = False →
-  kein Violation).
+  kein Violation). **Re-Check 2026-07-05: via AUFG-01-08 auf 115 Zeilen
+  reduziert — nicht mehr betroffen; nur noch `generationPanelController.ts`
+  illustriert die Gate-Lücke.**
 - `packages/web/components/studio/editor/generationPanelController.ts` =
   268 Zeilen (exportiert `useGenerationPanelController`); deutlich über
   Hook-150, aber unter typescript-400.
@@ -856,6 +1001,135 @@ dokumentierte Hook-Grenze für eine Klasse zentraler Controller-Dateien.
 - [ ] ui-principles §15 (Hook-Limit 150) und `check_frontend_file_size.py`
       sind hinsichtlich der Hook-Klassifikation konsistent.
 **Geschätzter Aufwand:** S–M
+
+---
+
+## Re-Check & Ursachenanalyse (2026-07-05)
+
+> Eingefügt durch den Coordinator als Wiederabgleich der Aufgaben gegen
+> HEAD 6 Tage nach dem Original-Review. Beweistext aus 2026-06-29 bleibt
+> unverändert; dieser Abschnitt ergänzt Status, Nebenpunkte und eine
+> aufgabenspezifische Ursachenanalyse, die auf Review-01's RC1–RC6 /
+> P1–P6 aufsetzt.
+
+### Status-Übersicht (alle Punkte aus dieser Datei)
+
+| ID / Punkt | Status | Evidenz (HEAD 2026-07-05) |
+|---|---|---|
+| AUFG-03-01 (Writing-Interview) | ✅ erledigt (2026-07-05) | Neuer `InterviewQuestionAgent` in `agents/interview_question_agent.py`; `pipeline_interview.py` auf `NarrareAgent`-Pfad umgestellt (Mode-1-Evidence erhalten); Capability-Regressionstest in `test_interview_question_agent.py`. `check-adoption` PASS 0.97. |
+| AUFG-03-02 (KB-Assist Fallback) | ✅ erledigt (2026-07-05) | `except (InvocationValidationError, PromptError, ConfigurationError)` statt `except Exception`; `ConfigurationError(code="COMPOSITION_EMPTY")` statt Runtime-`assert`; Log-Event `invocation_composition_degraded`; 4 Tests in `test_assist_service_fallback.py`. |
+| AUFG-03-03 (A2A/MCP Docs) | ✅ erledigt (2026-07-05) | INFRA-006/008 Status + Pfade korrigiert; 5 weitere Phantom-Pfade (ASSIST-004, SET-004, INFRA-010); neues CI-blockierendes `check_feature_path_accuracy.py` (38 Tests) + `just check-feature-paths` + pre-commit. Prävention P7 umgesetzt. |
+| AUFG-03-04 (File-Size-Gate) | ✅ erledigt (2026-07-05) | `_limit_for` erkennt Hook-Exporte; ui-principles §15 aktualisiert; 4 Controller modularisiert (insgesamt 858→555 Zeilen über 12 Dateien); 20 Tests in `test_check_frontend_file_size.py`. Prävention P10 umgesetzt. ID-Kollision mit Registry-Zeile 157 bleibt als Governance-Punkt (P8). |
+| AUFG-01-08 / TipTapEditorController | ✅ erledigt (2026-07-01) | `useTipTapEditorController` 400→115 + 8 Module; `WritingPipeline.generate` 206→118 + `_mode_dispatch.py`. Siehe `review-01-architektur.md`. |
+| §2 AUFG-02-04 (Coverage-Drift) | 🟡 formalisiert | 60%-Drift in `quality-gates.md` Gate 11 als governed exception überführt (`gate-exceptions.json`, hart 60 %, Target 80 %). AUFG-02-04 bleibt offen bis Target-Zustand. |
+| §7 editorStore.ts-Smell | ❌ unverändert | 89→100 Zeilen; `betaReaderResult`/`sentimentResult`/`consistencyResult` weiterhin mit UI-Toggles kolokalisiert. Within-limit, kein AUFG. |
+| §7 generation-streams DRY | ❌ unverändert | `streamRewrite` (161–220) ≈ `streamStyleVariantRegeneration` (230–289), nur URL unterscheidet sich. Vertretbar, kein AUFG. |
+| §7 governed-exclusions-Frische | ✅ automatisiert | `check_8_stale_exclude.py` (90-Tage-Fenster, AUFG-Link-Erzwingung). 3 Exclude-Einträge alle mit `owner`/`exit`/`re_evaluated`. Keine verrotteten Ausnahmen. |
+| §7 AUFG-02-03 (Vitest-Laufzeit) | ❌ offen | In Registry separat geführt; Erwähnung in §7 weiterhin zutreffend. |
+
+**Bilanz:** Alle 4 Substanz-AUFGs erledigt (03-01, 03-02, 03-03, 03-04) plus
+TipTapEditorController via AUFG-01-08. Präventionsmaßnahmen P7 (RC8) und P10
+(RC10) umgesetzt. Verbleibend: P8 (AUFG-ID-Kollisions-Check, RC9), P9
+(Adoption-Ratchet-zu-blockierend, RC7), P11 (ADR-048-Invocation-Fallback-Check,
+RC11).
+
+### Nebenpunkte, die eigene Aufmerksamkeit verdienen
+
+- **`editorStore.ts`-Smell (server-derived State in UI-Store):** Kein
+  Defekt und within-limit (100/150 Zeilen), aber der Smell ist seit dem
+  Review nicht kleiner geworden. Der review-interne Hinweis „bei weiterem
+  Zuwachs TanStack-Query-Cache-Refactoring" sollte beobachtet werden;
+  spätestens beim Hinzukommen eines vierten Analyse-Ergebnis-Felds
+  wäre ein eigener AUFG (P3) gerechtfertigt.
+- **`generation-streams.ts` DRY-Potenzial:** ~60 Zeilen nahezu identisch
+  zwischen `streamRewrite` und `streamStyleVariantRegeneration`. Die
+  interne `emitCompleteAlternatives`/`complete`-Logik ließe sich in
+  eine gemeinsame `streamAlternatives(url, …)`-Factory extrahieren.
+  Vertretbarer Smell, aber ein Quick-Win bei nächster Berührung.
+- **§9 AI-Pattern-Lücke (autonome Web-Research):** Nach wie vor kein
+  `RESEARCH`-Bundled-Prompt; `RESEARCH`-Intent weiter in
+  `NON_ROUTEABLE_INTENTS`. Bewusst post-MVP; Q-001/Q-002 offen. Keine
+  Änderung seit dem Review.
+
+### Ursachenanalyse — warum entstehen diese Probleme trotz umfangreicher Doku?
+
+Review-01 hat bereits RC1–RC6 + Prävention P1–P6 identifiziert (ADRs
+060/061/062 umgesetzt ✅). Für die Review-03-spezifischen Punkte kommen
+folgende, *aufgabenspezifische* Ursachen hinzu:
+
+**RC7 — Adoption-Checker-Ratchet-Toleranz (betrifft AUFG-03-01).**
+`just check-adoption` erkennt den `pipeline_interview.py`-Inline-Fallback
+korrekt („1 inline fallback(s) für `writing/interactive_session`"),
+toleriert ihn aber als Baseline-Debt (`1 current / 1 baseline / 0 new /
+0 resolved`). Damit ist der Anti-Pattern *sichtbar*, aber nicht
+*blockierend* — neuen Code-Pfaden steht dasselbe Muster offen, solange
+die Ratchet-Zahl nicht steigt. ADR-061 P1 (Adoption-Effect-Integrity)
+ist nur warning-only mit Clean-Baseline-Ratchet.
+
+**RC8 — Feature-Datei-Pfad-Verifikation fehlt (betrifft AUFG-03-03).**
+Es gibt `check_doc_drift.py`, `check_gate_drift.py`,
+`check_governance_drift.py` — aber **keiner** validiert
+`service:`/`router:`/`contract:`-Frontmatter-Pfade gegen das Dateisystem.
+Feature-Dateien können Phantom-Pfade im alten Router-Schema
+(`apps/api/routers/...`) jahrelang akkumulieren, ohne dass ein Trigger
+greift. Das ist genau die „Dokumentiert ≠ Implementiert"-Lektion aus
+AGENTS.md / `architectural-discipline.md` §7 — sie ist dokumentiert, aber
+nicht *erzwungen*. ADR-062 (P3/P5: Status-SSOT + Review→Registry-Linking)
+richtet sich auf Status-Semantik, nicht auf Pfad-Existenz.
+
+**RC9 — AUFG-ID-Vergabe ist manuell und kollisionsanfällig (betrifft
+AUFG-03-04).** Die Review-Datei vergibt IDs frei; die Registry ist laut
+eigenem Header die „durable, tracked lifecycle surface", aber es gibt
+keinen Pre-commit/CI-Check, der Review→Registry-ID-Kollisionen blockiert.
+Two-for-one-Kollisionen sind wiederkehrend (AUFG-01-03↔01-08 damals,
+AUFG-03-04 jetzt). Dass die TipTapController-Teilerledigung via AUFG-01-08
+passierte, *ohne* dass diese Review-Datei den Wiederabgleich erhielt,
+ist ein sekundärer Beleg: Die Review→Registry-Verlinkung aus ADR-062 P3
+ist zwar umgesetzt, aber sie trägt keine Status-Rückpropagierung zurück
+in die Review-Datei.
+
+**RC10 — File-Size-Gate-Klassifikation ist zu simpel (betrifft
+AUFG-03-04-Substanz).** `_limit_for` (`check_frontend_file_size.py:52-62`)
+klassifiziert nach Dateinamen-String-Match (`use*.ts`, `*Store.ts`), nicht
+nach Hook-Exporten (`export function use*`). Controller-Dateien, die
+funktional Hooks sind (`useTipTapEditorController` aus
+`TipTapEditorController.ts`), entgehen der strengeren 150er-Hook-Grenze.
+Das Gate war einfach zu implementieren, aber die Heuristik unterläuft die
+dokumentierte ui-principles-§15-Regel für eine Klasse zentraler Dateien.
+
+**RC11 — Graceful-Degradation-vs-Invocation-Integrity-Spannung (betrifft
+AUFG-03-02).** Der breite `except Exception`-Fallback in
+`assist_service.py:195` ist eine bewusste RULE-11-Graceful-Degradation
+(nicht silent, geloggt), unterläuft aber ADR-048 Mode-1
+(Validation/Enrichment/Evidence). Beim Schreiben wurde Robustheit über
+Invocation-Integrity gestellt — es gibt keinen Checker, der ADR-048-Pfade
+darauf prüft, ob ihr Fallback die Evidence-Aufzeichnung umgeht oder als
+`degraded_mode` markiert.
+
+### Präventionsplan — Ergänzung zu Review-01's P1–P6
+
+| ID | Maßnahme | Deckt RC | Priorität |
+|----|----------|----------|-----------|
+| **P7** | `check_feature_path_accuracy`: neuer Checker oder Erweiterung von `check_doc_drift`, der `service:`/`router:`/`contract:`-Pfade in Feature-Frontmatter gegen das Dateisystem validiert oder `status: planned` verlangt. (Entspricht dem *optionalen* Kriterium aus AUFG-03-03 — sollte verbindlich werden.) | RC8 | P3 |
+| **P8** | AUFG-ID-Kollisions-Check: CI-Check, der bei Review→Registry-Überführung ID-Eindeutigkeit verifiziert und bei Kollision blockiert (analog zu ADR-062-Drift-Checker). | RC9 | P3 |
+| **P9** | Adoption-Ratchet zu blockierend ratcheten: ADR-061 P1 ist warning-only mit Clean-Baseline-Ratchet — langfristig inline-fallbacks blockierend statt nur toleriert. | RC7 | P4 (rückstandsaufholend) |
+| **P10** | Hook-Export-basierte File-Size-Klassifikation: Gate erkennt `export function use*` zusätzlich zum Dateinamen-Präfix; Test für die Klassifikationslogik. | RC10 | P3 |
+| **P11** | ADR-048-Invocation-Fallback-Check: optionaler Checker, der ADR-048-Pfade auf Evidence-Erhaltung im Fallback prüft oder `degraded_mode`-Markierung verlangt. | RC11 | P3 |
+
+### Wichtigste Erkenntnis
+
+Drei der vier Substanz-AUFGs (03-01, 03-02, 03-03) sind seit dem Review
+am 2026-06-29 *unangetastet* geblieben; die einzige Teilerledigung
+(TipTapEditorController) kam durch eine *andere* AUFG (01-08) und wurde
+*nicht* in diese Review-Datei zurückpropagiert. Das ist ein Beleg dafür,
+dass die Review-Dateien trotz ADR-062-Registry aktuell *evidenz-only* und
+nicht *status-live* sind: Erledigungen werden in der Registry geführt,
+aber die Review-Dateien veralten stillschweigend. Genau dieser
+Wiederabgleich-Check — periodisch oder getriggert durch
+Registry-Status-Wechsel — ist die Lücke, die P3/P5 aus ADR-062 adressieren,
+aber noch nicht vollständig schließen. Ein periodischer
+„Review-Reconcile"-Job (z. B. quarterly oder beim Status-Wechsel einer
+AUFG) wäre ein möglicher Ergänzungs-Punkt für P8.
 
 ---
 
@@ -907,6 +1181,24 @@ Original (review-01) geändert; Abschnitt 8 dieses Reviews liefert jedoch
 die aktualisierte Frontend-Evidenz (400 statt 335 Zeilen + Decomposition-
 Empfehlung), auf die AUFG-01-03 zurückgreifen kann. Coordinator kann
 beide Tasks zusammenführen.
+
+> **Re-Check 2026-07-05 — Aufgaben-Status:**
+> - AUFG-03-01: ✅ erledigt 2026-07-05 (P2)
+> - AUFG-03-02: ✅ erledigt 2026-07-05 (P2)
+> - AUFG-03-03: ✅ erledigt 2026-07-05 (P3)
+> - AUFG-03-04: ✅ erledigt 2026-07-05 (Hook-Export-Erkennung + 4
+>   Controller modularisiert). ID-Kollision mit `aufg-registry.md:157`
+>   bleibt als Governance-Punkt (P8 / RC9).
+> - AUFG-01-08 (TipTapEditorController + WritingPipeline): ✅ erledigt
+>   2026-07-01 (`review-01-architektur.md`).
+>
+> Prävention P7 (Feature-Pfad-Checker) und P10 (Hook-Export-Klassifikation)
+> umgesetzt. Verbleibend: P8 (ID-Kollisions-Check, RC9), P9 (Adoption-
+> Ratchet zu blockierend, RC7), P11 (ADR-048-Invocation-Fallback-Check, RC11).
+>
+> Siehe [Re-Check & Ursachenanalyse (2026-07-05)](#re-check--ursachenanalyse-2026-07-05)
+> für die vollständige Status-Tabelle, Nebenpunkte und Ursachenanalyse
+> RC7–RC11 / Prävention P7–P11.
 
 **Geänderte Dateien:** Nur `_audit/results/technical-review/review-03-ai-features.md`
 (diese Datei). Kein Code-Change, kein Commit, kein `--no-verify`.

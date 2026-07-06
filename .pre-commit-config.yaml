@@ -77,6 +77,16 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Feature-File Path Accuracy — prevents "documented ≠ implemented" drift
+      # (AUFG-03-03 / RC8): phantom paths in feature frontmatter.
+      - id: feature-path-accuracy
+        name: Feature Path Accuracy (AUFG-03-03)
+        entry: uv run python scripts/check_feature_path_accuracy.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Prompt Surface Contract — ADR-037 enforcement
       - id: prompt-surface-contract
         name: Prompt Surface Contract (ADR-037)

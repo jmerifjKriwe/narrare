@@ -13,7 +13,8 @@ ui_help_long: |
   This guide covers all keyboard shortcuts for the editor, dashboard, and navigation. Master these to dramatically speed up your writing workflow. You can view all shortcuts, resolve conflicts, and customize them in Settings.
 ui_available_in: ["editor", "dashboard"]
 
-service: packages/web/src/lib/shortcuts.ts
+# Planned feature — implementation path intentionally empty.
+service: ""
 contract: ""
 router: ""
 prompt: ""
