@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/examples/typescript-patterns | Priority: P2 | Source: docs/development/coding-standards.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/examples/typescript-patterns | Priority: P2 | Source: docs/development/coding-standards.md | Updated: 2026-06-12 -->
 
 # TypeScript Patterns
 

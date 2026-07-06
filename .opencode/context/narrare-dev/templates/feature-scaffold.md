@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/templates/feature-scaffold | Priority: medium | Source: .opencode/agents/subagents/narrare-dev/architecture.md + docs/features/INDEX.md | Updated: 2026-05-31 -->
+<!-- Context: narrare-dev/templates/feature-scaffold | Priority: medium | Source: .opencode/agents/subagents/narrare-dev/architecture.md + docs/features/INDEX.md | Updated: 2026-06-12 -->
 
 # Feature Spec Scaffold
 

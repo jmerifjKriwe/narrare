@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/directory-structure | Priority: P1 | Source: docs/reference/directory-structure.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/lookup/directory-structure | Priority: P1 | Source: docs/reference/directory-structure.md | Updated: 2026-06-12 -->
 
 # Directory Structure
 

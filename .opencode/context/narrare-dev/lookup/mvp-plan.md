@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/mvp-plan | Priority: critical | Source: docs/mvp/mvp-plan.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/lookup/mvp-plan | Priority: critical | Source: docs/mvp/mvp-plan.md | Updated: 2026-06-12 -->
 
 # MVP Plan & Roadmap
 

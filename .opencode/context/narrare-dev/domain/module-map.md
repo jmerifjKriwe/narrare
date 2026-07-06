@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/domain/module-map | Priority: high | Source: docs/reference/directory-structure.md (788 lines) | Updated: 2026-05-31 -->
+<!-- Context: narrare-dev/domain/module-map | Priority: high | Source: docs/reference/directory-structure.md (788 lines) | Updated: 2026-06-12 -->
 
 # Module Map — Quick Reference
 

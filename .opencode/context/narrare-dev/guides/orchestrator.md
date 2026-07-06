@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/guides/orchestrator | Priority: high | Source: docs/development/orchestrator.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/guides/orchestrator | Priority: high | Source: docs/development/orchestrator.md | Updated: 2026-06-12 -->
 
 # Orchestrator Agent Guide
 

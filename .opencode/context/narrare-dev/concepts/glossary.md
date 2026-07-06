@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/concepts/glossary | Priority: high | Source: docs/_shared/GLOSSARY.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/concepts/glossary | Priority: high | Source: docs/_shared/GLOSSARY.md | Updated: 2026-06-12 -->
 
 # Narrare Glossary
 

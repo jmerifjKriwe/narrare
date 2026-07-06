@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/navigation | Priority: critical | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/navigation | Priority: critical | Updated: 2026-06-30 -->
 
 # Narrare Dev Context — Navigation
 

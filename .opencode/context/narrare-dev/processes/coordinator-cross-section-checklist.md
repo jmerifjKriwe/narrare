@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/processes/coordinator-cross-section-checklist | Priority: high | Updated: 2026-06-11 -->
+<!-- Context: narrare-dev/processes/coordinator-cross-section-checklist | Priority: high | Updated: 2026-06-12 -->
 
 # Coordinator Cross-Section Checklist (Querschnitts-Checkliste)
 

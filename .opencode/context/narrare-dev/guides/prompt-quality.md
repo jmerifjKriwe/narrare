@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/guides/prompt-quality | Priority: high | Source: docs/development/prompt-content-standards.md | Updated: 2026-06-12 -->
+<!-- Context: narrare-dev/guides/prompt-quality | Priority: high | Source: docs/development/prompt-content-standards.md | Updated: 2026-06-16 -->
 
 # Prompt Content Standards
 

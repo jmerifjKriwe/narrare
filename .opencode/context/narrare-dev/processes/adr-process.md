@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/processes/adr-process | Priority: medium | Source: docs/architecture/decisions/INDEX.md + _TEMPLATE.md | Updated: 2026-06-17 -->
+<!-- Context: narrare-dev/processes/adr-process | Priority: medium | Source: docs/architecture/decisions/INDEX.md + _TEMPLATE.md | Updated: 2026-06-21 -->
 
 # ADR Process — Architecture Decision Records
 

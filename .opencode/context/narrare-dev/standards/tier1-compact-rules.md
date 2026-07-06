@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/standards/tier1-compact-rules | Priority: critical | Max: 150 lines | Updated: 2026-06-04 -->
+<!-- Context: narrare-dev/standards/tier1-compact-rules | Priority: critical | Max: 150 lines | Updated: 2026-06-20 -->
 
 # Tier-1 Rules — Mandatory for ALL Agents
 
