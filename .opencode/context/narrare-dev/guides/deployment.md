@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/guides/deployment | Priority: high | Source: docs/development/deployment-guide.md | Updated: 2026-06-05 -->
+<!-- Context: narrare-dev/guides/deployment | Priority: high | Source: docs/development/deployment-guide.md | Updated: 2026-07-06 -->
 
 # Deployment & Dev Environment
 
@@ -10,9 +10,13 @@
 
 ```bash
 just dev-setup    # First-time: install dev + NLP deps/models, create .env, run migrations
-just dev-up       # Start PostgreSQL (pgvector:pg17) + Redis (8-alpine)
-just dev          # Start API (port 8000) + frontend (port 3000) + workers
+just dev          # Start API (port 8000) + frontend (port 3000) + workers (auto-starts PostgreSQL + Redis via _ensure-services)
+just dev-services # Start backing Docker services only (PostgreSQL pgvector:pg17 + Redis 8-alpine) — use this when you want the DBs without the app
 ```
+
+> **No `just dev-up`.** There is no separate `dev-up` recipe. `just dev` already ensures
+> PostgreSQL + Redis are running via `_ensure-services`; for a pure service start use
+> `just dev-services`, and stop them with `just dev-services-stop`.
 
 Auto-migration: API runs `alembic upgrade head` on every startup via `lifespan.py`.
 
@@ -25,7 +29,12 @@ Auto-migration: API runs `alembic upgrade head` on every startup via `lifespan.p
 
 App runs locally (not in Docker) for hot reload.
 
-## CI Pipeline (7-job workflow)
+## CI Pipeline
+
+> Authoritative source: `.github/workflows/ci.yml` — read it for the current job list
+> (e.g. architecture, lint, typecheck, security, test-unit, test-integration,
+> update-coverage-badge, frontend, test-e2e, warnings-summary) and ordering. The job
+> count and set below can drift; do not rely on the number of jobs shown here.
 
 | Job | Target | Commands |
 |-----|--------|----------|
@@ -39,7 +48,11 @@ App runs locally (not in Docker) for hot reload.
 
 **Ordering:** architecture → lint + typecheck (parallel) → unit → integration → frontend + security. PR merge requires ALL green.
 
-## Pre-commit Hooks (9 hooks)
+## Pre-commit Hooks
+
+> Authoritative source: `.pre-commit-config.yaml` — see it for the current hook list,
+> and run `pre-commit run --all-files` for the live set. The hook count and list below
+> can drift; do not rely on the number shown here.
 
 | Hook | Stage | What it runs |
 |------|-------|--------------|

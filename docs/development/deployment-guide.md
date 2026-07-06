@@ -79,6 +79,52 @@ startup (via `lifespan.py`). You do not need to run migrations manually for
 normal development. The current schema version is logged at startup. If
 migrations fail, the app fails to start — check the terminal output for details.
 
+### Setup Troubleshooting
+
+#### `uv sync --frozen` fails with a lockfile error
+
+**Symptom:** `just dev-setup` (or `uv sync --frozen --all-packages …` directly)
+aborts with a message like *"the lockfile … needs to be updated"*,
+*"lockfile out of date"*, or a hash/diff error.
+
+**Cause:** `--frozen` is intentional — it enforces reproducible installs by
+refusing to touch `uv.lock`. The error means the lockfile on your branch no
+longer matches the dependencies declared in the `pyproject.toml` files. This
+happens most often when:
+
+- you checked out a branch where someone ran `just deps-update`,
+  `uv add …`, or `uv remove …` and committed the `pyproject.toml` change
+  **but** the `uv.lock` on your branch predates it;
+- a Dependabot/renovate PR updated `pyproject.toml` without a matching lockfile;
+- you are on `main` right after such a change landed.
+
+**Fix — pick the one matching your situation:**
+
+1. **You just want to run the project (most common):** fetch the committed
+   lockfile that matches the branch.
+   ```bash
+   git checkout main -- uv.lock   # if the drift is on a feature branch
+   uv sync --frozen --all-packages --group dev --extra nlp
+   ```
+
+2. **You intentionally changed dependencies and need to update the lockfile:**
+   drop `--frozen` once to regenerate, then commit both files together.
+   ```bash
+   uv lock --upgrade-package <name>      # or: uv lock (whole graph)
+   uv sync --all-packages --group dev --extra nlp   # no --frozen here
+   git add pyproject.toml uv.lock && git commit
+   ```
+   Never commit a `pyproject.toml` dependency change without its `uv.lock`.
+
+3. **You are reviewing a Dependabot PR:** the PR's CI will fail the same way
+   until the lockfile is regenerated; this is the signal that the PR is
+   incomplete. Regenerate locally (`uv lock`) and push.
+
+**When `--frozen` may be dropped deliberately:** only on the machine that owns
+the dependency change, to regenerate the lockfile. CI and `just dev-setup`
+always keep `--frozen` — that is the contract that makes installs reproducible
+across VM-first dev, DevContainer, and CI.
+
 ### Dev Container
 
 DevContainer support is optional. It must stay portable and must not become a

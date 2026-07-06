@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/processes/quality-gates | Priority: high | Source: docs/development/testing-standards.md | Updated: 2026-05-31 -->
+<!-- Context: narrare-dev/processes/quality-gates | Priority: high | Source: docs/development/testing-standards.md | Updated: 2026-07-06 -->
 
 # Quality Gates
 
@@ -72,7 +72,10 @@ Coverage below minimum = CI failure. No exceptions.
 The full CI pipeline runs these gates in order. See `.github/workflows/ci.yml`
 for the authoritative source.
 
-### Gate Status in CI (Stand: 2026-06-19)
+### Gate Status in CI
+
+> Authoritative source: `.github/workflows/ci.yml`. The job/gate mapping below can drift;
+> verify against the workflow file for the current set and blocking behavior.
 
 | # | Gate | CI Status | Notes |
 |---|------|-----------|-------|
@@ -85,7 +88,7 @@ for the authoritative source.
 | 6 | `check_locale_sync.py` | ✅ Blocking | `architecture` Job (previously: warning) |
 | 7 | `check_doc_drift.py` | ✅ Blocking | `architecture` Job |
 | 8 | `export_openapi.py --check` | ✅ Blocking | `architecture` Job |
-| 9 | `pyright` | ⚠️ Partial | `pyright` in CI aktiv (RULE-09). Pyright is the sole type checker. |
+| 9 | `pyright` | ✅ Blocking (full, strict) | `pyright` in CI aktiv (RULE-09). Pyright is the sole type checker. Runs in the `typecheck` job with no `continue-on-error`. |
 | 10 | `pytest` unit tests | ✅ Blocking | `test-unit` Job |
 | 11 | Coverage threshold | ✅ Blocking (≥80%) + Modul-Ratchet | Global `--cov-fail-under=80` (`ci.yml`) + `check_module_coverage.py --fail` (RULE-10 Targets) + ratcheted Baselines (`scripts/coverage_baselines.json`, siehe `_coverage_model.py`) |
 | 12 | `pytest` integration tests | ✅ Blocking | `test-integration` Job |
@@ -135,7 +138,9 @@ und warnt/failt bei Überschreitung.
 
 ### Registrierung
 
-Jede Übergangsausnahme wird in `scripts/gate-exceptions.json` registriert:
+Jede Übergangsausnahme wird in `scripts/gate-exceptions.json` registriert (read
+that file for the live set and status — the block below is the historical shape of the
+now-resolved `coverage-threshold` exception, kept only as a field-reference example):
 
 ```json
 {
@@ -147,12 +152,16 @@ Jede Übergangsausnahme wird in `scripts/gate-exceptions.json` registriert:
       "set_date": "2026-06-04",
       "expires": "2026-09-01",
       "review_after": "2026-07-15",
-      "status": "active",
+      "status": "resolved",
       "approved_by": "user"
     }
   ]
 }
 ```
+
+> **Historical note:** The `coverage-threshold` exception above is **resolved**
+> (lifted 2026-06-14, see the Coverage-Gate section). It is shown only to document the
+> JSON schema. Do not treat it as an active exception.
 
 ### CI Integration
 
