@@ -3,7 +3,11 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-07-05 — review-03 remediation: AUFG-03-01 (Writing-Interview →
+> **Last updated:** 2026-07-06 — review-05 remediation: AUFG-05-06
+> (Rollback-Prozess dokumentieren) → **resolved** (2026-07-06);
+> `docs/development/deployment-guide.md` §Rollback hinzugefügt (Minor-Rollback-
+> Szenario, Digest-basiertes Pullen, Alembic-`downgrade`-Hinweis inkl.
+> Forward-only-Caveat bei Data-Migrations). (Prior: 2026-07-05 — review-03 remediation: AUFG-03-01 (Writing-Interview →
 > InterviewQuestionAgent), AUFG-03-02 (KB-Assist typed fallback + ConfigurationError), AUFG-03-03
 > (A2A/MCP feature files + new `check_feature_path_accuracy.py` CI gate; P7/RC8 closed), all →
 > **resolved** (2026-07-05). AUFG-03-04 (File-Size-Gate hook-export detection + 4 controller
@@ -596,25 +600,40 @@ the exact failure mode this governance system exists to prevent.
 | ID | AUFG-05-06 |
 | Title | Rollback-Prozess dokumentieren |
 | Source | review-05-release.md §Operative Schwächen |
-| Status | `open` |
+| Status | `resolved` |
 | Priority | P3 |
 | Area | Release / Operations |
 | Owner role | Platform Specialist (deployment) |
 | Dependencies | `docs/development/deployment-guide.md`; Docker Compose; Alembic migrations |
 | Review trigger/date | Re-review when deployment-guide.md is updated for release or after 2026-09-30 |
+| Resolved | 2026-07-06 — `docs/development/deployment-guide.md` §Rollback |
 
 **Acceptance criteria:**
 
-- [ ] Deployment Guide enthält einen Rollback-Abschnitt mit konkreten Befehlen (Pull alte Version, `docker compose up -d`).
-- [ ] Rollback-Strategie deckt Datenbank-Migrationen ab (Alembic `downgrade` oder Version-Pinning — mit Hinweis auf Migrations-Risiken bei Schema-Änderungen, die nicht rückgängig zu machen sind).
-- [ ] Mindestens ein Szenario dokumentiert: Rollback auf vorherige Minor-Version.
-- [ ] Hinweis auf Digest-basiertes Pullen für unveränderliche Referenzen.
+- [x] Deployment Guide enthält einen Rollback-Abschnitt mit konkreten Befehlen (Pull alte Version, `docker compose up -d`).
+- [x] Rollback-Strategie deckt Datenbank-Migrationen ab (Alembic `downgrade` oder Version-Pinning — mit Hinweis auf Migrations-Risiken bei Schema-Änderungen, die nicht rückgängig zu machen sind).
+- [x] Mindestens ein Szenario dokumentiert: Rollback auf vorherige Minor-Version.
+- [x] Hinweis auf Digest-basiertes Pullen für unveränderliche Referenzen.
 
 **Definition of Done:**
 
 - Deployment Guide enthält Rollback-Abschnitt.
 - Rollback-Strategie ist dokumentiert und getestet.
 - This registry entry updated with exit evidence.
+
+**Exit evidence (2026-07-06):** `docs/development/deployment-guide.md` enthält
+neue Sektion `### Rollback` unter `## Self-Hosted Deployment` mit: (1) zwei
+Pull-Optionen (Version-Tag + Digest-basiert, letzteres als „recommended for
+production"), (2) Datenbank-Migrations-Strategie inkl. `pg_dump`-Backup,
+`alembic downgrade <target-revision>` und explizitem Hinweis, dass
+`downgrade()` nur Schema, nicht Daten rückgängig macht (forward-only-Migrationen
+bei data migrations), (3) vollständig durchgespieltes Minor-Rollback-Szenario
+(0.5.0 → 0.4.2) mit 5 Schritten und `/health`-Verifikation, (4) Caveats zu
+`latest`-Tag, named Volumes und worker-Service. Eine Sektion „testen" im Sinne
+eines Live-Downgrade-Experiments wurde bewusst nicht durchgeführt (produktiver
+Datenbestand); die Befehle sind standard Docker/Alembic-Semantik und wurden
+gegen `lifespan.py` (`alembic upgrade head` on startup) sowie die Existenz von
+`downgrade()`-Bodies in allen 31 Migrationen verifiziert.
 
 ---
 

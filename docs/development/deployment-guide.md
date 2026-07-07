@@ -464,6 +464,94 @@ docker compose up -d
 # Migrations run automatically on startup — no manual step needed
 ```
 
+### Rollback
+
+Narrare does not run a separate rollback service: a rollback is an image
+replacement combined with a conscious decision about the database schema. The
+release pipeline produces immutable version tags and digests (see
+[Docker Image Verification](#docker-image-verification)), so reverting to a
+previous release is a two-step operation.
+
+#### Step 1 — Pull and start the previous image
+
+```bash
+# Option A: revert by version tag (SemVer, e.g. 0.4.2)
+docker compose pull
+docker image tag ghcr.io/<owner>/narrare:0.4.2 ghcr.io/<owner>/narrare:latest
+docker compose up -d
+
+# Option B (recommended for production): revert by digest (immutable)
+docker pull ghcr.io/<owner>/narrare@<previous-digest>
+docker image tag ghcr.io/<owner>/narrare@<previous-digest> ghcr.io/<owner>/narrare:latest
+docker compose up -d
+```
+
+`docker-compose.release.yml` pins the image as `narrare:latest`, so re-tagging
+the target image to `:latest` and running `up -d` recreates the containers with
+the older image. Each release's GitHub Release summary lists the image digest.
+
+#### Step 2 — Decide on database migrations
+
+On startup, `lifespan.py` runs `alembic upgrade head` automatically (see
+[Updates](#updates)). This is the critical rollback constraint: **if the newer
+release ran a migration that the older image does not know about, starting the
+older image will either fail the startup health check or run against a schema it
+was not built for.** Two cases:
+
+- **Patch-level rollback (e.g. 0.4.2 → 0.4.1), no schema change between the
+  releases:** no migration action needed. The older image starts cleanly.
+- **Minor/major rollback across a schema migration:** you must downgrade the
+  schema *before* starting the older image, while the newer image is still
+  running or via a one-off migration container:
+
+  ```bash
+  # Find the revision the older image expects (it is the latest migration
+  # file present in that image's apps/api/alembic/versions/)
+  docker compose run --rm --no-deps narrare \
+      alembic downgrade <target-revision>
+
+  # Then start the older image (see Step 1)
+  ```
+
+  All Narrare migrations ship with a `downgrade()` path, but **`downgrade()` only
+  reverses schema, not data**. If the newer release ran a data migration (e.g.
+  backfilled a column, dropped a now-unused column, or transformed rows), that
+  data is **not recoverable** by rolling back — treat such releases as
+  forward-only. Review the migration files between the two releases before
+  attempting a downgrade, and **back up the database first**:
+
+  ```bash
+  docker compose exec postgres pg_dump -U narrare narrare > backup-$(date +%F).sql
+  ```
+
+#### Scenario: rollback one minor version
+
+Rolling back from `0.5.0` to `0.4.2`:
+
+1. Back up the database (`pg_dump` command above).
+2. Check the migration files added between `0.4.2` and `0.5.0` — if any are
+   data migrations or destructive (`drop_table` / `drop_column` on live data),
+   stop here: the rollback is **forward-only** and you must fix forward instead.
+3. If only schema-additive migrations exist, downgrade the database to the
+   revision that ships with `0.4.2` (see Step 2).
+4. Pull and tag the `0.4.2` image (Step 1, Option B with the digest preferred).
+5. `docker compose up -d` and verify `GET /health` returns `healthy` (or
+   `degraded` with an OTel-only cause — see
+   [Health Endpoint](#monitoring)).
+
+#### Caveats
+
+- **`latest` tag moves forward only.** Reverting via tag requires pinning to the
+  explicit old tag or digest as shown above; `docker compose pull` alone always
+  pulls the newest `latest`. Use digest-based pinning for production rollbacks.
+- **Stateful services (Postgres, Redis) are on named volumes** and are not
+  touched by an image rollback. If the newer release changed the Postgres major
+  version, a rollback may require a separate `pg_dump`/`restore` — that scenario
+  is not covered by a simple image replacement.
+- **Workers (`taskiq`) also pin to `latest`** in `docker-compose.release.yml`.
+  The rollback procedure above re-tags a single image used by both the API and
+  worker services, so both revert together.
+
 ### Architecture
 
 The production image is a multi-stage Docker build:
