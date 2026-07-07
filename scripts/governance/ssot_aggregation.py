@@ -237,10 +237,10 @@ def _check_finding_coverage(
 def _check_status_consistency(project_root: Path) -> CheckerResult:
     """Run the ADR-062 P3 doc↔status-SSOT consistency checker.
 
-    WARNING-only this cycle (ADR-062 enforcement phasing): contradictions are
-    reported as GOVERNED_DEBT and NEVER fail the gate. A missing status
-    vocabulary (a tracked baseline file) is reported as PASS/skipped rather than
-    erroring — the checker is non-blocking by design this cycle.
+    BLOCKING (ADR-062 enforcement phasing complete, AUFG-01-09 follow-up
+    2026-07-06): contradictions fail the gate. A missing status vocabulary
+    (a tracked baseline file) is reported as PASS/skipped rather than erroring
+    — a missing vocabulary is an infrastructure gap, not a drift finding.
     """
     from governance._status_consistency import check_status_consistency, scan_repo_docs
     from governance._status_vocab import load_status_vocabulary
@@ -256,9 +256,9 @@ def _check_status_consistency(project_root: Path) -> CheckerResult:
     docs = scan_repo_docs(project_root, vocab)
     report = check_status_consistency(docs, vocab)
 
-    # WARNING-only: findings map to GOVERNED_DEBT, never FAIL.
+    # BLOCKING: findings map to FAIL.
     if report.has_contradictions:
-        status = HealthStatus.GOVERNED_DEBT
+        status = HealthStatus.FAIL
         detail = f"{len(report.contradictions)} status contradiction(s) across {len(docs)} docs"
     else:
         status = HealthStatus.PASS
@@ -275,9 +275,10 @@ def _check_status_consistency(project_root: Path) -> CheckerResult:
 def _check_review_registry_link(project_root: Path) -> CheckerResult:
     """Run the ADR-062 P5 review→registry metadata linking checker.
 
-    WARNING-only this cycle (ADR-062 enforcement phasing): linking errors /
-    collisions are reported as GOVERNED_DEBT and NEVER fail the gate. A missing
-    registry (a tracked baseline file) is reported as PASS/skipped.
+    BLOCKING (ADR-062 enforcement phasing complete, AUFG-01-09 follow-up
+    2026-07-06): linking errors / collisions fail the gate. A missing registry
+    (a tracked baseline file) is reported as PASS/skipped — a missing registry
+    is an infrastructure gap, not a drift finding.
     """
     from governance._review_registry_link import (
         check_review_registry_link,
@@ -296,9 +297,9 @@ def _check_review_registry_link(project_root: Path) -> CheckerResult:
 
     report = check_review_registry_link(headers, registry, project_root)
 
-    # WARNING-only: findings map to GOVERNED_DEBT, never FAIL.
+    # BLOCKING: findings map to FAIL.
     if report.findings:
-        status = HealthStatus.GOVERNED_DEBT
+        status = HealthStatus.FAIL
         detail = (
             f"{len(report.findings)} review→registry link issue(s) "
             f"({len(report.rehomings_recognized)} re-homing(s) recognized)"

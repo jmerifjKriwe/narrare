@@ -8,6 +8,16 @@
 > geführt.
 > **Hinweis:** PyPI-Publishing ist absichtlich nicht integriert und soll hier
 > NICHT als Aufgabe oder Empfehlung erscheinen.
+>
+> **Nachträglich ergänzt am 2026-07-06** (zweite Session): Die Sektion
+> „Verifizierung, Ursachenanalyse und Umsetzung (Stand 2026-07-06)" am
+> Dateiende dokumentiert den verifizierenden Durchgang jedes Befunds gegen den
+> aktuellen Code-Stand, die **Korrektur von 10 sachlichen Diskrepanzen** (falsche
+> Service-Zahl, falscher `crypto.py`-Pfad, veraltete CI-Blocker-Behauptungen
+> u. a.), die Ursachenanalyse (warum Review-Drift entsteht), die
+> Vermeidungsstrategien und die **Umsetzung von AUFG-05-06** (Rollback-Doku).
+> AUFG-05-06 ist damit `resolved`; alle anderen Diskrepanzen sind in der
+> Verifizierungstabelle am Dateiende nachvollziehbar.
 
 ## Methodik & ausgeführte Prüfungen
 
@@ -598,3 +608,194 @@ der zwei CI-Blocker, damit der Merge-Pfad wieder grün ist.
       Minor-Version.
 - [ ] Hinweis auf Digest-basiertes Pullen für unveränderliche Referenzen.
 **Geschätzter Aufwand:** S
+
+---
+
+# Nachtrag (2026-07-06) — Verifizierung, Ursachenanalyse und Umsetzung
+
+> Dieser Block entstand in einer zweiten Session 7 Tage nach dem ursprünglichen
+> Review. Er dokumentiert (1) den verifizierenden Durchgang jedes Review-Befunds
+> gegen den aktuellen Code-Stand, (2) die Ursachenanalyse warum die gefundenen
+> Fehler entstanden sind, (3) die Vermeidungsstrategien und (4) die **Umsetzung
+> des letzten offenen AUFG-05-Tasks** (AUFG-05-06). Die Originalsektionen bleiben
+> unangetastet; dieser Nachtrag ist die Korrekturoberfläche (wie in review-04).
+
+## Verifizierung beim Umsetzungs-Start (Stand 2026-07-06)
+
+Vor der Umsetzung wurde jeder Review-Befund in drei parallel laufenden
+Verifizierungs-Durchgängen (Graph-Tools, Code-Read, AUFG-Registry-Abgleich)
+gegen HEAD geprüft. Das Bild ist zweigeteilt: **die Release-/Security-/
+Observability-Architektur ist so stark wie vom Review beschrieben**, aber das
+Review hat **mehrere sachliche Fehler** und ist an **mehreren Stellen veraltet**,
+weil seit dem 29.06. umfangreiche Arbeit stattfand (PR #101/102/104, Branch
+`chore/review-04-dx-tooling-fixes`).
+
+### Verifizierte Behauptungen (korrekt)
+
+| Befund | Evidenz |
+|---|---|
+| Release-Please auf `main` + Conventional Commits | `release-please.yml:3-5,23-26` |
+| Multi-Stage Dockerfile (`build-python`→`build-frontend`→`runtime`) | `Dockerfile:22,50,74` |
+| `python:3.14-slim-bookworm`, Node 24, HEALTHCHECK `/health`, Signal-Entrypoint | `Dockerfile:22,74,50,117-118,120`; `scripts/entrypoint.sh:22` |
+| `ARG PNPM_VERSION=11.5.2` (Dockerfile:53) | exakt verifiziert |
+| httpOnly Refresh Cookie (`httponly`, `secure=is_production`, `samesite="lax"`, `path="/api/v1/auth"`) | `auth/cookie_helpers.py:22,35-43` |
+| Access Token in-memory („never localStorage") | `packages/web/lib/api/core.ts:14-16` (nicht `client.ts` — Barrel) |
+| Fernet-Verschlüsselung für API-Keys | `packages/core/narrare_core/crypto.py:26-81` (siehe Korrektur unten) |
+| 5 RateLimiter + WebSocket (Raten verifiziert) | `_app/rate_limits.py:54,60,67,73,82,92` |
+| 14 Rate-Limit-Unit-Tests | `tests/unit/api/_app/test_rate_limits.py` (exakt 14) |
+| CSRF OriginValidationMiddleware + Bearer-Exempt | `_app/middleware.py:43-144` |
+| 12 CSRF-Unit-Tests | `tests/unit/api/_app/test_csrf_middleware.py` (exakt 12) |
+| Gitleaks v8.30.1, `fetch-depth: 0`, blocking | `ci.yml:262-265,276`; `check_secrets.py:101` |
+| Bandit + pip-audit blocking, ignore-IDs `PYSEC-2025-183`, `GHSA-rrmf-rvhw-rf47` | `ci.yml:285-291` (IDs exakt) |
+| CORS: Production `allow_origins=[]`, Dev `["http://localhost:3000"]` | `_app/main.py:52-58` |
+| OTel: TracerProvider, OTLP-gRPC, FastAPI-Instr., `Agent.instrument_all`, no-op-Graceful | `_app/telemetry.py:49-53,64-71,75-80` |
+| `get_observability_status()` mit `state`+`severity` | `_app/observability.py:111-153` |
+| `record_otel_setup_outcome()` auf allen 3 Pfaden | `_app/telemetry.py:52,82,92-96` |
+| 13 Observability-Health-Tests | `tests/unit/api/_app/test_observability_health.py` (exakt 13) |
+| Trace-Propagation-Integrationstests | `tests/integration/observability/test_{trace,sse_trace}_propagation.py` |
+| `NARRARE_OTEL_INCLUDE_CONTENT` defaultet `false` in Production | `_app/telemetry.py:37-41` |
+| Startup-Migration in `lifespan.py` + App-Start-Abort bei Failure | `_app/lifespan.py:81-121,192-197` (re-raise) |
+
+### Diskrepanzen und Verfälschungen (Korrekturen)
+
+| # | Review-Behauptung | Tatsächlicher Stand | Art |
+|---|---|---|---|
+| 1 | §5 Schwäche #1: „2 CI-Blocker" (Prompt-Coverage 93.4% < 97.1%, check-testid rot für `StyleVariantPicker`) | **Beide falsch diagnostiziert** (PR #102, 2026-07-05). Prompt-Coverage-Baseline ist **98.4%** (`coverage_baselines.json`); der 93.4%-Wert war ein transitorischer Zustand am 01.07. (gebrochener AsyncMock in `test_prompt_routers.py`). check-testid nutzt **`LOOKAHEAD = 8`** (`check-testid.ts:194`), nicht 3; `aria-label` von `StyleVariantPicker.tsx` liegt 4 Zeilen unter dem `<select>` — innerhalb des Fensters. Live-Lauf: 0 Violations. | **Veraltet + sachlich falsch** |
+| 2 | §5 Schwäche #2–5 (Retry false-control, TECH_STACK-Drift, Adoption-Drift, Editor-Hotspots) | **Alle `resolved`** zwischen 01.07. und 05.07. (ADR-060 Option B, Branch `chore/review-04-dx-tooling-fixes`, AUFG-01-02/08, AUFG-03-01..04). | Veraltet |
+| 3 | §1 / §2: Release-Bundle hat „Health Checks für alle **drei** Services" | `docker-compose.release.yml` definiert **vier** Services (`narrare`, `worker`, `postgres`, `redis`). `worker` hat `healthcheck: disable: true` (by design — TaskIQ-Worker ohne HTTP). | Zählfehler |
+| 4 | §3 API-Key-Verschlüsselung in `core/shared/crypto.py` | Datei liegt in **`packages/core/narrare_core/crypto.py`**. Import: `from narrare_core.crypto import encrypt, decrypt`. Derselbe falsche Pfad auch in `deployment-guide.md:568` — der Review hat ihn von dort kopiert. | Falscher Pfad (kopiert) |
+| 5 | §3 Rate-Limiting: „**17** Router-Dateien verdrahtet" | Tatsächlich **23** Router-Dateien mit `Depends(*_LIMITER)`. | Zählfehler |
+| 6 | §3: „14 Unit-Tests in `test_rate_limits.py` + `test_auth_rate_limits.py`" | 14 in `test_rate_limits.py` **+ 3** in `test_auth_rate_limits.py` (zusammen 17). Phrasing implizierte 14 gesamt. | Phrasing-Mangel |
+| 7 | §3 CI-Security: Release-Workflow „scoped auf `publish`-Job" | Der `release-please`-Job **selbst** hält ebenfalls `contents: write` + `pull-requests: write` (`release-please.yml:13-15`, nötig für Release-PR). Zudem gibt es einen **undokumentierten** `update-coverage-badge`-Job in `ci.yml:461-467` mit `contents: write` (auf `push` zu `main`). Kein Security-Problem, aber unvollständige Darstellung. | Unvollständig |
+| 8 | §4 AUFG-05-03: „`covered_by_existing_aufg`" | Zwischenzeitlich auf **`resolved`** upgegraded (2026-06-30) mit expliziter Exit-Evidence (Delegation an AUFG-05-10/ADR-031). | Veraltet |
+| 9 | §4: Frontend-Test-Laufzeit „181.98s > 130s warning-only" | CI-Schwellwert wurde auf **240s** angehoben; aktueller Lauf 195s (303 Files / 2471 Tests) — innerhalb des Budgets. React-`act(...)`-Warnings sind die dokumentierte Working-Solution. | Veraltet |
+| 10 | §5 Schwäche #8: „507 Doc-Drift-Warnungen" | Strukturell in Arbeit; exakte Zahl nicht ohne Checker-Lauf reproduzierbar (fluktuiert; `6b62d7a5` fixed 540 Warnungen). Branch `chore/review-04-dx-tooling-fixes` fügt `lookup_drift_checks.py` (6 Muster) als blockierendes Gate hinzu. | Veraltet (in Arbeit) |
+
+**Kernbotschaft der Verifizierung:** Die Architektur- und Security-Substanz
+des Reviews stimmt. Die **Zahlen, Code-Pfade und CI-Status-Behauptungen** sind
+dagegen zu ~40% falsch oder veraltet. Genau das ist das wiederkehrende Muster
+(siehe Ursachenanalyse unten) und selbst ein Beleg dafür.
+
+### AUFG-Status-Tabelle (Review-Behauptung vs. Registry 2026-07-06)
+
+| AUFG | Review-05 sagt | Registry 2026-07-06 | Bemerkung |
+|---|---|---|---|
+| AUFG-05-06 | offen | **✅ resolved** (diese Session) | Rollback-Doku in `deployment-guide.md` §Rollback |
+| AUFG-02-01 | offen (CI-Blocker) | `open` in Registry, aber ✅ in `review-02-testing.md` (PR #102) | **Registry-Drift** — fehldiagnostiziert |
+| AUFG-02-02 | offen (CI-Blocker, testid) | `resolved` (alte Bedeutung), neue Bedeutung ✅ in `review-02-testing.md` | **ID-Kollision** + fehldiagnostiziert |
+| AUFG-02-03 | offen | `open` in Registry, aber ✅ in `review-02-testing.md` | **Registry-Drift** |
+| AUFG-02-04 | offen | `open` in Registry, aber ✅ in `review-02-testing.md` | **Registry-Drift** |
+| AUFG-04-08 | offen | `open` in Registry, umgesetzt auf Branch `chore/review-04-dx-tooling-fixes` | Branch nicht gemerged |
+| AUFG-04-09 | offen | `open` in Registry, umgesetzt auf Branch | Branch nicht gemerged |
+| AUFG-04-10 | offen | `open` in Registry, umgesetzt auf Branch | Branch nicht gemerged |
+| AUFG-04-11 | offen | `open` in Registry, umgesetzt auf Branch | Branch nicht gemerged |
+| AUFG-01-01 | offen | ✅ `resolved` (2026-07-01, ADR-060) | Review veraltet |
+| AUFG-01-02 | offen | ✅ `resolved` (2026-07-01) | Review veraltet |
+| AUFG-03-01 | offen | ✅ `resolved` (2026-07-05, InterviewQuestionAgent) | Review veraltet |
+| AUFG-03-02 | offen | ✅ `resolved` (2026-07-05) | Review veraltet |
+| AUFG-03-03 | offen | ✅ `resolved` (2026-07-05, `check_feature_path_accuracy.py`) | Review veraltet |
+| AUFG-05-03 | `covered_by_existing_aufg` | ✅ `resolved` (2026-06-30) | Review veraltet |
+| AUFG-01-08 (Editor-Hotspots) | nicht erwähnt (hieß hier „AUFG-01-03") | ✅ `resolved` (2026-07-01) | Review verwendete kollidierende ID |
+| AUFG-01-09 | **nicht erwähnt** | `open` (P2) | **Review verschweigt offenen Punkt** (s. u.) |
+| AE-05-01/02/03/04 | accepted_enhancement | accepted_enhancement | übereinstimmend |
+| AR-05-02/03/04/05 | accepted_risk | accepted_risk | übereinstimmend |
+
+## Ursachenanalyse — Warum entstehen diese Fehler trotz SSOT-Dokumentation?
+
+Die Diskrepanzen oben sind nicht zufällig; sie folgen Mustern, die spezifisch
+für den **Release/Security/Observability-Kontext** sind (und sich von den
+DX/Docs-Ursachen in review-04 unterscheiden).
+
+### Ursache 1: „Snapshot-as-truth"-Falle bei CI-Status-Behauptungen
+
+Die §5-Schwäche #1 („2 CI-Blocker") war am Review-Tag (29.06.) vermutlich
+korrekt, wurde aber am **01.07.** durch einen gebrochenen AsyncMock
+transitorisch true und am **05.07.** (PR #102) als fehldiagnostiziert
+geschlossen. Das Review fixiert CI-Status als **Prosa-Behauptung ohne Datum
+und Re-Verifikations-Trigger**. CI-Status ist von Natur aus flüchtig — eine
+Prosa-Aussage „CI ist rot" veraltet in Stunden, nicht Tagen.
+
+### Ursache 2: Code-Evidenz wird von abgeleiteter Doku kopiert, nicht vom Code
+
+Der falsche `core/shared/crypto.py`-Pfad stammt nicht aus eigener Recherche,
+sondern wurde **eins-zu-eins aus `deployment-guide.md:568` übernommen**, der ihn
+selbst falsch hat. Derselbe Drift-Mechanismus, der für Lookup-Dateien in
+review-04 analysiert wurde, greift hier **auf einer höheren Schicht**: die
+Deployment-Doku als vermeintliche Autorität wird zur Drift-Quelle. Das Review
+verlässt sich auf die Doku statt auf Graph-Tools / `grep` am Code.
+
+### Ursache 3: Zähl-Aussagen ohne maschinelle Validierung
+
+„3 Services", „17 Router", „9 CI-Jobs", „26 Agents" — alle per Hand gezählt,
+**alle falsch** (4 / 23 / 10 / 25). Für zählbare Größen gibt es keinen Checker,
+der Review-Zahlen gegen die Realität validiert. Dabei wären all diese Zahlen
+mit einem einzigen `grep -rc … | wc -l` oder Graph-Query korrekt gewesen.
+
+### Ursache 4: Zwei parallele Lifecycle-Oberflächen ohne Synchronisation
+
+AUFG-02-01..04 sind in `review-02-testing.md` (PR #102) als ✅ markiert, in
+`aufg-registry.md` aber noch `open`. AUFG-04-08..11 sind auf einem ungemergten
+Branch implementiert, in der Registry `open`. Das Registry ist als
+„Governance-SSOT" deklariert, aber **die Review-Files sind eine zweite,
+konkurrierende Lifecycle-Oberfläche**. Zustandsänderungen in einer Oberfläche
+propagieren nicht in die andere.
+
+### Ursache 5: AUFG-ID-Wiederverwendung erzeugt Mehrdeutigkeit
+
+AUFG-02-02 wurde im neuen Zyklus für den Komponenten-Marker-Checker
+„recycelt", obwohl die alte AUFG-02-02 (Coverage-Gate) bereits `resolved` war.
+AUFG-03-04 wird für **zwei verschiedene** Bedeutungen verwendet
+(File-Size-Gate-Hook-Detection **und** MCP/A2A-Adapter). Das Registry-Header
+dokumentiert diese Kollision nur als „P8/RC9 follow-up" — sie wird aber
+aktiv weiter propagiert (Review-05 übernimmt beide). ID-Kollisionen machen
+jede Status-Aussage mehrdeutig.
+
+## Vermeidungsstrategien
+
+| Strategie | Beschreibung | Status |
+|---|---|---|
+| **1. CI-Status im Review als Snapshot mit Datum + Re-Verifikations-Hinweis** | Jede CI-Status-Behauptung trägt ein Datum und den Hinweis „zum Merge-Zeitpunkt re-verifizieren"; CI-Blocker-Aussagen werden nicht als Prosa-Wahrheit, sondern als „Stand am TT.MM." markiert | In diesem Nachtrag demonstriert (Vermerk „Stand 2026-07-06"); als Prozess noch nicht formal durchgesetzt |
+| **2. Code-Pfade aus Code verifizieren, nicht aus Doku kopieren** | Evidence-Section des Reviews entsteht per Graph-Tool / `grep` am Code, nicht per Copy aus `deployment-guide.md` / Lookup-Dateien | In dieser Session so praktiziert (3 parallele Verifizierungs-Agenten); als Review-Standard noch nicht fixiert |
+| **3. AUFG-Registry als einzige Lifecycle-Oberfläche** | Review-Files referenzieren nur AUFG-IDs + Datum, duplizieren keine Status-Behauptungen; Zustandswechsel nur im Registry | Strategie dokumentiert; konkrete Umsetzung (z. B. Checker der Review-vs-Registry-Konsistenz) wäre eigener Auftrag |
+
+> **Hinweis:** Diese Strategien ergänzen die review-04-Strategien
+> („keine harten Zahlen in Prosa", „Lookup-Alters-Gate", „ADR-Namens-Checker").
+> review-04 behandelte die **Doku-Ebene**; review-05 zeigt, dass die gleichen
+> Muster auf der **Review-Ebene** wiederauftreten — das Review selbst ist eine
+> abgeleitete Schicht, die denselben Disziplin-Mechanismen unterliegen muss.
+
+## Offene Punkte, die das Review verschweigt
+
+### AUFG-01-09 — Ratchet ADR-061/062 warning-only Checker zu blocking
+
+Das Registry führt unter **AUFG-01-09** (`open`, Priorität P2) die Aufgabe,
+die aus review-01 stammenden Präventions-Checker ADR-061/062 (warning-only)
+vor dem nächsten Release-Readiness-Claim auf blocking hochzuziehen. Review-05
+geht in seiner Roadmap-Rubrik „Mittelfristig" nicht darauf ein, obwohl es für
+die **Release-Lesbarkeit** des Governance-Systems zentral ist: ein
+warning-only-Checker, der nie zu blocking wird, ist eine permanente
+Schönheitsreparatur ohne Biss — dieselbe „dokumentiert ≠ durchgesetzt"-Lücke,
+vor die AGENTS.md (CR-04-Lektion) explizit warnt. Dies ist **keine neue
+AUFG-05** (gehört zu AUFG-01), sondern ein Hinweis, dass review-05 bei der
+Roadmap-Konsolidierung unvollständig war.
+
+## Umsetzungs-Report
+
+| AUFG / Punkt | Status | Umsetzung |
+|---|---|---|
+| AUFG-05-06 | ✅ Erledigt (2026-07-06) | `docs/development/deployment-guide.md` §Rollback: Pull-Optionen (Tag + Digest), DB-Migrations-Strategie (`pg_dump`, `alembic downgrade`, Forward-only-Caveat), Minor-Rollback-Szenario (0.5.0→0.4.2), Caveats (`latest`-Tag, Volumes, worker). Registry → `resolved` mit Exit-Evidence. |
+| Diskrepanz-Korrekturen | ✅ Dokumentiert | In der Verifizierungstabelle oben (10 Diskrepanzen); Originalsektionen bewusst unangetastet (review-04-Stil). |
+| AUFG-01-09 (verschwiegen) | ⚠️ Erwähnt | Im Nachtrag dokumentiert; keine Zustandsänderung (bleibt `open` in Registry). |
+
+**Keine neuen AUFG-05-XX aus diesem Nachtrag.** Die drei Vermeidungsstrategien
+werden als Kultur-Hebel dokumentiert, nicht als eigenständige Aufgaben — ihre
+konkrete maschinelle Umsetzung (z. B. ein Review-vs-Registry-Konsistenz-Checker)
+wäre ein separater Auftrag im Governance-Tooling-Bereich.
+
+**Kernbotschaft:** Die Release-/Security-/Observability-Substanz von review-05
+ist gerechtfertigt (⭐⭐⭐⭐). Die Schwäche liegt nicht in der Architektur,
+sondern in der **Review-Disziplin selbst**: Zahlen veralten, Code-Pfade werden
+aus Doku statt aus Code übernommen, CI-Status wird als Prosa-Wahrheit
+fixiert. Damit unterliegt das Review demselben Drift-Mechanismus, den es an der
+Doku kritisiert — die konsequente Anwendung der review-04-Lektionen auf die
+Review-Ebene selbst ist der nächste Reifegrad.

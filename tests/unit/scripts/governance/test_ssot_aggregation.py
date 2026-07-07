@@ -254,12 +254,12 @@ def test_aggregate_one_fail_with_mocks(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_aggregate_adr062_warning_checkers_never_fail_gate(tmp_path: Path) -> None:
-    """Both ADR-062 drift checkers reporting findings → GOVERNED_DEBT, not FAIL.
+def test_aggregate_adr062_blocking_checkers_fail_gate(tmp_path: Path) -> None:
+    """Both ADR-062 drift checkers reporting findings → FAIL (BLOCKING since AUFG-01-09).
 
-    The P3/P5 checkers ship WARNING-only (ADR-062 enforcement phasing): even
-    when they find contradictions / linking errors, the overall gate must stay
-    GOVERNED_DEBT (tracked debt), never FAIL — so they cannot break CI green.
+    The P3/P5 checkers ratcheted from WARNING-only to BLOCKING in the AUFG-01-09
+    follow-up (2026-07-06): when they find contradictions / linking errors, the
+    overall gate FAILs so they break CI red (drift is not silently absorbed).
     """
     with (
         patch("governance.ssot_aggregation._check_doc_drift") as mock_doc,
@@ -276,26 +276,25 @@ def test_aggregate_adr062_warning_checkers_never_fail_gate(tmp_path: Path) -> No
         mock_reg.return_value = _make_result("check_registry_drift", HealthStatus.PASS)
         mock_fc.return_value = _make_result("finding_coverage", HealthStatus.PASS)
         mock_sc.return_value = _make_result(
-            "status_consistency", HealthStatus.GOVERNED_DEBT, issues=3, detail="3 contradictions"
+            "status_consistency", HealthStatus.FAIL, issues=3, detail="3 contradictions"
         )
         mock_rr.return_value = _make_result(
-            "review_registry_link", HealthStatus.GOVERNED_DEBT, issues=2, detail="2 link findings"
+            "review_registry_link", HealthStatus.FAIL, issues=2, detail="2 link findings"
         )
 
         from governance.ssot_aggregation import aggregate_ssot_gate_health
 
         report = aggregate_ssot_gate_health(tmp_path)
 
-    assert report.status == HealthStatus.GOVERNED_DEBT
-    assert report.status != HealthStatus.FAIL
-    assert {c.checker_name for c in report.warning_checkers} == {
+    assert report.status == HealthStatus.FAIL
+    assert {c.checker_name for c in report.failing_checkers} == {
         "status_consistency",
         "review_registry_link",
     }
 
 
-def test_status_consistency_wrapper_maps_findings_to_governed_debt(tmp_path: Path) -> None:
-    """The P3 wrapper classifies contradictions as GOVERNED_DEBT, never FAIL."""
+def test_status_consistency_wrapper_maps_findings_to_fail(tmp_path: Path) -> None:
+    """The P3 wrapper classifies contradictions as FAIL (BLOCKING since AUFG-01-09)."""
     from governance._status_consistency import StatusConsistencyReport
     from governance.ssot_aggregation import _check_status_consistency
 
@@ -309,13 +308,12 @@ def test_status_consistency_wrapper_maps_findings_to_governed_debt(tmp_path: Pat
         result = _check_status_consistency(tmp_path)
 
     assert result.checker_name == "status_consistency"
-    assert result.status == HealthStatus.GOVERNED_DEBT
-    assert result.status != HealthStatus.FAIL
+    assert result.status == HealthStatus.FAIL
     assert result.issue_count == 3
 
 
-def test_review_registry_link_wrapper_maps_findings_to_governed_debt(tmp_path: Path) -> None:
-    """The P5 wrapper classifies link findings as GOVERNED_DEBT, never FAIL."""
+def test_review_registry_link_wrapper_maps_findings_to_fail(tmp_path: Path) -> None:
+    """The P5 wrapper classifies link findings as FAIL (BLOCKING since AUFG-01-09)."""
     from governance._review_registry_link import ReviewLinkReport
     from governance.ssot_aggregation import _check_review_registry_link
 
@@ -333,6 +331,5 @@ def test_review_registry_link_wrapper_maps_findings_to_governed_debt(tmp_path: P
         result = _check_review_registry_link(tmp_path)
 
     assert result.checker_name == "review_registry_link"
-    assert result.status == HealthStatus.GOVERNED_DEBT
-    assert result.status != HealthStatus.FAIL
+    assert result.status == HealthStatus.FAIL
     assert result.issue_count == 2

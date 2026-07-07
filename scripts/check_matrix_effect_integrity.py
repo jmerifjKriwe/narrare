@@ -8,17 +8,21 @@ Runs the two ADR-061 measures over the Configuration Adoption Matrix:
     ``setting_id`` that aggregates multiple settings is rejected unless it is
     in the governed ``composite_allowlist`` AND carries a
     ``composite_rationale``.
-  * **P1 (WARNING-only)** — per-setting effect-integrity: each
+  * **P1 (BLOCKING)** — per-setting effect-integrity: each
     ``user``/``project``/``adopted`` entry's ``runtime_consumer`` references a
     REAL code location, and the cited evidence covers THIS setting
-    (``scripts/governance/_matrix_effect_integrity.py``). Unproven entries are
-    governed debt, reported but non-blocking this cycle.
+    (``scripts/governance/_matrix_effect_integrity.py``). Unproven entries
+    (consumer_only / gap / broken) fail the gate.
 
 RULE-07: reads the matrix + evidence manifests and the cited source/test FILES
 (as text, never imported). Imports no application runtime modules.
 
-Exit code: 1 if P2 (blocking) finds violations; 0 otherwise. P1 never fails the
-gate (WARNING-only phasing per ADR-061).
+Exit code: 1 if P1 or P2 finds violations; 0 otherwise.
+
+Enforcement history: P2 has been blocking since ADR-061's initial
+implementation (2026-07-02). P1 ratcheted from warning-only to blocking in the
+AUFG-01-09 follow-up (2026-07-06) after the baseline was proven clean (14/14
+verified, 0 governed debt) across a full review cycle.
 """
 
 from __future__ import annotations
@@ -46,7 +50,7 @@ _SEP = "=" * 72
 
 
 def main() -> int:
-    """Run the P2 (blocking) + P1 (warning) checks and print a report."""
+    """Run the P2 + P1 checks (both BLOCKING) and print a report."""
     try:
         matrix_data = load_matrix(MATRIX_PATH)
     except FileNotFoundError:
@@ -89,22 +93,31 @@ def main() -> int:
         print("  PASS: every entry maps to exactly one setting.")
     print()
 
-    # ── P1 — per-setting effect-integrity (WARNING-only) ─────────────────────
-    p1_exit_context = _run_p1(entries) if EVIDENCE_PATH.is_file() else None
+    # ── P1 — per-setting effect-integrity (BLOCKING) ─────────────────────────
+    p1_debt_count = 0
+    if EVIDENCE_PATH.is_file():
+        p1_debt_count, p1_exit_context = _run_p1(entries)
+    else:
+        p1_exit_context = "P1 skipped (no evidence manifest)."
 
     print(_SEP)
-    blocking_failed = bool(p2_violations)
+    blocking_failed = bool(p2_violations) or p1_debt_count > 0
     if blocking_failed:
-        print("RESULT: FAIL — P2 aggregation violations (blocking).")
+        parts: list[str] = []
+        if p2_violations:
+            parts.append(f"{len(p2_violations)} P2 aggregation violation(s)")
+        if p1_debt_count:
+            parts.append(f"{p1_debt_count} P1 effect-integrity violation(s)")
+        print(f"RESULT: FAIL — {'; '.join(parts)} (blocking).")
     else:
-        print("RESULT: PASS — P2 clean; P1 reported as WARNING (non-blocking).")
-    if p1_exit_context is not None:
+        print("RESULT: PASS — P1 and P2 clean.")
+    if p1_exit_context:
         print(p1_exit_context)
     return 1 if blocking_failed else 0
 
 
-def _run_p1(entries: list[MatrixEntry]) -> str:
-    """Run the WARNING-only P1 verification and return a summary line."""
+def _run_p1(entries: list[MatrixEntry]) -> tuple[int, str]:
+    """Run the BLOCKING P1 verification; return (debt_count, summary line)."""
     evidence_entries, _ = load_effect_evidence(EVIDENCE_PATH)
     evidence_by_sid = {ev.setting_id: ev for ev in evidence_entries}
     report = validate_effect_integrity(entries, evidence_by_sid, ROOT)
@@ -114,7 +127,7 @@ def _run_p1(entries: list[MatrixEntry]) -> str:
     )
     manifest_count = report.verified - graph_count
 
-    print("[P1] Per-setting effect-integrity — WARNING-only (baseline)")
+    print("[P1] Per-setting effect-integrity — BLOCKING")
     print("-" * 72)
     print(f"  In scope:     {report.total_in_scope}")
     print(f"  Verified:     {report.verified}  (graph: {graph_count}, manifest: {manifest_count})")
@@ -124,16 +137,17 @@ def _run_p1(entries: list[MatrixEntry]) -> str:
 
     debt = [d for d in report.details if not d.verified]
     if debt:
-        print("  Governed debt (reported, non-blocking):")
+        print(f"  FAIL: {len(debt)} unproven entry/entries (blocking):")
         for d in debt:
             print(f"    - {d.setting_id}: {d.reason}")
     else:
-        print("  Baseline clean — all in-scope entries verified.")
+        print("  PASS: all in-scope entries verified.")
     print()
 
+    debt_count = report.consumer_only + report.gaps + report.broken
     return (
-        f"P1 baseline: {report.verified}/{report.total_in_scope} verified "
-        f"({report.consumer_only + report.gaps + report.broken} governed debt)."
+        debt_count,
+        f"P1: {report.verified}/{report.total_in_scope} verified ({debt_count} violation(s)).",
     )
 
 

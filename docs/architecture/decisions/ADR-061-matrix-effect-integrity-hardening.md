@@ -136,10 +136,11 @@ governance tooling); high blast radius for a checker-hardening goal. Rejected fo
 1. **P2 (aggregation prohibition)** ships first as **blocking** — it is a structural
    matrix rule with no ambiguity (the `websocket_idle_retry_cascade` split in ADR-060
    clears the only existing violation).
-2. **P1 (effect-integrity)** ships **warning-only** for one cycle to baseline existing
-   entries against the graph/manifest, then **ratchets to blocking** once the baseline is
-   clean. A governed-debt baseline (per ADR-056 true-debt semantics) captures any entry
-   that cannot yet be graph-proven, with owner + review trigger.
+2. **P1 (effect-integrity)** shipped **warning-only** for one cycle to baseline existing
+   entries against the graph/manifest, then **ratcheted to blocking** in the AUFG-01-09
+   follow-up (2026-07-06) once the baseline was clean (14/14 verified, 0 governed debt).
+   A governed-debt baseline (per ADR-056 true-debt semantics) captures any entry that
+   cannot yet be graph-proven, with owner + review trigger.
 
 ---
 
@@ -264,14 +265,19 @@ check-matrix-effect-integrity` green; `just check-architecture`, `just check`,
     attempt count]) and 12 **manifest-grounded**. 0 gaps, 0 broken, 0
     consumer-only. Unproven entries would become governed debt (ADR-056
     semantics), reported non-blocking.
-  - **P1 ratchets to BLOCKING in a follow-up** once every entry has runtime
-    graph verification (P6) or an equivalent checker-verified data-flow proof
-    (some manifest entries currently rely on structural file/symbol/test
-    presence rather than a runtime data-flow check).
+  - **P1 ratcheted to BLOCKING (AUFG-01-09, 2026-07-06):** the baseline was proven
+    clean (14/14 verified, 0 governed debt) across a full review cycle, so
+    `check_matrix_effect_integrity.py` now exits 1 on any unproven entry
+    (consumer_only / gap / broken). Full runtime graph verification (P6) remains
+    a future enhancement; the existing structural verification (consumer file
+    exists, symbol present, test exists AND references THIS setting) is the
+    „equivalent checker-verified data-flow proof" the ADR allows in place of P6,
+    and it closes the RC1 „presence ≠ truth" gap the ADR targets.
 
 - **Entrypoint + wiring:**
-  - `scripts/check_matrix_effect_integrity.py` — exits 1 on P2 violations, 0
-    otherwise; P1 never fails the gate.
+  - `scripts/check_matrix_effect_integrity.py` — exits 1 on P1 OR P2
+    violations (P1 ratcheted from warning-only to blocking in AUFG-01-09,
+    2026-07-06); 0 otherwise.
   - `just check-matrix-effect-integrity`; P2 added to the **blocking**
     `just check-architecture` set + `just check-full`; P1 in the warning path.
   - CI: `check_matrix_effect_integrity.py` is gate **G3f** in the architecture
