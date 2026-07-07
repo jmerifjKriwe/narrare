@@ -3,7 +3,12 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-07-06 — AUFG-01-09 (ratchet ADR-061/062 warning-only
+> **Last updated:** 2026-07-07 — CR-01 remediation: registered CR-AUFG-01-01..09
+> (6 back-filled originals — 5 resolved-with-evidence, 01-05 in_progress pending
+> CR-AUFG-01-07; plus 3 new gaps CR-AUFG-01-07/08/09). Root cause of the original
+> registry gap: the P5 review→registry checker only covers `review-*.md`, not
+> `cr-*.md` content reviews → tracked as CR-AUFG-01-08 (WARNING-only checker
+> extension) + CR-AUFG-01-09 (blocking ratchet owner). (Prior: 2026-07-06 — AUFG-01-09 (ratchet ADR-061/062 warning-only
 > checkers to blocking) → **resolved** (2026-07-06); P1/P3/P5 now BLOCKING with
 > clean baselines; rich Status-cell parser + bare-filename dependency-path gap
 > hardened; 4 missing registry entries (AUFG-02-05, AUFG-04-12/13/14) added.
@@ -64,6 +69,158 @@ block the immediate runtime remediation once P0/P1 are complete).
 ---
 
 ## Active AUFGs
+
+### CR-AUFG-01-01..06 — Default-Prompt Qualitätsaudit (bundle-level)
+
+| Field | Value |
+|-------|-------|
+| IDs | CR-AUFG-01-01, CR-AUFG-01-02, CR-AUFG-01-03, CR-AUFG-01-04, CR-AUFG-01-05, CR-AUFG-01-06 |
+| Source | `cr-01-prompt-quality.md` §Aufgaben (content-review/audit-prompts) |
+| Status | CR-AUFG-01-01/02/03/04/06 `resolved`; CR-AUFG-01-05 `in_progress` (residual → CR-AUFG-01-07) |
+| Priority | P2 (prompt quality / security wrapping) |
+| Area | Prompts, prompt governance, security |
+| Owner role | Core Specialist (prompts); Platform Specialist (governance checks) |
+| Dependencies | `packages/core/narrare_core/prompts/_bundled/`; `scripts/prompt_governance_checks.py`; `scripts/prompt_vars.py`; `packages/core/narrare_core/prompts/variable_registry.py` |
+| Review trigger/date | Re-review when new bundled prompts are added or wrapper/kb_suggested/language governance is weakened |
+
+**Lifecycle note (2026-07-07):** Back-filled. These 6 tasks were marked
+`implemented` in the review file on 2026-06-12/13 but were never entered into the
+lifecycle SSOT — the root cause is tracked under CR-AUFG-01-08 (the P5
+review→registry checker did not cover content reviews). On-disk verification
+(2026-07-07) confirms the implementation claims; enforcement evidence is the
+CI-blocking `scripts/prompt_governance_checks.py` (reached via
+`scripts/check_prompt_structure.py`).
+
+- **CR-AUFG-01-01** — `{{entity_name}}` wrapped in `<user_provided_data>` in both
+  locations of `kb/en/consistency/system.md` (lines 21, 107); also in
+  `wiki/en/entity_summary/system.md`. **resolved (2026-07-07).**
+- **CR-AUFG-01-02** — non-standard `<text_to_analyze>` eliminated globally (zero
+  matches in `_bundled/`); POV prompt references only curated KB vars + metadata
+  (no user-manuscript input, so nothing to wrap). **resolved (2026-07-07).**
+- **CR-AUFG-01-03** — all 10 bundled templates referencing `{{kb_suggested}}`
+  carry the lower-priority/unaccepted-candidate boilerplate. **resolved (2026-07-07).**
+- **CR-AUFG-01-04** — zero bare `{{language}}` remaining in bundled prompts;
+  `{{writing_language}}` is canonical (60+ occurrences). **resolved (2026-07-07).**
+- **CR-AUFG-01-05** — `analysis/en/consistency/system.md` and
+  `analysis/en/pov/system.md` are fully gated (confidence + evidence + severity).
+  **Residual:** `analysis/en/review/system.md` (prose-only gating, no schema
+  fields) and `analysis/en/readability/system.md` (no gating at all) → tracked as
+  CR-AUFG-01-07. **in_progress (2026-07-07).**
+- **CR-AUFG-01-06** — staged consistency strategy implemented via ADR-044
+  (`docs/architecture/decisions/ADR-044-staged-consistency.md`). **resolved (2026-07-07).**
+
+**Enforcement evidence:** `scripts/prompt_governance_checks.py` checks
+`check_user_content_wrapping` (CR-AUFG-01-01/02), `check_deprecated_language_variable`
+(CR-AUFG-01-04), `check_kb_suggested_precedence` (CR-AUFG-01-03) — all emit `FAIL`
+and are CI-blocking via `check_prompt_structure.py`. `UNSAFE_USER_VARS` is a direct
+reference alias of `variable_registry.USER_CONTENT_VARS` (SSOT), guarded by
+`tests/unit/scripts/test_prompt_governance_checks.py`.
+
+---
+
+### CR-AUFG-01-07 — Review/Readability-Prompts: Schema-Level Gating nachziehen
+
+| Field | Value |
+|-------|-------|
+| ID | CR-AUFG-01-07 |
+| Title | Review/Readability-Prompts: Schema-Level Gating nachziehen (CR-AUFG-01-05 residual) |
+| Source | `cr-01-prompt-quality.md` §Aufgaben (gap detected 2026-07-07 during CR-01 remediation) |
+| Status | `open` |
+| Priority | P2 |
+| Area | Prompts / prompt quality |
+| Owner role | Core Specialist (prompts) |
+| Dependencies | `packages/core/narrare_core/prompts/_bundled/analysis/en/review/system.md`; `.../analysis/en/readability/system.md` |
+| Review trigger/date | Re-review when these analysis prompts are next edited or when CR-AUFG-01-05 is re-evaluated |
+
+**Root cause:** CR-AUFG-01-05 was marked "implemented for relevant prompts" but
+verification on 2026-07-07 found two analysis prompts that emit subjective
+suggestions/defects without schema-level gating: `review/system.md` has only a
+prose "Evidence gate" line (no `confidence`/`severity`/`text_excerpt` in its output
+schema), and `readability/system.md` has no confidence, severity, or evidence-gate
+language at all.
+
+**Acceptance criteria:**
+
+- [ ] `analysis/en/review/system.md` output schema includes `confidence`,
+  `severity`, and `text_excerpt` fields for issues and/or suggestions; prompt
+  version bumped.
+- [ ] `analysis/en/readability/system.md` adds a `confidence` field, an evidence
+  gate (ground each issue in a quoted passage), and false-positive guidance (omit
+  low-confidence subjective flags); prompt version bumped.
+- [ ] `just check-prompts` stays green (no regression to wrapper/`{{language}}`/
+  `{{kb_suggested}}` enforcement).
+- [ ] CR-AUFG-01-05 moved to `resolved` once this task lands.
+
+---
+
+### CR-AUFG-01-08 — P5 Review→Registry Checker auf Content-Reviews erweitern
+
+| Field | Value |
+|-------|-------|
+| ID | CR-AUFG-01-08 |
+| Title | P5 Review→Registry Checker auf Content-Reviews (`cr-*.md` + `CR-AUFG-NN-MM`) erweitern |
+| Source | `cr-01-prompt-quality.md` §Aufgaben (root-cause of CR-01 registry gap, detected 2026-07-07) |
+| Status | `open` |
+| Priority | P2 |
+| Area | Governance / CI |
+| Owner role | Platform Specialist (governance tooling) |
+| Dependencies | `scripts/governance/_review_registry_link.py`; `scripts/governance/ssot_aggregation.py`; `_audit/results/content-review/**/*.md` |
+| Review trigger/date | Re-review when content-review format changes or when this task is promoted to blocking (see CR-AUFG-01-09) |
+
+**Root cause:** The P5 review→registry checker only scans `review-*.md` filenames
+and only parses `### [AUFG-XX-YY]` headers. Content-review files are named
+`cr-NN-*.md` and use `- **CR-AUFG-NN-MM:**` bullets, so all 8 content-review files
+are invisible to it. This is why CR-01's 6 tasks drifted into the review file
+marked "implemented" with zero registry entries — the "check green covers only its
+layer" failure from `docs/development/finding-lifecycle.md` §4.
+
+**Acceptance criteria:**
+
+- [ ] `collect_review_headers` scans both `review-*.md` and `cr-*.md` under
+  `_audit/results/`.
+- [ ] Parser recognizes the `- **CR-AUFG-NN-MM:**` bullet form in addition to the
+  existing `### [AUFG-XX-YY]` header form.
+- [ ] Matching dual-normalizes the `CR-` prefix (a `CR-AUFG-NN-MM` header matches a
+  registry entry keyed either `CR-AUFG-NN-MM` or `AUFG-NN-MM`) so CR-02/03/04 entries
+  (stored unprefixed) are not false positives.
+- [ ] Range-block recognition: a registry `| IDs | CR-AUFG-NN-01 through CR-AUFG-NN-14 |`
+  row satisfies headers within that range (CR-08 set).
+- [ ] Severity is WARNING-only (exit 0) this cycle so the ~8 genuine cross-review
+  misses do not break CI; the blocking ratchet is CR-AUFG-01-09.
+- [ ] Tests cover: cr-*.md discovery, CR-AUFG bullet parsing, dual-match, range-block
+  recognition, and a golden test asserting the current state exits 0.
+
+---
+
+### CR-AUFG-01-09 — Content-Review P5 Checker auf BLOCKING ratcheten
+
+| Field | Value |
+|-------|-------|
+| ID | CR-AUFG-01-09 |
+| Title | Content-Review P5 Checker von WARNING-only auf BLOCKING ratcheten + Cross-Review Back-fill |
+| Source | ADR-062 §Enforcement phasing (warning → blocking); created during CR-01 remediation to give the CR-AUFG-01-08 warning-only ratchet a concrete owner + trigger |
+| Status | `open` |
+| Priority | P3 |
+| Area | Governance / CI |
+| Owner role | Platform Specialist (baseline clean); Architecture Specialist (back-fill) |
+| Dependencies | CR-AUFG-01-08; `scripts/governance/_review_registry_link.py`; `aufg-registry.md` |
+| Review trigger/date | After the first review cycle with the content-review P5 checker at blocking severity, or by 2026-10-07 |
+
+**Rationale:** Without a concrete trigger, a WARNING-only checker risks becoming
+permanent — the exact failure mode the governance system exists to prevent (cf.
+the AUFG-01-09 technical-review precedent). The ~8 genuinely-missing normalized
+CR-AUFG entries across cr-02/03/04/05/07/08 must be back-filled before the flip so
+the baseline is clean.
+
+**Acceptance criteria:**
+
+- [ ] Content-review P5 finding severity promoted from WARNING to BLOCKING (exit 1).
+- [ ] The ~8 genuinely-missing normalized CR-AUFG entries across cr-02/03/04/05/07/08
+  are back-filled in the registry (or explicitly reclassified).
+- [ ] Baseline verified clean (0 false positives) before the flip.
+- [ ] This registry entry updated with exit evidence and status `resolved`.
+
+---
 
 ### AUFG-01-03 — MCP/A2A-Produktstatus und Adapter-Gates klären
 
