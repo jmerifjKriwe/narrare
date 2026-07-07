@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -74,6 +74,7 @@ Return a JSON object with these fields:
   - `issues`: List of issue objects, each with:
     - `type`: string — one of `"too_long"`, `"complex_vocabulary"`, `"passive_voice"`, `"ambiguous"`, `"tangled_syntax"`, `"monotone_rhythm"`
     - `description`: string — human-readable explanation of the problem
+    - `confidence`: float (0.0-1.0) — confidence that this is genuinely a readability problem for the target audience, not a deliberate stylistic choice
   - `suggestions`: List of rewrite suggestions, each with:
     - `alternative`: string — the rewritten sentence
     - `improvement`: string — what this alternative improves
@@ -89,11 +90,13 @@ Example output:
       "issues": [
         {
           "type": "tangled_syntax",
-          "description": "Three nested relative clauses force the reader to hold the subject 'The letter' across 30 words before reaching the main verb."
+          "description": "Three nested relative clauses force the reader to hold the subject 'The letter' across 30 words before reaching the main verb.",
+          "confidence": 0.9
         },
         {
           "type": "too_long",
-          "description": "At 35 words the sentence exceeds comfortable working-memory load."
+          "description": "At 35 words the sentence exceeds comfortable working-memory load.",
+          "confidence": 0.85
         }
       ],
       "suggestions": [
@@ -119,6 +122,8 @@ Example output:
 - Rewrites must preserve the author's voice — do not flatten distinctive prose into generic clarity.
 - Focus on sentences that genuinely impede reading. Do not flag every long sentence if it reads smoothly.
 - `overall_assessment` must be non-empty.
+- Evidence gate: ground each issue in the specific sentence quoted. If a sentence reads smoothly despite a heuristic marker (length, passive voice), do not flag it — the reading experience is the evidence, not the heuristic.
+- Confidence gate: assign `confidence` below 0.6 to borderline or subjective flags and omit them from the output when they would not actually impede a reader. Never present a low-confidence stylistic preference as a clear readability defect.
 
 ### Do NOT
 
