@@ -5,7 +5,7 @@ header in a review file maps to exactly one consistent registry entry: matching
 id, source referencing the originating review, valid dependency paths (for
 active entries), and no id collision — with documented re-homings recognized.
 
-WARNING-only this cycle: findings are reported but never fail the gate.
+BLOCKING since the AUFG-01-09 follow-up (2026-07-06): findings fail the gate.
 """
 
 from __future__ import annotations
@@ -297,3 +297,99 @@ def test_finding_carries_task_and_review() -> None:
     assert isinstance(f, ReviewLinkFinding)
     assert f.task_id == "AUFG-01-99"
     assert f.review_file == _REVIEW
+
+
+# ---------------------------------------------------------------------------
+# Rich Status-cell parsing (ADR-062 known limitation — hardened in AUFG-01-09)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_registry_meta_handles_rich_status_cell() -> None:
+    """A Status cell with a date/suffix annotation must still parse the token.
+
+    Regression guard for the ADR-062 known limitation: the original parser
+    returned ``''`` for ``| Status | `resolved` (2026-07-06) — note |`` because
+    the value contained backticks. Rich cells are now parsed to their first
+    backtick-wrapped token so dependency validation runs for active entries.
+    """
+    text = (
+        "### AUFG-05-06 — Rollback\n\n"
+        "| Field | Value |\n|-------|-------|\n"
+        "| ID | AUFG-05-06 |\n"
+        "| Source | review-05-release.md |\n"
+        "| Status | `resolved` (2026-07-06) — `docs/development/deployment-guide.md` §Rollback |\n"
+    )
+    meta = parse_registry_meta(text)
+    assert meta["AUFG-05-06"].status == "resolved"
+
+
+def test_parse_registry_meta_status_bare_word_fallback() -> None:
+    """A Status cell without backticks falls back to the leading word."""
+    text = "### AUFG-09-09 — Demo\n\n| Field | Value |\n|-------|-------|\n| Status | open |\n"
+    meta = parse_registry_meta(text)
+    assert meta["AUFG-09-09"].status == "open"
+
+
+def test_rich_status_cell_with_in_progress_enables_dependency_check(tmp_path: Path) -> None:
+    """An ``in_progress`` rich-cell entry IS dependency-checked (not skipped).
+
+    Before the parser hardening, a rich cell like
+    ``| Status | `in_progress` (2026-07-06) |`` parsed to ``''`` and was
+    treated as non-active, silently skipping dependency validation.
+    """
+    headers = [ReviewTaskHeader("AUFG-09-02", _REVIEW, 1)]
+    (tmp_path / "real.py").write_text("x = 1\n", encoding="utf-8")
+    registry_text = (
+        "### AUFG-09-02 — Demo\n\n"
+        "| Field | Value |\n|-------|-------|\n"
+        f"| Source | {_REVIEW} |\n"
+        "| Status | `in_progress` (2026-07-06) |\n"
+        "| Dependencies | `real.py`; `missing.py` |\n\n"
+    )
+    registry = parse_registry_meta(registry_text)
+    report = check_review_registry_link(headers, registry, tmp_path)
+    dep_findings = [f for f in report.findings if f.kind == "invalid_dependency_path"]
+    # Bare filename `missing.py` is now validated too (bare-filename gap closed).
+    assert any("missing.py" in f.detail for f in dep_findings)
+
+
+# ---------------------------------------------------------------------------
+# Bare-filename dependency path validation (ADR-062 gap — hardened in AUFG-01-09)
+# ---------------------------------------------------------------------------
+
+
+def test_bare_filename_invalid_dependency_path_is_flagged(tmp_path: Path) -> None:
+    """A bare wrong filename (no slash) like ``_retry.py`` is now validated.
+
+    Regression guard for the ADR-062 false-control class: the original checker
+    skipped bare filenames to stay high-precision, which let ``_retry.py``
+    (when the file is ``retry.py``) pass undetected. Bare filenames are now
+    resolved by basename anywhere under the repo.
+    """
+    headers = [ReviewTaskHeader("AUFG-09-03", _REVIEW, 1)]
+    (tmp_path / "retry.py").write_text("x = 1\n", encoding="utf-8")
+    registry = _registry(
+        entry_id="AUFG-09-03",
+        source=_REVIEW,
+        status="open",
+        deps="`_retry.py`",
+    )
+    report = check_review_registry_link(headers, registry, tmp_path)
+    dep_findings = [f for f in report.findings if f.kind == "invalid_dependency_path"]
+    assert len(dep_findings) == 1
+    assert "_retry.py" in dep_findings[0].detail
+
+
+def test_bare_filename_valid_dependency_path_resolves(tmp_path: Path) -> None:
+    """A bare correct filename resolves by basename anywhere under the repo."""
+    headers = [ReviewTaskHeader("AUFG-09-04", _REVIEW, 1)]
+    (tmp_path / "apps" / "api").mkdir(parents=True)
+    (tmp_path / "apps" / "api" / "retry.py").write_text("x = 1\n", encoding="utf-8")
+    registry = _registry(
+        entry_id="AUFG-09-04",
+        source=_REVIEW,
+        status="open",
+        deps="`retry.py`",
+    )
+    report = check_review_registry_link(headers, registry, tmp_path)
+    assert [f for f in report.findings if f.kind == "invalid_dependency_path"] == []

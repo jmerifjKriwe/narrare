@@ -131,9 +131,12 @@ tooling is brittle for prose; out of proportion to the immediate need. Rejected 
 
 ### Enforcement phasing
 
-- Both ship **warning-only** for one baseline cycle (per ADR-047's ratchet discipline),
-  then **ratchet to blocking** once current drift (AUFG-01-01 metadata, AUFG-01-02
-  residual, `INDEX.md:126`) is resolved by Stage 3.
+- Both shipped **warning-only** for one baseline cycle (per ADR-047's ratchet discipline),
+  then **ratcheted to blocking** in the AUFG-01-09 follow-up (2026-07-06) once current
+  drift (AUFG-01-01 metadata, AUFG-01-02 residual, `INDEX.md:126`, plus 4 missing
+  registry entries AUFG-02-05 / AUFG-04-12 / 04-13 / 04-14) was resolved. The rich
+  Status-cell parser and the bare-filename dependency-path gap (known limitations at
+  initial implementation) were hardened in the same follow-up.
 
 ---
 
@@ -250,20 +253,30 @@ collision. The checker reports this as a recognized re-homing; the review's hist
 rewritten. Dependency-path validation runs for `open`/`in_progress`/`blocked` entries only
 (resolved/not-applicable entries hold historical paths).
 
-### Known limitation (deferred to the blocking ratchet)
+### Known limitation — HARDENED in the blocking ratchet (AUFG-01-09, 2026-07-06)
 
-The registry `Status` cell parser extracts the backtick-wrapped token but returns `''` for *rich*
-Status cells (e.g. `` `resolved` (2026-07-01) — note ``). This fragility is shared with the existing
-`governance/aufg_registry.py` parser, has **zero effect on the clean baseline** (all review-header
-claimants are resolved, so dependency validation is correctly skipped regardless), and is
-intentionally deferred to the blocking-ratchet follow-up rather than expanding scope to consolidate
-the two registry parsers (RULE-07).
+The registry `Status` cell parser originally extracted the backtick-wrapped token but
+returned `''` for *rich* Status cells (e.g. `` `resolved` (2026-07-01) — note ``). This
+fragility was shared with the existing `governance/aufg_registry.py` parser, had **zero
+effect on the clean baseline** (all review-header claimants were resolved, so dependency
+validation was correctly skipped regardless), and was intentionally deferred to the
+blocking-ratchet follow-up rather than expanding scope to consolidate the two registry
+parsers (RULE-07).
 
-### Ratchet follow-up (tracked)
+**Hardened (2026-07-06):** `_STATUS_ROW_RE` now captures the full cell content and
+`_normalize` extracts the first backtick-wrapped token (falling back to the leading word).
+Rich cells parse correctly, so dependency validation runs for active entries whose Status
+cell carries a date/suffix annotation. The bare-filename dependency-path gap (bare
+filenames like `_retry.py` were skipped because they bore no slash) was closed in the same
+follow-up: `_dep_path_candidates` now returns bare filenames and `_resolve_dep_path`
+resolves them by basename anywhere under the repo via `rglob`.
 
-Promote both checkers from WARNING (`GOVERNED_DEBT`) to blocking (`FAIL` on findings) once the
-baseline is proven stable across a full review cycle; at that point also harden the rich-Status-cell
-parsing and the `### [AUFG-XX-YY]` header convention per the Review Trigger.
+### Ratchet follow-up — COMPLETED (AUFG-01-09, 2026-07-06)
+
+Both checkers were promoted from WARNING (`GOVERNED_DEBT`) to blocking (`FAIL` on
+findings) once the baseline was proven stable across a full review cycle. The rich
+Status-cell parsing was hardened and the bare-filename dependency-path gap closed in the
+same follow-up. See AUFG-01-09 for the complete exit evidence.
 
 ---
 

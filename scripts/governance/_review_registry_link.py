@@ -66,8 +66,16 @@ _ENTRY_HEADER_RE = re.compile(
 #: ``| Source | value |`` table row.
 _SOURCE_ROW_RE = re.compile(r"^\|\s*Source\s*\|\s*(.+?)\s*\|\s*$", re.MULTILINE)
 
-#: ``| Status | `value` |`` or ``| Type | `value` |`` table row.
-_STATUS_ROW_RE = re.compile(r"^\|\s*(?:Status|Type)\s*\|\s*`?([^|`]+?)`?\s*\|\s*$", re.MULTILINE)
+#: ``| Status | `value` … |`` or ``| Type | `value` … |`` table row. Captures the
+#: leading status token even when the cell carries a rich suffix (e.g.
+#: ``| Status | `resolved` (2026-07-06) — note |``). The cell content between the
+#: pipes is matched lazily up to the next pipe; the first backtick-wrapped token
+#: (or a bare word) is the status. Rich cells are handled so blocking enforcement
+#: does not silently lose the status of an entry (ADR-062 known limitation).
+_STATUS_ROW_RE = re.compile(
+    r"^\|\s*(?:Status|Type)\s*\|\s*(.+?)\s*\|\s*$",
+    re.MULTILINE,
+)
 
 #: ``| Dependencies | value |`` table row.
 _DEPS_ROW_RE = re.compile(r"^\|\s*Dependencies\s*\|\s*(.+?)\s*\|\s*$", re.MULTILINE)
@@ -181,7 +189,23 @@ def _row(section: str, pattern: re.Pattern[str]) -> str:
 
 
 def _normalize(raw: str) -> str:
-    return raw.strip().strip("`").strip()
+    """Extract the canonical status token from a Status-cell value.
+
+    Handles both bare cells (``resolved``) and rich cells
+    (``\\`resolved\\` (2026-07-06) — note``) by extracting the first
+    backtick-wrapped token, falling back to the leading word. This closes the
+    ADR-062 known limitation where rich cells parsed to ``''`` and were then
+    treated as non-active (skipping dependency validation).
+    """
+    stripped = raw.strip()
+    if not stripped:
+        return ""
+    # Prefer the first backtick-wrapped token (the canonical status form).
+    tick_match = re.search(r"`([^`]+)`", stripped)
+    if tick_match:
+        return tick_match.group(1).strip()
+    # Fall back to the first whitespace-delimited word.
+    return stripped.split()[0] if stripped.split() else ""
 
 
 # ---------------------------------------------------------------------------
@@ -312,7 +336,7 @@ def _validate_deps(
 
     findings: list[ReviewLinkFinding] = []
     for candidate in _dep_path_candidates(entry.dependencies_text):
-        if not (repo_root / candidate).exists():
+        if not _resolve_dep_path(candidate, repo_root):
             findings.append(
                 ReviewLinkFinding(
                     task_id=entry.entry_id,
@@ -327,18 +351,36 @@ def _validate_deps(
     return findings
 
 
-def _dep_path_candidates(deps_text: str) -> list[str]:
-    """Extract slash-bearing, extension-bearing, non-glob path tokens.
+def _resolve_dep_path(candidate: str, repo_root: Path) -> bool:
+    """Resolve a dependency path candidate against the repo.
 
-    Bare filenames (no slash) are skipped to stay high-precision — the
-    historical false-control class (a wrong path prefix) is caught by the
-    full repo-relative path; bare prose words are not flagged.
+    Repo-relative paths (``apps/api/retry.py``) are checked directly. Bare
+    filenames (``retry.py``) are resolved by name anywhere under the repo —
+    this catches the ADR-062 false-control class (``_retry.py`` when the file
+    is ``retry.py``). A glob-free candidate with an extension that matches no
+    file by relative path AND no file by basename is an invalid path.
+    """
+    if "/" in candidate:
+        return (repo_root / candidate).exists()
+    # Bare filename: resolve by basename anywhere under the repo.
+    return any(repo_root.rglob(candidate))
+
+
+def _dep_path_candidates(deps_text: str) -> list[str]:
+    """Extract extension-bearing, non-glob path tokens for validation.
+
+    Both repo-relative paths (``apps/api/retry.py``) and bare filenames
+    (``retry.py``) are returned as candidates. Bare filenames are resolved
+    against the repo via :func:`_resolve_dep_path` — this closes the ADR-062
+    bare-filename gap where a wrong path like ``_retry.py`` (when the file is
+    ``retry.py``) was skipped because it bore no slash. Pure prose words (no
+    extension) and globs are still skipped to stay high-precision.
     """
     candidates: list[str] = []
     seen: set[str] = set()
     for match in _DEP_PATH_RE.finditer(deps_text):
         path = match.group(1)
-        if "*" in path or "/" not in path:
+        if "*" in path:
             continue
         if path not in seen:
             seen.add(path)

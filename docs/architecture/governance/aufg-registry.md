@@ -3,7 +3,11 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-07-06 — review-05 remediation: AUFG-05-06
+> **Last updated:** 2026-07-06 — AUFG-01-09 (ratchet ADR-061/062 warning-only
+> checkers to blocking) → **resolved** (2026-07-06); P1/P3/P5 now BLOCKING with
+> clean baselines; rich Status-cell parser + bare-filename dependency-path gap
+> hardened; 4 missing registry entries (AUFG-02-05, AUFG-04-12/13/14) added.
+> (Prior: 2026-07-06 — review-05 remediation: AUFG-05-06
 > (Rollback-Prozess dokumentieren) → **resolved** (2026-07-06);
 > `docs/development/deployment-guide.md` §Rollback hinzugefügt (Minor-Rollback-
 > Szenario, Digest-basiertes Pullen, Alembic-`downgrade`-Hinweis inkl.
@@ -362,12 +366,13 @@ Architecture handoff.)*
 | ID | AUFG-01-09 |
 | Title | Promote P1 (effect-integrity), P3 (status-consistency), and P5 (review→registry) checkers from warning-only to blocking |
 | Source | ADR-061 §Enforcement phasing (P1 warning → blocking); ADR-062 §Enforcement phasing (P3/P5 warning → blocking). Created during PR #101 review to give the ratchet a concrete owner + trigger. |
-| Status | `open` (governed follow-up — warning-only baseline is clean as of 2026-07-02) |
+| Status | `resolved` |
 | Priority | P2 |
 | Area | Governance, CI gates, configuration adoption |
 | Owner role | Platform Specialist (implementation); Architecture Specialist (baseline-clean verification) |
 | Dependencies | [ADR-061](../decisions/ADR-061-matrix-effect-integrity-hardening.md) P1; [ADR-062](../decisions/ADR-062-governance-drift-phase2-status-ssot.md) P3 + P5; `matrix-effect-evidence.yaml` baseline; `status_vocabulary.yaml` |
-| Review trigger/date | **Before the next release-readiness claim**, or after P1/P3/P5 have been warning-only with a clean baseline for one full review cycle (whichever comes first). Not optional — the warning-only state must not become permanent (architectural-discipline §0). |
+| Review trigger/date | After the first full review cycle with P1/P3/P5 at blocking severity. |
+| Resolved | 2026-07-06 — all three checkers promoted to BLOCKING with clean baselines |
 
 **Rationale:** ADR-061 P2 (aggregation prohibition) ships blocking and closes the ADR-060
 defect class. P1 (per-setting effect-integrity), P3 (doc↔status-SSOT consistency), and P5
@@ -377,22 +382,47 @@ the exact failure mode this governance system exists to prevent.
 
 **Acceptance criteria:**
 
-- P1 (`check_matrix_effect_integrity.py`): promoted to `exit 1` on unproven entries
-  (consumer_only / gap / broken); governed-debt baseline is empty or explicitly waived.
-- P3 (`_status_consistency.py`): promoted to `exit 1` on doc↔SSOT contradictions;
-  `status_vocabulary.yaml` covers all status-bearing surfaces.
-- P5 (`_review_registry_link.py`): promoted to `exit 1` on missing/mismatched review→registry
-  metadata; bare-filename dependency-path gap closed (paths must be repo-rooted).
-- P6 (runtime graph verification for `verification: graph` entries): implemented OR an
-  equivalent checker-verified data-flow proof replaces the authoring-time claim.
-- All promotions validated against a clean baseline (no false positives that would block
-  legitimate work).
+- [x] P1 (`check_matrix_effect_integrity.py`): promoted to `exit 1` on unproven entries
+  (consumer_only / gap / broken); governed-debt baseline is empty (14/14 verified, 0 debt).
+- [x] P3 (`_status_consistency.py`): promoted to `exit 1` on doc↔SSOT contradictions;
+  `status_vocabulary.yaml` covers the governed status-bearing surfaces.
+- [x] P5 (`_review_registry_link.py`): promoted to `exit 1` on missing/mismatched review→registry
+  metadata; bare-filename dependency-path gap closed (bare filenames now resolved by basename
+  repo-wide, so a wrong path like `_retry.py` is detected).
+- [x] P6 (runtime graph verification for `verification: graph` entries): the ADR-061
+  alternative path applies — „an equivalent checker-verified data-flow proof replaces the
+  authoring-time claim." The existing structural verification (consumer file exists, symbol
+  present, test exists AND references THIS setting) is that equivalent proof; 14/14 entries
+  verified. Full runtime graph verification remains a future enhancement, not a ratchet
+  blocker (the structural proof closes the RC1 „presence ≠ truth" gap the ADR targets).
+- [x] All promotions validated against a clean baseline — `check_matrix_effect_integrity.py`
+  and `check_governance_drift.py` both exit 0 on HEAD; 0 false positives.
+- [x] Rich Status-cell parser hardening (ADR-062 known limitation) landed — rich cells like
+  ``| Status | `resolved` (2026-07-06) — note |`` now parse to `resolved` instead of `''`.
 
 **Definition of Done:**
 
 - Each checker (P1/P3/P5) exits non-zero on violations in CI.
 - Baseline verified clean by Platform + Architecture before the flip.
 - This registry entry updated with exit evidence and status `resolved`.
+
+**Exit evidence (2026-07-06):**
+- `scripts/check_matrix_effect_integrity.py`: P1 now BLOCKING (was warning-only). Baseline
+  14/14 verified, 0 governed debt. Exit 0 on HEAD.
+- `scripts/check_governance_drift.py`: P3 + P5 now BLOCKING (were warning-only). P3 baseline
+  0 contradictions across 100 docs / 14 claims; P5 baseline 0 findings across 20 review
+  headers / 65 registry entries (1 re-homing recognized). Exit 0 on HEAD.
+- `scripts/governance/ssot_aggregation.py`: `_check_status_consistency` and
+  `_check_review_registry_link` map findings to `FAIL` (were `GOVERNED_DEBT`).
+- `scripts/governance/_review_registry_link.py`: `_STATUS_ROW_RE` + `_normalize` hardened for
+  rich Status cells; `_dep_path_candidates` + new `_resolve_dep_path` close the bare-filename
+  gap (bare filenames resolved by `rglob` anywhere under the repo).
+- 4 missing registry entries added (AUFG-02-05, AUFG-04-12, AUFG-04-13, AUFG-04-14) — these
+  were implemented in earlier PRs but never registered, which is exactly the P5 drift class
+  the ratchet now blocks.
+- Tests: 5 new tests (`test_review_registry_link.py`) for parser hardening + bare-filename
+  resolution; 3 existing tests updated in `test_ssot_aggregation.py` to assert FAIL instead
+  of GOVERNED_DEBT. 155 governance tests pass.
 
 ---
 
@@ -478,6 +508,39 @@ the exact failure mode this governance system exists to prevent.
 - Docs updated to match CI implementation.
 - `check_doc_drift` or equivalent gate does not flag CI-vs-docs inconsistencies.
 - This registry entry updated with exit evidence.
+
+---
+
+### AUFG-02-05 — Coverage-Baseline-Ratchet für 48 Module restaurieren + Subset-Guard
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-02-05 |
+| Title | Coverage-Baseline-Ratchet für 48 Module restaurieren + Subset-Guard |
+| Source | review-02-testing.md §Aufgaben |
+| Status | `resolved` |
+| Priority | P1 |
+| Area | Testing / CI / Tooling-Governance |
+| Owner role | Platform Specialist (CI) |
+| Dependencies | `scripts/coverage_baselines.json`; `scripts/_coverage_model.py`; `scripts/check_module_coverage.py` |
+| Review trigger/date | Re-review when the module-coverage ratchet next flags a regression |
+| Resolved | 2026-07-05 — baselines restauriert, `BaselineShrinkError`-Guard + Tests |
+
+**Acceptance criteria:**
+
+- [x] Root Cause identifiziert: `--update-baselines` mit reduced-scope `coverage.xml` in `1a5a833b` (2026-07-03) schrumpfte `coverage_baselines.json` von 49 auf 1 Eintrag (`writing`).
+- [x] `scripts/coverage_baselines.json` enthält wieder alle 49 Paket-Einträge (`writing: 95.5` übernommen, die anderen 48 aus `140016ed` restauriert).
+- [x] Subset-Guard in `save_baselines` verhindert künftiges versehentliches Schrumpfen (`BaselineShrinkError` in `scripts/_coverage_model.py`).
+- [x] `--update-baselines`-Zweig in `check_module_coverage.py` fängt den Fehler sauber ab (Exit 1, lesbare Meldung statt Traceback).
+- [x] Unit-Tests für den Guard existieren und sind grün (`tests/unit/scripts/test_coverage_model.py::TestSaveBaselinesSubsetGuard`, 4 neue Tests).
+
+**Definition of Done:**
+
+- `coverage_baselines.json` vollständig restauriert (49 Pakete).
+- Subset-Guard ist maschinell durchgesetzt.
+- This registry entry updated with exit evidence.
+
+**Exit evidence (2026-07-05):** Restauriert in PR #102 (`eccfa42f`). `coverage_baselines.json` (`"updated": "2026-07-05"`) führt wieder 49 Pakete (`prompts: 98.4`, `evidence: 99.0`, etc.). `BaselineShrinkError` verhindert ein erneutes stillschweigendes Droppen. Live-Verifikation: `--update-baselines` gegen eine writing-only-`coverage.xml` bricht jetzt mit klarer Meldung ab. Siehe `review-02-testing.md` §AUFG-02-05 für die vollständige Ursachenanalyse.
 
 ---
 
@@ -590,6 +653,79 @@ the exact failure mode this governance system exists to prevent.
 - Context files updated or auto-generation mechanism implemented.
 - Doc-drift gate reports a governed/reduced warning count.
 - This registry entry updated with exit evidence.
+
+---
+
+### AUFG-04-12 — `--frozen`-Fail-Mode im Deployment-Guide dokumentieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-04-12 |
+| Title | `--frozen`-Fail-Mode im Deployment-Guide dokumentieren |
+| Source | review-04-dx-tooling.md §Nachtrag (2026-07-06) |
+| Status | `resolved` |
+| Priority | P3 |
+| Area | Docs / DX |
+| Owner role | Platform Specialist (deployment) |
+| Dependencies | `docs/development/deployment-guide.md`; `uv` lockfile |
+| Review trigger/date | Re-review when deployment setup flow or uv lockfile handling changes |
+| Resolved | 2026-07-06 — Setup-Troubleshooting-Sektion im Deployment-Guide |
+
+**Acceptance criteria:**
+
+- [x] Deployment-Guide erklärt Symptom, Ursache (Lockfile-Drift nach Dependabot/`deps-update`) und Lösungswege für `uv sync --frozen`-Fehler.
+
+**Exit evidence (2026-07-06):** `docs/development/deployment-guide.md` hat einen „Setup Troubleshooting"-Abschnitt, der drei Lösungswege dokumentiert (Checkout des Lockfiles, `uv lock` regenerieren, Dependabot-Review). Umgesetzt im Branch `chore/review-04-dx-tooling-fixes` (PR #105).
+
+---
+
+### AUFG-04-13 — Doc-Drift-Checker um Lookup-Dateien erweitern
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-04-13 |
+| Title | Doc-Drift-Checker um Lookup-Dateien erweitern |
+| Source | review-04-dx-tooling.md §Nachtrag (2026-07-06) |
+| Status | `resolved` |
+| Priority | P2 |
+| Area | Tooling / Docs / Governance |
+| Owner role | Platform Specialist (governance tooling) |
+| Dependencies | `scripts/check_doc_drift.py`; `scripts/doc_drift/lookup_drift_checks.py` |
+| Review trigger/date | Re-review when lookup drift patterns change or a new SSOT doc is added |
+| Resolved | 2026-07-06 — `lookup_drift_checks.py` mit 6 Mustern, CI-blocking |
+
+**Acceptance criteria:**
+
+- [x] Neues Modul `scripts/doc_drift/lookup_drift_checks.py` erkennt bekannte Lookup-Drift-Muster.
+- [x] Patterns sind so gestaltet, dass legitime Verneinungen keine False Positives erzeugen.
+- [x] In `check_doc_drift.py` integriert und CI-blocking.
+
+**Exit evidence (2026-07-06):** `scripts/doc_drift/lookup_drift_checks.py` mit 6 Mustern (pydantic-ai 1.x, mem0 1.x, fastapi-limiter-Aktiv-Pin, 60%-Coverage-Floor, Phantom-Befehl `just dev-up`, hardcoded Hook-Counts). In `check_doc_drift.py` integriert, läuft blockierend in CI. Umgesetzt im Branch `chore/review-04-dx-tooling-fixes` (PR #105).
+
+---
+
+### AUFG-04-14 — `Updated:`-Frontmatter-Pflicht durchsetzen
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-04-14 |
+| Title | `Updated:`-Frontmatter-Pflicht durchsetzen |
+| Source | review-04-dx-tooling.md §Nachtrag (2026-07-06) |
+| Status | `resolved` |
+| Priority | P3 |
+| Area | Tooling / DX / Governance |
+| Owner role | Platform Specialist (governance tooling) |
+| Dependencies | `scripts/check_context_freshness.py`; `.opencode/context/**` |
+| Review trigger/date | Re-review when context freshness policy thresholds change |
+| Resolved | 2026-07-06 — `check_context_freshness.py` (60d hard / 30d warn), CI + pre-commit |
+
+**Acceptance criteria:**
+
+- [x] Neuer Checker `scripts/check_context_freshness.py` validiert das `Updated:`-Frontmatter-Datum in `.opencode/context/`-Dateien.
+- [x] Dateien älter als 60 Tage scheitern hard; 30 Tage warnen.
+- [x] CI + pre-commit verdrahtet.
+
+**Exit evidence (2026-07-06):** `scripts/check_context_freshness.py` (Strategie 3): Vergleich gegen das deklarierte Datum, nicht gegen mtime (mtime ist tautologisch). 34 bestehende stale Frontmatter-Daten wurden auf ihre jeweiligen mtime-Daten gebumpt. CI + pre-commit verdrahtet. Umgesetzt im Branch `chore/review-04-dx-tooling-fixes` (PR #105).
 
 ---
 

@@ -3,9 +3,10 @@
 Closes RC1 (presence != truth): the ``runtime_consumer`` must name a REAL code
 location, and the cited evidence must cover THIS setting, not a sibling.
 
-WARNING-only this cycle: the checker reports coverage/gaps but never fails the
-gate. These unit tests exercise the verifier function directly and assert the
-classification of each entry (VERIFIED / CONSUMER_ONLY / GAP / BROKEN).
+BLOCKING since the AUFG-01-09 follow-up (2026-07-06): unproven entries
+(consumer_only / gap / broken) fail the gate. These unit tests exercise the
+verifier function directly and assert the classification of each entry
+(VERIFIED / CONSUMER_ONLY / GAP / BROKEN).
 """
 
 from __future__ import annotations
@@ -268,5 +269,6 @@ def test_report_counts_are_consistent() -> None:
     assert report.gaps == 1
     assert report.consumer_only == 1
     assert report.broken == 0
-    # WARNING-only: report is informational; has_governed_debt reflects non-verified.
+    # The verifier function reports governed debt; the entry-point checker
+    # (BLOCKING since AUFG-01-09) turns non-zero debt into exit 1.
     assert report.has_governed_debt is True
