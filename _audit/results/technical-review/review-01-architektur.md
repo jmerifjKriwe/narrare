@@ -433,3 +433,14 @@ sind aufräumbare Konsistenz-Lücken in einem ansonsten herausragend disziplinie
 - [ ] Keine Datei > 250 Zeilen (Soft-Target) nach Aufteilung
 - [ ] `just check-architecture` + `check-python-size` + Typecheck grün; bestehende Tests grün
 **Geschätzter Aufwand:** S
+
+### [AUFG-01-06] prompt_loader.py: OSError loggen statt silent pass + except-Tuple normalisieren
+**Priorität:** Niedrig
+**Bereich:** Core / Qualität
+**Kontext:** `packages/core/narrare_core/wiki/prompt_loader.py:71–72` fängt `(ModuleNotFoundError, FileNotFoundError, OSError)` mit `pass` ab. Das stumme Schlucken von `OSError` (Permission/Disk/Corruption) verdeckt reale IO-Fehler ohne jegliche Trace — ein RULE-11-Geist-Verstoß, den der bare-except-Scanner (`check_architecture.py`) nicht abfängt, weil er nur bare `except:` bzw. `except Exception: pass` prüft, nicht das Schlucken spezifischer Exception-Typen ohne Logging. L71 nutzt zudem `except A, B, C:` ohne Parenthesen (gültiges Python-3-Tuple-Expr, aber inkonsistent mit L87, das `except (…):` schreibt).
+**Akzeptanzkriterien:**
+- [ ] `OSError`-Zweig logged die Exception via `logger.debug(...)` (inkl. category/language/mode), statt stumm `pass`
+- [ ] Except-Tuple mit Parenthesen normalisiert (`except (…):`) für Konsistenz mit L87
+- [ ] Regressionstest: ein provoziertes `OSError` wird geloggt (assert log record) UND der English-Fallback greift weiterhin
+- [ ] `just check` + `just lint` + `just typecheck` + `just test-unit` grün
+**Geschätzter Aufwand:** S
