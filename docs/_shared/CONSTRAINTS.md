@@ -1167,6 +1167,7 @@ See ADR-028 for the SSOT decision and checker enforcement specification.
 | 13 | RULE-01b | `apps/api/narrare/setup/provider_service.py` | Setup-phase provider validation requires direct pydantic-ai Agent | ADR-015 | 2026-05-20 |
 | 15 | RULE-19 | `apps/api/narrare/metrics/router.py` | Health/readiness check must bypass repository layer to verify raw DB connectivity | platform-review-01 | 2026-06-11 |
 | 16 | RULE-18 | `apps/api/narrare/memory/suggestion_identity.py` | `_SOURCE_ID_HASH_PREFIX_LEN` is a pinned cryptographic stability constant; runtime configurability would break source_id_hash determinism across feedback events | CR-AUFG-07-24 | 2026-06-22 |
+| 17 | RULE-02b | `packages/core/narrare_core/memory/mem0_client.py` | mem0 custom_instructions is a third-party-library config string for mem0's internal extraction LLM, not a Narrare prompt-resolution path (RULE-02b scope boundary). | ADR-064 | 2026-07-08 |
 
 ### Detailed Exception Justifications
 
@@ -1226,6 +1227,20 @@ layer to verify raw database connectivity. This is intentional: these endpoints
 serve as infrastructure-level liveness/readiness probes that must detect database
 failures at the connection level, not through the repository abstraction which
 may mask connection issues behind retry logic or fallback behavior.
+
+#### Exception #17: mem0 extraction prompts in `core/memory/mem0_client.py` (RULE-02b scope boundary)
+
+`_WRITING_PREFERENCE_PROMPTS` (en/de/fr) are language-specific extraction
+instructions passed as `custom_instructions` to `mem0.AsyncMemory`. mem0 feeds
+the string to its **own** internal LLM client for memory extraction — it never
+reaches a Narrare agent, PromptComposer, the route table, the variable engine, or
+any `LLMIntent`. It is therefore **not** a Narrare prompt-resolution path and is
+outside RULE-02b's enforcement boundary (the `prompt_path.py` checker does not
+flag it — it scans only for `PromptRegistry.resolve()` and `PromptRegistry`
+imports). This exception is registered *defensively* as a scope-boundary
+clarification: it makes the boundary machine-readable and ratchets it against
+silent growth via `check_exception_baseline.py`. It is **not** a license to place
+feature prompts in `core/memory/`. See ADR-064.
 
 *Every exception is a debt that should be paid down. Revisit when the Gateway
 supports infrastructure-level calls with different routing rules.*

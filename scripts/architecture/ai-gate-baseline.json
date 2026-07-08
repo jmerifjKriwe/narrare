@@ -19,7 +19,8 @@
     "pyproject | RULE-01b | packages/core/narrare_core/planning/remap.py | Injected agent, not instantiated here",
     "pyproject | RULE-18 | apps/api/narrare/memory/suggestion_identity.py | _SOURCE_ID_HASH_PREFIX_LEN is a pinned cryptographic stability constant; runtime configurability would break source_id_hash determinism across feedback events.",
     "pyproject | RULE-19 | apps/api/narrare/metrics/router.py | Health/readiness check must bypass repository layer to verify raw DB connectivity.",
-    "pyproject | RULE-TEST-01 | tests/unit/api/metrics/test_metrics_router.py | Mocking SQLAlchemy Engine \u2014 no domain contract"
+    "pyproject | RULE-TEST-01 | tests/unit/api/metrics/test_metrics_router.py | Mocking SQLAlchemy Engine \u2014 no domain contract",
+    "pyproject | RULE-02b | packages/core/narrare_core/memory/mem0_client.py | mem0 custom_instructions is a third-party-library config string for mem0's internal extraction LLM, not a Narrare prompt-resolution path (RULE-02b scope boundary)."
   ],
   "frontend_file_size_violations": [],
   "streaming_compliance_gaps": [],

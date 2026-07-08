@@ -86,6 +86,7 @@
 | [ADR-061](ADR-061-matrix-effect-integrity-hardening.md) | Configuration Adoption Matrix Effect-Integrity Hardening — P1 per-setting effect-integrity checker (author graph-traced + evidence-manifest; presence AND truth) + P2 aggregation prohibition (one setting per row) | ⛔ | 2026-07-02 | `scripts/governance/`, `configuration-adoption-matrix.yaml`, ADR-051, RULE-18b/22 |
 | [ADR-062](ADR-062-governance-drift-phase2-status-ssot.md) | Governance Drift Automation Phase 2 — P3 doc↔status-SSOT consistency checker (registry/matrix authoritative; derived docs reconcile or fail) + P5 review→registry mandatory metadata linking (id/source/path/collision); defers P4/P6 with rationale | ⛔ | 2026-07-01 | `docs/architecture/governance/`, `_audit/results/**/review-*.md`, `scripts/governance/`, ADR-047, CONSTRAINTS.md §8, RULE-22 |
 | [ADR-063](ADR-063-deterministic-ci-venv-contract.md) | Deterministic CI Virtualenv Contract — `uv sync` once, `--no-sync` always | ✅ | 2026-07-05 | `pyproject.toml`, `.github/workflows/ci.yml`, workspace members |
+| [ADR-064](ADR-064-mem0-prompt-path-scope-and-memory-defaults.md) | mem0 Extraction Prompts & Default Models — RULE-02b scope boundary (governed exception for third-party-library config strings) + RULE-18b governed default for `_PROVIDER_DEFAULT_MODELS` | ✅ | 2026-07-08 | `core/memory/mem0_client.py`, `pyproject.toml` exceptions, `CONSTRAINTS.md §7`, `ai-gate-baseline.json`, RULE-02b/02/08/18b |
 
 ---
 

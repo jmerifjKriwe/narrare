@@ -392,3 +392,10 @@ file = "apps/api/narrare/memory/suggestion_identity.py"
 reason = "_SOURCE_ID_HASH_PREFIX_LEN is a pinned cryptographic stability constant; runtime configurability would break source_id_hash determinism across feedback events."
 approved_by = "CR-AUFG-07-24"
 date = "2026-06-22"
+
+[[tool.narrare.architecture.exceptions.entries]]
+rule = "RULE-02b"
+file = "packages/core/narrare_core/memory/mem0_client.py"
+reason = "mem0 custom_instructions is a third-party-library config string for mem0's internal extraction LLM, not a Narrare prompt-resolution path (RULE-02b scope boundary)."
+approved_by = "ADR-064"
+date = "2026-07-08"
