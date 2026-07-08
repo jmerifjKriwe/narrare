@@ -6,19 +6,11 @@ from __future__ import annotations
 
 import os
 import sys
-from pathlib import Path
 
 import pytest
 
-# Add apps/api to Python path so tests can import `narrare.*`
-_api_path = Path(__file__).parent.parent / "apps" / "api"
-if str(_api_path) not in sys.path:
-    sys.path.insert(0, str(_api_path))
-
-# Add packages/core to Python path so tests can import `narrare_core.*`
-_core_path = Path(__file__).parent.parent / "packages" / "core"
-if str(_core_path) not in sys.path:
-    sys.path.insert(0, str(_core_path))
+# NOTE: Python path resolution (apps/api, packages/core) is handled by the
+# `pythonpath` setting in [tool.pytest.ini_options] in pyproject.toml.
 
 # Ensure test environment is set before any imports
 os.environ.setdefault("ENVIRONMENT", "test")
@@ -44,7 +36,7 @@ os.environ["OPENAI_API_KEY"] = "sk-test-dummy-openai-key"
 # If a test accidentally creates a real pydantic-ai Agent and calls .run(),
 # this raises a clear RuntimeError instead of silently hitting the network.
 # narrare: allow reason="global test guard — blocks real LLM API calls"
-from pydantic_ai import (  # noqa: E402
+from pydantic_ai import (
     models,
 )
 
@@ -113,7 +105,6 @@ def test_architecture_constraints() -> None:
     This test ensures the CI and local pre-commit hooks are consistent.
     """
     import subprocess
-    import sys
 
     result = subprocess.run(
         [sys.executable, "scripts/check_architecture.py"],

@@ -228,7 +228,7 @@ jobs:
           path: |
             .pyright/
             **/.pyc
-          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'tests/pyrightConfig.json') }}
           restore-keys: |
             pyright-${{ runner.os }}-
 
@@ -308,7 +308,7 @@ jobs:
             --cov-report=term-missing:skip-covered \
             --junitxml=pytest.xml \
             --cov-fail-under=80 \
-            -n auto \
+            -n auto --dist loadfile \
             -v | tee pytest-coverage.txt
 
       - name: Check coverage threshold
