@@ -72,13 +72,6 @@ def _build_steps() -> list[Step]:
                 (["uv", "run", "python", "scripts/check_exception_baseline.py"], None),
                 (["uv", "run", "python", "scripts/check_python_file_size.py"], None),
                 (["uv", "run", "python", "scripts/check_prompt_surface_contract.py"], None),
-                (["uv", "run", "python", "scripts/check_configuration_matrix.py"], None),
-                # ADR-061: P2 aggregation prohibition (BLOCKING) + P1 effect
-                # integrity (WARNING-only) over the configuration adoption matrix.
-                (["uv", "run", "python", "scripts/check_matrix_effect_integrity.py"], None),
-                # ADR-062: P3 doc↔status-SSOT consistency + P5 review→registry
-                # linking. WARNING-only baseline (exit 0; ratchets to blocking).
-                (["uv", "run", "python", "scripts/check_governance_drift.py"], None),
             ],
         ),
         Step(

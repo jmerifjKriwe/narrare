@@ -40,8 +40,7 @@ claims to affect (RULE-18b violation #1, "exposed setting without a runtime cons
 
 ### Matrix false claim (aggregation defect)
 
-The Configuration Adoption Matrix entry `websocket_idle_retry_cascade`
-(`docs/architecture/governance/configuration-adoption-matrix.yaml:656–674`) aggregates
+The Configuration Adoption Matrix entry `websocket_idle_retry_cascade` aggregates
 **three** settings under one row (`ws_idle_timeout_seconds`, `retry_max_attempts`,
 `retry_base_delay`) and declares `lifecycle: adopted`. But its `source`,
 `runtime_consumer`, and `enforcement_evidence` cover **only** `ws_idle_timeout_seconds`

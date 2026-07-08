@@ -339,10 +339,9 @@ a green layer-specific test exists, while the durable lifecycle docs or runtime
 consumer evidence still say the value is unclassified. CR-08 closed this gap with
 two gates:
 
-1. `scripts/check_configuration_matrix.py` validates
-   `docs/architecture/governance/configuration-adoption-matrix.yaml` so every
-   material setting has a classification and adopted user/project settings carry
-   runtime-consumer and enforcement evidence.
+1. `scripts/check_configuration_matrix.py` validates the configuration adoption
+   matrix so every material setting has a classification and adopted user/project
+   settings carry runtime-consumer and enforcement evidence.
 2. The same checker loads future content-review and technical-review artifacts and
    fails if a structured material P0/P1 configuration/effect finding is not
    represented by a matrix row.
@@ -359,14 +358,8 @@ Material P0/P1 configuration/effect findings must include:
 - `[P0]` or `[P1]`
 - `[category: configuration-effect]`
 - a stable `FIND-...` or `CR-AUFG-...` reference
-- a matching row in `configuration-adoption-matrix.yaml` with classification,
+- a matching row in the configuration adoption matrix with classification,
   lifecycle, and evidence (or an explicitly tracked formal-finding state)
-
-**Regression tests:**
-
-```text
-tests/unit/scripts/governance/test_configuration_matrix_review_gate.py
-```
 
 These tests prove an unclassified material P1 configuration/effect finding fails,
 a classified finding passes, P2/non-minimum findings do not block the minimum gate,

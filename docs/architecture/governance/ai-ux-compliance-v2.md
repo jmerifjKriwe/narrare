@@ -3,7 +3,7 @@
 > **Status:** Active governance specification
 > **Date:** 2026-06-18
 > **Owner:** Architecture Specialist
-> **Related:** ADR-043, ADR-047, CR-07 UX Audit, `docs/development/ui-principles.md` §16, `docs/architecture/governance/aufg-registry.md`
+> **Related:** ADR-043, ADR-047, CR-07 UX Audit, `docs/development/ui-principles.md` §16
 
 ---
 
@@ -217,13 +217,13 @@ Rules:
 
 ## 8. Lifecycle Sync Rule for CR-AUFG IDs
 
-Every material CR-AUFG finding has exactly one durable lifecycle state in
-`docs/architecture/governance/aufg-registry.md`.
+Every material CR-AUFG finding previously had exactly one durable lifecycle state
+in the AUFG registry (removed 2026-07-08).
 
 Status discipline:
 
 - `_audit/results/**` is evidence input, not lifecycle SSOT.
-- `CURRENT_STATE.md` must reflect the conservative status from the registry.
+- `CURRENT_STATE.md` must reflect the conservative status from the registry (now removed, 2026-07-08).
 - `resolved` requires implementation + enforcement evidence and, where applicable,
   verification of signal propagation or user-visible UX behavior.
 - A checker passing without inventory coverage is not full §16 compliance.

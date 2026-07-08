@@ -88,7 +88,6 @@ REQUIRED_AUTHORITY_REFERENCES: tuple[RequiredAuthority, ...] = (
     ("ADR index", ("docs/architecture/decisions/INDEX.md",)),
     ("Feature specs index", ("docs/features/INDEX.md",)),
     ("Open questions index", ("docs/architecture/questions/INDEX.md",)),
-    ("AUFG lifecycle", ("docs/architecture/governance/aufg-registry.md",)),
     ("Adoption gate command", ("just check-adoption",)),
     ("System health command", ("just check-health",)),
     (

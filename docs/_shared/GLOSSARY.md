@@ -41,12 +41,11 @@ transport adapter changes. Q-002 remains open until the adapter spec is written.
 
 **AUFG (Architecture UX Finding Gate)**
 Ein governance-Mechanismus aus CR-07 für AI-UX-Compliance-Findings. Findings
-werden im AUFG-Registry (`docs/architecture/governance/aufg-registry.md`) als
-Lebenszyklus-Einträge geführt. Jeder AUFG-Eintrag trägt Design-, Implementation-
-und Enforcement-Evidence gemäß `docs/development/finding-lifecycle.md`. Der
-Lifecycle wird via `scripts/checks/check_ai_interaction_compliance.py` (Check 11)
-und `scripts/check_governance_health.py` CI-blockend überwacht. Siehe ADR-043,
-ADR-047.
+wurden bisher im AUFG-Registry als Lebenszyklus-Einträge geführt (entfernt
+2026-07-08). Jeder AUFG-Eintrag trug Design-, Implementation- und
+Enforcement-Evidence gemäß `docs/development/finding-lifecycle.md`. Der
+Lifecycle wurde via `scripts/checks/check_ai_interaction_compliance.py` (Check 11)
+überwacht. Siehe ADR-043, ADR-047.
 
 ---
 

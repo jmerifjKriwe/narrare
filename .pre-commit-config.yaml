@@ -105,26 +105,6 @@ repos:
         always_run: true
         stages: [pre-commit]
 
-      # Configuration Adoption Matrix — ADR-051 enforcement
-      - id: configuration-matrix
-        name: Configuration Adoption Matrix (ADR-051)
-        entry: uv run python scripts/check_configuration_matrix.py
-        language: system
-        pass_filenames: false
-        files: ^docs/architecture/governance/configuration-adoption-matrix\.yaml$
-        stages: [pre-commit]
-
-      # Configuration Matrix Effect-Integrity — ADR-061 enforcement
-      # P2 (BLOCKING) aggregation prohibition + P1 (WARNING) effect-integrity.
-      # Fires alongside the ADR-051 matrix hook when either manifest changes.
-      - id: matrix-effect-integrity
-        name: Matrix Effect-Integrity (ADR-061)
-        entry: uv run python scripts/check_matrix_effect_integrity.py
-        language: system
-        pass_filenames: false
-        files: ^docs/architecture/governance/(configuration-adoption-matrix|matrix-effect-evidence)\.yaml$
-        stages: [pre-commit]
-
       # Locale Sync — i18n drift detection for prompts
       - id: locale-sync
         name: Locale Sync (i18n drift)

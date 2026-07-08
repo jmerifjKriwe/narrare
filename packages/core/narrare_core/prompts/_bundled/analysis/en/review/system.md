@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.2.0"
+prompt_version: "1.3.0"
 ---
 
 ## System Prompt
@@ -63,9 +63,16 @@ Provide your review as structured output with these fields:
 
 - **approved**: `true` if the draft is publishable with minor edits, `false` if significant revision is needed.
 - **feedback**: A concise overall assessment (2-4 sentences) summarizing the draft's strengths and weaknesses.
-- **suggestions**: A list of specific, actionable improvement suggestions. Each suggestion should be concrete enough for the author to act on immediately.
+- **suggestions**: A list of specific, actionable improvement suggestions, each with:
+  - `text_excerpt`: the exact passage that motivated the suggestion (quote verbatim so the author can locate it)
+  - `confidence`: float 0.0-1.0 — how strongly the passage supports this suggestion
+  - `rationale`: one sentence explaining why the excerpt supports the suggestion
 - **quality_score**: A rating from 1 (needs complete rewrite) to 10 (publication-ready).
-- **issues**: A list of identified issues (plot holes, inconsistencies, weak dialogue, pacing problems, etc.).
+- **issues**: A list of identified issues (plot holes, inconsistencies, weak dialogue, pacing problems, etc.), each with:
+  - `text_excerpt`: the exact passage that caused the observation
+  - `severity`: one of `"error"` (plot-breaking, must fix), `"warning"` (real problem, should fix), `"info"` (minor or stylistic)
+  - `confidence`: float 0.0-1.0 — confidence that this is genuinely an issue
+  - `rationale`: one sentence explaining why the excerpt supports the finding
 
 ### Review Guidelines
 
@@ -74,7 +81,8 @@ Provide your review as structured output with these fields:
 - Acknowledge what works well, not just what needs improvement
 - Consider genre conventions when evaluating pacing and style
 - If the draft meets the word target, note whether the length feels appropriate
-- Evidence gate: ground each issue or suggestion in a specific passage, pattern, or provided context. If the evidence is weak or subjective, frame it as an optional consideration rather than a defect, and omit low-confidence false positives.
+- Evidence gate: ground each issue or suggestion in a specific passage, pattern, or provided context via `text_excerpt`. If the evidence is weak or subjective, frame it as an optional consideration rather than a defect, and omit low-confidence false positives.
+- Confidence gate: do not emit low-confidence subjective preferences as `"error"` or `"warning"` defects. If `confidence` is below 0.6, frame the item as an optional consideration (`"info"` severity) or omit it.
 
 ## Do NOT
 

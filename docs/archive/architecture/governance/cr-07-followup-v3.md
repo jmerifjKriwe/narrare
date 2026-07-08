@@ -1,7 +1,7 @@
 ---
 archived: true
 archived_at: 2026-06-30
-reason: "Completed epic specification — all 11 work items (CR-AUFG-07-14 through CR-AUFG-07-24) resolved with implementation + enforcement evidence in aufg-registry.md"
+reason: "Completed epic specification — all 11 work items (CR-AUFG-07-14 through CR-AUFG-07-24) resolved with implementation + enforcement evidence"
 ---
 
 # CR-07 Follow-up v3 — AI UX Compliance & Modernization Epic
@@ -9,7 +9,7 @@ reason: "Completed epic specification — all 11 work items (CR-AUFG-07-14 throu
 > **Status:** Architecture specification — review-ready, not implemented
 > **Date:** 2026-06-21
 > **Owner:** Architecture Specialist
-> **Related:** CR-07 UX audit, `docs/development/ui-principles.md` §16, `docs/architecture/governance/ai-ux-compliance-v2.md`, `docs/architecture/governance/aufg-registry.md`, `docs/features/prompt-customization-ux.md`, `docs/features/onboarding-user-guide.md`
+> **Related:** CR-07 UX audit, `docs/development/ui-principles.md` §16, `docs/architecture/governance/ai-ux-compliance-v2.md`, `docs/features/prompt-customization-ux.md`, `docs/features/onboarding-user-guide.md`
 
 ---
 

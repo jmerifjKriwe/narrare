@@ -1,7 +1,7 @@
 ---
 archived: true
 archived_at: 2026-06-30
-reason: "Implemented P1 policy — decisions captured in CONSTRAINTS.md (RULE-18b), token_profiles.py, model_suitability.py, and aufg-registry.md CR-08 AUFG set"
+reason: "Implemented P1 policy — decisions captured in CONSTRAINTS.md (RULE-18b), token_profiles.py, model_suitability.py"
 ---
 
 # CR-08 P1 Policy — Token Profiles, Model Limits, and Suitability

@@ -1,6 +1,6 @@
 # ADR-051 — Configuration Effect Adoption Contract
 
-> **Status:** ✅ Accepted — in effect (2026-06-20)
+> **Status:** ⏸ Superseded (governance toolchain removed 2026-07-08)
 > **Date:** 2026-06-18
 > **Deciders:** Architecture Specialist
 > **Supersedes:** —

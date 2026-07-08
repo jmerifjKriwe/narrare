@@ -4,7 +4,7 @@
 > **Date:** 2026-07-01
 > **Owner:** Architecture Specialist
 > **Scope order approved by user:** C Panel/Shell Architecture → B UI Primitives → A Docs & SSOT → D Remaining polish/accessibility/i18n/focus findings
-> **Related:** `docs/development/ui-principles.md`, `docs/architecture/governance/ai-ux-compliance-v2.md`, `docs/architecture/governance/aufg-registry.md`
+> **Related:** `docs/development/ui-principles.md`, `docs/architecture/governance/ai-ux-compliance-v2.md`
 
 ---
 

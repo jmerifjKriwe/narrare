@@ -326,7 +326,7 @@ Neue Schlüssel in `packages/i18n/messages/en/studio.json` unter `settings.ai.pr
 - [x] Rate-Limiting für Live-Test-Endpoint (max. 5/min oder Settings-Wert) — `AI_PROMPT_LIVE_TEST_LIMITER` = `Rate(5, LONG_WINDOW_MS)` in `apps/api/narrare/_app/rate_limits.py` → 429 on exceed.
 - [x] Tests: Preview- + Test-Endpoint (Integration), Frontend-Komponenten (Vitest) — `tests/unit/core/prompts/test_preview_no_provider.py`, `tests/unit/api/prompts/test_prompt_preview_schema_contract.py` (API↔Frontend schema), `tests/integration/prompts/test_prompt_ux_router.py` (integration), `packages/web/components/studio/settings/__tests__/PromptPreviewDialog.test.tsx`, `packages/web/components/studio/settings/__tests__/PromptLiveTestDialog.test.tsx`, `packages/web/components/studio/settings/__tests__/PromptResetConfirmDialog.test.tsx`, `packages/web/lib/api/__tests__/prompts-preview.test.ts`.
 - [x] Bestehende PROMPT-001/PROMPT-002 funktionieren unverändert — `apps/api/narrare/prompts/router_prompt_ux.py` uses distinct HTTP methods/paths (`POST /{prompt_id}/{preview|reset|live-test}`); existing GET/PUT/DELETE in `apps/api/narrare/prompts/router.py` untouched.
-- [x] Dokumentation: Feature-Spec auf stable gesetzt — this spec; CR-AUFG-07-16 exit evidence in `docs/architecture/governance/aufg-registry.md`; inventory entry `settings.prompts.live_test`.
+- [x] Dokumentation: Feature-Spec auf stable gesetzt — this spec; CR-AUFG-07-16 exit evidence; inventory entry `settings.prompts.live_test`.
 
 ---
 

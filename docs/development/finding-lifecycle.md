@@ -8,8 +8,7 @@
 > "implemented" or "enforced".
 >
 > **Audience**: All specialists. Applies to `_audit/results/**/findings/*.md`,
-> `docs/architecture/governance/aufg-registry.md`, ADR Gate-12 checklists, and
-> `docs/_shared/CURRENT_STATE.md`.
+> ADR Gate-12 checklists, and `docs/_shared/CURRENT_STATE.md`.
 >
 > **Enforcement**: A finding or ADR may not be marked `resolved`/`✅ Implemented`
 > without pointing to **both** (a) the implementation that exists on disk and
@@ -116,7 +115,6 @@ FIND-010 / FIND-011 "Resolution evidence" sections for the canonical format.
 
 - `_audit/results/**/findings/*.md` — `Status:` line + "Resolution evidence"
   section.
-- `docs/architecture/governance/aufg-registry.md` — `Status` field per AUFG.
 - ADR Gate-12 checklists in each ADR file.
 - `docs/_shared/CURRENT_STATE.md` — Decisions table status must match INDEX.md.
 - `scripts/check_architecture.py` — ADR-STATUS consistency (INDEX ↔ ADR file).
@@ -124,7 +122,6 @@ FIND-010 / FIND-011 "Resolution evidence" sections for the canonical format.
 ---
 
 **Reference**: `docs/architecture/decisions/INDEX.md` (ADR status legend),
-`docs/architecture/governance/aufg-registry.md` (AUFG lifecycle states),
 `.opencode/context/narrare-dev/standards/architectural-discipline.md`
 **Related**: ADR-049 (prompt-surface identity, where the "template exists ≠
 runtime uses it" lesson was relearned), ADR-050 (cross-feature contracts)

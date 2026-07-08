@@ -241,7 +241,7 @@ must be added to the matrix before the phase can close.
 
 | Layer | Files / modules | Responsibility |
 |---|---|---|
-| Architecture | Candidate ADR-051; this spec; `docs/architecture/governance/aufg-registry.md` | Policy, lifecycle, classification, handoff. |
+| Architecture | Candidate ADR-051; this spec | Policy, lifecycle, classification, handoff. |
 | Core | `packages/core/narrare_core/llm/`, `packages/core/narrare_core/ai_invocation/`, `packages/core/narrare_core/writing/context_assembler.py`, `packages/core/narrare_core/context/budget.py` | Runtime limit enforcement, output/profile types, tier budget application; no app imports. |
 | Backend | `apps/api/narrare/settings/`, `apps/api/narrare/writing/`, `apps/api/narrare/consistency/`, `apps/api/narrare/setup/`, `apps/api/narrare/_app/settings_model.py` | Settings persistence/resolution, DI wiring, API schemas, system resolver, setup catalog abstraction. |
 | Frontend | `packages/web/components/studio/settings/`, settings API types/constants | User controls, labels, warnings, profile/cap parity; no independent config vocabulary. |

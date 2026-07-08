@@ -1,7 +1,8 @@
 # ADR-047 — Governance Drift Automation for Review Findings and AUFG Lifecycle
 
-> **Status:** ✅ Accepted
+> **Status:** ⏸ Superseded (governance toolchain removed 2026-07-08)
 > **Date:** 2026-06-24 (accepted; originally proposed 2026-06-13)
+> **Note:** The governance toolchain (P0-P5) has been removed. This ADR is kept for historical reference.
 > **Deciders:** Architecture Specialist, User
 > **Supersedes:** —
 > **Related:** ADR-028, ADR-041, ADR-045, CONSTRAINTS.md §8, AUFG-02-14, AUFG-03-11, AUFG-05-07..10

@@ -131,7 +131,7 @@ class StorySuggestionResponse:
     connection: str      # how this connects to established plot threads
 ```
 
-**Reconciliation note:** WRITE-009 uses the existing `story_suggest` template (story direction suggestions) rather than the original spec's tone-based continuations concept. This closes [AUFG-04-01](../../architecture/governance/aufg-registry.md) — the previously orphan `("writing", "story_suggest")` template now has a production consumer and is reachable via the SUGGEST route. The orphan exemption was removed from `scripts/architecture/_checkers/_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS`.
+**Reconciliation note:** WRITE-009 uses the existing `story_suggest` template (story direction suggestions) rather than the original spec's tone-based continuations concept. This closes AUFG-04-01 — the previously orphan `("writing", "story_suggest")` template now has a production consumer and is reachable via the SUGGEST route. The orphan exemption was removed from `scripts/architecture/_checkers/_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS`.
 
 ## Constraints & Edge Cases
 
