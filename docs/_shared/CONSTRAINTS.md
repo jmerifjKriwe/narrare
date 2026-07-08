@@ -737,9 +737,9 @@ export const namespaces = ["common", "generation", ...];
 //                                    ↑ must be listed
 
 // 3. Files exist in all locales
-// packages/web/messages/en/generation.json  ← must exist
-// packages/web/messages/de/generation.json  ← must exist
-// packages/web/messages/fr/generation.json  ← must exist
+// packages/i18n/messages/en/generation.json  ← must exist
+// packages/i18n/messages/de/generation.json  ← must exist
+// packages/i18n/messages/fr/generation.json  ← must exist
 ```
 
 **Enforcement:**
@@ -933,7 +933,7 @@ project settings, etc.).
    cleanup target.
 5. **i18n parity / prompt language policy**: Treat UI i18n and prompt-template
    language as separate concerns:
-   - **UI i18n**: UI strings and `packages/web/messages/{locale}/` namespaces
+   - **UI i18n**: UI strings and `packages/i18n/messages/{locale}/` namespaces
      continue to require en/de/fr parity (see RULE-16).
    - **Bundled feature system prompts**: New bundled feature prompt templates
      default to EN-only. Output/writing language must be controlled through
