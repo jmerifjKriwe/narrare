@@ -635,6 +635,13 @@ New keys for `studio.aiActions.*` namespace (§16.8, §16.5):
 | `packages/web/lib/hooks/__tests__/useAIOperation.test.ts` | **CREATE** — Unit tests (90%+ coverage) |
 | `packages/web/lib/api/__tests__/ai-error-mapping.test.ts` | **CREATE** — Mapper unit tests |
 
+> **Note (2026-07-08, editorial):** The i18n message files referenced in this ADR
+> (e.g. `packages/web/messages/{locale}/studio.json`, including the verification
+> command in *Check 3*) were subsequently relocated to
+> `packages/i18n/messages/{locale}/{ns}.json` (per ADR-013; loaded via
+> `packages/web/lib/i18n/request.ts`). The `packages/web/messages/...` paths shown
+> here reflect the pre-relocation location and are retained as historical record.
+
 ### Phase 2: Migrate Existing Flows (Frontend Specialist, per feature)
 
 Migration is incremental and non-breaking. Each flow is migrated independently.
