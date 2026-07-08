@@ -1,7 +1,7 @@
 ---
 archived: true
 archived_at: 2026-06-30
-reason: "Completed specification pack — all 7 Phase C subfeatures resolved with implementation + enforcement evidence in aufg-registry.md"
+reason: "Completed specification pack — all 7 Phase C subfeatures resolved with implementation + enforcement evidence"
 ---
 
 # CR-07 Follow-up v3 Phase C — AI-UX Enhancement Specification Pack
@@ -9,7 +9,7 @@ reason: "Completed specification pack — all 7 Phase C subfeatures resolved wit
 > **Status:** Specification pack — review-ready, not implemented
 > **Date:** 2026-06-22
 > **Owner:** Architecture Specialist
-> **Related:** `docs/architecture/governance/cr-07-followup-v3.md`, `docs/architecture/governance/aufg-registry.md`, `docs/development/ui-principles.md` §16, `docs/architecture/governance/ai-ux-compliance-v2.md`
+> **Related:** `docs/architecture/governance/cr-07-followup-v3.md`, `docs/development/ui-principles.md` §16, `docs/architecture/governance/ai-ux-compliance-v2.md`
 
 ---
 

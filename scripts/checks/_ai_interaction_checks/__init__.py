@@ -14,9 +14,7 @@ from .check_5_no_use_connection_lost import check_no_use_connection_lost
 from .check_6_deprecated_alias import check_deprecated_aliases
 from .check_7_signal_propagation import check_signal_propagation
 from .check_8_stale_exclude import check_stale_exclude
-from .check_9_lifecycle_sync import check_lifecycle_sync
 from .check_10_operation_inventory import check_operation_inventory
-from .check_11_resolution_evidence import check_resolution_evidence
 from .check_12_visible_i18n_fallbacks import check_visible_i18n_fallbacks
 from .compliance_report import ComplianceReport
 
@@ -26,12 +24,10 @@ __all__ = [
     "ExcludeRegistry",
     "check_deprecated_aliases",
     "check_error_i18n_keys",
-    "check_lifecycle_sync",
     "check_no_hardcoded_errors",
     "check_no_raw_abort_controller",
     "check_no_use_connection_lost",
     "check_operation_inventory",
-    "check_resolution_evidence",
     "check_signal_propagation",
     "check_stale_exclude",
     "check_use_ai_operation_usage",

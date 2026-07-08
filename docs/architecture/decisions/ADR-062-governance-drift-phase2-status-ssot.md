@@ -1,6 +1,6 @@
 # ADR-062 — Governance Drift Automation Phase 2: Status SSOT Consistency & Review→Registry Linking (P3 + P5)
 
-> **Status:** ✅ Implemented
+> **Status:** ⏸ Superseded (governance toolchain removed 2026-07-08)
 > **Date:** 2026-07-01 (proposed) · 2026-07-02 (implemented — Platform, warning-only baseline)
 > **Deciders:** Architecture Specialist (approved and implemented in PR #101)
 > **Supersedes:** —

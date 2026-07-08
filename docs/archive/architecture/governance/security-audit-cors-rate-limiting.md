@@ -1,7 +1,7 @@
 ---
 archived: true
 archived_at: 2026-06-30
-reason: "Completed audit — all findings captured in aufg-registry.md (AUFG-05-07, AUFG-05-12, AE-05-03, AR-05-02/03/04/05)"
+reason: "Completed audit — all findings captured (AUFG-05-07, AUFG-05-12, AE-05-03, AR-05-02/03/04/05)"
 ---
 
 # Security Audit — CORS & Rate Limiting
@@ -278,7 +278,7 @@ in-memory limiting depends on AR-05-02 resolution.
 (`AI_WRITE_LIMITER` 3/min, `AI_ANALYSIS_LIMITER` 5/min, `AI_LIGHT_LIMITER`
 10/min, `AI_WS_LIMITER` 3/min, `SETUP_MODELS_LIMITER` 10/min IP-based).
 17 router files wired via `Depends()`. 14 unit tests. In-memory `pyrate_limiter`
-per AR-05-02. See aufg-registry.md for full exit evidence.
+per AR-05-02. See the AUFG registry (removed 2026-07-08) for full exit evidence.
 
 ### AR-05-02 — Rate-Limiting Backend Discrepanz (In-Memory vs Redis)
 

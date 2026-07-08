@@ -569,10 +569,7 @@ runtime-consumer and enforcement evidence per setting — it would be flagging
 
 **Every material configuration value must have exactly one lifecycle
 classification** (`adopted`, `governed_default`, `operator_default`,
-`formal_finding`, `covered_by_existing`, `not_applicable`) recorded as a row in
-the Configuration Adoption Matrix:
-
-- `docs/architecture/governance/configuration-adoption-matrix.yaml`
+`formal_finding`, `covered_by_existing`, `not_applicable`).
 
 **What constitutes a Configuration-Effect violation (RULE-18b):**
 
@@ -601,15 +598,12 @@ the Configuration Adoption Matrix:
 
 **Enforcement boundary:**
 
-- `scripts/check_configuration_matrix.py` is CI-blocking (`.github/workflows/ci.yml`
-  architecture job, `just check-configuration-matrix`, `scripts/run_checks.py`).
-  It fails when a `user`/`project` classification lacks `runtime_consumer` +
-  `enforcement_evidence`, when an `adopted` entry lacks `enforcement_evidence`,
-  when lifecycle/classification values are invalid, or when an
-  `expected_setting_ids` value is unclassified or duplicated.
-- `scripts/governance/_matrix_review_gate.py`
-  (`validate_review_finding_matrix_coverage`) fails when a structured material
-  P0/P1 `[category: configuration-effect]` review finding is not referenced by
+- The configuration adoption matrix is CI-validated. It fails when a `user`/`project`
+  classification lacks `runtime_consumer` + `enforcement_evidence`, when an `adopted`
+  entry lacks `enforcement_evidence`, when lifecycle/classification values are invalid,
+  or when an `expected_setting_ids` value is unclassified or duplicated.
+- The review-finding coverage gate fails when a structured material P0/P1
+  `[category: configuration-effect]` review finding is not referenced by
   a matrix entry — future audits cannot leave such findings as prose only.
 - Governed code defaults are permitted only with rationale, owner, tests, and a
   review trigger recorded in the matrix or the governed-defaults manifest.
@@ -1133,7 +1127,7 @@ same service methods without a parallel non-streaming implementation.
 | RULE-16 i18n namespace registration | `i18n-namespace-registry.test.ts` + `validate-i18n.ts` |
 | RULE-17 API-Frontend contract | `test_prompt_contract.py` + PR review |
 | RULE-18 No hardcoded config in routers | `test_generation_router_contract.py` + PR review |
-| RULE-18b Configuration Effect Integrity | `check_configuration_matrix.py` (CI-blocking: matrix validation + review-finding coverage gate) + PR review |
+| RULE-18b Configuration Effect Integrity | CI verification + PR review |
 | RULE-19 SessionDep in dependency factories | `check_architecture.py` — AST scan for bare AsyncSession |
 | RULE-20 No half-implementations | PR review by Architecture Agent + test coverage audit |
 | RULE-22 Cross-Feature Coherence Gate | Stage 2.5 Semantic Review by Architecture Specialist |

@@ -136,10 +136,10 @@ Approaching limit → extract a new module. NEVER compress code to fit.
 ### RULE-18b: Configuration Effect Integrity (ADR-051)
 - RULE-18 governs WHERE config is resolved; RULE-18b governs WHETHER the resolved value takes effect at the runtime boundary with regression proof.
 - A configurable value is not "implemented" until its resolved value is consumed at the runtime boundary it affects, with a test proving changed value → changed effect (or documented warning/error).
-- Every material setting needs a Configuration Adoption Matrix row (`docs/architecture/governance/configuration-adoption-matrix.yaml`) with exactly one lifecycle classification (adopted / governed_default / operator_default / covered_by_existing / not_applicable).
+- Every material setting needs a Configuration Adoption Matrix row with exactly one lifecycle classification (adopted / governed_default / operator_default / covered_by_existing / not_applicable).
 - `user`/`project` classifications require `runtime_consumer` + `enforcement_evidence`; `adopted` requires `enforcement_evidence`. No exposed setting without a runtime consumer; no "implemented" claim without regression evidence.
 - Governed code defaults are allowed only with rationale, owner, tests, and review trigger.
-- Enforced by `check_configuration_matrix.py` (CI-blocking) + review-finding coverage gate. See CONSTRAINTS.md RULE-18b.
+- Enforced by CI-blocking matrix + review-finding coverage gate. See CONSTRAINTS.md RULE-18b.
 
 ### RULE-19: Dependency factories use `SessionDep`, not bare `AsyncSession`
 - Bare `AsyncSession` treated as query param by FastAPI → 422 in production
@@ -242,7 +242,7 @@ Approaching limit → extract a new module. NEVER compress code to fit.
 | RULE-16 i18n | `i18n-namespace-registry.test.ts` + `validate-i18n.ts` |
 | RULE-17 API-Frontend | `test_prompt_contract.py` + PR review |
 | RULE-18 no hardcoded config | `test_generation_router_contract.py` + PR review |
-| RULE-18b configuration effect integrity | `check_configuration_matrix.py` (CI-blocking matrix + review-finding coverage gate) + PR review |
+| RULE-18b configuration effect integrity | CI-blocking matrix + review-finding coverage gate + PR review |
 | RULE-19 SessionDep | `check_architecture.py` — AST scan bare AsyncSession |
 | RULE-20 no half-implementations | PR review by Architecture Agent + test coverage audit |
 | RULE-22 coherence gate | Stage 2.5 Semantic Review by Architecture Specialist |

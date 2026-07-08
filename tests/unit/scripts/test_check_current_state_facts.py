@@ -40,7 +40,6 @@ _VALID_AUTHORITY_CURRENT_STATE = """
 - ADRs: see `docs/architecture/decisions/INDEX.md`.
 - Feature specs: see `docs/features/INDEX.md`.
 - Open questions: see `docs/architecture/questions/INDEX.md`.
-- AUFG lifecycle: see `docs/architecture/governance/aufg-registry.md`.
 - Adoption/runtime evidence: run `just check-adoption`.
 - System health: run `just check-health`.
 - Knowledge Graph shape/risk: use `code-review-graph_list_graph_stats_tool`.

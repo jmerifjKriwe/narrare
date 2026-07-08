@@ -262,8 +262,7 @@ class TestEmbeddingGovernedDefaults:
 ## 6. Matrix Status
 
 The P3 matrix entries have been updated and now carry concrete enforcement and
-cross-layer evidence. Keep this section synchronized with
-`docs/architecture/governance/configuration-adoption-matrix.yaml` whenever a
+cross-layer evidence. Keep this section synchronized with the Configuration Adoption Matrix whenever a
 governed default changes.
 
 ### `embedding_threshold_search_limit`

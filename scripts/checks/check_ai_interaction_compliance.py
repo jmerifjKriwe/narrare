@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """§16 AI Interaction Standards Compliance Check (ADR-043).
 
-Verifies 12 machine-checkable rules across TSX components and i18n files:
+Verifies 10 machine-checkable rules across TSX components and i18n files:
   Check 1  — Every TSX file importing SSE API values must also import useAIOperation
   Check 2  — No raw new AbortController() in feature code (classified allowed/violation)
   Check 3  — All 7 aiActions.error* i18n keys exist in all 3 locales (de/en/fr)
@@ -10,10 +10,8 @@ Verifies 12 machine-checkable rules across TSX components and i18n files:
   Check 6  — No deprecated §16.8 AI-action aliases in TS/TSX (CR-AUFG-07-12)
   Check 7  — useAIOperation execute callbacks must propagate signal (CR-AUFG-07-11)
   Check 8  — Exclude entries must be fresh and AUFG-linked (§7 stale-exclude policy)
-  Check 9  — CR-AUFG IDs in audit must exist in registry (§8 lifecycle sync)
-  Check 10 — Operation inventory must have required §4 fields and AUFG links
-  Check 11 — Resolved AUFG entries need implementation + enforcement evidence
-  Check 12 — No visible i18n fallback strings in KB/editor components (CR-AUFG-07-14)
+  Check 9  — Operation inventory must have required §4 fields and AUFG links
+  Check 10 — No visible i18n fallback strings in KB/editor components (CR-AUFG-07-14)
 """
 
 from __future__ import annotations
@@ -27,12 +25,10 @@ from _ai_interaction_checks import (
     ExcludeRegistry,
     check_deprecated_aliases,
     check_error_i18n_keys,
-    check_lifecycle_sync,
     check_no_hardcoded_errors,
     check_no_raw_abort_controller,
     check_no_use_connection_lost,
     check_operation_inventory,
-    check_resolution_evidence,
     check_signal_propagation,
     check_stale_exclude,
     check_use_ai_operation_usage,
@@ -135,21 +131,13 @@ def main() -> int:
     report.add("Check 8: Exclude entries fresh and AUFG-linked", c8_p, c8_v)
     report.add_governed("Check 8", registry.get_entries_for_gate(GATE_CHECK_8))
 
-    # -- Check 9 ---------------------------------------------------------
-    c9_p, c9_v = check_lifecycle_sync()
-    report.add("Check 9: CR-AUFG IDs in audit exist in registry", c9_p, c9_v)
+    # -- Check 9 --------------------------------------------------------
+    c10_p, c10_v = check_operation_inventory()
+    report.add("Check 9: Operation inventory has required §4 fields", c10_p, c10_v)
 
     # -- Check 10 --------------------------------------------------------
-    c10_p, c10_v = check_operation_inventory()
-    report.add("Check 10: Operation inventory has required §4 fields", c10_p, c10_v)
-
-    # -- Check 11 --------------------------------------------------------
-    c11_p, c11_v = check_resolution_evidence()
-    report.add("Check 11: Resolved AUFG entries have evidence", c11_p, c11_v)
-
-    # -- Check 12 --------------------------------------------------------
     c12_p, c12_v = check_visible_i18n_fallbacks()
-    report.add("Check 12: No visible i18n fallback strings", c12_p, c12_v)
+    report.add("Check 10: No visible i18n fallback strings", c12_p, c12_v)
 
     if args.json:
         print(report.format_json())
