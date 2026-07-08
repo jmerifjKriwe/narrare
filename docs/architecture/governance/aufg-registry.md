@@ -74,7 +74,7 @@ block the immediate runtime remediation once P0/P1 are complete).
 
 | Field | Value |
 |-------|-------|
-| IDs | CR-AUFG-01-01, CR-AUFG-01-02, CR-AUFG-01-03, CR-AUFG-01-04, CR-AUFG-01-05, CR-AUFG-01-06 |
+| IDs | CR-AUFG-01-01 through CR-AUFG-01-06 |
 | Source | `cr-01-prompt-quality.md` §Aufgaben (content-review/audit-prompts) |
 | Status | CR-AUFG-01-01/02/03/04/06 `resolved`; CR-AUFG-01-05 `in_progress` (residual → CR-AUFG-01-07) |
 | Priority | P2 (prompt quality / security wrapping) |
@@ -198,7 +198,7 @@ layer" failure from `docs/development/finding-lifecycle.md` §4.
 |-------|-------|
 | ID | CR-AUFG-01-09 |
 | Title | Content-Review P5 Checker von WARNING-only auf BLOCKING ratcheten + Cross-Review Back-fill |
-| Source | ADR-062 §Enforcement phasing (warning → blocking); created during CR-01 remediation to give the CR-AUFG-01-08 warning-only ratchet a concrete owner + trigger |
+| Source | `cr-01-prompt-quality.md` §Aufgaben; ADR-062 §Enforcement phasing (warning → blocking). Created during CR-01 remediation to give the CR-AUFG-01-08 warning-only ratchet a concrete owner + trigger. |
 | Status | `open` |
 | Priority | P3 |
 | Area | Governance / CI |

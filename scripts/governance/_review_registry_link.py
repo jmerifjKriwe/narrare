@@ -1,8 +1,7 @@
 """ADR-062 P5 — review→registry metadata linking checker.
 
-Single responsibility (RULE-06): assert that every ``### [AUFG-XX-YY]`` /
-``### [CR-AUFG-XX-YY]`` task header in a technical-review file maps to exactly
-one *consistent* AUFG-registry entry. "Consistent" means:
+Single responsibility (RULE-06): assert that every task header in a review file
+maps to exactly one *consistent* AUFG-registry entry. "Consistent" means:
 
   * the ``id`` matches,
   * the entry's ``source`` references the originating review file,
@@ -11,17 +10,33 @@ one *consistent* AUFG-registry entry. "Consistent" means:
     *unrelated* entry that happens to share the id (the AUFG-01-03 collision
     class), unless a documented re-homing redirects it.
 
+Two review surfaces are scanned:
+
+  * **Technical reviews** (``_audit/results/**/review-*.md``) use
+    ``### [AUFG-XX-YY]`` / ``### [CR-AUFG-XX-YY]`` bracketed headers.
+  * **Content reviews** (``_audit/results/**/cr-*.md``) use
+    ``- **CR-AUFG-NN-MM:**`` bold-bullet tasks (see CR-AUFG-01-08).
+
 Re-homing recognition: when a header's id is claimed by an entry whose source
 does not match the review, the checker accepts a *different* registry entry as
 the claimant when that entry's source references the review AND its section
 documents a re-homing from the original id (e.g. review-01's editor-hotspots
 ``[AUFG-01-03]`` re-homed to ``AUFG-01-08``).
 
+CR-prefix dual-match (CR-AUFG-01-08): the registry stores CR-02/03/04 content
+tasks *unprefixed* (``AUFG-NN-MM``) while the review files write ``CR-AUFG-NN-MM``.
+A header therefore matches a registry entry keyed either identically OR with the
+``CR-`` prefix stripped. Range-block recognition expands a single registry
+section whose ``| IDs | … through … |`` row spans many ids (the CR-08 set) so a
+per-id header is not falsely flagged missing.
+
 RULE-07: reads review/registry markdown and the repo filesystem (paths as text,
 never imported). Imports no application runtime modules.
 
-WARNING-only this cycle (exit 0): findings are reported but never fail the
-gate. Ratchets to blocking in a follow-up.
+Severity: technical-review findings are BLOCKING (ADR-062 enforcement complete,
+AUFG-01-09 2026-07-06). Content-review findings are WARNING-only this cycle —
+the ~8 genuine cross-review misses are back-filled under CR-AUFG-01-09 before
+that surface is ratcheted to blocking.
 
 ADR: docs/architecture/decisions/ADR-062-governance-drift-phase2-status-ssot.md
 """
@@ -31,6 +46,13 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
+
+from governance._registry_sections import (
+    iter_registry_sections as _iter_registry_sections,
+)
+from governance._registry_sections import (
+    section_ids as _section_ids,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -46,22 +68,18 @@ __all__ = [
     "parse_review_headers",
 ]
 
-#: Lifecycle statuses whose dependency paths are enforced (current work).
-#: ``resolved`` / ``not_applicable`` / ``covered_by_existing_aufg`` entries hold
-#: historical dependency references (e.g. a since-deleted file) and are skipped.
-_DEPS_CHECKED_STATUSES: frozenset[str] = frozenset({"open", "in_progress", "blocked"})
+# Dependency-path validation lives in _dep_path_validation (RULE-04 extraction).
+# Imported lazily inside check_review_registry_link to avoid a circular import
+# (that module needs ReviewLinkFinding, which is defined below).
 
-#: Keyword indicating a documented re-homing in a registry section.
-_REHOME_TOKEN = "re-hom"  # nosec B105 — re-homing documentation marker, not a credential
-
-#: Matches a review task header: ``### [AUFG-01-01]`` or ``### [CR-AUFG-07-07]``.
+#: Matches a technical-review task header: ``### [AUFG-01-01]`` or ``### [CR-AUFG-07-07]``.
 _HEADER_RE = re.compile(r"^#{1,6}\s+\[((?:CR-)?(?:AUFG|AR|AE))-(\d{2})-(\d{2})\]\s*(.*)$")
 
-#: Matches a registry entry header: ``### AUFG-01-01 — Title``.
-_ENTRY_HEADER_RE = re.compile(
-    r"^(#{1,6})\s+((?:CR-)?(?:AUFG|AR|AE))-(\d{2})-(\d{2})\s*[—–-]\s*(.+)$",  # noqa: RUF001
-    re.MULTILINE,
-)
+#: Matches a content-review task bullet: ``- **CR-AUFG-01-01:**`` (CR-AUFG-01-08).
+#: The bold wraps the id plus an optional colon: ``**CR-AUFG-01-01:**`` or
+#: ``**CR-AUFG-01-01**``. Only the ``CR-`` form appears in content reviews today,
+#: but the prefix is optional so a future ``- **AUFG-…:**`` is matched too.
+_CR_BULLET_RE = re.compile(r"^[-*]\s+\*\*((?:CR-)?(?:AUFG|AR|AE))-(\d{2})-(\d{2}):?\*\*:?\s*(.*)$")
 
 #: ``| Source | value |`` table row.
 _SOURCE_ROW_RE = re.compile(r"^\|\s*Source\s*\|\s*(.+?)\s*\|\s*$", re.MULTILINE)
@@ -80,17 +98,36 @@ _STATUS_ROW_RE = re.compile(
 #: ``| Dependencies | value |`` table row.
 _DEPS_ROW_RE = re.compile(r"^\|\s*Dependencies\s*\|\s*(.+?)\s*\|\s*$", re.MULTILINE)
 
-#: A dependency candidate: a slash-bearing, extension-bearing path with no glob.
-_DEP_PATH_RE = re.compile(r"`?([A-Za-z0-9._][\w./-]*\.[A-Za-z]{1,5})`?")
+#: Filename prefixes identifying the two review surfaces.
+_TECHNICAL_REVIEW_PREFIX = "review-"
+_CONTENT_REVIEW_PREFIX = "cr-"
+
+
+def _review_origin(review_file: str) -> str:
+    """Classify a review filename as ``"technical"`` or ``"content"``.
+
+    ``review-*.md`` → technical (BLOCKING). ``cr-*.md`` → content (WARNING-only
+    this cycle, CR-AUFG-01-08/09). Anything else defaults to technical so an
+    oddly-named review is not silently demoted to warning severity.
+    """
+    if review_file.startswith(_CONTENT_REVIEW_PREFIX):
+        return "content"
+    return "technical"
 
 
 @dataclass(frozen=True)
 class ReviewTaskHeader:
-    """A ``### [AUFG-XX-YY]`` task header parsed from a review file."""
+    """A task header parsed from a review file.
+
+    ``origin`` is ``"technical"`` (``review-*.md``, ``### [AUFG-XX-YY]`` headers,
+    BLOCKING) or ``"content"`` (``cr-*.md``, ``- **CR-AUFG-NN-MM:**`` bullets,
+    WARNING-only this cycle per CR-AUFG-01-08).
+    """
 
     task_id: str
     review_file: str
     line: int
+    origin: str = "technical"
 
 
 @dataclass(frozen=True)
@@ -116,9 +153,16 @@ class ReviewLinkFinding:
 
 @dataclass(frozen=True)
 class ReviewLinkReport:
-    """Aggregated WARNING-only review→registry linking report."""
+    """Aggregated review→registry linking report.
+
+    ``findings`` are *blocking* (technical-review surface, ``review-*.md``).
+    ``content_findings`` are *WARNING-only* this cycle (content-review surface,
+    ``cr-*.md``, CR-AUFG-01-08) and are reported but never fail the gate until
+    CR-AUFG-01-09 ratchets them to blocking.
+    """
 
     findings: tuple[ReviewLinkFinding, ...] = field(default_factory=tuple)
+    content_findings: tuple[ReviewLinkFinding, ...] = field(default_factory=tuple)
     headers_scanned: int = 0
     entries_scanned: int = 0
     rehomings_recognized: tuple[str, ...] = field(default_factory=tuple)
@@ -130,57 +174,94 @@ class ReviewLinkReport:
 
 
 def parse_review_headers(text: str, review_file: str) -> list[ReviewTaskHeader]:
-    """Extract bracketed task headers from review markdown *text*."""
+    """Extract task headers from review markdown *text*.
+
+    Recognizes two task forms, scoped by review surface:
+
+      * the technical-review bracketed header ``### [AUFG-XX-YY]`` /
+        ``### [CR-AUFG-XX-YY]`` (``_HEADER_RE``) — parsed from every review file.
+      * the content-review bold bullet ``- **CR-AUFG-NN-MM:**`` (``_CR_BULLET_RE``,
+        CR-AUFG-01-08) — parsed only from ``cr-*.md`` content reviews. Technical
+        reviews (``review-*.md``) also use bold bullets for *summary* lists (e.g.
+        review-05's ``- **AE-05-01** …`` recap), which are not task definitions;
+        matching them would surface false source-mismatches, so the bullet form
+        is restricted to the content-review surface.
+
+    The header's ``origin`` is derived from the filename so the caller can map
+    content-review findings to WARNING severity.
+    """
+    origin = _review_origin(review_file)
+    parse_bullets = origin == "content"
     headers: list[ReviewTaskHeader] = []
     for line_no, line in enumerate(text.splitlines(), start=1):
         match = _HEADER_RE.match(line)
+        if match is None and parse_bullets:
+            match = _CR_BULLET_RE.match(line)
         if match is None:
             continue
         task_id = f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
-        headers.append(ReviewTaskHeader(task_id=task_id, review_file=review_file, line=line_no))
+        headers.append(
+            ReviewTaskHeader(task_id=task_id, review_file=review_file, line=line_no, origin=origin)
+        )
     return headers
 
 
 def collect_review_headers(repo_root: Path) -> list[ReviewTaskHeader]:
-    """Collect ``### [AUFG-XX-YY]`` headers from every review file under *repo_root*.
+    """Collect task headers from every review file under *repo_root*.
 
-    Scans ``_audit/results/**/review-*.md`` recursively (the review-→-registry
-    source surface established by ADR-047). ``review_file`` is the basename so it
-    matches the registry's ``Source`` references (which cite reviews by name).
-    Missing directories yield an empty list (no reviews is not an error).
+    Scans both review surfaces recursively under ``_audit/results/``:
+
+      * ``review-*.md`` — technical reviews (``### [AUFG-XX-YY]`` headers), and
+      * ``cr-*.md`` — content reviews (``- **CR-AUFG-NN-MM:**`` bullets,
+        CR-AUFG-01-08).
+
+    ``review_file`` is the basename so it matches the registry's ``Source``
+    references (which cite reviews by name). Missing directories yield an empty
+    list (no reviews is not an error).
     """
     review_root = repo_root / "_audit" / "results"
     if not review_root.is_dir():
         return []
     headers: list[ReviewTaskHeader] = []
-    for path in sorted(review_root.rglob("review-*.md")):
-        headers.extend(parse_review_headers(path.read_text(encoding="utf-8"), path.name))
+    for pattern in (_TECHNICAL_REVIEW_PREFIX + "*.md", _CONTENT_REVIEW_PREFIX + "*.md"):
+        for path in sorted(review_root.rglob(pattern)):
+            headers.extend(parse_review_headers(path.read_text(encoding="utf-8"), path.name))
     return headers
 
 
 def parse_registry_meta(text: str) -> dict[str, RegistryMeta]:
-    """Parse registry markdown into link-relevant metadata per entry."""
+    """Parse registry markdown into link-relevant metadata per entry.
+
+    A registry section is delimited by a ``### `` header. Three header shapes
+    carry ids, all parsed here:
+
+      * a single-id entry header ``### AUFG-01-01 — Title`` (``_ENTRY_HEADER_RE``);
+      * a range-id set header ``### CR-AUFG-01-01..06 — Title`` (the id range in
+        the header itself — ``_ENTRY_RANGE_HEADER_RE``); and
+      * a set header whose title carries no parseable id, with the ids declared
+        in a ``| IDs | … through … |`` row inside the section (the CR-08 set —
+        ``_IDS_RANGE_ROW_RE``).
+
+    A section covering many ids (via a range header or a range row) is expanded
+    into one virtual entry per id, so a per-id review header is not falsely
+    flagged missing. The virtual entries share the section's source/status/deps.
+    """
     meta: dict[str, RegistryMeta] = {}
-    for match in _ENTRY_HEADER_RE.finditer(text):
-        entry_id = f"{match.group(2)}-{match.group(3)}-{match.group(4)}"
-        section = _section_text(text, match.end())
-        meta[entry_id] = RegistryMeta(
-            entry_id=entry_id,
-            source=_row(section, _SOURCE_ROW_RE),
-            status=_normalize(_row(section, _STATUS_ROW_RE)),
-            dependencies_text=_row(section, _DEPS_ROW_RE),
-            section_text=section,
+    for section_text in _iter_registry_sections(text):
+        ids = _section_ids(section_text)
+        if not ids:
+            continue
+        primary = ids[0]
+        entry = RegistryMeta(
+            entry_id=primary,
+            source=_row(section_text, _SOURCE_ROW_RE),
+            status=_normalize(_row(section_text, _STATUS_ROW_RE)),
+            dependencies_text=_row(section_text, _DEPS_ROW_RE),
+            section_text=section_text,
         )
+        for section_id in ids:
+            meta.setdefault(section_id, entry)
     return meta
-
-
-def _section_text(text: str, start: int) -> str:
-    """Return text from *start* to the next entry header of any level."""
-    next_h = text.find("\n### ", start)
-    next_h2 = text.find("\n## ", start)
-    candidates = [end for end in (next_h, next_h2) if end != -1]
-    end = min(candidates) if candidates else len(text)
-    return text[start:end]
 
 
 def _row(section: str, pattern: re.Pattern[str]) -> str:
@@ -229,14 +310,20 @@ def check_review_registry_link(
         A :class:`ReviewLinkReport` with any inconsistencies (WARNING-only).
     """
     findings: list[ReviewLinkFinding] = []
+    content_findings: list[ReviewLinkFinding] = []
     rehomings: list[str] = []
     validated_deps: set[str] = set()
 
+    # Lazy import: _claimant_resolution needs RegistryMeta/ReviewTaskHeader
+    # (defined above), so the import is deferred to avoid a circular reference.
+    from governance._claimant_resolution import claimant as resolve_claimant
+
     for header in headers:
-        claimant, via_rehome = _claimant(header, registry)
+        claimant, via_rehome = resolve_claimant(header, registry)
+        bucket = content_findings if header.origin == "content" else findings
 
         if claimant is None:
-            findings.append(
+            bucket.append(
                 ReviewLinkFinding(
                     task_id=header.task_id,
                     review_file=header.review_file,
@@ -251,10 +338,10 @@ def check_review_registry_link(
 
         if via_rehome:
             rehomings.append(header.task_id)
-        elif not _source_references(claimant, header.review_file):
+        elif header.review_file not in claimant.source:
             # id exists but is an unrelated entry (collision) and no re-homing
             # documents the redirect.
-            findings.append(
+            bucket.append(
                 ReviewLinkFinding(
                     task_id=header.task_id,
                     review_file=header.review_file,
@@ -268,121 +355,42 @@ def check_review_registry_link(
             )
 
         # Dependency paths are validated once per claiming entry, active only.
-        if claimant.entry_id not in validated_deps:
+        # Content-review entries are not dependency-checked this cycle — their
+        # registry entries are still being back-filled (CR-AUFG-01-09).
+        if header.origin == "technical" and claimant.entry_id not in validated_deps:
             validated_deps.add(claimant.entry_id)
-            findings.extend(_validate_deps(claimant, header.review_file, repo_root))
+            findings.extend(_validate_active_deps(claimant, header.review_file, repo_root))
 
     return ReviewLinkReport(
         findings=tuple(findings),
+        content_findings=tuple(content_findings),
         headers_scanned=len(headers),
         entries_scanned=len(registry),
         rehomings_recognized=tuple(dict.fromkeys(rehomings)),
     )
 
 
-def _claimant(
-    header: ReviewTaskHeader,
-    registry: dict[str, RegistryMeta],
-) -> tuple[RegistryMeta | None, bool]:
-    """Find the registry entry claiming *header*.
-
-    Preference order:
-      1. A documented re-homing: an entry (any id) whose source references the
-         review AND whose section marks a re-homing from the header's id. This
-         is the authoritative, intentional link (preferred over a coincidental
-         same-id entry).
-      2. The direct same-id entry whose source references the review.
-
-    Returns ``(entry, via_rehoming)`` or ``(None, False)``.
-    """
-    rehome = _find_rehoming(header, registry)
-    if rehome is not None:
-        return rehome, True
-
-    direct = registry.get(header.task_id)
-    if direct is not None and _source_references(direct, header.review_file):
-        return direct, False
-    return direct, False  # may be None; caller reports missing/mismatch
-
-
-def _find_rehoming(
-    header: ReviewTaskHeader,
-    registry: dict[str, RegistryMeta],
-) -> RegistryMeta | None:
-    """Return the entry that documents a re-homing of *header*'s id."""
-    for entry in registry.values():
-        if entry.entry_id == header.task_id:
-            continue
-        if not _source_references(entry, header.review_file):
-            continue
-        if _REHOME_TOKEN in entry.section_text.lower() and header.task_id in entry.section_text:
-            return entry
-    return None
-
-
-def _source_references(entry: RegistryMeta, review_file: str) -> bool:
-    """Return ``True`` when the entry's source cites *review_file* (basename)."""
-    return review_file in entry.source
-
-
-def _validate_deps(
-    entry: RegistryMeta,
-    review_file: str,
-    repo_root: Path,
+def _validate_active_deps(
+    entry: RegistryMeta, review_file: str, repo_root: Path
 ) -> list[ReviewLinkFinding]:
-    """Validate dependency paths for an *active* entry; skip historical ones."""
-    if entry.status not in _DEPS_CHECKED_STATUSES:
-        return []
+    """Bridge to the extracted dependency-path validator.
 
-    findings: list[ReviewLinkFinding] = []
-    for candidate in _dep_path_candidates(entry.dependencies_text):
-        if not _resolve_dep_path(candidate, repo_root):
-            findings.append(
-                ReviewLinkFinding(
-                    task_id=entry.entry_id,
-                    review_file=review_file,
-                    kind="invalid_dependency_path",
-                    detail=(
-                        f"registry entry {entry.entry_id} cites dependency path "
-                        f"'{candidate}' which does not resolve under {repo_root}"
-                    ),
-                )
-            )
-    return findings
-
-
-def _resolve_dep_path(candidate: str, repo_root: Path) -> bool:
-    """Resolve a dependency path candidate against the repo.
-
-    Repo-relative paths (``apps/api/retry.py``) are checked directly. Bare
-    filenames (``retry.py``) are resolved by name anywhere under the repo —
-    this catches the ADR-062 false-control class (``_retry.py`` when the file
-    is ``retry.py``). A glob-free candidate with an extension that matches no
-    file by relative path AND no file by basename is an invalid path.
+    Passes a ``ReviewLinkFinding`` factory so :mod:`governance._dep_path_validation`
+    need not import the dataclass at runtime (avoids a circular import: that
+    module is imported lazily here, after ``ReviewLinkFinding`` is defined).
     """
-    if "/" in candidate:
-        return (repo_root / candidate).exists()
-    # Bare filename: resolve by basename anywhere under the repo.
-    return any(repo_root.rglob(candidate))
+    from governance._dep_path_validation import validate_deps
+
+    return validate_deps(
+        entry,
+        review_file,
+        repo_root,
+        make_finding=lambda task_id, kind, detail: ReviewLinkFinding(
+            task_id=task_id, review_file=review_file, kind=kind, detail=detail
+        ),
+    )
 
 
-def _dep_path_candidates(deps_text: str) -> list[str]:
-    """Extract extension-bearing, non-glob path tokens for validation.
-
-    Both repo-relative paths (``apps/api/retry.py``) and bare filenames
-    (``retry.py``) are returned as candidates. Bare filenames are resolved
-    against the repo via :func:`_resolve_dep_path` — this closes the ADR-062
-    bare-filename gap where a wrong path like ``_retry.py`` (when the file is
-    ``retry.py``) was skipped because it bore no slash. Pure prose words (no
-    extension) and globs are still skipped to stay high-precision.
-    """
-    candidates: list[str] = []
-    seen: set[str] = set()
-    for match in _DEP_PATH_RE.finditer(deps_text):
-        path = match.group(1)
-        if "*" in path:
-            continue
-        if path not in seen:
-            seen.add(path)
-            candidates.append(path)
-    return candidates
+# Claimant resolution (id matching, re-homing, CR-prefix dual-match) lives in
+# _claimant_resolution (RULE-04 extraction); imported lazily inside
+# check_review_registry_link to avoid a circular import.

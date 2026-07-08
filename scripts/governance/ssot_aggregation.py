@@ -12,7 +12,8 @@ Aggregated checkers:
     - ``check_registry_drift`` — adoption-registry vs prompt filesystem
     - Review-finding coverage (Phase 2, via :mod:`governance_health`)
     - ``status_consistency`` — doc↔status-SSOT consistency (ADR-062 P3, WARNING)
-    - ``review_registry_link`` — review→registry metadata linking (ADR-062 P5, WARNING)
+    - ``review_registry_link`` — review→registry metadata linking (ADR-062 P5;
+      technical reviews BLOCKING, content reviews WARNING-only per CR-AUFG-01-08)
 
 Each checker is classified as PASS / GOVERNED_DEBT / FAIL:
     - PASS: no issues
@@ -297,12 +298,22 @@ def _check_review_registry_link(project_root: Path) -> CheckerResult:
 
     report = check_review_registry_link(headers, registry, project_root)
 
-    # BLOCKING: findings map to FAIL.
+    # Technical-review findings (review-*.md) are BLOCKING. Content-review
+    # findings (cr-*.md) are WARNING-only this cycle (CR-AUFG-01-08); they are
+    # back-filled under CR-AUFG-01-09 before that surface is ratcheted to
+    # blocking. FAIL takes precedence over GOVERNED_DEBT.
     if report.findings:
         status = HealthStatus.FAIL
         detail = (
-            f"{len(report.findings)} review→registry link issue(s) "
+            f"{len(report.findings)} blocking review→registry link issue(s) "
             f"({len(report.rehomings_recognized)} re-homing(s) recognized)"
+        )
+    elif report.content_findings:
+        status = HealthStatus.GOVERNED_DEBT
+        detail = (
+            f"{len(report.content_findings)} content-review link warning(s) "
+            f"(CR-AUFG-01-08; WARNING-only until CR-AUFG-01-09 ratchet), "
+            f"{len(report.rehomings_recognized)} re-homing(s) recognized"
         )
     else:
         status = HealthStatus.PASS
@@ -314,7 +325,7 @@ def _check_review_registry_link(project_root: Path) -> CheckerResult:
     return CheckerResult(
         checker_name="review_registry_link",
         status=status,
-        issue_count=len(report.findings),
+        issue_count=len(report.findings) + len(report.content_findings),
         detail=detail,
     )
 
