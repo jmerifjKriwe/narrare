@@ -1088,22 +1088,40 @@ accommodate a specific client.
 
 ---
 
-### RULE-13 · Streaming and non-streaming share one interface.
+### RULE-13 · Streaming and non-streaming share one registry interface.
 
-Every LLM operation that supports streaming must also support non-streaming
-through the same method signature:
+Every LLM operation that supports streaming must also support non-streaming,
+exposed as **two methods on the same registry/service** that share one
+provider/model-settings path:
 
 ```python
-async def run(
-    self,
-    ...,
-    stream: bool = False,
-) -> LLMResult | AsyncIterator[str]:
-    ...
+class ModelRegistry:
+    async def run(self, ...) -> T:
+        """Non-streaming: returns the full agent output."""
+        ...
+
+    async def stream(self, ...) -> AsyncIterator[StreamChunk]:
+        """Streaming: yields text deltas; the final chunk carries usage."""
+        ...
 ```
 
-This ensures MCP and A2A (which may not support streaming) can use the
-same service methods without a parallel non-streaming implementation.
+This ensures MCP and A2A (which may not support streaming) can call `run()`
+against the same registry that streaming clients call via `stream()` — without a
+parallel non-streaming implementation and without a union return type.
+
+**Why two methods, not one `stream: bool`:** a single method returning
+`LLMResult | AsyncIterator[str]` forces a union return type that every caller must
+narrow (RULE-23 tension) and obscures token-usage handling, which differs
+structurally between batch (`run`, from `result.usage`) and incremental (`stream`,
+from a final `StreamChunk(is_final=True, usage=...)`) results. Two named methods
+give precise return types, mirror pydantic-ai's own `agent.run()` /
+`agent.run_stream()` split, and keep the "same interface" guarantee at the registry
+level — which is what MCP/A2A interoperability actually requires. Both methods must
+share the same `get_model` / `build_runtime_model_settings` path. See ADR-065.
+
+**Enforcement:** PR review + signature-shape regression test (ADR-065 Phase D).
+Every streaming-capable LLM operation must expose both `run()` and `stream()` on
+the same registry/service.
 
 ---
 
@@ -1122,6 +1140,7 @@ same service methods without a parallel non-streaming implementation.
 | RULE-09 Type signatures | `mypy --strict` in CI |
 | RULE-10 Test coverage | `pytest --cov` with minimum thresholds |
 | RULE-11 Silent failures | `check_architecture.py` — bare except scan |
+| RULE-13 Streaming/non-streaming interface | PR review + signature-shape regression test (ADR-065 Phase D) |
 | RULE-14 Model-migration consistency | Integration tests + PR review |
 | RULE-15 No middleware.ts | `check_architecture.py` — file existence scan |
 | RULE-16 i18n namespace registration | `i18n-namespace-registry.test.ts` + `validate-i18n.ts` |
