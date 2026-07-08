@@ -3,12 +3,13 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-07-07 — CR-01 remediation: registered CR-AUFG-01-01..09
-> (6 back-filled originals — 5 resolved-with-evidence, 01-05 in_progress pending
-> CR-AUFG-01-07; plus 3 new gaps CR-AUFG-01-07/08/09). Root cause of the original
-> registry gap: the P5 review→registry checker only covers `review-*.md`, not
-> `cr-*.md` content reviews → tracked as CR-AUFG-01-08 (WARNING-only checker
-> extension) + CR-AUFG-01-09 (blocking ratchet owner). (Prior: 2026-07-06 — AUFG-01-09 (ratchet ADR-061/062 warning-only
+> **Last updated:** 2026-07-08 — CR-01 remediation complete: CR-AUFG-01-01..08 →
+> **resolved** (5 originals verified on disk + enforced; 01-05 residual closed by
+> CR-AUFG-01-07 schema-level gating; CR-AUFG-01-08 extends the P5 review→registry
+> checker to `cr-*.md` content reviews, WARNING-only this cycle). CR-AUFG-01-09
+> (blocking ratchet + cross-review back-fill) remains `open`. (Prior: 2026-07-07 —
+> registered CR-AUFG-01-01..09 (6 back-filled originals + 3 new gaps). (Prior:
+> 2026-07-06 — AUFG-01-09 (ratchet ADR-061/062 warning-only
 > checkers to blocking) → **resolved** (2026-07-06); P1/P3/P5 now BLOCKING with
 > clean baselines; rich Status-cell parser + bare-filename dependency-path gap
 > hardened; 4 missing registry entries (AUFG-02-05, AUFG-04-12/13/14) added.
@@ -76,7 +77,7 @@ block the immediate runtime remediation once P0/P1 are complete).
 |-------|-------|
 | IDs | CR-AUFG-01-01 through CR-AUFG-01-06 |
 | Source | `cr-01-prompt-quality.md` §Aufgaben (content-review/audit-prompts) |
-| Status | CR-AUFG-01-01/02/03/04/06 `resolved`; CR-AUFG-01-05 `in_progress` (residual → CR-AUFG-01-07) |
+| Status | `resolved` (2026-07-08) — all six verified on disk + enforced |
 | Priority | P2 (prompt quality / security wrapping) |
 | Area | Prompts, prompt governance, security |
 | Owner role | Core Specialist (prompts); Platform Specialist (governance checks) |
@@ -103,9 +104,9 @@ CI-blocking `scripts/prompt_governance_checks.py` (reached via
   `{{writing_language}}` is canonical (60+ occurrences). **resolved (2026-07-07).**
 - **CR-AUFG-01-05** — `analysis/en/consistency/system.md` and
   `analysis/en/pov/system.md` are fully gated (confidence + evidence + severity).
-  **Residual:** `analysis/en/review/system.md` (prose-only gating, no schema
-  fields) and `analysis/en/readability/system.md` (no gating at all) → tracked as
-  CR-AUFG-01-07. **in_progress (2026-07-07).**
+  The residual (`review/system.md` prose-only gating; `readability/system.md` no
+  gating) is closed by CR-AUFG-01-07 (schema-level fields added to both, v1.3.0 /
+  v1.1.0). **resolved (2026-07-08).**
 - **CR-AUFG-01-06** — staged consistency strategy implemented via ADR-044
   (`docs/architecture/decisions/ADR-044-staged-consistency.md`). **resolved (2026-07-07).**
 
@@ -125,7 +126,7 @@ reference alias of `variable_registry.USER_CONTENT_VARS` (SSOT), guarded by
 | ID | CR-AUFG-01-07 |
 | Title | Review/Readability-Prompts: Schema-Level Gating nachziehen (CR-AUFG-01-05 residual) |
 | Source | `cr-01-prompt-quality.md` §Aufgaben (gap detected 2026-07-07 during CR-01 remediation) |
-| Status | `open` |
+| Status | `resolved` (2026-07-08) — schema-level gating added to both prompts |
 | Priority | P2 |
 | Area | Prompts / prompt quality |
 | Owner role | Core Specialist (prompts) |
@@ -141,15 +142,25 @@ language at all.
 
 **Acceptance criteria:**
 
-- [ ] `analysis/en/review/system.md` output schema includes `confidence`,
+- [x] `analysis/en/review/system.md` output schema includes `confidence`,
   `severity`, and `text_excerpt` fields for issues and/or suggestions; prompt
-  version bumped.
-- [ ] `analysis/en/readability/system.md` adds a `confidence` field, an evidence
+  version bumped (1.2.0 → 1.3.0).
+- [x] `analysis/en/readability/system.md` adds a `confidence` field, an evidence
   gate (ground each issue in a quoted passage), and false-positive guidance (omit
-  low-confidence subjective flags); prompt version bumped.
-- [ ] `just check-prompts` stays green (no regression to wrapper/`{{language}}`/
+  low-confidence subjective flags); prompt version bumped (1.0.0 → 1.1.0).
+- [x] `just check-prompts` stays green (no regression to wrapper/`{{language}}`/
   `{{kb_suggested}}` enforcement).
-- [ ] CR-AUFG-01-05 moved to `resolved` once this task lands.
+- [x] CR-AUFG-01-05 moved to `resolved` once this task lands.
+
+**Exit evidence (2026-07-08):** `review/system.md` (v1.3.0) Structured Output now
+requires `text_excerpt`/`severity`/`confidence`/`rationale` on issues+suggestions
+plus an explicit confidence gate (< 0.6 → `info` or omit). `readability/system.md`
+(v1.1.0) adds a `confidence` field to each issue, an evidence gate grounded in the
+quoted sentence, and false-positive guidance. Backward-compatible:
+`ReadabilityAgentOutput.problematic_sentences: list[dict[str, Any]]` and
+`SentenceAnalysis.issues: list[str]` (Pydantic `extra="ignore"`) safely drop the
+new fields where the runtime model is simpler than the narrated schema.
+`just check-prompts` PASS (golden governance test).
 
 ---
 
@@ -160,11 +171,11 @@ language at all.
 | ID | CR-AUFG-01-08 |
 | Title | P5 Review→Registry Checker auf Content-Reviews (`cr-*.md` + `CR-AUFG-NN-MM`) erweitern |
 | Source | `cr-01-prompt-quality.md` §Aufgaben (root-cause of CR-01 registry gap, detected 2026-07-07) |
-| Status | `open` |
+| Status | `resolved` (2026-07-08) — checker extended (WARNING-only this cycle; blocking ratchet → CR-AUFG-01-09) |
 | Priority | P2 |
 | Area | Governance / CI |
 | Owner role | Platform Specialist (governance tooling) |
-| Dependencies | `scripts/governance/_review_registry_link.py`; `scripts/governance/ssot_aggregation.py`; `_audit/results/content-review/**/*.md` |
+| Dependencies | `scripts/governance/_review_registry_link.py`; `scripts/governance/ssot_aggregation.py`; `scripts/governance/_registry_sections.py`; `scripts/governance/_claimant_resolution.py`; `scripts/governance/_dep_path_validation.py` |
 | Review trigger/date | Re-review when content-review format changes or when this task is promoted to blocking (see CR-AUFG-01-09) |
 
 **Root cause:** The P5 review→registry checker only scans `review-*.md` filenames
@@ -176,19 +187,30 @@ layer" failure from `docs/development/finding-lifecycle.md` §4.
 
 **Acceptance criteria:**
 
-- [ ] `collect_review_headers` scans both `review-*.md` and `cr-*.md` under
+- [x] `collect_review_headers` scans both `review-*.md` and `cr-*.md` under
   `_audit/results/`.
-- [ ] Parser recognizes the `- **CR-AUFG-NN-MM:**` bullet form in addition to the
-  existing `### [AUFG-XX-YY]` header form.
-- [ ] Matching dual-normalizes the `CR-` prefix (a `CR-AUFG-NN-MM` header matches a
+- [x] Parser recognizes the `- **CR-AUFG-NN-MM:**` bullet form in addition to the
+  existing `### [AUFG-XX-YY]` header form (scoped to `cr-*.md` only — technical
+  reviews use bold bullets for recap lists, not task definitions).
+- [x] Matching dual-normalizes the `CR-` prefix (a `CR-AUFG-NN-MM` header matches a
   registry entry keyed either `CR-AUFG-NN-MM` or `AUFG-NN-MM`) so CR-02/03/04 entries
   (stored unprefixed) are not false positives.
-- [ ] Range-block recognition: a registry `| IDs | CR-AUFG-NN-01 through CR-AUFG-NN-14 |`
-  row satisfies headers within that range (CR-08 set).
-- [ ] Severity is WARNING-only (exit 0) this cycle so the ~8 genuine cross-review
+- [x] Range-block recognition: a registry `| IDs | CR-AUFG-NN-01 through CR-AUFG-NN-14 |`
+  row satisfies headers within that range (CR-08 set); also range-id headers
+  (`### CR-AUFG-01-01..06`) and comma-list `| IDs |` rows.
+- [x] Severity is WARNING-only (exit 0) this cycle so the ~8 genuine cross-review
   misses do not break CI; the blocking ratchet is CR-AUFG-01-09.
-- [ ] Tests cover: cr-*.md discovery, CR-AUFG bullet parsing, dual-match, range-block
-  recognition, and a golden test asserting the current state exits 0.
+- [x] Tests cover: cr-*.md discovery, CR-AUFG bullet parsing, dual-match, range-block
+  recognition, and severity routing (content→WARNING, technical→BLOCKING).
+
+**Exit evidence (2026-07-08):** `_review_registry_link.py` (398 lines) extended +
+modularized into `_registry_sections.py` (184), `_claimant_resolution.py` (95),
+`_dep_path_validation.py` (119) per RULE-04. Technical P5 PASS (20 headers, 0
+blocking findings); content surface now scanned (44 headers across 7 `cr-*.md`
+files, 28 WARNING findings → `GOVERNED_DEBT`, exit 0). `check_architecture.py` PASS
+(no new violations); `check_python_file_size.py` PASS (0 debt growth); 31 P5 tests +
+171 governance tests pass. The 28 content findings are the backlog CR-AUFG-01-09
+back-fills before ratcheting to blocking.
 
 ---
 
