@@ -625,6 +625,8 @@ was zu Stragglers führen kann.
 - [ ] Cache-Key in ci.yml typecheck-Job um `tests/pyrightconfig.json` ergänzt
 - [ ] CI test-unit-Job: `-n auto --dist loadfile` (analog justfile `test-unit`)
 - [ ] Optional: `--import-mode=importlib` in `[tool.pytest.ini_options] addopts`
+- [ ] [Gap-Walk G3] Redundantes `sys.path.insert` in `tests/conftest.py` L14–21 entfernt (`pythonpath`-Konfiguration in pyproject.toml reicht)
+- [ ] [Gap-Walk G4] Pyright `extraPaths = ["apps/api", "packages/core", "packages/i18n"]` in `pyproject.toml [tool.pyright]` gesetzt
 **Geschätzter Aufwand:** S
 
 ### [AUFG-02-06] dependency-review-action und Frontend-Perf-Budget revalidieren
@@ -648,3 +650,76 @@ gegen die „documented ≠ implemented"-Disziplin (§7) und erschert Schätzung
 - [ ] Test-Zahlen in testing-standards.md „Fast Developer Feedback"-Abschnitt aktualisieren
 - [ ] Hinweis, dass Zahlen beispielhaft sind und via `pytest --collect-only` live ermittelbar
 **Geschätzter Aufwand:** S
+
+### [AUFG-02-08] Backend-Coverage-Ratchet für Module am Floor anheben
+**Priorität:** Mittel
+**Bereich:** Testing
+**Kontext:** Fünf Backend-Module liegen nur knapp über dem api-Floor (80 %): `settings` 81,5 %,
+`templates` 82,4 %, `kb` 83,9 %, `novels` 83,8 %, `volumes` 84,0 % (review §1 + §7-Tabelle).
+Eine Regression um wenige Prozent drückt sie unter den Floor. Die §7-Empfehlung
+("Ratchet-Ziele schrittweise auf 85/90 %") hatte keine entsprechende AUFG — in Phase-1-Gap-Walk
+als Lücke identifiziert (Problem ohne Task).
+**Akzeptanzkriterien:**
+- [ ] Baselines für die 5 Module in `scripts/coverage_baselines.json` stufenweise auf ≥85 % angehoben
+      (wo billig Tests fehlen, gezielt ergänzen)
+- [ ] `check_module_coverage.py --fail` blockiert weiterhin bei Regression unter die neuen Baselines
+- [ ] Dokumentierter Ratchet-Pfad (85 % → 90 %) je Modul
+**Geschätzter Aufwand:** M
+
+### [AUFG-02-09] Runtime-Eval-Drift: P0-Scores blockierend machen
+**Priorität:** Niedrig
+**Bereich:** AI / CI
+**Kontext:** Nightly Runtime-Eval-Drift ist WARNING-only (review §6/§8) → eine stille
+Qualitätsregression des Kern-Features bleibt nicht-blockierend. `check_eval_drift.py` behandelt
+heute alle Test-Cases identisch (gleicher 5 %-Threshold, kein Prioritäts-Konzept). Lücke: kein
+Mechanismus, um kritische Scores (Guardrail, Format, Kern-Qualität) von weichen (Tone-Nuancen)
+zu trennen. In Phase-1-Gap-Walk als Lücke identifiziert.
+**Akzeptanzkriterien:**
+- [ ] Per-Case `priority`-Feld (z. B. `"priority": "P0"`) in Baselines oder separates P0-Manifest
+- [ ] `check_eval_drift.py` um `--fail-on-priority P0`-Modus erweitert (blockiert nur bei P0-Regression)
+- [ ] `eval-nightly.yml` gate auf P0-only; nicht-P0 bleibt WARNING
+- [ ] Für die Writing-Suite (AUFG-02-03) sind Guardrail/Format/Kern-Qualität als P0 markiert
+- [ ] Hängt ab von: AUFG-02-03 (Writing-Runtime-Suite + Baseline muss existieren)
+**Geschätzter Aufwand:** M
+
+### [AUFG-02-10] reportMissingTypeStubs-Rauschen reduzieren
+**Priorität:** Niedrig
+**Bereich:** DX / Types
+**Kontext:** `reportMissingTypeStubs = true` erzeugt echte Fehler für bekannte stub-lose
+Drittanbieter (`asyncpg`, `taskiq`, …), die laut CURRENT_STATE teils False Positives sind
+(review §4 rec #3). Erhöht Rauschen ohne Qualitätsgewinn. §4-Bewertung: "kein akuter
+Handlungsbedarf", aber Reduzierung hat Wert. In Phase-1-Gap-Walk als Lücke identifiziert.
+**Akzeptanzkriterien:**
+- [ ] Bekannte stub-lose Pakete mit Inline-`# pyright: reportMissingTypeStubs=false`-Pragmas an
+      den Importstellen annotiert (oder Selektor-Konfiguration in pyproject.toml)
+- [ ] Pyright-Lauf dokumentiert reduzierte False-Positive-Zahl
+- [ ] Keine echten Typ-Fehler dadurch verschleiert (Audit der verbleibenden Meldungen)
+**Geschätzter Aufwand:** S–M
+
+### [AUFG-02-11] Vitest-AST-Level testid-Conformance-Test
+**Priorität:** Niedrig
+**Bereich:** Testing
+**Kontext:** `check-testid.ts` ist regex-basiert → False Negatives für zusammengesetzte Elemente
+(`<div role="button">`, Radix-Trigger, spread-Props `<button {...props}>`) und False Positives für
+kommentierten Code (review §2). Die §2-Tabelle empfiehlt als "optionale zweite Verteidigungslinie"
+einen Vitest-Test, der via Testing-Library `getByRole` prüft, dass jedes interaktive Element ein
+`data-testid` trägt. In Phase-1-Gap-Walk als Lücke ohne AUFG identifiziert.
+**Akzeptanzkriterien:**
+- [ ] Vitest-Test, der `*.tsx` lädt und via Testing-Library-Queries prüft, dass jede
+      `getByRole("button")` / `getByRole("textbox")` einen `data-testid` (oder `aria-label`) trägt
+- [ ] Fängt AST-Lücken auf, die regex verpasst
+- [ ] Läuft blockierend im CI frontend-Job
+**Geschätzter Aufwand:** M
+
+### [AUFG-02-12] Names-Generation-Eval-Suite erstellen
+**Priorität:** Niedrig
+**Bereich:** AI / Testing
+**Kontext:** Namens-Generierung hat Unit-Tests, aber keine Pydantic-Evals-Suite (review §8
+⚠️-Zeile). ADR-032-konforme Regression fehlt für diesen Generation-Pfad. In Phase-1-Gap-Walk als
+Lücke ohne AUFG identifiziert.
+**Akzeptanzkriterien:**
+- [ ] Neue `evals/datasets/names.py` (Cases für Charakter-/Orts-/Plot-Namen)
+- [ ] Evaluator + Baseline `evals/baselines/names-baseline.json`
+- [ ] Registrierung in `evals/datasets/__init__.py` DATASET_FACTORIES
+- [ ] Smoke-Suite (deterministisch) läuft blockierend in CI architecture-Job
+**Geschätzter Aufwand:** M
