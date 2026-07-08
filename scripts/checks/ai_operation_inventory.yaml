@@ -523,7 +523,7 @@ operations:
   - operation_id: vocabulary.ai_actions
     feature: AI-Action i18n Vocabulary — deprecated alias prevention
     entry_points:
-      - packages/web/messages/{de,en,fr}/studio.json (aiActions namespace)
+      - packages/i18n/messages/{de,en,fr}/studio.json (aiActions namespace)
       - scripts/checks/_ai_interaction_checks/check_6_deprecated_alias.py
     transport: not_applicable
     lifecycle_owner: not_applicable
