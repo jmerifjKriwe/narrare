@@ -8,7 +8,7 @@ Covers:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import inspect
 from unittest.mock import patch
 
 import pytest
@@ -19,10 +19,8 @@ from pydantic_ai.models.test import (
 )
 from pydantic_ai.usage import UsageLimits
 
-if TYPE_CHECKING:
-    from narrare_core.llm.gateway import ModelRegistry
-
 from narrare_core.llm import LLMIntent, ResolvedModelConfig
+from narrare_core.llm.gateway import ModelRegistry
 
 
 class TestModelRegistryGetModel:
@@ -270,3 +268,62 @@ class TestModelRegistryUsageLimits:
 
         assert result is not None
         assert isinstance(result, str)
+
+
+# =====================================================================
+# RULE-13 / ADR-065 Phase-D — two-method run()/stream() contract shape
+# =====================================================================
+
+
+class TestModelRegistryContractShape:
+    """RULE-13 (ADR-065 Phase-D): the two-method ``run``/``stream`` contract.
+
+    ADR-065 declares the ``ModelRegistry`` two-method shape — a coroutine
+    ``run()`` returning a value, and an async-generator ``stream()`` returning
+    ``AsyncIterator[StreamChunk]`` — as the standard gateway contract. These
+    tests inspect the signatures at runtime so a regression that swaps the
+    shapes (e.g. makes ``run`` an async generator, or removes ``stream``)
+    blocks CI under ``test-unit``.
+    """
+
+    def test_has_both_run_and_stream_methods(self) -> None:
+        """ModelRegistry exposes public ``run`` and ``stream`` methods."""
+        assert hasattr(ModelRegistry, "run"), "ModelRegistry must define run()"
+        assert hasattr(ModelRegistry, "stream"), "ModelRegistry must define stream()"
+        assert callable(ModelRegistry.run)
+        assert callable(ModelRegistry.stream)
+
+    def test_run_is_coroutine_not_async_generator(self) -> None:
+        """``run`` is an awaitable coroutine function (returns a value)."""
+        assert inspect.iscoroutinefunction(ModelRegistry.run), (
+            "ModelRegistry.run must be a coroutine function"
+        )
+        assert not inspect.isasyncgenfunction(ModelRegistry.run), (
+            "ModelRegistry.run must NOT be an async generator "
+            "(it returns a value — use stream() for chunked output)"
+        )
+
+    def test_stream_is_async_generator_returning_stream_chunks(self) -> None:
+        """``stream`` is an async generator yielding ``StreamChunk``.
+
+        ``AsyncIterator`` and ``StreamChunk`` are imported under ``TYPE_CHECKING``
+        in gateway.py, so ``typing.get_type_hints`` cannot resolve them at runtime
+        (NameError on ``AsyncIterator``). We therefore inspect the raw
+        ``__annotations__`` (string form, due to ``from __future__ import
+        annotations``), which is sufficient to lock the declared return type.
+        """
+        assert inspect.isasyncgenfunction(ModelRegistry.stream), (
+            "ModelRegistry.stream must be an async generator function"
+        )
+        assert not inspect.iscoroutinefunction(ModelRegistry.stream), (
+            "ModelRegistry.stream must NOT be a plain coroutine"
+        )
+
+        return_annotation = str(ModelRegistry.stream.__annotations__.get("return", ""))
+        assert "AsyncIterator" in return_annotation, (
+            f"ModelRegistry.stream must be annotated to return AsyncIterator, "
+            f"got: {return_annotation!r}"
+        )
+        assert "StreamChunk" in return_annotation, (
+            f"ModelRegistry.stream must yield StreamChunk, got: {return_annotation!r}"
+        )
