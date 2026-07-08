@@ -40,6 +40,7 @@ internal operations like memory extraction, not for user-facing generation.
 _FALLBACK_MODEL: str = "gpt-4.1-nano"
 """Model used when the provider is unknown."""
 
+# narrare: allow-prompt-path reason="mem0 config string, not Narrare prompt path (ADR-064)"
 _WRITING_PREFERENCE_PROMPTS: dict[str, str] = {
     "en": (
         "Extract writing preferences from the user's interactions with AI suggestions. "
@@ -141,6 +142,7 @@ def _build_mem0_config(
         return None
 
     model = memory_model or _default_memory_model(provider)
+    # narrare: allow-prompt-path reason="mem0 config string, not Narrare prompt path (ADR-064)"
     extraction_prompt = custom_instructions or get_extraction_prompt(language)
 
     llm_config: dict[str, Any] = {
@@ -194,6 +196,7 @@ def _build_mem0_config(
     config: dict[str, Any] = {
         "llm": llm_config,
         "embedder": embedder_config,
+        # narrare: allow-prompt-path reason="mem0 config string, not Narrare prompt path (ADR-064)"
         "custom_instructions": extraction_prompt,
     }
     if vector_store_config:
