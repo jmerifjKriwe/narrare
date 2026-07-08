@@ -737,9 +737,9 @@ export const namespaces = ["common", "generation", ...];
 //                                    ↑ must be listed
 
 // 3. Files exist in all locales
-// packages/web/messages/en/generation.json  ← must exist
-// packages/web/messages/de/generation.json  ← must exist
-// packages/web/messages/fr/generation.json  ← must exist
+// packages/i18n/messages/en/generation.json  ← must exist
+// packages/i18n/messages/de/generation.json  ← must exist
+// packages/i18n/messages/fr/generation.json  ← must exist
 ```
 
 **Enforcement:**
@@ -933,7 +933,7 @@ project settings, etc.).
    cleanup target.
 5. **i18n parity / prompt language policy**: Treat UI i18n and prompt-template
    language as separate concerns:
-   - **UI i18n**: UI strings and `packages/web/messages/{locale}/` namespaces
+   - **UI i18n**: UI strings and `packages/i18n/messages/{locale}/` namespaces
      continue to require en/de/fr parity (see RULE-16).
    - **Bundled feature system prompts**: New bundled feature prompt templates
      default to EN-only. Output/writing language must be controlled through
@@ -1088,22 +1088,40 @@ accommodate a specific client.
 
 ---
 
-### RULE-13 · Streaming and non-streaming share one interface.
+### RULE-13 · Streaming and non-streaming share one registry interface.
 
-Every LLM operation that supports streaming must also support non-streaming
-through the same method signature:
+Every LLM operation that supports streaming must also support non-streaming,
+exposed as **two methods on the same registry/service** that share one
+provider/model-settings path:
 
 ```python
-async def run(
-    self,
-    ...,
-    stream: bool = False,
-) -> LLMResult | AsyncIterator[str]:
-    ...
+class ModelRegistry:
+    async def run(self, ...) -> T:
+        """Non-streaming: returns the full agent output."""
+        ...
+
+    async def stream(self, ...) -> AsyncIterator[StreamChunk]:
+        """Streaming: yields text deltas; the final chunk carries usage."""
+        ...
 ```
 
-This ensures MCP and A2A (which may not support streaming) can use the
-same service methods without a parallel non-streaming implementation.
+This ensures MCP and A2A (which may not support streaming) can call `run()`
+against the same registry that streaming clients call via `stream()` — without a
+parallel non-streaming implementation and without a union return type.
+
+**Why two methods, not one `stream: bool`:** a single method returning
+`LLMResult | AsyncIterator[str]` forces a union return type that every caller must
+narrow (RULE-23 tension) and obscures token-usage handling, which differs
+structurally between batch (`run`, from `result.usage`) and incremental (`stream`,
+from a final `StreamChunk(is_final=True, usage=...)`) results. Two named methods
+give precise return types, mirror pydantic-ai's own `agent.run()` /
+`agent.run_stream()` split, and keep the "same interface" guarantee at the registry
+level — which is what MCP/A2A interoperability actually requires. Both methods must
+share the same `get_model` / `build_runtime_model_settings` path. See ADR-065.
+
+**Enforcement:** PR review + signature-shape regression test (ADR-065 Phase D).
+Every streaming-capable LLM operation must expose both `run()` and `stream()` on
+the same registry/service.
 
 ---
 
@@ -1122,6 +1140,7 @@ same service methods without a parallel non-streaming implementation.
 | RULE-09 Type signatures | `mypy --strict` in CI |
 | RULE-10 Test coverage | `pytest --cov` with minimum thresholds |
 | RULE-11 Silent failures | `check_architecture.py` — bare except scan |
+| RULE-13 Streaming/non-streaming interface | PR review + signature-shape regression test (ADR-065 Phase D) |
 | RULE-14 Model-migration consistency | Integration tests + PR review |
 | RULE-15 No middleware.ts | `check_architecture.py` — file existence scan |
 | RULE-16 i18n namespace registration | `i18n-namespace-registry.test.ts` + `validate-i18n.ts` |
@@ -1167,6 +1186,7 @@ See ADR-028 for the SSOT decision and checker enforcement specification.
 | 13 | RULE-01b | `apps/api/narrare/setup/provider_service.py` | Setup-phase provider validation requires direct pydantic-ai Agent | ADR-015 | 2026-05-20 |
 | 15 | RULE-19 | `apps/api/narrare/metrics/router.py` | Health/readiness check must bypass repository layer to verify raw DB connectivity | platform-review-01 | 2026-06-11 |
 | 16 | RULE-18 | `apps/api/narrare/memory/suggestion_identity.py` | `_SOURCE_ID_HASH_PREFIX_LEN` is a pinned cryptographic stability constant; runtime configurability would break source_id_hash determinism across feedback events | CR-AUFG-07-24 | 2026-06-22 |
+| 17 | RULE-02b | `packages/core/narrare_core/memory/mem0_client.py` | mem0 custom_instructions is a third-party-library config string for mem0's internal extraction LLM, not a Narrare prompt-resolution path (RULE-02b scope boundary). | ADR-064 | 2026-07-08 |
 
 ### Detailed Exception Justifications
 
@@ -1226,6 +1246,20 @@ layer to verify raw database connectivity. This is intentional: these endpoints
 serve as infrastructure-level liveness/readiness probes that must detect database
 failures at the connection level, not through the repository abstraction which
 may mask connection issues behind retry logic or fallback behavior.
+
+#### Exception #17: mem0 extraction prompts in `core/memory/mem0_client.py` (RULE-02b scope boundary)
+
+`_WRITING_PREFERENCE_PROMPTS` (en/de/fr) are language-specific extraction
+instructions passed as `custom_instructions` to `mem0.AsyncMemory`. mem0 feeds
+the string to its **own** internal LLM client for memory extraction — it never
+reaches a Narrare agent, PromptComposer, the route table, the variable engine, or
+any `LLMIntent`. It is therefore **not** a Narrare prompt-resolution path and is
+outside RULE-02b's enforcement boundary (the `prompt_path.py` checker does not
+flag it — it scans only for `PromptRegistry.resolve()` and `PromptRegistry`
+imports). This exception is registered *defensively* as a scope-boundary
+clarification: it makes the boundary machine-readable and ratchets it against
+silent growth via `check_exception_baseline.py`. It is **not** a license to place
+feature prompts in `core/memory/`. See ADR-064.
 
 *Every exception is a debt that should be paid down. Revisit when the Gateway
 supports infrastructure-level calls with different routing rules.*

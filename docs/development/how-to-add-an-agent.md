@@ -605,7 +605,7 @@ just check-governance          # Governance Health
 Wenn der Agent eine UI-Komponente bekommt:
 
 ```
-packages/web/messages/
+packages/i18n/messages/
 ├── en/{domain}.json   ← Englische Schlüssel
 ├── de/{domain}.json   ← Deutsche Übersetzung
 └── fr/{domain}.json   ← Französische Übersetzung
@@ -695,7 +695,7 @@ packages/web/messages/
 | Prompt Surface Manifest | ADR-037, ADR-049 | `scripts/architecture/prompt-surface-manifest.yaml` |
 | Adoption Registry | ADR-025, ADR-045 | `scripts/adoption/` |
 | Runtime Evidence | ADR-045 | `core/ai_invocation/` |
-| i18n | ADR-013 | `packages/web/messages/` |
+| i18n | ADR-013 | `packages/i18n/messages/` |
 | Streaming Compliance | architectural-discipline.md §5.1 | `scripts/architecture/streaming_compliance.py` |
 | Governance Checks | ADR-037, ADR-046, ADR-049 | `scripts/prompt_governance_checks.py` |
 | AI Operation Inventory | CR-07 | `scripts/checks/ai_operation_inventory.yaml` |

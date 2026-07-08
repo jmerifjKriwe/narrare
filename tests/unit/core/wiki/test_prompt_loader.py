@@ -10,6 +10,7 @@ Test-Strategie:
 from __future__ import annotations
 
 import pytest
+from structlog.testing import capture_logs
 
 from narrare_core.wiki.prompt_loader import WikiPromptLoader
 from narrare_core.wiki.types import WikiGenerationDeps
@@ -240,6 +241,59 @@ class TestExceptionContract:
         assert len(text) > 0
         # Fell back to the English entity_summary prompt.
         assert "narrative wiki generator" in text
+
+    def test_oserror_during_read_text_emits_debug_log_and_falls_back_to_en(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When ``read_text()`` raises OSError while probing the requested
+        language, a DEBUG log record is emitted (RULE-11: no silent failure)
+        and the loader still returns the English fallback without propagating.
+
+        Regression for the previously bare ``pass`` that swallowed I/O errors
+        (permission/disk/corruption) with no diagnostic trail.
+        """
+        from pathlib import Path
+
+        real_read_text = Path.read_text
+        probe = {"count": 0}
+
+        def fake_read_text(self: object, *args: object, **kwargs: object) -> str:
+            probe["count"] += 1
+            if probe["count"] == 1:
+                raise OSError("simulated read_text failure")
+            # Subsequent call (the English fallback) reads the real file.
+            return real_read_text(self, *args, **kwargs)  # type: ignore[arg-type,return-value]
+
+        # Force exists() to return True so read_text() is actually invoked in
+        # the requested-language probe (otherwise the short-circuit never reaches
+        # read_text and the OSError path is not exercised).
+        def fake_exists(self: object) -> bool:
+            return True
+
+        monkeypatch.setattr("narrare_core.wiki.prompt_loader.Path.exists", fake_exists)
+        monkeypatch.setattr("narrare_core.wiki.prompt_loader.Path.read_text", fake_read_text)
+
+        with capture_logs() as logs:
+            text = WikiPromptLoader.read_bundled_prompt("wiki", "xx", "entity_summary")
+
+        # (b) English fallback returned, no exception propagated.
+        assert isinstance(text, str)
+        assert len(text) > 0
+        assert "narrative wiki generator" in text
+
+        # (a) A DEBUG log record was emitted with diagnostic context + traceback.
+        debug_events = [
+            r
+            for r in logs
+            if r.get("log_level") == "debug"
+            and r.get("event") == "bundled_prompt_load_failed_fallback_en"
+        ]
+        assert len(debug_events) == 1, f"expected one debug log record, got {logs}"
+        record = debug_events[0]
+        assert record.get("exc_info") is True
+        assert record.get("category") == "wiki"
+        assert record.get("language") == "xx"
+        assert record.get("mode") == "entity_summary"
 
     def test_uncaught_valueerror_is_not_masked(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """An exception NOT in the catch tuple must propagate, proving the

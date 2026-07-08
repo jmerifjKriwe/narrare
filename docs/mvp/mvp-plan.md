@@ -662,7 +662,7 @@ The AI feature slots (toolbar, context panel, inline decorations) are TipTap ext
 - Forms: React Hook Form v7
 
 ### i18n
-next-intl. Messages in `packages/web/messages/{locale}.json`.
+next-intl. Messages in `packages/i18n/messages/{locale}/{ns}.json`.
 All user-facing strings use `useTranslations()`. Zero hardcoded English in components.
 
 ### Auth
