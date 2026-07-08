@@ -12,11 +12,15 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import structlog
+
 from narrare_core.prompts.variable_engine import substitute
 from narrare_core.shared.frontmatter import parse_frontmatter
 
 if TYPE_CHECKING:
     from narrare_core.wiki.types import WikiGenerationDeps
+
+logger = structlog.get_logger(__name__)
 
 # Regex for Jinja2-style conditionals
 # Matches {% if condition %}content{% endif %} blocks across multiple lines.
@@ -69,7 +73,17 @@ class WikiPromptLoader:
             if path.exists():
                 return path.read_text(encoding="utf-8")
         except ModuleNotFoundError, FileNotFoundError, OSError:
-            pass
+            # RULE-11 spirit: never swallow I/O errors silently. Log at DEBUG
+            # (with traceback via exc_info) so operators can diagnose
+            # permission/disk/corruption failures, then fall through to the
+            # English fallback below.
+            logger.debug(
+                "bundled_prompt_load_failed_fallback_en",
+                exc_info=True,
+                category=category,
+                language=language,
+                mode=mode,
+            )
 
         # Fallback to English
         try:
