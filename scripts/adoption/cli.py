@@ -27,20 +27,12 @@ import argparse
 import sys
 from pathlib import Path
 
-from prompt_checks_crossfile import discover_prompts
-from scripts.architecture.baselines import (
-    DEFAULT_BASELINE_PATH,
-    compare_section,
-    format_comparison,
-)
+from scripts.architecture.baselines import DEFAULT_BASELINE_PATH
 
 from adoption.audit_report import build_audit_report
-from adoption.prompt_path_adoption import check_prompt_path_adoption
 from adoption.report_format import exit_code as _exit_code
 from adoption.report_format import format_human as _format_human
 from adoption.report_format import format_json as _format_json
-from adoption.scorer import compute_adoption_report
-from adoption.script_evidence_repo import ScriptEvidenceRepository
 
 
 def main() -> int:
@@ -50,7 +42,12 @@ def main() -> int:
     # in tests — main() resolves these names dynamically via the module ref.
     # The import is safe from circular deps because check_adoption is fully
     # loaded by the time main() is called (it's already imported from cli).
-    from scripts import check_adoption as _ca
+    # NOTE: "import check_adoption as _ca" (NOT "from scripts import ...")
+    # because scripts/ is a namespace package (no __init__.py), and
+    # "from scripts import check_adoption" would create a DIFFERENT module
+    # object in sys.modules['scripts.check_adoption'] — breaking
+    # monkeypatch.setattr(check_adoption, ...) from tests.
+    import check_adoption as _ca
 
     parser = argparse.ArgumentParser(
         description="Compute Narrare feature adoption scores.",
@@ -135,12 +132,12 @@ def main() -> int:
         )
         return 1
 
-    prompts = discover_prompts(args.prompts)
+    prompts = _ca.discover_prompts(args.prompts)
     evidence_repo = (
-        ScriptEvidenceRepository(_ca.DEFAULT_EVIDENCE_REPO_FILE) if args.evidence_repo else None
+        _ca.ScriptEvidenceRepository(_ca.DEFAULT_EVIDENCE_REPO_FILE) if args.evidence_repo else None
     )
 
-    report = compute_adoption_report(
+    report = _ca.compute_adoption_report(
         registry,
         prompts,
         evidence_dir=str(args.evidence_dir) if args.evidence_dir else None,
@@ -148,13 +145,11 @@ def main() -> int:
     )
 
     # ADR-046 D.5 — prompt-path compliance per-intent metric (RULE-02b).
-    pp_findings = check_prompt_path_adoption(registry)
+    pp_findings = _ca.check_prompt_path_adoption(registry)
     pp_critical = [f for f in pp_findings if f.severity == "critical"]
 
     # ADR-048 — Mode 2 declaration validation + placeholder evidence rejection.
-    from adoption.mode2_validation import validate_adoption_mode2
-
-    mode2_report = validate_adoption_mode2(
+    mode2_report = _ca.validate_adoption_mode2(
         registry,
         evidence_dir=args.evidence_dir,
     )
@@ -184,12 +179,12 @@ def main() -> int:
     if pp_critical:
         exit_code = 1
     if not args.no_baseline:
-        comparison = compare_section(
+        comparison = _ca.compare_section(
             _ca.adoption_debt_fingerprints(report),
             _ca.ADOPTION_BASELINE_SECTION,
             args.baseline,
         )
-        print(format_comparison(comparison, "Adoption debt ratchet"))
+        print(_ca.format_comparison(comparison, "Adoption debt ratchet"))
         if not comparison.ok:
             return 1
         if report.status == "GOVERNED_DEBT":

@@ -34,7 +34,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import yaml
-from scripts.architecture.baselines import stable_fingerprint
+from adoption.mode2_validation import Mode2ValidationReport as Mode2ValidationReport
+from adoption.mode2_validation import validate_adoption_mode2 as validate_adoption_mode2
+from adoption.prompt_path_adoption import check_prompt_path_adoption as check_prompt_path_adoption
+from adoption.scorer import compute_adoption_report as compute_adoption_report
+from adoption.script_evidence_repo import ScriptEvidenceRepository as ScriptEvidenceRepository
+from prompt_checks_crossfile import discover_prompts as discover_prompts
+from scripts.architecture.baselines import compare_section as compare_section
+from scripts.architecture.baselines import format_comparison as format_comparison
+from scripts.architecture.baselines import stable_fingerprint as stable_fingerprint
 
 if TYPE_CHECKING:
     from adoption.scorer import AdoptionReport
