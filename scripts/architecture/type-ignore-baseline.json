@@ -18,7 +18,7 @@
     "packages/core/narrare_core/memory/mem0_client.py": 2,
     "scripts/architecture/_checkers/__init__.py": 1,
     "scripts/check_system_health.py": 1,
-    "scripts/check_type_ignores.py": 6,
+    "scripts/check_type_ignores/__main__.py": 6,
     "scripts/export_openapi.py": 3,
     "tests/e2e/conftest.py": 2,
     "tests/e2e/test_hero_flow.py": 1,

@@ -20,16 +20,16 @@ Usage
 ::
 
     # Basic check (uses default baseline)
-    python scripts/check_type_ignores.py
+    python -m scripts.check_type_ignores
 
     # Custom baseline path
-    python scripts/check_type_ignores.py --baseline path/to/baseline.json
+    python -m scripts.check_type_ignores --baseline path/to/baseline.json
 
     # Update (create / overwrite) the baseline from current state
-    python scripts/check_type_ignores.py --update
+    python -m scripts.check_type_ignores --update
 
     # Update to a specific path
-    python scripts/check_type_ignores.py --update --baseline path/to/baseline.json
+    python -m scripts.check_type_ignores --update --baseline path/to/baseline.json
 
 Importable
 ----------

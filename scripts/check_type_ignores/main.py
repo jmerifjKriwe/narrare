@@ -86,9 +86,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "  2  Errors (naked ignores / production baseline exceeded / "
             "uncommented suppressions)\n\n"
             "Examples:\n"
-            "  python scripts/check_type_ignores.py\n"
-            "  python scripts/check_type_ignores.py --update\n"
-            "  python scripts/check_type_ignores.py --baseline my-baseline.json\n"
+            "  python -m scripts.check_type_ignores\n"
+            "  python -m scripts.check_type_ignores --update\n"
+            "  python -m scripts.check_type_ignores --baseline my-baseline.json\n"
         ),
     )
     parser.add_argument(

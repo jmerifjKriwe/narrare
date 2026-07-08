@@ -168,7 +168,7 @@ konkrete Typen statt Protocols als Parameter erwarten.
 - [x] **P1-B: AI Agent Guideline verschärft** — RULE-23 ist fester Bestandteil aller
   Narrare-Specialist-Delegation-Prompts
 
-- [x] **P1-C: CI-Gate implementiert** — `scripts/check_type_ignores.py` prüft:
+- [x] **P1-C: CI-Gate implementiert** — `python -m scripts.check_type_ignores` prüft:
   Baseline-Vergleich, naked ignores, uncommented production, Reason-Kommentar-Konformität
 
 ### Phase 2: Production-Code sanieren (Hochprioritär)
@@ -211,7 +211,7 @@ konkrete Typen statt Protocols als Parameter erwarten.
 
 ### Phase 5: Monitoring ✅
 
-- [x] **P5-A:** Baseline via `scripts/check_type_ignores.py --update` erzeugt (203 Suppressions, Stand 2026-06-11)
+- [x] **P5-A:** Baseline via `python -m scripts.check_type_ignores --update` erzeugt (203 Suppressions, Stand 2026-06-11)
 - [x] **P5-B:** CI-Gate integriert — schlägt fehl bei nackten `type:ignore` oder unkommentierten Production-Einträgen
 - [x] **P5-C:** RULE-23 verlangt Reason-Kommentar-Pflicht; Budget 0 für neue Module
 
@@ -253,12 +253,12 @@ Vor dem Setzen einer Suppression MÜSSEN mindestens 2 dieser Alternativen versuc
 ```markdown
 ## Quality Gate: Type-Ignore Count
 
-- `scripts/check_type_ignores/` package — CLI via `uv run python scripts/check_type_ignores.py`
+- `scripts/check_type_ignores/` package — CLI via `uv run python -m scripts.check_type_ignores`
 - Prüft: Anzahl `# type: ignore` pro Datei gegen Baseline
 - Error: Anstieg über Baseline (ratchet — nur Reduktion erlaubt)
 - Error: Neues `# type: ignore` in production code ohne Reason-Kommentar
 - Fail: `# type: ignore` ohne Error-Code (naked ignore)
-- Baseline aktualisieren: `uv run python scripts/check_type_ignores.py --update`
+- Baseline aktualisieren: `uv run python -m scripts.check_type_ignores --update`
 ```
 
 ---
