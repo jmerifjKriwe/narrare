@@ -21,6 +21,7 @@ from .comparison import (
 )
 from .parser import (
     DEFAULT_BASELINES_DIR,
+    DEFAULT_PRIORITIES_FILE,
     DEFAULT_RESULTS_DIR,
     DEFAULT_THRESHOLD,
     EvalResultFile,
@@ -28,15 +29,18 @@ from .parser import (
     find_result_files,
     parse_pydantic_eval_report,
 )
+from .priorities import Priorities
 from .reporting import print_human_report, print_json_report
 
 __all__ = [
     "DEFAULT_BASELINES_DIR",
+    "DEFAULT_PRIORITIES_FILE",
     "DEFAULT_RESULTS_DIR",
     "DEFAULT_THRESHOLD",
     "DriftComparison",
     "DriftReport",
     "EvalResultFile",
+    "Priorities",
     "TestCaseScore",
     "compare_against_baselines",
     "find_result_files",
