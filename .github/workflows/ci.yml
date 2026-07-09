@@ -33,6 +33,7 @@ name: CI
 # | --   | check-testid.ts (data-testid gate)      | ✅ Blocking  | frontend Job                       |
 # | --   | Gitleaks (secret scanning, AUFG-05-09) | ✅ Blocking  | security Job                       |
 # | --   | bandit + pip-audit                     | ✅ Blocking  | security Job                       |
+# | --   | dependency-review-action               | ✅ Blocking  | dependency-review Job (PR-only)    |
 # | --   | biome check (frontend lint/format)     | ✅ Blocking  | frontend Job                       |
 # | --   | pnpm test (frontend tests)             | ✅ Blocking  | frontend Job                       |
 # | --   | check_test_performance.py              | ⚠️ Warning   | frontend Job (WARNING-only)        |
@@ -273,6 +274,24 @@ jobs:
 
       - name: pip-audit
         run: uv run pip-audit --skip-editable --ignore-vuln PYSEC-2025-183 --ignore-vuln GHSA-rrmf-rvhw-rf47
+
+  # -------------------------------------------------------------------------
+  # Dependency review (PR-only) — fails on new vulnerabilities / invalid licenses
+  # -------------------------------------------------------------------------
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: architecture
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          # Fail on new vulnerabilities / invalid licenses in PR dependency changes.
+          fail-on-severity: moderate
 
   # -------------------------------------------------------------------------
   # Unit tests (< 5 min, no Docker)
@@ -569,10 +588,15 @@ jobs:
           trap 'end_time=$(date +%s); echo "duration=$((end_time - start_time))" >> "$GITHUB_OUTPUT"' EXIT
           cd packages/web && pnpm test
 
-      # NOTE: 197 test files, ~223s on 4-core runner. Per-file overhead dominates
+      # NOTE: 307 test files, 2518 tests. Per-file overhead dominates
       # (~90% of time). Consolidating test files is the only path to <120s.
-      # Threshold updated 2026-07-03 from 130→240 after test file growth from
-      # ANAL-005, ANAL-008, WRITE-010 features.
+      # Threshold 240s. Re-measured snapshot 2026-07-09: 161.3s locally (307
+      # files / 2518 tests), ~49% headroom under the 240s budget. CI runs on a
+      # slower 4-core runner than local dev; the budget absorbs that variance.
+      # Still WARNING-only — check_test_performance.py emits a ::warning::
+      # annotation and always exits 0 (does not block CI).
+      # Re-measure locally:
+      #   uv run python scripts/check_test_performance.py --run --threshold 99999
       - name: Check frontend test performance
         if: always() && steps.frontend-tests.outcome != 'cancelled'
         run: |
