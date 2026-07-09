@@ -87,7 +87,7 @@ jobs:
 
       - name: Restore MutMut cache
         id: cache-mutmut
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .mutmut-cache
           key: mutmut-results-${{ inputs.scope || 'core' }}-${{ hashFiles('pyproject.toml', 'packages/core/narrare_core/**/*.py') }}
@@ -132,7 +132,7 @@ jobs:
 
       - name: Save MutMut cache
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .mutmut-cache
           key: mutmut-results-${{ inputs.scope || 'core' }}-${{ hashFiles('pyproject.toml', 'packages/core/narrare_core/**/*.py') }}
