@@ -28,8 +28,14 @@ from evals.evaluators.planning_structure import (
 )
 from evals.evaluators.preference import PreferenceSignalCoverage
 from evals.evaluators.rewrite import RewriteModeMatch
+from evals.evaluators.writing import (
+    AIDisclaimerGuardrail,
+    WritingProseQuality,
+    WritingToneAdherence,
+)
 
 __all__ = [
+    "AIDisclaimerGuardrail",
     "AnalysisFeedbackContent",
     "AnalysisFeedbackValidator",
     "ChapterSummarySchemaValidator",
@@ -52,4 +58,6 @@ __all__ = [
     "RewriteModeMatch",
     "TimelineSchemaValidator",
     "WorldbuildingSchemaValidator",
+    "WritingProseQuality",
+    "WritingToneAdherence",
 ]

@@ -43,6 +43,7 @@ class SmokeTaskFactory:
             "planning_structure": self.planning_structure_task,
             "preference_analysis": self.preference_analysis_task,
             "rewrite_selection": self.rewrite_selection_task,
+            "writing_prose": self.writing_prose_task,
         }
 
     def available_suites(self) -> list[str]:
@@ -197,6 +198,15 @@ class SmokeTaskFactory:
         from evals.tasks.kb_operations_smoke import kb_operations_task
 
         return await kb_operations_task(inputs)
+
+    # ------------------------------------------------------------------
+    # writing_prose
+    # ------------------------------------------------------------------
+
+    async def writing_prose_task(self, inputs: object) -> object:
+        from evals.tasks.writing_prose_smoke import writing_prose_task
+
+        return await writing_prose_task(inputs)
 
 
 def _known_names(text: str, existing_names: list[str]) -> list[str]:

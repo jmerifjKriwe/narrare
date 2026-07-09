@@ -29,6 +29,10 @@ from evals.models_planning import (
     WorldbuildingGapSection,
     WorldbuildingSection,
 )
+from evals.models_writing import (
+    WritingProseInput,
+    WritingProseResult,
+)
 
 __all__ = [
     "AnalysisFeedbackInput",
@@ -69,6 +73,8 @@ __all__ = [
     "WorldbuildingConnectionSection",
     "WorldbuildingGapSection",
     "WorldbuildingSection",
+    "WritingProseInput",
+    "WritingProseResult",
 ]
 
 

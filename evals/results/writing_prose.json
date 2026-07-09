@@ -1,0 +1,80 @@
+{
+  "version": 2,
+  "framework": "pydantic-evals",
+  "suite": "writing_prose",
+  "mode": "smoke",
+  "report_name": "writing_prose_task",
+  "created_at": "2026-07-09T11:22:25.619501+00:00",
+  "cases": [
+    {
+      "name": "extend-battle-climax",
+      "scores": {
+        "WritingProseQuality": 1.0,
+        "AIDisclaimerGuardrail": 1.0,
+        "WritingToneAdherence": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "operation": "extend",
+        "text": "[extend] Sera rolled sideways, came up with her blade glowing white-hot, and charged before the wyrm could reorient. — Continue the action with the wyrm's counter-strike..",
+        "word_count": 26,
+        "notes": "Smoke writing-prose output is deterministic — no model called."
+      }
+    },
+    {
+      "name": "suggest-dialogue-next-beat",
+      "scores": {
+        "WritingProseQuality": 1.0,
+        "AIDisclaimerGuardrail": 1.0,
+        "WritingToneAdherence": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "operation": "suggest",
+        "text": "[suggest] \"I never meant to betray you,\" she whispered, her voice — Offer the next spoken beat, tense and restrained..",
+        "word_count": 20,
+        "notes": "Smoke writing-prose output is deterministic — no model called."
+      }
+    },
+    {
+      "name": "variant-courtly-tone",
+      "scores": {
+        "WritingProseQuality": 1.0,
+        "AIDisclaimerGuardrail": 1.0,
+        "WritingToneAdherence": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "operation": "variant",
+        "text": "[variant] The king walked into the hall and told everyone what to do. — Regenerate in an ornate, courtly register..",
+        "word_count": 20,
+        "notes": "Smoke writing-prose output is deterministic — no model called."
+      }
+    },
+    {
+      "name": "guardrail-veiled-disclaimer-trap",
+      "scores": {
+        "WritingProseQuality": 1.0,
+        "AIDisclaimerGuardrail": 1.0,
+        "WritingToneAdherence": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "operation": "extend",
+        "text": "[extend] The apprentice weighed the sealed letter, then looked up at the magister. \"There are things in here I do not understand. Can you explain your reasoning?\" — Continue the scene. The magister answers in fiction — in-character dialogue and narration only..",
+        "word_count": 42,
+        "notes": "Smoke writing-prose output is deterministic — no model called."
+      }
+    }
+  ],
+  "failures": [],
+  "rendered": "                     Evaluation Summary: writing_prose_task                     \n┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓\n┃ Case ID       ┃ Inputs         ┃ Outputs       ┃ Scores         ┃ Assertions ┃\n┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩\n│ extend-battl… │ operation='ext │ operation='ex │ WritingProseQu │ ✔          │\n│               │ end'           │ tend' text=\"  │ ality: 1.00    │            │\n│               │ anchor_text='S │ Sera rolled   │ AIDisclaimerGu │            │\n│               │ era rolled     │ sideways,     │ ardrail: 1.00  │            │\n│               │ sideways, came │ came up with  │ WritingToneAdh │            │\n│               │ up with her    │ her blade     │ erence: 1.00   │            │\n│               │ blade glowing  │ glowing       │                │            │\n│               │ white-hot, and │ white-hot,    │                │            │\n│               │ charged before │ and charged   │                │            │\n│               │ the wyrm could │ before the    │                │            │\n│               │ reorient.'     │ wyrm could    │                │            │\n│               │ context_before │ reorient. —   │                │            │\n│               │ ='The          │ Continue the  │                │            │\n│               │ colonnade was  │ action with   │                │            │\n│               │ already        │ the wyrm's    │                │            │\n│               │ half-collapsed │ counter-strik │                │            │\n│               │ .'             │ e..\"          │                │            │\n│               │ context_after= │ word_count=26 │                │            │\n│               │ ''             │ notes='Smoke  │                │            │\n│               │ instruction=\"C │ writing-prose │                │            │\n│               │ ontinue the    │ output is     │                │            │\n│               │ action with    │ deterministic │                │            │\n│               │ the wyrm's     │ — no model    │                │            │\n│               │ counter-strike │ called.'      │                │            │\n│               │ .\"             │               │                │            │\n│               │ genre='Fantasy │               │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ suggest-dial… │ operation='sug │ operation='su │ WritingProseQu │ ✔          │\n│               │ gest'          │ ggest' text=' │ ality: 1.00    │            │\n│               │ anchor_text='\" │ \"I never      │ AIDisclaimerGu │            │\n│               │ I never meant  │ meant to      │ ardrail: 1.00  │            │\n│               │ to betray      │ betray you,\"  │ WritingToneAdh │            │\n│               │ you,\" she      │ she           │ erence: 1.00   │            │\n│               │ whispered, her │ whispered,    │                │            │\n│               │ voice'         │ her voice —   │                │            │\n│               │ context_before │ Offer the     │                │            │\n│               │ ='The candles  │ next spoken   │                │            │\n│               │ guttered in    │ beat, tense   │                │            │\n│               │ the draught.'  │ and           │                │            │\n│               │ context_after= │ restrained..' │                │            │\n│               │ 'He did not    │ word_count=20 │                │            │\n│               │ turn around.'  │ notes='Smoke  │                │            │\n│               │ instruction='O │ writing-prose │                │            │\n│               │ ffer the next  │ output is     │                │            │\n│               │ spoken beat,   │ deterministic │                │            │\n│               │ tense and      │ — no model    │                │            │\n│               │ restrained.'   │ called.'      │                │            │\n│               │ genre='Fantasy │               │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ variant-cour… │ operation='var │ operation='va │ WritingProseQu │ ✔          │\n│               │ iant'          │ riant' text=' │ ality: 1.00    │            │\n│               │ anchor_text='T │ The king      │ AIDisclaimerGu │            │\n│               │ he king walked │ walked into   │ ardrail: 1.00  │            │\n│               │ into the hall  │ the hall and  │ WritingToneAdh │            │\n│               │ and told       │ told everyone │ erence: 1.00   │            │\n│               │ everyone what  │ what to do. — │                │            │\n│               │ to do.'        │ Regenerate in │                │            │\n│               │ context_before │ an ornate,    │                │            │\n│               │ =''            │ courtly       │                │            │\n│               │ context_after= │ register..'   │                │            │\n│               │ ''             │ word_count=20 │                │            │\n│               │ instruction='R │ notes='Smoke  │                │            │\n│               │ egenerate in   │ writing-prose │                │            │\n│               │ an ornate,     │ output is     │                │            │\n│               │ courtly        │ deterministic │                │            │\n│               │ register.'     │ — no model    │                │            │\n│               │ genre='Fantasy │ called.'      │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ guardrail-ve… │ operation='ext │ operation='ex │ WritingProseQu │ ✔          │\n│               │ end'           │ tend' text='  │ ality: 1.00    │            │\n│               │ anchor_text='T │ The           │ AIDisclaimerGu │            │\n│               │ he apprentice  │ apprentice    │ ardrail: 1.00  │            │\n│               │ weighed the    │ weighed the   │ WritingToneAdh │            │\n│               │ sealed letter, │ sealed        │ erence: 1.00   │            │\n│               │ then looked up │ letter, then  │                │            │\n│               │ at the         │ looked up at  │                │            │\n│               │ magister.      │ the magister. │                │            │\n│               │ \"There are     │ \"There are    │                │            │\n│               │ things in here │ things in     │                │            │\n│               │ I do not       │ here I do not │                │            │\n│               │ understand.    │ understand.   │                │            │\n│               │ Can you        │ Can you       │                │            │\n│               │ explain your   │ explain your  │                │            │\n│               │ reasoning?\"'   │ reasoning?\" — │                │            │\n│               │ context_before │ Continue the  │                │            │\n│               │ ='The tower    │ scene. The    │                │            │\n│               │ study smelled  │ magister      │                │            │\n│               │ of ink and old │ answers in    │                │            │\n│               │ rain.'         │ fiction —     │                │            │\n│               │ context_after= │ in-character  │                │            │\n│               │ ''             │ dialogue and  │                │            │\n│               │ instruction='C │ narration     │                │            │\n│               │ ontinue the    │ only..'       │                │            │\n│               │ scene. The     │ word_count=42 │                │            │\n│               │ magister       │ notes='Smoke  │                │            │\n│               │ answers in     │ writing-prose │                │            │\n│               │ fiction —      │ output is     │                │            │\n│               │ in-character   │ deterministic │                │            │\n│               │ dialogue and   │ — no model    │                │            │\n│               │ narration      │ called.'      │                │            │\n│               │ only.'         │               │                │            │\n│               │ genre='Fantasy │               │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ Averages      │                │               │ WritingProseQu │ 100.0% ✔   │\n│               │                │               │ ality: 1.00    │            │\n│               │                │               │ AIDisclaimerGu │            │\n│               │                │               │ ardrail: 1.00  │            │\n│               │                │               │ WritingToneAdh │            │\n│               │                │               │ erence: 1.00   │            │\n└───────────────┴────────────────┴───────────────┴────────────────┴────────────┘\n"
+}
