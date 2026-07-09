@@ -590,7 +590,7 @@ jobs:
           exit ${PIPESTATUS[0]}
 
       - name: Check component markers (data-testid)
-        run: cd packages/web && npx tsx scripts/check-testid.ts --fail
+        run: cd packages/web && npx tsx scripts/check-testid.ts --strict --fail --ratchet-baseline scripts/testid_baselines.json
 
       - name: Install Playwright Chromium
         run: cd packages/web && pnpm playwright install chromium
