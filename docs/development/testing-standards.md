@@ -1096,7 +1096,7 @@ These test that functions handle arbitrary input correctly.
 > **Tool:** Playwright (Python sync API)
 > **CI:** Main branch only — full stack (API + Frontend + PostgreSQL + Redis)
 > **Run time target:** < 5 minutes total
-> **Current status:** 16 tests passing, implemented in Phase 5
+> **Current status:** ~28 tests passing (snapshot 2026-07-09), implemented in Phase 5 — re-measurable via `pytest tests/e2e/ --collect-only -q`
 
 ### Infrastructure — `NARRARE_E2E_TEST` Mode
 
