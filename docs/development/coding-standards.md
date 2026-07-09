@@ -526,6 +526,15 @@ export function ChapterItem({ chapter, isActive, onSelect }: ChapterItemProps) {
 }
 ```
 
+### Component Markers (`data-testid`)
+
+Every interactive element (`<button>`, text-like `<input>`, `<select>`,
+`<a onClick>`, `role="button"`) MUST carry a `data-testid` **or** `aria-label`
+— this is what keeps E2E (Playwright) and visual-regression selectors stable.
+`components/ui/` primitives are included. See
+[ui-principles.md §18](ui-principles.md#18-komponenten-marker-data-testid);
+enforced by `packages/web/scripts/check-testid.ts` in pre-commit and CI.
+
 ### API Client
 
 ```typescript

@@ -1211,3 +1211,163 @@ Non-blocking loading/error/empty/success/live-region display — the single sour
 ### Migration
 
 Existing panels migrate onto the primitives gradually, panel-by-panel, behind tests (lowest blast radius first): `IconButton` → `StatusMessage` → `PanelHeader` → `PanelShell` → `ToolbarButton` → `PanelTabs` → `SearchInput`. New panels adopt the primitives from the start. The workspace shell itself (`StudioWorkspaceShell`, §2.1) is **not** rewritten onto `PanelShell` — it remains the shell owner; only its buttons adopt `IconButton`.
+
+---
+
+## 18. Komponenten-Marker (`data-testid`)
+
+> **Scope:** every interactive element rendered in `packages/web/` — app
+> components, pages, and the `components/ui/` primitives alike. Non-negotiable.
+> This is the root-cause fix for the "Komponenten-Marker-Problem": the gate
+> existed before this rule was written down, so AI-generated components omitted
+> markers. The rule is now documented here so it is visible to humans and AI
+> agents alike.
+>
+> **Enforced by:** `packages/web/scripts/check-testid.ts` (pre-commit + CI —
+> see §18.4).
+
+### 18.1 The Rule
+
+RULE: Every interactive element MUST carry a `data-testid` (preferred) **OR**
+an `aria-label`. An element is "interactive" for this rule if it matches any of:
+
+| Element | Covered? | Notes |
+|---|---|---|
+| `<button>` | ✅ yes | Any button, including icon-only (icon-only buttons still need `aria-label`; prefer `IconButton`, §17.1). |
+| `<input>` (text-like) | ✅ yes | Types: `text`, `email`, `password`, `search`, `tel`, `url`, `number`, `date`, `time`, `datetime-local`, `month`, `week`. A typeless `<input>` defaults to `text` and is covered. |
+| `<select>` | ✅ yes | Dropdowns. |
+| `<a onClick={...}>` | ✅ yes | Action links (anchors used as buttons). Plain navigation links (`<a href=...>` without `onClick`) are **not** covered. |
+| `role="button"` | ✅ yes | Any element with `role="button"` that is not already a `<button>`. |
+| `components/ui/` primitives | ✅ yes | Scanned in `--strict` mode — no carve-out for the shared primitives. |
+
+`<input>` types with different UX semantics are intentionally **excluded**:
+`hidden`, `checkbox`, `radio`, `file`, `range`, `color`, `submit`, `reset`,
+`image`, and `button`-type inputs. They are covered by other accessibility
+rules (§11), not by the marker rule.
+
+> `data-testid` is the **preferred** marker because it is an explicit,
+> test-only attribute that never collides with real semantics. `aria-label` is
+> accepted as an alternative because it doubles as the accessible name (§11,
+> §17) — but a `data-testid` is still recommended wherever a dedicated selector
+> is wanted. Do **not** rely on visible button text or CSS classes as a test
+> selector.
+
+### 18.2 Why
+
+Stable selectors for automated tests. E2E tests (Playwright, `tests/e2e/`) and
+visual regression tests (Playwright `toHaveScreenshot()`, ADR-059) need anchors
+that survive copy edits, i18n changes, and refactors. A `data-testid` does not
+change when a label is translated or a class is renamed, so tests stay green
+across unrelated work. Brittle text-based selectors (`page.getByText("Save")`)
+break the moment a string changes and silently couple tests to locale and copy.
+
+### 18.3 Examples — Correct vs. Wrong
+
+```tsx
+// ❌ Wrong — no marker; E2E tests must fall back to brittle text/position selectors
+<button onClick={save}>Save</button>
+
+// ✅ Correct — explicit data-testid (preferred)
+<button data-testid="save-button" onClick={save}>Save</button>
+
+// ✅ Acceptable — aria-label doubles as the accessible name (icon-only button)
+<button aria-label={t("editor.save")} onClick={save}>
+  <Save className="size-4" />
+</button>
+```
+
+```tsx
+// ❌ Wrong — text input with no marker
+<input type="text" value={title} onChange={handleChange} />
+
+// ✅ Correct
+<input data-testid="chapter-title-input" type="text" value={title} onChange={handleChange} />
+```
+
+```tsx
+// ❌ Wrong — action link with no marker
+<a onClick={(e) => { e.preventDefault(); doThing(); }}>Do thing</a>
+
+// ✅ Correct
+<a data-testid="do-thing-link" onClick={(e) => { e.preventDefault(); doThing(); }}>Do thing</a>
+```
+
+```tsx
+// ❌ Wrong — role="button" without a marker
+<div role="button" onClick={open}>Open</div>
+
+// ✅ Correct
+<div role="button" data-testid="open-trigger" onClick={open}>Open</div>
+```
+
+**Marker naming:** use kebab-case that describes the element's role, not its
+position (`save-button`, `chapter-title-input`, `sidebar-toggle`), and keep it
+stable — tests depend on it.
+
+### 18.4 Enforcement
+
+This rule is enforced by `packages/web/scripts/check-testid.ts` (architecture:
+`check-testid.ts` CLI + `testid-scanner.ts` scanner + `testid-baseline.ts`
+ratchet). It runs in **pre-commit** (hook `check-testid`, `.pre-commit-config.yaml`)
+and the **CI frontend job** (`.github/workflows/ci.yml`) with the same command:
+
+```bash
+cd packages/web && npx tsx scripts/check-testid.ts --strict --fail --ratchet-baseline scripts/testid_baselines.json
+```
+
+`--strict` means `components/ui/` primitives **are** scanned — there is no
+carve-out for the shared primitives (§17). (The npm script
+`check:testid:strict` wraps the same command.)
+
+**Ratchet (existing violations are tracked, not blocked).** The gate does not
+hard-fail on the current backlog; it fails only on **growth** or a **new**
+violating directory. Existing violations are pinned in
+`packages/web/scripts/testid_baselines.json` (per-directory counts). The
+intended workflow is to reduce the baseline over time — when you fix violations,
+re-capture the smaller baseline:
+
+```bash
+cd packages/web && npx tsx scripts/check-testid.ts --strict --update-baseline scripts/testid_baselines.json
+# npm: pnpm --filter web run check:testid:update-baseline
+```
+
+Failure conditions (any one fails the gate):
+- **GROWTH** — a tracked directory's violation count exceeds its baseline.
+- **NEW** — a directory has violations but is absent from the baseline (this
+  also catches a shrunk baseline: dropped dirs resurface as `NEW`).
+
+Reducing a directory to zero violations is an improvement (advisory, never a
+failure); run `--update-baseline` to lock it in.
+
+### 18.5 Exceptions — the inline `check-testid:ok` token
+
+For a legitimate false positive — e.g. a purely decorative element, or a
+component that spreads props and genuinely cannot carry a marker on the matched
+line — annotate the line with the literal token `check-testid:ok` (any comment
+syntax):
+
+```tsx
+{/* check-testid:ok */}
+<div role="button" {...spreadProps} onClick={handleClick} />
+```
+
+```tsx
+// check-testid:ok
+<button {...passthroughButtonProps} />
+```
+
+The token suppresses every violation detected on **that same source line only**
+— it does not affect other lines or other files. **Keep usage rare.** The
+default is always to add a real `data-testid` / `aria-label`; reach for the
+token only when a marker is genuinely impossible and a real fix is tracked.
+
+### 18.6 Relationship to §17 (Shared UI Primitives)
+
+The shared primitives in `components/ui/` (§17) are the **preferred building
+blocks** for interactive surfaces and already carry the accessibility contract
+(`type="button"`, required `aria-label`/`label`, focus rings). New interactive
+elements MUST prefer the matching primitive (§4 "Shared UI Primitives") over
+hand-rolled markup; when a primitive is used, its own marker/label satisfies
+this rule at the call site. The `--strict` scan keeps the primitives themselves
+honest — the one currently-tracked baseline violation lives in `components/ui`
+and is intended to be cleaned up via the ratchet (§18.4).
