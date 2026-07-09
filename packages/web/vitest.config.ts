@@ -40,12 +40,20 @@ export default defineConfig({
           branches: 80,
           statements: 80,
         },
-        // components/ directory: lower requirements (UI components harder to test)
+        // components/ directory: UI components harder to test.
+        // Ratcheted 2026-07 from 15% → 65% after adding controller-hook and
+        // EditorToolbar tests (review §1/§5 untested hotspots). Measured at
+        // this step: lines 77.1 / statements 75.3 / functions 69.9 / branches
+        // 70.6 — 65% sits ~5 pts below the lowest metric (functions) as a
+        // safety margin against churn. Next ratchet step toward the eventual
+        // ~80% target: keep covering high-degree, low-coverage components
+        // (KnowledgeGraphView, ChatPanel, editor-view shells) and raise in
+        // ~5-pt increments. Do NOT set above the lowest measured metric.
         "components/**": {
-          lines: 15,
-          functions: 15,
-          branches: 15,
-          statements: 15,
+          lines: 65,
+          functions: 65,
+          branches: 65,
+          statements: 65,
         },
       },
     },

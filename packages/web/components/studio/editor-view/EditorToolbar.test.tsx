@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { Editor } from "@tiptap/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorToolbar } from "./EditorToolbar";
 
 vi.mock("next-intl", () => ({
@@ -31,7 +31,9 @@ vi.mock("../analysis/CharacterVoiceTrigger", () => ({
   CharacterVoiceTrigger: () => <div data-testid="character-voice-trigger" />,
 }));
 vi.mock("../analysis/VoiceCheckTrigger", () => ({
-  VoiceCheckTrigger: () => <div data-testid="voice-check-trigger" />,
+  VoiceCheckTrigger: ({ onClick }: { onClick?: () => void }) => (
+    <button type="button" aria-label="voiceCheck.trigger" onClick={onClick} />
+  ),
 }));
 vi.mock("../editor/GhostTextConfig", () => ({
   GhostTextConfig: () => <div data-testid="ghost-text-config" />,
@@ -48,9 +50,14 @@ const baseProps = {
   toggleRightPanel: vi.fn(),
   toggleExtractionPanel: vi.fn(),
   openNameGenerator: vi.fn(),
+  onRightPanelOpenerChange: vi.fn(),
 };
 
 describe("EditorToolbar opener tracking", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("records the opener button when the click lands on an SVG icon", () => {
     const onRightPanelOpenerChange = vi.fn();
     render(<EditorToolbar {...baseProps} onRightPanelOpenerChange={onRightPanelOpenerChange} />);
@@ -65,5 +72,176 @@ describe("EditorToolbar opener tracking", () => {
 
     expect(onRightPanelOpenerChange).toHaveBeenCalledTimes(1);
     expect(onRightPanelOpenerChange).toHaveBeenCalledWith(generateButton);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Editor chain stub — supports the formatting buttons (bold/italic/heading/
+// blockquote) which call editor.chain().focus().toggleX().run(). Each chain
+// method returns the chain so it composes; only `run` is the terminal effect.
+// ---------------------------------------------------------------------------
+
+function makeChainEditor(active: Record<string, boolean> = {}) {
+  // Build incrementally so each method can close over and return `chain`.
+  const chain: Record<string, ReturnType<typeof vi.fn>> = {};
+  chain.focus = vi.fn(() => chain);
+  chain.toggleBold = vi.fn(() => chain);
+  chain.toggleItalic = vi.fn(() => chain);
+  chain.toggleHeading = vi.fn(() => chain);
+  chain.toggleBlockquote = vi.fn(() => chain);
+  chain.run = vi.fn();
+  const editor = {
+    isActive: (name: string, attrs?: { level?: number }) => {
+      if (name === "heading") return !!active[`heading${attrs?.level ?? ""}`];
+      return !!active[name];
+    },
+    chain: () => chain,
+  } as unknown as Editor;
+  return { editor, chain };
+}
+
+describe("EditorToolbar rendering", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders nothing when the editor is null", () => {
+    const { container } = render(<EditorToolbar {...baseProps} editor={null} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders the formatting buttons when an editor is present", () => {
+    const { editor } = makeChainEditor();
+    render(<EditorToolbar {...baseProps} editor={editor} />);
+
+    expect(screen.getByRole("button", { name: "editor.bold" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "editor.italic" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "editor.heading2" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "editor.heading3" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "editor.blockquote" })).toBeInTheDocument();
+  });
+});
+
+describe("EditorToolbar active state propagation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("marks the generate button pressed when the generation panel is active", () => {
+    const { editor } = makeChainEditor();
+    render(<EditorToolbar {...baseProps} editor={editor} activeRightPanel="generation" />);
+
+    expect(screen.getByRole("button", { name: "editor.generate" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("marks the extract button pressed when the extraction panel is open", () => {
+    const { editor } = makeChainEditor();
+    render(<EditorToolbar {...baseProps} editor={editor} extractionPanelOpen />);
+
+    expect(screen.getByRole("button", { name: "kb.extract" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("reflects active editor marks on the formatting buttons", () => {
+    const { editor } = makeChainEditor({ bold: true, heading2: true });
+    render(<EditorToolbar {...baseProps} editor={editor} />);
+
+    expect(screen.getByRole("button", { name: "editor.bold" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "editor.heading2" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    // Italic is inactive.
+    expect(screen.getByRole("button", { name: "editor.italic" })).not.toHaveAttribute(
+      "aria-pressed",
+    );
+  });
+});
+
+describe("EditorToolbar interactions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("runs the bold toggle chain when the bold button is clicked", () => {
+    const { editor, chain } = makeChainEditor();
+    render(<EditorToolbar {...baseProps} editor={editor} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "editor.bold" }));
+
+    expect(chain.focus).toHaveBeenCalledTimes(1);
+    expect(chain.toggleBold).toHaveBeenCalledTimes(1);
+    expect(chain.run).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs the heading toggle chain with level 2 for the H2 button", () => {
+    const { editor, chain } = makeChainEditor();
+    render(<EditorToolbar {...baseProps} editor={editor} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "editor.heading2" }));
+
+    expect(chain.toggleHeading).toHaveBeenCalledWith({ level: 2 });
+    expect(chain.run).toHaveBeenCalled();
+  });
+
+  it("opens the generation panel via toggleRightPanel when generate is clicked", () => {
+    const toggleRightPanel = vi.fn();
+    const { editor } = makeChainEditor();
+    render(<EditorToolbar {...baseProps} editor={editor} toggleRightPanel={toggleRightPanel} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "editor.generate" }));
+
+    expect(toggleRightPanel).toHaveBeenCalledWith("generation", "toolbar");
+  });
+
+  it("toggles the extraction panel when the extract button is clicked", () => {
+    const toggleExtractionPanel = vi.fn();
+    const { editor } = makeChainEditor();
+    render(
+      <EditorToolbar
+        {...baseProps}
+        editor={editor}
+        toggleExtractionPanel={toggleExtractionPanel}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "kb.extract" }));
+
+    expect(toggleExtractionPanel).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the name generator when its button is clicked", () => {
+    const openNameGenerator = vi.fn();
+    const { editor } = makeChainEditor();
+    render(<EditorToolbar {...baseProps} editor={editor} openNameGenerator={openNameGenerator} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "editor.nameGenerator" }));
+
+    expect(openNameGenerator).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the voice-check panel via toggleRightPanel when VoiceCheck is clicked", () => {
+    const toggleRightPanel = vi.fn();
+    const { editor } = makeChainEditor();
+    render(
+      <EditorToolbar
+        {...baseProps}
+        editor={editor}
+        toggleRightPanel={toggleRightPanel}
+        onRightPanelOpenerChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "voiceCheck.trigger" }));
+
+    expect(toggleRightPanel).toHaveBeenCalledWith("voice_check", "toolbar");
   });
 });
