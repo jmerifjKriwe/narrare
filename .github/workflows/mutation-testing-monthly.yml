@@ -85,6 +85,15 @@ jobs:
           esac
           echo "label=$LABEL" >> $GITHUB_OUTPUT
 
+      - name: Restore MutMut cache
+        id: cache-mutmut
+        uses: actions/cache/restore@v4
+        with:
+          path: .mutmut-cache
+          key: mutmut-results-${{ inputs.scope || 'core' }}-${{ hashFiles('pyproject.toml', 'packages/core/narrare_core/**/*.py') }}
+          restore-keys: |
+            mutmut-results-${{ inputs.scope || 'core' }}-
+
       - name: Run MutMut
         id: mutmut
         continue-on-error: true
@@ -120,6 +129,13 @@ jobs:
           echo '```' >> mutation-report.md
           tail -50 mutmut-output.txt >> mutation-report.md
           echo '```' >> mutation-report.md
+
+      - name: Save MutMut cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .mutmut-cache
+          key: mutmut-results-${{ inputs.scope || 'core' }}-${{ hashFiles('pyproject.toml', 'packages/core/narrare_core/**/*.py') }}
 
       - name: Create Issue
         if: always() && github.event_name == 'schedule'

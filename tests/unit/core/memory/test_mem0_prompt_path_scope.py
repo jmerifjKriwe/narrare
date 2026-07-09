@@ -27,6 +27,7 @@ import ast
 import tomllib
 from pathlib import Path
 
+import pytest
 from scripts.architecture._checkers.prompt_path import check_prompt_registry_access
 
 # Stable repo-relative path — matches the entry registered in pyproject.toml
@@ -37,6 +38,7 @@ MEM0_CLIENT_REL = "packages/core/narrare_core/memory/mem0_client.py"
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 
 
+@pytest.mark.mutation_inert
 class TestMem0ClientRule02bScope:
     """ADR-064: mem0_client.py is outside RULE-02b's enforcement surface."""
 
