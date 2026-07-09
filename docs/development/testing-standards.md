@@ -785,14 +785,16 @@ Use `just test-single` when:
 
 ### Fast Developer Feedback (Pytest Collection Fastpath)
 
-Full pytest collection gathers ~6,600+ tests across unit, integration, and e2e
+Full pytest collection gathers ~9,490 tests across unit, integration, and e2e
 directories. For the local developer loop, unit-only testing is the primary
 fast-feedback path:
 
 | Command | Scope | Collection time | Run time |
 |---------|-------|----------------|----------|
-| `just test-unit` | `tests/unit/` only (~6,160 tests) | ~14s | ~2.5min |
-| `just test` | `tests/` all levels (~6,670 tests) | ~17s | varies |
+| `just test-unit` | `tests/unit/` only (~8,780 tests) | ~13s | ~2.5min |
+| `just test` | `tests/` all levels (~9,490 tests) | ~13s | varies |
+
+_Counts and collection times are snapshot values; re-measure live with `pytest tests/unit/ --collect-only -q` or `pytest tests/ --collect-only -q`._
 
 **Integration and E2E tests are separate explicit gates**, not mixed into the
 unit test loop. They run in CI (`test-integration` and `test-e2e` jobs) or
