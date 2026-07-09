@@ -57,6 +57,9 @@ reportMissingTypeStubs = true
 venvPath = "."
 venv = ".venv"
 
+# Module resolution roots (mirrors pytest `pythonpath` for reliable imports)
+extraPaths = ["apps/api", "packages/core", "packages/i18n"]
+
 # PERFORMANCE: Kein Tiefen-Parsen von externen Bibliotheken
 useLibraryCodeForTypes = false
 

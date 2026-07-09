@@ -191,7 +191,7 @@ repos:
       # data-testid / aria-label marker gate — E2E test stability (mirrors CI frontend job)
       - id: check-testid
         name: Component Markers (data-testid)
-        entry: bash -c 'cd packages/web && npx tsx scripts/check-testid.ts --fail' --
+        entry: bash -c 'cd packages/web && npx tsx scripts/check-testid.ts --strict --fail --ratchet-baseline scripts/testid_baselines.json' --
         language: system
         types_or: [ts, tsx]
         files: ^packages/web/

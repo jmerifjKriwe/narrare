@@ -17,6 +17,10 @@ from evals.models_kb_operations import (
     KBOperationsInput,
     KBOperationsResult,
 )
+from evals.models_names import (
+    NameGenerationInput,
+    NameGenerationResult,
+)
 from evals.models_planning import (
     CharacterArcPhaseSection,
     CharacterArcSection,
@@ -28,6 +32,10 @@ from evals.models_planning import (
     WorldbuildingConnectionSection,
     WorldbuildingGapSection,
     WorldbuildingSection,
+)
+from evals.models_writing import (
+    WritingProseInput,
+    WritingProseResult,
 )
 
 __all__ = [
@@ -52,6 +60,8 @@ __all__ = [
     "KBMergeStrategySection",
     "KBOperationsInput",
     "KBOperationsResult",
+    "NameGenerationInput",
+    "NameGenerationResult",
     "OutlineSection",
     "POVMetricsIssue",
     "POVMetricsScene",
@@ -69,6 +79,8 @@ __all__ = [
     "WorldbuildingConnectionSection",
     "WorldbuildingGapSection",
     "WorldbuildingSection",
+    "WritingProseInput",
+    "WritingProseResult",
 ]
 
 

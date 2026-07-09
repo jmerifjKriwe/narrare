@@ -228,7 +228,7 @@ jobs:
           path: |
             .pyright/
             **/.pyc
-          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'tests/pyrightConfig.json') }}
           restore-keys: |
             pyright-${{ runner.os }}-
 
@@ -308,7 +308,7 @@ jobs:
             --cov-report=term-missing:skip-covered \
             --junitxml=pytest.xml \
             --cov-fail-under=80 \
-            -n auto \
+            -n auto --dist loadfile \
             -v | tee pytest-coverage.txt
 
       - name: Check coverage threshold
@@ -569,10 +569,15 @@ jobs:
           trap 'end_time=$(date +%s); echo "duration=$((end_time - start_time))" >> "$GITHUB_OUTPUT"' EXIT
           cd packages/web && pnpm test
 
-      # NOTE: 197 test files, ~223s on 4-core runner. Per-file overhead dominates
+      # NOTE: 307 test files, 2518 tests. Per-file overhead dominates
       # (~90% of time). Consolidating test files is the only path to <120s.
-      # Threshold updated 2026-07-03 from 130→240 after test file growth from
-      # ANAL-005, ANAL-008, WRITE-010 features.
+      # Threshold 240s. Re-measured snapshot 2026-07-09: 161.3s locally (307
+      # files / 2518 tests), ~49% headroom under the 240s budget. CI runs on a
+      # slower 4-core runner than local dev; the budget absorbs that variance.
+      # Still WARNING-only — check_test_performance.py emits a ::warning::
+      # annotation and always exits 0 (does not block CI).
+      # Re-measure locally:
+      #   uv run python scripts/check_test_performance.py --run --threshold 99999
       - name: Check frontend test performance
         if: always() && steps.frontend-tests.outcome != 'cancelled'
         run: |
@@ -590,7 +595,7 @@ jobs:
           exit ${PIPESTATUS[0]}
 
       - name: Check component markers (data-testid)
-        run: cd packages/web && npx tsx scripts/check-testid.ts --fail
+        run: cd packages/web && npx tsx scripts/check-testid.ts --strict --fail --ratchet-baseline scripts/testid_baselines.json
 
       - name: Install Playwright Chromium
         run: cd packages/web && pnpm playwright install chromium

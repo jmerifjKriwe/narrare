@@ -18,6 +18,8 @@ from .parser import BASELINE_VERSION, EvalResultFile, load_json_object
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from .priorities import Priorities
+
 # ── Data structures ────────────────────────────────────────────
 
 
@@ -31,6 +33,7 @@ class DriftComparison:
     drift: float  # negative = regression
     exceeds_threshold: bool
     baseline_exists: bool
+    is_p0: bool = False  # True if this case is a CI-blocking P0 anchor
 
 
 @dataclass
@@ -55,6 +58,22 @@ class DriftReport:
     def drift_count(self) -> int:
         """Number of test cases exceeding drift threshold."""
         return sum(1 for c in self.comparisons if c.exceeds_threshold and c.baseline_exists)
+
+    @property
+    def has_p0_drift(self) -> bool:
+        """True if any P0 baseline comparison exceeds the drift threshold.
+
+        P0 regressions are CI-blocking (exit 1) when ``--fail-on-priority P0``
+        is active. Non-P0 drift remains WARNING-only.
+        """
+        return any(c.exceeds_threshold and c.baseline_exists and c.is_p0 for c in self.comparisons)
+
+    @property
+    def p0_drift_count(self) -> int:
+        """Number of P0 test cases exceeding drift threshold."""
+        return sum(
+            1 for c in self.comparisons if c.exceeds_threshold and c.baseline_exists and c.is_p0
+        )
 
 
 # ── Baseline I/O ───────────────────────────────────────────────
@@ -151,6 +170,7 @@ def compare_against_baselines(
     results: list[EvalResultFile],
     baselines_dir: Path,
     threshold: float,
+    priorities: Priorities | None = None,
 ) -> DriftReport:
     """Compare current eval results against stored baselines."""
     report = DriftReport()
@@ -170,6 +190,7 @@ def compare_against_baselines(
                         drift=0.0,
                         exceeds_threshold=False,
                         baseline_exists=False,
+                        is_p0=_case_is_p0(priorities, result_file.source, tc.name),
                     )
                 )
             continue
@@ -191,7 +212,15 @@ def compare_against_baselines(
                     drift=drift,
                     exceeds_threshold=drift < -threshold,
                     baseline_exists=True,
+                    is_p0=_case_is_p0(priorities, result_file.source, tc.name),
                 )
             )
 
     return report
+
+
+def _case_is_p0(priorities: Priorities | None, source: str, case: str) -> bool:
+    """Return whether ``(source, case)`` is a P0 anchor, tolerating no manifest."""
+    if priorities is None:
+        return False
+    return priorities.is_p0(source, case)

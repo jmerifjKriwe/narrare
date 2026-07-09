@@ -19,7 +19,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "check:testid": "npx tsx scripts/check-testid.ts",
-    "check:testid:strict": "npx tsx scripts/check-testid.ts --strict --fail",
+    "check:testid:strict": "npx tsx scripts/check-testid.ts --strict --fail --ratchet-baseline scripts/testid_baselines.json",
+    "check:testid:update-baseline": "npx tsx scripts/check-testid.ts --strict --update-baseline scripts/testid_baselines.json",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed"

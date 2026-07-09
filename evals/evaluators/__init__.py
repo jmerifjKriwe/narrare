@@ -20,6 +20,7 @@ from evals.evaluators.kb_operations import (
     KBImproveSchemaValidator,
     KBMergeSchemaValidator,
 )
+from evals.evaluators.names import NameListQuality
 from evals.evaluators.planning_structure import (
     CharacterArcSchemaValidator,
     OutlineSchemaValidator,
@@ -28,8 +29,14 @@ from evals.evaluators.planning_structure import (
 )
 from evals.evaluators.preference import PreferenceSignalCoverage
 from evals.evaluators.rewrite import RewriteModeMatch
+from evals.evaluators.writing import (
+    AIDisclaimerGuardrail,
+    WritingProseQuality,
+    WritingToneAdherence,
+)
 
 __all__ = [
+    "AIDisclaimerGuardrail",
     "AnalysisFeedbackContent",
     "AnalysisFeedbackValidator",
     "ChapterSummarySchemaValidator",
@@ -45,6 +52,7 @@ __all__ = [
     "KBExtractionCoverage",
     "KBImproveSchemaValidator",
     "KBMergeSchemaValidator",
+    "NameListQuality",
     "OutlineSchemaValidator",
     "POVDetectionSchemaValidator",
     "PreferenceSignalCoverage",
@@ -52,4 +60,6 @@ __all__ = [
     "RewriteModeMatch",
     "TimelineSchemaValidator",
     "WorldbuildingSchemaValidator",
+    "WritingProseQuality",
+    "WritingToneAdherence",
 ]

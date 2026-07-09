@@ -1,0 +1,9 @@
+{
+  "_comment": "Ratcheted component-marker baseline. Updated via check-testid.ts --update-baseline. Only directories with >=1 violation are tracked; growth or any new violating directory fails the gate (see testid-baseline.ts).",
+  "updated": "2026-07-09",
+  "mode": "strict",
+  "counts": {
+    "components/ui": 1
+  },
+  "total": 1
+}

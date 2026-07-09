@@ -19,6 +19,7 @@ from typing import Any, cast
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_RESULTS_DIR = REPO_ROOT / "evals" / "results"
 DEFAULT_BASELINES_DIR = REPO_ROOT / "evals" / "baselines"
+DEFAULT_PRIORITIES_FILE = REPO_ROOT / "evals" / "p0_priorities.json"
 DEFAULT_THRESHOLD = 0.05
 BASELINE_VERSION = 1
 

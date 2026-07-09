@@ -7,7 +7,9 @@ name: Eval Nightly (Runtime)
 # Integration Strategy:
 #   - Smoke runs in ci.yml (architecture job) — CI-blocking, secret-free.
 #   - Runtime runs here, nightly, with NARRARE_EVAL_API_KEY.
-#   - Drift is WARNING-only (ratcheted baseline).
+#   - P0 drift (defined in evals/p0_priorities.json) is CI-blocking — a
+#     regression of a P0 anchor (e.g. the writing_prose guardrail case)
+#     fails the nightly. Non-P0 drift remains WARNING-only.
 #
 # This workflow is intentionally NOT triggered on push / pull_request.
 # It runs on a cron schedule and on manual dispatch only. Tier 2/3 suites
@@ -80,15 +82,18 @@ jobs:
             --mode runtime \
             --results-dir evals/results
 
-      # Drift is WARNING-only by design (ratcheted baseline). A regression
-      # surfaces in the log and via the step conclusion, but does not fail
-      # the nightly — the goal is observability, not gating. Update
-      # baselines deliberately with `--update-baselines` in a follow-up.
-      - name: Check eval drift (WARNING-only, non-blocking)
+      # P0 drift is CI-blocking: a regression of a P0 anchor case (declared in
+      # evals/p0_priorities.json, decoupled from the auto-regenerated
+      # baselines) fails the nightly. Non-P0 drift is reported as a WARNING
+      # but does not affect the exit code. Update baselines deliberately with
+      # `--update-baselines` in a follow-up.
+      - name: Check eval drift (P0-blocking)
         if: steps.verify.outputs.skipped != 'true'
-        continue-on-error: true
         run: |
-          uv run python scripts/check_eval_drift.py --results-dir evals/results
+          uv run python scripts/check_eval_drift.py \
+            --results-dir evals/results \
+            --priorities evals/p0_priorities.json \
+            --fail-on-priority P0
 
       # Upload results when evals actually ran, even if a step failed, so
       # regressions can be inspected (e.g. new failures that haven't yet

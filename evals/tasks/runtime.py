@@ -20,6 +20,8 @@ from evals.models import (
     PreferenceAnalysisResult,
     RewriteSelectionInput,
     RewriteSelectionResult,
+    WritingProseInput,
+    WritingProseResult,
 )
 
 RuntimeTask = Callable[[object], Awaitable[object]]
@@ -63,6 +65,7 @@ class RuntimeTaskFactory:
             "kb_extraction": self.kb_extraction_task,
             "preference_analysis": self.preference_analysis_task,
             "rewrite_selection": self.rewrite_selection_task,
+            "writing_prose": self.writing_prose_task,
         }
 
     def available_suites(self) -> list[str]:
@@ -94,6 +97,9 @@ class RuntimeTaskFactory:
 
     async def rewrite_selection_task(self, inputs: object) -> object:
         return await self.rewrite_selection(RewriteSelectionInput.model_validate(inputs))
+
+    async def writing_prose_task(self, inputs: object) -> object:
+        return await self.writing_prose(WritingProseInput.model_validate(inputs))
 
     async def preference_analysis_task(self, inputs: object) -> object:
         return await self.preference_analysis(PreferenceAnalysisInput.model_validate(inputs))
@@ -159,6 +165,43 @@ class RuntimeTaskFactory:
             prompt=inputs.model_dump_json(),
             system_prompt="Return selected_mode, rewritten_text, and rationale for the input.",
             output_type=RewriteSelectionResult,
+            config=self._config(),
+            api_key=self.api_key,
+            base_url=self.base_url,
+        )
+        return output
+
+    async def writing_prose(self, inputs: WritingProseInput) -> WritingProseResult:
+        """Run writing-prose generation through ModelRegistry structured output.
+
+        Intent mapping (there is no dedicated VARIANT intent):
+
+          * ``extend``  → :attr:`~narrare_core.llm.LLMIntent.EXTEND`
+          * ``suggest`` → :attr:`~narrare_core.llm.LLMIntent.SUGGEST`
+          * ``variant`` → :attr:`~narrare_core.llm.LLMIntent.REWRITE` — a
+            style variant is a rewrite of a selection in a different
+            register, so REWRITE is the closest available intent. This is
+            the documented choice (see AUFG-02-03); a future VARIANT
+            intent would replace this mapping.
+        """
+
+        from narrare_core.llm import LLMIntent, ModelRegistry
+
+        if inputs.operation == "suggest":
+            intent = LLMIntent.SUGGEST
+        elif inputs.operation == "variant":
+            intent = LLMIntent.REWRITE
+        else:
+            intent = LLMIntent.EXTEND
+
+        output = await ModelRegistry().run(
+            intent=intent,
+            prompt=inputs.model_dump_json(),
+            system_prompt=(
+                "Return operation (echo the input operation), text (the "
+                "generated prose), word_count, and notes for the input."
+            ),
+            output_type=WritingProseResult,
             config=self._config(),
             api_key=self.api_key,
             base_url=self.base_url,

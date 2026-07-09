@@ -9,6 +9,7 @@ import warnings
 from typing import TYPE_CHECKING
 
 import pytest
+from evals.datasets import available_suites
 from evals.runner import run_suites
 from evals.tasks import available_suites_for_mode, get_task
 from evals.tasks.runtime import RuntimeTaskFactory
@@ -195,23 +196,14 @@ def test_run_suites_does_not_leak_open_event_loop(tmp_path: Path) -> None:
 
 
 # Suites that are intentionally smoke-only (no runtime task).
-SMOKE_ONLY_SUITES = {"analysis_metrics", "kb_operations", "planning_structure"}
+SMOKE_ONLY_SUITES = {"analysis_metrics", "kb_operations", "names", "planning_structure"}
 
-# All registered datasets (must match ``evals.datasets.available_suites()``).
-ALL_SUITES = {
-    "analysis_feedback",
-    "analysis_metrics",
-    "chat_generation",
-    "consistency_staged",
-    "kb_extraction",
-    "kb_operations",
-    "planning_structure",
-    "preference_analysis",
-    "rewrite_selection",
-}
+# All registered datasets — derived single-source from the registry so
+# adding a suite never silently desyncs this set from ``evals.datasets``.
+ALL_SUITES = set(available_suites())
 
 
-def test_smoke_factory_available_suites_includes_all_nine() -> None:
+def test_smoke_factory_available_suites_includes_all_registered_datasets() -> None:
     """Smoke factory has a task for every registered dataset."""
 
     available = set(SmokeTaskFactory().available_suites())
