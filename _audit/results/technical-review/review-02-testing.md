@@ -635,14 +635,14 @@ was zu Stragglers führen kann.
 **Geschätzter Aufwand:** S
 
 ### [AUFG-02-06] dependency-review-action und Frontend-Perf-Budget revalidieren
-**Re-Check 2026-07-09:** **ERLEDIGT 2026-07-09** — dependency-review-action added (ci.yml dependency-review job, PR-only, fail-on-severity moderate); frontend perf budget measured 161.3s (well under 240s — review's 'likely exceeded' was wrong), comment updated. Enforcement: dependency-review job blocks PRs. Commit b9304cdf.
+**Re-Check 2026-07-09:** **TEILWEISE ERLEDIGT 2026-07-09** — (b) Frontend-Perf-Budget revalidiert: gemessen 161,3 s (< 240 s; die Review-Vermutung »wahrscheinlich überschritten« war falsch), Kommentar aktualisiert (Commit b9304cdf). (a) dependency-review-action **deferred (accepted_risk)** — die Action benötigt GitHub Advanced Security (GHAS), das auf diesem Repo nicht verfügbar ist; der Job failte in CI am Feature-Check und wurde entfernt (Commit siehe Commit-Log). Siehe Abschluss-Status.
 **Priorität:** Niedrig
 **Bereich:** CI / Security
 **Kontext:** (a) Kein `github/dependency-review-action` für neue Dependencies in PRs.
 (b) Das WARNING-only Frontend-Performance-Budget (240 s) basiert auf 197 Test-Dateien;
 real sind es jetzt 304 → Budget vermutlich überschritten, aber nicht-blockierend.
 **Akzeptanzkriterien:**
-- [x] `github/dependency-review-action` in PR-Workflow aktiviert
+- [ ] `github/dependency-review-action` in PR-Workflow aktiviert — **deferred (accepted_risk)**: die Action benötigt GitHub Advanced Security (GHAS), das auf diesem Repo nicht verfügbar ist; Job nach CI-Fail entfernt. `pip-audit`/`bandit` decken Python-Dependencies weiterhin im security-Job; Web-Dep-Audit ohne GHAS ggf. später via `pnpm audit` nachziehen.
 - [x] Frontend-Test-Dauer messen; Budget revalidieren oder als Ratchet-Gate überführen
 **Geschätzter Aufwand:** S
 
@@ -740,7 +740,7 @@ Lücke ohne AUFG identifiziert.
 
 ## Abschluss-Status
 
-**Stand 2026-07-09:** Alle 12 AUFG-Aufgaben (AUFG-02-01 … AUFG-02-12) als **ERLEDIGT** dokumentiert — jede mit Implementation (Dateien auf Disk) + Enforcement (CI-blockierender Checker / Regressionstest) gemäß `docs/development/finding-lifecycle.md`.
+**Stand 2026-07-09:** 11 AUFG-Aufgaben voll **ERLEDIGT**; AUFG-02-06 **teilweise** (Teil b Perf-Budget erledigt; Teil a dependency-review-action deferred — benötigt GHAS, auf diesem Repo nicht verfügbar). Jede erledigte Teilaufgabe hat Implementation + Enforcement gemäß `docs/development/finding-lifecycle.md`.
 
 **Holistische Verifikation (Branch `chore/review-02-testing-ci-fixes`):**
 - `just check-architecture` ✅ (2011 Dateien, 16 Approved Exceptions, No-Growth)
@@ -762,3 +762,4 @@ Lücke ohne AUFG identifiziert.
 **Newly surfaced findings (not in original review, for follow-up ratchet):**
 - `lib/**` coverage at 71.21% < its 80% threshold (latent — `pnpm test`/CI frontend do not enforce the coverage threshold; only enforced if `--coverage` passed). Pre-existing, outside review-02 scope.
 - Marker debt in `PanelTabs` + `ConfirmDialog` (buttons rely on visible text, no `data-testid`/`aria-label`) — surfaced by AUFG-02-11; the regex gate ALSO misses these (render-time false-negative). Candidate for the testid ratchet baseline reduction.
+- dependency-review-action ist auf diesem Repo nicht einsetzbar (erfordert GitHub Advanced Security / GHAS); PR-Dependency-Gating deferred. `pip-audit`/`bandit` (security-Job) decken Python-Dependencies weiterhin ab.

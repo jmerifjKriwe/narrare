@@ -33,7 +33,6 @@ name: CI
 # | --   | check-testid.ts (data-testid gate)      | ✅ Blocking  | frontend Job                       |
 # | --   | Gitleaks (secret scanning, AUFG-05-09) | ✅ Blocking  | security Job                       |
 # | --   | bandit + pip-audit                     | ✅ Blocking  | security Job                       |
-# | --   | dependency-review-action               | ✅ Blocking  | dependency-review Job (PR-only)    |
 # | --   | biome check (frontend lint/format)     | ✅ Blocking  | frontend Job                       |
 # | --   | pnpm test (frontend tests)             | ✅ Blocking  | frontend Job                       |
 # | --   | check_test_performance.py              | ⚠️ Warning   | frontend Job (WARNING-only)        |
@@ -274,24 +273,6 @@ jobs:
 
       - name: pip-audit
         run: uv run pip-audit --skip-editable --ignore-vuln PYSEC-2025-183 --ignore-vuln GHSA-rrmf-rvhw-rf47
-
-  # -------------------------------------------------------------------------
-  # Dependency review (PR-only) — fails on new vulnerabilities / invalid licenses
-  # -------------------------------------------------------------------------
-  dependency-review:
-    name: Dependency Review
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    needs: architecture
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-      - name: Dependency Review
-        uses: actions/dependency-review-action@v4
-        with:
-          # Fail on new vulnerabilities / invalid licenses in PR dependency changes.
-          fail-on-severity: moderate
 
   # -------------------------------------------------------------------------
   # Unit tests (< 5 min, no Docker)
