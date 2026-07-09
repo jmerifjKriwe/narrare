@@ -28,7 +28,6 @@ import tomllib
 from pathlib import Path
 
 import pytest
-from scripts.architecture._checkers.prompt_path import check_prompt_registry_access
 
 # Stable repo-relative path — matches the entry registered in pyproject.toml
 # [tool.narrare.architecture.exceptions] and what the checker's
@@ -50,6 +49,10 @@ class TestMem0ClientRule02bScope:
         call/import, this test fails until the prompt path is routed through
         ``PromptComposer`` (or a real governed exception is registered).
         """
+        from scripts.architecture._checkers.prompt_path import (
+            check_prompt_registry_access,  # fmt: skip  # lazy
+        )
+
         source = (REPO_ROOT / MEM0_CLIENT_REL).read_text(encoding="utf-8")
         tree = ast.parse(source)
         violations = check_prompt_registry_access(MEM0_CLIENT_REL, tree, source.splitlines())
