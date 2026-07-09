@@ -17,6 +17,10 @@ from evals.models_kb_operations import (
     KBOperationsInput,
     KBOperationsResult,
 )
+from evals.models_names import (
+    NameGenerationInput,
+    NameGenerationResult,
+)
 from evals.models_planning import (
     CharacterArcPhaseSection,
     CharacterArcSection,
@@ -56,6 +60,8 @@ __all__ = [
     "KBMergeStrategySection",
     "KBOperationsInput",
     "KBOperationsResult",
+    "NameGenerationInput",
+    "NameGenerationResult",
     "OutlineSection",
     "POVMetricsIssue",
     "POVMetricsScene",

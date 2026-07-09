@@ -40,6 +40,7 @@ class SmokeTaskFactory:
             "consistency_staged": self.consistency_staged_task,
             "kb_extraction": self.kb_extraction_task,
             "kb_operations": self.kb_operations_task,
+            "names": self.names_task,
             "planning_structure": self.planning_structure_task,
             "preference_analysis": self.preference_analysis_task,
             "rewrite_selection": self.rewrite_selection_task,
@@ -198,6 +199,15 @@ class SmokeTaskFactory:
         from evals.tasks.kb_operations_smoke import kb_operations_task
 
         return await kb_operations_task(inputs)
+
+    # ------------------------------------------------------------------
+    # names
+    # ------------------------------------------------------------------
+
+    async def names_task(self, inputs: object) -> object:
+        from evals.tasks.names_smoke import names_task
+
+        return await names_task(inputs)
 
     # ------------------------------------------------------------------
     # writing_prose

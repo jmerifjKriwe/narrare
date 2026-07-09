@@ -196,7 +196,7 @@ def test_run_suites_does_not_leak_open_event_loop(tmp_path: Path) -> None:
 
 
 # Suites that are intentionally smoke-only (no runtime task).
-SMOKE_ONLY_SUITES = {"analysis_metrics", "kb_operations", "planning_structure"}
+SMOKE_ONLY_SUITES = {"analysis_metrics", "kb_operations", "names", "planning_structure"}
 
 # All registered datasets — derived single-source from the registry so
 # adding a suite never silently desyncs this set from ``evals.datasets``.

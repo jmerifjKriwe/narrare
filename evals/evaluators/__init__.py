@@ -20,6 +20,7 @@ from evals.evaluators.kb_operations import (
     KBImproveSchemaValidator,
     KBMergeSchemaValidator,
 )
+from evals.evaluators.names import NameListQuality
 from evals.evaluators.planning_structure import (
     CharacterArcSchemaValidator,
     OutlineSchemaValidator,
@@ -51,6 +52,7 @@ __all__ = [
     "KBExtractionCoverage",
     "KBImproveSchemaValidator",
     "KBMergeSchemaValidator",
+    "NameListQuality",
     "OutlineSchemaValidator",
     "POVDetectionSchemaValidator",
     "PreferenceSignalCoverage",
