@@ -57,7 +57,7 @@ def setup_telemetry(app: FastAPI) -> None:
         from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
             OTLPSpanExporter,
         )
-        from opentelemetry.instrumentation.fastapi import (  # type: ignore[import-untyped]  # reason: opentelemetry-instrumentation-fastapi has no type stubs
+        from opentelemetry.instrumentation.fastapi import (  # pyright: ignore[reportMissingTypeStubs]  # reason: opentelemetry-instrumentation-fastapi has no type stubs
             FastAPIInstrumentor,  # type: ignore[reportUnknownVariableType]  # reason: imported from untyped opentelemetry package
         )
         from opentelemetry.sdk.resources import Resource

@@ -45,7 +45,7 @@ def is_mem0_available() -> bool:
     Returns ``True`` if ``mem0`` can be imported, ``False`` otherwise.
     """
     try:
-        import mem0  # type: ignore[import-untyped]  # reason: mem0 has no type stubs
+        import mem0  # pyright: ignore[reportMissingTypeStubs]  # reason: mem0 has no type stubs
 
         del mem0
         return True
