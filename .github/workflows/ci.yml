@@ -272,6 +272,16 @@ jobs:
             -r apps/api/narrare packages/core/narrare_core
 
       - name: pip-audit
+        # PYSEC-2025-183 (CVE-2025-45768): affects PyJWT <= 2.10.1 — disputed
+        #   "weak encryption" (key length is chosen by the consuming application,
+        #   not the library). Narrare pins PyJWT transitively via auth deps.
+        #   Current pyjwt 2.13.0 is above the affected range; pip-audit no longer
+        #   flags it. Ignore kept as a safety net. Re-evaluate: 2026-10.
+        # GHSA-rrmf-rvhw-rf47 (CVE-2025-3000): affects PyTorch (torch) via
+        #   sentence-transformers (embeddings) transitive dependency. Memory
+        #   corruption through torch.jit.script — local attack vector, low
+        #   severity (CVSS 1.9). Narrare never calls torch.jit.script. No
+        #   patched version exists upstream. Re-evaluate: 2026-10.
         run: uv run pip-audit --skip-editable --ignore-vuln PYSEC-2025-183 --ignore-vuln GHSA-rrmf-rvhw-rf47
 
   # -------------------------------------------------------------------------
