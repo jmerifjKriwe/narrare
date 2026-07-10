@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, FileText, Library, MessageCircle, Package, Settings } from "lucide-react";
+import { FileText, Library, MessageCircle, Package, Settings } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -53,12 +53,6 @@ export function SidebarNav({ novelId, onNavigate }: SidebarNavProps) {
           key: "worldbuilding",
         },
         {
-          href: `/novel/${novelId}/analysis` as Route,
-          label: t("sidebar.analysis"),
-          icon: BarChart3,
-          key: "analysis",
-        },
-        {
           href: `/novel/${novelId}/chat` as Route,
           label: t("sidebar.chat"),
           icon: MessageCircle,
@@ -78,7 +72,6 @@ export function SidebarNav({ novelId, onNavigate }: SidebarNavProps) {
     if (
       hrefStr.startsWith("/novel/") &&
       !hrefStr.includes("/worldbuilding") &&
-      !hrefStr.includes("/analysis") &&
       !hrefStr.includes("/chat") &&
       !hrefStr.includes("/volumes") &&
       !hrefStr.includes("/settings")

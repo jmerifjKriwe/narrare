@@ -117,16 +117,6 @@ class TestMetaPromptLoaderLoad:
 
         assert content1 == content2 == "Cached prompt"
 
-    async def test_load_lite_variant(self, tmp_path: Path) -> None:
-        proj_dir = tmp_path / ".narrare" / "prompts" / "meta" / "en"
-        proj_dir.mkdir(parents=True)
-        (proj_dir / "system.lite.md").write_text("Lite prompt")
-
-        loader = MetaPromptLoader(project_root=tmp_path)
-        content = await loader.load("en", use_lite=True)
-
-        assert content == "Lite prompt"
-
     async def test_falls_back_to_english_for_missing_language(self) -> None:
         # "zz" has no bundled prompt, no user config — should hit bundled English fallback
         loader = MetaPromptLoader()
@@ -169,16 +159,6 @@ class TestMetaPromptLoaderFindBundledRoot:
         # The fallback path points to meta.py's parent/_bundled
         assert loader._bundled_root.name == "_bundled"
         assert str(loader._bundled_root).endswith("prompts/_bundled")
-
-
-class TestMetaPromptLoaderShouldUseLite:
-    def test_returns_true_when_below_threshold(self) -> None:
-        loader = MetaPromptLoader()
-        assert loader.should_use_lite(1999) is True
-
-    def test_returns_false_when_above_threshold(self) -> None:
-        loader = MetaPromptLoader()
-        assert loader.should_use_lite(2000) is False
 
 
 class TestMetaPromptLoaderInvalidateCache:
@@ -289,27 +269,6 @@ class TestMetaPromptGuardrails:
         loader = MetaPromptLoader()
         content = await loader.load("fr")
         assert "Résolution des conflits" not in content
-
-    # --- Lite meta-prompt ---
-
-    async def test_lite_contains_avoidance_patterns_variable(self) -> None:
-        loader = MetaPromptLoader()
-        content = await loader.load("en", use_lite=True)
-        assert "{{avoidance_patterns}}" in content
-
-    async def test_lite_no_longer_contains_fiction_reference(self) -> None:
-        """Fiction reference moved to NarrareUniversalRules (ADR-026)."""
-        loader = MetaPromptLoader()
-        content = await loader.load("en", use_lite=True)
-        # Lite meta no longer contains fiction guidelines
-        assert "fiction content" not in content.lower()
-        assert "normal narrative" not in content.lower()
-
-    async def test_lite_is_significantly_shorter_than_full(self) -> None:
-        loader = MetaPromptLoader()
-        full = await loader.load("en")
-        lite = await loader.load("en", use_lite=True)
-        assert len(lite) < len(full) * 0.5
 
     # --- Variable substitution ---
 

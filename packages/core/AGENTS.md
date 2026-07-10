@@ -151,7 +151,6 @@ nicht die PromptComposer-Cascade für anpassbare Feature-Prompts.
 prompts/_bundled/
 ├── meta/              ← Identity + role (loaded by NarrareMeta Capability)
 │   ├── en/system.md
-│   ├── en/system.lite.md
 │   ├── de/system.md
 │   └── fr/system.md
 ├── universal/         ← Universal rules (loaded by NarrareUniversalRules Capability)

@@ -339,78 +339,141 @@ Aktuelle AI-Unterstützung ist bereits breit (Inline-Suggest, Co-Author, Rewrite
 ## Aufgaben
 
 ### [AUFG-03-01] Feature-Prompts auf de/fr übersetzen (i18n-Vollständigkeit)
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — ✅ Resolved. 12 neue DE/FR-Prompt-Dateien (6 Modi × de/fr) unter `_bundled/writing/{de,fr}/{inline_suggest,co_author,rewrite_selection,new_chapter,chat,interview}/system.md`. Variablen-/Heading-Parität via `check_locale_sync.py` erzwungen (6 Gruppen ✅ SYNCED, 42/42). Strukturqualität via `check_prompt_structure.py` (58/58 valid). 13 Cascade-Tests in `tests/unit/core/prompts/test_writing_prompt_i18n.py` (de→bundled, fr→bundled, unübersetzt→bundled_en). EN bleibt Source-of-Truth (gleiche `prompt_version`). Commit 94723c44. Implementation + Enforcement (`check_locale_sync` + `check_prompt_structure`, CI-blocking via pre-commit/CI).
 **Priorität:** Mittel
 **Bereich:** AI
 **Kontext:** Nur `meta/` und `universal/` haben `de/`+`fr/`-Übersetzungen. Alle `writing/`, `analysis/`, `kb/`, `planning/`-Prompts existieren ausschließlich in `en/`. Bei `language=de/fr` liefert die Cascade zwar lokalisierte Meta-/Universal-Regeln, fällt aber für die Feature-Instruktionen auf EN zurück. Das i18n-Versprechen für Prompts ist damit nicht vollständig eingelöst (das UI ist lokalisiert, die AI-Instruktionen größtenteils nicht).
 **Akzeptanzkriterien:**
-- [ ] Priorisierte Feature-Prompts (`inline_suggest`, `co_author`, `rewrite_selection`, `new_chapter`, `chat`, `interview`) in `de/` und `fr/` übersetzt
-- [ ] Cascade-Fallback-Test (`de` → bundled-de → bundled-en) greift korrekt
-- [ ] `check_prompt_structure.py` prüft Parität der übersetzten Prompt-Versionen
-- [ ] Bestehende EN-Prompts bleiben Source-of-Truth; Übersetzungen folgen `prompt_version`
+- [x] Priorisierte Feature-Prompts (`inline_suggest`, `co_author`, `rewrite_selection`, `new_chapter`, `chat`, `interview`) in `de/` und `fr/` übersetzt
+- [x] Cascade-Fallback-Test (`de` → bundled-de → bundled-en) greift korrekt
+- [x] `check_prompt_structure.py` prüft Parität der übersetzten Prompt-Versionen
+- [x] Bestehende EN-Prompts bleiben Source-of-Truth; Übersetzungen folgen `prompt_version`
 **Geschätzter Aufwand:** L
 
 ### [AUFG-03-02] Verwaisten `AnalysisPanel.tsx`-Placeholder entfernen oder verdrahten
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — Status: implemented. `AnalysisPanel.tsx` + Route `app/(studio)/novel/[id]/analysis/` + orphanierte `analysis-data.ts`/`analysisUrlState.ts` + Sidebar-Nav-Eintrag + exklusive `studio.analysis.*`/`sidebar.analysis` i18n-Keys (en/de/fr) entfernt. Kein `setTimeout`-Fake-Loading mehr, keine dangling Referenzen (grep verifiziert). Commit 9a6a98e8. Status `implemented` (kein eigener Anti-Placeholder-Checker; Regression-Risiko minimal, da Code gelöscht).
 **Priorität:** Mittel
 **Bereich:** AI / DX
 **Kontext:** `packages/web/components/studio/AnalysisPanel.tsx:53-57` ist ein unverbundener Placeholder: `setTimeout(() => setIsAnalyzing(false), 1500)` ohne realen API-Call (explizites TODO). Die eigentlichen Analyse-Features (Consistency, BetaReader, CharacterVoice, Readability, POV) sind woanders voll verdrahtet (`components/studio/analysis/`). Das Placeholder-Panel verwirrt Nutzer („analyzing" ohne Ergebnis) und suggeriert fälschlich Unvollständigkeit. Fall von „documented ≠ implemented" (architectural-discipline §7).
 **Akzeptanzkriterien:**
-- [ ] Entweder: `AnalysisPanel.tsx` an echte Analyse-APIs verdrahtet (ConsistencyStream/BetaReader/etc. nutzen) ODER entfernt/gelöscht, falls redundant mit `components/studio/analysis/`
-- [ ] Kein `setTimeout`-Fake-Loading mehr in produktivem Code
-- [ ] Falls entfernt: keine dangling Imports / toten Routen
-- [ ] i18n-Keys bereinigt, falls Panel entfernt
+- [x] Entweder: `AnalysisPanel.tsx` an echte Analyse-APIs verdrahtet (ConsistencyStream/BetaReader/etc. nutzen) ODER entfernt/gelöscht, falls redundant mit `components/studio/analysis/`
+- [x] Kein `setTimeout`-Fake-Loading mehr in produktivem Code
+- [x] Falls entfernt: keine dangling Imports / toten Routen
+- [x] i18n-Keys bereinigt, falls Panel entfernt
 **Geschätzter Aufwand:** S
 
 ### [AUFG-03-03] Ghost-Text-Auto-Retry bei Connection-Loss ergänzen
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — ✅ Resolved. Bounded Network-Retry im Ghost-Text-Fetcher (`lib/api/suggest.ts`): max. 2 Versuche (1 Retry), 400 ms abbrechbarer Backoff, nur bei `SSEStreamError.kind==="network"`, kein Retry bei Abort/HTTP/Parse. 5 Unit-Tests in `lib/api/suggest.test.ts` (network→retry→success, http→no-retry, abort→no-retry, 2×network→reject, abort-during-backoff). Commit 5e07065a. Implementation + Enforcement (Regression-Tests erzwingen das Retry-Verhalten).
 **Priorität:** Niedrig
 **Bereich:** AI
 **Kontext:** Die `GhostText`-Extension (`extensions/GhostText.ts`) hat im Gegensatz zu `useAIOperation()` (§16-konform mit `DEFAULT_MAX_RETRIES`) keine Auto-Retry-Logik bei Connection-Loss — nur Abort + transiente Error-Decoration (auto-clear nach 4s). Bei instabiler Netzwerkverbindung erhält der Nutzer keinen automatischen Wiederholungsversuch für Inline-Suggestions, was den Schreib-Flow stört. Die Limitation ist in `suggest.ts:16-19` dokumentiert (TipTap-Extensions laufen außerhalb React-Lifecycle → keine `useAIOperation`-Migration möglich).
 **Akzeptanzkriterien:**
-- [ ] Ghost-Text-Fetcher hat begrenzte Retry-Logik (z. B. 1 Retry nach kurzem Backoff bei Network-Error, nicht bei Abort)
-- [ ] Retry-Logik lebt im Extension-Scope (keine React-Hook-Abhängigkeit)
-- [ ] Unit-Test für Retry-Verhalten (Fake-Fetcher)
-- [ ] Keine Regression bei Abort-Handling
+- [x] Ghost-Text-Fetcher hat begrenzte Retry-Logik (z. B. 1 Retry nach kurzem Backoff bei Network-Error, nicht bei Abort)
+- [x] Retry-Logik lebt im Extension-Scope (keine React-Hook-Abhängigkeit)
+- [x] Unit-Test für Retry-Verhalten (Fake-Fetcher)
+- [x] Keine Regression bei Abort-Handling
 **Geschätzter Aufwand:** S
 
 ### [AUFG-03-04] Emotionale Intensitätskurve über Kapitel visualisieren
+**Re-Check 2026-07-10:** — Status: superseded. Bereits implementiert durch Commit `54085fac feat(ai-ux): add emotional intensity curve visualization` (CR-AUFG-07-23), das den review-03-Zeitpunkt nachdatiert. Alle 5 Akzeptanzkriterien erfüllt: `EmotionalIntensityCurve.tsx` + `intensity.ts` + `EmotionalIntensityTable.tsx`, verdrahtet via `SentimentPanel`→`SentimentResults` (novel-weit über alle chapterIds), recharts `AreaChart`, Kapitel-Reihenfolge, `onPointClick`→Kapitel-Auswahl, i18n in en/de/fr (`analysis.emotionalIntensity.*`). Tests `EmotionalIntensityCurve.test.tsx` + `intensity.test.ts`. Keine Neu-Implementierung (vermeidet Duplikat-Arbeit).
 **Priorität:** Mittel
 **Bereich:** AI
 **Kontext:** Sentiment-Daten sind pro Kapitel vorhanden (`useSentiment`, ANAL), und `recharts` (`^3.9.1`) liegt im Stack — aber es gibt keine Roman-weite Visualisierung der emotionalen Intensität / des Spannungsbogens über alle Kapitel hinweg. Für Romanautoren ist dies ein hochgradig wertvolles Pacing-Werkzeug („hängt Kapitel 12 emotional durch?"). Größter ungenutzter Hebel aus §9.
 **Akzeptanzkriterien:**
-- [ ] Endpoint/Aggregation, der Sentiment pro Kapitel (oder pro Szene) über den gesamten Roman liefert
-- [ ] Visualisierung als Kurve/Chart (recharts) in der Studio-Workspace
-- [ ] Zeitachsen-Mapping (Kapitel-Reihenfolge oder Timeline-Position)
-- [ ] Interaktiv: Klick auf Datenpunkt → Sprung zum Kapitel
-- [ ] i18n der Achsen/Labels (RULE-16)
+- [x] Endpoint/Aggregation, der Sentiment pro Kapitel (oder pro Szene) über den gesamten Roman liefert
+- [x] Visualisierung als Kurve/Chart (recharts) in der Studio-Workspace
+- [x] Zeitachsen-Mapping (Kapitel-Reihenfolge oder Timeline-Position)
+- [x] Interaktiv: Klick auf Datenpunkt → Sprung zum Kapitel
+- [x] i18n der Achsen/Labels (RULE-16)
 **Geschätzter Aufwand:** M
 
 ### [AUFG-03-05] Meta-Lite-Variante: Selektor verifizieren oder entfernen
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — Status: implemented. Tote Lite-Variante entfernt: 3× `system.lite.md` (de/en/fr) gelöscht, `use_lite`/`should_use_lite`/`_lite_threshold` aus der deprecierter `MetaPromptLoader` (`prompts/meta.py`) entfernt (Klasse selbst bleibt deprecated, separate Voll-Entfernung post-ADR-046). Checker-Exemptions bereinigt (`prompt_quality.py`-Role-Exemption, `_check_i18n.py`-Skip, `check_registry_drift.py`, Arch-Tests); stale Doku-Referenzen bereinigt. Commits fb2680a2 + 721bb1ad. Status `implemented` (kein eigener Checker; Gate-Stärkung durch entfernte Exemption: jede künftige Meta-Variante muss nun die Quality-Gates passieren).
 **Priorität:** Niedrig
 **Bereich:** AI
 **Kontext:** `_bundled/meta/{lang}/system.lite.md` existiert (8 Zeilen, `variant: lite`), aber im Code ist kein Aufrufer erkennbar, der `variant: lite` gegenüber der Full-Version (`system.md`) selektiert. `meta.py:_load_meta_prompt()` lädt fix `system.md`. Möglicherweise tote Konfiguration, die Token-Einsparung verspricht (Lite ≈ 8 vs. Full ≈ 33 Zeilen), aber nie greift.
 **Akzeptanzkriterien:**
-- [ ] Entweder: Selektor implementiert (z. B. `NarrareMeta(variant="lite")` für Kontext-budget-kritische Agents, z. B. Inline-Suggest) mit dokumentierter Auswahl-Regel
-- [ ] Oder: Lite-Variante entfernt, wenn kein Use-Case existiert
-- [ ] Falls implementiert: Test, der Lite vs. Full korrekt schaltet
-- [ ] Update der Capability-Doku
+- [x] Entweder: Selektor implementiert (z. B. `NarrareMeta(variant="lite")` für Kontext-budget-kritische Agents, z. B. Inline-Suggest) mit dokumentierter Auswahl-Regel
+- [x] Oder: Lite-Variante entfernt, wenn kein Use-Case existiert
+- [x] Falls implementiert: Test, der Lite vs. Full korrekt schaltet
+- [x] Update der Capability-Doku
 **Geschätzter Aufwand:** S
 
 ### [AUFG-03-06] Cross-Agent-Kontext-Teilung für aufeinanderfolgende Werkzeug-Aufrufe
+**Re-Check 2026-07-10:** — Status: accepted. ADR-066 „Session-Scoped Agent Context Store for Cross-Invocation Artifact Sharing" ✅ Accepted (`docs/architecture/decisions/ADR-066-agent-context-store.md`, INDEX aktualisiert). Entscheidung: best-effort, session/novel-scoped `AgentContextStore` + `AgentArtifactEnricher` (Wiedervernahme des ContextEnricher-Seam), RULE-22 producer→store→consumer-Contract, RULE-11 Graceful Degradation; 3 Alternativen evaluiert. Implementierung als Follow-Up zurückgestellt (ein ADR allein caps das Finding bei `accepted`, konform finding-lifecycle). Commit c4a3fd94.
 **Priorität:** Niedrig
 **Bereich:** AI / Architektur
 **Kontext:** Kontext-Weitergabe zwischen Agenten funktioniert nur innerhalb eines Graph-Runs (`WritingGraph`) oder einer Chat-Session (`ProcessHistory`). Möchte ein Autor Ergebnisse aus einem Consistency-Check in den nächsten Co-Author-Lauf einspeisen, muss er manuell vermitteln. Es gibt kein „Shared-Agent-Memory" jenseits von mem0-Preferences. Dies begrenzt Workflow-Komposition (z. B. Consistency-Finding → Co-Author-Fix → Re-Check).
 **Akzeptanzkriterien:**
-- [ ] ADR/Dokumentation, ob und wie Cross-Agent-Kontext geteilt werden soll (z. B. Session-gebundener Kontext-Speicher, der Agent-Outputs annotiert)
-- [ ] Falls umgesetzt: definierter Integration-Contract (RULE-22) zwischen Konsumenten- und Produzenten-Agent
-- [ ] Graceful Degradation, falls Kontext-Speicher unavailable
+- [x] ADR/Dokumentation, ob und wie Cross-Agent-Kontext geteilt werden soll (z. B. Session-gebundener Kontext-Speicher, der Agent-Outputs annotiert)
+- [ ] Falls umgesetzt: definierter Integration-Contract (RULE-22) zwischen Konsumenten- und Produzenten-Agent *(im ADR spezifiziert, Implementierung als Follow-Up zurückgestellt)*
+- [ ] Graceful Degradation, falls Kontext-Speicher unavailable *(im ADR spezifiziert, Implementierung als Follow-Up zurückgestellt)*
 **Geschätzter Aufwand:** L
 
 ### [AUFG-03-07] Skill-Duplikation zwischen `.agents/skills/`, `.opencode/skills/` und Superpowers auflösen
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — Status: implemented. Skill-Inventar erstellt: `docs/development/skills-index.md` (38 Skills über 3 Quellen mit Ownership-Regeln, Overlap-Analyse des agentmemory-Clusters, Navigations-Note). Cross-Reference in `AGENTS.md`. Keine Skill-Removal (keine schädlichen Duplikate; die Review-Overlap-Beispiele waren stale). Commit 1ea51b15. Status `implemented` (kein Enforcement-Checker; Dokumentation ist das Deliverable).
 **Priorität:** Niedrig
 **Bereich:** DX
 **Kontext:** Skills existieren parallel in `.agents/skills/` (z. B. `task-management`), `.opencode/skills/` (`task-management`, `context7`) und dem Superpowers-Cache (`task-management`, `handoff` vs. `commit-context`). Die Überlappung kann zu Mehrdeutigkeit führen, welcher Skill bei einem Trigger greift, und erschwert die Wartung (Drift zwischen Duplikaten).
 **Akzeptanzkriterien:**
-- [ ] Inventarisierung aller Skills über die drei Quellen
-- [ ] Klare Ownership-Zuweisung (welcher Skill ist kanonisch, welcher ist Wrapper/Verweis)
-- [ ] Duplikate entweder konsolidiert oder als dokumentierte Aliasse markiert
-- [ ] Navigation/Doku für Agent-Autoren, welcher Skill wo zu finden ist
+- [x] Inventarisierung aller Skills über die drei Quellen
+- [x] Klare Ownership-Zuweisung (welcher Skill ist kanonisch, welcher ist Wrapper/Verweis)
+- [x] Duplikate entweder konsolidiert oder als dokumentierte Aliasse markiert
+- [x] Navigation/Doku für Agent-Autoren, welcher Skill wo zu finden ist
 **Geschätzter Aufwand:** S
+
+---
+
+## Beobachtungen ohne Aufgabe
+
+Die folgenden im Review-Prosa beschriebenen Punkte wurden bei der Remediation
+getriagert und bewusst *nicht* in Aufgaben überführt (Finding-Lifecycle:
+`accepted_risk` / verified). Jeder Eintrag nennt den Grund.
+
+- **Agent-Klassen-Versionierung (§3).** Keine separate Versionierung der
+  Agent-Klassen (nur der Prompts). *Accepted Risk (reason: vorwärtsgerichtete
+  Risiko-Betrachtung, kein aktueller Bruch; korreliert mit dem Cross-Agent-
+  Kontext-Design in AUFG-03-06).* Triage-Datum: 2026-07-10.
+- **Vorab-Auswahl der Interview-Tiefe (§4).** Nutzer kann nicht zwischen kurzem
+  (3-Fragen) und tiefem (10-Fragen) Interview wählen; die Tiefe wird AI-gesteuert
+  bestimmt. *Accepted Risk (reason: bewusstes UX-Design, Feature-Request, kein
+  Defekt — aktuelles Verhalten ist intentional).* Triage-Datum: 2026-07-10.
+- **Ghost-Text-i18n-Limitation (§8).** Die TipTap-Extension läuft außerhalb des
+  React-Lifecycle → kein i18n-Zugang, Fehler werden als „silent dismissal"
+  gehandhabt. *Accepted Risk (reason: bereits in §20 dokumentiert; strukturelle
+  TipTap-Bedingung ohne Behebungs-Hebel innerhalb des aktuellen Extension-Modells).*
+  Triage-Datum: 2026-07-10.
+- **Kein Agent-Hook-Mechanismus (§2).** Enforcement läuft über Git-Hooks (pre-
+  commit) und CI, nicht über Agent-Hooks in `.opencode/`. *Accepted Risk (reason:
+  laut Review-Text „akzeptabel"; keine Current-Violation, bestehende Git/CI-Gates
+  decken das Enforcement ab).* Triage-Datum: 2026-07-10.
+- **KB-Interview-Prompt-Quality (§4).** Der Audit-Text vermerkt „nicht im Detail
+  geprüft". Verifikation am 2026-07-10 an
+  `packages/core/narrare_core/prompts/_bundled/kb/en/interview/system.md`: Der
+  Prompt erfüllt die Quality-Gates — Do-NOT-Liste (6 Einträge, ≥4 gefordert),
+  Output-Format mit JSON-Schema, Injection-Defense via
+  `<user_provided_data>`/`{{world_context}}`, `{{avoidance_patterns}}`,
+  Quality-Rules-Sektion. *Verified-OK — keine Aufgabe erforderlich.*
+
+MCP/A2A (§5/§6) bleiben unbetaskt, da sie über die offenen Architecture-Questions
+Q-001 (MCP-Auth) bzw. Q-002 (A2A-Streaming) getrackt sind.
+
+---
+
+## Abschluss-Status
+
+Review 03 (AI-Features & Prompting) — Remediation abgeschlossen 2026-07-10.
+
+| AUFG | Titel | Status | Evidence (Kurz) |
+|------|-------|--------|-----------------|
+| 03-01 | Feature-Prompts de/fr | ✅ Resolved | `check_locale_sync` + `check_prompt_structure` (CI-blocking), 13 Tests |
+| 03-02 | AnalysisPanel-Placeholder | implemented | entfernt + verifiziert; kein Anti-Placeholder-Checker |
+| 03-03 | Ghost-Text-Auto-Retry | ✅ Resolved | 5 Regression-Tests erzwingen Retry-Verhalten |
+| 03-04 | Emotionale Intensitätskurve | superseded | bereits in `54085fac` (CR-AUFG-07-23) |
+| 03-05 | Meta-Lite-Variante | implemented | entfernt + Checker-Exemption bereinigt |
+| 03-06 | Cross-Agent-Kontext | accepted | ADR-066 ✅ Accepted, Implementierung als Follow-Up |
+| 03-07 | Skill-Duplikation | implemented | `skills-index.md` (38 Skills, Ownership-Regeln) |
+
+Zusätzlich 4 Accepted-Risk- und 1 Verified-OK-Beobachtung dokumentiert (siehe Abschnitt „Beobachtungen ohne Aufgabe").
+
+Hinweis zur Status-Vergabe (finding-lifecycle §2): `✅ Resolved` erfordert Implementation **und** Enforcement. AUFG-03-01/03-03 haben CI-blocking-Checker bzw. Regression-Tests. AUFG-03-02/03-05/03-07 sind `implemented` (auf Disk erledigt, kein spezifischer Enforcement-Checker — bewusst ehrlicher Nicht-Terminal-Status). AUFG-03-06 ist `accepted` (ADR-Entscheidung, Implementierung zurückgestellt). AUFG-03-04 ist `superseded` (bereits andernorts umgesetzt).

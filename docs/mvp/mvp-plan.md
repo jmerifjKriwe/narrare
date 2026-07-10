@@ -179,12 +179,12 @@ packages/core/narrare_core/
   prompts/
     ✓ context.py (PromptContext dataclass — all fields)
     ✓ variable_engine.py (substitution, validation)
-    ✓ meta.py (meta-prompt loader, cascade, lite variant)
+    ✓ meta.py (meta-prompt loader, cascade)
     ✓ registry.py (single cascade resolver — replaces all three old resolvers)
     ✓ composer.py (assembles final prompt from parts)
     ✓ cache.py (fixed-key prompt cache)
     ✓ service.py (CRUD for file-based prompt management)
-    ✓ _bundled/ (meta/en/system.md, meta/en/system.lite.md, meta/de/, meta/fr/)
+    ✓ _bundled/ (meta/en/system.md, meta/de/, meta/fr/)
 
   schemas/
     ✓ auth.py, novels.py, chapters.py (base schemas for MVP)

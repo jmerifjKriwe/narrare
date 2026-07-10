@@ -47,13 +47,10 @@ class MetaPromptLoader:
         self,
         project_root: Path | None = None,
         user_config_dir: Path | None = None,
-        *,
-        lite_threshold: int = 2000,
     ) -> None:
         self._project_root = project_root
         self._user_config_dir = user_config_dir or Path.home() / ".config" / "narrare"
         self._bundled_root = self._find_bundled_root()
-        self._lite_threshold = lite_threshold
         self._cache: dict[str, str] = {}
 
     def _find_bundled_root(self) -> Path:
@@ -68,7 +65,6 @@ class MetaPromptLoader:
         language: str = "en",
         *,
         variables: dict[str, str] | None = None,
-        use_lite: bool = False,
     ) -> str:
         """
         Load the meta-prompt for a given language.
@@ -77,13 +73,12 @@ class MetaPromptLoader:
             language: ISO 639-1 language code.
             variables: Variables to substitute into the meta-prompt
                        (project_title, genre, tone, language).
-            use_lite: Load the shorter lite variant (for tight token budgets).
 
         Returns:
             Meta-prompt text with variables substituted.
             Empty string if no meta-prompt exists.
         """
-        filename = "system.lite.md" if use_lite else "system.md"
+        filename = "system.md"
         cache_key = f"{language}/{filename}"
 
         if cache_key not in self._cache:
@@ -122,10 +117,6 @@ class MetaPromptLoader:
 
         logger.debug("meta_prompt_not_found", language=language)
         return ""
-
-    def should_use_lite(self, remaining_budget: int) -> bool:
-        """Determine if the lite meta-prompt variant should be used."""
-        return remaining_budget < self._lite_threshold
 
     def invalidate_cache(self) -> None:
         """Clear the cache (e.g. after a meta-prompt file is updated)."""

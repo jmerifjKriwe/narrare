@@ -191,7 +191,6 @@ class TestBundledPromptsHaveRoleDefinition:
         Skips:
 
         - ``meta/`` category (tested separately)
-        - ``system.lite.md`` (intentionally compact)
         - Supplementary files without ``prompt_type`` frontmatter
           (tone files, name-style files)
         """
@@ -206,10 +205,6 @@ class TestBundledPromptsHaveRoleDefinition:
 
             # Skip meta/ category — covered by test_meta_prompt_version_consistency
             if rel.parts[0] == "meta":
-                continue
-
-            # Skip system.lite.md — intentionally compact
-            if md_file.name == "system.lite.md":
                 continue
 
             content = md_file.read_text(encoding="utf-8", errors="replace")
@@ -309,46 +304,6 @@ class TestMetaPromptVersionConsistency:
                 f"Universal rules '{lang}' are missing conflict resolution "
                 f"(expected '{marker}' in content)"
             )
-
-
-# ---------------------------------------------------------------------------
-# Test 4: Lite meta-prompt has essential content
-# ---------------------------------------------------------------------------
-
-
-class TestLitePromptHasEssentials:
-    """The lite meta-prompt must contain key behavioural instructions."""
-
-    def test_lite_prompt_has_essentials(self) -> None:
-        """Lite meta-prompt must reference core concepts.
-
-        Checks for:
-
-        - ``fiction`` or ``narrative`` — fiction content guidelines
-        - ``avoidance`` — avoidance patterns reference
-        """
-        lite_path = BUNDLED_ROOT / "meta" / "en" / "system.lite.md"
-        if not lite_path.is_file():
-            pytest.skip(f"Lite meta-prompt not found at {lite_path}")
-
-        text = lite_path.read_text(encoding="utf-8")
-        lines = text.splitlines()
-        _metadata, content_lines = parse_frontmatter(lines)
-        content = "\n".join(content_lines).lower()
-
-        checks: list[tuple[str, str, list[str]]] = [
-            ("fiction guidelines", "fiction or narrative", ["fiction", "narrative"]),
-            ("avoidance patterns", "avoidance", ["avoidance"]),
-        ]
-
-        failures: list[str] = []
-        for category, description, keywords in checks:
-            if not any(kw in content for kw in keywords):
-                failures.append(f"{category}: expected '{description}' in lite meta-prompt")
-
-        assert not failures, "Lite meta-prompt is missing essential content:\n" + "\n".join(
-            f"  - {f}" for f in failures
-        )
 
 
 # ---------------------------------------------------------------------------

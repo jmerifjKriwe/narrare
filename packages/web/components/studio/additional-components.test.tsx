@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AnalysisPanel } from "./AnalysisPanel";
 import { BlockControls } from "./BlockControls";
 import { CommandPalette } from "./editor/CommandPalette";
 import { WorldBuilding } from "./WorldBuilding";
@@ -39,18 +38,6 @@ const mockCommandState = {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
-
-describe("AnalysisPanel", () => {
-  describe("rendering", () => {
-    it("renders analysis panel component", async () => {
-      render(<AnalysisPanel novelId="novel-1" />);
-
-      await waitFor(() => {
-        expect(document.querySelector("div")).toBeInTheDocument();
-      });
-    });
-  });
-});
 
 describe("BlockControls", () => {
   beforeEach(() => {

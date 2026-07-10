@@ -28,12 +28,6 @@ _I18N_SKIP_SUBPATHS: frozenset[str] = frozenset(
     }
 )
 
-_I18N_SKIP_FILES: frozenset[str] = frozenset(
-    {
-        "system.lite.md",  # EN-only documented
-    }
-)
-
 _REQUIRED_LANGS: tuple[str, ...] = ("de", "fr")
 
 # ---------------------------------------------------------------------------
@@ -59,10 +53,7 @@ def _is_localized_required_prompt(parts: tuple[str, ...]) -> bool:
         return False
 
     rel_path_str = str(Path(*parts[:lang_idx])) + "/"
-    if any(skip in rel_path_str for skip in _I18N_SKIP_SUBPATHS):
-        return False
-
-    return parts[-1] not in _I18N_SKIP_FILES
+    return not any(skip in rel_path_str for skip in _I18N_SKIP_SUBPATHS)
 
 
 def check_i18n_parity(result: CheckResult) -> None:

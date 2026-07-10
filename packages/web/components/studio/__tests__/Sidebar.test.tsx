@@ -60,7 +60,6 @@ describe("Sidebar", () => {
     expect(screen.getByText("sidebar.editor")).toBeDefined();
     expect(screen.getByText("sidebar.volumes")).toBeDefined();
     expect(screen.getByText("sidebar.worldbuilding")).toBeDefined();
-    expect(screen.getByText("sidebar.analysis")).toBeDefined();
     expect(screen.getByText("sidebar.settings")).toBeDefined();
   });
 

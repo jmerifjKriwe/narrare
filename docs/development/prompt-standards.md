@@ -314,7 +314,7 @@ review, preferences, remap
 
 ### Meta Prompt
 
-**Prompt types:** meta (system, system.lite)
+**Prompt types:** meta (system)
 
 ADR-026 splits global prompt content by responsibility: `NarrareMeta` guarantees
 identity/role guidance, `NarrareUniversalRules` guarantees fiction content,
@@ -693,7 +693,6 @@ must pass before merge.
 packages/core/narrare_core/prompts/_bundled/
 ├── meta/
 │   ├── en/system.md          ← Meta-prompt (prepended to all production prompts)
-│   ├── en/system.lite.md     ← Short variant for token-constrained contexts
 │   ├── de/system.md
 │   └── fr/system.md
 ├── universal/
