@@ -1,8 +1,13 @@
 import { HttpResponse, http } from "msw";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "@/mocks/server";
 import { setAccessToken } from "./client";
-import { createSseSuggestionFetcher } from "./suggest";
+import { SSEStreamError } from "./streaming";
+import {
+  createSseSuggestionFetcher,
+  NETWORK_RETRY_BACKOFF_MS,
+  type SuggestConnectFn,
+} from "./suggest";
 
 describe("createSseSuggestionFetcher", () => {
   const CHAPTER_ID = "chapter-42";
@@ -262,5 +267,171 @@ describe("createSseSuggestionFetcher", () => {
     // Assert — text_after is undefined (not in JSON body)
     expect(capturedBody).not.toBeNull();
     expect(capturedBody!.text_after).toBeUndefined();
+  });
+});
+
+// =============================================================================
+// Bounded network-retry (DI seam: fake connector, no real network I/O)
+//
+// The fetcher retries ONCE on transient connection-loss errors
+// (`SSEStreamError.kind === "network"`) after a short abortable backoff, and
+// never retries abort / http / parse / stream errors. These tests inject a fake
+// connector via the `connect` DI seam (ADR-030) and drive attempt outcomes
+// deterministically with fake timers.
+// =============================================================================
+
+type FakeOutcome =
+  | { type: "error"; error: SSEStreamError }
+  | { type: "success"; text?: string }
+  | { type: "hang" }; // never settles — lets tests abort mid-flight
+
+/**
+ * Builds a fake SSE connector that fires outcomes in sequence. Outcomes are
+ * delivered via microtask to approximate the real async transport. Returns the
+ * connector plus a counter for asserting attempt counts.
+ */
+function makeFakeConnect(outcomes: FakeOutcome[]): {
+  connect: SuggestConnectFn;
+  getCalls: () => number;
+} {
+  let calls = 0;
+  const connect: SuggestConnectFn = (options) => {
+    const outcome = outcomes[Math.min(calls, outcomes.length - 1)];
+    calls++;
+    queueMicrotask(() => {
+      switch (outcome.type) {
+        case "error":
+          options.onError(outcome.error);
+          break;
+        case "success":
+          if (outcome.text) options.onChunk({ text: outcome.text, is_final: true });
+          options.onComplete();
+          break;
+        case "hang":
+          // Intentionally never settles — the caller controls resolution via abort.
+          break;
+      }
+    });
+  };
+  return { connect, getCalls: () => calls };
+}
+
+describe("createSseSuggestionFetcher — bounded network retry", () => {
+  const CHAPTER_ID = "chapter-42";
+  const NETWORK_ERROR = new SSEStreamError("connection lost", "network");
+  const HTTP_500_ERROR = new SSEStreamError("HTTP 500", "http", 500);
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // (a) network error then success → resolves, exactly 2 attempts
+  it("retries once after a network error and resolves when the retry succeeds", async () => {
+    const { connect, getCalls } = makeFakeConnect([
+      { type: "error", error: NETWORK_ERROR },
+      { type: "success", text: "The old house" },
+    ]);
+    const fetcher = createSseSuggestionFetcher(CHAPTER_ID, "en", connect);
+
+    const promise = fetcher({
+      textBefore: "x",
+      textAfter: "",
+      signal: new AbortController().signal,
+    });
+
+    // Advance past the abortable backoff so the single retry attempt runs.
+    await vi.advanceTimersByTimeAsync(NETWORK_RETRY_BACKOFF_MS + 10);
+    const result = await promise;
+
+    expect(result).toBe("The old house");
+    expect(getCalls()).toBe(2);
+  });
+
+  // (b) non-network error → rejects immediately, exactly 1 attempt
+  it("does not retry on an HTTP error and rejects immediately", async () => {
+    const { connect, getCalls } = makeFakeConnect([{ type: "error", error: HTTP_500_ERROR }]);
+    const fetcher = createSseSuggestionFetcher(CHAPTER_ID, "en", connect);
+
+    await expect(
+      fetcher({
+        textBefore: "x",
+        textAfter: "",
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow("HTTP 500");
+
+    expect(getCalls()).toBe(1);
+  });
+
+  // (c) abort is not retried → rejects with AbortError, no extra attempt
+  it("does not retry when the caller aborts mid-flight and rejects with AbortError", async () => {
+    const { connect, getCalls } = makeFakeConnect([{ type: "hang" }]);
+    const fetcher = createSseSuggestionFetcher(CHAPTER_ID, "en", connect);
+    const controller = new AbortController();
+
+    const promise = fetcher({
+      textBefore: "x",
+      textAfter: "",
+      signal: controller.signal,
+    });
+
+    // Let attempt 0 start (flush the connect microtask), then abort.
+    await vi.advanceTimersByTimeAsync(0);
+    controller.abort();
+
+    await expect(promise).rejects.toThrow("Aborted");
+    expect(getCalls()).toBe(1);
+  });
+
+  // (d) both attempts fail with a network error → rejects, exactly 2 attempts
+  it("does not retry more than once when both attempts fail with a network error", async () => {
+    const { connect, getCalls } = makeFakeConnect([
+      { type: "error", error: NETWORK_ERROR },
+      { type: "error", error: NETWORK_ERROR },
+    ]);
+    const fetcher = createSseSuggestionFetcher(CHAPTER_ID, "en", connect);
+
+    const promise = fetcher({
+      textBefore: "x",
+      textAfter: "",
+      signal: new AbortController().signal,
+    });
+    // Attach the rejection handler BEFORE flushing timers: the promise rejects
+    // while timers advance, and attaching the handler first avoids an
+    // unhandled-rejection race (the promise is never left without a handler).
+    const assertion = expect(promise).rejects.toThrow("connection lost");
+
+    await vi.advanceTimersByTimeAsync(NETWORK_RETRY_BACKOFF_MS + 10);
+    await assertion;
+
+    expect(getCalls()).toBe(2);
+  });
+
+  // (e) abort during backoff stops the retry → rejects with AbortError
+  it("stops the retry and rejects with AbortError when the signal aborts during backoff", async () => {
+    const { connect, getCalls } = makeFakeConnect([
+      { type: "error", error: NETWORK_ERROR },
+      { type: "success", text: "should-not-happen" },
+    ]);
+    const fetcher = createSseSuggestionFetcher(CHAPTER_ID, "en", connect);
+    const controller = new AbortController();
+
+    const promise = fetcher({
+      textBefore: "x",
+      textAfter: "",
+      signal: controller.signal,
+    });
+
+    // Flush attempt 0 (network error) so the fetcher enters the backoff wait,
+    // then abort before the backoff elapses.
+    await vi.advanceTimersByTimeAsync(0);
+    controller.abort();
+
+    await expect(promise).rejects.toThrow("Aborted");
+    expect(getCalls()).toBe(1);
   });
 });
