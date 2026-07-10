@@ -414,3 +414,39 @@ Aktuelle AI-Unterstützung ist bereits breit (Inline-Suggest, Co-Author, Rewrite
 - [ ] Duplikate entweder konsolidiert oder als dokumentierte Aliasse markiert
 - [ ] Navigation/Doku für Agent-Autoren, welcher Skill wo zu finden ist
 **Geschätzter Aufwand:** S
+
+---
+
+## Beobachtungen ohne Aufgabe
+
+Die folgenden im Review-Prosa beschriebenen Punkte wurden bei der Remediation
+getriagert und bewusst *nicht* in Aufgaben überführt (Finding-Lifecycle:
+`accepted_risk` / verified). Jeder Eintrag nennt den Grund.
+
+- **Agent-Klassen-Versionierung (§3).** Keine separate Versionierung der
+  Agent-Klassen (nur der Prompts). *Accepted Risk (reason: vorwärtsgerichtete
+  Risiko-Betrachtung, kein aktueller Bruch; korreliert mit dem Cross-Agent-
+  Kontext-Design in AUFG-03-06).* Triage-Datum: 2026-07-10.
+- **Vorab-Auswahl der Interview-Tiefe (§4).** Nutzer kann nicht zwischen kurzem
+  (3-Fragen) und tiefem (10-Fragen) Interview wählen; die Tiefe wird AI-gesteuert
+  bestimmt. *Accepted Risk (reason: bewusstes UX-Design, Feature-Request, kein
+  Defekt — aktuelles Verhalten ist intentional).* Triage-Datum: 2026-07-10.
+- **Ghost-Text-i18n-Limitation (§8).** Die TipTap-Extension läuft außerhalb des
+  React-Lifecycle → kein i18n-Zugang, Fehler werden als „silent dismissal"
+  gehandhabt. *Accepted Risk (reason: bereits in §20 dokumentiert; strukturelle
+  TipTap-Bedingung ohne Behebungs-Hebel innerhalb des aktuellen Extension-Modells).*
+  Triage-Datum: 2026-07-10.
+- **Kein Agent-Hook-Mechanismus (§2).** Enforcement läuft über Git-Hooks (pre-
+  commit) und CI, nicht über Agent-Hooks in `.opencode/`. *Accepted Risk (reason:
+  laut Review-Text „akzeptabel"; keine Current-Violation, bestehende Git/CI-Gates
+  decken das Enforcement ab).* Triage-Datum: 2026-07-10.
+- **KB-Interview-Prompt-Quality (§4).** Der Audit-Text vermerkt „nicht im Detail
+  geprüft". Verifikation am 2026-07-10 an
+  `packages/core/narrare_core/prompts/_bundled/kb/en/interview/system.md`: Der
+  Prompt erfüllt die Quality-Gates — Do-NOT-Liste (6 Einträge, ≥4 gefordert),
+  Output-Format mit JSON-Schema, Injection-Defense via
+  `<user_provided_data>`/`{{world_context}}`, `{{avoidance_patterns}}`,
+  Quality-Rules-Sektion. *Verified-OK — keine Aufgabe erforderlich.*
+
+MCP/A2A (§5/§6) bleiben unbetaskt, da sie über die offenen Architecture-Questions
+Q-001 (MCP-Auth) bzw. Q-002 (A2A-Streaming) getrackt sind.
