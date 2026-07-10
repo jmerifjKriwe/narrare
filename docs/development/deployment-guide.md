@@ -793,4 +793,24 @@ for the planned verification command.
 - Langfuse is removed from the core runtime; Logfire is not used for core observability
 - Production should leave `NARRARE_OTEL_INCLUDE_CONTENT=false` unless prompt/completion capture is explicitly approved
 
+## CI Environment Notes
+
+### PostgreSQL "root" Role Connection Errors (GitHub Actions)
+
+When running CI workflows with PostgreSQL service containers (e.g., `pgvector/pgvector:pg17`),
+the CI log may show periodic `FATAL: role "root" does not exist` errors every 5 seconds
+throughout the job duration.
+
+**Root cause:** This is infrastructure-level behavior from the GitHub Actions runner / Docker
+daemon checking service container connectivity. The system probes PostgreSQL with a default
+`root` user — not `narrare` as configured in the workflow's `POSTGRES_USER` env var.
+
+**Impact:** None. These are authentication failures at the Docker network level, not from
+any application code. Our services always use `narrare:narrare@localhost:5432/narrare_test`
+(via `DATABASE_URL` env var). The errors are innocuous noise.
+
+**Not fixable from application code.** If the noise is problematic, consider adding
+`client_min_messages=error` to the Postgres container's startup, or suppressing the warnings
+in the CI log viewer via log filters.
+
 > Maintained by: Deployment Agent
