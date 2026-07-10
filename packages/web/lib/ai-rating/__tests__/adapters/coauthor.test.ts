@@ -55,4 +55,14 @@ describe("coAuthorRatingAdapter", () => {
     if (vm === null) throw new Error("expected rating view model");
     expect(vm.chapterId).toBeNull();
   });
+
+  it("returns null for an empty source id (whitespace)", () => {
+    const vm = coAuthorRatingAdapter({
+      change: { ...change, id: "  " },
+      projectId: "proj-1",
+      chapterId: null,
+      action: "accept",
+    });
+    expect(vm).toBeNull();
+  });
 });

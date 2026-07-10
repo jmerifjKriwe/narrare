@@ -90,4 +90,22 @@ describe("usePanelFocus", () => {
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledOnce();
   });
+
+  it("does not crash when panelRef.current is null", () => {
+    const onClose = vi.fn();
+    renderHook(() => {
+      const ref = useRef<HTMLElement | null>(null);
+      usePanelFocus({ open: true, panelRef: ref, onClose });
+    });
+    // Active element should not have changed (no focusable panel element)
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("does not fire onClose on non-Escape keys while open", () => {
+    const { onClose } = setup(true);
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    });
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

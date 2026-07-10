@@ -65,6 +65,21 @@ import { useApplyExtraction, useExtractChapter } from "@/lib/hooks/useExtraction
 
 const mockedUseAIOperation = vi.mocked(useAIOperation);
 
+interface CapturedConfig {
+  execute: (signal: AbortSignal) => Promise<unknown>;
+}
+
+let capturedConfig: CapturedConfig | null = null;
+
+function setupWithCapture(overrides: Partial<UseAIOperationReturn<unknown>> = {}) {
+  const mockAiOp = createDefaultMockAiOp(overrides);
+  mockedUseAIOperation.mockImplementation((config: any) => {
+    capturedConfig = { execute: config.execute };
+    return mockAiOp;
+  });
+  return mockAiOp;
+}
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -275,5 +290,46 @@ describe("useApplyExtraction", () => {
 
     expect(result.current.isError).toBe(true);
     expect(result.current.error?.message).toBe("Apply failed");
+  });
+
+  it("throws on execute when no items were provided", async () => {
+    setupWithCapture();
+    renderHook(() => useApplyExtraction("novel-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await expect(capturedConfig!.execute(new AbortController().signal)).rejects.toThrow(
+      "No items to apply",
+    );
+  });
+
+  it("proceeds past guard on execute when items are set via mutate", async () => {
+    setupWithCapture();
+    const { result } = renderHook(() => useApplyExtraction("novel-1"), {
+      wrapper: createWrapper(),
+    });
+
+    const items = [
+      {
+        item_type: "new_entity" as const,
+        name: "Anna Schmidt",
+        entity_type: "character",
+        proposed_content: { role: "Protagonist" },
+        target_entity_id: null,
+        relationship_type: null,
+        related_entity_name: null,
+        source_text: "She walked through the old archive.",
+      },
+    ];
+    result.current.mutate(items);
+
+    let err: unknown = null;
+    try {
+      await capturedConfig!.execute(new AbortController().signal);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).not.toEqual(new Error("No items to apply"));
+    expect(err).not.toBeNull();
   });
 });

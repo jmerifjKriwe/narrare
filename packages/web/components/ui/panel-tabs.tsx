@@ -65,6 +65,7 @@ export function PanelTabs({ tabs, value, onValueChange, ariaLabel }: PanelTabsPr
             <button
               key={tab.id}
               type="button"
+              data-testid={`panel-tab-${tab.id}`}
               role="tab"
               id={`${baseId}-tab-${tab.id}`}
               aria-controls={`${baseId}-panel-${tab.id}`}
@@ -94,6 +95,7 @@ export function PanelTabs({ tabs, value, onValueChange, ariaLabel }: PanelTabsPr
       */}
       <div
         role="tabpanel"
+        data-testid="panel-tabpanel"
         id={`${baseId}-panel-${active.id}`}
         aria-labelledby={`${baseId}-tab-${active.id}`}
         className="min-h-0 flex-1 overflow-auto"

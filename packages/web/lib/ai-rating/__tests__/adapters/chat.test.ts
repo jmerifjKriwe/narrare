@@ -35,4 +35,14 @@ describe("chatRatingAdapter", () => {
     if (vm === null) throw new Error("expected rating view model");
     expect(vm.action).toBe("reject");
   });
+
+  it("returns null for an empty messageId", () => {
+    const vm = chatRatingAdapter({
+      messageId: "  ",
+      prose: "Some prose.",
+      projectId: "proj-1",
+      action: "accept",
+    });
+    expect(vm).toBeNull();
+  });
 });

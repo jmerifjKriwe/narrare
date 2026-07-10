@@ -24,7 +24,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html", "lcov"],
       include: ["components/**", "lib/**"],
-      exclude: ["**/*.d.ts", "**/node_modules/**", "types/**"],
+      exclude: ["**/*.d.ts", "**/node_modules/**", "types/**", "**/*.md"],
       thresholds: {
         // Overall thresholds
         global: {

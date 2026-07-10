@@ -190,6 +190,42 @@ describe("useCharacterVoice", () => {
     expect(result.current.results).toBeNull();
   });
 
+  it("does not overwrite error state when onComplete fires after onError", async () => {
+    const { result } = renderHook(() => useCharacterVoice());
+
+    await act(async () => {
+      result.current.run("novel-1");
+    });
+
+    const handlers = handlersOf();
+    await act(async () => {
+      handlers.onError?.(new Error("stream error"));
+      handlers.onComplete();
+    });
+
+    expect(result.current.isError).toBe(true);
+    expect(result.current.isComplete).toBe(false);
+  });
+
+  it("does not overwrite complete state when onError fires after onComplete", async () => {
+    const { result } = renderHook(() => useCharacterVoice());
+
+    await act(async () => {
+      result.current.run("novel-1");
+    });
+
+    const handlers = handlersOf();
+    await act(async () => {
+      handlers.onResult(resultElena);
+      handlers.onComplete();
+      handlers.onError?.(new Error("late error"));
+    });
+
+    expect(result.current.isComplete).toBe(true);
+    expect(result.current.isError).toBe(false);
+    expect(result.current.results).toHaveLength(1);
+  });
+
   it("cancel flows through useAIOperation (no manual AbortController) → idle + aborted signal", async () => {
     const { result } = renderHook(() => useCharacterVoice());
 

@@ -567,7 +567,7 @@ jobs:
         run: |
           start_time=$(date +%s)
           trap 'end_time=$(date +%s); echo "duration=$((end_time - start_time))" >> "$GITHUB_OUTPUT"' EXIT
-          cd packages/web && pnpm test
+          cd packages/web && pnpm test:coverage
 
       # NOTE: 307 test files, 2518 tests. Per-file overhead dominates
       # (~90% of time). Consolidating test files is the only path to <120s.

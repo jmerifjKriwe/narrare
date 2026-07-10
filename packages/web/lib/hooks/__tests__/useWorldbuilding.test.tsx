@@ -65,6 +65,21 @@ import { useWorldbuildingAnalyze, useWorldbuildingApply } from "@/lib/hooks/useW
 
 const mockedUseAIOperation = vi.mocked(useAIOperation);
 
+interface CapturedConfig {
+  execute: (signal: AbortSignal) => Promise<unknown>;
+}
+
+let capturedConfig: CapturedConfig | null = null;
+
+function setupWithCapture(overrides: Partial<UseAIOperationReturn<unknown>> = {}) {
+  const mockAiOp = createDefaultMockAiOp(overrides);
+  mockedUseAIOperation.mockImplementation((config: any) => {
+    capturedConfig = { execute: config.execute };
+    return mockAiOp;
+  });
+  return mockAiOp;
+}
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -267,5 +282,36 @@ describe("useWorldbuildingApply", () => {
 
     expect(result.current.isError).toBe(true);
     expect(result.current.error?.message).toBe("Apply failed");
+  });
+
+  it("throws on execute when no request body was provided", async () => {
+    setupWithCapture();
+    renderHook(() => useWorldbuildingApply("novel-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await expect(capturedConfig!.execute(new AbortController().signal)).rejects.toThrow(
+      "No request body provided",
+    );
+  });
+
+  it("proceeds past guard on execute when request body is set via mutate", async () => {
+    setupWithCapture();
+    const { result } = renderHook(() => useWorldbuildingApply("novel-1"), {
+      wrapper: createWrapper(),
+    });
+
+    const body = { finding_indices: [0], analysis: mockAnalysisResponse };
+    result.current.mutate(body);
+
+    // Should not throw "No request body" — instead throws network error
+    let err: unknown = null;
+    try {
+      await capturedConfig!.execute(new AbortController().signal);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).not.toEqual(new Error("No request body provided"));
+    expect(err).not.toBeNull();
   });
 });

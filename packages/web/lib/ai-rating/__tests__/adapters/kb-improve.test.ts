@@ -46,4 +46,13 @@ describe("kbImproveRatingAdapter", () => {
     if (vm === null) throw new Error("expected rating view model");
     expect(vm.action).toBe("reject");
   });
+
+  it("returns null for an empty description (whitespace only)", () => {
+    const vm = kbImproveRatingAdapter({
+      suggestion: { ...suggestion, description: "   " },
+      projectId: "proj-1",
+      action: "accept",
+    });
+    expect(vm).toBeNull();
+  });
 });

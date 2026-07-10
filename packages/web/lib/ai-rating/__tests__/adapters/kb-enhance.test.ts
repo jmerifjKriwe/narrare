@@ -43,4 +43,14 @@ describe("kbEnhanceRatingAdapter", () => {
     if (vm === null) throw new Error("expected rating view model");
     expect(vm.action).toBe("reject");
   });
+
+  it("returns null for an empty field_key", () => {
+    const vm = kbEnhanceRatingAdapter({
+      enhancement: { ...enhancement, field_key: "  " },
+      projectId: "proj-1",
+      fieldLabel: "Role",
+      action: "accept",
+    });
+    expect(vm).toBeNull();
+  });
 });

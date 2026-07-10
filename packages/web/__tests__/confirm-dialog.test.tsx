@@ -49,16 +49,16 @@ describe("ConfirmDialog", () => {
 
   it("calls onConfirm when confirm button is clicked", () => {
     render(<ConfirmDialog {...defaultProps} />);
-    // next-intl mock returns the key — "accept" is the default confirmLabel
-    fireEvent.click(screen.getByText("accept"));
+    // Target by stable testid — immune to i18n mock return values
+    fireEvent.click(screen.getByTestId("confirm-dialog-confirm"));
     expect(defaultProps.onConfirm).toHaveBeenCalledOnce();
   });
 
   it("calls onOpenChange(false) when cancel button is clicked", () => {
     const onOpenChange = vi.fn();
     render(<ConfirmDialog {...defaultProps} onOpenChange={onOpenChange} />);
-    // next-intl mock returns the key — "cancel" is the default cancelLabel
-    fireEvent.click(screen.getByText("cancel"));
+    // Target by stable testid — immune to i18n mock return values
+    fireEvent.click(screen.getByTestId("confirm-dialog-cancel"));
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -74,14 +74,14 @@ describe("ConfirmDialog", () => {
 
   it("applies destructive variant styling to confirm button", () => {
     render(<ConfirmDialog {...defaultProps} variant="destructive" />);
-    const confirmBtn = screen.getByText("accept");
+    const confirmBtn = screen.getByTestId("confirm-dialog-confirm");
     // The destructive variant adds bg-destructive class
     expect(confirmBtn.className).toContain("bg-destructive");
   });
 
   it("applies default variant styling to confirm button", () => {
     render(<ConfirmDialog {...defaultProps} variant="default" />);
-    const confirmBtn = screen.getByText("accept");
+    const confirmBtn = screen.getByTestId("confirm-dialog-confirm");
     expect(confirmBtn.className).toContain("bg-primary");
   });
 });

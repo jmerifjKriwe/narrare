@@ -10,6 +10,8 @@
  */
 
 import {
+  getPresetOutputLimit,
+  isCustomTokenProfile,
   PROFILE_OUTPUT_LIMITS,
   TOKEN_OUTPUT_ABSOLUTE_MAX,
   TOKEN_OUTPUT_UX_RECOMMENDED_MAX,
@@ -60,5 +62,33 @@ describe("frontend token-profile contract (CR-08 P1)", () => {
 
   it("exposes the UX recommended slider range (16000)", () => {
     expect(TOKEN_OUTPUT_UX_RECOMMENDED_MAX).toBe(16000);
+  });
+
+  describe("getPresetOutputLimit", () => {
+    it("returns null for null/undefined input", () => {
+      expect(getPresetOutputLimit(null)).toBeNull();
+      expect(getPresetOutputLimit(undefined)).toBeNull();
+    });
+
+    it("returns the output limit for known preset profiles", () => {
+      expect(getPresetOutputLimit("quick")).toBe(500);
+      expect(getPresetOutputLimit("balanced")).toBe(2000);
+      expect(getPresetOutputLimit("long_texts")).toBe(8000);
+      expect(getPresetOutputLimit("comprehensive")).toBe(16000);
+    });
+
+    it("returns null for custom or unknown profiles", () => {
+      expect(getPresetOutputLimit("custom")).toBeNull();
+      expect(getPresetOutputLimit("nonexistent")).toBeNull();
+    });
+  });
+
+  describe("isCustomTokenProfile", () => {
+    it("returns true only for the 'custom' profile", () => {
+      expect(isCustomTokenProfile("custom")).toBe(true);
+      expect(isCustomTokenProfile("quick")).toBe(false);
+      expect(isCustomTokenProfile(null)).toBe(false);
+      expect(isCustomTokenProfile(undefined)).toBe(false);
+    });
   });
 });

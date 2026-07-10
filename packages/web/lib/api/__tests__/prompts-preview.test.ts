@@ -10,7 +10,7 @@
 import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setAccessToken } from "@/lib/api/client";
-import { promptsApi, streamPromptLiveTest } from "@/lib/api/prompts";
+import { promptsApi, streamPromptLiveTest, templatesApi } from "@/lib/api/prompts";
 import { server } from "@/mocks/server";
 
 function sseStream(lines: string[]): ReadableStream<Uint8Array> {
@@ -305,5 +305,255 @@ describe("promptsApi.startLiveTest", () => {
 
     expect(response).toBeInstanceOf(Response);
     expect(response.headers.get("content-type")).toContain("text/event-stream");
+  });
+});
+
+describe("promptsApi REST methods", () => {
+  beforeEach(() => {
+    setAccessToken("test-access-token");
+  });
+
+  it("list returns prompts filtered by category", async () => {
+    server.use(
+      http.get("*/api/v1/prompts", ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get("category")).toBe("writing");
+        return HttpResponse.json([{ prompt_id: "writing/en/new_chapter", category: "writing" }]);
+      }),
+    );
+    const result = await promptsApi.list("writing");
+    expect(result).toHaveLength(1);
+    expect(result[0].prompt_id).toBe("writing/en/new_chapter");
+  });
+
+  it("list returns all prompts when no category given", async () => {
+    server.use(
+      http.get("*/api/v1/prompts", ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.search).toBe("");
+        return HttpResponse.json([
+          { prompt_id: "writing/en/new_chapter" },
+          { prompt_id: "analysis/en/beta_reader" },
+        ]);
+      }),
+    );
+    const result = await promptsApi.list();
+    expect(result).toHaveLength(2);
+  });
+
+  it("get returns prompt detail", async () => {
+    server.use(
+      http.get("*/api/v1/prompts/writing/en/new_chapter", () =>
+        HttpResponse.json({ id: "writing/en/new_chapter", content: "You are an author." }),
+      ),
+    );
+    const result = await promptsApi.get("writing/en/new_chapter");
+    expect(result.content).toBe("You are an author.");
+  });
+
+  it("save PUTs content and returns void", async () => {
+    server.use(
+      http.put("*/api/v1/prompts/writing/en/new_chapter", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        expect(body.content).toBe("New content");
+        return HttpResponse.json(null, { status: 204 });
+      }),
+    );
+    await expect(promptsApi.save("writing/en/new_chapter", "New content")).resolves.toBeUndefined();
+  });
+
+  it("reset deletes the override", async () => {
+    server.use(
+      http.delete("*/api/v1/prompts/writing/en/new_chapter/override", () =>
+        HttpResponse.json(null, { status: 204 }),
+      ),
+    );
+    await expect(promptsApi.reset("writing/en/new_chapter")).resolves.toBeUndefined();
+  });
+
+  it("cascade returns cascade paths", async () => {
+    server.use(
+      http.get("*/api/v1/prompts/writing/en/new_chapter/cascade", () =>
+        HttpResponse.json([{ level: "user", path: "override", exists: true }]),
+      ),
+    );
+    const result = await promptsApi.cascade("writing/en/new_chapter");
+    expect(result).toHaveLength(1);
+    expect(result[0].level).toBe("user");
+  });
+
+  it("updates returns available prompt updates", async () => {
+    server.use(
+      http.get("*/api/v1/prompts/updates", () =>
+        HttpResponse.json([
+          {
+            prompt_id: "writing/en/new_chapter",
+            override_version: "1",
+            current_bundled_version: "2",
+          },
+        ]),
+      ),
+    );
+    const result = await promptsApi.updates();
+    expect(result).toHaveLength(1);
+    expect(result[0].prompt_id).toBe("writing/en/new_chapter");
+  });
+
+  it("diff returns prompt diff", async () => {
+    server.use(
+      http.get("*/api/v1/prompts/writing/en/new_chapter/diff", () =>
+        HttpResponse.json({
+          prompt_id: "writing/en/new_chapter",
+          override_content: "old",
+          bundled_content: "new",
+        }),
+      ),
+    );
+    const result = await promptsApi.diff("writing/en/new_chapter");
+    expect(result.override_content).toBe("old");
+    expect(result.bundled_content).toBe("new");
+  });
+});
+
+describe("templatesApi", () => {
+  beforeEach(() => {
+    setAccessToken("test-access-token");
+  });
+
+  it("list returns KB templates for a novel", async () => {
+    server.use(
+      http.get("*/api/v1/novels/novel-1/kb/templates", () =>
+        HttpResponse.json([{ entity_type: "character", version: 1 }]),
+      ),
+    );
+    const result = await templatesApi.list("novel-1");
+    expect(result).toHaveLength(1);
+  });
+
+  it("get returns template detail", async () => {
+    server.use(
+      http.get("*/api/v1/novels/novel-1/kb/templates/character", () =>
+        HttpResponse.json({ entity_type: "character", content: "Template for characters" }),
+      ),
+    );
+    const result = await templatesApi.get("novel-1", "character");
+    expect(result.content).toBe("Template for characters");
+  });
+
+  it("save POSTs template content", async () => {
+    server.use(
+      http.post("*/api/v1/novels/novel-1/kb/templates/character", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        expect(body.content).toBe("Updated template");
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    await expect(
+      templatesApi.save("novel-1", "character", "Updated template"),
+    ).resolves.toBeUndefined();
+  });
+
+  it("save POSTs with based_on_version", async () => {
+    server.use(
+      http.post("*/api/v1/novels/novel-1/kb/templates/character", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        expect(body.based_on_version).toBe("v2");
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    await expect(
+      templatesApi.save("novel-1", "character", "Template", "v2"),
+    ).resolves.toBeUndefined();
+  });
+
+  it("reset DELETES the template", async () => {
+    server.use(
+      http.delete("*/api/v1/novels/novel-1/kb/templates/character", () =>
+        HttpResponse.json(null, { status: 204 }),
+      ),
+    );
+    await expect(templatesApi.reset("novel-1", "character")).resolves.toBeUndefined();
+  });
+
+  it("updates returns template updates", async () => {
+    server.use(
+      http.get("*/api/v1/novels/novel-1/kb/templates/updates", () =>
+        HttpResponse.json([{ entity_type: "character", has_update: true }]),
+      ),
+    );
+    const result = await templatesApi.updates("novel-1");
+    expect(result).toHaveLength(1);
+  });
+
+  it("diff returns template diff", async () => {
+    server.use(
+      http.get("*/api/v1/novels/novel-1/kb/templates/character/diff", () =>
+        HttpResponse.json({
+          entity_type: "character",
+          override_content: "old",
+          bundled_content: "new",
+        }),
+      ),
+    );
+    const result = await templatesApi.diff("novel-1", "character");
+    expect(result.override_content).toBe("old");
+    expect(result.bundled_content).toBe("new");
+  });
+});
+
+describe("streamPromptLiveTest edge cases", () => {
+  beforeEach(() => {
+    setAccessToken("test-access-token");
+  });
+
+  it("does not double-fire onComplete when transport calls complete twice", async () => {
+    const onComplete = vi.fn();
+    const onChunk = vi.fn();
+
+    server.use(
+      http.post(
+        "*/api/v1/prompts/writing/en/new_chapter/live-test",
+        () =>
+          new HttpResponse(sseStream(['data: {"text":"hello","is_final":true}', "data: [DONE]"]), {
+            headers: { "Content-Type": "text/event-stream" },
+          }),
+      ),
+    );
+
+    await streamPromptLiveTest(
+      "writing/en/new_chapter",
+      { variables: {}, language: "en", user_prompt: "", acknowledge_token_cost: true },
+      { onMeta: vi.fn(), onChunk, onComplete, onError: vi.fn() },
+    );
+
+    expect(onComplete).toHaveBeenCalledOnce();
+  });
+
+  it("calls onChunk for text events without meta fields", async () => {
+    const chunks: string[] = [];
+
+    server.use(
+      http.post(
+        "*/api/v1/prompts/writing/en/new_chapter/live-test",
+        () =>
+          new HttpResponse(
+            sseStream(['data: {"text":"chunk1"}', 'data: {"text":"chunk2"}', "data: [DONE]"]),
+            { headers: { "Content-Type": "text/event-stream" } },
+          ),
+      ),
+    );
+
+    await streamPromptLiveTest(
+      "writing/en/new_chapter",
+      { variables: {}, language: "en", user_prompt: "", acknowledge_token_cost: true },
+      {
+        onMeta: vi.fn(),
+        onChunk: (text) => chunks.push(text),
+        onComplete: vi.fn(),
+        onError: vi.fn(),
+      },
+    );
+
+    expect(chunks).toEqual(["chunk1", "chunk2"]);
   });
 });

@@ -46,4 +46,22 @@ describe("kbFieldSuggestRatingAdapter", () => {
     if (vm === null) throw new Error("expected rating view model");
     expect(vm.action).toBe("reject");
   });
+
+  it("returns null for an empty field_key", () => {
+    const vm = kbFieldSuggestRatingAdapter({
+      field: { ...field, field_key: "  " },
+      projectId: "proj-1",
+      action: "accept",
+    });
+    expect(vm).toBeNull();
+  });
+
+  it("falls through to empty string when ai_suggested_value is undefined", () => {
+    const vm = kbFieldSuggestRatingAdapter({
+      field: { ...field, ai_suggested_value: undefined },
+      projectId: "proj-1",
+      action: "accept",
+    });
+    expect(vm).toBeNull();
+  });
 });

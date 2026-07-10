@@ -23,7 +23,7 @@ import {
   type ConsistencyStreamEvent,
   streamConsistencyCheck,
 } from "@/lib/api/consistency-stream";
-import { connectSSE, type SSEOptions } from "@/lib/api/streaming";
+import { connectSSE, type SSEOptions, SSEStreamError } from "@/lib/api/streaming";
 
 const mockedConnectSSE = vi.mocked(connectSSE);
 
@@ -262,5 +262,69 @@ describe("streamConsistencyCheck", () => {
 
     const { options } = capture();
     expect(options.signal).toBe(abortController.signal);
+  });
+
+  it("calls handlers.onComplete when transport completes without a result event", async () => {
+    const onComplete = vi.fn();
+
+    await streamConsistencyCheck("novel-1", defaultRequest, {
+      onStage: vi.fn(),
+      onComplete,
+      onError: vi.fn(),
+    });
+
+    const { options } = capture();
+    // Transport onComplete is called before any result event
+    options.onComplete?.(undefined);
+
+    expect(onComplete).toHaveBeenCalledOnce();
+  });
+
+  it("does not forward errors once the stream has completed", async () => {
+    const onError = vi.fn();
+    const onComplete = vi.fn();
+
+    await streamConsistencyCheck("novel-1", defaultRequest, {
+      onStage: vi.fn(),
+      onComplete,
+      onError,
+    });
+
+    const { options, onChunk } = capture();
+    // First fire a result event (completes the stream)
+    onChunk({ type: "result", novel_id: "novel-1", issues: [] });
+    // Then transport reports an error - should be suppressed
+    options.onError?.(new SSEStreamError("late transport error", "stream"));
+
+    expect(onComplete).toHaveBeenCalledOnce();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("does not fail when onStage callback is not provided", async () => {
+    await streamConsistencyCheck("novel-1", defaultRequest, {
+      onComplete: vi.fn(),
+      onError: vi.fn(),
+    });
+
+    const { onChunk } = capture();
+    // Should not throw even without onStage
+    onChunk({
+      type: "stage",
+      stage: "extracting_facts",
+      status: "start",
+      progress: 0,
+      message: "",
+    });
+  });
+
+  it("does not fail when onError callback is not provided", async () => {
+    await streamConsistencyCheck("novel-1", defaultRequest, {
+      onStage: vi.fn(),
+      onComplete: vi.fn(),
+    });
+
+    const { options } = capture();
+    // Should not throw even without onError
+    options.onError?.(new SSEStreamError("transport error", "stream"));
   });
 });

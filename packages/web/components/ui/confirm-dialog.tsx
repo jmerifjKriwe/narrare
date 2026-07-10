@@ -64,6 +64,7 @@ export function ConfirmDialog({
             <AlertDialog.Cancel asChild>
               <button
                 type="button"
+                data-testid="confirm-dialog-cancel"
                 className="rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-accent transition-colors"
               >
                 {cancelText}
@@ -72,6 +73,7 @@ export function ConfirmDialog({
             <AlertDialog.Action asChild>
               <button
                 type="button"
+                data-testid="confirm-dialog-confirm"
                 onClick={onConfirm}
                 className={cn(
                   "rounded-md px-4 py-2 text-sm font-medium shadow-sm transition-opacity hover:opacity-90",

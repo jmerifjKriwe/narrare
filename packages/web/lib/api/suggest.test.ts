@@ -65,7 +65,24 @@ describe("createSseSuggestionFetcher", () => {
     expect(capturedBody!.language).toBe("en");
   });
 
-  // --- 2. Abort signal: rejects with AbortError ------------------------------
+  // --- 2. Pre-aborted signal: rejects immediately ----------------------------
+
+  it("should reject immediately when signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort(); // Pre-abort the signal before calling fetcher
+
+    const fetcher = createSseSuggestionFetcher(CHAPTER_ID);
+
+    await expect(
+      fetcher({
+        textBefore: "test",
+        textAfter: "",
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow("Aborted");
+  });
+
+  // --- 3. Abort signal during stream: rejects with AbortError -----------------
 
   it("should reject with DOMException AbortError when signal is aborted", async () => {
     // Arrange — slow SSE stream that would run for ~100ms
@@ -118,7 +135,7 @@ describe("createSseSuggestionFetcher", () => {
     expect((caughtError as DOMException).message).toBe("Aborted");
   });
 
-  // --- 3. HTTP error: rejects with error -------------------------------------
+  // --- 4. HTTP error: rejects with error -------------------------------------
 
   it("should reject with error containing status on HTTP error", async () => {
     // Arrange — server returns 500
@@ -140,7 +157,7 @@ describe("createSseSuggestionFetcher", () => {
     ).rejects.toThrow("HTTP 500");
   });
 
-  // --- 4. Empty response: resolves with empty string -------------------------
+  // --- 5. Empty response: resolves with empty string -------------------------
 
   it("should resolve with empty string when SSE sends [DONE] immediately", async () => {
     // Arrange — stream with [DONE] and no text chunks
@@ -172,7 +189,7 @@ describe("createSseSuggestionFetcher", () => {
     expect(result).toBe("");
   });
 
-  // --- 5. Language parameter: passed in request body -------------------------
+  // --- 6. Language parameter: passed in request body -------------------------
 
   it("should pass custom language parameter in request body", async () => {
     // Arrange

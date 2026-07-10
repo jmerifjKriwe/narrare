@@ -294,6 +294,98 @@ describe("streamGeneration (SSE)", () => {
     expect(chunks).toEqual([{ text: "partial" }]);
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "connection lost" }));
   });
+
+  it("calls onContextMeta when event type is context_meta", async () => {
+    const chunks: GenerationChunk[] = [];
+    const onContextMeta = vi.fn();
+
+    server.use(
+      http.get(
+        "*/api/v1/writing/generation/gen-meta/stream",
+        async () =>
+          new HttpResponse(
+            sseStream([
+              'data: {"type":"context_meta","kb_characters_count":5,"tone":"formal"}',
+              'data: {"text":"draft text","is_final":true}',
+              "data: [DONE]",
+            ]),
+            { headers: { "Content-Type": "text/event-stream" } },
+          ),
+      ),
+    );
+
+    await streamGeneration(
+      "gen-meta",
+      (chunk) => chunks.push(chunk),
+      vi.fn(),
+      vi.fn(),
+      undefined,
+      vi.fn(),
+      onContextMeta,
+    );
+
+    expect(onContextMeta).toHaveBeenCalledOnce();
+    expect(onContextMeta.mock.calls[0][0]).toMatchObject({
+      type: "context_meta",
+      kb_characters_count: 5,
+      tone: "formal",
+    });
+    // ContextMeta events should not be forwarded to onChunk
+    expect(chunks).toEqual([{ text: "draft text", is_final: true }]);
+  });
+
+  it("calls onUsage when final event has usage data", async () => {
+    const onUsage = vi.fn();
+    const chunks: GenerationChunk[] = [];
+
+    server.use(
+      http.get(
+        "*/api/v1/writing/generation/gen-usage/stream",
+        async () =>
+          new HttpResponse(
+            sseStream([
+              'data: {"text":"draft","is_final":true,"usage":{"prompt_tokens":10,"completion_tokens":20,"total_tokens":30}}',
+              "data: [DONE]",
+            ]),
+            { headers: { "Content-Type": "text/event-stream" } },
+          ),
+      ),
+    );
+
+    await streamGeneration(
+      "gen-usage",
+      (chunk) => chunks.push(chunk),
+      vi.fn(),
+      vi.fn(),
+      undefined,
+      onUsage,
+    );
+
+    expect(onUsage).toHaveBeenCalledOnce();
+    expect(onUsage).toHaveBeenCalledWith({
+      prompt_tokens: 10,
+      completion_tokens: 20,
+      total_tokens: 30,
+    });
+  });
+
+  it("does not call onUsage when final event has no usage data", async () => {
+    const onUsage = vi.fn();
+
+    server.use(
+      http.get(
+        "*/api/v1/writing/generation/gen-nousage/stream",
+        async () =>
+          new HttpResponse(sseStream(['data: {"text":"draft","is_final":true}', "data: [DONE]"]), {
+            headers: { "Content-Type": "text/event-stream" },
+          }),
+      ),
+    );
+
+    await streamGeneration("gen-nousage", vi.fn(), vi.fn(), vi.fn(), undefined, onUsage);
+
+    expect(onUsage).not.toHaveBeenCalled();
+  });
 });
 
 describe("WritingSessionSocket (WebSocket)", () => {

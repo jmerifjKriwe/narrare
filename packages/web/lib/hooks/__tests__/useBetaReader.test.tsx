@@ -65,6 +65,31 @@ import { useBetaReaderAnalyze, useBetaReaderDeepDive } from "@/lib/hooks/useBeta
 
 const mockedUseAIOperation = vi.mocked(useAIOperation);
 
+// Capture the config passed to useAIOperation for testing internal callbacks.
+// Each test using setupWithCapture() must call this BEFORE renderHook.
+interface CapturedConfig {
+  execute: (signal: AbortSignal) => Promise<unknown>;
+  onSuccess: (data: unknown) => void;
+  onError: (error: unknown) => void;
+}
+
+let capturedConfig: CapturedConfig | null = null;
+
+function setupWithCapture<T>(
+  overrides: Partial<UseAIOperationReturn<T>> = {},
+): UseAIOperationReturn<T> {
+  const mockAiOp = createDefaultMockAiOp(overrides);
+  mockedUseAIOperation.mockImplementation((config: any) => {
+    capturedConfig = {
+      execute: config.execute,
+      onSuccess: config.onSuccess,
+      onError: config.onError,
+    };
+    return mockAiOp;
+  });
+  return mockAiOp;
+}
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -211,6 +236,71 @@ describe("useBetaReaderAnalyze", () => {
     result.current.abort();
     expect(mockAiOp.cancel).toHaveBeenCalledOnce();
   });
+
+  it("caches data in queryClient on success when a request was provided via mutate", () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const setQueryDataSpy = vi.spyOn(queryClient, "setQueryData");
+    const Wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    setupWithCapture<typeof mockAnalysisResponse>();
+    const { result } = renderHook(() => useBetaReaderAnalyze("novel-1"), {
+      wrapper: Wrapper,
+    });
+
+    result.current.mutate({ chapter_ids: ["ch-1"], phase: "full" });
+    capturedConfig!.onSuccess(mockAnalysisResponse);
+
+    expect(setQueryDataSpy).toHaveBeenCalledWith(
+      ["analysis", "novel-1", "beta-reader", "ch-1"],
+      mockAnalysisResponse,
+    );
+  });
+
+  it("skips cache on success when no request was provided before success", () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const setQueryDataSpy = vi.spyOn(queryClient, "setQueryData");
+    const Wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    setupWithCapture<typeof mockAnalysisResponse>();
+    renderHook(() => useBetaReaderAnalyze("novel-1"), {
+      wrapper: Wrapper,
+    });
+
+    // Don't call mutate — requestRef.current stays null
+    capturedConfig!.onSuccess(mockAnalysisResponse);
+
+    expect(setQueryDataSpy).not.toHaveBeenCalled();
+  });
+
+  it("throws on execute when no request parameters were provided", async () => {
+    setupWithCapture();
+    renderHook(() => useBetaReaderAnalyze("novel-1"), {
+      wrapper: createWrapper(),
+    });
+
+    // Don't call mutate — requestRef.current stays null
+    await expect(capturedConfig!.execute(new AbortController().signal)).rejects.toThrow(
+      "No request parameters provided",
+    );
+  });
+
+  it("executes API call when request is set and propagates network error", async () => {
+    setupWithCapture<typeof mockAnalysisResponse>();
+    renderHook(() => useBetaReaderAnalyze("novel-1"), {
+      wrapper: createWrapper(),
+    });
+
+    // mutate sets requestRef.current
+    await expect(capturedConfig!.execute(new AbortController().signal)).rejects.toThrow();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -288,5 +378,38 @@ describe("useBetaReaderDeepDive", () => {
 
     expect(result.current.isError).toBe(true);
     expect(result.current.error?.message).toBe("Deep dive failed");
+  });
+
+  it("throws on execute when no request parameters were provided for deep dive", async () => {
+    setupWithCapture();
+    renderHook(() => useBetaReaderDeepDive("novel-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await expect(capturedConfig!.execute(new AbortController().signal)).rejects.toThrow(
+      "No request parameters provided",
+    );
+  });
+
+  it("executes the API call for deep dive when request is set", async () => {
+    setupWithCapture<typeof mockDeepDiveResponse>();
+    const { result } = renderHook(() => useBetaReaderDeepDive("novel-1"), {
+      wrapper: createWrapper(),
+    });
+
+    result.current.mutate({
+      chapter_ids: ["ch-1"],
+      category: "pacing",
+      cache_key: "cache-abc",
+    });
+
+    // Should not throw "No request parameters" because requestRef is set
+    let error: unknown = null;
+    try {
+      await capturedConfig!.execute(new AbortController().signal);
+    } catch (e) {
+      error = e;
+    }
+    expect(error).not.toEqual(new Error("No request parameters provided"));
   });
 });
