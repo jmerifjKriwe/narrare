@@ -160,12 +160,10 @@ the cross-layer spec, then route per layer in order.
 
 1. Architecture checks: `just check-architecture` or equivalent
 2. Test suite: `just test` (or layer-specific tests)
-3. Type checks: `just check-types` (pyright/mypy)
-4. Constraint checks: `just check-constraints`
-5. Lint/format: `just lint`
-6. Streaming compliance: `just check-streaming`
-7. Adoption check: `just check-adoption`
-8. Governance health: `just check-governance`
+3. Type checks: `just typecheck` (pyright)
+4. Lint/format: `just lint`
+5. Streaming compliance: `just check-streaming`
+6. Adoption check: `just check-adoption`
 
 **Gate:** All checks pass. If no → specialist must fix before commit.
 
