@@ -141,7 +141,6 @@ packages/core/narrare_core/
 │   └── _bundled/               ← Bundled prompt files (not Python)
 │       ├── meta/
 │       │   ├── en/system.md
-│       │   ├── en/system.lite.md
 │       │   └── de/system.md
 │       ├── writing/
 │       ├── kb/
