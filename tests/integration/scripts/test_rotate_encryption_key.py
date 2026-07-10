@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 from cryptography.fernet import Fernet, InvalidToken
+from sqlalchemy import delete
 
 # Ensure scripts/ is importable (project root on sys.path).
 _ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -71,6 +72,15 @@ async def _create_provider(
     return provider
 
 
+async def _clean_providers(db_session: object) -> None:
+    """Delete all UserProvider rows so the test only sees its own data.
+
+    Runs inside the db_session transaction — rolled back on teardown.
+    """
+    await db_session.execute(delete(UserProvider))  # type: ignore[attr-defined]
+    await db_session.flush()  # type: ignore[attr-defined]
+
+
 # ── Tests ────────────────────────────────────────────────────────
 
 
@@ -79,6 +89,7 @@ class TestRotateKeysIntegration:
 
     async def test_rotation_re_encrypts_with_new_key(self, db_session: object) -> None:
         """After rotation, the row decrypts with the new key, not the old."""
+        await _clean_providers(db_session)
         old_key = _generate_key()
         new_key = _generate_key()
 
@@ -103,6 +114,7 @@ class TestRotateKeysIntegration:
 
     async def test_wrong_old_key_raises_and_data_unchanged(self, db_session: object) -> None:
         """Wrong old key raises InvalidToken; the row is not modified."""
+        await _clean_providers(db_session)
         old_key = _generate_key()
         wrong_key = _generate_key()
         new_key = _generate_key()
@@ -127,6 +139,7 @@ class TestRotateKeysIntegration:
 
     async def test_dry_run_does_not_modify_data(self, db_session: object) -> None:
         """Dry run reports counts but leaves api_key_encrypted unchanged."""
+        await _clean_providers(db_session)
         old_key = _generate_key()
         new_key = _generate_key()
 
@@ -149,6 +162,7 @@ class TestRotateKeysIntegration:
 
     async def test_empty_key_rows_are_skipped(self, db_session: object) -> None:
         """Ollama providers with empty api_key_encrypted are skipped."""
+        await _clean_providers(db_session)
         old_key = _generate_key()
         new_key = _generate_key()
 
