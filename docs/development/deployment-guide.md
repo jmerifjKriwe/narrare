@@ -705,9 +705,67 @@ Required for AI provider features (multi-provider support, user API key storage)
 | Description | Fernet encryption key for encrypting user API keys at rest |
 | Generate | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 | Warning | **If this key is lost, all user API keys are unrecoverable.** Store securely and back up. |
-| Rotation | To rotate: generate new key, decrypt all keys with old key, re-encrypt with new key, update env var |
+| Rotation | Use `scripts/rotate_encryption_key.py` (see [Key Rotation](#key-rotation) below) |
 
-The key is used by `core/shared/crypto.py` to encrypt API keys before storing them in the `user_providers` table and decrypt them only when constructing a provider instance for an LLM call. Keys are never logged or returned via API.
+The key is used by `packages/core/narrare_core/crypto.py` to encrypt API keys before storing them in the `user_providers` table and decrypt them only when constructing a provider instance for an LLM call. Keys are never logged or returned via API.
+
+### Key Rotation
+
+The `scripts/rotate_encryption_key.py` CLI re-encrypts all
+`user_providers.api_key_encrypted` entries from the old Fernet key to a new
+one. It is **transactional**: either all rows are re-encrypted or none
+(the session is rolled back on error).
+
+**Pre-flight: back up your data**
+
+Before rotating, take a database backup (or at minimum a dump of the
+`user_providers` table). If the old key is lost or incorrect, the rotation
+will fail and no rows will be modified, but a backup is still strongly
+recommended.
+
+**Environment variables**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OLD_ENCRYPTION_KEY` | Yes | The current Fernet key (or prompted interactively) |
+| `NEW_ENCRYPTION_KEY` | Yes | The new Fernet key (or prompted interactively) |
+| `DATABASE_URL` | No | Async SQLAlchemy URL (default: dev DB) |
+
+Keys are read from env vars or prompted via `getpass` — they are **never**
+accepted as CLI arguments to avoid plaintext leakage in shell history.
+
+**Generate a new key:**
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+**Dry run (recommended first):**
+
+```bash
+OLD_ENCRYPTION_KEY=<old-key> \
+NEW_ENCRYPTION_KEY=<new-key> \
+python scripts/rotate_encryption_key.py --dry-run
+```
+
+The dry run prints the number of rows that would be re-encrypted, the
+number skipped (empty keys, e.g. Ollama providers), and a sample of
+provider names — without committing any changes.
+
+**Real rotation:**
+
+```bash
+OLD_ENCRYPTION_KEY=<old-key> \
+NEW_ENCRYPTION_KEY=<new-key> \
+python scripts/rotate_encryption_key.py
+```
+
+**Post-rotation step:**
+
+After the script reports success, update `NARRARE_ENCRYPTION_KEY` in your
+environment (`.env`, systemd unit, Docker Compose, etc.) to the new key
+and restart the API. Until you do this, the API will still use the old key
+and will be unable to decrypt the newly re-encrypted values.
 
 ### NARRARE_CSRF_TRUSTED_ORIGINS
 
