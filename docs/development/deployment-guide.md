@@ -318,7 +318,6 @@ INFRA-011 adds ratcheted/no-growth checks for AI-feature stabilization:
 | `just check-frontend-size` | `scripts/check_frontend_file_size.py` | Enforces/report-ratchets TypeScript/TSX RULE-04 file-size debt for touched frontend hubs. |
 | `just check-streaming` | `scripts/check_streaming_compliance.py` | Ensures backend SSE-capable AI endpoints use frontend `connectSSE()` coverage. |
 | `just check-prompts-strict` | `scripts/check_prompt_structure.py --strict` | Treats prompt structure warnings as CI-relevant failures after baseline classification. |
-| `just check-governance` | `scripts/check_governance_health.py` | Checks governance health — review-finding coverage vs AUFG lifecycle + SSOT/gate drift aggregation (ADR-047). CI-blocking. |
 
 These gates are stabilization prerequisites for lifting the ADR-027 AI feature
 freeze. Existing classified legacy debt may shrink; new WARNs, new exceptions,
