@@ -19,11 +19,24 @@ how to operate the environments.
 
 ### Python Environment Setup
 
-The project uses `uv` with workspace members (`apps/api`, `packages/core`, `packages/i18n`). To set up the Python environment:
+The project uses `uv` with workspace members (`apps/api`, `packages/core`, `packages/i18n`). Two setup paths are available:
+
+| Command | When to use | What it installs |
+|---------|-------------|------------------|
+| `just dev-setup` | Full-stack work including NLP/analysis features | Dev deps + `--extra nlp` + spaCy language models (~200 MB). ~10 min. |
+| `just dev-setup-min` | Frontend, core, or agent work (no NLP) | Dev deps only (~200 MB smaller). ~5 min. Add NLP later with `just install-nlp-models`. |
+
+Both recipes create `.env`, install pre-commit hooks, start Docker services,
+run migrations, and seed the dev user.
+
+Under the hood, the Python sync uses `uv` with the workspace members:
 
 ```bash
 # Install dev dependencies, NLP extra, and workspace member packages
 uv sync --frozen --all-packages --group dev --extra nlp
+
+# Lightweight equivalent (no NLP extra)
+uv sync --frozen --all-packages --group dev
 ```
 
 **Important:** `uv sync` alone does NOT install workspace member packages (narrare, narrare_core) in editable mode. You MUST use `--all-packages` to make workspace members importable. Without this:
@@ -359,7 +372,8 @@ All developer commands via `just`:
 
 | Category | Command | Description |
 |----------|---------|-------------|
-| **Setup** | `dev-setup` | First-time setup: install dev + NLP deps/models, create .env, run migrations |
+| **Setup** | `dev-setup` | First-time setup: install dev + NLP deps/models, create .env, run migrations (~10 min) |
+| | `dev-setup-min` | Lightweight setup: dev deps without NLP models (~200 MB smaller, ~5 min) |
 | | `generate-secret` | Generate a secure `SECRET_KEY` |
 | | `install-nlp-models` | Install spaCy language models (de, en, fr) |
 | **Development** | `dev` | Start all services (API + frontend) |
