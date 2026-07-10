@@ -773,3 +773,49 @@ Frage „ist `/metrics` erreichbar?" operations-entscheidend.
       öffentlich vs. Token-gated) ODER Docstring-Behauptung korrigieren
 - [ ] Optional: Sample-`prometheus.yml`-Scrape-Config in deployment-guide.md
 **Geschätzter Aufwand:** S
+
+---
+
+## Angenommene Risiken (Accepted Risks)
+
+> Beobachtungen aus diesem Review, die bewusst als akzeptierte Risiken
+> eingestuft wurden — keine Aufgabe, sondern dokumentierte Entscheidung
+> mit Begründung und Wiedervorlage-Termin.
+
+### AR-05-01: Keine automatisierte Rollback-Variante
+**Bereich:** Release / Operations
+**Akzeptiert am:** 2026-07-10
+**Begründung:** Der manuelle Rollback-Prozess ist vollständig dokumentiert
+(deployment-guide.md §Rollback: Image-Tag-Replace + Alembic-Migrations-
+Caveat). Kein akuter Blocker — Automatisierung ist eine Ops-Maturity-
+Erweiterung, kein Defekt. Keine aktuelle Verletzung.
+**Wiedervorlage:** Bei Einführung von Blue-Green-Deployments oder
+automatischem Health-Check-basiertem Rollback.
+
+### AR-05-02: Kein `github/codeql-action` in CI
+**Bereich:** Security / CI
+**Akzeptiert am:** 2026-07-10
+**Begründung:** CodeQL erfordert GitHub Advanced Security (GHAS), das auf
+diesem Repo nicht verfügbar ist. Gleiche Voraussetzung wie AUFG-02-06(a)
+(dependency-review-action, deferred/accepted_risk). bandit (SAST) +
+pip-audit (Dependency-Audit) decken Python-Level ab.
+**Wiedervorlage:** Bei Verfügbarkeit von GHAS auf diesem Repo.
+
+### AR-05-03: Private-by-default GHCR-Image
+**Bereich:** Release / Distribution
+**Akzeptiert am:** 2026-07-10
+**Begründung:** Strategische Produktentscheidung, verknüpft mit Q-011
+(Distributions-Strategie für nicht-technische Nutzer). Ein öffentliches
+Image ist eine Produktentscheidung, kein Code-Defekt.
+**Wiedervorlage:** Mit Q-011-Entscheidung (Distributions-Strategie).
+
+### AR-05-04: Keine zentrale AUFG-Nummerierungs-Registry
+**Bereich:** Meta-Prozess / Governance
+**Akzeptiert am:** 2026-07-10
+**Begründung:** IDs sind per-Review scope; Kollisionen wurden manuell
+behandelt (archiviertes Security-Audit nutzt AUFG-05-07/12/13/14, dieses
+Review beginnt bei 15). Eine zentrale Registry würde zukünftige Kollisionen
+verhindern, ist aber Meta-Prozess-Overhead, kein Code-Defekt. Review-Autor
+hat bewusst auf eine AUFG verzichtet.
+**Wiedervorlage:** Bei häufigeren Review-Kollisionen oder Einführung
+eines automatisierten AUFG-Tracking-Systems.
