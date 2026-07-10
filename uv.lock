@@ -1635,14 +1635,12 @@ requires-dist = [{ name = "pydantic", specifier = "==2.13.4" }]
 name = "narrare-workspace"
 version = "0.1.0"
 source = { virtual = "." }
-dependencies = [
-    { name = "jsonschema" },
-]
 
 [package.dev-dependencies]
 dev = [
     { name = "bandit" },
     { name = "hypothesis" },
+    { name = "jsonschema" },
     { name = "mutmut" },
     { name = "pip-audit" },
     { name = "pydantic-evals" },
@@ -1658,12 +1656,12 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "jsonschema", specifier = ">=4.26.0" }]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = "==1.9.4" },
     { name = "hypothesis", specifier = ">=6.100" },
+    { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "mutmut", specifier = "==3.6.0" },
     { name = "pip-audit", specifier = "==2.10.1" },
     { name = "pydantic-evals", specifier = "==2.5.0" },
