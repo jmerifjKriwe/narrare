@@ -462,6 +462,7 @@ zuerst hinschaut — und widersprechen dem selbst deklarierten
 ## Aufgaben
 
 ### AUFG-04-01 · Agent-Namen zwischen AGENTS.md/orchestrator.md und echten Subagent-Definitionen synchronisieren
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — AGENTS.md (L148-223) und orchestrator.md (L111-119, L328-336) verwenden konsistent die echten `Narrare*Specialist`-Namen. Neuer Checker `scripts/doc_drift/agent_name_checks.py` (32 Unit-Tests) validiert `subagent_type`-Werte in Doku-Dateien gegen reale Subagent-Definitionen; in `check_doc_drift.py` integriert, blockierend in CI + pre-commit. 0 Critical Findings nach Fix.
 **Priorität:** Hoch
 **Bereich:** DX
 **Kontext:** Root-`AGENTS.md` (L146–221) und `docs/development/orchestrator.md`
@@ -474,13 +475,14 @@ zuerst hinschaut — und widersprechen dem selbst deklarierten
 Kein `narrare-testing` existiert (Testing ist im PlatformSpecialist). Ein
 Coordinator, der der Doku folgt, ruft nicht-existierende `subagent_type`-Werte auf.
 **Akzeptanzkriterien:**
-- [ ] AGENTS.md Agent-Tabelle (L146–153) und Trigger-Erkennung (L216–221) nutzen die echten `Narrare*Specialist`-Namen (oder die Doku definiert explizit Alias-Mappings).
-- [ ] orchestrator.md Routing-Tabellen (L113–119, L328–336) und Decision-Tree (L208–237) verwenden konsistent die echten Namen.
-- [ ] Ein (ggf. neuer) Test/Checker verhindert künftigen Agent-Namen-Drift (z. B. ein `check_agent_names.py`, das AGENTS.md/orchestrator.md gegen die Subagent-Frontmatters prüft) — sonst ist die Fix nur Point-in-time.
-- [ ] Falls `narrare-testing` bewusst gewünscht ist: als eigener Subagent anlegen ODER Doku klarstellen, dass Testing im PlatformSpecialist lebt.
+- [x] AGENTS.md Agent-Tabelle (L146–153) und Trigger-Erkennung (L216–221) nutzen die echten `Narrare*Specialist`-Namen (oder die Doku definiert explizit Alias-Mappings).
+- [x] orchestrator.md Routing-Tabellen (L113–119, L328–336) und Decision-Tree (L208–237) verwenden konsistent die echten Namen.
+- [x] Ein (ggf. neuer) Test/Checker verhindert künftigen Agent-Namen-Drift (z. B. ein `check_agent_names.py`, das AGENTS.md/orchestrator.md gegen die Subagent-Frontmatters prüft) — sonst ist die Fix nur Point-in-time.
+- [x] Falls `narrare-testing` bewusst gewünscht ist: als eigener Subagent anlegen ODER Doku klarstellen, dass Testing im PlatformSpecialist lebt.
 **Geschätzter Aufwand:** M
 
 ### AUFG-04-02 · Stale `just`-Kommando-Referenzen in orchestrator.md korrigieren
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — orchestrator.md Stage 5 korrigiert (`check-types`→`typecheck`, `check-constraints`→`check-architecture`, `check-governance` entfernt). Neuer Checker `scripts/doc_drift/just_command_checks.py` (29 Unit-Tests) validiert alle `` `just <recipe>` ``-Referenzen in `docs/**/*.md` gegen `just --list`; blockierend in CI + pre-commit.
 **Priorität:** Hoch
 **Bereich:** DX
 **Kontext:** `docs/development/orchestrator.md` Stage 5 (Validate, L161–168) und
@@ -490,11 +492,12 @@ Quick-Reference (L340–345) rufen `just check-types`, `just check-constraints` 
 `check-governance` existiert gar nicht. Ein Agent, der der Validierungs-Stage folgt,
 bricht mit „recipe not found" ab.
 **Akzeptanzkriterien:**
-- [ ] Alle `just`-Aufrufe in orchestrator.md gegen `just --list` verifiziert und korrigiert (`check-types`→`typecheck`, `check-constraints`→`check-architecture`, `check-governance` entfernen oder durch echtes Äquivalent ersetzen).
-- [ ] Ein (ggf. erweiterter) Doc-Drift-Checker prüft `just`-Befehle in Markdown-Docs gegen das echte Justfile-Rezept-Set und bricht CI bei Phantom-Befehlen.
+- [x] Alle `just`-Aufrufe in orchestrator.md gegen `just --list` verifiziert und korrigiert (`check-types`→`typecheck`, `check-constraints`→`check-architecture`, `check-governance` entfernen oder durch echtes Äquivalent ersetzen).
+- [x] Ein (ggf. erweiterter) Doc-Drift-Checker prüft `just`-Befehle in Markdown-Docs gegen das echte Justfile-Rezept-Set und bricht CI bei Phantom-Befehlen.
 **Geschätzter Aufwand:** S
 
 ### AUFG-04-03 · Phantom-Referenz `check_governance_health.py` aus deployment-guide.md entfernen oder Script anlegen
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — Phantom-Zeile aus deployment-guide.md INFRA-011-Tabelle entfernt. Stale `scripts/__pycache__/check_governance_health.cpython-314.pyc` gelöscht. Cross-Check aller übrigen 5 Tabellen-Zeilen: alle `scripts/*.py`-Pfade und `just`-Rezepte existieren und sind verdrahtet. Just-Recipe-Checker (AUFG-04-02) deckt künftige Phantom-Referenzen ab.
 **Priorität:** Hoch
 **Bereich:** DX
 **Kontext:** `docs/development/deployment-guide.md` L321 listet
@@ -505,12 +508,13 @@ noch CI noch pre-commit referenzieren es. Die Behauptung „CI-blocking" für ei
 nicht-existierendes Gate ist eine „documented ≠ implemented"-Verletzung in genau
 der Quality-Gate-Doku.
 **Akzeptanzkriterien:**
-- [ ] Entweder: `check_governance_health.py` + `just check-governance`-Rezept + CI-Step werden (wieder) angelegt und die Doku stimmt; oder die Zeile wird aus deployment-guide.md entfernt.
-- [ ] Der stale `.pyc`-Cache wird gelöscht.
-- [ ] Cross-Check: alle in deployment-guide.md „INFRA-011 Stabilization Gate"-Tabelle (L314–321) genannten Kommando/Checker-Paare sind echt und in CI/pre-commit verdrahtet.
+- [x] Entweder: `check_governance_health.py` + `just check-governance`-Rezept + CI-Step werden (wieder) angelegt und die Doku stimmt; oder die Zeile wird aus deployment-guide.md entfernt.
+- [x] Der stale `.pyc`-Cache wird gelöscht.
+- [x] Cross-Check: alle in deployment-guide.md „INFRA-011 Stabilization Gate"-Tabelle (L314–321) genannten Kommando/Checker-Paare sind echt und in CI/pre-commit verdrahtet.
 **Geschätzter Aufwand:** S
 
 ### AUFG-04-04 · Stale Justfile-Command-Catalog-Einträge in deployment-guide.md korrigieren
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — deployment-guide.md Command-Catalog-Tabelle korrigiert: `db-downgrade`/`db-seed` entfernt (existieren nicht), `format`→`lint`+`format-frontend`. Fehlende reale Rezepte hinzugefügt (`db-revision`, `db-status`, `db-history`, `db-shell`, etc.). Tabelle stimmt mit `just --list` überein. Just-Recipe-Checker deckt künftige Drift ab.
 **Priorität:** Mittel
 **Bereich:** DX
 **Kontext:** `docs/development/deployment-guide.md` „Justfile Command Catalog"
@@ -519,11 +523,12 @@ der Quality-Gate-Doku.
 `db-status`, `db-history`, `db-reset`, `db-shell` (kein downgrade/seed). Format:
 `lint` (ruff check+format), `format-frontend`. Copy-Paste aus der Doku → Fehler.
 **Akzeptanzkriterien:**
-- [ ] Command-Catalog-Tabelle spiegelt exakt das echte `just --list`-Rezept-Set (oder kennzeichnet geplante Rezepte als solche).
-- [ ] Doc-Drift-Checker (siehe AUFG-04-02) deckt auch diesen Katalog ab.
+- [x] Command-Catalog-Tabelle spiegelt exakt das echte `just --list`-Rezept-Set (oder kennzeichnet geplante Rezepte als solche).
+- [x] Doc-Drift-Checker (siehe AUFG-04-02) deckt auch diesen Katalog ab.
 **Geschätzter Aufwand:** S
 
 ### AUFG-04-05 · CONTRIBUTING.md anlegen
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — `CONTRIBUTING.md` im Repo-Root erstellt mit: Getting-Started-Pointer, Branch-Modell, Conventional-Commits-Regel, pre-commit-Hinweis, "run `just check` + `just check-frontend` before PR", PR-Prozess-Referenz, Contributor-Covenant-CoC-Referenz. README.md verlinkt CONTRIBUTING.md.
 **Priorität:** Hoch
 **Bereich:** DX
 **Kontext:** Für ein als Open Source deklariertes Projekt (MIT, öffentliches
@@ -533,12 +538,13 @@ vor PR, CI-Blocker, pre-commit-Install via `just dev-setup`) nur verstreut in
 coding-standards/deployment-guide. Das README verweist nicht auf einen
 Contribution-Einstieg.
 **Akzeptanzkriterien:**
-- [ ] `CONTRIBUTING.md` existiert mit: How-to-setup-Pointer (`just dev-setup`/DevContainer), Branch-Modell, Conventional-Commits-Regel (oder Verweis), pre-commit-Hinweis, „run `just check` + `just check-frontend` before PR", PR-Template-Verweis, Code-of-Conduct-Referenz.
-- [ ] README verlinkt CONTRIBUTING.md.
-- [ ] `.github/PULL_REQUEST_TEMPLATE/` (existiert bereits) wird referenziert.
+- [x] `CONTRIBUTING.md` existiert mit: How-to-setup-Pointer (`just dev-setup`/DevContainer), Branch-Modell, Conventional-Commits-Regel (oder Verweis), pre-commit-Hinweis, „run `just check` + `just check-frontend` before PR", PR-Template-Verweis, Code-of-Conduct-Referenz.
+- [x] README verlinkt CONTRIBUTING.md.
+- [x] `.github/PULL_REQUEST_TEMPLATE/` (existiert bereits) wird referenziert.
 **Geschätzter Aufwand:** S
 
 ### AUFG-04-06 · Setup-Option für Nicht-NLP-Entwickler (lightweight `dev-setup`)
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — Neues `just dev-setup-min`-Rezept im justfile (ohne `--extra nlp`, ohne NLP-Modelle, ~200 MB kleiner). Beide Setup-Pfade in README.md und deployment-guide.md dokumentiert mit Setup-Dauer-Erwartung. CI bleibt auf vollem `--extra nlp`.
 **Priorität:** Mittel
 **Bereich:** DX
 **Kontext:** `just dev-setup` zwingt `--extra nlp` und `just install-nlp-models`
@@ -546,12 +552,13 @@ Contribution-Einstieg.
 Core/Agent-Entwickler, die NLP nicht anfassen. Das verlängert das Erst-Setup um
 Minuten und erhöht den Disk-Bedarf. spaCy ist nur für analysis/nlp-Submodule nötig.
 **Akzeptanzkriterien:**
-- [ ] Entweder ein `just dev-setup-min` (ohne `--extra nlp` + ohne NLP-Modelle) für FE/Core-Work, oder `just dev-setup` macht NLP bedingt (Skip-Flag / Erkennung, ob analysis-Feature berührt wird).
-- [ ] deployment-guide + README dokumentieren beide Setup-Pfade und die jeweilige Setup-Dauer-Erwartung (aktuell 30–60 Min. nirgends kommuniziert).
-- [ ] CI bleibt beim vollen `--extra nlp` (Integration/E2E brauchen es).
+- [x] Entweder ein `just dev-setup-min` (ohne `--extra nlp` + ohne NLP-Modelle) für FE/Core-Work, oder `just dev-setup` macht NLP bedingt (Skip-Flag / Erkennung, ob analysis-Feature berührt wird).
+- [x] deployment-guide + README dokumentieren beide Setup-Pfade und die jeweilige Setup-Dauer-Erwartung (aktuell 30–60 Min. nirgends kommuniziert).
+- [x] CI bleibt beim vollen `--extra nlp` (Integration/E2E brauchen es).
 **Geschätzter Aufwand:** S
 
 ### AUFG-04-07 · check_architecture.py — enforced-Regeln in Doku vereinheitlichen
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — `check_architecture.py --list-rules` implementiert (Self-Report via `ENFORCED_RULES`-Konstante: RULE-01b, 02, 04, 07, 11, 15, 18, 19). deployment-guide.md und quality-gates.md referenzieren den Self-Report statt eigener Listen. Beide alten Listen waren fehlerhaft (deployment-guide listete RULE-06 fälschlich; quality-gates übersah RULE-07/18).
 **Priorität:** Niedrig
 **Bereich:** DX
 **Kontext:** Drei Quellen listen unterschiedliche enforced-Regeln von
@@ -561,11 +568,12 @@ nennt „RULE-01b, 02, 04, 06, 11"; quality-gates.md Gate 3 (L39) nennt
 (file-existence-Scan, `check_architecture.py` L32/L91). Die Diskrepanz verwirrt
 bei der Frage „wird Regel X wirklich maschinell geprüft?".
 **Akzeptanzkriterien:**
-- [ ] Einzige autoritative Liste der enforced-Regeln ist der Checker-Self-Report (z. B. `check_architecture.py --list-rules` oder Modul-Docstring); beide Doku-Quellen verweisen darauf statt eigener Aufzählung.
-- [ ] deployment-guide.md und quality-gates.md stimmen überein (oder referenzieren dieselbe Quelle).
+- [x] Einzige autoritative Liste der enforced-Regeln ist der Checker-Self-Report (z. B. `check_architecture.py --list-rules` oder Modul-Docstring); beide Doku-Quellen verweisen darauf statt eigener Aufzählung.
+- [x] deployment-guide.md und quality-gates.md stimmen überein (oder referenzieren dieselbe Quelle).
 **Geschätzter Aufwand:** S
 
 ### AUFG-04-08 · ESLint/Prettier-VS-Code-Extensions im DevContainer entfernen (Projekt nutzt Biome)
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — `dbaeumer.vscode-eslint` und `esbenp.prettier-vscode` aus `.devcontainer/devcontainer.json` entfernt. `biomejs.biome` bleibt als alleiniger FE-Formatter (bereits als `defaultFormatter` gesetzt).
 **Priorität:** Niedrig
 **Bereich:** DX
 **Kontext:** `.devcontainer/devcontainer.json` installiert `dbaeumer.vscode-eslint`
@@ -575,12 +583,13 @@ FE-Linter/Formatter (`packages/web/package.json`: `lint=biome check --write`,
 ESLint/Prettier sind tote Extensions, die neue Entwickler verwirren („welchen
 Formatter nutze ich?") und Inkonsistenz mit dem defaultFormatter-Setting riskieren.
 **Akzeptanzkriterien:**
-- [ ] `eslint` + `prettier-vscode` aus `devcontainer.json` extensions entfernt.
-- [ ] Biome-Extension (`biomejs.biome`) bleibt als alleiniger FE-Formatter (ist bereits als defaultFormatter gesetzt).
-- [ ] Optional: `pnpm`-Version im Dockerfile (`ARG PNPM_VERSION=11.5.2`) gegen `package.json`-`packageManager`-Pin prüfen lassen (Drift-Risiko).
+- [x] `eslint` + `prettier-vscode` aus `devcontainer.json` extensions entfernt.
+- [x] Biome-Extension (`biomejs.biome`) bleibt als alleiniger FE-Formatter (ist bereits als defaultFormatter gesetzt).
+- [x] Optional: `pnpm`-Version im Dockerfile (`ARG PNPM_VERSION=11.5.2`) gegen `package.json`-`packageManager`-Pin prüfen lassen (Drift-Risiko).
 **Geschätzter Aufwand:** S
 
 ### AUFG-04-09 · `jsonschema` von Root-`[project] dependencies` nach `[dependency-groups] dev` verschieben
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — `jsonschema>=4.26.0` von `[project] dependencies` nach `[dependency-groups] dev` verschoben. `[project] dependencies` am Root ist leer (`dependencies = []`). `uv.lock` regeneriert (234 Pakete). `uv sync --frozen --all-packages --group dev` verifiziert funktional.
 **Priorität:** Niedrig
 **Bereich:** DX / Architektur
 **Kontext:** Root-`pyproject.toml` ist `[tool.uv] package = false` (virtual
@@ -589,12 +598,13 @@ workspace container), deklariert aber `[project] dependencies = ["jsonschema>=4.
 genutzt. Als `[project] dependency` wird es in jeden Sync (inkl. prod-ähnlicher
 Root-Syncs) installiert statt nur in die dev-Gruppe.
 **Akzeptanzkriterien:**
-- [ ] `jsonschema` nach `[dependency-groups] dev` verschoben; `[project] dependencies` am Root ist leer (oder entfernt).
-- [ ] `uv sync --frozen --all-packages --group dev --extra nlp` (installiert dev) bleibt funktional; CI/pre-commit unbeeinträchtigt.
-- [ ] Lockfile regeneriert und committet.
+- [x] `jsonschema` nach `[dependency-groups] dev` verschoben; `[project] dependencies` am Root ist leer (oder entfernt).
+- [x] `uv sync --frozen --all-packages --group dev --extra nlp` (installiert dev) bleibt funktional; CI/pre-commit unbeeinträchtigt.
+- [x] Lockfile regeneriert und committet.
 **Geschätzter Aufwand:** S
 
 ### AUFG-04-10 · pip-audit-Vuln-Suppresssions inline begründen
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — Beide `--ignore-vuln`-Suppressions in `.github/workflows/ci.yml` (L275) haben Inline-Kommentare: PYSEC-2025-183 (PyJWT, disputed advisory, aktuelle Version 2.13.0 nicht betroffen) und GHSA-rrmf-rvhw-rf47 (PyTorch via sentence-transformers, kein Upstream-Fix, CVSS 1.9, Re-evaluation 2026-10).
 **Priorität:** Niedrig
 **Bereich:** DX / Sicherheit
 **Kontext:** CI ruft `pip-audit --skip-editable --ignore-vuln PYSEC-2025-183
@@ -602,9 +612,39 @@ Root-Syncs) installiert statt nur in die dev-Gruppe.
 Vulns haben **keinen Inline-Kommentar** (welche Abhängigkeit, warum nicht fixbar,
 Wiedervorlage-Datum). Suppression ist legitim, sollte aber nachvollziehbar sein.
 **Akzeptanzkriterien:**
-- [ ] Jede `--ignore-vuln` im CI-Step hat einen Kommentar: betroffenes Paket + Grund (z. B. „upstream fix pending", „false positive") + Wiedervorlage/Re-evaluation-Datum.
-- [ ] Optional: Verschiebung der Suppression-Liste in eine separate, kommentierte Konfig (`pyproject.toml [tool.pip-audit]` o. ä.), um sie sichtbarer zu machen.
+- [x] Jede `--ignore-vuln` im CI-Step hat einen Kommentar: betroffenes Paket + Grund (z. B. „upstream fix pending", „false positive") + Wiedervorlage/Re-evaluation-Datum.
+- [x] Optional: Verschiebung der Suppression-Liste in eine separate, kommentierte Konfig (`pyproject.toml [tool.pip-audit]` o. ä.), um sie sichtbarer zu machen.
 **Geschätzter Aufwand:** S
+
+---
+
+## Abschluss-Status
+
+**Review-04 Remediation abgeschlossen am 2026-07-10.**
+
+Alle 10 AUFG-Aufgaben sind **✅ Resolved** (Implementation + Enforcement):
+
+| AUFG | Titel | Status | Prevention |
+|------|-------|--------|------------|
+| 04-01 | Agent-Namen synchronisiert | ✅ Resolved | `agent_name_checks.py` (CI-blocking, 32 Tests) |
+| 04-02 | Stale just-Kommandos korrigiert | ✅ Resolved | `just_command_checks.py` (CI-blocking, 29 Tests) |
+| 04-03 | Phantom-Referenz entfernt | ✅ Resolved | `just_command_checks.py` deckt ab |
+| 04-04 | Stale Catalog korrigiert | ✅ Resolved | `just_command_checks.py` deckt ab |
+| 04-05 | CONTRIBUTING.md erstellt | ✅ Resolved | — |
+| 04-06 | dev-setup-min hinzugefügt | ✅ Resolved | — |
+| 04-07 | enforced-Regeln vereinheitlicht | ✅ Resolved | `--list-rules` Self-Report |
+| 04-08 | ESLint/Prettier entfernt | ✅ Resolved | — |
+| 04-09 | jsonschema verschoben | ✅ Resolved | — |
+| 04-10 | pip-audit kommentiert | ✅ Resolved | — |
+
+**Strukturelle Ursache (Doc-Drift) — Prevention-Maßnahmen:**
+- `scripts/doc_drift/just_command_checks.py`: Validiert `just`-Rezept-Referenzen in allen `docs/**/*.md` gegen reale `just --list`-Rezepte. Blockierend in CI + pre-commit. Verhindert Phantom-Kommando-Referenzen (deckt AUFG-04-02/03/04).
+- `scripts/doc_drift/agent_name_checks.py`: Validiert `subagent_type`-Werte in Doku-Dateien gegen reale Subagent-Definitionen. Blockierend in CI + pre-commit. Verhindert Agent-Namen-Drift (deckt AUFG-04-01).
+- `check_architecture.py --list-rules`: Self-Report für enforced-Regeln. Beide Doku-Quellen referenzieren ihn statt eigener Listen (deckt AUFG-04-07).
+
+**Verifikation (2026-07-10):** just check ✅ · typecheck ✅ (0 errors) · lint ✅ · test-unit ✅ (8924 passed) · check-frontend ✅ (2776 passed) · check_doc_drift ✅ (0 critical findings).
+
+**4 Acceptable Risks** ohne Task dokumentiert (B1-B4, siehe oben).
 
 ---
 
