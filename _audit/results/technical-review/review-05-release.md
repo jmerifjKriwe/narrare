@@ -744,6 +744,13 @@ können die Image-Provenanz nicht kryptographisch verifizieren.
 **Geschätzter Aufwand:** M
 
 ### [AUFG-05-18] NARRARE_ENCRYPTION_KEY-Rotation automatisieren
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — `scripts/rotate_encryption_key.py`
+implementiert: transaktionale Re-Encryption aller `user_providers.api_key_encrypted`,
+Keys via Env-Vars (`OLD_ENCRYPTION_KEY`/`NEW_ENCRYPTION_KEY`) oder `getpass`-Prompt
+(nie CLI-Arg), `--dry-run`-Modus. 9 Unit-Tests + 4 Integration-Tests (real DB).
+Deployment-Guide: Rotation-Abschnitt aktualisiert + Pfad-Korrektur (`core/shared/crypto.py`
+→ `packages/core/narrare_core/crypto.py`). Enforcement: Integration-Test verifiziert,
+dass re-encryptede Werte nur mit dem neuen Key entschlüsselbar sind.
 **Priorität:** Mittel
 **Bereich:** Security / Operations
 **Kontext:** `docs/development/deployment-guide.md` L655 dokumentiert die
@@ -757,17 +764,25 @@ in einer Transaktion re-encrypten oder gar nicht) bieten und die
 Operator-Fehleranfälligkeit reduzieren. Backup-Hinweis gibt es bereits
 („Store securely and back up"), aber kein Backup-Tooling.
 **Akzeptanzkriterien:**
-- [ ] `scripts/rotate_encryption_key.py` CLI: nimmt `--old-key` und `--new-key`
+- [x] `scripts/rotate_encryption_key.py` CLI: nimmt `--old-key` und `--new-key`
       (via Env oder Prompt, nie CLI-Arg im Klartext), re-encrypted alle Einträge
       in `user_providers` transaktional, dry-run-Modus
-- [ ] Dokumentation im deployment-guide.md (Rotation-Abschnitt): Skript-Aufruf,
+- [x] Dokumentation im deployment-guide.md (Rotation-Abschnitt): Skript-Aufruf,
       Pre-Flight-Backup-Hinweis, Rollback bei Fehler
-- [ ] Unit- + Integration-Test für den Rotations-Skript
+- [x] Unit- + Integration-Test für den Rotations-Skript
 - [ ] Optional: Backup-Dump-Skript (`scripts/export_encrypted_keys.py`) für
-      Offline-Backup der `user_providers`-Tabelle
+      Offline-Backup der `user_providers`-Tabelle — **nicht implementiert** (optional)
 **Geschätzter Aufwand:** M
 
 ### [AUFG-05-19] Prometheus-/metrics-Exposed-Behauptung verifizieren (Route-Registrierung)
+**Re-Check 2026-07-10:** **ERLEDIGT 2026-07-10** — Route ist registriert und
+gemountet: `apps/api/narrare/metrics/router.py:53` (`@router.get("/metrics")` →
+`PlainTextResponse(generate_latest())`), gemountet in `apps/api/narrare/_app/main.py:236`
+(`app.include_router(metrics_router)`). Code-Kommentar aktualisiert (`/metrics` ergänzt).
+Deployment-Guide: neuer „Prometheus Metrics Endpoint"-Abschnitt mit `prometheus.yml`-
+Sample. Docstring-Behauptung in `metrics.py:7` ist korrekt. Enforcement: bestehende
+Unit-Tests (`test_metrics_router.py:TestMetrics`) + Integration-Tests
+(`test_health.py:TestMetricsEndpoint`) verifizieren 200 + `text/plain` + non-empty body.
 **Priorität:** Niedrig
 **Bereich:** Observability / Operations
 **Kontext:** `packages/core/narrare_core/llm/metrics.py` L7 doccumentiert
@@ -783,13 +798,12 @@ intern erfasst, aber nicht via HTTP scrapable). Für Self-Hoster, die
 Prometheus-Grafana-Dashboards für LLM-Kosten/-Tokens aufbauen wollen, ist die
 Frage „ist `/metrics` erreichbar?" operations-entscheidend.
 **Akzeptanzkriterien:**
-- [ ] Verifikation: ist `/metrics` als Route registriert? (Grep nach
-      `make_asgi_app`, `metrics`-Mount in `main.py`/`lifespan.py`)
-- [ ] Falls ja: klarer Code-Kommentar + Deployment-Guide-Eintrag („scrape
-      `http://<host>:8000/metrics`")
-- [ ] Falls nein: entweder `/metrics`-Mount nachziehen (inkl. Auth-Decision:
-      öffentlich vs. Token-gated) ODER Docstring-Behauptung korrigieren
-- [ ] Optional: Sample-`prometheus.yml`-Scrape-Config in deployment-guide.md
+- [x] Verifikation: ist `/metrics` als Route registriert? — **JA**:
+      `metrics/router.py:53`, gemountet in `main.py:236`
+- [x] Falls ja: klarer Code-Kommentar + Deployment-Guide-Eintrag — Code-Kommentar
+      + Deployment-Guide-Abschnitt mit `prometheus.yml`-Sample hinzugefügt
+- [x] Falls nein: N/A — Route existiert und ist gemountet
+- [x] Optional: Sample-`prometheus.yml`-Scrape-Config in deployment-guide.md — hinzugefügt
 **Geschätzter Aufwand:** S
 
 ---
@@ -837,3 +851,21 @@ verhindern, ist aber Meta-Prozess-Overhead, kein Code-Defekt. Review-Autor
 hat bewusst auf eine AUFG verzichtet.
 **Wiedervorlage:** Bei häufigeren Review-Kollisionen oder Einführung
 eines automatisierten AUFG-Tracking-Systems.
+
+---
+
+## Abschluss-Status
+
+> Stand: 2026-07-10
+
+| AUFG | Status | Evidence |
+|------|--------|----------|
+| AUFG-05-15 | **DEFERRED** | Release-Strategie undecided (Q-011). `publish`-Job spekulativ (keine GHCR-Credentials, nie getriggert). Wiedervorlage mit Q-011. |
+| AUFG-05-16 | **DEFERRED** | Release-Strategie undecided (Q-011). Kein Image-Build in CI. Wiedervorlage mit Q-011. |
+| AUFG-05-17 | **DEFERRED** | Release-Strategie undecided (Q-011). Kein Image zu signieren. Wiedervorlage mit Q-011. |
+| AUFG-05-18 | **✅ Resolved** | `scripts/rotate_encryption_key.py` + 9 unit tests + 4 integration tests + deployment-guide update. Enforcement: integration test verifies re-encrypted values decrypt only with new key. |
+| AUFG-05-19 | **✅ Resolved** | Route verified at `metrics/router.py:53`, mounted at `main.py:236`. Code comment updated. Deployment-guide entry with prometheus.yml sample. Enforcement: existing unit + integration tests. |
+
+**Zusammenfassung:** 2 von 5 Aufgaben resolved (18, 19), 3 deferred (15, 16, 17)
+pending Q-011 Release-Strategie-Entscheidung. 4 Accepted Risks registriert
+(AR-05-01…04).
