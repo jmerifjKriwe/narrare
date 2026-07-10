@@ -300,12 +300,16 @@ exemption.
 
 ## Architecture Checker
 
-`scripts/check_architecture.py` enforces:
-- RULE-01b: LLM imports
-- RULE-02: Prompt building
-- RULE-04: File size limits
-- RULE-06: Router purity
-- RULE-11: Silent failures
+`scripts/check_architecture.py` enforces a set of RULE-XX constraints defined
+in `docs/_shared/CONSTRAINTS.md`. For the authoritative list of enforced rules,
+run the checker's self-report:
+
+```bash
+python scripts/check_architecture.py --list-rules
+```
+
+or see the `ENFORCED_RULES` constant in `scripts/check_architecture.py`.
+Do not maintain a separate rule list in docs — it drifts.
 
 ## INFRA-011 Stabilization Gate Commands
 

@@ -8,6 +8,10 @@ Reads configuration from pyproject.toml [tool.narrare.architecture].
 Exit code 0: all constraints pass.
 Exit code 1: violations found.
 
+Use ``--list-rules`` to print the enforced RULE-XX identifiers (the
+authoritative self-report — docs should reference this rather than
+maintaining separate rule lists that drift).
+
 See: docs/_shared/CONSTRAINTS.md
 """
 
@@ -26,6 +30,30 @@ import argparse  # noqa: E402
 from scripts.architecture.checkers import scan_file  # noqa: E402
 from scripts.architecture.helpers import ROOT, load_config  # noqa: E402
 from scripts.architecture.types import CheckResult, Violation  # noqa: E402
+
+# ── Enforced rules (self-report) ────────────────────────────────
+#
+# This constant is the authoritative list of RULE-XX identifiers enforced
+# by the base checker (without --prompt-integrity). Docs should reference
+# ``--list-rules`` or this constant rather than maintaining separate lists.
+# When a new rule is added to the checkers, update this constant too.
+
+ENFORCED_RULES: tuple[str, ...] = (
+    "RULE-01b",  # LLM imports — no direct openai outside core/llm/
+    "RULE-02",  # Prompt building — only in core/prompts/
+    "RULE-04",  # File size limits — modularize, don't compress
+    "RULE-07",  # Import direction — no core → apps imports
+    "RULE-11",  # Silent failures — no bare except, no silent swallow
+    "RULE-15",  # Forbidden files — no middleware.ts in packages/web/
+    "RULE-18",  # Router config — no hardcoded constants
+    "RULE-19",  # Model config — no hardcoded model strings
+)
+
+# Additional rules enforced only with --prompt-integrity flag.
+PROMPT_INTEGRITY_RULES: tuple[str, ...] = (
+    "RULE-02a",  # Prompt content categories (ADR-026)
+    "RULE-02b",  # Prompt resolution path (ADR-046)
+)
 
 
 def check_forbidden_files(result: CheckResult) -> None:
@@ -75,6 +103,19 @@ def run_prompt_integrity_checks(result: CheckResult) -> None:
         )
 
 
+def _print_enforced_rules() -> None:
+    """Print the enforced RULE-XX identifiers (self-report)."""
+    print("Enforced rules (base checker):")
+    for rule in ENFORCED_RULES:
+        print(f"  {rule}")
+    print()
+    print("Additional rules with --prompt-integrity:")
+    for rule in PROMPT_INTEGRITY_RULES:
+        print(f"  {rule}")
+    print()
+    print("See docs/_shared/CONSTRAINTS.md for full rule definitions.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Narrare Architecture Constraint Checker")
     parser.add_argument(
@@ -83,7 +124,16 @@ def main() -> int:
         help="Run additional prompt integrity checks (variable registration, "
         "i18n parity, intent consistency, variable usage)",
     )
+    parser.add_argument(
+        "--list-rules",
+        action="store_true",
+        help="Print the enforced RULE-XX identifiers and exit.",
+    )
     args = parser.parse_args()
+
+    if args.list_rules:
+        _print_enforced_rules()
+        return 0
 
     config = load_config()
     result = CheckResult()

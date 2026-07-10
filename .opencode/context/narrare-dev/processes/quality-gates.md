@@ -36,7 +36,8 @@ Coverage below minimum = CI failure. No exceptions.
 ## Gate 3: Architecture Constraint Gate
 
 - Runs `scripts/check_architecture.py` as a pytest test
-- Enforces: RULE-01b, 02, 04, 06, 09, 11, 15, 19
+- Enforces the rules reported by `python scripts/check_architecture.py --list-rules`
+  (see the `ENFORCED_RULES` constant — do not maintain a separate list here)
 - Fails on: wrong import locations, file size violations, bare except, wrong `middleware.ts`
 
 ---
