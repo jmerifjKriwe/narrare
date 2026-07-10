@@ -56,6 +56,7 @@ jobs:
       SECRET_KEY: test-secret-key-not-for-production
       ANTHROPIC_API_KEY: sk-test-dummy
       OPENAI_API_KEY: sk-test-dummy
+      PYTHONWARNINGS: ignore::DeprecationWarning
 
     steps:
       - uses: actions/checkout@v7
@@ -89,7 +90,7 @@ jobs:
         id: cache-mutmut
         uses: actions/cache/restore@v6
         with:
-          path: .mutmut-cache
+          path: mutants
           key: mutmut-results-${{ inputs.scope || 'core' }}-${{ hashFiles('pyproject.toml', 'packages/core/narrare_core/**/*.py') }}
           restore-keys: |
             mutmut-results-${{ inputs.scope || 'core' }}-
@@ -113,14 +114,14 @@ jobs:
           # MutMut 3.x CI/CD stats (JSON, designed for CI consumption)
           echo "### CI/CD Stats" >> mutation-report.md
           echo '```json' >> mutation-report.md
-          uv run mutmut export-cicd-stats 2>/dev/null >> mutation-report.md || true
+          uv run mutmut export-cicd-stats >> mutation-report.md 2>mutmut-cicd-errors.log || echo "::warning::mutmut export-cicd-stats failed — see mutmut-cicd-errors.log"
           echo '```' >> mutation-report.md
           echo "" >> mutation-report.md
 
           # Survived / timed-out mutants
           echo "### Mutant Results" >> mutation-report.md
           echo '```' >> mutation-report.md
-          uv run mutmut results 2>/dev/null | head -100 >> mutation-report.md || true
+          uv run mutmut results 2>mutmut-results-errors.log | head -100 >> mutation-report.md || echo "::warning::mutmut results failed — see mutmut-results-errors.log"
           echo '```' >> mutation-report.md
           echo "" >> mutation-report.md
 
@@ -134,7 +135,7 @@ jobs:
         if: always()
         uses: actions/cache/save@v6
         with:
-          path: .mutmut-cache
+          path: mutants
           key: mutmut-results-${{ inputs.scope || 'core' }}-${{ hashFiles('pyproject.toml', 'packages/core/narrare_core/**/*.py') }}
 
       - name: Create Issue

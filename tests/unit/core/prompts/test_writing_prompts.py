@@ -94,15 +94,23 @@ class TestWritingPromptExistence:
 
     def test_total_prompt_file_count(self) -> None:
         """Verify total expected canonical count: 4 modes x EN = 4 files."""
+        import os
+
         writing_dir = _BUNDLED_ROOT / "writing"
         prompt_files = []
-        for lang_dir in writing_dir.iterdir():
-            if lang_dir.is_dir() and lang_dir.name in _WRITING_LANGUAGES:
-                for mode_dir in lang_dir.iterdir():
-                    if mode_dir.is_dir() and mode_dir.name in _WRITING_MODES:
-                        system_file = mode_dir / "system.md"
-                        if system_file.exists():
-                            prompt_files.append(system_file)
+        # Use os.listdir() instead of Path.iterdir() to avoid unclosed
+        # scandir iterator warnings (ResourceWarning on Python 3.14).
+        for lang_name in os.listdir(writing_dir):
+            if lang_name in _WRITING_LANGUAGES:
+                lang_dir = writing_dir / lang_name
+                if lang_dir.is_dir():
+                    for mode_name in os.listdir(lang_dir):
+                        if mode_name in _WRITING_MODES:
+                            mode_dir = lang_dir / mode_name
+                            if mode_dir.is_dir():
+                                system_file = mode_dir / "system.md"
+                                if system_file.exists():
+                                    prompt_files.append(system_file)
         assert len(prompt_files) == 4, (
             f"Expected 4 writing prompt files, found {len(prompt_files)}: "
             f"{[str(p) for p in prompt_files]}"
