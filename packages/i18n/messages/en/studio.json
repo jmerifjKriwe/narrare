@@ -5,7 +5,6 @@
     "editor": "Editor",
     "volumes": "Volumes",
     "worldbuilding": "World & Characters",
-    "analysis": "Analysis",
     "chat": "Chat",
     "settings": "Settings",
     "chapters": "CHAPTERS",
@@ -254,59 +253,6 @@
     "contextTooSmall": "The selected model context window is too small for this intent.",
     "capabilityUnknown": "Model capability is unknown for this intent.",
     "capabilityBelowRecommendation": "Model capability is below the recommended tier for this intent."
-  },
-  "analysis": {
-    "title": "Analysis & Statistics",
-    "description": "AI-powered analyses help you improve your story",
-    "totalWords": "Total words",
-    "chapters": "Chapters",
-    "characters": "Characters",
-    "analyzing": "Analyzing...",
-    "analyze": "Analyze",
-    "insights": "Insights & suggestions",
-    "score": "Score",
-    "statsEmpty": "Aggregated stats will appear here once analysis is connected to your novel.",
-    "openInEditor": "Open in Editor",
-    "readability": {
-      "title": "Readability",
-      "description": "Analyze sentence length, vocabulary diversity and readability",
-      "grade": "Good readability",
-      "avgSentence": "Average sentence length",
-      "complexWords": "Complex words",
-      "suggestion1": "Some sentences are over 30 words long. Consider breaking them up.",
-      "suggestion2": "Good variation in sentence length.",
-      "suggestion3": "The text is easily understandable for a broad audience.",
-      "editorHint": "Open a chapter in the editor and use the Readability tool to analyze sentence complexity, grade level, and suggestions."
-    },
-    "pacing": {
-      "title": "Pacing",
-      "description": "Check the pace of your story",
-      "actionScenes": "Action scenes",
-      "dialogueScenes": "Dialogue scenes",
-      "descriptionScenes": "Description scenes",
-      "suggestion1": "Good balance between action and dialogue.",
-      "suggestion2": "Consider adding more descriptive passages.",
-      "suggestion3": "The pace could be slightly faster in the middle section.",
-      "editorHint": "Open a chapter in the editor and use the Sentiment or Beta Reader tools to assess pacing through action, dialogue, and description balance."
-    },
-    "characterAnalysis": {
-      "title": "Character analysis",
-      "description": "Analyze character development and consistency",
-      "mainCharacters": "Main characters",
-      "appearances": "Appearances",
-      "suggestion1": "Anna appears in all chapters — good presence.",
-      "suggestion2": "Dr. Stein could use more backstory.",
-      "editorHint": "Open a chapter in the editor and use the Character Voice or Coreference tools to analyze character presence and voice consistency."
-    },
-    "timeline": {
-      "title": "Timeline",
-      "description": "Check temporal consistency",
-      "timespan": "Timespan",
-      "inconsistencies": "Inconsistencies",
-      "suggestion1": "The timespan is consistently represented.",
-      "suggestion2": "No temporal contradictions found.",
-      "editorHint": "Open the Planning panel to view the timeline, or use the Consistency Checker in the editor to detect temporal inconsistencies."
-    }
   },
   "settings": {
     "title": "SETTINGS",

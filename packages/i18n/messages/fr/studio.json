@@ -5,7 +5,6 @@
     "editor": "Éditeur",
     "volumes": "Volumes",
     "worldbuilding": "Monde et personnages",
-    "analysis": "Analyse",
     "chat": "Discussion",
     "settings": "Paramètres",
     "chapters": "CHAPITRES",
@@ -254,59 +253,6 @@
     "contextTooSmall": "La fenêtre de contexte du modèle sélectionné est trop petite pour cet intent.",
     "capabilityUnknown": "La capacité du modèle est inconnue pour cet intent.",
     "capabilityBelowRecommendation": "La capacité du modèle est inférieure au niveau recommandé pour cet intent."
-  },
-  "analysis": {
-    "title": "Analyse et statistiques",
-    "description": "Les analyses IA vous aident à améliorer votre histoire",
-    "totalWords": "Mots totaux",
-    "chapters": "Chapitres",
-    "characters": "Personnages",
-    "analyzing": "Analyse en cours...",
-    "analyze": "Analyser",
-    "insights": "Constatations et suggestions",
-    "score": "Score",
-    "statsEmpty": "Les statistiques agrégées apparaîtront ici une fois l'analyse connectée à votre roman.",
-    "openInEditor": "Ouvrir dans l'éditeur",
-    "readability": {
-      "title": "Lisibilité",
-      "description": "Analyser la longueur des phrases, la diversité du vocabulaire et la lisibilité",
-      "grade": "Bonne lisibilité",
-      "avgSentence": "Longueur moyenne des phrases",
-      "complexWords": "Mots complexes",
-      "suggestion1": "Certaines phrases dépassent 30 mots. Envisagez de les diviser.",
-      "suggestion2": "Bonne variation dans la longueur des phrases.",
-      "suggestion3": "Le texte est facilement compréhensible pour un large public.",
-      "editorHint": "Ouvrez un chapitre dans l'éditeur et utilisez l'outil Lisibilité pour analyser la complexité des phrases, le niveau de lecture et les suggestions."
-    },
-    "pacing": {
-      "title": "Rythme narratif",
-      "description": "Vérifier le rythme de votre histoire",
-      "actionScenes": "Scènes d'action",
-      "dialogueScenes": "Scènes de dialogue",
-      "descriptionScenes": "Scènes descriptives",
-      "suggestion1": "Bon équilibre entre action et dialogue.",
-      "suggestion2": "Envisagez d'ajouter plus de passages descriptifs.",
-      "suggestion3": "Le rythme pourrait être légèrement plus rapide dans la partie centrale.",
-      "editorHint": "Ouvrez un chapitre dans l'éditeur et utilisez les outils Sentiment ou Lecture bêta pour évaluer le rythme narratif via l'équilibre entre action, dialogue et description."
-    },
-    "characterAnalysis": {
-      "title": "Analyse des personnages",
-      "description": "Analyser le développement et la cohérence des personnages",
-      "mainCharacters": "Personnages principaux",
-      "appearances": "Apparitions",
-      "suggestion1": "Anna apparaît dans tous les chapitres — bonne présence.",
-      "suggestion2": "Dr. Stein pourrait bénéficier de plus de contexte.",
-      "editorHint": "Ouvrez un chapitre dans l'éditeur et utilisez les outils Voix du personnage ou Coréférence pour analyser la présence des personnages et la cohérence des voix."
-    },
-    "timeline": {
-      "title": "Chronologie",
-      "description": "Vérifier la cohérence temporelle",
-      "timespan": "Période",
-      "inconsistencies": "Incohérences",
-      "suggestion1": "La période est représentée de manière cohérente.",
-      "suggestion2": "Aucune contradiction temporelle trouvée.",
-      "editorHint": "Ouvrez le panneau Planification pour afficher la chronologie, ou utilisez le Vérificateur de cohérence dans l'éditeur pour détecter les incohérences temporelles."
-    }
   },
   "settings": {
     "title": "PARAMÈTRES",

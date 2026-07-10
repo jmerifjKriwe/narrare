@@ -5,7 +5,6 @@
     "editor": "Editor",
     "volumes": "Bände",
     "worldbuilding": "Welt & Charaktere",
-    "analysis": "Analyse",
     "chat": "Chat",
     "settings": "Einstellungen",
     "chapters": "KAPITEL",
@@ -254,59 +253,6 @@
     "contextTooSmall": "Das Kontextfenster des ausgewählten Modells ist für diesen Intent zu klein.",
     "capabilityUnknown": "Die Modellfähigkeit für diesen Intent ist unbekannt.",
     "capabilityBelowRecommendation": "Die Modellfähigkeit liegt unter der empfohlenen Stufe für diesen Intent."
-  },
-  "analysis": {
-    "title": "Analyse & Statistiken",
-    "description": "KI-gestützte Analysen helfen dir, deine Geschichte zu verbessern",
-    "totalWords": "Wörter gesamt",
-    "chapters": "Kapitel",
-    "characters": "Charaktere",
-    "analyzing": "Analysiere...",
-    "analyze": "Analysieren",
-    "insights": "Erkenntnisse & Vorschläge",
-    "score": "Score",
-    "statsEmpty": "Aggregierte Statistiken erscheinen hier, sobald die Analyse mit deinem Roman verknüpft ist.",
-    "openInEditor": "Im Editor öffnen",
-    "readability": {
-      "title": "Lesbarkeit",
-      "description": "Analysiere Satzlänge, Wortvielfalt und Lesbarkeit",
-      "grade": "Gut lesbar",
-      "avgSentence": "Durchschnittliche Satzlänge",
-      "complexWords": "Komplexe Wörter",
-      "suggestion1": "Einige Sätze sind über 30 Wörter lang. Erwäge, sie aufzuteilen.",
-      "suggestion2": "Gute Variation in der Satzlänge.",
-      "suggestion3": "Der Text ist für ein breites Publikum gut verständlich.",
-      "editorHint": "Öffne ein Kapitel im Editor und nutze das Lesbarkeits-Werkzeug, um Satzkomplexität, Lesestufe und Vorschläge zu analysieren."
-    },
-    "pacing": {
-      "title": "Erzähltempo",
-      "description": "Prüfe das Tempo deiner Geschichte",
-      "actionScenes": "Action-Szenen",
-      "dialogueScenes": "Dialog-Szenen",
-      "descriptionScenes": "Beschreibungs-Szenen",
-      "suggestion1": "Gute Balance zwischen Action und Dialog.",
-      "suggestion2": "Erwäge, mehr beschreibende Passagen einzufügen.",
-      "suggestion3": "Das Tempo könnte im mittleren Teil etwas höher sein.",
-      "editorHint": "Öffne ein Kapitel im Editor und nutze die Sentiment- oder Beta-Leser-Werkzeuge, um das Erzähltempo über die Balance von Action, Dialog und Beschreibung einzuschätzen."
-    },
-    "characterAnalysis": {
-      "title": "Charakteranalyse",
-      "description": "Analysiere Charakterentwicklung und -konsistenz",
-      "mainCharacters": "Hauptcharaktere",
-      "appearances": "Auftritte",
-      "suggestion1": "Anna erscheint in allen Kapiteln — gute Präsenz.",
-      "suggestion2": "Dr. Stein könnte mehr Hintergrundgeschichte gebrauchen.",
-      "editorHint": "Öffne ein Kapitel im Editor und nutze die Werkzeuge Charakter-Stimme oder Koreferenz, um Charakterpräsenz und Stimmkonsistenz zu analysieren."
-    },
-    "timeline": {
-      "title": "Zeitlinie",
-      "description": "Überprüfe die zeitliche Konsistenz",
-      "timespan": "Zeitraum",
-      "inconsistencies": "Inkonsistenzen",
-      "suggestion1": "Die Zeitspanne ist konsistent dargestellt.",
-      "suggestion2": "Keine zeitlichen Widersprüche gefunden.",
-      "editorHint": "Öffne das Planungs-Panel, um die Zeitleiste anzuzeigen, oder nutze die Konsistenzprüfung im Editor, um zeitliche Inkonsistenzen zu erkennen."
-    }
   },
   "settings": {
     "title": "EINSTELLUNGEN",
