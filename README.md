@@ -98,6 +98,11 @@ MCP and A2A are roadmap adapters, not implemented product surfaces. Under
 RULE-12, future adapters call the existing Service Layer; Q-001 (MCP auth) and
 Q-002 (A2A streaming) remain open until adapter-specific specs are written.
 
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup
+instructions, branch model, commit conventions, and the PR process.
+
 ## License
 
 MIT
