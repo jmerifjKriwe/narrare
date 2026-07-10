@@ -346,7 +346,7 @@ behavior.
 
 ### just (justfile)
 **Why:** Language-agnostic task runner. Replaces Makefile with readable syntax.
-**Role:** All dev commands: `just dev`, `just test`, `just check`, `just migrate`.
+**Role:** All dev commands: `just dev`, `just test`, `just check`, `just db-migrate`.
 
 ### Ruff
 **Why:** Fast Python linter + formatter. Replaces flake8 + isort + black.

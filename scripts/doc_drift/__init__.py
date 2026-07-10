@@ -8,6 +8,10 @@ Check families:
     - ADR cross-reference and status consistency
     - Spec/RULE-XX reference alignment
     - Checker terminology alignment with canonical sources
+    - Lookup-context drift (extracted context files)
+    - SSOT/RULE-16 locale-path parity
+    - Just-recipe doc-drift (phantom `just <recipe>` references)
+    - Agent-name doc-drift (fake subagent_type references)
 """
 
 from __future__ import annotations

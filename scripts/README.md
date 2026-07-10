@@ -155,11 +155,11 @@ Scripts that orchestrate or integrate multiple checks.
 Scripts that keep documentation synchronized with the codebase.
 
 - **check_doc_drift.py** — Validates documented version numbers, ADR
-  cross-references, spec/RULE-XX alignment, and checker terminology against
-  reality. Domain logic in `doc_drift/` package.
+  cross-references, spec/RULE-XX alignment, checker terminology, and just-recipe
+  references against reality. Domain logic in `doc_drift/` package.
 - **doc_drift/** (package) — Check modules for tool version consistency,
-  ADR cross-references, spec alignment, terminology drift, and lookup-context
-  drift.
+  ADR cross-references, spec alignment, terminology drift, lookup-context
+  drift, SSOT locale-path parity, and just-recipe doc-drift prevention.
 - **check_feature_path_accuracy.py** — Validates that implementation paths in
   feature-file frontmatter (`service:`, `contract:`, `router:`, `prompt:`)
   actually exist on disk. Prevents "documented not equal implemented" drift.

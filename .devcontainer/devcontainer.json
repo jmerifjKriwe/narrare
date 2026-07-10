@@ -17,8 +17,6 @@
         "charliermarsh.ruff",
         "ms-python.debugpy",
         "bradlc.vscode-tailwindcss",
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
         "biomejs.biome",
         "ms-azuretools.vscode-docker",
         "eamodio.gitlens",

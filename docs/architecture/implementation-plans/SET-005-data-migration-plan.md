@@ -529,7 +529,7 @@ if "token_limit_profile" in updates:
 
 **Tests**: Update `test_intents.py` — any test using "long" profile → use "long_texts"
 
-**Specialist**: `narrare-core` (Core Layer)
+**Specialist**: `NarrareCoreSpecialist` (Core Layer)
 
 ### Step 2: Data Migration
 
@@ -542,7 +542,7 @@ if "token_limit_profile" in updates:
 - Verify idempotency (running twice produces same result)
 - Verify existing data in new tables is NOT overwritten
 
-**Specialist**: `narrare-platform` (Platform Layer — migration expertise)
+**Specialist**: `NarrarePlatformSpecialist` (Platform Layer — migration expertise)
 
 ### Step 3: Backend — Writing Deps Integration
 
@@ -556,7 +556,7 @@ if "token_limit_profile" in updates:
 - `tests/unit/writing/test_deps.py` — new tests verifying TokenLimitsService is called
 - Update existing deps tests if they assert on `max_tokens` values
 
-**Specialist**: `narrare-backend` (Backend Layer)
+**Specialist**: `NarrareBackendSpecialist` (Backend Layer)
 
 ### Step 4: Backend — WS Handler Integration
 
@@ -571,7 +571,7 @@ if "token_limit_profile" in updates:
 - `tests/unit/writing/test_router_sessions.py` — verify WS handler config uses resolved limits
 - May need integration test for WS session
 
-**Specialist**: `narrare-backend` (Backend Layer)
+**Specialist**: `NarrareBackendSpecialist` (Backend Layer)
 
 ### Step 5: Backend — Settings Services Dual-Write
 
@@ -588,7 +588,7 @@ if "token_limit_profile" in updates:
 - `tests/unit/settings/test_user_ai_settings_service.py` — verify dual-write
 - `tests/unit/settings/test_project_ai_settings_service.py` — verify dual-write
 
-**Specialist**: `narrare-backend` (Backend Layer)
+**Specialist**: `NarrareBackendSpecialist` (Backend Layer)
 
 ### Step 6: Frontend — Profile Writes to New API
 
@@ -601,7 +601,7 @@ if "token_limit_profile" in updates:
 
 **Tests**: Update `AiTab.test.tsx` to verify new write path
 
-**Specialist**: `narrare-frontend` (Frontend Layer)
+**Specialist**: `NarrareFrontendSpecialist` (Frontend Layer)
 
 ### Step 7: Test Suite Updates
 

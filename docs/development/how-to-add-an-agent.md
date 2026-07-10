@@ -581,11 +581,10 @@ async def test_{name}_service_success(
 Vor dem Commit muss der Prompt alle Governance-Checks bestehen:
 
 ```bash
-just check-prompts-structure   # Frontmatter, Variablen, Manifest
-just check-adoption            # Registry-Eintrag vorhanden
-just check-architecture        # RULE-XX Compliance
-just check-streaming           # SSE Compliance (wenn zutreffend)
-just check-governance          # Governance Health
+just check-prompts            # Frontmatter, Variablen, Manifest
+just check-adoption           # Registry-Eintrag vorhanden
+just check-architecture       # RULE-XX Compliance
+just check-streaming          # SSE Compliance (wenn zutreffend)
 ```
 
 **Was geprüft wird (ADR-037/046/049):**
@@ -671,10 +670,9 @@ packages/i18n/messages/
 - [ ] Core-Agent-Tests (TestModel)
 - [ ] Backend-Service-Tests
 - [ ] Frontend-Tests (Vitest, falls UI)
-- [ ] Governance Checks bestanden (`just check-prompts-structure`, `just check-adoption`)
+- [ ] Governance Checks bestanden (`just check-prompts`, `just check-adoption`)
 - [ ] Architecture Checks bestanden (`just check-architecture`)
 - [ ] Streaming Compliance bestanden (`just check-streaming`)
-- [ ] Governance Health bestanden (`just check-governance`)
 
 ### Documentation
 - [ ] Feature Spec aktualisiert

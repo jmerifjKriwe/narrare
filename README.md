@@ -25,12 +25,18 @@
 git clone https://github.com/your-org/narrare.git
 cd narrare
 
-# First-time setup (installs dev + NLP deps/models, creates .env, runs migrations, seeds dev user)
-just dev-setup
+# First-time setup — choose one:
+just dev-setup       # Full setup: dev deps + NLP models (~200 MB spaCy). ~10 min.
+just dev-setup-min   # Lightweight: dev deps without NLP (~200 MB smaller). ~5 min.
+                      # Add NLP later with: just install-nlp-models
 
 # Edit .env and add your AI provider API key, then:
 just dev
 ```
+
+> **Which setup?** Use `just dev-setup` if you work on analysis/NLP features.
+> Use `just dev-setup-min` for frontend, core, or agent work — it skips the
+> ~200 MB spaCy download. You can always install the models later.
 
 > **Note:** If you run `uv sync` manually instead of `just dev-setup`, use
 > `uv sync --frozen --all-packages --group dev --extra nlp`. See
@@ -97,6 +103,11 @@ See [`docs/_shared/TECH_STACK.md`](docs/_shared/TECH_STACK.md) for technology de
 MCP and A2A are roadmap adapters, not implemented product surfaces. Under
 RULE-12, future adapters call the existing Service Layer; Q-001 (MCP auth) and
 Q-002 (A2A streaming) remain open until adapter-specific specs are written.
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup
+instructions, branch model, commit conventions, and the PR process.
 
 ## License
 

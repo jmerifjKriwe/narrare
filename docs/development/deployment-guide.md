@@ -19,11 +19,24 @@ how to operate the environments.
 
 ### Python Environment Setup
 
-The project uses `uv` with workspace members (`apps/api`, `packages/core`, `packages/i18n`). To set up the Python environment:
+The project uses `uv` with workspace members (`apps/api`, `packages/core`, `packages/i18n`). Two setup paths are available:
+
+| Command | When to use | What it installs |
+|---------|-------------|------------------|
+| `just dev-setup` | Full-stack work including NLP/analysis features | Dev deps + `--extra nlp` + spaCy language models (~200 MB). ~10 min. |
+| `just dev-setup-min` | Frontend, core, or agent work (no NLP) | Dev deps only (~200 MB smaller). ~5 min. Add NLP later with `just install-nlp-models`. |
+
+Both recipes create `.env`, install pre-commit hooks, start Docker services,
+run migrations, and seed the dev user.
+
+Under the hood, the Python sync uses `uv` with the workspace members:
 
 ```bash
 # Install dev dependencies, NLP extra, and workspace member packages
 uv sync --frozen --all-packages --group dev --extra nlp
+
+# Lightweight equivalent (no NLP extra)
+uv sync --frozen --all-packages --group dev
 ```
 
 **Important:** `uv sync` alone does NOT install workspace member packages (narrare, narrare_core) in editable mode. You MUST use `--all-packages` to make workspace members importable. Without this:
@@ -300,12 +313,16 @@ exemption.
 
 ## Architecture Checker
 
-`scripts/check_architecture.py` enforces:
-- RULE-01b: LLM imports
-- RULE-02: Prompt building
-- RULE-04: File size limits
-- RULE-06: Router purity
-- RULE-11: Silent failures
+`scripts/check_architecture.py` enforces a set of RULE-XX constraints defined
+in `docs/_shared/CONSTRAINTS.md`. For the authoritative list of enforced rules,
+run the checker's self-report:
+
+```bash
+python scripts/check_architecture.py --list-rules
+```
+
+or see the `ENFORCED_RULES` constant in `scripts/check_architecture.py`.
+Do not maintain a separate rule list in docs — it drifts.
 
 ## INFRA-011 Stabilization Gate Commands
 
@@ -318,7 +335,6 @@ INFRA-011 adds ratcheted/no-growth checks for AI-feature stabilization:
 | `just check-frontend-size` | `scripts/check_frontend_file_size.py` | Enforces/report-ratchets TypeScript/TSX RULE-04 file-size debt for touched frontend hubs. |
 | `just check-streaming` | `scripts/check_streaming_compliance.py` | Ensures backend SSE-capable AI endpoints use frontend `connectSSE()` coverage. |
 | `just check-prompts-strict` | `scripts/check_prompt_structure.py --strict` | Treats prompt structure warnings as CI-relevant failures after baseline classification. |
-| `just check-governance` | `scripts/check_governance_health.py` | Checks governance health — review-finding coverage vs AUFG lifecycle + SSOT/gate drift aggregation (ADR-047). CI-blocking. |
 
 These gates are stabilization prerequisites for lifting the ADR-027 AI feature
 freeze. Existing classified legacy debt may shrink; new WARNs, new exceptions,
@@ -356,27 +372,43 @@ All developer commands via `just`:
 
 | Category | Command | Description |
 |----------|---------|-------------|
-| **Setup** | `dev-setup` | First-time setup: install dev + NLP deps/models, create .env, run migrations |
+| **Setup** | `dev-setup` | First-time setup: install dev + NLP deps/models, create .env, run migrations (~10 min) |
+| | `dev-setup-min` | Lightweight setup: dev deps without NLP models (~200 MB smaller, ~5 min) |
 | | `generate-secret` | Generate a secure `SECRET_KEY` |
-| **Development** | `dev` | Start all services (API + frontend + workers) |
-| | `dev-api` | Start API only |
-| | `dev-frontend` | Start frontend only |
-| | `dev-worker` | Start background worker |
-| **Database** | `db-migrate` | Run pending Alembic migrations (optional — runs automatically on startup) |
-| | `db-downgrade` | Roll back last migration |
-| | `db-seed` | Seed development data |
-| | `db-reset` | Drop and recreate dev database (dangerous) |
-| **Testing** | `test` | Run all tests |
-| | `test-unit` | Run unit tests only (fast) |
-| | `test-integration` | Run integration tests (needs Docker) |
-| | `test-cov` | Run with coverage report |
+| | `install-nlp-models` | Install spaCy language models (de, en, fr) |
+| **Development** | `dev` | Start all services (API + frontend) |
+| | `dev-api` | Start API server only (port 8000) |
+| | `dev-frontend` | Start frontend only (port 3000) |
+| | `dev-e2e` | Start API in E2E test mode (no real LLM calls) + frontend |
+| | `dev-worker` | Start TaskIQ worker (Phase 5+) |
+| | `dev-services` | Start Docker services (postgres + redis) |
+| | `dev-services-stop` | Stop Docker services |
+| **Database** | `db-migrate` | Run pending Alembic migrations (also runs automatically on startup) |
+| | `db-revision "msg"` | Create a new migration (e.g. `just db-revision "add table"`) |
+| | `db-status` | Show current migration status |
+| | `db-history` | Show migration history |
+| | `db-reset` | Reset dev database (DANGER: destroys all data) |
+| | `db-shell` | Open psql shell |
+| **Testing** | `test` | Run all tests (parallel) |
+| | `test-unit` | Run unit tests only (fast, no Docker needed) |
+| | `test-integration` | Run integration tests (requires Docker services) |
+| | `test-e2e` | Run E2E tests (requires full stack) |
+| | `test-frontend` | Run frontend tests (Vitest) |
+| | `test-cov` | Run tests with coverage report |
 | | `test-vrt` | Run Playwright VRT screenshot tests |
-| **Quality** | `check` | Run all checks (architecture + lint + typecheck + security) |
-| | `check-frontend` | Run non-mutating frontend file-size, lint/format, type, and test checks |
-| | `lint` | Run ruff lint + fix |
-| | `format` | Run ruff format |
-| | `typecheck` | Run pyright |
+| **Quality (Python)** | `check` | Run all checks (architecture + lint + typecheck + security + frontend) |
+| | `check-architecture` | Run architecture constraint checker |
+| | `lint` | Run ruff linter with auto-fix |
+| | `typecheck` | Run pyright type checker |
+| | `security` | Run security checks |
+| **Quality (Frontend)** | `check-frontend` | Run all frontend checks (lint + typecheck + test) |
+| | `lint-frontend` | Run non-mutating frontend lint/format checks |
+| | `format-frontend` | Run frontend formatter |
+| | `typecheck-frontend` | Run TypeScript type checking on frontend |
+| **Dependencies** | `deps` | Show dependency tree |
+| | `deps-update` | Update all dependencies to latest compatible versions |
 | **Release** | `changelog` | Preview changelog for unreleased changes |
+| | `version` | Show current version |
 
 ## Release Process
 

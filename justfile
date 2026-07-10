@@ -104,6 +104,20 @@ dev-setup:
     uv run python scripts/seed_dev_user.py
     @echo "✅ Ready! Run 'just dev' to start."
 
+# Lightweight setup: dev deps without NLP models (~200 MB smaller). Use for frontend/core work.
+dev-setup-min:
+    @echo "🚀 Setting up Narrare (lightweight — no NLP models)..."
+    @if [ ! -f .env ]; then cp .env.example .env && echo "📋 Created .env — add your API keys"; fi
+    uv sync --frozen --all-packages --group dev
+    pre-commit install --install-hooks
+    pnpm install
+    @echo "⏳ Starting services..."
+    just _ensure-services
+    just db-migrate
+    uv run python scripts/seed_dev_user.py
+    @echo "✅ Ready! Run 'just dev' to start."
+    @echo "ℹ️  NLP features (analysis) require: just install-nlp-models"
+
 # Generate a secure secret key
 generate-secret:
     uv run python -c "import secrets; print(secrets.token_hex(32))"

@@ -1311,10 +1311,11 @@ RULE-02") but MUST NOT reproduce, paraphrase, or contradict its rules.
 
 - Manual: Architecture Specialist reviews documentation changes for SSOT compliance.
 - CI: Automated drift detection between authoritative and derived sources —
-  implemented via the Governance Health Checker. The vague AUFG-NEW-01 follow-up
-  was **concretized by ADR-047** (Phases 1–4). `scripts/check_governance_health.py`
-  aggregates SSOT/gate drift and review-finding coverage, and is CI-blocking
-  (`just check-governance`, with a `GOVERNED_DEBT` baseline).
+  implemented via the Documentation Drift Checker (`scripts/check_doc_drift.py`,
+  CI-blocking in the architecture job) and the Gate Drift Checker
+  (`scripts/check_gate_drift.py`). ADR-047 (Governance Health Checker) was
+  **superseded**; its SSOT/gate-drift aggregation responsibilities now live in
+  these dedicated checkers.
 
 ---
 
