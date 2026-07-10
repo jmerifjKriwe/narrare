@@ -358,25 +358,40 @@ All developer commands via `just`:
 |----------|---------|-------------|
 | **Setup** | `dev-setup` | First-time setup: install dev + NLP deps/models, create .env, run migrations |
 | | `generate-secret` | Generate a secure `SECRET_KEY` |
-| **Development** | `dev` | Start all services (API + frontend + workers) |
-| | `dev-api` | Start API only |
-| | `dev-frontend` | Start frontend only |
-| | `dev-worker` | Start background worker |
-| **Database** | `db-migrate` | Run pending Alembic migrations (optional — runs automatically on startup) |
-| | `db-downgrade` | Roll back last migration |
-| | `db-seed` | Seed development data |
-| | `db-reset` | Drop and recreate dev database (dangerous) |
-| **Testing** | `test` | Run all tests |
-| | `test-unit` | Run unit tests only (fast) |
-| | `test-integration` | Run integration tests (needs Docker) |
-| | `test-cov` | Run with coverage report |
+| | `install-nlp-models` | Install spaCy language models (de, en, fr) |
+| **Development** | `dev` | Start all services (API + frontend) |
+| | `dev-api` | Start API server only (port 8000) |
+| | `dev-frontend` | Start frontend only (port 3000) |
+| | `dev-e2e` | Start API in E2E test mode (no real LLM calls) + frontend |
+| | `dev-worker` | Start TaskIQ worker (Phase 5+) |
+| | `dev-services` | Start Docker services (postgres + redis) |
+| | `dev-services-stop` | Stop Docker services |
+| **Database** | `db-migrate` | Run pending Alembic migrations (also runs automatically on startup) |
+| | `db-revision "msg"` | Create a new migration (e.g. `just db-revision "add table"`) |
+| | `db-status` | Show current migration status |
+| | `db-history` | Show migration history |
+| | `db-reset` | Reset dev database (DANGER: destroys all data) |
+| | `db-shell` | Open psql shell |
+| **Testing** | `test` | Run all tests (parallel) |
+| | `test-unit` | Run unit tests only (fast, no Docker needed) |
+| | `test-integration` | Run integration tests (requires Docker services) |
+| | `test-e2e` | Run E2E tests (requires full stack) |
+| | `test-frontend` | Run frontend tests (Vitest) |
+| | `test-cov` | Run tests with coverage report |
 | | `test-vrt` | Run Playwright VRT screenshot tests |
-| **Quality** | `check` | Run all checks (architecture + lint + typecheck + security) |
-| | `check-frontend` | Run non-mutating frontend file-size, lint/format, type, and test checks |
-| | `lint` | Run ruff lint + fix |
-| | `format` | Run ruff format |
-| | `typecheck` | Run pyright |
+| **Quality (Python)** | `check` | Run all checks (architecture + lint + typecheck + security + frontend) |
+| | `check-architecture` | Run architecture constraint checker |
+| | `lint` | Run ruff linter with auto-fix |
+| | `typecheck` | Run pyright type checker |
+| | `security` | Run security checks |
+| **Quality (Frontend)** | `check-frontend` | Run all frontend checks (lint + typecheck + test) |
+| | `lint-frontend` | Run non-mutating frontend lint/format checks |
+| | `format-frontend` | Run frontend formatter |
+| | `typecheck-frontend` | Run TypeScript type checking on frontend |
+| **Dependencies** | `deps` | Show dependency tree |
+| | `deps-update` | Update all dependencies to latest compatible versions |
 | **Release** | `changelog` | Preview changelog for unreleased changes |
+| | `version` | Show current version |
 
 ## Release Process
 
