@@ -137,6 +137,8 @@ Narrare hat 5 Skills für schnelle, spezialisierte Aufgaben:
 
 Die Skills werden automatisch aktiviert, wenn die Trigger-Phrasen erkannt werden. Du kannst sie auch explizit mit `/skillname` aufrufen.
 
+> **Vollständiges Skill-Inventar:** Skills stammen aus drei Quellen (`.agents/skills/`, `.opencode/skills/`, Superpowers). Die 38 Skills mit Ownership-Regeln und Overlap-Analyse sind dokumentiert in `docs/development/skills-index.md`.
+
 ---
 
 ## Agents — Spezialisierte Subagents
