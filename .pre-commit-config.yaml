@@ -138,11 +138,11 @@ repos:
       # cross-refs, spec/RULE alignment, and checker terminology.
       # Runs when docs or the justfile change (review-04 AUFG-04-02/04).
       - id: doc-drift
-        name: Documentation Drift (just commands + ADR + spec)
+        name: Documentation Drift (just commands + ADR + spec + agent names)
         entry: uv run --no-sync python scripts/check_doc_drift.py --governance-only
         language: system
         pass_filenames: false
-        files: ^(docs/|justfile$)
+        files: ^(docs/|justfile$|AGENTS\.md$|\.opencode/agents/subagents/)
 
       # Ruff lint + fix
       - id: ruff-lint
