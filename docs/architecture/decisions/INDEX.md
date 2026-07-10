@@ -88,6 +88,7 @@
 | [ADR-063](ADR-063-deterministic-ci-venv-contract.md) | Deterministic CI Virtualenv Contract — `uv sync` once, `--no-sync` always | ✅ | 2026-07-05 | `pyproject.toml`, `.github/workflows/ci.yml`, workspace members |
 | [ADR-064](ADR-064-mem0-prompt-path-scope-and-memory-defaults.md) | mem0 Extraction Prompts & Default Models — RULE-02b scope boundary (governed exception for third-party-library config strings) + RULE-18b governed default for `_PROVIDER_DEFAULT_MODELS` | ✅ | 2026-07-08 | `core/memory/mem0_client.py`, `pyproject.toml` exceptions, `CONSTRAINTS.md §7`, `ai-gate-baseline.json`, RULE-02b/02/08/18b |
 | [ADR-065](ADR-065-rule-13-two-method-run-stream-contract.md) | RULE-13 Two-Method run/stream Contract Reconciliation — declare `run()` (non-streaming `T`) + `stream()` (`AsyncIterator[StreamChunk]`) as the standard; reconcile CONSTRAINTS.md text/example/§6 to the realised architecture (rejects single-method `stream: bool` union-return form) | ✅ | 2026-07-08 | `core/llm/gateway.py` (ModelRegistry), `CONSTRAINTS.md` RULE-13 §5/§6, RULE-09/13/20/23 |
+| [ADR-066](ADR-066-agent-context-store.md) | Session-Scoped Agent Context Store for Cross-Invocation Artifact Sharing — typed best-effort `AgentContextStore` + `AgentArtifactEnricher` reusing the `ContextEnricher`/`dynamic_inputs` seam; RULE-22 producer→store→consumer contract + graceful degradation; implementation deferred | ✅ | 2026-07-10 | `core/ai_invocation/` (new), ADR-034/038/044/050, RULE-03/06/11/22, CR-AUFG-03-06 |
 
 ---
 
