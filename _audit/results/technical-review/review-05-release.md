@@ -659,6 +659,12 @@ zentrale AUFG-Registry eingeführt werden.
      nicht dupliziert. -->
 
 ### [AUFG-05-15] SBOM-Generierung im Release härten (best-effort → verifiziert)
+**Re-Check 2026-07-10:** **DEFERRED 2026-07-10** — Release-Strategie
+undentschieden (Q-011). Der `publish`-Job in `release-please.yml` (inkl.
+Docker-Build, SBOM, GHCR-Push) ist spekulativ — keine GHCR-Credentials
+konfiguriert, nie getriggert, Artefakt-Typ offen. SBOM-Härtung ist relevant
+erst, wenn entschieden ist, was ein Release-Artefakt ist. Wiedervorlage: mit
+Q-011-Entscheidung (Release-/Distributions-Strategie).
 **Priorität:** Mittel
 **Bereich:** Release / Security
 **Kontext:** Die CycloneDX-SBOM-Generierung im `publish`-Job von
@@ -683,6 +689,12 @@ möglicherweise ein leeres/fehlendes Asset.
 **Geschätzter Aufwand:** S
 
 ### [AUFG-05-16] Container-Image-Vulnerability-Scan in CI (Trivy/Grype)
+**Re-Check 2026-07-10:** **DEFERRED 2026-07-10** — Release-Strategie
+undentschieden (Q-011). Es wird derzeit kein Docker-Image gebaut (weder in CI
+noch im Release — der `publish`-Job ist nie gelaufen). Image-Scanning ist
+relevant erst, wenn entschieden ist, dass ein Docker-Image ein
+Release-Artefakt ist. Wiedervorlage: mit Q-011-Entscheidung
+(Release-/Distributions-Strategie).
 **Priorität:** Mittel
 **Bereich:** Release / Security
 **Kontext:** Die CI prüft Dependencies via `pip-audit` (Source-Manifest) und
@@ -706,6 +718,12 @@ das ist Source-Ebene — dieser Task ist Image-Ebene (komplementär).
 **Geschätzter Aufwand:** S
 
 ### [AUFG-05-17] Cosign-Keyless-Image-Signing implementieren (Supply-Chain)
+**Re-Check 2026-07-10:** **DEFERRED 2026-07-10** — Release-Strategie
+undentschieden (Q-011). Cosign-Signing setzt ein veröffentlichtes
+Docker-Image voraus — der `publish`-Job, der es bauen/pushen würde, ist
+spekulativ (keine GHCR-Credentials, nie getriggert). Signing ist relevant
+erst, wenn entschieden ist, dass ein Docker-Image ein Release-Artefakt ist.
+Wiedervorlage: mit Q-011-Entscheidung (Release-/Distributions-Strategie).
 **Priorität:** Niedrig
 **Bereich:** Release / Security
 **Kontext:** Das Release-Bundle-README (release-please.yml L235–248) skizziert
