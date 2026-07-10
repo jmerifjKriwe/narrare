@@ -110,13 +110,12 @@ If no → more graph queries needed. If yes → proceed to Propose.
 
 | Work type | Primary agent | Layer ordering |
 |-----------|--------------|----------------|
-| New module, ADR, contract change | `narrare-architecture` | First (before any code) |
-| Backend FastAPI/Python code | `narrare-implementation` | After architecture |
-| Core LLM/Agent/Prompt code | `narrare-core` | After architecture |
-| Frontend UI/Components | `narrare-ui` | After backend contract defined |
-| Testing/Coverage | `narrare-testing` | Parallel with implementation |
-| CI/CD, Docker, DevOps | `narrare-deployment` | After implementation |
-| Documentation/i18n | `narrare-documentation` | Last (Doc Gate) |
+| New module, ADR, contract change | `NarrareArchitectureSpecialist` | First (before any code) |
+| Core LLM/Agent/Prompt code | `NarrareCoreSpecialist` | After architecture |
+| Backend FastAPI/Python code | `NarrareBackendSpecialist` | After architecture |
+| Frontend UI/Components | `NarrareFrontendSpecialist` | After backend contract defined |
+| Testing/Coverage, CI/CD, Docker, DevOps | `NarrarePlatformSpecialist` | Parallel with implementation, or after implementation |
+| Documentation/i18n | `NarrareDocsSpecialist` | Last (Doc Gate) |
 
 **Briefing format:**
 ```
@@ -325,13 +324,12 @@ Coordinator: Stage 1 (Analyze)
 
 | Work | Agent | When |
 |------|-------|------|
-| Architecture/spec/ADR | `narrare-architecture` | First |
-| Python backend code | `narrare-implementation` | After arch |
-| Core/LLM/Agent code | `narrare-core` | After arch |
-| Frontend/UI | `narrare-ui` | After contract |
-| Tests | `narrare-testing` | Parallel w/ impl |
-| CI/CD/Docker | `narrare-deployment` | After impl |
-| Docs/i18n | `narrare-documentation` | Last |
+| Architecture/spec/ADR | `NarrareArchitectureSpecialist` | First |
+| Core/LLM/Agent code | `NarrareCoreSpecialist` | After arch |
+| Python backend code | `NarrareBackendSpecialist` | After arch |
+| Frontend/UI | `NarrareFrontendSpecialist` | After contract |
+| Tests/CI/CD/Docker | `NarrarePlatformSpecialist` | Parallel w/ impl |
+| Docs/i18n | `NarrareDocsSpecialist` | Last |
 
 ### Stage Checklist
 

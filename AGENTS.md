@@ -147,19 +147,21 @@ Narrare hat 6 spezialisierte Agents für komplexe Aufgaben. Diese werden explizi
 
 | Agent | Trigger-Phrasen | Zweck |
 |-------|-----------------|-------|
-| `narrare-architecture` | "neues modul", "architektur", "adr", "contract", "interface", "module structure" | Module designen, Contracts definieren, ADRs schreiben |
-| `narrare-implementation` | "implementier", "schreib code", "create function", "add method" | Production Code nach Standards schreiben |
-| `narrare-testing` | "tests", "testen", "coverage", "test quality" | Test-Strategie, Tests schreiben, Coverage prüfen |
-| `narrare-ui` | "ui", "frontend", "komponente", "tsx", "page" | Frontend mit Next.js, TipTap, UX-Principles |
-| `narrare-deployment` | "deploy", "ci", "release", "devcontainer", "docker" | CI/CD, Dev-Container, Docker |
-| `narrare-documentation` | "dokumentation", "docs", "hilfe", "help text" | Feature-Docs, Developer-Docs, i18n |
+| `NarrareArchitectureSpecialist` | "neues modul", "architektur", "adr", "contract", "interface", "module structure" | Module designen, Contracts definieren, ADRs schreiben, Architektur-Validierung |
+| `NarrareCoreSpecialist` | "llm", "prompt", "agent", "embedding", "memory", "kb" | LLM-Gateway, Prompts, Embeddings, Memory, KB-Domain-Logik |
+| `NarrareBackendSpecialist` | "implementier", "schreib code", "create function", "add method", "endpoint", "service" | FastAPI, SQLAlchemy, async Python, Service Layer |
+| `NarrareFrontendSpecialist` | "ui", "frontend", "komponente", "tsx", "page" | Next.js 16, TipTap v3, React, TypeScript, Tailwind |
+| `NarrarePlatformSpecialist` | "tests", "testen", "coverage", "deploy", "ci", "release", "devcontainer", "docker" | Testing, CI/CD, Docker, Deployment, Architektur-Validierung |
+| `NarrareDocsSpecialist` | "dokumentation", "docs", "hilfe", "help text", "i18n", "changelog" | Feature-Docs, Developer-Docs, i18n, Help Texts, CHANGELOG |
+
+> **Note:** Es gibt keinen separaten Testing-Agent. Testing-Aufgaben (Test-Strategie, Coverage-Prüfung) sind Teil des `NarrarePlatformSpecialist`. Die realen Subagent-Namen sind in `.opencode/agents/subagents/narrare-dev/*.md` definiert — verwende NIEMALS erfundene Namen wie `narrare-testing` oder `narrare-implementation`.
 
 ### Agent-Aufruf im Orchestrator
 
 ```python
 # Beispiel: Architektur-Agent für neues Modul
 Agent(
-    subagent_type="narrare-architecture",
+    subagent_type="NarrareArchitectureSpecialist",
     prompt="Design a KB versioning module. Context: [...]"
 )
 ```
@@ -170,7 +172,7 @@ Agents geben klare Handoffs an den nächsten Agent:
 
 ```
 HANDOFF: Implementation
-→ Agent: narrare-implementation
+→ Agent: NarrareBackendSpecialist
 → Contract: packages/core/kb/contracts.py
 → ADR: docs/architecture/decisions/012-kb-versioning.md
 → Task: Implement KBVersionRepository with methods: list(), diff(), restore()
@@ -198,7 +200,7 @@ Der Scope ist klar, du delegierst an den richtigen Agent:
 
 ```
 User: "I want to add a way to compare two KB versions"
-Du: ROUTING → Agent(subagent_type="narrare-architecture")
+Du: ROUTING → Agent(subagent_type="NarrareArchitectureSpecialist")
 
 CONTEXT: Der User möchte KB-Versionsvergleich hinzufügen. Es gibt aktuell
 kein Versioning im KB-System.
@@ -215,12 +217,12 @@ Contract für KB-Versioning definiert. Auswirkungen auf bestehende Features bewe
 ```
 
 **Trigger-Erkennung:** Der Orchestrator prüft bei jedem Prompt, ob eine Trigger-Phrase vorliegt, und delegiert automatisch:
-- "neues modul" → `narrare-architecture`
-- "implementier" → `narrare-implementation`
-- "tests" → `narrare-testing`
-- "ui" / "frontend" → `narrare-ui`
-- "deploy" / "ci" → `narrare-deployment`
-- "dokumentation" → `narrare-documentation`
+- "neues modul" / "architektur" → `NarrareArchitectureSpecialist`
+- "llm" / "prompt" / "agent" → `NarrareCoreSpecialist`
+- "implementier" → `NarrareBackendSpecialist`
+- "ui" / "frontend" → `NarrareFrontendSpecialist`
+- "tests" / "testen" / "deploy" / "ci" → `NarrarePlatformSpecialist`
+- "dokumentation" → `NarrareDocsSpecialist`
 
 ### Wenn du unsicher bist
 
