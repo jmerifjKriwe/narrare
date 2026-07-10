@@ -674,6 +674,27 @@ NARRARE_OTEL_INCLUDE_CONTENT=
 NARRARE_CSRF_TRUSTED_ORIGINS=http://localhost:3000
 ```
 
+### Prometheus Metrics Endpoint
+
+The API exposes a Prometheus-compatible metrics endpoint at `/metrics` (no
+authentication required, same as `/health` and `/ready`). It provides
+LLM-specific counters and histograms: request counts, token usage, cost
+estimates, and request duration — all labelled by `intent`, `model`, and
+`provider`.
+
+Scrape it with Prometheus:
+
+```yaml
+scrape_configs:
+  - job_name: 'narrare'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:8000']
+```
+
+For Docker deployments, use the API container's service name:
+`targets: ['api:8000']` (or `host.docker.internal:8000` from the host).
+
 ### NARRARE_ENCRYPTION_KEY
 
 Required for AI provider features (multi-provider support, user API key storage).
