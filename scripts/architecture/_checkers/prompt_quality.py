@@ -8,7 +8,6 @@ Ensures bundled prompts with ``prompt_type`` frontmatter contain:
 Exemptions:
 - Fragment files (no ``prompt_type`` frontmatter) — skipped entirely
 - ``prompt_type: meta`` — exempt from output format requirement
-- ``system.lite.md`` — exempt from role assignment requirement
 
 Uses multilingual patterns from ``_prompt_quality_patterns.py``.
 """
@@ -70,12 +69,11 @@ def check_prompt_content_quality(
     content = "\n".join(content_lines)
     content_lower = content.lower()
     prompt_type = metadata.get("prompt_type", "")
-    filename = filepath.rsplit("/", 1)[-1] if "/" in filepath else filepath
 
     findings: list[QualityFinding] = []
 
-    # --- Role assignment (exempt system.lite.md) ---
-    if filename != "system.lite.md" and not _has_role(content, content_lower):
+    # --- Role assignment ---
+    if not _has_role(content, content_lower):
         findings.append(
             QualityFinding(
                 detail=(

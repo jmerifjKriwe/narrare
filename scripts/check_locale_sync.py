@@ -123,7 +123,7 @@ def discover_groups(bundled_dir: Path) -> dict[str, SyncGroup]:
             groups[group_key] = SyncGroup(group_key=group_key)
         groups[group_key].variants[locale] = variant
 
-    # Also handle system.*.md variants (e.g., system.lite.md).
+    # Also handle any system.*.md variants.
     for md_file in sorted(bundled_dir.rglob("system.*.md")):
         if md_file.name == "system.md":
             continue

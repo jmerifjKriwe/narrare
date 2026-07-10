@@ -55,10 +55,6 @@ _SUBSYSTEM_CATEGORIES = frozenset({"wiki"})
 # Subdirectories that are auxiliary resources, not modes.
 _SKIP_SUBDIRS = frozenset({"tones", "name-styles"})
 
-# File names that are not primary mode prompts.
-_SKIP_FILENAMES = frozenset({"system.lite.md"})
-
-
 # ── Data ────────────────────────────────────────────────────────────────
 
 

@@ -104,7 +104,7 @@ class TestPromptContentQualityMultilingual:
         assert "Do-NOT" in result[0].detail
 
     def test_meta_prompt_exemptions(self) -> None:
-        """Meta-prompts should not require output format; lite should not require role."""
+        """Meta-prompts should not require output format."""
         # Meta prompt — should NOT flag output format
         meta_lines = [
             "---",
@@ -121,21 +121,3 @@ class TestPromptContentQualityMultilingual:
         ]
         result = check_prompt_content_quality("prompts/_bundled/meta/en/system.md", meta_lines)
         assert result == [], f"Meta prompt should pass (output format exempt), got {result}"
-
-    def test_lite_prompt_role_exempt(self) -> None:
-        """system.lite.md should not require role assignment."""
-        lite_lines = [
-            "---",
-            "prompt_type: meta",
-            "prompt_language: en",
-            'prompt_version: "2.2.0"',
-            "---",
-            "",
-            "Compact behavioral instructions for token-limited contexts.",
-            "",
-            "- Do not ignore outline.",
-            "- Do not refuse fiction content unless harmful.",
-            "- Do not add meta-commentary.",
-        ]
-        result = check_prompt_content_quality("prompts/_bundled/meta/en/system.lite.md", lite_lines)
-        assert result == [], f"Lite prompt should pass (role exempt), got {result}"
