@@ -12,9 +12,13 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/api/streaming", () => ({
-  connectSSE: vi.fn(),
-}));
+vi.mock("@/lib/api/streaming", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/streaming")>();
+  return {
+    ...actual,
+    connectSSE: vi.fn(),
+  };
+});
 
 import type { ConsistencyIssue } from "@/lib/api/analysis";
 import {
