@@ -12,6 +12,7 @@ Check families:
   - Spec/RULE-XX reference alignment
   - Checker terminology alignment
   - Lookup-context drift (pydantic-ai/mem0/coverage/phantom commands — review-04 AUFG-04-13)
+  - Just-recipe doc-drift (phantom `just <recipe>` references — review-04 AUFG-04-02/04)
 
 Exit codes:
   0: No drift detected — all checks passed.
@@ -39,6 +40,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from doc_drift.adr_checks import DocDriftFinding, check_adr_consistency
+from doc_drift.just_command_checks import check_just_command_drift
 from doc_drift.lookup_drift_checks import check_lookup_drift
 from doc_drift.spec_checks import check_spec_references
 from doc_drift.ssot_locale_path_checks import check_ssot_locale_path
@@ -79,6 +81,7 @@ def _run_governance_checks() -> list[DocDriftFinding]:
     findings.extend(check_terminology_alignment())
     findings.extend(check_lookup_drift())
     findings.extend(check_ssot_locale_path())
+    findings.extend(check_just_command_drift())
     return findings
 
 

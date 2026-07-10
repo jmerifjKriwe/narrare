@@ -309,6 +309,9 @@ ignored_modules = [
   "scripts/checks/_ai_interaction_checks/check_8_stale_exclude.py",
   "scripts/prompt_checks.py",
   "scripts/run_checks.py",
+  # Doc-drift validator — _JUST_LIST_TIMEOUT (10s subprocess timeout for
+  # `just --list`) is a tooling constant, not runtime config:
+  "scripts/doc_drift/just_command_checks.py",
 ]
 
 [tool.narrare.architecture.exceptions]

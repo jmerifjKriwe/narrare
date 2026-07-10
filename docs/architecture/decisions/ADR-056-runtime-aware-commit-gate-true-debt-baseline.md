@@ -384,8 +384,6 @@ baseline while a marker-blind entry point still exists would fail that entry poi
 
 - [ ] `just check-adoption` → green.
 - [ ] `just check` → green (now runtime-aware).
-- [ ] `just check-governance` → green; governance-health `GOVERNED_DEBT` reading
-      reflects the shrunk baseline (verify ADR-047 coherence).
 - [ ] `uv run python scripts/check_adoption.py --evidence-dir .evidence` reports
       the `adoption_debt` baseline reduced to the single `inline_fallback_count`
       entry.
