@@ -5,6 +5,9 @@ that exercise the registry->agent bridge. These replace hand-rolled fakes
 with pydantic-ai's built-in test models, which stay in sync with the
 library automatically.
 
+Also resets ``narrare_llm_*`` Prometheus counters before every test to
+prevent cross-test contamination (see ``reset_llm_prometheus_metrics``).
+
 See: docs/development/testing-standards.md — RULE-TEST-01
 """
 
@@ -13,6 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from prometheus_client import REGISTRY, Counter
 from pydantic_ai.models.test import (  # narrare: allow reason="test fixtures"
     TestModel,
 )
@@ -22,6 +26,30 @@ if TYPE_CHECKING:
 
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+
+
+def _get_llm_counters() -> list[Counter]:
+    """Collect all narrare_llm_* Counter instances registered with Prometheus."""
+    counters: list[Counter] = []
+    for collector in REGISTRY._collector_to_names:  # type: ignore[attr-defined]
+        if isinstance(collector, Counter) and collector._name.startswith("narrare_llm_"):
+            counters.append(collector)
+    return counters
+
+
+@pytest.fixture(autouse=True)
+def reset_llm_prometheus_metrics() -> Generator[None]:
+    """Clear Prometheus counter caches before each test.
+
+    ``Counter._metrics`` maps label-value tuples to the internal metric state.
+    Clearing it forces ``.labels(...)`` to create a fresh counter starting at 0.
+    This prevents test-order-dependent failures when the same test runs
+    multiple times in a single process (e.g., MutMut's stats-dedup + clean run).
+    """
+    for counter in _get_llm_counters():
+        counter._metrics.clear()
+    yield
+    # No teardown needed — the next test's autouse will clear again.
 
 
 @pytest.fixture
