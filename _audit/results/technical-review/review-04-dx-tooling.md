@@ -605,3 +605,31 @@ Wiedervorlage-Datum). Suppression ist legitim, sollte aber nachvollziehbar sein.
 - [ ] Jede `--ignore-vuln` im CI-Step hat einen Kommentar: betroffenes Paket + Grund (z. B. „upstream fix pending", „false positive") + Wiedervorlage/Re-evaluation-Datum.
 - [ ] Optional: Verschiebung der Suppression-Liste in eine separate, kommentierte Konfig (`pyproject.toml [tool.pip-audit]` o. ä.), um sie sichtbarer zu machen.
 **Geschätzter Aufwand:** S
+
+---
+
+## Angenommene Risiken (ohne Task)
+
+Die folgenden Beobachtungen wurden bei der Gap-Analyse (2026-07-10) als
+Class B (beobachtetes Risiko, bewusst akzeptiert) eingestuft und nicht in
+Tasks umgewandelt.
+
+**B1 — NARRARE_DEV_MODE und Windows/bash-Limitation nicht in README dokumentiert.**
+*Accepted Risk (reason: NARRARE_DEV_MODE ist im justfile und post-create.sh
+referenziert und für host-mode Entwickler relevant, aber der DevContainer-Pfad
+(ADR-029) ist der empfohlene Windows-Pfad und fängt das bash-Signal-Handling-
+Problem ab. Die Dokumentationslücke ist geringfügig.)*
+
+**B2 — DevContainer Base-Image verwendet Floating-Tag statt Digest-Pin.**
+*Accepted Risk (reason: DevContainer ist optional (ADR-029). Der Floating-Tag
+`python:3.14-bookworm` ist bewusst gewählt (aktuellster 3.14-Patch). Features
+sind bereits via `devcontainer-lock.json` gepinnt. Reproduzierbarkeits-Risiko
+über Zeit ist bekannt und akzeptiert.)*
+
+**B3 — pnpm-Version im Dockerfile nicht maschinell gegen package.json synchronisiert.**
+*Accepted Risk (reason: Versionen sind aktuell synchron (`11.5.2` in beiden).
+Drift-Risiko ist gering.)*
+
+**B4 — Endnutzer-/API-Konsumenten-Doku dünn, kein gerendertes Docs-Portal.**
+*Accepted Risk (reason: Vom Review als „für MVP-Phase akzeptabel dünn" bewertet.
+Docs-Portal ist für die aktuelle Projektphase nicht prioritär.)*
