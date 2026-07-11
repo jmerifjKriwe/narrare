@@ -31,7 +31,7 @@ logger = structlog.get_logger(__name__)
 
 # CR-AUFG-02-07 / ADR-046: The ``composer is None`` fallback paths were
 # removed. ``PromptComposer`` is now a required dependency (RULE-11:
-# fail-fast, never silently degrade to inline prompts + MetaPromptLoader).
+# fail-fast, never silently degrade to inline prompts).
 _COMPOSER_MISSING_MSG = (
     "PromptComposer is required for writing graph production paths — "
     "WritingDeps.composer must be wired by the DI container."

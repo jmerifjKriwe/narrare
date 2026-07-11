@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from pydantic_ai.models.test import TestModel
 
 from narrare_core.agents import NarrareAgent
@@ -213,7 +212,6 @@ class TestNarrareUniversalRulesInAgent:
 class TestNoDuplicationWithMeta:
     """Integration test: universal rules appear once, not duplicated."""
 
-    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_meta_prompt_does_not_contain_universal_rules(self) -> None:
         """Meta-prompt files no longer contain universal rules content.
 
@@ -224,14 +222,10 @@ class TestNoDuplicationWithMeta:
 
         These are now injected via NarrareUniversalRules Capability.
         """
-        from narrare_core.prompts.meta import MetaPromptLoader
-
-        loader = MetaPromptLoader()
+        from narrare_core.agents.capabilities.meta import _load_meta_prompt
 
         # Check EN meta-prompt
-        import asyncio
-
-        meta_en = asyncio.run(loader.load(language="en"))
+        meta_en = _load_meta_prompt("en")
         # Should NOT contain universal rules content
         assert "Fiction Content Guidelines" not in meta_en
         assert "Content Security" not in meta_en
@@ -239,13 +233,13 @@ class TestNoDuplicationWithMeta:
         assert "outline contradicts" not in meta_en.lower()
 
         # Check DE meta-prompt
-        meta_de = asyncio.run(loader.load(language="de"))
+        meta_de = _load_meta_prompt("de")
         assert "Konfliktlösung" not in meta_de
         assert "Fiktionsinhalts-Richtlinien" not in meta_de
         assert "Inhaltssicherheit" not in meta_de
 
         # Check FR meta-prompt
-        meta_fr = asyncio.run(loader.load(language="fr"))
+        meta_fr = _load_meta_prompt("fr")
         assert "Résolution des conflits" not in meta_fr
         assert "contenu de fiction" not in meta_fr.lower()
         assert "Sécurité du contenu" not in meta_fr

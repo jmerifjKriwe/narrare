@@ -10,7 +10,6 @@ from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 from narrare_core.prompts.context import KBContextEntry, PromptContext, validate_world_context
 from narrare_core.prompts.contracts import ContextSnapshot, PromptPreviewProtocol
 from narrare_core.prompts.management import PromptManagementService
-from narrare_core.prompts.meta import MetaPromptLoader
 from narrare_core.prompts.preview import PromptPreviewService
 from narrare_core.prompts.preview_types import (
     PreviewDiagnostic,
@@ -37,7 +36,6 @@ __all__ = [
     "ComposedPrompt",
     "ContextSnapshot",
     "KBContextEntry",
-    "MetaPromptLoader",
     "PreviewDiagnostic",
     "PreviewDiagnosticKind",
     "PromptComposer",

@@ -91,10 +91,8 @@ class TestNoInlineFallbackPrompts:
 
         Variables whose name contains ``PROMPT`` (case-insensitive) with string
         values exceeding 200 characters are considered inline prompt definitions.
-        They are only acceptable when:
-
-        1. The file also imports/uses ``MetaPromptLoader`` (properly handled), **or**
-        2. The variable is listed in ``_INLINE_PROMPT_EXCEPTIONS``.
+        They are only acceptable when the variable is listed in
+        ``_INLINE_PROMPT_EXCEPTIONS``.
 
         Known acceptable exceptions:
 
@@ -118,23 +116,13 @@ class TestNoInlineFallbackPrompts:
             if not constants:
                 continue
 
-            # If the file uses MetaPromptLoader → properly handled
-            try:
-                source = py_file.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
-            if "MetaPromptLoader" in source:
-                continue
-
             # Check against known exceptions
             allowed_vars = _INLINE_PROMPT_EXCEPTIONS.get(rel_str, set())
 
             for name, lineno, _content in constants:
                 if name in allowed_vars:
                     continue
-                violations.append(
-                    f"{rel_str}:{lineno} — {name} (define in core/prompts/ or use MetaPromptLoader)"
-                )
+                violations.append(f"{rel_str}:{lineno} — {name} (define in core/prompts/)")
 
         assert not violations, (
             "RULE-02 violations — inline prompt constants found outside core/prompts/:\n"
