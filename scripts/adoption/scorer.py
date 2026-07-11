@@ -79,8 +79,13 @@ def _check_i18n_coverage(
     prompts: list[PromptFile],
     category: str,
     modes: list[str],
-) -> tuple[dict[str, list[str]], float, int, int]:
-    """Check locale coverage; return (missing_map, adopted_frac, applicable, adopted)."""
+) -> tuple[dict[str, list[str]], dict[str, list[str]], float, int, int]:
+    """Check locale coverage; return (missing_map, extra_map, adopted_frac, applicable, adopted).
+
+    ``missing_map`` lists required locales absent from disk (blocking).
+    ``extra_map`` lists locales present on disk but not required (warning-only,
+    prevents re-introduction of non-EN feature templates per ADR-026 Phase 5).
+    """
     category_system = [p for p in prompts if p.category == category and p.is_system_md]
 
     # Group by group_key (category or category/mode).
@@ -90,11 +95,12 @@ def _check_i18n_coverage(
 
     # For categories with no mode subdirectories (e.g. chat).
     if not groups:
-        return {}, 0.0, 0, 0
+        return {}, {}, 0.0, 0, 0
 
     required = _required_locales_for(category)
 
     missing_map: dict[str, list[str]] = {}
+    extra_map: dict[str, list[str]] = {}
     total_applicable = 0
     total_covered = 0
 
@@ -106,6 +112,12 @@ def _check_i18n_coverage(
         if missing:
             # Show missing for the primary locale's key.
             missing_map[key] = missing
+        extra = sorted(present - required)
+        if extra:
+            # Warning only — not blocking. Clean baseline: 0 extra locales.
+            # This prevents re-introduction of non-EN feature templates
+            # (ADR-026 Phase 5).
+            extra_map[key] = extra
 
     # Also check modes registered in the registry but missing from filesystem.
     if modes:
@@ -118,7 +130,7 @@ def _check_i18n_coverage(
                 missing_map[expected_key] = sorted(required)
 
     adopted_frac = total_covered / total_applicable if total_applicable else 0.0
-    return missing_map, adopted_frac, total_applicable, total_covered
+    return missing_map, extra_map, adopted_frac, total_applicable, total_covered
 
 
 def _map_fallbacks_to_categories(
@@ -211,7 +223,9 @@ def compute_adoption_report(
         missing_should = [v for v in should_vars if v not in all_vars]
 
         # i18n check.
-        missing_locales, i18n_frac, _, _ = _check_i18n_coverage(prompts, cat_name, mode_names)
+        missing_locales, extra_locales, i18n_frac, _, _ = _check_i18n_coverage(
+            prompts, cat_name, mode_names
+        )
         has_prompts = bool([p for p in prompts if p.category == cat_name and p.is_system_md])
         cat_runtime: dict[str, str] = category_defaults.get(cat_name, {}).get(
             "runtime_requirements", {}
@@ -315,6 +329,7 @@ def compute_adoption_report(
                 missing_must=missing_must,
                 missing_should=missing_should,
                 missing_locales=missing_locales,
+                extra_locales=extra_locales,
                 inline_fallbacks=fb_count,
                 modes=mode_scores,
             )

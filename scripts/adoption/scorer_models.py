@@ -40,6 +40,7 @@ class CategoryScore:
     missing_must: list[str] = field(default_factory=list[str])
     missing_should: list[str] = field(default_factory=list[str])
     missing_locales: dict[str, list[str]] = field(default_factory=dict[str, list[str]])
+    extra_locales: dict[str, list[str]] = field(default_factory=dict[str, list[str]])
     inline_fallbacks: int = 0
     modes: list[ModeScore] = field(default_factory=_empty_modes)
 
