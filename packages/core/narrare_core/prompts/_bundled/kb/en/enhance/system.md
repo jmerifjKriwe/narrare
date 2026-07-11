@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -102,6 +102,7 @@ The author has set the following preferences. Ensure your suggestions are compat
 
 ### Constraints
 
+- Write all generated field values in {{writing_language}}.
 - Fill as many template fields as possible with specific, usable content.
 - Ensure all values are consistent with existing answers and world context.
 - Calculate progress honestly — do not inflate the completion percentage.
