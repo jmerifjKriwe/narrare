@@ -626,6 +626,14 @@ stilistische Kontextinformation verpasst. Remediation-Typ: mixed (architectural
   `{{writing_language}}` sind konsistent (alle 8) ✓
 - SET-006 (Project Writing Profile) ist der richtige Langzeit-Fix
 
+> **Accepted Risk (2026-07-11):** SET-006 (Project Writing Profile) wird als
+> mittelfristige architektonische Entscheidung akzeptiert und nicht in diesem
+> Review-Zyklus umgesetzt. Begründung: cr-00 hat SET-006 bewusst außer Scope
+> gesetzt; Strategy A (CR-AUFG-01-06 — `{{style_profile}}` zu 4 Writing-Prompts)
+> adressiert das kurzfristige Konsistenz-Problem. Die langfristige Lösung
+> (Strategy B) erfordert ein dediziertes Projekt-Level-Objekt und eine
+> architektonische Entscheidung (ADR), die separat getrackt wird.
+
 ---
 
 ## 5. Mehrstufige Prompt-Strategie
@@ -972,3 +980,33 @@ Die Aufgaben sind nach Typ getrennt:
   - Evidenz: `prompt-standards.md` L711 — "chat/ └── en/system.md" als separate Kategorie gelistet. Aber `_bundled/chat/` existiert nicht (bereits in cr-00 §1 Drift dokumentiert). Chat lebt bei `writing/{lang}/chat/system.md` (ADR-049 Phase C).
   - Remediation: Entferne `chat/` als separate Kategorie aus Appendix A. Chat ist ein Mode innerhalb von `writing/`.
   - Gate-Frage: N/A — Dokumentationsaufgabe (bereits in cr-00 als Drift dokumentiert).
+
+- **CR-AUFG-01-13:** KB Enhance — `{{writing_language}}` in Constraints hinzufügen
+  - Typ: prompt-template
+  - Evidenz: `kb/en/enhance/system.md` (108 Zeilen) — kein `{{writing_language}}` im gesamten Template. Constraints-Sektion (L103-108) hat keine Sprachanweisung. Enhance generiert Entity-Feldwerte, die in der Projektsprache sein müssen. Verbesserungs-Entwurf in §1.3 (L155-165) existiert, wurde aber nicht als Aufgabe registriert.
+  - Remediation: Füge `Write all generated field values in {{writing_language}}.` zur Constraints-Sektion hinzu (siehe Verbesserungs-Entwurf in §1.3). Bump version auf 1.1.0.
+  - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Nein** — `writing_language` ist nicht in REQUIRED/SHOULD_VARS für KB. Neue Aufgabe CR-AUFG-01-15 adressiert die Registry-Lücke.
+
+- **CR-AUFG-01-14:** Worldbuilding Phase 2 — `{{writing_language}}` + Constraints-Sektion hinzufügen
+  - Typ: prompt-template
+  - Evidenz: `kb/en/worldbuilding/phase2/system.md` (94 Zeilen) — kein `{{writing_language}}`, keine Constraints-Sektion. Phase2 generiert `issues[]` mit `description`, `contradiction`, `suggested_resolution` — Prosa, die der Autor liest und in der Projektsprache sein sollte.
+  - Remediation: Füge eine Constraints-Sektion hinzu mit `Write all descriptions, contradictions, suggested resolutions, and assessment in {{writing_language}}.`. Bump version auf 1.3.0 (zusammen mit CR-AUFG-01-03 JSON-Schema).
+  - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Nein** — `writing_language` ist nicht in REQUIRED/SHOULD_VARS für KB. Neue Aufgabe CR-AUFG-01-15 adressiert die Registry-Lücke.
+
+- **CR-AUFG-01-15:** Strukturelle Prävention — `writing_language` zu SHOULD_VARS für KB hinzufügen
+  - Typ: manifest/registry
+  - Evidenz: `writing_language` fehlt in 4 KB-Prompts (phase1, enhance, phase2, extract). `SHOULD_VARS_BY_CATEGORY["kb"]` in `prompt_vars.py` L88 enthält nur `{"world_context"}`. Die strukturelle Ursache: die Registry warnt nicht, wenn KB-Prompts die Ausgabesprache-Variable weglassen. Dies ist dasselbe Muster wie `style_profile` (CR-AUFG-01-10) — eine Variable, die kategoriebreit vergessen wird.
+  - Remediation: Füge `"writing_language"` zu `SHOULD_VARS_BY_CATEGORY["kb"]` hinzu. Füge MODE_EXEMPT für `interview` und `consistency` hinzu (die das Fehlen laut Audit §1.3 explizit als vertretbar eingestuft haben — Interview generiert Fragen, Consistency ist KB-interne Analyse). Ratchet-Baseline: bestehende Templates, die nach Fix von CR-AUFG-01-02/13/14/16 korrekt sind, sollten keine neuen WARNs erzeugen.
+  - Gate-Frage: Direkt beantwortet — diese Registry-Variable fehlt aktuell und wird hiermit vorgeschlagen als strukturelle Prävention für das `writing_language`-Vergessens-Muster.
+
+- **CR-AUFG-01-16:** KB Extract — `{{writing_language}}` in Constraints hinzufügen
+  - Typ: prompt-template
+  - Evidenz: `kb/en/extract/system.md` (133 Zeilen) — kein `{{writing_language}}`. Hat `{{genre}}` (L17) aber keine Ausgabesprache-Anweisung. `analysis_notes`-Feld im Output sollte in der Projektsprache sein. Tabelle §1.3 bewertet ⚠️ Teilweise.
+  - Remediation: Füge `Write analysis_notes and any extracted content in {{writing_language}}.` zur Constraints-Sektion hinzu. Bump version auf 1.2.0 (zusammen mit CR-AUFG-01-05 runtime-input contract).
+  - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Nein** — `writing_language` ist nicht in REQUIRED/SHOULD_VARS für KB. CR-AUFG-01-15 adressiert dies strukturell.
+
+- **CR-AUFG-01-17:** `<curated_kb_context>` als approved Wrapper dokumentieren
+  - Typ: documentation
+  - Evidenz: 3 KB-Prompts (`extract` L28-30, `merge` L24-26, `worldbuilding/phase2` L56-60) verwenden `<curated_kb_context>` als XML-Wrapper für `{{world_context}}`. `<curated_kb_context>` ist nicht in der approved wrapper vocabulary (`prompt-standards.md` §3). Da `world_context` als SYSTEM_VAR klassifiziert ist, ist das Wrapping nicht erforderlich — es ist Defense-in-Depth. Die Inkonsistenz (3 wrap, 6 nicht) ist dokumentarisch, nicht funktional.
+  - Remediation: Dokumentiere `<curated_kb_context>` in `prompt-standards.md` §3 als approved optional Defense-in-Depth-Wrapper für SYSTEM_VARS mit niedrigem Vertrauen (z.B. `{{world_context}}`). Dies macht den bestehenden Gebrauch in 3 Prompts standardkonform ohne Template-Änderungen.
+  - Gate-Frage: N/A — Dokumentationsaufgabe. Die Governance-Checks prüfen nur USER_CONTENT_VARS auf approved wrappers, daher wird `<curated_kb_context>` nicht als FAIL gemeldet.
