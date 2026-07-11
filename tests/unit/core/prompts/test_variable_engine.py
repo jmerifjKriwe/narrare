@@ -213,6 +213,7 @@ class TestVariableConstants:
     def test_find005_examples_are_classified_by_provenance(self) -> None:
         """Classify examples called out by INFRA-012 FIND-005."""
         assert "entity_body" in _USER_CONTENT_VARS
+        assert "candidate_pairs" in _USER_CONTENT_VARS
 
         for name in (
             "writing_language",
@@ -225,7 +226,6 @@ class TestVariableConstants:
 
         for name in (
             "timeline_position",
-            "candidate_pairs",
             "entity_events",
             "relationships",
             "variant_count",

@@ -626,6 +626,14 @@ stilistische Kontextinformation verpasst. Remediation-Typ: mixed (architectural
   `{{writing_language}}` sind konsistent (alle 8) ✓
 - SET-006 (Project Writing Profile) ist der richtige Langzeit-Fix
 
+> **Accepted Risk (2026-07-11):** SET-006 (Project Writing Profile) wird als
+> mittelfristige architektonische Entscheidung akzeptiert und nicht in diesem
+> Review-Zyklus umgesetzt. Begründung: cr-00 hat SET-006 bewusst außer Scope
+> gesetzt; Strategy A (CR-AUFG-01-06 — `{{style_profile}}` zu 4 Writing-Prompts)
+> adressiert das kurzfristige Konsistenz-Problem. Die langfristige Lösung
+> (Strategy B) erfordert ein dediziertes Projekt-Level-Objekt und eine
+> architektonische Entscheidung (ADR), die separat getrackt wird.
+
 ---
 
 ## 5. Mehrstufige Prompt-Strategie
@@ -906,69 +914,160 @@ Die Aufgaben sind nach Typ getrennt:
   - Evidenz: `kb/en/worldbuilding/phase1/system.md` L51-58 — deskriptive Prosa ("Provide your analysis as structured data with: 1. gaps: list…") statt JSON-Codeblock mit Beispielobjekt
   - Remediation: Ersetze die deskriptive Output-Format-Sektion durch einen JSON-Codeblock mit vollständigem Beispielobjekt (siehe Verbesserungs-Entwurf in §1.3). Inkludiere `suggested_action` pro Gap und `story_relevance`-Range.
   - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Nein** — es gibt keinen Check für JSON-Beispielobjekt-Vorhandensein. `check_required_sections` prüft nur Heading-Existenz. Neue Aufgabe CR-AUFG-01-08 adressiert dies.
+  - **Status 2026-07-11:** ✅ Resolved — JSON-Codeblock mit Beispielobjekt in kb/en/worldbuilding/phase1/system.md v1.2.0. Enforcement: check_json_output_schema in scripts/prompt_checks_quality.py (PASS, 58/58 valid).
 
 - **CR-AUFG-01-02:** Worldbuilding Phase 1 — `{{writing_language}}` und Constraints-Sektion hinzufügen
   - Typ: prompt-template
   - Evidenz: `kb/en/worldbuilding/phase1/system.md` — kein `{{writing_language}}` im gesamten Template, keine Constraints-Sektion mit Sprachanweisung. Modell weiß nicht, in welcher Sprache es antworten soll.
   - Remediation: Füge eine Constraints-Sektion hinzu mit `Write all descriptions, reasoning, and assessment in {{writing_language}}.` (siehe Verbesserungs-Entwurf in §1.3). Bump version auf 1.2.0.
   - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Nein** — `writing_language` ist nicht in REQUIRED/SHOULD_VARS für KB. `prompt_vars.py` hat KB-REQUIRED nur als `{user_preferences, avoidance_patterns}`.
+  - **Status 2026-07-11:** ✅ Resolved — Constraints mit {{writing_language}} in kb/en/worldbuilding/phase1/system.md v1.2.0. Enforcement: SHOULD_VARS_BY_CATEGORY["kb"] in scripts/prompt_vars.py (WARN bei Fehlen).
 
 - **CR-AUFG-01-03:** Worldbuilding Phase 2 — Formales JSON-Output-Schema hinzufügen
   - Typ: prompt-template
   - Evidenz: `kb/en/worldbuilding/phase2/system.md` L74-88 — deskriptive Prosa ("Provide your analysis as structured data with: 1. issues: list…") statt JSON-Codeblock. Die Felder sind beschrieben (category, entity_ids, description, contradiction, etc.), aber es gibt kein Beispielobjekt.
   - Remediation: Ersetze durch JSON-Codeblock mit Beispielobjekt (siehe Verbesserungs-Entwurf in §1.3). Bump version auf 1.3.0.
   - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Nein** — kein JSON-Beispielobjekt-Checker existiert.
+  - **Status 2026-07-11:** ✅ Resolved — JSON-Codeblock in kb/en/worldbuilding/phase2/system.md v1.3.1. Enforcement: check_json_output_schema (PASS).
 
 - **CR-AUFG-01-04:** Summarize — Do-NOT auf ≥4 Items erweitern + formales JSON-Output-Format
   - Typ: prompt-template
   - Evidenz: `analysis/en/summarize/system.md` L58-62 — nur 3 Do-NOT-Items (Standard: ≥4). L19-21 — Output-Format ist "Provide a 2-4 sentence summary and a list of 2-5 key points" ohne JSON-Schema. L57 — `{{avoidance_patterns}}` falsch eingerückt (4 Leerzeichen, bricht Markdown-Liste).
   - Remediation: (1) Füge 4. Do-NOT-Regel hinzu (siehe Entwurf in §3.3). (2) Ersetze Output-Format durch JSON-Schema mit `summary` und `key_points[]` (siehe Entwurf in §3.3). (3) Korrigiere Einrückung von `{{avoidance_patterns}}`. Bump version auf 1.3.0.
   - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Teilweise** — die Do-NOT-Heading existiert (Checker PASS), aber Item-Count wird nicht geprüft. ≥4-Regel ist nur manuell enforced. Neue Aufgabe CR-AUFG-01-07 adressiert die Checker-Lücke.
+  - **Status 2026-07-11:** ✅ Resolved — 4. Do-NOT-Regel + JSON-Format + Indent-Fix in analysis/en/summarize/system.md v1.3.0. Enforcement: check_do_not_item_count ≥4 in scripts/prompt_checks_quality.py (PASS).
 
 - **CR-AUFG-01-05:** KB Extract — Runtime-Input Contract hinzufügen
   - Typ: prompt-template
   - Evidenz: `kb/en/extract/system.md` — Instructions sagen "Read the chapter text carefully", aber kein `{{chapter_text}}` im Template und keine runtime-input contract Aussage (im Gegensatz zu `analysis/summarize` die es korrekt macht). Verletzung von `prompt-content-standards.md` §7.
   - Remediation: Füge eine Runtime-Input-Sektion hinzu (siehe Verbesserungs-Entwurf in §1.3). Bump version auf 1.2.0.
   - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Nein** — Runtime-Input-Contracts sind semantisch, nicht syntaktisch prüfbar. Die Review-Checkliste enthält die Regel, aber sie ist manuell.
+  - **Status 2026-07-11:** implemented — Runtime-Input-Sektion in kb/en/extract/system.md v1.2.0. Hinweis: Runtime-Input-Contracts sind semantisch, nicht maschinell prüfbar (Audit §1.3). Manuelle Review-Checkliste prompt-content-standards.md §7 bleibt Autorität. Kein CI-Checker möglich — Status: implemented (nicht resolved).
 
 - **CR-AUFG-01-06:** `{{style_profile}}` zu 4 Writing-Prompts hinzufügen
   - Typ: prompt-template
   - Evidenz: `{{style_profile}}` fehlt in: `scene_by_scene/system.md`, `interactive_session/system.md`, `story_suggest/system.md`, `chat/system.md` (jeweils EN). Diese Prompts generieren oder diskutieren Prosa, haben aber keinen Zugriff auf den profilierten Schreibstil des Autors. (inline_suggest ist bewusst minimal — dort vertretbar.)
   - Remediation: Füge `### Style Profile\n\nThe author's established writing style:\n\n{{style_profile}}\n` zu den 4 Templates hinzu. Bump versions.
   - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Nein** — `style_profile` ist nicht in REQUIRED oder SHOULD für writing in `prompt_vars.py`. Neue Aufgabe CR-AUFG-01-10 adressiert die Registry-Lücke.
+  - **Status 2026-07-11:** ✅ Resolved — {{style_profile}} zu scene_by_scene, interactive_session, story_suggest, chat (EN) + chat (DE/FR) hinzugefügt. Enforcement: SHOULD_VARS_BY_CATEGORY["writing"] in scripts/prompt_vars.py (MODE_EXEMPT für inline_suggest + interview; WARN bei Fehlen).
 
 - **CR-AUFG-01-07:** Do-NOT-Item-Count-Checker implementieren (≥4 Items)
   - Typ: gate/check/test/eval
   - Evidenz: `prompt_checks.py` L127-140 (`check_required_sections`) — prüft nur Heading-Existenz, nicht Item-Count. `prompt-standards.md` §4 Quality Criteria: "Do NOT section with ≥4 items: YES (required)". `summarize` hat nur 3 Items und wird nicht erkannt.
   - Remediation: Erweitere `check_required_sections` in `prompt_checks.py`: parse die Do-NOT-Sektion, zähle Bullet-Items, WARN wenn <4. Optional: Ratchet-Baseline, um bestehende Debt nicht sofort zu blocken.
   - Gate-Frage: Direkt beantwortet — dieser Check existiert noch nicht und wird hiermit vorgeschlagen.
+  - **Status 2026-07-11:** ✅ Resolved — check_do_not_item_count implementiert in scripts/prompt_checks_quality.py. Zählt Bullet-Items, WARN bei <4. Ratchet: 0 WARNs (clean baseline).
 
 - **CR-AUFG-01-08:** JSON-Output-Schema-Vorhandensein-Checker implementieren
   - Typ: gate/check/test/eval
   - Evidenz: Kein Check prüft, ob das Output-Format einen JSON-Codeblock mit Beispielobjekt enthält. `prompt-standards.md` §1 Section 4: "JSON schemas MUST include an example object, not just field descriptions." Worldbuilding phase1/phase2 verletzen dies, werden aber nicht erkannt.
   - Remediation: Neuer Check in `prompt_checks.py`: Für jeden system.md mit Output-Format-Heading (außer meta/universal/inline_suggest), prüfe ob ein ```json-Codeblock mit mindestens einem Beispielobjekt existiert. WARN wenn nicht.
   - Gate-Frage: Direkt beantwortet — dieser Check existiert noch nicht.
+  - **Status 2026-07-11:** ✅ Resolved — check_json_output_schema implementiert in scripts/prompt_checks_quality.py. Prüft KB/Analysis auf JSON-Codeblock. Ratchet: 0 WARNs (clean baseline).
 
 - **CR-AUFG-01-09:** `{{candidate_pairs}}` Wrapping-Requirement klären
   - Typ: manifest/registry
   - Evidenz: `variable_registry.py` — `candidate_pairs` ist FEATURE_DYNAMIC, nicht USER_CONTENT. `kb/merge/system.md` wrappt es nicht. Aber `candidate_pairs` kann nutzerautorisierte Entity-Texte enthalten. Per `prompt-standards.md` §3: "Required if the value can contain user-authored text."
   - Remediation: Zwei Optionen: (A) Verschiebe `candidate_pairs` nach USER_CONTENT_VARS (erfordert Wrapping in allen Templates), oder (B) füge `{{candidate_pairs}}` zu einer neuen "FEATURE_DYNAMIC_WITH_USER_CONTENT"-Klasse hinzu, die Wrapping erfordert. Empfehlung: Option A (einfacher, korrekter).
   - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Nein** — `prompt_governance_checks.py` prüft nur USER_CONTENT_VARS. FEATURE_DYNAMIC-Variablen werden nicht auf Wrapping geprüft.
+  - **Status 2026-07-11:** ✅ Resolved — candidate_pairs von FEATURE_DYNAMIC_VARS zu USER_CONTENT_VARS verschoben (variable_registry.py). Templates gewrappt: merge v1.0.1, phase2 v1.3.1. Enforcement: check_user_content_wrapping in prompt_governance_checks.py (PASS).
 
 - **CR-AUFG-01-10:** `{{style_profile}}` zu SHOULD_VARS für writing hinzufügen
   - Typ: manifest/registry
   - Evidenz: `prompt_vars.py` L85-89 — `SHOULD_VARS_BY_CATEGORY["writing"]` enthält `character_voice_profiles` und `kb_suggested`, aber **nicht** `style_profile`. Dies führt dazu, dass das Fehlen von `{{style_profile}}` in 4 Templates nicht als WARN gemeldet wird.
   - Remediation: Füge `"style_profile"` zu `SHOULD_VARS_BY_CATEGORY["writing"]` hinzu. Dies würde WARN-Meldungen für Templates erzeugen, die es nicht nutzen. Ggf. Mode-Exempt für `inline_suggest` (bewusst minimal).
   - Gate-Frage: Direkt beantwortet — diese Registry-Variable fehlt aktuell.
+  - **Status 2026-07-11:** ✅ Resolved — style_profile zu SHOULD_VARS_BY_CATEGORY["writing"] hinzugefügt (scripts/prompt_vars.py). MODE_EXEMPT für inline_suggest + interview. Ratchet: 0 WARNs.
 
 - **CR-AUFG-01-11:** prompt-content-standards.md — Phase2-Bewertung aktualisieren
   - Typ: documentation
   - Evidenz: `prompt-content-standards.md` L224-226 — "Weak Prompt: Worldbuilding Phase 2 (⭐⭐⭐). Missing: formal output schema, Do-NOT section, CoT, confidence thresholds." Phase2 hat mittlerweile Do-NOT (6 Items), CoT (`<scratchpad>`), Confidence-Thresholds. Nur "formal output schema" fehlt noch.
   - Remediation: Aktualisiere Bewertung auf ⭐⭐⭐⭐ mit Anmerkung: "Do-NOT, CoT, confidence thresholds remediated. Formal JSON schema still missing — tracked in CR-AUFG-01-03."
   - Gate-Frage: N/A — Dokumentationsaufgabe.
+  - **Status 2026-07-11:** implemented — Bewertung in docs/development/prompt-content-standards.md von ⭐⭐⭐ auf ⭐⭐⭐⭐ aktualisiert.
 
 - **CR-AUFG-01-12:** prompt-standards.md Appendix A — Chat-Pfad korrigieren
   - Typ: documentation
   - Evidenz: `prompt-standards.md` L711 — "chat/ └── en/system.md" als separate Kategorie gelistet. Aber `_bundled/chat/` existiert nicht (bereits in cr-00 §1 Drift dokumentiert). Chat lebt bei `writing/{lang}/chat/system.md` (ADR-049 Phase C).
   - Remediation: Entferne `chat/` als separate Kategorie aus Appendix A. Chat ist ein Mode innerhalb von `writing/`.
   - Gate-Frage: N/A — Dokumentationsaufgabe (bereits in cr-00 als Drift dokumentiert).
+  - **Status 2026-07-11:** implemented — chat/ als separate Kategorie aus Appendix A entfernt (docs/development/prompt-standards.md). Chat ist ein writing-Mode (ADR-049).
+
+- **CR-AUFG-01-13:** KB Enhance — `{{writing_language}}` in Constraints hinzufügen
+  - Typ: prompt-template
+  - Evidenz: `kb/en/enhance/system.md` (108 Zeilen) — kein `{{writing_language}}` im gesamten Template. Constraints-Sektion (L103-108) hat keine Sprachanweisung. Enhance generiert Entity-Feldwerte, die in der Projektsprache sein müssen. Verbesserungs-Entwurf in §1.3 (L155-165) existiert, wurde aber nicht als Aufgabe registriert.
+  - Remediation: Füge `Write all generated field values in {{writing_language}}.` zur Constraints-Sektion hinzu (siehe Verbesserungs-Entwurf in §1.3). Bump version auf 1.1.0.
+  - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Nein** — `writing_language` ist nicht in REQUIRED/SHOULD_VARS für KB. Neue Aufgabe CR-AUFG-01-15 adressiert die Registry-Lücke.
+  - **Status 2026-07-11:** ✅ Resolved — {{writing_language}} zu Constraints in kb/en/enhance/system.md v1.1.0. Enforcement: SHOULD_VARS_BY_CATEGORY["kb"] (WARN bei Fehlen).
+
+- **CR-AUFG-01-14:** Worldbuilding Phase 2 — `{{writing_language}}` + Constraints-Sektion hinzufügen
+  - Typ: prompt-template
+  - Evidenz: `kb/en/worldbuilding/phase2/system.md` (94 Zeilen) — kein `{{writing_language}}`, keine Constraints-Sektion. Phase2 generiert `issues[]` mit `description`, `contradiction`, `suggested_resolution` — Prosa, die der Autor liest und in der Projektsprache sein sollte.
+  - Remediation: Füge eine Constraints-Sektion hinzu mit `Write all descriptions, contradictions, suggested resolutions, and assessment in {{writing_language}}.`. Bump version auf 1.3.0 (zusammen mit CR-AUFG-01-03 JSON-Schema).
+  - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Nein** — `writing_language` ist nicht in REQUIRED/SHOULD_VARS für KB. Neue Aufgabe CR-AUFG-01-15 adressiert die Registry-Lücke.
+  - **Status 2026-07-11:** ✅ Resolved — Constraints mit {{writing_language}} in kb/en/worldbuilding/phase2/system.md v1.3.1. Enforcement: SHOULD_VARS_BY_CATEGORY["kb"] (WARN bei Fehlen).
+
+- **CR-AUFG-01-15:** Strukturelle Prävention — `writing_language` zu SHOULD_VARS für KB hinzufügen
+  - Typ: manifest/registry
+  - Evidenz: `writing_language` fehlt in 4 KB-Prompts (phase1, enhance, phase2, extract). `SHOULD_VARS_BY_CATEGORY["kb"]` in `prompt_vars.py` L88 enthält nur `{"world_context"}`. Die strukturelle Ursache: die Registry warnt nicht, wenn KB-Prompts die Ausgabesprache-Variable weglassen. Dies ist dasselbe Muster wie `style_profile` (CR-AUFG-01-10) — eine Variable, die kategoriebreit vergessen wird.
+  - Remediation: Füge `"writing_language"` zu `SHOULD_VARS_BY_CATEGORY["kb"]` hinzu. Füge MODE_EXEMPT für `interview` und `consistency` hinzu (die das Fehlen laut Audit §1.3 explizit als vertretbar eingestuft haben — Interview generiert Fragen, Consistency ist KB-interne Analyse). Ratchet-Baseline: bestehende Templates, die nach Fix von CR-AUFG-01-02/13/14/16 korrekt sind, sollten keine neuen WARNs erzeugen.
+  - Gate-Frage: Direkt beantwortet — diese Registry-Variable fehlt aktuell und wird hiermit vorgeschlagen als strukturelle Prävention für das `writing_language`-Vergessens-Muster.
+  - **Status 2026-07-11:** ✅ Resolved — writing_language zu SHOULD_VARS_BY_CATEGORY["kb"] hinzugefügt (scripts/prompt_vars.py). MODE_EXEMPT für interview + consistency. Ratchet: 0 WARNs.
+
+- **CR-AUFG-01-16:** KB Extract — `{{writing_language}}` in Constraints hinzufügen
+  - Typ: prompt-template
+  - Evidenz: `kb/en/extract/system.md` (133 Zeilen) — kein `{{writing_language}}`. Hat `{{genre}}` (L17) aber keine Ausgabesprache-Anweisung. `analysis_notes`-Feld im Output sollte in der Projektsprache sein. Tabelle §1.3 bewertet ⚠️ Teilweise.
+  - Remediation: Füge `Write analysis_notes and any extracted content in {{writing_language}}.` zur Constraints-Sektion hinzu. Bump version auf 1.2.0 (zusammen mit CR-AUFG-01-05 runtime-input contract).
+  - Gate-Frage: Hätte ein bestehender Check das fangen müssen? **Nein** — `writing_language` ist nicht in REQUIRED/SHOULD_VARS für KB. CR-AUFG-01-15 adressiert dies strukturell.
+  - **Status 2026-07-11:** ✅ Resolved — {{writing_language}} zu Constraints in kb/en/extract/system.md v1.2.0. Enforcement: SHOULD_VARS_BY_CATEGORY["kb"] (WARN bei Fehlen).
+
+- **CR-AUFG-01-17:** `<curated_kb_context>` als approved Wrapper dokumentieren
+  - Typ: documentation
+  - Evidenz: 3 KB-Prompts (`extract` L28-30, `merge` L24-26, `worldbuilding/phase2` L56-60) verwenden `<curated_kb_context>` als XML-Wrapper für `{{world_context}}`. `<curated_kb_context>` ist nicht in der approved wrapper vocabulary (`prompt-standards.md` §3). Da `world_context` als SYSTEM_VAR klassifiziert ist, ist das Wrapping nicht erforderlich — es ist Defense-in-Depth. Die Inkonsistenz (3 wrap, 6 nicht) ist dokumentarisch, nicht funktional.
+  - Remediation: Dokumentiere `<curated_kb_context>` in `prompt-standards.md` §3 als approved optional Defense-in-Depth-Wrapper für SYSTEM_VARS mit niedrigem Vertrauen (z.B. `{{world_context}}`). Dies macht den bestehenden Gebrauch in 3 Prompts standardkonform ohne Template-Änderungen.
+  - Gate-Frage: N/A — Dokumentationsaufgabe. Die Governance-Checks prüfen nur USER_CONTENT_VARS auf approved wrappers, daher wird `<curated_kb_context>` nicht als FAIL gemeldet.
+  - **Status 2026-07-11:** implemented — <curated_kb_context> als optionaler Defense-in-Depth-Wrapper in docs/development/prompt-standards.md §3 dokumentiert.
+
+---
+
+## Abschluss-Status
+
+**Audit:** CR-01 – Default-Prompts Qualitätsaudit
+**Remediated:** 2026-07-11
+**Branch:** `chore/cr-01-prompt-quality-fixes`
+
+### Aufgaben-Übersicht
+
+| Status | Anzahl | IDs |
+|--------|--------|-----|
+| ✅ Resolved (implemented + enforced) | 12 | 01-01, 01-02, 01-03, 01-04, 01-06, 01-07, 01-08, 01-09, 01-10, 01-13, 01-14, 01-15, 01-16 |
+| implemented (kein CI-Checker möglich) | 1 | 01-05 (Runtime-Input-Contract — semantisch) |
+| implemented (Dokumentation) | 3 | 01-11, 01-12, 01-17 |
+| Accepted Risk | 1 | SET-006 (Project Writing Profile — mittelfristig, cr-00 out-of-scope) |
+
+**Hinweis:** Die Aufgaben 01-07 bis 01-08 und 01-10, 01-15 sind selbst die Enforcement-Maßnahmen — sie existieren als neue Checker bzw. Registry-Einträge in scripts/prompt_checks_quality.py und scripts/prompt_vars.py.
+
+### Enforcement-Maßnahmen (neu hinzugefügt)
+
+1. **`check_do_not_item_count`** (scripts/prompt_checks_quality.py): WARNt, wenn Do-NOT-Sektion <4 Items hat. Ratchet: 0 WARNs.
+2. **`check_json_output_schema`** (scripts/prompt_checks_quality.py): WARNt, wenn KB/Analysis-Prompts keinen JSON-Codeblock haben. Ratchet: 0 WARNs.
+3. **`SHOULD_VARS_BY_CATEGORY["writing"]`** + `style_profile` (scripts/prompt_vars.py): WARNt bei fehlendem style_profile in Writing-Prompts (MODE_EXEMPT: inline_suggest, interview).
+4. **`SHOULD_VARS_BY_CATEGORY["kb"]`** + `writing_language` (scripts/prompt_vars.py): WARNt bei fehlendem writing_language in KB-Prompts (MODE_EXEMPT: interview, consistency).
+5. **`candidate_pairs` → USER_CONTENT_VARS** (variable_registry.py): Erzwingt XML-Wrapping via check_user_content_wrapping.
+
+### Verifikation
+
+- `check_prompt_structure.py`: 58/58 system prompts valid, 0 WARNs (clean ratchet baseline)
+- `just test-unit`: 8933 passed, 0 failed
+- `just check` (architecture + size + adoption): PASS
+- `just lint` + `just typecheck`: PASS
+
+### Bonus-Fixes (über ursprüngliche Aufgaben hinaus)
+
+Bei der Implementation von CR-AUFG-01-15 (writing_language SHOULD für KB) identifizierte der Ratchet weitere KB-Prompts ohne writing_language (improve, suggest) und Writing-Prompts ohne style_profile (interview). Diese wurden behoben anstatt baselinet:
+- `kb/en/improve/system.md` v1.1.1 — writing_language hinzugefügt
+- `kb/en/suggest/system.md` v1.1.1 — writing_language hinzugefügt
+- `MODE_EXEMPT_VARS["writing"]["interview"]` — style_profile exempted (fragt Fragen, generiert keine Prosa)
+
+Zusätzlich wurden 6 KB/Analysis-Prompte identifiziert, die JSON-Output-Beispiele nur in Prosa beschrieben (kein Codeblock). Diese wurden mit JSON-Codeblöcken mit Beispielobjekten versehen:
+- `kb/en/consistency` v1.2.1, `kb/en/improve` v1.1.1, `analysis/en/consistency` v2.0.1, `analysis/en/review` v1.3.1, `analysis/en/preferences` v1.0.2, `analysis/en/remap` v1.0.1

@@ -221,9 +221,11 @@ Return a JSON object with this structure:...
                                         ^^^ Scope + quality thresholds
 ```
 
-### Weak Prompt: Worldbuilding Phase 2 (⭐⭐⭐)
+### Solid Prompt: Worldbuilding Phase 2 (⭐⭐⭐⭐)
 
-Missing: formal output schema, Do-NOT section, CoT, confidence thresholds.
+All four quality dimensions are now satisfied: formal JSON output schema,
+Do-NOT section (6 rules), `<scratchpad>` CoT, and confidence thresholds.
+Previously rated ⭐⭐⭐ when these elements were missing.
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.1.0"
+prompt_version: "1.2.0"
 ---
 
 ## System Prompt
@@ -50,12 +50,40 @@ Top relevant entities and their story context.
 
 ### Output Format
 
-Provide your analysis as structured data with:
-1. gaps: list of gap findings with type, entity reference, description, severity, story_relevance
-2. connection_suggestions: list of suggested relationships with source, target, rel_type, reasoning, confidence, story_relevance
-3. candidate_pairs_for_consistency: entity ID pairs that should be checked for consistency
-4. overall_assessment: 1-3 sentence summary
-5. worldbuilding_score: 0.0-1.0 (how healthy the worldbuilding is)
+Return a JSON object matching the WorldbuildingAnalysis schema:
+
+```json
+{
+  "gaps": [
+    {
+      "type": "missing_entity_type | missing_field | missing_connection | missing_body",
+      "entity_id": "Entity UUID or null for project-level gaps",
+      "entity_name": "Entity name or null",
+      "description": "What is missing and why it matters",
+      "severity": "critical | moderate | minor",
+      "story_relevance": 0.0,
+      "suggested_action": "Concrete next step for the author"
+    }
+  ],
+  "connection_suggestions": [
+    {
+      "source_entity_id": "UUID",
+      "source_name": "Name",
+      "target_entity_id": "UUID",
+      "target_name": "Name",
+      "rel_type": "Valid relationship type from available relationship types",
+      "reasoning": "Why this connection makes narrative sense",
+      "confidence": 0.0,
+      "story_relevance": 0.0
+    }
+  ],
+  "candidate_pairs_for_consistency": [
+    ["entity-id-a", "entity-id-b"]
+  ],
+  "overall_assessment": "1-3 sentence summary of worldbuilding health",
+  "worldbuilding_score": 0.0
+}
+```
 
 ### Do NOT
 
@@ -64,8 +92,13 @@ Provide your analysis as structured data with:
 - Do NOT suggest generic entity types (e.g., "add more cities") without specific narrative reasons
 - Do NOT use sensitive or harmful worldbuilding tropes (e.g., cultural stereotypes, exploitative power dynamics)
 - Do NOT invent relationship types that are not in the available relationship types list
-- Respect the author's avoidance patterns: {{avoidance_patterns}}
 
 ### User Preferences
 
 {{user_preferences}}
+
+### Constraints
+
+- Write all descriptions, reasoning, and assessment in {{writing_language}}.
+- Prioritize by story relevance — entities referenced in chapters matter more.
+- Respect the author's avoidance patterns: {{avoidance_patterns}}

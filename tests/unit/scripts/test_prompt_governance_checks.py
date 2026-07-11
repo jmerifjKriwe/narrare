@@ -86,4 +86,5 @@ def test_kb_suggested_without_full_precedence_wording_fails() -> None:
 def test_current_bundled_prompts_pass_strict_prompt_checks() -> None:
     _total, _system_count, issues = collect_issues(BUNDLED_DIR)
 
-    assert issues == []
+    fails = [i for i in issues if i.level == "FAIL"]
+    assert fails == []

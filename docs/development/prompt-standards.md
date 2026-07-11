@@ -384,11 +384,24 @@ the boundary between "instructions" and "data" explicit.
 | `<user_provided_text>` | Manuscript prose, selections, surrounding context, conversation transcripts, or any free-form text authored by the user. |
 | `<user_provided_data>` | Structured or label-like user data such as entity names, KB field values, existing answers, and user-edited entry content. |
 | `<user_instructions>` | Explicit author instructions for the current run. |
+| `<curated_kb_context>` *(optional)* | Defense-in-depth wrapper for system-trusted variables that aggregate curated but potentially user-influenced KB content (e.g. `{{world_context}}`). See the optional-wrapper note below. |
 
 Use one of these wrappers for every user-authored variable. Feature-specific
 tags such as `<chapter_text>` or `<text_to_analyze>` are not approved in bundled
 system prompts unless the wrapper vocabulary is deliberately extended in this
 document and in `scripts/prompt_governance_checks.py`.
+
+**Optional wrapper for system variables:** `<curated_kb_context>` is the single
+approved *optional* wrapper. Unlike the three required wrappers above, it does
+not protect user-authored content. It is an opt-in defense-in-depth boundary for
+SYSTEM_VARS — variables such as `{{world_context}}` that the system trusts but
+that aggregate curated KB data which may carry indirect user influence. It is not
+required by `prompt_governance_checks.py` (which enforces wrapping only for
+`USER_CONTENT_VARS`); prompts may adopt it at author discretion:
+
+```
+<curated_kb_context>{{world_context}}</curated_kb_context>
+```
 
 **Variables that contain user content MUST use template-level XML encapsulation:**
 
@@ -701,14 +714,13 @@ packages/core/narrare_core/prompts/_bundled/
 │   └── fr/system.md
 ├── writing/
 │   └── en/<mode>/system.md   ← Bundled feature prompts by mode (EN-only)
+│                              (chat is a writing mode, not a separate category; see ADR-049)
 ├── kb/
 │   └── en/<mode>/system.md   ← Bundled feature prompts by mode (EN-only)
 ├── analysis/
 │   └── en/<mode>/system.md   ← Bundled feature prompts by mode (EN-only)
 ├── planning/
 │   └── en/<mode>/system.md   ← Bundled feature prompts by mode (EN-only)
-├── chat/
-│   └── en/system.md          ← Bundled feature prompt (EN-only)
 ├── generation/
 │   └── en/<mode>/system.md   ← Bundled feature prompts by mode (EN-only)
 └── wiki/

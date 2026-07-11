@@ -69,7 +69,14 @@ MODE_REQUIRED_VARS: dict[str, dict[str, set[str]]] = {
 # The validator will suppress WARN-level messages for exempted combinations.
 MODE_EXEMPT_VARS: dict[str, dict[str, set[str]]] = {
     "writing": {
-        "inline_suggest": {"kb_characters", "kb_locations", "kb_factions", "kb_relationships"},
+        "inline_suggest": {
+            "kb_characters",
+            "kb_locations",
+            "kb_factions",
+            "kb_relationships",
+            "style_profile",
+        },
+        "interview": {"style_profile"},
     },
     "analysis": {
         "consistency": {"kb_characters", "kb_locations", "kb_factions", "kb_relationships"},
@@ -77,15 +84,16 @@ MODE_EXEMPT_VARS: dict[str, dict[str, set[str]]] = {
         "remap": {"kb_characters", "kb_locations", "kb_factions", "kb_relationships"},
     },
     "kb": {
-        "consistency": {"world_context"},
+        "consistency": {"world_context", "writing_language"},
+        "interview": {"writing_language"},
     },
 }
 
 # ── SHOULD: Recommended variables (warn, don't fail) ───────────
 SHOULD_VARS_BY_CATEGORY: dict[str, set[str]] = {
-    "writing": {"character_voice_profiles", "kb_suggested"},
+    "writing": {"character_voice_profiles", "kb_suggested", "style_profile"},
     "analysis": {"kb_characters", "kb_locations", "kb_factions", "kb_relationships"},
-    "kb": {"world_context"},
+    "kb": {"world_context", "writing_language"},
 }
 
 # ── Security: User-content variables that MUST be XML-wrapped ──

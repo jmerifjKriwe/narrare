@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.3.0"
+prompt_version: "1.3.1"
 ---
 
 ## System Prompt
@@ -73,6 +73,37 @@ Provide your review as structured output with these fields:
   - `severity`: one of `"error"` (plot-breaking, must fix), `"warning"` (real problem, should fix), `"info"` (minor or stylistic)
   - `confidence`: float 0.0-1.0 — confidence that this is genuinely an issue
   - `rationale`: one sentence explaining why the excerpt supports the finding
+
+Example:
+
+```json
+{
+  "approved": false,
+  "feedback": "The chapter has strong character voice and an engaging opening, but suffers from pacing issues in the middle section and an unresolved plot thread. The dialogue feels natural and distinctive for each character.",
+  "suggestions": [
+    {
+      "text_excerpt": "She walked through the forest for what felt like hours, passing tree after tree.",
+      "confidence": 0.82,
+      "rationale": "Generic forest description slows pacing without adding sensory detail."
+    }
+  ],
+  "quality_score": 6,
+  "issues": [
+    {
+      "text_excerpt": "\"I'll meet you at the docks at midnight,\" Marcus said, though he had already promised Lena he would be at the council meeting.",
+      "severity": "error",
+      "confidence": 0.90,
+      "rationale": "Marcus commits to two simultaneous obligations with no narrative acknowledgment."
+    },
+    {
+      "text_excerpt": "The sun was setting as she arrived, casting long shadows across the midday market.",
+      "severity": "warning",
+      "confidence": 0.75,
+      "rationale": "Sunset contradicts midday within the same sentence."
+    }
+  ]
+}
+```
 
 ### Review Guidelines
 

@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.0.1"
 ---
 
 ## System Prompt
@@ -15,6 +15,13 @@ Summary: {{summary}}
 ## Output Format
 
 Respond with the stage ID of the best-matching narrative stage. If no stage fits, return the best match with a brief justification. Return "UNKNOWN" if the summary is empty or completely ambiguous.
+
+```json
+{
+  "stage_id": "rising-action",
+  "justification": "The protagonist discovers the hidden map and commits to the journey, marking the transition from setup to rising action."
+}
+```
 
 ### Edge Cases
 
