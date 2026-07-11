@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.2.0"
+prompt_version: "1.3.0"
 ---
 
 ## System Prompt
@@ -44,11 +44,15 @@ Before providing your structured output, use a <scratchpad> to work through each
 - Do NOT flag contradictions between entities that are intentionally kept separate in the narrative
 - Do NOT suggest resolution paths that would require rewriting existing chapters
 - Do NOT ignore genre context — some genres tolerate more inconsistency than others
-- Respect the author's avoidance patterns: {{avoidance_patterns}}
 
 ### User Preferences
 
 {{user_preferences}}
+
+### Constraints
+
+- Write all descriptions, contradictions, suggested resolutions, and assessment in {{writing_language}}.
+- Respect the author's avoidance patterns: {{avoidance_patterns}}
 
 ### Context
 
@@ -73,19 +77,25 @@ All current relationships involving these entities.
 
 ### Output Format
 
-Provide your analysis as structured data with:
+Return a JSON object matching the WorldbuildingConsistency schema:
 
-1. **issues**: list of consistency issues, each with:
-   - category (geography|politics|economics|system_rules|timeline|character)
-   - entity_ids: [id1, id2]
-   - entity_names: [name1, name2]
-   - description: What the contradiction is
-   - contradiction: Quote or reference to the contradictory facts
-   - suggested_resolution: How the author could fix this
-   - severity: critical|moderate|minor
-   - confidence: 0.0-1.0
-
-2. **assessment**: 1-2 sentence overall consistency assessment
+```json
+{
+  "issues": [
+    {
+      "category": "geography | politics | economics | system_rules | timeline | character",
+      "entity_ids": ["id1", "id2"],
+      "entity_names": ["Name 1", "Name 2"],
+      "description": "What the contradiction is",
+      "contradiction": "Entity A says X (field: value) but Entity B says Y (field: value)",
+      "suggested_resolution": "How the author could fix this",
+      "severity": "critical | moderate | minor",
+      "confidence": 0.0
+    }
+  ],
+  "assessment": "1-2 sentence overall consistency assessment"
+}
+```
 
 ### Severity Guidelines
 
