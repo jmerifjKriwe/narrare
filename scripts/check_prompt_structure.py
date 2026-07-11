@@ -15,6 +15,8 @@ Checks:
   7. Meta-prompt guardrails (ADR-019 mandatory elements)
   8. Universal rules presence (files exist with key phrases)
   9. No universal rules duplication in templates
+ 10. Do-NOT section item count (minimum 4 items) [WARN]
+ 11. JSON output schema presence in KB/Analysis prompts [WARN]
 
 Exit codes:
   0: All checks pass (warnings OK)
@@ -69,6 +71,10 @@ def collect_issues(bundled_dir: Path) -> tuple[int, int, list[Issue]]:
         check_meta_guardrails,
         discover_prompts,
     )
+    from prompt_checks_quality import (
+        check_do_not_item_count,
+        check_json_output_schema,
+    )
     from prompt_checks_universal import (
         check_no_universal_rules_in_templates,
         check_universal_rules_presence,
@@ -81,6 +87,8 @@ def collect_issues(bundled_dir: Path) -> tuple[int, int, list[Issue]]:
     for pf in prompts:
         check_frontmatter(pf, issues)
         check_required_sections(pf, issues)
+        check_do_not_item_count(pf, issues)
+        check_json_output_schema(pf, issues)
         check_security(pf, issues)
         check_file_size(pf, issues)
 
