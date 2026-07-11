@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.2.0"
+prompt_version: "1.2.1"
 ---
 
 ## System Prompt
@@ -74,6 +74,32 @@ Return a JSON object:
   ],
   "assessment": "<1 sentence overall internal consistency assessment>"
 }
+
+Example:
+
+```json
+{
+  "issues": [
+    {
+      "field_keys": ["age", "birth_year"],
+      "description": "Age and birth year are mathematically inconsistent with the story timeline.",
+      "contradiction": "age=25 contradicts birth_year=1990 (story set in 2024, so age should be 34)",
+      "suggested_resolution": "Update age to 34 or change birth_year to 1999.",
+      "severity": "major",
+      "confidence": 0.95
+    },
+    {
+      "field_keys": ["personality", "typical_action"],
+      "description": "Cautious personality contradicts a reckless typical action.",
+      "contradiction": "personality='cautious' contradicts typical_action='rushes into danger without planning'",
+      "suggested_resolution": "Clarify whether the character has a hidden reckless streak or revise one value.",
+      "severity": "minor",
+      "confidence": 0.72
+    }
+  ],
+  "assessment": "Two contradictions found — one major temporal inconsistency and one minor personality conflict."
+}
+```
 
 ### Quality Rules
 

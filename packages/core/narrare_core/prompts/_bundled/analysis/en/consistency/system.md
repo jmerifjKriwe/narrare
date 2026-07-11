@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "2.0.0"
+prompt_version: "2.0.1"
 ---
 
 ## System Prompt
@@ -53,6 +53,41 @@ Return a JSON object with:
   - `confidence`: 0.0-1.0
 - `overall_assessment`: 1-2 sentence summary of consistency health.
 - `checked_types`: Which check types were actually executed.
+
+Example:
+
+```json
+{
+  "issues": [
+    {
+      "check_type": "character",
+      "severity": "error",
+      "description": "Character eye color changes between chapters.",
+      "locations": ["chapter_3", "chapter_7", "kb:character:elara"],
+      "conflicting_facts": [
+        "Ch3: 'Elara's blue eyes scanned the horizon'",
+        "KB entry: eye_color='green'"
+      ],
+      "suggestion": "Decide on a single eye color and update the KB entry and chapter 3.",
+      "confidence": 0.92
+    },
+    {
+      "check_type": "timeline",
+      "severity": "warning",
+      "description": "Events in chapter 5 appear to precede events in chapter 4.",
+      "locations": ["chapter_4", "chapter_5"],
+      "conflicting_facts": [
+        "Ch4: 'Three days after the festival'",
+        "Ch5: 'The morning before the festival'"
+      ],
+      "suggestion": "Review temporal markers in both chapters and correct the ordering.",
+      "confidence": 0.75
+    }
+  ],
+  "overall_assessment": "One confirmed character contradiction and one likely timeline inconsistency detected across chapters.",
+  "checked_types": ["character", "timeline", "world"]
+}
+```
 
 ### Quality Rules
 

@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.1.0"
+prompt_version: "1.1.1"
 ---
 
 ## System Prompt
@@ -76,6 +76,38 @@ Return a JSON object with this structure:
   "completeness_score": 0.0-1.0,
   "context_used": ["<entity names referenced>"]
 }
+
+Example:
+
+```json
+{
+  "suggestions": [
+    {
+      "type": "add_field",
+      "target": "appearance",
+      "description": "The appearance field is empty but is essential for vivid storytelling.",
+      "proposed_content": "Tall and lean with sharp cheekbones, dark hair cropped short, and a thin scar running from the left temple to the jaw.",
+      "related_entity_id": null,
+      "related_entity_name": null,
+      "confidence": 0.85,
+      "reasoning": "Appearance is a template field that readers rely on for mental imagery."
+    },
+    {
+      "type": "connect",
+      "target": "Kael Thorne",
+      "description": "Kael Thorne is mentioned by name in the backstory but no formal relationship link exists.",
+      "proposed_content": null,
+      "related_entity_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "related_entity_name": "Kael Thorne",
+      "confidence": 0.78,
+      "reasoning": "Formalizing this connection enables cross-entry consistency checks."
+    }
+  ],
+  "overall_assessment": "Entry has a solid core identity but is missing appearance details and one referenced relationship link.",
+  "completeness_score": 0.62,
+  "context_used": ["Kael Thorne", "Kingdom of Ashvar"]
+}
+```
 
 ### Quality Rules
 
