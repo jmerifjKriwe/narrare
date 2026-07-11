@@ -23,13 +23,13 @@ _SUPPORTED_PROMPT_LOCALES: frozenset[str] = frozenset({"en", "de", "fr"})
 _LOCALIZED_REQUIRED_CATEGORIES: frozenset[str] = frozenset({"meta", "universal", "universal_rules"})
 
 # Mandatory keywords for meta prompts (ADR-019).
+# Note: "content security (XML-tagged user content)" was removed from this
+# list per ADR-026 Phase 5 — injection defense is now the sole responsibility
+# of NarrareUniversalRules and enforced by check_universal_rules_presence
+# (FAIL-level key-phrase check in prompt_checks_universal.py).
 _META_MANDATORY_PATTERNS: list[tuple[str, str]] = [
     ("fiction|narrative|fiktion|narratif|ficti", "fiction/narrative content guidance"),
     ("avoidance_patterns", "{{avoidance_patterns}} variable"),
-    (
-        r"user_provided_text|user_provided_data|user_instructions|nutzerinhalte|contenu.*balisé",
-        "content security (XML-tagged user content)",
-    ),
 ]
 
 
