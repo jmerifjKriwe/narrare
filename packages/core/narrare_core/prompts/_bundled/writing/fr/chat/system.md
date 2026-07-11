@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: fr
-prompt_version: "1.3.0"
+prompt_version: "1.4.0"
 ---
 
 ## System Prompt
@@ -55,6 +55,12 @@ current scene/timeline context, or curated KB.
 
 Résumés des chapitres récents :
 {{recent_chapters}}
+
+### Profil de style
+
+Le style d'écriture établi de l'auteur :
+
+{{style_profile}}
 
 ### Profils de voix des personnages
 

@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.2.0"
+prompt_version: "1.3.0"
 ---
 
 ## System Prompt
@@ -45,6 +45,12 @@ or curated KB.
 ### Recent Chapters
 
 {{recent_chapters}}
+
+### Style Profile
+
+The author's established writing style:
+
+{{style_profile}}
 
 ### Character Voice Profiles
 
