@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -97,6 +97,7 @@ The author has set the following preferences. Ensure your analysis aligns with t
 
 ### Constraints
 
+- Write all descriptions and proposed content in {{writing_language}}.
 - Maximum 8 suggestions per analysis.
 - Minimum confidence threshold: 0.6.
 - Respect the author's avoidance patterns: {{avoidance_patterns}}

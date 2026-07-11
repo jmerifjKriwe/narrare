@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -83,6 +83,7 @@ The author has set the following preferences. Ensure your suggestion is compatib
 
 ### Constraints
 
+- Write the suggestion and reasoning in {{writing_language}}.
 - Suggest exactly one value for the specified target field.
 - Ensure consistency with all existing answers and world context.
 - Always list referenced entities in `context_used`.
