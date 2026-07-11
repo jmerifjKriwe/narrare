@@ -48,6 +48,7 @@ USER_CONTENT_VARS: frozenset[str] = frozenset(
         "text_after",
         "existing_answers",
         "author_instructions",
+        "candidate_pairs",
         "conversation_history",
         "entity_name",
         "entity_current_content",
@@ -144,7 +145,6 @@ SYSTEM_VARS: frozenset[str] = frozenset(
 
 FEATURE_DYNAMIC_VARS: frozenset[str] = frozenset(
     {
-        "candidate_pairs",
         "entity_events",
         "explanation_language",
         "extracted_facts",
