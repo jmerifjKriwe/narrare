@@ -10,18 +10,19 @@ from unittest.mock import AsyncMock, patch
 from uuid import UUID, uuid4
 
 import pytest
-from fastapi.testclient import TestClient
 
 from narrare._app.main import create_app
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.prompts.composer import ComposedPrompt
 
+from ._ws_db_isolation import ws_db_test_client
 from .test_session_lifecycle import _create_novel_and_chapter, _register_user
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterator
 
     from fastapi import FastAPI
+    from fastapi.testclient import TestClient
 
     from narrare_core.llm import LLMIntent, ResolvedModelConfig
 
@@ -84,7 +85,7 @@ def ws_recovery_env() -> Iterator[tuple[TestClient, FastAPI, _CancellableModelRe
             "narrare.writing.router_sessions.get_composer",
             return_value=mock_composer,
         ),
-        TestClient(app) as client,
+        ws_db_test_client(app) as client,
     ):
         yield client, app, fake_registry
 

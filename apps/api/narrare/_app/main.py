@@ -233,7 +233,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(generation_router, prefix=prefix)
     app.include_router(setup_router, prefix=prefix)
     app.include_router(templates_router, prefix=prefix)
-    app.include_router(metrics_router)  # No prefix — /health, /ready
+    app.include_router(metrics_router)  # No prefix — /health, /ready, /metrics
     app.include_router(tasks_router)  # No prefix — /tasks/status (monitoring)
     app.include_router(writing_router, prefix=prefix)
     app.include_router(writing_extend_router, prefix=prefix)

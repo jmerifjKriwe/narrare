@@ -12,16 +12,21 @@ Requires: ``just dev-services`` running (PostgreSQL on port 5433).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from narrare._app.main import create_app
 from narrare_core.prompts.composer import ComposedPrompt
 from tests.fakes.fake_llm_gateway import FakeModelRegistry
+
+from ._ws_db_isolation import ws_db_test_client
+
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -58,7 +63,7 @@ def ws_env():
             "narrare.writing.router_sessions.get_composer",
             return_value=mock_composer,
         ),
-        TestClient(app) as client,
+        ws_db_test_client(app) as client,
     ):
         yield client, fake_registry
 
