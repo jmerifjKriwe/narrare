@@ -36,6 +36,43 @@ permission:
     "git worktree*": "allow"
     "git show-ref*": "allow"
     "git check-ignore*": "allow"
+    "git tag*": "allow"          # Tags anlegen/auflisten (Löschen via -d ist recoverable)
+    "git remote*": "allow"       # remote -v, add, set-url – überschaubar
+    "git blame*": "allow"        # rein lesend
+    "git grep*": "allow"         # rein lesend
+    "git ls-files*": "allow"     # rein lesend
+    "git cat-file*": "allow"     # rein lesend
+    "git ls-tree*": "allow"      # rein lesend
+    "git diff-tree*": "allow"    # rein lesend
+    "git revert*": "allow"       # erzeugt neuen Commit, kein Force nötig
+    "git cherry-pick*": "allow"  # bei Konflikt bricht es einfach ab, nichts zerstört
+    "git merge*": "allow"        # analog zu eurem rebase* – ähnliches Risiko wie das, was ihr schon erlaubt habt
+    "git describe*": "allow"     # rein lesend
+    "git reflog*": "allow"       # rein lesend, sogar nützlich als Sicherheitsnetz
+    "git submodule*": "allow"    # meist unkritisch, außer bei sync/deinit mit --force
+    "gh pr view*": "allow"
+    "gh pr list*": "allow"
+    "gh pr diff*": "allow"
+    "gh pr status*": "allow"
+    "gh pr checks*": "allow"
+    "gh issue view*": "allow"
+    "gh issue list*": "allow"
+    "gh repo view*": "allow"
+    "gh run list*": "allow"
+    "gh run view*": "allow"
+    "gh run watch*": "allow"
+    "gh workflow list*": "allow"
+    "gh workflow view*": "allow"
+    "gh release list*": "allow"
+    "gh release view*": "allow"
+    "gh browse*": "allow"
+    "gh status*": "allow"
+    "gh pr create*": "allow"
+    "gh pr comment*": "allow"
+    "gh pr checkout*": "allow"
+    "gh pr edit*": "allow"
+    "gh issue create*": "allow"
+    "gh issue comment*": "allow"
     "ls*": "allow"
     "cat *": "allow"
     "find*": "allow"
