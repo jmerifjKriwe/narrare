@@ -452,6 +452,16 @@ KB-Stumps. Kein Overflow-Handling, keine Priorisierung.
 ist). Mindestens: Char-Truncation durch Token-bewusste Truncation ersetzen.
 **Referenz:** §2.1, §2.2 (Nr. 1).
 **Hinweis:** Abstimmung mit Architecture-Specialist (RULE-03 Contract first).
+**Status (verifiziert 2026-07-12):** Kern-Ziel bereits umgesetzt —
+`packages/core/narrare_core/analysis/assembler.py::AnalysisContextAssembler`
+(3-Tier-Budget, `AnalysisBudgetManager`, 6000-Token-Default, Overflow-Cascade;
+ADR-025) existiert und ist via `build_budgeted_prompt` in
+`BetaReaderService.analyze` (`beta_reader_service.py:150`) verdrahtet.
+Verbleibender Rest: Die 200-Zeichen-Pre-Truncation im API-Layer
+`ContextAssembler` (`context_assembler.py:50/168/203`) beschneidet KB-Daten
+*vor* dem Budget-System. Rest-Aufgabe: Pre-Truncation entfernen/anheben, damit
+das Budget-System volle Entity-Bodies sieht und selbst token-bewusst kürzt.
+Kein Neubau des Budget-Systems nötig.
 
 ### CR-AUFG-03-04 — KBConsistencyAnalyzer Body-Truncation durch Budget ersetzen
 
@@ -475,15 +485,35 @@ tatsächlich greift. Falls nicht: Gate-Bedingung anpassen (Preferences sollen
 auch bei gefülltem KB/Chapter-Context injiziert werden, da sie orthogonal sind).
 **Referenz:** §1.1, §1.2 (Szenario 2).
 
-### CR-AUFG-03-06 — mem0 Cross-Session Writing Context evaluieren
+### CR-AUFG-03-06 — mem0 Cross-Session Writing Context
 
 **Priorität:** P3 (Erweiterung)
 **Problem:** mem0 speichert nur Preferences und Feedback. Cross-Session-Kontext
 ("Nutzer arbeitete an Plot-Wendung in Kapitel 7") fehlt — jede Session startet
 ohne Erinnerung an vorherige Schreib-Entscheidungen.
-**Aufgabe:** Evaluieren, ob mem0 nach Session-Ende Summary-Memories speichern
-soll (z.B. "Completed chapter 7 with cliffhanger ending"). Abruf beim
-Session-Start. Brainstorming mit Orchestrator (Thinking-Partner-Pattern).
+**Aufgabe:** mem0 nach Session-Ende Summary-Memories speichern und beim
+Session-Start abrufen (siehe Implementierungsplan).
+**Implementierungsplan:**
+1. **Contract (RULE-03):** mem0-Memory-Typ `writing_session` definieren
+   (Metadata: `{type, novel_id, chapter_id, mode, timestamp}`). Store-Hook im
+   Writing-Service nach Chapter-Save; Retrieval im WritingContextAssembler
+   oder einem neuen SessionContextEnricher.
+2. **Storage:** Nach Abschluss einer Writing-Operation (Kapitel generiert &
+   gespeichert) eine kurze strukturelle Summary speichern (mode, Kapitel-Titel,
+   Wortzahl-Delta — zunächst *ohne* zusätzlichen LLM-Call) via `mem0.add()`.
+   Best-effort mit graceful degradation (NullMemoryClient-Fallback, RULE-08).
+3. **Retrieval:** Beim Start einer Writing-Session mem0 nach vergangenen
+   Writing-Session-Memories für dieses Novel/User durchsuchen. Als
+   `cross_session_context`-Variable in den Prompt injizieren
+   (budget-durchlaufen).
+4. **Prompt:** `{{cross_session_context}}` in relevante Writing-Prompts
+   aufnehmen (optional / empty-safe, bestehendes Pfad-Compliance-Test-Muster).
+5. **Tests:** Unit-Tests für Store- + Retrieve-Flow mit NullMemoryClient;
+   graceful-degradation-Test.
+6. **Scope-Guard:** Zusammenfassungen kurz halten (keine vollen
+   Session-Transkripte). Token-budget-durchlaufen über bestehendes System.
+**Entscheidung:** Zunächst strukturelle Summaries (kein Extra-LLM-Call);
+LLM-summarisierte Memories später, falls wertvoll.
 **Referenz:** §1.2 (Szenario 1).
 
 ### CR-AUFG-03-07 — Adoption-Scorer: token_budget gegen Code verifizieren
@@ -505,9 +535,29 @@ ContextAssembler(total_budget=...)?". Mindestens: Flagge Kategorien als
 **Problem:** Die Registry prüft Variablen-Präsenz im Prompt-Template (statisch).
 Coreference hat `kb_characters` im Template (Registry: adopted), setzt es zur
 Runtime aber auf `=""`. Kein Gate fängt leere Runtime-Werte ab.
-**Aufgabe:** Evaluieren, ob Runtime-Probes (`.evidence/`) erweitert werden
-können, um zu prüfen, ob kritische Variablen zur Runtime nicht-leere Werte
-haben. Alternativ: Log/Metriken für leere KB-Variablen-Werte.
+**Aufgabe:** Checker implementieren, der Service-Code auf hartcodierte
+Leerstring-Zuweisungen an KB-Kontext-Variablen scannt (siehe
+Implementierungsplan).
+**Implementierungsplan:**
+1. **Ansatz:** Bestehenden Adoption-Scorer erweitern ODER neuen Checker
+   (z.B. `scripts/check_empty_kb_vars.py`), der Service-Code unter
+   `apps/api/` auf Muster wie `"kb_characters": ""` / `kb_relationships=""`
+   scannt (AST- oder Regex-basiert).
+2. **Erkennung:** Bekannte KB-Variablen: `kb_characters`, `kb_locations`,
+   `kb_factions`, `kb_relationships`. Hartcodierte Leerstring-Zuweisungen als
+   "runtime-empty variable"-Finding markieren.
+3. **Baseline (Ratchet):** Gegen aktuellen Codestand laufen lassen, aktuelle
+   Anzahl leerer Zuweisungen als Baseline setzen. Neue Verstöße schlagen fehl;
+   bestehende werden zur schrittweisen Bereinigung getrackt.
+4. **Warning-only:** Zunächst als Warnung (nicht blockierend) mit
+   Ratchet-Baseline, gemäß Prevention-Disziplin.
+5. **Tests:** Checker selbst testen (findet bekannte Leer-Zuweisungen, passt
+   wenn gefüllt).
+6. **Integration:** In `just check` / pre-commit / CI neben bestehenden
+   Adoption-Checks einbinden.
+**Verhindert:** Die Coreference-Klasse Bug (CR-AUFG-03-02) rekurrenzfrei —
+sobald 03-02 `kb_characters` füllt, sinkt die Baseline; jeder *neue* Service
+mit `kb_characters=""` wird flaggiert.
 **Referenz:** §5.
 **Abstimmung:** Mit Platform-Specialist.
 
@@ -522,3 +572,55 @@ Charakter-Darstellung und Planung relevant wäre.
 in Writing) angebunden werden soll. Mindestens für Voice-Check und
 Character-Arc (wo Beziehungen charakterprägend sind).
 **Referenz:** §2.1, §4.
+
+### CR-AUFG-03-10 — Consistency-Feedback-Loop zu mem0
+
+**Priorität:** P3 (Erweiterung)
+**Problem:** Der Consistency-Check hat keinen Feedback-Loop zu mem0. Wenn ein
+Nutzer ein Consistency-Issue als "false positive" oder "beabsichtigt" markiert,
+wird diese Information nicht gespeichert. Wiederkehrende False-Positives
+belasten wiederholt; beabsichtigte "Inkonsistenzen" werden nicht gelernt.
+**Aufgabe:** Wenn ein Nutzer ein Consistency-Issue als "false positive" /
+"resolved" / "intended" markiert, speichere das in mem0 (analog FeedbackService).
+Bei der nächsten Consistency-Prüfung rufe ähnliche vergangene Markierungen ab,
+um wiederkehrende False-Positives zu reduzieren.
+**Referenz:** §1.1 (Consistency Check), §1.2 (Szenario 3).
+
+### CR-AUFG-03-11 — Character Voice Memory in mem0 persistieren
+
+**Priorität:** P3 (Erweiterung)
+**Problem:** ADR-055 (Character Voice) extrahiert Sprachmuster pro Charakter
+live pro Sektion. Diese Voice-Patterns werden nicht in mem0 persistiert, sodass
+jede Session das Profil neu erstellt.
+**Aufgabe:** Evaluieren und umsetzen, ob ADR-055 Voice-Patterns in mem0
+persistiert werden, statt sie live neu zu profilieren. Beim Abruf eines
+Charakters im Writing-Pfad prüfen, ob ein gespeichertes Voice-Profil existiert;
+falls ja, wiederverwenden, falls nein, neu profilieren und speichern.
+**Referenz:** §1.1 (Character Voice Memory).
+
+### CR-AUFG-03-12 — Proactive Context via KG-Traversal erweitern
+
+**Priorität:** P3 (Erweiterung)
+**Problem:** `ProactiveContextService` nutzt für KB-Suggestions nur semantische
+Ähnlichkeit (Embeddings). Für beziehungs-relevante Szenarien ("Charakter A
+taucht auf → auch Charakter B vorschlagen, weil verbunden") wäre
+Graph-Nachbarschaft treffsicherer als reine Text-Ähnlichkeit.
+**Aufgabe:** Erweitere `ProactiveContextService` so, dass für
+beziehungs-relevante Vorschläge Graph-Nachbarschaft (BFS via GraphService /
+Adjacency-Map) zusätzlich zur Embedding-Ähnlichkeit genutzt wird.
+Hybrid-Scoring bestehend beibehalten, Graph-Signal als Booster.
+**Referenz:** §3.1 (KB-005 Proactive Context), §3.2.
+
+### CR-AUFG-03-13 — Budget-Adoption auf verbleibende Analysis/Planning-Services ausweiten
+
+**Priorität:** P3 (strukturelle Konsistenz)
+**Problem:** Neben Beta-Reader (CR-AUFG-03-03) haben POV/Readability/Voice-Check
+sowie Planning-Services (Outline/Character-Arc/Timeline) weiterhin kein
+Budget-System. Sie bauen ad-hoc `PromptContext` ohne Token-Bewusstsein. Der
+strukturelle Adoptions-Flickenteppich (§2.3) besteht für diese Services fort.
+**Aufgabe:** Evaluieren pro Service, ob die Nutzung des bestehenden
+`AnalysisContextAssembler` (`packages/core/narrare_core/analysis/assembler.py`)
+sinnvoll ist. Mindestens für Services mit großem KB-Kontextbedarf
+(Planning / Character-Arc) anbinden.
+**Referenz:** §2.1, §2.3.
+**Abstimmung:** Mit Architecture-Specialist (RULE-03 Contract first).
