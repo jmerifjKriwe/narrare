@@ -66,8 +66,6 @@ writing:
     intent: LLMIntent.WRITE
     bundled:
       en: writing/en/new_chapter/system.md
-      de: writing/de/new_chapter/system.md
-      fr: writing/fr/new_chapter/system.md
     variables:
       - author_instructions  (USER_CONTENT)
       - avoidance_patterns
@@ -90,6 +88,7 @@ writing:
       - user_preferences
       - word_target
       - writing_language
+    notes: "EN-only (no DE/FR bundled variants). ADR-026 Phase 5: output language via {{writing_language}}."
 
   extend_chapter:
     intent: LLMIntent.EXTEND
@@ -123,8 +122,6 @@ writing:
     intent: LLMIntent.REWRITE
     bundled:
       en: writing/en/rewrite_selection/system.md
-      de: writing/de/rewrite_selection/system.md
-      fr: writing/fr/rewrite_selection/system.md
     variables:
       - author_instructions  (USER_CONTENT)
       - avoidance_patterns
@@ -150,13 +147,12 @@ writing:
       - tone_instructions
       - user_preferences
       - writing_language
+    notes: "EN-only (no DE/FR bundled variants). ADR-026 Phase 5: output language via {{writing_language}}."
 
   co_author:
     intent: LLMIntent.CO_AUTHOR
     bundled:
       en: writing/en/co_author/system.md
-      de: writing/de/co_author/system.md
-      fr: writing/fr/co_author/system.md
     variables:
       - avoidance_patterns
       - character_voice_profiles
@@ -179,6 +175,7 @@ writing:
       - timeline_position
       - user_preferences
       - writing_language
+    notes: "EN-only (no DE/FR bundled variants). ADR-026 Phase 5: output language via {{writing_language}}."
 
   scene_by_scene:
     intent: LLMIntent.WRITE  # same intent as new_chapter, different mode
@@ -237,8 +234,6 @@ writing:
     intent: null  # no dedicated LLMIntent; pre-writing interview flow
     bundled:
       en: writing/en/interview/system.md
-      de: writing/de/interview/system.md
-      fr: writing/fr/interview/system.md
     variables:
       - author_instructions  (USER_CONTENT)
       - avoidance_patterns
@@ -258,14 +253,13 @@ writing:
       - tone_instructions
       - user_preferences
       - writing_language
+    notes: "EN-only (no DE/FR bundled variants). ADR-026 Phase 5: output language via {{writing_language}}."
 
   chat:
     # ADR-024 / ADR-049 FIND-010: CHAT moved from top-level chat/ to writing/chat/
     intent: LLMIntent.CHAT
     bundled:
       en: writing/en/chat/system.md
-      de: writing/de/chat/system.md
-      fr: writing/fr/chat/system.md
     variables:
       - avoidance_patterns
       - character_voice_profiles
@@ -283,6 +277,7 @@ writing:
       - timeline_position
       - user_preferences
       - writing_language
+    notes: "EN-only (no DE/FR bundled variants). ADR-026 Phase 5: output language via {{writing_language}}."
 
   story_suggest:
     intent: LLMIntent.SUGGEST  # context_mode: story_suggest
@@ -314,8 +309,6 @@ writing:
     intent: LLMIntent.SUGGEST  # context_mode: inline_suggest (default)
     bundled:
       en: writing/en/inline_suggest/system.md
-      de: writing/de/inline_suggest/system.md
-      fr: writing/fr/inline_suggest/system.md
     variables:
       - avoidance_patterns
       - chapter_context
@@ -331,6 +324,7 @@ writing:
       - timeline_position
       - user_preferences
       - writing_language
+    notes: "EN-only (no DE/FR bundled variants). ADR-026 Phase 5: output language via {{writing_language}}."
 
 # ──────────────────────────────────────────────────────────────────────
 # kb — knowledge base operations

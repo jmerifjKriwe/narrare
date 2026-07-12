@@ -3,13 +3,12 @@
 These tests verify the ADR-046 prompt-path-compliance retrofit:
 
     composer=None must fail-fast with ``ConfigurationError``, NOT silently
-    degrade to inline f-string prompts + ``MetaPromptLoader`` fallback.
+    degrade to inline f-string prompt fallbacks.
 
 Before ADR-046:
-    Passing ``composer=None`` returned an inline f-string task prompt with
-    ``MetaPromptLoader``-loaded meta, bypassing the ``NarrareMeta`` Capability.
-    This was a degraded production path reachable when DI failed to wire
-    ``PromptComposer``.
+    Passing ``composer=None`` returned an inline f-string task prompt,
+    bypassing the ``NarrareMeta`` Capability.  This was a degraded
+    production path reachable when DI failed to wire ``PromptComposer``.
 
 After ADR-046:
     ``composer=None`` raises ``ConfigurationError`` (RULE-11: no silent
@@ -56,10 +55,10 @@ class TestComposerNoneFailsFast:
     """REGRESSION (CR-AUFG-02-07): ``composer=None`` must raise ConfigurationError.
 
     Each prompt-builder function previously contained a ``composer is None``
-    fallback branch with inline f-string prompts and ``_get_fallback_meta()``
-    (via ``MetaPromptLoader``).  These silent fallback paths violated
-    RULE-02 (no prompt assembly outside ``core/prompts/``) and RULE-11
-    (no silent fallbacks) and bypassed the ``NarrareMeta`` Capability.
+    fallback branch with inline f-string prompts.  These silent fallback
+    paths violated RULE-02 (no prompt assembly outside ``core/prompts/``)
+    and RULE-11 (no silent fallbacks) and bypassed the ``NarrareMeta``
+    Capability.
 
     After the retrofit, ``composer=None`` is a DI-wiring error that
     fails fast.

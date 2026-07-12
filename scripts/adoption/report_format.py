@@ -55,6 +55,9 @@ def format_human(report: AdoptionReport) -> str:
         if cat.missing_locales:
             locale_strs = [f"{k}: missing {', '.join(v)}" for k, v in cat.missing_locales.items()]
             parts.append(f"i18n gaps: {'; '.join(locale_strs)}")
+        if cat.extra_locales:
+            extra_strs = [f"{k}: extra {', '.join(v)}" for k, v in cat.extra_locales.items()]
+            parts.append(f"i18n warnings: {'; '.join(extra_strs)}")
 
         detail_str = f"  ({'; '.join(parts)})" if parts else ""
         lines.append(
@@ -127,6 +130,7 @@ def format_json(
                 "missing_must": cat.missing_must,
                 "missing_should": cat.missing_should,
                 "missing_locales": cat.missing_locales,
+                "extra_locales": cat.extra_locales,
                 "inline_fallbacks": cat.inline_fallbacks,
                 "modes": [
                     {

@@ -238,14 +238,14 @@ class TestEmptyCategory:
 
 class TestI18n:
     def test_full_locale_coverage(self) -> None:
+        """EN-only writing category with only en has no missing or extra locales."""
         registry = _minimal_registry()
         prompts = [
             _make_prompt("writing", "en", "new_chapter"),
-            _make_prompt("writing", "de", "new_chapter"),
-            _make_prompt("writing", "fr", "new_chapter"),
         ]
         report = compute_adoption_report(registry, prompts)
         assert report.categories[0].missing_locales == {}
+        assert report.categories[0].extra_locales == {}
 
     def test_partial_locale_coverage_for_localized_category(self) -> None:
         """Only EN prompts for a localized-required category reports missing de/fr."""
@@ -268,6 +268,60 @@ class TestI18n:
         assert "meta/system" in cat.missing_locales
         assert "de" in cat.missing_locales["meta/system"]
         assert "fr" in cat.missing_locales["meta/system"]
+
+    def test_extra_locales_warned_for_feature_category(self) -> None:
+        """Extra locales on an EN-only feature category are reported as warnings.
+
+        ADR-026 Phase 5: feature prompts are EN-only. If de/fr templates
+        exist on disk for a writing mode, they are flagged as extra
+        (warning-only, not blocking).
+        """
+        registry = _minimal_registry()
+        prompts = [
+            _make_prompt("writing", "en", "new_chapter"),
+            _make_prompt("writing", "de", "new_chapter"),  # extra
+            _make_prompt("writing", "fr", "new_chapter"),  # extra
+        ]
+        report = compute_adoption_report(registry, prompts)
+        cat = report.categories[0]
+        # Missing locales should be empty (en is present).
+        assert cat.missing_locales == {}
+        # Extra locales should be reported as warnings.
+        assert "writing/new_chapter" in cat.extra_locales
+        assert "de" in cat.extra_locales["writing/new_chapter"]
+        assert "fr" in cat.extra_locales["writing/new_chapter"]
+
+    def test_no_extra_locales_when_only_en_present(self) -> None:
+        """EN-only feature category with only en templates has no extra warnings."""
+        registry = _minimal_registry()
+        prompts = [
+            _make_prompt("writing", "en", "new_chapter"),
+        ]
+        report = compute_adoption_report(registry, prompts)
+        cat = report.categories[0]
+        assert cat.extra_locales == {}
+
+    def test_no_extra_locales_for_localized_required_category(self) -> None:
+        """Localized-required category (meta) with all locales has no extras."""
+        registry = {
+            "features": {
+                "meta": {
+                    "modes": ["system"],
+                    "required_infrastructure": {"prompt_composer": "required"},
+                    "context_variables": {"must": [], "should": []},
+                }
+            },
+            "inline_fallbacks": [],
+        }
+        prompts = [
+            _make_prompt("meta", "en", "system"),
+            _make_prompt("meta", "de", "system"),
+            _make_prompt("meta", "fr", "system"),
+        ]
+        report = compute_adoption_report(registry, prompts)
+        cat = report.categories[0]
+        assert cat.missing_locales == {}
+        assert cat.extra_locales == {}
 
 
 # ── runtime_evidence_gap_count (ADR-040 Decision 4) ──────────────────

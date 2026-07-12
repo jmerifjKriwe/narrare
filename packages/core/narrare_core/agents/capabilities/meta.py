@@ -44,9 +44,8 @@ def _load_meta_prompt(language: str, variables: dict[str, str] | None = None) ->
     """Load the meta-prompt from bundled templates synchronously.
 
     Reads the bundled meta-prompt file for the given language, with
-    English fallback. Does NOT support project/user cascade — that is
-    handled separately by MetaPromptLoader for users who need custom
-    meta-prompts.
+    English fallback. Does NOT support project/user cascade — custom
+    meta-prompts are not supported via this path.
 
     Falls back to empty string on any error (graceful degradation).
 

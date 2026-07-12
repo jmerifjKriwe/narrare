@@ -357,7 +357,7 @@ infrastructure_definitions:
     evidence: "all UNSAFE_USER_VARS wrapped in <tag>...</tag> in prompt templates"
   meta_prompt:
     description: "Narrare identity meta-prompt prepended to all system prompts"
-    evidence: "uses PromptComposer (includes meta automatically) or with_meta() or MetaPromptLoader"
+    evidence: "uses PromptComposer (includes meta automatically via NarrareMeta Capability)"
   i18n:
     description: "Bundled prompt locale coverage (ADR-026 Phase 5: meta/universal require en+de+fr; feature prompts are EN-only with localized output via variables)"
     evidence: "system.md present in required locales for category (_required_locales_for policy)"
