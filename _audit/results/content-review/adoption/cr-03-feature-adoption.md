@@ -416,6 +416,7 @@ durchgeht. Die Infrastruktur ist gebaut — sie wird nur zur Hälfte genutzt.
 
 ### CR-AUFG-03-01 — Consistency-Check mit KG-Relationships anreichern
 
+**Status (2026-07-13):** ✅ implemented — `ConsistencyDeps` gained `kb_relationships`-Feld (`consistency_types.py`); Orchestrator-Pipeline lädt Relationships via `fetch_formatted_relationships` (`checker_context.py`); Consistency-Prompt referenziert `{{kb_relationships}}` mit Beziehungs-Cross-Reference-Anweisung (`system.md` v2.1.0). 11 neue Tests. Commit `423d515`.
 **Priorität:** P1 (höchster inhaltlicher Mehrwert)
 **Problem:** `ConsistencyDeps` (`consistency_types.py:107-127`) hat kein Feld für
 KB-Relationships. Der Consistency-Check kann Beziehungs-Widersprüche ("Aria ist
@@ -431,6 +432,7 @@ prüft.
 
 ### CR-AUFG-03-02 — Coreference-Service mit KB-Charakteren versorgen
 
+**Status (2026-07-13):** ✅ implemented — `CoreferenceService` akzeptiert optionales `KBRepository`, lädt Charakter-Namen für Pronomen-Resolution (`coreference_service.py` + `coreference_kb.py`). DI-Factory verdrahtet (`dependencies_coreference.py`). 6 neue Tests. Commit `0b79fca`.
 **Priorität:** P1 (funktionaler Adoptions-Fehler)
 **Problem:** `coreference_service.py:175-179` setzt alle KB-Variablen (`kb_characters`,
 `kb_locations`, `kb_factions`, `kb_relationships`) auf leere Strings. Kommentar:
@@ -442,6 +444,7 @@ Charaktere für den Roman und fülle `kb_characters` mit echten Daten.
 
 ### CR-AUFG-03-03 — Analysis-ContextAssembler auf TokenBudget-System migrieren
 
+**Status (2026-07-13):** ✅ implemented (Rest-Fix) — Budget-System war bereits vorhanden (`AnalysisContextAssembler`, ADR-025). Rest-Fix: 200-Zeichen-Pre-Truncation im API-Layer entfernt, damit das Budget-System volle Entity-Bodies sieht (`context_assembler.py`). 3 neue Tests. Commit `b48c7d1`.
 **Priorität:** P2 (strukturelle Konsistenz)
 **Problem:** `apps/api/narrare/analysis/context_assembler.py` ist ein eigener
 ContextAssembler ohne TokenBudgetManager, mit hardcoded
@@ -465,6 +468,7 @@ Kein Neubau des Budget-Systems nötig.
 
 ### CR-AUFG-03-04 — KBConsistencyAnalyzer Body-Truncation durch Budget ersetzen
 
+**Status (2026-07-13):** ✅ implemented — `entity.body[:5000]` durch `cap_to_budget(entity.body, max_body_tokens)` ersetzt (`consistency_analyzer.py`). `max_body_tokens` konfigurierbar (Default 1500 ≈ 5000 Zeichen). 5 neue Tests. Commit `d275e3c`.
 **Priorität:** P2
 **Problem:** `consistency_analyzer.py:199` trunciert `entity.body[:5000]`
 hardcoded. Bei Einträgen >5000 Zeichen schneidet der Consistency-Check mitten
@@ -476,6 +480,7 @@ sind.
 
 ### CR-AUFG-03-05 — mem0-Preference-Injection-Gate untersuchen
 
+**Status (2026-07-13):** ✅ verified — Investigation bestätigt: Gate funktioniert korrekt für Writing-Services. `WritingPipeline` setzt `user_id`/`project_id` in `PromptContext.extra`; zwei Mechanismen (Enricher + Fallback-Gate) stellen Preference-Injection sicher. Kein Produktions-Fix nötig. 6 Regression-Tests. Commit `6162944`.
 **Priorität:** P2
 **Problem:** `composer.py:93-113` injiziert Preferences nur, wenn Context "leer"
 ist. Bei WritingContextAssembler-vorangestellten Services ist der Context
@@ -487,6 +492,7 @@ auch bei gefülltem KB/Chapter-Context injiziert werden, da sie orthogonal sind)
 
 ### CR-AUFG-03-06 — mem0 Cross-Session Writing Context
 
+**Status (2026-07-13):** ✅ implemented — Neuer `SessionMemoryService` (`core/memory/`) mit `record_writing_session()` + `get_cross_session_context()`. `WritingService` ruft Context vor Generation ab und speichert Summary nach Abschluss. Variable durchläuft Writing-Pipeline-Governance-Chain. 16 neue Tests. Commit `b233723`.
 **Priorität:** P3 (Erweiterung)
 **Problem:** mem0 speichert nur Preferences und Feedback. Cross-Session-Kontext
 ("Nutzer arbeitete an Plot-Wendung in Kapitel 7") fehlt — jede Session startet
@@ -518,6 +524,7 @@ LLM-summarisierte Memories später, falls wertvoll.
 
 ### CR-AUFG-03-07 — Adoption-Scorer: token_budget gegen Code verifizieren
 
+**Status (2026-07-13):** ✅ implemented + enforced — `CheckDetail.unverified`-Flag hinzugefügt; Scorer markiert `token_budget`/`injection_defense` als "unverified" bei reiner Datei-Präsenz. `AdoptionReport.unverified_count` (Baseline: 7). Audit-Report listet unverified Items. Score unverändert (Ratchet). 23 neue Tests. Commit `13b9f69`.
 **Priorität:** P2 (Enforcement-Gap)
 **Problem:** `scorer_checks.py:60-62` wertet `token_budget` als "assumed adopted
 if bundled prompts exist" — ohne Code-Nachweis. Analysis/KB/Planning passieren
@@ -531,6 +538,7 @@ ContextAssembler(total_budget=...)?". Mindestens: Flagge Kategorien als
 
 ### CR-AUFG-03-08 — Runtime-Gate: leere KB-Variablen-Werte erkennen
 
+**Status (2026-07-13):** ✅ implemented + enforced — Neuer Checker `scripts/check_empty_kb_vars.py` scannt Service-Code auf hartcodierte Leerstring-Zuweisungen an KB-Variablen. Ratchet-Baseline: 11 Findings. In `just check` integriert (blockiert neue Verstöße). 20 neue Tests. Commit `ba630e0`.
 **Priorität:** P3 (Enforcement)
 **Problem:** Die Registry prüft Variablen-Präsenz im Prompt-Template (statisch).
 Coreference hat `kb_characters` im Template (Registry: adopted), setzt es zur
@@ -563,6 +571,7 @@ mit `kb_characters=""` wird flaggiert.
 
 ### CR-AUFG-03-09 — Voice/Planning-Services: kb_relationships füllen (nicht ="")
 
+**Status (2026-07-13):** ✅ implemented — Voice-Check, Character-Voice, Timeline-Analysis und Coreference-Services laden und injizieren nun KB-Relationships via `fetch_formatted_relationships`. Graceful Degradation bei fehlendem Repo. 2 Helper-Module extrahiert (RULE-04). 17 neue Tests. Commit `6bf2806`.
 **Priorität:** P3
 **Problem:** `character_voice_prompt.py:87`, `voice_check_prompt.py:92`,
 `timeline_analysis_service.py:188`, `coreference_service.py:178` setzen
@@ -575,6 +584,7 @@ Character-Arc (wo Beziehungen charakterprägend sind).
 
 ### CR-AUFG-03-10 — Consistency-Feedback-Loop zu mem0
 
+**Status (2026-07-13):** ⏳ deferred — Erfordert neuen API-Endpunkt + UI zum Markieren von Consistency-Issues ("false positive"/"intended") sowie mem0-Speicherung/Abfrage. Substantielles Full-Stack-Feature jenseits dieses Adoptions-Remediation-Scopes. Registriert für Future Sprint.
 **Priorität:** P3 (Erweiterung)
 **Problem:** Der Consistency-Check hat keinen Feedback-Loop zu mem0. Wenn ein
 Nutzer ein Consistency-Issue als "false positive" oder "beabsichtigt" markiert,
@@ -588,6 +598,7 @@ um wiederkehrende False-Positives zu reduzieren.
 
 ### CR-AUFG-03-11 — Character Voice Memory in mem0 persistieren
 
+**Status (2026-07-13):** ⏳ deferred — Erfordert tiefe Integration mit ADR-055 Character-Voice-Profiling: Voice-Patterns in mem0 persistieren, vor Live-Profilerung abrufen. Substantielles Feature mit Voice-Profiling-Flow-Analyse. Registriert für Future Sprint.
 **Priorität:** P3 (Erweiterung)
 **Problem:** ADR-055 (Character Voice) extrahiert Sprachmuster pro Charakter
 live pro Sektion. Diese Voice-Patterns werden nicht in mem0 persistiert, sodass
@@ -600,6 +611,7 @@ falls ja, wiederverwenden, falls nein, neu profilieren und speichern.
 
 ### CR-AUFG-03-12 — Proactive Context via KG-Traversal erweitern
 
+**Status (2026-07-13):** ✅ implemented — `ProactiveContextService.suggest()` akzeptiert optionales `entity_connections`-Adjacency-Map. Graph-Nachbarn von Name-Match-Entities erhalten 0.15 Score-Boost (Hybrid-Scoring — Entity muss sowohl semantisch relevant als auch graph-verbunden sein). 7 neue Tests. Commit `af3b5ec`.
 **Priorität:** P3 (Erweiterung)
 **Problem:** `ProactiveContextService` nutzt für KB-Suggestions nur semantische
 Ähnlichkeit (Embeddings). Für beziehungs-relevante Szenarien ("Charakter A
@@ -613,6 +625,7 @@ Hybrid-Scoring bestehend beibehalten, Graph-Signal als Booster.
 
 ### CR-AUFG-03-13 — Budget-Adoption auf verbleibende Analysis/Planning-Services ausweiten
 
+**Status (2026-07-13):** ⏳ evaluated → deferred — Evaluation: Planning-Services haben aktuell minimales KB-Kontext (`kb_*`-Variablen sind Leerstrings bis auf `kb_relationships` aus 03-09). Budget-Enforcement auf leerem Content bietet keinen Mehrwert. Empfehlung: Budget-Adoption zurückstellen, bis KB-Daten-Wiring erweitert wird (separate Aufgabe).
 **Priorität:** P3 (strukturelle Konsistenz)
 **Problem:** Neben Beta-Reader (CR-AUFG-03-03) haben POV/Readability/Voice-Check
 sowie Planning-Services (Outline/Character-Arc/Timeline) weiterhin kein
@@ -624,3 +637,23 @@ sinnvoll ist. Mindestens für Services mit großem KB-Kontextbedarf
 (Planning / Character-Arc) anbinden.
 **Referenz:** §2.1, §2.3.
 **Abstimmung:** Mit Architecture-Specialist (RULE-03 Contract first).
+
+---
+
+## Abschluss-Status
+
+**Gesamtbewertung:** 10 von 13 Aufgaben implementiert, 1 evaluiert/deferred, 2 deferred.
+
+| Status | Aufgaben |
+|--------|----------|
+| ✅ implemented | 03-01, 03-02, 03-03, 03-04, 03-05 (verified), 03-06, 03-07 (+enforced), 03-08 (+enforced), 03-09, 03-12 |
+| ⏳ deferred | 03-10 (Full-Stack-Feature), 03-11 (ADR-055-Integration), 03-13 (evaluated — minimales KB-Kontext) |
+
+**Verifikation:** `just check` 9/9 grün, `just typecheck` 0 Fehler, `just test` 9717 Passed / 62 Skipped, 0 Failed.
+
+**Enforcement-Maßnahmen hinzugefügt:**
+- `CheckDetail.unverified`-Flag im Adoption-Scorer (03-07) — token_budget/injection_defense nicht mehr als "adopted" ohne Code-Nachweis
+- `scripts/check_empty_kb_vars.py` Ratchet-Checker (03-08) — blockiert neue hartcodierte Leerstring-Zuweisungen an KB-Variablen
+
+**Commits auf Branch `chore/cr-03-feature-adoption-fixes`:**
+`0da5c5b` → `13b9f69` → `423d515` → `0b79fca` → `6bf2806` → `d275e3c` → `b48c7d1` → `6162944` → `ba630e0` → `b233723` → `af3b5ec`
