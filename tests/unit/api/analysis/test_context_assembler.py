@@ -173,6 +173,23 @@ class TestPreviousChapterSummaries:
 
         assert len(deps.previous_chapter_summaries) == 3
 
+    async def test_fallback_content_truncated_to_limit(self) -> None:
+        """Chapter without summary falls back to truncated content.
+
+        When a previous chapter has no stored summary, its content is
+        truncated to kb_summary_truncation chars (default 200). This is
+        a different use case from KB entity bodies and keeps its behavior.
+        """
+        long_content = "B" * 500
+        prev = _make_chapter(summary="", content=long_content, position=0)
+        target = _make_chapter(position=1)
+        assembler = _make_assembler(chapters=[prev, target])
+
+        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+
+        assert len(deps.previous_chapter_summaries) == 1
+        assert deps.previous_chapter_summaries[0] == "B" * 200
+
 
 # ---------------------------------------------------------------------------
 # KB entry extraction
@@ -214,6 +231,42 @@ class TestKBEntryExtraction:
 
         assert len(deps.kb_characters) == 0
         assert len(deps.kb_locations) == 0
+
+
+# ---------------------------------------------------------------------------
+# KB body pass-through (no pre-truncation)
+# ---------------------------------------------------------------------------
+
+
+class TestKBBodyPassThrough:
+    """KB entity bodies are passed through fully for downstream budget truncation.
+
+    The token-aware truncation happens in AnalysisContextAssembler
+    (build_budgeted_prompt). Pre-truncating here would starve the budget
+    system of data it could otherwise fit within the KB-context tier.
+    """
+
+    async def test_long_body_not_truncated(self) -> None:
+        """Entity body longer than kb_summary_truncation is passed through in full."""
+        long_body = "A" * 500  # 500 chars, well over the 200-char default
+        char = _make_kb_entry(name="Alice", entity_type="character", body=long_body)
+        target = _make_chapter()
+        assembler = _make_assembler(chapters=[target], kb_entries=[char])
+
+        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+
+        assert deps.kb_characters[0]["summary"] == long_body
+
+    async def test_short_body_returned_as_is(self) -> None:
+        """Entity body shorter than kb_summary_truncation is returned unchanged."""
+        short_body = "A brief biography."
+        char = _make_kb_entry(name="Bob", entity_type="character", body=short_body)
+        target = _make_chapter()
+        assembler = _make_assembler(chapters=[target], kb_entries=[char])
+
+        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+
+        assert deps.kb_characters[0]["summary"] == short_body
 
 
 # ---------------------------------------------------------------------------

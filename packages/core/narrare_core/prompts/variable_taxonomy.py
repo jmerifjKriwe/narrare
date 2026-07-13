@@ -105,7 +105,12 @@ def _classification_overrides() -> dict[str, VariableClassification]:
                 VariableProvenance.LEARNED_MEMORY,
                 VariableSecurity.LABEL_REQUIRED,
             )
-            for name in ("user_preferences", "avoidance_patterns", "style_constraints")
+            for name in (
+                "user_preferences",
+                "avoidance_patterns",
+                "style_constraints",
+                "cross_session_context",
+            )
         },
         **{
             name: VariableClassification(

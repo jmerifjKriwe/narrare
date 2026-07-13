@@ -82,6 +82,7 @@ async def assemble_writing_context(
     genre: str,
     user_preferences: str,
     avoidance_patterns: str,
+    cross_session_context: str = "",
 ) -> WritingContext:
     """Stage 2 — context assembly.
 
@@ -106,6 +107,9 @@ async def assemble_writing_context(
         genre: Genre of the writing project.
         user_preferences: User's writing preference string.
         avoidance_patterns: Patterns the user wants to avoid.
+        cross_session_context: Cross-session writing memories from mem0,
+            formatted by :class:`~narrare_core.memory.session_memory_service.SessionMemoryService`.
+            Empty string when no memories exist (graceful degradation).
 
     Returns:
         The assembled WritingContext ready for prompt construction.
@@ -128,6 +132,7 @@ async def assemble_writing_context(
         word_target=request.word_target,
         user_preferences=user_preferences,
         avoidance_patterns=avoidance_patterns,
+        cross_session_context=cross_session_context,
         mode=str(request.mode),
         voice_profile_consumer=voice_profile_consumer,
     )

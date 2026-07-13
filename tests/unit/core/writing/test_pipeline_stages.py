@@ -152,6 +152,61 @@ class TestAssembleWritingContext:
         assert kwargs["genre"] == "fantasy"
 
     @pytest.mark.asyncio
+    async def test_forwards_cross_session_context(self) -> None:
+        """cross_session_context is forwarded verbatim to the assembler."""
+        pipeline = _make_pipeline()
+        assembler: Any = pipeline._context_assembler
+        request = _request()
+
+        await assemble_writing_context(
+            pipeline,
+            request,
+            voice_profile_consumer=None,
+            chapter_content="",
+            chapter_frontmatter="",
+            chapter_outline="",
+            recent_chapters=None,
+            kb_entities=None,
+            entity_connections=None,
+            kb_relationships="",
+            project_title="",
+            genre="",
+            user_preferences="",
+            avoidance_patterns="",
+            cross_session_context="- Author likes short chapters.",
+        )
+
+        kwargs = assembler.assemble.call_args.kwargs
+        assert kwargs["cross_session_context"] == "- Author likes short chapters."
+
+    @pytest.mark.asyncio
+    async def test_cross_session_context_defaults_empty(self) -> None:
+        """When omitted, cross_session_context defaults to empty string."""
+        pipeline = _make_pipeline()
+        assembler: Any = pipeline._context_assembler
+        request = _request()
+
+        await assemble_writing_context(
+            pipeline,
+            request,
+            voice_profile_consumer=None,
+            chapter_content="",
+            chapter_frontmatter="",
+            chapter_outline="",
+            recent_chapters=None,
+            kb_entities=None,
+            entity_connections=None,
+            kb_relationships="",
+            project_title="",
+            genre="",
+            user_preferences="",
+            avoidance_patterns="",
+        )
+
+        kwargs = assembler.assemble.call_args.kwargs
+        assert kwargs["cross_session_context"] == ""
+
+    @pytest.mark.asyncio
     async def test_returns_assembled_context(self) -> None:
         """The assembler's return value is returned unchanged (pure delegation)."""
         assembled = WritingContext(chapter_content="ctx", project_title="P")

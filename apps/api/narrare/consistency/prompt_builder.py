@@ -40,6 +40,7 @@ def build_consistency_prompt_variables(
     return {
         "chapter_texts": _format_chapter_texts(deps, max_chapter_tokens=max_chapter_tokens),
         "kb_entities": _format_kb_entities(deps),
+        "kb_relationships": deps.kb_relationships,
         "timeline_position": _format_timeline_events(deps),
         "check_types": ", ".join(t.value for t in check_types),
     }

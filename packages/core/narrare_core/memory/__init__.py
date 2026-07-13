@@ -34,7 +34,9 @@ from narrare_core.memory.protocols import (
     FeedbackCollector,
     MemoryFacade,
     PreferenceProvider,
+    SessionMemoryCollector,
 )
+from narrare_core.memory.session_memory_service import SessionMemoryService
 
 __all__ = [
     "EmbeddingCascadeResolver",
@@ -50,6 +52,8 @@ __all__ = [
     "PreferenceProvider",
     "PreferenceService",
     "ProviderEnvConfig",
+    "SessionMemoryCollector",
+    "SessionMemoryService",
     "detect_provider_from_env",
     "is_mem0_available",
 ]

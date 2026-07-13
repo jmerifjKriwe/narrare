@@ -230,6 +230,13 @@ class TestWritingPromptVariables:
         assert "{{kb_suggested}}" in content
         assert "unaccepted" in content
 
+    def test_new_chapter_includes_cross_session_context(self) -> None:
+        """new_chapter surfaces cross-session mem0 memories via a labelled section."""
+        content = _prompt_path("en", "new_chapter").read_text()
+
+        assert "{{cross_session_context}}" in content
+        # Rendered as empty when no memories exist (empty-safe).
+
 
 # ---------------------------------------------------------------------------
 # Tone variant validation

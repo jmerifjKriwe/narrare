@@ -37,6 +37,7 @@ def get_voice_check_service(session: SessionDep) -> CharacterVoiceCheckerService
     )
     from narrare.analysis.voice_check_service import CharacterVoiceCheckerService
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare.writing.voice_profile_adapter import make_voice_profile_consumer
@@ -48,6 +49,7 @@ def get_voice_check_service(session: SessionDep) -> CharacterVoiceCheckerService
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)
     kb_repo = KBRepository(session)
+    relationship_repo = RelationshipRepository(session)
 
     async def consumer_provider(novel_id: UUID) -> VoiceProfileConsumer:
         entries, _total = await kb_repo.list_entries(
@@ -66,6 +68,7 @@ def get_voice_check_service(session: SessionDep) -> CharacterVoiceCheckerService
         consumer_provider=consumer_provider,
         model_config=config,
         composer=composer,
+        relationship_repo=relationship_repo,
         invocation_pipeline=get_invocation_pipeline(),
     )
 

@@ -88,6 +88,7 @@ class WritingContext:
     # Memory layer
     user_preferences: str = ""
     avoidance_patterns: str = ""
+    cross_session_context: str = ""  # cross-session writing memories from mem0
 
     # Context metadata (populated by assembler)
     character_names: list[str] = field(default_factory=lambda: [])
@@ -128,6 +129,7 @@ class WritingContext:
             faction_names=list(self.faction_names),
             is_first_chapter=self.is_first_chapter,
             has_user_preferences=bool(self.user_preferences.strip()),
+            has_cross_session_context=bool(self.cross_session_context.strip()),
             tone=self.tone,
             story_structure=self.story_structure,
             timeline_position=self.timeline_position,
@@ -165,6 +167,7 @@ class WritingContext:
             "word_target": str(self.word_target) if self.word_target else "",
             "user_preferences": self.user_preferences,
             "avoidance_patterns": self.avoidance_patterns,
+            "cross_session_context": self.cross_session_context,
             "is_first_chapter": str(self.is_first_chapter).lower(),
             "is_sparse_kb": str(self.is_sparse_kb).lower(),
             "story_structure": self.story_structure,

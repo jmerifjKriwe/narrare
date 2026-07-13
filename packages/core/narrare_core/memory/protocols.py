@@ -49,6 +49,35 @@ class PreferenceProvider(Protocol):
         ...
 
 
+class SessionMemoryCollector(Protocol):
+    """Stores and retrieves cross-session writing context via mem0.
+
+    Gives the writing pipeline memory of past writing sessions
+    (e.g. "User wrote chapter 7 with a cliffhanger ending") so each
+    session starts with recall of past writing decisions.
+    """
+
+    async def record_writing_session(
+        self,
+        user_id: object,
+        project_id: object,
+        *,
+        mode: str,
+        chapter_title: str,
+        word_count: int,
+    ) -> None:
+        """Record a writing-session summary to mem0 (best-effort)."""
+        ...
+
+    async def get_cross_session_context(
+        self,
+        user_id: object,
+        project_id: object,
+    ) -> str:
+        """Retrieve past writing-session memories as formatted context text."""
+        ...
+
+
 class MemoryFacade(Protocol):
     """Combined memory interface: feedback collection + preference retrieval.
 

@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
     from narrare.chapters.repository import ChapterRepository
     from narrare.consistency.schemas import ConsistencyRequest
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
@@ -84,6 +85,7 @@ async def collect_check_context(
     chapter_repo: ChapterRepository,
     novel_repo: NovelRepository,
     kb_repo: KBRepository,
+    relationship_repo: RelationshipRepository | None = None,
     timeline_repo: TimelineEventRepository,
     token_limits_service: TokenLimitsServiceProtocol | None = None,
     include_timeline_envelopes: bool = False,
@@ -91,8 +93,8 @@ async def collect_check_context(
     """Collect all data needed for a consistency check.
 
     Shared between staged and legacy paths. Validates access,
-    fetches chapters, KB summaries, timeline data, and enriches
-    timeline events with KB entity status.
+    fetches chapters, KB summaries, KB relationships, timeline data,
+    and enriches timeline events with KB entity status.
 
     Args:
         novel_id: The novel to analyze.
@@ -101,6 +103,11 @@ async def collect_check_context(
         chapter_repo: Chapter persistence layer.
         novel_repo: Novel persistence layer.
         kb_repo: KB persistence layer.
+        relationship_repo: Optional relationship persistence layer. When
+            provided and ``include_kb`` is set, KB relationships are
+            fetched and formatted for relationship-aware consistency
+            checking (FIND-001). When ``None``, relationships degrade
+            gracefully to an empty string.
         timeline_repo: Timeline event persistence layer.
         token_limits_service: Optional TokenLimitsService.
         include_timeline_envelopes: Whether to fetch ADR-044 enriched envelopes.
@@ -147,6 +154,18 @@ async def collect_check_context(
             max_kb_entries=max_kb_entries,
         )
 
+    # 4a. Fetch KB relationships for relationship-aware consistency (FIND-001).
+    # Reuses the writing-pipeline helper; degrades to "" when no repo is wired
+    # (graceful degradation) or when include_kb is False.
+    kb_relationships_text = ""
+    if request.include_kb and relationship_repo is not None:
+        from narrare.writing._relationship_helpers import (
+            fetch_formatted_relationships,
+        )
+
+        rel_context = await fetch_formatted_relationships(relationship_repo, novel_id)
+        kb_relationships_text = rel_context.text
+
     # 4b. Fetch timeline events for temporal consistency context
     timeline_events = await fetch_timeline_events(timeline_repo, novel_id)
 
@@ -175,6 +194,7 @@ async def collect_check_context(
         timeline_events=timeline_events,
         check_types=check_types,
         existing_issue_count=len(rule_issues),
+        kb_relationships=kb_relationships_text,
     )
 
     return CheckContext(

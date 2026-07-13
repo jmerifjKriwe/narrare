@@ -135,6 +135,7 @@ class PromptContext:
     user_preferences: str = ""  # Formatted preference text from memory layer
     avoidance_patterns: str = ""  # Things the user dislikes (from feedback)
     style_constraints: str = ""  # Derived style constraints from feedback
+    cross_session_context: str = ""  # Cross-session writing memories from mem0
 
     # --- Extra variables ---
     # For feature-specific variables not covered above.

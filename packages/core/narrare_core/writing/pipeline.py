@@ -118,6 +118,7 @@ class WritingPipeline:
         genre: str = "",
         user_preferences: str = "",
         avoidance_patterns: str = "",
+        cross_session_context: str = "",
         custom_tone_instructions: str | None = None,
         selection_text: str = "",
         context_before: str = "",
@@ -151,6 +152,9 @@ class WritingPipeline:
             genre: Genre of the writing project.
             user_preferences: User's writing preference string.
             avoidance_patterns: Patterns the user wants to avoid.
+            cross_session_context: Cross-session writing memories from mem0,
+                formatted as a string of past writing-session observations.
+                Empty when no memories exist (graceful degradation).
             custom_tone_instructions: User-defined tone instructions
                 to override bundled tones. When provided, used directly
                 instead of looking up ``_TONE_INSTRUCTIONS``.
@@ -190,6 +194,7 @@ class WritingPipeline:
             genre=genre,
             user_preferences=user_preferences,
             avoidance_patterns=avoidance_patterns,
+            cross_session_context=cross_session_context,
         )
 
         # Stage 3 — emit assembled context metadata (CR-07 Context Inspector)
@@ -282,6 +287,7 @@ class WritingPipeline:
             author_instructions=author_instructions or request.prompt or request.outline or "",
             user_preferences=context.user_preferences,
             avoidance_patterns=context.avoidance_patterns,
+            cross_session_context=context.cross_session_context,
             character_voice_profiles=context.character_voice_profiles,
             extra=extra,
         )

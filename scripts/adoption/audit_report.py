@@ -82,6 +82,8 @@ class AuditReport:
     runtime_verified_count: int = 0
     static_verified_count: int = 0
     debt_count: int = 0
+    unverified_infra_count: int = 0
+    unverified_infra_items: list[str] = field(default_factory=list[str])
 
     def to_json(self) -> str:
         """Machine-readable JSON for CI consumption."""
@@ -103,6 +105,19 @@ class AuditReport:
         lines.append(f"| Static verified | {self.static_verified_count} |")
         lines.append(f"| Debt items | {self.debt_count} |")
         lines.append("")
+
+        # Unverified infrastructure assumptions (file-presence-only proxy).
+        if self.unverified_infra_count:
+            lines.append(f"## Unverified infrastructure assumptions: {self.unverified_infra_count}")
+            lines.append("")
+            lines.append(
+                "These items are assumed adopted from bundled-prompt file presence"
+                " only — no code-level evidence:"
+            )
+            lines.append("")
+            for item in self.unverified_infra_items:
+                lines.append(f"- `{item}`")
+            lines.append("")
 
         # Debt summary.
         if self.debt_summary:
@@ -325,6 +340,14 @@ def build_audit_report(
     for m in modes:
         debt_summary[m.current_state] = debt_summary.get(m.current_state, 0) + 1
 
+    # Collect unverified infrastructure assumptions (file-presence-only proxy).
+    unverified_items = sorted(
+        f"{c.category}/{d.name}"
+        for c in adoption_report.categories
+        for d in c.details
+        if d.unverified
+    )
+
     return AuditReport(
         generated_at=generated_at,
         modes=modes,
@@ -334,4 +357,6 @@ def build_audit_report(
         runtime_verified_count=runtime_verified_count,
         static_verified_count=static_verified_count,
         debt_count=total_debt,
+        unverified_infra_count=len(unverified_items),
+        unverified_infra_items=unverified_items,
     )

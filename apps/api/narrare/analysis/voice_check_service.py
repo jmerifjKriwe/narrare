@@ -27,6 +27,7 @@ from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.analysis.dialogue_parser import DialogueParser
@@ -54,6 +55,10 @@ class CharacterVoiceCheckerService:
         consumer_provider: Factory for a request-scoped voice-profile consumer.
         model_config: Resolved model configuration for the agent call.
         composer: PromptComposer for governed Mode-1 prompt resolution.
+        relationship_repo: Optional relationship repository for populating
+            ``kb_relationships`` (character relationships help the checker
+            evaluate dialogue-tone consistency). When ``None``, degrades
+            gracefully to an empty string (RULE-11).
         invocation_pipeline: Optional invocation governance pipeline.
     """
 
@@ -65,6 +70,7 @@ class CharacterVoiceCheckerService:
         consumer_provider: VoiceProfileConsumerProvider,
         model_config: ResolvedModelConfig | None = None,
         composer: PromptComposer | None = None,
+        relationship_repo: RelationshipRepository | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
@@ -74,6 +80,7 @@ class CharacterVoiceCheckerService:
         self._consumer_provider = consumer_provider
         self._config = model_config
         self._composer = composer
+        self._relationship_repo = relationship_repo
         self._invocation_pipeline = invocation_pipeline
 
     async def check(
@@ -163,6 +170,7 @@ class CharacterVoiceCheckerService:
                 model_config=config,
                 composer=composer,
                 invocation_pipeline=self._invocation_pipeline,
+                relationship_repo=self._relationship_repo,
             )
 
         for name in speaking:

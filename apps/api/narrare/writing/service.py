@@ -21,7 +21,13 @@ from uuid import UUID
 import structlog
 from sqlalchemy.exc import IntegrityError
 
-from narrare.writing._helpers import record_feedback, validate_generation_input
+from narrare.writing._helpers import (
+    build_pipeline_request,
+    prepare_generation_context,
+    record_feedback,
+    record_session_memory,
+    validate_generation_input,
+)
 from narrare.writing.schemas import (
     AcceptResponse,
     GenerateRequest,
@@ -31,7 +37,6 @@ from narrare.writing.schemas import (
     SceneNextResponse,
     StopResponse,
 )
-from narrare.writing.tone_resolver import resolve_tone_instructions
 from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
@@ -45,7 +50,7 @@ if TYPE_CHECKING:
     from narrare.writing.stats_service import StatsService
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.result import StreamChunk
-    from narrare_core.memory.protocols import FeedbackCollector
+    from narrare_core.memory.protocols import FeedbackCollector, SessionMemoryCollector
     from narrare_core.writing.draft_processor import DraftProcessor
     from narrare_core.writing.pipeline import WritingPipeline
 
@@ -68,6 +73,7 @@ class WritingService:
         stats_service: StatsService | None = None,
         tone_service: CustomToneService | None = None,
         relationship_repo: RelationshipRepository | None = None,
+        session_memory: SessionMemoryCollector | None = None,
     ) -> None:
         self._repo = repo
         self._pipeline = pipeline
@@ -80,6 +86,7 @@ class WritingService:
         self._stats_service = stats_service
         self._tone_service = tone_service
         self._relationship_repo = relationship_repo
+        self._session_memory = session_memory
 
     # -- Generation lifecycle -------------------------------------------
 
@@ -123,7 +130,6 @@ class WritingService:
     ) -> AsyncIterator[StreamChunk]:
         """Stream generated text chunks for an existing request."""
         from narrare_core.writing._enums import GenerationMode
-        from narrare_core.writing.models import GenerationRequest as GenRequest
 
         request_model = await self._get_validated_request(request_id, user_id)
         await self._repo.update_status(
@@ -135,27 +141,14 @@ class WritingService:
         )
 
         mode = GenerationMode(request_model.mode)
-        pipeline_request = GenRequest(
-            id=request_model.id,
-            chapter_id=request_model.chapter_id,
-            project_id=request_model.novel_id,
-            user_id=request_model.user_id,
-            mode=mode,
-            tone=request_model.tone,
-        )
+        pipeline_request = build_pipeline_request(request_model, mode)
 
-        custom_tone_instructions = await resolve_tone_instructions(
-            tone=request_model.tone,
-            user_id=request_model.user_id,
+        # Resolve tone, KB relationships, and cross-session context (RULE-04 helper)
+        custom_tone_instructions, kb_text, cross_session_context = await prepare_generation_context(
+            request_model,
             tone_service=self._tone_service,
-        )
-
-        # Fetch and format KB relationships for prompt context (FIND-009)
-        from narrare.writing._relationship_helpers import fetch_formatted_relationships
-
-        kb_relationships = await fetch_formatted_relationships(
-            self._relationship_repo,
-            request_model.novel_id,
+            relationship_repo=self._relationship_repo,
+            session_memory=self._session_memory,
         )
 
         accumulated: list[str] = []
@@ -166,7 +159,8 @@ class WritingService:
                 api_key=self._api_key,
                 base_url=self._base_url,
                 custom_tone_instructions=custom_tone_instructions,
-                kb_relationships=kb_relationships.text,
+                kb_relationships=kb_text,
+                cross_session_context=cross_session_context,
                 **cast("dict[str, Any]", context_kwargs),
             ):
                 if chunk.is_final:
@@ -179,6 +173,13 @@ class WritingService:
                         tokens_used=chunk.usage.total_tokens if chunk.usage else 0,
                         word_count=word_count,
                         completed_at=datetime.now(UTC),
+                    )
+                    # Record writing session to mem0 (best-effort)
+                    await record_session_memory(
+                        self._session_memory,
+                        request_model,
+                        mode.value,
+                        word_count,
                     )
                     yield chunk
                     return

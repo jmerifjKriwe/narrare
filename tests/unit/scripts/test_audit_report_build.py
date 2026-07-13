@@ -29,6 +29,7 @@ from adoption.scorer import (  # noqa: E402
     AdoptionReport,
     CategoryScore,
 )
+from adoption.scorer_models import CheckDetail  # noqa: E402
 from adoption.scorer_modes import ModeScore  # noqa: E402
 
 # ── Helpers ────────────────────────────────────────────────────────
@@ -214,3 +215,64 @@ class TestBuildAuditReport:
 
         # Mode is in registry and not runtime_verified → flag set.
         assert audit.modes[0].requires_runtime_evidence is True
+
+
+# ── Unverified infrastructure surfacing ────────────────────────────
+
+
+def _make_report_with_unverified(
+    infra_names: list[str], *, category: str = "analysis"
+) -> AdoptionReport:
+    """Build an AdoptionReport whose category details contain unverified infra."""
+    details = [CheckDetail(name=n, weight=1.0, adopted=1.0, unverified=True) for n in infra_names]
+    return AdoptionReport(
+        overall_score=0.90,
+        status="PASS",
+        unverified_count=len(infra_names),
+        categories=[
+            CategoryScore(
+                category=category,
+                score=0.90,
+                status="PASS",
+                details=details,
+                modes=[_make_mode_score()],
+            )
+        ],
+    )
+
+
+class TestUnverifiedInfraInAudit:
+    def test_audit_carries_unverified_count(self, tmp_path: Path) -> None:
+        baseline = _make_baseline_file(tmp_path)
+        report = _make_report_with_unverified(["token_budget", "injection_defense"])
+        registry = _make_registry()
+        audit = build_audit_report(report, registry, baseline)
+        assert audit.unverified_infra_count == 2
+        assert "analysis/token_budget" in audit.unverified_infra_items
+        assert "analysis/injection_defense" in audit.unverified_infra_items
+
+    def test_audit_markdown_surfaces_unverified(self, tmp_path: Path) -> None:
+        baseline = _make_baseline_file(tmp_path)
+        report = _make_report_with_unverified(["token_budget"])
+        registry = _make_registry()
+        audit = build_audit_report(report, registry, baseline)
+        md = audit.to_markdown()
+        assert "Unverified infrastructure assumptions" in md
+        assert "token_budget" in md
+
+    def test_audit_markdown_omits_section_when_zero(self, tmp_path: Path) -> None:
+        baseline = _make_baseline_file(tmp_path)
+        report = _make_report()  # no unverified details
+        registry = _make_registry()
+        audit = build_audit_report(report, registry, baseline)
+        md = audit.to_markdown()
+        assert "Unverified infrastructure assumptions" not in md
+
+    def test_audit_json_includes_unverified(self, tmp_path: Path) -> None:
+        baseline = _make_baseline_file(tmp_path)
+        report = _make_report_with_unverified(["token_budget"])
+        registry = _make_registry()
+        audit = build_audit_report(report, registry, baseline)
+        data = json.loads(audit.to_json())
+        assert data["unverified_infra_count"] == 1
+        assert "analysis/token_budget" in data["unverified_infra_items"]

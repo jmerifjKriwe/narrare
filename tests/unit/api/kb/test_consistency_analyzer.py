@@ -24,6 +24,7 @@ from narrare.kb.worldbuilding_contracts import (
 )
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.gateway import ModelRegistry
+from narrare_core.writing._token_utils import default_token_counter
 
 if TYPE_CHECKING:
     from narrare.kb.contracts import KBRepositoryProtocol
@@ -177,14 +178,42 @@ class TestBuildEntryContent:
         assert result["body"] == "A brave warrior"
         assert result["tags"] == ["protagonist"]
 
-    def test_build_entry_content_truncates_long_body(self) -> None:
-        """Body is truncated to 5000 chars."""
-        long_body = "x" * 6000
-        entry = FakeKBEntry(body=long_body)
+    def test_build_entry_content_body_under_limit_unchanged(self) -> None:
+        """Body under the token budget passes through unchanged."""
+        body = " ".join(["word"] * 100)  # ~130 tokens, well under 1500
+        entry = FakeKBEntry(body=body)
 
         result = _build_entry_content(cast("KBEntry", entry))
 
-        assert len(cast("str", result["body"])) == 5000
+        assert result["body"] == body
+
+    def test_build_entry_content_body_over_limit_truncated_to_budget(self) -> None:
+        """Body over the token budget is truncated to the token limit.
+
+        Proves token-based (not char-based) truncation: the result is
+        shorter than the input, fits within the 1500-token budget, and is
+        NOT exactly 5000 chars (which would indicate the old char limit).
+        """
+        long_body = " ".join(["word"] * 2000)  # ~2600 tokens
+        entry = FakeKBEntry(body=long_body)
+
+        result = _build_entry_content(cast("KBEntry", entry))
+        result_body = cast("str", result["body"])
+
+        assert len(result_body) < len(long_body)
+        assert default_token_counter(result_body) <= 1500
+        assert len(result_body) != 5000  # token-based, not char-based
+
+    def test_build_entry_content_custom_max_body_tokens(self) -> None:
+        """Explicit max_body_tokens caps the body to the given budget."""
+        long_body = " ".join(["word"] * 2000)
+        entry = FakeKBEntry(body=long_body)
+
+        result = _build_entry_content(cast("KBEntry", entry), max_body_tokens=100)
+        result_body = cast("str", result["body"])
+
+        assert default_token_counter(result_body) <= 100
+        assert len(result_body) < len(long_body)
 
     def test_build_entry_content_empty_body(self) -> None:
         """None body becomes empty string."""
@@ -201,6 +230,38 @@ class TestBuildEntryContent:
         result = _build_entry_content(cast("KBEntry", entry))
 
         assert result["metadata"] == {}
+
+
+# ---------------------------------------------------------------------------
+# Tests: KBConsistencyAnalyzer.max_body_tokens config
+# ---------------------------------------------------------------------------
+
+
+class TestAnalyzerMaxBodyTokens:
+    """Tests for max_body_tokens configuration on the analyzer."""
+
+    def test_default_max_body_tokens_is_1500(self) -> None:
+        """Analyzer without explicit max_body_tokens defaults to 1500."""
+        analyzer, _deps = _make_analyzer(entries=[])
+
+        assert analyzer._max_body_tokens == 1500
+
+    def test_custom_max_body_tokens_stored(self) -> None:
+        """Analyzer stores an explicitly-provided max_body_tokens."""
+        kb_repo = FakeKBRepo([])
+        registry = MagicMock(spec=ModelRegistry)
+        config = MagicMock(spec=ResolvedModelConfig)
+        composer = FakeComposer()
+
+        analyzer = KBConsistencyAnalyzer(
+            kb_repo=cast("KBRepositoryProtocol", kb_repo),
+            registry=registry,
+            config=config,
+            composer=cast("PromptComposer", composer),
+            max_body_tokens=800,
+        )
+
+        assert analyzer._max_body_tokens == 800
 
 
 # ---------------------------------------------------------------------------

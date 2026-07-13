@@ -239,6 +239,7 @@ class TestContextMetadata:
             "faction_names",
             "is_first_chapter",
             "has_user_preferences",
+            "has_cross_session_context",
             "tone",
             "kb_systems_count",
             "kb_timelines_count",
@@ -360,3 +361,39 @@ class TestWritingContextProfileFields:
         assert variables["novel_synopsis"] == "A hero enters the forest."
         assert variables["style_profile"] == "Short sentences."
         assert variables["logline"] == "Hero saves world."
+
+
+# ---------------------------------------------------------------------------
+# Cross-session context (mem0 memories) — mirrors user_preferences
+# ---------------------------------------------------------------------------
+
+
+class TestWritingContextCrossSessionContext:
+    """WritingContext.cross_session_context field (memory layer)."""
+
+    def test_field_defaults_to_empty_string(self) -> None:
+        from narrare_core.writing.models import WritingContext
+
+        ctx = WritingContext()
+        assert ctx.cross_session_context == ""
+
+    def test_field_can_be_set(self) -> None:
+        from narrare_core.writing.models import WritingContext
+
+        ctx = WritingContext(cross_session_context="- Author dislikes cliffhangers.")
+        assert ctx.cross_session_context == "- Author dislikes cliffhangers."
+
+    def test_field_in_prompt_variables(self) -> None:
+        from narrare_core.writing.models import WritingContext
+
+        ctx = WritingContext(cross_session_context="- Author likes dialogue-heavy scenes.")
+        variables = ctx.to_prompt_variables()
+        assert "cross_session_context" in variables
+        assert variables["cross_session_context"] == "- Author likes dialogue-heavy scenes."
+
+    def test_field_in_prompt_variables_empty_by_default(self) -> None:
+        from narrare_core.writing.models import WritingContext
+
+        ctx = WritingContext()
+        variables = ctx.to_prompt_variables()
+        assert variables["cross_session_context"] == ""

@@ -27,6 +27,7 @@ class CheckDetail:
     adopted: float  # 0.0-1.0 (for partial: 0.5 when missing)
     applicable: bool = True
     note: str = ""
+    unverified: bool = False  # True when adopted is assumed from file-presence only
 
 
 @dataclass
@@ -57,3 +58,4 @@ class AdoptionReport:
     runtime_verified_count: int = 0
     adopted_count: int = 0
     runtime_evidence_gap_count: int = 0
+    unverified_count: int = 0  # Infrastructure assumed from file-presence only

@@ -91,6 +91,28 @@ class TestMemoryFieldValuesReflect:
         assert variables["user_preferences"] == "Prefers fantasy"
 
 
+class TestCrossSessionContextField:
+    """PromptContext.cross_session_context — cross-session mem0 memories.
+
+    Mirrors user_preferences / avoidance_patterns (memory-layer fields that
+    surface cross-session writing memories to the prompt cascade).
+    """
+
+    def test_default_is_empty_string(self) -> None:
+        ctx = PromptContext()
+        assert ctx.cross_session_context == ""
+
+    def test_value_reflects_in_as_variables(self) -> None:
+        ctx = PromptContext(cross_session_context="- Author likes short chapters.")
+        variables = ctx.as_variables()
+        assert variables["cross_session_context"] == "- Author likes short chapters."
+
+    def test_empty_default_reflects_in_as_variables(self) -> None:
+        ctx = PromptContext()
+        variables = ctx.as_variables()
+        assert variables["cross_session_context"] == ""
+
+
 class TestWritingLanguageFallback:
     """writing_language falls back to language when not explicitly set."""
 

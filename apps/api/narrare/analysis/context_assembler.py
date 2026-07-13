@@ -37,7 +37,10 @@ class ContextAssembler:
         kb_repo: KB repository for character/location lookup.
         novel_repo: Novel repository for genre metadata.
         max_previous_chapters: Maximum previous chapters to include summaries for.
-        kb_summary_truncation: Maximum characters for KB entry summaries.
+        kb_summary_truncation: Maximum characters for the chapter-content
+            fallback summary (used when a previous chapter has no stored
+            summary). KB entity bodies are passed through in full for
+            downstream token-budget truncation.
     """
 
     def __init__(
@@ -200,7 +203,11 @@ class ContextAssembler:
             entity_type = entry.entity_type
             name = entry.name
             body = entry.body or ""
-            summary = body[: self._kb_summary_truncation]
+            # Pass full body to the budget assembler — it makes the token-aware
+            # truncation decision downstream (AnalysisContextAssembler in
+            # build_budgeted_prompt). Pre-truncating here would starve the
+            # budget system of data it could otherwise fit.
+            summary = body
 
             item: dict[str, str] = {
                 "name": name,

@@ -85,6 +85,7 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "user_preferences",
         "avoidance_patterns",
         "style_constraints",
+        "cross_session_context",
         "style_profile",
         "character_voice_profiles",
         "character_name",

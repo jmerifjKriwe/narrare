@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from uuid import UUID
 
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare_core.agents.character_voice_checker_types import CharacterVoiceCheckerEntry
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.analysis.voice_types import AttributedUtterance
@@ -53,6 +54,7 @@ async def run_voice_checker_agent(
     model_config: ResolvedModelConfig,
     composer: PromptComposer,
     invocation_pipeline: InvocationPipeline | None,
+    relationship_repo: RelationshipRepository | None = None,
 ) -> dict[str, CharacterVoiceCheckerEntry]:
     """Resolve the governed prompt and run one checker-agent call.
 
@@ -70,10 +72,25 @@ async def run_voice_checker_agent(
         model_config: Resolved model configuration.
         composer: PromptComposer for Mode-1 prompt resolution.
         invocation_pipeline: Optional invocation governance pipeline.
+        relationship_repo: Optional relationship repository for populating
+            ``kb_relationships`` (character relationships help the checker
+            evaluate dialogue-tone consistency). When ``None``, degrades
+            gracefully to an empty string (RULE-11).
 
     Returns:
         Mapping from character name to qualitative checker entry.
     """
+    # Fetch KB relationships for relationship-aware voice checking
+    # (character relationships help the checker evaluate whether
+    # dialogue tone is consistent with established dynamics). Reuses
+    # the writing-pipeline helper; degrades to "" when no repo is
+    # wired (RULE-11).
+    from narrare.writing._relationship_helpers import (
+        fetch_formatted_relationships,
+    )
+
+    rel_context = await fetch_formatted_relationships(relationship_repo, novel_id)
+
     composed_prompt = await resolve_voice_check_prompt(
         composer,
         invocation_pipeline,
@@ -82,6 +99,7 @@ async def run_voice_checker_agent(
         language=language,
         novel_id=novel_id,
         user_id=user_id,
+        kb_relationships=rel_context.text,
     )
 
     attributed_dialogue = format_attributed_dialogue(utterances)

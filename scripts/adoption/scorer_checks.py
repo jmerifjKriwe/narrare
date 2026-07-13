@@ -58,6 +58,17 @@ def check_infrastructure(
         return CheckDetail(name=infra_name, weight=weight, adopted=adopted, note=note)
 
     # token_budget / injection_defense: assume adopted if bundled prompts exist.
+    # This is a file-presence proxy — no code-level evidence that services
+    # actually use TokenBudgetManager or injection-defense wrapping.  The
+    # ``unverified`` flag makes the assumption visible without changing the
+    # score (ratchet discipline).  Future work can add code-scanning to flip
+    # unverified → verified.
     adopted = 1.0 if has_prompts else 0.0
-    note = "assumed adopted (bundled prompts present)" if has_prompts else "no prompts to validate"
-    return CheckDetail(name=infra_name, weight=weight, adopted=adopted, note=note)
+    note = (
+        "unverified — assumed from bundled prompt presence only, no code-level evidence"
+        if has_prompts
+        else "no prompts to validate"
+    )
+    return CheckDetail(
+        name=infra_name, weight=weight, adopted=adopted, note=note, unverified=has_prompts
+    )

@@ -202,6 +202,11 @@ VARIABLE_REGISTRY: dict[str, VariableMeta] = {
         "Derived style constraints",
         "text",
     ),
+    "cross_session_context": VariableMeta(
+        "cross_session_context",
+        "Cross-session writing memories from mem0 (past observations about this project)",
+        "text",
+    ),
 }
 
 

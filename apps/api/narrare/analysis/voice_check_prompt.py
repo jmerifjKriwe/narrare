@@ -40,6 +40,7 @@ async def resolve_voice_check_prompt(
     language: str,
     novel_id: UUID,
     user_id: UUID,
+    kb_relationships: str = "",
 ) -> ComposedPrompt:
     """Resolve the governed voice_check system prompt (Mode 1).
 
@@ -47,8 +48,8 @@ async def resolve_voice_check_prompt(
     project/chapter metadata, then composes the governed system prompt via
     :func:`compose_invocation` Mode 1 (``composer=`` + ``prompt_context=`` +
     ``intent=LLMIntent.VOICE``). The KB-context variables are declared
-    explicitly as empty so the template's optional placeholders render
-    rather than crash the variable engine (RULE-11 graceful degradation).
+    explicitly so the template's optional placeholders render rather than
+    crash the variable engine (RULE-11 graceful degradation).
 
     Args:
         composer: PromptComposer for the cascade (RULE-02b).
@@ -59,6 +60,13 @@ async def resolve_voice_check_prompt(
         language: Writing language code.
         novel_id: The novel id (invocation context project_id).
         user_id: The requesting user id (invocation context user_id).
+        kb_relationships: Pre-formatted KB relationship text for the
+            ``kb_relationships`` template variable. Character
+            relationships help the checker evaluate whether dialogue
+            tone is consistent with established dynamics (e.g. a
+            character's tone toward an ally vs. a rival). Defaults to
+            ``""`` (graceful degradation when no relationship repo is
+            wired, RULE-11).
 
     Returns:
         The composed :class:`ComposedPrompt` (system + user channels).
@@ -80,16 +88,17 @@ async def resolve_voice_check_prompt(
         chapter_title=getattr(chapter, "title", "") or "",
         mode="voice_check",
         extra={
-            # No KB repository is wired into the prompt context (the checker
-            # is read-only and reads voice data through the consumer, not
-            # before the agent runs); declared explicitly (not silently
+            # ``kb_relationships`` is populated by the caller from the
+            # relationship repository (character relationships help the
+            # checker evaluate dialogue-tone consistency). The other
+            # KB-context variables are declared explicitly (not silently
             # omitted) so the template's optional KB-context variables
             # render as empty rather than crash the variable engine
             # (RULE-11).
             "kb_characters": "",
             "kb_locations": "",
             "kb_factions": "",
-            "kb_relationships": "",
+            "kb_relationships": kb_relationships,
         },
     )
 
