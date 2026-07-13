@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
     from narrare.analysis.character_voice_service import CharacterVoiceService
     from narrare.analysis.schemas_character_voice import CharacterVoiceStreamEvent
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare_core.llm.model_config import ResolvedModelConfig
 
 # ---------------------------------------------------------------------------
@@ -162,8 +163,19 @@ def make_service(
     config: ResolvedModelConfig,
     *,
     kb_repo: MagicMock | None = None,
+    relationship_repo: RelationshipRepository | None = None,
 ) -> CharacterVoiceService:
-    """Build a CharacterVoiceService wired for Mode 1 prompt resolution."""
+    """Build a CharacterVoiceService wired for Mode 1 prompt resolution.
+
+    Args:
+        composer: Fake PromptComposer for DI wiring.
+        config: Resolved model config.
+        kb_repo: Optional KB repository for voice-analysis persistence.
+        relationship_repo: Optional relationship repository for
+            ``kb_relationships`` population. When ``None`` (default), the
+            service exercises the graceful degradation path
+            (``kb_relationships=""``).
+    """
     from narrare.analysis.character_voice_service import CharacterVoiceService
 
     novel_repo = AsyncMock()
@@ -172,6 +184,7 @@ def make_service(
         novel_repo=novel_repo,  # type: ignore[arg-type]
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
         kb_repo=kb_repo or AsyncMock(),  # type: ignore[arg-type]
+        relationship_repo=relationship_repo,  # type: ignore[arg-type]
         model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
         model_config=config,
         composer=composer,  # type: ignore[arg-type]

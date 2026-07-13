@@ -78,6 +78,8 @@ async def get_timeline_analysis_service(
     except ConfigurationError:
         logger.info("no_ai_provider_configured", novel_id=str(novel_id))
 
+    from narrare.kb.relationship_repository import RelationshipRepository
+
     return TimelineAnalysisService(
         novel_repo=novel_repo,
         chapter_repo=ChapterRepository(session),
@@ -85,6 +87,7 @@ async def get_timeline_analysis_service(
         model_config=model_config,
         composer=composer,
         event_repo=TimelineEventRepository(session),
+        relationship_repo=RelationshipRepository(session),
         api_key=api_key,
         base_url=base_url,
         invocation_pipeline=get_invocation_pipeline(),

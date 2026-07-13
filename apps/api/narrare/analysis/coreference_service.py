@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.analysis.coreference_kb import fetch_kb_characters
+from narrare.analysis.coreference_prompt import resolve_coreference_prompt
 from narrare.analysis.schemas_coreference import (
     CharacterMentionResponse,
     CoreferenceResponse,
@@ -45,6 +46,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -83,6 +85,12 @@ class CoreferenceService:
             When ``None`` (or when the fetch fails), ``kb_characters``
             falls back to an empty string (graceful degradation, RULE-11)
             — the analysis still runs, just less accurately.
+        relationship_repo: Optional relationship repository for
+            populating the ``kb_relationships`` prompt variable.
+            Character relationships provide context that helps the model
+            disambiguate pronouns and track mentions (e.g. "she" refers
+            to Alice, who is Bob's ally). When ``None``, degrades
+            gracefully to an empty string (RULE-11).
         invocation_pipeline: Optional pipeline for invocation evidence
             (Mode 1 prepare/finalize). Retained for DI-contract
             stability.
@@ -96,6 +104,7 @@ class CoreferenceService:
         model_config: ResolvedModelConfig | None = None,
         composer: PromptComposer | None = None,
         kb_repo: KBRepository | None = None,
+        relationship_repo: RelationshipRepository | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
@@ -105,6 +114,7 @@ class CoreferenceService:
         self._config = model_config
         self._composer = composer
         self._kb_repo = kb_repo
+        self._relationship_repo = relationship_repo
         self._invocation_pipeline = invocation_pipeline
 
     async def analyze(
@@ -170,68 +180,42 @@ class CoreferenceService:
                     novel_id=str(chapter.novel_id),
                 )
 
+        # 1c. Fetch KB relationships for relationship-aware pronoun
+        #     resolution (character relationships help the model
+        #     disambiguate "she"/"he" and track mentions). Reuses the
+        #     writing-pipeline helper; degrades to "" when no repo is
+        #     wired (RULE-11).
+        from narrare.writing._relationship_helpers import (
+            fetch_formatted_relationships,
+        )
+
+        rel_context = await fetch_formatted_relationships(self._relationship_repo, chapter.novel_id)
+        kb_relationships_text = rel_context.text
+
         # 2. Resolve the governed coreference system prompt via
         #    PromptComposer (RULE-02 / ADR-054 D1). The template
         #    ``_bundled/analysis/{locale}/coreference/system.md`` carries
-        #    the task framing, project metadata, and KB-context
-        #    variables.
-        from narrare._app.invocation_context import build_invocation_context
-        from narrare_core.agents.coreference_agent import CoreferenceAgent
-        from narrare_core.agents.coreference_types import CoreferenceDeps
-        from narrare_core.ai_invocation import compose_invocation
-        from narrare_core.llm.intents import LLMIntent
-        from narrare_core.prompts.context import PromptContext
-
-        ctx = PromptContext(
+        #    the task framing, project metadata, and KB-context variables.
+        composed_prompt = await resolve_coreference_prompt(
+            self._composer,
+            self._invocation_pipeline,
+            novel=novel,
+            chapter=chapter,
             language=language,
-            writing_language=language,
-            project_title=novel.title,
-            genre=novel.genre or "",
-            chapter_title=chapter.title or "",
-            mode="coreference",
-            extra={
-                # ``kb_characters`` is populated from the KB repository
-                # above (character names + truncated bodies). The other KB
-                # context variables are not yet wired for this call path;
-                # declared explicitly (not silently omitted) so the
-                # template's variable substitution succeeds. Locations,
-                # factions, and relationships can be added later.
-                "kb_characters": kb_characters_text,
-                "kb_locations": "",
-                "kb_factions": "",
-                "kb_relationships": "",
-            },
-        )
-
-        invocation_context = build_invocation_context(
-            feature_id="analysis_coreference",
-            intent=LLMIntent.ANALYSE,
-            project_id=chapter.novel_id,
+            novel_id=chapter.novel_id,
             user_id=user_id,
-            language=language,
+            kb_characters=kb_characters_text,
+            kb_relationships=kb_relationships_text,
         )
-        invocation = await compose_invocation(
-            invocation_pipeline=self._invocation_pipeline,
-            invocation_context=invocation_context,
-            composer=self._composer,
-            prompt_context=ctx,
-            intent=LLMIntent.ANALYSE,
-        )
-        composed_prompt = invocation.composed_prompt
-        # Mode 1 guarantees composed_prompt is set; the guard documents
-        # the invariant and satisfies the type-checker (RULE-11: no
-        # silent None).
-        if composed_prompt is None:  # pragma: no cover - Mode 1 invariant
-            raise ConfigurationError(
-                "Prompt composition produced no system prompt for coreference analysis.",
-                code="COMPOSITION_EMPTY",
-            )
 
         model = await self._registry.get_model(self._config)
 
         # 3. Build agent dependencies — structured project/chapter context.
         #    The chapter text additionally flows as the run prompt (runtime
         #    data, RULE-02a category 3) in the user channel below.
+        from narrare_core.agents.coreference_agent import CoreferenceAgent
+        from narrare_core.agents.coreference_types import CoreferenceDeps
+
         deps = CoreferenceDeps(
             text=chapter_text,
             project_title=novel.title,

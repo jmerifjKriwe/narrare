@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
     from narrare.analysis.schemas_voice_check import VoiceCheckStreamEvent
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.model_config import ResolvedModelConfig
@@ -203,6 +204,7 @@ def make_service(
     consumer: FakeVoiceProfileConsumer,
     config: ResolvedModelConfig,
     composer: FakeComposer | None = None,
+    relationship_repo: RelationshipRepository | None = None,
 ) -> CharacterVoiceCheckerService:
     """Build a CharacterVoiceCheckerService with fakes and casts at the boundary."""
     novel_repo = FakeNovelRepository(novel)
@@ -221,6 +223,7 @@ def make_service(
         consumer_provider=consumer_provider,
         model_config=config,
         composer=cast("PromptComposer", composer or FakeComposer()),
+        relationship_repo=relationship_repo,  # type: ignore[arg-type]
     )
 
 

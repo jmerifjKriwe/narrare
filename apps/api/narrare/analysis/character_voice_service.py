@@ -42,10 +42,8 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.analysis.character_voice_agent_runner import run_character_voice_agent
 from narrare.analysis.character_voice_kb_writer import (
-    build_run_prompt,
-    format_attributed_dialogue,
-    format_metrics_summary,
     load_selected_chapters,
     persist_voice_analysis,
 )
@@ -61,6 +59,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -94,6 +93,12 @@ class CharacterVoiceService:
         chapter_repo: For fetching chapter content.
         kb_repo: For finding character KB entries by name and persisting
             ``voice_analysis`` (Layer-0 storage contract).
+        relationship_repo: Optional relationship repository for
+            populating the ``kb_relationships`` prompt variable.
+            Character relationships are charakterprägend — they inform
+            voice profiling (e.g. a character's alliance or rivalry may
+            shape their register and vocabulary). When ``None``, degrades
+            gracefully to an empty string (RULE-11).
         model_registry: Shared LLM model registry.
         model_config: Resolved model config (provider + model ID).
         composer: PromptComposer for resolving the governed character-voice
@@ -111,6 +116,7 @@ class CharacterVoiceService:
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig | None = None,
         composer: PromptComposer | None = None,
+        relationship_repo: RelationshipRepository | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
@@ -120,6 +126,7 @@ class CharacterVoiceService:
         self._registry = model_registry
         self._config = model_config
         self._composer = composer
+        self._relationship_repo = relationship_repo
         self._invocation_pipeline = invocation_pipeline
 
     async def analyze(
@@ -202,6 +209,16 @@ class CharacterVoiceService:
         #    PromptComposer (RULE-02 / ADR-054 D1). The template
         #    ``_bundled/analysis/{locale}/character_voice/system.md`` carries
         #    the task framing, project metadata, and KB-context variables.
+        #    Character relationships are charakterprägend for voice
+        #    profiling; fetched from the relationship repo and passed as
+        #    runtime data to the prompt builder (degrades to "" when no
+        #    repo is wired, RULE-11).
+        from narrare.writing._relationship_helpers import (
+            fetch_formatted_relationships,
+        )
+
+        rel_context = await fetch_formatted_relationships(self._relationship_repo, novel_id)
+
         composed_prompt = await resolve_character_voice_prompt(
             self._composer,
             self._invocation_pipeline,
@@ -209,44 +226,28 @@ class CharacterVoiceService:
             language=language,
             novel_id=novel_id,
             user_id=user_id,
+            kb_relationships=rel_context.text,
         )
 
         # 6. Run the agent — one LLM call profiling all characters. The
         #    attributed dialogue + per-character metrics flow as runtime
         #    content in the run prompt (user channel, RULE-02a category 3).
-        attributed_dialogue = format_attributed_dialogue(utterances)
-        metrics_summary = format_metrics_summary(metrics)
-        model = await self._registry.get_model(self._config)
-
-        from narrare_core.agents.character_voice_agent import CharacterVoiceAgent
-        from narrare_core.agents.character_voice_types import CharacterVoiceDeps
-        from narrare_core.analysis.voice_merge import merge_character_voice
-
-        deps = CharacterVoiceDeps(
-            attributed_dialogue=attributed_dialogue,
-            voice_metrics_summary=metrics_summary,
+        output = await run_character_voice_agent(
+            utterances=utterances,
+            metrics=metrics,
             character_names=character_names,
-            project_title=novel.title,
-            genre=novel.genre or "",
-            writing_language=language,
+            novel_title=novel.title,
+            novel_genre=novel.genre or "",
+            novel_id=novel_id,
+            language=language,
+            model_registry=self._registry,
+            model_config=self._config,  # type: ignore[arg-type]
+            composed_prompt=composed_prompt,
         )
-        try:
-            agent = CharacterVoiceAgent(model=model, system_prompt=composed_prompt.system)
-            output = await agent.run(
-                prompt=composed_prompt.user
-                or build_run_prompt(attributed_dialogue, metrics_summary),
-                deps=deps,
-            )
-        except Exception as exc:
-            logger.error(
-                "character_voice_agent_failed",
-                novel_id=str(novel_id),
-                error=str(exc),
-                exc_info=True,
-            )
-            raise
 
         # 7. Merge + write per character; yield one result event each.
+        from narrare_core.analysis.voice_merge import merge_character_voice
+
         for entry in output.characters:
             voice_analysis = merge_character_voice(entry, metrics.get(entry.character_name))
             kb_entry_id = await persist_voice_analysis(

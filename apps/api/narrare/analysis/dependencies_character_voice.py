@@ -22,6 +22,8 @@ def get_character_voice_service(session: SessionDep) -> CharacterVoiceService:
     - ChapterRepository for chapter content fetching.
     - KBRepository for finding character KB entries by name and persisting
       ``voice_analysis`` (Layer-0 storage contract, ADR-055).
+    - RelationshipRepository for populating ``kb_relationships`` (character
+      relationships are charakterprägend for voice profiling).
     - ModelRegistry + ResolvedModelConfig for the CharacterVoiceAgent
       (AI-powered qualitative voice profiling).
     - PromptComposer for resolving the governed character-voice system
@@ -39,6 +41,7 @@ def get_character_voice_service(session: SessionDep) -> CharacterVoiceService:
     )
     from narrare.analysis.character_voice_service import CharacterVoiceService
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
 
@@ -49,11 +52,13 @@ def get_character_voice_service(session: SessionDep) -> CharacterVoiceService:
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)
     kb_repo = KBRepository(session)
+    relationship_repo = RelationshipRepository(session)
 
     return CharacterVoiceService(
         novel_repo=novel_repo,
         chapter_repo=chapter_repo,
         kb_repo=kb_repo,
+        relationship_repo=relationship_repo,
         model_registry=registry,
         model_config=config,
         composer=composer,

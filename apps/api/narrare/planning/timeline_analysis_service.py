@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     import uuid
 
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
     from narrare_core.agents.temporal_extraction_types import ExtractedTemporalExpression
@@ -67,6 +68,12 @@ class TimelineAnalysisService:
             prompt via the cascade (RULE-02b / ADR-049 D9). Required for
             ``generate_timeline``.
         event_repo: For persisting confirmed extracted events.
+        relationship_repo: Optional relationship repository for
+            populating the ``kb_relationships`` prompt variable.
+            Character relationships are valuable for character-arc
+            planning (e.g. a rivalry timeline, an alliance evolution).
+            When ``None``, degrades gracefully to an empty string
+            (RULE-11).
         api_key: Optional API key override.
         base_url: Optional base URL override.
         invocation_pipeline: Retained for DI-contract stability. Per ADR-049
@@ -84,6 +91,7 @@ class TimelineAnalysisService:
         model_config: ResolvedModelConfig | None = None,
         composer: PromptComposer | None = None,
         event_repo: TimelineEventRepository | None = None,
+        relationship_repo: RelationshipRepository | None = None,
         *,
         api_key: str | None = None,
         base_url: str | None = None,
@@ -95,6 +103,7 @@ class TimelineAnalysisService:
         self._config = model_config
         self._composer = composer
         self._event_repo = event_repo
+        self._relationship_repo = relationship_repo
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
@@ -157,8 +166,18 @@ class TimelineAnalysisService:
         # Runtime imports kept local to match this module's existing import
         # convention (see TimelineAgent import below) and avoid any module-load
         # circular-import risk.
+        from narrare.writing._relationship_helpers import (
+            fetch_formatted_relationships,
+        )
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext
+
+        # Fetch KB relationships for relationship-aware timeline planning
+        # (character relationships inform character-arc planning). Reuses
+        # the writing-pipeline helper; degrades to "" when no repo is wired
+        # (RULE-11).
+        rel_context = await fetch_formatted_relationships(self._relationship_repo, novel_id)
+        kb_relationships_text = rel_context.text
 
         # Resolve the governed timeline system prompt via PromptComposer
         # (RULE-02 / ADR-049 D9). The template
@@ -167,7 +186,8 @@ class TimelineAnalysisService:
         #
         # KB context variables (kb_characters, kb_locations, kb_factions,
         # kb_relationships, culture_guidelines) and ``entity_events`` are
-        # supplied as empty strings because no KB/entity-event assembler is
+        # supplied as empty strings (except kb_relationships, which is
+        # populated above) because no other KB/entity-event assembler is
         # wired into this call path yet. They are declared here explicitly
         # (not silently omitted) so the template's variable substitution
         # succeeds and the gap is visible for a future assembler integration.
@@ -181,11 +201,12 @@ class TimelineAnalysisService:
                 "chapter_summaries": chapter_context,
                 # No entity-event source wired yet (see ADR-049 D8 notes).
                 "entity_events": "",
-                # No KB assembler wired for this call path yet.
+                # No KB assembler wired for this call path yet (except
+                # kb_relationships, which is populated above).
                 "kb_characters": "",
                 "kb_locations": "",
                 "kb_factions": "",
-                "kb_relationships": "",
+                "kb_relationships": kb_relationships_text,
                 "culture_guidelines": "",
             },
         )

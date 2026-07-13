@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
     from narrare.analysis.coreference_service import CoreferenceService
     from narrare.analysis.schemas_coreference import CoreferenceStreamEvent
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare_core.llm.model_config import ResolvedModelConfig
 
@@ -136,6 +137,7 @@ def make_service(
     composer: FakeComposer,
     config: ResolvedModelConfig,
     kb_repo: KBRepository | None = None,
+    relationship_repo: RelationshipRepository | None = None,
 ) -> CoreferenceService:
     """Build a CoreferenceService wired for Mode 1 prompt resolution.
 
@@ -146,6 +148,10 @@ def make_service(
             When ``None`` (default), the service exercises the graceful
             degradation path (``kb_characters=""``) — this preserves
             backward compatibility with pre-KB-wiring tests.
+        relationship_repo: Optional relationship repository for
+            ``kb_relationships`` population. When ``None`` (default), the
+            service exercises the graceful degradation path
+            (``kb_relationships=""``).
     """
     from narrare.analysis.coreference_service import CoreferenceService
 
@@ -158,6 +164,7 @@ def make_service(
         model_config=config,
         composer=composer,  # type: ignore[arg-type]
         kb_repo=kb_repo,  # type: ignore[arg-type]
+        relationship_repo=relationship_repo,  # type: ignore[arg-type]
     )
 
 

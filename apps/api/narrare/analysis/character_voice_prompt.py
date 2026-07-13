@@ -38,6 +38,7 @@ async def resolve_character_voice_prompt(
     language: str,
     novel_id: UUID,
     user_id: UUID,
+    kb_relationships: str = "",
 ) -> ComposedPrompt:
     """Resolve the governed character_voice system prompt (Mode 1).
 
@@ -45,8 +46,8 @@ async def resolve_character_voice_prompt(
     project metadata, then composes the governed system prompt via
     :func:`compose_invocation` Mode 1 (``composer=`` + ``prompt_context=`` +
     ``intent=LLMIntent.VOICE``). The KB-context variables are declared
-    explicitly as empty so the template's optional placeholders render
-    rather than crash the variable engine (RULE-11 graceful degradation).
+    explicitly so the template's optional placeholders render rather than
+    crash the variable engine (RULE-11 graceful degradation).
 
     Args:
         composer: PromptComposer for the cascade (RULE-02b).
@@ -56,6 +57,11 @@ async def resolve_character_voice_prompt(
         language: Writing language code.
         novel_id: The novel id (invocation context project_id).
         user_id: The requesting user id (invocation context user_id).
+        kb_relationships: Pre-formatted KB relationship text for the
+            ``kb_relationships`` template variable. Character
+            relationships are charakterprägend — they inform voice
+            profiling. Defaults to ``""`` (graceful degradation when no
+            relationship repo is wired, RULE-11).
 
     Returns:
         The composed :class:`ComposedPrompt` (system + user channels).
@@ -76,15 +82,16 @@ async def resolve_character_voice_prompt(
         genre=getattr(novel, "genre", "") or "",
         mode="character_voice",
         extra={
-            # No KB repository is wired into the prompt context (the service
-            # writes to KB after the agent runs, not before); declared
-            # explicitly (not silently omitted) so the template's optional
-            # KB-context variables render as empty rather than crash the
-            # variable engine (RULE-11).
+            # ``kb_relationships`` is populated by the caller from the
+            # relationship repository (character relationships are
+            # charakterprägend for voice profiling). The other KB-context
+            # variables are declared explicitly (not silently omitted) so
+            # the template's optional placeholders render as empty rather
+            # than crash the variable engine (RULE-11).
             "kb_characters": "",
             "kb_locations": "",
             "kb_factions": "",
-            "kb_relationships": "",
+            "kb_relationships": kb_relationships,
         },
     )
 
