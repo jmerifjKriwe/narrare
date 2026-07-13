@@ -350,6 +350,7 @@ def compute_adoption_report(
         runtime_verified_count=sum(1 for c in categories for m in c.modes if m.runtime_verified),
         adopted_count=sum(1 for c in categories for m in c.modes if m.adopted),
         runtime_evidence_gap_count=report_status.runtime_gap_count(categories),
+        unverified_count=sum(1 for c in categories for d in c.details if d.unverified),
     )
 
 
