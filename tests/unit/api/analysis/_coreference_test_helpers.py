@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
     from narrare.analysis.coreference_service import CoreferenceService
     from narrare.analysis.schemas_coreference import CoreferenceStreamEvent
+    from narrare.kb.repository import KBRepository
     from narrare_core.llm.model_config import ResolvedModelConfig
 
 # ---------------------------------------------------------------------------
@@ -99,6 +100,28 @@ def make_novel(**overrides: object) -> MagicMock:
     return novel
 
 
+def make_kb_entry(**overrides: object) -> MagicMock:
+    """Create a mock KB entry with the attributes the service reads.
+
+    Used to seed ``kb_characters`` population tests. Defaults to a
+    ``character`` entity (the entity type coreference resolution needs).
+    """
+    from narrare.kb.models import KBEntry
+
+    defaults: dict[str, object] = {
+        "id": overrides.get("id", uuid.uuid4()),
+        "novel_id": overrides.get("novel_id", uuid.uuid4()),
+        "entity_type": overrides.get("entity_type", "character"),
+        "name": overrides.get("name", "Unknown"),
+        "body": overrides.get("body", ""),
+    }
+    defaults.update(overrides)
+    entry = MagicMock(spec=KBEntry)
+    for k, v in defaults.items():
+        setattr(entry, k, v)
+    return entry
+
+
 def make_agent_output() -> CoreferenceOutput:
     """Build a fake CoreferenceAgent.run result."""
     return CoreferenceOutput(
@@ -109,8 +132,21 @@ def make_agent_output() -> CoreferenceOutput:
     )
 
 
-def make_service(composer: FakeComposer, config: ResolvedModelConfig) -> CoreferenceService:
-    """Build a CoreferenceService wired for Mode 1 prompt resolution."""
+def make_service(
+    composer: FakeComposer,
+    config: ResolvedModelConfig,
+    kb_repo: KBRepository | None = None,
+) -> CoreferenceService:
+    """Build a CoreferenceService wired for Mode 1 prompt resolution.
+
+    Args:
+        composer: Fake PromptComposer for DI wiring.
+        config: Resolved model config.
+        kb_repo: Optional KB repository for ``kb_characters`` population.
+            When ``None`` (default), the service exercises the graceful
+            degradation path (``kb_characters=""``) — this preserves
+            backward compatibility with pre-KB-wiring tests.
+    """
     from narrare.analysis.coreference_service import CoreferenceService
 
     novel_repo = AsyncMock()
@@ -121,6 +157,7 @@ def make_service(composer: FakeComposer, config: ResolvedModelConfig) -> Corefer
         model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
         model_config=config,
         composer=composer,  # type: ignore[arg-type]
+        kb_repo=kb_repo,  # type: ignore[arg-type]
     )
 
 

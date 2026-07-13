@@ -20,6 +20,8 @@ def get_coreference_service(session: SessionDep) -> CoreferenceService:
     Production wiring:
     - ChapterRepository for chapter content fetching (novel_id-free lookup).
     - NovelRepository for novel access control + language/metadata resolution.
+    - KBRepository for populating ``kb_characters`` (the character name list
+      coreference resolution needs to map pronouns → characters).
     - ModelRegistry + ResolvedModelConfig for the CoreferenceAgent
       (AI-powered pronoun resolution, ambiguity detection, mention tracking).
     - PromptComposer for resolving the governed coreference system prompt
@@ -37,6 +39,7 @@ def get_coreference_service(session: SessionDep) -> CoreferenceService:
     )
     from narrare.analysis.coreference_service import CoreferenceService
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
 
     registry = get_model_registry()
@@ -45,6 +48,7 @@ def get_coreference_service(session: SessionDep) -> CoreferenceService:
 
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)
+    kb_repo = KBRepository(session)
 
     return CoreferenceService(
         novel_repo=novel_repo,
@@ -52,5 +56,6 @@ def get_coreference_service(session: SessionDep) -> CoreferenceService:
         model_registry=registry,
         model_config=config,
         composer=composer,
+        kb_repo=kb_repo,
         invocation_pipeline=get_invocation_pipeline(),
     )

@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.analysis.coreference_kb import fetch_kb_characters
 from narrare.analysis.schemas_coreference import (
     CharacterMentionResponse,
     CoreferenceResponse,
@@ -44,6 +45,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
@@ -75,6 +77,12 @@ class CoreferenceService:
         composer: PromptComposer for resolving the governed
             coreference system prompt via the cascade (RULE-02b /
             ADR-054 D1). Required for ``analyze``.
+        kb_repo: Optional KB repository for populating the
+            ``kb_characters`` prompt variable. Coreference resolution
+            needs the character name list to map pronouns → characters.
+            When ``None`` (or when the fetch fails), ``kb_characters``
+            falls back to an empty string (graceful degradation, RULE-11)
+            — the analysis still runs, just less accurately.
         invocation_pipeline: Optional pipeline for invocation evidence
             (Mode 1 prepare/finalize). Retained for DI-contract
             stability.
@@ -87,6 +95,7 @@ class CoreferenceService:
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig | None = None,
         composer: PromptComposer | None = None,
+        kb_repo: KBRepository | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
@@ -95,6 +104,7 @@ class CoreferenceService:
         self._registry = model_registry
         self._config = model_config
         self._composer = composer
+        self._kb_repo = kb_repo
         self._invocation_pipeline = invocation_pipeline
 
     async def analyze(
@@ -147,6 +157,19 @@ class CoreferenceService:
         language = novel.writing_language or "en"
         chapter_text = chapter.content or ""
 
+        # 1b. Fetch KB characters for pronoun resolution (the name list
+        #     coreference needs to map pronouns → characters). Graceful
+        #     degradation + fetch logic: see coreference_kb (RULE-04/11).
+        kb_characters_text = ""
+        if self._kb_repo is not None:
+            try:
+                kb_characters_text = await fetch_kb_characters(self._kb_repo, chapter.novel_id)
+            except Exception:
+                logger.warning(
+                    "kb_characters_fetch_failed",
+                    novel_id=str(chapter.novel_id),
+                )
+
         # 2. Resolve the governed coreference system prompt via
         #    PromptComposer (RULE-02 / ADR-054 D1). The template
         #    ``_bundled/analysis/{locale}/coreference/system.md`` carries
@@ -167,12 +190,13 @@ class CoreferenceService:
             chapter_title=chapter.title or "",
             mode="coreference",
             extra={
-                # No KB repository is wired for this call path (the
-                # service constructor intentionally omits it); declared
-                # explicitly (not silently omitted) so the template's
-                # variable substitution succeeds (precedent:
-                # character_arc_service existing_plot_points).
-                "kb_characters": "",
+                # ``kb_characters`` is populated from the KB repository
+                # above (character names + truncated bodies). The other KB
+                # context variables are not yet wired for this call path;
+                # declared explicitly (not silently omitted) so the
+                # template's variable substitution succeeds. Locations,
+                # factions, and relationships can be added later.
+                "kb_characters": kb_characters_text,
                 "kb_locations": "",
                 "kb_factions": "",
                 "kb_relationships": "",
