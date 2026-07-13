@@ -27,6 +27,7 @@ from narrare.kb.worldbuilding_entity_assembly import list_entities
 from narrare_core.kb.schemas.registry import get_schema
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
+from narrare_core.writing._token_utils import cap_to_budget
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -80,6 +81,9 @@ class KBConsistencyAnalyzer:
         registry: Model registry for LLM calls (RULE-01b).
         config: Resolved model configuration.
         composer: PromptComposer for building system prompts (RULE-02).
+        max_body_tokens: Maximum tokens for entity body truncation in
+            consistency prompts.  Default 1500 (~5000 chars).  Token-aware
+            truncation replaces the previous hardcoded 5000-char limit.
     """
 
     def __init__(
@@ -88,11 +92,13 @@ class KBConsistencyAnalyzer:
         registry: ModelRegistry,
         config: ResolvedModelConfig,
         composer: PromptComposer,
+        max_body_tokens: int = 1500,
     ) -> None:
         self._kb_repo = kb_repo
         self._registry = registry
         self._config = config
         self._composer = composer
+        self._max_body_tokens = max_body_tokens
 
     async def analyze_entries(
         self,
@@ -160,7 +166,7 @@ class KBConsistencyAnalyzer:
         Builds the prompt context, resolves the system prompt via
         PromptComposer, and calls the LLM with structured output.
         """
-        entry_content = _build_entry_content(entity)
+        entry_content = _build_entry_content(entity, self._max_body_tokens)
         template_structure = _build_template_structure(entity.entity_type)
 
         ctx = PromptContext(
@@ -190,13 +196,20 @@ class KBConsistencyAnalyzer:
 # ---------------------------------------------------------------------------
 
 
-def _build_entry_content(entity: KBEntry) -> dict[str, object]:
-    """Build entry content dict for the prompt."""
+def _build_entry_content(entity: KBEntry, max_body_tokens: int = 1500) -> dict[str, object]:
+    """Build entry content dict for the prompt.
+
+    Args:
+        entity: KB entry to render.
+        max_body_tokens: Token budget for the entity body.  Bodies exceeding
+            the budget are truncated via :func:`cap_to_budget` (token-aware,
+            word-boundary preserving).
+    """
     return {
         "name": entity.name,
         "entity_type": entity.entity_type,
         "metadata": dict(entity.metadata_ or {}),
-        "body": (entity.body[:5000] if entity.body else ""),
+        "body": cap_to_budget(entity.body or "", max_body_tokens),
         "tags": list(entity.tags) if entity.tags else [],
     }
 
