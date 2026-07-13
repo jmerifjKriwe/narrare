@@ -38,6 +38,7 @@ dev = [
 # Astral's documented convention for workspace roots.
 [tool.uv]
 package = false
+override-dependencies = ["aiohttp>=3.14.1"]
 
 [tool.uv.workspace]
 members = ["apps/api", "packages/core", "packages/i18n"]

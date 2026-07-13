@@ -9,6 +9,7 @@ members = [
     "narrare-i18n",
     "narrare-workspace",
 ]
+overrides = [{ name = "aiohttp", specifier = ">=3.14.1" }]
 
 [[package]]
 name = "aiofiles"
@@ -1518,7 +1519,6 @@ name = "narrare"
 version = "0.1.0"
 source = { editable = "apps/api" }
 dependencies = [
-    { name = "aiohttp" },
     { name = "aiosmtplib" },
     { name = "alembic" },
     { name = "argon2-cffi" },
@@ -1547,7 +1547,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiohttp", specifier = ">=3.14.0" },
     { name = "aiosmtplib", specifier = "==5.1.2" },
     { name = "alembic", specifier = "==1.18.5" },
     { name = "argon2-cffi", specifier = ">=25.1.0" },
