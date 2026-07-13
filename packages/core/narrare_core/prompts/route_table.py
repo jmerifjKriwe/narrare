@@ -71,6 +71,7 @@ _COMMON_OPTIONAL_VARIABLES = frozenset(
     {
         "avoidance_patterns",
         "character_voice_profiles",
+        "cross_session_context",
         "culture_guidelines",
         "kb_factions",
         "kb_relationships",

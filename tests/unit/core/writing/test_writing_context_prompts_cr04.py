@@ -74,6 +74,7 @@ class TestWritingContextPromptVariables:
             "word_target",
             "user_preferences",
             "avoidance_patterns",
+            "cross_session_context",
             "is_first_chapter",
             "is_sparse_kb",
             "story_structure",

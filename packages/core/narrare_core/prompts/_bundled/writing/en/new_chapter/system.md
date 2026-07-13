@@ -91,6 +91,12 @@ Output the complete chapter draft as prose. No meta-commentary, no labels, no ex
 
 {{user_preferences}}
 
+### Cross-Session Context
+
+Previous writing sessions for this project:
+
+{{cross_session_context}}
+
 ## Do NOT
 
 - Do NOT change the narrative perspective unless established

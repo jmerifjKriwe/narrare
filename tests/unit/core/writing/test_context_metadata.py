@@ -150,3 +150,27 @@ class TestWritingContextToMetadata:
         )
         meta = ctx.to_metadata()
         assert meta.kb_timelines_count == 2
+
+    # ------------------------------------------------------------------
+    # Cross-session context (mem0) — mirrors has_user_preferences
+    # ------------------------------------------------------------------
+
+    def test_has_cross_session_context_present(self):
+        ctx = WritingContext(cross_session_context="- Author likes short chapters.")
+        meta = ctx.to_metadata()
+        assert meta.has_cross_session_context is True
+
+    def test_has_cross_session_context_absent(self):
+        ctx = WritingContext(cross_session_context="")
+        meta = ctx.to_metadata()
+        assert meta.has_cross_session_context is False
+
+    def test_has_cross_session_context_whitespace_only(self):
+        ctx = WritingContext(cross_session_context="   \n  ")
+        meta = ctx.to_metadata()
+        assert meta.has_cross_session_context is False
+
+    def test_has_cross_session_context_in_to_dict(self):
+        meta = ContextMetadata(has_cross_session_context=True)
+        d = meta.to_dict()
+        assert d["has_cross_session_context"] is True

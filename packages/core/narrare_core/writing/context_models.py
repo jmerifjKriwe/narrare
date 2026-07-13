@@ -99,6 +99,7 @@ class ContextMetadata:
     # Flags
     is_first_chapter: bool = False
     has_user_preferences: bool = False
+    has_cross_session_context: bool = False
     tone: str = "balanced"
 
     # Wiki summary tracking
@@ -125,6 +126,7 @@ class ContextMetadata:
             "faction_names": self.faction_names,
             "is_first_chapter": self.is_first_chapter,
             "has_user_preferences": self.has_user_preferences,
+            "has_cross_session_context": self.has_cross_session_context,
             "tone": self.tone,
             "story_structure": self.story_structure,
             "timeline_position": self.timeline_position,

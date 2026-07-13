@@ -257,6 +257,11 @@ class TestVariableTaxonomy:
                 VariableSecurity.LABEL_REQUIRED,
             ),
             (
+                "cross_session_context",
+                VariableProvenance.LEARNED_MEMORY,
+                VariableSecurity.LABEL_REQUIRED,
+            ),
+            (
                 "kb_suggested",
                 VariableProvenance.GENERATED_SUGGESTION,
                 VariableSecurity.GENERATED_LABEL_REQUIRED,
