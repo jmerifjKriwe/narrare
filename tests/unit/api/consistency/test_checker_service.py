@@ -43,6 +43,7 @@ def _service(
     cr=None,
     kb=None,
     composer=None,
+    rel=None,
 ) -> ConsistencyCheckerService:
     from narrare_core.llm import ResolvedModelConfig
 
@@ -70,6 +71,7 @@ def _service(
             provider_name="test", model_id="test", temperature=0.5, max_tokens=2048
         ),
         composer=composer,
+        relationship_repo=rel,
     )
 
 
@@ -193,3 +195,45 @@ class TestCheckErrors:
     async def test_novel_not_found_raises(self) -> None:
         with pytest.raises(NotFoundError, match="Novel"):
             await _service().check(novel_id=uuid4(), user_id=uuid4(), request=ConsistencyRequest())
+
+
+# --- D. Relationship repo wiring (CR-AUFG-03-01) ---
+
+
+class TestRelationshipRepoWiring:
+    """ConsistencyCheckerService accepts and forwards relationship_repo."""
+
+    def test_service_stores_relationship_repo(self) -> None:
+        """relationship_repo passed at construction is stored on the service."""
+        rel_repo = AsyncMock()
+        rel_repo.get_relationships_with_names = AsyncMock(return_value=[])
+        svc = _service(rel=rel_repo)
+        assert svc._relationship_repo is rel_repo
+
+    def test_service_defaults_relationship_repo_to_none(self) -> None:
+        """Without relationship_repo, the attribute is None (backward compatible)."""
+        svc = _service()
+        assert svc._relationship_repo is None
+
+    @pytest.mark.asyncio
+    async def test_check_forwards_relationship_repo_when_include_kb(self) -> None:
+        """check() with include_kb queries the relationship repo (FIND-001)."""
+        from narrare.kb.relationship_repository import RelationshipEdgeRow
+
+        novel, (ch, *_), svc = _setup()
+        rel_repo = AsyncMock()
+        rel_repo.get_relationships_with_names = AsyncMock(
+            return_value=[
+                RelationshipEdgeRow("Aria", "enemy_of", "feud", "Malachai", "directed"),
+            ]
+        )
+        svc._relationship_repo = rel_repo
+
+        agent = AsyncMock(run=AsyncMock(return_value=_output()))
+        with patch("narrare.consistency.legacy_check_runner.ConsistencyAgent", return_value=agent):
+            await svc.check(
+                novel_id=novel.id,
+                user_id=novel.user_id,
+                request=ConsistencyRequest(chapter_ids=[ch.id], include_kb=True),
+            )
+        rel_repo.get_relationships_with_names.assert_awaited_once()

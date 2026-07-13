@@ -39,6 +39,7 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     from narrare.chapters.repository import ChapterRepository
     from narrare.consistency.checker_service import ConsistencyCheckerService
     from narrare.consistency.consistency_orchestrator import ConsistencyOrchestrator
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
@@ -63,6 +64,7 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     novel_repo = NovelRepository(session)
     kb_repo = KBRepository(session)
     timeline_repo = TimelineEventRepository(session)
+    relationship_repo = RelationshipRepository(session)
 
     # Orchestrator for staged pipeline
     orchestrator = ConsistencyOrchestrator(
@@ -86,6 +88,7 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
         novel_repo=novel_repo,
         kb_repo=kb_repo,
         timeline_repo=timeline_repo,
+        relationship_repo=relationship_repo,
         registry=registry,
         config=consistency_config,
         composer=composer,

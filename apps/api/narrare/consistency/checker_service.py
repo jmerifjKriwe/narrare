@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from narrare.chapters.repository import ChapterRepository
     from narrare.consistency.contracts import ConsistencyOrchestratorProtocol
     from narrare.consistency.stage_schemas import ConsistencyStageEvent
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
@@ -50,6 +51,10 @@ class ConsistencyCheckerService:
         novel_repo: Novel persistence (access control + language).
         kb_repo: KB persistence (fetch entity summaries for context).
         timeline_repo: Timeline event persistence (temporal context).
+        relationship_repo: Optional KB relationship persistence. When provided
+            and ``include_kb`` is set, relationships are fetched for
+            relationship-aware consistency checking (FIND-001). Degrades
+            gracefully to empty string when ``None``.
         token_limits_service: TokenLimitsServiceProtocol for resolving consistency token budgets.
         registry: ModelRegistry for LLM model resolution.
         config: Default ResolvedModelConfig for CONSISTENCY intent.
@@ -68,6 +73,7 @@ class ConsistencyCheckerService:
         registry: ModelRegistry,
         config: ResolvedModelConfig,
         composer: PromptComposer,
+        relationship_repo: RelationshipRepository | None = None,
         token_limits_service: TokenLimitsServiceProtocol | None = None,
         orchestrator: ConsistencyOrchestratorProtocol | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
@@ -76,6 +82,7 @@ class ConsistencyCheckerService:
         self._novel_repo = novel_repo
         self._kb_repo = kb_repo
         self._timeline_repo = timeline_repo
+        self._relationship_repo = relationship_repo
         self._registry = registry
         self._config = config
         self._composer = composer
@@ -122,6 +129,7 @@ class ConsistencyCheckerService:
             novel_repo=self._novel_repo,
             kb_repo=self._kb_repo,
             timeline_repo=self._timeline_repo,
+            relationship_repo=self._relationship_repo,
             token_limits_service=self._token_limits_service,
             include_timeline_envelopes=self._orchestrator is not None,
         )
@@ -204,6 +212,7 @@ class ConsistencyCheckerService:
             novel_repo=self._novel_repo,
             kb_repo=self._kb_repo,
             timeline_repo=self._timeline_repo,
+            relationship_repo=self._relationship_repo,
             token_limits_service=self._token_limits_service,
             include_timeline_envelopes=True,
         )

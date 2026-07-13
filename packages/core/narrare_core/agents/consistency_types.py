@@ -102,6 +102,12 @@ class ConsistencyDeps:
         timeline_envelopes: Enriched timeline events with provenance (FIND-009).
             When provided, the agent uses full provenance data for temporal
             consistency checking.
+        kb_relationships: Pre-formatted KB relationship descriptions (same format
+            as Writing's ``fetch_formatted_relationships`` →
+            ``RenderedKBContext.text``). Enables relationship-aware consistency
+            checking (FIND-001): the agent cross-references the KB relationship
+            graph against chapter events. Empty string when no relationships are
+            available (graceful degradation).
     """
 
     def __init__(
@@ -115,6 +121,7 @@ class ConsistencyDeps:
         existing_issue_count: int = 0,
         extracted_facts: list[ExtractedFact] | None = None,
         timeline_envelopes: list[TimelineEventEnvelope] | None = None,
+        kb_relationships: str = "",
     ) -> None:
         self.language = language
         self.novel_id = novel_id
@@ -125,6 +132,7 @@ class ConsistencyDeps:
         self.existing_issue_count = existing_issue_count
         self.extracted_facts = extracted_facts
         self.timeline_envelopes = timeline_envelopes
+        self.kb_relationships = kb_relationships
 
     @property
     def has_structured_input(self) -> bool:

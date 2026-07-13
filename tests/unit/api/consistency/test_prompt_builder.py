@@ -210,6 +210,14 @@ class TestBuildConsistencyPromptVariables:
         assert "Alice" in result["kb_entities"]
         assert "[character]" in result["kb_entities"]
 
+    def test_includes_kb_relationships(self) -> None:
+        """KB relationship descriptions appear in the prompt variables (FIND-001)."""
+        formatted = "Aria → [enemy_of] → Malachai"
+        deps = ConsistencyDeps(kb_relationships=formatted)
+        result = build_consistency_prompt_variables(deps, [ConsistencyCheckType.CHARACTER])
+        assert "kb_relationships" in result
+        assert result["kb_relationships"] == formatted
+
     def test_includes_check_types(self) -> None:
         """Requested check types appear in the prompt."""
         deps = _deps()
