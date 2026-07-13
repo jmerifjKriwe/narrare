@@ -32,6 +32,11 @@ logger = structlog.get_logger(__name__)
 # Boost applied to similarity when entity name is found in text
 _NAME_MATCH_BOOST = 0.2
 
+# Score boost for entities connected to name-matched entities via KB
+# relationships. Lower than name-match boost because graph proximity is a
+# weaker signal than a direct mention in the text.
+_GRAPH_NEIGHBOR_BOOST = 0.15
+
 # Base similarity for name-only matches (not in embedding results)
 _NAME_MATCH_BASE_SIMILARITY = 0.6
 
@@ -66,6 +71,7 @@ class ProactiveContextService:
         entity_names: list[str] | None = None,
         max_results: int = 20,
         entity_metadata: dict[UUID, EntityMetadata] | None = None,
+        entity_connections: dict[UUID, set[UUID]] | None = None,
     ) -> list[Suggestion]:
         """Suggest relevant KB entries for a chapter.
 
@@ -77,6 +83,10 @@ class ProactiveContextService:
             max_results: Maximum suggestions to return (1-100, default 20).
             entity_metadata: Optional metadata mapping entry_id to name, type,
                 usage_count, and last_referenced_at.
+            entity_connections: Optional adjacency map ``entity_id -> set of
+                connected entity_ids`` (from KB relationships). Entities connected
+                to name-matched entities receive a similarity boost. ``None``
+                disables graph boosting (graceful degradation, backward compatible).
 
         Returns:
             Ranked list of Suggestions sorted by relevance_score descending.
@@ -128,6 +138,7 @@ class ProactiveContextService:
             search_results=search_results,
             matched_entry_ids=matched_entry_ids,
             entity_metadata=entity_metadata,
+            entity_connections=entity_connections,
         )
 
         ranked = rank_candidates(
@@ -147,6 +158,7 @@ class ProactiveContextService:
         search_results: list[SearchResult],
         matched_entry_ids: set[UUID],
         entity_metadata: dict[UUID, EntityMetadata] | None,
+        entity_connections: dict[UUID, set[UUID]] | None = None,
     ) -> dict[UUID, ScoredCandidate]:
         """Merge embedding results and name matches into scored candidates."""
         candidates: dict[UUID, ScoredCandidate] = {}
@@ -180,6 +192,19 @@ class ProactiveContextService:
                 last_referenced_at=meta.last_referenced_at,
                 content_hash="",
             )
+
+        # 3c. Graph-neighbor boost: entities connected to name-matched entities
+        # get a similarity boost (they're relevant by relationship, not just text
+        # similarity). Graph boost only ELEVATES existing candidates — it never
+        # creates new ones, so an entity must be both semantically relevant AND
+        # graph-connected to receive the boost.
+        if entity_connections:
+            for matched_id in matched_entry_ids:
+                for connected_id in entity_connections.get(matched_id, set()):
+                    candidate = candidates.get(connected_id)
+                    if candidate is None:
+                        continue
+                    candidate.similarity = min(candidate.similarity + _GRAPH_NEIGHBOR_BOOST, 1.0)
 
         return candidates
 
