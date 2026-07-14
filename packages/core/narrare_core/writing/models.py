@@ -61,6 +61,7 @@ class WritingContext:
     kb_factions: str = ""
     kb_systems: str = ""  # system rules (e.g. "Magic costs 10 mana")
     kb_timelines: str = ""  # timeline entries
+    kb_other: str = ""  # unclassified entity types (CR-AUFG-04-04 catch-all)
     kb_relationships: str = ""  # pre-formatted relationship text (FIND-009)
 
     # Tier 4 — KB entities via similarity suggestion (15 % budget)
@@ -156,6 +157,7 @@ class WritingContext:
             "kb_factions": self.kb_factions,
             "kb_systems": self.kb_systems,
             "kb_timelines": self.kb_timelines,
+            "kb_other": self.kb_other,
             "kb_relationships": self.kb_relationships,
             "kb_suggested": self.kb_suggested,
             "kb_pinned": self.kb_pinned,

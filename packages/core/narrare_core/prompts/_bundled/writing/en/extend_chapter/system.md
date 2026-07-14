@@ -35,6 +35,9 @@ Locations:
 Factions:
 {{kb_factions}}
 
+Other entities:
+{{kb_other}}
+
 Relationships:
 {{kb_relationships}}
 

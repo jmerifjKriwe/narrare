@@ -40,6 +40,9 @@ Key locations:
 Factions and groups:
 {{kb_factions}}
 
+Other entities:
+{{kb_other}}
+
 Relationships between entities:
 {{kb_relationships}}
 

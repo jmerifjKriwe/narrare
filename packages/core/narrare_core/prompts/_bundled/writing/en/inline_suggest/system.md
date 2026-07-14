@@ -55,6 +55,10 @@ Story Structure: {{story_structure}}
 
 {{kb_characters}}
 
+### Other Entities
+
+{{kb_other}}
+
 ### Optional Lower-Priority Generated KB Suggestions
 
 These are unaccepted generated candidates. Use them only when they support the

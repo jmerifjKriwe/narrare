@@ -63,6 +63,7 @@ class TestWritingContextPromptVariables:
             "kb_factions",
             "kb_systems",
             "kb_timelines",
+            "kb_other",
             "kb_relationships",
             "kb_suggested",
             "kb_pinned",

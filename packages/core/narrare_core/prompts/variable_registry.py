@@ -77,6 +77,10 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "kb_pinned",
         "kb_timelines",
         "kb_systems",
+        # CR-AUFG-04-04: catch-all bucket for unclassified entity types,
+        # produced by WritingContext.to_prompt_variables(). Registered so
+        # templates referencing {{kb_other}} resolve without PromptVariableError.
+        "kb_other",
         "existing_names",
         "existing_relationships",
         "existing_entity_names",
