@@ -703,6 +703,8 @@ Design-Fehler.
 
 ### CR-AUFG-04-01 — Provenance-annotated KB-Rendering einführen
 
+**Re-Check 2026-07-14:** **ERLEDIGT 2026-07-14** — `RenderOptions`-Contract (`context/_render_options.py`) + Annotation-Engine (`context/_provenance_annotation.py`) implementiert; 4 Render-Pfade erweitert (`writing/_helpers.py`, `writing/context_wiki.py`, `prompts/context.py`, `writing/_tier3_processor.py`); ADR-050 §Decision 1 Amendment-Note ergänzt. Trigger #4 aktiv (nicht-manuelle Sources <0.9 Confidence annotiert). Default-off = byte-identisch zum bisherigen Output (Regression-Test).
+
 **Priorität:** P2 (Kohärenz — LLM kann Quelle/Fehleranfälligkeit nicht bewerten)
 **Typ:** Core-Implementierung (KBContextEnvelope-Protocol)
 **Referenz:** §1.1, §1.3, §4.2.2
@@ -731,16 +733,24 @@ zurückhaltender zu behandeln.
 
 **Abstimmung:** Architecture-Specialist (RULE-03 Contract-Erweiterung).
 **Akzeptanzkriterien:**
-- [ ] `KBContextEnvelope.render()` hat eine Option für Provenance-Rendering
-- [ ] Render-Pfade (_helpers, context_wiki, context.py) implementieren die Option
-- [ ] Niedrige Confidence / pending Status → inline Annotation im Prompt-Text
-- [ ] Hohe Confidence / endorsed → keine Annotation (wie bisher)
-- [ ] Stale Freshness → inline Annotation (konsistent mit Voice-Profile-Format C)
-- [ ] Tests verifizieren Provenance-Rendering bei Schwellwerten
+- [x] `KBContextEnvelope.render()` hat eine Option für Provenance-Rendering
+- [x] Render-Pfade (_helpers, context_wiki, context.py) implementieren die Option
+- [x] Niedrige Confidence / pending Status → inline Annotation im Prompt-Text
+- [x] Hohe Confidence / endorsed → keine Annotation (wie bisher)
+- [x] Stale Freshness → inline Annotation (konsistent mit Voice-Profile-Format C)
+- [x] Tests verifizieren Provenance-Rendering bei Schwellwerten
+
+**Exit evidence:**
+- Commit `34851f10` (`feat(core): add opt-in provenance annotation to KB context rendering`)
+- Implementation: `_render_options.py`, `_provenance_annotation.py`, 4 Render-Pfade, ADR-050 Amendment
+- Enforcement: 90+ Unit-Tests (`test_provenance_annotation.py`, `test_provenance_rendering.py`, `test_render_options.py`) — Schwellwert-Tests (0.69/0.70-Source-aware), RULE-22 Accounting, Default-off-Regression. Pyright 0 Errors, volle Unit-Suite 9191 passed.
+- Freshness in Rendering-Bedingung integriert (§1.3 ⚠️ geschlossen).
 
 ---
 
 ### CR-AUFG-04-02 — Storyboard↔KB Inhalts-Konsistenz-Prüfung evaluieren
+
+**Re-Check 2026-07-14:** **EVALUIERT 2026-07-14** — Evaluierung abgeschlossen (Architektur-Specialist). Ergebnis: volle NLP-Stale-KB-Detection im `WritingContextAssembler` ABGELEHNT (falsche Schicht — Assembler ist reine Daten-Transformation, kein Agent; heuristische Erkennung zu fehleranfällig). Post-hoc CONS-001 bleibt Safety-Net. Optionaler Follow-up: `SyncStatus.DEVIATED` als Prompt-Hint. Bedingte Implementierung ('falls Ja') nicht ausgelöst. Status: `accepted` (Empfehlung: defer).
 
 **Priorität:** P3 (Erweiterung — Ref-Integrität existiert, Inhalts-Konsistenz fehlt)
 **Typ:** Evaluierung / Brainstorming
@@ -761,12 +771,19 @@ der KB-Entity X noch "alive" ist → Warning. Brainstorming mit Orchestrator
 **Abstimmung:** Orchestrator (Thinking-Partner). Architecture-Specialist bei
 Architektur-Entscheidung.
 **Akzeptanzkriterien:**
-- [ ] Evaluierung dokumentiert: Machbarkeit, Aufwand, Mehrwert
+- [x] Evaluierung dokumentiert: Machbarkeit, Aufwand, Mehrwert
 - [ ] Falls Ja: Contract (RULE-03) definiert, dann Implementierung
+
+**Exit evidence:**
+- Evaluierung dokumentiert (Architektur-Brief, 2026-07-14)
+- Empfehlung: DEFER — falsche Schicht für NLP-Detection; CONS-001 post-hoc bleibt Safety-Net
+- Optionaler Follow-up (separate Aufgabe bei Bedarf): SyncStatus.DEVIATED als einzeiliger Prompt-Hint
 
 ---
 
 ### CR-AUFG-04-03 — Frontmatter-Schema-Validierung einführen
+
+**Re-Check 2026-07-14:** **ERLEDIGT 2026-07-14** — `scripts/check_frontmatter_schema.py` Checker implementiert (nutzt shared `parse_frontmatter()`); validiert Required-Fields, unbekannte Felder (Tippfehler-Erkennung), Enum-Werte, Semver. Warning-only + Clean-Baseline-Ratchet (Baseline: 0 — alle 46 `system.md` clean). Gewired in `.pre-commit-config.yaml`, `justfile check-architecture`, `scripts/run_checks.py`.
 
 **Priorität:** P3 (Enforcement — Tippfehler in Frontmatter werden still ignoriert)
 **Typ:** Gate/Checker
@@ -784,13 +801,20 @@ Feldern oder Tippfehlern eine Warning oder CI-Block ausgibt. Kann im
 
 **Abstimmung:** Platform-Specialist (CI/Checker).
 **Akzeptanzkriterien:**
-- [ ] Frontmatter-Schema-Validator prüft required Fields und warnt bei unknowns
-- [ ] Integration in `check_prompt_structure.py` oder eigenständiger Checker
-- [ ] CI blockt Tippfehler in Frontmatter-Keys
+- [x] Frontmatter-Schema-Validator prüft required Fields und warnt bei unknowns
+- [x] Integration in `check_prompt_structure.py` oder eigenständiger Checker
+- [x] CI blockt Tippfehler in Frontmatter-Keys
+
+**Exit evidence:**
+- Commit `09f1d8e8` (`feat(scripts): add frontmatter schema validation with warning-only ratchet`)
+- Implementation: `scripts/check_frontmatter_schema.py` (209 Zeilen), gewired in pre-commit + justfile + run_checks
+- Enforcement: Der Checker selbst (warning-only Ratchet, Baseline 0, Wachstum → CI-Fail) + 19 Unit-Tests (`test_check_frontmatter_schema.py`). Structural cause (SSOT in prompt-standards.md war unenforced) → existierender Checker-Mechanismus erweitert.
 
 ---
 
 ### CR-AUFG-04-04 — Tier-3 Entity-Typ-Klassifikation erweiterbar machen
+
+**Re-Check 2026-07-14:** **ERLEDIGT 2026-07-14** — `ENTITY_TYPE_TO_BUCKET`-Registry + `kb_other`-Catch-All-Bucket in `_tier3_processor.py`; `WritingContext.kb_other` + `to_prompt_variables()`; `SYSTEM_VARS`-Registrierung; 10 Writing-Templates mit `{{kb_other}}`. structlog `tier3_unclassified_entity_type`-Warning. Vollständige Chain gewired (kein Producer-only-Gap).
 
 **Priorität:** P3 (Architektur — neue Entity-Typen werden still ignoriert)
 **Typ:** Core-Refactoring
@@ -808,13 +832,20 @@ klassifiziert wurde.
 
 **Abstimmung:** Architecture-Specialist (RULE-03 bei neuer Contract-Definition).
 **Akzeptanzkriterien:**
-- [ ] Neue Entity-Typen werden nicht still ignoriert
-- [ ] Catch-All-Bucket oder Warning für unbekannte Typen
-- [ ] Log/Metrik für nicht-klassifizierte Entities
+- [x] Neue Entity-Typen werden nicht still ignoriert
+- [x] Catch-All-Bucket oder Warning für unbekannte Typen
+- [x] Log/Metrik für nicht-klassifizierte Entities
+
+**Exit evidence:**
+- Commit `ba9fb218` (`feat(core): route unclassified KB entity types to a kb_other bucket instead of dropping them`)
+- Implementation: `_tier3_processor.py` (Registry + Catch-All + Truncation-Priority), `writing/models.py`, `prompts/variable_registry.py`, 10 Templates
+- Enforcement: 21 Unit-Tests (`test_tier3_other_bucket.py`) + structlog-Warning + Prompt Surface Contract Gate + Empty-KB-Var-Gate (no growth)
 
 ---
 
 ### CR-AUFG-04-05 — Konsistenz zwischen Voice-Profile-Format und Entity-Format dokumentieren
+
+**Re-Check 2026-07-14:** **ERLEDIGT 2026-07-14** — `docs/development/prompt-standards.md` §KB Context Wire Formats (Intentional Variation): dokumentiert Format C (Voice = Sprachmuster) vs Format A/B (Entity = Fakten), parallele Injection-Begründung, Freshness/Provenance-Konvention.
 
 **Priorität:** Niedrig (Dokumentation — Format-Variation ist intentional)
 **Typ:** Dokumentation
@@ -832,12 +863,19 @@ Format-Variation zwischen Voice-Profiles und Entity-Entries bewusst ist und
 welche Information wo zu finden ist.
 
 **Akzeptanzkriterien:**
-- [ ] Design-Entscheidung dokumentiert
-- [ ] Template-Autoren wissen, welches Format welche Information liefert
+- [x] Design-Entscheidung dokumentiert
+- [x] Template-Autoren wissen, welches Format welche Information liefert
+
+**Exit evidence:**
+- Commit `cc6fa6e4` (`docs(prompts): document intentional voice-profile vs entity wire-format variation`)
+- Implementation: `docs/development/prompt-standards.md` neuer Subsection
+- Enforcement: Documentation-Drift-Gate green
 
 ---
 
 ### CR-AUFG-04-06 — Prompt-Level-Warnung bei fehlgeschlagener Tier-3-Entity-Auflösung
+
+**Re-Check 2026-07-14:** **ERLEDIGT 2026-07-14** — `WritingContext.kb_context_warnings` + Population in `context_assembler.py` (join `orphan_reference_warnings`, `⚠️ Context warning:`-Prefix); `SYSTEM_VARS`-Registrierung; 10 Writing-Templates. Detection existierte bereits (`check_orphan_references`); nur Prompt-Surface-Hop fehlte. End-to-End-Test bestätigt Warning erreicht den komponierten Prompt.
 
 **Priorität:** P2 (Kohärenz — dangling Frontmatter-Refs verschwinden still aus dem Kontext)
 **Typ:** Core-Implementierung (Context Assembly)
@@ -859,10 +897,16 @@ Kontext-Verlust für das LLM sichtbar.
 
 **Abstimmung:** Core-Specialist (Implementierung). Architecture-Specialist bei Contract-Berührung.
 **Akzeptanzkriterien:**
-- [ ] Tier-3 Lookup-Miss erzeugt eine sichtbare Warnung im Kontext-Text
-- [ ] Warnung nennt die fehlgeschlagene Referenz (ID und/oder Feld)
-- [ ] Tests verifizieren Warnung bei gelöschter/fehlender Entity
-- [ ] Kein stiller Kontext-Verlust mehr bei dangling Frontmatter-Refs
+- [x] Tier-3 Lookup-Miss erzeugt eine sichtbare Warnung im Kontext-Text
+- [x] Warnung nennt die fehlgeschlagene Referenz (ID und/oder Feld)
+- [x] Tests verifizieren Warnung bei gelöschter/fehlender Entity
+- [x] Kein stiller Kontext-Verlust mehr bei dangling Frontmatter-Refs
+
+**Exit evidence:**
+- Commit `335baf79` (`feat(core): surface dangling KB reference warnings into the writing prompt`)
+- Implementation: `writing/models.py`, `writing/context_assembler.py`, `prompts/variable_registry.py`, 10 Templates
+- Enforcement: 9 Unit-Tests (`test_context_warnings_cr04_06.py`) inkl. End-to-End (Warning im komponierten `new_chapter`-Prompt verifiziert) + Empty-KB-Var-Gate (no growth)
+- Cross-Feature-Integration verifiziert: Commit `138e831f` (`fix(prompts): mark kb_other and kb_context_warnings as optional for writing routes`) — Routes ohne volle KB-Assembly (REWRITE/EXTEND) erhalten leere Defaults statt Crash; Integration-Suite green.
 
 ---
 
@@ -882,3 +926,39 @@ Cross-Feature-Kohärenz und werden hier nicht dupliziert, sondern referenziert:
 | CR-AUFG-02-09 | cr-02 | Writing de/fr Legacy Templates → Phase 5 Deviation (§5.5) | 🟡 Mittel |
 | CR-AUFG-03-03 | cr-03 | Analysis-ContextAssembler ohne TokenBudget → 200-Zeichen-Truncation (§4.1) | 🟡 Mittel |
 | CR-AUFG-03-08 | cr-03 | Runtime-Gate für leere KB-Variablen-Werte → Template hat Variable, Runtime setzt `=""` (§3.4) | 🟡 Mittel |
+
+---
+
+## Abschluss-Status
+
+**Stand:** 2026-07-14 (Re-Check nach Cross-Feature-Fixes auf Branch `chore/review-04-cross-feature-fixes`)
+
+**Aufgaben-Abschluss:**
+- **5 von 5 ursprünglichen Aufgaben** gelöst/evaluiert:
+  - CR-AUFG-04-01 — ✅ Resolved (`34851f10`)
+  - CR-AUFG-04-02 — ✅ Evaluiert → DEFER (`accepted`, Empfehlung dokumentiert)
+  - CR-AUFG-04-03 — ✅ Resolved (`09f1d8e8`)
+  - CR-AUFG-04-04 — ✅ Resolved (`ba9fb218`)
+  - CR-AUFG-04-05 — ✅ Resolved (`cc6fa6e4`)
+- **1 neue Aufgabe aus Gap-Analyse** gelöst:
+  - CR-AUFG-04-06 — ✅ Resolved (`335baf79`)
+
+**Zusätzliche Verifizierungen (ohne Code-Änderung gelöst):**
+- B2 Backend-Adoption der KB-Lifecycle-Protokolle nachträglich verifiziert (siehe
+  §2.5 Re-Check 2026-07-14): `KBLifecycleDispatcher`, `TimelineRefConsumerImpl` /
+  `StoryboardRefConsumerImpl`, `CrossFeatureRefIndexImpl` implementiert + Unit-Tests.
+  Kein Dokumentations-vs-Implementation-Gap mehr.
+
+**Accepted Risks:**
+- B4 Tier-5 Pinned Budget-Bypass (§4.2 Bewertung): bewusstes Design, kein aktuelles
+  Fehlverhalten. Reassess falls Pinned-Overflow zu Output-Kürzungen oder
+  Modell-Fehlern führt.
+
+**Cross-Feature-Integration-Gap (während Verifikation gefunden & behoben):**
+- `kb_other`- und `kb_context_warnings`-Variablen waren anfangs required für alle
+  Writing-Routes. Routes ohne volle KB-Assembly (REWRITE/EXTEND) crash-ten.
+  Fix: Commit `138e831f` — beide Variablen als optional für Writing-Routes markiert,
+  leere Defaults statt Crash. Integration-Suite green.
+
+**Review-Status:** Abgeschlossen. Alle CR-04-Aufgaben resolved/evaluiert. Kein offener
+Implementierungs-Schulden mehr in diesem Review.
