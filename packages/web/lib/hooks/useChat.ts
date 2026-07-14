@@ -13,13 +13,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import { chatApi } from "@/lib/api/client";
 import { useAIOperation } from "@/lib/hooks/use-ai-operation";
+import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation.types";
 import type { ChatDoneEvent, ChatMetaEvent } from "@/types";
 import { type ChatMessage, createMessageId, type UseChatReturn } from "@/types/chat";
 
 export function useChat(projectId: string): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AIErrorResponse | null>(null);
 
   const messageRef = useRef("");
   const accumulatedRef = useRef("");
@@ -85,7 +86,7 @@ export function useChat(projectId: string): UseChatReturn {
         ]);
       }
       accumulatedRef.current = "";
-      setError(errResponse.userMessage);
+      setError(errResponse);
     },
     connectionLossTimeout: 15_000,
   });
@@ -121,9 +122,11 @@ export function useChat(projectId: string): UseChatReturn {
     isStreaming: aiOp.isLoading || aiOp.isStreaming,
     conversationId,
     error,
+    isError: aiOp.isError,
     sendMessage,
     clearConversation,
     cancelStream,
+    retry: aiOp.retry,
     chatEndRef,
   };
 }

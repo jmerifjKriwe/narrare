@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation.types";
 
 export interface ChatMessage {
   readonly id: string;
@@ -26,10 +27,12 @@ export interface UseChatReturn {
   messages: ChatMessage[];
   isStreaming: boolean;
   conversationId: string | null;
-  error: string | null;
+  error: AIErrorResponse | null;
+  isError: boolean;
   sendMessage: (text: string) => Promise<void>;
   clearConversation: () => void;
   cancelStream: () => void;
+  retry: () => void;
   chatEndRef: RefObject<HTMLDivElement | null>;
 }
 

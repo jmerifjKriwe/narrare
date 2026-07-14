@@ -33,9 +33,11 @@ vi.mock("@/lib/hooks/useChat", () => ({
     isStreaming: mockIsStreaming,
     conversationId: null,
     error: null,
+    isError: false,
     sendMessage: mockSendMessage,
     clearConversation: mockClearConversation,
     cancelStream: mockCancelStream,
+    retry: vi.fn(),
     chatEndRef: { current: null },
   }),
 }));
