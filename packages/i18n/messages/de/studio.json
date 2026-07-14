@@ -848,6 +848,11 @@
   },
   "kb": {
     "title": "Wissensdatenbank",
+    "dismissFinding": "Ignorieren",
+    "showDismissed": "Ausgeblendete zeigen",
+    "hideDismissed": "Ausgeblendete verbergen",
+    "undismiss": "Wieder anzeigen",
+    "dismissedBadge": "Ignoriert",
     "search": "Einträge durchsuchen...",
     "clearSearch": "Suche leeren",
     "newEntry": "Neuer Eintrag",

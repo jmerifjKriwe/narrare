@@ -848,6 +848,11 @@
   },
   "kb": {
     "title": "Base de connaissances",
+    "dismissFinding": "Ignorer",
+    "showDismissed": "Afficher masqués",
+    "hideDismissed": "Masquer",
+    "undismiss": "Réafficher",
+    "dismissedBadge": "Ignoré",
     "search": "Rechercher des entrées...",
     "clearSearch": "Effacer la recherche",
     "newEntry": "Nouvelle entrée",

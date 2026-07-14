@@ -848,6 +848,11 @@
   },
   "kb": {
     "title": "Knowledge Base",
+    "dismissFinding": "Dismiss",
+    "showDismissed": "Show dismissed",
+    "hideDismissed": "Hide dismissed",
+    "undismiss": "Show again",
+    "dismissedBadge": "Dismissed",
     "search": "Search entries...",
     "clearSearch": "Clear search",
     "newEntry": "New Entry",

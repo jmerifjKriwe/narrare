@@ -178,7 +178,7 @@ export function ConsistencyCheckPanel({
             <ConsistencyError message={errorMessage} onRetry={handleRetry} />
           )}
           {viewState === "results" && result && (
-            <ConsistencyResults result={result} onEntityClick={onEntityClick} />
+            <ConsistencyResults novelId={novelId} result={result} onEntityClick={onEntityClick} />
           )}
         </div>
       </div>

@@ -252,6 +252,63 @@ describe("ConsistencyCard", () => {
     expect(screen.getByText("Anna")).toBeDefined();
     expect(screen.getByText("Johann")).toBeDefined();
   });
+
+  // --- Dismiss functionality (CR-AUFG-07-26) ---
+
+  it("does not render a dismiss button when onDismiss is absent", () => {
+    render(<ConsistencyCard issue={createConsistencyIssue()} t={t} />);
+
+    expect(screen.queryByLabelText(/dismissFinding/)).toBeNull();
+  });
+
+  it("renders a dismiss button when onDismiss is provided", () => {
+    render(<ConsistencyCard issue={createConsistencyIssue()} t={t} onDismiss={vi.fn()} />);
+
+    expect(screen.getByLabelText(/kb\.dismissFinding/)).toBeDefined();
+  });
+
+  it("calls onDismiss with the issue fingerprint when dismiss clicked", () => {
+    const onDismiss = vi.fn();
+    render(<ConsistencyCard issue={createConsistencyIssue()} t={t} onDismiss={onDismiss} />);
+
+    fireEvent.click(screen.getByLabelText(/kb\.dismissFinding/));
+
+    expect(onDismiss).toHaveBeenCalledOnce();
+    // Fingerprint = description::sorted(entity_names)
+    expect(onDismiss).toHaveBeenCalledWith("Timeline inconsistency detected::Anna,Johann");
+  });
+
+  it("shows dismissed badge and undismiss button when dismissed", () => {
+    const onUndismiss = vi.fn();
+    render(
+      <ConsistencyCard
+        issue={createConsistencyIssue()}
+        t={t}
+        dismissed
+        onUndismiss={onUndismiss}
+      />,
+    );
+
+    expect(screen.getByText(/kb\.dismissedBadge/)).toBeDefined();
+    expect(screen.getByLabelText(/kb\.undismiss/)).toBeDefined();
+  });
+
+  it("calls onUndismiss with the issue fingerprint when undismiss clicked", () => {
+    const onUndismiss = vi.fn();
+    render(
+      <ConsistencyCard
+        issue={createConsistencyIssue()}
+        t={t}
+        dismissed
+        onUndismiss={onUndismiss}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText(/kb\.undismiss/));
+
+    expect(onUndismiss).toHaveBeenCalledOnce();
+    expect(onUndismiss).toHaveBeenCalledWith("Timeline inconsistency detected::Anna,Johann");
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -3,20 +3,20 @@
 /**
  * Worldbuilding analysis card sub-components.
  *
+ * GapCard, ConnectionCard, and groupByCategory helper.
+ * ConsistencyCard is extracted to its own module (RULE-04) and re-exported
+ * here for backward-compatible imports.
+ *
  * Extracted from WorldbuildingAnalysisPanel.tsx per RULE-04.
  */
 
 import { Check, ChevronRight } from "lucide-react";
 import type { ConnectionSuggestion, ConsistencyIssue, GapFinding } from "@/lib/api/worldbuilding";
+import { SEVERITY_COLORS } from "./severityStyles";
 
-// --- Severity badge colors (shared with panel) ---
-
-export const SEVERITY_COLORS: Record<string, string> = {
-  critical: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  major: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  minor: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  info: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-};
+// Re-export for backward-compatible imports (ConsistencyResults, AnalysisTabs, tests).
+export { ConsistencyCard } from "./ConsistencyCard";
+export { SEVERITY_COLORS };
 
 // --- Gap Card ---
 
@@ -109,73 +109,6 @@ export function ConnectionCard({ connection, isSelected, onToggle, t }: Connecti
           <p className="text-xs text-muted-foreground italic">{connection.reasoning}</p>
         </div>
       )}
-    </div>
-  );
-}
-
-// --- Consistency Card ---
-
-interface ConsistencyCardProps {
-  issue: ConsistencyIssue;
-  t: (key: string) => string;
-  onEntityClick?: (entityId: string) => void;
-}
-
-export function ConsistencyCard({ issue, t, onEntityClick }: ConsistencyCardProps) {
-  return (
-    <div className="border border-border rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between p-3 bg-muted/30">
-        <div className="flex items-center gap-2">
-          <span
-            className={`text-xs px-2 py-0.5 rounded font-medium ${SEVERITY_COLORS[issue.severity] ?? SEVERITY_COLORS.info}`}
-          >
-            {issue.severity}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {Math.round(issue.confidence * 100)}% {t("worldbuilding.confidence")}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 flex-wrap justify-end">
-          {issue.entity_names.map((name, i) => {
-            const entityId = issue.entity_ids[i];
-            if (onEntityClick && entityId) {
-              return (
-                <button
-                  key={entityId}
-                  type="button"
-                  onClick={() => onEntityClick(entityId)}
-                  className="text-xs text-primary hover:underline cursor-pointer"
-                >
-                  {name}
-                </button>
-              );
-            }
-            return (
-              <span
-                key={`${name}-${issue.finding_index}`}
-                className="text-xs text-muted-foreground"
-              >
-                {name}
-              </span>
-            );
-          })}
-        </div>
-      </div>
-      <div className="p-3 space-y-2">
-        <p className="text-sm">{issue.description}</p>
-        <div className="p-2 bg-muted/20 rounded text-sm text-muted-foreground">
-          <span className="font-medium">{t("worldbuilding.contradiction")}:</span>{" "}
-          {issue.contradiction}
-        </div>
-        {issue.suggested_resolution && (
-          <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded text-sm">
-            <span className="font-medium text-green-700 dark:text-green-400">
-              {t("worldbuilding.resolution")}:
-            </span>{" "}
-            <span className="text-green-600 dark:text-green-400">{issue.suggested_resolution}</span>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
