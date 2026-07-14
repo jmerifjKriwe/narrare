@@ -21,6 +21,7 @@ targeted improvements to the author's text while preserving their voice and styl
 
 ### Knowledge Base
 
+{{kb_context_warnings}}
 Characters:
 {{kb_characters}}
 

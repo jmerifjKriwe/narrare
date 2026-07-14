@@ -20,6 +20,7 @@ You are a skilled creative writing assistant helping an author generate new chap
 
 ### Knowledge Base
 
+{{kb_context_warnings}}
 Characters:
 {{kb_characters}}
 

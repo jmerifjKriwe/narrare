@@ -20,6 +20,7 @@ You are a precise text revision specialist. Your role is to rewrite specific por
 
 ### Knowledge Base
 
+{{kb_context_warnings}}
 Characters:
 {{kb_characters}}
 

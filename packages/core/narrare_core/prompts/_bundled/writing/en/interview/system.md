@@ -20,6 +20,7 @@ You are conducting a structured interview to gather information before writing a
 
 ### Knowledge Base
 
+{{kb_context_warnings}}
 Characters:
 {{kb_characters}}
 

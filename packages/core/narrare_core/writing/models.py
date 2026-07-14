@@ -104,6 +104,10 @@ class WritingContext:
     # Warnings (populated by assembler)
     voice_profile_warnings: list[str] = field(default_factory=list[str])
     orphan_reference_warnings: list[str] = field(default_factory=list[str])
+    # CR-AUFG-04-06: orphan_reference_warnings promoted to a prompt variable so
+    # dangling frontmatter references are surfaced to the LLM rather than
+    # silently dropped. Empty string in the common (no-orphans) case.
+    kb_context_warnings: str = ""
 
     # Flags
     is_first_chapter: bool = False
@@ -161,6 +165,7 @@ class WritingContext:
             "kb_relationships": self.kb_relationships,
             "kb_suggested": self.kb_suggested,
             "kb_pinned": self.kb_pinned,
+            "kb_context_warnings": self.kb_context_warnings,
             "character_voice_profiles": self.character_voice_profiles,
             "project_title": self.project_title,
             "genre": self.genre,

@@ -20,6 +20,7 @@ You are a collaborative writing partner. Your role is to generate prose iterativ
 
 ### Knowledge Base
 
+{{kb_context_warnings}}
 Characters:
 {{kb_characters}}
 
