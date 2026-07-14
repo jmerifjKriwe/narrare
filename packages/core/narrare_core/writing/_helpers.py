@@ -10,10 +10,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from narrare_core.context.contracts import OmissionReason, ProvenanceField, RenderedKBContext
+from narrare_core.context._kb_envelope import OmissionReason, ProvenanceField, RenderedKBContext
+from narrare_core.context._provenance_annotation import (
+    ProvenanceAnnotation,
+    compute_provenance_annotation,
+    merge_rendered_fields,
+)
 from narrare_core.shared.frontmatter import parse_frontmatter
 
 if TYPE_CHECKING:
+    from narrare_core.context._render_options import RenderOptions
     from narrare_core.writing.context_models import KBEntity
 
 
@@ -71,12 +77,21 @@ _COMPACT_ENTITY_OMISSIONS: tuple[tuple[ProvenanceField, OmissionReason], ...] = 
 )
 
 
-def format_entities(entities: list[KBEntity]) -> RenderedKBContext:
+def format_entities(
+    entities: list[KBEntity], *, options: RenderOptions | None = None
+) -> RenderedKBContext:
     """Format entities as a readable text block with provenance accounting.
 
     The prompt-bound text remains the historical compact format:
-    ``### Type: Name\nContent``. ADR-050 P1-A accounting is carried in
+    ``### Type: Name\\nContent``. ADR-050 P1-A accounting is carried in
     the returned :class:`RenderedKBContext` so metadata loss is explicit.
+
+    When ``options.annotate_provenance`` is ``True`` (opt-in), uncertain
+    entries receive an inline provenance bracket on the header line and
+    the rendered :class:`ProvenanceField` literals are moved from
+    ``omitted_fields`` to ``preserved_fields`` (RULE-22). When ``options``
+    is ``None`` (default) the output is byte-for-byte identical to the
+    pre-annotation behaviour.
     """
     render_path = "narrare_core.writing._helpers.format_entities"
     if not entities:
@@ -87,14 +102,60 @@ def format_entities(entities: list[KBEntity]) -> RenderedKBContext:
             entry_count=0,
             render_path=render_path,
         )
+
+    annotate = options is not None and options.annotate_provenance
     parts: list[str] = []
+    annotations: list[ProvenanceAnnotation] = []
     for entity in entities:
         header = f"### {entity.entity_type.title()}: {entity.name}"
+        if annotate:
+            ann = compute_provenance_annotation(
+                source=entity.source,
+                confidence=entity.confidence,
+                review_status=entity.review_status,
+                freshness=entity.wiki_status or "",
+            )
+            annotations.append(ann)
+            if ann.bracket is not None:
+                header = f"{header} {ann.bracket}"
         parts.append(f"{header}\n{entity.content}")
+
+    if annotate:
+        return _build_accounted_result(
+            parts, annotations, _COMPACT_ENTITY_OMISSIONS, len(entities), render_path
+        )
+
     return RenderedKBContext(
         text="\n\n".join(parts),
         preserved_fields=frozenset(),
         omitted_fields=_COMPACT_ENTITY_OMISSIONS,
         entry_count=len(entities),
+        render_path=render_path,
+    )
+
+
+def _build_accounted_result(
+    parts: list[str],
+    annotations: list[ProvenanceAnnotation],
+    base_omissions: tuple[tuple[ProvenanceField, OmissionReason], ...],
+    entry_count: int,
+    render_path: str,
+) -> RenderedKBContext:
+    """Build a RenderedKBContext with RULE-22 accounting adjusted for
+    provenance fields that were actually rendered into the bracket.
+
+    Fields rendered for ANY entry in the batch move from ``omitted_fields``
+    to ``preserved_fields``; the rest stay omitted with their existing
+    :class:`OmissionReason`.
+    """
+    preserved = merge_rendered_fields(annotations)
+    omitted: list[tuple[ProvenanceField, OmissionReason]] = [
+        (field, reason) for field, reason in base_omissions if field not in preserved
+    ]
+    return RenderedKBContext(
+        text="\n\n".join(parts),
+        preserved_fields=preserved,
+        omitted_fields=tuple(omitted),
+        entry_count=entry_count,
         render_path=render_path,
     )

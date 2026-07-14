@@ -345,6 +345,23 @@ matches the existing precedent set by `TimelineEventEnvelope`.
    `OmissionReason` are machine-readable literals; audit tooling
    can compare renderers deterministically.
 
+### Amendment — opt-in provenance annotation (CR-AUFG-04-01)
+
+P1-A also permits an opt-in `RenderOptions.annotate_provenance`
+(default `False`) that each renderer accepts as a keyword-only
+parameter. When enabled, the renderer appends an inline provenance
+bracket to the header of uncertain entries (low confidence, pending
+review, stale freshness) and *promotes* the rendered
+`ProvenanceField` literals from `omitted_fields` to
+`preserved_fields` (RULE-22 accounting). The default (`False`) is
+byte-for-byte identical to the pre-annotation output — annotation is
+strictly opt-in, so there is no prompt regression. The bracket wire
+format reuses the existing `### Type: Name` header; the bracket is
+appended in place (e.g. `### Character: Aria Thorne [auto-extracted,
+confidence: 0.72, pending review]`). Suppression rules (`source ==
+"manual"`, or `confidence >= 0.9` and `endorsed`) take precedence
+over annotation triggers so trusted entries are never annotated.
+
 ---
 
 ## Decision 2 — Cross-Feature Ref Lifecycle Contracts (closes P1-B and FIND-009b)

@@ -19,6 +19,7 @@ from narrare_core.writing.context_wiki import format_entities_with_wiki
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from narrare_core.context._render_options import RenderOptions
     from narrare_core.wiki.types import WikiSummaryData
     from narrare_core.writing.context_models import KBEntity
 
@@ -42,6 +43,8 @@ def apply_tier3(
     limit: int,
     count_tokens: Callable[[str], int],
     wiki_summaries: dict[str, WikiSummaryData] | None = None,
+    *,
+    options: RenderOptions | None = None,
 ) -> tuple[str, str, str, str, str, int, int, int]:
     """Build tier 3 (referenced KB) by entity type.
 
@@ -56,13 +59,16 @@ def apply_tier3(
         limit: Token budget for this tier.
         count_tokens: Token counting function.
         wiki_summaries: Precomputed wiki summaries keyed by entity ID.
+        options: Per-invocation render controls forwarded to
+            :func:`format_entities_with_wiki`. ``None`` (default) is
+            byte-for-byte identical to the pre-annotation behaviour.
 
     Returns:
         (characters_text, locations_text, factions_text, systems_text,
          timelines_text, overflow, wiki_fresh_count, wiki_stale_count)
     """
 
-    rendered = apply_tier3_rendered(entities, limit, count_tokens, wiki_summaries)
+    rendered = apply_tier3_rendered(entities, limit, count_tokens, wiki_summaries, options=options)
     return (
         rendered.characters.text,
         rendered.locations.text,
@@ -80,6 +86,8 @@ def apply_tier3_rendered(
     limit: int,
     count_tokens: Callable[[str], int],
     wiki_summaries: dict[str, WikiSummaryData] | None = None,
+    *,
+    options: RenderOptions | None = None,
 ) -> Tier3RenderedContext:
     """Build tier 3 as RenderedKBContext objects by entity type."""
 
@@ -92,11 +100,21 @@ def apply_tier3_rendered(
     systems = [e for e in entities if e.entity_type == "system"]
     timelines = [e for e in entities if e.entity_type == "timeline"]
 
-    chars_rendered, chars_fresh, chars_stale = format_entities_with_wiki(chars, wiki_summaries)
-    locs_rendered, locs_fresh, locs_stale = format_entities_with_wiki(locs, wiki_summaries)
-    facs_rendered, facs_fresh, facs_stale = format_entities_with_wiki(facs, wiki_summaries)
-    systs_rendered, systs_fresh, systs_stale = format_entities_with_wiki(systems, wiki_summaries)
-    times_rendered, times_fresh, times_stale = format_entities_with_wiki(timelines, wiki_summaries)
+    chars_rendered, chars_fresh, chars_stale = format_entities_with_wiki(
+        chars, wiki_summaries, options=options
+    )
+    locs_rendered, locs_fresh, locs_stale = format_entities_with_wiki(
+        locs, wiki_summaries, options=options
+    )
+    facs_rendered, facs_fresh, facs_stale = format_entities_with_wiki(
+        facs, wiki_summaries, options=options
+    )
+    systs_rendered, systs_fresh, systs_stale = format_entities_with_wiki(
+        systems, wiki_summaries, options=options
+    )
+    times_rendered, times_fresh, times_stale = format_entities_with_wiki(
+        timelines, wiki_summaries, options=options
+    )
     chars_text = chars_rendered.text
     locs_text = locs_rendered.text
     facs_text = facs_rendered.text

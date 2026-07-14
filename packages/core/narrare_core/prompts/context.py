@@ -10,13 +10,21 @@ See CONSTRAINTS.md RULE-02.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from narrare_core.context._kb_envelope import (
     OmissionReason,
     ProvenanceField,
     RenderedKBContext,
 )
+from narrare_core.context._provenance_annotation import (
+    ProvenanceAnnotation,
+    compute_provenance_annotation,
+    merge_rendered_fields,
+)
+
+if TYPE_CHECKING:
+    from narrare_core.context._render_options import RenderOptions
 
 
 @dataclass(slots=True)
@@ -176,24 +184,33 @@ class PromptContext:
         return variables
 
     @staticmethod
-    def _format_kb_entries(entries: list[KBContextEntry]) -> RenderedKBContext:
+    def _format_kb_entries(
+        entries: list[KBContextEntry], *, options: RenderOptions | None = None
+    ) -> RenderedKBContext:
         """Format KB entries as a readable text block for injection.
 
         Returns a :class:`RenderedKBContext` per ADR-050 P1-A
         (CR-AUFG-04-01). The wire format (``### Type: Name\\nContent``)
-        is preserved unchanged — this is a provenance-accounting
-        migration, not a wire-format change. There is no prompt
-        regression: ``result.text`` is byte-for-byte identical to the
-        pre-C2a ``str`` return value for the same input.
+        is preserved unchanged when ``options`` is ``None`` (default) —
+        this is a provenance-accounting migration, not a wire-format
+        change. There is no prompt regression: ``result.text`` is
+        byte-for-byte identical to the pre-C2a ``str`` return value for
+        the same input.
+
+        When ``options.annotate_provenance`` is ``True`` (opt-in),
+        uncertain entries receive an inline provenance bracket on the
+        header line and the rendered :class:`ProvenanceField` literals
+        are moved from ``omitted_fields`` to ``preserved_fields``
+        (RULE-22 accounting).
 
         **Provenance accounting (RULE-22):** ``KBContextEntry`` carries
         ``source``, ``evidence``, ``confidence``, ``review_status`` and
         ``freshness``. The compact immediate-context wire format renders
-        none of these into the prompt. All are explicitly omitted with
-        reason ``tier_does_not_require`` (the format is tier-1/tier-4
-        immediate/suggested context where provenance is not rendered).
-        Without this accounting the metadata was silently dropped at
-        the render boundary — the gap ADR-050 P1-A closes.
+        none of these into the prompt by default. All are explicitly
+        omitted with reason ``tier_does_not_require`` (the format is
+        tier-1/tier-4 immediate/suggested context where provenance is not
+        rendered). Without this accounting the metadata was silently
+        dropped at the render boundary — the gap ADR-050 P1-A closes.
 
         KBContextEntry provenance fields → ProvenanceField literals::
 
@@ -215,20 +232,48 @@ class PromptContext:
                 entry_count=0,
                 render_path=render_path,
             )
-        parts: list[str] = []
-        for entry in entries:
-            parts.append(f"### {entry.entity_type.title()}: {entry.name}\n{entry.content}")
 
-        omitted: tuple[tuple[ProvenanceField, OmissionReason], ...] = (
+        annotate = options is not None and options.annotate_provenance
+        parts: list[str] = []
+        annotations: list[ProvenanceAnnotation] = []
+        for entry in entries:
+            header = f"### {entry.entity_type.title()}: {entry.name}"
+            if annotate:
+                ann = compute_provenance_annotation(
+                    source=entry.source,
+                    confidence=entry.confidence,
+                    review_status=entry.review_status,
+                    freshness=entry.freshness,
+                )
+                annotations.append(ann)
+                if ann.bracket is not None:
+                    header = f"{header} {ann.bracket}"
+            parts.append(f"{header}\n{entry.content}")
+
+        base_omitted: tuple[tuple[ProvenanceField, OmissionReason], ...] = (
             ("provenance", "tier_does_not_require"),
             ("evidence", "tier_does_not_require"),
             ("review_state", "tier_does_not_require"),
             ("freshness", "tier_does_not_require"),
         )
+
+        if annotate:
+            preserved = merge_rendered_fields(annotations)
+            omitted: list[tuple[ProvenanceField, OmissionReason]] = [
+                (field, reason) for field, reason in base_omitted if field not in preserved
+            ]
+            return RenderedKBContext(
+                text="\n\n".join(parts),
+                preserved_fields=preserved,
+                omitted_fields=tuple(omitted),
+                entry_count=len(entries),
+                render_path=render_path,
+            )
+
         return RenderedKBContext(
             text="\n\n".join(parts),
             preserved_fields=frozenset(),
-            omitted_fields=omitted,
+            omitted_fields=base_omitted,
             entry_count=len(entries),
             render_path=render_path,
         )
