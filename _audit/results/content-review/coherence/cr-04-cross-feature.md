@@ -282,6 +282,14 @@ Outline bei Widersprüchen.
   definiert, aber ob `apps/api/narrare/{planning,chapters,storyboard}/` sie
   tatsächlich implementieren (und registrieren), wurde in diesem Core-fokussierten
   Review nicht verifiziert. "Dokumentiert ≠ implementiert" (CR-04-Lektion).
+- ✅ **Re-Check 2026-07-14 — VERIFIZIERT:** Backend-Adoption nachträglich verifiziert.
+  `KBEntityLifecycleObserver` implementiert via `KBLifecycleDispatcher`
+  (`apps/api/narrare/kb/lifecycle_dispatcher.py`); `TimelineRefConsumerImpl` /
+  `StoryboardRefConsumerImpl` (`apps/api/narrare/planning/kb_lifecycle_consumer.py`);
+  `CrossFeatureRefIndexImpl` gewired in `apps/api/narrare/consistency/deps.py:101-109`
+  (`get_cross_feature_ref_index`); `ContradictionPromotionPolicy` mit Defaults.
+  Alle mit Unit-Tests abgedeckt (`tests/unit/api/{kb,consistency,chapters}/`,
+  `tests/unit/planning/`). Kein Dokumentations-vs-Implementation-Gap mehr.
 - ⚠️ **Beziehungs-Konsistenz** (KG vs Storyboard) ist strukturell nicht prüfbar:
   `ConsistencyDeps` hat kein `kb_relationships`-Feld (CR-03 §3.2,
   CR-AUFG-03-01). Die höchstwertige Cross-Feature-Konsistenz-Prüfung
@@ -538,6 +546,14 @@ präventiv beim Generieren.
   KB nicht → stale KB beim nachfolgenden Schreiben.
 - 🟢 **Tier-5 Pinned Bypass** — bewusstes Design, kein Bug, aber Overflow-Risiko.
 
+**Accepted Risk (2026-07-14) — Tier-5 Pinned Budget-Bypass:** Tier-5 (Pinned) wird
+immer inkludiert, selbst bei Budget-Überschreitung — bewusstes Design (Autor will
+angepinnte Entities immer sehen). Ein Overflow-Warning/Metrik wurde als mögliche
+Erweiterung identifiziert (§4.1 🟢, §4.2 Bewertung), aber nicht als Aufgabe
+registriert, da kein aktuelles Fehlverhalten vorliegt und der Bypass als Feature gilt.
+*Reason:* conscious design decision, no current violation. Reassess falls
+Pinned-Overflow zu Output-Kürzungen oder Modell-Fehlern führt.
+
 ---
 
 ## 5. i18n-Konsistenz in Prompts
@@ -702,7 +718,7 @@ aber die Information kommt nicht beim Konsumenten (LLM) an.
 
 **Aufgabe:** Erweitere das `KBContextEnvelope`-Protocol um eine
 Provenance-Rendering-Option. Bei niedriger Confidence (<0.7), bei
-`review_status="pending"`, oder bei `source="auto_extraction"` mit niedriger
+`review_status="pending"`, bei `freshness="stale"`, oder bei `source="auto_extraction"` mit niedriger
 Confidence soll die Provenance inline in den Prompt-Text gerendert werden:
 
 ```
@@ -719,6 +735,7 @@ zurückhaltender zu behandeln.
 - [ ] Render-Pfade (_helpers, context_wiki, context.py) implementieren die Option
 - [ ] Niedrige Confidence / pending Status → inline Annotation im Prompt-Text
 - [ ] Hohe Confidence / endorsed → keine Annotation (wie bisher)
+- [ ] Stale Freshness → inline Annotation (konsistent mit Voice-Profile-Format C)
 - [ ] Tests verifizieren Provenance-Rendering bei Schwellwerten
 
 ---
@@ -817,6 +834,35 @@ welche Information wo zu finden ist.
 **Akzeptanzkriterien:**
 - [ ] Design-Entscheidung dokumentiert
 - [ ] Template-Autoren wissen, welches Format welche Information liefert
+
+---
+
+### CR-AUFG-04-06 — Prompt-Level-Warnung bei fehlgeschlagener Tier-3-Entity-Auflösung
+
+**Priorität:** P2 (Kohärenz — dangling Frontmatter-Refs verschwinden still aus dem Kontext)
+**Typ:** Core-Implementierung (Context Assembly)
+**Referenz:** §2.4, §2.5
+
+**Problem:** Wenn ein in Chapter-Frontmatter referenzierter KB-Entity (`pov_character`,
+`characters`, `location`) gelöscht wird, verschwindet er still aus dem Tier-3-Kontext.
+Die Backend-Seite erkennt dies bereits — `ChapterFrontmatterRefConsumer` emitiert
+`RefIntegrityIssue` mit `deleted_ref_without_tombstone` (verifiziert:
+`apps/api/narrare/kb/lifecycle_dispatcher.py`, `tests/unit/api/chapters/test_kb_lifecycle_consumer.py`).
+Aber beim Assemblieren des Tier-3-Kontexts (`_tier3_processor.py`) führt ein Lookup-Miss
+zu stiller Abwesenheit — es gibt keine Warnung im erzeugten Prompt. Das LLM erfährt nicht,
+dass ein erwarteter Kontextbestandteil fehlt.
+
+**Aufgabe:** Wenn Tier-3 Entities anhand referenzierter IDs lädt und eine ID nicht
+aufgelöst werden kann, soll eine sichtbare Warnung in den Kontext-Text eingefügt werden
+(z. B. `⚠️ Referenced entity not found: pov_character "uuid"`). Damit wird der stille
+Kontext-Verlust für das LLM sichtbar.
+
+**Abstimmung:** Core-Specialist (Implementierung). Architecture-Specialist bei Contract-Berührung.
+**Akzeptanzkriterien:**
+- [ ] Tier-3 Lookup-Miss erzeugt eine sichtbare Warnung im Kontext-Text
+- [ ] Warnung nennt die fehlgeschlagene Referenz (ID und/oder Feld)
+- [ ] Tests verifizieren Warnung bei gelöschter/fehlender Entity
+- [ ] Kein stiller Kontext-Verlust mehr bei dangling Frontmatter-Refs
 
 ---
 
