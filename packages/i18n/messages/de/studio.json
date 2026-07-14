@@ -486,6 +486,8 @@
       "kb": "Wissensdatenbank",
       "preview": "Vorschau",
       "edit": "Bearbeiten",
+      "capabilityHintTitle": "Garantierte Regeln",
+      "capabilityHintBody": "Diese Prompts sind anpassbar. Zusätzlich gelten immer garantierte Regeln (Narrare-Identität, Observability, Sicherheit), die nicht überschrieben werden können.",
       "promptCustomization": {
         "title": "Prompt-Anpassung",
         "variables": "Verfügbare Variablen",

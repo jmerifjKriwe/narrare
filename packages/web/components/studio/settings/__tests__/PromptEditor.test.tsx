@@ -312,4 +312,20 @@ describe("PromptEditor", () => {
     // Reset confirm dialog title appears once open
     expect(screen.getAllByText("settings.prompts.resetToDefault").length).toBeGreaterThan(0);
   });
+
+  // CR-AUFG-07-30: capability-basis transparency hint must always be visible
+  // (not dismissible) so users understand guaranteed rules cannot be overridden.
+  it("renders the capability-basis hint title and body in view mode", () => {
+    render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
+    expect(screen.getByText("settings.prompts.capabilityHintTitle")).toBeDefined();
+    expect(screen.getByText("settings.prompts.capabilityHintBody")).toBeDefined();
+  });
+
+  it("keeps the capability-basis hint visible in edit mode", () => {
+    render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
+    fireEvent.click(screen.getByText("settings.prompts.editOverride"));
+    // Hint remains rendered after switching to edit mode
+    expect(screen.getByText("settings.prompts.capabilityHintTitle")).toBeDefined();
+    expect(screen.getByText("settings.prompts.capabilityHintBody")).toBeDefined();
+  });
 });

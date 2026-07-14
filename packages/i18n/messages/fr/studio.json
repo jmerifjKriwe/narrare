@@ -486,6 +486,8 @@
       "kb": "Base de connaissances",
       "preview": "Aperçu",
       "edit": "Modifier",
+      "capabilityHintTitle": "Règles garanties",
+      "capabilityHintBody": "Ces prompts sont personnalisables. De plus, des règles garanties (identité Narrare, observabilité, sécurité) s'appliquent toujours et ne peuvent pas être remplacées.",
       "promptCustomization": {
         "title": "Personnalisation des prompts",
         "variables": "Variables disponibles",

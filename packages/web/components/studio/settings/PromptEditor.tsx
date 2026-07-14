@@ -18,7 +18,7 @@
  */
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Info, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PromptDiff } from "./PromptDiff";
 import { PromptEditorEditMode } from "./PromptEditorEditMode";
@@ -99,6 +99,18 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
         onBack={onBack}
         onShowDiff={s.openDiff}
       />
+
+      {/* CR-AUFG-07-30: capability-basis transparency hint. Guaranteed
+          capabilities (Narrare identity, observability, security) always
+          apply and cannot be overridden via the cascade — this banner makes
+          that architectural guarantee visible to the user. Not dismissible. */}
+      <div className="flex items-start gap-2 rounded-md border border-blue-500/20 bg-blue-500/5 p-3 text-sm text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0 text-blue-500 mt-0.5" />
+        <div>
+          <p className="font-medium text-foreground">{t("settings.prompts.capabilityHintTitle")}</p>
+          <p className="mt-0.5">{t("settings.prompts.capabilityHintBody")}</p>
+        </div>
+      </div>
 
       <div className="bg-card border border-border rounded-lg p-6">
         <div className="flex gap-6">

@@ -486,6 +486,8 @@
       "kb": "Knowledge Base",
       "preview": "Preview",
       "edit": "Edit",
+      "capabilityHintTitle": "Guaranteed Rules",
+      "capabilityHintBody": "These prompts are customizable. Additionally, guaranteed rules (Narrare identity, observability, security) always apply and cannot be overridden.",
       "promptCustomization": {
         "title": "Prompt Customization",
         "variables": "Available Variables",
