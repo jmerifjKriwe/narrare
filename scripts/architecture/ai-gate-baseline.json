@@ -2,6 +2,7 @@
   "version": 2,
   "description": "Ratcheted baseline for Review-03 AI stabilization gates + INFRA-012 prompt governance. Existing debt may decrease; growth requires ADR/user-approved baseline update.",
   "prompt_structure_warnings": [],
+  "frontmatter_schema_warnings": [],
   "adoption_debt": [
     "writing | inline_fallback_count | 1"
   ],

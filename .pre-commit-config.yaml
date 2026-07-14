@@ -27,6 +27,17 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Frontmatter schema validation (CR-AUFG-04-03) — WARNING-only ratchet gate
+      # that catches typos (e.g. prompt_typ) and unknown fields via the shared
+      # runtime parse_frontmatter(). Fails only on new violations beyond baseline.
+      - id: frontmatter-schema
+        name: Frontmatter Schema (CR-AUFG-04-03)
+        entry: uv run python scripts/check_frontmatter_schema.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Feature adoption score — ensures all features adopt core infrastructure
       - id: adoption-score
         name: Feature Adoption Score

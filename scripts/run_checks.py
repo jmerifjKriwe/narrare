@@ -73,6 +73,7 @@ def _build_steps() -> list[Step]:
                 (["uv", "run", "python", "scripts/check_python_file_size.py"], None),
                 (["uv", "run", "python", "scripts/check_prompt_surface_contract.py"], None),
                 (["uv", "run", "python", "scripts/check_empty_kb_vars.py"], None),
+                (["uv", "run", "python", "scripts/check_frontmatter_schema.py"], None),
             ],
         ),
         Step(

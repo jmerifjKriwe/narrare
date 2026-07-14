@@ -348,6 +348,7 @@ check-architecture:
     uv run python scripts/check_exception_baseline.py
     uv run python scripts/check_prompt_surface_contract.py
     uv run python scripts/check_empty_kb_vars.py
+    uv run python scripts/check_frontmatter_schema.py
 
 # Run ruff linter (with auto-fix)
 lint:
