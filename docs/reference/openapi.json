@@ -3626,6 +3626,172 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/consistency/dismiss": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Dismiss a consistency finding",
+        "description": "Dismiss (ignore) a consistency finding by its stable fingerprint.\n\nIdempotent — dismissing the same fingerprint twice updates the reason\nrather than creating a duplicate.  Returns the full updated list of\ndismissed fingerprints for the novel.",
+        "operationId": "dismiss_finding_api_v1_novels__novel_id__kb_consistency_dismiss_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DismissFindingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DismissedFindingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/consistency/dismissed": {
+      "get": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "List dismissed consistency findings",
+        "description": "List all dismissed consistency finding fingerprints for a novel.\n\nThe frontend uses this list to filter out dismissed issues from\nconsistency check results.",
+        "operationId": "list_dismissed_api_v1_novels__novel_id__kb_consistency_dismissed_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DismissedFindingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/consistency/dismissed/{fingerprint}": {
+      "delete": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Un-dismiss a consistency finding",
+        "description": "Re-enable a previously dismissed consistency finding.\n\nThe ``fingerprint`` path parameter must be URL-encoded by the client.\nReturns the full updated list of dismissed fingerprints for the novel.",
+        "operationId": "undismiss_finding_api_v1_novels__novel_id__kb_consistency_dismissed__fingerprint__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "fingerprint",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Fingerprint"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DismissedFindingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/graph": {
       "get": {
         "tags": [
@@ -11578,6 +11744,48 @@
         ],
         "title": "DemoProjectInfo",
         "description": "Metadata about a bundled demo project — loaded from metadata.json."
+      },
+      "DismissFindingRequest": {
+        "properties": {
+          "fingerprint": {
+            "type": "string",
+            "title": "Fingerprint"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fingerprint"
+        ],
+        "title": "DismissFindingRequest",
+        "description": "Request to dismiss (ignore) a consistency finding.\n\nThe fingerprint is a stable key that survives re-runs — it matches the\nfrontend ``issueKey()`` function: ``description::entity_names.join(\",\")``.\nUsing ``finding_index`` would be unstable because indices shift between\nruns when findings are added or removed.\n\nAttributes:\n    fingerprint: Stable finding identifier (description::entities).\n    reason: Optional user-provided reason for dismissing the finding."
+      },
+      "DismissedFindingsResponse": {
+        "properties": {
+          "fingerprints": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Fingerprints"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fingerprints"
+        ],
+        "title": "DismissedFindingsResponse",
+        "description": "Response listing dismissed consistency finding fingerprints.\n\nAttributes:\n    fingerprints: Stable fingerprints of all dismissed findings for a novel."
       },
       "EmbeddingStatsResponse": {
         "properties": {

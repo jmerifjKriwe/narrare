@@ -15,6 +15,7 @@ import narrare.chapters.models
 import narrare.embeddings.models
 import narrare.evidence.models
 import narrare.generation.models
+import narrare.kb.dismissed_models  # register model metadata for autogenerate
 import narrare.kb.models
 import narrare.memory.models
 import narrare.novels.models

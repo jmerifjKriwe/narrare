@@ -7,6 +7,9 @@ No business logic lives here — only wiring.
 from narrare.kb._consistency_deps import (
     get_consistency_service as get_consistency_service,
 )
+from narrare.kb._dismissed_deps import (
+    get_dismissed_service as get_dismissed_service,
+)
 from narrare.kb.dependencies_core import (
     get_graph_service as get_graph_service,
 )
@@ -43,6 +46,7 @@ from narrare.kb.lifecycle_dependencies import (
 
 __all__ = [
     "get_consistency_service",
+    "get_dismissed_service",
     "get_extraction_service",
     "get_graph_service",
     "get_kb_improve_service",
