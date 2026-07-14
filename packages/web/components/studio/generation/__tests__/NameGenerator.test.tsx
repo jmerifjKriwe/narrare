@@ -275,7 +275,10 @@ describe("NameGenerator", () => {
     await waitFor(() => {
       const alert = screen.getByRole("alert");
       expect(alert).toBeDefined();
-      expect(alert.textContent).toBe("Generation failed");
+      // CR-AUFG-07-33: the raw backend message must NOT leak into the UI;
+      // the structured i18n connection message is shown instead (§16.5).
+      expect(alert.textContent).not.toContain("Generation failed");
+      expect(alert.textContent).toContain("Verbindung verloren");
     });
   });
 
