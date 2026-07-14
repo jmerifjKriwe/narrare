@@ -85,11 +85,67 @@ permissions:
 
 jobs:
   # -------------------------------------------------------------------------
+  # Change detection: which parts of the tree actually moved?
+  # Cheap (~5s), lets expensive jobs skip themselves when irrelevant.
+  # Always runs on push (main/develop) so post-merge signal stays complete;
+  # on PRs it narrows scope to what the diff actually touches.
+  # -------------------------------------------------------------------------
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'apps/api/**'
+              - 'packages/core/**'
+              - 'packages/i18n/**'
+              - 'scripts/**'
+              - '!scripts/check_frontend_file_size.py'
+              - '!scripts/check-testid.ts'
+              - '!scripts/validate-i18n.ts'
+              - '!scripts/testid_baselines.json'
+              - 'tests/**'
+              - 'evals/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+            frontend:
+              - 'packages/web/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              # Cross-cutting: these scripts/ files live outside
+              # packages/web/ but are only ever run by the frontend job
+              # (see check_frontend_file_size.py's import of
+              # scripts/architecture/baselines.py — a shared, low-level
+              # module also used by backend architecture checks, so it
+              # stays in both lists).
+              - 'scripts/check_frontend_file_size.py'
+              - 'scripts/architecture/baselines.py'
+              - 'scripts/check-testid.ts'
+              - 'scripts/check_test_performance.py'
+              - 'scripts/validate-i18n.ts'
+              - 'scripts/testid_baselines.json'
+            workflows:
+              - '.github/workflows/**'
+
+  # -------------------------------------------------------------------------
   # Fast fail: architecture constraints (< 30s)
   # -------------------------------------------------------------------------
   architecture:
     name: Architecture Constraints
     runs-on: ubuntu-latest
+    # Deliberately NOT gated on `changes` — this job is cheap (~3min) and
+    # covers cross-cutting drift checks (docs, ADRs, eval smoke, registry)
+    # that don't map cleanly to a single path. Keep it as the universal
+    # fast-fail gate; gate only the genuinely expensive jobs below instead.
     steps:
       - uses: actions/checkout@v7
 
@@ -243,10 +299,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: architecture
     steps:
-      # fetch-depth: 0 required for Gitleaks to scan full git history
+      # fetch-depth: 0 is only needed to scan full git history — reserve
+      # that expensive checkout for pushes to main; PR diffs are small
+      # enough that the default shallow clone covers the changed range.
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          fetch-depth: ${{ github.event_name == 'push' && 0 || 1 }}
 
       - uses: astral-sh/setup-uv@v7
         with:
@@ -393,7 +451,13 @@ jobs:
   test-integration:
     name: Integration Tests
     runs-on: ubuntu-latest
-    needs: [lint, typecheck]
+    needs: [lint, typecheck, changes]
+    # Skip on draft PRs (WIP iteration doesn't need the Docker+spaCy path
+    # yet — it reruns once marked ready-for-review) and on PRs where the
+    # diff never touched backend code. Always runs on push to main/develop.
+    if: >-
+      github.event_name == 'push' ||
+      (needs.changes.outputs.backend == 'true' && github.event.pull_request.draft != true)
 
     services:
       postgres:
@@ -535,7 +599,10 @@ jobs:
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
-    needs: architecture
+    needs: [architecture, changes]
+    if: >-
+      github.event_name == 'push' ||
+      (needs.changes.outputs.frontend == 'true' && github.event.pull_request.draft != true)
 
     steps:
       - uses: actions/checkout@v7
@@ -550,13 +617,13 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-
-      - name: Install Python dependencies
-        run: uv sync --frozen --all-packages --group dev
-
+      # check_frontend_file_size.py (+ its import scripts/architecture/
+      # baselines.py) and check_test_performance.py are both confirmed
+      # stdlib-only (json, dataclasses, pathlib, typing / argparse, os,
+      # subprocess, time). No uv/venv needed anywhere in this job — GitHub's
+      # ubuntu-latest runner ships Python 3.12+ already. This drops
+      # setup-uv entirely, on top of the ~45s `uv sync --all-packages
+      # --group dev` this job never actually needed.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -567,7 +634,7 @@ jobs:
         run: npx tsx scripts/validate-i18n.ts
 
       - name: Check frontend file sizes (RULE-04)
-        run: uv run python scripts/check_frontend_file_size.py
+        run: python3 scripts/check_frontend_file_size.py
 
       - name: Type check
         run: cd packages/web && pnpm type-check
@@ -599,7 +666,7 @@ jobs:
             echo "⚠️ Frontend test duration unavailable (cancelled)" >> /tmp/warnings/report.txt
             exit 0
           fi
-          uv run python scripts/check_test_performance.py \
+          python3 scripts/check_test_performance.py \
             --duration "$duration" --threshold "$threshold" \
             | tee -a /tmp/warnings/report.txt
           exit ${PIPESTATUS[0]}

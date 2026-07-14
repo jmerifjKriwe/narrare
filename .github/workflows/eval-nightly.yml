@@ -16,12 +16,22 @@ name: Eval Nightly (Runtime)
 # (analysis_metrics, kb_operations, planning_structure) are smoke-only by
 # plan; the runner skips them gracefully when invoked with
 # `--suite all --mode runtime`.
+#
+# COST NOTE (2026-07): cadence reduced from daily to Mon/Thu to cut a
+# fixed, commit-independent drain on the monthly CI-minutes budget
+# (timeout-minutes: 30 × 365 days was ~180+ min/month regardless of repo
+# activity). Runtime evals still aren't PR-blocking, so this only affects
+# how quickly non-urgent drift surfaces — P0 anchors remain blocking on
+# whichever run they land in.
 # ---------------------------------------------------------------------------
 
 on:
   schedule:
-    # 03:00 UTC daily — off-peak, gives the daytime CI queue room.
-    - cron: "0 3 * * *"
+    # 03:00 UTC, Mon + Thu — reduced from daily as a CI-minutes budget
+    # measure (see cost note below). Revert to "0 3 * * *" once minutes
+    # budget allows; P0 drift detection just runs at lower cadence in the
+    # meantime, not weaker — a regression is still caught within days.
+    - cron: "0 3 * * 1,4"
   workflow_dispatch: {} # manual trigger for on-demand runtime runs
 
 permissions:
