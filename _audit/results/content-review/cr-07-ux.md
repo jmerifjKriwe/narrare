@@ -984,3 +984,221 @@ KB-gestützten AI-Erlebnis zu lang.
 - Continue/Extend mit Demo-KB liefert明显 bessere Ergebnisse als ohne.
 - Leere-KB-State hat erklärende Hinweise mit CTA.
 - "Aha-Moment" (KI mit KB-Kontext) innerhalb von 2 Minuten nach Onboarding erlebbar.
+
+---
+
+### CR-AUFG-07-30 — Capability-Basis-Sichtbarkeit in Prompt-Editing UI
+
+**Abschnitt:** §6
+**Priorität:** Niedrig-Mittel
+**Aufwand:** S
+
+**Problem:**
+Die garantierten Capabilities (`NarrareUniversalRules`, `NarrareMeta`,
+`NarrareObservability`) sind architektonisch garantiert und NICHT über die
+Cascade anpassbar (cr-00-kontext §5). Die Prompt-Editing-UI macht dies jedoch
+nicht explizit sichtbar — der Nutzer sieht nur die anpassbaren Feature-Prompts,
+nicht die garantierte Capability-Basis. Ein Hinweis wie „Diese Regeln sind immer
+aktiv und können nicht überschrieben werden" fehlt.
+
+**Lösung:**
+Im `PromptEditor` (oberhalb der Cascade-Anzeige) einen Info-Hinweis
+hinzufügen, der erklärt:
+- „Diese Prompts sind anpassbar. Zusätzlich gelten immer garantierte Regeln
+  (Narrare-Identität, Observability, Sicherheit), die nicht überschrieben
+  werden können."
+- Optional: Link zur Dokumentation der Capability-Basis.
+
+**Verifikation:**
+- Hinweis ist im `PromptEditor` sichtbar.
+- i18n-Key für den Hinweis-Text in DE/EN/FR vorhanden.
+- Test: render `PromptEditor`, prüfe dass Hinweis gerendert wird.
+
+---
+
+### CR-AUFG-07-31 — KB-Korruption-spezifische Fehlermeldung
+
+**Abschnitt:** §4
+**Priorität:** Niedrig
+**Aufwand:** S
+
+**Problem:**
+Bei korrupten KB-Daten fällt das System auf generische Meldungen
+(`kb.graphLoadFailed` / `kb.sessionCreateFailed`) zurück, die nicht spezifisch
+genug sind und keine klare Handlungsempfehlung geben („Was tue ich, wenn meine
+KB korrupt ist?").
+
+**Lösung:**
+1. Neuen i18n-Key `aiActions.errorDataCorrupt` hinzufügen (DE/EN/FR):
+   - DE: „Die Daten konnten nicht gelesen werden. Möglicherweise ist eine
+     Datei beschädigt. Überprüfe deine Sicherungen oder kontaktiere den Support."
+2. In `mapSSEError` und `mapRestApiError`: spezifische Erkennung von
+   Data-Corruption-Signalen (z.B. JSON-Parse-Fehler bei KB-Lade-Responses
+   → `errorDataCorrupt`).
+3. KB-Komponenten (`KnowledgeGraphView`, `KBAssistedCreationPanel`) nutzen den
+   neuen Key bei strukturierten Parse-Fehlern.
+
+**Verifikation:**
+- `aiActions.errorDataCorrupt` in DE/EN/FR vorhanden.
+- KB-Komponenten zeigen spezifische Meldung bei Parse-Fehlern.
+- i18n-Parity-Check bleibt grün.
+
+---
+
+### CR-AUFG-07-32 — Provider-Setup „Quick Setup" / progressive disclosure
+
+**Abschnitt:** §5
+**Priorität:** Niedrig-Mittel
+**Aufwand:** M
+
+**Problem:**
+`AiTab.tsx` zeigt alle Optionen (Provider, Modelle, Token-Profile, Overrides,
+Context-Budget, Timeouts) gleichzeitig. Für Nicht-Techniker ist die Anzahl der
+Optionen überwältigend. Es gibt keine „Empfohlen für Anfänger"-Voreinstellung
+oder kontextuelle Hilfetexte.
+
+**Lösung:**
+1. **Progressive Disclosure:** Standardansicht zeigt nur Wesentliches
+   (Provider-Auswahl + API-Key + empfohlenes Modell). Ein „Erweiterte
+   Einstellungen"-Akkordeon blendet Token-Profile, Overrides, Context-Budget
+   und Timeouts aus.
+2. **„Empfohlen"-Badge:** Pro Provider ein Modell mit „Empfohlen für
+   Einsteiger" markieren (kuratierte Liste im `ModelSelector`).
+3. **Kontextuelle Hilfe:** Inline `?`-Tooltips pro Feld mit
+   verständlichen Erklärungen.
+
+**Verifikation:**
+- Standardansicht zeigt nur Basis-Felder.
+- Erweiterte Einstellungen sind aufklappbar.
+- „Empfohlen"-Badge auf mindestens einem Modell pro Provider.
+- Tooltips für alle Hauptfelder.
+
+---
+
+### CR-AUFG-07-33 — REST error mapper: `error.message`-Leak fixen
+
+**Abschnitt:** §4, §7
+**Priorität:** Mittel
+**Aufwand:** S
+
+**Problem:**
+`mapRestApiError` (`ai-rest-error.ts:30-38`) verwendet für reguläre
+`Error`-Instanzen `userMessage: error.message` — der rohe Backend-Fehlerstring
+wird direkt als `userMessage` gesetzt. Dies widerspricht §16.5: alle
+AI-Fehlermeldungen sollen strukturierte i18n-Keys mit Handlungsempfehlung
+verwenden, niemals rohe Fehlermeldungen. Der SSE-Mapper (`mapSSEError`) macht
+dies korrekt; der REST-Pfad umgeht diese Logik.
+
+**Lösung:**
+`mapRestApiError` so anpassen, dass reguläre Fetch-Fehler auf die gleichen
+i18n-Keys gemappt werden wie in `mapSSEError`:
+- Network-Fehler (fetch failed) → `aiActions.errorConnection`
+- Timeout → `aiActions.errorTimeout`
+- Unbekannt → `aiActions.errorDefault`
+Das rohe `error.message` wird weiterhin im `cause`-Feld für Logging
+erhalten, aber NICHT als `userMessage` gerendert.
+
+**Verifikation:**
+- `mapRestApiError` verwendet i18n-Keys, nicht `error.message`.
+- Unit-Test: regulärer `Error("fetch failed")` → `aiActions.errorConnection`.
+- Check 4 („no hardcoded AI error.message") bleibt grün.
+
+---
+
+### CR-AUFG-07-34 — Interview Q&A-Verlauf mit Suche
+
+**Abschnitt:** §3
+**Priorität:** Niedrig
+**Aufwand:** M
+
+**Problem:**
+Interview-Fragen sind nicht filterbar/suchbar im Nachhinein (lineare Q&A,
+kein Timeline-View). Die Q&A-Daten sind bereits DB-gestützt (resume-Sessions),
+aber es gibt keine UI zum Durchsuchen vergangener Fragen.
+
+**Lösung:**
+1. **„Interview-Verlauf"-View:** Nach Interview-Abschluss eine scrollbare
+   Timeline aller Q&A-Paare (Frage + Antwort + resultierendes Feld).
+2. **Suche/Filter:** Nach Keyword innerhalb der Q&A-Historie.
+3. **Re-Edit:** Klick auf eine vergangene Antwort springt zum entsprechenden
+   Feld für Nachbearbeitung.
+
+**Verifikation:**
+- Verlauf-View zeigt alle Q&A-Paare nach Interview-Abschluss.
+- Suche filtert Questions/Answers nach Keyword.
+- Klick auf Antwort navigiert zum Feld.
+
+---
+
+### CR-AUFG-07-35 — KB-Editor progressive disclosure / Guided Mode
+
+**Abschnitt:** §3
+**Priorität:** Niedrig
+**Aufwand:** M
+
+**Problem:**
+`KBDetailPanel`/`KBEntryDetail` zeigt für 7 Entity-Typen alle Felder
+gleichzeitig. Für Nicht-Techniker ist dies überwältigend. Es gibt keinen
+„Guided Mode" für manuelles Ausfüllen (nur über den Assisted/Interview-Weg).
+
+**Lösung:**
+1. **Feld-Gruppierung:** Felder in logische Sektionen organisieren
+   (Basis, Details, Beziehungen).
+2. **Progressive Disclosure:** Pflichtfelder + Description zuerst; optionale
+   Felder hinter „Weitere Felder anzeigen".
+3. **Inline-Hilfe:** Pro Feld ein `?`-Tooltip mit Erklärung.
+4. **„Nur Pflichtfelder"-Toggle.**
+
+**Verifikation:**
+- Pflichtfelder sind ohne Scroll sichtbar.
+- Optionale Felder sind aufklappbar.
+- Tooltips für alle Felder vorhanden.
+
+---
+
+### CR-AUFG-07-36 — Prompt-Editing „Einfach"-Modus
+
+**Abschnitt:** §6
+**Priorität:** Niedrig
+**Aufwand:** M-L
+
+**Problem:**
+Prompt-Editing setzt Verständnis von Template-Variablen, Cascade-Logik und
+Provider-Konfiguration voraus. Die UI ist funktional, aber für Nicht-Entwickler
+eine Power-User-Funktion. Es gibt keine „Einfach"-Ansicht.
+
+**Lösung:**
+1. **„Einfach"/„Experte"-Toggle:** Einfach-Modus zeigt nur Prompt-Text +
+   Live-Vorschau + Reset. Experte-Modus zeigt Variablen, Cascade, Live-Test,
+   Diff, Historie.
+2. **Natürliche Prompt-Beschreibungen:** Statt technischem Key
+   (`kb.enhance.character.description`) verständlichen Titel anzeigen
+   („Beschreibung eines Characters verbessern").
+3. **Vordefinierte Variationen:** Kuratierte alternative Formulierungen zur
+   Auswahl statt Raw-Text-Editing.
+
+**Verifikation:**
+- Toggle zwischen Einfach/Experte funktional.
+- Einfach-Modus zeigt nur Prompt-Text + Preview + Reset.
+- Natürliche Beschreibungen für alle Prompts.
+
+---
+
+## Accepted Risks
+
+**Accepted Risk (2025-07-14) — B5: Continue hat keine Diff-Ansicht:**
+Continue ist ein Append-Modell (Text wird nach Cursor eingefügt, kein Replace).
+Für Continue ist Diff weniger relevant als für Rewrite (welches Selection
+ersetzt). Der vorläufige AI-Text wird mit `.ai-generated-pending`-Highlight
+visuell markiert, was ausreichenden Kontrast bietet. Diff-Ansicht für Continue
+bleibt als optionale Enhancement, ist aber nicht als Aufgabe priorisiert.
+
+**Accepted Risk (2025-07-14) — B6: Continue hat keine explizite Partial-Accept UX-Action:**
+Teilweises Übernehmen (z.B. nur 2 von 3 Sätzen) ist nicht als explizite
+UX-Action implementiert. Der Nutzer akzeptiert den gesamten generierten Text
+und editiert dann manuell (natürlicher Workflow, durch TipTap Undo abgesichert).
+Modify-Detection (`getPendingModification`) erkennt, ob der Nutzer den AI-Text
+verändert hat, bevor er akzeptiert. Ghost-Text bietet bereits wortweises
+Übernehmen via ArrowRight. Eine dedizierte Partial-Accept-Action würde
+signifikante ProseMirror-Komplexität (Mark-Splitting, Sub-Range-Tracking) für
+marginalen Nutzen hinzufügen.
