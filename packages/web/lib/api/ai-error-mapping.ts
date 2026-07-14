@@ -46,6 +46,10 @@ export const AI_ERROR_MESSAGE_MAP: Record<string, { de: string; retryable: boole
     de: "Ein unerwarteter Fehler ist aufgetreten. Versuche es erneut.",
     retryable: true,
   },
+  "aiActions.errorDataCorrupt": {
+    de: "Die Daten konnten nicht gelesen werden. Möglicherweise ist eine Datei beschädigt. Überprüfe deine Sicherungen oder kontaktiere den Support.",
+    retryable: false,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -57,6 +61,7 @@ export const AI_ERROR_MESSAGE_MAP: Record<string, { de: string; retryable: boole
  *
  * Mapping rules (§16.5):
  *   - AbortError     → null (swallowed, returns to idle)
+ *   - SyntaxError    → data-corrupt error (invalid/unreadable KB data, not retryable)
  *   - kind="http" + 401  → api key invalid
  *   - kind="http" + 413  → text too long
  *   - kind="http" + 429  → rate limit
@@ -76,6 +81,19 @@ export function mapSSEError(error: unknown): AIErrorResponse | null {
     (error instanceof Error && error.name === "AbortError")
   ) {
     return null;
+  }
+
+  // Data corruption: JSON parse failure (SyntaxError) → data-corrupt error.
+  // A SyntaxError signals invalid/unreadable data (e.g. corrupt KB file),
+  // which is not a transient connection issue and is not retryable.
+  if (error instanceof SyntaxError) {
+    return {
+      kind: "parse",
+      i18nKey: "aiActions.errorDataCorrupt",
+      userMessage: AI_ERROR_MESSAGE_MAP["aiActions.errorDataCorrupt"].de,
+      retryable: false,
+      cause: error,
+    };
   }
 
   // SSEStreamError or any error with a "kind" property

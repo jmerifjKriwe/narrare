@@ -139,6 +139,20 @@ describe("mapSSEError", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Data corruption (SyntaxError from JSON.parse) → errorDataCorrupt
+  // -------------------------------------------------------------------------
+
+  it("maps SyntaxError → errorDataCorrupt (data corruption, not retryable)", () => {
+    const error = new SyntaxError("Unexpected token < in JSON");
+    const result = mapSSEError(error);
+    expect(result).not.toBeNull();
+    expect(result!.kind).toBe("parse");
+    expect(result!.i18nKey).toBe("aiActions.errorDataCorrupt");
+    expect(result!.retryable).toBe(false);
+    expect(result!.cause).toBe(error);
+  });
+
+  // -------------------------------------------------------------------------
   // Stream errors
   // -------------------------------------------------------------------------
 
@@ -180,7 +194,7 @@ describe("mapSSEError", () => {
   // AI_ERROR_MESSAGE_MAP completeness
   // -------------------------------------------------------------------------
 
-  it("AI_ERROR_MESSAGE_MAP has all 7 error keys", () => {
+  it("AI_ERROR_MESSAGE_MAP has all 8 error keys", () => {
     const expectedKeys = [
       "aiActions.errorApiKey",
       "aiActions.errorTextTooLong",
@@ -189,6 +203,7 @@ describe("mapSSEError", () => {
       "aiActions.errorConnection",
       "aiActions.errorParse",
       "aiActions.errorDefault",
+      "aiActions.errorDataCorrupt",
     ];
 
     for (const key of expectedKeys) {

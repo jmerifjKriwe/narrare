@@ -1807,7 +1807,8 @@
     "errorTimeout": "L'IA prend trop de temps. Réessayez avec moins de contexte.",
     "errorConnection": "Connexion perdue. Vérifiez votre connexion internet.",
     "errorParse": "La réponse de l'IA était malformée. Réessayez.",
-    "errorDefault": "Une erreur inattendue s'est produite. Réessayez."
+    "errorDefault": "Une erreur inattendue s'est produite. Réessayez.",
+    "errorDataCorrupt": "Les données n'ont pas pu être lues. Un fichier est peut-être corrompu. Vérifiez vos sauvegardes ou contactez le support."
   },
   "styleVariants": {
     "regenerateAs": "Régénérer en…",

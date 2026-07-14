@@ -1807,7 +1807,8 @@
     "errorTimeout": "Die KI braucht zu lange. Versuche es mit weniger Kontext erneut.",
     "errorConnection": "Verbindung verloren. Prüfe deine Internetverbindung.",
     "errorParse": "Die KI-Antwort war fehlerhaft. Versuche es erneut.",
-    "errorDefault": "Ein unerwarteter Fehler ist aufgetreten. Versuche es erneut."
+    "errorDefault": "Ein unerwarteter Fehler ist aufgetreten. Versuche es erneut.",
+    "errorDataCorrupt": "Die Daten konnten nicht gelesen werden. Möglicherweise ist eine Datei beschädigt. Überprüfe deine Sicherungen oder kontaktiere den Support."
   },
   "styleVariants": {
     "regenerateAs": "Regenerieren als…",

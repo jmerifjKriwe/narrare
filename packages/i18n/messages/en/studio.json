@@ -1807,7 +1807,8 @@
     "errorTimeout": "The AI is taking too long. Try again with less context.",
     "errorConnection": "Connection lost. Check your internet connection.",
     "errorParse": "The AI response was malformed. Try again.",
-    "errorDefault": "An unexpected error occurred. Try again."
+    "errorDefault": "An unexpected error occurred. Try again.",
+    "errorDataCorrupt": "The data could not be read. A file may be corrupted. Check your backups or contact support."
   },
   "styleVariants": {
     "regenerateAs": "Regenerate as…",
