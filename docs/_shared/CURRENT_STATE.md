@@ -198,7 +198,9 @@ Completed in Phase 6 so far:
    pyright 0 errors, 2534 backend + 4814 core + 2339 frontend tests, AI-UX 44/44,
    i18n parity, streaming ratchet 0 new, prompt-structure 49/49. Integration tests
    exist but were skipped locally (no test Postgres); CI runs them. ADR-057 → ✅
-   Implemented; WRITE-010 → `stable`.
+    Implemented; WRITE-010 → `stable`.
+
+  71. ✅ **CR-04 Content Review Remediation (Cross-Feature Coherence audit)** — End-to-end remediation of `_audit/results/content-review/coherence/cr-04-cross-feature.md` (a later content-review audit, distinct from the earlier FIND-based CR-04 remediation in items 44/59). All 6 tasks resolved/evaluated: CR-AUFG-04-01 (opt-in provenance annotation via `RenderOptions` + trigger #4 — implements ADR-050 P1-A in-text preservation; ADR-050 §Decision 1 amended); CR-AUFG-04-02 (storyboard↔KB content-consistency *evaluation* — full NLP detection deferred as wrong-layer; CONS-001 post-hoc remains safety net; optional follow-up: `SyncStatus.DEVIATED` prompt hint); CR-AUFG-04-03 (`scripts/check_frontmatter_schema.py` warning-only ratchet, baseline 0); CR-AUFG-04-04 (extensible entity-type classification + `kb_other` catch-all bucket); CR-AUFG-04-05 (Voice vs Entity wire-format doc in `prompt-standards.md`); CR-AUFG-04-06 (new, from gap analysis — surface dangling-ref warnings via `kb_context_warnings`). Cross-feature integration gap found & fixed during verification (`kb_other`/`kb_context_warnings` marked optional for REWRITE/EXTEND routes + structural prevention test `test_writing_kb_var_routing.py`). Backend sync-contract adoption (B2) verified resolved without code. PR #122 merged (squash `1a96df8b`). Verification: 9191 unit + 649 integration tests green; all architecture/lint/typecheck/CI gates green.
 
 ## What's Next
 
