@@ -51,9 +51,14 @@ Timeline: {{timeline_position}}
 Story Structure: {{story_structure}}
 {{chapter_context}}
 
+{{kb_context_warnings}}
 ### Characters
 
 {{kb_characters}}
+
+### Other Entities
+
+{{kb_other}}
 
 ### Optional Lower-Priority Generated KB Suggestions
 

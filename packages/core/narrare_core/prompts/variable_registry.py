@@ -77,6 +77,15 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "kb_pinned",
         "kb_timelines",
         "kb_systems",
+        # CR-AUFG-04-04: catch-all bucket for unclassified entity types,
+        # produced by WritingContext.to_prompt_variables(). Registered so
+        # templates referencing {{kb_other}} resolve without PromptVariableError.
+        "kb_other",
+        # CR-AUFG-04-06: orphan-reference warnings promoted into the prompt so
+        # dangling frontmatter references are surfaced to the LLM instead of
+        # silently dropped. Produced by WritingContext.to_prompt_variables();
+        # empty string when there are no warnings. System-generated diagnostic.
+        "kb_context_warnings",
         "existing_names",
         "existing_relationships",
         "existing_entity_names",

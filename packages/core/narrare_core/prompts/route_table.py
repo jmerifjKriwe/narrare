@@ -73,7 +73,16 @@ _COMMON_OPTIONAL_VARIABLES = frozenset(
         "character_voice_profiles",
         "cross_session_context",
         "culture_guidelines",
+        # CR-AUFG-04-06 / CR-AUFG-04-04: KB diagnostic vars surfaced into the
+        # writing templates. Declared optional so routes that do NOT run full
+        # KB assembly (REWRITE, EXTEND, …) render them as "" instead of raising
+        # PromptVariableError at compose time (RULE-11 graceful degradation).
+        # When a route supplies them via WritingContext.to_prompt_variables(),
+        # the supplied value wins (prepare_variables_for_template short-circuits
+        # on present vars). See test_writing_kb_var_routing.py for the guard.
+        "kb_context_warnings",
         "kb_factions",
+        "kb_other",
         "kb_relationships",
         "kb_suggested",
         "novel_synopsis",

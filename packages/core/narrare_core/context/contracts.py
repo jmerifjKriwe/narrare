@@ -22,6 +22,7 @@ from narrare_core.context._kb_envelope import (
     ProvenanceField,
     RenderedKBContext,
 )
+from narrare_core.context._render_options import RenderOptions
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -37,6 +38,7 @@ __all__ = [
     "OmissionReason",
     "ProactiveContextProtocol",
     "ProvenanceField",
+    "RenderOptions",
     "RenderedKBContext",
 ]
 

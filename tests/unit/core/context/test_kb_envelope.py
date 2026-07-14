@@ -9,7 +9,7 @@ Covers (ADR-050 P1-A — CR-AUFG-04-01):
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -20,6 +20,9 @@ from narrare_core.context._kb_envelope import (
     ProvenanceField,
     RenderedKBContext,
 )
+
+if TYPE_CHECKING:
+    from narrare_core.context._render_options import RenderOptions
 
 # =====================================================================
 # RenderedKBContext — dataclass behavior
@@ -232,6 +235,7 @@ class _FakeHighFidelityRenderer:
         entries: list[KBContextSource],
         *,
         tier: str,
+        options: RenderOptions | None = None,
     ) -> RenderedKBContext:
         text = "\n".join(f"### {e.entity_type}: {e.name}\n{e.content}" for e in entries)
         return RenderedKBContext(
@@ -253,6 +257,7 @@ class _FakeLowFidelityRenderer:
         entries: list[KBContextSource],
         *,
         tier: str,
+        options: RenderOptions | None = None,
     ) -> RenderedKBContext:
         text = "\n".join(f"### {e.entity_type}: {e.name}\n{e.content}" for e in entries)
         omitted: tuple[tuple[ProvenanceField, OmissionReason], ...] = (

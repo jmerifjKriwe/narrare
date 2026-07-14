@@ -26,6 +26,7 @@ Below is the text surrounding the continuation point. The marker `[CONTINUE FROM
 
 ### Knowledge Base
 
+{{kb_context_warnings}}
 Characters:
 {{kb_characters}}
 
@@ -34,6 +35,9 @@ Locations:
 
 Factions:
 {{kb_factions}}
+
+Other entities:
+{{kb_other}}
 
 Relationships:
 {{kb_relationships}}

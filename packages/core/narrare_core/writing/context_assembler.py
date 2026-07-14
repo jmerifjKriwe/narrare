@@ -212,6 +212,7 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
             factions_text,
             systems_text,
             timelines_text,
+            other_text,
             overflow,
             wiki_fresh,
             wiki_stale,
@@ -240,6 +241,15 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
         # Check for orphan references (referenced in frontmatter but not in KB)
         all_classified = pinned + referenced + connected + suggested
         orphan_reference_warnings = check_orphan_references(ref_ids, all_classified)
+
+        # CR-AUFG-04-06: promote orphan warnings into a prompt variable so the
+        # LLM sees dangling frontmatter references instead of silently dropping
+        # them. Each line carries the visible "needs attention" marker (⚠️),
+        # matching the voice-profile freshness convention (_voice_profiles.py).
+        # Empty string in the common case — no visual noise.
+        kb_context_warnings = "\n".join(
+            f"⚠️ Context warning: {w}" for w in orphan_reference_warnings
+        )
 
         # Extract entity names for metadata
         char_names, loc_names, fac_names = extract_entity_names(all_classified)
@@ -277,6 +287,7 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
             kb_factions=factions_text,
             kb_systems=systems_text,
             kb_timelines=timelines_text,
+            kb_other=other_text,
             kb_relationships=kb_relationships,
             kb_suggested=suggested_text,
             kb_pinned=pinned_text,
@@ -295,6 +306,7 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
             is_sparse_kb=is_sparse,
             voice_profile_warnings=voice_profile_warnings,
             orphan_reference_warnings=orphan_reference_warnings,
+            kb_context_warnings=kb_context_warnings,
             wiki_summaries_count=wiki_fresh,
             wiki_summaries_stale=wiki_stale,
             character_names=char_names,

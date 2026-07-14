@@ -21,6 +21,7 @@ targeted improvements to the author's text while preserving their voice and styl
 
 ### Knowledge Base
 
+{{kb_context_warnings}}
 Characters:
 {{kb_characters}}
 
@@ -29,6 +30,9 @@ Locations:
 
 Factions:
 {{kb_factions}}
+
+Other entities:
+{{kb_other}}
 
 Relationships:
 {{kb_relationships}}

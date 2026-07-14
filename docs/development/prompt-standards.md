@@ -238,6 +238,54 @@ interactive_session, inline_suggest, story_suggest, co_author, chat, interview
 generates dialogue or speech. For summary/outline prompts without dialogue,
 it can be omitted.
 
+#### KB Context Wire Formats (Intentional Variation)
+
+Character information reaches writing prompts through **two parallel wire
+formats** that are deliberately different — not an inconsistency. Each
+delivers a distinct kind of information the model needs to write
+in-character, factually consistent dialogue. Template authors should expect
+both to appear side by side in dialogue-generating prompts.
+
+| Format | Template variable | Delivers | Generator |
+|--------|-------------------|----------|-----------|
+| **Voice-Profile** | `{{character_voice_profiles}}` | *How* a character speaks — sentence length, diction, verbal tics | `extract_voice_profiles()` (`writing/_voice_profiles.py`) |
+| **Entity-Entry** | `{{kb_characters}}`, `{{kb_locations}}`, `{{kb_factions}}`, … | *What* a character/place is — appearance, history, attributes | `format_entities()` (`writing/_helpers.py`); `format_entities_with_wiki()` (`writing/context_wiki.py`) |
+
+Wire shapes:
+
+```
+Voice-Profile:  **Aria Thorne**: Direct, terse sentences. Uses military vocabulary.
+Entity-Entry:   ### Character: Aria Thorne
+                <content>
+```
+
+**Why both are injected in parallel.** The Entity-Entry supplies the *facts*;
+the Voice-Profile supplies the *speech style*. Writing dialogue that is both
+in-character and factually consistent requires both, so prompts that generate
+speech inject them side by side rather than merging them. Merging would
+either drop the speech patterns (if folded into the entity block) or drop the
+facts (if folded into the voice line). The same principle governs timeline
+envelopes (structured `{id, name}` refs for the consistency pipeline): the
+wire format follows the consumer's need.
+
+**Freshness & provenance.** The two formats surface staleness/provenance
+differently, by design:
+
+- **Voice-Profiles** mark staleness inline when a profile exceeds its
+  freshness window:
+  `**Aria Thorne**: <summary> [⚠️ last updated: 2026-01-15]`.
+- **Entity-Entries** are provenance-free by default — an omission that is
+  made explicit, not silent, per ADR-050 P1-A
+  (`preserved_fields=frozenset()` with documented `omitted_fields`). When
+  `RenderOptions.annotate_provenance` is enabled (CR-AUFG-04-01), uncertain
+  entries receive an inline bracket on the header line:
+  `### Character: Aria Thorne [auto-extracted, confidence: 0.72]`.
+
+Template authors should therefore not expect a single uniform KB block shape
+— the variation is intentional. When adding a new KB-context render path,
+implement the `KBContextEnvelope` Protocol (`context/_kb_envelope.py`) and
+declare which provenance fields it preserves or omits.
+
 ### KB Prompts
 
 **Prompt types:** interview, improve, suggest, enhance, extract, consistency,
@@ -750,6 +798,7 @@ are content snippets, not full system prompts, and follow a simpler format.
 
 ---
 
-> **Last updated:** 2026-06-12 — CR-01 remediation: explicit template-level wrapper governance, `writing_language` canonical enforcement, `kb_suggested` boilerplate, and enforcement matrix added.
+> **Last updated:** 2026-07-14 — CR-AUFG-04-05: documented the intentional
+> Voice-Profile vs Entity-Entry wire-format variation (§2, Writing Prompts).
 > **Maintained by:** Architecture Agent + Documentation Agent
-> **Review trigger:** When a new prompt category is added, or when ADR-002/019/037 is revised
+> **Review trigger:** When a new prompt category is added, when ADR-002/019/037/050 is revised, or when a new KB-context render path is added

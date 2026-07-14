@@ -20,6 +20,7 @@ You are a creative writing consultant. Your role is to generate targeted suggest
 
 ### Knowledge Base
 
+{{kb_context_warnings}}
 Characters:
 {{kb_characters}}
 
@@ -28,6 +29,9 @@ Locations:
 
 Factions:
 {{kb_factions}}
+
+Other entities:
+{{kb_other}}
 
 Relationships:
 {{kb_relationships}}

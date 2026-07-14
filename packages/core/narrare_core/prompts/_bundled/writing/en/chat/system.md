@@ -31,6 +31,7 @@ If a question is outside your scope, gently redirect: "I'm here to help with you
 - Timeline: {{timeline_position}}
 - **Story Structure**: {{story_structure}}
 
+{{kb_context_warnings}}
 Characters in this project:
 {{kb_characters}}
 
@@ -39,6 +40,9 @@ Key locations:
 
 Factions and groups:
 {{kb_factions}}
+
+Other entities:
+{{kb_other}}
 
 Relationships between entities:
 {{kb_relationships}}

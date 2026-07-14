@@ -27,7 +27,10 @@ prove provenance or prove it was deliberately omitted.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from narrare_core.context._render_options import RenderOptions
 
 #: Fields that constitute KB provenance. Anything outside this set is
 #: content (e.g. ``content``, ``name``) and is always preserved.
@@ -122,6 +125,7 @@ class KBContextEnvelope(Protocol):
         entries: list[KBContextSource],
         *,
         tier: str,
+        options: RenderOptions | None = None,
     ) -> RenderedKBContext:
         """Render KB entries into a prompt-bound text block.
 
@@ -137,6 +141,15 @@ class KBContextEnvelope(Protocol):
                 ``"proactive_suggestion"``, ``"voice_profile"``,
                 ``"timeline_envelope"``. Unknown tier strings are
                 treated as ``"tier4_suggested"`` (medium fidelity).
+            options: Per-invocation render controls
+                (:class:`RenderOptions`). When ``None`` (default) the
+                renderer output is byte-for-byte identical to the
+                pre-annotation behaviour. When
+                ``options.annotate_provenance`` is ``True``, uncertain
+                entries receive an inline provenance bracket and the
+                rendered :class:`ProvenanceField` literals are moved
+                from ``omitted_fields`` to ``preserved_fields``
+                (RULE-22 accounting).
 
         Returns:
             A :class:`RenderedKBContext` with the text block and a
