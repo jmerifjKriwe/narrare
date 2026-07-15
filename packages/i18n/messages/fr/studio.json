@@ -354,6 +354,8 @@
       "tokenProfileComprehensive": "Complet (max 16000 tokens)",
       "tokenProfileCustom": "Personnalisé",
       "promptsInfo": "Les prompts système peuvent être personnalisés par intention d'écriture. Cette fonctionnalité sera disponible via l'éditeur de prompts.",
+      "advancedSettings": "Paramètres avancés",
+      "advancedSettingsHint": "Pour utilisateurs avancés : profils de tokens, remplacements de modèles, budget de contexte et délais.",
       "apiKeyUpdated": "Clé API mise à jour",
       "save": "Enregistrer",
       "cancel": "Annuler",

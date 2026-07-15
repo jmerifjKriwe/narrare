@@ -319,11 +319,51 @@ describe("AiTab", () => {
       expect(screen.getByTestId("provider-list")).toBeDefined();
     });
 
+    // All sections are present in the DOM — even the advanced ones, which live
+    // inside a collapsed <details> disclosure (progressive disclosure, CR-AUFG-07-32).
     expect(screen.getByTestId("model-data-status")).toBeDefined();
     expect(screen.getByTestId("default-model-section")).toBeDefined();
     expect(screen.getByTestId("category-overrides")).toBeDefined();
     expect(screen.getByTestId("intent-overrides")).toBeDefined();
     expect(screen.getByTestId("context-budget")).toBeDefined();
     expect(screen.getByTestId("system-timeouts")).toBeDefined();
+  });
+
+  it("keeps basic settings sections always visible without expanding advanced", async () => {
+    renderWithProviders(<AiTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("provider-list")).toBeVisible();
+    });
+
+    // The three essential first-run controls plus the advanced-disclosure
+    // toggle are always visible — no progressive disclosure hides them.
+    expect(screen.getByTestId("model-data-status")).toBeVisible();
+    expect(screen.getByTestId("default-model-section")).toBeVisible();
+    expect(screen.getByText("settings.ai.advancedSettings")).toBeVisible();
+  });
+
+  it("hides advanced sections by default and reveals them when expanded", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AiTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("provider-list")).toBeVisible();
+    });
+
+    // Progressive disclosure: advanced controls start collapsed.
+    expect(screen.getByTestId("category-overrides")).not.toBeVisible();
+    expect(screen.getByTestId("intent-overrides")).not.toBeVisible();
+    expect(screen.getByTestId("context-budget")).not.toBeVisible();
+    expect(screen.getByTestId("system-timeouts")).not.toBeVisible();
+
+    // Reveal the advanced disclosure by activating its summary toggle.
+    await user.click(screen.getByText("settings.ai.advancedSettings"));
+
+    // Advanced controls are now visible.
+    expect(screen.getByTestId("category-overrides")).toBeVisible();
+    expect(screen.getByTestId("intent-overrides")).toBeVisible();
+    expect(screen.getByTestId("context-budget")).toBeVisible();
+    expect(screen.getByTestId("system-timeouts")).toBeVisible();
   });
 });

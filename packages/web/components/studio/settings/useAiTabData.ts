@@ -128,3 +128,7 @@ export function useAiTabData() {
     handleSystemTimeoutsChange,
   };
 }
+
+/** Inferred return type of {@link useAiTabData} — lets child presentational
+ *  components declare precise, auto-syncing prop types via `Pick`. */
+export type AiTabData = ReturnType<typeof useAiTabData>;

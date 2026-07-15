@@ -354,6 +354,8 @@
       "tokenProfileComprehensive": "Umfassend (max 16000 Tokens)",
       "tokenProfileCustom": "Benutzerdefiniert",
       "promptsInfo": "System-Prompts können pro Schreibabsicht angepasst werden. Diese Funktion wird über den Prompt-Editor verfügbar sein.",
+      "advancedSettings": "Erweiterte Einstellungen",
+      "advancedSettingsHint": "Für erfahrene Nutzer: Token-Profile, Modell-Overrides, Context-Budget und Timeouts.",
       "apiKeyUpdated": "API-Key aktualisiert",
       "save": "Speichern",
       "cancel": "Abbrechen",
