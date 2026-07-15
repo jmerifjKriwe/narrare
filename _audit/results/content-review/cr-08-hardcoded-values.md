@@ -390,6 +390,11 @@ Beide sind behebbar ohne die starke Werte-Ebene anzutasten.
   diesen Wert: nicht möglich (Matrix existiert nicht) — formelle FIND-014-Entscheidung
   (Option A: stale-Referenzen bereinigen; Option B: Toolchain wiederherstellen) ist
   Voraussetzung für künftige Matrix-Klassifikationen.** Owner: Architecture + Platform.
+  **Entscheidung 2026-07-15:** Option A — Matrix-Enforcement bewusst entfernt
+  (f8abb42c), RULE-18b als Prinzip beibehalten, Enforcement jetzt via Regressionstests
+  + ADR-045 + ad-hoc Audits (Review-File als SSOT). Cleanup-Scope erweitert auf
+  vollständigen Stale-Reference-Satz (ADR-051/060/061/064, INDEX, p3-Manifest,
+  Remediation-Spec, Templates, CONSTRAINTS RULE-18b).
 
 - [P2] FIND-015 / CR-AUFG-08-16: **Rate-Limiter hart codiert, nicht operator-konfigurierbar** —
   `AI_WRITE_LIMITER = Rate(3, 1min)`, `AI_ANALYSIS_LIMITER = Rate(5, 1min)`,
