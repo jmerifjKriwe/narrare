@@ -780,6 +780,7 @@ Strings. Diese sind punktuell, nicht systemisch — das Fundament ist solid.
 **Abschnitt:** §1, §4
 **Priorität:** Mittel
 **Aufwand:** S
+**Status 2025-07-15:** **ERLEDIGT** — `useChat.ts` gibt nun `AIErrorResponse | null` mit `retry`/`isError` zurück; `ChatPanel.tsx` rendert `error.userMessage` + Retry-Button bei `retryable`. Regression-Test `ChatPanel.error.test.tsx` (5 Tests). Commit `3dfd8f27`.
 
 **Problem:**
 `ChatPanel.tsx:136` ignoriert die vom `useChat`-Hook berechnete actionable
@@ -830,6 +831,7 @@ die `AIErrorResponse`-Struktur statt nur des Strings zurückgibt).
 **Abschnitt:** §2.3
 **Priorität:** Mittel
 **Aufwand:** M
+**Status 2025-07-15:** **ERLEDIGT** — Backend: Dismiss-API (`POST/GET/DELETE /novels/{id}/kb/consistency/dismiss` + `DismissedFinding`-Modell + Migration `0032_dismissed_findings.py`, 31 Tests). Frontend: `useDismissedFindings`-Hook + `ConsistencyCard` Dismiss-Button + `ConsistencyResults` Filter mit Toggle (31 Tests). Commits `2f15a29f`, `554ac51c`.
 
 **Problem:**
 `ConsistencyCheckPanel` / `ConsistencyResults` haben keinen Mechanismus, einen
@@ -862,6 +864,7 @@ Für wiederholte Consistency-Checks im Schreibprozess ist das frustrierend
 **Abschnitt:** §4, §7
 **Priorität:** Niedrig
 **Aufwand:** S
+**Status 2025-07-15:** **ERLEDIGT** — 58 unverdeutschte Strings im `kb`-Namespace übersetzt (DE/EN/FR); 2 verwaiste Keys (`kb.aiThinking`, `kb.nextQuestion`) entfernt. i18n-Parity-Check grün. Commit `f2f37ccb`.
 
 **Problem:**
 In `packages/i18n/messages/de/studio.json` existiert ein Block unverdeutschter
@@ -900,6 +903,7 @@ verwirrend, falls noch Komponenten diese Keys referenzieren.
 **Abschnitt:** §8
 **Priorität:** Mittel (Alleinstellungsmerkmal)
 **Aufwand:** L
+**Status 2025-07-15:** **ERLEDIGT** — Bereits vor der Remediation implementiert. `SentimentArcGraph.tsx` (Recharts LineChart, VAD-Trajektorien über Kapitel) und `EmotionalIntensityCurve.tsx` rendern in `SentimentResults` ab ≥2 analysierten Kapiteln. Keine Änderungen erforderlich.
 
 **Problem:**
 Das Backend hat bereits Sentiment-Analyse (`useSentiment.ts`,
@@ -941,6 +945,7 @@ ANAL-Feature dokumentiert, aber nicht implementiert.
 **Abschnitt:** §5
 **Priorität:** Mittel
 **Aufwand:** M
+**Status 2025-07-15:** **ERLEDIGT** — `useQuickStart` akzeptiert optionalen `starter`-Parameter; "Mit Demo-Projekt starten"-Button im WizardShell; Empty-State-Guide in `KBEntryList`. Backend-Demo-Starter existierten bereits (`DEMO_FANTASY`, `DEMO_SCIFI`, `DEMO_GERMAN`). Commit `269c8c56`.
 
 **Problem:**
 Der Wizard (`WizardShell.tsx`) und Quick-Start (`useQuickStart.ts`) erstellen
@@ -992,6 +997,7 @@ KB-gestützten AI-Erlebnis zu lang.
 **Abschnitt:** §6
 **Priorität:** Niedrig-Mittel
 **Aufwand:** S
+**Status 2025-07-15:** **ERLEDIGT** — `PromptCapabilityHint.tsx` Info-Banner im PromptEditor (sichtbar in View- und Edit-Modus). i18n-Keys in DE/EN/FR. Commit `5b4e0928`.
 
 **Problem:**
 Die garantierten Capabilities (`NarrareUniversalRules`, `NarrareMeta`,
@@ -1021,6 +1027,7 @@ hinzufügen, der erklärt:
 **Abschnitt:** §4
 **Priorität:** Niedrig
 **Aufwand:** S
+**Status 2025-07-15:** **ERLEDIGT** — `aiActions.errorDataCorrupt` i18n-Key + `SyntaxError`-Erkennung in `mapSSEError`. KB-Komponenten profitieren automatisch. Unit-Test hinzugefügt. Commit `97c07f3d`.
 
 **Problem:**
 Bei korrupten KB-Daten fällt das System auf generische Meldungen
@@ -1050,6 +1057,7 @@ KB korrupt ist?").
 **Abschnitt:** §5
 **Priorität:** Niedrig-Mittel
 **Aufwand:** M
+**Status 2025-07-15:** **ERLEDIGT** — `AdvancedAiSettings.tsx` kollabierbare Sektion (native `<details>`) in AiTab. 5 erweiterte Sektionen standardmäßig ausgeblendet. Commit `663ea1e5`.
 
 **Problem:**
 `AiTab.tsx` zeigt alle Optionen (Provider, Modelle, Token-Profile, Overrides,
@@ -1080,6 +1088,7 @@ oder kontextuelle Hilfetexte.
 **Abschnitt:** §4, §7
 **Priorität:** Mittel
 **Aufwand:** S
+**Status 2025-07-15:** **ERLEDIGT** — `mapRestApiError` delegiert nun vollständig an `mapSSEError` — kein `error.message`-Leak mehr. 7 Regression-Tests + 2 Test-Fixes. Commit `06641a77`.
 
 **Problem:**
 `mapRestApiError` (`ai-rest-error.ts:30-38`) verwendet für reguläre
@@ -1110,6 +1119,7 @@ erhalten, aber NICHT als `userMessage` gerendert.
 **Abschnitt:** §3
 **Priorität:** Niedrig
 **Aufwand:** M
+**Status 2025-07-15:** **ERLEDIGT** — `InterviewHistory.tsx` + `useInterviewHistory`-Hook + `InterviewLoadingState.tsx` (RULE-04). Q&A-Paare mit Keyword-Suche. Commit `f384655c`.
 
 **Problem:**
 Interview-Fragen sind nicht filterbar/suchbar im Nachhinein (lineare Q&A,
@@ -1135,6 +1145,7 @@ aber es gibt keine UI zum Durchsuchen vergangener Fragen.
 **Abschnitt:** §3
 **Priorität:** Niedrig
 **Aufwand:** M
+**Status 2025-07-15:** **ERLEDIGT** — `KBFieldLabel.tsx` (Help-Tooltip) + `KBMoreFields.tsx` (progressive Disclosure) in `KBEntryTemplateFields` und `KBFlatEditor`. Commit `4c3cdc06`.
 
 **Problem:**
 `KBDetailPanel`/`KBEntryDetail` zeigt für 7 Entity-Typen alle Felder
@@ -1161,6 +1172,7 @@ gleichzeitig. Für Nicht-Techniker ist dies überwältigend. Es gibt keinen
 **Abschnitt:** §6
 **Priorität:** Niedrig
 **Aufwand:** M-L
+**Status 2025-07-15:** **ERLEDIGT** — `usePromptEditorMode.ts` + `PromptEditorModeToggle.tsx` + `PromptCapabilityHint.tsx`. Einfach/Experte-Toggle mit localStorage-Persistenz. Commit `cd6a0d28`.
 
 **Problem:**
 Prompt-Editing setzt Verständnis von Template-Variablen, Cascade-Logik und
@@ -1202,3 +1214,45 @@ verändert hat, bevor er akzeptiert. Ghost-Text bietet bereits wortweises
 Übernehmen via ArrowRight. Eine dedizierte Partial-Accept-Action würde
 signifikante ProseMirror-Komplexität (Mark-Splitting, Sub-Range-Tracking) für
 marginalen Nutzen hinzufügen.
+
+---
+
+## Abschluss-Status
+
+**Review:** CR-07 – UI/UX & AI-Interaktionsqualität
+**Datum:** 2025-07-15
+**Branch:** `chore/review-07-ux-fixes`
+
+### Aufgaben-Übersicht
+
+| Aufgabe | Status | Aufwand | Evidence |
+|---------|--------|---------|----------|
+| CR-AUFG-07-25 | ✅ Resolved | S | `useChat` + `ChatPanel` actionable error + retry, 5 Tests, Commit `3dfd8f27` |
+| CR-AUFG-07-26 | ✅ Resolved | M | Dismiss-API backend + frontend, 62 Tests, Commits `2f15a29f`/`554ac51c` |
+| CR-AUFG-07-27 | ✅ Resolved | S | 58 i18n-Strings übersetzt, 2 Orphans entfernt, Commit `f2f37ccb` |
+| CR-AUFG-07-28 | ✅ Resolved (pre-existing) | L | `SentimentArcGraph` + `EmotionalIntensityCurve` bereits implementiert |
+| CR-AUFG-07-29 | ✅ Resolved | M | Demo-Starter in Quick-Start + Empty-State-Guide, Commit `269c8c56` |
+| CR-AUFG-07-30 | ✅ Resolved | S | Capability-Basis-Hinweis im PromptEditor, Commit `5b4e0928` |
+| CR-AUFG-07-31 | ✅ Resolved | S | `errorDataCorrupt`-Mapping für KB-Korruption, Commit `97c07f3d` |
+| CR-AUFG-07-32 | ✅ Resolved | M | Progressive Disclosure in AiTab, Commit `663ea1e5` |
+| CR-AUFG-07-33 | ✅ Resolved | S | REST error mapper `error.message`-Leak fix, Commit `06641a77` |
+| CR-AUFG-07-34 | ✅ Resolved | M | Interview Q&A-Verlauf mit Suche, Commit `f384655c` |
+| CR-AUFG-07-35 | ✅ Resolved | M | KB-Editor progressive Disclosure + Tooltips, Commit `4c3cdc06` |
+| CR-AUFG-07-36 | ✅ Resolved | M-L | Prompt-Editor Einfach/Experte-Modus, Commit `cd6a0d28` |
+
+### Accepted Risks
+
+- **B5:** Continue ohne Diff-Ansicht — Append-Modell, Diff weniger relevant.
+- **B6:** Continue ohne Partial-Accept — Accept→Edit ist natürlicher Workflow.
+
+### Neue Aufgaben aus Gap-Detection
+
+7 neue Aufgaben (CR-AUFG-07-30 bis CR-AUFG-07-36) aus Prose-Gap-Detection erstellt und alle implementiert.
+
+### Prevention-Maßnahmen
+
+Keine strukturellen Prevention-Maßnahmen erforderlich — alle Ursachen waren One-Offs (isolierte Befunde) oder Feature-Arbeit, keine wiederkehrenden Muster.
+
+### Zusammenfassung
+
+12 von 12 Aufgaben resolved. 2 Accepted Risks dokumentiert. Alle Pre-Commit-Hooks (Architecture, RULE-04, i18n, TypeScript, Biome) bei jedem Commit grün.
