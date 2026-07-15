@@ -97,7 +97,22 @@ export function KBEntryList({
         {!isLoading && !isSearching && displayEntries.length === 0 && (
           <div className="text-center py-12 text-muted-foreground text-sm">
             <ActiveIcon className="w-8 h-8 mx-auto mb-2 opacity-20" />
-            <p>{t("kb.noEntries")}</p>
+            <p className="mb-1">{t("kb.noEntries")}</p>
+            {/* Show the guided empty state only when the entire KB is empty
+                (no type filter, no search query) so the hint stays truthful. */}
+            {activeType === null && searchQuery === "" && (
+              <>
+                <p className="mb-4 max-w-xs mx-auto">{t("kb.emptyStateHint")}</p>
+                <button
+                  type="button"
+                  onClick={onCreateNew}
+                  className="inline-flex items-center gap-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
+                >
+                  <Plus className="w-4 h-4" />
+                  {t("kb.emptyStateCta")}
+                </button>
+              </>
+            )}
           </div>
         )}
 

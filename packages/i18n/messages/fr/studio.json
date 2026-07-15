@@ -696,7 +696,8 @@
       "projectNameInvalidChars": "Le nom du projet contient des caractères non valides",
       "languageTooLong": "La langue ne doit pas dépasser 100 caractères",
       "titleRequired": "Le titre est requis"
-    }
+    },
+    "demoQuickStart": "Commencer avec un projet démo"
   },
   "tones": {
     "title": "Bibliothèque de tons",
@@ -858,6 +859,8 @@
     "newEntry": "Nouvelle entrée",
     "allTypes": "Tout",
     "noEntries": "Aucune entrée",
+    "emptyStateHint": "Votre base de connaissances est vide. Ajoutez des personnages et des lieux pour que l'IA connaisse votre roman.",
+    "emptyStateCta": "Ajouter une entrée",
     "deleteConfirm": "Supprimer cette entrée ?",
     "characters": "Personnages",
     "locations": "Lieux",

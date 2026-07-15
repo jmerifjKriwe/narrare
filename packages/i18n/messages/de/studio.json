@@ -696,7 +696,8 @@
       "projectNameInvalidChars": "Projektname enthält ungültige Zeichen",
       "languageTooLong": "Sprache darf höchstens 100 Zeichen lang sein",
       "titleRequired": "Titel ist erforderlich"
-    }
+    },
+    "demoQuickStart": "Mit Demo-Projekt starten"
   },
   "tones": {
     "title": "Ton-Bibliothek",
@@ -858,6 +859,8 @@
     "newEntry": "Neuer Eintrag",
     "allTypes": "Alle",
     "noEntries": "Noch keine Einträge",
+    "emptyStateHint": "Deine Wissensdatenbank ist leer. Füge Characters und Orte hinzu, damit die AI deinen Roman kennt.",
+    "emptyStateCta": "Eintrag hinzufügen",
     "deleteConfirm": "Diesen Eintrag löschen?",
     "characters": "Charaktere",
     "locations": "Orte",

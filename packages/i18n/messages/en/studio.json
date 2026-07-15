@@ -696,7 +696,8 @@
       "projectNameInvalidChars": "Project name contains invalid characters",
       "languageTooLong": "Language must be 100 characters or less",
       "titleRequired": "Title is required"
-    }
+    },
+    "demoQuickStart": "Start with demo project"
   },
   "tones": {
     "title": "Tone Library",
@@ -858,6 +859,8 @@
     "newEntry": "New Entry",
     "allTypes": "All",
     "noEntries": "No entries yet",
+    "emptyStateHint": "Your knowledge base is empty. Add characters and locations so the AI knows your novel.",
+    "emptyStateCta": "Add entry",
     "deleteConfirm": "Delete this entry?",
     "characters": "Characters",
     "locations": "Locations",

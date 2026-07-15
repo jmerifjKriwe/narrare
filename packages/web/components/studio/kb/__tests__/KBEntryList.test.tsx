@@ -113,6 +113,33 @@ describe("KBEntryList", () => {
     expect(screen.getByText("kb.noEntries")).toBeDefined();
   });
 
+  it("shows guided empty-state hint and CTA when the entire KB is empty", () => {
+    render(<KBEntryList {...defaultProps} entries={[]} activeType={null} />);
+
+    expect(screen.getByText("kb.emptyStateHint")).toBeDefined();
+    expect(screen.getByText("kb.emptyStateCta")).toBeDefined();
+  });
+
+  it("hides guided hint when a type filter is active", () => {
+    render(<KBEntryList {...defaultProps} entries={[]} activeType="character" />);
+
+    // Generic message still present
+    expect(screen.getByText("kb.noEntries")).toBeDefined();
+    // But no guided hint / CTA
+    expect(screen.queryByText("kb.emptyStateHint")).toBeNull();
+    expect(screen.queryByText("kb.emptyStateCta")).toBeNull();
+  });
+
+  it("calls onCreateNew when the empty-state CTA is clicked", () => {
+    const onCreateNew = vi.fn();
+    render(
+      <KBEntryList {...defaultProps} entries={[]} activeType={null} onCreateNew={onCreateNew} />,
+    );
+
+    fireEvent.click(screen.getByText("kb.emptyStateCta"));
+    expect(onCreateNew).toHaveBeenCalled();
+  });
+
   it("shows loading state when isLoading=true", () => {
     render(<KBEntryList {...defaultProps} entries={[]} isLoading />);
 
