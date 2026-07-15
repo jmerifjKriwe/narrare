@@ -1,188 +1,127 @@
-# Content Review CR-05 – Initiale Befunde
+# Content Review CR-05 – Resolution Record
 
-> **Datum:** 2026-07-11
+> **Ursprung:** 2026-07-11 (CR-05 Initial Findings, kompiliert aus cr-00, cr-01,
+> cr-02, cr-03, cr-04, cr-07, cr-08)
+> **Resolution-Datum:** 2026-07-15
 > **Reviewer:** NarrareCoreSpecialist (Content Review Audit)
-> **Methode:** Kompilation und Verifikation aller Befunde aus cr-00 bis cr-04,
-> cr-07, cr-08. Jeder Befund verifiziert gegen echten Code (Datei:Zeile) in
-> seinem Ursprungs-Review. Cross-Referenzen dedupliziert — jeder Befund hat
-> genau eine FIND-Datei bei seinem Ursprungs-Review.
+> **Methode:** Jeder der 21 materialen Befunde (P1/P2) wurde am 2026-07-15
+> erneut gegen echten Code (Datei:Zeile) verifiziert — nicht gegen Behauptungen
+> oder Templates. Cross-Referenzen waren dedupliziert; jeder Befund hatte genau
+> eine FIND-Datei bei seinem Ursprungs-Review.
 >
-> **Ausgabe:** 21 FIND-Dateien unter `_audit/results/content-review/findings/`
-> + `README.md` als Index.
->
-> **Aufgabe:** Verifiziere und vertiefe die bereits bekannten Befunde.
-> Füge Code-Referenzen, konkrete Auswirkungen und priorisierte
-> Lösungsvorschläge hinzu.
+> **Status:** Alle 21 FIND-Scratchdateien unter `findings/` wurden retiret.
+> Dieser Index ist nun der alleinige Lifecycle-Record (Finding-Lifecycle SSOT:
+> Exit-Evidenz lebt hier). `findings/README.md` ist ein reiner Pointer-Stub.
 
 ---
 
 ## Zusammenfassung
 
-Aus den sieben vorangegangenen Reviews (cr-00, cr-01, cr-02, cr-03, cr-04,
-cr-07, cr-08) wurden **21 materialle Befunde** (P1/P2) zu FIND-Dateien
-konsolidiert. Zusätzlich wurden 15 P3-Aufgaben und 3 Stale-Items im Index
-erfasst.
+Alle **21 materialen Befunde** (3× P1, 18× P2) wurden am **2026-07-15** gegen
+echten Code verifiziert und sind `✅ Resolved` (Implementation + Enforcement
+gemäß `docs/development/finding-lifecycle.md` §2). Es verbleiben **keine offenen
+Befunde** in diesem Review.
 
-Die Plattform hat eine **starke Architektur-Grundlage** (⭐⭐⭐⭐ in den meisten
-Reviews): ADR-026 Capability-Injection, ADR-046 Prompt-Resolution-Path,
-ADR-050 KB-Context-Envelope, 5-Tier-TokenBudget für Writing, systematische
-AI-UX-State-Machine (17 Operationen, 11 Gates). Die materiallen Befunde sind
-**Implementierungs- und Inhalts-Lücken**, keine Design-Fehler.
+Die 21 FIND-Scratchdateien unter `findings/` wurden retiret; dieser Index ist
+nun der alleinige Lifecycle-Record mit Exit-Evidenz. Ein verbleibender
+Folgeschritt zur Adoption-Score-Honesty ist unten als bekanntes Known-Unknown
+registriert — er trägt bewusst **keine** eigene FIND-Nummer (siehe
+[Offener Folgeschritt](#offener-folgeschritt-adoption-score-honesty-kein-neues-find)).
 
-### Prioritäts-Verteilung
+### Prioritäts-Verteilung (alle resolviert)
 
-| Priorität | Anzahl | Charakteristik |
+| Priorität | Anzahl | Status |
 |---|---|---|
-| 🔴 Hoch (P1) | 3 | Funktional eingeschränkte Features + Enforcement-Lücke |
-| 🟡 Mittel (P2) | 18 | Inhalts-Defizite, Adoptions-Gaps, UX-Lücken, Enhancements |
-| 🔴 Kritisch (P0) | 0 | Keine kritischen Befunde |
-
-### Die drei P1-Befunde
-
-1. **FIND-001 (cr-03):** Consistency-Check ohne KG-Relationships — die
-   höchstwertige Cross-Feature-Konsistenz-Prüfung (beziehungsbasierte
-   Widersprüche) ist strukturell blind. `ConsistencyDeps` hat kein
-   `kb_relationships`-Feld.
-
-2. **FIND-002 (cr-03):** Coreference ohne Charakter-Liste — funktionaler
-   Adoptions-Fehler. Pronomen-Resolution braucht zwingend Charakter-Namen,
-   bekommt aber `kb_characters=""`. Das Modell muss raten.
-
-3. **FIND-014 (cr-08) `[configuration-effect]`:** RULE-18b-Enforcement-Toolchain
-   entfernt — die gesamte P0-P5-Governance-Toolchain (Matrix, Checker,
-   Review-Gate) wurde in Commit `f8abb42c` gelöscht, aber CONSTRAINTS.md
-   referenziert sie weiterhin als "CI-validated". False Control auf Meta-Ebene.
-   Architektur-Entscheidung erforderlich (bereinigen vs. wiederherstellen).
-
-### Thematische Cluster
-
-| Cluster | FINDs | Kernproblem |
-|---|---|---|
-| **Analysis/KB Adoptions-Flickenteppich** | FIND-001, -002, -003, -004, -006 | Writing nutzt Budget-System, Analysis/KB truncieren blind nach Zeichen |
-| **Prompt-Inhalts-Defizite** | FIND-007, -008, -009, -010, -011 | Fehlende JSON-Schemata, Do-NOT-Items, Runtime-Contracts, style_profile |
-| **Prompt-Sicherheit & Hygiene** | FIND-012, -013 | candidate_pairs nicht gewrappt, Injection Defense doppelt |
-| **Cross-Feature-Kohärenz** | FIND-005, -016, -017 | Preference-Gate, Legacy-Templates, fehlende Provenance |
-| **UX-Lücken** | FIND-018, -019, -020, -021 | ChatPanel-Fehlermeldung, Consistency-Dismiss, Sentiment-Arc, Demo-Projekt |
-| **Konfigurierbarkeit** | FIND-014, -015 | Enforcement-Toolchain gelöscht, Rate-Limiter hart codiert |
+| 🔴 Kritisch (P0) | 0 | — |
+| 🔴 Hoch (P1) | 3 | ✅ Resolved |
+| 🟡 Mittel (P2) | 18 | ✅ Resolved |
 
 ---
 
-## Befund-Index
+## Resolution-Tabelle
 
-> Vollständiger Index mit allen FIND-Dateien, P3-Aufgaben und Stale-Items:
-> [`findings/README.md`](findings/README.md)
+> Evidenz ist die verifizierte `Datei:Zeile` auf Disk (Stand 2026-07-15).
+> `✅ Resolved` = Implementation existiert + Enforcement vorhanden.
 
-### P1 (🔴 Hoch)
-
-| FIND | Titel | Review |
-|---|---|---|
-| [FIND-001](findings/FIND-001-consistency-check-ohne-kg-relationships.md) | Consistency-Check ohne KG-Relationships | cr-03 |
-| [FIND-002](findings/FIND-002-coreference-ohne-charakter-liste.md) | Coreference ohne Charakter-Liste | cr-03 |
-| [FIND-014](findings/FIND-014-rule-18b-enforcement-toolchain-entfernt.md) | RULE-18b-Enforcement-Toolchain entfernt `[configuration-effect]` | cr-08 |
-
-### P2 (🟡 Mittel)
-
-| FIND | Titel | Review |
-|---|---|---|
-| [FIND-003](findings/FIND-003-analysis-context-assembler-ohne-tokenbudget.md) | Analysis-ContextAssembler ohne TokenBudget | cr-03 |
-| [FIND-004](findings/FIND-004-kbconsistencyanalyzer-body-truncation.md) | KBConsistencyAnalyzer Body-Truncation hardcoded | cr-03 |
-| [FIND-005](findings/FIND-005-mem0-preference-injection-gate.md) | mem0-Preference-Injection-Gate | cr-03 |
-| [FIND-006](findings/FIND-006-adoption-scorer-token-budget.md) | Adoption-Scorer token_budget ohne Code-Nachweis | cr-03 |
-| [FIND-007](findings/FIND-007-worldbuilding-phase1-defizite.md) | Worldbuilding Phase 1 Defizite | cr-01 |
-| [FIND-008](findings/FIND-008-worldbuilding-phase2-json-schema.md) | Worldbuilding Phase 2 JSON-Schema | cr-01 |
-| [FIND-009](findings/FIND-009-summarize-donot-json-format.md) | summarize Do-NOT + JSON-Format | cr-01 |
-| [FIND-010](findings/FIND-010-kb-extract-runtime-input-contract.md) | kb/extract Runtime-Input Contract | cr-01 |
-| [FIND-011](findings/FIND-011-style-profile-fehlt-in-writing-prompts.md) | style_profile in Writing-Prompts | cr-01 |
-| [FIND-012](findings/FIND-012-candidate-pairs-wrapping.md) | candidate_pairs Wrapping | cr-01 |
-| [FIND-013](findings/FIND-013-injection-defense-duplikat.md) | Injection Defense Duplikat | cr-02 |
-| [FIND-015](findings/FIND-015-rate-limiter-hart-codiert.md) | Rate-Limiter hart codiert | cr-08 |
-| [FIND-016](findings/FIND-016-writing-defr-legacy-templates.md) | Writing de/fr Legacy-Templates | cr-02 |
-| [FIND-017](findings/FIND-017-provenance-annotated-kb-rendering.md) | Provenance-annotated KB-Rendering | cr-04 |
-| [FIND-018](findings/FIND-018-chatpanel-generische-fehlermeldung.md) | ChatPanel generische Fehlermeldung | cr-07 |
-| [FIND-019](findings/FIND-019-consistency-ignorieren-markierung.md) | Consistency Ignorieren-Markierung | cr-07 |
-| [FIND-020](findings/FIND-020-emotionale-intensitaetskurve.md) | Emotionale Intensitätskurve _(Enhancement)_ | cr-07 |
-| [FIND-021](findings/FIND-021-demo-projekt-beispiel-kb.md) | Demo-Projekt Beispiel-KB _(Enhancement)_ | cr-07 |
+| FIND | Titel | Review | Evidenz (Datei:Zeile) | Status |
+|---|---|---|---|---|
+| FIND-001 | Consistency-Check ohne KG-Relationships | cr-03 | `apps/api/narrare/consistency/checker_context.py:160-197` lädt `kb_relationships_text = rel_context.text` und übergibt `kb_relationships=…`; `consistency/prompt_builder.py:43` liest `deps.kb_relationships` | ✅ Resolved |
+| FIND-002 | Coreference ohne Charakter-Liste | cr-03 | `analysis/coreference_service.py:106` akzeptiert `kb_repo`, L176 `fetch_kb_characters(...)`, L193/L208 relationships; neues Modul `analysis/coreference_kb.py` | ✅ Resolved |
+| FIND-003 | Analysis-ContextAssembler ohne TokenBudget | cr-03 | `AnalysisContextAssembler` in `packages/core/narrare_core/analysis/assembler.py`; `analysis/beta_reader_service.py:150` nutzt `build_budgeted_prompt(deps, self._budget_assembler)`; `analysis/context_assembler.py:206-210` reicht KB-Bodies voll durch | ✅ Resolved |
+| FIND-004 | KBConsistencyAnalyzer Body-Truncation hardcoded | cr-03 | `kb/consistency_analyzer.py:95` `max_body_tokens=1500` parametrisiert; L212 `cap_to_budget(entity.body, max_body_tokens)` (token-aware, ersetzt hartcodierte 5000-Zeichen-Grenze) | ✅ Resolved |
+| FIND-005 | mem0-Preference-Injection-Gate | cr-03 | `packages/core/narrare_core/prompts/composer.py:94-113` Gate auf `not context.user_preferences` + `user_id`/`project_id`; `_app/dependencies_prompts.py:128` verdrahtet `preference_service`; `_app/dependencies_pipeline.py:54-59` zusätzlicher `PreferenceContextEnricherImpl` | ✅ Resolved |
+| FIND-006 | Adoption-Scorer token_budget ohne Code-Nachweis | cr-03 | siehe eigene Sektion unten (besondere Dokumentation) | ✅ Resolved |
+| FIND-007 | Worldbuilding Phase 1 Defizite | cr-01 | `prompts/_bundled/kb/en/worldbuilding/phase1/system.md` v1.2.0: JSON-Codeblock (L51-86) + Constraints mit `{{writing_language}}` (L102) | ✅ Resolved |
+| FIND-008 | Worldbuilding Phase 2 JSON-Schema | cr-01 | `prompts/_bundled/kb/en/worldbuilding/phase2/system.md` v1.3.1: JSON-Codeblock (L80-100) | ✅ Resolved |
+| FIND-009 | summarize Do-NOT + JSON-Format | cr-01 | `prompts/_bundled/analysis/en/summarize/system.md` v1.3.0: 4 Do-NOT-Items, JSON-Format (L19-31) | ✅ Resolved |
+| FIND-010 | kb/extract Runtime-Input Contract | cr-01 | `prompts/_bundled/kb/en/extract/system.md` v1.2.0: `### Runtime Input`-Sektion (L32-36) | ✅ Resolved |
+| FIND-011 | style_profile in Writing-Prompts | cr-01 | `{{style_profile}}` jetzt in allen 8 EN-Writing-Prompts vorhanden (inkl. der 4 ehemals fehlenden: scene_by_scene, interactive_session, story_suggest, chat) | ✅ Resolved |
+| FIND-012 | candidate_pairs Wrapping | cr-01 | `prompts/variable_registry.py:51` — `candidate_pairs` in `USER_CONTENT_VARS`; `prompts/_bundled/kb/en/merge/system.md:33` wrappt `<user_provided_data>{{candidate_pairs}}</user_provided_data>` | ✅ Resolved |
+| FIND-013 | Injection Defense Duplikat | cr-02 | meta {en,de,fr} alle v3.1.0 **ohne** XML-Tag-Defense; `universal/en/system.md:17` behält sie (Eigentümer der Injection-Defense) | ✅ Resolved |
+| FIND-014 | RULE-18b-Enforcement-Toolchain entfernt `[configuration-effect]` | cr-08 | `scripts/doc_drift/removed_governance_refs_checks.py` (WARNING-Only, geratchette Baseline); gelöschte Governance-Artefakte entfernt; CONSTRAINTS.md RULE-18b auf Realität umgeschrieben | ✅ Resolved |
+| FIND-015 | Rate-Limiter hart codiert | cr-08 | `_app/rate_limits.py`: alle 6 `NARRARE_RATE_LIMIT_*`-Env-Vars mit governed Defaults (3/5/10/10/5/3); `tests/unit/api/_app/test_rate_limits.py` | ✅ Resolved |
+| FIND-016 | Writing de/fr Legacy-Templates | cr-02 | `prompts/_bundled/writing/de/` und `writing/fr/` leer/entfernt → ADR-026 Phase 5 Option 1 (Entfernen) umgesetzt; Output-Sprache via `{{writing_language}}` | ✅ Resolved |
+| FIND-017 | Provenance-annotated KB-Rendering | cr-04 | `context/_provenance_annotation.py` `compute_provenance_annotation()` (Trigger/Suppress-Logik); `context/_render_options.py` `RenderOptions(annotate_provenance=)`; Render-Pfade akzeptieren `preserved_fields` | ✅ Resolved |
+| FIND-018 | ChatPanel generische Fehlermeldung | cr-07 | `packages/web/components/studio/editor/ChatPanel.tsx:144-160` rendert `error.userMessage` (statt generischer Konstante) + Retry-Button bei `error.retryable` | ✅ Resolved |
+| FIND-019 | Consistency Ignorieren-Markierung | cr-07 | `packages/web/lib/api/consistency.ts` (dismiss/undismiss/list), `lib/hooks/useDismissedFindings.ts`; Backend-Endpoints `POST/GET/DELETE /novels/{id}/kb/consistency/dismiss[ed]`; Tests vorhanden | ✅ Resolved |
+| FIND-020 | Emotionale Intensitätskurve _(Enhancement)_ | cr-07 | `packages/web/components/studio/analysis/SentimentArcGraph.tsx`, `SentimentChart.tsx`, `SentimentPanel.tsx`, `analysis/intensity.ts` (Enhancement umgesetzt) | ✅ Resolved |
+| FIND-021 | Demo-Projekt Beispiel-KB _(Enhancement)_ | cr-07 | `apps/api/narrare/setup/demo_loader.py` (3 Demos: fantasy/scifi/german), `setup/contracts.py`, `/setup/demos`-Endpoint, `packages/web/types/wizard.ts` `DemoProjectInfo`, RULE-17-Contract-Test `test_demo_contract.py` | ✅ Resolved |
 
 ---
 
-## Deduplizierungs-Protokoll
+## FIND-006 — Besondere Dokumentation (Adoption-Scorer)
 
-Folgende Cross-Referenzen wurden **nicht** als eigene FINDs angelegt, um
-Duplikate zu vermeiden (jeder Befund lebt bei seinem Ursprungs-Review):
+**Status:** ✅ Resolved (2026-07-15) — mit dokumentierter Ablehnung der statischen Code-Verifikation.
 
-| cr-04 Cross-Ref | → FIND bei Ursprung |
-|---|---|
-| §3.2, §4.1 Consistency ohne KG | → FIND-001 (cr-03) |
-| §2.2, §4.1 Coreference ohne Charaktere | → FIND-002 (cr-03) |
-| §4.1 Analysis ohne TokenBudget | → FIND-003 (cr-03) |
-| §4.1, §4.2.1 Preference-Injection-Gate | → FIND-005 (cr-03) |
-| §5.4 worldbuilding phase1 writing_language | → FIND-007 (cr-01) |
-| §4.2.3 style_profile in Writing | → FIND-011 (cr-01) |
-| §5.2 Injection Defense Duplikat | → FIND-013 (cr-02) |
-| §5.5 Writing de/fr Legacy | → FIND-016 (cr-02) |
+**Implementation:** `scripts/adoption/scorer_checks.py` führt für
+`token_budget`/`injection_defense` ein `unverified=has_prompts`-Flag plus Note
+("no code-level evidence") ein. `audit_report.py` stellt unverified-Infrastruktur
+in einem eigenen Report-Abschnitt ("Unverified infrastructure assumptions") dar;
+`scorer.py:353` zählt `unverified_count`. Tests: `tests/unit/scripts/test_scorer_checks.py`,
+`test_audit_report_build.py`, `test_adoption_unverified_count.py`.
 
-**FIND-014 und FIND-015** behalten ihre aus cr-08 etablierten Nummern
-(konsistent mit der Quell-Review, die diese IDs bereits vergab).
-
----
-
-## Stale / Dokumentations-Schuld
-
-Aus cr-00 dokumentiert (keine CR-AUFG-Nummer, hier zur Vollständigkeit):
-
-1. **prompt-inventory.yaml Drift:** Inventory (2026-06-01) weicht massiv von
-   Realität ab — Phantom de/fr-Dateien, fehlende Modi, verschobene chat-Kategorie.
-   Aktion: Inventory regenerieren oder als deprecated markieren.
-
-2. **ADR-039 Lücke:** INDEX springt ADR-038 → ADR-040 (kein ADR-039 vorhanden).
-
-3. **Worldbuilding Phase 2 stale Bewertung:** Wird mit FIND-008 (JSON-Schema)
-   und P3-Aufgabe CR-AUFG-01-11 (Bewertung aktualisieren) behoben.
+**Warum die volle statische Code-Verifikation bewusst NICHT umgesetzt wurde:**
+Die angestrebte Runtime-Eigenschaft ("der gebaute Prompt-Kontext ist
+token-begrenzt") lässt sich nicht zuverlässig statisch prüfen. Ein
+Name-/Import-basierter Scanner hätte systematische **False Positives** (Dead
+Imports: Klasse importiert, aber nicht in den Prompt-Pfad verkabelt) UND
+**False Negatives** — belegt direkt an den Fixes von FIND-003
+(`AnalysisContextAssembler`) und FIND-004 (`cap_to_budget()`), die
+token-bewusst sind, ohne wörtlich `TokenBudgetManager` zu referenzieren, und die
+ein solcher Scanner fälschlich als "not adopted" fehlschlagen würde. Eine
+Prüfung, die in beide Richtungen systematisch falsch liegt, ist kein Gate,
+sondern Rauschen und ein neues False Control. Die `unverified`-Markierung ist der
+ehrlichere Endzustand. Das wirksame Enforcement für "Budget angewendet" liegt in
+den **Per-Service-Regressionstests auf Runtime-Ebene** (dort wo FIND-003/004
+ihre echte Evidenz haben), nicht in einer statischen Bezeichner-Suche.
 
 ---
 
-## Neue Befunde (während dieses Reviews entdeckt)
+## Offener Folgeschritt: Adoption-Score-Honesty (kein neues FIND)
 
-Keine weiteren Befunde in diesem Review.
+Die `unverified`-Markierung wird per `test_unverified_does_not_affect_score`
+bewusst aus der Score-Berechnung ausgeschlossen. Der `overall_score`
+(`scripts/check_adoption.py`, CI-Gate G8, Schwelle ≥ 0.85) kreditiert
+`token_budget`/`injection_defense` daher weiterhin mit `adopted=1.0` — das ist
+der verbleibende Rest-False-Control in konzentrierter Form: die Schlagzahl
+suggeriert vollständige Adoption, während ein Teil der Dimensionen als unbewiesen
+eingestanden ist.
 
-Die Kompilation hat keine neuen Befunde zutage gefördert, die in den
-Einzelpreviews nicht bereits erfasst waren. Die Cross-Feature-Perspektive
-(cr-04) hat die bestehenden Befunde bestätigt und thematisch verknüpft, aber
-keine zusätzlichen materiallen Probleme identifiziert.
-
-> Ein potentieller neuer Befund — **Voice-Checker ohne Beziehungs-Kontext**
-> (`voice_check_prompt.py:92` setzt `kb_relationships=""`) — ist bereits als
-> P3-Aufgabe CR-AUFG-03-09 in cr-03 erfasst und im Index dokumentiert. Keine
-> Hochpriorisierung erforderlich, da Voice-Check auch ohne Beziehungs-Kontext
-> funktional arbeitet (eingeschränkte, aber nicht fehlerhafte Qualität).
-
----
-
-## Empfohlene Remediations-Reihenfolge
-
-Basierend auf Priorität und Abhängigkeiten:
-
-1. **FIND-014** (P1, configuration-effect) — Architektur-Entscheidung zuerst
-   (blockiert CR-AUFG-08-14 Strukturpflicht für alle künftigen Reviews).
-2. **FIND-001 + FIND-002** (P1) — Funktional eingeschränkte Features.
-   Consistency ohne KG und Coreference ohne Charaktere sind die höchstwertigen
-   funktionalen Lücken.
-3. **FIND-005** (P2) — Preference-Injection-Gate. Wenn behoben, entfaltet
-   mem0-Preference-Learning endlich Wirkung im Writing-Pfad.
-4. **FIND-011** (P2) — style_profile in Writing-Prompts. Voraussetzung für
-   Voice-Checker-Konsistenz (reduziert false-positive Inkonsistenz-Meldungen).
-5. **FIND-007 bis FIND-010** (P2) — Prompt-Inhalts-Defizite. Schnelle Wins
-   (Template-Updates, keine Architekturänderung).
-6. **FIND-003, FIND-004, FIND-006** (P2) — Analysis/KB Adoptions-Flickenteppich.
-   Größerer Scope, Koordination mit Architecture-Specialist (Contract first).
-7. **FIND-017** (P2) — Provenance-Rendering. Contract-Erweiterung (RULE-03).
-8. **FIND-018 bis FIND-021** (P2) — UX-Lücken und Enhancements.
-9. **FIND-012, FIND-013, FIND-015, FIND-016** (P2) — Hygiene und
-   Konfigurierbarkeit.
-
-P3-Aufgaben nach opportunistischer Gelegenheit (wenn ohnehin am Code).
+Aufräumen: unverified-Items aus dem Aggregat ausgliedern → ehrliche
+"verified"-Schlagzahl plus separate known-unknown-Zählung (die bereits
+existiert). Berührt das CI-Gate und die Schwelle, daher **keine ad-hoc-Änderung**;
+wird als separater Folgeschritt über den Architecture-Specialist proper aufgezogen
+(Assessment → Dry-Run der Score-Auswirkung → begründete Schwellen-/Baseline-Entscheidung
+→ Implementierung). Kein eigenes FIND-File; dieser Eintrag ist die Traceability.
 
 ---
 
-*End of CR-05 Initial Findings. Alle Befunde gegen echten Code verifiziert
-(Datum: 2026-07-11). Siehe `findings/README.md` für den vollständigen Index.*
+## Abschluss
+
+Alle 21 materialen Befunde (P1/P2) sind resolviert; die Remediations-Arbeit zu
+CR-05 ist abgeschlossen. Die **15 P3-Aufgaben und 3 Stale-Items** aus dem
+ursprünglichen Index waren nie Teil dieses Resolution-Passes — sie bleiben in
+ihren Ursprungs-Reviews (cr-00 bis cr-04, cr-07, cr-08) eigenständig getrackt
+und fallen nicht unter diesen Record.
+
+Pointer: [`findings/README.md`](findings/README.md) (Stub, verweist hierher).
