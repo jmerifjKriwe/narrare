@@ -101,14 +101,15 @@ Status: Offen / In Bearbeitung / Gelöst
 ### Strukturmarker für CR-08-Konfigurations-/Effekt-Befunde
 
 Materielle P0/P1-Befunde, bei denen ein konfigurierter oder dokumentierter Wert
-nicht nachweisbar am Runtime-Effekt ankommt, müssen zusätzlich maschinenlesbar
-markiert werden:
+nicht nachweisbar am Runtime-Effekt ankommt, werden zusätzlich maschinenlesbar
+markiert (empfohlene Konvention für Ad-hoc-Audits; Review-Datei als SSOT):
 
 ```markdown
 - [P1] [category: configuration-effect] FIND-099 / CR-AUFG-08-99: Kurzbeschreibung
 ```
 
-Für jeden solchen Befund muss eine passende Zeile in
-`docs/architecture/governance/configuration-adoption-matrix.yaml` existieren oder
-im selben PR ergänzt werden. `scripts/check_configuration_matrix.py` blockiert
-unklassifizierte strukturierte P0/P1-Konfigurations-/Effekt-Befunde.
+Der Marker ist eine empfohlene Konvention, nicht maschinengesteuert. Es gibt keine
+Configuration Adoption Matrix und keinen Checker mehr — beide wurden mit `f8abb42c`
+bewusst entfernt (ADR-047/051/061/062 ⛔ Superseded). Befunde werden als Prosa/Aufgabe
+direkt in der Review-Datei geführt. RULE-18b wird über Per-Value-Regressionstests +
+ADR-045 (Runtime Adoption Enforcement) + Ad-hoc-Audits durchgesetzt.
