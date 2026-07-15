@@ -209,7 +209,7 @@ class TestStreamExtendLLMFailure:
     ) -> None:
         async def _failing_gen() -> Any:
             if False:
-                yield  # noqa: makes this an async generator
+                yield  # makes this an async generator
             raise RuntimeError("Model overloaded")
 
         mock_pipeline.generate = MagicMock(spec=[], return_value=_failing_gen())

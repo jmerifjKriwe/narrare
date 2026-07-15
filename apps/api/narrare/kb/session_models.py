@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Literal
-from uuid import UUID  # noqa: TC003 — needed at runtime for Pydantic model resolution
+from uuid import UUID  # needed at runtime for Pydantic model resolution
 
 from pydantic import BaseModel, Field
 
