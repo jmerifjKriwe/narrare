@@ -14,6 +14,7 @@
 import { useTranslations } from "next-intl";
 
 import type { KBTemplateField } from "@/lib/api/kb";
+import { KBFieldLabel } from "./KBFieldLabel";
 import { KBTagInput } from "./KBTagInput";
 
 interface KBTypeFieldProps {
@@ -29,6 +30,16 @@ interface KBTypeFieldProps {
   groupName?: string;
   /** Error message if any. */
   error?: string;
+}
+
+/** Shared inline error message (extracted to keep KBTypeField under RULE-04). */
+function FieldError({ id, error }: { id?: string; error?: string }) {
+  if (!error) return null;
+  return (
+    <p id={id} className="text-xs text-destructive mt-1" role="alert">
+      {error}
+    </p>
+  );
 }
 
 export function KBTypeField({ field, value, onChange, label, groupName, error }: KBTypeFieldProps) {
@@ -82,13 +93,12 @@ export function KBTypeField({ field, value, onChange, label, groupName, error }:
     case "int":
       return (
         <div>
-          <label
+          <KBFieldLabel
             htmlFor={baseId}
-            className="block text-xs font-medium text-muted-foreground mb-1.5"
-          >
-            {label}
-            {field.required && <span className="text-destructive ml-0.5">*</span>}
-          </label>
+            label={label}
+            required={field.required}
+            helpText={descriptionText}
+          />
           <input
             id={baseId}
             type="number"
@@ -99,11 +109,7 @@ export function KBTypeField({ field, value, onChange, label, groupName, error }:
             aria-invalid={!!error}
             aria-describedby={error ? `${baseId}-error` : undefined}
           />
-          {error && (
-            <p id={`${baseId}-error`} className="text-xs text-destructive mt-1" role="alert">
-              {error}
-            </p>
-          )}
+          <FieldError id={`${baseId}-error`} error={error} />
         </div>
       );
 
@@ -111,10 +117,13 @@ export function KBTypeField({ field, value, onChange, label, groupName, error }:
       return (
         <div>
           <div className="flex items-center justify-between">
-            <label htmlFor={fieldId} className="text-xs font-medium text-muted-foreground">
-              {label}
-              {field.required && <span className="text-destructive ml-0.5">*</span>}
-            </label>
+            <KBFieldLabel
+              htmlFor={fieldId}
+              label={label}
+              required={field.required}
+              helpText={descriptionText}
+              className="text-xs font-medium text-muted-foreground"
+            />
             <button
               id={fieldId}
               type="button"
@@ -137,34 +146,25 @@ export function KBTypeField({ field, value, onChange, label, groupName, error }:
               />
             </button>
           </div>
-          {descriptionText && (
-            <p className="text-xs text-muted-foreground/60 mt-1">{descriptionText}</p>
-          )}
-          {error && (
-            <p className="text-xs text-destructive mt-1" role="alert">
-              {error}
-            </p>
-          )}
+          <FieldError error={error} />
         </div>
       );
 
     case "list":
       return (
         <div>
-          <span className="block text-xs font-medium text-muted-foreground mb-1.5">
-            {label}
-            {field.required && <span className="text-destructive ml-0.5">*</span>}
-          </span>
+          <KBFieldLabel
+            as="span"
+            label={label}
+            required={field.required}
+            helpText={descriptionText}
+          />
           <KBTagInput
             value={Array.isArray(value) ? (value as string[]) : []}
             onChange={handleListChange}
             placeholder={placeholder}
           />
-          {error && (
-            <p className="text-xs text-destructive mt-1" role="alert">
-              {error}
-            </p>
-          )}
+          <FieldError error={error} />
         </div>
       );
 
@@ -172,13 +172,12 @@ export function KBTypeField({ field, value, onChange, label, groupName, error }:
     default:
       return (
         <div>
-          <label
+          <KBFieldLabel
             htmlFor={baseId}
-            className="block text-xs font-medium text-muted-foreground mb-1.5"
-          >
-            {label}
-            {field.required && <span className="text-destructive ml-0.5">*</span>}
-          </label>
+            label={label}
+            required={field.required}
+            helpText={descriptionText}
+          />
           <input
             id={baseId}
             type="text"
@@ -189,11 +188,7 @@ export function KBTypeField({ field, value, onChange, label, groupName, error }:
             aria-invalid={!!error}
             aria-describedby={error ? `${baseId}-error` : undefined}
           />
-          {error && (
-            <p id={`${baseId}-error`} className="text-xs text-destructive mt-1" role="alert">
-              {error}
-            </p>
-          )}
+          <FieldError id={`${baseId}-error`} error={error} />
         </div>
       );
   }

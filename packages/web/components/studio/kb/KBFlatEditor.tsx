@@ -11,6 +11,7 @@
 
 import { useTranslations } from "next-intl";
 import type { KBTemplate } from "@/lib/api/kb";
+import { KBMoreFields } from "./KBMoreFields";
 import { KBTypeField } from "./KBTypeField";
 
 interface KBFlatEditorProps {
@@ -43,15 +44,28 @@ export function KBFlatEditor({
       {hasFlatFields ? (
         <div className="space-y-3 p-4 border border-border/60 rounded-lg bg-card">
           <h3 className="text-sm font-semibold text-foreground">{t("kb.metadata")}</h3>
-          {template!.fields.map((field) => (
-            <KBTypeField
-              key={field.name}
-              field={field}
-              value={fieldValues[field.name]}
-              onChange={onFieldChange}
-              label={formatKey(field.name)}
-            />
-          ))}
+          {(() => {
+            const fields = template!.fields;
+            const requiredFields = fields.filter((field) => field.required);
+            const optionalFields = fields.filter((field) => !field.required);
+            const renderField = (field: (typeof fields)[number]) => (
+              <KBTypeField
+                key={field.name}
+                field={field}
+                value={fieldValues[field.name]}
+                onChange={onFieldChange}
+                label={formatKey(field.name)}
+              />
+            );
+            return (
+              <>
+                {requiredFields.map(renderField)}
+                {optionalFields.length > 0 && (
+                  <KBMoreFields>{optionalFields.map(renderField)}</KBMoreFields>
+                )}
+              </>
+            );
+          })()}
         </div>
       ) : Object.keys(entryMetadata).length > 0 ? (
         <div>

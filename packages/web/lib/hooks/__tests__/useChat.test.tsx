@@ -238,21 +238,27 @@ describe("useChat — onSuccess", () => {
 });
 
 describe("useChat — onError", () => {
-  it("stores the error message and adds no message when no partial accumulated", () => {
+  it("stores the full structured error response and adds no message when no partial accumulated", () => {
     const { result } = renderHook(() => useChat("proj-1"), { wrapper: createWrapper() });
 
+    const errResponse: AIErrorResponse = {
+      kind: "stream",
+      i18nKey: "studio.aiActions.genericError",
+      userMessage: "stream failed",
+      retryable: false,
+      cause: new Error("stream failed"),
+    };
+
     act(() => {
-      capturedOptions.onError({
-        kind: "stream",
-        i18nKey: "studio.aiActions.genericError",
-        userMessage: "stream failed",
-        retryable: false,
-        cause: new Error("stream failed"),
-      });
+      capturedOptions.onError(errResponse);
     });
 
     expect(result.current.messages).toHaveLength(0);
-    expect(result.current.error).toBe("stream failed");
+    // The full AIErrorResponse is stored (not just .userMessage) so the UI can
+    // access .retryable to render a retry button (CR-AUFG-07-25).
+    expect(result.current.error).toEqual(errResponse);
+    expect(result.current.error?.userMessage).toBe("stream failed");
+    expect(result.current.error?.retryable).toBe(false);
   });
 });
 

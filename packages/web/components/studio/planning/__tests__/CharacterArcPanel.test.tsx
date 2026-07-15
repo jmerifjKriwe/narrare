@@ -152,7 +152,10 @@ describe("CharacterArcPanel", () => {
     await waitFor(() => {
       // Error rendered in an alert region
       const alert = screen.getByRole("alert");
-      expect(alert.textContent).toContain("Server exploded");
+      // CR-AUFG-07-33: the raw backend message must NOT leak into the UI;
+      // the structured i18n connection message is shown instead (§16.5).
+      expect(alert.textContent).not.toContain("Server exploded");
+      expect(alert.textContent).toContain("Verbindung verloren");
     });
   });
 

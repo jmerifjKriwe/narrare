@@ -12,7 +12,8 @@ import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 import { server } from "@/mocks/server";
 import { setAccessToken } from "../client";
-import { consistencyApi } from "../consistency";
+import { consistencyApi, consistencyFingerprint } from "../consistency";
+import type { ConsistencyIssue } from "../worldbuilding";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -183,6 +184,151 @@ describe("consistencyApi", () => {
       const result = await consistencyApi.checkConsistency("novel-1");
       expect(result.issues).toHaveLength(0);
       expect(result.summary).toEqual({});
+    });
+  });
+
+  describe("consistencyFingerprint", () => {
+    function createIssue(overrides: Partial<ConsistencyIssue> = {}): ConsistencyIssue {
+      return {
+        finding_index: 0,
+        category: "timeline",
+        entity_ids: ["e1", "e2"],
+        entity_names: ["Anna", "Johann"],
+        description: "Timeline mismatch",
+        contradiction: "Wrong order",
+        suggested_resolution: null,
+        severity: "major",
+        confidence: 0.8,
+        ...overrides,
+      } as ConsistencyIssue;
+    }
+
+    it("produces description::sorted_entity_names fingerprint", () => {
+      const fp = consistencyFingerprint(createIssue());
+
+      // Sorted alphabetically: Anna, Johann
+      expect(fp).toBe("Timeline mismatch::Anna,Johann");
+    });
+
+    it("sorts entity_names so order is irrelevant", () => {
+      const a = consistencyFingerprint(createIssue({ entity_names: ["Johann", "Anna"] }));
+      const b = consistencyFingerprint(createIssue({ entity_names: ["Anna", "Johann"] }));
+
+      expect(a).toBe(b);
+    });
+
+    it("is stable across re-runs for identical content", () => {
+      const issue = createIssue();
+      expect(consistencyFingerprint(issue)).toBe(consistencyFingerprint({ ...issue }));
+    });
+
+    it("does not mutate the original entity_names array", () => {
+      const issue = createIssue({ entity_names: ["Johann", "Anna"] });
+      const original = [...issue.entity_names];
+
+      consistencyFingerprint(issue);
+
+      expect(issue.entity_names).toEqual(original);
+    });
+
+    it("handles a single entity", () => {
+      const fp = consistencyFingerprint(createIssue({ entity_names: ["Solo"] }));
+
+      expect(fp).toBe("Timeline mismatch::Solo");
+    });
+  });
+
+  describe("dismissFinding", () => {
+    it("POSTs fingerprint to dismiss endpoint", async () => {
+      let capturedBody: Record<string, unknown> = {};
+      let capturedUrl = "";
+
+      server.use(
+        http.post("*/api/v1/novels/novel-1/kb/consistency/dismiss", async ({ request }) => {
+          capturedUrl = new URL(request.url).pathname;
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ success: true });
+        }),
+      );
+
+      const result = await consistencyApi.dismissFinding("novel-1", {
+        fingerprint: "desc::Anna,Johann",
+        reason: "intentional",
+      });
+
+      expect(capturedUrl).toBe("/api/v1/novels/novel-1/kb/consistency/dismiss");
+      expect(capturedBody.fingerprint).toBe("desc::Anna,Johann");
+      expect(capturedBody.reason).toBe("intentional");
+      expect(result.success).toBe(true);
+    });
+
+    it("omits reason when not provided", async () => {
+      let capturedBody: Record<string, unknown> = {};
+
+      server.use(
+        http.post("*/api/v1/novels/novel-1/kb/consistency/dismiss", async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ success: true });
+        }),
+      );
+
+      await consistencyApi.dismissFinding("novel-1", { fingerprint: "fp" });
+
+      expect(capturedBody.fingerprint).toBe("fp");
+      expect(capturedBody).not.toHaveProperty("reason");
+    });
+  });
+
+  describe("listDismissed", () => {
+    it("GETs dismissed fingerprints list", async () => {
+      server.use(
+        http.get("*/api/v1/novels/novel-1/kb/consistency/dismissed", async () =>
+          HttpResponse.json({ fingerprints: ["fp1::a,b", "fp2::c"] }),
+        ),
+      );
+
+      const result = await consistencyApi.listDismissed("novel-1");
+
+      expect(result.fingerprints).toEqual(["fp1::a,b", "fp2::c"]);
+    });
+
+    it("returns empty list when none dismissed", async () => {
+      server.use(
+        http.get("*/api/v1/novels/novel-1/kb/consistency/dismissed", async () =>
+          HttpResponse.json({ fingerprints: [] }),
+        ),
+      );
+
+      const result = await consistencyApi.listDismissed("novel-1");
+
+      expect(result.fingerprints).toEqual([]);
+    });
+  });
+
+  describe("undismissFinding", () => {
+    it("DELETEs the URL-encoded fingerprint", async () => {
+      let capturedUrl = "";
+      let capturedMethod = "";
+
+      server.use(
+        http.delete(
+          "*/api/v1/novels/novel-1/kb/consistency/dismissed/:fingerprint",
+          ({ request, params }) => {
+            capturedUrl = new URL(request.url).pathname;
+            capturedMethod = request.method;
+            return HttpResponse.json({ success: true });
+          },
+        ),
+      );
+
+      const fingerprint = "desc::Anna,Johann";
+
+      const result = await consistencyApi.undismissFinding("novel-1", fingerprint);
+
+      expect(capturedMethod).toBe("DELETE");
+      // Fingerprint must be URL-encoded in the path
+      expect(capturedUrl).toContain(encodeURIComponent(fingerprint));
+      expect(result.success).toBe(true);
     });
   });
 });

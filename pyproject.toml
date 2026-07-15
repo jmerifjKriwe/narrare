@@ -160,6 +160,7 @@ ignore = [
 "**/*router*.py" = ["B008", "TC001"]  # FastAPI Depends() pattern; CurrentUserIdDep needed at runtime
 # SQLAlchemy needs datetime at runtime, not just type-checking
 "**/models.py" = ["TC003"]
+"**/*_models.py" = ["TC003"]
 "packages/core/narrare_core/llm/retry.py" = ["S311"]  # PRNG for jitter is OK
 
 [tool.ruff.lint.isort]

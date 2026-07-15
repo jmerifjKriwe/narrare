@@ -115,6 +115,7 @@ describe("PromptEditor", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
   beforeEach(() => {
@@ -136,6 +137,11 @@ describe("PromptEditor", () => {
       isPending: false,
     } as unknown as UseMutationResult);
     mockPromptPreview.mockResolvedValue(previewPayload);
+    // CR-AUFG-07-36: the editor defaults to "simple" mode. Most legacy tests
+    // assume the full feature surface (variables, history, live-test, reset),
+    // so default to "expert" here. Mode-specific behaviour is covered in the
+    // dedicated "mode toggle" describe block below.
+    localStorage.setItem("narrare.prompt-editor.mode", "expert");
   });
 
   it("renders prompt ID as title", () => {
@@ -311,5 +317,126 @@ describe("PromptEditor", () => {
     fireEvent.click(screen.getByText("settings.prompts.resetToDefault"));
     // Reset confirm dialog title appears once open
     expect(screen.getAllByText("settings.prompts.resetToDefault").length).toBeGreaterThan(0);
+  });
+
+  // CR-AUFG-07-30: capability-basis transparency hint must always be visible
+  // (not dismissible) so users understand guaranteed rules cannot be overridden.
+  it("renders the capability-basis hint title and body in view mode", () => {
+    render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
+    expect(screen.getByText("settings.prompts.capabilityHintTitle")).toBeDefined();
+    expect(screen.getByText("settings.prompts.capabilityHintBody")).toBeDefined();
+  });
+
+  it("keeps the capability-basis hint visible in edit mode", () => {
+    render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
+    fireEvent.click(screen.getByText("settings.prompts.editOverride"));
+    // Hint remains rendered after switching to edit mode
+    expect(screen.getByText("settings.prompts.capabilityHintTitle")).toBeDefined();
+    expect(screen.getByText("settings.prompts.capabilityHintBody")).toBeDefined();
+  });
+
+  // CR-AUFG-07-36: simple/expert mode toggle. "Einfach" hides advanced
+  // features (variables aside, history panel, live-test, reset); "Experte"
+  // shows the full power-user surface. The capability hint (CR-AUFG-07-30)
+  // stays visible in both modes.
+  describe("mode toggle", () => {
+    beforeEach(() => {
+      // Start from the "simple" default for these tests.
+      localStorage.setItem("narrare.prompt-editor.mode", "simple");
+    });
+
+    it("renders the Einfach/Experte toggle buttons", () => {
+      render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
+      expect(screen.getByRole("button", { name: "settings.prompts.modeSimple" })).toBeDefined();
+      expect(screen.getByRole("button", { name: "settings.prompts.modeExpert" })).toBeDefined();
+    });
+
+    it("marks the active segment with aria-pressed", () => {
+      render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
+      expect(
+        screen
+          .getByRole("button", { name: "settings.prompts.modeSimple" })
+          .getAttribute("aria-pressed"),
+      ).toBe("true");
+      expect(
+        screen
+          .getByRole("button", { name: "settings.prompts.modeExpert" })
+          .getAttribute("aria-pressed"),
+      ).toBe("false");
+    });
+
+    it("hides variables aside, history panel, live-test and reset in simple mode", () => {
+      render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
+      // Variables aside hidden
+      expect(screen.queryByText("settings.prompts.variables")).toBeNull();
+      expect(screen.queryByText("{{topic}}")).toBeNull();
+      // History panel hidden
+      expect(screen.queryByText("settings.prompts.promptHistory.title")).toBeNull();
+      // Live-test + reset buttons hidden (edit + preview remain)
+      expect(
+        screen.queryByRole("button", { name: "settings.prompts.promptCustomization.test" }),
+      ).toBeNull();
+      expect(screen.queryByRole("button", { name: "settings.prompts.resetToDefault" })).toBeNull();
+    });
+
+    it("keeps edit, preview, the simple-mode hint and capability hint visible in simple mode", () => {
+      render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
+      expect(
+        screen.getByRole("button", { name: "settings.prompts.promptCustomization.preview" }),
+      ).toBeDefined();
+      expect(screen.getByText("settings.prompts.editOverride")).toBeDefined();
+      // CR-AUFG-07-30 capability hint stays visible in both modes
+      expect(screen.getByText("settings.prompts.capabilityHintTitle")).toBeDefined();
+      expect(screen.getByText("settings.prompts.capabilityHintBody")).toBeDefined();
+      // simple-mode helper hint
+      expect(screen.getByText("settings.prompts.modeSimpleHint")).toBeDefined();
+    });
+
+    it("shows variables aside, history panel, live-test and reset in expert mode", () => {
+      localStorage.setItem("narrare.prompt-editor.mode", "expert");
+      render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
+      expect(screen.getByText("settings.prompts.variables")).toBeDefined();
+      expect(screen.getByText("{{topic}}")).toBeDefined();
+      expect(screen.getByText("settings.prompts.promptHistory.title")).toBeDefined();
+      expect(
+        screen.getByRole("button", { name: "settings.prompts.promptCustomization.test" }),
+      ).toBeDefined();
+      expect(screen.getByRole("button", { name: "settings.prompts.resetToDefault" })).toBeDefined();
+      // expert mode hides the simple-mode hint
+      expect(screen.queryByText("settings.prompts.modeSimpleHint")).toBeNull();
+    });
+
+    it("reveals advanced features when switching from simple to expert", async () => {
+      render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
+      // Initially hidden (simple)
+      expect(screen.queryByText("settings.prompts.variables")).toBeNull();
+      // Switch to expert
+      fireEvent.click(screen.getByRole("button", { name: "settings.prompts.modeExpert" }));
+      // Advanced features now visible
+      expect(await screen.findByText("settings.prompts.variables")).toBeDefined();
+      expect(screen.getByText("{{topic}}")).toBeDefined();
+      expect(screen.getByText("settings.prompts.promptHistory.title")).toBeDefined();
+      expect(
+        screen.getByRole("button", { name: "settings.prompts.promptCustomization.test" }),
+      ).toBeDefined();
+    });
+
+    it("hides advanced features when switching back from expert to simple", async () => {
+      localStorage.setItem("narrare.prompt-editor.mode", "expert");
+      render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
+      expect(screen.getByText("settings.prompts.variables")).toBeDefined();
+      // Switch to simple
+      fireEvent.click(screen.getByRole("button", { name: "settings.prompts.modeSimple" }));
+      // Advanced features now hidden
+      expect(await screen.findByText("settings.prompts.modeSimpleHint")).toBeDefined();
+      expect(screen.queryByText("settings.prompts.variables")).toBeNull();
+      expect(screen.queryByText("settings.prompts.promptHistory.title")).toBeNull();
+    });
+
+    it("persists the chosen mode to localStorage", () => {
+      render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
+      fireEvent.click(screen.getByRole("button", { name: "settings.prompts.modeExpert" }));
+      expect(localStorage.getItem("narrare.prompt-editor.mode")).toBe("expert");
+    });
   });
 });

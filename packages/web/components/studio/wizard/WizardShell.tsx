@@ -109,7 +109,15 @@ export function WizardShell() {
     <div className="h-full overflow-y-auto bg-background flex items-start justify-center p-8 px-4">
       <div className="w-full max-w-2xl pt-8">
         {/* Quick Start link */}
-        <div className="flex justify-end px-4">
+        <div className="flex justify-end items-center gap-4 px-4">
+          <button
+            type="button"
+            onClick={() => useWizardStore.getState().setStep(2)}
+            data-testid="wizard-demo-start"
+            className="text-sm text-primary hover:underline"
+          >
+            {t("wizard.demoQuickStart")} →
+          </button>
           <button
             type="button"
             onClick={() => handleQuickStart(t("quickStart.defaultProjectName"))}

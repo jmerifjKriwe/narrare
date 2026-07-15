@@ -117,3 +117,114 @@ class KBConsistencyProtocol(Protocol):
             Complete consistency report with all requested issue types.
         """
         ...
+
+
+# ---------------------------------------------------------------------------
+# Dismissed Findings (CR-AUFG-07-26)
+# ---------------------------------------------------------------------------
+
+
+class DismissFindingRequest(BaseModel):
+    """Request to dismiss (ignore) a consistency finding.
+
+    The fingerprint is a stable key that survives re-runs — it matches the
+    frontend ``issueKey()`` function: ``description::entity_names.join(",")``.
+    Using ``finding_index`` would be unstable because indices shift between
+    runs when findings are added or removed.
+
+    Attributes:
+        fingerprint: Stable finding identifier (description::entities).
+        reason: Optional user-provided reason for dismissing the finding.
+    """
+
+    fingerprint: str
+    reason: str | None = None
+
+
+class DismissedFindingsResponse(BaseModel):
+    """Response listing dismissed consistency finding fingerprints.
+
+    Attributes:
+        fingerprints: Stable fingerprints of all dismissed findings for a novel.
+    """
+
+    fingerprints: list[str]
+
+
+@runtime_checkable
+class DismissedFindingRepositoryProtocol(Protocol):
+    """Protocol for dismissed-finding persistence operations.
+
+    Defined as a Protocol (not the concrete class) so the service can be
+    unit-tested with an in-memory fake without ``cast``.
+    """
+
+    async def dismiss(
+        self,
+        novel_id: UUID,
+        fingerprint: str,
+        reason: str | None = None,
+    ) -> None: ...
+
+    async def list_dismissed(self, novel_id: UUID) -> list[str]: ...
+
+    async def undismiss(self, novel_id: UUID, fingerprint: str) -> bool: ...
+
+
+@runtime_checkable
+class DismissedFindingProtocol(Protocol):
+    """Protocol for dismissing consistency findings.
+
+    Persisted per-novel so that findings a user has consciously reviewed and
+    accepted can be hidden from future consistency checks.  The frontend
+    fetches the dismissed fingerprint list and filters issues client-side.
+    """
+
+    async def dismiss_finding(
+        self,
+        *,
+        novel_id: UUID,
+        request: DismissFindingRequest,
+    ) -> DismissedFindingsResponse:
+        """Dismiss a finding by its stable fingerprint (idempotent upsert).
+
+        Args:
+            novel_id: The project the finding belongs to.
+            request: The finding fingerprint and optional reason.
+
+        Returns:
+            Updated list of all dismissed fingerprints for the novel.
+        """
+        ...
+
+    async def list_dismissed(
+        self,
+        *,
+        novel_id: UUID,
+    ) -> DismissedFindingsResponse:
+        """List all dismissed finding fingerprints for a novel.
+
+        Args:
+            novel_id: The project to list dismissed findings for.
+
+        Returns:
+            All currently-dismissed fingerprints for the novel.
+        """
+        ...
+
+    async def undismiss_finding(
+        self,
+        *,
+        novel_id: UUID,
+        fingerprint: str,
+    ) -> DismissedFindingsResponse:
+        """Re-enable a previously dismissed finding.
+
+        Args:
+            novel_id: The project the finding belongs to.
+            fingerprint: The stable fingerprint to un-dismiss.
+
+        Returns:
+            Updated list of all dismissed fingerprints for the novel.
+        """
+        ...

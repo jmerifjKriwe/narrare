@@ -5,11 +5,18 @@ import { useState } from "react";
 import { requestFeatureTour } from "@/components/ui/feature-tour";
 import { setupApi } from "@/lib/api/client";
 import { useWizardStore } from "@/lib/stores/wizardStore";
-import type { WizardState } from "@/types";
+import type { StarterContent, WizardState } from "@/types";
 
 interface UseQuickStartReturn {
   isQuickStarting: boolean;
-  handleQuickStart: (projectName: string) => Promise<void>;
+  /**
+   * Creates a project immediately and redirects to the editor.
+   * @param projectName  Display name for the new project.
+   * @param starter      Optional starter content (e.g. a demo project).
+   *                     Defaults to `"blank"` when omitted, preserving the
+   *                     original Quick-Start behaviour.
+   */
+  handleQuickStart: (projectName: string, starter?: StarterContent) => Promise<void>;
 }
 
 /**
@@ -21,7 +28,7 @@ export function useQuickStart(): UseQuickStartReturn {
   const reset = useWizardStore((s) => s.reset);
   const [isQuickStarting, setIsQuickStarting] = useState(false);
 
-  const handleQuickStart = async (projectName: string) => {
+  const handleQuickStart = async (projectName: string, starter?: StarterContent) => {
     setIsQuickStarting(true);
     try {
       const state: WizardState = {
@@ -34,7 +41,7 @@ export function useQuickStart(): UseQuickStartReturn {
         logline: "",
         story_structure: "three_act",
         tone: "dramatic",
-        starter: "blank",
+        starter: starter ?? "blank",
         import_path: null,
         provider: "anthropic",
         api_key: "",

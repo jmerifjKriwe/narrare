@@ -35,8 +35,16 @@ interface ChatPanelProps {
 
 export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
   const t = useTranslations("studio");
-  const { messages, isStreaming, error, sendMessage, clearConversation, cancelStream, chatEndRef } =
-    useChat(projectId);
+  const {
+    messages,
+    isStreaming,
+    error,
+    retry,
+    sendMessage,
+    clearConversation,
+    cancelStream,
+    chatEndRef,
+  } = useChat(projectId);
 
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -133,7 +141,23 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
           </div>
         )}
 
-        {error && <StatusMessage state="error" message={t("chatPanel.errorConnecting")} />}
+        {error && (
+          <StatusMessage
+            state="error"
+            message={error.userMessage}
+            action={
+              error.retryable ? (
+                <button
+                  type="button"
+                  onClick={() => retry()}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {t("aiActions.retry")}
+                </button>
+              ) : undefined
+            }
+          />
+        )}
 
         <div ref={chatEndRef} />
       </div>

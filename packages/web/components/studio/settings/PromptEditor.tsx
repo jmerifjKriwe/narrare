@@ -20,15 +20,18 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { PromptCapabilityHint } from "./PromptCapabilityHint";
 import { PromptDiff } from "./PromptDiff";
 import { PromptEditorEditMode } from "./PromptEditorEditMode";
 import { PromptEditorHeader } from "./PromptEditorHeader";
+import { PromptEditorModeToggle } from "./PromptEditorModeToggle";
 import { PromptEditorViewMode } from "./PromptEditorViewMode";
 import { PromptLiveTestDialog } from "./PromptLiveTestDialog";
 import { PromptPreviewDialog } from "./PromptPreviewDialog";
 import { PromptResetConfirmDialog } from "./PromptResetConfirmDialog";
 import { PromptVariablesAside } from "./PromptVariablesAside";
 import { PromptHistoryPanel } from "./prompt-history/PromptHistoryPanel";
+import { usePromptEditorMode } from "./usePromptEditorMode";
 import { usePromptEditorState } from "./usePromptEditorState";
 
 interface PromptEditorProps {
@@ -41,6 +44,9 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
   const t = useTranslations("studio");
   const queryClient = useQueryClient();
   const s = usePromptEditorState(promptId);
+  // CR-AUFG-07-36: simple/expert mode toggle. "Einfach" hides advanced
+  // features (variables, history, live-test, reset) for non-developers.
+  const { mode, isExpert, setMode } = usePromptEditorMode();
 
   // --- Diff view (full-screen replacement) ---
   if (s.showDiff) {
@@ -100,6 +106,14 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
         onShowDiff={s.openDiff}
       />
 
+      {/* CR-AUFG-07-36: simple/expert toggle. "Einfach" hides advanced features
+          for non-developers; the capability hint below stays in both modes. */}
+      <PromptEditorModeToggle mode={mode} onChange={setMode} />
+
+      {/* CR-AUFG-07-30: capability-basis transparency hint (guaranteed rules
+          that cannot be overridden). Visible in both editor modes. */}
+      <PromptCapabilityHint />
+
       <div className="bg-card border border-border rounded-lg p-6">
         <div className="flex gap-6">
           <div className="flex-1 space-y-4">
@@ -116,6 +130,7 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
                 content={s.prompt.content}
                 isOverridden={s.prompt.is_overridden}
                 variables={s.prompt.variables}
+                simpleMode={!isExpert}
                 onStartEdit={s.handleStartEdit}
                 onOpenPreview={() => s.setShowPreviewDialog(true)}
                 onOpenLiveTest={() => s.setShowLiveTestDialog(true)}
@@ -125,19 +140,24 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
             )}
           </div>
 
-          {s.prompt.variables.length > 0 && <PromptVariablesAside variables={s.prompt.variables} />}
+          {isExpert && s.prompt.variables.length > 0 && (
+            <PromptVariablesAside variables={s.prompt.variables} />
+          )}
         </div>
       </div>
 
       {/* CR-AUFG-07-19: revision history (collapsible). onRestored invalidates
-          the prompt-detail query so the editor reflects restored content. */}
-      <PromptHistoryPanel
-        promptId={promptId}
-        onRestored={() => {
-          void queryClient.invalidateQueries({ queryKey: ["prompt", promptId] });
-          void queryClient.invalidateQueries({ queryKey: ["prompts"] });
-        }}
-      />
+          the prompt-detail query so the editor reflects restored content.
+          CR-AUFG-07-36: hidden in simple mode. */}
+      {isExpert && (
+        <PromptHistoryPanel
+          promptId={promptId}
+          onRestored={() => {
+            void queryClient.invalidateQueries({ queryKey: ["prompt", promptId] });
+            void queryClient.invalidateQueries({ queryKey: ["prompts"] });
+          }}
+        />
+      )}
 
       {/* PROMPT-003 dialogs */}
       <PromptPreviewDialog

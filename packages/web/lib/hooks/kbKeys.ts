@@ -19,4 +19,5 @@ export const kbKeys = {
     [...kbKeys.all(novelId), "references", text] as const,
   autocomplete: (novelId: string, query: string) =>
     [...kbKeys.all(novelId), "autocomplete", query] as const,
+  dismissedFindings: (novelId: string) => [...kbKeys.all(novelId), "dismissed"] as const,
 };

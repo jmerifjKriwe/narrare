@@ -15,6 +15,9 @@ interface PromptEditorViewModeProps {
   readonly content: string;
   readonly isOverridden: boolean;
   readonly variables: readonly string[];
+  /** CR-AUFG-07-36: when true (simple mode) the live-test and reset actions
+   *  are hidden — only edit + preview remain. */
+  readonly simpleMode: boolean;
   readonly onStartEdit: () => void;
   readonly onOpenPreview: () => void;
   readonly onOpenLiveTest: () => void;
@@ -26,6 +29,7 @@ interface PromptEditorViewModeProps {
 export function PromptEditorViewMode({
   content,
   isOverridden,
+  simpleMode,
   onStartEdit,
   onOpenPreview,
   onOpenLiveTest,
@@ -55,21 +59,25 @@ export function PromptEditorViewMode({
         >
           {t("settings.prompts.promptCustomization.preview")}
         </button>
-        <button
-          type="button"
-          onClick={onOpenLiveTest}
-          className="px-4 py-2 bg-muted rounded-md hover:bg-accent transition-colors text-sm"
-        >
-          {t("settings.prompts.promptCustomization.test")}
-        </button>
-        <button
-          type="button"
-          onClick={onOpenReset}
-          disabled={isResetPending || !isOverridden}
-          className="px-4 py-2 bg-muted rounded-md hover:bg-accent transition-colors text-sm disabled:opacity-50"
-        >
-          {isResetPending ? t("settings.ai.loading") : t("settings.prompts.resetToDefault")}
-        </button>
+        {!simpleMode && (
+          <>
+            <button
+              type="button"
+              onClick={onOpenLiveTest}
+              className="px-4 py-2 bg-muted rounded-md hover:bg-accent transition-colors text-sm"
+            >
+              {t("settings.prompts.promptCustomization.test")}
+            </button>
+            <button
+              type="button"
+              onClick={onOpenReset}
+              disabled={isResetPending || !isOverridden}
+              className="px-4 py-2 bg-muted rounded-md hover:bg-accent transition-colors text-sm disabled:opacity-50"
+            >
+              {isResetPending ? t("settings.ai.loading") : t("settings.prompts.resetToDefault")}
+            </button>
+          </>
+        )}
         <button
           type="button"
           onClick={onStartEdit}

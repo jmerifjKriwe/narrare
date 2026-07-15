@@ -27,6 +27,31 @@ export interface ConsistencyCheckResponse {
   checked_at: string;
 }
 
+// --- Dismissed findings (CR-AUFG-07-26) ---
+
+export interface DismissFindingRequest {
+  fingerprint: string;
+  reason?: string;
+}
+
+export interface DismissedFindingsResponse {
+  fingerprints: string[];
+}
+
+/**
+ * Stable fingerprint for a consistency finding (CR-AUFG-07-26).
+ *
+ * Matches the backend contract ``description::entity_names.join(",")``.
+ * Entity names are sorted so the key is order-independent — the LLM may emit
+ * entities in a different order across re-runs, but the same finding must
+ * map to the same dismissed fingerprint.
+ *
+ * Does not mutate the source ``entity_names`` array.
+ */
+export function consistencyFingerprint(issue: ConsistencyIssue): string {
+  return `${issue.description}::${[...issue.entity_names].sort().join(",")}`;
+}
+
 // --- API functions ---
 
 export const consistencyApi = {
@@ -42,4 +67,37 @@ export const consistencyApi = {
       body: JSON.stringify(request ?? {}),
       signal,
     }),
+
+  /**
+   * Dismiss (ignore) a consistency finding so it is hidden on future checks.
+   *
+   * POST /novels/{novelId}/kb/consistency/dismiss
+   */
+  dismissFinding: (novelId: string, request: DismissFindingRequest) =>
+    fetchApi<{ success: boolean }>(`/novels/${novelId}/kb/consistency/dismiss`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+
+  /**
+   * List all dismissed finding fingerprints for a novel.
+   *
+   * GET /novels/{novelId}/kb/consistency/dismissed
+   */
+  listDismissed: (novelId: string) =>
+    fetchApi<DismissedFindingsResponse>(`/novels/${novelId}/kb/consistency/dismissed`),
+
+  /**
+   * Un-dismiss a previously dismissed finding.
+   *
+   * DELETE /novels/{novelId}/kb/consistency/dismissed/{fingerprint}
+   * The fingerprint is URL-encoded because it contains "::" and ",".
+   */
+  undismissFinding: (novelId: string, fingerprint: string) =>
+    fetchApi<{ success: boolean }>(
+      `/novels/${novelId}/kb/consistency/dismissed/${encodeURIComponent(fingerprint)}`,
+      {
+        method: "DELETE",
+      },
+    ),
 };

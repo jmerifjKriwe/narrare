@@ -95,6 +95,17 @@ vi.mock("@/components/ui/connection-lost-banner", () => ({
   ),
 }));
 
+// useDismissedFindings is consumed by ConsistencyResults (CR-AUFG-07-26).
+// Mock it so the test doesn't need a QueryClientProvider.
+vi.mock("@/lib/hooks/useDismissedFindings", () => ({
+  useDismissedFindings: () => ({
+    dismissedFingerprints: new Set<string>(),
+    dismiss: vi.fn(),
+    undismiss: vi.fn(),
+    isLoading: false,
+  }),
+}));
+
 import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 
 const mockedUseAIOperation = vi.mocked(useAIOperation);
