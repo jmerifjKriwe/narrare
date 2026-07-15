@@ -23,13 +23,16 @@
 > Streaming und Provider-Konfiguration. Nutze `Grep` nur gezielt als Fallback für
 > reine Literal-Suchen, wenn der Graph die Kandidaten nicht vollständig erfasst.
 >
-> **CR-AUFG-08-14 Strukturpflicht:** Jeder materielle P0/P1-Befund zur Kategorie
-> Konfiguration↔Runtime-Effekt MUSS maschinenlesbar markiert werden:
-> `[P0|P1] [category: configuration-effect] FIND-... / CR-AUFG-...`.
-> Für jeden solchen Wert muss im selben Review/PR eine Klassifikation in
-> `docs/architecture/governance/configuration-adoption-matrix.yaml` existieren
-> oder ergänzt werden. Unklassifizierte strukturierte P0/P1-Befunde blockieren
-> `scripts/check_configuration_matrix.py`.
+> **CR-AUFG-08-14 Strukturmarkierung (empfohlen):** Materielle P0/P1-Befunde zur
+> Kategorie Konfiguration↔Runtime-Effekt werden mit dem Strukturmarker
+> `[P0|P1] [category: configuration-effect] FIND-... / CR-AUFG-...` versehen
+> (empfohlene Konvention für Ad-hoc-Audits; Review-Datei als Lifecycle-SSOT).
+> Es gibt keine Configuration Adoption Matrix mehr und keinen Checker, der
+> unklassifizierte Befunde blockiert — beide wurden mit `f8abb42c` bewusst
+> entfernt (ADR-047/051/061/062 ⛔ Superseded). Der Strukturmarker bleibt eine
+> nützliche Konvention; materielle Befunde werden als Prosa/Aufgabe direkt in der
+> Review-Datei geführt. RULE-18b wird über Per-Value-Regressionstests + ADR-045
+> (Runtime Adoption Enforcement) + Ad-hoc-Audits durchgesetzt.
 
 ---
 
@@ -111,7 +114,8 @@ komplexe Aufgaben = schlechtere Qualität)
 > existiert. Trage die FIND-Nummer in die letzte Spalte ein oder erstelle die Datei.
 > Wenn der Wert P0/P1 und `configuration-effect` ist, nutze zusätzlich exakt den
 > Strukturmarker `[P0|P1] [category: configuration-effect] FIND-... / CR-AUFG-...`
-> und klassifiziere den Wert in der Configuration Adoption Matrix.
+> und beschreibe Root-Cause und Runtime-Consumer direkt in der Review-Datei
+> (es gibt keine externe Matrix mehr, in die klassifiziert wird).
 
 | Konstante/Wert | Datei:Zeile | Beschreibung | Änderungsrisiko | Konfigurierbar machen? | FIND |
 |---|---|---|---|---|---|
@@ -181,19 +185,23 @@ anpassbar sein. Empfohlene Schichten:
 <!-- Nummerierung: CR-AUFG-08-01, CR-AUFG-08-02, … -->
 
 Für materielle Konfigurations-/Effekt-Aufgaben mit P0/P1-Priorität gilt das
-maschinenlesbare Format:
+empfohlene Format (Konvention für Ad-hoc-Audits; Review-Datei als SSOT):
 
 ```markdown
 - [P1] [category: configuration-effect] FIND-099 / CR-AUFG-08-99: Kurzer Titel —
-  warum der konfigurierte Wert am Runtime-Effekt vorbeiläuft oder unklassifiziert ist.
+  warum der konfigurierte Wert am Runtime-Effekt vorbeiläuft.
 ```
 
-Pflichtfelder:
+Empfohlene Felder:
 - Priorität: `[P0]` oder `[P1]`
 - Kategorie: `[category: configuration-effect]`
 - Stabiler Lifecycle-Verweis: `FIND-...` oder `CR-AUFG-...`
-- Matrix-Klassifikation: `setting_id`, `classification`, `lifecycle`,
-  `runtime_consumer`/`enforcement_evidence` oder expliziter `formal_finding`-Status
-  in `docs/architecture/governance/configuration-adoption-matrix.yaml`
+- Root-Cause: warum der konfigurierte/dokumentierte Wert nicht nachweisbar am
+  Runtime-Effekt ankommt
+- Runtime-Consumer: welche Aufrufstelle den Wert tatsächlich verwendet (oder nicht)
+
+Es gibt keine externe Configuration Adoption Matrix mehr, in die klassifiziert
+wird (mit `f8abb42c` entfernt; ADR-047/051/061/062 ⛔ Superseded). Root-Cause und
+Runtime-Consumer werden direkt im Befund in der Review-Datei beschrieben.
 
 _[FILL]_

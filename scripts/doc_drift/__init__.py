@@ -12,6 +12,7 @@ Check families:
     - SSOT/RULE-16 locale-path parity
     - Just-recipe doc-drift (phantom `just <recipe>` references)
     - Agent-name doc-drift (fake subagent_type references)
+    - Removed-governance-artifact references (WARNING-ONLY ratcheted baseline)
 """
 
 from __future__ import annotations

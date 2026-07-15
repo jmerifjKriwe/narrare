@@ -51,12 +51,15 @@ coattails of a real setting to inherit an `adopted` claim they do not earn.
 
 - **Symptom:** two settings look implemented (UI → DB → resolver) but never affect runtime.
 - **Why #1 — why did the false control survive?** The matrix checker
-  (`scripts/governance/configuration_matrix.py::validate_matrix`, Rules 6/7/8) validates
+  (`scripts/governance/configuration_matrix.py::validate_matrix`, Rules 6/7/8) validated
   that `runtime_consumer` and `enforcement_evidence` are **non-empty strings**, not that
   they are **true**. An entry may cite `runtime_consumer: "WritingSessionHandler"` and
   `enforcement_evidence: "test_ws_handler.py"` and PASS even though those tests exercise
   the idle timeout, not retry. **RC1 — checker-blindness:** the gate trusts field
-  presence, not field truth.
+  presence, not field truth. *(Historical — the configuration-adoption-matrix.yaml and
+  `scripts/governance/` checker referenced throughout this root-cause analysis were
+  subsequently removed in `f8abb42c`; the analysis of how the false control survived
+  remains valid history.)*
 - **Why #2 — why could one entry cover three settings?** The matrix has no
   one-setting-per-row rule. `websocket_idle_retry_cascade` aggregates three settings, so
   one real runtime consumer + one evidence path satisfies the whole row. **RC2 —
@@ -285,6 +288,9 @@ local-first single-user product.
   `types/settings.ts`, and their tests; keep the `ws_timeout` control.
 - **Platform:** update `configuration-adoption-matrix.yaml` per the P2 split above; this
   ADR's split is the concrete instance that ADR-061 generalizes into a prohibition.
+  *(Historical — `configuration-adoption-matrix.yaml` was subsequently removed in
+  `f8abb42c`; ADR-061 is ⛔ Superseded. This step is retained as the record of what was
+  done at implementation time.)*
 - **Cleanup:** remove `with_retry` / `RetryConfig` / presets from `retry.py` (or repurpose
   the file) once the provider-layer test is the sole consumer of any preserved helper.
 
@@ -318,7 +324,11 @@ Gate-12 completeness checks are satisfied:
 - **Matrix split (P2 mandate):** `configuration-adoption-matrix.yaml` entry
   `websocket_idle_retry_cascade` decomposed into `ws_idle_timeout` (adopted) and
   `llm_transport_retry` (adopted, operator governed default). `check-configuration-matrix`
-  PASSES.
+  PASSED.
+  *(Historical — the matrix file and `check-configuration-matrix` were removed in
+  `f8abb42c`. The split itself and the underlying per-setting effect test
+  (`test_transport_retry.py`) remain the real, surviving enforcement for transport retry;
+  the matrix row no longer exists.)*
 - **Registry:** AUFG-01-01 → `resolved` (exit evidence below).
 - Prevention for the class of defect is ADR-061 (effect-integrity hardening,
   ✅ Implemented).

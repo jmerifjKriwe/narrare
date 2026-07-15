@@ -390,6 +390,17 @@ Beide sind behebbar ohne die starke Werte-Ebene anzutasten.
   diesen Wert: nicht möglich (Matrix existiert nicht) — formelle FIND-014-Entscheidung
   (Option A: stale-Referenzen bereinigen; Option B: Toolchain wiederherstellen) ist
   Voraussetzung für künftige Matrix-Klassifikationen.** Owner: Architecture + Platform.
+  **Entscheidung 2026-07-15:** Option A — Matrix-Enforcement bewusst entfernt
+  (f8abb42c), RULE-18b als Prinzip beibehalten, Enforcement jetzt via Regressionstests
+  + ADR-045 + ad-hoc Audits (Review-File als SSOT). Cleanup-Scope erweitert auf
+  vollständigen Stale-Reference-Satz (ADR-051/060/061/064, INDEX, p3-Manifest,
+  Remediation-Spec, Templates, CONSTRAINTS RULE-18b).
+  **Status 2026-07-15:** ✅ Resolved — Option A umgesetzt: CONSTRAINTS.md RULE-18b
+  ("Enforcement boundary") auf Realität umgeschrieben, alle Stale-Referenzen
+  bereinigt, CR-AUFG-08-14-Strukturpflicht aus Templates entfernt; Enforcement via
+  WARNING-Checker `scripts/doc_drift/removed_governance_refs_checks.py` (in
+  `check_doc_drift.py` eingebunden, geratcheter clean Baseline — 0 Findings, Exit 0).
+  Siehe FIND-014 (Resolution evidence).
 
 - [P2] FIND-015 / CR-AUFG-08-16: **Rate-Limiter hart codiert, nicht operator-konfigurierbar** —
   `AI_WRITE_LIMITER = Rate(3, 1min)`, `AI_ANALYSIS_LIMITER = Rate(5, 1min)`,
@@ -403,8 +414,53 @@ Beide sind behebbar ohne die starke Werte-Ebene anzutasten.
   > Hinweis: Kein `configuration-effect`-Marker, da die Rate-Limiter nie als
   > konfigurierbar dokumentiert waren (keine False-Control-Lüge). Reiner
   > Konfigurierbarkeits-FIND.
+  **Status 2026-07-15:** ✅ Resolved — Alle 6 Modul-Level-Limiter (Scope erweitert:
+  + `SETUP_MODELS_LIMITER`) in `apps/api/narrare/_app/rate_limits.py` lösen ihre
+  Request-Anzahl über `NARRARE_RATE_LIMIT_*`-Env-Vars mit governed Defaults
+  (3/5/10/10/5/3, backwards-kompatibel) auf; Enforcement via
+  `tests/unit/api/_app/test_rate_limits.py` (9.226 Unit-Tests / 9.894 Gesamt-Suite
+  grün, 0 failed). Siehe FIND-015 (Resolution evidence).
 
 ---
 
 *End of CR-08 Content Review. Alle Einträge gegen echten Code verifiziert
 (Datum: 2026-07-11, Commit-Stand: HEAD).*
+
+---
+
+## Abschluss-Status
+
+Beide neu identifizierten Befunde dieses Content-Reviews sind **✅ Resolved
+(2026-07-15)** mit Implementation + Enforcement-Evidenz (per
+`docs/development/finding-lifecycle.md` §5 — nicht nur dokumentiert). Damit sind
+alle in dieser CR-08-Runde neu erhobenen Befunde geschlossen.
+
+- **CR-AUFG-08-15 / FIND-014 — RULE-18b-Enforcement-Toolchain entfernt:** Option A.
+  `CONSTRAINTS.md` RULE-18b ("Enforcement boundary") auf Realität umgeschrieben;
+  Stale-Referenzen auf gelöschte Governance-Artefakte bereinigt (ADR-051/060/061/064,
+  `INDEX.md`, `cr-08-p3-governed-defaults-manifest.md`,
+  `cr-08-configuration-effect-drift.md`, `testing-standards.md`, beide
+  Review-Templates; CR-AUFG-08-14 Matrix-Klassifikations-Strukturpflicht aus den
+  Templates entfernt). **Enforcement:** WARNING-Checker
+  `scripts/doc_drift/removed_governance_refs_checks.py` (eingebunden in
+  `scripts/check_doc_drift.py`) mit geratchetem clean Baseline — verifiziert
+  **0 Findings, Exit 0** gegen den aktuellen Baum. Verhindert die exakte
+  Regressionsklasse (stale Referenzen auf entfernte Governance-Artefakte). RULE-18b
+  nun erzwungen via per-value-Regressionstests + ADR-045 + ad-hoc Audits.
+
+- **CR-AUFG-08-16 / FIND-015 — Rate-Limiter hart codiert:** Alle 6 Modul-Level-
+  Limiter (Write / Analysis / Light / Setup-Models / Prompt-Live-Test / WebSocket)
+  lösen ihre Request-Anzahl über `NARRARE_RATE_LIMIT_*`-Env-Vars mit governed
+  Defaults (3/5/10/10/5/3) auf (ADR-060 governed-default-Pattern, kein neuer ADR).
+  Window bleibt fix 1 min; Resolver `_resolve_rate_limit_count` weist ungültige
+  Werte zurück + warnt via structlog (RULE-11); Defaults backwards-kompatibel.
+  **Enforcement:** `tests/unit/api/_app/test_rate_limits.py` (`TestGovernedDefaults`
+  pinnt alle 6 Defaults, `TestResolveRateLimitCount` deckt den Resolver,
+  Verhaltenstest env→count→acquire). Lokal verifiziert: **9.226 Unit-Tests /
+  9.894 Gesamt-Suite passed, 0 failed**.
+
+**Bekanntes Follow-up (kein offener Befund):** Die `NARRARE_RATE_LIMIT_*`-Env-Vars
+sind kanonisch im Modul-Docstring `apps/api/narrare/_app/rate_limits.py`
+dokumentiert; ein Eintrag pro Var in der Operator-Env-Tabelle des
+Deployment-Guides (`docs/development/deployment-guide.md`) steht aus (siehe
+FIND-015 Follow-up-Notiz).

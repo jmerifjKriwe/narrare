@@ -598,19 +598,38 @@ classification** (`adopted`, `governed_default`, `operator_default`,
 
 **Enforcement boundary:**
 
-- The configuration adoption matrix is CI-validated. It fails when a `user`/`project`
-  classification lacks `runtime_consumer` + `enforcement_evidence`, when an `adopted`
-  entry lacks `enforcement_evidence`, when lifecycle/classification values are invalid,
-  or when an `expected_setting_ids` value is unclassified or duplicated.
-- The review-finding coverage gate fails when a structured material P0/P1
-  `[category: configuration-effect]` review finding is not referenced by
-  a matrix entry — future audits cannot leave such findings as prose only.
-- Governed code defaults are permitted only with rationale, owner, tests, and a
-  review trigger recorded in the matrix or the governed-defaults manifest.
+> **Status (2026-07-15).** The Configuration Adoption Matrix, the
+> `check_configuration_matrix.py` checker, and the entire `scripts/governance/`
+> toolchain were **deliberately removed** in commit `f8abb42c`
+> (ADR-047 / ADR-051 / ADR-061 / ADR-062 → ⛔ Superseded). The stated policy is
+> that audits remain **ad-hoc, with the audit review file as the lifecycle
+> SSOT**. **No matrix-based CI gate exists** — do not claim one does. RULE-18b
+> the *principle* (above) remains in force; only its heavier matrix/checker
+> enforcement mechanism was retired.
 
-**See also:** ADR-051 (Configuration Effect Adoption Contract), ADR-045
-(Runtime Adoption Enforcement), CR-08 remediation spec, RULE-20 (No
-half-implementations).
+RULE-18b is currently enforced through:
+
+1. **Per-value regression tests** — the real enforcement. Each material
+   configuration value must have a fail-if-changed regression test proving that
+   changing the value changes runtime behaviour or emits the documented
+   warning/error (see the CR-08 governed-defaults manifest and the per-setting
+   effect tests referenced from ADR-060 / ADR-064).
+2. **ADR-045 Runtime Adoption Enforcement** — the surviving, lighter-weight
+   adoption-evidence mechanism in `core/ai_invocation/`, which correlates
+   invocation evidence with declared adoption.
+3. **Ad-hoc content audits** — periodic audits whose findings are tracked in
+   `_audit/results/**/review-*.md`, with that review file acting as the
+   lifecycle SSOT (see `docs/development/finding-lifecycle.md`).
+
+Governed code defaults are permitted only with rationale, owner, tests, and a
+review trigger recorded in the governed-defaults manifest
+(`docs/architecture/governance/cr-08-p3-governed-defaults-manifest.md`).
+
+**See also:** ADR-045 (Runtime Adoption Enforcement; the surviving
+adoption-evidence mechanism), ADR-060 / ADR-064 (per-value effect tests), the
+CR-08 governed-defaults manifest, and RULE-20 (No half-implementations).
+ADR-051 / ADR-061 (the removed matrix/checker toolchain) are retained as
+⛔ Superseded history.
 
 ---
 
@@ -1146,7 +1165,7 @@ the same registry/service.
 | RULE-16 i18n namespace registration | `i18n-namespace-registry.test.ts` + `validate-i18n.ts` |
 | RULE-17 API-Frontend contract | `test_prompt_contract.py` + PR review |
 | RULE-18 No hardcoded config in routers | `test_generation_router_contract.py` + PR review |
-| RULE-18b Configuration Effect Integrity | CI verification + PR review |
+| RULE-18b Configuration Effect Integrity | Per-value regression tests + ADR-045 Runtime Adoption Enforcement + ad-hoc content audits (review file as SSOT). Matrix/checker toolchain removed — see ⛔ ADR-051/061. + PR review |
 | RULE-19 SessionDep in dependency factories | `check_architecture.py` — AST scan for bare AsyncSession |
 | RULE-20 No half-implementations | PR review by Architecture Agent + test coverage audit |
 | RULE-22 Cross-Feature Coherence Gate | Stage 2.5 Semantic Review by Architecture Specialist |
@@ -1319,6 +1338,6 @@ RULE-02") but MUST NOT reproduce, paraphrase, or contradict its rules.
 
 ---
 
-> Last updated: 2026-06-24 — §8 Enforcement updated: AUFG-NEW-01 concretized by ADR-047 (Governance Health Checker implemented, CI-blocking). (Prior: 2026-06-20 — RULE-18b Configuration Effect Integrity added, ADR-051 Accepted)
+> Last updated: 2026-07-15 — RULE-18b enforcement claims aligned with reality: the Configuration Adoption Matrix / `check_configuration_matrix.py` / `scripts/governance/` toolchain was deliberately removed in `f8abb42c` (ADR-047/051/061/062 ⛔ Superseded); RULE-18b is now enforced via per-value regression tests + ADR-045 + ad-hoc audits (review file as SSOT). The earlier "ADR-047 Governance Health Checker implemented, CI-blocking" claim is hereby corrected. (Prior: 2026-06-24 — §8 Enforcement updated: AUFG-NEW-01 concretized by ADR-047. Prior: 2026-06-20 — RULE-18b Configuration Effect Integrity added, ADR-051 Accepted)
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone

@@ -159,11 +159,13 @@ the authoritative constraints as **RULE-18b** in `docs/_shared/CONSTRAINTS.md`:
 > that changing the value changes the effect or emits the documented warning/error.
 
 The elevation review trigger is satisfied: CR-08 P0/P1 are complete, the
-configuration-adoption checker (`scripts/check_configuration_matrix.py`) is a
-CI-blocking gate (`.github/workflows/ci.yml` architecture job,
+configuration-adoption checker (`scripts/check_configuration_matrix.py`) was at
+acceptance a CI-blocking gate (`.github/workflows/ci.yml` architecture job,
 `just check-configuration-matrix`, `scripts/run_checks.py`), and no CR-08 value
-is unclassified (25/25 matrix `expected_setting_ids`, 0 violations — verified
-PASS). Derived context (`constraints/rules.md`, `standards/architecture-rules.md`,
+was unclassified (25/25 matrix `expected_setting_ids`, 0 violations — verified
+PASS). *(Historical — that checker and matrix were removed in `f8abb42c`; see
+the Acceptance Record superseded note below.)* Derived context
+(`constraints/rules.md`, `standards/architecture-rules.md`,
 `standards/tier1-compact-rules.md`) was synced to reference RULE-18b without
 reproducing it, per the SSOT hierarchy (CONSTRAINTS.md §8).
 
@@ -207,6 +209,17 @@ Required gates after implementation:
 ---
 
 ## Acceptance Record
+
+> **⛔ Superseded (2026-07-08).** This acceptance record describes the state at
+> acceptance (2026-06-20) and is retained as accurate history. The
+> Configuration Adoption Matrix, `scripts/check_configuration_matrix.py`,
+> `scripts/governance/` (including `_matrix_review_gate.py`), and the associated
+> CI gates were **deliberately removed** in commit `f8abb42c`. The artifacts
+> cited as evidence below **no longer exist on disk**; the `check-configuration-matrix`
+> / review-finding-coverage gates do not run. ADR-051's *decisions* remain
+> superseded — RULE-18b the principle survives in `CONSTRAINTS.md`, now enforced
+> via per-value regression tests + ADR-045 + ad-hoc audits (see CONSTRAINTS.md
+> RULE-18b "Enforcement boundary"). Do not treat the evidence table below as live.
 
 **Accepted: 2026-06-20** — promoted from Proposed based on implementation +
 enforcement evidence on disk, not documentation alone. Per

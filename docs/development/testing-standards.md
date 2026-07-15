@@ -332,45 +332,55 @@ DI/settings, not hardcoded values.
 
 **Reference:** RULE-18 in `docs/_shared/CONSTRAINTS.md`
 
-#### Configuration Adoption Matrix and Review-Finding Gate — CR-08 / ADR-051
+#### Configuration Effect Integrity — CR-08 / RULE-18b (matrix gate removed)
 
 **The problem:** A setting can look fixed because prose, a local implementation, or
 a green layer-specific test exists, while the durable lifecycle docs or runtime
-consumer evidence still say the value is unclassified. CR-08 closed this gap with
-two gates:
+consumer evidence still say the value is unclassified.
 
-1. `scripts/check_configuration_matrix.py` validates the configuration adoption
-   matrix so every material setting has a classification and adopted user/project
-   settings carry runtime-consumer and enforcement evidence.
-2. The same checker loads future content-review and technical-review artifacts and
-   fails if a structured material P0/P1 configuration/effect finding is not
-   represented by a matrix row.
+**History:** CR-08 originally closed this gap with two gates — a
+`configuration-adoption-matrix.yaml` plus a CI-blocking
+`scripts/check_configuration_matrix.py`. **Those two gates were deliberately
+removed in commit `f8abb42c`** (ADR-047/051/061/062 are now ⛔ Superseded); the
+matrix and checker no longer exist. RULE-18b (Configuration Effect Integrity) is
+now enforced through:
 
-**Structured marker required in reviews:**
+1. **Per-value regression tests** — the real enforcement. Each material setting
+   carries a fail-if-changed-without-review test (see the CR-08 P2/P3 governed
+   defaults work) that locks its runtime effect.
+2. **ADR-045 Runtime Adoption Enforcement** — the surviving adoption-evidence
+   mechanism, correlating runtime invocation evidence at the agent/ModelRegistry
+   boundary.
+3. **Ad-hoc audits** — reviews flag configuration-effect drift in their review
+   file, which is the lifecycle SSOT for findings (no external matrix).
+
+**Structured marker (recommended review convention):**
 
 ```markdown
 - [P1] [category: configuration-effect] FIND-099 / CR-AUFG-08-99
   Short description of the material value and why it changes runtime effect.
 ```
 
-Material P0/P1 configuration/effect findings must include:
+Material P0/P1 configuration/effect findings should carry the marker above plus,
+described in the review file itself (not in a matrix):
 
 - `[P0]` or `[P1]`
 - `[category: configuration-effect]`
 - a stable `FIND-...` or `CR-AUFG-...` reference
-- a matching row in the configuration adoption matrix with classification,
-  lifecycle, and evidence (or an explicitly tracked formal-finding state)
+- a root cause (why the configured/documented value does not provably reach the
+  runtime effect) and the runtime consumer that actually uses (or fails to use) it
 
-These tests prove an unclassified material P1 configuration/effect finding fails,
-a classified finding passes, P2/non-minimum findings do not block the minimum gate,
-and future content-review files are loaded.
+The marker is a useful convention for ad-hoc audits; it is no longer checker-gated,
+so there is no machine gate that fails on an unclassified finding.
 
-**When to update:** Any audit/review that introduces a material P0/P1
-configuration/effect finding must update the matrix in the same PR. Any new
-settings/defaults work must keep the matrix row, tests, and lifecycle docs in sync.
+**When to add:** Any audit/review that introduces a material P0/P1
+configuration/effect finding should carry the marker and describe root cause +
+runtime consumer in the review file. Any new settings/defaults work must keep its
+per-value regression test and lifecycle docs in sync.
 
-**Reference:** CR-08 remediation spec and ADR-051 (Accepted 2026-06-20; RULE-18b
-elevated to CONSTRAINTS.md).
+**Reference:** CR-08 remediation spec; ADR-051 is now ⛔ Superseded (its matrix/
+checker were removed in `f8abb42c`); RULE-18b is enforced via per-value regression
+tests + ADR-045 (✅ Implemented, Runtime Adoption Enforcement).
 
 ---
 
