@@ -25,7 +25,6 @@ NOTE on pyrate_limiter 4.x:
 
 from __future__ import annotations
 
-import importlib
 from typing import TYPE_CHECKING
 
 from fastapi import Depends, FastAPI
@@ -42,6 +41,7 @@ from narrare._app.rate_limits import (
     AI_PROMPT_LIVE_TEST_LIMITER,
     AI_WRITE_LIMITER,
     AI_WS_LIMITER,
+    LONG_WINDOW_MS,
     RATE_LIMIT_ANALYSIS_DEFAULT,
     RATE_LIMIT_LIGHT_DEFAULT,
     RATE_LIMIT_PROMPT_LIVE_TEST_DEFAULT,
@@ -165,7 +165,7 @@ class TestGovernedDefaults:
 
 
 class TestOperatorOverrideWiring:
-    """The operator env var provably reaches the module-level limiter.
+    """The operator env var provably reaches the limiter's effective rate.
 
     This is the RULE-18b effect test for rate-limit governed defaults
     (analogous to ``TestTransportRetryBehavioralEffect`` for transport retry):
@@ -173,27 +173,44 @@ class TestOperatorOverrideWiring:
     limiter's real enforcement runs (``try_acquire``); only the config source
     is varied.
 
-    Uses ``importlib.reload`` because the module-level limiters read the env
-    exactly once at import (restart-to-apply semantics). The module is reloaded
-    once more with the env unset in ``finally`` to restore default singletons.
+    Non-global-mutating design (test isolation, RULE-11/testing-standards):
+        The module-level limiters read the env exactly once at import
+        (restart-to-apply semantics). Reloading the module to re-run those
+        statements would REPLACE the singletons with brand-new objects, which
+        pollutes every importer that captured the ORIGINAL singleton at its own
+        import time — e.g. ``router_voice_check.py`` captured
+        ``AI_ANALYSIS_LIMITER`` via ``from ... import``, so a reload would
+        leave the router holding a stale object while the module attribute
+        points elsewhere (order-dependent test-isolation bug).
+
+        Instead, this test exercises the IDENTICAL production code path that
+        the module-level singletons use — ``_resolve_rate_limit_count`` →
+        ``Rate(count, LONG_WINDOW_MS)`` → ``Limiter`` — on a LOCAL limiter
+        built from a monkeypatched env. The env override provably changes the
+        effective acquire count without touching any module-level singleton.
+        ``monkeypatch`` auto-reverts the env at test exit, so no other test is
+        affected.
     """
 
-    def test_ws_limiter_reflects_env_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from narrare._app import rate_limits
-
+    def test_env_override_changes_effective_rate(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Env override of 2 → resolver returns 2 ...
         monkeypatch.setenv(RATE_LIMIT_WS_ENV_VAR, "2")
-        importlib.reload(rate_limits)
-        try:
-            limiter = rate_limits.AI_WS_LIMITER
-            key = "test:operator-override-wiring:ws"
-            assert limiter.try_acquire(key, blocking=False) is True
-            assert limiter.try_acquire(key, blocking=False) is True
-            # 3rd request in the window is rejected — the count came from the
-            # env (=2), not the default (=3).
-            assert limiter.try_acquire(key, blocking=False) is False
-        finally:
-            monkeypatch.delenv(RATE_LIMIT_WS_ENV_VAR, raising=False)
-            importlib.reload(rate_limits)
+        count = _resolve_rate_limit_count(RATE_LIMIT_WS_ENV_VAR, RATE_LIMIT_WS_DEFAULT)
+        assert count == 2
+        # ... and a limiter built from that count admits 2, rejects the 3rd.
+        local_limiter = Limiter(Rate(count, LONG_WINDOW_MS))
+        key = "test:operator-override-wiring:ws"
+        assert local_limiter.try_acquire(key, blocking=False) is True
+        assert local_limiter.try_acquire(key, blocking=False) is True
+        # 3rd request in the window is rejected — the count came from the
+        # env (=2), not the default (=3).
+        assert local_limiter.try_acquire(key, blocking=False) is False
+        # Default path (env unset) still resolves to the governed default.
+        monkeypatch.delenv(RATE_LIMIT_WS_ENV_VAR, raising=False)
+        assert (
+            _resolve_rate_limit_count(RATE_LIMIT_WS_ENV_VAR, RATE_LIMIT_WS_DEFAULT)
+            == RATE_LIMIT_WS_DEFAULT
+        )
 
 
 # ---------------------------------------------------------------------------
