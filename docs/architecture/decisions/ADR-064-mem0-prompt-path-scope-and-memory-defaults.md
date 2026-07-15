@@ -5,6 +5,17 @@
 > **Deciders:** Architecture Specialist (review-01 architecture remediation)
 > **Supersedes:** —
 > **Finding:** review-01-architektur §6 / §7 / `[AUFG-01-02]`
+>
+> **Note on matrix references (2026-07-15):** This ADR's *decisions* (the RULE-02b
+> scope-boundary exception and the RULE-18b `governed_default` classification of
+> `_PROVIDER_DEFAULT_MODELS`) remain in effect. However, the **Configuration
+> Adoption Matrix, `check_configuration_matrix.py`, and `scripts/governance/` were
+> removed in `f8abb42c`** (ADR-051/061 ⛔ Superseded). Matrix references in the body
+> below are therefore **historical** — the "recorded in the configuration adoption
+> matrix" / "CI validates matrix completeness" paths no longer exist. The real,
+> surviving enforcement for the governed-default classification is the per-value
+> regression test plus this ADR's recorded rationale/owner/review-trigger; see
+> CONSTRAINTS.md RULE-18b "Enforcement boundary".
 
 ---
 
@@ -277,8 +288,10 @@ Enforcement** (finding-lifecycle §2). The enforcement anchors are:
    this commit.
 3. **RULE-18b classification (Core/Platform handoff):** the
    `_PROVIDER_DEFAULT_MODELS` `governed_default` row in the configuration adoption
-   matrix, with owner + rationale + review trigger. CI validates matrix
-   completeness (ADR-051). ⏳ deferred to specialist.
+   matrix, with owner + rationale + review trigger. *(Historical — the matrix and its
+   CI completeness check (`check_configuration_matrix.py` / ADR-051) were removed in
+   `f8abb42c`; see the header note. The classification rationale/owner/review-trigger
+   recorded in this ADR is the surviving anchor, backed by the regression test.)* ⏳ deferred to specialist.
 4. **Regression anchor (Core handoff):** a unit test asserting
    `prompt_path.check_prompt_registry_access(...)` does **not** flag
    `mem0_client.py` (locks the scope boundary against a checker regression). ⏳

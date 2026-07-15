@@ -1,10 +1,21 @@
 # CR-08 P3 — Governed Defaults Manifest
 
-> **Status:** implemented + enforced (CR-AUFG-08-13)
-> **Date:** 2026-06-20
+> **Status:** classification rationale retained; matrix-backed enforcement removed (see note)
+> **Date:** 2026-06-20 (matrix-removal note 2026-07-15)
 > **Author:** Architecture Specialist
 > **Spec:** `docs/features/remediation/cr-08-configuration-effect-drift.md` §P3
-> **Matrix section:** P3 entries in `docs/architecture/governance/configuration-adoption-matrix.yaml`
+> **Matrix section (historical):** P3 entries formerly in `docs/architecture/governance/configuration-adoption-matrix.yaml`
+>
+> **Note (2026-07-15):** The Configuration Adoption Matrix and
+> `check_configuration_matrix.py` / `scripts/governance/` were deliberately removed
+> in commit `f8abb42c` (ADR-047/051/061/062 ⛔ Superseded). The original
+> `implemented + enforced (CR-AUFG-08-13)` status no longer holds **insofar as it
+> relied on the matrix checker** — that CI gate is gone. The governed-default
+> CLASSIFICATION rationale in this manifest (owner / rationale / review trigger /
+> override path) still has documentary value, and the per-default regression tests
+> (§5) remain the **real, surviving enforcement**. RULE-18b is now enforced via
+> per-value regression tests + ADR-045 + ad-hoc audits (review file as SSOT); see
+> CONSTRAINTS.md RULE-18b "Enforcement boundary".
 
 ---
 
@@ -329,9 +340,13 @@ Any new code default added after this manifest is implemented MUST:
 3. Follow the review-trigger taxonomy (§3).
 4. Have a failing-if-changed-without-review test.
 
-The Platform governance checker rejects unclassified matrix entries and, via
-CR-AUFG-08-14, rejects future structured material P0/P1 configuration/effect
-review findings that are not referenced by the matrix.
+The Platform governance checker formerly rejected unclassified matrix entries
+and, via CR-AUFG-08-14, rejected future structured material P0/P1
+configuration/effect review findings that were not referenced by the matrix.
+*(Historical — that checker and matrix were removed in `f8abb42c`; this automatic
+rejection no longer runs. New governed defaults should instead carry a per-value
+regression test (§5) plus a manifest entry here, which is the surviving
+documentary anchor.)*
 
 ---
 

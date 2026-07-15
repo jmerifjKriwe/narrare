@@ -211,6 +211,17 @@ marking ✅ Implemented; P1 ratchets to blocking in a follow-up once clean.
 
 ## Implementation Evidence (2026-07-02)
 
+> **⛔ Superseded (2026-07-08).** The checkers, manifests, and matrix described
+> below (`scripts/governance/_matrix_aggregation.py`,
+> `_matrix_effect_integrity.py`, `check_matrix_effect_integrity.py`,
+> `matrix-effect-evidence.yaml`, the `just check-matrix-effect-integrity` gate,
+> and the `configuration-adoption-matrix.yaml` it validated) were **deliberately
+> removed** in commit `f8abb42c`. The "PASSES / ships blocking / exits 1" claims
+> below were true at implementation time and are retained as history; **none of
+> these gates run today.** RULE-18b's per-setting effect integrity is now
+> protected by the per-value regression tests (e.g. ADR-060's
+> `test_transport_retry.py`), not by this toolchain.
+
 Implemented as Option B (Platform wave). The Gate-12 completeness checks are
 satisfied — P2 ships **blocking**, P1 ships **warning-only** with a clean
 baseline. The current 26-entry matrix PASSES both measures (`just
