@@ -490,6 +490,9 @@
       "edit": "Edit",
       "capabilityHintTitle": "Guaranteed Rules",
       "capabilityHintBody": "These prompts are customizable. Additionally, guaranteed rules (Narrare identity, observability, security) always apply and cannot be overridden.",
+      "modeSimple": "Simple",
+      "modeExpert": "Expert",
+      "modeSimpleHint": "Basic prompt editing without advanced features",
       "promptCustomization": {
         "title": "Prompt Customization",
         "variables": "Available Variables",

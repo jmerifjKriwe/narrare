@@ -490,6 +490,9 @@
       "edit": "Bearbeiten",
       "capabilityHintTitle": "Garantierte Regeln",
       "capabilityHintBody": "Diese Prompts sind anpassbar. Zusätzlich gelten immer garantierte Regeln (Narrare-Identität, Observability, Sicherheit), die nicht überschrieben werden können.",
+      "modeSimple": "Einfach",
+      "modeExpert": "Experte",
+      "modeSimpleHint": "Grundlegende Prompt-Bearbeitung ohne erweiterte Funktionen",
       "promptCustomization": {
         "title": "Prompt-Anpassung",
         "variables": "Verfügbare Variablen",

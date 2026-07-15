@@ -490,6 +490,9 @@
       "edit": "Modifier",
       "capabilityHintTitle": "Règles garanties",
       "capabilityHintBody": "Ces prompts sont personnalisables. De plus, des règles garanties (identité Narrare, observabilité, sécurité) s'appliquent toujours et ne peuvent pas être remplacées.",
+      "modeSimple": "Simple",
+      "modeExpert": "Expert",
+      "modeSimpleHint": "Édition de base sans fonctionnalités avancées",
       "promptCustomization": {
         "title": "Personnalisation des prompts",
         "variables": "Variables disponibles",
