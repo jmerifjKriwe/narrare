@@ -10,6 +10,7 @@
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { KBFlatEditor } from "@/components/studio/kb/KBFlatEditor";
 import type { KBTemplate } from "@/lib/api/kb";
@@ -44,6 +45,23 @@ const defaultTemplate: KBTemplate = {
       description: "Description of the location",
     },
     { name: "population", field_type: "int", required: false, description: "Population count" },
+  ],
+  field_groups: [],
+  sections: [],
+  body: "",
+};
+
+const templateWithRequired: KBTemplate = {
+  meta: {
+    template_type: "location",
+    template_version: "1",
+    schema_version: "1",
+  },
+  fields: [
+    { name: "name", field_type: "str", required: true, description: "Location name" },
+    { name: "description", field_type: "str", required: true, description: "Description" },
+    { name: "population", field_type: "int", required: false, description: "Population count" },
+    { name: "climate", field_type: "str", required: false, description: "Climate zone" },
   ],
   field_groups: [],
   sections: [],
@@ -147,5 +165,41 @@ describe("KBFlatEditor", () => {
 
     const textarea = document.getElementById("entry-body");
     expect(textarea).toBeDefined();
+  });
+
+  it("always shows required fields and hides optional ones by default", () => {
+    render(
+      <KBFlatEditor
+        {...defaultProps}
+        template={templateWithRequired}
+        fieldValues={{ name: "Tavern", description: "A cozy inn", population: 10, climate: "cold" }}
+      />,
+    );
+
+    // Required fields are always visible.
+    expect(screen.getByTestId("type-field-name")).toBeVisible();
+    expect(screen.getByTestId("type-field-description")).toBeVisible();
+
+    // Optional fields are collapsed inside the disclosure.
+    expect(screen.getByTestId("type-field-population")).not.toBeVisible();
+    expect(screen.getByTestId("type-field-climate")).not.toBeVisible();
+  });
+
+  it("reveals optional fields when the disclosure is expanded", async () => {
+    const user = userEvent.setup();
+    render(
+      <KBFlatEditor
+        {...defaultProps}
+        template={templateWithRequired}
+        fieldValues={{ name: "Tavern", population: 10 }}
+      />,
+    );
+
+    expect(screen.getByTestId("type-field-population")).not.toBeVisible();
+
+    await user.click(screen.getByText("kb.moreFields"));
+
+    expect(screen.getByTestId("type-field-population")).toBeVisible();
+    expect(screen.getByTestId("type-field-climate")).toBeVisible();
   });
 });

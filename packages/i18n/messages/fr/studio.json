@@ -1334,6 +1334,9 @@
       }
     },
     "additionalNotes": "Notes supplémentaires",
+    "basicFields": "Champs de base",
+    "moreFields": "Afficher plus de champs",
+    "fewerFields": "Afficher moins de champs",
     "newWithAI": "Nouveau avec interview IA",
     "aiAssistedCreation": "Création assistée par IA",
     "sessionProgress": "{filled} sur {total} champs remplis",

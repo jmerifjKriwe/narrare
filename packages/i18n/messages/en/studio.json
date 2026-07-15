@@ -1333,6 +1333,9 @@
       }
     },
     "additionalNotes": "Additional Notes",
+    "basicFields": "Basic Fields",
+    "moreFields": "Show more fields",
+    "fewerFields": "Show fewer fields",
     "newWithAI": "New with AI Interview",
     "aiAssistedCreation": "AI-Assisted Creation",
     "sessionProgress": "{filled} of {total} fields complete",

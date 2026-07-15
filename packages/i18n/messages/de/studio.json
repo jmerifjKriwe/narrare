@@ -1334,6 +1334,9 @@
       }
     },
     "additionalNotes": "Zusätzliche Notizen",
+    "basicFields": "Grundlegende Felder",
+    "moreFields": "Weitere Felder anzeigen",
+    "fewerFields": "Weniger Felder anzeigen",
     "newWithAI": "Neu mit KI-Interview",
     "aiAssistedCreation": "KI-gestützte Erstellung",
     "sessionProgress": "{filled} von {total} Feldern ausgefüllt",
