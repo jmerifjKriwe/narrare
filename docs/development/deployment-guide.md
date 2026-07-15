@@ -783,6 +783,34 @@ middleware. Requests from non-trusted origins receive HTTP 403.
 Implemented by `OriginValidationMiddleware` in `apps/api/narrare/_app/middleware.py`
 per AUFG-05-13.
 
+### NARRARE_RATE_LIMIT_* (AI Rate Limits)
+
+Operator-configurable per-minute request counts for the AI rate limiters. Each
+variable governs a distinct group of AI endpoints and is read once at startup,
+falling back to a governed default.
+
+| Variable | Default | Applies to |
+|----------|---------|------------|
+| `NARRARE_RATE_LIMIT_WRITE` | `3` | AI writing endpoints (write/generate, extend, rewrite, co-author, suggest) |
+| `NARRARE_RATE_LIMIT_ANALYSIS` | `5` | AI analysis/chat endpoints (chat, consistency, beta-reader, POV, readability, timeline, KB extraction/improve/sessions) |
+| `NARRARE_RATE_LIMIT_LIGHT` | `10` | Lightweight AI endpoints (name generation) |
+| `NARRARE_RATE_LIMIT_SETUP_MODELS` | `10` | Unauthenticated provider model discovery (`GET /setup/providers/{provider}/models`) |
+| `NARRARE_RATE_LIMIT_PROMPT_LIVE_TEST` | `5` | Prompt live test (`POST /api/v1/prompts/{id}/live-test`) |
+| `NARRARE_RATE_LIMIT_WS` | `3` | WebSocket writing sessions |
+
+All values are requests-per-minute — the window is fixed at 1 minute and is not
+configurable. The defaults are governed (they match the previously hardcoded
+counts) and preserved for backwards compatibility, so existing deployments need
+no change. Self-hosters and managed-hosting profiles may raise or lower them to
+suit their environment; users may not — there is no database or UI surface. A
+non-integer value or a count below `1` emits a structured warning and falls back
+to the governed default (`0` would block every request and is not a supported
+kill-switch). Because the limiters are constructed once at import time, you must
+**restart the API to apply** a change.
+
+Canonical source: the module docstring of
+`apps/api/narrare/_app/rate_limits.py` (governed-default pattern per ADR-060).
+
 ### Dev Login
 
 For local development, a pre-seeded dev user is available:
