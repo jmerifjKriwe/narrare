@@ -86,6 +86,14 @@ MODE_EXEMPT_VARS: dict[str, dict[str, set[str]]] = {
     "kb": {
         "consistency": {"world_context", "writing_language"},
         "interview": {"writing_language"},
+        # merge/extract intentionally omit {{avoidance_patterns}}: the author's
+        # avoidance data already reaches these prompts via {{user_preferences}}
+        # (the preferences enricher maps "what does the user dislike or want to
+        # avoid?" into `constraints` → PreferenceProfile.to_prompt_text() →
+        # user_preferences). The standalone dead slot was removed rather than
+        # declared-but-unpopulated; user_preferences remains required.
+        "merge": {"avoidance_patterns"},
+        "extract": {"avoidance_patterns"},
     },
 }
 

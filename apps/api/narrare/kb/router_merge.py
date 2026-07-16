@@ -18,6 +18,7 @@ from narrare._app.dependencies import (
 )
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.kb.merge_service import KBMergeService
+from narrare.kb.repository import KBRepository
 from narrare.kb.schemas_merge import MergeRequest, MergeResponse
 from narrare.novels.repository import NovelRepository
 from narrare_core.shared.errors import NotFoundError
@@ -61,6 +62,7 @@ async def analyze_merge_candidates(
         model_registry=registry,
         model_config=resolved.config,
         composer=get_composer(),
+        kb_repo=KBRepository(session),
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         invocation_pipeline=get_invocation_pipeline(),

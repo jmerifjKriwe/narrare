@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.kb.contracts import KBRepositoryProtocol
+    from narrare.kb.models import KBEntry
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.schemas_extraction import ApplyExtractionItem, ApplyExtractionResponse
     from narrare.kb.service import KBService
@@ -101,8 +102,18 @@ class ExtractionService:
         if not chapter_content.strip():
             raise ValueError(f"Chapter {chapter_id} has no content")
 
-        # 2. Get existing entity names for dedup (graceful on repo failure).
-        existing_names = await self._get_existing_entity_names_graceful(novel_id, user_id)
+        # 2. Fetch existing KB entries once (graceful on repo failure) and
+        #    derive both the dedup name list and the curated world context
+        #    from the same result set. Single fetch keeps this O(1) repo reads.
+        from narrare.kb._world_context import format_world_context
+
+        existing_entries = await self._get_existing_entries_graceful(novel_id, user_id)
+        existing_names = [e.name for e in existing_entries if e.name]
+        # Curated project world context aids entity disambiguation. Mirrors
+        # the kb merge/assist/improve world-context mechanism and degrades
+        # to empty when the KB is empty/unavailable (RULE-11). Avoidance data
+        # is not handled here — it reaches the prompt via ``user_preferences``.
+        world_context = format_world_context(existing_entries)
 
         # 3. Compose prompt via compose_invocation (Mode 1 — composer-driven,
         #    ADR-048). Enrichment flows through the composer into the system
@@ -114,6 +125,7 @@ class ExtractionService:
         prompt_context = self._build_prompt_context(
             chapter_title=chapter.title or "",
             existing_entity_names=existing_names,
+            world_context=world_context,
         )
         invocation_context = build_invocation_context(
             feature_id="kb_extract",
@@ -204,16 +216,15 @@ class ExtractionService:
             items=items,
         )
 
-    async def _get_existing_entity_names(
+    async def _get_existing_entries(
         self,
         novel_id: UUID,
         user_id: UUID,
-    ) -> list[str]:
-        """Fetch existing KB entry names for dedup.
+    ) -> list[KBEntry]:
+        """Fetch existing KB entries for the novel (dedup + world context).
 
-        Retrieves all KB entries for the novel and extracts names.
-        Repository errors propagate — callers that need error-tolerant
-        behaviour should use ``_get_existing_entity_names_graceful``.
+        Repository errors propagate — error-tolerant callers should use
+        ``_get_existing_entries_graceful``.
         """
         entries, _ = await self._kb_repo.list_entries(
             novel_id=novel_id,
@@ -222,21 +233,21 @@ class ExtractionService:
             page=1,
             page_size=1000,
         )
-        return [entry.name for entry in entries if entry.name]
+        return list(entries)
 
-    async def _get_existing_entity_names_graceful(
+    async def _get_existing_entries_graceful(
         self,
         novel_id: UUID,
         user_id: UUID,
-    ) -> list[str]:
-        """Fetch existing KB entry names for dedup, with graceful degradation.
+    ) -> list[KBEntry]:
+        """Fetch existing KB entries with graceful degradation (RULE-11).
 
         If the KB repo is unavailable (DB connection lost, timeout, etc.),
-        returns an empty list so extraction can proceed without dedup data.
-        Logs a warning so the failure is visible.
+        returns an empty list so extraction can proceed without dedup data
+        or world context. Logs a warning so the failure is visible.
         """
         try:
-            return await self._get_existing_entity_names(novel_id, user_id)
+            return await self._get_existing_entries(novel_id, user_id)
         except Exception as exc:
             logger.warning(
                 "kb_repo_unavailable_using_empty_dedup",
@@ -245,11 +256,26 @@ class ExtractionService:
             )
             return []
 
+    async def _get_existing_entity_names(
+        self,
+        novel_id: UUID,
+        user_id: UUID,
+    ) -> list[str]:
+        """Fetch existing KB entry names for dedup.
+
+        Thin wrapper over ``_get_existing_entries`` retained as the dedup
+        names accessor. Repository errors propagate — error-tolerant callers
+        should use ``_get_existing_entries_graceful``.
+        """
+        entries = await self._get_existing_entries(novel_id, user_id)
+        return [entry.name for entry in entries if entry.name]
+
     def _build_prompt_context(
         self,
         *,
         chapter_title: str,
         existing_entity_names: list[str],
+        world_context: str = "",
     ) -> PromptContext:
         """Build PromptContext for the extraction prompt (RULE-02).
 
@@ -263,5 +289,8 @@ class ExtractionService:
             language="en",
             mode="extract",
             chapter_title=chapter_title,
-            extra={"existing_entity_names": "\n".join(existing_entity_names)},
+            extra={
+                "existing_entity_names": "\n".join(existing_entity_names),
+                "world_context": world_context,
+            },
         )

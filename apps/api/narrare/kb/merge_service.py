@@ -34,6 +34,7 @@ from narrare_core.shared.errors import ConfigurationError, NotFoundError
 if TYPE_CHECKING:
     import uuid
 
+    from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
@@ -62,6 +63,11 @@ class KBMergeService:
         composer: PromptComposer for resolving the governed merge system
             prompt via the cascade (RULE-02b / ADR-054 D3). Required for
             ``analyze_merge_candidates``.
+        kb_repo: Optional KB entry repository used to populate the
+            ``world_context`` prompt variable with curated project context
+            (the existing entities of the type under analysis). When unset or
+            unavailable, ``world_context`` degrades to empty (RULE-11) and
+            merge proceeds with candidate pairs alone.
         api_key: Optional API key override.
         base_url: Optional base URL override.
         invocation_pipeline: Optional pipeline for invocation evidence.
@@ -73,6 +79,7 @@ class KBMergeService:
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig | None = None,
         composer: PromptComposer | None = None,
+        kb_repo: KBRepositoryProtocol | None = None,
         *,
         api_key: str | None = None,
         base_url: str | None = None,
@@ -82,6 +89,7 @@ class KBMergeService:
         self._registry = model_registry
         self._config = model_config
         self._composer = composer
+        self._kb_repo = kb_repo
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
@@ -130,6 +138,21 @@ class KBMergeService:
 
         language = novel.writing_language or "en"
 
+        # Curated project world context (existing entities of the type under
+        # analysis) sourced from the KB repository. Mirrors the kb assist/
+        # improve world-context mechanism and degrades gracefully (RULE-11)
+        # when no KB repo is wired or it is unavailable. Avoidance data is
+        # not handled here — it reaches the prompt via ``user_preferences``.
+        from narrare.kb._world_context import fetch_world_context
+
+        world_context = ""
+        if self._kb_repo is not None:
+            world_context = await fetch_world_context(
+                self._kb_repo,
+                novel_id,
+                entity_type=request.entity_type,
+            )
+
         # Resolve the governed merge system prompt via PromptComposer
         # (RULE-02 / ADR-054 D3). The ``_bundled/kb/en/merge/system.md``
         # template carries the task framing, project metadata, entity type,
@@ -149,10 +172,10 @@ class KBMergeService:
             mode="merge",
             extra={
                 "candidate_pairs": pairs_text,
-                # No KB world-context assembler wired for this call path yet;
-                # declared explicitly (not silently omitted) so the template's
-                # variable substitution succeeds (precedent: timeline_analysis).
-                "world_context": "",
+                # Curated KB context (possibly empty when the project has no
+                # entities or the repo is unavailable). Declared explicitly so
+                # the template's variable substitution always succeeds.
+                "world_context": world_context,
             },
         )
 

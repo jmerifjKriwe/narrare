@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.2.0"
+prompt_version: "1.2.1"
 ---
 
 ## System Prompt
@@ -137,4 +137,3 @@ The author has set the following preferences. Ensure your extraction aligns with
 - Filter out any item with confidence below 0.3 before returning.
 - Include overall observations in `analysis_notes`.
 - Write analysis_notes and any extracted content in {{writing_language}}.
-- Respect the author's avoidance patterns: {{avoidance_patterns}}
