@@ -131,3 +131,104 @@ class TestCultureInjection:
         assert registry.last_name_style == "french_existential"
         assert registry.last_language == "fr"
         assert registry.last_category == "writing"
+
+
+class TestCultureGuidelinesComposerOwnership:
+    """§7 regression: ``culture_guidelines`` is owned by the PromptComposer,
+    not by a service ``extra`` entry.
+
+    Wave-1 of the §7 closing plan removed the dead
+    ``extra["culture_guidelines"] = ""`` entries from four services
+    (character_arc, timeline_analysis, timeline_extraction, story_suggest).
+    The Composer unconditionally substitutes ``{{culture_guidelines}}`` —
+    resolved from ``name_style`` via the registry, else ``""`` (see
+    composer.py build()) — regardless of any value a service places in
+    ``extra``. These tests lock that contract: the removed entries were pure
+    no-ops, and their absence cannot cause a ``PromptVariableError`` or alter
+    the composed prompt.
+
+    Placed at the Composer layer because the Composer is the single source
+    of truth for ``culture_guidelines``; a property proved once here holds for
+    every service that delegates to it (architectural-discipline §1, Root
+    Cause First). The four touched services share this one Composer path.
+    """
+
+    @staticmethod
+    def _registry(culture_content: str = "") -> FakePromptRegistry:
+        return FakePromptRegistry(
+            resolved=_make_resolved(
+                system="Cultural context:\n{{culture_guidelines}}\nDone.",
+            ),
+            culture_content=culture_content,
+        )
+
+    async def test_extra_entry_is_noop_when_name_style_set(self) -> None:
+        """With a ``name_style`` the Composer resolves ``{{culture_guidelines}}``
+        from the registry; a stale ``extra["culture_guidelines"] = ""`` is
+        overwritten and yields byte-identical output to omitting it."""
+        culture_text = "## Old Norse naming conventions\n- Use patronymics"
+        composer_with_entry = PromptComposer(cast("Any", self._registry(culture_text)))
+        composer_without_entry = PromptComposer(cast("Any", self._registry(culture_text)))
+
+        ctx_with_entry = PromptContext(
+            language="en",
+            extra={"name_style": "old_norse", "culture_guidelines": ""},
+        )
+        ctx_without_entry = PromptContext(
+            language="en",
+            extra={"name_style": "old_norse"},
+        )
+
+        result_with = await composer_with_entry.build(LLMIntent.WRITE, ctx_with_entry)
+        result_without = await composer_without_entry.build(LLMIntent.WRITE, ctx_without_entry)
+
+        # Both substitute the resolved content (the stale extra "" is dead).
+        assert culture_text in result_with.system
+        assert culture_text in result_without.system
+        assert "{{culture_guidelines}}" not in result_with.system
+        assert "{{culture_guidelines}}" not in result_without.system
+        assert result_with.system == result_without.system
+
+    async def test_extra_entry_is_noop_when_no_name_style(self) -> None:
+        """Without a ``name_style`` the Composer substitutes
+        ``{{culture_guidelines}}`` with ``""``; a stale
+        ``extra["culture_guidelines"] = ""`` is therefore redundant and yields
+        identical output to omitting it."""
+        composer_with_entry = PromptComposer(cast("Any", self._registry()))
+        composer_without_entry = PromptComposer(cast("Any", self._registry()))
+
+        ctx_with_entry = PromptContext(language="en", extra={"culture_guidelines": ""})
+        ctx_without_entry = PromptContext(language="en")
+
+        result_with = await composer_with_entry.build(LLMIntent.WRITE, ctx_with_entry)
+        result_without = await composer_without_entry.build(LLMIntent.WRITE, ctx_without_entry)
+
+        assert "{{culture_guidelines}}" not in result_with.system
+        assert "{{culture_guidelines}}" not in result_without.system
+        assert result_with.system == result_without.system
+
+    async def test_no_extra_entry_substitutes_empty_without_error(self) -> None:
+        """§7 post-removal guard: a context WITHOUT any ``culture_guidelines``
+        key (the post-Wave-1 service state) and no ``name_style`` still
+        substitutes ``{{culture_guidelines}}`` to ``""`` — never a
+        ``PromptVariableError``."""
+        composer = PromptComposer(cast("Any", self._registry()))
+        ctx = PromptContext(language="en")
+
+        result = await composer.build(LLMIntent.WRITE, ctx)
+
+        assert "{{culture_guidelines}}" not in result.system
+        assert result.system == "Cultural context:\n\nDone."
+
+    async def test_no_extra_entry_substitutes_resolved_with_name_style(self) -> None:
+        """§7 post-removal guard: a context WITHOUT any ``culture_guidelines``
+        key but WITH a ``name_style`` resolves ``{{culture_guidelines}}`` to the
+        registry content — never a ``PromptVariableError``."""
+        culture_text = "## French existentialist naming\n- Sartre-style"
+        composer = PromptComposer(cast("Any", self._registry(culture_text)))
+        ctx = PromptContext(language="fr", extra={"name_style": "french_existential"})
+
+        result = await composer.build(LLMIntent.WRITE, ctx)
+
+        assert culture_text in result.system
+        assert "{{culture_guidelines}}" not in result.system

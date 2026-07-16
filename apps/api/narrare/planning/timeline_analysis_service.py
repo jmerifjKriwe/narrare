@@ -185,12 +185,15 @@ class TimelineAnalysisService:
         # project metadata, and KB context variables.
         #
         # KB context variables (kb_characters, kb_locations, kb_factions,
-        # kb_relationships, culture_guidelines) and ``entity_events`` are
-        # supplied as empty strings (except kb_relationships, which is
-        # populated above) because no other KB/entity-event assembler is
-        # wired into this call path yet. They are declared here explicitly
-        # (not silently omitted) so the template's variable substitution
-        # succeeds and the gap is visible for a future assembler integration.
+        # kb_relationships) and ``entity_events`` are supplied as empty
+        # strings (except kb_relationships, which is populated above)
+        # because no other KB/entity-event assembler is wired into this
+        # call path yet. ``culture_guidelines`` is NOT set here: it is
+        # unconditionally auto-injected by the PromptComposer (resolved from
+        # ``name_style`` or empty string — see composer.py). The KB/entity
+        # vars are declared here explicitly (not silently omitted) so the
+        # template's variable substitution succeeds and the gap is visible
+        # for a future assembler integration.
         ctx = PromptContext(
             language=language,
             writing_language=language,
@@ -207,7 +210,6 @@ class TimelineAnalysisService:
                 "kb_locations": "",
                 "kb_factions": "",
                 "kb_relationships": kb_relationships_text,
-                "culture_guidelines": "",
             },
         )
         composed = await self._composer.build(LLMIntent.PLAN, ctx)

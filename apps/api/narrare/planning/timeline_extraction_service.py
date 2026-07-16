@@ -160,7 +160,6 @@ class TimelineExtractionService:
                 "existing_events": (
                     "\n".join(existing_event_names) if existing_event_names else ""
                 ),
-                "culture_guidelines": "",
             },
         )
 

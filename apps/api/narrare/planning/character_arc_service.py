@@ -140,7 +140,6 @@ class CharacterArcService:
                 # declared explicitly (not silently omitted) so the template's
                 # variable substitution succeeds (precedent: timeline_analysis).
                 "existing_plot_points": "",
-                "culture_guidelines": "",
             },
         )
 

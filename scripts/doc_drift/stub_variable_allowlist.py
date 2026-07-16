@@ -90,11 +90,6 @@ STUB_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
         "§7 GAP: 'No plot-point assembler wired for this call path yet' (per in-code comment).",
     ),
     (
-        "apps/api/narrare/planning/character_arc_service.py",
-        "culture_guidelines",
-        "§7 GAP: no culture-guidelines assembler wired for this path.",
-    ),
-    (
         "apps/api/narrare/planning/timeline_analysis_service.py",
         "entity_events",
         "§7 GAP: 'No entity-event source wired yet (see ADR-049 D8 notes)' (per in-code comment).",
@@ -115,27 +110,12 @@ STUB_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
         "kb_factions",
         "§7 GAP: no KB assembler wired for this call path yet.",
     ),
-    (
-        "apps/api/narrare/planning/timeline_analysis_service.py",
-        "culture_guidelines",
-        "§7 GAP: no culture-guidelines assembler wired for this path.",
-    ),
-    (
-        "apps/api/narrare/planning/timeline_extraction_service.py",
-        "culture_guidelines",
-        "§7 GAP: no culture-guidelines assembler wired for this path.",
-    ),
     # ── writing/* — admitted unwired assemblers (true §7 gaps) ──
     (
         "apps/api/narrare/writing/story_suggest_service.py",
         "chapter_outline",
         "§7 GAP: 'No chapter-outline assembler wired for this call path "
         "yet' (per in-code comment).",
-    ),
-    (
-        "apps/api/narrare/writing/story_suggest_service.py",
-        "culture_guidelines",
-        "§7 GAP: no culture-guidelines assembler wired for this path.",
     ),
 )
 

@@ -161,7 +161,6 @@ class StorySuggestService:
                 # template's variable substitution succeeds (precedent:
                 # character_arc_service existing_plot_points).
                 "chapter_outline": "",
-                "culture_guidelines": "",
             },
         )
 
