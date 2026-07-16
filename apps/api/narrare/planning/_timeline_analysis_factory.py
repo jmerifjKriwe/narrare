@@ -78,7 +78,17 @@ async def get_timeline_analysis_service(
     except ConfigurationError:
         logger.info("no_ai_provider_configured", novel_id=str(novel_id))
 
+    # Canonical KB-context provider (ADR-067): supplies kb_characters/
+    # kb_locations/kb_factions/kb_relationships, rendered through the ADR-050
+    # envelope with provenance (FIND-017). Degrades gracefully (RULE-11).
+    from narrare.kb._context_provider import KBContextProvider
     from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.repository import KBRepository
+
+    kb_context_provider = KBContextProvider(
+        kb_repo=KBRepository(session),
+        relationship_repo=RelationshipRepository(session),
+    )
 
     return TimelineAnalysisService(
         novel_repo=novel_repo,
@@ -87,7 +97,7 @@ async def get_timeline_analysis_service(
         model_config=model_config,
         composer=composer,
         event_repo=TimelineEventRepository(session),
-        relationship_repo=RelationshipRepository(session),
+        kb_context_provider=kb_context_provider,
         api_key=api_key,
         base_url=base_url,
         invocation_pipeline=get_invocation_pipeline(),

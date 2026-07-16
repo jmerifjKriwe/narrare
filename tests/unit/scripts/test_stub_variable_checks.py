@@ -194,7 +194,7 @@ def test_allowlisted_pair_is_absorbed(checker, tmp_path: Path) -> None:
     _write(
         tmp_path,
         "apps/api/narrare/planning/timeline_analysis_service.py",
-        'ctx = PromptContext(extra={"kb_characters": ""})\n',
+        'ctx = PromptContext(extra={"entity_events": ""})\n',
     )
     findings = [
         f

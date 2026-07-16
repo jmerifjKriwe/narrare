@@ -94,22 +94,6 @@ STUB_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
         "entity_events",
         "§7 GAP: 'No entity-event source wired yet (see ADR-049 D8 notes)' (per in-code comment).",
     ),
-    (
-        "apps/api/narrare/planning/timeline_analysis_service.py",
-        "kb_characters",
-        "§7 GAP: 'No KB assembler wired for this call path yet' "
-        "(per in-code comment; only kb_relationships is populated).",
-    ),
-    (
-        "apps/api/narrare/planning/timeline_analysis_service.py",
-        "kb_locations",
-        "§7 GAP: no KB assembler wired for this call path yet.",
-    ),
-    (
-        "apps/api/narrare/planning/timeline_analysis_service.py",
-        "kb_factions",
-        "§7 GAP: no KB assembler wired for this call path yet.",
-    ),
     # ── writing/* — admitted unwired assemblers (true §7 gaps) ──
     (
         "apps/api/narrare/writing/story_suggest_service.py",

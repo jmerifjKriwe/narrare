@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from narrare._app.dependencies import SessionDep  # noqa: TC001 — needed at runtime for FastAPI DI
-from narrare_core.writing.context_models import KBEntity
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -13,6 +12,7 @@ if TYPE_CHECKING:
     from narrare.analysis.voice_check_service import CharacterVoiceCheckerService
     from narrare.kb.models import KBEntry
     from narrare_core.profiles.contracts import VoiceProfileConsumer
+    from narrare_core.writing.context_models import KBEntity
 
 
 def get_voice_check_service(session: SessionDep) -> CharacterVoiceCheckerService:
@@ -74,15 +74,13 @@ def get_voice_check_service(session: SessionDep) -> CharacterVoiceCheckerService
 
 
 def _entry_to_kb_entity(entry: KBEntry) -> KBEntity:
-    """Convert a persisted KB entry to the profile-consumer entity shape."""
-    return KBEntity(
-        entity_id=str(entry.id),
-        entity_type=entry.entity_type,
-        name=entry.name,
-        content=entry.body or "",
-        updated_at=entry.updated_at.isoformat() if entry.updated_at else None,
-        metadata=entry.metadata_,
-        status=entry.status,
-        source=entry.source,
-        review_status=entry.review_status,
-    )
+    """Convert a persisted KB entry to the profile-consumer entity shape.
+
+    Thin delegate to the canonical ``KBEntry→KBEntity`` mapper in
+    :func:`narrare.kb._context_provider.kb_entry_to_kb_entity` (ADR-067), kept
+    as a local name so the closure above reads without a cross-module import
+    at the call site.
+    """
+    from narrare.kb._context_provider import kb_entry_to_kb_entity
+
+    return kb_entry_to_kb_entity(entry)

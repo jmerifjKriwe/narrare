@@ -37,9 +37,6 @@
     "apps/api/narrare/analysis/coreference_prompt.py | kb_locations",
     "apps/api/narrare/analysis/voice_check_prompt.py | kb_characters",
     "apps/api/narrare/analysis/voice_check_prompt.py | kb_factions",
-    "apps/api/narrare/analysis/voice_check_prompt.py | kb_locations",
-    "apps/api/narrare/planning/timeline_analysis_service.py | kb_characters",
-    "apps/api/narrare/planning/timeline_analysis_service.py | kb_factions",
-    "apps/api/narrare/planning/timeline_analysis_service.py | kb_locations"
+    "apps/api/narrare/analysis/voice_check_prompt.py | kb_locations"
   ]
 }

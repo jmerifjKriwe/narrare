@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.planning._timeline_chapter_context import format_chapter_context
 from narrare.planning.schemas import TimelineEventResponse, TimelineResponse
 from narrare.planning.timeline_schemas import TimelineEventCRUDResponse
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
@@ -32,7 +33,7 @@ if TYPE_CHECKING:
     import uuid
 
     from narrare.chapters.repository import ChapterRepository
-    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
     from narrare_core.agents.temporal_extraction_types import ExtractedTemporalExpression
@@ -68,12 +69,13 @@ class TimelineAnalysisService:
             prompt via the cascade (RULE-02b / ADR-049 D9). Required for
             ``generate_timeline``.
         event_repo: For persisting confirmed extracted events.
-        relationship_repo: Optional relationship repository for
-            populating the ``kb_relationships`` prompt variable.
-            Character relationships are valuable for character-arc
-            planning (e.g. a rivalry timeline, an alliance evolution).
-            When ``None``, degrades gracefully to an empty string
-            (RULE-11).
+        kb_context_provider: Canonical KB-context provider (ADR-067) for the
+            ``kb_characters`` / ``kb_locations`` / ``kb_factions`` /
+            ``kb_relationships`` prompt variables. When ``None`` or when the
+            KB is empty, all four degrade to empty strings (RULE-11) so the
+            template still composes. Provenance is rendered inline
+            (``RenderOptions(annotate_provenance=True)``) so planning gets the
+            same honest KB rendering as writing (FIND-017).
         api_key: Optional API key override.
         base_url: Optional base URL override.
         invocation_pipeline: Retained for DI-contract stability. Per ADR-049
@@ -91,7 +93,7 @@ class TimelineAnalysisService:
         model_config: ResolvedModelConfig | None = None,
         composer: PromptComposer | None = None,
         event_repo: TimelineEventRepository | None = None,
-        relationship_repo: RelationshipRepository | None = None,
+        kb_context_provider: KBContextProviderProtocol | None = None,
         *,
         api_key: str | None = None,
         base_url: str | None = None,
@@ -103,7 +105,7 @@ class TimelineAnalysisService:
         self._config = model_config
         self._composer = composer
         self._event_repo = event_repo
-        self._relationship_repo = relationship_repo
+        self._kb_context_provider = kb_context_provider
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
@@ -150,34 +152,35 @@ class TimelineAnalysisService:
         # Gather chapters with summaries
         chapters = await self._chapter_repo.list_by_novel(novel_id)
 
-        # Build a compact chapter summary context. This is runtime data
-        # (RULE-02a category 3): it populates the governed template's
-        # ``{{chapter_summaries}}`` variable AND serves as the agent run
-        # prompt (the user channel) below.
-        chapter_context = "\n\n".join(
-            f"Chapter {ch.position + 1}: {ch.title}\n"
-            f"Summary: {ch.summary or '(no summary yet)'}\n"
-            f"Timeline: {ch.timeline_position or '(not set)'}"
-            for ch in chapters
-        )
+        # Compact chapter-summary context — runtime data (RULE-02a category 3)
+        # that fills ``{{chapter_summaries}}`` + the agent run prompt below.
+        chapter_context = format_chapter_context(chapters)
 
         language = novel.writing_language or "en"
 
         # Runtime imports kept local to match this module's existing import
         # convention (see TimelineAgent import below) and avoid any module-load
         # circular-import risk.
-        from narrare.writing._relationship_helpers import (
-            fetch_formatted_relationships,
-        )
+        from narrare_core.context._render_options import RenderOptions
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext
 
-        # Fetch KB relationships for relationship-aware timeline planning
-        # (character relationships inform character-arc planning). Reuses
-        # the writing-pipeline helper; degrades to "" when no repo is wired
-        # (RULE-11).
-        rel_context = await fetch_formatted_relationships(self._relationship_repo, novel_id)
-        kb_relationships_text = rel_context.text
+        # Canonical KB context (ADR-067): characters/locations/factions/
+        # relationships are fetched+rendered through the reusable provider
+        # (the ADR-050 envelope, with provenance annotated so planning gets the
+        # same honest rendering as writing — FIND-017). Degrades to empty
+        # strings when no provider is wired or the KB is empty (RULE-11).
+        if self._kb_context_provider is None:
+            from narrare.kb.context_contracts import KBContextBundle
+
+            kb_bundle = KBContextBundle.empty(RenderOptions(annotate_provenance=True))
+        else:
+            kb_bundle = await self._kb_context_provider.fetch_context(
+                novel_id,
+                entity_types=["character", "location", "faction"],
+                options=RenderOptions(annotate_provenance=True),
+            )
+        kb_vars = kb_bundle.to_prompt_variables()
 
         # Resolve the governed timeline system prompt via PromptComposer
         # (RULE-02 / ADR-049 D9). The template
@@ -185,15 +188,12 @@ class TimelineAnalysisService:
         # project metadata, and KB context variables.
         #
         # KB context variables (kb_characters, kb_locations, kb_factions,
-        # kb_relationships) and ``entity_events`` are supplied as empty
-        # strings (except kb_relationships, which is populated above)
-        # because no other KB/entity-event assembler is wired into this
-        # call path yet. ``culture_guidelines`` is NOT set here: it is
+        # kb_relationships) now flow from the provider above (ADR-067).
+        # ``entity_events`` remains empty: no entity-event source is wired
+        # into this call path yet (§7 GAP, closed in a later wave — see
+        # ADR-049 D8 notes). ``culture_guidelines`` is NOT set here: it is
         # unconditionally auto-injected by the PromptComposer (resolved from
-        # ``name_style`` or empty string — see composer.py). The KB/entity
-        # vars are declared here explicitly (not silently omitted) so the
-        # template's variable substitution succeeds and the gap is visible
-        # for a future assembler integration.
+        # ``name_style`` or empty string — see composer.py).
         ctx = PromptContext(
             language=language,
             writing_language=language,
@@ -202,14 +202,12 @@ class TimelineAnalysisService:
             mode="timeline",
             extra={
                 "chapter_summaries": chapter_context,
-                # No entity-event source wired yet (see ADR-049 D8 notes).
+                # No entity-event source wired yet (§7 GAP, allowlisted).
                 "entity_events": "",
-                # No KB assembler wired for this call path yet (except
-                # kb_relationships, which is populated above).
-                "kb_characters": "",
-                "kb_locations": "",
-                "kb_factions": "",
-                "kb_relationships": kb_relationships_text,
+                # kb_* spread from the provider — non-empty when the KB has
+                # those entities, empty on degradation (RULE-11). Spread (not
+                # a literal) so the §7 stub guard treats the slots as fed.
+                **kb_vars,
             },
         )
         composed = await self._composer.build(LLMIntent.PLAN, ctx)

@@ -2,6 +2,11 @@
 
 Defines the interfaces for KB entry and relationship operations.
 Contracts are written before implementation (RULE-03).
+
+The reusable KB-context surface (ADR-067 — :class:`KBContextBundle` value
+type and :class:`KBContextProviderProtocol`) lives in the sibling
+:mod:`narrare.kb.context_contracts` module (extracted to respect the 200-line
+contracts file-size limit, RULE-04).
 """
 
 from __future__ import annotations
