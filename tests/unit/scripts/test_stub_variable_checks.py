@@ -190,11 +190,13 @@ def test_empty_string_default_outside_var_dict_is_not_flagged(checker, tmp_path:
 def test_allowlisted_pair_is_absorbed(checker, tmp_path: Path) -> None:
     """A stub whose (file, var) is in the baseline produces no warning."""
     # Reconstruct an allowlisted repo-relative path under tmp so the
-    # computed rel path matches the baseline entry exactly.
+    # computed rel path matches the baseline entry exactly. Uses the
+    # story-suggest chapter_outline pair (RULE-11: legitimately empty when
+    # no chapter_id is targeted — a confirmed-optional var, not a §7 GAP).
     _write(
         tmp_path,
-        "apps/api/narrare/planning/timeline_analysis_service.py",
-        'ctx = PromptContext(extra={"entity_events": ""})\n',
+        "apps/api/narrare/writing/story_suggest_service.py",
+        'ctx = PromptContext(extra={"chapter_outline": ""})\n',
     )
     findings = [
         f

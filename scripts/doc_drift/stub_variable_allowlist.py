@@ -83,23 +83,18 @@ STUB_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
         "kb_factions",
         "RULE-11: optional KB-context var (see voice_check_prompt.py comment).",
     ),
-    # ── planning/* — admitted unwired assemblers (true §7 gaps) ──
-    (
-        "apps/api/narrare/planning/character_arc_service.py",
-        "existing_plot_points",
-        "§7 GAP: 'No plot-point assembler wired for this call path yet' (per in-code comment).",
-    ),
-    (
-        "apps/api/narrare/planning/timeline_analysis_service.py",
-        "entity_events",
-        "§7 GAP: 'No entity-event source wired yet (see ADR-049 D8 notes)' (per in-code comment).",
-    ),
-    # ── writing/* — admitted unwired assemblers (true §7 gaps) ──
+    # ── planning/* — §7 gaps CLOSED (entity_events + existing_plot_points
+    #    now wired from the injected TimelineEventRepository; rendered via
+    #    planning/_event_render.py). No allowlist entries remain here. ──
+    # ── writing/* — RULE-11 confirmed-optional ──
     (
         "apps/api/narrare/writing/story_suggest_service.py",
         "chapter_outline",
-        "§7 GAP: 'No chapter-outline assembler wired for this call path "
-        "yet' (per in-code comment).",
+        "RULE-11: the chapter outline is wired from the OutlineRepository "
+        "when a chapter_id is set (§7 closed); empty when no chapter_id is "
+        "targeted — story-suggest is a project-level tool and a chapter "
+        "need not be selected (confirmed-optional var, declared explicitly "
+        "so template substitution always succeeds).",
     ),
 )
 

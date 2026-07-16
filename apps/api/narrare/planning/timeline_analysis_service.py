@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.planning._event_render import render_confirmed_events
 from narrare.planning._timeline_chapter_context import format_chapter_context
 from narrare.planning.schemas import TimelineEventResponse, TimelineResponse
 from narrare.planning.timeline_schemas import TimelineEventCRUDResponse
@@ -188,12 +189,14 @@ class TimelineAnalysisService:
         # project metadata, and KB context variables.
         #
         # KB context variables (kb_characters, kb_locations, kb_factions,
-        # kb_relationships) now flow from the provider above (ADR-067).
-        # ``entity_events`` remains empty: no entity-event source is wired
-        # into this call path yet (§7 GAP, closed in a later wave — see
-        # ADR-049 D8 notes). ``culture_guidelines`` is NOT set here: it is
-        # unconditionally auto-injected by the PromptComposer (resolved from
-        # ``name_style`` or empty string — see composer.py).
+        # kb_relationships) flow from the provider above (ADR-067).
+        # ``entity_events`` is wired from the already-injected event_repo
+        # (confirmed events rendered compactly; §7 closed). Corrects the
+        # prior stale "ADR-049 D8 notes" comment (D8 governs the timeline
+        # template, not this slot).
+        # ``culture_guidelines`` is NOT set here: it is unconditionally
+        # auto-injected by the PromptComposer (resolved from ``name_style``
+        # or empty string — see composer.py).
         ctx = PromptContext(
             language=language,
             writing_language=language,
@@ -202,8 +205,9 @@ class TimelineAnalysisService:
             mode="timeline",
             extra={
                 "chapter_summaries": chapter_context,
-                # No entity-event source wired yet (§7 GAP, allowlisted).
-                "entity_events": "",
+                # Confirmed entity events, rendered from the event_repo;
+                # empty-but-valid when none exist or no repo is wired (RULE-11).
+                "entity_events": await render_confirmed_events(self._event_repo, novel_id),
                 # kb_* spread from the provider — non-empty when the KB has
                 # those entities, empty on degradation (RULE-11). Spread (not
                 # a literal) so the §7 stub guard treats the slots as fed.

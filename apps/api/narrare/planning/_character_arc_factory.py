@@ -20,6 +20,7 @@ from narrare._app.dependencies import (
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.novels.repository import NovelRepository
 from narrare.planning.character_arc_service import CharacterArcService
+from narrare.planning.timeline_repository import TimelineEventRepository
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -85,6 +86,7 @@ async def get_character_arc_service(
         model_registry=registry,
         model_config=model_config,
         composer=composer,
+        event_repo=TimelineEventRepository(session),
         api_key=api_key,
         base_url=base_url,
         invocation_pipeline=get_invocation_pipeline(),

@@ -21,6 +21,7 @@ from narrare._app.dependencies import (
 )
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.novels.repository import NovelRepository
+from narrare.planning.repository import OutlineRepository
 from narrare.writing.story_suggest_service import StorySuggestService
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
@@ -85,5 +86,6 @@ async def get_story_suggest_service(
         model_registry=registry,
         model_config=model_config,
         composer=composer,
+        outline_repo=OutlineRepository(session),
         invocation_pipeline=get_invocation_pipeline(),
     )

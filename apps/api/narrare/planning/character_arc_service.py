@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.planning._event_render import render_confirmed_events
 from narrare.planning.schemas import ArcPhaseResponse, CharacterArcRequest, CharacterArcResponse
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
     import uuid
 
     from narrare.novels.repository import NovelRepository
+    from narrare.planning.timeline_repository import TimelineEventRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
@@ -54,6 +56,10 @@ class CharacterArcService:
         composer: PromptComposer for resolving the governed character-arc
             system prompt via the cascade (RULE-02b / ADR-054 D1). Required
             for ``generate_character_arc``.
+        event_repo: For the novel's confirmed plot-point events, rendered
+            into the ``existing_plot_points`` prompt slot (§7 closed). When
+            ``None`` or the novel has no such events the slot degrades to an
+            empty string (RULE-11).
         api_key: Optional API key override.
         base_url: Optional base URL override.
         invocation_pipeline: Optional pipeline for invocation evidence
@@ -66,6 +72,7 @@ class CharacterArcService:
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig | None = None,
         composer: PromptComposer | None = None,
+        event_repo: TimelineEventRepository | None = None,
         *,
         api_key: str | None = None,
         base_url: str | None = None,
@@ -75,6 +82,7 @@ class CharacterArcService:
         self._registry = model_registry
         self._config = model_config
         self._composer = composer
+        self._event_repo = event_repo
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
@@ -126,6 +134,13 @@ class CharacterArcService:
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext
 
+        # Confirmed plot-point events give the arc model the novel's
+        # established plot beats (§7 closed; rendered from the event_repo).
+        # Empty-but-valid when none exist or no repo is wired (RULE-11).
+        existing_plot_points = await render_confirmed_events(
+            self._event_repo, novel_id, event_type="plot_point"
+        )
+
         ctx = PromptContext(
             language=language,
             writing_language=language,
@@ -136,10 +151,7 @@ class CharacterArcService:
                 "character_name": request.character_name,
                 "character_current_state": request.character_current_state,
                 "character_goal_state": request.character_goal_state,
-                # No plot-point assembler wired for this call path yet;
-                # declared explicitly (not silently omitted) so the template's
-                # variable substitution succeeds (precedent: timeline_analysis).
-                "existing_plot_points": "",
+                "existing_plot_points": existing_plot_points,
             },
         )
 

@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.writing._outline_render import render_chapter_outline
 from narrare.writing.schemas_story_suggest import (
     StorySuggestionResponse,
     StorySuggestStreamEvent,
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.novels.repository import NovelRepository
+    from narrare.planning.contracts import OutlineRepositoryProtocol
     from narrare.writing.schemas_story_suggest import StorySuggestRequest
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
@@ -70,6 +72,11 @@ class StorySuggestService:
         composer: PromptComposer for resolving the governed
             story-suggest system prompt via the cascade (RULE-02b /
             ADR-054 D1).  Required for ``suggest``.
+        outline_repo: For the targeted chapter's outline, rendered into the
+            ``chapter_outline`` prompt slot when a ``chapter_id`` is set
+            (§7 closed).  When ``None`` or no chapter is targeted the slot
+            stays empty (legitimate RULE-11 — story-suggest is a
+            project-level tool and a chapter need not be selected).
         invocation_pipeline: Optional pipeline for invocation evidence
             (Mode 1 prepare/finalize).  Retained for DI-contract
             stability.
@@ -81,6 +88,7 @@ class StorySuggestService:
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig | None = None,
         composer: PromptComposer | None = None,
+        outline_repo: OutlineRepositoryProtocol | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
@@ -88,6 +96,7 @@ class StorySuggestService:
         self._registry = model_registry
         self._config = model_config
         self._composer = composer
+        self._outline_repo = outline_repo
         self._invocation_pipeline = invocation_pipeline
 
     async def suggest(
@@ -156,13 +165,22 @@ class StorySuggestService:
             author_instructions=request.author_instructions or "",
             extra={
                 "chapter_id": str(request.chapter_id) if request.chapter_id else "",
-                # No chapter-outline assembler wired for this call path
-                # yet; declared explicitly (not silently omitted) so the
-                # template's variable substitution succeeds (precedent:
-                # character_arc_service existing_plot_points).
+                # Declared explicitly so template substitution always
+                # succeeds; populated below when a chapter is targeted.
+                # Empty when no chapter_id is set (legitimate RULE-11 —
+                # story-suggest is a project-level tool and a chapter need
+                # not be selected; allowlisted as a confirmed-optional var).
                 "chapter_outline": "",
             },
         )
+
+        # Wire the chapter outline (stage + beats + notes) when a chapter is
+        # targeted (§7 closed). Skipped when there is no chapter_id or no
+        # outline repo — the slot stays empty (RULE-11, allowlisted).
+        if request.chapter_id is not None and self._outline_repo is not None:
+            outline = await self._outline_repo.get_by_chapter_id(request.chapter_id)
+            if outline is not None:
+                ctx.extra["chapter_outline"] = render_chapter_outline(outline)
 
         invocation_context = build_invocation_context(
             feature_id="writing_story_suggest",
