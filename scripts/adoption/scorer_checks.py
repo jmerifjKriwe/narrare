@@ -12,30 +12,83 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from adoption.scorer import CheckDetail
 
-# Mapping infrastructure names to the prompt variables that evidence adoption.
-_INFRA_VAR_EVIDENCE: dict[str, set[str]] = {
-    "mem0_preferences": {"user_preferences", "avoidance_patterns"},
-    "kb_entities": {"kb_characters", "kb_locations", "kb_factions"},
-    "kb_relationships": {"kb_relationships"},
+# Evidence-variable matrix — Model alpha (per-(category, infra_dim) vocab).
+#
+# Consumer vs. owner distinction (RULE-18b false-control fix; see the cr-05
+# follow-up "Adoption-Score-Honesty"). Each ``(category, infra_dim)`` cell
+# explicitly declares how THAT category expresses adoption of the dimension:
+#
+#   - CONSUMER categories (writing, analysis, ...) *receive* entity /
+#     relationship data under the generic context-variable names emitted by the
+#     KB render layer (``kb_characters`` / ``kb_locations`` / ``kb_factions`` /
+#     ``kb_relationships``).
+#   - OWNER category (``kb``) *produces* that data and consumes it internally
+#     under its own domain variable names (``existing_entity_names`` /
+#     ``entity_summaries`` / ``entity_details`` / ``existing_relationships``).
+#
+# The pre-alpha shape (``dict[infra_dim, set[var]]``) collapsed both roles into one
+# flat vocab. That caused a false negative — the owner never emits its own
+# consumer-facing var names, so it was scored ``adopted=0.0`` on a ``required``
+# dimension — and made the mapping structurally fragile (two independent
+# honesty bugs surfaced from it; see the cr-05 follow-up). Model alpha makes the
+# role explicit per cell: a variable counts only for its declared category, so
+# there is no consumer/owner conflation and no false positives.
+#
+# Full matrix completeness (every declared ``(category, dim)`` pair) is the
+# subject of the follow-up mapping audit; the cells below hold the verified,
+# runtime-wired vocab only — no invented variables.
+_INFRA_VAR_EVIDENCE: dict[tuple[str, str], set[str]] = {
+    # ── mem0_preferences — consumer vocab, identical across categories ──
+    ("writing", "mem0_preferences"): {"user_preferences", "avoidance_patterns"},
+    ("analysis", "mem0_preferences"): {"user_preferences", "avoidance_patterns"},
+    ("kb", "mem0_preferences"): {"user_preferences", "avoidance_patterns"},
+    # ── kb_entities ──
+    # OWNER (kb) consumes entities under domain var names — verified at
+    # apps/api/narrare/kb/{extraction_service,worldbuilding_analyzer,
+    # consistency_service}.py. This is the cr-05 owner fix.
+    ("kb", "kb_entities"): {
+        "existing_entity_names",
+        "entity_summaries",
+        "entity_details",
+    },
+    # CONSUMERS receive the rendered entity lists.
+    ("writing", "kb_entities"): {"kb_characters", "kb_locations", "kb_factions"},
+    ("analysis", "kb_entities"): {"kb_characters", "kb_locations", "kb_factions"},
+    # ── kb_relationships ──
+    # OWNER (kb) consumes relationships under the domain name — verified in
+    # kb/en/{worldbuilding/phase1,worldbuilding/phase2,improve}/system.md.
+    # (kb does not currently *declare* kb_relationships infrastructure, but the
+    # owner vocab is documented here for completeness / the mapping audit.)
+    ("kb", "kb_relationships"): {"existing_relationships"},
+    # CONSUMERS receive the rendered relationship graph.
+    ("writing", "kb_relationships"): {"kb_relationships"},
+    ("analysis", "kb_relationships"): {"kb_relationships"},
 }
 
 
 def check_infrastructure(
     infra_name: str,
+    category: str,
     level: str,
     all_vars: set[str],
     has_prompts: bool,
     i18n_adopted_frac: float,
 ) -> CheckDetail:
-    """Check a single infrastructure item and return its detail."""
+    """Check a single infrastructure item and return its detail.
+
+    *category* selects the evidence vocabulary for *infra_name* per Model alpha
+    (see ``_INFRA_VAR_EVIDENCE``). Each category expresses adoption of a
+    dimension differently — consumers via rendered context vars, the owner
+    (kb) via its own domain vars — so the lookup is per ``(category, infra)``.
+    """
     # Lazy import to avoid circular dependency (scorer → scorer_checks → scorer).
     from adoption.scorer import WEIGHT_PARTIAL, WEIGHT_REQUIRED, CheckDetail
 
     weight = WEIGHT_REQUIRED if level == "required" else WEIGHT_PARTIAL
 
-    # Infrastructure that can be checked via variable presence.
-    if infra_name in _INFRA_VAR_EVIDENCE:
-        evidence_vars = _INFRA_VAR_EVIDENCE[infra_name]
+    # Infrastructure that can be checked via variable presence (Model alpha lookup).
+    evidence_vars = _INFRA_VAR_EVIDENCE.get((category, infra_name))
+    if evidence_vars is not None:
         present = bool(all_vars & evidence_vars)
         adopted = 1.0 if present else (0.5 if level == "partial" else 0.0)
         note = (

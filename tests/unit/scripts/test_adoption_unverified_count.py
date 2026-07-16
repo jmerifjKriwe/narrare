@@ -116,18 +116,59 @@ class TestUnverifiedCount:
         report = compute_adoption_report(registry, prompts)
         assert report.unverified_count == 0
 
-    def test_unverified_does_not_affect_score(self) -> None:
-        """Score must be identical whether or not infra is unverified (ratchet)."""
+    def test_unverified_excluded_from_verified_score(self) -> None:
+        """An unverified detail must NOT raise the verified score (RULE-18b).
+
+        Invariant REVERSED from the old ratchet behaviour: a category whose
+        only "adopted" item is unverified now scores 0 in the verified
+        aggregate, because unverified infra is excluded from numerator AND
+        denominator (Option A). Previously the file-presence proxy
+        (``adopted=1.0``) inflated the score to match a verified item.
+        """
         registry_unverified = _minimal_registry(
             infra={"token_budget": "required"},
         )
         registry_verified = _minimal_registry(
             infra={"kb_entities": "required"},
         )
+        # must var is absent (no user_preferences in the prompt) → verified
+        # must contributes 0. So the unverified registry's only "adopted" item
+        # is token_budget, which is excluded → verified score 0.0. The verified
+        # registry's kb_entities resolves (kb_characters present) → score > 0.
         prompts = [
             _make_prompt("writing", "en", "new_chapter", {"kb_characters"}),
         ]
         report_u = compute_adoption_report(registry_unverified, prompts)
         report_v = compute_adoption_report(registry_verified, prompts)
-        # Both have one 'required' infra at weight 1.0, adopted=1.0 → same score.
-        assert report_u.overall_score == report_v.overall_score
+        # Unverified no longer inflates: verified score strictly exceeds it,
+        # and the all-unverified category scores exactly 0.
+        assert report_u.overall_score == 0.0
+        assert report_v.overall_score > report_u.overall_score
+
+    def test_unverified_never_enters_verified_aggregate(self) -> None:
+        """Regression: unverified infra must never contribute to the verified score.
+
+        A category with one verified must var (1 of 2 present → 1.0/2.0 = 0.5)
+        plus an unverified infra (``adopted=1.0``) must score exactly 0.5. If
+        the unverified item leaked back into the aggregate it would add
+        weight 1.0 to numerator and denominator → 2.0/3.0 ≈ 0.67. This locks
+        the Option-A exclusion at the category-score level.
+        """
+        registry = {
+            "features": {
+                "writing": {
+                    "modes": ["new_chapter"],
+                    "required_infrastructure": {"token_budget": "required"},
+                    "context_variables": {
+                        "must": ["present_var", "missing_var"],
+                        "should": [],
+                    },
+                }
+            },
+            "inline_fallbacks": [],
+        }
+        prompts = [_make_prompt("writing", "en", "new_chapter", {"present_var"})]
+        report = compute_adoption_report(registry, prompts)
+        assert report.categories[0].score == 0.5
+        # The unverified item is still surfaced in the report (not silenced).
+        assert report.unverified_count == 1

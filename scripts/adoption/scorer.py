@@ -274,10 +274,15 @@ def compute_adoption_report(
 
         # Infrastructure items.
         for infra_name, level in infra.items():
-            detail = check_infrastructure(infra_name, level, all_vars, has_prompts, i18n_frac)
+            detail = check_infrastructure(
+                infra_name, cat_name, level, all_vars, has_prompts, i18n_frac
+            )
             details.append(detail)
-            numerator += detail.weight * detail.adopted
-            denominator += detail.weight
+            # unverified = assumption (file-presence proxy); excluded from the
+            # verified headline (RULE-18b). See test_unverified_excluded_*.
+            if not detail.unverified:
+                numerator += detail.weight * detail.adopted
+                denominator += detail.weight
 
         # Inline fallback penalty.
         fb_count = fallback_counts.get(cat_name, 0)
