@@ -15,6 +15,7 @@ Check families:
   - Just-recipe doc-drift (phantom `just <recipe>` references — review-04 AUFG-04-02/04)
   - Agent-name doc-drift (fake subagent_type references — review-04 AUFG-04-15)
   - Removed-governance-artifact references (WARNING-ONLY ratcheted baseline)
+  - §7 stub-variable detector (WARNING-ONLY ratcheted baseline)
 
 Exit codes:
   0: No drift detected — all checks passed.
@@ -48,6 +49,7 @@ from doc_drift.lookup_drift_checks import check_lookup_drift
 from doc_drift.removed_governance_refs_checks import check_removed_governance_refs
 from doc_drift.spec_checks import check_spec_references
 from doc_drift.ssot_locale_path_checks import check_ssot_locale_path
+from doc_drift.stub_variable_checks import check_stub_variables
 from doc_drift.terminology_checks import check_terminology_alignment
 from doc_drift.tool_version_checks import CheckResult, register_tool_checks
 
@@ -88,6 +90,7 @@ def _run_governance_checks() -> list[DocDriftFinding]:
     findings.extend(check_just_command_drift())
     findings.extend(check_agent_name_drift())
     findings.extend(check_removed_governance_refs())
+    findings.extend(check_stub_variables())
     return findings
 
 
