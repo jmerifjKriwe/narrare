@@ -99,58 +99,18 @@ ihre echte Evidenz haben), nicht in einer statischen Bezeichner-Suche.
 
 ## Offener Folgeschritt: Adoption-Score-Honesty (kein neues FIND)
 
-Die `unverified`-Markierung wird per `test_unverified_does_not_affect_score`
-bewusst aus der Score-Berechnung ausgeschlossen. Der `overall_score`
-(`scripts/check_adoption.py`, CI-Gate G8, Schwelle ≥ 0.85) kreditiert
-`token_budget`/`injection_defense` daher weiterhin mit `adopted=1.0` — das ist
-der verbleibende Rest-False-Control: die Schlagzahl suggeriert vollständige
-Adoption, während ein Teil der Dimensionen als unbewiesen eingestanden ist.
+**Status:** ✅ Resolved (2026-07-16) — Score-Honesty + kb-Debt implementiert; das Mapping-Audit bleibt als definite Folgeaufgabe offen.
 
-**Status:** Offen — Plan verabschiedet (2026-07-15), Implementierung pausiert.
+Die `unverified`-Markierung war bisher per Test bewusst aus der Score-Berechnung ausgeschlossen, sodass der `overall_score` (`scripts/check_adoption.py`, CI-Gate G8, Schwelle ≥ 0.85) `token_budget`/`injection_defense` als `adopted=1.0` kreditierte — der dokumentierte Rest-False-Control.
 
-**Verifizierter Root Cause (_architectural-discipline §7_):** Beim Messen der
-ehrlichen verified-only-Score fiel **kb 0.87 → 0.84** (< 0.85). Das ist **kein
-kb-Defizit**, sondern ein **Scorer-Bug**: `_INFRA_VAR_EVIDENCE["kb_entities"]`
-sucht Konsumenten-Variablen (`kb_characters`/`kb_locations`/`kb_factions`) —
-kb ist aber der **Owner** der Entity-Daten und konsumiert sie unter
-Domain-Namen (`existing_entity_names`, `entity_summaries`, `entity_details`).
-Runtime-Wiring verifiziert (nicht gestubbt):
-`apps/api/narrare/kb/extraction_service.py:105-266` (`existing_entity_names`,
-echter KB-Repo-Fetch), `worldbuilding_analyzer.py:157-295` und
-`consistency_service.py:252-259` (`entity_summaries`/`entity_details` aus
-echten Entities via `build_entity_summaries`). `overall` blieb ~0.97.
+**Implementation (beides shipped, Gate grün UND ehrlich):**
 
-**Verabschiedetes Modell (α):** `_INFRA_VAR_EVIDENCE` von
-`dict[infra_dim, set[var]]` zu **`dict[(category, infra_dim), set[var]]`**
-restrukturieren (pro-Kategorie-Evidence-Vocab). Macht die Konsumenten- vs.
-Owner-Rolle pro Zelle explizit, beseitigt Vermischung und False Positives
-(ein Var zählt nur für seine deklarierte Kategorie). Modell β
-(Ownership-Deklaration als separates Signal) Reserve, falls der Audit ein
-(category,dim)-Paar findet, das Var-Präsenz nicht abbilden kann.
+- **Scorer-Modell α + Option A** — Commit `8f4f0637` *fix(adoption): per-category evidence vocab and exclude unverified from score*. `_INFRA_VAR_EVIDENCE` zu `dict[(category, infra_dim), set[var]]` restrukturiert; `kb→kb_entities` mit Owner-Vocab (`existing_entity_names`/`entity_summaries`/`entity_details`) statt Konsumenten-Vocab → kb **0.87 → 1.00** (Consumer-Bias-Fix; das war ein Scorer-Bug, kein kb-Defizit). `unverified` an beiden Aggregationsstellen (`scorer.py`, `scorer_modes.py`) aus Zähler **und** Nenner ausgeschlossen → overall **0.97 → 0.9985** (Inflation entfernt). `unverified_count==7` bleibt im separaten Audit-Abschnitt sichtbar und ist nun konsistent zur Schlagzahl.
+- **kb-Debt** — Commit `238200ad` *fix(kb): populate world_context for extract/merge and remove dead avoidance slot*. merge/extract `world_context` genuin populiert (echter `KBRepositoryProtocol.list_entries`-Fetch, single-read, RULE-11-Graceful-Degradation auf `""`); redundanter `{{avoidance_patterns}}`-Slot aus `kb/merge` + `kb/extract` entfernt (die Avoidance-Daten laufen über `{{user_preferences}}`, das in beiden Templates erhalten bleibt); Helper `_world_context.py` (RULE-04).
 
-**Kombinierte Implementierung (nächste Session, ein Commit):**
-1. Modell-α-Restrukturierung (kb→kb_entities mit Owner-Vocab).
-2. Option-A-Guard: `unverified` an beiden Aggregationsstellen aus Zähler UND
-   Nenner ausschließen (`scripts/adoption/scorer.py` ~L279,
-   `scripts/adoption/scorer_modes.py` ~L227; `details.append()` bleibt).
-3. Tests: `test_unverified_does_not_affect_score` →
-   `test_unverified_excluded_from_verified_score` (Invariante kippt) **plus**
-   neuer Regressionstest `test_unverified_never_enters_verified_aggregate`.
-4. Drei kb-Debt-Items **direkt** beheben (nicht nur registriert): merge
-   `world_context=""`-Stub, extract fehlendes `world_context`, tote
-   `avoidance_patterns`-Variable.
-5. Dry-Run-Gate VOR Merge: ist danach irgendeine Score < 0.85 → STOP,
-   Adoption real aufbessern, **niemals** Schwelle kosmetisch anpassen.
-6. Diese Sektion auf ✅ Resolved setzen mit Evidenz.
+**Enforcement:** Regressionstest `test_unverified_never_enters_verified_aggregate` sowie der gekippte `test_unverified_excluded_from_verified_score` (Invariante kehrt sich um: `unverified` darf nicht in den verified-Aggregat einfließen); `check_adoption`-Gate jetzt ehrlich; kb-`world_context`-Tests asserten Nicht-Leere zur Runtime.
 
-**Mandate:** Anti-Proxy (Template-Präsenz ≠ Runtime-Nutzung); Register=Rot
-(nichts wird nur "registriert" — alles getan oder mit Owner geplant).
-
-**Definite Folgeaufgabe (mit Owner, nicht optional):** Mapping-Audit — jedes
-(category,dim)-Paar unter Modell α auf Korrektheit/Vollständigkeit prüfen.
-Beobachtung: der Scorer offenbarte zwei unabhängige Honesty-Bugs (FIND-006
-`unverified`-Kredit + dieser Konsumenten-Bias) → strukturelle Fragilität des
-Evidence-Mappings.
+**Definite Folgeaufgabe (mit Owner, nicht optional — bleibt offen):** Mapping-Audit — jedes `(category, dim)`-Paar unter Modell α auf Korrektheit und Vollständigkeit prüfen. Beobachtung: der Scorer offenbarte zwei unabhängige Honesty-Bugs (FIND-006 `unverified`-Kredit + der hier behobene Consumer-Bias) → strukturelle Fragilität des Evidence-Mappings; der Audit verifiziert, dass die neue per-`(category, dim)`-Matrix vollständig und korrekt ist.
 
 ---
 
