@@ -175,3 +175,50 @@ class TestOwnerVsConsumerEvidence:
             "kb_relationships", "writing", "required", {"kb_relationships"}, True, 1.0
         )
         assert detail.adopted == 1.0
+
+
+# ── Mapping-audit F1: analysis entities cell ────────────────────────
+
+
+class TestAnalysisEntitiesCell:
+    """The (analysis, kb_entities) cell credits BOTH the rendered consumer
+    triple AND the canonical singular ``{{kb_entities}}`` var.
+
+    Mapping-audit F1: ``{{kb_entities}}`` (singular) is used by
+    analysis/consistency + fact_extraction and is runtime-real, but the cell
+    previously listed only the consumer triple — so consistency's own entity
+    adoption was masked (score-neutral only because the triple happened to be
+    in the analysis union; the cell itself was dishonest about how analysis
+    expresses entity adoption).
+    """
+
+    def test_analysis_credits_singular_kb_entities_var(self) -> None:
+        """consistency/fact_extraction use {{kb_entities}} directly → adopted."""
+        detail = check_infrastructure(
+            "kb_entities", "analysis", "partial", {"kb_entities"}, True, 1.0
+        )
+        assert detail.adopted == 1.0
+        assert detail.unverified is False
+
+    def test_analysis_credits_consumer_triple(self) -> None:
+        """The rendered consumer triple still satisfies the cell."""
+        detail = check_infrastructure(
+            "kb_entities",
+            "analysis",
+            "partial",
+            {"kb_characters", "kb_locations", "kb_factions"},
+            True,
+            1.0,
+        )
+        assert detail.adopted == 1.0
+
+    def test_analysis_cell_contents_lock(self) -> None:
+        """The cell explicitly lists the singular var alongside the triple,
+        and owner domain vars must NOT leak into the consumer cell."""
+        from adoption.scorer_checks import _INFRA_VAR_EVIDENCE
+
+        cell = _INFRA_VAR_EVIDENCE[("analysis", "kb_entities")]
+        assert "kb_entities" in cell
+        assert {"kb_characters", "kb_locations", "kb_factions"} <= cell
+        # Owner domain vars must not satisfy a consumer cell (no false positive).
+        assert not (cell & {"existing_entity_names", "entity_summaries", "entity_details"})

@@ -284,6 +284,7 @@ features:
       prompt_composer: required
       mem0_preferences: partial     # preference-aware modes only
       kb_entities: required
+      kb_relationships: required    # worldbuilding phase1/phase2/improve adopt {{existing_relationships}}
       injection_defense: required
       meta_prompt: required
       i18n: partial                # EN-only per ADR-026 Phase 5; localized output via {{writing_language}}

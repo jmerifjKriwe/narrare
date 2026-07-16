@@ -53,12 +53,20 @@ _INFRA_VAR_EVIDENCE: dict[tuple[str, str], set[str]] = {
     },
     # CONSUMERS receive the rendered entity lists.
     ("writing", "kb_entities"): {"kb_characters", "kb_locations", "kb_factions"},
-    ("analysis", "kb_entities"): {"kb_characters", "kb_locations", "kb_factions"},
+    # analysis additionally consumes the canonical singular {{kb_entities}} var
+    # directly (consistency + fact_extraction prompt_builder, runtime-real) — not
+    # just the rendered consumer triple — so credit that too (mapping-audit F1).
+    ("analysis", "kb_entities"): {
+        "kb_characters",
+        "kb_locations",
+        "kb_factions",
+        "kb_entities",
+    },
     # ── kb_relationships ──
     # OWNER (kb) consumes relationships under the domain name — verified in
     # kb/en/{worldbuilding/phase1,worldbuilding/phase2,improve}/system.md.
-    # (kb does not currently *declare* kb_relationships infrastructure, but the
-    # owner vocab is documented here for completeness / the mapping audit.)
+    # kb declares kb_relationships infrastructure (required); this cell scores
+    # it adopted via the owner var (mapping-audit F3).
     ("kb", "kb_relationships"): {"existing_relationships"},
     # CONSUMERS receive the rendered relationship graph.
     ("writing", "kb_relationships"): {"kb_relationships"},
