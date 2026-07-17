@@ -46,15 +46,15 @@ weiter unten.
 | FIND | Titel | Review | Evidenz (Datei:Zeile) | Status |
 |---|---|---|---|---|
 | FIND-001 | Consistency-Check ohne KG-Relationships | cr-03 | `apps/api/narrare/consistency/checker_context.py:160-197` lädt `kb_relationships_text = rel_context.text` und übergibt `kb_relationships=…`; `consistency/prompt_builder.py:43` liest `deps.kb_relationships` | ✅ Resolved |
-| FIND-002 | Coreference ohne Charakter-Liste | cr-03 | `analysis/coreference_service.py:106` akzeptiert `kb_repo`, L176 `fetch_kb_characters(...)`, L193/L208 relationships; neues Modul `analysis/coreference_kb.py` | ✅ Resolved |
+| FIND-002 | Coreference ohne Charakter-Liste | cr-03 | `analysis/coreference_service.py:103` akzeptiert `kb_context_provider: KBContextProviderProtocol`; L176-186 holt `kb_characters`/`kb_locations`/`kb_factions`/`kb_relationships` via kanonischen `KBContextProvider` (ADR-067, Provenance-annotated FIND-017). Das frühere Modul `analysis/coreference_kb.py` wurde in §7 Wave 4a (`6749753e`) durch den Provider ersetzt (eine Fetch+Render-Quelle statt fragmentierter Helper) | ✅ Resolved |
 | FIND-003 | Analysis-ContextAssembler ohne TokenBudget | cr-03 | `AnalysisContextAssembler` in `packages/core/narrare_core/analysis/assembler.py`; `analysis/beta_reader_service.py:150` nutzt `build_budgeted_prompt(deps, self._budget_assembler)`; `analysis/context_assembler.py:206-210` reicht KB-Bodies voll durch | ✅ Resolved |
 | FIND-004 | KBConsistencyAnalyzer Body-Truncation hardcoded | cr-03 | `kb/consistency_analyzer.py:95` `max_body_tokens=1500` parametrisiert; L212 `cap_to_budget(entity.body, max_body_tokens)` (token-aware, ersetzt hartcodierte 5000-Zeichen-Grenze) | ✅ Resolved |
 | FIND-005 | mem0-Preference-Injection-Gate | cr-03 | `packages/core/narrare_core/prompts/composer.py:94-113` Gate auf `not context.user_preferences` + `user_id`/`project_id`; `_app/dependencies_prompts.py:128` verdrahtet `preference_service`; `_app/dependencies_pipeline.py:54-59` zusätzlicher `PreferenceContextEnricherImpl` | ✅ Resolved |
 | FIND-006 | Adoption-Scorer token_budget ohne Code-Nachweis | cr-03 | siehe eigene Sektion unten (besondere Dokumentation) | ✅ Resolved |
-| FIND-007 | Worldbuilding Phase 1 Defizite | cr-01 | `prompts/_bundled/kb/en/worldbuilding/phase1/system.md` v1.2.0: JSON-Codeblock (L51-86) + Constraints mit `{{writing_language}}` (L102) | ✅ Resolved |
-| FIND-008 | Worldbuilding Phase 2 JSON-Schema | cr-01 | `prompts/_bundled/kb/en/worldbuilding/phase2/system.md` v1.3.1: JSON-Codeblock (L80-100) | ✅ Resolved |
+| FIND-007 | Worldbuilding Phase 1 Defizite | cr-01 | `prompts/_bundled/kb/en/worldbuilding/phase1/system.md` v1.2.0: JSON-Codeblock (ab L55) + Constraints-Sektion (L100) mit `{{writing_language}}` (L102) | ✅ Resolved |
+| FIND-008 | Worldbuilding Phase 2 JSON-Schema | cr-01 | `prompts/_bundled/kb/en/worldbuilding/phase2/system.md` v1.3.1: JSON-Codeblock (ab L84) | ✅ Resolved |
 | FIND-009 | summarize Do-NOT + JSON-Format | cr-01 | `prompts/_bundled/analysis/en/summarize/system.md` v1.3.0: 4 Do-NOT-Items, JSON-Format (L19-31) | ✅ Resolved |
-| FIND-010 | kb/extract Runtime-Input Contract | cr-01 | `prompts/_bundled/kb/en/extract/system.md` v1.2.0: `### Runtime Input`-Sektion (L32-36) | ✅ Resolved |
+| FIND-010 | kb/extract Runtime-Input Contract | cr-01 | `prompts/_bundled/kb/en/extract/system.md` v1.2.1: `### Runtime Input`-Sektion (L32-36) | ✅ Resolved |
 | FIND-011 | style_profile in Writing-Prompts | cr-01 | `{{style_profile}}` jetzt in allen 8 EN-Writing-Prompts vorhanden (inkl. der 4 ehemals fehlenden: scene_by_scene, interactive_session, story_suggest, chat) | ✅ Resolved |
 | FIND-012 | candidate_pairs Wrapping | cr-01 | `prompts/variable_registry.py:51` — `candidate_pairs` in `USER_CONTENT_VARS`; `prompts/_bundled/kb/en/merge/system.md:33` wrappt `<user_provided_data>{{candidate_pairs}}</user_provided_data>` | ✅ Resolved |
 | FIND-013 | Injection Defense Duplikat | cr-02 | meta {en,de,fr} alle v3.1.0 **ohne** XML-Tag-Defense; `universal/en/system.md:17` behält sie (Eigentümer der Injection-Defense) | ✅ Resolved |
@@ -62,7 +62,7 @@ weiter unten.
 | FIND-015 | Rate-Limiter hart codiert | cr-08 | `_app/rate_limits.py`: alle 6 `NARRARE_RATE_LIMIT_*`-Env-Vars mit governed Defaults (3/5/10/10/5/3); `tests/unit/api/_app/test_rate_limits.py` | ✅ Resolved |
 | FIND-016 | Writing de/fr Legacy-Templates | cr-02 | `prompts/_bundled/writing/de/` und `writing/fr/` leer/entfernt → ADR-026 Phase 5 Option 1 (Entfernen) umgesetzt; Output-Sprache via `{{writing_language}}` | ✅ Resolved |
 | FIND-017 | Provenance-annotated KB-Rendering | cr-04 | `context/_provenance_annotation.py` `compute_provenance_annotation()` (Trigger/Suppress-Logik); `context/_render_options.py` `RenderOptions(annotate_provenance=)`; Render-Pfade akzeptieren `preserved_fields` | ✅ Resolved |
-| FIND-018 | ChatPanel generische Fehlermeldung | cr-07 | `packages/web/components/studio/editor/ChatPanel.tsx:144-160` rendert `error.userMessage` (statt generischer Konstante) + Retry-Button bei `error.retryable` | ✅ Resolved |
+| FIND-018 | ChatPanel generische Fehlermeldung | cr-07 | `packages/web/components/studio/editor/ChatPanel.tsx:147-149` rendert `error.userMessage` (statt generischer Konstante) + Retry-Button bei `error.retryable` | ✅ Resolved |
 | FIND-019 | Consistency Ignorieren-Markierung | cr-07 | `packages/web/lib/api/consistency.ts` (dismiss/undismiss/list), `lib/hooks/useDismissedFindings.ts`; Backend-Endpoints `POST/GET/DELETE /novels/{id}/kb/consistency/dismiss[ed]`; Tests vorhanden | ✅ Resolved |
 | FIND-020 | Emotionale Intensitätskurve _(Enhancement)_ | cr-07 | `packages/web/components/studio/analysis/SentimentArcGraph.tsx`, `SentimentChart.tsx`, `SentimentPanel.tsx`, `analysis/intensity.ts` (Enhancement umgesetzt) | ✅ Resolved |
 | FIND-021 | Demo-Projekt Beispiel-KB _(Enhancement)_ | cr-07 | `apps/api/narrare/setup/demo_loader.py` (3 Demos: fantasy/scifi/german), `setup/contracts.py`, `/setup/demos`-Endpoint, `packages/web/types/wizard.ts` `DemoProjectInfo`, RULE-17-Contract-Test `test_demo_contract.py` | ✅ Resolved |
@@ -72,6 +72,8 @@ weiter unten.
 ## FIND-006 — Besondere Dokumentation (Adoption-Scorer)
 
 **Status:** ✅ Resolved (2026-07-15) — mit dokumentierter Ablehnung der statischen Code-Verifikation.
+
+**Accepted Risk (lifecycle-taxonomy `accepted_risk`):** statische Code-Verifikation von `token_budget`/`injection_defense` bewusst nicht umgesetzt. Owner: Core-Specialist. Rationale: Name-/Import-basierter Scanner erzeugt systematische False Positives UND False Negatives (belegt an FIND-003/004). Controls: `CheckDetail.unverified`-Flag + `AdoptionReport.unverified_count`-Reporting verhindern falsche `adopted`-Behauptungen; das wirksame Enforcement für „Budget angewendet" liegt in den Per-Service-Regressionstests (FIND-003/004). Review-Datum: nächster quartalsmäßiger Major Review (cr-06 §5.3).
 
 **Implementation:** `scripts/adoption/scorer_checks.py` führt für
 `token_budget`/`injection_defense` ein `unverified=has_prompts`-Flag plus Note
@@ -117,7 +119,7 @@ ihre echte Evidenz haben), nicht in einer statischen Bezeichner-Suche.
   - W4b (`c8bc88d7`) — beta-reader dict→Envelope (β-str; Provenance fließt).
 - **`_world_context`-Konsolidierung** (`690c94a6`) — assist/improve via `KBContextProvider` (eine Quelle, Inline-Duplikation entfernt).
 
-**Ergebnis:** Die §7-Anti-Pattern-Klasse ist **strukturell geschlossen und CI-+pre-commit-erzwungen** (Regressionen blockieren ab sofort). Provenance (FIND-017) fließt einheitlich über `KBContextProvider`/ADR-050-Envelope (timeline, coreference, beta-reader). `check_adoption` durchgehend **1.00** (ehrlich + grün). Zwei unabhängige Scorer-Honesty-Bugs (FIND-006 `unverified`-Kredit + Consumer-Bias) sind addressiert; das Evidence-Mapping wurde nach Modell α audittet.
+**Ergebnis:** Die §7-Anti-Pattern-Klasse ist **strukturell geschlossen und CI-+pre-commit-erzwungen** (Regressionen blockieren ab sofort). Provenance (FIND-017) fließt einheitlich über `KBContextProvider`/ADR-050-Envelope (timeline, coreference, beta-reader). `check_adoption` overall **1.00**, alle Modi grün (≥0.85-Threshold; ehrlich ausgewiesen: `writing` 0.99, `co_author` 0.98 — jeweils ✅). Zwei unabhängige Scorer-Honesty-Bugs (FIND-006 `unverified`-Kredit + Consumer-Bias) sind addressiert; das Evidence-Mapping wurde nach Modell α audittet.
 
 ---
 
@@ -130,3 +132,42 @@ ihren Ursprungs-Reviews (cr-00 bis cr-04, cr-07, cr-08) eigenständig getrackt
 und fallen nicht unter diesen Record.
 
 Pointer: [`findings/README.md`](findings/README.md) (Stub, verweist hierher).
+
+---
+
+## Re-Verification (2026-07-17)
+
+Unabhängige Nachprüfung aller 21 Resolution-Behauptungen gegen echten Code
+und Laufzeit-Gates (nicht gegen Doku-Behauptungen). Ergebnis: **alle
+Behauptungen halten**; eine Evidence-Zeile war driftig und wurde korrigiert.
+
+**Code-Evidence-Re-Check (alle 21 FINDs):**
+
+- 20/21 hielten unverändert.
+- **FIND-002 korrigiert:** Evidenz verwies auf `analysis/coreference_kb.py`
+  (Modul existiert nicht mehr — in §7 Wave 4a, `6749753e`, durch den kanonischen
+  `KBContextProvider` / ADR-067 ersetzt). Resolution weiterhin gültig; Evidenz
+  auf `coreference_service.py:103` / `176-186` (Provider-Fetch) aktualisiert.
+- **FIND-010:** `kb/extract/system.md` v1.2.0 → v1.2.1 (Version nachgezogen).
+- Kosmetische Zeilen-Aktualisierungen: FIND-007 (JSON ab L55), FIND-008
+  (JSON ab L84), FIND-018 (`ChatPanel.tsx:147-149`).
+- **FIND-006:** `accepted_risk`-Lifecycle-Marker ergänzt (Taxonomie-Konformität
+  zu `docs/development/finding-lifecycle.md` §2); bestehende Prosa unverändert.
+
+**Laufzeit-Gate-Ergebnisse (2026-07-17, sämtlich Exit 0):**
+
+- `just check-adoption` → **Overall 1.00 / PASS** (Threshold 0.85). Ehrlich
+  ausgewiesene Sub-Scores: `writing` 0.99, `co_author` 0.98 (jeweils ✅ grün,
+  kein Gate-Fail); Adoption-Debt geratched (1 current = 1 baseline, 0 new).
+- `check_doc_drift.py --governance-only` → **0 §7-Stub-Variable-Verstöße**,
+  0 removed-governance-refs-Verstöße; Gate ist `critical`/blockierend, gewired
+  in Pre-commit (`stub-variables`-Hook) **und** CI (`.github/workflows/ci.yml`).
+- `just check` → **9/9 grün** (Architecture, Lint & Format, Typecheck, Security,
+  Model Registry, Prompts, Frontend Lint, i18n Validation, Frontend Types).
+- `just test-unit` → **9336 passed, 3 skipped** (83 s).
+
+**Fazit:** CR-05 bleibt `✅ Resolved` — Implementation + Enforcement sind
+verifiziert, nicht nur behauptet. Kein offener Befund. Die 15 P3-Aufgaben +
+3 Stale-Items bleiben — wie im Abschluss dokumentiert — in ihren Ursprungs-
+Reviews eigenständig getrackt (verifiziert: cr-03 CR-AUFG-03-06…03-13,
+cr-04 CR-AUFG-04-02…04-05, jeweils mit Status).
