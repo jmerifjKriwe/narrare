@@ -86,24 +86,17 @@ coverage.*.xml
 # pytest-cov intermediate files
 *,cover
 
-# local stuff
-.worktrees/
-.devcontainer/post-create.local.sh
-scripts/local/
-# Added by code-review-graph
-.code-review-graph/
-.mcp.json
-.claude/settings.local.json
-opencode.json
-.tmp/
 packages/web/skills-lock.json
 packages/web/coverage/
 packages/web/playwright-report/
 packages/web/test-results/
+
+# local stuff
+.mcp.json
+opencode.json
+.tmp/
 skills-lock.json
 clawpatch-report.md
-.superpowers/
-
 
 # Evidence store (CI artifacts)
 .evidence/*.jsonl
