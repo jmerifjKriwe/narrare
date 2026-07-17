@@ -4,7 +4,8 @@ Public API:
     FeedbackAction, FeedbackEvent, FeedbackCollector, PreferenceProvider,
     PreferenceProfile, MemoryFacade, FeedbackService, PreferenceService,
     EmbeddingConfig, EmbeddingCascadeResolver, MemoryClientCache,
-    ProviderEnvConfig, is_mem0_available, detect_provider_from_env
+    ProviderEnvConfig, is_mem0_available, detect_provider_from_env,
+    ConsistencyFeedbackCollector, ConsistencyDismissalRecord, DismissalMatch
 
 The mem0 client factories (``create_memory_client``,
 ``create_memory_client_sync``) are intentionally excluded from public
@@ -17,6 +18,10 @@ from narrare_core.memory.availability import (
     ProviderEnvConfig,
     detect_provider_from_env,
     is_mem0_available,
+)
+from narrare_core.memory.consistency_models import (
+    ConsistencyDismissalRecord,
+    DismissalMatch,
 )
 from narrare_core.memory.embedding_cascade import (
     EmbeddingCascadeResolver,
@@ -31,6 +36,7 @@ from narrare_core.memory.models import (
 )
 from narrare_core.memory.preference_service import PreferenceService
 from narrare_core.memory.protocols import (
+    ConsistencyFeedbackCollector,
     FeedbackCollector,
     MemoryFacade,
     PreferenceProvider,
@@ -39,6 +45,9 @@ from narrare_core.memory.protocols import (
 from narrare_core.memory.session_memory_service import SessionMemoryService
 
 __all__ = [
+    "ConsistencyDismissalRecord",
+    "ConsistencyFeedbackCollector",
+    "DismissalMatch",
     "EmbeddingCascadeResolver",
     "EmbeddingConfig",
     "FeedbackAction",
