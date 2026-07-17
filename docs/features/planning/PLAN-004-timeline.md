@@ -176,7 +176,7 @@ class TimelineEvent(BaseModel):
 - Coverage gaps: missing causal links, unexplained time jumps
 - Overall assessment: 1-2 sentence evaluation of timeline quality
 
-**Ref lifecycle per ADR-050:** Timeline entity references use `TimelineRefConsumer` (`packages/core/narrare_core/context/integration_contracts.py`) for KB entity lifecycle tracking. `CrossFeatureRefIndex` resolves `active/deprecated/unknown/deleted` status. `kb_timelines` is registered in the variable registry per ADR-050 P1-D governance.
+**Ref lifecycle per ADR-050:** Timeline entity references use `TimelineRefConsumer` (`packages/core/narrare_core/context/integration_contracts/__init__.py`) for KB entity lifecycle tracking. `CrossFeatureRefIndex` resolves `active/deprecated/unknown/deleted` status. `kb_timelines` is registered in the variable registry per ADR-050 P1-D governance.
 
 ## Constraints & Edge Cases
 

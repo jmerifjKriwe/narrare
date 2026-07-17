@@ -111,7 +111,7 @@ Readers notice inconsistencies. Characters change personality between chapters, 
 
 **Architecture per ADR-044:** Two-stage pipeline — 1) `FactExtractorAgent` extracts claims from chapters and KB entities, 2) `ConsistencyAgent` cross-references extracted facts against the Knowledge Base for contradictions. Deterministic pre-filtering via spaCy NER before the LLM stage reduces noise and improves extraction recall.
 
-**Cross-feature ref integrity per ADR-050:** Consistency checking uses `CrossFeatureRefIndex` (`packages/core/narrare_core/context/integration_contracts.py`) for KB entity ref lifecycle resolution. The index resolves `active/deprecated/unknown/deleted` status for entity references in Timeline, Storyboard, and Chapter frontmatter. `KBEntityLifecycleObserver` provides write-side hooks for rename/deprecate/delete events.
+**Cross-feature ref integrity per ADR-050:** Consistency checking uses `CrossFeatureRefIndex` (`packages/core/narrare_core/context/integration_contracts/__init__.py`) for KB entity ref lifecycle resolution. The index resolves `active/deprecated/unknown/deleted` status for entity references in Timeline, Storyboard, and Chapter frontmatter. `KBEntityLifecycleObserver` provides write-side hooks for rename/deprecate/delete events.
 
 ### Architecture: Staged Multi-Agent Pipeline (ADR-044)
 

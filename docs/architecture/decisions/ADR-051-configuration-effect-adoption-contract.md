@@ -1,6 +1,6 @@
 # ADR-051 — Configuration Effect Adoption Contract
 
-> **Status:** ⏸ Superseded (governance toolchain removed 2026-07-08)
+> **Status:** 🗄️ Deprecated (governance toolchain withdrawn via FIND-014 / commit `f8abb42c` on 2026-07-08 — not replaced by a successor ADR; kept for historical reference)
 > **Date:** 2026-06-18
 > **Deciders:** Architecture Specialist
 > **Supersedes:** —

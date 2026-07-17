@@ -1,6 +1,11 @@
+---
+status: deprecated
+---
+
 # UI/UX Remediation — Phase C Panel/Shell Architecture Specification
 
 > **Status:** draft — architecture gate, pre-implementation
+> **Historical note:** Remediation implemented; this is a closed design record — some referenced component paths drifted or were renamed during implementation (hence frontmatter `status: deprecated`, which skips spec file-reference validation).
 > **Date:** 2026-07-01
 > **Owner:** Architecture Specialist
 > **Scope order approved by user:** C Panel/Shell Architecture → B UI Primitives → A Docs & SSOT → D Remaining polish/accessibility/i18n/focus findings
@@ -81,7 +86,7 @@ Narrare has three first-class shell types. A route must declare exactly one shel
 
 **Purpose:** Project/novel selection, demo discovery, account-level entry actions.
 
-**Routes:** `/` via `app/page.tsx` and `DashboardView`.
+**Routes:** `/` via `packages/web/app/page.tsx` and `DashboardView`.
 
 **Chrome rules:**
 
@@ -120,7 +125,7 @@ Narrare has three first-class shell types. A route must declare exactly one shel
 - Shell owns viewport sizing: full-height app, `main` uses `min-h-0 min-w-0` and child routes own internal scroll regions.
 - Sidebar is persistent on desktop, collapsible/drawer-like on tablet/mobile per §9.
 
-**Documentation correction required in Phase A:** `ui-principles.md` must stop saying that all app areas use persistent sidebar/no header. The correct statement is: dashboard uses a dashboard shell, wizard uses a setup shell, and novel-scoped studio routes use the persistent sidebar workspace shell.
+**Documentation correction required in Phase A:** `docs/development/ui-principles.md` must stop saying that all app areas use persistent sidebar/no header. The correct statement is: dashboard uses a dashboard shell, wizard uses a setup shell, and novel-scoped studio routes use the persistent sidebar workspace shell.
 
 ---
 
@@ -201,7 +206,7 @@ This is not a mandate to create these exact type names, but the implementation m
 
 - Metadata is an inspector for the current chapter, not an AI operation panel.
 - Metadata may remain URL-addressable as `panel=metadata` but does not own AI lifecycle, cancel, streaming, or accept/reject semantics.
-- AI panels remain governed by `ui-principles.md` §16 and `ai-ux-compliance-v2.md`: SSE where available, visible lifecycle, cancel where long-running, structured errors, canonical action vocabulary, and operation inventory coverage.
+- AI panels remain governed by `docs/development/ui-principles.md` §16 and `docs/architecture/governance/ai-ux-compliance-v2.md`: SSE where available, visible lifecycle, cancel where long-running, structured errors, canonical action vocabulary, and operation inventory coverage.
 
 ---
 
@@ -319,7 +324,7 @@ Proposed frontend module ownership for implementation handoff:
 
 | Module/files | Responsibility |
 |---|---|
-| `packages/web/app/page.tsx`, `components/studio/DashboardView.tsx`, `DashboardHeader.tsx` | Dashboard shell content and header. No studio sidebar. |
+| `packages/web/app/page.tsx`, `packages/web/components/studio/DashboardView.tsx`, `DashboardHeader.tsx` | Dashboard shell content and header. No studio sidebar. |
 | Wizard route/layout, `components/studio/wizard/*` | Setup shell and wizard flow. No studio sidebar; route grouping must not let workspace shell chrome wrap the wizard. |
 | `packages/web/app/(studio)/layout.tsx` or successor workspace route group, `Sidebar.tsx` | Studio workspace shell for novel-scoped routes only. |
 | `packages/web/components/studio/editor-view/*` | Editor workspace composition and right-slot registry/arbitration adapter. |
@@ -374,8 +379,8 @@ Frontend Phase C/B implementation may pass the architecture gate only when:
 
 Docs Phase A may pass only when:
 
-1. `ui-principles.md` describes the three-shell taxonomy and no longer states that all app areas have a persistent sidebar/no header.
-2. `ui-principles.md` documents panel taxonomy, editor right-slot arbitration, URL-state policy, responsive policy, and accessibility contract.
+1. `docs/development/ui-principles.md` describes the three-shell taxonomy and no longer states that all app areas have a persistent sidebar/no header.
+2. `docs/development/ui-principles.md` documents panel taxonomy, editor right-slot arbitration, URL-state policy, responsive policy, and accessibility contract.
 3. Feature/help docs that mention settings, KB, planning, analysis, or editor panels reflect final implemented URL/deep-link behavior.
 4. AI-UX governance prose remains truthful: AI panel lifecycle compliance still depends on implementation + enforcement evidence, not the existence of this spec or primitives alone.
 5. Any status registry/current-state updates are conservative and cite implementation/test evidence.

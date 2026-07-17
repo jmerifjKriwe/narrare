@@ -1,10 +1,15 @@
+---
+status: deprecated
+---
+
 # UI/UX Remediation — Phase B Shared UI Primitives Specification
 
 > **Status:** draft — architecture gate, pre-implementation (no code written in this slice)
+> **Historical note:** Remediation implemented; this is a closed design record — some referenced component paths drifted or were renamed during implementation (hence frontmatter `status: deprecated`, which skips spec file-reference validation).
 > **Date:** 2026-07-03
 > **Owner:** Architecture Specialist
 > **Scope order:** C Panel/Shell Architecture → **B UI Primitives** → A Docs & SSOT → D polish/a11y/i18n/focus
-> **Source contract:** `ui-ux-remediation-panel-shell-architecture.md` §6 (Panel Taxonomy), §10 & §10.2 (Accessibility Contract + primitive implications), §11 (Phase B handoff)
+> **Source contract:** `docs/features/remediation/ui-ux-remediation-panel-shell-architecture.md` §6 (Panel Taxonomy), §10 & §10.2 (Accessibility Contract + primitive implications), §11 (Phase B handoff)
 > **Token/style authority:** `docs/development/ui-principles.md` §3 (Design Tokens), §4 (Component Conventions), §11 (Accessibility), §15 (File Size Limits)
 
 ---
@@ -86,7 +91,7 @@ All primitives live under `packages/web/components/ui/` (existing home of `confi
 
 **a11y (Phase C §10.1):** Escape closes; focus moves to header/first control on open; focus returns to opener on close; focus trapped while drawer open; preserves panel identity across breakpoints. **Streaming note (RULE-13):** PanelShell is presentation only — it does not own SSE; AI panels keep their streaming/cancel via existing hooks.
 
-**File:** `packages/web/components/ui/panel-shell.tsx` (focus/escape logic may extract to `lib/hooks/use-panel-focus.ts`)
+**File:** `packages/web/components/ui/panel-shell.tsx` (focus/escape logic may extract to `packages/web/lib/hooks/use-panel-focus.ts`)
 
 ### 5.4 `PanelTabs`
 
@@ -104,7 +109,7 @@ All primitives live under `packages/web/components/ui/` (existing home of `confi
 
 **Responsibility:** Editor/panel toolbar action with icon + optional visible label (or icon-only with tooltip). Distinct from `IconButton` because toolbar buttons are a labelled, horizontally-grouped set (formatting, AI triggers).
 
-**Replaces:** The repeated `type="button"` entries in `editor-view/EditorToolbar.tsx` and the per-analysis trigger buttons (`POVTrigger`, `ConsistencyTrigger`, `CoreferenceTrigger`, `CharacterVoiceTrigger`, `ReadabilityTrigger`).
+**Replaces:** The repeated `type="button"` entries in `packages/web/components/studio/editor-view/EditorToolbar.tsx` and the per-analysis trigger buttons (`POVTrigger`, `ConsistencyTrigger`, `CoreferenceTrigger`, `CharacterVoiceTrigger`, `ReadabilityTrigger`).
 
 **Key props:** `label` (required — visible or tooltip/`aria-label`), `icon`, `onClick`, `disabled?`, `loading?`, `showLabel?` (default icon-only on narrow, label on wide), `variant?`, `active?` (pressed state, e.g. active formatting). `type="button"` enforced.
 
@@ -128,7 +133,7 @@ All primitives live under `packages/web/components/ui/` (existing home of `confi
 
 **Responsibility:** Non-blocking loading/error/empty/success/live-region display. Single source for the status announcements Phase C §10.1 requires of long-running panels.
 
-**Replaces:** Inline `role="status" aria-live="polite"` block (`StudioWorkspaceShell.tsx:48-50`), bespoke loading/error/empty blocks in `extraction/ExtractionLoading.tsx`/`ExtractionError.tsx`, and generalises `connection-lost-banner.tsx` (which can be re-expressed on top of it). Actionable errors follow ui-principles §16.5 (`[what happened] [what to do]`).
+**Replaces:** Inline `role="status" aria-live="polite"` block (`StudioWorkspaceShell.tsx:48-50`), bespoke loading/error/empty blocks in `packages/web/components/studio/extraction/ExtractionLoading.tsx`/`ExtractionError.tsx`, and generalises `connection-lost-banner.tsx` (which can be re-expressed on top of it). Actionable errors follow ui-principles §16.5 (`[what happened] [what to do]`).
 
 **Key props:** `state: 'idle' | 'loading' | 'success' | 'error' | 'empty'`, `message?`, `action?` (retry/reconnect button), `politeness?` (`'polite' | 'assertive'`, default polite; assertive for errors). Renders `role="status"`/`aria-live` correctly per state.
 
@@ -138,7 +143,7 @@ All primitives live under `packages/web/components/ui/` (existing home of `confi
 
 ## 6. URL Sync (shared adapter, not a component)
 
-`PanelTabs` and `SearchInput` both need URL-addressable state. Phase C §8.3 mandates one adapter per surface, not per component. Spec requires a small shared hook `lib/hooks/use-url-param.ts` (≤ 150 lines): `value`, `setValue`, with explicit `replace | push` control and fail-safe normalisation to a valid default. **One adapter instance per surface** (settings category, KB mode/search, analysis tab); components consume it, they do not own it.
+`PanelTabs` and `SearchInput` both need URL-addressable state. Phase C §8.3 mandates one adapter per surface, not per component. Spec requires a small shared hook `packages/web/lib/hooks/use-url-param.ts` (≤ 150 lines): `value`, `setValue`, with explicit `replace | push` control and fail-safe normalisation to a valid default. **One adapter instance per surface** (settings category, KB mode/search, analysis tab); components consume it, they do not own it.
 
 ## 7. Migration Strategy
 
@@ -216,7 +221,7 @@ Implementation may pass the architecture gate only when:
 1. **Frontend (Phase B):** build primitives in `components/ui/` against §5; extract `use-url-param` + `use-panel-focus` hooks to `lib/hooks/`.
 2. **Frontend (migration):** adopt per §7 order, panel-by-panel, behind tests.
 3. **Platform/Testing:** add targeted a11y/URL-state tests (§9.8); no new static checker mandated by this spec alone.
-4. **Docs (Phase A):** document primitives in `ui-principles.md` only after files + tests exist.
+4. **Docs (Phase A):** document primitives in `docs/development/ui-principles.md` only after files + tests exist.
 
 **Critical constraints:** RULE-16 (i18n labels mandatory), RULE-13 (no REST-only AI downgrade — PanelShell is presentation only), Phase C §10 (a11y), ui-principles §15 (file size), Phase C §11.5 (no new dependency).
 

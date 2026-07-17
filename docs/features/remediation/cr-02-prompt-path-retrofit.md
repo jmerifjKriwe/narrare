@@ -249,7 +249,7 @@ Two sub-decisions:
 `LLMIntent.PLAN` (since it is a planning concern and PLAN already routes to
 `planning/outline`). Alternatively, if the architecture specialist determines
 temporal consistency warrants its own intent, add `LLMIntent.TEMPORAL_CHECK`
-to `packages/core/narrare_core/llm/intents.py`.
+to `packages/core/narrare_core/llm/intents/__init__.py`.
 
 **Recommendation:** Use context mode under existing `LLMIntent.PLAN`:
 ```python
@@ -372,7 +372,7 @@ _get_fallback_meta() → MetaPromptLoader().load()  ← bypasses NarrareMeta Cap
 
 4. **Remove or deprecate `MetaPromptLoader`:**
    - Check all callers of `MetaPromptLoader` (graph: `_get_fallback_meta` is the only production caller)
-   - If no remaining callers: remove `MetaPromptLoader` from `packages/core/narrare_core/prompts/meta.py`
+   - If no remaining callers: remove `MetaPromptLoader` — it lived in the now-removed prompts/meta.py module; meta content moved to `packages/core/narrare_core/prompts/_bundled/meta/` and is injected via the `NarrareMeta` Capability (ADR-026)
    - If test-only callers remain: mark `@deprecated("Removed per ADR-046. Use NarrareMeta Capability.")`
 
 ### Acceptance Criteria
@@ -381,7 +381,7 @@ _get_fallback_meta() → MetaPromptLoader().load()  ← bypasses NarrareMeta Cap
 |---|-----------|--------------|
 | 1 | `composer is None` paths replaced with fail-fast `ConfigurationError` | Unit test: passing `composer=None` raises `ConfigurationError` |
 | 2 | No overridable meta/user task prompts loaded as degraded production path | Code review: no `_get_fallback_meta` calls in production code |
-| 3 | **NEW:** `MetaPromptLoader` is removed from `packages/core/narrare_core/prompts/meta.py` OR marked `@deprecated` with removal date | Code review: `grep MetaPromptLoader packages/core/narrare_core/` shows 0 production callers |
+| 3 | **NEW:** `MetaPromptLoader` is removed (the former prompts/meta.py no longer exists; meta content now in `prompts/_bundled/meta/` via the ADR-026 `NarrareMeta` Capability) OR marked `@deprecated` with removal date | Code review: `grep MetaPromptLoader packages/core/narrare_core/` shows 0 production callers |
 | 4 | **NEW:** `packages/core/narrare_core/agents/writing_graph_prompts.py` does not import `MetaPromptLoader` | Checker + code review |
 | 5 | **NEW:** `_get_fallback_meta()` is removed | Code review: function does not exist |
 | 6 | **NEW:** Any test-only fallback is documented as intentionally non-production | Test docstring asserts it cannot be reached by production DI |
@@ -394,7 +394,7 @@ _get_fallback_meta() → MetaPromptLoader().load()  ← bypasses NarrareMeta Cap
 |------|--------|
 | `packages/core/narrare_core/agents/writing_graph_prompts.py` | Remove `_get_fallback_meta()`; remove all `composer is None` branches; add fail-fast error; remove MetaPromptLoader import |
 | `packages/core/narrare_core/agents/writing_graph_types.py` | Make `composer` field required (non-Optional) |
-| `packages/core/narrare_core/prompts/meta.py` | Remove `MetaPromptLoader` class (if no remaining callers) OR add `@deprecated` decorator |
+| ~~packages/core/narrare_core/prompts/meta.py~~ *(removed — meta content now in `prompts/_bundled/meta/`, ADR-026 Capability)* | Remove `MetaPromptLoader` class (if no remaining callers) OR add `@deprecated` decorator |
 | All WritingDeps construction sites | Ensure `composer` is always provided |
 | `tests/unit/core/agents/test_writing_graph_prompts.py` | Update tests: remove `composer=None` test cases or convert to "raises ConfigurationError" tests |
 

@@ -73,7 +73,7 @@ interface that all features can rely on.
 **Entry point:** `packages/core/narrare_core/llm/gateway.py`
 **Primary class:** `ModelRegistry` (v2, seit ADR-015); `LLMGateway` als Legacy-Re-Export (Phase-2-Removal-Target)
 **Providers:** `core/llm/_providers/` — one adapter per provider
-**Intents:** `packages/core/narrare_core/llm/intents.py` — defines task types and model routing
+**Intents:** `packages/core/narrare_core/llm/intents/__init__.py` — the `LLMIntent` StrEnum + intent docs package (split from a former monolithic intents.py module per RULE-04); defines task types consumed by model routing
 **Errors:** `packages/core/narrare_core/shared/errors.py` — classified error types (auth, rate limit, timeout, etc.)
 
 **Flow:**

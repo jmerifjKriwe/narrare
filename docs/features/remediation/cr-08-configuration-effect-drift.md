@@ -1,22 +1,30 @@
+---
+# Historical remediation record: the matrix/checker enforcement backing this
+# spec was removed (FIND-014 / f8abb42c). File-path references below point at
+# deliberately-deleted artifacts and are intentional historical record, not
+# existence claims — hence status: deprecated (skips spec file-ref validation).
+status: deprecated
+---
+
 # CR-08 Remediation — Configuration/Effect Drift Specification
 
 > **Status:** historically closed 2026-06-20 as P0–P4 complete — ⚠️ the
 > matrix/checker enforcement that backed this was later removed in `f8abb42c`
-> (ADR-047/051/061/062 ⛔ Superseded). P0–P4 value-level work (per-value regression
+> (ADR-047/051/061/062 🗄️ Deprecated). P0–P4 value-level work (per-value regression
 > tests, token profiles, calibration, governed defaults) remains on disk; RULE-18b
 > is now enforced via per-value regression tests + ADR-045 + ad-hoc audits. The
 > matrix/checker artifacts cited below as enforcement evidence are deleted — see
 > FIND-014 / CR-AUFG-08-15; read them as historical record.
 > **Date:** 2026-06-18 (reconciled 2026-06-20 on ADR-051 acceptance; enforcement-removal annotated 2026-07-15)
 > **Author:** Architecture Specialist
-> **ADR:** [ADR-051](../../architecture/decisions/ADR-051-configuration-effect-adoption-contract.md) (⛔ Superseded — its matrix/checker enforcement was removed in `f8abb42c`; RULE-18b survives in CONSTRAINTS.md, enforced via per-value regression tests + ADR-045 Runtime Adoption Enforcement)
+> **ADR:** [ADR-051](../../architecture/decisions/ADR-051-configuration-effect-adoption-contract.md) (🗄️ Deprecated — its matrix/checker enforcement was removed in `f8abb42c`; RULE-18b survives in CONSTRAINTS.md, enforced via per-value regression tests + ADR-045 Runtime Adoption Enforcement)
 > **Source Audit:** [`_audit/results/content-review/cr-08-hardcoded-values.md`](../../../_audit/results/content-review/cr-08-hardcoded-values.md)
 > **Formal Findings:** FIND-001, FIND-012, FIND-013 (FIND-014 / CR-AUFG-08-15 records the subsequent matrix/checker removal)
 >
 > ⚠️ **Enforcement-artifact caveat:** Several artifacts referenced in the body —
 > `configuration-adoption-matrix.yaml`, `scripts/check_configuration_matrix.py`,
 > `scripts/governance/`, and `tests/unit/scripts/governance/test_configuration_matrix_review_gate.py` —
-> were deliberately removed in `f8abb42c` (ADR-047/051/061/062 ⛔ Superseded; see
+> were deliberately removed in `f8abb42c` (ADR-047/051/061/062 🗄️ Deprecated; see
 > FIND-014 / CR-AUFG-08-15). Treat all matrix/checker references below as historical
 > record. RULE-18b enforcement now runs via per-value regression tests + ADR-045 +
 > ad-hoc audits (review file as SSOT).
@@ -58,8 +66,8 @@ tracked AI invocation surfaces, not every setting source → resolver → consum
 **Design (historical, 2026-06-20):** ADR-051 was the contract: every material
 configuration value needs a Configuration Adoption Matrix row or an explicit
 governed-default classification with tests and rationale. **That design was
-subsequently superseded** — ADR-051 is ⛔ Superseded and its matrix/checker were
-removed in `f8abb42c` (ADR-047/051/061/062 ⛔ Superseded). The CR-08 value-level
+subsequently withdrawn** — ADR-051 is 🗄️ Deprecated and its matrix/checker were
+removed in `f8abb42c` (ADR-047/051/061/062 🗄️ Deprecated). The CR-08 value-level
 work (per-value regression tests, token profiles, calibration, governed defaults)
 remains on disk; RULE-18b is enforced via per-value regression tests + ADR-045 +
 ad-hoc audits. The phase evidence recorded below should be read as historical
@@ -214,15 +222,15 @@ matrix rows synchronized. Evidence landed across commits `138307c7` and `1aafad0
 
 P4 was implementation/enforcement complete for status taxonomy and future-audit
 hardening (2026-06-20). ⚠️ The ADR-051 matrix/checker enforcement that closed P4
-was subsequently removed in `f8abb42c` (ADR-047/051/061/062 ⛔ Superseded; see
+was subsequently removed in `f8abb42c` (ADR-047/051/061/062 🗄️ Deprecated; see
 FIND-014 / CR-AUFG-08-15) — see the table rows below. The status-taxonomy and
 audit-template reconciliation itself stands; ongoing RULE-18b enforcement runs via
 per-value regression tests + ADR-045 + ad-hoc audits:
 
 | Task | Status | Evidence |
 |---|---|---|
-| CR-AUFG-08-14 | Historically implemented; enforcement since removed | SET-005, CURRENT_STATE, the AUFG registry, this remediation spec, testing standards, and the CR-08 audit prompt template record phase-complete runtime-effect evidence. ⚠️ The `configuration-adoption-matrix.yaml` and ADR-051 enforcement backing this row were removed in `f8abb42c` (ADR-047/051/061/062 ⛔ Superseded); RULE-18b now runs via per-value regression tests + ADR-045 + ad-hoc audits. |
-| Audit-template gate | Historically implemented; checker since removed | ⚠️ The checker artifacts cited here — `scripts/check_configuration_matrix.py`, `scripts/governance/configuration_matrix.py`, `scripts/governance/_matrix_review_gate.py`, and `tests/unit/scripts/governance/test_configuration_matrix_review_gate.py` — were deleted in `f8abb42c` (ADR-047/051/061/062 ⛔ Superseded; see FIND-014 / CR-AUFG-08-15). The structured-marker convention survives in the CR-08 content-review prompt as a recommended (no longer checker-gated) convention. |
+| CR-AUFG-08-14 | Historically implemented; enforcement since removed | SET-005, CURRENT_STATE, the AUFG registry, this remediation spec, testing standards, and the CR-08 audit prompt template record phase-complete runtime-effect evidence. ⚠️ The `configuration-adoption-matrix.yaml` and ADR-051 enforcement backing this row were removed in `f8abb42c` (ADR-047/051/061/062 🗄️ Deprecated); RULE-18b now runs via per-value regression tests + ADR-045 + ad-hoc audits. |
+| Audit-template gate | Historically implemented; checker since removed | ⚠️ The checker artifacts cited here — `scripts/check_configuration_matrix.py`, `scripts/governance/configuration_matrix.py`, `scripts/governance/_matrix_review_gate.py`, and `tests/unit/scripts/governance/test_configuration_matrix_review_gate.py` — were deleted in `f8abb42c` (ADR-047/051/061/062 🗄️ Deprecated; see FIND-014 / CR-AUFG-08-15). The structured-marker convention survives in the CR-08 content-review prompt as a recommended (no longer checker-gated) convention. |
 
 ---
 
@@ -316,8 +324,8 @@ audits, not a matrix row — see the header caveat.)
 
 **Lifecycle resolution (updated 2026-07-15):** ADR-051 was accepted on 2026-06-20
 and RULE-18b (Configuration Effect Integrity) was elevated to CONSTRAINTS.md.
-**ADR-051 and its matrix/checker enforcement were subsequently superseded and
-removed in `f8abb42c`** (ADR-047/051/061/062 ⛔ Superseded; see FIND-014 /
+**ADR-051 and its matrix/checker enforcement were subsequently withdrawn and
+removed in `f8abb42c`** (ADR-047/051/061/062 🗄️ Deprecated; see FIND-014 /
 CR-AUFG-08-15). The CR-08 value-level implementation (per-value regression tests,
 token profiles, calibration, governed defaults) remains on disk. RULE-18b survives
 in CONSTRAINTS.md and is enforced via per-value regression tests + ADR-045

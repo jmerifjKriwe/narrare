@@ -1,6 +1,6 @@
 # ADR-061 — Configuration Adoption Matrix Effect-Integrity Hardening (P1 + P2)
 
-> **Status:** ⏸ Superseded (governance toolchain removed 2026-07-08)
+> **Status:** 🗄️ Deprecated (governance toolchain withdrawn via FIND-014 / commit `f8abb42c` on 2026-07-08 — not replaced by a successor ADR; kept for historical reference)
 > **Date:** 2026-07-01
 > **Deciders:** Architecture Specialist (approved and implemented in PR #101)
 > **Supersedes:** —

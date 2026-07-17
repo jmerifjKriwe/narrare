@@ -101,7 +101,7 @@ have implementation/enforcement evidence, and ADR-051 is accepted (2026-06-20).
 - `_BASE_PERCENTAGES` and `_FIRST_CHAPTER_PERCENTAGES` become overridable
 - API: `TokenBudgetManager(total_budget=6000, tier_overrides={"immediate": 0.40})`
 
-**`packages/core/narrare_core/llm/intents.py`:**
+**`packages/core/narrare_core/llm/intents/__init__.py`** (intent types) / **`packages/core/narrare_core/llm/model_config.py`** (`ResolvedModelConfig`):
 - `ResolvedModelConfig` gains `resolve_output_limit(profile: str) -> int` method
 - Maps token_limit_profile (`quick`/`balanced`/`long_texts`/`comprehensive`/`custom`) to preset or raw token values
 - Env var override supported via optional `settings` parameter
