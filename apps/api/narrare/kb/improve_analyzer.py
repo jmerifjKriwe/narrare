@@ -30,11 +30,11 @@ if TYPE_CHECKING:
 
     from pydantic_ai.models import Model
 
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.kb.improve_cache import KBImproveCache
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.context.contracts import ProactiveContextProtocol
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
@@ -53,7 +53,9 @@ class KBImproveAnalyzer:
     Args:
         registry: Model registry for resolving LLM models.
         config: Resolved model configuration.
-        proactive_context: Proactive context service for world context.
+        kb_context_provider: Single source for curated world context
+            (ADR-067). Renders existing entries of the entity type as
+            ``- name (type): brief`` and degrades to empty (RULE-11).
         prompt_composer: PromptComposer for building system prompts.
         kb_repo: KB entry repository.
         rel_repo: Relationship repository.
@@ -65,7 +67,7 @@ class KBImproveAnalyzer:
         self,
         registry: ModelRegistry,
         config: ResolvedModelConfig,
-        proactive_context: ProactiveContextProtocol,
+        kb_context_provider: KBContextProviderProtocol,
         prompt_composer: PromptComposer,
         kb_repo: KBRepository,
         rel_repo: RelationshipRepository,
@@ -77,7 +79,7 @@ class KBImproveAnalyzer:
 
         self._registry = registry
         self._config = config
-        self._proactive_context = proactive_context
+        self._kb_context_provider = kb_context_provider
         self._prompt_composer = prompt_composer
         self._kb_repo = kb_repo
         self._rel_repo = rel_repo
@@ -119,21 +121,13 @@ class KBImproveAnalyzer:
             for r in relationships
         ]
 
-        world_context = ""
-        try:
-            suggestions = await self._proactive_context.suggest(
-                f"{entry.name} ({entry.entity_type})",
-                novel_id=novel_id,
-                entity_names=[entry.name],
-                max_results=5,
-            )
-            if suggestions:
-                world_context = "\n".join(
-                    f"- {s.name} ({s.entry_type}): relevance {s.relevance_score:.2f}"
-                    for s in suggestions
-                )
-        except Exception:
-            logger.warning("proactive_context_unavailable", exc_info=True)
+        # Single source for KB world context (ADR-067): existing entries of
+        # the entry's entity type, rendered as ``- name (type): brief``. The
+        # provider owns RULE-11 degradation (empty string on missing/empty KB).
+        world_context = await self._kb_context_provider.fetch_world_context(
+            novel_id,
+            entity_type=entry.entity_type,
+        )
 
         adjacency_map: dict[str, set[str]] | None = None
         try:

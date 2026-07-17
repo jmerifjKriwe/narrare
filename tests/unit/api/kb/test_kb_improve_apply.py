@@ -44,7 +44,7 @@ def _make_service(
     *,
     entry_exists: bool = True,
     suggestions_returned: bool = True,
-    proactive_fails: bool = False,
+    world_context_empty: bool = False,
     adjacency_fails: bool = False,
 ) -> tuple[KBImproveService, dict[str, AsyncMock]]:
     """Create a KBImproveService with all dependencies mocked.
@@ -72,21 +72,11 @@ def _make_service(
         rel_repo.get_adjacency_map = AsyncMock(return_value={str(entry_id): {"related_id_1"}})
     rel_repo.create = AsyncMock()
 
-    # --- Proactive Context ---
-    proactive_context = AsyncMock(spec=["suggest"])
-    if proactive_fails:
-        proactive_context.suggest = AsyncMock(side_effect=RuntimeError("proactive failed"))
-    else:
-        proactive_context.suggest = AsyncMock(
-            return_value=[
-                MagicMock(
-                    spec=["name", "entry_type", "relevance_score"],
-                    name="World Context",
-                    entry_type="world",
-                    relevance_score=0.8,
-                )
-            ]
-        )
+    # --- KB Context Provider (single source for world context, ADR-067) ---
+    kb_context_provider = AsyncMock(spec=["fetch_world_context", "fetch_context"])
+    kb_context_provider.fetch_world_context = AsyncMock(
+        return_value="" if world_context_empty else "- World Context (world): A backdrop"
+    )
 
     # --- Prompt Composer ---
     prompt_composer = AsyncMock(spec=["build"])
@@ -155,7 +145,7 @@ def _make_service(
     analyzer = KBImproveAnalyzer(
         registry=registry,
         config=config,
-        proactive_context=proactive_context,
+        kb_context_provider=kb_context_provider,
         prompt_composer=prompt_composer,
         kb_repo=kb_repo,
         rel_repo=rel_repo,
@@ -173,7 +163,7 @@ def _make_service(
     mocks = {
         "kb_repo": kb_repo,
         "rel_repo": rel_repo,
-        "proactive_context": proactive_context,
+        "kb_context_provider": kb_context_provider,
         "prompt_composer": prompt_composer,
         "registry": registry,
         "kb_service": kb_service,

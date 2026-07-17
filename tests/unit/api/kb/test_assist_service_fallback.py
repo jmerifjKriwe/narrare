@@ -29,8 +29,8 @@ if TYPE_CHECKING:
 
 from ._assist_fakes import (
     FakeComposer,
+    FakeKBContextProvider,
     FakeModelRegistry,
-    FakeProactiveContext,
     make_service,
 )
 
@@ -39,7 +39,7 @@ from ._assist_fakes import (
 async def test_invocation_validation_error_triggers_fallback(
     config: ResolvedModelConfig,
     registry: FakeModelRegistry,
-    proactive_context: FakeProactiveContext,
+    kb_context_provider: FakeKBContextProvider,
     composer: FakeComposer,
     deps: object,
     agent_output: KBAssistOutput,
@@ -52,7 +52,7 @@ async def test_invocation_validation_error_triggers_fallback(
     """
     from narrare_core.shared.errors import InvocationValidationError
 
-    service = make_service(config, registry, proactive_context, composer)
+    service = make_service(config, registry, kb_context_provider, composer)
 
     with (
         patch("narrare.kb.assist_service.KBAssistAgent") as MockAgent,
@@ -85,7 +85,7 @@ async def test_invocation_validation_error_triggers_fallback(
 async def test_prompt_error_triggers_fallback(
     config: ResolvedModelConfig,
     registry: FakeModelRegistry,
-    proactive_context: FakeProactiveContext,
+    kb_context_provider: FakeKBContextProvider,
     composer: FakeComposer,
     deps: object,
     agent_output: KBAssistOutput,
@@ -93,7 +93,7 @@ async def test_prompt_error_triggers_fallback(
     """PromptError subclasses are also recoverable."""
     from narrare_core.shared.errors import PromptVariableError
 
-    service = make_service(config, registry, proactive_context, composer)
+    service = make_service(config, registry, kb_context_provider, composer)
 
     with (
         patch("narrare.kb.assist_service.KBAssistAgent") as MockAgent,
@@ -122,7 +122,7 @@ async def test_prompt_error_triggers_fallback(
 async def test_unexpected_exception_propagates(
     config: ResolvedModelConfig,
     registry: FakeModelRegistry,
-    proactive_context: FakeProactiveContext,
+    kb_context_provider: FakeKBContextProvider,
     composer: FakeComposer,
     deps: object,
 ) -> None:
@@ -131,7 +131,7 @@ async def test_unexpected_exception_propagates(
     A generic RuntimeError indicates a genuine pipeline fault; the
     narrowed handler must let it surface fail-fast.
     """
-    service = make_service(config, registry, proactive_context, composer)
+    service = make_service(config, registry, kb_context_provider, composer)
 
     with (
         patch("narrare.kb.assist_service.KBAssistAgent"),
@@ -156,7 +156,7 @@ async def test_unexpected_exception_propagates(
 async def test_composition_none_raises_configuration_error(
     config: ResolvedModelConfig,
     registry: FakeModelRegistry,
-    proactive_context: FakeProactiveContext,
+    kb_context_provider: FakeKBContextProvider,
     composer: FakeComposer,
     deps: object,
 ) -> None:
@@ -165,7 +165,7 @@ async def test_composition_none_raises_configuration_error(
     The ConfigurationError flows into the narrowed handler and triggers
     the documented fallback; no error escapes the service.
     """
-    service = make_service(config, registry, proactive_context, composer)
+    service = make_service(config, registry, kb_context_provider, composer)
 
     fake_result = MagicMock(spec=["composed_prompt"])
     fake_result.composed_prompt = None

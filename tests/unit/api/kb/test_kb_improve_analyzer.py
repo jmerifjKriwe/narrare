@@ -13,10 +13,10 @@ from narrare.kb.improve_contracts import KBImproveAnalysisResponse
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.kb.improve_cache import KBImproveCache
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
-    from narrare_core.context.contracts import ProactiveContextProtocol
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
@@ -54,9 +54,18 @@ class _FakeRelRepo:
         return {}
 
 
-class _FakeProactiveContext:
-    async def suggest(self, text: str, **kwargs: object) -> list[object]:
-        return []
+class _FakeKBContextProvider:
+    """Fake KBContextProviderProtocol for KBImproveAnalyzer construction.
+
+    Mirrors the real provider's RULE-11 contract: ``fetch_world_context``
+    returns a configurable string (empty by default) and never raises.
+    """
+
+    def __init__(self, world_context: str = "") -> None:
+        from narrare.kb.context_contracts import KBContextBundle
+
+        self.fetch_world_context = AsyncMock(return_value=world_context)
+        self.fetch_context = AsyncMock(return_value=KBContextBundle.empty())
 
 
 class _FakeComposer:
@@ -89,23 +98,25 @@ def _make_analyzer(
     cache_data: str | None = None,
     entry: _FakeKBEntry | None = None,
     kb_agent: object | None = None,
+    world_context: str = "",
 ) -> tuple[Any, dict[str, Any]]:
     from narrare.kb.improve_analyzer import KBImproveAnalyzer
     from narrare_core.llm import ResolvedModelConfig
 
     cache = _FakeImproveCache(data=cache_data)
+    provider = _FakeKBContextProvider(world_context=world_context)
     config = ResolvedModelConfig(provider_name="test", model_id="test-model")
     analyzer = KBImproveAnalyzer(
         registry=cast("ModelRegistry", _FakeRegistry()),
         config=config,
-        proactive_context=cast("ProactiveContextProtocol", _FakeProactiveContext()),
+        kb_context_provider=cast("KBContextProviderProtocol", provider),
         prompt_composer=cast("PromptComposer", _FakeComposer()),
         kb_repo=cast("KBRepository", _FakeKBRepo(entry=entry)),
         rel_repo=cast("RelationshipRepository", _FakeRelRepo()),
         improve_cache=cast("KBImproveCache", cache),
         kb_agent=kb_agent,
     )
-    return analyzer, {"cache": cache}
+    return analyzer, {"cache": cache, "provider": provider}
 
 
 def _make_cached_response(entry_id: object | None = None) -> str:
@@ -132,7 +143,7 @@ class TestHasCachedAnalysis:
         analyzer = KBImproveAnalyzer(
             registry=cast("ModelRegistry", _FakeRegistry()),
             config=config,
-            proactive_context=cast("ProactiveContextProtocol", _FakeProactiveContext()),
+            kb_context_provider=cast("KBContextProviderProtocol", _FakeKBContextProvider()),
             prompt_composer=cast("PromptComposer", _FakeComposer()),
             kb_repo=cast("KBRepository", _FakeKBRepo()),
             rel_repo=cast("RelationshipRepository", _FakeRelRepo()),
@@ -162,7 +173,7 @@ class TestGetCachedAnalysis:
         analyzer = KBImproveAnalyzer(
             registry=cast("ModelRegistry", _FakeRegistry()),
             config=config,
-            proactive_context=cast("ProactiveContextProtocol", _FakeProactiveContext()),
+            kb_context_provider=cast("KBContextProviderProtocol", _FakeKBContextProvider()),
             prompt_composer=cast("PromptComposer", _FakeComposer()),
             kb_repo=cast("KBRepository", _FakeKBRepo()),
             rel_repo=cast("RelationshipRepository", _FakeRelRepo()),
@@ -189,7 +200,7 @@ class TestInvalidateCache:
         analyzer = KBImproveAnalyzer(
             registry=cast("ModelRegistry", _FakeRegistry()),
             config=config,
-            proactive_context=cast("ProactiveContextProtocol", _FakeProactiveContext()),
+            kb_context_provider=cast("KBContextProviderProtocol", _FakeKBContextProvider()),
             prompt_composer=cast("PromptComposer", _FakeComposer()),
             kb_repo=cast("KBRepository", _FakeKBRepo()),
             rel_repo=cast("RelationshipRepository", _FakeRelRepo()),
@@ -261,3 +272,51 @@ class TestAnalyze:
         assert result.suggestions[0].type == "add_field"
         cache = deps["cache"]
         assert cache._data is not None
+
+
+# ---------------------------------------------------------------------------
+# Tests: world context sourced from KBContextProvider (ADR-067)
+# ---------------------------------------------------------------------------
+
+
+class TestWorldContextViaProvider:
+    """``_build_deps`` obtains world context from the KBContextProvider.
+
+    Consolidates the former inline ``proactive_context.suggest`` + relevance
+    formatting: improve now routes through the canonical KBContextProvider so
+    kb assist/improve share one world-context source (ADR-067).
+    """
+
+    @pytest.mark.asyncio
+    async def test_build_deps_sources_world_context_via_provider(self) -> None:
+        """_build_deps calls provider.fetch_world_context and flows it into deps.
+
+        Verifies the provider is called with the novel id and the entry's
+        entity type, and that the rendered ``- name (type): brief`` aggregate
+        flows straight into ``deps.world_context`` (single source).
+        """
+        canonical_context = "- Alice (character): A brave hero"
+        entry = _FakeKBEntry(name="Bob", entity_type="character")
+        novel_id = uuid4()
+        analyzer, deps = _make_analyzer(entry=entry, world_context=canonical_context)
+        provider = deps["provider"]
+
+        built = await analyzer._build_deps(novel_id=novel_id, entry_id=entry.id)
+
+        provider.fetch_world_context.assert_awaited_once()
+        call_kwargs = provider.fetch_world_context.call_args
+        assert call_kwargs.args[0] == novel_id
+        assert call_kwargs.kwargs["entity_type"] == "character"
+        # The canonical aggregate flows straight into deps (single source).
+        assert built.world_context == canonical_context
+
+    @pytest.mark.asyncio
+    async def test_build_deps_degrades_to_empty_world_context(self) -> None:
+        """Empty KB yields empty world_context (RULE-11), deps still build."""
+        entry = _FakeKBEntry(name="Bob", entity_type="character")
+        analyzer, _ = _make_analyzer(entry=entry, world_context="")
+
+        built = await analyzer._build_deps(novel_id=uuid4(), entry_id=entry.id)
+
+        # Empty world_context becomes None on the deps (no enrichment).
+        assert built.world_context is None

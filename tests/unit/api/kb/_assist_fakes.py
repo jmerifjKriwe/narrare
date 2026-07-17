@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
+from narrare.kb.context_contracts import KBContextBundle
 from narrare_core.agents.kb_assist_agent import KBAssistDeps
 from narrare_core.agents.kb_assist_types import KBAssistOutput
 from narrare_core.llm import ResolvedModelConfig
@@ -31,11 +32,18 @@ class FakeModelRegistry:
         self.get_model: AsyncMock = AsyncMock(return_value=MagicMock(spec=object))
 
 
-class FakeProactiveContext:
-    """Fake ProactiveContextProtocol for KBAssistService construction."""
+class FakeKBContextProvider:
+    """Fake KBContextProviderProtocol for KBAssistService construction.
 
-    def __init__(self) -> None:
-        self.suggest: AsyncMock = AsyncMock(return_value=[])
+    Returns a configurable world-context string (empty by default) so the
+    canonical ``- name (type): brief`` aggregate is exercised without a DB.
+    Mirrors the real provider's RULE-11 contract: ``fetch_world_context``
+    returns the configured string and never raises.
+    """
+
+    def __init__(self, world_context: str = "") -> None:
+        self.fetch_world_context: AsyncMock = AsyncMock(return_value=world_context)
+        self.fetch_context: AsyncMock = AsyncMock(return_value=KBContextBundle.empty())
 
 
 class FakeComposer:
@@ -50,7 +58,7 @@ class FakeComposer:
 def make_service(
     config: ResolvedModelConfig,
     registry: FakeModelRegistry,
-    proactive_context: FakeProactiveContext,
+    kb_context_provider: FakeKBContextProvider,
     composer: FakeComposer,
 ) -> KBAssistService:
     """Build a KBAssistService wired with the standard fakes."""
@@ -59,15 +67,15 @@ def make_service(
     return KBAssistService(
         registry=registry,  # type: ignore[arg-type]
         config=config,
-        proactive_context=proactive_context,  # type: ignore[arg-type]
+        kb_context_provider=kb_context_provider,  # type: ignore[arg-type]
         prompt_composer=composer,  # type: ignore[arg-type]
     )
 
 
 __all__ = [
     "FakeComposer",
+    "FakeKBContextProvider",
     "FakeModelRegistry",
-    "FakeProactiveContext",
     "KBAssistDeps",
     "KBAssistOutput",
     "ResolvedModelConfig",

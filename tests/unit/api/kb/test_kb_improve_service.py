@@ -50,7 +50,7 @@ def _make_service(
     *,
     entry_exists: bool = True,
     suggestions_returned: bool = True,
-    proactive_fails: bool = False,
+    world_context_empty: bool = False,
     adjacency_fails: bool = False,
 ) -> tuple[KBImproveService, dict[str, AsyncMock]]:
     """Create a KBImproveService with all dependencies mocked.
@@ -78,20 +78,15 @@ def _make_service(
         rel_repo.get_adjacency_map = AsyncMock(return_value={str(entry_id): {"related_id_1"}})
     rel_repo.create = AsyncMock()
 
-    # --- Proactive Context ---
-    proactive_context = AsyncMock(spec=["suggest"])
-    if proactive_fails:
-        proactive_context.suggest = AsyncMock(side_effect=RuntimeError("proactive failed"))
+    # --- KB Context Provider (single source for world context, ADR-067) ---
+    # Mirrors the real provider's RULE-11 contract: returns the canonical
+    # ``- name (type): brief`` aggregate, or "" when the KB is empty/unavailable.
+    kb_context_provider = AsyncMock(spec=["fetch_world_context", "fetch_context"])
+    if world_context_empty:
+        kb_context_provider.fetch_world_context = AsyncMock(return_value="")
     else:
-        proactive_context.suggest = AsyncMock(
-            return_value=[
-                MagicMock(
-                    spec=["name", "entry_type", "relevance_score"],
-                    name="World Context",
-                    entry_type="world",
-                    relevance_score=0.8,
-                )
-            ]
+        kb_context_provider.fetch_world_context = AsyncMock(
+            return_value="- World Context (world): A backdrop entity"
         )
 
     # --- Prompt Composer ---
@@ -150,7 +145,7 @@ def _make_service(
     analyzer = KBImproveAnalyzer(
         registry=registry,
         config=config,
-        proactive_context=proactive_context,
+        kb_context_provider=kb_context_provider,
         prompt_composer=prompt_composer,
         kb_repo=kb_repo,
         rel_repo=rel_repo,
@@ -168,7 +163,7 @@ def _make_service(
     mocks = {
         "kb_repo": kb_repo,
         "rel_repo": rel_repo,
-        "proactive_context": proactive_context,
+        "kb_context_provider": kb_context_provider,
         "prompt_composer": prompt_composer,
         "registry": registry,
         "kb_service": kb_service,
@@ -225,9 +220,13 @@ class TestAnalyze:
                 entry_id=entry_id,
             )
 
-    async def test_analyze_proactive_context_fails_gracefully(self) -> None:
-        """analyze still returns suggestions when proactive context is unavailable."""
-        service, mocks = _make_service(proactive_fails=True)
+    async def test_analyze_empty_world_context_still_works(self) -> None:
+        """analyze still returns suggestions when the KB is empty (RULE-11).
+
+        The KBContextProvider degrades to an empty world_context string on an
+        empty/unavailable KB; analyze must still compose its deps and run.
+        """
+        service, mocks = _make_service(world_context_empty=True)
         novel_id = uuid4()
         entry_id = uuid4()
 
@@ -243,8 +242,8 @@ class TestAnalyze:
         # Should still return suggestions (world_context is empty but not fatal)
         assert isinstance(result, KBImproveAnalysisResponse)
         assert len(result.suggestions) > 0
-        # Verify proactive context was called (it failed, but gracefully handled)
-        mocks["proactive_context"].suggest.assert_called_once()
+        # World context was sourced via the provider (single source, ADR-067).
+        mocks["kb_context_provider"].fetch_world_context.assert_called_once()
 
     async def test_analyze_adjacency_map_fails_gracefully(self) -> None:
         """analyze still works when adjacency map is unavailable."""

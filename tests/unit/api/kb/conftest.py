@@ -15,8 +15,8 @@ from narrare_core.llm import ResolvedModelConfig
 
 from ._assist_fakes import (
     FakeComposer,
+    FakeKBContextProvider,
     FakeModelRegistry,
-    FakeProactiveContext,
 )
 
 
@@ -33,8 +33,8 @@ def registry() -> FakeModelRegistry:
 
 
 @pytest.fixture
-def proactive_context() -> FakeProactiveContext:
-    return FakeProactiveContext()
+def kb_context_provider() -> FakeKBContextProvider:
+    return FakeKBContextProvider()
 
 
 @pytest.fixture

@@ -245,8 +245,8 @@ class TestAssistInvocationWiring:
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.composer import ComposedPrompt
 
-        mock_proactive = MagicMock(spec=["suggest"])
-        mock_proactive.suggest = AsyncMock(return_value=[])
+        mock_provider = MagicMock(spec=["fetch_world_context", "fetch_context"])
+        mock_provider.fetch_world_context = AsyncMock(return_value="")
 
         mock_composer = MagicMock(spec=["build"])
         mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="sys", user="usr"))
@@ -254,7 +254,7 @@ class TestAssistInvocationWiring:
         service = KBAssistService(
             registry=MagicMock(spec=["get_model"]),
             config=MagicMock(spec=["model_id", "provider_name"]),
-            proactive_context=mock_proactive,
+            kb_context_provider=mock_provider,
             prompt_composer=mock_composer,
             invocation_pipeline=pipeline,
         )

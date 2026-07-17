@@ -33,9 +33,9 @@ if TYPE_CHECKING:
         Model,
     )
 
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare_core.agents.kb_assist_types import KBAssistOutput
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.context.contracts import ProactiveContextProtocol
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
@@ -56,7 +56,7 @@ class KBAssistService:
 
     Coordinates:
     - KBAssistAgent (LLM with 4 modes)
-    - ProactiveContextService (world context)
+    - KBContextProvider (canonical world context, ADR-067)
     - KB template registry (field structure)
     - PromptComposer (bundled system prompts via RULE-02)
 
@@ -66,7 +66,9 @@ class KBAssistService:
     Args:
         registry: ModelRegistry for lazy model resolution.
         config: Resolved model configuration (provider, model, params).
-        proactive_context: Service for suggesting relevant KB entries.
+        kb_context_provider: Single source for curated world context
+            (ADR-067). Renders existing KB entries of the entity type as
+            ``- name (type): brief`` and degrades to empty (RULE-11).
         prompt_composer: PromptComposer for bundling system prompts.
         kb_agent: Optional KBAgent for toolset composition.
     """
@@ -75,7 +77,7 @@ class KBAssistService:
         self,
         registry: ModelRegistry,
         config: ResolvedModelConfig,
-        proactive_context: ProactiveContextProtocol,
+        kb_context_provider: KBContextProviderProtocol,
         prompt_composer: PromptComposer,
         kb_agent: object | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
@@ -84,7 +86,7 @@ class KBAssistService:
 
         self._registry = registry
         self._config = config
-        self._proactive_context = proactive_context
+        self._kb_context_provider = kb_context_provider
         self._prompt_composer = prompt_composer
         self._kb_agent = kb_agent if isinstance(kb_agent, KBAgent) else None
         self._invocation_pipeline = invocation_pipeline
@@ -95,34 +97,24 @@ class KBAssistService:
         entity_type: str,
         existing_fields: dict[str, str],
     ) -> KBAssistDeps:
-        """Build KBAssistDeps with world context from ProactiveContextService."""
+        """Build KBAssistDeps with world context from the KBContextProvider.
+
+        World context is the canonical curated KB aggregate (ADR-067):
+        existing entries of the entity type, rendered as
+        ``- name (type): brief``. Degrades to empty on an unavailable
+        repository or empty KB (RULE-11, handled inside the provider) so
+        assist always composes its deps.
+        """
         # Get template structure for this entity type
         template_fields = get_template_fields(entity_type)
         template_structure = {f.field_key: f.label for f in template_fields}
 
-        # Get proactive context (world context)
-        world_context = ""
-        try:
-            # Note: We need chapter_content for ProactiveContextService.
-            # For assisted creation, we use the entity_type + existing values.
-            synthetic_content = f"Creating a {entity_type}"
-            if existing_fields:
-                synthetic_content += ": " + ", ".join(
-                    f"{k}={v}" for k, v in existing_fields.items()
-                )
-            suggestions = await self._proactive_context.suggest(
-                synthetic_content,
-                novel_id=novel_id,
-                entity_names=list(existing_fields.keys()) if existing_fields else [],
-                max_results=5,
-            )
-            if suggestions:
-                world_context = "\n".join(
-                    f"- {s.name} ({s.entry_type}): relevance {s.relevance_score:.2f}"
-                    for s in suggestions
-                )
-        except Exception:
-            logger.warning("proactive_context_unavailable", exc_info=True)
+        # Single source for KB world context (ADR-067). The provider owns
+        # RULE-11 degradation (empty string on missing/empty KB).
+        world_context = await self._kb_context_provider.fetch_world_context(
+            novel_id,
+            entity_type=entity_type,
+        )
 
         return KBAssistDeps(
             language="en",

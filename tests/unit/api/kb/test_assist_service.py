@@ -29,8 +29,8 @@ if TYPE_CHECKING:
 
     from ._assist_fakes import (
         FakeComposer,
+        FakeKBContextProvider,
         FakeModelRegistry,
-        FakeProactiveContext,
     )
 
 # ---------------------------------------------------------------------------
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 async def test_run_agent_calls_compose_invocation_mode1(
     config: ResolvedModelConfig,
     registry: FakeModelRegistry,
-    proactive_context: FakeProactiveContext,
+    kb_context_provider: FakeKBContextProvider,
     composer: FakeComposer,
     deps: KBAssistDeps,
     agent_output: KBAssistOutput,
@@ -56,7 +56,7 @@ async def test_run_agent_calls_compose_invocation_mode1(
     service = KBAssistService(
         registry=registry,  # type: ignore[arg-type]
         config=config,
-        proactive_context=proactive_context,  # type: ignore[arg-type]
+        kb_context_provider=kb_context_provider,  # type: ignore[arg-type]
         prompt_composer=composer,  # type: ignore[arg-type]
     )
 
@@ -82,3 +82,51 @@ async def test_run_agent_calls_compose_invocation_mode1(
     assert "manual_injection" not in kwargs  # Not Mode 2
     assert kwargs["invocation_context"].feature_id == "kb_assist"
     assert result is agent_output
+
+
+# ---------------------------------------------------------------------------
+# World context — KBContextProvider is the single source (ADR-067)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_build_deps_sources_world_context_via_provider(
+    config: ResolvedModelConfig,
+    registry: FakeModelRegistry,
+    kb_context_provider: FakeKBContextProvider,
+    composer: FakeComposer,
+) -> None:
+    """_build_deps obtains world_context from KBContextProvider (ADR-067).
+
+    Consolidates the former inline ``proactive_context.suggest`` + relevance
+    formatting: assist now routes through the canonical KBContextProvider so
+    kb assist/improve share one world-context source. Verifies the provider is
+    called with the novel id + entity type and that the rendered ``- name
+    (type): brief`` string flows into ``deps.world_context``.
+    """
+    from uuid import uuid4
+
+    canonical_context = "- Alice (character): A brave hero"
+
+    service = KBAssistService(
+        registry=registry,  # type: ignore[arg-type]
+        config=config,
+        kb_context_provider=kb_context_provider,  # type: ignore[arg-type]
+        prompt_composer=composer,  # type: ignore[arg-type]
+    )
+    # Configure the canonical wire format the provider renders.
+    kb_context_provider.fetch_world_context = AsyncMock(return_value=canonical_context)
+
+    novel_id = uuid4()
+    deps = await service._build_deps(
+        novel_id=novel_id,
+        entity_type="character",
+        existing_fields={"name": "Bob"},
+    )
+
+    kb_context_provider.fetch_world_context.assert_awaited_once()
+    call_kwargs = kb_context_provider.fetch_world_context.call_args
+    assert call_kwargs.args[0] == novel_id
+    assert call_kwargs.kwargs["entity_type"] == "character"
+    # The canonical aggregate flows straight into deps (single source).
+    assert deps.world_context == canonical_context
