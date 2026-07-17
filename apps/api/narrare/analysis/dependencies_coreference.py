@@ -20,11 +20,12 @@ def get_coreference_service(session: SessionDep) -> CoreferenceService:
     Production wiring:
     - ChapterRepository for chapter content fetching (novel_id-free lookup).
     - NovelRepository for novel access control + language/metadata resolution.
-    - KBRepository for populating ``kb_characters`` (the character name list
-      coreference resolution needs to map pronouns → characters).
-    - RelationshipRepository for populating ``kb_relationships`` (character
-      relationships provide context for pronoun disambiguation and
-      mention tracking).
+    - Canonical KB-context provider (ADR-067) for the ``kb_characters`` /
+      ``kb_locations`` / ``kb_factions`` / ``kb_relationships`` prompt
+      variables — rendered through the ADR-050 envelope with provenance
+      (FIND-017). Degrades gracefully (RULE-11). Coreference resolution
+      needs the character name list to map pronouns → characters, plus
+      locations/factions/relationships for disambiguation context.
     - ModelRegistry + ResolvedModelConfig for the CoreferenceAgent
       (AI-powered pronoun resolution, ambiguity detection, mention tracking).
     - PromptComposer for resolving the governed coreference system prompt
@@ -42,6 +43,7 @@ def get_coreference_service(session: SessionDep) -> CoreferenceService:
     )
     from narrare.analysis.coreference_service import CoreferenceService
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb._context_provider import KBContextProvider
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
@@ -52,8 +54,13 @@ def get_coreference_service(session: SessionDep) -> CoreferenceService:
 
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)
-    kb_repo = KBRepository(session)
-    relationship_repo = RelationshipRepository(session)
+
+    # Canonical KB-context provider (ADR-067): single fetch+render source for
+    # all four KB-context slots. Degrades gracefully (RULE-11).
+    kb_context_provider = KBContextProvider(
+        kb_repo=KBRepository(session),
+        relationship_repo=RelationshipRepository(session),
+    )
 
     return CoreferenceService(
         novel_repo=novel_repo,
@@ -61,7 +68,6 @@ def get_coreference_service(session: SessionDep) -> CoreferenceService:
         model_registry=registry,
         model_config=config,
         composer=composer,
-        kb_repo=kb_repo,
-        relationship_repo=relationship_repo,
+        kb_context_provider=kb_context_provider,
         invocation_pipeline=get_invocation_pipeline(),
     )

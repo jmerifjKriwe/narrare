@@ -23,6 +23,14 @@ How to use the work list:
   * **Never** delete an entry to silence a new warning without either wiring
     the source or documenting a confirmed-optional reason.
 
+Status: every remaining entry is ``RULE-11`` (legitimately optional). All
+``§7 GAP`` entries have been closed (the last two — coreference
+``kb_locations``/``kb_factions`` — were wired through the canonical
+``KBContextProvider`` in W4a). With §7 stub-gaps at 0 the detector
+(:mod:`doc_drift.stub_variable_checks`) is now **CI-blocking** (critical):
+any *new* unallowlisted stub fails CI, while the 7 RULE-11 entries stay
+absorbed (no finding).
+
 The detector imports :data:`STUB_ALLOWLIST` and :func:`allowlist_pairs` from
 here; this module holds only data + the (file, var) lookup, so a growing
 work list never pushes the detector past its RULE-04 size limit.
@@ -55,18 +63,6 @@ STUB_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
         "RULE-11: optional KB-context var (see character_voice_prompt.py comment).",
     ),
     (
-        "apps/api/narrare/analysis/coreference_prompt.py",
-        "kb_locations",
-        "§7 GAP: in-code comment admits 'Locations and factions can be "
-        "added later' — deferred assembler, not a confirmed-optional var.",
-    ),
-    (
-        "apps/api/narrare/analysis/coreference_prompt.py",
-        "kb_factions",
-        "§7 GAP: in-code comment admits 'Locations and factions can be "
-        "added later' — deferred assembler, not a confirmed-optional var.",
-    ),
-    (
         "apps/api/narrare/analysis/voice_check_prompt.py",
         "kb_characters",
         "RULE-11: optional KB-context var declared explicitly so the "
@@ -83,6 +79,11 @@ STUB_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
         "kb_factions",
         "RULE-11: optional KB-context var (see voice_check_prompt.py comment).",
     ),
+    # ── analysis/coreference_prompt.py — §7 gaps CLOSED (kb_characters/
+    #    kb_locations/kb_factions/kb_relationships now wired through the
+    #    canonical KBContextProvider, ADR-067; spread from
+    #    ``to_prompt_variables()`` so no literal "" stub remains). No
+    #    allowlist entries remain here. ──
     # ── planning/* — §7 gaps CLOSED (entity_events + existing_plot_points
     #    now wired from the injected TimelineEventRepository; rendered via
     #    planning/_event_render.py). No allowlist entries remain here. ──

@@ -31,7 +31,6 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.analysis.coreference_kb import fetch_kb_characters
 from narrare.analysis.coreference_prompt import resolve_coreference_prompt
 from narrare.analysis.schemas_coreference import (
     CharacterMentionResponse,
@@ -46,8 +45,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.chapters.repository import ChapterRepository
-    from narrare.kb.relationship_repository import RelationshipRepository
-    from narrare.kb.repository import KBRepository
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
@@ -79,18 +77,17 @@ class CoreferenceService:
         composer: PromptComposer for resolving the governed
             coreference system prompt via the cascade (RULE-02b /
             ADR-054 D1). Required for ``analyze``.
-        kb_repo: Optional KB repository for populating the
-            ``kb_characters`` prompt variable. Coreference resolution
-            needs the character name list to map pronouns → characters.
-            When ``None`` (or when the fetch fails), ``kb_characters``
-            falls back to an empty string (graceful degradation, RULE-11)
-            — the analysis still runs, just less accurately.
-        relationship_repo: Optional relationship repository for
-            populating the ``kb_relationships`` prompt variable.
-            Character relationships provide context that helps the model
-            disambiguate pronouns and track mentions (e.g. "she" refers
-            to Alice, who is Bob's ally). When ``None``, degrades
-            gracefully to an empty string (RULE-11).
+        kb_context_provider: Canonical KB-context provider (ADR-067) for
+            the ``kb_characters`` / ``kb_locations`` / ``kb_factions`` /
+            ``kb_relationships`` prompt variables. The provider is the
+            single fetch+render source for all four KB-context slots
+            (the ADR-050 envelope, with provenance annotated so analysis
+            gets the same honest rendering as writing — FIND-017).
+            Coreference resolution needs the character name list to map
+            pronouns → characters, plus locations/factions/relationships
+            for disambiguation context. When ``None`` or when the KB is
+            empty, all four degrade to empty strings (RULE-11) — the
+            analysis still runs, just less accurately.
         invocation_pipeline: Optional pipeline for invocation evidence
             (Mode 1 prepare/finalize). Retained for DI-contract
             stability.
@@ -103,8 +100,7 @@ class CoreferenceService:
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig | None = None,
         composer: PromptComposer | None = None,
-        kb_repo: KBRepository | None = None,
-        relationship_repo: RelationshipRepository | None = None,
+        kb_context_provider: KBContextProviderProtocol | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
@@ -113,8 +109,7 @@ class CoreferenceService:
         self._registry = model_registry
         self._config = model_config
         self._composer = composer
-        self._kb_repo = kb_repo
-        self._relationship_repo = relationship_repo
+        self._kb_context_provider = kb_context_provider
         self._invocation_pipeline = invocation_pipeline
 
     async def analyze(
@@ -167,30 +162,28 @@ class CoreferenceService:
         language = novel.writing_language or "en"
         chapter_text = chapter.content or ""
 
-        # 1b. Fetch KB characters for pronoun resolution (the name list
-        #     coreference needs to map pronouns → characters). Graceful
-        #     degradation + fetch logic: see coreference_kb (RULE-04/11).
-        kb_characters_text = ""
-        if self._kb_repo is not None:
-            try:
-                kb_characters_text = await fetch_kb_characters(self._kb_repo, chapter.novel_id)
-            except Exception:
-                logger.warning(
-                    "kb_characters_fetch_failed",
-                    novel_id=str(chapter.novel_id),
-                )
+        # 1b. Canonical KB context (ADR-067): characters/locations/factions/
+        #     relationships are fetched+rendered through the reusable provider
+        #     (the ADR-050 envelope, with provenance annotated so analysis
+        #     gets the same honest rendering as writing — FIND-017). This
+        #     succeeds the fragmented ``fetch_kb_characters`` +
+        #     ``fetch_formatted_relationships`` helpers: the provider is now
+        #     the single fetch+render source for all four KB-context slots.
+        #     Degrades to empty strings when no provider is wired or the KB
+        #     is empty (RULE-11) — the provider never raises.
+        from narrare_core.context._render_options import RenderOptions
 
-        # 1c. Fetch KB relationships for relationship-aware pronoun
-        #     resolution (character relationships help the model
-        #     disambiguate "she"/"he" and track mentions). Reuses the
-        #     writing-pipeline helper; degrades to "" when no repo is
-        #     wired (RULE-11).
-        from narrare.writing._relationship_helpers import (
-            fetch_formatted_relationships,
-        )
+        if self._kb_context_provider is None:
+            from narrare.kb.context_contracts import KBContextBundle
 
-        rel_context = await fetch_formatted_relationships(self._relationship_repo, chapter.novel_id)
-        kb_relationships_text = rel_context.text
+            kb_bundle = KBContextBundle.empty(RenderOptions(annotate_provenance=True))
+        else:
+            kb_bundle = await self._kb_context_provider.fetch_context(
+                chapter.novel_id,
+                entity_types=["character", "location", "faction"],
+                options=RenderOptions(annotate_provenance=True),
+            )
+        kb_vars = kb_bundle.to_prompt_variables()
 
         # 2. Resolve the governed coreference system prompt via
         #    PromptComposer (RULE-02 / ADR-054 D1). The template
@@ -204,8 +197,7 @@ class CoreferenceService:
             language=language,
             novel_id=chapter.novel_id,
             user_id=user_id,
-            kb_characters=kb_characters_text,
-            kb_relationships=kb_relationships_text,
+            kb_vars=kb_vars,
         )
 
         model = await self._registry.get_model(self._config)

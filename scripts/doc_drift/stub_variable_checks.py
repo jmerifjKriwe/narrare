@@ -1,4 +1,4 @@
-"""WARNING-ONLY §7 "documented ≠ implemented" stub-variable detector.
+"""CI-BLOCKING §7 "documented ≠ implemented" stub-variable detector.
 
 Context
 -------
@@ -22,18 +22,19 @@ left alone — only an unconditional ``""`` stub is flagged.
 
 Severity / ratchet
 ------------------
-This check is **WARNING-ONLY**: every finding it emits has
-``severity="warning"``, so ``check_doc_drift.py`` reports it but exits 0
-(it never fails CI or pre-commit on its own). A ratcheted **(file, var)
+This check is **CI-BLOCKING**: every finding it emits has
+``severity="critical"``, so ``check_doc_drift.py`` reports it AND exits
+non-zero (it fails CI / pre-commit on its own). A ratcheted **(file, var)
 allowlist** (:mod:`doc_drift.stub_variable_allowlist`, the §7 work list)
 records every current occurrence with a one-line *reason* tagged ``RULE-11``
 (legitimately empty) or ``§7 GAP`` (true stub pending remediation).
 
-The current post-scan tree therefore starts clean (zero new warnings). The
-allowlist IS the work list: as each §7 GAP is closed (real value wired),
-remove its entry and the checker stays clean. To ratchet this guard to
-**blocking** later, triage every entry, then change ``_SEVERITY`` to
-``"critical"``.
+The allowlist absorbed every legitimate occurrence, so the post-scan tree
+starts clean (zero findings — the 7 RULE-11 entries stay absorbed, no
+§7 GAPs remain). The allowlist IS the work list: as each §7 GAP was closed
+(real value wired), its entry was removed and the checker stayed clean.
+Now that §7 stub-gaps are at 0, the gate is critical: any *new*
+unallowlisted stub blocks CI (prevents regression).
 
 Relationship to ``scripts/check_empty_kb_vars.py``
 --------------------------------------------------
@@ -41,14 +42,16 @@ The four KB variables (``kb_characters`` / ``kb_locations`` /
 ``kb_factions`` / ``kb_relationships``) are *also* enforced by the separate
 CI-**blocking** no-growth gate ``check_empty_kb_vars.py`` (ratcheted in
 ``scripts/architecture/ai-gate-baseline.json``). This checker is the
-**comprehensive** WARNING-only inventory across *all* registered variables
+**comprehensive** CI-blocking inventory across *all* registered variables
 — it bounds "close them all". The two coexist deliberately: the narrow
-blocking gate protects the highest-risk KB vars from regrowing, while this
-checker keeps the full §7 surface visible.
+baseline gate protects the highest-risk KB vars from regrowing, while this
+checker keeps the full §7 surface visible and now also blocks on any new
+unallowlisted stub.
 
 RULE-11: the guard never fails silently — if the scan root is unreadable,
 a file is unparseable, or the variable registry cannot be imported, it
-emits a warning describing the problem.
+emits a finding describing the problem (critical, so the gate fails closed
+rather than silently passing when it cannot scan).
 
 See: .opencode/context/narrare-dev/standards/architectural-discipline.md §7
      docs/_shared/CONSTRAINTS.md (RULE-11)
@@ -75,9 +78,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 # scan confirms all current occurrences are contained here.
 DEFAULT_SCAN_ROOT = REPO_ROOT / "apps" / "api" / "narrare"
 
-# WARNING-ONLY this cycle. Flip to "critical" to ratchet to blocking (after
-# the allowlist is fully triaged). See module docstring "Severity / ratchet".
-_SEVERITY = "warning"
+# CI-BLOCKING (critical). With the §7 stub-gap inventory at 0 — every
+# remaining allowlist entry is RULE-11 (legitimately optional) — any NEW
+# unallowlisted stub now fails CI (prevents regression). See module
+# docstring "Severity / ratchet".
+_SEVERITY = "critical"
 
 # Keyword arguments that carry a var-building dict literal. ``extra`` is the
 # PromptContext slot; ``variables`` covers equivalent var-building call sites.
@@ -281,10 +286,11 @@ def check_stub_variables(
 ) -> list[DocDriftFinding]:
     """Scan service code for NEW §7 stub-variable occurrences.
 
-    Emits a ``warning``-severity :class:`DocDriftFinding` for every
+    Emits a ``critical``-severity :class:`DocDriftFinding` for every
     occurrence found by :func:`collect_stub_variable_occurrences` that is NOT
-    absorbed by the ratcheted allowlist baseline. WARNING-ONLY: findings
-    surface in the doc-drift governance report but never fail CI.
+    absorbed by the ratcheted allowlist baseline. CI-BLOCKING: findings
+    surface in the doc-drift governance report AND fail CI (``check_doc_drift``
+    exits non-zero) — a *new* unallowlisted stub prevents regression.
 
     The allowlist (``doc_drift.stub_variable_allowlist``) is the §7 work
     list. Add an entry only with a ``RULE-11`` or ``§7 GAP`` reason; remove a

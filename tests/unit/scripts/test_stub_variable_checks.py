@@ -4,10 +4,11 @@ The §7 stub-variable detector flags the "documented ≠ implemented"
 anti-pattern: a service builds a var-building dict (``extra=`` /
 ``variables=``) where a *registered* prompt variable is assigned a literal
 empty string ``""`` at runtime — the template declares the slot but the
-runtime never feeds it. It is WARNING-ONLY with a ratcheted (file, var)
-allowlist in ``stub_variable_allowlist.py`` (the §7 work list): the current
-tree starts clean (zero new warnings), and any new stub surfaces a warning
-for reviewer triage.
+runtime never feeds it. It is **CI-BLOCKING (critical)** with a ratcheted
+(file, var) allowlist in ``stub_variable_allowlist.py`` (the §7 work list):
+the current tree starts clean (zero findings — the 7 RULE-11 entries are
+absorbed, no §7 GAPs remain), and any *new* unallowlisted stub is a
+critical finding that fails CI (prevents regression).
 
 Conditional fallbacks (``x or ""``, ``str(x) if x else ""``) and
 non-registered keys are NOT stubs and must not be flagged.
@@ -69,11 +70,13 @@ _NON_REGISTERED_KEY = "definitely_not_a_registered_var"
 
 
 def test_clean_baseline_against_real_repo(checker) -> None:
-    """The current tree must produce zero new §7 findings.
+    """The current tree must produce zero §7 findings.
 
-    This is the ratchet assertion: every existing stub is allowlisted, so a
-    future new stub breaks this test, forcing an explicit baseline decision
-    (wire the source, or add an allowlist entry with a reason).
+    This is the ratchet assertion: every legitimate stub is allowlisted
+    (the 7 RULE-11 entries are absorbed), so a future new stub — now a
+    *critical* finding that blocks CI — breaks this test, forcing an
+    explicit baseline decision (wire the source, or add an allowlist entry
+    with a reason).
     """
     findings = checker.check_stub_variables()
     assert findings == [], (
@@ -105,7 +108,8 @@ def test_inventory_matches_allowlist_size(checker) -> None:
 # ── Behavioural tests against a controlled tmp tree ────────────
 
 
-def test_new_stub_in_unallowlisted_file_warns(checker, tmp_path: Path) -> None:
+def test_new_stub_in_unallowlisted_file_is_critical(checker, tmp_path: Path) -> None:
+    """A new unallowlisted stub is a *critical* finding that blocks CI."""
     _write(
         tmp_path,
         "services/shiny_service.py",
@@ -114,7 +118,10 @@ def test_new_stub_in_unallowlisted_file_warns(checker, tmp_path: Path) -> None:
     findings = checker.check_stub_variables(scan_root=tmp_path)
     stub_findings = [f for f in findings if "[STUB-VARIABLE]" in f.message]
     assert len(stub_findings) == 1
-    assert stub_findings[0].severity == "warning"
+    assert stub_findings[0].severity == "critical", (
+        "The detector is CI-blocking: a new unallowlisted stub must be "
+        "critical so check_doc_drift exits non-zero (prevents regression)."
+    )
     assert _REGISTERED_VAR in stub_findings[0].message
     assert "shiny_service.py" in stub_findings[0].file
 
@@ -132,7 +139,7 @@ def test_variables_keyword_is_also_detected(checker, tmp_path: Path) -> None:
         if "[STUB-VARIABLE]" in f.message
     ]
     assert len(findings) == 1
-    assert findings[0].severity == "warning"
+    assert findings[0].severity == "critical"
 
 
 def test_conditional_fallback_is_not_a_stub(checker, tmp_path: Path) -> None:
@@ -230,16 +237,25 @@ def test_test_files_are_not_scanned(checker, tmp_path: Path) -> None:
 
 
 def test_missing_scan_root_is_not_silent(checker, tmp_path: Path) -> None:
-    """RULE-11: an unreadable scan root must surface, not fail silently."""
+    """RULE-11: an unreadable scan root must surface (fail closed), not pass.
+
+    The detector is CI-blocking: when it cannot scan, it emits a *critical*
+    finding so the gate fails closed rather than silently passing.
+    """
     bogus = tmp_path / "does-not-exist"
     findings = checker.check_stub_variables(scan_root=bogus)
     assert len(findings) == 1
-    assert findings[0].severity == "warning"
+    assert findings[0].severity == "critical"
     assert "does-not-exist" in findings[0].message
 
 
-def test_all_findings_are_warning_severity(checker, tmp_path: Path) -> None:
-    """The guard is WARNING-ONLY: it never emits critical findings."""
+def test_all_stub_findings_are_critical_severity(checker, tmp_path: Path) -> None:
+    """The guard is CI-BLOCKING: it emits *critical* (not warning) findings.
+
+    A new unallowlisted stub must be critical so ``check_doc_drift`` exits
+    non-zero and blocks CI/pre-commit (the final enforcement after the §7
+    inventory reached 0 gaps).
+    """
     _write(
         tmp_path,
         "services/spam.py",
@@ -247,7 +263,9 @@ def test_all_findings_are_warning_severity(checker, tmp_path: Path) -> None:
     )
     findings = checker.check_stub_variables(scan_root=tmp_path)
     assert findings, "expected at least one finding"
-    assert all(f.severity == "warning" for f in findings)
+    assert all(f.severity == "critical" for f in findings), (
+        "every §7 stub-variable finding must be critical (CI-blocking)."
+    )
 
 
 def test_occurrences_sorted_and_carry_line_and_target(checker, tmp_path: Path) -> None:

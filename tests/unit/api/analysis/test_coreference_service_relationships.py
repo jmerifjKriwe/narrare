@@ -1,15 +1,20 @@
-"""KB-relationship population tests for CoreferenceService (ANAL-005).
+"""KB-relationship population tests for CoreferenceService (ANAL-005, W4a).
 
 Verifies that ``CoreferenceService.analyze`` populates the
-``kb_relationships`` variable in the ``PromptContext.extra`` dict with
-real relationship data from the relationship repository, so the
-coreference model has character-relationship context when resolving
-pronouns and tracking mentions (the gap described in CR-AUFG-03-09).
+``kb_relationships`` variable in the ``PromptContext.extra`` dict with real
+relationship data flowing through the canonical KB-context provider
+(:class:`narrare.kb._context_provider.KBContextProvider`, ADR-067), so the
+coreference model has character-relationship context when resolving pronouns
+and tracking mentions (CR-AUFG-03-09). Relationships now route through the
+same provider as the entity slots (single KB-context source), matching the
+W2 timeline pattern.
 
-Mirrors the ``kb_characters`` population tests in
-``test_coreference_service_kb.py`` (same graceful-degradation contract).
+The provider wires the real fetch+render path (``format_relationships``);
+only the repositories are faked, so this proves the genuine
+service → provider → ``PromptContext.extra`` chain (no proxy padding).
 
 See:
+    ADR-067 — Reusable KB-Context Provider.
     ADR-054 — Mode 1 (composer-driven) prompt resolution.
     CONSTRAINTS.md RULE-11 (graceful degradation).
 """
@@ -21,6 +26,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from narrare.kb._context_provider import KBContextProvider
 from narrare.kb.relationship_repository import RelationshipEdgeRow
 from narrare_core.llm.model_config import ResolvedModelConfig
 from tests.unit.api.analysis._coreference_test_helpers import (
@@ -49,30 +55,47 @@ def config() -> ResolvedModelConfig:
 
 
 def _make_relationship_repo(edges: list[RelationshipEdgeRow]) -> AsyncMock:
-    """Build a mock RelationshipRepository returning the given edges."""
+    """Build a fake RelationshipRepository returning the given edges."""
     repo = AsyncMock()
     repo.get_relationships_with_names.return_value = edges
     return repo
 
 
+def _make_empty_kb_repo() -> AsyncMock:
+    """Fake KBRepository whose ``list_entries`` yields no entries.
+
+    The provider only needs a non-None repo that returns an empty page so it
+    proceeds to render relationships; the entity slots degrade to empty
+    (RULE-11). ``list_entities`` paginates and stops once a batch is shorter
+    than the page size, so a single empty page terminates it.
+    """
+    repo = AsyncMock()
+    repo.list_entries.return_value = ([], 0)
+    return repo
+
+
 # ---------------------------------------------------------------------------
-# kb_relationships population
+# kb_relationships population (via the canonical KB-context provider)
 # ---------------------------------------------------------------------------
 
 
 class TestKBRelationshipsPopulation:
-    """``kb_relationships`` is populated from the relationship repository."""
+    """``kb_relationships`` is populated through the KB-context provider."""
 
     @pytest.mark.asyncio
-    async def test_kb_relationships_populated_when_repo_has_edges(
+    async def test_kb_relationships_populated_when_provider_has_edges(
         self,
         composer: FakeComposer,
         config: ResolvedModelConfig,
     ) -> None:
-        """When ``relationship_repo`` is wired and has edges, the formatted
-        relationship text flows into ``kb_relationships`` so the
-        coreference model can use character relationships for pronoun
-        resolution and mention tracking."""
+        """When the provider's relationship repo has edges, the formatted
+        relationship text flows into ``kb_relationships`` so the coreference
+        model can use character relationships for pronoun resolution and
+        mention tracking.
+
+        The real ``KBContextProvider`` is wired (ADR-067); the empty KB repo
+        makes the entity slots degrade to empty while relationships still
+        render — proving the service → provider → context chain end-to-end."""
         edges = [
             RelationshipEdgeRow(
                 source_name="Alice",
@@ -89,9 +112,12 @@ class TestKBRelationshipsPopulation:
                 direction="mutual",
             ),
         ]
-        relationship_repo = _make_relationship_repo(edges)
+        kb_context_provider = KBContextProvider(
+            kb_repo=_make_empty_kb_repo(),  # type: ignore[arg-type]
+            relationship_repo=_make_relationship_repo(edges),  # type: ignore[arg-type]
+        )
 
-        service = make_service(composer, config, relationship_repo=relationship_repo)  # type: ignore[arg-type]
+        service = make_service(composer, config, kb_context_provider=kb_context_provider)
         service._chapter_repo.get.return_value = make_chapter()  # type: ignore[attr-defined]
         service._novel_repo.get_by_id.return_value = make_novel()  # type: ignore[attr-defined]
 
@@ -113,18 +139,18 @@ class TestKBRelationshipsPopulation:
         )
 
     @pytest.mark.asyncio
-    async def test_kb_relationships_empty_when_repo_is_none(
+    async def test_kb_relationships_empty_when_no_provider(
         self,
         composer: FakeComposer,
         config: ResolvedModelConfig,
     ) -> None:
-        """relationship_repo=None → graceful degradation (backward compat).
+        """kb_context_provider=None → graceful degradation (RULE-11).
 
-        Pre-existing tests and any caller that omits ``relationship_repo``
-        must keep working: ``kb_relationships`` falls back to an empty
-        string so the template's variable substitution still succeeds.
+        The service falls back to ``KBContextBundle.empty()`` so
+        ``kb_relationships`` is an empty string and the template's variable
+        substitution still succeeds without an exception.
         """
-        service = make_service(composer, config)  # relationship_repo omitted → None
+        service = make_service(composer, config)  # provider omitted → None
         service._chapter_repo.get.return_value = make_chapter()  # type: ignore[attr-defined]
         service._novel_repo.get_by_id.return_value = make_novel()  # type: ignore[attr-defined]
 
@@ -138,19 +164,22 @@ class TestKBRelationshipsPopulation:
         ctx = mock_compose.call_args.kwargs.get("prompt_context")
         assert ctx is not None
         assert ctx.extra["kb_relationships"] == "", (
-            "kb_relationships must be empty when relationship_repo is None (graceful degradation)."
+            "kb_relationships must be empty when no provider is wired (RULE-11)."
         )
 
     @pytest.mark.asyncio
-    async def test_kb_relationships_empty_when_repo_has_no_edges(
+    async def test_kb_relationships_empty_when_provider_has_no_edges(
         self,
         composer: FakeComposer,
         config: ResolvedModelConfig,
     ) -> None:
         """An empty edge list also degrades gracefully to empty text."""
-        relationship_repo = _make_relationship_repo([])
+        kb_context_provider = KBContextProvider(
+            kb_repo=_make_empty_kb_repo(),  # type: ignore[arg-type]
+            relationship_repo=_make_relationship_repo([]),  # type: ignore[arg-type]
+        )
 
-        service = make_service(composer, config, relationship_repo=relationship_repo)  # type: ignore[arg-type]
+        service = make_service(composer, config, kb_context_provider=kb_context_provider)
         service._chapter_repo.get.return_value = make_chapter()  # type: ignore[attr-defined]
         service._novel_repo.get_by_id.return_value = make_novel()  # type: ignore[attr-defined]
 
@@ -164,53 +193,5 @@ class TestKBRelationshipsPopulation:
         ctx = mock_compose.call_args.kwargs.get("prompt_context")
         assert ctx is not None
         assert ctx.extra["kb_relationships"] == "", (
-            "kb_relationships must be empty when the repo has no edges."
-        )
-
-
-# ---------------------------------------------------------------------------
-# Constructor wiring
-# ---------------------------------------------------------------------------
-
-
-class TestCoreferenceServiceRelationshipsConstructor:
-    """The constructor accepts and stores the optional ``relationship_repo``."""
-
-    def test_constructor_stores_relationship_repo(
-        self,
-        composer: FakeComposer,
-        config: ResolvedModelConfig,
-    ) -> None:
-        from narrare.analysis.coreference_service import CoreferenceService
-        from tests.unit.api.analysis._coreference_test_helpers import FakeModelRegistry
-
-        service = CoreferenceService(
-            novel_repo=AsyncMock(),  # type: ignore[arg-type]
-            chapter_repo=AsyncMock(),  # type: ignore[arg-type]
-            model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            model_config=config,
-            composer=composer,  # type: ignore[arg-type]
-            relationship_repo=AsyncMock(),  # type: ignore[arg-type]
-        )
-
-        assert service._relationship_repo is not None, "Constructor must store relationship_repo."
-
-    def test_constructor_defaults_relationship_repo_to_none(
-        self,
-        composer: FakeComposer,
-        config: ResolvedModelConfig,
-    ) -> None:
-        from narrare.analysis.coreference_service import CoreferenceService
-        from tests.unit.api.analysis._coreference_test_helpers import FakeModelRegistry
-
-        service = CoreferenceService(
-            novel_repo=AsyncMock(),  # type: ignore[arg-type]
-            chapter_repo=AsyncMock(),  # type: ignore[arg-type]
-            model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            model_config=config,
-            composer=composer,  # type: ignore[arg-type]
-        )
-
-        assert service._relationship_repo is None, (
-            "relationship_repo must default to None (backward compatibility)."
+            "kb_relationships must be empty when the provider has no edges."
         )

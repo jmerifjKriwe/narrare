@@ -21,8 +21,7 @@ if TYPE_CHECKING:
 
     from narrare.analysis.coreference_service import CoreferenceService
     from narrare.analysis.schemas_coreference import CoreferenceStreamEvent
-    from narrare.kb.relationship_repository import RelationshipRepository
-    from narrare.kb.repository import KBRepository
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare_core.llm.model_config import ResolvedModelConfig
 
 # ---------------------------------------------------------------------------
@@ -102,11 +101,17 @@ def make_novel(**overrides: object) -> MagicMock:
 
 
 def make_kb_entry(**overrides: object) -> MagicMock:
-    """Create a mock KB entry with the attributes the service reads.
+    """Create a mock KB entry with the attributes the provider reads.
 
-    Used to seed ``kb_characters`` population tests. Defaults to a
-    ``character`` entity (the entity type coreference resolution needs).
+    Used to seed the canonical ``KBContextProvider`` (ADR-067): the
+    provider's ``kb_entry_to_kb_entity`` mapper reads ``id`` /
+    ``entity_type`` / ``name`` / ``body`` plus the provenance fields
+    (``metadata_`` / ``status`` / ``source`` / ``review_status`` /
+    ``updated_at``) that ``format_entities`` may annotate. Defaults to a
+    ``character`` entity.
     """
+    from datetime import UTC, datetime
+
     from narrare.kb.models import KBEntry
 
     defaults: dict[str, object] = {
@@ -115,6 +120,11 @@ def make_kb_entry(**overrides: object) -> MagicMock:
         "entity_type": overrides.get("entity_type", "character"),
         "name": overrides.get("name", "Unknown"),
         "body": overrides.get("body", ""),
+        "metadata_": overrides.get("metadata_", {}),
+        "status": overrides.get("status", "accepted"),
+        "source": overrides.get("source", "manual"),
+        "review_status": overrides.get("review_status", "approved"),
+        "updated_at": overrides.get("updated_at", datetime.now(UTC)),
     }
     defaults.update(overrides)
     entry = MagicMock(spec=KBEntry)
@@ -136,22 +146,20 @@ def make_agent_output() -> CoreferenceOutput:
 def make_service(
     composer: FakeComposer,
     config: ResolvedModelConfig,
-    kb_repo: KBRepository | None = None,
-    relationship_repo: RelationshipRepository | None = None,
+    kb_context_provider: KBContextProviderProtocol | None = None,
 ) -> CoreferenceService:
     """Build a CoreferenceService wired for Mode 1 prompt resolution.
 
     Args:
         composer: Fake PromptComposer for DI wiring.
-        config: Resolved model config.
-        kb_repo: Optional KB repository for ``kb_characters`` population.
-            When ``None`` (default), the service exercises the graceful
-            degradation path (``kb_characters=""``) — this preserves
-            backward compatibility with pre-KB-wiring tests.
-        relationship_repo: Optional relationship repository for
-            ``kb_relationships`` population. When ``None`` (default), the
-            service exercises the graceful degradation path
-            (``kb_relationships=""``).
+        config: Fake model config.
+        kb_context_provider: Optional canonical KB-context provider
+            (ADR-067) for the ``kb_characters`` / ``kb_locations`` /
+            ``kb_factions`` / ``kb_relationships`` prompt variables. When
+            ``None`` (default), the service exercises the graceful
+            degradation path (``KBContextBundle.empty()`` → every kb_*
+            slot is ``""``) — this preserves backward compatibility with
+            pre-KB-wiring tests.
     """
     from narrare.analysis.coreference_service import CoreferenceService
 
@@ -163,8 +171,7 @@ def make_service(
         model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
         model_config=config,
         composer=composer,  # type: ignore[arg-type]
-        kb_repo=kb_repo,  # type: ignore[arg-type]
-        relationship_repo=relationship_repo,  # type: ignore[arg-type]
+        kb_context_provider=kb_context_provider,  # type: ignore[arg-type]
     )
 
 

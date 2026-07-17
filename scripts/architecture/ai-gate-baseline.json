@@ -33,8 +33,6 @@
     "apps/api/narrare/analysis/character_voice_prompt.py | kb_characters",
     "apps/api/narrare/analysis/character_voice_prompt.py | kb_factions",
     "apps/api/narrare/analysis/character_voice_prompt.py | kb_locations",
-    "apps/api/narrare/analysis/coreference_prompt.py | kb_factions",
-    "apps/api/narrare/analysis/coreference_prompt.py | kb_locations",
     "apps/api/narrare/analysis/voice_check_prompt.py | kb_characters",
     "apps/api/narrare/analysis/voice_check_prompt.py | kb_factions",
     "apps/api/narrare/analysis/voice_check_prompt.py | kb_locations"

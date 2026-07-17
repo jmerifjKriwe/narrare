@@ -9,7 +9,10 @@ The governed ``_bundled/analysis/{locale}/coreference/system.md``
 template carries the task framing and project metadata variables. No
 inline f-string feature prompt is assembled (RULE-02 / RULE-02b). The
 chapter text flows as runtime data in the agent run prompt (user
-channel, RULE-02a category 3) — not here.
+channel, RULE-02a category 3) — not here. The KB-context variables
+(``kb_characters`` / ``kb_locations`` / ``kb_factions`` /
+``kb_relationships``) are supplied by the caller from the canonical
+:class:`~narrare.kb.context_contracts.KBContextProvider` (ADR-067).
 
 See:
     ADR-054 — Mode 1 (composer-driven) prompt resolution.
@@ -38,18 +41,22 @@ async def resolve_coreference_prompt(
     language: str,
     novel_id: UUID,
     user_id: UUID,
-    kb_characters: str = "",
-    kb_relationships: str = "",
+    kb_vars: dict[str, str] | None = None,
 ) -> ComposedPrompt:
     """Resolve the governed coreference system prompt (Mode 1).
 
     Builds a :class:`PromptContext` with ``mode="coreference"`` and the
     project/chapter metadata, then composes the governed system prompt via
     :func:`compose_invocation` Mode 1 (``composer=`` + ``prompt_context=`` +
-    ``intent=LLMIntent.ANALYSE``). The KB-context variables are supplied
-    by the caller (fetched from repositories) or default to empty strings
-    so the template's optional placeholders render rather than crash the
-    variable engine (RULE-11 graceful degradation).
+    ``intent=LLMIntent.ANALYSE``). The KB-context variables
+    (``kb_characters`` / ``kb_locations`` / ``kb_factions`` /
+    ``kb_relationships``) are supplied by the caller from the canonical
+    :class:`~narrare.kb.context_contracts.KBContextProvider`
+    (``kb_bundle.to_prompt_variables()``) so all four slots are fed from real
+    KB context when it exists (ADR-067). They default to empty strings when
+    no provider is wired or the KB is empty so the template's optional
+    placeholders render rather than crash the variable engine (RULE-11
+    graceful degradation).
 
     Args:
         composer: PromptComposer for the cascade (RULE-02b).
@@ -60,13 +67,10 @@ async def resolve_coreference_prompt(
         language: Writing language code.
         novel_id: The novel id (invocation context project_id).
         user_id: The requesting user id (invocation context user_id).
-        kb_characters: Pre-formatted KB character text for the
-            ``kb_characters`` template variable. Defaults to ``""``
-            (RULE-11).
-        kb_relationships: Pre-formatted KB relationship text for the
-            ``kb_relationships`` template variable. Character
-            relationships help the model disambiguate pronouns and track
-            mentions. Defaults to ``""`` (RULE-11).
+        kb_vars: KB-context prompt variables from the canonical provider
+            (``kb_characters`` / ``kb_locations`` / ``kb_factions`` /
+            ``kb_relationships``). When ``None`` (or a key is absent), the
+            slot renders empty (RULE-11).
 
     Returns:
         The composed :class:`ComposedPrompt` (system + user channels).
@@ -80,6 +84,11 @@ async def resolve_coreference_prompt(
     from narrare_core.llm.intents import LLMIntent
     from narrare_core.prompts.context import PromptContext
 
+    # Spread the provider's KB-context vars (all four keys present when the
+    # caller passes the full ``to_prompt_variables()`` output). Spreading —
+    # not a literal ``""`` assignment — keeps every slot fed from real KB
+    # context (architectural-discipline §7) while still rendering empty when
+    # the KB is empty (RULE-11).
     ctx = PromptContext(
         language=language,
         writing_language=language,
@@ -88,15 +97,7 @@ async def resolve_coreference_prompt(
         chapter_title=getattr(chapter, "title", "") or "",
         mode="coreference",
         extra={
-            # ``kb_characters`` and ``kb_relationships`` are populated by
-            # the caller from the KB and relationship repositories. The
-            # other KB-context variables are declared explicitly (not
-            # silently omitted) so the template's variable substitution
-            # succeeds. Locations and factions can be added later.
-            "kb_characters": kb_characters,
-            "kb_locations": "",
-            "kb_factions": "",
-            "kb_relationships": kb_relationships,
+            **(kb_vars or {}),
         },
     )
 
