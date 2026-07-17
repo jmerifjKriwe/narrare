@@ -12,9 +12,6 @@ README nur noch ein Pointer.
 pro Befund):
 [`../cr-05-initial-findings.md`](../cr-05-initial-findings.md)
 
-## Offener Folgeschritt
+## Folgeaufgabe (resolviert)
 
-Ein verbleibender Folgeschritt — **Adoption-Score-Honesty** — ist in
-`../cr-05-initial-findings.md` registriert. Er trägt bewusst **keine** eigene
-FIND-Nummer (Known-Unknown, kein materialer Befund) und wird separat über den
-Architecture-Specialist aufgezogen.
+Der einstige Folgestrang **Adoption-Score-Honesty + §7-Stub-Closing** ist vollständig resolviert (Scorer-Modell α + Option A, §7-Stub-Detector mit CI-/Pre-commit-Enforcement, Closing aller 12 §7-Gaps über 5 Wellen). Vollständige Exit-Evidenz mit allen Commit-SHAs steht im kanonischen Record: [`../cr-05-initial-findings.md`](../cr-05-initial-findings.md) — Abschnitt *Folgeschritt (resolviert)*.

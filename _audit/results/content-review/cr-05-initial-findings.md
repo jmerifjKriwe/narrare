@@ -23,10 +23,10 @@ gemäß `docs/development/finding-lifecycle.md` §2). Es verbleiben **keine offe
 Befunde** in diesem Review.
 
 Die 21 FIND-Scratchdateien unter `findings/` wurden retiret; dieser Index ist
-nun der alleinige Lifecycle-Record mit Exit-Evidenz. Ein verbleibender
-Folgeschritt zur Adoption-Score-Honesty ist unten als bekanntes Known-Unknown
-registriert — er trägt bewusst **keine** eigene FIND-Nummer (siehe
-[Offener Folgeschritt](#offener-folgeschritt-adoption-score-honesty-kein-neues-find)).
+nun der alleinige Lifecycle-Record mit Exit-Evidenz. Der einstige Adoption-Score-Honesty- und §7-Stub-Folgeschritt ist inzwischen
+**vollständig resolviert** (Detektion + Closing aller 12 Gaps +
+Pre-commit-/CI-Enforcement) — siehe Abschnitt *Folgeschritt (resolviert)*
+weiter unten.
 
 ### Prioritäts-Verteilung (alle resolviert)
 
@@ -97,20 +97,27 @@ ihre echte Evidenz haben), nicht in einer statischen Bezeichner-Suche.
 
 ---
 
-## Offener Folgeschritt: Adoption-Score-Honesty (kein neues FIND)
+## Folgeschritt (✅ resolviert): Adoption-Score-Honesty + §7-Stub-Closing
 
-**Status:** ✅ Resolved (2026-07-16) — Score-Honesty + kb-Debt implementiert; das Mapping-Audit bleibt als definite Folgeaufgabe offen.
+**Status:** ✅ Vollständig resolviert (2026-07-16/17). Keine offenen Folgeschritte mehr in diesem Strang.
 
-Die `unverified`-Markierung war bisher per Test bewusst aus der Score-Berechnung ausgeschlossen, sodass der `overall_score` (`scripts/check_adoption.py`, CI-Gate G8, Schwelle ≥ 0.85) `token_budget`/`injection_defense` als `adopted=1.0` kreditierte — der dokumentierte Rest-False-Control.
+**Ursprung:** Der Adoption-Scorer kreditierte `unverified`-Items als `adopted=1.0` (FIND-006-Rest-False-Control); kombiniert mit einem Consumer-biasierten Evidence-Mapping schien kbs reale Adoption < 0.85. Beides entpuppte sich als Scorer- bzw. §7-Lücken, nicht als kb-Defizit.
 
-**Implementation (beides shipped, Gate grün UND ehrlich):**
+**Lösungsbogen (Commits als Evidenz):**
 
-- **Scorer-Modell α + Option A** — Commit `8f4f0637` *fix(adoption): per-category evidence vocab and exclude unverified from score*. `_INFRA_VAR_EVIDENCE` zu `dict[(category, infra_dim), set[var]]` restrukturiert; `kb→kb_entities` mit Owner-Vocab (`existing_entity_names`/`entity_summaries`/`entity_details`) statt Konsumenten-Vocab → kb **0.87 → 1.00** (Consumer-Bias-Fix; das war ein Scorer-Bug, kein kb-Defizit). `unverified` an beiden Aggregationsstellen (`scorer.py`, `scorer_modes.py`) aus Zähler **und** Nenner ausgeschlossen → overall **0.97 → 0.9985** (Inflation entfernt). `unverified_count==7` bleibt im separaten Audit-Abschnitt sichtbar und ist nun konsistent zur Schlagzahl.
-- **kb-Debt** — Commit `238200ad` *fix(kb): populate world_context for extract/merge and remove dead avoidance slot*. merge/extract `world_context` genuin populiert (echter `KBRepositoryProtocol.list_entries`-Fetch, single-read, RULE-11-Graceful-Degradation auf `""`); redundanter `{{avoidance_patterns}}`-Slot aus `kb/merge` + `kb/extract` entfernt (die Avoidance-Daten laufen über `{{user_preferences}}`, das in beiden Templates erhalten bleibt); Helper `_world_context.py` (RULE-04).
+- **Scorer-Modell α + Option A** (`8f4f0637`) — `_INFRA_VAR_EVIDENCE` zu `dict[(category, infra_dim), set[var]]` restrukturiert (kb→Owner-Vocab, Consumer-Bias-Fix: kb 0.87→1.00); `unverified` aus dem verified-Aggregat ausgeschlossen (overall 0.97→0.9985).
+- **kb-Debt** (`238200ad`) — merge/extract `world_context` genuin populiert; redundanter `{{avoidance_patterns}}`-Slot entfernt (`{{user_preferences}}` erhalten).
+- **Mapping-Audit-Closure** (`e0589bdf`) — F1: kanonische `{{kb_entities}}`-Var in der analysis-Cell; F3: `kb_relationships` für kb deklariert (Adoption sichtbar).
+- **§7-Stub-Detector** (`7725f899`) — neu, WARNING-only mit geratchetter Baseline; dann (`828ac3d4`) auf `critical`/CI-blockierend geschärft UND in pre-commit (Source-Dateien) verdrahtet.
+- **§7-Closing, 5 Wellen** — alle 12 §7-Stub-Gaps (Template deklariert Slot, Runtime leer) geschlossen:
+  - W1 (`29fac339`) — 4 tote `culture_guidelines`-Slots entfernt (Composer auto-inject).
+  - W2 (`144c5ad5`) — wiederverwendbarer `KBContextProvider` (Contract+Impl) + timeline KB-Kontext; ADR-067 Proposed→Accepted.
+  - W3 (`b2c43c04`) — `entity_events`/`existing_plot_points`/`chapter_outline` per Existing-Repos.
+  - W4a (`6749753e`) — coreference per Provider; Detector auf `critical` gekippt (§7-Stubs → 0).
+  - W4b (`c8bc88d7`) — beta-reader dict→Envelope (β-str; Provenance fließt).
+- **`_world_context`-Konsolidierung** (`690c94a6`) — assist/improve via `KBContextProvider` (eine Quelle, Inline-Duplikation entfernt).
 
-**Enforcement:** Regressionstest `test_unverified_never_enters_verified_aggregate` sowie der gekippte `test_unverified_excluded_from_verified_score` (Invariante kehrt sich um: `unverified` darf nicht in den verified-Aggregat einfließen); `check_adoption`-Gate jetzt ehrlich; kb-`world_context`-Tests asserten Nicht-Leere zur Runtime.
-
-**Definite Folgeaufgabe (mit Owner, nicht optional — bleibt offen):** Mapping-Audit — jedes `(category, dim)`-Paar unter Modell α auf Korrektheit und Vollständigkeit prüfen. Beobachtung: der Scorer offenbarte zwei unabhängige Honesty-Bugs (FIND-006 `unverified`-Kredit + der hier behobene Consumer-Bias) → strukturelle Fragilität des Evidence-Mappings; der Audit verifiziert, dass die neue per-`(category, dim)`-Matrix vollständig und korrekt ist.
+**Ergebnis:** Die §7-Anti-Pattern-Klasse ist **strukturell geschlossen und CI-+pre-commit-erzwungen** (Regressionen blockieren ab sofort). Provenance (FIND-017) fließt einheitlich über `KBContextProvider`/ADR-050-Envelope (timeline, coreference, beta-reader). `check_adoption` durchgehend **1.00** (ehrlich + grün). Zwei unabhängige Scorer-Honesty-Bugs (FIND-006 `unverified`-Kredit + Consumer-Bias) sind addressiert; das Evidence-Mapping wurde nach Modell α audittet.
 
 ---
 
