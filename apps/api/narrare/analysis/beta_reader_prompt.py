@@ -1,6 +1,13 @@
 """Budget-aware prompt construction for beta reader analysis.
 
-Extracted from beta_reader_service.py (RULE-04).
+Extracted from ``beta_reader_service.py`` (RULE-04).
+
+The ``BetaReaderDeps`` KB fields carry pre-rendered prompt text produced by
+the canonical :class:`~narrare.kb.context_contracts.KBContextProvider`
+(decision β — boundary-rendered text). This module only feeds those strings
+through :class:`AnalysisContextAssembler` for token-budget enforcement; it
+performs no KB fetch or render itself (RULE-02: no prompt building outside
+``core/prompts/``; this is runtime data assembly).
 """
 
 from __future__ import annotations
@@ -12,44 +19,33 @@ if TYPE_CHECKING:
     from narrare_core.analysis.assembler import AnalysisContextAssembler
 
 
-def format_kb_items(items: list[dict[str, str]]) -> str:
-    """Format a list of KB entry dicts into a single string.
-
-    Args:
-        items: KB entries with ``name`` and ``summary`` keys.
-
-    Returns:
-        Formatted string like ``"- Alice: A warrior\\n- Bob: A mage"``.
-    """
-    return "\n".join(f"- {item['name']}: {item.get('summary', '')}" for item in items)
-
-
 async def build_budgeted_prompt(
     deps: BetaReaderDeps,
     budget_assembler: AnalysisContextAssembler,
 ) -> str:
     """Build user prompt with token-budget enforcement.
 
-    Formats BetaReaderDeps data into strings, passes them through
-    :class:`AnalysisContextAssembler` for budget enforcement, then
-    assembles the final user prompt from the budget-enforced result.
+    Passes the pre-rendered KB-context strings (from the canonical provider,
+    ADR-067) and the chapter text through
+    :class:`AnalysisContextAssembler` for budget enforcement, then assembles
+    the final user prompt from the budget-enforced result.
 
     Args:
-        deps: Fully populated BetaReaderDeps from context assembly.
+        deps: Fully populated BetaReaderDeps from context assembly. The
+            ``kb_characters`` / ``kb_locations`` fields carry rendered envelope
+            ``.text`` (empty on empty KB / no provider — RULE-11).
         budget_assembler: Assembler for token-budget enforcement.
 
     Returns:
         User prompt string with budget-enforced content.
     """
-    # Format KB data into strings for budget enforcement
-    kb_chars = format_kb_items(deps.kb_characters)
-    kb_locs = format_kb_items(deps.kb_locations)
-
-    # Pass through assembler for budget enforcement
+    # Pass the pre-rendered KB strings through the assembler for budget
+    # enforcement. The strings already carry provenance (FIND-017) baked in by
+    # the provider (annotate_provenance=True).
     budgeted = await budget_assembler.assemble(
         content=deps.chapter_text,
-        kb_characters=kb_chars,
-        kb_locations=kb_locs,
+        kb_characters=deps.kb_characters,
+        kb_locations=deps.kb_locations,
     )
 
     # Build prompt from budget-enforced strings

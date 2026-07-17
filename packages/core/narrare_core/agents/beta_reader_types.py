@@ -103,14 +103,30 @@ class BetaReaderPhase2Output(BaseModel):
 class BetaReaderDeps(BaseModel):
     """Dependencies for BetaReaderAgent.
 
+    KB-context fields (``kb_characters`` / ``kb_locations``) carry
+    **pre-rendered prompt text** produced by the canonical
+    :class:`~narrare.kb.context_contracts.KBContextProvider` (ADR-067) at the
+    backend service boundary (ADR-050 envelope, ``.text`` slot). Decision β
+    (boundary-rendered text): the agent consumes KB context solely as
+    prompt-bound text in its user prompt (``build_budgeted_prompt`` /
+    ``build_user_prompt``) — it never inspects these fields structurally, so
+    carrying the envelope dataclass shape would be dead weight on the Deps
+    and couple the core Deps to the render-contract shape. Provenance flows
+    via the provider rendering with ``annotate_provenance=True`` (FIND-017),
+    baking inline provenance brackets into the text — identical boundary
+    semantics to coreference's ``to_prompt_variables()``. This keeps the
+    core Deps a pure text consumer with no KB-envelope dependency (RULE-07).
+
     Attributes:
         language: Output language code.
         chapter_text: The full text of the chapter(s) being analyzed.
         chapter_titles: Titles of the chapters (for context).
         word_count: Total word count of the analyzed text.
         previous_chapter_summaries: Summaries of chapters before the analyzed ones.
-        kb_characters: Relevant character entries from the KB.
-        kb_locations: Relevant location entries from the KB.
+        kb_characters: Pre-rendered KB character context (envelope ``.text``).
+            Empty string on empty KB / no provider (RULE-11).
+        kb_locations: Pre-rendered KB location context (envelope ``.text``).
+            Empty string on empty KB / no provider (RULE-11).
         genre: The project's genre (if specified).
         focus_categories: Categories to focus on (None = all).
         deepdive_category: Category for Phase 2 deep-dive.
@@ -123,8 +139,8 @@ class BetaReaderDeps(BaseModel):
     chapter_titles: list[str] = Field(default_factory=list)
     word_count: int = 0
     previous_chapter_summaries: list[str] = Field(default_factory=list)
-    kb_characters: list[dict[str, str]] = Field(default_factory=lambda: [])
-    kb_locations: list[dict[str, str]] = Field(default_factory=lambda: [])
+    kb_characters: str = ""
+    kb_locations: str = ""
     genre: str = ""
     focus_categories: list[str] | None = None
     # Phase 2 only:

@@ -135,8 +135,8 @@ class TestBuildUserPrompt:
         deps.word_count = 5000
         deps.focus_categories = ["plot", "character"]
         deps.previous_chapter_summaries = []
-        deps.kb_characters = []
-        deps.kb_locations = []
+        deps.kb_characters = ""
+        deps.kb_locations = ""
         deps.chapter_text = "Once upon a time..."
 
         prompt = build_user_prompt(deps)
@@ -152,8 +152,8 @@ class TestBuildUserPrompt:
         deps.word_count = 1000
         deps.focus_categories = None
         deps.previous_chapter_summaries = ["Summary of prev"]
-        deps.kb_characters = [{"name": "Alice", "summary": "protagonist"}]
-        deps.kb_locations = [{"name": "Castle", "summary": "main setting"}]
+        deps.kb_characters = "### Character: Alice\nprotagonist"
+        deps.kb_locations = "### Location: Castle\nmain setting"
         deps.chapter_text = "The castle loomed."
 
         prompt = build_user_prompt(deps)

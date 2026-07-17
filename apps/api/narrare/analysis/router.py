@@ -15,10 +15,8 @@ from fastapi import APIRouter, Depends
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.analysis.beta_reader_service import BetaReaderService
-from narrare.analysis.dependencies import (
-    get_beta_reader_service,
-    get_sentiment_service,
-)
+from narrare.analysis.dependencies import get_sentiment_service
+from narrare.analysis.dependencies_beta_reader import get_beta_reader_service
 from narrare.analysis.schemas import (
     BetaReaderDeepDiveRequest,
     BetaReaderDeepDiveResponse,

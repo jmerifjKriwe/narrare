@@ -48,12 +48,24 @@ def _make_kb_entry(
     entity_type: str = "character",
     body: str = "A test entry",
 ) -> SimpleNamespace:
-    """Create a simple KB entry-like object for testing."""
+    """Create a simple KB entry-like object for testing.
+
+    Carries every field the canonical ``kb_entry_to_kb_entity`` mapper reads
+    (ADR-067) so the :class:`KBContextProvider` renders the entry through the
+    ADR-050 envelope rather than degrading to empty.
+    """
+    from datetime import UTC, datetime
+
     return SimpleNamespace(
         id=uuid4(),
         name=name,
         entity_type=entity_type,
         body=body,
+        updated_at=datetime.now(tz=UTC),
+        metadata_={},
+        status="draft",
+        source="manual",
+        review_status="approved",
     )
 
 
@@ -67,7 +79,13 @@ def _make_assembler(
     kb_entries: list[SimpleNamespace] | None = None,
     novel_genre: str = "Fantasy",
 ) -> ContextAssembler:
-    """Create a ContextAssembler with mocked dependencies."""
+    """Create a ContextAssembler with mocked dependencies.
+
+    KB context is routed through a real :class:`KBContextProvider` wrapping a
+    mocked ``KBRepository`` (the canonical ADR-067 path). ``kb_entries`` are
+    seeded into the mocked repo so the provider renders them through the
+    ADR-050 envelope.
+    """
     chapter_repo = AsyncMock()
     chapter_repo.list_by_novel = AsyncMock(return_value=chapters or [])
 
@@ -80,9 +98,14 @@ def _make_assembler(
     novel_repo.get_by_id = AsyncMock(return_value=novel)
     novel_repo.get = AsyncMock(return_value=novel)
 
+    # Canonical KB-context provider (ADR-067) wrapping the mocked KB repo.
+    from narrare.kb._context_provider import KBContextProvider
+
+    kb_context_provider = KBContextProvider(kb_repo=kb_repo, relationship_repo=None)
+
     return ContextAssembler(
         chapter_repo=chapter_repo,
-        kb_repo=kb_repo,
+        kb_context_provider=kb_context_provider,
         novel_repo=novel_repo,
     )
 
@@ -197,40 +220,40 @@ class TestPreviousChapterSummaries:
 
 
 class TestKBEntryExtraction:
-    """Characters and locations are extracted from KB."""
+    """Characters and locations are rendered through the canonical KB envelope."""
 
     async def test_characters_extracted(self) -> None:
-        """Character KB entries are included in kb_characters."""
+        """Character KB entries render into kb_characters (envelope text)."""
         char = _make_kb_entry(name="Alice", entity_type="character", body="Protagonist")
         target = _make_chapter()
         assembler = _make_assembler(chapters=[target], kb_entries=[char])
 
         deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
 
-        assert len(deps.kb_characters) == 1
-        assert deps.kb_characters[0]["name"] == "Alice"
+        assert "Alice" in deps.kb_characters
+        assert "### Character: Alice" in deps.kb_characters
 
     async def test_locations_extracted(self) -> None:
-        """Location KB entries are included in kb_locations."""
+        """Location KB entries render into kb_locations (envelope text)."""
         loc = _make_kb_entry(name="Castle", entity_type="location", body="Main setting")
         target = _make_chapter()
         assembler = _make_assembler(chapters=[target], kb_entries=[loc])
 
         deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
 
-        assert len(deps.kb_locations) == 1
-        assert deps.kb_locations[0]["name"] == "Castle"
+        assert "Castle" in deps.kb_locations
+        assert "### Location: Castle" in deps.kb_locations
 
     async def test_other_entity_types_ignored(self) -> None:
-        """Non-character, non-location entries are ignored."""
+        """Non-character, non-location entries render to empty slots."""
         concept = _make_kb_entry(name="Magic", entity_type="concept")
         target = _make_chapter()
         assembler = _make_assembler(chapters=[target], kb_entries=[concept])
 
         deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
 
-        assert len(deps.kb_characters) == 0
-        assert len(deps.kb_locations) == 0
+        assert deps.kb_characters == ""
+        assert deps.kb_locations == ""
 
 
 # ---------------------------------------------------------------------------
@@ -239,15 +262,16 @@ class TestKBEntryExtraction:
 
 
 class TestKBBodyPassThrough:
-    """KB entity bodies are passed through fully for downstream budget truncation.
+    """KB entity bodies are rendered in full for downstream budget truncation.
 
-    The token-aware truncation happens in AnalysisContextAssembler
-    (build_budgeted_prompt). Pre-truncating here would starve the budget
-    system of data it could otherwise fit within the KB-context tier.
+    The token-aware truncation still happens in ``AnalysisContextAssembler``
+    (``build_budgeted_prompt``). The provider renders the full body into the
+    envelope ``.text``; pre-truncating here would starve the budget system of
+    data it could otherwise fit within the KB-context tier.
     """
 
     async def test_long_body_not_truncated(self) -> None:
-        """Entity body longer than kb_summary_truncation is passed through in full."""
+        """Entity body longer than kb_summary_truncation is rendered in full."""
         long_body = "A" * 500  # 500 chars, well over the 200-char default
         char = _make_kb_entry(name="Alice", entity_type="character", body=long_body)
         target = _make_chapter()
@@ -255,10 +279,10 @@ class TestKBBodyPassThrough:
 
         deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
 
-        assert deps.kb_characters[0]["summary"] == long_body
+        assert long_body in deps.kb_characters
 
     async def test_short_body_returned_as_is(self) -> None:
-        """Entity body shorter than kb_summary_truncation is returned unchanged."""
+        """Entity body shorter than kb_summary_truncation is rendered unchanged."""
         short_body = "A brief biography."
         char = _make_kb_entry(name="Bob", entity_type="character", body=short_body)
         target = _make_chapter()
@@ -266,7 +290,7 @@ class TestKBBodyPassThrough:
 
         deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
 
-        assert deps.kb_characters[0]["summary"] == short_body
+        assert short_body in deps.kb_characters
 
 
 # ---------------------------------------------------------------------------

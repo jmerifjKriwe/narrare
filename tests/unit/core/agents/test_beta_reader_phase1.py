@@ -47,8 +47,8 @@ class TestBetaReaderDeps:
         assert deps.chapter_titles == []
         assert deps.word_count == 0
         assert deps.previous_chapter_summaries == []
-        assert deps.kb_characters == []
-        assert deps.kb_locations == []
+        assert deps.kb_characters == ""
+        assert deps.kb_locations == ""
         assert deps.genre == ""
         assert deps.focus_categories is None
         assert deps.deepdive_category is None

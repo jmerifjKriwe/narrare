@@ -17,7 +17,7 @@ import pytest
 
 from narrare.analysis.beta_reader_service import BetaReaderService
 from narrare.analysis.contracts import FeedbackCategory
-from narrare.analysis.dependencies import get_beta_reader_service
+from narrare.analysis.dependencies_beta_reader import get_beta_reader_service
 from narrare.analysis.schemas import (
     BetaReaderDeepDiveResponse,
     BetaReaderOverallAssessment,

@@ -173,13 +173,11 @@ def build_user_prompt(deps: BetaReaderDeps) -> str:
 
     if deps.kb_characters:
         parts.append("\n## Characters")
-        for char in deps.kb_characters:
-            parts.append(f"- {char['name']}: {char.get('summary', '')}")
+        parts.append(deps.kb_characters)
 
     if deps.kb_locations:
         parts.append("\n## Locations")
-        for loc in deps.kb_locations:
-            parts.append(f"- {loc['name']}: {loc.get('summary', '')}")
+        parts.append(deps.kb_locations)
 
     parts.append("\n## Chapter Text")
     parts.append(deps.chapter_text)

@@ -1,10 +1,19 @@
-"""Context assembly for analysis features.
+"""Context assembly for beta-reader analysis.
 
-Gathers chapter text, previous chapter summaries, KB entries, and novel
-metadata into BetaReaderDeps for the agent.
+Gathers chapter text, previous chapter summaries, KB context (rendered through
+the canonical :class:`~narrare.kb.context_contracts.KBContextProvider`), and
+novel metadata into :class:`BetaReaderDeps` for the agent.
 
-Dependencies are injected: ChapterRepositoryProtocol, KBRepositoryProtocol,
-NovelRepositoryProtocol. No direct DB access here.
+This module was migrated in W4b off the ad-hoc ``_fetch_kb_context`` dict path
+onto the ADR-067 provider + ADR-050 envelope so provenance flows (FIND-017) and
+the beta-reader sits on the unified render path. Decision β (boundary-rendered
+text): the provider renders the envelope here at the service boundary and the
+``.text`` slots are carried on ``BetaReaderDeps`` as ``str`` — the agent
+consumes KB context as prompt text, never structurally.
+
+Dependencies are injected: ``ChapterRepositoryProtocol``,
+``KBContextProviderProtocol``, ``NovelRepositoryProtocol``. No direct DB access
+here.
 """
 
 from __future__ import annotations
@@ -14,46 +23,57 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare_core.agents.beta_reader_types import BetaReaderDeps
+from narrare_core.context._render_options import RenderOptions
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.chapters.models import Chapter
-    from narrare.kb.contracts import KBRepositoryProtocol
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.novels.contracts import NovelRepositoryProtocol
 
 logger = structlog.get_logger(__name__)
+
+#: Per-entity-type filter the beta reader reasons over. Wider slots
+#: (factions/relationships) are not consumed by the current prompt; the
+#: provider renders every requested type through the same envelope.
+_BETA_READER_ENTITY_TYPES: list[str] = ["character", "location"]
 
 
 class ContextAssembler:
     """Assembles context for beta reader analysis.
 
-    Gathers chapter text, previous chapter summaries, KB entries
-    (characters and locations), and novel genre into BetaReaderDeps.
+    Gathers chapter text, previous chapter summaries, KB context (characters
+    and locations, rendered through the canonical KB-context provider) and
+    novel genre into ``BetaReaderDeps``.
 
     Args:
         chapter_repo: Chapter repository for text retrieval.
-        kb_repo: KB repository for character/location lookup.
+        kb_context_provider: Canonical KB-context provider (ADR-067) — the
+            single fetch+render source for the ``kb_characters`` /
+            ``kb_locations`` slots, rendered through the ADR-050 envelope with
+            ``RenderOptions(annotate_provenance=True)`` so provenance flows
+            (FIND-017). When ``None`` or when the KB is empty, both slots
+            degrade to empty strings (RULE-11) — the analysis still runs.
         novel_repo: Novel repository for genre metadata.
         max_previous_chapters: Maximum previous chapters to include summaries for.
         kb_summary_truncation: Maximum characters for the chapter-content
             fallback summary (used when a previous chapter has no stored
-            summary). KB entity bodies are passed through in full for
-            downstream token-budget truncation.
+            summary).
     """
 
     def __init__(
         self,
         chapter_repo: ChapterRepositoryProtocol,
-        kb_repo: KBRepositoryProtocol,
+        kb_context_provider: KBContextProviderProtocol | None,
         novel_repo: NovelRepositoryProtocol,
         *,
         max_previous_chapters: int = 3,
         kb_summary_truncation: int = 200,
     ) -> None:
         self._chapter_repo = chapter_repo
-        self._kb_repo = kb_repo
+        self._kb_context_provider = kb_context_provider
         self._novel_repo = novel_repo
         self._max_previous_chapters = max_previous_chapters
         self._kb_summary_truncation = kb_summary_truncation
@@ -70,7 +90,7 @@ class ContextAssembler:
           1. Fetch all chapters for the novel
           2. Identify target chapters (by IDs) and validate
           3. Fetch previous chapter summaries (up to 3)
-          4. Fetch KB entries (characters, locations)
+          4. Fetch + render KB context through the canonical provider
           5. Fetch novel metadata (genre + language)
           6. Build and return BetaReaderDeps
 
@@ -102,8 +122,10 @@ class ContextAssembler:
         # Step 3: Fetch previous chapter summaries
         summaries = self._extract_previous_summaries(all_chapters, target_chapters)
 
-        # Step 4: Fetch KB context
-        characters, locations = await self._fetch_kb_context(novel_id)
+        # Step 4: Fetch + render KB context through the canonical provider
+        # (ADR-067). The provider never raises — an unavailable repository or
+        # empty KB degrades to empty renderings (RULE-11).
+        kb_characters, kb_locations = await self._fetch_kb_context(novel_id)
 
         # Step 5: Fetch novel metadata (genre + language)
         genre, language = await self._fetch_novel_metadata(novel_id, user_id)
@@ -119,8 +141,8 @@ class ContextAssembler:
             chapter_titles=chapter_titles,
             word_count=word_count,
             previous_chapter_summaries=summaries,
-            kb_characters=characters,
-            kb_locations=locations,
+            kb_characters=kb_characters,
+            kb_locations=kb_locations,
             genre=genre,
         )
 
@@ -129,8 +151,8 @@ class ContextAssembler:
             novel_id=str(novel_id),
             chapter_count=len(target_chapters),
             word_count=word_count,
-            kb_characters=len(characters),
-            kb_locations=len(locations),
+            kb_characters_chars=len(kb_characters),
+            kb_locations_chars=len(kb_locations),
         )
 
         return deps
@@ -177,50 +199,35 @@ class ContextAssembler:
     async def _fetch_kb_context(
         self,
         novel_id: UUID,
-    ) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
-        """Fetch character and location entries from KB.
+    ) -> tuple[str, str]:
+        """Fetch + render character and location context through the provider.
+
+        Routes through :class:`KBContextProviderProtocol.fetch_context`
+        (ADR-067) with ``RenderOptions(annotate_provenance=True)`` so
+        provenance flows (FIND-017). The returned ``.text`` slots carry the
+        rendered, provenance-honest prompt text. When no provider is wired or
+        the KB is empty, both slots degrade to empty strings (RULE-11) — the
+        provider never raises.
 
         Args:
-            novel_id: The novel to fetch KB entries for.
+            novel_id: The novel to fetch KB context for.
 
         Returns:
-            Tuple of (characters, locations) as short dicts with
-            name, type, and summary fields.
+            Tuple of (characters_text, locations_text) — the rendered envelope
+            ``.text`` for each slot.
         """
-        try:
-            entries, _ = await self._kb_repo.list_entries(
+        from narrare.kb.context_contracts import KBContextBundle
+
+        options = RenderOptions(annotate_provenance=True)
+        if self._kb_context_provider is None:
+            bundle = KBContextBundle.empty(options)
+        else:
+            bundle = await self._kb_context_provider.fetch_context(
                 novel_id,
-                page_size=200,  # Fetch all relevant entries
+                entity_types=_BETA_READER_ENTITY_TYPES,
+                options=options,
             )
-        except Exception:
-            logger.warning("kb_context_fetch_failed", novel_id=str(novel_id))
-            return [], []
-
-        characters: list[dict[str, str]] = []
-        locations: list[dict[str, str]] = []
-
-        for entry in entries:
-            entity_type = entry.entity_type
-            name = entry.name
-            body = entry.body or ""
-            # Pass full body to the budget assembler — it makes the token-aware
-            # truncation decision downstream (AnalysisContextAssembler in
-            # build_budgeted_prompt). Pre-truncating here would starve the
-            # budget system of data it could otherwise fit.
-            summary = body
-
-            item: dict[str, str] = {
-                "name": name,
-                "type": entity_type,
-                "summary": summary,
-            }
-
-            if entity_type == "character":
-                characters.append(item)
-            elif entity_type == "location":
-                locations.append(item)
-
-        return characters, locations
+        return bundle.characters.text, bundle.locations.text
 
     async def _fetch_novel_metadata(
         self, novel_id: UUID, user_id: UUID | None = None

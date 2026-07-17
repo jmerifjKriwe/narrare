@@ -1,10 +1,11 @@
 """Unit tests for narrare/analysis/dependencies.py — DI factory functions.
 
-Tests the four factory functions that wire analysis services with their
+Tests the factory functions that wire analysis services with their
 dependencies:
 
-- ``get_beta_reader_service`` — BetaReaderService with ModelRegistry,
-  PromptComposer, Redis cache, ContextAssembler, InvocationPipeline.
+- ``get_beta_reader_service`` (in ``dependencies_beta_reader.py``) —
+  BetaReaderService with ModelRegistry, PromptComposer, Redis cache,
+  ContextAssembler, canonical KBContextProvider (ADR-067), InvocationPipeline.
 - ``get_sentiment_service`` — ChapterSentimentService with SpacyNLPProvider
   (deterministic analysis, no LLM).
 - ``get_readability_service`` — ReadabilityService with ModelRegistry,
@@ -25,11 +26,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from narrare._app.config import Settings
 from narrare._app.dependencies_services import SystemModelCategory
 from narrare.analysis.dependencies import (
-    get_beta_reader_service,
     get_pov_service,
     get_readability_service,
     get_sentiment_service,
 )
+from narrare.analysis.dependencies_beta_reader import get_beta_reader_service
 
 # ---------------------------------------------------------------------------
 # get_beta_reader_service
@@ -59,7 +60,9 @@ class TestGetBetaReaderService:
             patch("narrare._app.config.get_settings", return_value=mock_settings),
             patch("narrare.chapters.repository.ChapterRepository") as mock_chapter_repo_cls,
             patch("narrare.kb.repository.KBRepository") as mock_kb_repo_cls,
+            patch("narrare.kb.relationship_repository.RelationshipRepository") as mock_rel_repo_cls,
             patch("narrare.novels.repository.NovelRepository") as mock_novel_repo_cls,
+            patch("narrare.kb._context_provider.KBContextProvider") as mock_provider_cls,
             patch("narrare.analysis.context_assembler.ContextAssembler") as mock_assembler_cls,
             patch("narrare_core.cache.redis_client.RedisSessionCache") as mock_redis_cls,
             patch("narrare.analysis.beta_reader_cache.BetaReaderCache") as mock_cache_cls,
@@ -78,12 +81,20 @@ class TestGetBetaReaderService:
             # -- verify repositories created with session
             mock_chapter_repo_cls.assert_called_once_with(session)
             mock_kb_repo_cls.assert_called_once_with(session)
+            mock_rel_repo_cls.assert_called_once_with(session)
             mock_novel_repo_cls.assert_called_once_with(session)
 
-            # -- verify ContextAssembler built with repos
+            # -- verify canonical KBContextProvider wraps KB + relationship repos
+            # (ADR-067): single fetch+render source for kb_characters/locations.
+            mock_provider_cls.assert_called_once_with(
+                kb_repo=mock_kb_repo_cls.return_value,
+                relationship_repo=mock_rel_repo_cls.return_value,
+            )
+
+            # -- verify ContextAssembler built with the provider (not the raw repo)
             mock_assembler_cls.assert_called_once_with(
                 chapter_repo=mock_chapter_repo_cls.return_value,
-                kb_repo=mock_kb_repo_cls.return_value,
+                kb_context_provider=mock_provider_cls.return_value,
                 novel_repo=mock_novel_repo_cls.return_value,
             )
 

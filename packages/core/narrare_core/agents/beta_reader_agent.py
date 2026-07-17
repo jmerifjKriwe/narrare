@@ -15,8 +15,8 @@ Usage:
         chapter_titles=["Chapter 1"],
         word_count=3500,
         previous_chapter_summaries=[],
-        kb_characters=[{"name": "Alice", "summary": "Protagonist"}],
-        kb_locations=[{"name": "Castle", "summary": "Main setting"}],
+        kb_characters="### Character: Alice\nProtagonist",
+        kb_locations="### Location: Castle\nMain setting",
         genre="Fantasy",
     )
     result = await agent.run_phase1(prompt="Analyze this chapter", deps=deps)
