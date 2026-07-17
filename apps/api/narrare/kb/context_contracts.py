@@ -24,6 +24,8 @@ from narrare_core.context._render_options import RenderOptions
 if TYPE_CHECKING:
     import uuid
 
+    from narrare.kb.models import KBEntry
+
 
 def _empty_rendered() -> RenderedKBContext:
     """Build an empty ``RenderedKBContext`` (degradation sentinel, ADR-050)."""
@@ -127,6 +129,32 @@ class KBContextProviderProtocol(Protocol):
         Returns:
             A :class:`KBContextBundle`. Never raises — degrades to
             :meth:`KBContextBundle.empty` on any repository failure.
+        """
+        ...
+
+    async def fetch_entities(
+        self,
+        novel_id: uuid.UUID,
+        *,
+        entity_types: list[str] | None = None,
+    ) -> list[KBEntry]:
+        """Fetch the novel's raw KB entries (ADR-067 single KB source).
+
+        Returns the persisted :class:`~narrare.kb.models.KBEntry` records so
+        consumers that need entity-level data — e.g. resolving extracted names
+        to real entity links for ``TimelineEvent.character_refs`` /
+        ``location_ref`` (§7 follow-up) — reuse the provider's fetch instead of
+        wiring a second KB repository. ``fetch_context`` renders these same
+        records into prompt text; this method exposes the records themselves.
+
+        Args:
+            novel_id: Novel whose KB entries are fetched.
+            entity_types: Optional entity-type filter.
+
+        Returns:
+            The novel's KB entries. Never raises — degrades to ``[]`` on any
+            repository failure or when no repository is wired (RULE-11), so a
+            consumer always proceeds (e.g. with empty refs).
         """
         ...
 

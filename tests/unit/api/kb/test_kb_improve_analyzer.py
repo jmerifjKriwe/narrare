@@ -66,6 +66,7 @@ class _FakeKBContextProvider:
 
         self.fetch_world_context = AsyncMock(return_value=world_context)
         self.fetch_context = AsyncMock(return_value=KBContextBundle.empty())
+        self.fetch_entities = AsyncMock(return_value=[])
 
 
 class _FakeComposer:

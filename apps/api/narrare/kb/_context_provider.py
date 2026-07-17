@@ -175,6 +175,36 @@ class KBContextProvider:
             render_options=render_options,
         )
 
+    async def fetch_entities(
+        self,
+        novel_id: uuid.UUID,
+        *,
+        entity_types: list[str] | None = None,
+    ) -> list[KBEntry]:
+        """Fetch the novel's raw KB entries (ADR-067 single KB source).
+
+        Returns the persisted :class:`KBEntry` records so consumers that need
+        entity-level data (e.g. resolving extracted names to real entity links
+        for ``TimelineEvent.character_refs`` / ``location_ref``, §7 follow-up)
+        reuse this fetch instead of wiring a second KB repository.
+        ``fetch_context`` renders these same records into prompt text; this
+        method exposes the records themselves.
+
+        Never raises: an unavailable repository or fetch failure degrades to
+        ``[]`` (RULE-11) so a consumer always proceeds (e.g. with empty refs).
+        """
+        if self._kb_repo is None:
+            return []
+        try:
+            return await list_entities(
+                self._kb_repo,
+                novel_id,
+                list(entity_types) if entity_types is not None else None,
+            )
+        except Exception:
+            logger.warning("kb_entities_fetch_unavailable", exc_info=True)
+            return []
+
     async def fetch_world_context(
         self,
         novel_id: uuid.UUID,

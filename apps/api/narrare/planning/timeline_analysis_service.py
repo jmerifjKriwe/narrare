@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.planning._event_render import render_confirmed_events
+from narrare.planning._extracted_event_refs import build_extracted_event_create_kwargs
 from narrare.planning._timeline_chapter_context import format_chapter_context
 from narrare.planning.schemas import TimelineEventResponse, TimelineResponse
 from narrare.planning.timeline_schemas import TimelineEventCRUDResponse
@@ -280,15 +281,9 @@ class TimelineAnalysisService:
             raise NotFoundError("Novel", identifier=str(novel_id))
 
         event = await self._event_repo.create(
-            novel_id=novel_id,
-            event_name=extracted.event_name or extracted.expression,
-            description=extracted.context,
-            event_type="plot_point",
-            timestamp_raw=extracted.timestamp_raw,
-            timestamp_normalized="",
-            source="extracted",
-            confidence=extracted.confidence,
-            is_confirmed=True,
+            **await build_extracted_event_create_kwargs(
+                self._kb_context_provider, novel_id, extracted
+            )
         )
 
         logger.info(

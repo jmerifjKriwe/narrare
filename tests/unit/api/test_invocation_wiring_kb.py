@@ -245,8 +245,9 @@ class TestAssistInvocationWiring:
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.composer import ComposedPrompt
 
-        mock_provider = MagicMock(spec=["fetch_world_context", "fetch_context"])
+        mock_provider = MagicMock(spec=["fetch_world_context", "fetch_context", "fetch_entities"])
         mock_provider.fetch_world_context = AsyncMock(return_value="")
+        mock_provider.fetch_entities = AsyncMock(return_value=[])
 
         mock_composer = MagicMock(spec=["build"])
         mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="sys", user="usr"))

@@ -73,10 +73,11 @@ def _make_service(
     rel_repo.create = AsyncMock()
 
     # --- KB Context Provider (single source for world context, ADR-067) ---
-    kb_context_provider = AsyncMock(spec=["fetch_world_context", "fetch_context"])
+    kb_context_provider = AsyncMock(spec=["fetch_world_context", "fetch_context", "fetch_entities"])
     kb_context_provider.fetch_world_context = AsyncMock(
         return_value="" if world_context_empty else "- World Context (world): A backdrop"
     )
+    kb_context_provider.fetch_entities = AsyncMock(return_value=[])
 
     # --- Prompt Composer ---
     prompt_composer = AsyncMock(spec=["build"])

@@ -188,6 +188,60 @@ class TestFetchContextDegradation:
 
 
 # ---------------------------------------------------------------------------
+# fetch_entities — raw KBEntry records for name→ref resolution (§7 follow-up)
+# ---------------------------------------------------------------------------
+
+
+class TestFetchEntities:
+    """``fetch_entities`` returns the novel's raw KB entries (id + name) so
+    consumers can resolve extracted names into real entity links.
+
+    Reuses the provider's existing ``list_entities`` fetch (ADR-067 single
+    source — no second repo path) and degrades to ``[]`` on any failure
+    (RULE-11)."""
+
+    @pytest.mark.asyncio
+    async def test_returns_raw_entries_with_ids_for_populated_kb(self) -> None:
+        entries = populated_entries()
+        provider = make_provider(FakeKBRepo(entries))
+
+        result = await provider.fetch_entities(uuid4())
+
+        assert {e.name for e in result} == {"Elara", "The Shimmering Keep", "Night Watch"}
+        # Each record carries a real id (needed for entity-link refs).
+        assert all(getattr(e, "id", None) is not None for e in result)
+
+    @pytest.mark.asyncio
+    async def test_entity_types_filter_restricts_returned_entries(self) -> None:
+        provider = make_provider(FakeKBRepo(populated_entries()))
+
+        result = await provider.fetch_entities(
+            uuid4(),
+            entity_types=["character", "location"],
+        )
+
+        assert {e.name for e in result} == {"Elara", "The Shimmering Keep"}
+
+    @pytest.mark.asyncio
+    async def test_none_kb_repo_returns_empty_without_raising(self) -> None:
+        provider = make_provider(None)
+
+        assert await provider.fetch_entities(uuid4()) == []
+
+    @pytest.mark.asyncio
+    async def test_failing_kb_repo_returns_empty_without_raising(self) -> None:
+        provider = make_provider(FailingKBRepo())
+
+        assert await provider.fetch_entities(uuid4()) == []
+
+    @pytest.mark.asyncio
+    async def test_empty_kb_returns_empty(self) -> None:
+        provider = make_provider(FakeKBRepo([]))
+
+        assert await provider.fetch_entities(uuid4()) == []
+
+
+# ---------------------------------------------------------------------------
 # fetch_world_context — delegation to the kb merge/extract aggregate
 # ---------------------------------------------------------------------------
 

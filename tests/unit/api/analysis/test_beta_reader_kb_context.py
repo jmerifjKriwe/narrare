@@ -36,6 +36,7 @@ from narrare_core.context._render_options import RenderOptions
 
 if TYPE_CHECKING:
     from narrare.kb.context_contracts import KBContextBundle, KBContextProviderProtocol
+    from narrare.kb.models import KBEntry
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +69,16 @@ class _FakeKBContextProvider:
 
             return KBContextBundle.empty(options)
         return self._bundle
+
+    async def fetch_entities(
+        self,
+        novel_id: UUID,
+        *,
+        entity_types: list[str] | None = None,
+    ) -> list[KBEntry]:
+        """Return no entities — the beta-reader path tests ``fetch_context``,
+        not entity-level ref resolution (ADR-030 honest fake)."""
+        return []
 
     async def fetch_world_context(
         self,

@@ -1,12 +1,16 @@
 """Unit tests for confirm_extracted_event in TimelineAnalysisService (PLAN-004 Phase 2).
 
 Tests confirming extracted temporal expressions into persistent timeline events.
+
+The §7 follow-up (extracted names → KB entity refs) lives in the sibling
+``test_extraction_confirm_kb_refs.py``; shared value-container factories come
+from ``_extraction_confirm_helpers``.
 """
 
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -14,71 +18,7 @@ from narrare.planning.timeline_analysis_service import TimelineAnalysisService
 from narrare_core.agents.temporal_extraction_types import ExtractedTemporalExpression
 from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
-
-
-def _make_novel(**overrides: object) -> MagicMock:
-    """Create a mock novel."""
-    defaults: dict[str, object] = {
-        "id": overrides.get("id", uuid.uuid4()),
-        "title": overrides.get("title", "Test Novel"),
-        "genre": overrides.get("genre", "fantasy"),
-        "writing_language": overrides.get("writing_language", "en"),
-    }
-    defaults.update(overrides)
-    novel = MagicMock(spec=["id", "title", "genre", "writing_language"])
-    for k, v in defaults.items():
-        setattr(novel, k, v)
-    return novel
-
-
-def _make_event(**overrides: object) -> MagicMock:
-    """Create a mock TimelineEvent."""
-    defaults: dict[str, object] = {
-        "id": overrides.get("id", uuid.uuid4()),
-        "novel_id": overrides.get("novel_id", uuid.uuid4()),
-        "event_name": overrides.get("event_name", "Battle"),
-        "description": overrides.get("description", ""),
-        "event_type": overrides.get("event_type", "plot_point"),
-        "timestamp_raw": overrides.get("timestamp_raw", "Day 1"),
-        "timestamp_normalized": overrides.get("timestamp_normalized", ""),
-        "temporal_order": overrides.get("temporal_order", 1),
-        "chapter_id": overrides.get("chapter_id"),
-        "character_refs": overrides.get("character_refs", []),
-        "location_ref": overrides.get("location_ref"),
-        "causes": overrides.get("causes", ""),
-        "consequences": overrides.get("consequences", ""),
-        "source": overrides.get("source", "manual"),
-        "confidence": overrides.get("confidence"),
-        "is_confirmed": overrides.get("is_confirmed", True),
-        "created_at": overrides.get("created_at", "2025-01-01T00:00:00Z"),
-        "updated_at": overrides.get("updated_at", "2025-01-01T00:00:00Z"),
-    }
-    defaults.update(overrides)
-    event = MagicMock(
-        spec=[
-            "id",
-            "novel_id",
-            "event_name",
-            "description",
-            "event_type",
-            "timestamp_raw",
-            "timestamp_normalized",
-            "temporal_order",
-            "chapter_id",
-            "character_refs",
-            "location_ref",
-            "causes",
-            "consequences",
-            "source",
-            "confidence",
-            "is_confirmed",
-            "created_at",
-            "updated_at",
-        ]
-    )
-    for k, v in defaults.items():
-        setattr(event, k, v)
-    return event
+from tests.unit.planning._extraction_confirm_helpers import make_event, make_novel
 
 
 @pytest.fixture
@@ -146,10 +86,10 @@ class TestConfirmExtractedEvent:
         novel_id: uuid.UUID,
     ) -> None:
         """Confirmed event should be created with source='extracted'."""
-        novel = _make_novel(id=novel_id)
+        novel = make_novel(id=novel_id)
         mock_novel_repo.get_by_id.return_value = novel
 
-        created_event = _make_event(
+        created_event = make_event(
             novel_id=novel_id,
             event_name="Arrival",
             source="extracted",
@@ -234,10 +174,10 @@ class TestConfirmExtractedEvent:
         novel_id: uuid.UUID,
     ) -> None:
         """When event_name is empty, expression should be used as fallback."""
-        novel = _make_novel(id=novel_id)
+        novel = make_novel(id=novel_id)
         mock_novel_repo.get_by_id.return_value = novel
 
-        created_event = _make_event(
+        created_event = make_event(
             novel_id=novel_id,
             event_name="three days later",  # fallback from expression
             source="extracted",

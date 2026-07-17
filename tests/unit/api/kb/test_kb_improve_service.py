@@ -81,13 +81,14 @@ def _make_service(
     # --- KB Context Provider (single source for world context, ADR-067) ---
     # Mirrors the real provider's RULE-11 contract: returns the canonical
     # ``- name (type): brief`` aggregate, or "" when the KB is empty/unavailable.
-    kb_context_provider = AsyncMock(spec=["fetch_world_context", "fetch_context"])
+    kb_context_provider = AsyncMock(spec=["fetch_world_context", "fetch_context", "fetch_entities"])
     if world_context_empty:
         kb_context_provider.fetch_world_context = AsyncMock(return_value="")
     else:
         kb_context_provider.fetch_world_context = AsyncMock(
             return_value="- World Context (world): A backdrop entity"
         )
+    kb_context_provider.fetch_entities = AsyncMock(return_value=[])
 
     # --- Prompt Composer ---
     prompt_composer = AsyncMock(spec=["build"])
