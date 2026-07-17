@@ -22,10 +22,11 @@ Exit codes:
   1: Drift found — at least one critical finding.
 
 Usage:
-  python scripts/check_doc_drift.py                        # human-readable
-  python scripts/check_doc_drift.py --json                 # JSON for CI
-  python scripts/check_doc_drift.py --verbose              # detailed steps
-  python scripts/check_doc_drift.py --governance-only      # skip tool checks
+  python scripts/check_doc_drift.py                                # human-readable
+  python scripts/check_doc_drift.py --json                         # JSON for CI
+  python scripts/check_doc_drift.py --verbose                      # detailed steps
+  python scripts/check_doc_drift.py --governance-only              # skip tool checks
+  python scripts/check_doc_drift.py --governance-only --checks stub_variable
 
 See: docs/_shared/CONSTRAINTS.md (RULE-04, RULE-06)
      docs/architecture/decisions/ADR-041 (Phase 2)
@@ -38,6 +39,10 @@ import json
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # Allow importing from scripts/ sub-packages.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -78,19 +83,38 @@ class DriftReport:
 
 # ── Governance checks ──────────────────────────────────────────
 
+# Single source of truth for the governance-check inventory. Each entry is
+# (check name, check function); ``--checks`` filters this set so a single
+# check (e.g. the §7 stub-variable detector) can run in isolation. The
+# pre-commit ``stub-variables`` hook uses this to catch a source-file stub
+# regression at commit time without running every governance check.
+_GOVERNANCE_CHECKS: list[tuple[str, Callable[[], list[DocDriftFinding]]]] = [
+    ("adr", check_adr_consistency),
+    ("spec", check_spec_references),
+    ("terminology", check_terminology_alignment),
+    ("lookup", check_lookup_drift),
+    ("ssot_locale", check_ssot_locale_path),
+    ("just_command", check_just_command_drift),
+    ("agent_name", check_agent_name_drift),
+    ("removed_governance_refs", check_removed_governance_refs),
+    ("stub_variable", check_stub_variables),
+]
 
-def _run_governance_checks() -> list[DocDriftFinding]:
-    """Run all doc-drift governance checks (Phase 2)."""
+
+def _run_governance_checks(
+    only: set[str] | None = None,
+) -> list[DocDriftFinding]:
+    """Run all (or a filtered subset of) doc-drift governance checks.
+
+    Args:
+        only: Optional set of check names from :data:`_GOVERNANCE_CHECKS` to
+            run; ``None`` runs the full suite.
+    """
     findings: list[DocDriftFinding] = []
-    findings.extend(check_adr_consistency())
-    findings.extend(check_spec_references())
-    findings.extend(check_terminology_alignment())
-    findings.extend(check_lookup_drift())
-    findings.extend(check_ssot_locale_path())
-    findings.extend(check_just_command_drift())
-    findings.extend(check_agent_name_drift())
-    findings.extend(check_removed_governance_refs())
-    findings.extend(check_stub_variables())
+    for name, check_fn in _GOVERNANCE_CHECKS:
+        if only is not None and name not in only:
+            continue
+        findings.extend(check_fn())
     return findings
 
 
@@ -167,6 +191,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "  python scripts/check_doc_drift.py --json\n"
             "  python scripts/check_doc_drift.py --verbose\n"
             "  python scripts/check_doc_drift.py --governance-only\n"
+            "  python scripts/check_doc_drift.py --governance-only --checks stub_variable\n"
         ),
     )
     parser.add_argument(
@@ -183,6 +208,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--governance-only",
         action="store_true",
         help="Run only governance checks (ADR/spec/terminology), skip tool version checks",
+    )
+    parser.add_argument(
+        "--checks",
+        nargs="+",
+        choices=[name for name, _ in _GOVERNANCE_CHECKS],
+        default=None,
+        help=(
+            "Run only the named governance check(s) "
+            f"(choices: {', '.join(name for name, _ in _GOVERNANCE_CHECKS)}). "
+            "Default: all governance checks. Combine with --governance-only "
+            "to also skip tool version checks (used by the pre-commit "
+            "stub-variables hook to run the §7 detector on source changes)."
+        ),
     )
     return parser.parse_args(argv)
 
@@ -209,7 +247,8 @@ def main(argv: list[str] | None = None) -> int:
             has_critical = True
 
     # ── Phase 2: Governance checks ───────────────────────────
-    findings = _run_governance_checks()
+    only = set(args.checks) if args.checks else None
+    findings = _run_governance_checks(only=only)
     critical = [f for f in findings if f.severity == "critical"]
     warnings = [f for f in findings if f.severity == "warning"]
 

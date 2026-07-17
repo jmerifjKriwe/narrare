@@ -155,6 +155,21 @@ repos:
         pass_filenames: false
         files: ^(docs/|justfile$|AGENTS\.md$|\.opencode/agents/subagents/)
 
+      # §7 Stub-Variable Detector — architectural-discipline §7 ("documented
+      # ≠ implemented"): catches a registered prompt variable assigned a
+      # literal "" in service code at commit time, not only in CI. Scoped to
+      # source files (apps/api + core) so a source-level stub regression is
+      # caught pre-commit; runs ONLY the stub-variable governance check
+      # (critical/CI-blocking). The detector scans the whole service tree
+      # (apps/api/narrare); the 7 RULE-11 allowlist entries stay absorbed.
+      - id: stub-variables
+        name: §7 Stub Variables (source)
+        entry: uv run --no-sync python scripts/check_doc_drift.py --governance-only --checks stub_variable
+        language: system
+        pass_filenames: false
+        files: ^(apps/api/narrare|packages/core/narrare_core)/.*\.py$
+        stages: [pre-commit]
+
       # Ruff lint + fix
       - id: ruff-lint
         name: Ruff Lint
