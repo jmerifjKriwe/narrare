@@ -937,7 +937,7 @@ Cross-Feature-Kohärenz und werden hier nicht dupliziert, sondern referenziert:
 **Aufgaben-Abschluss:**
 - **5 von 5 ursprünglichen Aufgaben** gelöst/evaluiert:
   - CR-AUFG-04-01 — ✅ Resolved (`34851f10`)
-  - CR-AUFG-04-02 — ✅ Evaluiert → DEFER (`accepted`, Empfehlung dokumentiert)
+  - CR-AUFG-04-02 — `accepted_risk` (formalized 2026-07-18; Architectural eval "wrong layer" — see task entry)
   - CR-AUFG-04-03 — ✅ Resolved (`09f1d8e8`)
   - CR-AUFG-04-04 — ✅ Resolved (`ba9fb218`)
   - CR-AUFG-04-05 — ✅ Resolved (`cc6fa6e4`)
