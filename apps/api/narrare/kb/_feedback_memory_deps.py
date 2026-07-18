@@ -1,7 +1,7 @@
 """Consistency-feedback mem0 singleton factory (CR-AUFG-03-10).
 
 Mirrors :func:`narrare.writing.deps_writing._get_session_memory_instance`
-exactly — a module-level singleton that returns a long-lived
+structurally — a module-level singleton that returns a long-lived
 :class:`ConsistencyFeedbackService` (wrapping a mem0 client) or ``None``
 when mem0 is unavailable. Lives in its own module so both
 :mod:`narrare.kb._dismissed_deps` (store hook) and
@@ -12,6 +12,15 @@ Graceful degradation (RULE-11): returns ``None`` when mem0 is not
 installed, no provider credentials exist, or client creation fails. Any
 exception during initialization is caught so neither the dismiss nor the
 consistency-check flow ever crashes due to the learning layer.
+
+The ``is_mem0_available`` and ``detect_provider_from_env`` imports live at
+MODULE LEVEL (not inside the function) so the autouse ``_no_real_mem0_clients``
+test guard in ``tests/conftest.py`` can patch the re-imported reference —
+matching the pattern in :mod:`narrare._app.dependencies_prompts`. This
+prevents the singleton from creating a real ``mem0.AsyncMemory`` client
+(Qdrant + sqlite resources) in the test environment, which would otherwise
+leak across event loops under pytest-asyncio and surface as
+``RuntimeError: Task got Future attached to a different loop`` at teardown.
 """
 
 from __future__ import annotations
@@ -19,6 +28,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import structlog
+
+from narrare_core.memory.availability import (
+    detect_provider_from_env,
+    is_mem0_available,
+)
 
 if TYPE_CHECKING:
     from narrare_core.memory.protocols import ConsistencyFeedbackCollector
@@ -60,21 +74,21 @@ def get_consistency_feedback_memory_instance() -> ConsistencyFeedbackCollector |
     try:
         from narrare._app.config import get_settings
         from narrare_core.memory._null_client import NullMemoryClient
-        from narrare_core.memory.availability import (
-            detect_provider_from_env,
-            is_mem0_available,
-        )
         from narrare_core.memory.consistency_feedback_service import (
             ConsistencyFeedbackService,
         )
         from narrare_core.memory.mem0_client import create_memory_client_sync
 
-        # 1. Check mem0 is installed (encapsulated in core adapter)
+        # 1. Check mem0 is installed (encapsulated in core adapter).
+        # ``is_mem0_available`` is imported at module level so the autouse
+        # ``_no_real_mem0_clients`` test guard can patch this module's
+        # reference (matches the dependencies_prompts.py pattern).
         if not is_mem0_available():
             logger.info("consistency_feedback_disabled_mem0_not_installed")
             return None
 
-        # 2. Detect provider from env (public API from core adapter)
+        # 2. Detect provider from env (public API from core adapter).
+        # Same module-level import rationale as is_mem0_available above.
         provider_config = detect_provider_from_env()
         if provider_config is None:
             logger.info("consistency_feedback_disabled_no_credentials")

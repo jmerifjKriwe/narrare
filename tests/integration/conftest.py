@@ -78,6 +78,46 @@ def _set_encryption_key(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ig
 
 
 @pytest.fixture(autouse=True)
+def _no_real_mem0_clients(  # pyright: ignore[reportUnusedFunction] — autouse fixture, invoked via decorator reflection.
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Prevent real mem0/QdrantClient creation in integration tests (RULE-20).
+
+    Integration counterpart of the unit-test guard in
+    ``tests/unit/conftest.py``. Patches the re-imported ``is_mem0_available``
+    reference in each mem0-backed singleton module so the singletons
+    short-circuit before reaching ``create_memory_client_sync()``.
+
+    Without this guard, mem0-backed singletons create real
+    ``mem0.AsyncMemory`` clients (mem0 IS installed in the test env and
+    ``tests/conftest.py`` sets dummy ``OPENAI_API_KEY`` /
+    ``ANTHROPIC_API_KEY``). The clients' Qdrant/sqlite resources bind to
+    the event loop active at creation time, then leak across loops under
+    pytest-asyncio + pytest-xdist (each worker process has its own
+    session loop; TestClient-based tests additionally use a portal-thread
+    loop). At teardown this surfaces as
+    ``RuntimeError: Task got Future attached to a different loop`` — the
+    proximate cause of the PR #126 regression in
+    ``test_session_stop_and_recovery.py``.
+
+    Targets the same module set as the unit-test guard:
+    - ``narrare._app.dependencies_prompts`` — preference-service singleton
+    - ``narrare.kb._feedback_memory_deps`` — consistency-feedback singleton
+
+    Integration tests that specifically exercise the mem0-available path
+    override ``is_mem0_available`` via their own ``monkeypatch.setattr``.
+    """
+    monkeypatch.setattr(
+        "narrare._app.dependencies_prompts.is_mem0_available",
+        lambda: False,
+    )
+    monkeypatch.setattr(
+        "narrare.kb._feedback_memory_deps.is_mem0_available",
+        lambda: False,
+    )
+
+
+@pytest.fixture(autouse=True)
 def gc_after_test():
     """Force garbage collection after each test to finalize asyncpg connections.
 
