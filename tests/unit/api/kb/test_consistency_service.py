@@ -254,3 +254,8 @@ class TestKBConsistencyService:
         assert issue.confidence == 1.0
         assert issue.suggested_resolution is not None
         assert "rival" in issue.suggested_resolution
+
+
+# CR-AUFG-03-10 semantic-suppression integration tests (mem0 hook inside
+# check()) live in test_consistency_service_suppress.py — split out to keep
+# this file under the RULE-04 300-line limit.

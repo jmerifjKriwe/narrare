@@ -308,6 +308,18 @@ Applies to features that involve prompt engineering, LLM interaction, or user-fa
 
 **Spec**: `docs/architecture/decisions/025-feature-adoption-infrastructure.md` (Decision 6)
 
+### Prevention Lessons (from CR-06 §5.1)
+
+These checklist items are explicitly tied to resolved findings (CR-06 §5.1 "Review-Erkenntnisse"). The prevention for each is automated — reviewers should know which checker backs each lesson.
+
+| Lesson (CR-06 §5.1) | Backing automation | Finding |
+|---------------------|--------------------|---------|
+| KB-context variables non-empty at runtime | `check_doc_drift.py` §7-stub detector (CI-blocking + pre-commit) | FIND-002 (Coreference without characters) |
+| TokenBudget actually applied (not just template-present) | `accepted_risk`: name/import-based static check rejected as systematically wrong; per-service regression tests are the real enforcement (FIND-003/004) | FIND-006 (Adoption-Scorer `token_budget` without code proof) |
+| ConsistencyDeps complete (incl. `kb_relationships`) | FIND-001 fix + regression tests in `consistency/checker_context.py` | FIND-001 (Consistency-Check without KG-Relationships) |
+| Preference-injection gate tested | FIND-005 fix + `PreferenceContextEnricherImpl` wiring + regression tests (`dependencies_prompts.py`) | FIND-005 (mem0 Preference-Injection-Gate) |
+| No false-control claims | `scripts/doc_drift/removed_governance_refs_checks.py` (WARNING-only, ratcheted baseline) | FIND-014 (RULE-18b toolchain removed, CONSTRAINTS stale) |
+
 ---
 
 ## Gate 10: Semantic Review Gate (NEW)
@@ -502,6 +514,15 @@ After each review:
 2. Register new findings in `_audit/results/content-review/findings/`
 3. Create remediation tasks for any new ❌ Open findings
 4. Update `docs/_shared/CURRENT_STATE.md` if findings status changed
+
+### Quarterly Audit Cross-References (from CR-06 §5.3)
+
+Two audit items recommended in CR-06 §5.3 are already automated — they run in every CI cycle, so the quarterly review re-confirms their currency rather than performing them manually.
+
+| Quarterly item (CR-06 §5.3) | Backing automation | CI position |
+|-----------------------------|--------------------|-------------|
+| Adoption-Verifikation: did new AI features actually wire TokenBudget, PromptComposer, mem0, KG-Relationships — or only drop a template file? | `check_adoption.py` (Gate 8) — scans service code for infrastructure usage via import analysis; computes per-feature + overall scores; `PASS`/`GOVERNED_DEBT`/`STATIC_ONLY`/`FAIL` semantics | Runs in CI on every PR; quarterly review re-checks the score trend + `unverified_count` |
+| False-Control-Audit: do CONSTRAINTS.md / ADRs / Remediation-Specs make enforcement claims whose toolchain still exists and is CI-blocking? | `scripts/doc_drift/removed_governance_refs_checks.py` — detects stale references to deleted governance artefacts (WARNING-only, ratcheted baseline) | Runs in CI on every PR; quarterly review re-checks the baseline trend |
 
 ---
 

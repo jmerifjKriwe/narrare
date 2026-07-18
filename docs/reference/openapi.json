@@ -11289,6 +11289,11 @@
             "type": "object",
             "title": "Summary"
           },
+          "suppressed_count": {
+            "type": "integer",
+            "title": "Suppressed Count",
+            "default": 0
+          },
           "checked_at": {
             "type": "string",
             "title": "Checked At"
@@ -11303,7 +11308,7 @@
           "checked_at"
         ],
         "title": "ConsistencyCheckResponse",
-        "description": "Response from a consistency check.\n\nAttributes:\n    novel_id: The project that was checked.\n    entity_count: How many entities were analyzed.\n    issues: All consistency issues found, sorted by severity (critical first).\n    summary: Breakdown counts by category.\n    checked_at: When the check was performed."
+        "description": "Response from a consistency check.\n\nAttributes:\n    novel_id: The project that was checked.\n    entity_count: How many entities were analyzed.\n    issues: All consistency issues found, sorted by severity (critical first),\n        with semantically-dismissed findings filtered out.\n    summary: Breakdown counts by category.\n    suppressed_count: Number of issues hidden because they matched a past\n        dismissal in mem0 (CR-AUFG-03-10 semantic suppression layer).\n        ``0`` when mem0 is disabled, unavailable, or found no matches —\n        so the field doubles as an audit signal (\"N known false positives\n        hidden\"). Defaults to ``0`` for backwards compatibility with\n        cached responses produced before this field existed.\n    checked_at: When the check was performed."
       },
       "ConsistencyIssue": {
         "properties": {

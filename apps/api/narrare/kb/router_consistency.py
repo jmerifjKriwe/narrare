@@ -55,6 +55,7 @@ async def check_consistency(
     return await service.check(
         novel_id=novel_id,
         request=request,
+        user_id=user_id,
     )
 
 
@@ -80,7 +81,11 @@ async def dismiss_finding(
     rather than creating a duplicate.  Returns the full updated list of
     dismissed fingerprints for the novel.
     """
-    return await service.dismiss_finding(novel_id=novel_id, request=request)
+    return await service.dismiss_finding(
+        novel_id=novel_id,
+        request=request,
+        user_id=user_id,
+    )
 
 
 @router.get(

@@ -47,6 +47,7 @@ const mockConsistencyResponse = {
     },
   ],
   summary: { critical: 1, major: 0, minor: 1 },
+  suppressed_count: 2,
   checked_at: "2026-05-27T12:00:00Z",
 };
 
@@ -72,6 +73,7 @@ describe("consistencyApi", () => {
       expect(result.novel_id).toBe("novel-1");
       expect(result.entity_count).toBe(25);
       expect(result.issues).toHaveLength(2);
+      expect(result.suppressed_count).toBe(2);
       expect(result.checked_at).toBe("2026-05-27T12:00:00Z");
     });
 
@@ -176,6 +178,7 @@ describe("consistencyApi", () => {
             entity_count: 10,
             issues: [],
             summary: {},
+            suppressed_count: 0,
             checked_at: "2026-05-27T12:00:00Z",
           }),
         ),
@@ -184,6 +187,7 @@ describe("consistencyApi", () => {
       const result = await consistencyApi.checkConsistency("novel-1");
       expect(result.issues).toHaveLength(0);
       expect(result.summary).toEqual({});
+      expect(result.suppressed_count).toBe(0);
     });
   });
 
