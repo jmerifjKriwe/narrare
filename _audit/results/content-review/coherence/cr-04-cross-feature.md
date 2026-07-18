@@ -750,7 +750,7 @@ zurückhaltender zu behandeln.
 
 ### CR-AUFG-04-02 — Storyboard↔KB Inhalts-Konsistenz-Prüfung evaluieren
 
-**Re-Check 2026-07-14:** **EVALUIERT 2026-07-14** — Evaluierung abgeschlossen (Architektur-Specialist). Ergebnis: volle NLP-Stale-KB-Detection im `WritingContextAssembler` ABGELEHNT (falsche Schicht — Assembler ist reine Daten-Transformation, kein Agent; heuristische Erkennung zu fehleranfällig). Post-hoc CONS-001 bleibt Safety-Net. Optionaler Follow-up: `SyncStatus.DEVIATED` als Prompt-Hint. Bedingte Implementierung ('falls Ja') nicht ausgelöst. Status: `accepted` (Empfehlung: defer).
+**Status (2026-07-18):** `accepted_risk` — Architektur-Evaluation hat den Ansatz als **falsche Schicht** abgelehnt: `WritingContextAssembler` ist reine Daten-Transformation (kein Agent); heuristische Erkennung semantischer Widersprüche zwischen Planned-Beats und KB-Entities wäre zu fehleranfällig (False Positives überdecken echten Mehrwert). **Owner:** Architecture Specialist. **Rationale:** Post-hoc CONS-001 Consistency-Check bleibt das gewählte Safety-Net — fängt Cross-Feature-Widersprüche nach Generation ab, ohne die Assembler-Schicht zu überlasten. Optionaler Follow-up: `SyncStatus.DEVIATED` Prompt-Hint (nicht erforderlich, nur bei konkretem UX-Bedarf). **Controls:** CONS-001 existiert und funktioniert. **Review-Datum:** bei konkretem UX-Problem (Stale-KB-Detection-Bedarf) oder nächster quartalsmäßiger Major Review.
 
 **Priorität:** P3 (Erweiterung — Ref-Integrität existiert, Inhalts-Konsistenz fehlt)
 **Typ:** Evaluierung / Brainstorming
@@ -773,6 +773,7 @@ Architektur-Entscheidung.
 **Akzeptanzkriterien:**
 - [x] Evaluierung dokumentiert: Machbarkeit, Aufwand, Mehrwert
 - [ ] Falls Ja: Contract (RULE-03) definiert, dann Implementierung
+  - Anmerkung (2026-07-18): Bewusst offen — die Evaluierung entschied "Nein" (falsche Schicht, siehe Status `accepted_risk` oben), daher wurde der "falls Ja"-Zweig nicht ausgelöst und dieses Kriterium bleibt absichtlich unangehakt.
 
 **Exit evidence:**
 - Evaluierung dokumentiert (Architektur-Brief, 2026-07-14)

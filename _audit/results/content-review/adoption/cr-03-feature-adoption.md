@@ -584,7 +584,7 @@ Character-Arc (wo Beziehungen charakterprägend sind).
 
 ### CR-AUFG-03-10 — Consistency-Feedback-Loop zu mem0
 
-**Status (2026-07-13):** ⏳ deferred — Erfordert neuen API-Endpunkt + UI zum Markieren von Consistency-Issues ("false positive"/"intended") sowie mem0-Speicherung/Abfrage. Substantielles Full-Stack-Feature jenseits dieses Adoptions-Remediation-Scopes. Registriert für Future Sprint.
+**Status (2026-07-18):** ✅ Resolved — ConsistencyFeedbackService (Core, `packages/core/narrare_core/memory/consistency_feedback_service.py`) implementiert `ConsistencyFeedbackCollector`: speichert Dismissals als mem0-Memories + ruft semantisch ähnliche vergangene Dismissals via pgvector ab, um rephrasierte False-Positives zu unterdrücken. Backend-Wiring: Store-Hook in `dismissed_service.py` (nach DB-Persist), Retrieve+Suppress-Hook in `consistency_service.py::check` (filtert Issues mit Semantic-Match > 0.85), `suppressed_count` Feld in `ConsistencyCheckResponse` (backend + frontend TS + OpenAPI, RULE-17). Beide Hooks optional (`feedback_memory=None` = deaktiviert) und best-effort (RULE-11: mem0-Fehler propagieren nie). Enforcement: 51 neue Tests (20 Core + 31 Backend) + 2 Frontend-Test-Updates; `just check-architecture` 0 Verstöße, `just check-ai-ux` 0 Verstöße. Commits: `92368e19` (Contracts), `8e66a484` (Core Service), `bdecab49` (Backend+Frontend Wiring).
 **Priorität:** P3 (Erweiterung)
 **Problem:** Der Consistency-Check hat keinen Feedback-Loop zu mem0. Wenn ein
 Nutzer ein Consistency-Issue als "false positive" oder "beabsichtigt" markiert,
@@ -598,7 +598,7 @@ um wiederkehrende False-Positives zu reduzieren.
 
 ### CR-AUFG-03-11 — Character Voice Memory in mem0 persistieren
 
-**Status (2026-07-13):** ⏳ deferred — Erfordert tiefe Integration mit ADR-055 Character-Voice-Profiling: Voice-Patterns in mem0 persistieren, vor Live-Profilerung abrufen. Substantielles Feature mit Voice-Profiling-Flow-Analyse. Registriert für Future Sprint.
+**Status (2026-07-17):** ✅ Resolved — already-implemented (Architecture-Verifikation). Das Task-Premise ("Voice-Patterns werden nicht persistiert, jede Session neu profiliert") ist **falsch**: ADR-055 (✅ Accepted + Implemented 2026-06-29) persistiert das abgeleitete Voice-Profil via `persist_voice_analysis()` (`apps/api/narrare/analysis/character_voice_kb_writer.py`) auf **jedem** Profiling-Lauf in die KB (`metadata["speech"]["voice_analysis"]` + `updated_at`-Bump). Der Writing-Pfad liest aus der KB via `build_character_voice_profile()` → `get_speech_data()` — **nicht** live. mem0 wäre hier redundant (strukturierte `VoiceAnalysis`-Objekte gehören in die KB, nicht in natürlichsprachige mem0-Memories) und semantisch falsch (Cross-Novel-Voice-Sharing: Charaktere verschiedener Novels sind verschiedene Charaktere). Kein Code hinzugefügt — architektonisch sauberer als redundante mem0-Machinery. Lifecycle-Status: Anforderung durch ADR-055 Implementierung erfüllt.
 **Priorität:** P3 (Erweiterung)
 **Problem:** ADR-055 (Character Voice) extrahiert Sprachmuster pro Charakter
 live pro Sektion. Diese Voice-Patterns werden nicht in mem0 persistiert, sodass
@@ -625,7 +625,7 @@ Hybrid-Scoring bestehend beibehalten, Graph-Signal als Booster.
 
 ### CR-AUFG-03-13 — Budget-Adoption auf verbleibende Analysis/Planning-Services ausweiten
 
-**Status (2026-07-13):** ⏳ evaluated → deferred — Evaluation: Planning-Services haben aktuell minimales KB-Kontext (`kb_*`-Variablen sind Leerstrings bis auf `kb_relationships` aus 03-09). Budget-Enforcement auf leerem Content bietet keinen Mehrwert. Empfehlung: Budget-Adoption zurückstellen, bis KB-Daten-Wiring erweitert wird (separate Aufgabe).
+**Status (2026-07-18):** `accepted_risk` — Planning-Services haben aktuell minimales KB-Kontext (`kb_*`-Variablen sind Leerstrings bis auf `kb_relationships` aus 03-09). Budget-Enforcement auf leerem Content bietet keinen Mehrwert — das Budget-System hat nichts zu allokieren. **Owner:** Core Specialist. **Rationale:** Die Deferral-Begründung ist technisch fundiert (Evaluation 2026-07-13): bis Planning-KB-Wiring wächst, ist Budget-Adoption wirkungslos. **Controls:** Adoption-Scorer trackt Budget-Adoption continues; sobald Planning-Services echten KB-Content injizieren, greift das Budget-Gate natürlich. **Review-Datum:** nächster quartalsmäßiger Major Review (cr-06 §5.3) oder wenn Planning-KB-Wiring erweitert wird.
 **Priorität:** P3 (strukturelle Konsistenz)
 **Problem:** Neben Beta-Reader (CR-AUFG-03-03) haben POV/Readability/Voice-Check
 sowie Planning-Services (Outline/Character-Arc/Timeline) weiterhin kein
