@@ -12,9 +12,24 @@
 >
 > **Ausgabe:** `_audit/results/content-review/cr-06-summary.md`
 
+> **🟢 RESOLUTION-STAND (2026-07-18):** Alle 21 materialen P1/P2-Befunde
+> (FIND-001…021) sind `✅ Resolved` (Implementation + Enforcement gemäß
+> `docs/development/finding-lifecycle.md`). Alle 15 P3-Aufgaben sind
+> terminal resolviert (~11 implementiert, 03-10 implementiert, 03-11
+> already-implemented via ADR-055, 03-13 + 04-02 `accepted_risk`). Alle 3
+> Stale-Items sind adressiert. Der kanonische Resolution-Record mit
+> Datei:Zeile-Evidenz pro Befund: [`cr-05-initial-findings.md`](cr-05-initial-findings.md).
+>
+> **Die Sections §1 (Bewertungs-Übersicht), §3 (Kritische Lücken), §4
+> (Roadmap) sind als historischer Snapshot des 2026-07-11-Stands
+> erhalten** — sie beschreiben das damalige Problembild, nicht den
+> aktuellen Zustand. Aktuelle Wahrheit: §7 Resolution Status (unten).
+
 ---
 
 ## 1. Bewertungs-Übersicht
+
+*<sub>Historischer Snapshot (Stand 2026-07-11). Aktuelle Wahrheit: §7 Resolution Status.</sub>*
 
 | Bereich | Review | Bewertung | Kritischster Befund |
 |---|---|---|---|
@@ -194,6 +209,8 @@ Contract-First (RULE-03):
 
 ## 3. Kritische Lücken
 
+*<sub>Historischer Snapshot (Stand 2026-07-11). Aktuelle Wahrheit: §7 Resolution Status.</sub>*
+
 ### 3.1 P1-Befunde (🔴 Hoch — funktional eingeschränkte Features + Enforcement-Lücke)
 
 | # | FIND | Ursprung | Kernproblem | Auswirkung |
@@ -258,6 +275,8 @@ Contract-First (RULE-03):
 ---
 
 ## 4. Roadmap
+
+*<sub>Historischer Snapshot (Stand 2026-07-11). Aktuelle Wahrheit: §7 Resolution Status.</sub>*
 
 ### Sofort (1–2 Wochen)
 > Schnell lösbar, hoher Impact
@@ -478,7 +497,7 @@ immer sichtbar sein, da sie das LLM-Verhalten bei Faktenbewertung beeinflussen.
 Nicht-annotiertes Rendering bei `preserved_fields=frozenset()` ist
 ein Informationsverlust.
 
-**Entscheidung:** _[Nach Team-Diskussion dokumentieren]_
+**Entscheidung (2026-07-18):** Beantwortet via FIND-017 / ADR-067. Provenance-Rendering wurde als opt-in Core-Feature implementiert (`RenderOptions(annotate_provenance=)`, Trigger bei Confidence < 0.7 oder `review_status="pending"`), integriert über `KBContextProvider`. Provenance ist ein "anpassbarer Render-Modus" (opt-in), kein garantiertes Capability — aber das Best-Practice-Verhalten ist aktivierbar.
 
 ### 6.2 Mehrstufige Prompts: Für welche Features lohnt sich die Komplexität?
 
@@ -496,8 +515,7 @@ im Szenario anwesend?") für komplexe Storys die Writing-Qualität verbessern.
 Dies ist aber eine Optimierung, kein Qualitäts-Fix — Priorität liegt auf
 Adoptions-Lücken (§3).
 
-**Entscheidung:** _[Nach Team-Diskussion dokumentieren — aktuell: keine
-Mehrstufigkeit außer Consistency Check]_
+**Entscheidung (2026-07-18):** Entschiedenen — nur Consistency Check nutzt Mehrstufigkeit (Stage 1 Fact Extraction → Stage 2 Cross-Referencing). Für alle anderen Funktionen nicht empfohlen (Single-Pass mit Scratchpad-Mechanismen bietet gutes Qualität-Komplexität-Verhältnis). Keine Aktion.
 
 ### 6.3 mem0-Scope: Nur pro Projekt, oder nutzerübergreifend?
 
@@ -526,7 +544,7 @@ Preference Injection).
 Cross-Session-Kontext evaluieren. mem0-Scope: projekt-scoped für
 Session-Context, nutzer-scoped für Preferences (wie bisher).
 
-**Entscheidung:** _[Nach Team-Diskussion dokumentieren]_
+**Entscheidung (2026-07-18):** Resolved. (1) Cross-Session Writing Context (CR-AUFG-03-06) implementiert. (2) mem0-Scope: projekt-scoped für Session-Context, nutzer-scoped für Preferences (wie implementiert). (3) Consistency-Feedback-Loop (CR-AUFG-03-10) implementiert — mem0 lernt von Dismissal-Markierungen und unterdrückt wiederkehrende False-Positives semantisch.
 
 ### 6.4 KB-Context-Standard: Ein Format oder bewusste Abstufung?
 
@@ -541,8 +559,7 @@ Profiles brauchen ein anderes Format (Sprachmuster vs Fakten). Timeline-Envelope
 brauchen strukturierte Refs für Consistency. Ein Einheitsformat würde diese
 Feature-spezifischen Anforderungen nivellieren.
 
-**Entscheidung:** _[Nach Team-Diskussion dokumentieren — aktuell Empfehlung:
-Feature-spezifische Variation beibehalten, Provenance-Rendering einführen]_
+**Entscheidung (2026-07-18):** Beantwortet via FIND-017. Feature-spezifische Variation wird beibehalten (entity `### Type: Name`, Voice-Profile anders, Timeline-Envelopes strukturiert). Einheitliche Provenance-Konvention eingeführt (über Render-Pfade). Keine Nivellierung — die feature-spezifischen Anforderungen bleiben erhalten.
 
 ### 6.5 Freier Assistent: Feature oder Scope-Creep?
 
@@ -562,11 +579,74 @@ funktioniert. Verbesserungspotenzial liegt in Content-Quality (Redundanz-Redukti
 im Chat-Template, CR-AUFG-02-11) und Feature-Erweiterung (mem0-Integration
 in v2, falls Cross-Session-Kontext gewünscht).
 
-**Entscheidung:** _[Nach Team-Diskussion dokumentieren — aktuell: Chat-Modus
-bleibt wie ist, keine Scope-Erweiterung zum General-Chatbot]_
+**Entscheidung (2026-07-18):** Entschiedenen — Chat-Modus (ADR-024 ✅ Implemented) bleibt wie ist. Kein neuer freier Assistent, keine Scope-Erweiterung zum General-Chatbot. CR-AUFG-02-11 (Chat-Template Redundanz-Reduktion) ist ✅ Resolved.
+
+---
+
+## 7. Resolution Status (Stand 2026-07-18)
+
+> **Alle Befunde und Aufgaben aus diesem Summary sind terminal resolviert.**
+> Lifecycle-SSOT für P1/P2: `cr-05-initial-findings.md`. P3-Status in den
+> Source-Reviews (cr-01…cr-04, cr-07, cr-08).
+
+### 7.1 P1/P2-Befunde (21 FINDs)
+
+Alle 21 materialen Befunde sind `✅ Resolved` (Implementation + Enforcement).
+Detaillierte Datei:Zeile-Evidenz: [`cr-05-initial-findings.md`](cr-05-initial-findings.md)
+Resolution-Tabelle (FIND-001…021) + Re-Verification 2026-07-17.
+
+| Priorität | Anzahl | Status |
+|---|---|---|
+| 🔴 P0 | 0 | — |
+| 🔴 P1 | 3 (FIND-001, 002, 014) | ✅ Resolved |
+| 🟡 P2 | 18 (FIND-003…013, 015…021) | ✅ Resolved |
+
+Zusätzlich abgeschlossener Folgeschritt: Adoption-Score-Honesty + §7-Stub-Closing
+(5 Wellen, CI- + Pre-commit-erzwungen) — vollständige Exit-Evidenz in `cr-05-initial-findings.md`.
+
+### 7.2 P3-Aufgaben (15 Tasks)
+
+Alle 15 P3-Aufgaben sind terminal resolviert. Statusverteilung:
+
+| Status | Aufgaben | Evidence |
+|---|---|---|
+| ✅ Resolved (implementiert) | CR-AUFG-02-10, 02-11; 03-06, 03-08, 03-09, 03-10, 03-12; 04-03, 04-04, 04-05; 07-27, 07-30…07-36 | Verifizierte Commits + Tests (siehe Source-Reviews) |
+| ✅ Resolved (already-implemented) | CR-AUFG-03-11 | ADR-055 `persist_voice_analysis()` — Task-Premise war falsch |
+| `accepted_risk` | CR-AUFG-03-13, CR-AUFG-04-02 | Lifecycle-konform mit Owner + Rationale + Controls + Review-Datum |
+
+**Hinweis zur Zählung:** cr-06 §3.2 nennt "15 P3-Aufgaben". Die Zählung inkludiert CR-AUFG-03-07 (in cr-03 als P2 gelabelt, aber im cr-05-citierten Range 03-06…03-13 enthalten). Nach strenger P3-Label-Klassifikation wären es 14; die Diskrepanz ist kosmetisch und unbeinträchtigt die Resolution-Vollständigkeit.
+
+### 7.3 Stale-Items (3)
+
+Alle 3 Stale-Items sind adressiert:
+
+| # | Stale-Item | Adressiert durch | Status |
+|---|---|---|---|
+| 1 | `prompt-content-standards.md` phase2 rating veraltet | CR-AUFG-01-11 (implemented) | ✅ Resolved |
+| 2 | `prompt-standards.md` Appendix A `chat/`-Pfad veraltet | CR-AUFG-01-12 (implemented) | ✅ Resolved |
+| 3 | CONSTRAINTS.md RULE-18b + ADR-051-Body + Remediation-Specs referenzieren gelöschte Toolchain | CR-AUFG-08-15 / FIND-014 (resolved Option A) | ✅ Resolved |
+
+### 7.4 Cross-Referenz: Gate 9 + Gate 13 Prevention-Items
+
+Die in §5.1 (5 "Review-Erkenntnisse") und §5.3 (2 quartalsmäßige Review-Items) empfohlenen
+Preventions-Maßnahmen sind durch bestehende Automatisierung abgedeckt — explizite
+Cross-References in `quality-gates.md` Gate 9 (AI Content Review Gate) und Gate 13
+(Quarterly Content Review) dokumentiert (Option B, 2026-07-18 hinzugefügt).
+
+| §5-Empfehlung | Bestehende Prevention (Automatisierung) |
+|---|---|
+| KB-Variablen zur Runtime nicht-leer? (FIND-002) | `check_doc_drift.py` §7-Stub-Detector (CI-blockierend + pre-commit) |
+| TokenBudget-Code-Nachweis? (FIND-006) | `accepted_risk` + Per-Service-Regressionstests (FIND-003/004) |
+| ConsistencyDeps vollständig? (FIND-001) | FIND-001-Fix + Tests in `consistency/checker_context.py` |
+| Preference-Injection-Gate getestet? (FIND-005) | FIND-005-Fix + `PreferenceContextEnricherImpl` + Regressionstests |
+| Keine False-Control-Behauptungen? (FIND-014) | `scripts/doc_drift/removed_governance_refs_checks.py` (ratcheted) |
+| Adoption-Verifikation (quartalsmäßig) | `check_adoption.py` (Gate 8) — läuft in CI |
+| False-Control-Audit (quartalsmäßig) | `removed_governance_refs_checks.py` — läuft in CI |
 
 ---
 
 *End of CR-06 Gesamtbewertung & Roadmap. Alle Bewertungen und Befunde aus
 den Einzelreviews (cr-00 bis cr-05, cr-07, cr-08) aggregiert und gegen
 echten Code verifiziert (Datum: 2026-07-11). Keine neuen Befunde erfunden.*
+
+*Resolution-Update 2026-07-18: Alle 21 P1/P2-Befunde + 15 P3-Aufgaben + 3 Stale-Items terminal resolviert. Siehe §7 Resolution Status.*
