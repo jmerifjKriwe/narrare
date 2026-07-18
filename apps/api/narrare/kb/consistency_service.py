@@ -23,6 +23,7 @@ from narrare.kb._consistency_helpers import (
     asymmetry_to_issue,
     generate_candidate_pairs,
 )
+from narrare.kb._consistency_suppress import suppress_dismissed_issues
 from narrare.kb.consistency_contracts import (
     ConsistencyCheckRequest,
     ConsistencyCheckResponse,
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
     from narrare.kb.relationship_asymmetry import RelationshipAsymmetryChecker
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
+    from narrare_core.memory.protocols import ConsistencyFeedbackCollector
 
 logger = structlog.get_logger(__name__)
 
@@ -76,6 +78,11 @@ class KBConsistencyService:
         rel_repo: Relationship repository for candidate pair generation.
         cache: Redis-backed cache for consistency results (10min TTL).
         invocation_pipeline: Optional pipeline for invocation evidence.
+        feedback_memory: Optional mem0-backed dismissal collector. When
+            present and the caller authenticates a user, issues that match a
+            past dismissal are filtered out and counted in the response's
+            ``suppressed_count`` (CR-AUFG-03-10). ``None`` (default) disables
+            suppression — passthrough behaviour (RULE-11).
         max_phase2_pairs: Maximum number of entity pairs for Phase 2 cross-entity check.
     """
 
@@ -88,6 +95,7 @@ class KBConsistencyService:
         rel_repo: RelationshipRepositoryProtocol,
         cache: ConsistencyCache,
         invocation_pipeline: InvocationPipeline | None = None,
+        feedback_memory: ConsistencyFeedbackCollector | None = None,
         *,
         max_phase2_pairs: int = 15,
     ) -> None:
@@ -98,6 +106,7 @@ class KBConsistencyService:
         self._rel_repo = rel_repo
         self._cache = cache
         self._invocation_pipeline = invocation_pipeline
+        self._feedback_memory = feedback_memory
         self._max_phase2_pairs = max_phase2_pairs
 
     async def check(
@@ -105,12 +114,16 @@ class KBConsistencyService:
         *,
         novel_id: UUID,
         request: ConsistencyCheckRequest,
+        user_id: str | None = None,
     ) -> ConsistencyCheckResponse:
         """Run consistency check combining all 3 sources.
 
         Args:
             novel_id: The project to check.
             request: Check options and filters.
+            user_id: Authenticated user identifier, used to scope mem0
+                semantic-suppression queries (CR-AUFG-03-10). ``None``
+                disables suppression (passthrough).
 
         Returns:
             Complete consistency report with all requested issue types.
@@ -181,6 +194,16 @@ class KBConsistencyService:
             key=lambda i: _SEVERITY_ORDER.get(i.severity.value, 1),
         )
 
+        # 5a. Semantic suppression (CR-AUFG-03-10): filter out issues the
+        # user previously dismissed. Best-effort (RULE-11) — fails open:
+        # mem0 unavailability or a flaky query leaves all issues visible.
+        all_issues, suppressed_count = await suppress_dismissed_issues(
+            all_issues,
+            self._feedback_memory,
+            user_id,
+            novel_id,
+        )
+
         # 6. Build summary
         summary = {
             "entry_internal": sum(
@@ -205,6 +228,7 @@ class KBConsistencyService:
             entity_count=entity_count,
             issues=all_issues,
             summary=summary,
+            suppressed_count=suppressed_count,
             checked_at=datetime.now(UTC).isoformat(),
         )
 

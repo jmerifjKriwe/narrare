@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from narrare._app.dependencies import SessionDep  # noqa: TC001 — runtime DI
+from narrare.kb._feedback_memory_deps import (
+    get_consistency_feedback_memory_instance,
+)
 
 if TYPE_CHECKING:
     from narrare.kb.dismissed_service import DismissedFindingService
@@ -13,9 +16,15 @@ if TYPE_CHECKING:
 def get_dismissed_service(session: SessionDep) -> DismissedFindingService:
     """Create a DismissedFindingService with an injected repository.
 
-    No LLM or cache dependencies — this is pure persistence CRUD.
+    Pure persistence CRUD plus an optional mem0 learning-layer forward
+    (CR-AUFG-03-10). The feedback memory is a process-wide singleton that
+    returns ``None`` when mem0 is unavailable (graceful degradation).
     """
     from narrare.kb.dismissed_repository import DismissedFindingRepository
     from narrare.kb.dismissed_service import DismissedFindingService
 
-    return DismissedFindingService(DismissedFindingRepository(session))
+    feedback_memory = get_consistency_feedback_memory_instance()
+    return DismissedFindingService(
+        DismissedFindingRepository(session),
+        feedback_memory=feedback_memory,
+    )

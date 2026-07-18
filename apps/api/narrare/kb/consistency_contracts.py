@@ -45,8 +45,15 @@ class ConsistencyCheckResponse(BaseModel):
     Attributes:
         novel_id: The project that was checked.
         entity_count: How many entities were analyzed.
-        issues: All consistency issues found, sorted by severity (critical first).
+        issues: All consistency issues found, sorted by severity (critical first),
+            with semantically-dismissed findings filtered out.
         summary: Breakdown counts by category.
+        suppressed_count: Number of issues hidden because they matched a past
+            dismissal in mem0 (CR-AUFG-03-10 semantic suppression layer).
+            ``0`` when mem0 is disabled, unavailable, or found no matches —
+            so the field doubles as an audit signal ("N known false positives
+            hidden"). Defaults to ``0`` for backwards compatibility with
+            cached responses produced before this field existed.
         checked_at: When the check was performed.
     """
 
@@ -54,6 +61,7 @@ class ConsistencyCheckResponse(BaseModel):
     entity_count: int
     issues: list[ConsistencyIssue]
     summary: dict[str, int]  # {"entry_internal": 3, "asymmetry": 2, "cross_entity": 1}
+    suppressed_count: int = 0
     checked_at: str  # ISO datetime string
 
 
@@ -106,12 +114,18 @@ class KBConsistencyProtocol(Protocol):
         *,
         novel_id: UUID,
         request: ConsistencyCheckRequest,
+        user_id: str | None = None,
     ) -> ConsistencyCheckResponse:
         """Run a consistency check on the project's KB.
 
         Args:
             novel_id: The project to check.
             request: Check options and filters.
+            user_id: Authenticated user identifier, used to scope mem0
+                semantic-suppression queries (CR-AUFG-03-10). ``None`` disables
+                suppression (passthrough — existing behaviour) and is the
+                default for backwards compatibility with callers/tests that do
+                not yet pass it.
 
         Returns:
             Complete consistency report with all requested issue types.

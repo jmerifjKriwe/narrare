@@ -30,6 +30,9 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
         SystemModelCategory,
         build_system_default_config,
     )
+    from narrare.kb._feedback_memory_deps import (
+        get_consistency_feedback_memory_instance,
+    )
     from narrare.kb.consistency_analyzer import KBConsistencyAnalyzer
     from narrare.kb.consistency_cache import ConsistencyCache
     from narrare.kb.consistency_service import KBConsistencyService
@@ -87,4 +90,5 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
         rel_repo=rel_repo,
         cache=consistency_cache,
         invocation_pipeline=get_invocation_pipeline(),
+        feedback_memory=get_consistency_feedback_memory_instance(),
     )

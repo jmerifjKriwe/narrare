@@ -74,6 +74,7 @@ function createResult(overrides: Partial<ConsistencyCheckResponse> = {}): Consis
     entity_count: 2,
     issues: [issue0, issue1],
     summary: { timeline: 2 },
+    suppressed_count: 0,
     checked_at: "2026-01-01T00:00:00Z",
     ...overrides,
   };

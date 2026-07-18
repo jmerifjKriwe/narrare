@@ -24,6 +24,13 @@ export interface ConsistencyCheckResponse {
   entity_count: number;
   issues: ConsistencyIssue[];
   summary: Record<string, number>;
+  /**
+   * Number of issues hidden because they matched a past dismissal in mem0
+   * (CR-AUFG-03-10 semantic suppression layer). ``0`` when mem0 is disabled,
+   * unavailable, or found no matches. Doubles as an audit signal so the UI
+   * can show "N known false positives hidden".
+   */
+  suppressed_count: number;
   checked_at: string;
 }
 
