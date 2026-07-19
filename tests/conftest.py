@@ -28,7 +28,14 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 
 # Set dummy API keys for LLM providers to prevent import errors in unit tests.
 # Unit tests mock the gateway's _make_agent method, so real API calls are never made.
-# These are only needed because pydantic-ai validates API keys at import time.
+# More precisely, the keys are needed because pydantic-ai fetches provider
+# credentials at provider *construction* time (not strict import) — and
+# construction is widespread (every agent test, FakeModelRegistry, TestModel).
+# Runtime calls are blocked separately via ALLOW_MODEL_REQUESTS = False below.
+# This creates the API-key/mem0 tension documented in ADR-068 (mem0 test-
+# isolation guard pattern); the _no_real_mem0_clients fixture in
+# tests/unit/conftest.py and tests/integration/conftest.py is the accepted
+# resolution.
 os.environ["ANTHROPIC_API_KEY"] = "sk-test-dummy-anthropic-key"
 os.environ["OPENAI_API_KEY"] = "sk-test-dummy-openai-key"
 
