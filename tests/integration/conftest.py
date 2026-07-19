@@ -15,7 +15,11 @@ from fastapi import (  # noqa: TC002 — needed at runtime for get_type_hints re
     Response,
 )
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    create_async_engine,
+)
 from sqlalchemy.pool import NullPool
 
 from narrare._app.database import get_async_session
@@ -35,7 +39,15 @@ TEST_DATABASE_URL = os.environ.get(
 # Ensure the app's lifespan runs migrations on the SAME database the tests use.
 # Without this, the lifespan reads DATABASE_URL from the dev environment
 # (e.g. postgres:5432/narrare_dev) while tests use TEST_DATABASE_URL
-# (e.g. postgres_test:5432/narrare_test) — tables never get created.
+# (e.g. postgres_test:5433/narrare_test) — tables never get created.
+#
+# NOTE: ENVIRONMENT is force-set in ``tests/conftest.py`` (root), not here,
+# because the root conftest loads before any narrare import (which freezes
+# ``get_settings()`` via ``@lru_cache`` on first call). Setting it here
+# would be too late — by the time this conftest loads,
+# ``narrare._app.database`` has already been imported (pytest's initial
+# conftest collection triggers the chain), with ``ENVIRONMENT=development``
+# from the ambient environment (just's ``dotenv-load`` exports ``.env``).
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
 
