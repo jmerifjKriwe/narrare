@@ -15,14 +15,18 @@ from fastapi import (  # noqa: TC002 — needed at runtime for get_type_hints re
     Response,
 )
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    create_async_engine,
+)
 from sqlalchemy.pool import NullPool
 
 from narrare._app.database import get_async_session
 from narrare._app.main import create_app
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Iterator
 
     from fastapi import FastAPI
 
@@ -35,7 +39,15 @@ TEST_DATABASE_URL = os.environ.get(
 # Ensure the app's lifespan runs migrations on the SAME database the tests use.
 # Without this, the lifespan reads DATABASE_URL from the dev environment
 # (e.g. postgres:5432/narrare_dev) while tests use TEST_DATABASE_URL
-# (e.g. postgres_test:5432/narrare_test) — tables never get created.
+# (e.g. postgres_test:5433/narrare_test) — tables never get created.
+#
+# NOTE: ENVIRONMENT is force-set in ``tests/conftest.py`` (root), not here,
+# because the root conftest loads before any narrare import (which freezes
+# ``get_settings()`` via ``@lru_cache`` on first call). Setting it here
+# would be too late — by the time this conftest loads,
+# ``narrare._app.database`` has already been imported (pytest's initial
+# conftest collection triggers the chain), with ``ENVIRONMENT=development``
+# from the ambient environment (just's ``dotenv-load`` exports ``.env``).
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
 
@@ -77,16 +89,32 @@ def _set_encryption_key(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ig
     monkeypatch.setenv("NARRARE_ENCRYPTION_KEY", Fernet.generate_key().decode())
 
 
-@pytest.fixture(autouse=True)
-def _no_real_mem0_clients(  # pyright: ignore[reportUnusedFunction] — autouse fixture, invoked via decorator reflection.
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Prevent real mem0/QdrantClient creation in integration tests (RULE-20).
+@pytest.fixture(autouse=True, scope="session")
+def _no_real_mem0_clients() -> Iterator[None]:  # pyright: ignore[reportUnusedFunction] — autouse fixture, invoked via decorator reflection.
+    """Prevent real mem0/QdrantClient creation during the integration session (RULE-20).
+
+    SESSION-SCOPED (ADR-068 Decision 2): the integration suite has a
+    session-scoped ``_prewarm_composer`` fixture (in
+    ``tests/integration/writing/conftest.py``) that calls ``get_composer()``
+    → ``_get_preference_service_instance()``. A function-scoped guard would
+    activate only at the first test function, AFTER ``_prewarm_composer``
+    has already run at session start — creating a real ``mem0.AsyncMemory``
+    client once per integration session before any guard could prevent it.
+    Session-scoping the guard ensures it runs before ``_prewarm_composer``;
+    the explicit fixture dependency declared in
+    ``_prewarm_composer(_no_real_mem0_clients: None)`` pins the ordering
+    (autouse session fixtures otherwise have non-deterministic order).
+
+    Uses ``pytest.MonkeyPatch()`` instantiated directly — the ``monkeypatch``
+    fixture is function-scoped by design and cannot be used at session
+    scope. Teardown via ``mp.undo()`` runs at session end.
 
     Integration counterpart of the unit-test guard in
-    ``tests/unit/conftest.py``. Patches the re-imported ``is_mem0_available``
-    reference in each mem0-backed singleton module so the singletons
-    short-circuit before reaching ``create_memory_client_sync()``.
+    ``tests/unit/conftest.py`` (which stays function-scoped — unit tests
+    do not use session-scoped prewarm fixtures). Patches the re-imported
+    ``is_mem0_available`` reference in each mem0-backed singleton module
+    so the singletons short-circuit before reaching
+    ``create_memory_client_sync()``.
 
     Without this guard, mem0-backed singletons create real
     ``mem0.AsyncMemory`` clients (mem0 IS installed in the test env and
@@ -103,18 +131,31 @@ def _no_real_mem0_clients(  # pyright: ignore[reportUnusedFunction] — autouse 
     Targets the same module set as the unit-test guard:
     - ``narrare._app.dependencies_prompts`` — preference-service singleton
     - ``narrare.kb._feedback_memory_deps`` — consistency-feedback singleton
+    - ``narrare.writing._session_memory_deps`` — session-memory singleton
+      (extracted from ``deps_writing.py`` per RULE-04; the singleton
+      state and module-level availability imports move together)
 
     Integration tests that specifically exercise the mem0-available path
-    override ``is_mem0_available`` via their own ``monkeypatch.setattr``.
+    override ``is_mem0_available`` via their own ``monkeypatch.setattr``
+    (function-scoped — those overrides are tighter than this session
+    guard and compose correctly because they patch the same module
+    attribute after the session guard has).
     """
-    monkeypatch.setattr(
+    mp = pytest.MonkeyPatch()
+    mp.setattr(
         "narrare._app.dependencies_prompts.is_mem0_available",
         lambda: False,
     )
-    monkeypatch.setattr(
+    mp.setattr(
         "narrare.kb._feedback_memory_deps.is_mem0_available",
         lambda: False,
     )
+    mp.setattr(
+        "narrare.writing._session_memory_deps.is_mem0_available",
+        lambda: False,
+    )
+    yield
+    mp.undo()
 
 
 @pytest.fixture(autouse=True)

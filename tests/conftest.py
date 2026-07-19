@@ -12,8 +12,29 @@ import pytest
 # NOTE: Python path resolution (apps/api, packages/core) is handled by the
 # `pythonpath` setting in [tool.pytest.ini_options] in pyproject.toml.
 
-# Ensure test environment is set before any imports
-os.environ.setdefault("ENVIRONMENT", "test")
+# Force test environment BEFORE any narrare import. ``setdefault`` is too
+# weak — ``justfile`` sets ``set dotenv-load := true``, so ``just
+# test-integration`` exports every ``.env`` key (including
+# ``ENVIRONMENT=development``) into the pytest subprocess; a developer
+# shell with ``export ENVIRONMENT=development`` does the same. With
+# ``environment != "test"``, ``Settings.is_test`` returns False and the
+# app lifespan (``apps/api/narrare/_app/lifespan.py``) runs production
+# code paths that do not compose with per-test ``TestClient`` portal
+# event loops: ``broker.startup()/shutdown()`` (redis.asyncio),
+# ``init_event_bus`` / ``shutdown_event_bus`` (redis.asyncio),
+# ``_run_stale_cleanup`` (asyncpg pool — ``lifespan.py:140``), and
+# ``dispose_database()``. These bind redis/asyncpg resources to whatever
+# loop is current at lifespan startup; when the ``TestClient`` portal
+# closes and a later WS test starts a fresh portal,
+# ``broker.shutdown()`` and asyncpg ``do_terminate`` raise
+# ``RuntimeError: Task got Future attached to a different loop`` at
+# teardown — flakily, because pytest-randomly reorders the polluter.
+# Direct assignment (not ``setdefault``) is required: this conftest is
+# imported before ``narrare._app.database``, whose module-level
+# ``_engine = _create_engine()`` (``database.py:56``) freezes
+# ``get_settings()``'s ``@lru_cache`` on the first call. Once frozen,
+# later env mutations have no effect.
+os.environ["ENVIRONMENT"] = "test"
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
 os.environ.setdefault(
     "DATABASE_URL",
@@ -28,7 +49,14 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 
 # Set dummy API keys for LLM providers to prevent import errors in unit tests.
 # Unit tests mock the gateway's _make_agent method, so real API calls are never made.
-# These are only needed because pydantic-ai validates API keys at import time.
+# More precisely, the keys are needed because pydantic-ai fetches provider
+# credentials at provider *construction* time (not strict import) — and
+# construction is widespread (every agent test, FakeModelRegistry, TestModel).
+# Runtime calls are blocked separately via ALLOW_MODEL_REQUESTS = False below.
+# This creates the API-key/mem0 tension documented in ADR-068 (mem0 test-
+# isolation guard pattern); the _no_real_mem0_clients fixture in
+# tests/unit/conftest.py and tests/integration/conftest.py is the accepted
+# resolution.
 os.environ["ANTHROPIC_API_KEY"] = "sk-test-dummy-anthropic-key"
 os.environ["OPENAI_API_KEY"] = "sk-test-dummy-openai-key"
 

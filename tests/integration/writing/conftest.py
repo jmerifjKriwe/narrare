@@ -50,13 +50,23 @@ _processor = DraftProcessor()
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _prewarm_composer() -> None:  # pyright: ignore[reportUnusedFunction]
+def _prewarm_composer(_no_real_mem0_clients: None) -> None:  # pyright: ignore[reportUnusedFunction]
     """Pre-warm PromptComposer singleton (~750ms cold start).
 
     ``get_composer()`` calls ``_get_composer_instance()`` which is
     ``@lru_cache``'d.  The first call loads the entire prompt registry
     from disk (YAML prompt files).  This fixture runs once per session,
     so the ~750ms overhead is paid once, not per-test.
+
+    EXPLICIT DEPENDENCY on ``_no_real_mem0_clients`` (ADR-068 Decision 2):
+    ``get_composer()`` → ``_get_preference_service_instance()`` would
+    create a real ``mem0.AsyncMemory`` client if the guard had not yet
+    patched ``is_mem0_available``. Pytest resolves fixture parameters
+    before calling the dependent fixture, so declaring this dependency
+    guarantees the session-scoped guard is active before any code path
+    here can construct a mem0 client. Without it, autouse session fixtures
+    have non-deterministic order — the regression that surfaced in
+    PR #126's ``test_session_stop_and_recovery.py`` event-loop leak.
     """
     get_composer()
 
