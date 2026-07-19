@@ -1,4 +1,12 @@
-"""Writing module dependency injection — writing service factory."""
+"""Writing module dependency injection — writing service factory.
+
+The :func:`get_session_memory_instance` singleton that backs
+``get_writing_service`` lives in :mod:`narrare.writing._session_memory_deps`
+(extracted per RULE-04). The singleton hosts its own module-level
+``is_mem0_available`` / ``detect_provider_from_env`` imports so the
+autouse ``_no_real_mem0_clients`` test guard can patch the re-imported
+reference — see ADR-068 for the full rationale.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +18,7 @@ import structlog
 
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.kb.relationship_repository import RelationshipRepository
+from narrare.writing._session_memory_deps import get_session_memory_instance
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.run_limits import SUGGEST_MAX_TOKENS
 
@@ -17,86 +26,8 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from narrare.writing.service import WritingService
-    from narrare_core.memory.session_memory_service import SessionMemoryService
 
 logger = structlog.get_logger(__name__)
-
-# ---------------------------------------------------------------------------
-# SessionMemoryService singleton (mirrors preference_service pattern in
-# _app/dependencies_prompts.py — long-lived mem0 client, safe for shared use)
-# ---------------------------------------------------------------------------
-
-_session_memory_instance: SessionMemoryService | None = None
-_session_memory_init_tried: bool = False
-
-
-def _get_session_memory_instance() -> SessionMemoryService | None:
-    """Create a SessionMemoryService if mem0 + credentials available, else None.
-
-    Module-level singleton (mutable state, no ``@lru_cache``).  Uses
-    synchronous client creation for DI compatibility.  The
-    SessionMemoryService holds a long-lived mem0 client that accepts
-    per-call user/project IDs — safe for shared use.
-
-    Graceful degradation (RULE-11): returns ``None`` when mem0 is not
-    installed, no provider credentials exist, or client creation fails.
-    Any exception during initialization is caught so the writing service
-    never crashes due to a memory subsystem issue.
-    """
-    global _session_memory_instance, _session_memory_init_tried
-
-    if _session_memory_init_tried:
-        return _session_memory_instance
-
-    _session_memory_init_tried = True
-
-    try:
-        from narrare._app.config import get_settings
-        from narrare_core.memory._null_client import NullMemoryClient
-        from narrare_core.memory.availability import (
-            detect_provider_from_env,
-            is_mem0_available,
-        )
-        from narrare_core.memory.mem0_client import create_memory_client_sync
-        from narrare_core.memory.session_memory_service import SessionMemoryService
-
-        # 1. Check mem0 is installed (encapsulated in core adapter)
-        if not is_mem0_available():
-            logger.info("session_memory_disabled_mem0_not_installed")
-            return None
-
-        # 2. Detect provider from env (public API from core adapter)
-        provider_config = detect_provider_from_env()
-        if provider_config is None:
-            logger.info("session_memory_disabled_no_credentials")
-            return None
-
-        # 3. Create mem0 client synchronously
-        settings = get_settings()
-        client = create_memory_client_sync(
-            provider=provider_config.provider,
-            api_key=provider_config.api_key,
-            base_url=provider_config.base_url,
-            memory_model=settings.memory_llm_model,
-            embedding_model=settings.memory_embedding_model,
-        )
-
-        if isinstance(client, NullMemoryClient):
-            logger.warning(
-                "session_memory_client_creation_failed",
-                provider=provider_config.provider,
-            )
-            return None
-
-        _session_memory_instance = SessionMemoryService(mem0_client=client)
-        logger.info(
-            "session_memory_initialized",
-            provider=provider_config.provider,
-        )
-        return _session_memory_instance
-    except Exception:
-        logger.warning("session_memory_init_failed", exc_info=True)
-        return None
 
 
 async def get_writing_service(
@@ -163,7 +94,7 @@ async def get_writing_service(
     repo = GenerationRepository(session)
     relationship_repo = RelationshipRepository(session)
     tone_service = CustomToneService(repo=UserSettingsRepository(session))
-    session_memory = _get_session_memory_instance()
+    session_memory = get_session_memory_instance()
 
     return WritingService(
         repo=repo,

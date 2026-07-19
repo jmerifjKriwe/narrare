@@ -103,6 +103,9 @@ def _no_real_mem0_clients(  # pyright: ignore[reportUnusedFunction] — autouse 
     Targets the same module set as the unit-test guard:
     - ``narrare._app.dependencies_prompts`` — preference-service singleton
     - ``narrare.kb._feedback_memory_deps`` — consistency-feedback singleton
+    - ``narrare.writing._session_memory_deps`` — session-memory singleton
+      (extracted from ``deps_writing.py`` per RULE-04; the singleton
+      state and module-level availability imports move together)
 
     Integration tests that specifically exercise the mem0-available path
     override ``is_mem0_available`` via their own ``monkeypatch.setattr``.
@@ -113,6 +116,10 @@ def _no_real_mem0_clients(  # pyright: ignore[reportUnusedFunction] — autouse 
     )
     monkeypatch.setattr(
         "narrare.kb._feedback_memory_deps.is_mem0_available",
+        lambda: False,
+    )
+    monkeypatch.setattr(
+        "narrare.writing._session_memory_deps.is_mem0_available",
         lambda: False,
     )
 

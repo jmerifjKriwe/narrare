@@ -4,10 +4,12 @@ RULE-20: Unit tests must never create real external resources — no
 file-system locks, no local Qdrant databases, no real mem0 clients.
 
 The autouse fixture ``_no_real_mem0_clients`` below prevents the
-preference-service DI path and the consistency-feedback singleton from
-creating real ``mem0.AsyncMemory`` instances. Without this guard, any unit
-test that calls ``get_composer()``, ``get_invocation_pipeline()``, or
-``get_consistency_feedback_memory_instance()`` would reach
+preference-service DI path, the consistency-feedback singleton, and the
+session-memory singleton from creating real ``mem0.AsyncMemory``
+instances. Without this guard, any unit test that calls
+``get_composer()``, ``get_invocation_pipeline()``,
+``get_consistency_feedback_memory_instance()``, or
+``get_session_memory_instance()`` would reach
 ``create_memory_client_sync()`` (because mem0 IS installed in the test
 environment and ``tests/conftest.py`` sets dummy ``OPENAI_API_KEY`` /
 ``ANTHROPIC_API_KEY``), creating a real ``AsyncMemory`` backed by local
@@ -53,6 +55,11 @@ def _no_real_mem0_clients(  # pyright: ignore[reportUnusedFunction] — autouse 
     - ``narrare.kb._feedback_memory_deps`` — consistency-feedback DI
       singleton (covers ``get_dismissed_service`` /
       ``get_consistency_service`` callers).
+    - ``narrare.writing._session_memory_deps`` — session-memory singleton
+      (covers ``get_writing_service`` / coauthor/extend/rewrite callers).
+      Lives in its own module per RULE-04 (extracted from
+      ``deps_writing.py``); the singleton state and module-level
+      availability imports move together.
 
     Does NOT affect ``narrare_core.memory.availability.is_mem0_available``
     directly — ``tests/unit/core/memory/test_availability.py`` tests the
@@ -60,9 +67,11 @@ def _no_real_mem0_clients(  # pyright: ignore[reportUnusedFunction] — autouse 
 
     Requires the singletons to import ``is_mem0_available`` at MODULE
     LEVEL (not inside the function body) so the re-imported reference
-    exists as a patchable attribute. The regression test
+    exists as a patchable attribute. The regression tests
     ``tests/unit/api/kb/test_consistency_feedback_singleton_isolation.py``
-    pins this architectural decision.
+    and
+    ``tests/unit/api/writing/test_session_memory_singleton_isolation.py``
+    pin this architectural decision.
     """
     monkeypatch.setattr(
         "narrare._app.dependencies_prompts.is_mem0_available",
@@ -70,6 +79,10 @@ def _no_real_mem0_clients(  # pyright: ignore[reportUnusedFunction] — autouse 
     )
     monkeypatch.setattr(
         "narrare.kb._feedback_memory_deps.is_mem0_available",
+        lambda: False,
+    )
+    monkeypatch.setattr(
+        "narrare.writing._session_memory_deps.is_mem0_available",
         lambda: False,
     )
     yield

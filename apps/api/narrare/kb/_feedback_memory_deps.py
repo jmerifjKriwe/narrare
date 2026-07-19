@@ -1,6 +1,6 @@
 """Consistency-feedback mem0 singleton factory (CR-AUFG-03-10).
 
-Mirrors :func:`narrare.writing.deps_writing._get_session_memory_instance`
+Mirrors :func:`narrare.writing._session_memory_deps.get_session_memory_instance`
 structurally — a module-level singleton that returns a long-lived
 :class:`ConsistencyFeedbackService` (wrapping a mem0 client) or ``None``
 when mem0 is unavailable. Lives in its own module so both
@@ -53,11 +53,12 @@ def get_consistency_feedback_memory_instance() -> ConsistencyFeedbackCollector |
     long-lived mem0 client that accepts per-call user/project IDs — safe for
     shared use across requests.
 
-    Mirrors :func:`narrare.writing.deps_writing._get_session_memory_instance`
+    Mirrors :func:`narrare.writing._session_memory_deps.get_session_memory_instance`
     exactly (graceful-degradation structure). Exposed as a public name
-    because — unlike the writing singleton, which is called only within its
-    own module — this one is consumed by both ``_dismissed_deps`` and
-    ``_consistency_deps`` (same package, sibling modules).
+    because it is consumed by both ``_dismissed_deps`` and
+    ``_consistency_deps`` (same package, sibling modules) — the same
+    cross-module convention the writing singleton follows after its
+    RULE-04 extraction into ``_session_memory_deps.py``.
 
     Graceful degradation (RULE-11): returns ``None`` when mem0 is not
     installed, no provider credentials exist, or client creation fails.
