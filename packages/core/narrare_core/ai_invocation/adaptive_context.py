@@ -15,7 +15,11 @@ See:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,4 +60,54 @@ class AdaptiveWeights:
             voice_fidelity=max(0.0, min(1.0, self.voice_fidelity)),
             style_constraints=max(0.0, min(1.0, self.style_constraints)),
             avoidance=max(0.0, min(1.0, self.avoidance)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AdaptiveContext:
+    """Consolidated snapshot of all adaptive signals for one invocation.
+
+    Assembled by the ``AdaptiveContextProvider`` (Backend impl) and
+    consumed by the ``AdaptiveContextEnricher`` (Core), which injects
+    the four text fields into ``dynamic_inputs`` for prompt composition.
+
+    ADR-055/057 boundary: ``voice_profiles_text`` carries ONLY the
+    descriptive ``formatted_voice_profiles`` text (the
+    ``speech_summary`` block). The numeric ``voice_metrics`` are
+    checking-path only and never reach this dataclass.
+
+    Attributes:
+        user_id: The user ID the context applies to.
+        project_id: The project ID the context applies to.
+        preference_text: Formatted text from PreferenceProfile
+            (may be empty if no preferences).
+        voice_profiles_text: Formatted text of all CharacterVoiceProfiles
+            (may be empty if no profiles).
+        style_constraints_text: Derived style constraints as a
+            bullet list (may be empty).
+        avoidance_patterns_text: Derived avoidance patterns as a
+            bullet list (may be empty).
+        weights: The weights active at invocation time.
+        source_summary: Short human-readable summary of sources
+            (e.g., "3 character voices, 12 preference events") for
+            transparency UI and logging.
+    """
+
+    user_id: UUID
+    project_id: UUID
+    preference_text: str = ""
+    voice_profiles_text: str = ""
+    style_constraints_text: str = ""
+    avoidance_patterns_text: str = ""
+    weights: AdaptiveWeights = field(default_factory=AdaptiveWeights)
+    source_summary: str = ""
+
+    @property
+    def has_any_signal(self) -> bool:
+        """True if at least one adaptive signal is present."""
+        return bool(
+            self.preference_text
+            or self.voice_profiles_text
+            or self.style_constraints_text
+            or self.avoidance_patterns_text
         )
