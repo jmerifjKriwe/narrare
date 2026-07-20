@@ -48,7 +48,7 @@ dependencies = [
   "jinja2==3.1.6",
 
   # File operations
-  "filelock==3.29.7",
+  "filelock==3.31.1",
 
   # Workspace packages
   "narrare-core",
