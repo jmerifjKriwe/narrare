@@ -22,9 +22,3 @@ AVOIDANCE_PATTERNS_KEY: str = "avoidance_patterns"
 
 #: Formatted CharacterVoiceProfile text block (ADR-055).
 CHARACTER_VOICE_PROFILES_KEY: str = "character_voice_profiles"
-
-#: Internal-only summary for transparency UI / logging (not in templates).
-ADAPTIVE_SOURCE_SUMMARY_KEY: str = "__adaptive_source_summary"
-
-#: Internal-only weights snapshot for evidence (not in templates).
-ADAPTIVE_WEIGHTS_KEY: str = "__adaptive_weights"

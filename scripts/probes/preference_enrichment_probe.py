@@ -22,7 +22,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from uuid import UUID, uuid4
 
 # Ensure project root is on sys.path so `scripts.probes` resolves
@@ -103,8 +103,8 @@ class _ProbeAdaptiveProvider:
         project_id: object,
     ) -> None:
         self._context = AdaptiveContext(
-            user_id=user_id,  # type: ignore[arg-type]
-            project_id=project_id,  # type: ignore[arg-type]
+            user_id=cast("UUID", user_id),
+            project_id=cast("UUID", project_id),
             preference_text=preference_text,
         )
 

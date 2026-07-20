@@ -9,7 +9,8 @@ CONSTRAINTS.md RULE-03.
 
 from __future__ import annotations
 
-from uuid import uuid4
+from typing import cast
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -37,7 +38,10 @@ class FakeAdaptiveContextProvider:
         self.context_calls.append((user_id, project_id))
         if self._context is not None:
             return self._context
-        return AdaptiveContext(user_id=user_id, project_id=project_id)  # type: ignore[arg-type]
+        return AdaptiveContext(
+            user_id=cast("UUID", user_id),
+            project_id=cast("UUID", project_id),
+        )
 
     async def get_settings(self, user_id: object, project_id: object) -> AdaptiveSettings:
         self.settings_calls.append((user_id, project_id))
