@@ -160,7 +160,12 @@
 | [ASSIST-001](ai_assist/ASSIST-001-plot-check.md) | Plot Consistency Check | 📋 | ❌ |
 | [ASSIST-002](ai_assist/ASSIST-002-title-suggest.md) | Title Suggestions | 📋 | ❌ |
 | ~~ASSIST-003~~ | ~~Story Chat Assistant~~ | ⛔ | ❌ |
-| [ASSIST-004](ai_assist/ASSIST-004-dialogue-coach.md) | Dialogue Coach | 📋 | ❌ |
+| [ASSIST-004](ai_assist/ASSIST-004-dialogue-coach.md) | Dialogue Coach | 🔨 | ❌ |
+
+> **ASSIST-004 detailed (2026-07-19):** Implementation paths filled in against
+> [ADR-069](../architecture/decisions/ADR-069-adaptive-context-dialogue-coach.md).
+> ASSIST-004 is the pilot consumer of the new `AdaptiveContext` Core contract.
+> Status → `in-progress`.
 
 > **Note:** ASSIST-003 (Story Chat Assistant) has been superseded by [CHAT-001](chat/CHAT-001-free-form-chat.md) with a scoped, architecturally grounded design. See the new spec for details.
 
@@ -180,7 +185,16 @@
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
 | [LEARN-001](learning/LEARN-001-feedback-loop.md) | Feedback & Learning Loop | ✅ | ✅ |
-| [LEARN-002](learning/LEARN-002-style-adaptation.md) | Style Adaptation | 📋 | ❌ |
+| [LEARN-002](learning/LEARN-002-style-adaptation.md) | Adaptivity Dashboard | 🔨 | ❌ |
+
+> **LEARN-002 recalibrated (2026-07-19):** The original "Style Adaptation"
+> concept (statistical voice pipeline) is no longer pursued. LEARN-002 is now
+> an **Adaptivity Dashboard** — visibility + steering + transparency of existing
+> adaptive signals (`PreferenceProfile` + `CharacterVoiceProfile`), pilot-tested
+> by ASSIST-004 (Dialogue Coach). See
+> [ADR-069](../architecture/decisions/ADR-069-adaptive-context-dialogue-coach.md).
+> Feature-ID LEARN-002 stays (recalibration, not superseding). Status →
+> `in-progress`.
 
 ### Prompt Customization
 | ID | Feature | Status | MVP |
@@ -330,5 +344,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-30 — WRITE-010 (Voice Consistency Checker) → `stable` (ADR-057 ✅ Implemented; implemented across all layers + runtime-verified; `voice_check` static/runtime/adopted, adoption_debt 5 → 1 — true debt). Earlier 2026-06-30 — WRITE-010 spec authored against ADR-057 (checking-path contract + `voice_check` prompt surface; closes ADR-055 Risk #1), promoted to `stable` after all layers + runtime evidence landed. 2026-06-29 — ANAL-008 (Character Voice Profiling) → `stable` (implemented all layers; ADR-055 implemented); INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-07-19 — LEARN-002 recalibrated from "Style Adaptation" (statistical pipeline) to "Adaptivity Dashboard" (visibility + steering + transparency); status `planned → in-progress` per [ADR-069](../architecture/decisions/ADR-069-adaptive-context-dialogue-coach.md). ASSIST-004 (Dialogue Coach) detailed with implementation paths; status `planned → in-progress`; pilot consumer of the new `AdaptiveContext` Core contract. Earlier 2026-06-30 — WRITE-010 (Voice Consistency Checker) → `stable` (ADR-057 ✅ Implemented; implemented across all layers + runtime-verified; `voice_check` static/runtime/adopted, adoption_debt 5 → 1 — true debt). Earlier 2026-06-30 — WRITE-010 spec authored against ADR-057 (checking-path contract + `voice_check` prompt surface; closes ADR-055 Risk #1), promoted to `stable` after all layers + runtime evidence landed. 2026-06-29 — ANAL-008 (Character Voice Profiling) → `stable` (implemented all layers; ADR-055 implemented); INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after
