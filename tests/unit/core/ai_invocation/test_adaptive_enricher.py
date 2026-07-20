@@ -304,3 +304,47 @@ class TestAdaptiveEnricherProtocolConformance:
         ctx = _make_context()
         result = await enricher.enrich(ctx)
         assert isinstance(result, PromptInvocationContext)
+
+
+class TestPreferenceContextEnricherImplRemoved:
+    """After ADR-069 Phase 2 Task 10, the legacy enricher class is deleted.
+
+    The Protocols in ``contracts.py`` stay (ContextEnricher base +
+    PreferenceContextEnricher specialised marker — still useful for typed
+    DI). Only the concrete ``PreferenceContextEnricherImpl`` is removed;
+    ``AdaptiveContextEnricher`` is the single canonical writer.
+    """
+
+    def test_legacy_impl_import_fails(self) -> None:
+        """Importing PreferenceContextEnricherImpl MUST fail after deletion."""
+        with pytest.raises(ImportError):
+            from narrare_core.ai_invocation.enrichers.preferences import (  # noqa: F401
+                PreferenceContextEnricherImpl,
+            )
+
+    def test_legacy_impl_not_reexported_from_package(self) -> None:
+        """The package __init__ MUST NOT re-export PreferenceContextEnricherImpl."""
+        import narrare_core.ai_invocation.enrichers as enrichers_pkg
+
+        assert not hasattr(enrichers_pkg, "PreferenceContextEnricherImpl"), (
+            "enrichers.__init__ must not re-export PreferenceContextEnricherImpl "
+            "after ADR-069 Phase 2 Task 10."
+        )
+
+    def test_preference_context_enricher_protocol_stays(self) -> None:
+        """The PreferenceContextEnricher Protocol in contracts.py stays."""
+        from narrare_core.ai_invocation.contracts import PreferenceContextEnricher
+
+        assert PreferenceContextEnricher is not None
+
+    def test_context_enricher_protocol_stays(self) -> None:
+        """The base ContextEnricher Protocol stays."""
+        from narrare_core.ai_invocation.contracts import ContextEnricher
+
+        assert ContextEnricher is not None
+
+    def test_adaptive_enricher_remains_importable_from_package(self) -> None:
+        """The new enricher remains the only adaptive enricher."""
+        from narrare_core.ai_invocation.enrichers import AdaptiveContextEnricher
+
+        assert AdaptiveContextEnricher is not None

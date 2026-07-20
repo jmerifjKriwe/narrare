@@ -15,7 +15,7 @@ Investigation result (CR-AUFG-03-05):
 
     Two complementary mechanisms inject preferences:
 
-    1. **Enricher (primary, pipeline path):** ``PreferenceContextEnricherImpl``
+    1. **Enricher (primary, pipeline path):** ``AdaptiveContextEnricher``
        reads ``PromptInvocationContext.user_id``/``project_id`` (top-level
        fields), fetches preferences, and writes
        ``dynamic_inputs["user_preferences"]``.  ``merge_prepared_dynamic_inputs``

@@ -95,7 +95,7 @@ async def fetch_world_context(
     returns no entries, logs a warning and returns an empty string so the
     caller (merge/extract) proceeds without crashing. Avoidance/preference
     data is intentionally not handled here — it reaches the prompt via the
-    ``user_preferences`` variable (see ``enrichers.preferences``).
+    ``user_preferences`` variable (see ``enrichers.adaptive``).
 
     Args:
         kb_repo: KB entry repository (scoped read).

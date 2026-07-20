@@ -1,12 +1,15 @@
 """Tests that the production InvocationPipeline wires AdaptiveContextEnricher.
 
-After ADR-069 Phase 2 cutover (this task), the production pipeline MUST
-use AdaptiveContextEnricher — NOT the legacy PreferenceContextEnricherImpl.
+After ADR-069 Phase 2 cutover (Task 8) and Phase 2 cleanup (Task 10),
+the production pipeline MUST use ``AdaptiveContextEnricher`` and the
+legacy ``PreferenceContextEnricherImpl`` class MUST be gone.
 
-See: ADR-069 Decision 1 / Retrofit-Plan step 7.
+See: ADR-069 Decision 1 / Retrofit-Plan steps 7 and 10.
 """
 
 from __future__ import annotations
+
+import pytest
 
 from narrare._app.dependencies_pipeline import get_invocation_pipeline
 from narrare_core.ai_invocation.enrichers.adaptive import AdaptiveContextEnricher
@@ -25,18 +28,14 @@ class TestPipelineWiresAdaptiveEnricher:
             "Found enricher types: " + ", ".join(type(e).__name__ for e in pipeline._enrichers)
         )
 
-    def test_pipeline_does_not_use_legacy_preference_enricher(self) -> None:
-        """PreferenceContextEnricherImpl must NOT be wired after cutover.
-        This assertion is a regression guard: even after Task 10 deletes
-        the class, this test stays as a structural guard (the import will
-        fail if someone re-introduces a same-named class)."""
-        from narrare_core.ai_invocation.enrichers.preferences import (
-            PreferenceContextEnricherImpl,
-        )
+    def test_legacy_preference_enricher_class_is_gone(self) -> None:
+        """After ADR-069 Phase 2 Task 10, PreferenceContextEnricherImpl is deleted.
 
-        pipeline = get_invocation_pipeline()
-        for enricher in pipeline._enrichers:
-            assert not isinstance(enricher, PreferenceContextEnricherImpl), (
-                f"Legacy PreferenceContextEnricherImpl must not be wired. "
-                f"Found instance in pipeline: {enricher!r}"
+        This assertion is a structural guard: importing the legacy class
+        MUST fail. If someone re-introduces a same-named class under the
+        old module path, this test catches the regression at import time.
+        """
+        with pytest.raises(ImportError):
+            from narrare_core.ai_invocation.enrichers.preferences import (  # noqa: F401
+                PreferenceContextEnricherImpl,
             )

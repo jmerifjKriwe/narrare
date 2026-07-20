@@ -26,10 +26,9 @@ def get_invocation_pipeline() -> InvocationPipeline:
     - RuntimeVariableValidatorImpl (pre-composition checks)
     - IntentOutputBudgetResolverImpl (budget resolution)
     - FinalPromptValidatorImpl (post-composition checks)
-    - AdaptiveContextEnricher (ADR-069 — writes all four adaptive
-      prompt variables: user_preferences, style_constraints,
-      avoidance_patterns, character_voice_profiles; replaces the
-      legacy single-variable PreferenceContextEnricherImpl)
+    - AdaptiveContextEnricher (ADR-069 — single canonical writer of all
+      four adaptive prompt variables: user_preferences, style_constraints,
+      avoidance_patterns, character_voice_profiles)
     - KBSuggestedContextEnricher (backed by KB repository)
 
     Note:

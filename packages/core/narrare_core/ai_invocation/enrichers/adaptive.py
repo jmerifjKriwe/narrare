@@ -1,9 +1,7 @@
 """Adaptive context enricher — single canonical writer of all four
 adaptive prompt variables.
 
-Replaces ``PreferenceContextEnricherImpl`` (ADR-038) per ADR-069
-Decision 1. Where the old enricher wrote only ``user_preferences``,
-this enricher consults the new ``AdaptiveContextProvider`` Protocol
+Consults the ``AdaptiveContextProvider`` Protocol (ADR-069 Decision 1)
 and writes:
 
 - ``dynamic_inputs["user_preferences"]``         <- AdaptiveContext.preference_text
@@ -19,7 +17,7 @@ Graceful degradation (ADR-038 D7):
 - AdaptiveContext.has_any_signal=False -> write all four keys with "".
 
 See:
-    ADR-069 Decision 1 (enricher swap), Decision 4 (applicability),
+    ADR-069 Decision 1 (single canonical writer), Decision 4 (applicability),
     ADR-038 D7 (graceful degradation),
     ADR-055/057 (voice_metrics never reach generation — only
     descriptive voice_profiles_text is written here),
@@ -51,8 +49,7 @@ logger = structlog.get_logger(__name__)
 class AdaptiveContextEnricher:
     """Writes all four adaptive prompt variables via immutable model_copy.
 
-    Single canonical writer per ADR-069 Decision 1. Replaces the
-    single-variable ``PreferenceContextEnricherImpl``.
+    Single canonical writer per ADR-069 Decision 1.
 
     Args:
         adaptive_provider: An ``AdaptiveContextProvider`` implementation,
