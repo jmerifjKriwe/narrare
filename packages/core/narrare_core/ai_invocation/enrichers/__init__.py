@@ -8,6 +8,9 @@ See:
     ADR-038, ADR-039, ADR-040, INFRA-013, CONSTRAINTS.md RULE-06.
 """
 
+from narrare_core.ai_invocation.enrichers.adaptive import (
+    AdaptiveContextEnricher,
+)
 from narrare_core.ai_invocation.enrichers.consistency import (
     KBConsistencyEnricher,
 )
@@ -19,6 +22,7 @@ from narrare_core.ai_invocation.enrichers.preferences import (
 )
 
 __all__ = [
+    "AdaptiveContextEnricher",
     "KBConsistencyEnricher",
     "KBSuggestedContextEnricher",
     "PreferenceContextEnricherImpl",

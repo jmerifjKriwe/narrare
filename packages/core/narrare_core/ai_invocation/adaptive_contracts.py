@@ -21,8 +21,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from narrare_core.ai_invocation.adaptive_context import (
         AdaptiveContext,
         AdaptiveSettings,
@@ -56,8 +54,8 @@ class AdaptiveContextProvider(Protocol):
 
     async def get_context(
         self,
-        user_id: UUID,
-        project_id: UUID,
+        user_id: object,
+        project_id: object,
     ) -> AdaptiveContext:
         """Return the consolidated `AdaptiveContext` for user+project.
 
@@ -74,8 +72,8 @@ class AdaptiveContextProvider(Protocol):
 
     async def get_settings(
         self,
-        user_id: UUID,
-        project_id: UUID,
+        user_id: object,
+        project_id: object,
     ) -> AdaptiveSettings:
         """Load the persisted `AdaptiveSettings` for user+project.
 
