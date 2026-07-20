@@ -53,6 +53,9 @@ USER_CONTENT_VARS: frozenset[str] = frozenset(
         "entity_name",
         "entity_current_content",
         "entity_body",
+        # ADR-069: user-authored dialogue selection for DIALOGUE_COACH.
+        # Must be XML-tag-wrapped in the Phase 4 template per RULE-22 §6.
+        "text_to_analyze",
     }
 )
 
@@ -97,6 +100,9 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "cross_session_context",
         "style_profile",
         "character_voice_profiles",
+        # ADR-069: system-attributed speaker list for DIALOGUE_COACH.
+        # Produced by DialogueParser-backed attribution (ADR-055 D3).
+        "characters",
         "character_name",
         "character_current_state",
         "character_goal_state",

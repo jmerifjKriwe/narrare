@@ -15,12 +15,13 @@ Investigation result (CR-AUFG-03-05):
 
     Two complementary mechanisms inject preferences:
 
-    1. **Enricher (primary, pipeline path):** ``PreferenceContextEnricherImpl``
+    1. **Enricher (primary, pipeline path):** ``AdaptiveContextEnricher``
        reads ``PromptInvocationContext.user_id``/``project_id`` (top-level
-       fields), fetches preferences, and writes
-       ``dynamic_inputs["user_preferences"]``.  ``merge_prepared_dynamic_inputs``
-       carries this to ``PromptContext.user_preferences`` (a dataclass
-       field).  The composer gate then correctly **skips** (already set).
+       fields), fetches the adaptive context (which composes preference
+       text), and writes ``dynamic_inputs["user_preferences"]``.
+       ``merge_prepared_dynamic_inputs`` carries this to
+       ``PromptContext.user_preferences`` (a dataclass field).  The
+       composer gate then correctly **skips** (already set).
 
     2. **Gate (fallback):** If preferences aren't set by the enricher
        (provider unavailable, or pipeline not wired) and
@@ -28,8 +29,9 @@ Investigation result (CR-AUFG-03-05):
        ``user_id``/``project_id`` from ``extra``.
 
     **Conclusion:** No fix needed.  These tests prove both mechanisms work
-    for writing-path invocations and that there is no double-fetch when
-    both are armed with the same provider.
+    for writing-path invocations and that the composer gate does not
+    re-fetch preferences when the enricher has already populated
+    ``user_preferences``.
 
 This module covers **mechanism 1 (enricher / pipeline path)**.  The composer
 gate fallback (mechanism 2) is covered by
@@ -46,9 +48,11 @@ from uuid import uuid4
 
 import pytest
 
-from narrare_core.ai_invocation.enrichers.preferences import (
-    PreferenceContextEnricherImpl,
+from narrare_core.ai_invocation.adaptive_context import (
+    AdaptiveContext,
+    AdaptiveSettings,
 )
+from narrare_core.ai_invocation.enrichers.adaptive import AdaptiveContextEnricher
 from narrare_core.ai_invocation.models import PromptInvocationContext
 from narrare_core.ai_invocation.non_writing_adapter import compose_invocation
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -136,6 +140,27 @@ class FakePreferenceProvider:
         pass
 
 
+class FakeAdaptiveProvider:
+    """Async fake AdaptiveContextProvider for the writing-path tests.
+
+    Returns a programmable AdaptiveContext. Mirrors the production
+    AdaptiveContextProviderImpl shape — the writing tests use this to
+    isolate the pipeline+composer integration from any mem0/DB I/O.
+    """
+
+    def __init__(self, context: AdaptiveContext) -> None:
+        self._context = context
+        self.calls: list[tuple[object, object]] = []
+
+    async def get_context(self, user_id: object, project_id: object) -> AdaptiveContext:
+        self.calls.append((user_id, project_id))
+        return self._context
+
+    async def get_settings(self, user_id: object, project_id: object) -> AdaptiveSettings:
+        del user_id, project_id
+        return AdaptiveSettings()
+
+
 # ---------------------------------------------------------------------------
 # Helpers — reproduce the writing-path PromptContext construction
 # ---------------------------------------------------------------------------
@@ -199,7 +224,17 @@ class TestPipelineWiredPreferenceInjection:
         project_id = uuid4()
 
         pipeline = InvocationPipeline(
-            enrichers=[PreferenceContextEnricherImpl(preference_provider=provider)],
+            enrichers=[
+                AdaptiveContextEnricher(
+                    adaptive_provider=FakeAdaptiveProvider(
+                        context=AdaptiveContext(
+                            user_id=user_id,
+                            project_id=project_id,
+                            preference_text=provider._profile.to_prompt_text(),
+                        ),
+                    ),
+                ),
+            ],
         )
         composer = PromptComposer(
             cast("Any", FakePromptRegistry()),
@@ -234,7 +269,17 @@ class TestPipelineWiredPreferenceInjection:
         project_id = uuid4()
 
         pipeline = InvocationPipeline(
-            enrichers=[PreferenceContextEnricherImpl(preference_provider=provider)],
+            enrichers=[
+                AdaptiveContextEnricher(
+                    adaptive_provider=FakeAdaptiveProvider(
+                        context=AdaptiveContext(
+                            user_id=user_id,
+                            project_id=project_id,
+                            preference_text=provider._profile.to_prompt_text(),
+                        ),
+                    ),
+                ),
+            ],
         )
         composer = PromptComposer(
             cast("Any", FakePromptRegistry()),
@@ -260,18 +305,26 @@ class TestPipelineWiredPreferenceInjection:
 
     @pytest.mark.asyncio
     async def test_no_double_fetch_when_both_enricher_and_gate_armed(self) -> None:
-        """When both the enricher and the composer gate have a provider,
-        the provider is called exactly ONCE — the enricher sets
-        user_preferences, so the gate's ``not context.user_preferences``
-        condition is False and the gate skips."""
+        """When both the enricher and the composer gate are armed, the
+        composer's preference provider is NOT called — the enricher sets
+        user_preferences via the adaptive provider, so the gate's
+        ``not context.user_preferences`` condition is False and the gate
+        skips (no redundant preference fetch)."""
         provider = FakePreferenceProvider()
         user_id = uuid4()
         project_id = uuid4()
+        adaptive_provider = FakeAdaptiveProvider(
+            context=AdaptiveContext(
+                user_id=user_id,
+                project_id=project_id,
+                preference_text=provider._profile.to_prompt_text(),
+            ),
+        )
 
         pipeline = InvocationPipeline(
-            enrichers=[PreferenceContextEnricherImpl(preference_provider=provider)],
+            enrichers=[AdaptiveContextEnricher(adaptive_provider=adaptive_provider)],
         )
-        # Composer ALSO has the same provider armed — but must NOT re-fetch.
+        # Composer ALSO has a preference provider armed — but must NOT call it.
         composer = PromptComposer(
             cast("Any", FakePromptRegistry()),
             preference_service=cast("Any", provider),
@@ -291,5 +344,8 @@ class TestPipelineWiredPreferenceInjection:
             intent=LLMIntent.WRITE,
         )
 
-        # Enricher fetched once; gate skipped (user_preferences already set).
-        assert len(provider.calls) == 1
+        # Enricher fetched once via the adaptive provider; gate skipped
+        # (user_preferences already set) so the preference provider was
+        # never called.
+        assert len(adaptive_provider.calls) == 1
+        assert len(provider.calls) == 0

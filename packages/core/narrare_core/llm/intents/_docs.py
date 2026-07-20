@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from narrare_core.llm.intents._docs_ai_assist import AI_ASSIST_INTENT_DOCS
 from narrare_core.llm.intents._docs_analysis import ANALYSIS_INTENT_DOCS
 from narrare_core.llm.intents._docs_chat import CHAT_INTENT_DOCS
 from narrare_core.llm.intents._docs_embed import EMBED_INTENT_DOCS
@@ -40,5 +41,6 @@ INTENT_DOCS: dict[LLMIntent, str] = {
     **GENERATION_INTENT_DOCS,
     **EXTRACTION_INTENT_DOCS,
     **CHAT_INTENT_DOCS,
+    **AI_ASSIST_INTENT_DOCS,
     **EMBED_INTENT_DOCS,
 }

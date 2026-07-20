@@ -22,11 +22,13 @@ if TYPE_CHECKING:
 def get_invocation_pipeline() -> InvocationPipeline:
     """Create InvocationPipeline with production implementations.
 
-    Assembles the pipeline with all P0.3 components:
+    Assembles the pipeline with all P0.3 + ADR-069 components:
     - RuntimeVariableValidatorImpl (pre-composition checks)
     - IntentOutputBudgetResolverImpl (budget resolution)
     - FinalPromptValidatorImpl (post-composition checks)
-    - PreferenceContextEnricherImpl (if preference service available)
+    - AdaptiveContextEnricher (ADR-069 — single canonical writer of all
+      four adaptive prompt variables: user_preferences, style_constraints,
+      avoidance_patterns, character_voice_profiles)
     - KBSuggestedContextEnricher (backed by KB repository)
 
     Note:
@@ -37,8 +39,18 @@ def get_invocation_pipeline() -> InvocationPipeline:
         The ``KBSuggestedProviderImpl`` uses ``get_session_factory()`` to
         create per-call database sessions because this function is cached
         (singleton) and cannot depend on request-scoped sessions.
+
+        Phase 2 boundary (ADR-069): ``AdaptiveContextProviderImpl`` is
+        wired with ``profile_provider=None`` — no Backend ProfileProvider
+        exists yet (Phase 4 wires it). The adaptive enricher still writes
+        three of four variables (user_preferences, style_constraints,
+        avoidance_patterns) from PreferenceProfile data;
+        character_voice_profiles stays empty until Phase 4.
     """
     from narrare._app.database import get_session_factory
+    from narrare.adaptive.adaptive_context_provider import (
+        AdaptiveContextProviderImpl,
+    )
     from narrare.kb.kb_suggested_provider import KBSuggestedProviderImpl
     from narrare_core.ai_invocation import (
         FinalPromptValidatorImpl,
@@ -47,16 +59,21 @@ def get_invocation_pipeline() -> InvocationPipeline:
         RuntimeVariableValidatorImpl,
     )
     from narrare_core.ai_invocation.enrichers import (
+        AdaptiveContextEnricher,
         KBSuggestedContextEnricher,
-        PreferenceContextEnricherImpl,
     )
 
     preference_service = _get_preference_service_instance()
 
-    # Preference enricher is always wired — graceful degradation via None
-    # provider (returns context unchanged, preference_status=MISSING).
+    # Adaptive enricher (ADR-069) — single canonical writer of all four
+    # adaptive prompt variables. Phase 2 wires profile_provider=None;
+    # Phase 4 will wire the production Backend ProfileProvider.
+    adaptive_provider = AdaptiveContextProviderImpl(
+        preference_provider=preference_service,
+        profile_provider=None,
+    )
     enrichers: list[ContextEnricher] = [
-        PreferenceContextEnricherImpl(preference_provider=preference_service),
+        AdaptiveContextEnricher(adaptive_provider=adaptive_provider),
     ]
 
     # KB-suggested enricher runs before budget resolution so the resolver

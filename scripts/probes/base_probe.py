@@ -54,7 +54,7 @@ def make_pipeline(
         evidence_dir: Directory for evidence files. Defaults to
             ``<repo_root>/.evidence/``.
         enrichers: Optional sequence of context enrichers to include
-            in the pipeline (e.g. PreferenceContextEnricherImpl).
+            in the pipeline (e.g. AdaptiveContextEnricher).
         variable_validator: Optional pre-composition variable validator.
         budget_resolver: Optional output budget resolver.
         final_validator: Optional post-composition prompt validator.
