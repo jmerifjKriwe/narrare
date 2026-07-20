@@ -33,7 +33,7 @@ See:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import structlog
 
@@ -70,7 +70,7 @@ class AdaptiveContextProviderImpl:
         self._preference_provider = preference_provider
         self._profile_provider = profile_provider
 
-    async def get_context(self, user_id: UUID, project_id: UUID) -> AdaptiveContext:
+    async def get_context(self, user_id: object, project_id: object) -> AdaptiveContext:
         """Assemble AdaptiveContext from preferences + writing profile.
 
         Graceful degradation: when a provider is None or raises, the
@@ -124,9 +124,13 @@ class AdaptiveContextProviderImpl:
             source_parts.append("voice profiles")
         source_summary = ", ".join(source_parts) if source_parts else "no signals"
 
+        # Protocol accepts `object` for caller flexibility (matches
+        # PromptInvocationContext.user_id: object | None + PreferenceProvider
+        # precedent), but AdaptiveContext dataclass semantically types these
+        # as UUID. Cast bridges the design tension without runtime cost.
         return AdaptiveContext(
-            user_id=user_id,
-            project_id=project_id,
+            user_id=cast("UUID", user_id),
+            project_id=cast("UUID", project_id),
             preference_text=preference_text,
             voice_profiles_text=voice_profiles_text,
             style_constraints_text=style_constraints_text,
@@ -134,7 +138,7 @@ class AdaptiveContextProviderImpl:
             source_summary=source_summary,
         )
 
-    async def get_settings(self, user_id: UUID, project_id: UUID) -> AdaptiveSettings:
+    async def get_settings(self, user_id: object, project_id: object) -> AdaptiveSettings:
         """Return default AdaptiveSettings (Phase 2 scaffold).
 
         Phase 3 will load from ``ProjectSettings.adaptive_settings`` JSONB
