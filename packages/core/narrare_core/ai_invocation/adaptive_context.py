@@ -111,3 +111,22 @@ class AdaptiveContext:
             or self.style_constraints_text
             or self.avoidance_patterns_text
         )
+
+
+@dataclass(frozen=True, slots=True)
+class AdaptiveSettings:
+    """Persisted user settings for adaptivity.
+
+    Stored per-project as JSONB on ``ProjectSettings.adaptive_settings``
+    (Phase 3 / ADR-069 Decision 2). Phase 2 ships a scaffold impl that
+    returns defaults only.
+
+    Attributes:
+        enabled: Master switch. When ``False``, the
+            ``AdaptiveContextEnricher`` short-circuits and writes no
+            adaptive variables (graceful no-op).
+        weights: Active weight configuration.
+    """
+
+    enabled: bool = True
+    weights: AdaptiveWeights = field(default_factory=AdaptiveWeights)

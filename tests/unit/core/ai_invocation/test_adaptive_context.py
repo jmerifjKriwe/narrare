@@ -13,6 +13,7 @@ import pytest
 
 from narrare_core.ai_invocation.adaptive_context import (
     AdaptiveContext,
+    AdaptiveSettings,
     AdaptiveWeights,
 )
 
@@ -143,3 +144,44 @@ class TestAdaptiveContext:
         assert "voice_metrics" not in field_names
         assert "metrics" not in field_names
         assert "voice_profiles_text" in field_names
+
+
+class TestAdaptiveSettings:
+    """AdaptiveSettings — persisted user settings."""
+
+    def test_defaults_enabled_with_factory_weights(self) -> None:
+        settings = AdaptiveSettings()
+        assert settings.enabled is True
+        assert isinstance(settings.weights, AdaptiveWeights)
+        assert settings.weights.preference == 0.7
+
+    def test_custom_enabled_false(self) -> None:
+        settings = AdaptiveSettings(enabled=False)
+        assert settings.enabled is False
+
+    def test_custom_weights(self) -> None:
+        weights = AdaptiveWeights(voice_fidelity=0.42)
+        settings = AdaptiveSettings(enabled=True, weights=weights)
+        assert settings.weights.voice_fidelity == 0.42
+
+    def test_default_weights_are_factory_fresh(self) -> None:
+        """Each new AdaptiveSettings gets its own AdaptiveWeights."""
+        a = AdaptiveSettings()
+        b = AdaptiveSettings()
+        assert a.weights is not b.weights
+
+    def test_is_frozen(self) -> None:
+        settings = AdaptiveSettings()
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            settings.enabled = False  # type: ignore[misc]
+
+    def test_is_slotted(self) -> None:
+        settings = AdaptiveSettings()
+        assert not hasattr(settings, "__dict__")
+
+    def test_nested_weights_remain_independent(self) -> None:
+        """Two AdaptiveSettings with the same values do not share weights."""
+        a = AdaptiveSettings()
+        b = AdaptiveSettings()
+        assert a.weights == b.weights
+        assert a.weights is not b.weights
