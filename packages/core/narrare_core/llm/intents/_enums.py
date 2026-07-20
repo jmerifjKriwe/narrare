@@ -142,6 +142,13 @@ class LLMIntent(StrEnum):
     """Web research synthesis."""
 
     # ------------------------------------------------------------------
+    # AI assist operations — writer-facing assistance (ASSIST-* features)
+    # ------------------------------------------------------------------
+
+    DIALOGUE_COACH = "dialogue_coach"
+    """Analyse or improve selected dialogue (ASSIST-004)."""
+
+    # ------------------------------------------------------------------
     # Embeddings (handled separately via embeddings.py)
     # ------------------------------------------------------------------
 

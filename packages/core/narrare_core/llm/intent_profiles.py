@@ -84,6 +84,13 @@ INTENT_PROFILES: dict[LLMIntent, IntentProfile] = {
     LLMIntent.CONSISTENCY: IntentProfile("comprehensive", "reasoning", "Cross-chapter consistency"),
     LLMIntent.BETA_READ: IntentProfile("long_texts", "reasoning", "Reader-perspective feedback"),
     LLMIntent.VOICE: IntentProfile("balanced", "reasoning", "Voice/style analysis"),
+    # Phase 4 stub — ADR-069 may introduce a dedicated profile for Dialogue
+    # Coach. Until then, "reasoning" matches the Analysis-group pattern
+    # (ANALYSE/BETA_READ/VOICE) and "long_texts" mirrors the entry in
+    # intent_categories._INTENT_PROFILE_DEFAULTS.
+    LLMIntent.DIALOGUE_COACH: IntentProfile(
+        "long_texts", "reasoning", "Dialogue analysis and improvement (ASSIST-004)"
+    ),
     # ------------------------------------------------------------------
     # KB — balanced / reasoning for structured work
     # ------------------------------------------------------------------
