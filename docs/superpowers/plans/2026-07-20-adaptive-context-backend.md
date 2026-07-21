@@ -63,6 +63,8 @@ Verbatim from ADR-069 § Decision Drivers, § Consequences, § Retrofit-Plan §3
 | `tests/integration/adaptive/test_migrations.py` | Alembic round-trip regression tests for 0033 + 0034 (RULE-14). | — |
 | `tests/unit/api/adaptive/test_service.py` | Service unit tests with fakes. | — |
 | `tests/unit/api/adaptive/test_repository.py` | Repository unit tests (JSONB round-trip + defaults). | — |
+| `apps/api/narrare/adaptive/profile_provider_impl.py` | `BackendProfileProvider` — Core `ProfileProvider` Protocol impl; loads `ProjectWritingProfile` from KB character entities. Ships via Phase 4 Task 15 (closes the Phase 2 boundary gap). | ≤ 150 LOC |
+| `tests/unit/api/adaptive/test_profile_provider_impl.py` | Unit tests for `BackendProfileProvider` (happy path + graceful degradation + ADR-055/057 boundary). Phase 4 Task 15. | — |
 
 ### NEW files — Phase 4 (Backend ai_assist domain + Core agent)
 
@@ -105,7 +107,7 @@ Verbatim from ADR-069 § Decision Drivers, § Consequences, § Retrofit-Plan §3
 | `scripts/architecture/prompt-surface-manifest.yaml` | ADD `ai_assist/dialogue_coach` route entry (Rule-22 manifest coherence). |
 | `scripts/architecture/adoption-registry.yaml` | ADD `ai_assist/dialogue_coach` to `prompt_path_compliance` + `features.ai_assist.modes.dialogue_coach` + `category_defaults.ai_assist`. |
 | `apps/api/narrare/_app/main.py` | REGISTER `adaptive_router` and `ai_assist_router` in `_register_routers`. |
-| `apps/api/narrare/_app/dependencies_pipeline.py` | UPDATE the docstring's "Phase 2 boundary" note (Phase 3 now loads settings from DB). Phase 4 leaves `profile_provider=None` as in Phase 2 unless a Backend `ProfileProvider` already exists. |
+| `apps/api/narrare/_app/dependencies_pipeline.py` | UPDATE the docstring's "Phase 2 boundary" note (Phase 3 now loads settings from DB). Phase 4 Task 15 rewires `profile_provider=None` → `BackendProfileProvider(session_factory=get_session_factory())` (closes the Phase 2 boundary gap). |
 | `packages/core/narrare_core/agents/__init__.py` | EXPORT `DialogueCoachAgent` + types. |
 
 ### NOT modified (explicitly out of plan)
@@ -117,7 +119,6 @@ Verbatim from ADR-069 § Decision Drivers, § Consequences, § Retrofit-Plan §3
 - `core/ai_invocation/enrichers/adaptive.py` — Phase 2 enricher is the single canonical writer; Phase 3/4 does not touch it.
 - `core/ai_invocation/adaptive_context.py` — Phase 1 dataclasses are stable.
 - LEARN-002 / ASSIST-004 spec docs — Phase 6.
-- `_app/dependencies_pipeline.py` `profile_provider=None` wiring — Phase 2 boundary preserved. Phase 4 does not auto-wire a Backend `ProfileProvider` unless one already exists; if none exists, `voice_profiles_text` stays empty at runtime and the dashboard shows "no voice signals". (Wiring the real Backend `ProfileProvider` is a separate future task; the ADR explicitly leaves this as a Phase 2 boundary.)
 
 ---
 
@@ -125,7 +126,7 @@ Verbatim from ADR-069 § Decision Drivers, § Consequences, § Retrofit-Plan §3
 
 **Phase 3 (Tasks 1–6):** Backend adaptive REST API + persistence. Each task ships independently and leaves `just check` green. Task 1 + 2 may be developed in parallel (independent migrations); Task 3 (Protocol + schemas) gates Task 4 (service); Task 5 (router) gates Task 6 (integration tests).
 
-**Phase 4 (Tasks 7–14):** Backend ai_assist domain. Task 7 (route table + category) is a hard prerequisite for Tasks 8–14 (the route must exist before the template, manifest, agent, or service can reference it). Task 8 (template) + Task 9 (manifest/registry) may be developed together. Tasks 10 + 11 (Core agent types + impl) are sequential. Task 12 (Protocol + schemas) gates Task 13 (service). Task 14 (router + integration tests) closes the runtime-adoption evidence.
+**Phase 4 (Tasks 7–15):** Backend ai_assist domain + Phase 2 boundary closure. Task 7 (route table + category) is a hard prerequisite for Tasks 8–14 (the route must exist before the template, manifest, agent, or service can reference it). Task 8 (template) + Task 9 (manifest/registry) may be developed together. Tasks 10 + 11 (Core agent types + impl) are sequential. Task 12 (Protocol + schemas) gates Task 13 (service). Task 14 (router + integration tests) closes the runtime-adoption evidence. Task 15 (Backend `ProfileProvider` wiring) is independent of the ai_assist chain — it closes the Phase 2 `voice_profiles_text` boundary gap in the adaptive domain and may be developed in parallel with Tasks 7–14; the only ordering constraint is that it lands after Phase 3 Task 4 (which extended `AdaptiveContextProviderImpl` with `record_snapshot`) so the singleton rewiring sees the final provider constructor signature.
 
 Phase 3 and Phase 4 are INDEPENDENT — either may be executed first. The plan orders Phase 3 first because Task 4 extends the Phase 2 scaffold (load settings from DB), which is the natural continuation of Phase 2. Phase 4 Task 7 (replacing Phase 1 Task 5 stubs) is the natural continuation of Phase 1.
 
@@ -4773,6 +4774,80 @@ class TestStream:
 
         assert len(result_events) >= 1
         assert len(result_events[0].issues) == 1
+
+
+class TestInvocationIdPlumbing:
+    """record_snapshot receives the real invocation_id (not chapter.id).
+
+    ADR-069 Decision 11 correlation: the adaptive evidence row MUST be
+    keyed on the invocation_id from ``compose_invocation`` so it joins
+    against ``invocation_evidence.invocation_id``. The previous
+    placeholder (``getattr(chapter, "id", chapter_id)``) would write a
+    bogus key that never matches an evidence row.
+    """
+
+    @pytest.mark.asyncio
+    async def test_snapshot_uses_chapter_id_when_pipeline_is_none(
+        self,
+    ) -> None:
+        """Fallback path: no pipeline → invocation_id is None → chapter_id used.
+
+        In the unit-test setup (``invocation_pipeline=None``),
+        ``compose_invocation`` follows the backward-compat path that
+        skips ``prepare()``, so ``invocation.prepared.context.invocation_id``
+        is ``None``. The service falls back to ``chapter_id`` (still
+        correlatable for testing; production always wires a pipeline).
+        """
+        model = TestModel(custom_output_text=_coach_output_json())
+        provider = FakeAdaptiveProvider()
+        service = DialogueCoachService(
+            chapter_repo=FakeChapterRepo(),  # type: ignore[arg-type]
+            model_registry=FakeModelRegistry(model),  # type: ignore[arg-type]
+            model_config=None,  # type: ignore[arg-type]
+            composer=FakeComposer(),  # type: ignore[arg-type]
+            invocation_pipeline=None,
+            adaptive_provider=provider,  # type: ignore[arg-type]
+        )
+        chapter_id = uuid4()
+        await service.run(
+            chapter_id=chapter_id,
+            user_id=uuid4(),
+            request=DialogueCoachRequest(
+                selection_text='"Hello," Alice said.', mode="analyze"
+            ),
+        )
+        assert len(provider.snapshot_calls) == 1
+        # Fallback: invocation_id is None → service uses chapter_id.
+        assert provider.snapshot_calls[0][0] == chapter_id
+
+    @pytest.mark.asyncio
+    async def test_prompt_helper_returns_invocation_id_alongside_prompt(
+        self,
+    ) -> None:
+        """resolve_dialogue_coach_prompt returns (ComposedPrompt, UUID | None).
+
+        Direct helper test — verifies the tuple contract independently of
+        the service. With ``invocation_pipeline=None`` the id is None
+        (the unit-test fallback path); production wiring mints a real id.
+        """
+        from narrare.ai_assist._prompt import resolve_dialogue_coach_prompt
+
+        composed, invocation_id = await resolve_dialogue_coach_prompt(
+            FakeComposer(),  # type: ignore[arg-type]
+            None,
+            project_id=uuid4(),
+            user_id=uuid4(),
+            language="en",
+            project_title="Test",
+            genre="Fantasy",
+            selection_text='"Hi."',
+            mode="analyze",
+            characters=["Alice"],
+            adaptive_extra={},
+        )
+        assert composed.system == "You are a dialogue coach."
+        # No pipeline → prepare() skipped → invocation_id is None.
+        assert invocation_id is None
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -4869,8 +4944,16 @@ responsibility of resolving the governed ``dialogue_coach`` system prompt
 via :func:`compose_invocation` Mode 1 (``LLMIntent.DIALOGUE_COACH`` +
 ``context_mode="dialogue_coach"``).
 
+Returns both the composed prompt AND the ``invocation_id`` threaded from
+:func:`compose_invocation`'s result, so the caller (the service) can
+correlate the adaptive evidence snapshot with the prompt fingerprint
+(ADR-069 Decision 11). The previous placeholder approach (best-effort
+``getattr(chapter, "id", chapter_id)``) is replaced by the real
+pipeline-minted id.
+
 See:
     ADR-069 Decision 5 (new intent + new category),
+    ADR-069 Decision 11 (adaptive evidence correlation),
     ADR-054 (Mode 1 composer-driven resolution),
     RULE-04 (Modularise, never compress).
 """
@@ -4901,7 +4984,7 @@ async def resolve_dialogue_coach_prompt(
     mode: str,
     characters: list[str],
     adaptive_extra: dict[str, str],
-) -> ComposedPrompt:
+) -> tuple[ComposedPrompt, UUID | None]:
     """Resolve the governed dialogue_coach system prompt (Mode 1).
 
     Builds a :class:`PromptContext` with ``mode="dialogue_coach"`` and
@@ -4923,7 +5006,14 @@ async def resolve_dialogue_coach_prompt(
             AdaptiveContextEnricher when the pipeline runs).
 
     Returns:
-        The composed :class:`ComposedPrompt` (system + user channels).
+        A tuple ``(composed_prompt, invocation_id)``. The
+        ``invocation_id`` comes from
+        :attr:`ComposedInvocation.prepared.context.invocation_id` — the
+        pipeline mints one in ``prepare()`` when the caller did not supply
+        one, so the adaptive evidence row correlates with the prompt
+        fingerprint. ``None`` only on the backward-compatible fallback
+        path (``invocation_pipeline=None``) where ``prepare()`` is
+        skipped; the service then falls back to ``chapter_id``.
     """
     from narrare._app.invocation_context import build_invocation_context
     from narrare_core.ai_invocation import compose_invocation
@@ -4966,7 +5056,12 @@ async def resolve_dialogue_coach_prompt(
             "Prompt composition produced no system prompt for dialogue_coach.",
             code="COMPOSITION_EMPTY",
         )
-    return composed_prompt
+    # invocation_id: prepared.context always exists (the no-pipeline
+    # fallback constructs a noop PreparedInvocation with the caller's
+    # context). With a real pipeline, prepare() mints one if absent
+    # (see _evidence.py: invocation_id = context.invocation_id or uuid4()).
+    invocation_id = invocation.prepared.context.invocation_id
+    return composed_prompt, invocation_id
 ```
 
 Create `apps/api/narrare/ai_assist/_agent_runner.py`:
@@ -5285,7 +5380,7 @@ class DialogueCoachService:
             "character_voice_profiles": adaptive_ctx.voice_profiles_text,
         }
 
-        composed_prompt = await resolve_dialogue_coach_prompt(
+        composed_prompt, invocation_id = await resolve_dialogue_coach_prompt(
             self._composer,
             self._pipeline,
             project_id=project_id,
@@ -5318,9 +5413,16 @@ class DialogueCoachService:
         )
 
         # Best-effort adaptive snapshot — never blocks the response.
+        # invocation_id: prefer the real pipeline-minted id (from
+        # compose_invocation's prepared.context) so the evidence row
+        # correlates with the prompt fingerprint (ADR-069 Decision 11).
+        # Fall back to chapter_id only on the no-pipeline backward-compat
+        # path (unit-test setup) where prepare() is skipped and the id
+        # is None.
+        snapshot_invocation_id = invocation_id or chapter_id
         try:
             await self._adaptive_provider.record_snapshot(
-                invocation_id=getattr(chapter, "id", chapter_id),
+                invocation_id=snapshot_invocation_id,
                 adaptive_context=adaptive_ctx,
                 evidence_repo=None,  # Phase 3 Task 4 method handles None gracefully.
             )
@@ -5328,6 +5430,7 @@ class DialogueCoachService:
             logger.warning(
                 "dialogue_coach_snapshot_failed",
                 chapter_id=str(chapter_id),
+                invocation_id=str(snapshot_invocation_id),
                 exc_info=True,
             )
 
@@ -5417,22 +5520,28 @@ Pipeline (both methods):
 3. Load AdaptiveContext via AdaptiveContextProvider.
 4. resolve_dialogue_coach_prompt() — Mode 1 PromptComposer
    (LLMIntent.DIALOGUE_COACH + context_mode='dialogue_coach').
+   Returns (ComposedPrompt, invocation_id) so the service can correlate
+   the adaptive snapshot with the invocation_evidence row.
 5. run_dialogue_coach_agent() — one LLM call via the Task 11 agent.
 6. map_output_to_response() — Core → API schema mapping.
-7. record_snapshot() — best-effort adaptive evidence write (Phase 3
-   Task 4 capability).
+7. record_snapshot(invocation_id=...) — best-effort adaptive evidence
+   write using the REAL pipeline-minted invocation_id (ADR-069 Decision
+   11 correlation). Replaces the previous placeholder
+   (getattr(chapter, 'id', chapter_id)). Falls back to chapter_id only
+   on the no-pipeline backward-compat path.
 
 Helpers (RULE-04 single-responsibility splits):
 - _speaker_attribution.py: DialogueParser wrapper.
 - _runtime_content.py: user-channel run prompt builder.
-- _prompt.py: Mode 1 resolution.
+- _prompt.py: Mode 1 resolution (returns prompt + invocation_id).
 - _agent_runner.py: agent invocation.
 - _results.py: output → response mapping.
 
 TestModel-based unit tests exercise run() + stream() through the real
-DialogueCoachAgent.
+DialogueCoachAgent. Additional tests verify invocation_id plumbing:
+fallback to chapter_id when no pipeline, and the helper tuple contract.
 
-ADR-069 Decision 7 + Decision 17 / Retrofit-Plan step 19 (service half)."
+ADR-069 Decision 7 + Decision 11 + Decision 17 / Retrofit-Plan step 19 (service half)."
 ```
 
 ---
@@ -5933,6 +6042,560 @@ ADR-069 Decision 8 + Decision 17 / Retrofit-Plan step 20."
 
 ---
 
+### Task 15: Backend `ProfileProvider` wiring — close Phase 2 boundary gap
+
+**Files:**
+- Create: `apps/api/narrare/adaptive/profile_provider_impl.py`
+- Modify: `apps/api/narrare/_app/dependencies_pipeline.py` (wire `BackendProfileProvider` into `AdaptiveContextProviderImpl`; replace `profile_provider=None`)
+- Test: `tests/unit/api/adaptive/test_profile_provider_impl.py` (new)
+- Modify: `tests/integration/adaptive/test_endpoints.py` (extend — assert `voice_profiles_text` is populated when KB has character entries with `voice_analysis`)
+
+**Goal:** Replace the Phase 2 `profile_provider=None` placeholder with a real Backend impl that loads `ProjectWritingProfile` from KB character entities (filtered to those with populated `speech.voice_analysis`). After this task, `AdaptiveContext.voice_profiles_text` is populated whenever the project has at least one character with voice analysis data (from ANAL-008). The ADR-055/057 boundary is preserved: only the descriptive `speech_summary` text surfaces via `formatted_voice_profiles`; numeric `voice_metrics` never enter the adaptive context.
+
+**Interfaces:**
+- Consumes:
+  - Core `ProfileProvider` Protocol (`packages/core/narrare_core/ai_invocation/contracts.py:140`) — single async method `get_profile(project_id) -> ProjectWritingProfile | None`.
+  - `ProfileAssembler` + `build_character_voice_profile` from `narrare_core.profiles` (the existing extraction path; same one `voice_profile_adapter.py` uses).
+  - KB character entity loader — the existing per-project character-entity query (mirror the access pattern used by `KBSuggestedProviderImpl`; consume via the session factory because the singleton pipeline cannot depend on request-scoped sessions).
+  - `ProjectSettings` (existing) for writing language / genre / tone when assembling the profile metadata.
+- Produces:
+  - `BackendProfileProvider` — `ProfileProvider` Protocol impl bound to a session factory. Each `get_profile()` call opens a short-lived session, loads character entities, filters to those with non-empty `speech.voice_analysis`, and assembles the `ProjectWritingProfile`.
+  - Wired singleton: `get_invocation_pipeline()` now constructs `AdaptiveContextProviderImpl(profile_provider=BackendProfileProvider(...))` instead of `None`.
+
+**Implementation notes:**
+
+- **Pattern to mirror:** `apps/api/narrare/writing/voice_profile_adapter.py` — the existing `KBEntityVoiceProfileProvider` already extracts `CharacterVoiceProfile` instances from KB entities via `build_character_voice_profile()`. Task 15's `BackendProfileProvider` is the consolidated adapter that the *invocation pipeline* (not just the writing API) consumes. It must not duplicate the extraction logic — it composes `ProfileAssembler` over the same `build_character_voice_profile` path.
+- **Singleton + session factory:** `get_invocation_pipeline()` is `@lru_cache`-decorated. It cannot take a request-scoped `AsyncSession`. Mirror `KBSuggestedProviderImpl(session_factory=get_session_factory())` exactly: the provider stores the factory and opens a short-lived session per `get_profile()` call.
+- **Graceful degradation (RULE-11):** if the KB query fails, returns no characters, or no character has `voice_analysis`, return `None`. `AdaptiveContextProviderImpl` already handles `profile_provider=None` / `get_profile()=None` correctly (Phase 2 contract — empty `voice_profiles_text`, dashboard shows "no voice signals"). No 500, no crash.
+- **ADR-055/057 boundary:** `BackendProfileProvider` does NOT compute or expose `voice_metrics`. It only surfaces the descriptive `speech_summary` block via `ProjectWritingProfile.formatted_voice_profiles` (which renders `**{name}**: {speech_summary}` per character). The numeric metrics stay checking-path only — `ProfileAssembler` constructs `ProjectWritingProfile` from `CharacterVoiceProfile` instances whose `voice_metrics` field is never read by the adaptive enricher.
+- **Out of scope:** writing-side `VoiceProfileConsumer` / `BackendVoiceProfileConsumer` (already shipped under ADR-050 P1-C). Task 15 does NOT modify the writing path — it only wires the invocation-pipeline-side `ProfileProvider`.
+
+**Constraint:** the existing Phase 2 + Phase 3 Task 4 + Task 5 tests MUST stay green. They construct `AdaptiveContextProviderImpl(profile_provider=None, ...)` directly in unit tests (bypassing the singleton) — those paths are unaffected. Only the production singleton wiring changes.
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `tests/unit/api/adaptive/test_profile_provider_impl.py`:
+
+```python
+"""Tests for BackendProfileProvider (ADR-069 Phase 2 boundary closure).
+
+Closes the gap noted in Phase 2: ``AdaptiveContextProviderImpl`` was wired
+with ``profile_provider=None`` (no Backend impl existed). Task 15 ships the
+impl. After this task, ``AdaptiveContext.voice_profiles_text`` is populated
+whenever the project has at least one character KB entity with populated
+``speech.voice_analysis``.
+
+ADR-055/057 boundary: the provider surfaces ONLY the descriptive
+``speech_summary`` via ``formatted_voice_profiles``. Numeric
+``voice_metrics`` never enter ``AdaptiveContext``.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
+
+import pytest
+
+from narrare.adaptive.profile_provider_impl import BackendProfileProvider
+
+
+def _character_entity(
+    *,
+    name: str,
+    voice_analysis: dict[str, Any] | None,
+    confidence: float = 1.0,
+) -> Any:
+    """Build a character KB entity-like object for tests."""
+    speech: dict[str, Any] = {}
+    if voice_analysis is not None:
+        speech["voice_analysis"] = voice_analysis
+    return MagicMock(
+        entity_type="character",
+        entity_id=uuid4(),
+        name=name,
+        confidence=confidence,
+        updated_at=None,
+        metadata={"speech": speech} if speech else {},
+    )
+
+
+class _FakeSessionFactory:
+    """Async session factory that returns a session mock per call."""
+
+    def __init__(self, entities: list[Any]) -> None:
+        self._entities = entities
+
+    def __call__(self) -> Any:
+        session = MagicMock()
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = self._entities
+        session.execute = AsyncMock(return_value=result)
+        return session
+
+
+class TestGetProfileHappyPath:
+    """get_profile() returns ProjectWritingProfile with voice profiles."""
+
+    @pytest.mark.asyncio
+    async def test_returns_profile_with_voice_profiles(self) -> None:
+        """KB has 1 character with voice_analysis → profile populated."""
+        entity = _character_entity(
+            name="Alice",
+            voice_analysis={
+                "formality": 0.7,
+                "vocabulary_level": "complex",
+                "sentence_profile": "measured",
+            },
+        )
+        factory = _FakeSessionFactory([entity])
+        provider = BackendProfileProvider(session_factory=factory)
+        profile = await provider.get_profile(project_id=uuid4())
+        assert profile is not None
+        # formatted_voice_profiles renders **{name}**: {speech_summary} per char
+        assert "Alice" in profile.formatted_voice_profiles
+
+    @pytest.mark.asyncio
+    async def test_returns_profile_with_multiple_characters(self) -> None:
+        """KB has multiple characters → all surface in the profile."""
+        entities = [
+            _character_entity(
+                name="Alice",
+                voice_analysis={"formality": 0.7},
+            ),
+            _character_entity(
+                name="Bob",
+                voice_analysis={"formality": 0.3},
+            ),
+        ]
+        factory = _FakeSessionFactory(entities)
+        provider = BackendProfileProvider(session_factory=factory)
+        profile = await provider.get_profile(project_id=uuid4())
+        assert profile is not None
+        rendered = profile.formatted_voice_profiles
+        assert "Alice" in rendered
+        assert "Bob" in rendered
+
+
+class TestGetProfileGracefulDegradation:
+    """RULE-11: missing data returns None — never crashes."""
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_kb_empty(self) -> None:
+        """No character entities → None (dashboard shows 'no voice signals')."""
+        factory = _FakeSessionFactory([])
+        provider = BackendProfileProvider(session_factory=factory)
+        result = await provider.get_profile(project_id=uuid4())
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_no_characters_have_voice_analysis(self) -> None:
+        """Characters exist but none have speech.voice_analysis → None."""
+        entities = [
+            _character_entity(name="Alice", voice_analysis=None),
+            _character_entity(name="Bob", voice_analysis=None),
+        ]
+        factory = _FakeSessionFactory(entities)
+        provider = BackendProfileProvider(session_factory=factory)
+        result = await provider.get_profile(project_id=uuid4())
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_none_on_kb_error(self) -> None:
+        """KB query raises → log warning + return None (RULE-11)."""
+
+        class _FailingFactory:
+            def __call__(self) -> Any:
+                session = MagicMock()
+                session.execute = AsyncMock(side_effect=RuntimeError("DB down"))
+                return session
+
+        provider = BackendProfileProvider(session_factory=_FailingFactory())
+        result = await provider.get_profile(project_id=uuid4())
+        assert result is None
+
+
+class TestVoiceMetricsBoundary:
+    """ADR-055/057: voice_metrics never enter AdaptiveContext."""
+
+    @pytest.mark.asyncio
+    async def test_profile_does_not_expose_voice_metrics_text(self) -> None:
+        """formatted_voice_profiles renders speech_summary, never metrics.
+
+        The descriptive text MUST be the only voice signal surfaced.
+        Numeric metrics stay on CharacterVoiceProfile.voice_metrics (which
+        the adaptive enricher never reads — see adaptive_context_provider.py).
+        """
+        entity = _character_entity(
+            name="Alice",
+            voice_analysis={
+                "formality": 0.7,
+                "voice_metrics": {"cadence_wpm": 142, "avg_sentence_len": 11.3},
+            },
+        )
+        factory = _FakeSessionFactory([entity])
+        provider = BackendProfileProvider(session_factory=factory)
+        profile = await provider.get_profile(project_id=uuid4())
+        assert profile is not None
+        text = profile.formatted_voice_profiles
+        # Descriptive summary is present; numeric metrics never render here:
+        assert "Alice" in text
+        assert "cadence_wpm" not in text
+        assert "142" not in text
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `uv run pytest tests/unit/api/adaptive/test_profile_provider_impl.py -v`
+Expected: FAIL with `ImportError: cannot import name 'BackendProfileProvider'`.
+
+- [ ] **Step 3: Implement `BackendProfileProvider`**
+
+Create `apps/api/narrare/adaptive/profile_provider_impl.py`:
+
+```python
+"""Backend ProfileProvider — loads ProjectWritingProfile from KB (ADR-069).
+
+Closes the Phase 2 boundary gap: ``AdaptiveContextProviderImpl`` was wired
+with ``profile_provider=None`` because no Backend impl existed. This module
+ships the consolidated adapter the invocation pipeline consumes.
+
+Pattern mirrors ``apps/api/narrare/writing/voice_profile_adapter.py`` (the
+writing-API-side adapter shipped under ADR-050 P1-C). Task 15 does NOT
+duplicate extraction logic — it composes the same
+:func:`build_character_voice_profile` + :class:`ProfileAssembler` path over
+KB character entities.
+
+ADR-055/057 boundary: this provider surfaces ONLY the descriptive
+``speech_summary`` via :attr:`ProjectWritingProfile.formatted_voice_profiles`.
+Numeric ``voice_metrics`` (when present on ``CharacterVoiceProfile``) are
+never read by the adaptive enricher and never enter ``AdaptiveContext``.
+
+RULE-11 graceful degradation: returns ``None`` when the KB query fails,
+returns no characters, or no character has ``speech.voice_analysis``. The
+caller (``AdaptiveContextProviderImpl``) handles ``None`` correctly — empty
+``voice_profiles_text``, dashboard shows "no voice signals".
+
+See:
+    ADR-069 Decision 4 (ProfileProvider boundary),
+    ADR-050 P1-C (writing-side VoiceProfileConsumer precedent),
+    ADR-055/057 (voice_metrics stay checking-path only),
+    CONSTRAINTS.md RULE-08 (external integrations abstracted), RULE-11.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Protocol
+
+import structlog
+
+from narrare_core.profiles._voice_extraction import build_character_voice_profile
+from narrare_core.profiles.assembly import ProfileAssembler
+from narrare_core.profiles.models import CharacterVoiceProfile
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from uuid import UUID
+
+    from narrare_core.profiles.models import ProjectWritingProfile
+    from narrare_core.writing.context_models import KBEntity
+
+logger = structlog.get_logger(__name__)
+
+
+class _AsyncSessionFactory(Protocol):
+    """Structural type matching ``get_session_factory()``'s return."""
+
+    def __call__(self) -> Any: ...
+
+
+class _CharacterVoiceProfileProvider:
+    """Single-snapshot provider over character KB entities.
+
+    Adapter around :func:`build_character_voice_profile` so the
+    :class:`ProfileAssembler` consumes the same extraction path as the
+    writing-side adapter. Filters to characters with populated
+    ``speech.voice_analysis``.
+    """
+
+    def __init__(self, entities: tuple[KBEntity, ...]) -> None:
+        self._entities = entities
+
+    async def get_character_voices(
+        self,
+        project_id: UUID,
+        *,
+        max_age_days: int = 30,
+    ) -> list[CharacterVoiceProfile]:
+        """Return voice profiles for characters with voice_analysis."""
+        del project_id, max_age_days  # snapshot already scoped by caller
+        profiles: list[CharacterVoiceProfile] = []
+        for entity in self._entities:
+            if entity.entity_type != "character":
+                continue
+            # Only surface characters whose speech.voice_analysis is populated.
+            speech = (entity.metadata or {}).get("speech") or {}
+            if not isinstance(speech, dict) or "voice_analysis" not in speech:
+                continue
+            profile = build_character_voice_profile(
+                entity_id=entity.entity_id,
+                name=entity.name,
+                metadata=entity.metadata,
+                updated_at=entity.updated_at,
+                max_age_days=max_age_days,
+            )
+            if profile is not None:
+                profiles.append(profile)
+        return profiles
+
+
+class BackendProfileProvider:
+    """Production :class:`ProfileProvider` for the invocation pipeline.
+
+    Bound to a session factory (NOT a request-scoped session) so it can be
+    wired into the ``@lru_cache``-decorated ``get_invocation_pipeline()``
+    singleton. Each ``get_profile()`` call opens a short-lived session,
+    loads character KB entities, filters to those with voice_analysis, and
+    assembles the :class:`ProjectWritingProfile`.
+
+    Args:
+        session_factory: Callable returning a fresh ``AsyncSession``
+            (mirror of ``get_session_factory()``).
+    """
+
+    def __init__(self, session_factory: _AsyncSessionFactory) -> None:
+        self._session_factory = session_factory
+
+    async def get_profile(
+        self,
+        project_id: object,
+    ) -> ProjectWritingProfile | None:
+        """Load the project writing profile from KB character entities.
+
+        Args:
+            project_id: The project identifier.
+
+        Returns:
+            The assembled :class:`ProjectWritingProfile`, or ``None`` when
+            no character entities have populated ``speech.voice_analysis``
+            (RULE-11 graceful degradation).
+        """
+        from sqlalchemy import select
+
+        from narrare.kb.models import KBEntityModel  # type: ignore[import-not-found]
+
+        try:
+            session = self._session_factory()
+            try:
+                stmt = (
+                    select(KBEntityModel)
+                    .where(KBEntityModel.novel_id == project_id)
+                    .where(KBEntityModel.entity_type == "character")
+                )
+                result = await session.execute(stmt)
+                entities = tuple(result.scalars().all())
+            finally:
+                # Short-lived session — close after the read.
+                close = getattr(session, "close", None)
+                if close is not None:
+                    await close()
+        except Exception:
+            logger.warning(
+                "backend_profile_provider_kb_load_failed",
+                project_id=str(project_id),
+                exc_info=True,
+            )
+            return None
+
+        if not entities:
+            return None
+
+        provider = _CharacterVoiceProfileProvider(entities)
+        assembler = ProfileAssembler(provider=provider)
+        try:
+            profile = await assembler.assemble(
+                project_id=project_id,  # type: ignore[arg-type]
+                max_age_days=30,
+            )
+        except Exception:
+            logger.warning(
+                "backend_profile_provider_assemble_failed",
+                project_id=str(project_id),
+                exc_info=True,
+            )
+            return None
+
+        # Drop the profile when no character contributed a voice profile
+        # (assembler may return an empty-shell ProjectWritingProfile).
+        if not profile.formatted_voice_profiles.strip():
+            return None
+        return profile
+```
+
+> **Note (implementer discretion):** the exact ORM model import path (`KBEntityModel`) and the per-project character query should be reconciled with the existing KB repository pattern at implementation time. If a higher-level KB entity repository method already exists (e.g. `list_by_project_and_type`), prefer it over the raw `select(KBEntityModel)`. The contract this task enforces is the Protocol conformance + graceful degradation + ADR-055/057 boundary — the storage adapter choice is a backend-internal detail.
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `uv run pytest tests/unit/api/adaptive/test_profile_provider_impl.py -v`
+Expected: PASS — all tests green (happy path, graceful degradation, boundary).
+
+- [ ] **Step 5: Wire `BackendProfileProvider` into `dependencies_pipeline.py`**
+
+Modify `apps/api/narrare/_app/dependencies_pipeline.py`. Replace the `profile_provider=None` block in `get_invocation_pipeline()`:
+
+```python
+    # Adaptive enricher (ADR-069) — single canonical writer of all four
+    # adaptive prompt variables. Phase 2 wired profile_provider=None;
+    # Phase 4 Task 15 wires the production Backend ProfileProvider
+    # (loads ProjectWritingProfile from KB character entities).
+    from narrare.adaptive.profile_provider_impl import BackendProfileProvider
+
+    preference_service = _get_preference_service_instance()
+    profile_provider = BackendProfileProvider(
+        session_factory=get_session_factory(),
+    )
+    adaptive_provider = AdaptiveContextProviderImpl(
+        preference_provider=preference_service,
+        profile_provider=profile_provider,
+    )
+```
+
+Also update the module docstring's "Phase 2 boundary" note (currently at lines 43–48 of the file) to reflect the closure:
+
+```python
+        Phase 2 boundary (ADR-069) — CLOSED by Phase 4 Task 15:
+        ``AdaptiveContextProviderImpl`` is now wired with a real Backend
+        ``ProfileProvider`` (``BackendProfileProvider``) that loads
+        ``ProjectWritingProfile`` from KB character entities. The adaptive
+        enricher writes all four variables (user_preferences,
+        style_constraints, avoidance_patterns, character_voice_profiles)
+        whenever the project has at least one character with populated
+        ``speech.voice_analysis``.
+```
+
+- [ ] **Step 6: Extend the adaptive integration test to assert `voice_profiles_text` is populated**
+
+Modify `tests/integration/adaptive/test_endpoints.py`. Add a new test that seeds the KB with a character entity carrying `voice_analysis` and asserts the GET context response surfaces it:
+
+```python
+class TestVoiceProfilesTextPopulated:
+    """Phase 4 Task 15 — voice_profiles_text is populated when KB has data.
+
+    Closes the Phase 2 boundary gap: ``profile_provider`` was None in
+    Phase 2/3; Task 15 wires the real Backend ProfileProvider. After this
+    task, GET /adaptive/{project_id}/context returns a non-empty
+    ``sources.voice_profiles_text`` whenever the project has at least one
+    character KB entity with populated ``speech.voice_analysis``.
+    """
+
+    @pytest.mark.asyncio
+    async def test_voice_profiles_text_non_empty_when_kb_has_voice_analysis(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+        db_session: AsyncSession,
+    ) -> None:
+        project_id = await _create_project(client, auth_headers)
+
+        # Seed a character KB entity with voice_analysis (ANAL-008 shape).
+        from narrare.kb.models import KBEntityModel  # type: ignore[import-not-found]
+
+        character = KBEntityModel(
+            novel_id=project_id,
+            entity_type="character",
+            entity_id=uuid4(),
+            name="Alice",
+            confidence=1.0,
+            metadata={
+                "speech": {
+                    "voice_analysis": {
+                        "formality": 0.7,
+                        "vocabulary_level": "complex",
+                        "sentence_profile": "measured",
+                    }
+                }
+            },
+        )
+        db_session.add(character)
+        await db_session.commit()
+
+        response = await client.get(
+            f"/api/v1/adaptive/{project_id}/context",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        body = response.json()
+        # Task 15 contract: voice_profiles_text is non-empty.
+        assert body["has_any_signal"] is True
+        assert "Alice" in body["sources"]["voice_profiles_text"]
+
+    @pytest.mark.asyncio
+    async def test_voice_profiles_text_empty_when_kb_has_no_voice_analysis(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Regression guard: no characters with voice_analysis → empty."""
+        project_id = await _create_project(client, auth_headers)
+        response = await client.get(
+            f"/api/v1/adaptive/{project_id}/context",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["sources"]["voice_profiles_text"] == ""
+```
+
+> **Note:** the exact ORM construction (`KBEntityModel(novel_id=..., ...)`) and the `db_session` fixture should be reconciled with the existing KB seed pattern at implementation time. The contract enforced is the non-empty `voice_profiles_text` end-to-end through the wired singleton.
+
+- [ ] **Step 7: Run `just check`**
+
+Run: `just check`
+Expected: All 9 step groups pass. The Phase 2 + Phase 3 Task 4 + Task 5 unit tests (which construct `AdaptiveContextProviderImpl(profile_provider=None, ...)` directly, bypassing the singleton) stay green. The integration test exercises the full production wiring.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add apps/api/narrare/adaptive/profile_provider_impl.py \
+        apps/api/narrare/_app/dependencies_pipeline.py \
+        tests/unit/api/adaptive/test_profile_provider_impl.py \
+        tests/integration/adaptive/test_endpoints.py
+git commit -m "feat(api): wire Backend ProfileProvider — close Phase 2 voice_profiles_text gap
+
+Phase 4 Task 15 — closes the Phase 2 boundary documented in ADR-069:
+AdaptiveContextProviderImpl was wired with profile_provider=None because
+no Backend ProfileProvider existed. This task ships the consolidated
+adapter the invocation pipeline consumes.
+
+BackendProfileProvider:
+- Implements the Core ProfileProvider Protocol (contracts.py:140).
+- Loads ProjectWritingProfile from KB character entities via the same
+  extraction path as the writing-side voice_profile_adapter.py
+  (build_character_voice_profile + ProfileAssembler). No duplication.
+- Bound to a session factory (mirror of KBSuggestedProviderImpl) so it
+  can be wired into the @lru_cache get_invocation_pipeline() singleton.
+- Filters to characters with populated speech.voice_analysis (ANAL-008
+  shape); returns None when none qualify (RULE-11 graceful degradation).
+
+ADR-055/057 boundary preserved: surfaces ONLY the descriptive
+speech_summary via formatted_voice_profiles. Numeric voice_metrics
+never enter AdaptiveContext (structurally asserted by the Core
+ProfileProvider / adaptive enricher contract).
+
+dependencies_pipeline.py: replaces profile_provider=None with
+BackendProfileProvider(session_factory=get_session_factory()). The
+module docstring's 'Phase 2 boundary' note is updated to reflect the
+closure.
+
+Integration test asserts voice_profiles_text is non-empty when the KB
+has a character with voice_analysis, and empty when it does not.
+
+ADR-069 Decision 4 / Retrofit-Plan follow-up (Phase 2 boundary closure)."
+```
+
+---
+
 ## Self-Review
 
 ### 1. Spec coverage
@@ -5950,6 +6613,7 @@ ADR-069 Decision 8 + Decision 17 / Retrofit-Plan step 20."
 | 19 — `DialogueCoachService` (both `run()` + `stream()`) + SSE router + DI | Tasks 12 + 13 + 14 | ✅ |
 | 20 — Integration tests (SSE flow; TestModel) | Task 14 | ✅ |
 | Phase 1 Task 5 stubs replacement | Task 7 | ✅ |
+| Phase 2 boundary gap (`voice_profiles_text`) | Task 15 | ✅ |
 
 **All Retrofit-Plan steps 11–20 are covered.** No gap remains.
 
@@ -5994,7 +6658,7 @@ Cross-checked every type referenced in later tasks against its definition in ear
 | RULE-04 | All NEW files have explicit LOC caps in the File Structure Map. Helpers are split by responsibility. |
 | RULE-06 | Router files contain zero business logic — pure delegation. Service files own orchestration. Repository files own SQL. |
 | RULE-07 | Core `DialogueCoachAgent` imports only `narrare_core.*`. Backend imports Core types via `from narrare_core.*`. No `core/` → `apps/` imports. |
-| RULE-08 | mem0 stays behind `PreferenceProvider`; DB stays behind repositories. |
+| RULE-08 | mem0 stays behind `PreferenceProvider`; DB stays behind repositories. KB character entities stay behind `BackendProfileProvider` (Task 15) — services never query KB directly for voice profiles. |
 | RULE-10 | Every task has TDD (test → red → impl → green → just check → commit). Integration tests for all endpoints. |
 | RULE-11 | Empty selection → graceful "nothing to analyse" result. Missing adaptive signals → analysis proceeds with empty variables. Provider failures log warnings. |
 | RULE-12 | Both services are reachable from WebUI / MCP / A2A / CLI without changes. |
@@ -6004,7 +6668,7 @@ Cross-checked every type referenced in later tasks against its definition in ear
 | RULE-22 | Adaptive variables have one canonical writer (Phase 2 enricher). `text_to_analyze` is XML-wrapped in the template (Task 8) per §6. Manifest declares it (Task 9). |
 | RULE-23 | No `# type: ignore` introduced. Full annotations. |
 | ADR-054 | Mode-1 PromptComposer from day one (Tasks 8 + 13). |
-| ADR-055/057 | `voice_metrics` never named in the template (Task 8 test asserts this). `DialogueCoachDeps` has `voice_profiles_text` only (Task 10 test asserts no `voice_metrics` field). |
+| ADR-055/057 | `voice_metrics` never named in the template (Task 8 test asserts this). `DialogueCoachDeps` has `voice_profiles_text` only (Task 10 test asserts no `voice_metrics` field). `BackendProfileProvider` (Task 15) surfaces only the descriptive `speech_summary` via `formatted_voice_profiles` — Task 15 test asserts `cadence_wpm`/numeric values never appear in the rendered text. |
 | ADR-056 | Runtime evidence: Task 14 integration test + Task 9 adoption-registry entry. |
 | ADR-065 | Two-method `run()` + `stream()` contract (Tasks 12 + 13). |
 | ADR-067 | `AdaptiveContextProvider` mirrors `KBContextProvider` (Phase 1; preserved). |
@@ -6034,16 +6698,17 @@ Cross-checked every type referenced in later tasks against its definition in ear
 | 12 — ai_assist contracts + schemas + DI | Protocol + 4 Pydantic models + DI factory | **S** |
 | 13 — DialogueCoachService + 5 helpers | Service + 5 helper modules + tests | **L** |
 | 14 — ai_assist SSE router + integration tests | Router + 2 integration test files | **M** |
+| 15 — Backend ProfileProvider wiring | Backend impl + DI rewiring + integration test updates | **M** |
 
-**Total: 14 tasks (3 × L, 8 × M, 3 × S).**
+**Total: 15 tasks (3 × L, 9 × M, 3 × S).**
 
 ### 7. Concerns about feasibility
 
 1. **Manifest-route coherence gate.** Task 7 (route_table) + Task 8 (template) + Task 9 (manifest) may need to land as one commit if the architecture gate enforces manifest-route-template coherence atomically. The plan documents this (Task 7 step 10) and allows merging. **Mitigation:** run `just check` after Task 9 at the latest; if Task 7 alone fails the gate, combine 7 + 8 + 9 into one commit.
 
-2. **`record_snapshot` invocation_id plumbing.** Phase 3 Task 4 adds `record_snapshot(invocation_id, adaptive_context, evidence_repo)` to `AdaptiveContextProviderImpl`. Phase 4 Task 13 calls it after the agent run. The `invocation_id` comes from `compose_invocation()`'s `ComposedInvocation` — Task 13's `_prompt.py` helper returns `ComposedPrompt`, not the full `ComposedInvocation`. The service in Task 13 uses `getattr(chapter, "id", chapter_id)` as a placeholder invocation_id for the snapshot. This is architecturally imperfect but functionally correct for Phase 4 (the snapshot is best-effort; the real `invocation_id` from `compose_invocation` is available on `ComposedInvocation.invocation_context.invocation_id` if Task 13 is adjusted to return the full invocation). **Recommended refinement:** Task 13 step 4 should capture `invocation.invocation_id` from the `compose_invocation` result (inside `_prompt.py`) and pass it through. The plan as written leaves this as a best-effort call; the refinement is a 5-line change in `_prompt.py` to return the invocation_id alongside the composed prompt.
+2. **`record_snapshot` invocation_id plumbing.** **Resolved in-plan.** Phase 3 Task 4 adds `record_snapshot(invocation_id, adaptive_context, evidence_repo)` to `AdaptiveContextProviderImpl`. Phase 4 Task 13 captures the real `invocation_id` from `compose_invocation()`'s `ComposedInvocation.prepared.context.invocation_id` (verified against actual code: `_evidence.py:106` mints one in `prepare()` when absent; the no-pipeline fallback in `_compose_without_pipeline` propagates the caller's context so the field is always present, `None` only on the backward-compat path). Task 13's `_prompt.py` helper returns `tuple[ComposedPrompt, UUID | None]`; the service unpacks both values and passes `invocation_id or chapter_id` to `record_snapshot()`. Two new tests in Task 13 verify the plumbing: (a) the service-level test confirms `chapter_id` is used as the fallback when no pipeline is wired (the unit-test setup); (b) a focused helper-level test verifies the tuple contract. The placeholder `getattr(chapter, "id", chapter_id)` is gone — the real pipeline-minted id flows through in production.
 
-3. **Backend `ProfileProvider` wiring.** Phase 2's `AdaptiveContextProviderImpl` is wired with `profile_provider=None`. Phase 3 + 4 preserve this boundary (the File Structure Map's "NOT modified" list documents it). Consequence: `voice_profiles_text` stays empty at runtime until a separate future task wires a real Backend `ProfileProvider`. The Dialogue Coach still works (it analyses dialogue without voice profiles — the governed template renders `{{character_voice_profiles}}` as empty). The dashboard shows "no voice signals". This is the documented Phase 2 boundary, not a regression. **Action item for the coordinator:** flag this as a follow-up task (wire Backend `ProfileProvider`) — it is NOT in this plan's scope.
+3. **Backend `ProfileProvider` wiring.** **Resolved in-plan via Task 15.** Phase 2's `AdaptiveContextProviderImpl` was wired with `profile_provider=None`. Task 15 ships `BackendProfileProvider` (loads `ProjectWritingProfile` from KB character entities via the same extraction path as `voice_profile_adapter.py`) and rewires `get_invocation_pipeline()` to use it. After Task 15, `AdaptiveContext.voice_profiles_text` is populated whenever the project has at least one character with `speech.voice_analysis`. The ADR-055/057 boundary is preserved (only the descriptive `speech_summary` surfaces; `voice_metrics` never enter `AdaptiveContext`). Unit tests + an extended integration test verify both the populated and the graceful-degradation paths.
 
 4. **`text_to_analyze` as both template variable AND run prompt.** The ADR (Decision 10 + Task 8 template) references `{{text_to_analyze}}` in the system prompt's `<text_to_analyze>` XML block. Task 13's `_prompt.py` supplies it via `PromptContext.extra`, AND the `_runtime_content.py` helper builds a run prompt with the same text. This means the selection text appears twice in the LLM call: once in the system prompt (from the template) and once in the user-channel run prompt (from `build_run_prompt`). **Decision:** the template's `<text_to_analyze>` block is the canonical location (Mode 1 — the composed prompt carries it). The `build_run_prompt` helper is a fallback for when `composed_prompt.user` is None (mirrors the `character_voice` pattern). In practice, `compose_invocation` produces `composed_prompt.user=None` for most analysis templates, so `build_run_prompt` fires. **This is consistent with the established pattern** (character_voice does the same with attributed dialogue). No change needed.
 
