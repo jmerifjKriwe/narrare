@@ -81,6 +81,17 @@ class InvocationEvidenceModel(Base):
         nullable=True,
     )
 
+    # ADR-069 D11: adaptive context provenance + resolved weights.
+    # NULL on pre-ADR-069 rows and when adaptive context is disabled.
+    adaptive_source_summary: Mapped[dict[str, str] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+    adaptive_weights: Mapped[dict[str, float] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
     def __repr__(self) -> str:
         return (
             f"InvocationEvidenceModel(id={self.id}, feature_id={self.feature_id!r}, "

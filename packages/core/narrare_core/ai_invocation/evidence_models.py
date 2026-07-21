@@ -58,6 +58,10 @@ class FeatureInvocationEvidence(BaseModel):
     model_call_marker: str | None = None
     streaming: bool | None = None
     manual_injection_exception: str | None = None
+    # ADR-069 D11: adaptive context provenance + weights (NULL when adaptive
+    # context is disabled or unavailable — graceful degradation per RULE-11).
+    adaptive_source_summary: dict[str, str] | None = None
+    adaptive_weights: dict[str, float] | None = None
 
 
 def _rebuild_forward_refs() -> None:

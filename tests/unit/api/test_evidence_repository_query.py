@@ -36,6 +36,9 @@ _ORM_MODEL_DEFAULTS: dict[str, object] = {
     "budget_decision_fingerprint": None,
     "model_call_marker": None,
     "manual_injection_exception": None,
+    # ADR-069 D11: adaptive context provenance + resolved weights.
+    "adaptive_source_summary": None,
+    "adaptive_weights": None,
 }
 
 

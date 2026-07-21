@@ -57,6 +57,9 @@ def _domain_to_orm(evidence: FeatureInvocationEvidence) -> dict[str, object]:
         "budget_decision_fingerprint": evidence.budget_decision_fingerprint,
         "model_call_marker": evidence.model_call_marker,
         "manual_injection_exception": evidence.manual_injection_exception,
+        # ADR-069 D11: adaptive context provenance + resolved weights.
+        "adaptive_source_summary": evidence.adaptive_source_summary,
+        "adaptive_weights": evidence.adaptive_weights,
     }
 
 
@@ -102,6 +105,9 @@ def _orm_to_domain(model: InvocationEvidenceModel) -> FeatureInvocationEvidence:
         budget_decision_fingerprint=model.budget_decision_fingerprint,
         model_call_marker=model.model_call_marker,
         manual_injection_exception=model.manual_injection_exception,
+        # ADR-069 D11: adaptive context provenance + resolved weights.
+        adaptive_source_summary=model.adaptive_source_summary,
+        adaptive_weights=model.adaptive_weights,
     )
 
 

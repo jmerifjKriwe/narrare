@@ -37,3 +37,24 @@ async def test_project_settings_has_adaptive_settings_column(
     )
     adaptive_col = next(c for c in columns if c["name"] == "adaptive_settings")
     assert adaptive_col["nullable"] is True
+
+
+@pytest.mark.asyncio
+async def test_invocation_evidence_has_adaptive_columns(
+    test_engine: AsyncEngine,
+) -> None:
+    """Migration 0034 adds adaptive_source_summary + adaptive_weights."""
+    async with test_engine.connect() as conn:
+        columns = await conn.run_sync(
+            lambda sync_conn: sa.inspect(sync_conn).get_columns("invocation_evidence")
+        )
+    col_names = {c["name"] for c in columns}
+    assert "adaptive_source_summary" in col_names, (
+        "invocation_evidence.adaptive_source_summary missing — run migration 0034"
+    )
+    assert "adaptive_weights" in col_names, (
+        "invocation_evidence.adaptive_weights missing — run migration 0034"
+    )
+    for name in ("adaptive_source_summary", "adaptive_weights"):
+        col = next(c for c in columns if c["name"] == name)
+        assert col["nullable"] is True
