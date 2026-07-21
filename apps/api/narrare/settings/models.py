@@ -52,6 +52,12 @@ class ProjectSettings(Base):
     token_limit_profile: Mapped[str] = mapped_column(
         String(20), default="balanced", server_default="balanced", nullable=False
     )
+    # ADR-069 Decision 2: per-project adaptive settings (enabled flag +
+    # weights). JSONB mirrors the established category_overrides /
+    # intent_overrides / token_limit_overrides pattern. NULL = no settings
+    # row yet → AdaptiveContextProviderImpl returns defaults (graceful
+    # degradation, Phase 2 contract preserved).
+    adaptive_settings: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
