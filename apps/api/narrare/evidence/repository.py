@@ -1,8 +1,9 @@
 """Evidence repository — DB queries only (RULE-07: repo → DB).
 
 Persistence layer for the ``invocation_evidence`` table. Maps between
-``InvocationEvidenceModel`` (ORM) and ``FeatureInvocationEvidence`` (domain).
-All SQLAlchemy queries live here — services never write SQL directly.
+``InvocationEvidenceModel`` (ORM) and ``FeatureInvocationEvidence`` (domain)
+via the helpers in ``_mappers.py``. All SQLAlchemy queries live here —
+services never write SQL directly.
 """
 
 from __future__ import annotations
@@ -12,102 +13,18 @@ from typing import TYPE_CHECKING, Any, cast
 from sqlalchemy import func, select
 
 from narrare._app.base_repository import BaseRepository
+from narrare.evidence._mappers import domain_to_orm, orm_to_domain
 from narrare.evidence.models import InvocationEvidenceModel
 
 if TYPE_CHECKING:
     from datetime import datetime
+    from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from narrare_core.ai_invocation.models import (
         AuditState,
         FeatureInvocationEvidence,
-    )
-
-
-def _domain_to_orm(evidence: FeatureInvocationEvidence) -> dict[str, object]:
-    """Convert a domain evidence record to ORM column values.
-
-    Args:
-        evidence: Privacy-safe evidence record from an AI invocation.
-
-    Returns:
-        Dict of ORM column names to values.
-    """
-    return {
-        "feature_id": evidence.feature_id,
-        "intent": evidence.intent,
-        "mode": evidence.mode,
-        "prompt_route": evidence.prompt_route,
-        "preference_status": str(evidence.preference_status),
-        "kb_suggested_status": str(evidence.kb_suggested_status),
-        "voice_profile_status": str(evidence.voice_profile_status)
-        if evidence.voice_profile_status
-        else None,
-        "output_budget_profile": evidence.output_budget_profile,
-        "final_prompt_validated": evidence.final_prompt_validated,
-        "validation_errors": list(evidence.validation_errors),
-        "audit_state": str(evidence.audit_state),
-        # streaming: ORM column is non-nullable; coerce None → False.
-        "streaming": evidence.streaming if evidence.streaming is not None else False,
-        # ADR-045 §2: correlation fields.
-        "invocation_id": evidence.invocation_id,
-        "prepared_context_fingerprint": evidence.prepared_context_fingerprint,
-        "prompt_fingerprint": evidence.prompt_fingerprint,
-        "budget_decision_fingerprint": evidence.budget_decision_fingerprint,
-        "model_call_marker": evidence.model_call_marker,
-        "manual_injection_exception": evidence.manual_injection_exception,
-        # ADR-069 D11: adaptive context provenance + resolved weights.
-        "adaptive_source_summary": evidence.adaptive_source_summary,
-        "adaptive_weights": evidence.adaptive_weights,
-    }
-
-
-def _orm_to_domain(model: InvocationEvidenceModel) -> FeatureInvocationEvidence:
-    """Convert an ORM model instance to a domain evidence record.
-
-    Args:
-        model: ORM model instance from the database.
-
-    Returns:
-        ``FeatureInvocationEvidence`` domain object.
-    """
-    from narrare_core.ai_invocation.models import (
-        AuditState,
-        FeatureInvocationEvidence,
-        KBSuggestedStatus,
-        PreferenceStatus,
-        VoiceProfileStatus,
-    )
-
-    errors_raw: list[str] | list[object] = (
-        model.validation_errors if model.validation_errors is not None else []
-    )
-    return FeatureInvocationEvidence(
-        feature_id=model.feature_id,
-        intent=model.intent,
-        mode=model.mode,
-        prompt_route=model.prompt_route,
-        preference_status=PreferenceStatus(model.preference_status),
-        kb_suggested_status=KBSuggestedStatus(model.kb_suggested_status),
-        voice_profile_status=VoiceProfileStatus(model.voice_profile_status)
-        if model.voice_profile_status
-        else None,
-        output_budget_profile=model.output_budget_profile,
-        final_prompt_validated=model.final_prompt_validated,
-        validation_errors=tuple(str(e) for e in errors_raw),
-        audit_state=AuditState(model.audit_state),
-        streaming=model.streaming,
-        # ADR-045 §2: correlation fields.
-        invocation_id=model.invocation_id,
-        prepared_context_fingerprint=model.prepared_context_fingerprint,
-        prompt_fingerprint=model.prompt_fingerprint,
-        budget_decision_fingerprint=model.budget_decision_fingerprint,
-        model_call_marker=model.model_call_marker,
-        manual_injection_exception=model.manual_injection_exception,
-        # ADR-069 D11: adaptive context provenance + resolved weights.
-        adaptive_source_summary=model.adaptive_source_summary,
-        adaptive_weights=model.adaptive_weights,
     )
 
 
@@ -128,7 +45,7 @@ class EvidenceRepositoryImpl(BaseRepository):
         Args:
             evidence: Privacy-safe evidence record from an AI invocation.
         """
-        values = _domain_to_orm(evidence)
+        values = domain_to_orm(evidence)
         model = InvocationEvidenceModel(**cast("dict[str, Any]", values))
         self._session.add(model)
         await self._flush()
@@ -206,7 +123,7 @@ class EvidenceRepositoryImpl(BaseRepository):
             .limit(limit)
         )
         result = await self._session.execute(stmt)
-        return [_orm_to_domain(row) for row in result.scalars()]
+        return [orm_to_domain(row) for row in result.scalars()]
 
     async def get_latest_audit_state(
         self,
@@ -239,3 +156,43 @@ class EvidenceRepositoryImpl(BaseRepository):
         from narrare_core.ai_invocation.models import AuditState
 
         return AuditState(row)
+
+    async def update_adaptive_snapshot(
+        self,
+        *,
+        invocation_id: UUID,
+        source_summary: dict[str, str],
+        weights: dict[str, float],
+    ) -> None:
+        """Update the adaptive columns on an existing invocation_evidence row.
+
+        Called by AdaptiveContextProviderImpl.record_snapshot() after an
+        adaptive-consuming invocation completes (ADR-069 Decision 11).
+
+        Args:
+            invocation_id: The evidence row's invocation_id.
+            source_summary: Privacy-safe summary dict.
+            weights: Active weights at invocation time.
+
+        Note:
+            No-op (logged at INFO) if no evidence row matches — invocation
+            evidence is best-effort and MUST NOT block the AI call.
+        """
+        from sqlalchemy import update
+
+        stmt = (
+            update(InvocationEvidenceModel)
+            .where(InvocationEvidenceModel.invocation_id == invocation_id)
+            .values(
+                adaptive_source_summary=source_summary,
+                adaptive_weights=weights,
+            )
+        )
+        result = await self._session.execute(stmt)
+        if result.rowcount == 0:  # type: ignore[union-attr]
+            import structlog
+
+            structlog.get_logger(__name__).info(
+                "adaptive_snapshot_no_evidence_row",
+                invocation_id=str(invocation_id),
+            )

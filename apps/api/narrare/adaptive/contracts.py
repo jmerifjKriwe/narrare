@@ -27,6 +27,7 @@ if TYPE_CHECKING:
         AdaptiveSettingsResponse,
         AdaptiveWeightsInput,
     )
+    from narrare_core.ai_invocation.adaptive_context import AdaptiveSettings
 
 
 @runtime_checkable
@@ -69,4 +70,26 @@ class AdaptiveContextServiceProtocol(Protocol):
         weights: AdaptiveWeightsInput,
     ) -> AdaptiveSettingsResponse:
         """Update adaptive weights (clamped); persist + return new state."""
+        ...
+
+
+class AdaptiveSettingsRepositoryProtocol(Protocol):
+    """Repository contract for AdaptiveSettings persistence.
+
+    Decouples AdaptiveContextService from the concrete
+    AdaptiveSettingsRepository impl (RULE-03). Production wiring
+    uses AdaptiveSettingsRepositoryImpl; tests use FakeAdaptiveRepo
+    or MagicMock-with-spec.
+    """
+
+    async def load(self, project_id: UUID) -> AdaptiveSettings | None:
+        """Load AdaptiveSettings for a project.
+
+        Returns None when no row exists or column is NULL
+        (graceful degradation per RULE-11).
+        """
+        ...
+
+    async def save(self, project_id: UUID, settings: AdaptiveSettings) -> None:
+        """Persist AdaptiveSettings for a project (upsert)."""
         ...

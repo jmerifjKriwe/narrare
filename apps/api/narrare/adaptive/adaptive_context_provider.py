@@ -40,6 +40,7 @@ import structlog
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from narrare.adaptive.repository import AdaptiveSettingsRepository
     from narrare_core.ai_invocation.adaptive_context import (
         AdaptiveContext,
         AdaptiveSettings,
@@ -60,15 +61,20 @@ class AdaptiveContextProviderImpl:
         profile_provider: Core ``ProfileProvider`` for the
             ``ProjectWritingProfile`` (``None`` when not yet wired —
             Phase 4 will add the production Backend impl).
+        settings_repo: AdaptiveSettingsRepository for loading persisted
+            adaptive settings (Phase 3). ``None`` for Phase 2 callers /
+            unit tests — defaults are returned.
     """
 
     def __init__(
         self,
         preference_provider: PreferenceProvider | None,
         profile_provider: ProfileProvider | None,
+        settings_repo: AdaptiveSettingsRepository | None = None,
     ) -> None:
         self._preference_provider = preference_provider
         self._profile_provider = profile_provider
+        self._settings_repo = settings_repo
 
     async def get_context(self, user_id: object, project_id: object) -> AdaptiveContext:
         """Assemble AdaptiveContext from preferences + writing profile.
@@ -139,18 +145,79 @@ class AdaptiveContextProviderImpl:
         )
 
     async def get_settings(self, user_id: object, project_id: object) -> AdaptiveSettings:
-        """Return default AdaptiveSettings (Phase 2 scaffold).
+        """Load AdaptiveSettings from DB (Phase 3) or return defaults.
 
-        Phase 3 will load from ``ProjectSettings.adaptive_settings`` JSONB
-        via the settings repository + Alembic migration. Returns the same
-        defaults for every caller in Phase 2 — adaptivity is enabled with
-        the spec defaults (preference=0.7, voice_fidelity=0.9,
-        style_constraints=1.0, avoidance=1.0).
+        Phase 3: when a ``settings_repo`` is wired, load from
+        ``ProjectSettings.adaptive_settings`` JSONB. When the repo is
+        ``None`` (tests, Phase 2 callers) or no row exists, fall back to
+        ``AdaptiveSettings()`` defaults (Phase 2 contract preserved).
         """
-        del user_id, project_id  # Phase 3 will use these for persistence.
         from narrare_core.ai_invocation.adaptive_context import AdaptiveSettings
 
-        return AdaptiveSettings()
+        if self._settings_repo is None:
+            return AdaptiveSettings()
+        try:
+            loaded = await self._settings_repo.load(project_id)  # type: ignore[arg-type]
+        except Exception:
+            logger.warning(
+                "adaptive_provider_settings_load_failed",
+                user_id=str(user_id),
+                project_id=str(project_id),
+                exc_info=True,
+            )
+            return AdaptiveSettings()
+        return loaded or AdaptiveSettings()
+
+    async def record_snapshot(
+        self,
+        invocation_id: object,
+        adaptive_context: AdaptiveContext,
+        evidence_repo: object,
+    ) -> None:
+        """Write adaptive_source_summary + adaptive_weights to invocation_evidence.
+
+        Called by an adaptive-consuming service (e.g. DialogueCoachService
+        in Phase 4) after the invocation completes. The evidence row must
+        already exist (correlated via ``invocation_id``); this method
+        updates the two adaptive columns.
+
+        Args:
+            invocation_id: The invocation_id from compose_invocation().
+            adaptive_context: The AdaptiveContext that shaped the invocation.
+            evidence_repo: EvidenceRepositoryImpl (passed by the caller to
+                avoid coupling the provider to a specific session).
+        """
+        if adaptive_context.source_summary == "" and not adaptive_context.has_any_signal:
+            return  # nothing to record
+        source_summary_dict: dict[str, str] = {
+            "summary": adaptive_context.source_summary,
+        }
+        weights_dict: dict[str, float] = {
+            "preference": adaptive_context.weights.preference,
+            "voice_fidelity": adaptive_context.weights.voice_fidelity,
+            "style_constraints": adaptive_context.weights.style_constraints,
+            "avoidance": adaptive_context.weights.avoidance,
+        }
+        from narrare.evidence.repository import EvidenceRepositoryImpl
+
+        if not isinstance(evidence_repo, EvidenceRepositoryImpl):
+            logger.warning(
+                "adaptive_provider_record_snapshot_bad_repo",
+                repo_type=type(evidence_repo).__name__,
+            )
+            return
+        try:
+            await evidence_repo.update_adaptive_snapshot(
+                invocation_id=invocation_id,  # type: ignore[arg-type]
+                source_summary=source_summary_dict,
+                weights=weights_dict,
+            )
+        except Exception:
+            logger.warning(
+                "adaptive_provider_record_snapshot_failed",
+                invocation_id=str(invocation_id),
+                exc_info=True,
+            )
 
 
 # ---------------------------------------------------------------------------

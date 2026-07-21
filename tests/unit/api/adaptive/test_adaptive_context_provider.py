@@ -357,3 +357,10 @@ class TestDerivationHeuristic:
         ctx = await impl.get_context(user_id=user_id, project_id=project_id)
         assert ctx.style_constraints_text == ""
         assert ctx.avoidance_patterns_text == ""
+
+
+# ===========================================================================
+# Phase 3 (ADR-069 Task 4) tests live in:
+#   test_adaptive_context_provider_phase3.py
+# (extracted for RULE-04 file-size discipline)
+# ===========================================================================
