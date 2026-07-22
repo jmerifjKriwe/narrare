@@ -49,6 +49,14 @@ from narrare_core.agents.coreference_types import (
     CoreferenceOutput,
     PronounResolution,
 )
+from narrare_core.agents.dialogue_coach_types import (
+    DialogueAlternative,
+    DialogueCoachDeps,
+    DialogueCoachOutput,
+    DialogueIssue,
+    DialogueIssueType,
+    DialogueSeverity,
+)
 from narrare_core.agents.draft_agent import DraftAgent
 from narrare_core.agents.draft_types import DraftConfig, DraftDeps, DraftOutput
 from narrare_core.agents.errors import (
@@ -197,6 +205,12 @@ __all__ = [
     "CoreferenceAgent",
     "CoreferenceDeps",
     "CoreferenceOutput",
+    "DialogueAlternative",
+    "DialogueCoachDeps",
+    "DialogueCoachOutput",
+    "DialogueIssue",
+    "DialogueIssueType",
+    "DialogueSeverity",
     "DraftAgent",
     "DraftConfig",
     "DraftDeps",
