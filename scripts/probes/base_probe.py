@@ -15,8 +15,9 @@ See:
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from narrare_core.ai_invocation.evidence import FileEvidenceSink
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -97,3 +98,61 @@ async def run_probe(
     )
     result = await pipeline.finalize(prompt, context, prepared=prepared)
     return result.evidence_recorded
+
+
+def merge_feature_marker(
+    evidence_dir: Path,
+    filename: str,
+    feature_id: str,
+    mode: str,
+) -> Path:
+    """Merge ``feature_id → [mode]`` into a shared marker file.
+
+    Idempotent and additive: reads the existing file (if present), ensures
+    ``features[feature_id]`` contains ``mode``, preserves all other entries,
+    and writes back. Safe to run after other probes that overwrite the same
+    file — the merge re-adds the entry.
+
+    Used by probes that need to declare runtime coverage for a mode in the
+    shared marker files the adoption scorer reads (evidence_sink.json,
+    final_validation.json, preference_enrichment.json, budget_resolution.json).
+
+    Args:
+        evidence_dir: Directory containing the marker file.
+        filename: Marker file name (e.g. ``evidence_sink.json``).
+        feature_id: Feature id to add (e.g. ``ai_assist``).
+        mode: Mode name to add (e.g. ``dialogue_coach``).
+
+    Returns:
+        The path to the written marker file.
+    """
+    marker_path = evidence_dir / filename
+    data: dict[str, Any] = {}
+    if marker_path.exists():
+        try:
+            with marker_path.open("r", encoding="utf-8") as fh:
+                loaded = json.load(fh)
+            if isinstance(loaded, dict):
+                data = cast("dict[str, Any]", loaded)
+        except json.JSONDecodeError, OSError:
+            data = {}
+
+    raw_features = data.get("features")
+    features: dict[str, list[str]] = (
+        {str(k): [str(m) for m in v] for k, v in cast("dict[str, Any]", raw_features).items()}
+        if isinstance(raw_features, dict)
+        else {}
+    )
+    modes = features.get(feature_id, [])
+    if mode not in modes:
+        modes = [*modes, mode]
+    features[feature_id] = modes
+
+    data["version"] = data.get("version", 1)
+    data["features"] = features
+
+    marker_path.parent.mkdir(parents=True, exist_ok=True)
+    with marker_path.open("w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2)
+        fh.write("\n")
+    return marker_path

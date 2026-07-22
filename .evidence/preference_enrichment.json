@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "enricher": "PreferenceContextEnricherImpl",
+  "enricher": "AdaptiveContextEnricher",
   "features": {
     "writing": [
       "chat",
@@ -49,6 +49,9 @@
     ],
     "generation": [
       "names"
+    ],
+    "ai_assist": [
+      "dialogue_coach"
     ]
   }
 }

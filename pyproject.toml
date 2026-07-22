@@ -274,10 +274,12 @@ llm_allowed_modules = [
   "packages/core/narrare_core/llm/",
   "packages/core/narrare_core/agents/",
   "tests/",  # Test files can import pydantic_ai for TestModel/FunctionModel testing tools
+  "scripts/probes/",  # Eval/adoption probes use TestModel (no real LLM) for ADR-056 runtime evidence
 ]
 agent_allowed_modules = [
   "packages/core/narrare_core/agents/",
   "tests/",
+  "scripts/probes/",  # Probes construct fake agents (TestModel) for runtime evidence
 ]
 prompt_allowed_modules = ["packages/core/narrare_core/prompts/"]
 forbidden_llm_imports = ["openai", "anthropic", "pydantic_ai"]

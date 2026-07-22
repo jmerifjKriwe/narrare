@@ -12,6 +12,9 @@
       "scene_by_scene",
       "chat",
       "co_author"
+    ],
+    "ai_assist": [
+      "dialogue_coach"
     ]
   }
 }

@@ -26,6 +26,7 @@ _project_root = str(Path(__file__).resolve().parent.parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from scripts.probes.ai_assist_probes import main_async as ai_assist_probe  # noqa: E402
 from scripts.probes.analysis_probes import main_async as analysis_probe  # noqa: E402
 from scripts.probes.base_probe import EVIDENCE_DIR_DEFAULT  # noqa: E402
 from scripts.probes.chat_chat_probe import main_async as chat_probe  # noqa: E402
@@ -49,6 +50,7 @@ PROBES: list[tuple[str, ProbeFn]] = [
     ("generation/names", names_probe),
     ("preference_enrichment", enrichment_probe),
     ("validation_budget", validation_budget_probe),
+    ("ai_assist/dialogue_coach", ai_assist_probe),
 ]
 
 
