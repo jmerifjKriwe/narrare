@@ -12,32 +12,43 @@ from typing import TYPE_CHECKING
 from narrare._app.dependencies import SessionDep  # noqa: TC001 — needed at runtime for FastAPI DI
 
 if TYPE_CHECKING:
-    from narrare.ai_assist.contracts import DialogueCoachServiceProtocol
+    from narrare.ai_assist.service import DialogueCoachService
 
 
 def get_dialogue_coach_service(
     session: SessionDep,
-) -> DialogueCoachServiceProtocol:
+) -> DialogueCoachService:
     """Create a DialogueCoachService with production DI.
 
-    Wires (completed in Task 13 once ``DialogueCoachService`` exists):
-    - ChapterRepository (load chapter for project/access control),
-    - ModelRegistry + ResolvedModelConfig (analysis-tier model, via
-      ``build_system_default_config(SystemModelCategory.ANALYSIS)``),
-    - PromptComposer (Mode 1 resolution),
-    - InvocationPipeline (evidence),
-    - AdaptiveContextProvider (load adaptive context + record snapshot).
-
-    Plan-bug #20 note: the concrete ``DialogueCoachService`` (Task 13)
-    does not exist yet. Pyright's ``reportMissingImports`` resolves every
-    import statically — including ``if TYPE_CHECKING`` blocks and deferred
-    function-body imports — so any reference to
-    ``narrare.ai_assist.service`` fails the type checker today. The
-    factory therefore returns the Protocol (which exists) and raises
-    ``NotImplementedError`` until Task 13 supplies the service. No test
-    calls this factory until Task 14.
+    Wires: ChapterRepository (load chapter for project/access control),
+    ModelRegistry + ResolvedModelConfig (analysis-tier model),
+    PromptComposer (Mode 1 resolution), InvocationPipeline (evidence),
+    AdaptiveContextProvider (load adaptive context + record snapshot).
     """
-    raise NotImplementedError(
-        "DialogueCoachService is implemented in Task 13 (ADR-069 D17); "
-        "this factory body is completed there."
+    from narrare._app.dependencies import (
+        get_composer,
+        get_invocation_pipeline,
+        get_model_registry,
+    )
+    from narrare._app.dependencies_services import (
+        SystemModelCategory,
+        build_system_default_config,
+    )
+    from narrare.adaptive.dependencies import get_adaptive_context_provider
+    from narrare.ai_assist.service import DialogueCoachService
+    from narrare.chapters.repository import ChapterRepository
+
+    registry = get_model_registry()
+    composer = get_composer()
+    config = build_system_default_config(SystemModelCategory.ANALYSIS)
+    chapter_repo = ChapterRepository(session)
+    adaptive_provider = get_adaptive_context_provider(session)
+
+    return DialogueCoachService(
+        chapter_repo=chapter_repo,
+        model_registry=registry,
+        model_config=config,
+        composer=composer,
+        invocation_pipeline=get_invocation_pipeline(),
+        adaptive_provider=adaptive_provider,
     )
