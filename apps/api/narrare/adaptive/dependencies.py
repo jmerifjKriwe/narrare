@@ -31,21 +31,28 @@ def get_adaptive_context_provider(
     """Create the production AdaptiveContextProviderImpl.
 
     Wires PreferenceProvider (mem0-backed, ADR-033) + ProfileProvider
-    (None until a Backend ProfileProvider exists — Phase 2 boundary
-    preserved) + AdaptiveSettingsRepository (Phase 3 Task 4 — DB-backed).
+    (BackendProfileProvider — loads ProjectWritingProfile from KB character
+    entities, ADR-069 Phase 4 closure) + AdaptiveSettingsRepository
+    (Phase 3 Task 4 — DB-backed).
+
+    The ``BackendProfileProvider`` is bound to ``get_session_factory()``
+    (not the request ``session``) so it mirrors the invocation-pipeline
+    singleton wiring and opens its own short-lived read session per call.
     """
+    from narrare._app.database import get_session_factory
     from narrare._app.dependencies import (
         _get_preference_service_instance,  # pyright: ignore[reportPrivateUsage]
     )
     from narrare.adaptive.adaptive_context_provider import (
         AdaptiveContextProviderImpl,
     )
+    from narrare.adaptive.profile_provider_impl import BackendProfileProvider
 
     preference_service = _get_preference_service_instance()
     settings_repo = get_adaptive_settings_repository(session)
     return AdaptiveContextProviderImpl(
         preference_provider=preference_service,
-        profile_provider=None,
+        profile_provider=BackendProfileProvider(session_factory=get_session_factory()),
         settings_repo=settings_repo,
     )
 

@@ -194,3 +194,112 @@ class TestSetWeights:
             json={"preference": 0.5},
         )
         assert response.status_code == 401
+
+
+class TestVoiceProfilesTextPopulated:
+    """Phase 4 Task 15 — voice_profiles_text populated from KB character data.
+
+    Closes the Phase 2 boundary gap: ``profile_provider`` was None in
+    Phase 2/3; Task 15 wires the real Backend ProfileProvider. After this
+    task, GET /adaptive/{project_id}/context returns a non-empty
+    ``sources.voice_profiles_text`` whenever the project has at least one
+    character KB entity with populated ``speech.voice_analysis``.
+
+    Cross-connection seeding: ``BackendProfileProvider`` reads via
+    ``get_session_factory()`` (a connection separate from the request's
+    transaction-wrapped ``db_session``). The test DB's rollback-isolation
+    fixture means data on ``db_session`` is NEVER visible to a separate
+    connection — so the populated test seeds user+novel+KBEntry through a
+    committed factory session (mirroring the provider's own read path).
+    This mirrors the production reality where the singleton/pipeline
+    provider reads via its own session.
+    """
+
+    @pytest.mark.asyncio
+    async def test_voice_profiles_text_non_empty_when_kb_has_voice_analysis(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        from sqlalchemy import text
+
+        from narrare._app.database import get_session_factory
+        from narrare.auth.models import User
+        from narrare.kb.models import KBEntry
+        from narrare.novels.models import Novel
+
+        novel_id = uuid4()
+        user_id = uuid4()
+        factory = get_session_factory()
+        # Seed user + novel + character KBEntry in ONE committed session so
+        # all FKs hold and the provider's separate connection can read them.
+        async with factory() as session:
+            session.add(
+                User(
+                    id=user_id,
+                    email=f"voice-{user_id.hex[:12]}@example.com",
+                    hashed_password="unused-jwt-auth",
+                )
+            )
+            session.add(Novel(id=novel_id, user_id=user_id, title="Voice Profile Test"))
+            # Flush so the user + novel rows exist before the KBEntry insert
+            # (no ORM relationship() to auto-order the FK dependency).
+            await session.flush()
+            session.add(
+                KBEntry(
+                    novel_id=novel_id,
+                    entity_type="character",
+                    name="Alice",
+                    slug="alice",
+                    metadata_={
+                        "speech": {
+                            "voice_analysis": {
+                                "formality": 0.7,
+                                "vocabulary_level": "complex",
+                                "sentence_profile": "measured",
+                            }
+                        }
+                    },
+                )
+            )
+            await session.commit()
+
+        try:
+            # auth_headers is JWT-based (no DB user lookup), so it works even
+            # though the request user differs from the seeded novel owner —
+            # the endpoint does not check novel ownership.
+            response = await client.get(
+                f"/api/v1/adaptive/{novel_id}/context",
+                headers=auth_headers,
+            )
+            assert response.status_code == 200
+            body = response.json()
+            # Task 15 contract: voice_profiles_text is non-empty + signals.
+            assert body["has_any_signal"] is True
+            assert "Alice" in body["sources"]["voice_profiles_text"]
+            # ADR-055/057 boundary: numeric metrics never reach the text.
+            assert "cadence_wpm" not in body["sources"]["voice_profiles_text"]
+        finally:
+            # CASCADE removes the KBEntry; remove the user explicitly.
+            async with factory() as cleanup:
+                await cleanup.execute(
+                    text("DELETE FROM novels WHERE id=:id"), {"id": str(novel_id)}
+                )
+                await cleanup.execute(text("DELETE FROM users WHERE id=:id"), {"id": str(user_id)})
+                await cleanup.commit()
+
+    @pytest.mark.asyncio
+    async def test_voice_profiles_text_empty_when_kb_has_no_voice_analysis(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Regression guard: no characters with voice_analysis → empty."""
+        project_id = await _create_project(client, auth_headers)
+        response = await client.get(
+            f"/api/v1/adaptive/{project_id}/context",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["sources"]["voice_profiles_text"] == ""

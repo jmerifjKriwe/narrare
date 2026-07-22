@@ -40,17 +40,19 @@ def get_invocation_pipeline() -> InvocationPipeline:
         create per-call database sessions because this function is cached
         (singleton) and cannot depend on request-scoped sessions.
 
-        Phase 2 boundary (ADR-069): ``AdaptiveContextProviderImpl`` is
-        wired with ``profile_provider=None`` — no Backend ProfileProvider
-        exists yet (Phase 4 wires it). The adaptive enricher still writes
-        three of four variables (user_preferences, style_constraints,
-        avoidance_patterns) from PreferenceProfile data;
-        character_voice_profiles stays empty until Phase 4.
+        Phase 4 closure (ADR-069 Decision 4): ``AdaptiveContextProviderImpl``
+        is wired with the production ``BackendProfileProvider``, which loads
+        ``ProjectWritingProfile`` from KB character entities (filtered to
+        those with populated ``speech.voice_analysis``). The adaptive
+        enricher now writes all four adaptive variables; ADR-055/057 is
+        preserved — only the descriptive ``formatted_voice_profiles`` text
+        surfaces, numeric ``voice_metrics`` never enter ``AdaptiveContext``.
     """
     from narrare._app.database import get_session_factory
     from narrare.adaptive.adaptive_context_provider import (
         AdaptiveContextProviderImpl,
     )
+    from narrare.adaptive.profile_provider_impl import BackendProfileProvider
     from narrare.kb.kb_suggested_provider import KBSuggestedProviderImpl
     from narrare_core.ai_invocation import (
         FinalPromptValidatorImpl,
@@ -66,11 +68,11 @@ def get_invocation_pipeline() -> InvocationPipeline:
     preference_service = _get_preference_service_instance()
 
     # Adaptive enricher (ADR-069) — single canonical writer of all four
-    # adaptive prompt variables. Phase 2 wires profile_provider=None;
-    # Phase 4 will wire the production Backend ProfileProvider.
+    # adaptive prompt variables. Phase 4 wires the production
+    # BackendProfileProvider (session-factory-bound, singleton-compatible).
     adaptive_provider = AdaptiveContextProviderImpl(
         preference_provider=preference_service,
-        profile_provider=None,
+        profile_provider=BackendProfileProvider(session_factory=get_session_factory()),
     )
     enrichers: list[ContextEnricher] = [
         AdaptiveContextEnricher(adaptive_provider=adaptive_provider),
