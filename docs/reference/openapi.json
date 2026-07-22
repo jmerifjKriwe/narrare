@@ -2413,6 +2413,173 @@
         }
       }
     },
+    "/api/v1/adaptive/{project_id}/context": {
+      "get": {
+        "tags": [
+          "adaptive"
+        ],
+        "summary": "Get Adaptive Context",
+        "description": "Return the current adaptive state for the dashboard.",
+        "operationId": "get_adaptive_context_api_v1_adaptive__project_id__context_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdaptiveContextResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/adaptive/{project_id}/toggle": {
+      "post": {
+        "tags": [
+          "adaptive"
+        ],
+        "summary": "Toggle Adaptive",
+        "description": "Toggle adaptivity on/off for the project.",
+        "operationId": "toggle_adaptive_api_v1_adaptive__project_id__toggle_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptiveToggleInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdaptiveSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/adaptive/{project_id}/weights": {
+      "post": {
+        "tags": [
+          "adaptive"
+        ],
+        "summary": "Update Adaptive Weights",
+        "description": "Update the four adaptive weights (clamped to [0.0, 1.0]).",
+        "operationId": "update_adaptive_weights_api_v1_adaptive__project_id__weights_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptiveWeightsInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdaptiveSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/embeddings/status/{novel_id}": {
       "get": {
         "tags": [
@@ -9457,6 +9624,160 @@
         ],
         "title": "AcceptResponse",
         "description": "Response after accepting draft."
+      },
+      "AdaptiveContextResponse": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/AdaptiveWeightsResponse"
+          },
+          "sources": {
+            "$ref": "#/components/schemas/AdaptiveSourceSummary"
+          },
+          "has_any_signal": {
+            "type": "boolean",
+            "title": "Has Any Signal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "enabled",
+          "weights",
+          "sources",
+          "has_any_signal"
+        ],
+        "title": "AdaptiveContextResponse",
+        "description": "Response for GET /adaptive/{project_id}/context."
+      },
+      "AdaptiveSettingsResponse": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/AdaptiveWeightsResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "AdaptiveSettingsResponse",
+        "description": "Response for POST /toggle and POST /weights — the new persisted state."
+      },
+      "AdaptiveSourceSummary": {
+        "properties": {
+          "preference_text": {
+            "type": "string",
+            "title": "Preference Text",
+            "default": ""
+          },
+          "voice_profiles_text": {
+            "type": "string",
+            "title": "Voice Profiles Text",
+            "default": ""
+          },
+          "style_constraints_text": {
+            "type": "string",
+            "title": "Style Constraints Text",
+            "default": ""
+          },
+          "avoidance_patterns_text": {
+            "type": "string",
+            "title": "Avoidance Patterns Text",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "AdaptiveSourceSummary",
+        "description": "Adaptive source data rendered for the dashboard."
+      },
+      "AdaptiveToggleInput": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "AdaptiveToggleInput",
+        "description": "Body for POST /adaptive/{project_id}/toggle."
+      },
+      "AdaptiveWeightsInput": {
+        "properties": {
+          "preference": {
+            "type": "number",
+            "title": "Preference",
+            "default": 0.7
+          },
+          "voice_fidelity": {
+            "type": "number",
+            "title": "Voice Fidelity",
+            "default": 0.9
+          },
+          "style_constraints": {
+            "type": "number",
+            "title": "Style Constraints",
+            "default": 1.0
+          },
+          "avoidance": {
+            "type": "number",
+            "title": "Avoidance",
+            "default": 1.0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AdaptiveWeightsInput",
+        "description": "Adaptive weights in a POST body (pre-clamping; may be out of range).\n\nCall ``.validated()`` to obtain a clamped copy. The service clamps\nbefore persistence — the API accepts any float and returns the clamped\nvalue in the response."
+      },
+      "AdaptiveWeightsResponse": {
+        "properties": {
+          "preference": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Preference",
+            "default": 0.7
+          },
+          "voice_fidelity": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Voice Fidelity",
+            "default": 0.9
+          },
+          "style_constraints": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Style Constraints",
+            "default": 1.0
+          },
+          "avoidance": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Avoidance",
+            "default": 1.0
+          }
+        },
+        "type": "object",
+        "title": "AdaptiveWeightsResponse",
+        "description": "Adaptive weights in an API response (clamped, read-only)."
       },
       "AnalyzeRequest": {
         "properties": {
