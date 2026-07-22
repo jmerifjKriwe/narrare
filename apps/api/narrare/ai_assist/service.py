@@ -51,6 +51,7 @@ if TYPE_CHECKING:
 
     from narrare.adaptive.adaptive_context_provider import AdaptiveContextProviderImpl
     from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
@@ -63,7 +64,14 @@ class DialogueCoachService:
     """Backend service for the Dialogue Coach (ASSIST-004).
 
     Args:
-        chapter_repo: ChapterRepository for access control + content.
+        chapter_repo: ChapterRepository for unscoped chapter loading.
+        novel_repo: NovelRepository for novel-ownership access control
+            and project metadata (title, genre, writing_language). Follows
+            the voice_check_service precedent (Plan-Bug #23: the previous
+            ``chapter_repo.get_by_id(chapter_id, user_id)`` call mismatched
+            the production signature ``get_by_id(chapter_id, novel_id)`` —
+            it would have queried ``Chapter.novel_id = user_id`` → always
+            None → 404 on every request).
         model_registry: Shared LLM model registry.
         model_config: Resolved model config (analysis-tier). ``None`` only
             in the unit-test harness (fake registry ignores it); production
@@ -78,6 +86,7 @@ class DialogueCoachService:
         self,
         *,
         chapter_repo: ChapterRepository,
+        novel_repo: NovelRepository,
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig | None,
         composer: PromptComposer,
@@ -85,6 +94,7 @@ class DialogueCoachService:
         adaptive_provider: AdaptiveContextProviderImpl,
     ) -> None:
         self._chapter_repo = chapter_repo
+        self._novel_repo = novel_repo
         self._registry = model_registry
         self._config = model_config
         self._composer = composer
@@ -105,17 +115,25 @@ class DialogueCoachService:
         """Run the full pipeline and return the response."""
         from narrare_core.shared.errors import NotFoundError
 
-        chapter = await self._chapter_repo.get_by_id(chapter_id, user_id)
+        # Plan-Bug #23 fix (voice_check_service precedent): load the chapter
+        # unscoped via ``get()``, then enforce access control via novel
+        # ownership. The previous ``get_by_id(chapter_id, user_id)`` call
+        # mismatched the production signature ``get_by_id(chapter_id, novel_id)``
+        # — it queried ``Chapter.novel_id = user_id`` → always None → 404.
+        chapter = await self._chapter_repo.get(chapter_id)
         if chapter is None:
             raise NotFoundError("Chapter", identifier=str(chapter_id))
 
-        project_id: UUID | None = getattr(chapter, "novel_id", None)
-        if project_id is None:
-            raise NotFoundError("Project", identifier=f"chapter_{chapter_id}")
+        novel = await self._novel_repo.get_by_id(chapter.novel_id, user_id)
+        if novel is None:
+            raise NotFoundError("Novel", identifier=str(chapter.novel_id))
 
-        language = getattr(chapter, "writing_language", None) or "en"
-        project_title = getattr(chapter, "title", "") or ""
-        genre = getattr(chapter, "genre", "") or ""
+        # Project metadata lives on Novel, not Chapter (formal review Minor #2):
+        # Chapter has title + content but no genre / writing_language.
+        project_id: UUID = novel.id
+        language = novel.writing_language or "en"
+        project_title = novel.title or ""
+        genre = novel.genre or ""
 
         selection_text = request.selection_text
         characters = attribute_speakers(selection_text)

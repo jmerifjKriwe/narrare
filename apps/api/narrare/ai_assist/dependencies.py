@@ -20,10 +20,11 @@ def get_dialogue_coach_service(
 ) -> DialogueCoachService:
     """Create a DialogueCoachService with production DI.
 
-    Wires: ChapterRepository (load chapter for project/access control),
-    ModelRegistry + ResolvedModelConfig (analysis-tier model),
-    PromptComposer (Mode 1 resolution), InvocationPipeline (evidence),
-    AdaptiveContextProvider (load adaptive context + record snapshot).
+    Wires: ChapterRepository (unscoped chapter load), NovelRepository
+    (novel-ownership access control + project metadata), ModelRegistry +
+    ResolvedModelConfig (analysis-tier model), PromptComposer (Mode 1
+    resolution), InvocationPipeline (evidence), AdaptiveContextProvider
+    (load adaptive context + record snapshot).
     """
     from narrare._app.dependencies import (
         get_composer,
@@ -37,15 +38,18 @@ def get_dialogue_coach_service(
     from narrare.adaptive.dependencies import get_adaptive_context_provider
     from narrare.ai_assist.service import DialogueCoachService
     from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
 
     registry = get_model_registry()
     composer = get_composer()
     config = build_system_default_config(SystemModelCategory.ANALYSIS)
     chapter_repo = ChapterRepository(session)
+    novel_repo = NovelRepository(session)
     adaptive_provider = get_adaptive_context_provider(session)
 
     return DialogueCoachService(
         chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
         model_registry=registry,
         model_config=config,
         composer=composer,

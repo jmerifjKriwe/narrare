@@ -29,7 +29,9 @@
     "pyproject | RULE-02b | packages/core/narrare_core/memory/mem0_client.py | mem0 custom_instructions is a third-party-library config string for mem0's internal extraction LLM, not a Narrare prompt-resolution path (RULE-02b scope boundary)."
   ],
   "frontend_file_size_violations": [],
-  "streaming_compliance_gaps": [],
+  "streaming_compliance_gaps": [
+    "ai_assist/router has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/ai_assist/router.py"
+  ],
   "python_file_size_violations": [],
   "empty_kb_vars": [
     "apps/api/narrare/analysis/character_voice_prompt.py | kb_characters",

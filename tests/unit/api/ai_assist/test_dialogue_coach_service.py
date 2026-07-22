@@ -56,8 +56,29 @@ class FakeChapterRepo:
             self.content = content
             self.title = "Test Chapter"
 
-    async def get_by_id(self, chapter_id: Any, user_id: Any | None = None) -> Any:
+    async def get(self, chapter_id: Any) -> Any:
         return self._Chapter(novel_id=uuid4(), content='"Hello," Alice said.')
+
+    async def get_by_id(self, chapter_id: Any, novel_id: Any | None = None) -> Any:
+        return self._Chapter(novel_id=uuid4(), content='"Hello," Alice said.')
+
+
+class FakeNovelRepo:
+    """Async fake NovelRepository — returns a novel with metadata.
+
+    Plan-Bug #23: the service now loads the novel for access control +
+    project metadata (title, genre, writing_language).
+    """
+
+    class _Novel:
+        def __init__(self) -> None:
+            self.id = uuid4()
+            self.title = "Test Novel"
+            self.genre = "Fantasy"
+            self.writing_language = "en"
+
+    async def get_by_id(self, novel_id: Any, user_id: Any | None = None) -> Any:
+        return self._Novel()
 
 
 class FakeComposer:
@@ -107,6 +128,7 @@ class FakeAdaptiveProvider:
 def _make_service(*, model: TestModel | None = None) -> DialogueCoachService:
     return DialogueCoachService(
         chapter_repo=FakeChapterRepo(),  # type: ignore[arg-type]
+        novel_repo=FakeNovelRepo(),  # type: ignore[arg-type]
         model_registry=FakeModelRegistry(model or TestModel()),  # type: ignore[arg-type]
         model_config=None,  # type: ignore[arg-type]
         composer=FakeComposer(),  # type: ignore[arg-type]
@@ -200,6 +222,7 @@ class TestInvocationIdPlumbing:
         provider = FakeAdaptiveProvider()
         service = DialogueCoachService(
             chapter_repo=FakeChapterRepo(),  # type: ignore[arg-type]
+            novel_repo=FakeNovelRepo(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(model),  # type: ignore[arg-type]
             model_config=None,  # type: ignore[arg-type]
             composer=FakeComposer(),  # type: ignore[arg-type]

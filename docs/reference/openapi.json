@@ -2580,6 +2580,63 @@
         }
       }
     },
+    "/api/v1/ai-assist/dialogue-coach/{chapter_id}": {
+      "post": {
+        "tags": [
+          "ai-assist"
+        ],
+        "summary": "Coach Dialogue",
+        "description": "SSE stream for dialogue coaching (ASSIST-004).\n\n**SSE Event Stream:**\n\n1. ``progress`` event (\"Analysing dialogue…\").\n2. ``result`` event carrying the full ``DialogueCoachResponse``.\n3. ``done`` event (``is_final=True``).\n4. ``data: [DONE]`` termination signal.\n\nOn failure, an ``error`` event (``is_final=True``) precedes the\n``[DONE]`` sentinel.",
+        "operationId": "coach_dialogue_api_v1_ai_assist_dialogue_coach__chapter_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DialogueCoachRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/embeddings/status/{novel_id}": {
       "get": {
         "tags": [
@@ -12070,6 +12127,31 @@
         ],
         "title": "DemoProjectInfo",
         "description": "Metadata about a bundled demo project — loaded from metadata.json."
+      },
+      "DialogueCoachRequest": {
+        "properties": {
+          "selection_text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Selection Text"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "analyze",
+              "improve"
+            ],
+            "title": "Mode",
+            "default": "analyze"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "selection_text"
+        ],
+        "title": "DialogueCoachRequest",
+        "description": "Body for POST /ai-assist/dialogue-coach/{chapter_id}.\n\nAttributes:\n    selection_text: The user-selected dialogue passage from the editor.\n        Must be non-empty (the coach cannot analyse nothing — RULE-11\n        graceful degradation returns a \"nothing to analyse\" result\n        rather than crashing, but the request itself rejects empty).\n    mode: \"analyze\" (issues only) or \"improve\" (issues + alternatives)."
       },
       "DismissFindingRequest": {
         "properties": {
