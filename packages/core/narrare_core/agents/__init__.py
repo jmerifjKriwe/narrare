@@ -49,6 +49,7 @@ from narrare_core.agents.coreference_types import (
     CoreferenceOutput,
     PronounResolution,
 )
+from narrare_core.agents.dialogue_coach_agent import DialogueCoachAgent
 from narrare_core.agents.dialogue_coach_types import (
     DialogueAlternative,
     DialogueCoachDeps,
@@ -206,6 +207,7 @@ __all__ = [
     "CoreferenceDeps",
     "CoreferenceOutput",
     "DialogueAlternative",
+    "DialogueCoachAgent",
     "DialogueCoachDeps",
     "DialogueCoachOutput",
     "DialogueIssue",
