@@ -29,6 +29,9 @@ class IntentCategory(StrEnum):
     EXTRACTION = "extraction"
     CHAT = "chat"
     RESEARCH = "research"
+    # ADR-069 Decision 5: writer-facing assistance (ASSIST-* features).
+    # Distinct from ANALYSIS (evaluative) and WRITING (prose generation).
+    AI_ASSIST = "ai_assist"
 
 
 INTENT_CATEGORY_MAP: dict[LLMIntent, IntentCategory] = {
@@ -43,9 +46,10 @@ INTENT_CATEGORY_MAP: dict[LLMIntent, IntentCategory] = {
     LLMIntent.CONSISTENCY: IntentCategory.ANALYSIS,
     LLMIntent.BETA_READ: IntentCategory.ANALYSIS,
     LLMIntent.VOICE: IntentCategory.ANALYSIS,
-    # Phase 4 stub — ADR-069 Decision 11 introduces a dedicated AI_ASSIST
-    # category that will replace this temporary ANALYSIS assignment.
-    LLMIntent.DIALOGUE_COACH: IntentCategory.ANALYSIS,
+    # ADR-069 Decision 5: DIALOGUE_COACH is the first AI_ASSIST intent.
+    # Phase 1 Task 5 added this as an ANALYSIS stub; Phase 4 Task 7
+    # replaces it with the real AI_ASSIST category (this commit).
+    LLMIntent.DIALOGUE_COACH: IntentCategory.AI_ASSIST,
     # Knowledge base
     LLMIntent.KB_CREATE: IntentCategory.KB,
     LLMIntent.KB_IMPROVE: IntentCategory.KB,
@@ -91,9 +95,9 @@ _INTENT_PROFILE_DEFAULTS: dict[LLMIntent, str] = {
     LLMIntent.CONSISTENCY: "comprehensive",
     LLMIntent.BETA_READ: "long_texts",
     LLMIntent.VOICE: "balanced",
-    # Phase 4 stub — ADR-069 may introduce a dedicated profile for Dialogue
-    # Coach. "long_texts" matches the structured analysis + alternatives
-    # output shape of the ASSIST-004 feature until then.
+    # ADR-069 Decision 5: Dialogue Coach output is a structured issues list
+    # + alternatives (improve mode). "long_texts" (8000 tokens) fits the
+    # structured-output-with-rewrites shape. Tunable via Eval (Phase 6).
     LLMIntent.DIALOGUE_COACH: "long_texts",
     # Knowledge Base
     LLMIntent.KB_CREATE: "balanced",

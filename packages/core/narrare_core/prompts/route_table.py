@@ -36,6 +36,9 @@ INTENT_TO_CATEGORY: dict[LLMIntent, str] = {
     # mode "chat"). The earlier `category="chat", mode=""` drift was an
     # unauthorised deviation from ADR-024 §Decision 3 — see ADR-049 FIND-010.
     LLMIntent.CHAT: "writing",
+    # ADR-069 Decision 5: DIALOGUE_COACH is the first ai_assist intent
+    # (Phase 4 Task 7 — formal follow-through on the Phase 1 Task 5 stub).
+    LLMIntent.DIALOGUE_COACH: "ai_assist",
 }
 
 INTENT_TO_MODE: dict[LLMIntent, str] = {
@@ -65,6 +68,7 @@ INTENT_TO_MODE: dict[LLMIntent, str] = {
     # ADR-024 / ADR-049: CHAT mode is "chat" (not root-mode ""). Root-mode is
     # forbidden for routeable intents per ADR-049 D3.
     LLMIntent.CHAT: "chat",
+    LLMIntent.DIALOGUE_COACH: "dialogue_coach",
 }
 
 _COMMON_OPTIONAL_VARIABLES = frozenset(
@@ -298,6 +302,36 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
     # drift that created a root-mode path (`chat/en/system.md`) invisible to
     # PromptManagement and inconsistent with the manifest template path.
     LLMIntent.CHAT: PromptRouteConfig("writing", "chat"),
+    # ADR-069 Decision 5 + Decision 10: DIALOGUE_COACH route entry. Phase 1
+    # Task 5 deferred this to Phase 4 step 17 — this is that step.
+    # optional_variables mirrors the prompt-surface-manifest declaration
+    # (RULE-22 runtime ↔ governance coherence). The adaptive variables
+    # (user_preferences / style_constraints / avoidance_patterns /
+    # character_voice_profiles) are populated by AdaptiveContextEnricher
+    # (Phase 2). text_to_analyze is USER_CONTENT_VARS — must be XML-tag-
+    # wrapped in the governed template per RULE-22 §6. {{mode}} and
+    # {{characters}} are SYSTEM_VARS (Phase 1 Task 5 registered them).
+    # No required_variables — mirrors VOICE / ANALYSE (runtime content
+    # supplied by the service as the run prompt).
+    LLMIntent.DIALOGUE_COACH: PromptRouteConfig(
+        "ai_assist",
+        "dialogue_coach",
+        optional_variables=frozenset(
+            {
+                "project_title",
+                "genre",
+                "writing_language",
+                "user_preferences",
+                "style_constraints",
+                "avoidance_patterns",
+                "character_voice_profiles",
+                "mode",
+                "characters",
+                "text_to_analyze",
+            }
+        ),
+        allowed_context_modes=frozenset({"dialogue_coach"}),
+    ),
 }
 
 CONTEXT_MODE_REQUIRED_INTENTS: dict[LLMIntent, str] = {

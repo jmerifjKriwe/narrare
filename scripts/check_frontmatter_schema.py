@@ -56,6 +56,7 @@ FRONTMATTER_SCHEMA_SECTION = "frontmatter_schema_warnings"
 BUNDLED_DIR = ROOT / "packages" / "core" / "narrare_core" / "prompts" / "_bundled"
 
 # Schema (authoritative: docs/development/prompt-standards.md §1).
+# ADR-069 Decision 5 added ``ai_assist`` (DIALOGUE_COACH routeable category).
 VALID_PROMPT_TYPES = frozenset(
     {
         "writing",
@@ -66,6 +67,7 @@ VALID_PROMPT_TYPES = frozenset(
         "generation",
         "wiki",
         "universal",
+        "ai_assist",
     }
 )
 VALID_LANGUAGES = frozenset({"en", "de", "fr"})

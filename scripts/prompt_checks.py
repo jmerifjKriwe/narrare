@@ -32,6 +32,7 @@ VALID_PROMPT_TYPES = {
     "wiki",
     "chat",
     "universal",
+    "ai_assist",  # ADR-069 Decision 5 (DIALOGUE_COACH routeable category)
 }
 VALID_LANGUAGES = {"en", "de", "fr"}
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")

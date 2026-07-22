@@ -49,6 +49,13 @@ category_defaults:
       budget_resolution: none
       final_validation: optional
       evidence_sink: optional
+  ai_assist:
+    runtime_requirements:
+      preference_enrichment: required
+      kb_suggested: not_applicable
+      budget_resolution: optional
+      final_validation: required
+      evidence_sink: required
 # ── Prompt-Path Compliance (ADR-046 D.5) ──────────────────────────────────────
 # Per-intent (mode) declaration that prompt resolution conforms to RULE-02b:
 # prompts resolve exclusively through core/prompts/ (PromptComposer) — no direct
@@ -115,6 +122,10 @@ prompt_path_compliance:
   planning/timeline: true
   # generation
   generation/names: true
+  # ADR-069: dialogue_coach prompt surface is governed Mode 1 (PromptComposer
+  # + intent=DIALOGUE_COACH + context_mode="dialogue_coach"). Runtime
+  # evidence lands in Phase 4 Task 14 (SSE integration test).
+  ai_assist/dialogue_coach: true
 
 # ── Feature Categories ────────────────────────────────────────────────────────
 # Each category maps to a _bundled/{category}/ directory.
@@ -332,6 +343,30 @@ features:
         - user_preferences
         - avoidance_patterns
       should: []
+  ai_assist:
+    modes:
+      # ADR-069 Decision 5: dialogue_coach (ASSIST-004) is the first
+      # governed ai_assist mode. Runtime evidence: Phase 4 Task 14
+      # integration test exercises the full router → service → agent → SSE
+      # chain with a TestModel.
+      dialogue_coach:
+        requires_runtime_evidence: true
+    required_infrastructure:
+      token_budget: required
+      prompt_composer: required
+      mem0_preferences: required
+      kb_entities: optional
+      kb_relationships: optional
+      injection_defense: required
+      meta_prompt: required
+      i18n: partial                # EN-only per ADR-026 Phase 5; localized output via {{writing_language}}
+    context_variables:
+      must:
+        - user_preferences
+        - avoidance_patterns
+      should:
+        - character_voice_profiles
+        - style_constraints
 
 # ── Infrastructure Definitions ────────────────────────────────────────────────
 # Canonical descriptions and evidence criteria for each infrastructure type.

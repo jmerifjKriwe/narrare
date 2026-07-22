@@ -43,8 +43,20 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 # Canonical prompt_type enumeration per ADR-049 A4 / prompt-standards.md §1.
+# ADR-069 Decision 5 added ``ai_assist`` (DIALOGUE_COACH is the first
+# routeable intent in this category).
 CANONICAL_PROMPT_TYPES: frozenset[str] = frozenset(
-    {"writing", "kb", "analysis", "planning", "meta", "generation", "wiki", "universal"}
+    {
+        "writing",
+        "kb",
+        "analysis",
+        "planning",
+        "meta",
+        "generation",
+        "wiki",
+        "universal",
+        "ai_assist",
+    }
 )
 
 # Capability-loaded categories (ADR-026): templates loaded by Capabilities,

@@ -497,6 +497,29 @@ routes:
       generated_suggestions_must_be_labelled: []
     fallback_policy: fail_loudly_if_bundled_missing
 
+  # ── AI assist operations ───────────────────────────────────────────
+  # ADR-069 Decision 5: DIALOGUE_COACH is the first ai_assist intent.
+  # The dialogue passage + canonical speaker list flow as runtime content
+  # (the agent run prompt; supplied by the service per-invocation). The
+  # adaptive variables (user_preferences / style_constraints /
+  # avoidance_patterns / character_voice_profiles) are populated by the
+  # AdaptiveContextEnricher (Phase 2). text_to_analyze is USER_CONTENT_VARS
+  # → XML-wrapped in the template per RULE-22 §6.
+
+  - intent: DIALOGUE_COACH
+    routeable: true
+    category: ai_assist
+    mode: dialogue_coach
+    template: packages/core/narrare_core/prompts/_bundled/ai_assist/en/dialogue_coach/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: writing_language
+    required_variables: []
+    optional_variables: [project_title, genre, writing_language, user_preferences, style_constraints, avoidance_patterns, character_voice_profiles, mode, characters, text_to_analyze]
+    security:
+      xml_required: [text_to_analyze]
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
   # ── Non-routeable intents (explicit rationale) ─────────────────────
 
   - intent: SENTIMENT

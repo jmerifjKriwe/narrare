@@ -1,10 +1,15 @@
 {
   "version": 2,
-  "description": "Ratcheted baseline for Review-03 AI stabilization gates + INFRA-012 prompt governance. Existing debt may decrease; growth requires ADR/user-approved baseline update.",
+  "description": "Ratcheted baseline for Review-03 AI stabilization gates + INFRA-012 prompt governance + ADR-069 ai_assist/dialogue_coach (runtime evidence deferred to Phase 4 Task 14). Existing debt may decrease; growth requires ADR/user-approved baseline update.",
   "prompt_structure_warnings": [],
   "frontmatter_schema_warnings": [],
   "adoption_debt": [
-    "writing | inline_fallback_count | 1"
+    "writing | inline_fallback_count | 1",
+    "ai_assist | dialogue_coach | not_adopted",
+    "ai_assist | dialogue_coach | runtime | evidence_sink | missing",
+    "ai_assist | dialogue_coach | runtime | final_validation | missing",
+    "ai_assist | dialogue_coach | runtime | kb_suggested | not_applicable",
+    "ai_assist | dialogue_coach | runtime | preference_enrichment | missing"
   ],
   "prompt_integrity_findings": [
     "PROMPT-VARS | packages/core/narrare_core/prompts/variable_registry.py | Dead variable(s) in SYSTEM_VARS \u2014 registered but never used in any prompt template: feedback_text, mode, style_constraints"
