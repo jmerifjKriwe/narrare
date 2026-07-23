@@ -1,5 +1,7 @@
 {
   "title": "Dialog-Coach",
+  "trigger": "Dialog-Coach",
+  "triggerTooltip": "Ausgewählten Dialog auf Probleme und Umformulierungsvorschläge analysieren",
   "close": "Schließen",
   "selectPrompt": "Wähle einen Dialogtext zum Analysieren",
   "idleHint": "Wähle einen Dialogabschnitt und einen Modus, um zu beginnen.",

@@ -35,6 +35,12 @@ vi.mock("../analysis/VoiceCheckTrigger", () => ({
     <button type="button" aria-label="voiceCheck.trigger" onClick={onClick} />
   ),
 }));
+vi.mock("../analysis/DialogueCoachTrigger", () => ({
+  DialogueCoachTrigger: () => <div data-testid="dialogue-coach-trigger" />,
+}));
+vi.mock("./AdaptiveStatusIndicator", () => ({
+  AdaptiveStatusIndicator: () => <div data-testid="adaptive-status-indicator" />,
+}));
 vi.mock("../editor/GhostTextConfig", () => ({
   GhostTextConfig: () => <div data-testid="ghost-text-config" />,
 }));
@@ -51,6 +57,7 @@ const baseProps = {
   toggleExtractionPanel: vi.fn(),
   openNameGenerator: vi.fn(),
   onRightPanelOpenerChange: vi.fn(),
+  novelId: "novel-1",
 };
 
 describe("EditorToolbar opener tracking", () => {

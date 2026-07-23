@@ -10,11 +10,13 @@ import { BetaReaderTrigger } from "../analysis/BetaReaderTrigger";
 import { CharacterVoiceTrigger } from "../analysis/CharacterVoiceTrigger";
 import { ConsistencyTrigger } from "../analysis/ConsistencyTrigger";
 import { CoreferenceTrigger } from "../analysis/CoreferenceTrigger";
+import { DialogueCoachTrigger } from "../analysis/DialogueCoachTrigger";
 import { POVTrigger } from "../analysis/POVTrigger";
 import { ReadabilityTrigger } from "../analysis/ReadabilityTrigger";
 import { SentimentTrigger } from "../analysis/SentimentTrigger";
 import { VoiceCheckTrigger } from "../analysis/VoiceCheckTrigger";
 import { GhostTextConfig } from "../editor/GhostTextConfig";
+import { AdaptiveStatusIndicator } from "./AdaptiveStatusIndicator";
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -24,6 +26,8 @@ interface EditorToolbarProps {
   toggleExtractionPanel: () => void;
   openNameGenerator: () => void;
   onRightPanelOpenerChange: (element: HTMLElement) => void;
+  /** Novel id — project id for the adaptive context query (ADR-069 D14/D15). */
+  novelId: string;
 }
 
 export function EditorToolbar({
@@ -34,6 +38,7 @@ export function EditorToolbar({
   toggleExtractionPanel,
   openNameGenerator,
   onRightPanelOpenerChange,
+  novelId,
 }: EditorToolbarProps) {
   const t = useTranslations("studio");
 
@@ -114,8 +119,11 @@ export function EditorToolbar({
       <CoreferenceTrigger />
       <CharacterVoiceTrigger />
       <VoiceCheckTrigger onClick={() => toggleRightPanel("voice_check", "toolbar")} />
+      <DialogueCoachTrigger />
       <ToolbarSeparator />
       <GhostTextConfig editor={editor} />
+      <ToolbarSeparator />
+      <AdaptiveStatusIndicator novelId={novelId} />
     </div>
   );
 }

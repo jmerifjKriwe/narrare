@@ -8,6 +8,7 @@ export type EditorRightPanelId =
   | "coreference"
   | "character_voice"
   | "voice_check"
+  | "dialogue_coach"
   | "sentiment"
   | "consistency";
 
@@ -33,6 +34,7 @@ export const EDITOR_RIGHT_PANEL_PRIORITY = [
   "coreference",
   "character_voice",
   "voice_check",
+  "dialogue_coach",
   "sentiment",
   "consistency",
   "metadata",

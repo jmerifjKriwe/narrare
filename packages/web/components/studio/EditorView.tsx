@@ -137,6 +137,7 @@ export function EditorView({ novelId }: EditorViewProps) {
         toggleExtractionPanel={toggleExtractionPanel}
         openNameGenerator={() => setNameGeneratorOpen(true)}
         onRightPanelOpenerChange={rememberRightPanelOpener}
+        novelId={novelId}
       />
       <div className="flex-1 flex min-h-0">
         <EditorWorkspace
@@ -161,6 +162,7 @@ export function EditorView({ novelId }: EditorViewProps) {
           novelId={novelId}
           activeChapterId={activeChapterId}
           content={chapterData.content}
+          editor={editor}
           chapter={chapterData.chapter}
           chapters={chapterData.chapters}
           sessionStartWordCount={chapterData.sessionStartWordCount}

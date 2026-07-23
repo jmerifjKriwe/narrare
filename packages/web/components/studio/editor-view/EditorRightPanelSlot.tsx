@@ -1,5 +1,6 @@
 "use client";
 
+import type { Editor } from "@tiptap/react";
 import { useTranslations } from "next-intl";
 import { PanelShell } from "@/components/ui/panel-shell";
 import type { EditorRightPanelId } from "@/lib/stores/editorRightPanelState";
@@ -13,6 +14,8 @@ export interface EditorRightPanelSlotProps {
   novelId: string;
   activeChapterId: string;
   content: string;
+  /** Live TipTap editor — forwarded to EditorPanelContent for the coach panel. */
+  editor: Editor | null;
   chapter: Chapter | undefined;
   chapters: ChapterSummary[];
   sessionStartWordCount: number;

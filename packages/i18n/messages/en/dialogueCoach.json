@@ -1,5 +1,7 @@
 {
   "title": "Dialogue Coach",
+  "trigger": "Dialogue Coach",
+  "triggerTooltip": "Analyse selected dialogue for issues and suggested rewrites",
   "close": "Close",
   "selectPrompt": "Select dialogue text to analyse",
   "idleHint": "Select a dialogue passage and choose a mode to begin.",

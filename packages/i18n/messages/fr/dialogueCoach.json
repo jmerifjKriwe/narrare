@@ -1,5 +1,7 @@
 {
   "title": "Coach de dialogues",
+  "trigger": "Coach de dialogues",
+  "triggerTooltip": "Analyser le dialogue sélectionné pour les problèmes et réécritures suggérées",
   "close": "Fermer",
   "selectPrompt": "Sélectionnez un texte de dialogue à analyser",
   "idleHint": "Sélectionnez un passage de dialogue et choisissez un mode pour commencer.",

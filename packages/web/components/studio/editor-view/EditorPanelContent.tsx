@@ -1,5 +1,6 @@
 "use client";
 
+import type { Editor } from "@tiptap/react";
 import type { EditorRightPanelId } from "@/lib/stores/editorRightPanelState";
 import type { Chapter, ChapterSummary, VolumeStats } from "@/types";
 import { BetaReaderPanel } from "../analysis/BetaReaderPanel";
@@ -14,6 +15,7 @@ import { GenerationPanel } from "../editor/GenerationPanel";
 import { MetadataSidebar } from "../editor/MetadataSidebar";
 import { SessionPanel } from "../editor/SessionPanel";
 import { WikiChapterSummaryPanel } from "../kb/WikiChapterSummaryPanel";
+import { DialogueCoachPanelSlot } from "./DialogueCoachPanelSlot";
 
 export interface EditorPanelContentProps {
   activePanel: EditorRightPanelId;
@@ -21,6 +23,13 @@ export interface EditorPanelContentProps {
   novelId: string;
   activeChapterId: string;
   content: string;
+  /**
+   * The live TipTap editor instance. Threaded from EditorView so the Dialogue
+   * Coach panel can read the current selection + apply rewrites without
+   * reaching into the store from inside the panel (vercel-react-best-practices:
+   * pass dependencies as props).
+   */
+  editor: Editor | null;
   chapter: Chapter | undefined;
   chapters: ChapterSummary[];
   sessionStartWordCount: number;
@@ -48,6 +57,7 @@ export function EditorPanelContent({
   novelId,
   activeChapterId,
   content,
+  editor,
   chapter,
   chapters,
   sessionStartWordCount,
@@ -145,6 +155,17 @@ export function EditorPanelContent({
     case "voice_check":
       return (
         <VoiceCheckPanel chapterId={activeChapterId} onClose={() => closePanel("voice_check")} />
+      );
+    case "dialogue_coach":
+      // The coach needs the editor + its live selection. Render through a
+      // scoped slot so the selection subscription re-renders only this side
+      // panel, never the editor canvas (see DialogueCoachPanelSlot).
+      return (
+        <DialogueCoachPanelSlot
+          editor={editor}
+          chapterId={activeChapterId}
+          onClose={() => closePanel("dialogue_coach")}
+        />
       );
     case "sentiment":
       return (

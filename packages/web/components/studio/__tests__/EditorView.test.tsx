@@ -228,6 +228,13 @@ vi.mock("@/components/studio/editor/GhostTextConfig", () => ({
   GhostTextConfig: vi.fn(() => <div data-testid="ghost-text-config" />),
 }));
 
+// The Adaptive Status Indicator reads the adaptive context over the network
+// (TanStack Query). It is owned by Task 9; here it is composed into the toolbar,
+// so stub it to keep the EditorView orchestration tests hermetic.
+vi.mock("@/components/studio/editor-view/AdaptiveStatusIndicator", () => ({
+  AdaptiveStatusIndicator: vi.fn(() => <div data-testid="adaptive-status-indicator" />),
+}));
+
 vi.mock("@/components/studio/writing/WritingGraphStatus", () => ({
   WritingGraphStatus: vi.fn(({ steps }) => (
     <div data-testid="writing-graph-status">

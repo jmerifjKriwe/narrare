@@ -53,6 +53,7 @@ const baseProps = {
   novelId: "novel-1",
   activeChapterId: "chapter-1",
   content: "<p>text</p>",
+  editor: null,
   chapter: undefined,
   chapters: [],
   sessionStartWordCount: 0,
