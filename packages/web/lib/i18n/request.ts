@@ -16,6 +16,9 @@ const namespaces = [
   "studio",
   "analysis",
   "timeline",
+  "adaptive",
+  "dialogueCoach",
+  "aiAssist",
 ] as const;
 
 export default getRequestConfig(async ({ requestLocale }) => {

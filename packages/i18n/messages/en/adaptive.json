@@ -1,0 +1,35 @@
+{
+  "title": "Adaptive Context",
+  "loading": "Loading…",
+  "loadFailed": "Failed to load adaptive context.",
+  "enableLabel": "Enable adaptive context",
+  "enableDescription": "Personalize AI assistance using your preferences, voice profiles, and style rules.",
+  "weightsTitle": "Signal Weights",
+  "weight": {
+    "preference": "Preference weight",
+    "voice_fidelity": "Voice fidelity weight",
+    "style_constraints": "Style constraints weight",
+    "avoidance": "Avoidance weight"
+  },
+  "sourcesTitle": "Active Sources",
+  "source": {
+    "preference": "User preferences",
+    "voice_profiles": "Character voice profiles",
+    "style_constraints": "Style constraints",
+    "avoidance_patterns": "Avoidance patterns",
+    "empty": "No data"
+  },
+  "noSignals": "No adaptive signals active",
+  "indicator": {
+    "active": "Active",
+    "paused": "Paused",
+    "noData": "No data",
+    "popoverLabel": "Adaptive context status",
+    "manage": "Manage in Settings",
+    "description": {
+      "active": "Adaptive context is active and shaping your AI assistance.",
+      "paused": "Adaptive context is paused. Enable it to personalize your AI assistance.",
+      "noData": "No adaptive data yet. Set up preferences and voice profiles to personalize."
+    }
+  }
+}

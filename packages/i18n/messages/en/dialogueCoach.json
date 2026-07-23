@@ -1,0 +1,24 @@
+{
+  "title": "Dialogue Coach",
+  "close": "Close",
+  "selectPrompt": "Select dialogue text to analyse",
+  "idleHint": "Select a dialogue passage and choose a mode to begin.",
+  "analyzing": "Analysing dialogue…",
+  "failed": "Analysis failed. Please try again.",
+  "noIssues": "No dialogue issues found. The passage reads naturally.",
+  "mode": {
+    "groupLabel": "Mode",
+    "analyze": "Analyse",
+    "improve": "Improve"
+  },
+  "severity": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High"
+  },
+  "alternatives": {
+    "original": "Original",
+    "rewrite": "Rewrite",
+    "apply": "Apply"
+  }
+}

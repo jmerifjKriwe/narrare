@@ -1,0 +1,35 @@
+{
+  "title": "Adaptiver Kontext",
+  "loading": "Lädt…",
+  "loadFailed": "Adaptiver Kontext konnte nicht geladen werden.",
+  "enableLabel": "Adaptiven Kontext aktivieren",
+  "enableDescription": "Personalisiere deine KI-Unterstützung anhand deiner Einstellungen, Stimmenprofile und Stilvorgaben.",
+  "weightsTitle": "Signal-Gewichtungen",
+  "weight": {
+    "preference": "Gewichtung: Präferenzen",
+    "voice_fidelity": "Gewichtung: Stimmentreue",
+    "style_constraints": "Gewichtung: Stilvorgaben",
+    "avoidance": "Gewichtung: Vermeidungen"
+  },
+  "sourcesTitle": "Aktive Quellen",
+  "source": {
+    "preference": "Nutzereinstellungen",
+    "voice_profiles": "Charakter-Stimmenprofile",
+    "style_constraints": "Stilvorgaben",
+    "avoidance_patterns": "Vermeidungsmuster",
+    "empty": "Keine Daten"
+  },
+  "noSignals": "Keine adaptiven Signale aktiv",
+  "indicator": {
+    "active": "Aktiv",
+    "paused": "Pausiert",
+    "noData": "Keine Daten",
+    "popoverLabel": "Status des adaptiven Kontexts",
+    "manage": "In den Einstellungen verwalten",
+    "description": {
+      "active": "Der adaptive Kontext ist aktiv und gestaltet deine KI-Unterstützung.",
+      "paused": "Der adaptive Kontext ist pausiert. Aktiviere ihn, um deine KI-Unterstützung zu personalisieren.",
+      "noData": "Noch keine adaptiven Daten. Richte Präferenzen und Stimmenprofile ein, um zu personalisieren."
+    }
+  }
+}
