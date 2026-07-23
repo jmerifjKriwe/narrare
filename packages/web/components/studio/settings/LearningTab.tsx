@@ -1,9 +1,11 @@
 "use client";
 
-import { AlertTriangle, Brain, RotateCcw } from "lucide-react";
+import { Brain, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { LearningStatus } from "@/components/studio/learning/LearningStatus";
+import { AnalysisErrorBanner } from "@/components/studio/settings/_components/AnalysisErrorBanner";
+import { AdaptiveDashboard } from "@/components/studio/settings/AdaptiveDashboard";
 import { PreferenceProfile } from "@/components/studio/settings/PreferenceProfile";
 import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import { usePreferences, useResetPreferences, useTriggerAnalysis } from "@/lib/hooks/useMemory";
@@ -78,6 +80,12 @@ export function LearningTab({ novelId }: LearningTabProps) {
         <p className="text-sm text-muted-foreground">{t("learning.description")}</p>
       </div>
 
+      {/* Adaptive Context dashboard (LEARN-002, ADR-069 §25).
+          Mounted as the primary control above progress + preference profile:
+          toggle → weights → sources hierarchy. All state flows through the
+          canonical adaptive-context query key (Decision 15). */}
+      <AdaptiveDashboard novelId={novelId} />
+
       {/* Progress section */}
       <div className="bg-card border border-border rounded-lg p-6">
         <LearningStatus eventCount={eventCount} />
@@ -107,42 +115,12 @@ export function LearningTab({ novelId }: LearningTabProps) {
 
       {/* Analysis error — mapped message + retry, with connection-lost styling
            when the failure is a network error (§16.4 parity with GenerationPanel) */}
-      {analysisError && (
-        <div
-          className={
-            isAnalysisConnectionLost
-              ? "flex items-center justify-between gap-3 p-3 rounded-lg bg-yellow-500/10"
-              : "flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm"
-          }
-          role="alert"
-        >
-          <div
-            className={
-              isAnalysisConnectionLost
-                ? "flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400"
-                : "flex items-center gap-2"
-            }
-          >
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            <span>{analysisError.userMessage}</span>
-          </div>
-          <button
-            type="button"
-            onClick={handleAnalyze}
-            disabled={analysisMutation.isPending}
-            className={
-              isAnalysisConnectionLost
-                ? "flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md bg-yellow-600 text-white hover:bg-yellow-700 transition-colors disabled:opacity-50"
-                : "flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md border border-border text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-            }
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>
-              {isAnalysisConnectionLost ? t("aiActions.connectionLostRetry") : t("aiActions.retry")}
-            </span>
-          </button>
-        </div>
-      )}
+      <AnalysisErrorBanner
+        analysisError={analysisError}
+        isConnectionLost={isAnalysisConnectionLost}
+        isPending={analysisMutation.isPending}
+        onRetry={handleAnalyze}
+      />
 
       {/* Preference Profile */}
       {profile && (

@@ -12,6 +12,35 @@ vi.mock("@/lib/hooks/useMemory", () => ({
   useTriggerAnalysis: () => mockUseTriggerAnalysis(),
 }));
 
+// AdaptiveDashboard (now mounted inside LearningTab) uses real TanStack Query
+// hooks. Stub them here so the dashboard renders without a QueryClientProvider.
+// The dashboard itself is covered by AdaptiveDashboard.test.tsx (MSW + provider).
+vi.mock("@/lib/hooks/useAdaptiveContext", () => ({
+  useAdaptiveContext: () => ({
+    data: {
+      project_id: "novel-1",
+      enabled: false,
+      weights: { preference: 0, voice_fidelity: 0, style_constraints: 0, avoidance: 0 },
+      sources: {
+        preference_text: "",
+        voice_profiles_text: "",
+        style_constraints_text: "",
+        avoidance_patterns_text: "",
+      },
+      has_any_signal: false,
+    },
+    isLoading: false,
+    error: null,
+  }),
+  useToggleAdaptive: () => ({ mutate: vi.fn(), isPending: false }),
+  useSetAdaptiveWeights: () => ({ mutate: vi.fn(), isPending: false }),
+  adaptiveKeys: {
+    all: ["adaptive-context"],
+    context: (id: string) => ["adaptive-context", id],
+    snapshots: (id: string) => ["adaptive-context", id, "snapshots"],
+  },
+}));
+
 // Must import after mock
 import { LearningTab } from "@/components/studio/settings/LearningTab";
 
