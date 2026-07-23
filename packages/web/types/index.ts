@@ -2,6 +2,15 @@
 // Barrel file — re-exports all domain types for backward-compatible imports
 
 export type {
+  AdaptiveContextResponse,
+  AdaptiveSettingsResponse,
+  AdaptiveSnapshot,
+  AdaptiveSourceSummary,
+  AdaptiveToggleInput,
+  AdaptiveWeightsInput,
+  AdaptiveWeightsResponse,
+} from "./adaptive";
+export type {
   ApiError,
   TokenResponse,
   User,
@@ -10,6 +19,14 @@ export type {
   ChatDoneEvent,
   ChatMetaEvent,
 } from "./chat";
+export type {
+  DialogueAlternative,
+  DialogueCoachMode,
+  DialogueCoachRequest,
+  DialogueCoachResponse,
+  DialogueCoachStreamEvent,
+  DialogueIssue,
+} from "./dialogueCoach";
 export type {
   AnalyzeRequest,
   AnalyzeResponse,
