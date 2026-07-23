@@ -97,7 +97,7 @@ export function AdaptiveStatusIndicator({ novelId }: { readonly novelId: string 
         aria-expanded={open}
         aria-controls={open ? popoverId : undefined}
         onClick={() => setOpen((value) => !value)}
-        className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-sm transition-colors ${
+        className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
           state === "active"
             ? "text-violet-600 dark:text-violet-400"
             : "text-muted-foreground hover:text-foreground"
@@ -105,7 +105,10 @@ export function AdaptiveStatusIndicator({ novelId }: { readonly novelId: string 
       >
         <Icon
           aria-hidden="true"
-          className={`h-3.5 w-3.5 ${state === "active" ? "animate-pulse" : ""}`}
+          // `motion-safe:` gates the pulse behind prefers-reduced-motion:
+          // no-preference, so vestibular-sensitive users get a static icon
+          // (web-design-guidelines: respect reduced-motion).
+          className={`h-3.5 w-3.5 ${state === "active" ? "motion-safe:animate-pulse" : ""}`}
         />
         <span>{t(`indicator.${labelKey}`)}</span>
       </button>

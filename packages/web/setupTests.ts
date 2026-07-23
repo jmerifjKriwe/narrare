@@ -1,7 +1,15 @@
 /// <reference types="vitest/globals" />
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
+import * as axeMatchers from "vitest-axe/matchers";
 import { server } from "./mocks/server";
+
+// axe-core a11y matchers (ADR-069 §28; Task 12). Registered globally so every
+// test file can `expect(await axe(container)).toHaveNoViolations()` without
+// re-extending. The matcher TYPE augmentation lives in `types/vitest-axe.d.ts`
+// (vitest-axe's bundled `extend-expect.d.ts` targets the legacy `Vi` namespace
+// and does not apply to vitest 4).
+expect.extend(axeMatchers);
 
 // Mock styled-jsx (Next.js CSS-in-JS) for test environment
 vi.mock("styled-jsx", () => ({

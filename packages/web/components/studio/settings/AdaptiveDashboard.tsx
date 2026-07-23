@@ -24,7 +24,9 @@ export function AdaptiveDashboard({ novelId }: { readonly novelId: string }) {
   const setWeights = useSetAdaptiveWeights(novelId);
 
   if (isLoading) {
-    return <div className="animate-pulse text-sm text-muted-foreground">{t("loading")}</div>;
+    return (
+      <div className="motion-safe:animate-pulse text-sm text-muted-foreground">{t("loading")}</div>
+    );
   }
   if (error || !data) {
     return (
