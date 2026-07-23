@@ -5,6 +5,7 @@
  * Components should import from here or from "@/lib/api/client" (which re-exports this).
  */
 
+export { adaptiveApi } from "./adaptive";
 export { authApi } from "./auth";
 export { chatApi } from "./chat";
 export {
@@ -16,6 +17,8 @@ export {
   restoreSession,
   setAccessToken,
 } from "./core";
+export type { DialogueCoachStreamHandlers } from "./dialogue-coach-stream";
+export { streamDialogueCoach } from "./dialogue-coach-stream";
 export type {
   ContextMeta,
   ExtendLength,
