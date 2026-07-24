@@ -73,6 +73,7 @@ permission:
     "gh pr edit*": "allow"
     "gh issue create*": "allow"
     "gh issue comment*": "allow"
+    "gh api*": "allow"
     "ls*": "allow"
     "cat *": "allow"
     "find*": "allow"
