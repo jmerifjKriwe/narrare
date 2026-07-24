@@ -1,6 +1,6 @@
 # ADR-071 — CoreSettings: Centralised Configuration for the Core Package
 
-> **Status:** 🔄 Proposed
+> **Status:** ✅ Implemented
 > **Date:** 2026-07-24
 > **Deciders:** Architecture Specialist
 > **Supersedes:** —
@@ -543,6 +543,19 @@ the effect test are unchanged.
 `os.environ.get()` call sites must be migrated, the API lifespan workaround
 removed, the API Settings duplicate fields removed, and unit tests for
 CoreSettings passing.
+
+### ✅ Implementation Complete
+
+This ADR has been fully implemented (commit `281e09e8`):
+
+- `packages/core/narrare_core/settings.py` created with `CoreSettings(BaseSettings)`
+  + `get_core_settings()` cached accessor.
+- All 14 Core `os.environ.get()` call sites migrated to `get_core_settings()`.
+- API Settings duplicates removed (`encryption_key`, `default_embedding_model`).
+- Lifespan env-var bridge workaround removed.
+- **Enforcement:** regression test `test_does_not_bridge_encryption_key_to_environ`
+  + architecture checker (RULE-07) prevent reintroduction.
+- **Verification:** 9630 tests passing, pyright 0 errors, architecture check clean.
 
 ---
 

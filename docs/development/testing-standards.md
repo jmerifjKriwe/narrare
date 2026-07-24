@@ -733,6 +733,13 @@ def _set_encryption_key(monkeypatch: pytest.MonkeyPatch) -> None:
 for env vars that must be isolated per test. Add negative tests (missing env var
 → expected error) where the behavior is security-relevant.
 
+> **CoreSettings (ADR-071):** The `monkeypatch.setenv` pattern above still works
+> because `CoreSettings` reads env vars. For Core-owned config, tests can also
+> construct a typed `CoreSettings(...)` directly and override the cached accessor
+> via `get_core_settings.cache_clear()` (see
+> `packages/core/narrare_core/settings.py`). This is strictly preferable to
+> `patch.dict(os.environ, ...)` for unit tests in the Core layer.
+
 ### Factory Helpers (not fixtures)
 
 ```python
