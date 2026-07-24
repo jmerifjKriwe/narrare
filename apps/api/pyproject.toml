@@ -36,7 +36,7 @@ dependencies = [
   "opentelemetry-api>=1.39.0,<1.45.0",
   "opentelemetry-sdk>=1.39.0,<1.45.0",
   "opentelemetry-instrumentation-fastapi>=0.60b0,<0.65",
-  "opentelemetry-exporter-otlp>=1.39.0,<1.44.0",
+  "opentelemetry-exporter-otlp>=1.39.0,<1.45.0",
 
   # Rate limiting
   "pyrate-limiter>=4.0,<5",
