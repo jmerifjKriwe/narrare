@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import JSONB
 
 from narrare._app.base_repository import BaseRepository
 from narrare.evidence._mappers import domain_to_orm, orm_to_domain
@@ -196,3 +197,44 @@ class EvidenceRepositoryImpl(BaseRepository):
                 "adaptive_snapshot_no_evidence_row",
                 invocation_id=str(invocation_id),
             )
+
+    async def get_adaptive_snapshots(
+        self,
+        novel_id: UUID,
+        *,
+        limit: int = 20,
+    ) -> list[FeatureInvocationEvidence]:
+        """List per-novel adaptive snapshots, newest first (ADR-070).
+
+        Returns only rows that actually consumed adaptive context and are
+        scoped to ``novel_id``. Legacy rows with NULL ``novel_id`` are
+        correctly absent — they are unattributable.
+
+        The ``adaptive_source_summary`` filter excludes BOTH null kinds:
+
+        * SQL ``NULL`` — pre-migration-0034 rows and any row whose
+          ``novel_id`` could not be attributed.
+        * JSON ``null`` — the asyncpg + SQLAlchemy JSONB codec persists a
+          Python ``None`` as jsonb ``'null'`` (a valid, non-NULL JSONB
+          value) rather than SQL ``NULL``. A bare ``IS NOT NULL`` would
+          therefore leak non-adaptive rows, so an explicit
+          ``!= JSONB.NULL`` guard is required.
+
+        Args:
+            novel_id: The novel/project UUID to scope by.
+            limit: Maximum records to return (default 20).
+
+        Returns:
+            Evidence records newest-first, each carrying ``created_at``.
+        """
+        summary = InvocationEvidenceModel.adaptive_source_summary
+        stmt = (
+            select(InvocationEvidenceModel)
+            .where(InvocationEvidenceModel.novel_id == novel_id)
+            .where(summary.isnot(None))
+            .where(summary != JSONB.NULL)
+            .order_by(InvocationEvidenceModel.created_at.desc())
+            .limit(limit)
+        )
+        result = await self._session.execute(stmt)
+        return [orm_to_domain(row) for row in result.scalars()]

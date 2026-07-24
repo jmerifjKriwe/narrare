@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from datetime import datetime
+    from uuid import UUID
 
     from narrare_core.ai_invocation.models import (
         AuditState,
@@ -100,5 +101,27 @@ class EvidenceRepository(Protocol):
 
         Returns:
             The latest ``AuditState`` value, or ``None`` if no records exist.
+        """
+        ...
+
+    async def get_adaptive_snapshots(
+        self,
+        novel_id: UUID,
+        *,
+        limit: int = 20,
+    ) -> list[FeatureInvocationEvidence]:
+        """List per-novel adaptive snapshots, newest first (ADR-070).
+
+        Returns only rows that actually consumed adaptive context (a real
+        ``adaptive_source_summary`` object, excluding both SQL ``NULL`` and
+        JSON ``null``) and are scoped to ``novel_id``. Legacy rows with NULL
+        ``novel_id`` are correctly absent — they are unattributable.
+
+        Args:
+            novel_id: The novel/project UUID to scope by.
+            limit: Maximum records to return (default 20).
+
+        Returns:
+            Evidence records newest-first, each carrying ``created_at``.
         """
         ...
