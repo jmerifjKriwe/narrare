@@ -178,16 +178,21 @@ style_constraints, avoidance}}`.
 
 **Frontend:**
 
-- `packages/web/components/studio/settings/AdaptiveDashboard.tsx`
-- `packages/web/components/studio/settings/AdaptiveToggle.tsx`
-- `packages/web/components/studio/settings/AdaptiveWeightControls.tsx`
-- `packages/web/components/studio/settings/AdaptiveWeightSlider.tsx`
-- `packages/web/components/studio/settings/AdaptiveSourceList.tsx`
-- `packages/web/components/studio/settings/AdaptiveSnapshotHistory.tsx`
-- `packages/web/components/studio/editor/AdaptiveStatusIndicator.tsx`
-- `packages/web/hooks/adaptive/useAdaptiveContext.ts` (TanStack Query,
-  cache key `['adaptive-context']`)
-- `packages/web/lib/api/adaptive.ts` (REST client)
+- `packages/web/components/studio/settings/AdaptiveDashboard.tsx` — master
+  toggle + weight sliders + source list + snapshot history (consolidated)
+- `packages/web/components/studio/editor-view/AdaptiveStatusIndicator.tsx`
+  — 3-state toolbar popover
+- `packages/web/lib/hooks/useAdaptiveContext.ts` — TanStack Query hook
+  (cache key `['adaptive-context']`)
+- `packages/web/lib/hooks/useAdaptiveSnapshots.ts` — snapshot history hook
+- `packages/web/lib/api/adaptive.ts` — REST client
+
+> **Note (path delta):** the sub-components (AdaptiveToggle,
+> AdaptiveWeightControls, AdaptiveWeightSlider, AdaptiveSourceList,
+> AdaptiveSnapshotHistory) are consolidated into `AdaptiveDashboard.tsx`
+> rather than separate files. The hooks live under `lib/hooks/` (shared
+> namespace) rather than `hooks/adaptive/`. The status indicator lives
+> under `editor-view/` (editor toolbar area) rather than `editor/`.
 
 **i18n namespaces (RULE-16):** `settings.adaptive`, `editor.adaptiveIndicator`
 (both registered in `request.ts` and present in `packages/i18n/messages/
