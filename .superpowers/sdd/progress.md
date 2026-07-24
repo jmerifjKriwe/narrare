@@ -1,7 +1,0 @@
-Task 1: complete (commits 8a9aacd2..c7b78d8a, review clean; minor notes: focus-visible preference and decorative menu aria-hidden deferred to Phase B/D)
-Task 2: complete (uncommitted by plan; reviewed clean; folds into Task 3 commit; minor note: non-active close no-op not directly tested)
-Task 3: complete (commits c7b78d8a..928f49f3, review clean; Task 2 folded into commit; minor note: editor URL adapter runtime use deferred to Task 4)
-Task 4: complete (commits 928f49f3..9bb49489, review clean; minor note: openerRef population deferred to Task 6 focus-return work)
-Task 5: complete (commits 9bb49489..aef0efc4, re-review clean after responsive fix)
-Task 6: complete (commits aef0efc4..e89f8496, re-review clean after a11y fixes; advisory: EditorRightPanelSlot.tsx 210 lines → modularize in Task 7)
-Task 7: complete (integration gate 9/9 PASS; RULE-04 modularization + dead-code cleanup)
