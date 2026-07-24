@@ -223,4 +223,4 @@ class TestRunAllProbes:
         asyncio.run(runner(tmp_path))
         captured = capsys.readouterr()
         assert "Probe Results" in captured.out
-        assert "8/8 probes passed" in captured.out
+        assert "9/9 probes passed" in captured.out

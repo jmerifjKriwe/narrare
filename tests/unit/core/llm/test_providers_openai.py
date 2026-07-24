@@ -9,7 +9,7 @@ Exercises the actual ``_make_openai`` factory body to verify:
 from __future__ import annotations
 
 import pytest
-from openai import OpenAIError
+from pydantic_ai.exceptions import UserError
 from pydantic_ai.models.openai import OpenAIChatModel
 
 from narrare_core.llm._providers.openai import _make_openai
@@ -64,5 +64,5 @@ class TestMakeOpenAI:
         credential.
         """
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(OpenAIError):
+        with pytest.raises(UserError):
             _make_openai("gpt-4o")

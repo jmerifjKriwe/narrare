@@ -169,8 +169,8 @@ class TestRealRegistry:
         # fact_extraction; planning gained temporal_consistency). ADR-055 D4
         # added analysis/character_voice (ANAL-008) → 30 modes. ADR-057 D3
         # added analysis/voice_check (WRITE-010) → 31 modes.
-        # Seven further additions brought the total to 38: analysis/coreference
+        # Eight further additions brought the total to 39: analysis/coreference
         # (ANAL-005), analysis/pov, analysis/readability, kb/merge,
-        # planning/character_arc, planning/timeline, and
-        # planning/timeline_extraction (ADR-054).
-        assert mode_count == 38, f"expected 38 feature modes, got {mode_count}"
+        # planning/character_arc, planning/timeline, planning/timeline_extraction
+        # (ADR-054), and ai_assist/dialogue_coach (ADR-069).
+        assert mode_count == 39, f"expected 39 feature modes, got {mode_count}"

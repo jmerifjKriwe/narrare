@@ -15,6 +15,14 @@ vi.mock("@/lib/hooks/useMemory", () => ({
 // AdaptiveDashboard (now mounted inside LearningTab) uses real TanStack Query
 // hooks. Stub them here so the dashboard renders without a QueryClientProvider.
 // The dashboard itself is covered by AdaptiveDashboard.test.tsx (MSW + provider).
+vi.mock("@/lib/hooks/useAdaptiveSnapshots", () => ({
+  useAdaptiveSnapshots: () => ({
+    data: { items: [] },
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 vi.mock("@/lib/hooks/useAdaptiveContext", () => ({
   useAdaptiveContext: () => ({
     data: {
