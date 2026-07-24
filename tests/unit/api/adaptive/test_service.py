@@ -7,6 +7,7 @@ all I/O.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -19,6 +20,9 @@ from narrare_core.ai_invocation.adaptive_context import (
     AdaptiveContext,
     AdaptiveSettings,
 )
+
+if TYPE_CHECKING:
+    from narrare_core.ai_invocation.evidence_models import FeatureInvocationEvidence
 
 
 class FakeAdaptiveProvider:
@@ -61,6 +65,19 @@ class FakeAdaptiveRepo:
         self.saved.append((project_id, settings))
 
 
+class _NullEvidenceRepo:
+    """Fake EvidenceRepositoryImpl — get_context/set_* tests never call it."""
+
+    async def get_adaptive_snapshots(
+        self,
+        novel_id: object,
+        *,
+        limit: int = 20,
+    ) -> list[FeatureInvocationEvidence]:
+        del novel_id, limit
+        return []
+
+
 def _full_context(user_id: object, project_id: object) -> AdaptiveContext:
     return AdaptiveContext(
         user_id=user_id,  # type: ignore[arg-type]
@@ -85,7 +102,9 @@ class TestGetContext:
             settings=AdaptiveSettings(enabled=True),
         )
         repo = FakeAdaptiveRepo()
-        service = AdaptiveContextService(provider=provider, settings_repo=repo)
+        service = AdaptiveContextService(
+            provider=provider, settings_repo=repo, evidence_repo=_NullEvidenceRepo()
+        )
 
         response = await service.get_context(project_id=project_id, user_id=user_id)
 
@@ -103,7 +122,9 @@ class TestGetContext:
             settings=AdaptiveSettings(),
         )
         repo = FakeAdaptiveRepo()
-        service = AdaptiveContextService(provider=provider, settings_repo=repo)
+        service = AdaptiveContextService(
+            provider=provider, settings_repo=repo, evidence_repo=_NullEvidenceRepo()
+        )
 
         response = await service.get_context(project_id=project_id, user_id=user_id)
 
@@ -118,7 +139,9 @@ class TestSetEnabled:
     async def test_persists_enabled_false(self) -> None:
         provider = FakeAdaptiveProvider()
         repo = FakeAdaptiveRepo()
-        service = AdaptiveContextService(provider=provider, settings_repo=repo)
+        service = AdaptiveContextService(
+            provider=provider, settings_repo=repo, evidence_repo=_NullEvidenceRepo()
+        )
 
         response = await service.set_enabled(project_id=uuid4(), user_id=uuid4(), enabled=False)
 
@@ -130,7 +153,9 @@ class TestSetEnabled:
     async def test_persists_enabled_true(self) -> None:
         provider = FakeAdaptiveProvider()
         repo = FakeAdaptiveRepo()
-        service = AdaptiveContextService(provider=provider, settings_repo=repo)
+        service = AdaptiveContextService(
+            provider=provider, settings_repo=repo, evidence_repo=_NullEvidenceRepo()
+        )
 
         response = await service.set_enabled(project_id=uuid4(), user_id=uuid4(), enabled=True)
 
@@ -145,7 +170,9 @@ class TestSetWeights:
     async def test_clamps_out_of_range_weights(self) -> None:
         provider = FakeAdaptiveProvider()
         repo = FakeAdaptiveRepo()
-        service = AdaptiveContextService(provider=provider, settings_repo=repo)
+        service = AdaptiveContextService(
+            provider=provider, settings_repo=repo, evidence_repo=_NullEvidenceRepo()
+        )
 
         response = await service.set_weights(
             project_id=uuid4(),
@@ -162,7 +189,9 @@ class TestSetWeights:
     async def test_preserves_in_range_weights(self) -> None:
         provider = FakeAdaptiveProvider()
         repo = FakeAdaptiveRepo()
-        service = AdaptiveContextService(provider=provider, settings_repo=repo)
+        service = AdaptiveContextService(
+            provider=provider, settings_repo=repo, evidence_repo=_NullEvidenceRepo()
+        )
 
         response = await service.set_weights(
             project_id=uuid4(),

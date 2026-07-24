@@ -17,6 +17,8 @@ See:
 
 from __future__ import annotations
 
+from datetime import datetime  # noqa: TC003
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -96,3 +98,26 @@ class AdaptiveSettingsResponse(BaseModel):
 
     enabled: bool
     weights: AdaptiveWeightsResponse = Field(default_factory=AdaptiveWeightsResponse)
+
+
+class AdaptiveSnapshotItem(BaseModel):
+    """One row in the Recent Adaptive Activity timeline (ADR-070)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    invocation_id: str | None = None
+    novel_id: str | None = None
+    intent: str
+    mode: str | None = None
+    created_at: datetime
+    source_summary: dict[str, str] | None = None
+    weights: AdaptiveWeightsResponse | None = None
+
+
+class AdaptiveSnapshotsResponse(BaseModel):
+    """Response for GET /adaptive/{project_id}/snapshots."""
+
+    model_config = ConfigDict(frozen=True)
+
+    project_id: str
+    items: list[AdaptiveSnapshotItem] = Field(default_factory=list[AdaptiveSnapshotItem])

@@ -62,7 +62,13 @@ def get_adaptive_context_service(
 ) -> AdaptiveContextService:
     """Create an AdaptiveContextService with production DI."""
     from narrare.adaptive.service import AdaptiveContextService
+    from narrare.evidence.repository import EvidenceRepositoryImpl
 
     provider = get_adaptive_context_provider(session)
     settings_repo = get_adaptive_settings_repository(session)
-    return AdaptiveContextService(provider=provider, settings_repo=settings_repo)
+    evidence_repo = EvidenceRepositoryImpl(session)
+    return AdaptiveContextService(
+        provider=provider,
+        settings_repo=settings_repo,
+        evidence_repo=evidence_repo,
+    )
