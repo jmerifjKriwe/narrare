@@ -121,6 +121,12 @@ def build_invocation_evidence(
 
     return FeatureInvocationEvidence(
         invocation_id=invocation_id,
+        # ADR-070: project-scope the evidence row. context.project_id IS the
+        # novel UUID (novel ≡ project in Narrare), but it is typed object | None
+        # because callers supply it as a UUID, a string-form UUID, or a
+        # non-uuid string. Coerce here so the strict UUID | None column invariant
+        # holds without crashing the evidence build.
+        novel_id=_coerce_novel_id(context.project_id),
         feature_id=context.feature_id,
         intent=context.intent.value,
         mode=context.mode,
@@ -136,6 +142,35 @@ def build_invocation_evidence(
         budget_decision_fingerprint=budget_fp,
         streaming=context.streaming,
     )
+
+
+def _coerce_novel_id(project_id: object | None) -> UUID | None:
+    """Coerce a polymorphic ``context.project_id`` to a strict ``UUID | None``.
+
+    ``PromptInvocationContext.project_id`` is typed ``object | None`` because
+    callers supply it in several forms: a ``UUID`` (feature services), a
+    string-form UUID (``writing_graph`` carries ``state.novel_id`` as ``str``),
+    or occasionally a non-uuid string (``wiki`` reuses ``entity_name``). The
+    evidence ``novel_id`` column is a strict ``UUID | None`` (ADR-070), so the
+    write-path boundary is bridged here: UUIDs and string-form UUIDs are
+    normalised to ``UUID``; ``None`` and non-uuid values degrade to ``None``
+    rather than crashing the evidence build.
+
+    Args:
+        project_id: The raw invocation-context project identifier.
+
+    Returns:
+        The identifier as a ``UUID``, or ``None`` when it is absent or not a
+        UUID.
+    """
+    if isinstance(project_id, UUID):
+        return project_id
+    if project_id is None:
+        return None
+    try:
+        return UUID(str(project_id))
+    except ValueError:
+        return None
 
 
 def _determine_preference_status(
