@@ -43,6 +43,9 @@ def domain_to_orm(evidence: FeatureInvocationEvidence) -> dict[str, object]:
         "streaming": evidence.streaming if evidence.streaming is not None else False,
         # ADR-045 §2: correlation fields.
         "invocation_id": evidence.invocation_id,
+        # ADR-070: project scope (write path). created_at is intentionally
+        # omitted — the DB column has server_default=func.now().
+        "novel_id": evidence.novel_id,
         "prepared_context_fingerprint": evidence.prepared_context_fingerprint,
         "prompt_fingerprint": evidence.prompt_fingerprint,
         "budget_decision_fingerprint": evidence.budget_decision_fingerprint,
@@ -91,6 +94,9 @@ def orm_to_domain(model: InvocationEvidenceModel) -> FeatureInvocationEvidence:
         streaming=model.streaming,
         # ADR-045 §2: correlation fields.
         invocation_id=model.invocation_id,
+        # ADR-070: project scope + read-only DB-stamped timestamp.
+        novel_id=model.novel_id,
+        created_at=model.created_at,
         prepared_context_fingerprint=model.prepared_context_fingerprint,
         prompt_fingerprint=model.prompt_fingerprint,
         budget_decision_fingerprint=model.budget_decision_fingerprint,

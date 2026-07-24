@@ -31,6 +31,9 @@ _ORM_MODEL_DEFAULTS: dict[str, object] = {
     # ADR-045 §2 correlation fields (migration 0030) + streaming (migration 0028).
     "streaming": False,
     "invocation_id": None,
+    # ADR-070: project scope (migration 0035) + read-only DB-stamped timestamp.
+    "novel_id": None,
+    "created_at": None,
     "prepared_context_fingerprint": None,
     "prompt_fingerprint": None,
     "budget_decision_fingerprint": None,

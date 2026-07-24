@@ -60,6 +60,13 @@ class InvocationEvidenceModel(Base):
         nullable=True,
         index=True,
     )
+    # ADR-070: project-scope column for per-novel snapshot queries.
+    # NULL on pre-0035 rows and when the invocation context had no project.
+    novel_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+    )
     prepared_context_fingerprint: Mapped[str | None] = mapped_column(
         String(128),
         nullable=True,

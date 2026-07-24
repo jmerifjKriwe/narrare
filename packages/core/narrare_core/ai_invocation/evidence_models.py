@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
+    from datetime import datetime
     from uuid import UUID
 
     from narrare_core.ai_invocation._enums import (
@@ -41,6 +42,11 @@ class FeatureInvocationEvidence(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     invocation_id: UUID | None = None
+    # ADR-070: project scope (set on write from context.project_id) and
+    # created_at (READ-ONLY — DB-stamped on INSERT; populated by orm_to_domain
+    # on reads, omitted by domain_to_orm on writes).
+    novel_id: UUID | None = None
+    created_at: datetime | None = None
     feature_id: str = Field(min_length=1)
     intent: str = Field(min_length=1, description="Intent value string.")
     mode: str | None = None
@@ -66,6 +72,7 @@ class FeatureInvocationEvidence(BaseModel):
 
 def _rebuild_forward_refs() -> None:
     """Resolve Pydantic forward refs after moving type imports under TYPE_CHECKING."""
+    from datetime import datetime
     from uuid import UUID
 
     from narrare_core.ai_invocation._enums import (
@@ -77,6 +84,7 @@ def _rebuild_forward_refs() -> None:
 
     FeatureInvocationEvidence.model_rebuild(
         _types_namespace={
+            "datetime": datetime,
             "UUID": UUID,
             "AuditState": AuditState,
             "KBSuggestedStatus": KBSuggestedStatus,
