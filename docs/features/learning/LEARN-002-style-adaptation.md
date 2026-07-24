@@ -1,7 +1,7 @@
 ---
 id: LEARN-002
 title: "Adaptivity Dashboard"
-status: in-progress
+status: stable
 area: learning
 mvp: false
 
@@ -249,6 +249,74 @@ mutations). Conform with ADR-043 per ADR-069 Decision 15.
 - [ADR-069](../../architecture/decisions/ADR-069-adaptive-context-dialogue-coach.md) —
   The architectural decisions that recalibrated this feature
 
+## Implementation Evidence
+
+> **Status: ✅ Implemented (2026-07-24)** — all layers landed against
+> [ADR-069](../../architecture/decisions/ADR-069-adaptive-context-dialogue-coach.md).
+> Evidence project-scoping:
+> [ADR-070](../../architecture/decisions/ADR-070-evidence-project-scoping.md)
+> (nullable indexed `novel_id` on `invocation_evidence` + Alembic
+> `0035_evidence_project_scoping.py`; threads `novel_id = context.project_id`
+> at the evidence write boundary).
+> Commit range: `ace72dc7` → `a9a740b8` (28 commits).
+
+### Backend (`apps/api/narrare/adaptive/`)
+
+- **`service.py`** — `AdaptiveContextService`. Composes the Core
+  `AdaptiveContextProvider` (context assembly + settings persistence +
+  snapshot reads).
+- **`router.py`** — **4 REST endpoints**:
+  - `GET /api/v1/adaptive/{project_id}/context` — adaptive context bundle.
+  - `POST /api/v1/adaptive/{project_id}/toggle` — master ON/OFF.
+  - `POST /api/v1/adaptive/{project_id}/weights` — set the 4
+    `AdaptiveWeights` (clamped to [0.0, 1.0]).
+  - `GET /api/v1/adaptive/{project_id}/snapshots` — paginated recent
+    invocation snapshots (the per-call transparency list; ADR-070 T4/T5).
+- **`contracts.py`** — `AdaptiveContextServiceProtocol`.
+- **`schemas.py`** — `AdaptiveContextResponse`, `AdaptiveSettingsResponse`,
+  `AdaptiveWeightsInput`, `AdaptiveWeightsResponse`, `AdaptiveSourceSummary`.
+- **`adaptive_context_provider.py`** + **`profile_provider_impl.py`** —
+  `AdaptiveContextProviderImpl` (implements the Core Protocol; wires
+  `PreferenceProvider` + `ProfileProvider` + adaptive settings).
+- **`repository.py`** — settings persistence helper.
+- **`dependencies.py`** — DI factories.
+- Snapshot read path added via ADR-070: `repository.get_adaptive_snapshots`
+  (T3) + service/schemas/DI (T4) + router endpoint (T5).
+
+### Frontend (`packages/web/`)
+
+- **`components/studio/settings/AdaptiveDashboard.tsx`** — master toggle
+  + 4 weight sliders (preference, voice_fidelity, style_constraints,
+  avoidance) + active-source list + snapshot history timeline. Commit
+  `0197c32c`.
+- **`components/studio/editor-view/AdaptiveStatusIndicator.tsx`** — 3-state
+  editor-toolbar popover (ON / PAUSED / NO-DATA). Commit `363660d0`.
+- **`hooks/adaptive/useAdaptiveContext.ts`** — TanStack Query with canonical
+  cache key `['adaptive-context']`. Commit `a13905bc`.
+- **`lib/api/adaptive.ts`** — REST client. Commit `4b8fe8ae`.
+- Snapshot history UI: commit `a9a740b8` (ADR-069 §25).
+- shadcn slider/switch/badge primitives added (`09259d05`).
+- a11y: axe-core tests for all Phase 5 surfaces (`827ec7df`); Playwright VRT
+  baselines (`d10d615b`, ADR-059).
+
+### Evidence project-scoping (ADR-070)
+
+The `invocation_evidence` table gained a nullable indexed `novel_id` column
+(Alembic `0035_evidence_project_scoping.py`) so the per-call snapshots shown
+in the dashboard are scoped to the active project. The Core
+`FeatureInvocationEvidence` gained an asymmetric read-only `created_at`.
+Commits: `6665e399` (migration + model), `5e0f4b5a` (thread `novel_id` at
+write boundary), `425c1a9a` / `3a70f7b6` / `410a3e2f` (snapshot read path).
+
+### i18n
+
+3 namespaces × 3 locales = 9 JSON files (RULE-16):
+- `packages/i18n/messages/{en,de,fr}/adaptive.json`
+- `packages/i18n/messages/{en,de,fr}/dialogueCoach.json`
+- `packages/i18n/messages/{en,de,fr}/aiAssist.json`
+
+Commit `d709427c`. All registered in `request.ts`.
+
 ## Status & History
 
 - `project-init` — Added to registry as planned feature (original "Style
@@ -259,3 +327,12 @@ mutations). Conform with ADR-043 per ADR-069 Decision 15.
   pursued. New scope: visibility + steering + transparency of existing
   adaptive signals (`PreferenceProfile` + `CharacterVoiceProfile`).
   Status changed `planned → in-progress`.
+- `2026-07-24` — **Status → `stable`** (implemented). All layers landed:
+  Backend (4 REST endpoints — context/toggle/weights/snapshots — +
+  `AdaptiveContextService` + `AdaptiveContextProviderImpl`), Frontend
+  (`AdaptiveDashboard` + `AdaptiveStatusIndicator` + TanStack Query hook +
+  REST client), evidence project-scoping
+  ([ADR-070](../../architecture/decisions/ADR-070-evidence-project-scoping.md):
+  `novel_id` column + migration `0035`), and i18n (3 namespaces × 3 locales).
+  Commit range `ace72dc7` → `a9a740b8` (28 commits). See
+  [Implementation Evidence](#implementation-evidence) above.

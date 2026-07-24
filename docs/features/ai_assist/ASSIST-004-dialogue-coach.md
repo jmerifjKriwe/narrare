@@ -1,7 +1,7 @@
 ---
 id: ASSIST-004
 title: "Dialogue Coach"
-status: in-progress
+status: stable
 area: ai_assist
 mvp: false
 
@@ -276,6 +276,84 @@ present in `packages/i18n/messages/{en,de,fr}/`).
 - [ADR-065](../../architecture/decisions/ADR-065-rule-13-two-method-run-stream-contract.md) —
   The two-method run/stream contract this service follows
 
+## Implementation Evidence
+
+> **Status: ✅ Implemented (2026-07-24)** — all layers landed against
+> [ADR-069](../../architecture/decisions/ADR-069-adaptive-context-dialogue-coach.md).
+> Authority: [ADR-070](../../architecture/decisions/ADR-070-evidence-project-scoping.md)
+> (evidence project-scoping amendment).
+> Commit range: `ace72dc7` → `a9a740b8` (28 commits).
+
+### Core (`packages/core/narrare_core/`)
+
+- **`agents/dialogue_coach_agent.py`** — `DialogueCoachAgent` (extends
+  `NarrareAgent[DialogueCoachDeps, DialogueCoachOutput]`; structured output
+  validated per ADR-035). Commit `9bf552d0`.
+- **`agents/dialogue_coach_types.py`** — `DialogueCoachDeps`,
+  `DialogueCoachOutput`, `DialogueIssue`, `DialogueAlternative`,
+  `DialogueIssueType`, `DialogueSeverity`. Commit `48f58673`.
+- **`prompts/_bundled/ai_assist/en/dialogue_coach/system.md`** — governed EN
+  template (PromptComposer Mode 1); `DIALOGUE_COACH` routing + manifest
+  registration. Commit `ace72dc7`.
+
+### Backend (`apps/api/narrare/ai_assist/`)
+
+- **`service.py`** — `DialogueCoachService` with both `run()` (non-streaming)
+  and `stream()` (SSE) per ADR-065 two-method contract. Commit `10bb8b63`.
+- **`contracts.py`** — `DialogueCoachServiceProtocol`. Commit `7bbc8541`.
+- **`schemas.py`** — `DialogueCoachRequest`, `DialogueCoachResponse`,
+  `DialogueCoachStreamEvent`. Commit `7bbc8541`.
+- **`router.py`** — SSE endpoint (`POST /api/v1/ai-assist/dialogue-coach`) +
+  integration tests. Commit `17bc4ae9` (ADR-056 runtime closure).
+- **`dependencies.py`** — DI factories. Commit `7bbc8541`.
+- Supporting helpers: `_agent_runner.py`, `_prompt.py`,
+  `_speaker_attribution.py`, `_runtime_content.py`, `_results.py`.
+- Backend `ProfileProvider` wired (`a0908d3b`) — closes the Phase 2
+  `voice_profiles_text` gap. Adoption probe resolved dialogue_coach debt
+  markers (`04d0c94e`).
+
+### Frontend (`packages/web/`)
+
+- **`components/studio/analysis/DialogueCoachPanel.tsx`** — mode selector
+  (Analyze/Improve) + issue list + before/after alternatives. Commit
+  `2799dc72`.
+- **`components/studio/analysis/DialogueCoachTrigger.tsx`** — analysis
+  toolbar trigger.
+- **`components/studio/editor-view/DialogueCoachPanelSlot.tsx`** — editor
+  wiring (commit `d4c7c782`).
+- **`lib/api/dialogue-coach-stream.ts`** — SSE client. Commit `4b8fe8ae`.
+- **`hooks/` (useDialogueCoach)** — SSE hook using `useAIOperation`
+  (ADR-043). Commit `3deb3860`.
+- **`types/`** — RULE-17 field-by-field TS match. Commit `71f2cb49`.
+
+> **Note (path delta):** the frontend landed under `components/studio/analysis/`
+> + `components/studio/editor-view/` rather than the predicted
+> `components/analysis/dialogue-coach/` subtree from the Technical section
+> above. The component composition differs slightly (fewer leaf components);
+> the panel consolidates mode selector + issue list + alternative list.
+
+### Evals (RULE-18b weight-effect evidence)
+
+Per [ADR-032](../../architecture/decisions/ADR-032-pydantic-evals-ssot.md)
+(Pydantic Evals SSOT), the weight-effect evidence is delivered via the
+Pydantic Evals framework rather than standalone `test_*.py` files:
+
+- **`evals/tasks/dialogue_coach_runtime.py`** — runs `DialogueCoachAgent`
+  twice with `voice_fidelity` 1.0 vs 0.1; asserts the `voice_mismatch`
+  issue count changes measurably (the RULE-18b configuration-effect-integrity
+  proof).
+- **`evals/tasks/dialogue_coach_smoke.py`** — TestModel-backed smoke variant.
+- **`evals/datasets/dialogue_coach.py`** + **`evals/evaluators/dialogue_coach.py`**
+  + **`evals/judges.py`** + **`evals/models_dialogue_coach.py`** — supporting
+  dataset/evaluator/judge/models.
+- **`evals/results/dialogue_coach.json`** — recorded results;
+  `weight_effect_observed: true` across cases.
+
+### i18n
+
+- `packages/i18n/messages/{en,de,fr}/dialogueCoach.json` — 3 locales.
+  Commit `d709427c` (with adaptive + aiAssist namespaces).
+
 ## Status & History
 
 - `2026-05-19` — Added to registry as planned feature (rough sketch).
@@ -283,3 +361,12 @@ present in `packages/i18n/messages/{en,de,fr}/`).
   Implementation paths filled in; technical section enriched; the
   feature is now specified as the pilot consumer of the
   `AdaptiveContext` contract. Status changed `planned → in-progress`.
+- `2026-07-24` — **Status → `stable`** (implemented). All layers landed
+  across Core (agent + types + governed template), Backend
+  (`DialogueCoachService` run/stream + SSE router + DI), Frontend
+  (`DialogueCoachPanel` + editor wiring + SSE hook), and Evals
+  (RULE-18b voice_fidelity weight-effect suite via Pydantic Evals).
+  Commit range `ace72dc7` → `a9a740b8` (28 commits). See
+  [Implementation Evidence](#implementation-evidence) above and
+  [ADR-069](../../architecture/decisions/ADR-069-adaptive-context-dialogue-coach.md) /
+  [ADR-070](../../architecture/decisions/ADR-070-evidence-project-scoping.md).
