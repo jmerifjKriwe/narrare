@@ -38,6 +38,7 @@ class SmokeTaskFactory:
             "analysis_metrics": self.analysis_metrics_task,
             "chat_generation": self.chat_generation_task,
             "consistency_staged": self.consistency_staged_task,
+            "dialogue_coach": self.dialogue_coach_task,
             "kb_extraction": self.kb_extraction_task,
             "kb_operations": self.kb_operations_task,
             "names": self.names_task,
@@ -217,6 +218,15 @@ class SmokeTaskFactory:
         from evals.tasks.writing_prose_smoke import writing_prose_task
 
         return await writing_prose_task(inputs)
+
+    # ------------------------------------------------------------------
+    # dialogue_coach
+    # ------------------------------------------------------------------
+
+    async def dialogue_coach_task(self, inputs: object) -> object:
+        from evals.tasks.dialogue_coach_smoke import dialogue_coach_task
+
+        return await dialogue_coach_task(inputs)
 
 
 def _known_names(text: str, existing_names: list[str]) -> list[str]:

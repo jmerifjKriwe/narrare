@@ -11,6 +11,12 @@ if TYPE_CHECKING:
 
 
 _RUBRICS: dict[str, str] = {
+    "dialogue_coach": (
+        "The high-fidelity run (voice_fidelity=1.0, voice profiles included) "
+        "detects more voice_mismatch issues than the low-fidelity run "
+        "(voice_fidelity=0.1, voice profiles suppressed). The weight change "
+        "has a clear, measurable effect on the LLM's voice-mismatch detection."
+    ),
     "kb_extraction": (
         "Output extracts only entities, facts, relationships, or conflicts supported by "
         "the input text, and omits hallucinated knowledge-base content."

@@ -11,6 +11,7 @@ from evals.datasets.analysis_feedback import build_dataset as build_analysis_fee
 from evals.datasets.analysis_metrics import build_dataset as build_analysis_metrics_dataset
 from evals.datasets.chat_generation import build_dataset as build_chat_generation_dataset
 from evals.datasets.consistency_staged import build_dataset as build_consistency_staged_dataset
+from evals.datasets.dialogue_coach import build_dataset as build_dialogue_coach_dataset
 from evals.datasets.kb_extraction import build_dataset as build_kb_extraction_dataset
 from evals.datasets.kb_operations import build_dataset as build_kb_operations_dataset
 from evals.datasets.names import build_dataset as build_names_dataset
@@ -26,6 +27,7 @@ DATASET_FACTORIES: dict[str, DatasetFactory] = {
     "analysis_metrics": build_analysis_metrics_dataset,
     "chat_generation": build_chat_generation_dataset,
     "consistency_staged": build_consistency_staged_dataset,
+    "dialogue_coach": build_dialogue_coach_dataset,
     "kb_extraction": build_kb_extraction_dataset,
     "kb_operations": build_kb_operations_dataset,
     "names": build_names_dataset,

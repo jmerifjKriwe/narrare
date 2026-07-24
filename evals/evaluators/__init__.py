@@ -13,6 +13,10 @@ from evals.evaluators.consistency import (
     FactExtractionRecall,
     FalsePositiveGuard,
 )
+from evals.evaluators.dialogue_coach import (
+    DialogueCoachOutputStructure,
+    VoiceFidelityWeightEffect,
+)
 from evals.evaluators.kb import KBExtractionCoverage
 from evals.evaluators.kb_operations import (
     KBAgentOperationSchemaValidator,
@@ -44,6 +48,7 @@ __all__ = [
     "ChatDraftStructureMatch",
     "ChatGenerationOutputValidator",
     "ContradictionRecall",
+    "DialogueCoachOutputStructure",
     "FactExtractionPrecision",
     "FactExtractionRecall",
     "FalsePositiveGuard",
@@ -59,6 +64,7 @@ __all__ = [
     "ReadabilitySchemaValidator",
     "RewriteModeMatch",
     "TimelineSchemaValidator",
+    "VoiceFidelityWeightEffect",
     "WorldbuildingSchemaValidator",
     "WritingProseQuality",
     "WritingToneAdherence",

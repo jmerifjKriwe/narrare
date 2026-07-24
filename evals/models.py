@@ -6,6 +6,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from evals.models_dialogue_coach import (
+    DialogueCoachEvalInput,
+    DialogueCoachEvalResult,
+    DialogueCoachWeightResult,
+)
 from evals.models_kb_operations import (
     KBAgentOperationSection,
     KBAssistSection,
@@ -47,6 +52,9 @@ __all__ = [
     "CharacterArcSection",
     "ChatGenerationInput",
     "ChatGenerationResult",
+    "DialogueCoachEvalInput",
+    "DialogueCoachEvalResult",
+    "DialogueCoachWeightResult",
     "DraftOutputField",
     "KBAgentOperationSection",
     "KBAssistSection",

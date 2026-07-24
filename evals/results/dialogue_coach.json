@@ -1,0 +1,87 @@
+{
+  "version": 2,
+  "framework": "pydantic-evals",
+  "suite": "dialogue_coach",
+  "mode": "smoke",
+  "report_name": "dialogue_coach_task",
+  "created_at": "2026-07-24T12:59:49.368466+00:00",
+  "cases": [
+    {
+      "name": "terse-character-formal-speech",
+      "scores": {
+        "DialogueCoachOutputStructure": 1.0,
+        "VoiceFidelityWeightEffect": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "high_fidelity": {
+          "voice_fidelity": 1.0,
+          "voice_profiles_included": true,
+          "voice_mismatch_count": 1,
+          "total_issue_count": 1
+        },
+        "low_fidelity": {
+          "voice_fidelity": 0.1,
+          "voice_profiles_included": false,
+          "voice_mismatch_count": 0,
+          "total_issue_count": 0
+        },
+        "weight_effect_observed": true
+      }
+    },
+    {
+      "name": "formal-character-slang",
+      "scores": {
+        "DialogueCoachOutputStructure": 1.0,
+        "VoiceFidelityWeightEffect": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "high_fidelity": {
+          "voice_fidelity": 1.0,
+          "voice_profiles_included": true,
+          "voice_mismatch_count": 1,
+          "total_issue_count": 1
+        },
+        "low_fidelity": {
+          "voice_fidelity": 0.1,
+          "voice_profiles_included": false,
+          "voice_mismatch_count": 0,
+          "total_issue_count": 0
+        },
+        "weight_effect_observed": true
+      }
+    },
+    {
+      "name": "vocabulary-register-clash",
+      "scores": {
+        "DialogueCoachOutputStructure": 1.0,
+        "VoiceFidelityWeightEffect": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "high_fidelity": {
+          "voice_fidelity": 1.0,
+          "voice_profiles_included": true,
+          "voice_mismatch_count": 1,
+          "total_issue_count": 1
+        },
+        "low_fidelity": {
+          "voice_fidelity": 0.1,
+          "voice_profiles_included": false,
+          "voice_mismatch_count": 0,
+          "total_issue_count": 0
+        },
+        "weight_effect_observed": true
+      }
+    }
+  ],
+  "failures": [],
+  "rendered": "                    Evaluation Summary: dialogue_coach_task                     \n┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓\n┃ Case ID       ┃ Inputs         ┃ Outputs       ┃ Scores         ┃ Assertions ┃\n┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩\n│ terse-charac… │ dialogue_passa │ high_fidelity │ DialogueCoachO │ ✔          │\n│               │ ge='\"Good      │ =DialogueCoac │ utputStructure │            │\n│               │ morning,       │ hWeightResult │ : 1.00         │            │\n│               │ esteemed       │ (voice_fideli │ VoiceFidelityW │            │\n│               │ colleagues. I  │ ty=1.0,       │ eightEffect:   │            │\n│               │ trust you are  │ voice_profile │ 1.00           │            │\n│               │ all in fine    │ s_included=Tr │                │            │\n│               │ spirits this   │ ue,           │                │            │\n│               │ day,\" Alice    │ voice_mismatc │                │            │\n│               │ said. \"Indeed, │ h_count=1,    │                │            │\n│               │ the            │ total_issue_c │                │            │\n│               │ proceedings    │ ount=1)       │                │            │\n│               │ have been most │ low_fidelity= │                │            │\n│               │ illuminating   │ DialogueCoach │                │            │\n│               │ thus far.\"'    │ WeightResult( │                │            │\n│               │ voice_profiles │ voice_fidelit │                │            │\n│               │ _text=\"Alice:  │ y=0.1,        │                │            │\n│               │ Terse and      │ voice_profile │                │            │\n│               │ direct. Speaks │ s_included=Fa │                │            │\n│               │ in short,      │ lse,          │                │            │\n│               │ clipped        │ voice_mismatc │                │            │\n│               │ sentences.     │ h_count=0,    │                │            │\n│               │ Rarely uses    │ total_issue_c │                │            │\n│               │ more than six  │ ount=0)       │                │            │\n│               │ words. Avoids  │ weight_effect │                │            │\n│               │ formal         │ _observed=Tru │                │            │\n│               │ register       │ e             │                │            │\n│               │ entirely —     │               │                │            │\n│               │ never says     │               │                │            │\n│               │ 'esteemed',    │               │                │            │\n│               │ 'proceedings', │               │                │            │\n│               │ or 'spirits'.\" │               │                │            │\n│               │ characters=['A │               │                │            │\n│               │ lice']         │               │                │            │\n│               │ project_title= │               │                │            │\n│               │ 'Eval Novel'   │               │                │            │\n│               │ genre='Fantasy │               │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ formal-chara… │ dialogue_passa │ high_fidelity │ DialogueCoachO │ ✔          │\n│               │ ge='\"Yeah nah, │ =DialogueCoac │ utputStructure │            │\n│               │ that ain\\'t    │ hWeightResult │ : 1.00         │            │\n│               │ gonna fly,     │ (voice_fideli │ VoiceFidelityW │            │\n│               │ bro. You gotta │ ty=1.0,       │ eightEffect:   │            │\n│               │ chill and let  │ voice_profile │ 1.00           │            │\n│               │ me handle      │ s_included=Tr │                │            │\n│               │ this, ya dig?\" │ ue,           │                │            │\n│               │ Bob said with  │ voice_mismatc │                │            │\n│               │ a shrug.'      │ h_count=1,    │                │            │\n│               │ voice_profiles │ total_issue_c │                │            │\n│               │ _text='Bob:    │ ount=1)       │                │            │\n│               │ Highly formal  │ low_fidelity= │                │            │\n│               │ and precise.   │ DialogueCoach │                │            │\n│               │ Uses complete  │ WeightResult( │                │            │\n│               │ sentences with │ voice_fidelit │                │            │\n│               │ subordinate    │ y=0.1,        │                │            │\n│               │ clauses. Never │ voice_profile │                │            │\n│               │ contracts      │ s_included=Fa │                │            │\n│               │ words. Speaks  │ lse,          │                │            │\n│               │ in the         │ voice_mismatc │                │            │\n│               │ register of an │ h_count=0,    │                │            │\n│               │ academic —     │ total_issue_c │                │            │\n│               │ avoids slang,  │ ount=0)       │                │            │\n│               │ colloquialisms │ weight_effect │                │            │\n│               │ , and filler   │ _observed=Tru │                │            │\n│               │ words          │ e             │                │            │\n│               │ entirely.'     │               │                │            │\n│               │ characters=['B │               │                │            │\n│               │ ob']           │               │                │            │\n│               │ project_title= │               │                │            │\n│               │ 'Eval Novel'   │               │                │            │\n│               │ genre='Fantasy │               │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ vocabulary-r… │ dialogue_passa │ high_fidelity │ DialogueCoachO │ ✔          │\n│               │ ge='\"I reckon  │ =DialogueCoac │ utputStructure │            │\n│               │ we should      │ hWeightResult │ : 1.00         │            │\n│               │ utilize the    │ (voice_fideli │ VoiceFidelityW │            │\n│               │ aforementioned │ ty=1.0,       │ eightEffect:   │            │\n│               │ methodology to │ voice_profile │ 1.00           │            │\n│               │ facilitate     │ s_included=Tr │                │            │\n│               │ optimal        │ ue,           │                │            │\n│               │ outcomes,\"     │ voice_mismatc │                │            │\n│               │ Clara said.    │ h_count=1,    │                │            │\n│               │ \"Furthermore,  │ total_issue_c │                │            │\n│               │ it is          │ ount=1)       │                │            │\n│               │ incumbent upon │ low_fidelity= │                │            │\n│               │ us to leverage │ DialogueCoach │                │            │\n│               │ synergistic    │ WeightResult( │                │            │\n│               │ paradigms.\"'   │ voice_fidelit │                │            │\n│               │ voice_profiles │ y=0.1,        │                │            │\n│               │ _text=\"Clara:  │ voice_profile │                │            │\n│               │ Plain-spoken   │ s_included=Fa │                │            │\n│               │ and warm. Uses │ lse,          │                │            │\n│               │ everyday       │ voice_mismatc │                │            │\n│               │ vocabulary.    │ h_count=0,    │                │            │\n│               │ Favour         │ total_issue_c │                │            │\n│               │ concrete nouns │ ount=0)       │                │            │\n│               │ over abstract  │ weight_effect │                │            │\n│               │ jargon. Would  │ _observed=Tru │                │            │\n│               │ never say      │ e             │                │            │\n│               │ 'utilize',     │               │                │            │\n│               │ 'aforementione │               │                │            │\n│               │ d',            │               │                │            │\n│               │ 'methodology', │               │                │            │\n│               │ 'facilitate',  │               │                │            │\n│               │ 'paradigms',   │               │                │            │\n│               │ or             │               │                │            │\n│               │ 'synergistic'. │               │                │            │\n│               │ Her speech     │               │                │            │\n│               │ sounds like a  │               │                │            │\n│               │ friend         │               │                │            │\n│               │ talking, not a │               │                │            │\n│               │ consultant.\"   │               │                │            │\n│               │ characters=['C │               │                │            │\n│               │ lara']         │               │                │            │\n│               │ project_title= │               │                │            │\n│               │ 'Eval Novel'   │               │                │            │\n│               │ genre='Fantasy │               │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ Averages      │                │               │ DialogueCoachO │ 100.0% ✔   │\n│               │                │               │ utputStructure │            │\n│               │                │               │ : 1.00         │            │\n│               │                │               │ VoiceFidelityW │            │\n│               │                │               │ eightEffect:   │            │\n│               │                │               │ 1.00           │            │\n└───────────────┴────────────────┴───────────────┴────────────────┴────────────┘\n"
+}

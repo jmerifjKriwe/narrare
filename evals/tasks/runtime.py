@@ -62,6 +62,7 @@ class RuntimeTaskFactory:
             "analysis_feedback": self.analysis_feedback_task,
             "chat_generation": self.chat_generation_task,
             "consistency_staged": self.consistency_staged_task,
+            "dialogue_coach": self.dialogue_coach_task,
             "kb_extraction": self.kb_extraction_task,
             "preference_analysis": self.preference_analysis_task,
             "rewrite_selection": self.rewrite_selection_task,
@@ -108,6 +109,16 @@ class RuntimeTaskFactory:
         from evals.tasks.consistency_runtime import consistency_staged_task
 
         return await consistency_staged_task(
+            inputs,
+            config=self._config(),
+            api_key=self.api_key,
+            base_url=self.base_url,
+        )
+
+    async def dialogue_coach_task(self, inputs: object) -> object:
+        from evals.tasks.dialogue_coach_runtime import dialogue_coach_task
+
+        return await dialogue_coach_task(
             inputs,
             config=self._config(),
             api_key=self.api_key,
