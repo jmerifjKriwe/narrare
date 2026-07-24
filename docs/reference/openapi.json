@@ -2580,6 +2580,65 @@
         }
       }
     },
+    "/api/v1/adaptive/{project_id}/snapshots": {
+      "get": {
+        "tags": [
+          "adaptive"
+        ],
+        "summary": "Get Adaptive Snapshots",
+        "description": "Return recent adaptive snapshots for the dashboard timeline (ADR-070).",
+        "operationId": "get_adaptive_snapshots_api_v1_adaptive__project_id__snapshots_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdaptiveSnapshotsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ai-assist/dialogue-coach/{chapter_id}": {
       "post": {
         "tags": [
@@ -9730,6 +9789,104 @@
         ],
         "title": "AdaptiveSettingsResponse",
         "description": "Response for POST /toggle and POST /weights — the new persisted state."
+      },
+      "AdaptiveSnapshotItem": {
+        "properties": {
+          "invocation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invocation Id"
+          },
+          "novel_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Novel Id"
+          },
+          "intent": {
+            "type": "string",
+            "title": "Intent"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "source_summary": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Summary"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdaptiveWeightsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent",
+          "created_at"
+        ],
+        "title": "AdaptiveSnapshotItem",
+        "description": "One row in the Recent Adaptive Activity timeline (ADR-070)."
+      },
+      "AdaptiveSnapshotsResponse": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdaptiveSnapshotItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id"
+        ],
+        "title": "AdaptiveSnapshotsResponse",
+        "description": "Response for GET /adaptive/{project_id}/snapshots."
       },
       "AdaptiveSourceSummary": {
         "properties": {

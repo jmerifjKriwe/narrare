@@ -15,6 +15,7 @@ import pytest
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def _create_project(
@@ -303,3 +304,86 @@ class TestVoiceProfilesTextPopulated:
         assert response.status_code == 200
         body = response.json()
         assert body["sources"]["voice_profiles_text"] == ""
+
+
+class TestGetSnapshots:
+    """GET /adaptive/{project_id}/snapshots (ADR-070 — recent evidence).
+
+    Full DI chain (router → service → EvidenceRepositoryImpl → DB). The
+    evidence repository is bound to the request's ``get_async_session``
+    override (``adaptive/dependencies.py``), which resolves to the test's
+    transaction-wrapped ``db_session`` — so seeding an evidence row on
+    ``db_session`` + flush is visible to the endpoint within the same test.
+    ``invocation_evidence.novel_id`` carries no FK (migration 0035), so no
+    novel row is required to seed a snapshot.
+    """
+
+    @pytest.mark.asyncio
+    async def test_returns_200_with_snapshot_for_novel(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+        db_session: AsyncSession,
+    ) -> None:
+        """A seeded adaptive evidence row surfaces in the snapshots list."""
+        from datetime import UTC, datetime
+
+        from narrare.evidence.models import InvocationEvidenceModel
+
+        novel_id = uuid4()
+        db_session.add(
+            InvocationEvidenceModel(
+                id=uuid4(),
+                feature_id="dialogue_coach",
+                intent="dialogue_coach",
+                mode="dialogue_coach",
+                prompt_route="ai_assist/dialogue_coach",
+                preference_status="provided",
+                kb_suggested_status="not_applicable",
+                audit_state="adopted",
+                final_prompt_validated=True,
+                novel_id=novel_id,
+                invocation_id=uuid4(),
+                adaptive_source_summary={"summary": "preferences"},
+                adaptive_weights={"preference": 0.7},
+                created_at=datetime(2026, 7, 23, tzinfo=UTC),
+            )
+        )
+        await db_session.flush()
+
+        response = await client.get(
+            f"/api/v1/adaptive/{novel_id}/snapshots?limit=20",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["project_id"] == str(novel_id)
+        assert len(body["items"]) == 1
+        assert body["items"][0]["source_summary"] == {"summary": "preferences"}
+        assert body["items"][0]["intent"] == "dialogue_coach"
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_when_no_evidence(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """A novel with no adaptive evidence returns an empty list."""
+        project_id = await _create_project(client, auth_headers)
+
+        response = await client.get(
+            f"/api/v1/adaptive/{project_id}/snapshots",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json()["items"] == []
+
+    @pytest.mark.asyncio
+    async def test_401_without_auth(
+        self,
+        client: AsyncClient,
+    ) -> None:
+        response = await client.get(f"/api/v1/adaptive/{uuid4()}/snapshots")
+        assert response.status_code == 401
