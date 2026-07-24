@@ -13,6 +13,7 @@ import {
   useSetAdaptiveWeights,
   useToggleAdaptive,
 } from "@/lib/hooks/useAdaptiveContext";
+import { AdaptiveSnapshotHistory } from "./_components/AdaptiveSnapshotHistory";
 import { AdaptiveSourceList } from "./_components/AdaptiveSourceList";
 import { AdaptiveToggle } from "./_components/AdaptiveToggle";
 import { AdaptiveWeightSliders } from "./_components/AdaptiveWeightSliders";
@@ -53,6 +54,7 @@ export function AdaptiveDashboard({ novelId }: { readonly novelId: string }) {
         pending={setWeights.isPending}
       />
       <AdaptiveSourceList sources={data.sources} hasAnySignal={data.has_any_signal} />
+      <AdaptiveSnapshotHistory projectId={novelId} />
     </section>
   );
 }

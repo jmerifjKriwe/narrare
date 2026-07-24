@@ -4,7 +4,8 @@
 export type {
   AdaptiveContextResponse,
   AdaptiveSettingsResponse,
-  AdaptiveSnapshot,
+  AdaptiveSnapshotItem,
+  AdaptiveSnapshotsResponse,
   AdaptiveSourceSummary,
   AdaptiveToggleInput,
   AdaptiveWeightsInput,

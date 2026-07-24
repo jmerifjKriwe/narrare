@@ -19,6 +19,12 @@
     "avoidance_patterns": "Avoidance patterns",
     "empty": "No data"
   },
+  "history": {
+    "title": "Recent Activity",
+    "weights": "Active weights",
+    "mode": "Mode",
+    "sources": "Shaped by"
+  },
   "noSignals": "No adaptive signals active",
   "indicator": {
     "active": "Active",

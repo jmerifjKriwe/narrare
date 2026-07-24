@@ -1,19 +1,18 @@
 /**
- * Adaptive Context REST client (ADR-069 D12 / Phase 5 step 22).
+ * Adaptive Context REST client (ADR-069 D12 / ADR-070 endpoint A).
  *
- * Thin wrapper over {@link fetchApi} for the three shipped endpoints:
+ * Thin wrapper over {@link fetchApi} for the four shipped endpoints:
  *  - GET  /adaptive/{project_id}/context   → AdaptiveContextResponse
  *  - POST /adaptive/{project_id}/toggle    (AdaptiveToggleInput)  → AdaptiveSettingsResponse
  *  - POST /adaptive/{project_id}/weights   (AdaptiveWeightsInput) → AdaptiveSettingsResponse
- *
- * GET /snapshots (Task 7) is conditional on the coordinator-approved backend endpoint.
+ *  - GET  /adaptive/{project_id}/snapshots → AdaptiveSnapshotsResponse (ADR-070)
  *
  * @module adaptive
  */
 import type {
   AdaptiveContextResponse,
   AdaptiveSettingsResponse,
-  AdaptiveSnapshot,
+  AdaptiveSnapshotsResponse,
   AdaptiveToggleInput,
   AdaptiveWeightsInput,
 } from "@/types";
@@ -38,7 +37,8 @@ export const adaptiveApi = {
       body: JSON.stringify(weights),
     }),
 
-  /** Recent adaptive activity (Task 7; needs coordinator-approved endpoint A). */
+  /** Recent adaptive activity (ADR-070 endpoint A). Returns the full envelope;
+   *  callers read `.items`. Mirrors the backend `AdaptiveSnapshotsResponse`. */
   getSnapshots: (projectId: string, limit = 20) =>
-    fetchApi<AdaptiveSnapshot[]>(`/adaptive/${projectId}/snapshots?limit=${limit}`),
+    fetchApi<AdaptiveSnapshotsResponse>(`/adaptive/${projectId}/snapshots?limit=${limit}`),
 };

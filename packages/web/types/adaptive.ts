@@ -73,16 +73,30 @@ export interface AdaptiveSettingsResponse {
 }
 
 /**
- * One recent adaptive snapshot for the dashboard history list (Phase 5 Task 7).
+ * One row in the Recent Adaptive Activity timeline (ADR-070).
  *
- * FORWARD DECLARATION — NOT yet RULE-17-verified: backend endpoint A
- * (`GET /adaptive/{project_id}/snapshots`) is not yet shipped, so there is no
- * Pydantic schema to mirror. When that endpoint lands, reconcile this against
- * its response model field-by-field (same as the types above).
+ * RULE-17 contract parity: mirrors `AdaptiveSnapshotItem` (frozen). Reconciled
+ * against apps/api/narrare/adaptive/schemas.py when endpoint A shipped —
+ * field names, types, and optionality match exactly (`str | None` → `| null`
+ * because Pydantic serialises defaulted fields as `null`, never omitted).
  */
-export interface AdaptiveSnapshot {
-  invocation_id: string;
+export interface AdaptiveSnapshotItem {
+  invocation_id: string | null;
+  novel_id: string | null;
+  intent: string;
+  mode: string | null;
   created_at: string;
-  adaptive_source_summary: Record<string, string> | null;
-  adaptive_weights: Record<string, number> | null;
+  source_summary: Record<string, string> | null;
+  weights: AdaptiveWeightsResponse | null;
+}
+
+/**
+ * Response envelope for `GET /adaptive/{project_id}/snapshots` (ADR-070).
+ *
+ * RULE-17 contract parity: mirrors `AdaptiveSnapshotsResponse` (frozen). The
+ * endpoint returns this wrapper, NOT a bare array — the component reads `.items`.
+ */
+export interface AdaptiveSnapshotsResponse {
+  project_id: string;
+  items: AdaptiveSnapshotItem[];
 }

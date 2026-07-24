@@ -19,6 +19,12 @@
     "avoidance_patterns": "Motifs d'évitement",
     "empty": "Aucune donnée"
   },
+  "history": {
+    "title": "Activité récente",
+    "weights": "Pondérations actives",
+    "mode": "Mode",
+    "sources": "Façonné par"
+  },
   "noSignals": "Aucun signal adaptatif actif",
   "indicator": {
     "active": "Actif",

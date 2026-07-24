@@ -19,6 +19,12 @@
     "avoidance_patterns": "Vermeidungsmuster",
     "empty": "Keine Daten"
   },
+  "history": {
+    "title": "Letzte Aktivitäten",
+    "weights": "Aktive Gewichtungen",
+    "mode": "Modus",
+    "sources": "Geprägt von"
+  },
   "noSignals": "Keine adaptiven Signale aktiv",
   "indicator": {
     "active": "Aktiv",
