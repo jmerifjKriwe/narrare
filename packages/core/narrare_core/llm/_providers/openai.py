@@ -7,7 +7,6 @@ Models: gpt-*, o1, o3, text-embedding-* family
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from openai import AsyncOpenAI
@@ -16,6 +15,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 from narrare_core.llm._providers.registry import register, register_model
 from narrare_core.llm._transport_retry import get_transport_max_retries
+from narrare_core.settings import get_core_settings
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
@@ -54,7 +54,7 @@ def _make_openai(
         Configured OpenAIChatModel instance.
     """
     max_retries = get_transport_max_retries()
-    resolved_key = api_key if api_key is not None else os.environ.get("OPENAI_API_KEY")
+    resolved_key = api_key if api_key is not None else get_core_settings().openai_api_key
     if resolved_key is not None:
         client = AsyncOpenAI(api_key=resolved_key, base_url=base_url, max_retries=max_retries)
         return OpenAIChatModel(model_id, provider=OpenAIProvider(openai_client=client))

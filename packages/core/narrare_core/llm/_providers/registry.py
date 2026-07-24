@@ -16,8 +16,9 @@ per-user credentials from the database.
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+from narrare_core.settings import get_core_settings
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
@@ -122,7 +123,7 @@ def get(name: str) -> ProviderFactory:
 
     # E2E test mode: override all providers with TestModel
     # (no real LLM calls — prevents 401 errors from unset API keys).
-    if os.environ.get("NARRARE_E2E_TEST"):
+    if get_core_settings().e2e_test:
         from pydantic_ai.models.test import TestModel
 
         def _test_model_factory(

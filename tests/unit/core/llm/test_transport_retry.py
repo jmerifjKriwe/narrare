@@ -34,6 +34,7 @@ from narrare_core.llm._transport_retry import (
     TRANSPORT_MAX_RETRIES_ENV_VAR,
     get_transport_max_retries,
 )
+from narrare_core.settings import get_core_settings
 
 # ---------------------------------------------------------------------------
 # 1. Governed source
@@ -158,6 +159,8 @@ class TestTransportRetryBehavioralEffect:
         monkeypatch.setenv(TRANSPORT_MAX_RETRIES_ENV_VAR, "1")
         low = await _count_429_attempts(get_transport_max_retries())
         monkeypatch.setenv(TRANSPORT_MAX_RETRIES_ENV_VAR, "4")
+        # CoreSettings is cached (@lru_cache); clear so the new env is re-read.
+        get_core_settings.cache_clear()
         high = await _count_429_attempts(get_transport_max_retries())
         assert low == 2
         assert high == 5

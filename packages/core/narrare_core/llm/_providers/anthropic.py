@@ -7,7 +7,6 @@ Models: claude-* family
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from anthropic import AsyncAnthropic
@@ -16,6 +15,7 @@ from pydantic_ai.providers.anthropic import AnthropicProvider
 
 from narrare_core.llm._providers.registry import register, register_model
 from narrare_core.llm._transport_retry import get_transport_max_retries
+from narrare_core.settings import get_core_settings
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
@@ -52,7 +52,7 @@ def _make_anthropic(
         Configured AnthropicModel instance.
     """
     max_retries = get_transport_max_retries()
-    resolved_key = api_key if api_key is not None else os.environ.get("ANTHROPIC_API_KEY")
+    resolved_key = api_key if api_key is not None else get_core_settings().anthropic_api_key
     if resolved_key is not None:
         client = AsyncAnthropic(api_key=resolved_key, base_url=base_url, max_retries=max_retries)
         return AnthropicModel(model_id, provider=AnthropicProvider(anthropic_client=client))

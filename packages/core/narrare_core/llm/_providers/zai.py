@@ -14,7 +14,6 @@ ADR: ADR-006 (tech stack)
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from openai import AsyncOpenAI
@@ -23,6 +22,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 from narrare_core.llm._providers.registry import register, register_model
 from narrare_core.llm._transport_retry import get_transport_max_retries
+from narrare_core.settings import get_core_settings
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
@@ -55,7 +55,7 @@ def _make_zai(
         Configured OpenAIChatModel via Z.AI endpoint.
     """
     max_retries = get_transport_max_retries()
-    resolved_key = api_key or os.environ.get("ZAI_API_KEY", "")
+    resolved_key = api_key or (get_core_settings().zai_api_key or "")
     resolved_base = base_url or _ZAI_GENERAL_URL
     if resolved_key:
         client = AsyncOpenAI(api_key=resolved_key, base_url=resolved_base, max_retries=max_retries)
@@ -90,7 +90,7 @@ def make_zai_coding(
         Configured OpenAIChatModel via Z.AI Coding endpoint.
     """
     max_retries = get_transport_max_retries()
-    resolved_key = api_key or os.environ.get("ZAI_API_KEY", "")
+    resolved_key = api_key or (get_core_settings().zai_api_key or "")
     resolved_base = base_url or _ZAI_CODING_URL
     if resolved_key:
         client = AsyncOpenAI(api_key=resolved_key, base_url=resolved_base, max_retries=max_retries)

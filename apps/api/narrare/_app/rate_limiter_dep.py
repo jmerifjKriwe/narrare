@@ -19,11 +19,12 @@ See ``rate_limits.py`` for the module-level limiter instances.
 
 from __future__ import annotations
 
-import os
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException, Request, Response, status
+
+from narrare_core.settings import get_core_settings
 
 if TYPE_CHECKING:
     from pyrate_limiter import Limiter
@@ -87,8 +88,10 @@ class RateLimiter:
             HTTPException: With status 429 if the rate limit is exceeded and
                 ``blocking`` is ``False``.
         """
-        # E2E test mode: disable all rate limiting (prevents false 429 failures)
-        if os.environ.get("NARRARE_E2E_TEST"):
+        # E2E test mode: disable all rate limiting (prevents false 429 failures).
+        # NARRARE_E2E_TEST is owned by CoreSettings (ADR-071 §3) — read via
+        # get_core_settings(), not os.environ.
+        if get_core_settings().e2e_test:
             return None
 
         del response  # signature compatibility only; unused.

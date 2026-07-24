@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from narrare_core.crypto import decrypt, encrypt
+from narrare_core.settings import get_core_settings
 from narrare_core.shared.errors import ConfigurationError
 
 
@@ -66,6 +67,8 @@ class TestMissingEncryptionKey:
 
         # Now remove the key
         monkeypatch.delenv("NARRARE_ENCRYPTION_KEY", raising=False)
+        # Clear the cached CoreSettings so decrypt re-reads the now-absent key
+        get_core_settings.cache_clear()
 
         with pytest.raises(ConfigurationError, match="NARRARE_ENCRYPTION_KEY"):
             decrypt(ciphertext)

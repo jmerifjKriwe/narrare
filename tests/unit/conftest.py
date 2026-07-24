@@ -86,3 +86,27 @@ def _no_real_mem0_clients(  # pyright: ignore[reportUnusedFunction] — autouse 
         lambda: False,
     )
     yield
+
+
+@pytest.fixture(autouse=True)
+def _isolate_core_settings(  # pyright: ignore[reportUnusedFunction] — autouse fixture, invoked via decorator reflection, not direct call. Pyright false-positive.
+    monkeypatch: pytest.MonkeyPatch,
+) -> Any:
+    """Isolate CoreSettings from the project-root ``.env`` file in unit tests.
+
+    ADR-071: ``CoreSettings`` reads the ``.env`` file in production. Unit tests
+    control config via ``os.environ`` (``monkeypatch.setenv`` / ``delenv``)
+    only — matching the pre-ADR-071 behaviour where Core read ``os.environ``
+    directly. Disabling ``env_file`` here prevents ``.env`` values (e.g.
+    ``NARRARE_E2E_TEST=1`` or a real ``NARRARE_ENCRYPTION_KEY``) from leaking
+    into tests that ``delenv`` and expect the "unset" default.
+
+    The cache is cleared before and after each test so every test sees a fresh
+    ``CoreSettings`` construction reflecting the current ``os.environ``.
+    """
+    from narrare_core.settings import CoreSettings, get_core_settings
+
+    monkeypatch.setitem(CoreSettings.model_config, "env_file", None)
+    get_core_settings.cache_clear()
+    yield
+    get_core_settings.cache_clear()

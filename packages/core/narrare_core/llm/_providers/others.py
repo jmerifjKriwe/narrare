@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from google.genai import Client as GoogleClient
@@ -18,6 +17,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 from narrare_core.llm._providers.registry import register, register_model
 from narrare_core.llm._transport_retry import get_transport_max_retries
+from narrare_core.settings import get_core_settings
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
@@ -54,10 +54,9 @@ def _make_google(
         Configured GoogleModel instance.
     """
     attempts = get_transport_max_retries()
+    settings = get_core_settings()
     resolved_key = (
-        api_key
-        if api_key is not None
-        else (os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY"))
+        api_key if api_key is not None else (settings.google_api_key or settings.gemini_api_key)
     )
     if resolved_key is not None:
         client = GoogleClient(
@@ -110,7 +109,7 @@ def _make_groq(
         Configured GroqModel instance.
     """
     max_retries = get_transport_max_retries()
-    resolved_key = api_key if api_key is not None else os.environ.get("GROQ_API_KEY")
+    resolved_key = api_key if api_key is not None else get_core_settings().groq_api_key
     if resolved_key is not None:
         # base_url intentionally ignored for Groq (official endpoint only).
         client = AsyncGroq(api_key=resolved_key, max_retries=max_retries)
@@ -156,7 +155,7 @@ def _make_openrouter(
         Configured OpenAIChatModel via OpenRouter endpoint.
     """
     max_retries = get_transport_max_retries()
-    resolved_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
+    resolved_key = api_key or (get_core_settings().openrouter_api_key or "")
     resolved_base = base_url or "https://openrouter.ai/api/v1"
     if resolved_key:
         client = AsyncOpenAI(api_key=resolved_key, base_url=resolved_base, max_retries=max_retries)

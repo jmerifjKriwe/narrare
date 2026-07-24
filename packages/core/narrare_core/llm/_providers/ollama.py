@@ -11,7 +11,6 @@ are user-defined. Prefix-based inference ("ollama/" prefix) handles routing.
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from openai import AsyncOpenAI
@@ -20,6 +19,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 from narrare_core.llm._providers.registry import register
 from narrare_core.llm._transport_retry import get_transport_max_retries
+from narrare_core.settings import get_core_settings
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
@@ -49,7 +49,7 @@ def _make_ollama(
         Configured OpenAIChatModel pointing at Ollama endpoint.
     """
     max_retries = get_transport_max_retries()
-    resolved_base = base_url or os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+    resolved_base = base_url or get_core_settings().ollama_base_url
     # Ollama's OpenAI-compatible endpoint.
     client = AsyncOpenAI(
         api_key="ollama",  # Ollama ignores the key but the SDK requires one

@@ -86,17 +86,18 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 30
 
-    # ---------------------------------------------------------------------------
-    # Encryption
-    # ---------------------------------------------------------------------------
-    encryption_key: str = Field(default="", alias="NARRARE_ENCRYPTION_KEY")
+    # NOTE (ADR-071): ``NARRARE_ENCRYPTION_KEY`` and ``DEFAULT_EMBEDDING_MODEL``
+    # are owned by ``CoreSettings`` (packages/core/narrare_core/settings.py) —
+    # the single source of truth for env-var-backed Core config. Read them via
+    # ``get_core_settings()`` and do NOT re-add them here (duplicate source of
+    # truth). The API lifespan no longer bridges the encryption key into
+    # ``os.environ``; ``core/crypto.py`` reads CoreSettings directly.
 
     # ---------------------------------------------------------------------------
     # Default models (override per-project in .narrare/config.yaml)
     # ---------------------------------------------------------------------------
     default_writing_model: str = "claude-sonnet-4-5-20251020"
     default_analysis_model: str = "claude-haiku-3-5-20241022"
-    default_embedding_model: str = "text-embedding-3-small"
 
     # ---------------------------------------------------------------------------
     # Memory (mem0)

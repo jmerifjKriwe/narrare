@@ -13,13 +13,13 @@ See: ADR-020
 
 from __future__ import annotations
 
-import os
 import time
 from typing import Protocol, runtime_checkable
 
 import openai
 import structlog
 
+from narrare_core.settings import get_core_settings
 from narrare_core.shared.errors import EmbeddingError
 
 logger = structlog.get_logger(__name__)
@@ -142,7 +142,7 @@ class OpenAIEmbeddingProvider:
         if not texts:
             return []
 
-        model_name = model or os.environ.get("DEFAULT_EMBEDDING_MODEL", self.default_model)
+        model_name = model or get_core_settings().default_embedding_model
 
         # Separate empty strings (return zero vectors) from real texts
         indices_to_embed: list[int] = []

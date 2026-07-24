@@ -21,10 +21,9 @@ See: openspec/changes/configurable-model-routing/design.md (D6)
 
 from __future__ import annotations
 
-import os
-
 from cryptography.fernet import Fernet
 
+from narrare_core.settings import get_core_settings
 from narrare_core.shared.errors import ConfigurationError
 
 
@@ -37,7 +36,7 @@ def _get_key() -> bytes:
     Raises:
         ConfigurationError: If ``NARRARE_ENCRYPTION_KEY`` is not set.
     """
-    key = os.environ.get("NARRARE_ENCRYPTION_KEY", "")
+    key = get_core_settings().encryption_key
     if not key:
         raise ConfigurationError(
             "NARRARE_ENCRYPTION_KEY environment variable is not set. "

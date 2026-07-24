@@ -9,25 +9,13 @@ RULE-08: mem0 is confined to ``narrare_core/memory/``.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
 import structlog
 
+from narrare_core.settings import get_core_settings
+
 logger = structlog.get_logger(__name__)
-
-# Priority-ordered list of (provider_name, env_var_key, env_var_base_url)
-# Used to detect the active LLM provider from environment variables.
-_PROVIDER_ENV_VARS: list[tuple[str, str, str]] = [
-    ("openai", "OPENAI_API_KEY", "OPENAI_BASE_URL"),
-    ("anthropic", "ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL"),
-]
-"""LLM provider detection order.
-
-OpenAI is checked first because the default ``memory_llm_model``
-(``gpt-4o-mini``) and ``memory_embedding_model`` (``text-embedding-3-small``)
-are both OpenAI models.
-"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,12 +47,18 @@ def detect_provider_from_env() -> ProviderEnvConfig | None:
     Priority: openai → anthropic.
     Returns None if no credentials available.
     """
-    for prov, key_env, url_env in _PROVIDER_ENV_VARS:
-        key = os.environ.get(key_env)
-        if key:
-            return ProviderEnvConfig(
-                provider=prov,
-                api_key=key,
-                base_url=os.environ.get(url_env),
-            )
+    settings = get_core_settings()
+    # Priority: openai first (matches default memory models), then anthropic.
+    openai_key = settings.openai_api_key
+    if openai_key:
+        return ProviderEnvConfig(
+            provider="openai", api_key=openai_key, base_url=settings.openai_base_url
+        )
+    anthropic_key = settings.anthropic_api_key
+    if anthropic_key:
+        return ProviderEnvConfig(
+            provider="anthropic",
+            api_key=anthropic_key,
+            base_url=settings.anthropic_base_url,
+        )
     return None

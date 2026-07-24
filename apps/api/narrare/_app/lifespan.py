@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -174,14 +173,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     logger.info("narrare_api_starting")
 
     from narrare._app.config import get_settings
+    from narrare_core.settings import get_core_settings
 
     settings = get_settings()
 
-    if settings.encryption_key and not os.environ.get("NARRARE_ENCRYPTION_KEY"):
-        os.environ["NARRARE_ENCRYPTION_KEY"] = settings.encryption_key
+    # NOTE (ADR-071 §5): the workaround that synced ``settings.encryption_key``
+    # into ``os.environ`` for ``core/crypto.py`` to re-read has been REMOVED.
+    # ``core/crypto.py`` now reads ``get_core_settings().encryption_key``
+    # directly. The env-var bridge was an architectural-discipline §4 violation
+    # (bypassing an abstraction "just to make it work") and is no longer needed.
 
-    # Log E2E test mode if active
-    if os.environ.get("NARRARE_E2E_TEST"):
+    # Log E2E test mode if active. ``NARRARE_E2E_TEST`` is owned by CoreSettings
+    # (ADR-071 §3) — read via get_core_settings(), not os.environ.
+    if get_core_settings().e2e_test:
         logger.info(
             "e2e_test_mode_active",
             message="ALL LLM providers returning TestModel — no real API calls will be made.",

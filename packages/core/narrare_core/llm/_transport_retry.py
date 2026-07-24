@@ -34,10 +34,12 @@ misplaced at the token-limit layer.
 
 from __future__ import annotations
 
-import os
 from typing import Final
 
 import structlog
+from pydantic import ValidationError
+
+from narrare_core.settings import get_core_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -58,23 +60,27 @@ TRANSPORT_MAX_RETRIES_ENV_VAR: Final[str] = "NARRARE_LLM_TRANSPORT_MAX_RETRIES"
 def get_transport_max_retries() -> int:
     """Resolve the governed transport-retry ``max_retries`` for provider SDK clients.
 
-    Reads :data:`TRANSPORT_MAX_RETRIES_ENV_VAR`; falls back to the governed
+    Reads ``get_core_settings().llm_transport_max_retries`` — the ADR-071 typed
+    mirror of :data:`TRANSPORT_MAX_RETRIES_ENV_VAR`. Falls back to the governed
     default when unset, empty, or non-parseable. Negative values are rejected
     (the SDK knobs are non-negative).
+
+    The governed-default classification (ADR-060) and the per-value effect
+    test (``tests/unit/core/llm/test_transport_retry.py``) are unchanged —
+    CoreSettings is the typed source; this accessor preserves the graceful-
+    fallback validation that pydantic strict ``int`` parsing alone cannot
+    provide (a non-integer env value raises ``ValidationError``, which is
+    caught and logged here rather than crashing callers).
 
     Returns:
         The resolved ``max_retries`` (``>= 0``).
     """
-    raw = os.environ.get(TRANSPORT_MAX_RETRIES_ENV_VAR)
-    if not raw:
-        return TRANSPORT_MAX_RETRIES_DEFAULT
     try:
-        value = int(raw)
-    except ValueError:
+        value = get_core_settings().llm_transport_max_retries
+    except ValidationError:
         logger.warning(
             "transport_retry_invalid_env",
             env_var=TRANSPORT_MAX_RETRIES_ENV_VAR,
-            value=raw,
             fallback=TRANSPORT_MAX_RETRIES_DEFAULT,
         )
         return TRANSPORT_MAX_RETRIES_DEFAULT

@@ -114,11 +114,9 @@ class _FakeSettings:
         self,
         *,
         is_test: bool = True,
-        encryption_key: str | None = None,
         redis_url: str = "redis://test:6379",
     ) -> None:
         self.is_test = is_test
-        self.encryption_key = encryption_key
         self.redis_url = redis_url
 
 
@@ -256,7 +254,7 @@ class TestRunPendingMigrations:
 
 class TestLifespanTestMode:
     async def test_startup_and_shutdown_complete(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        settings = _FakeSettings(is_test=True, encryption_key=None)
+        settings = _FakeSettings(is_test=True)
         _patch_common(monkeypatch, settings)
 
         app = _make_app()
@@ -276,7 +274,7 @@ class TestLifespanNonTestMode:
     async def test_startup_and_shutdown_with_full_lifecycle(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        settings = _FakeSettings(is_test=False, encryption_key=None)
+        settings = _FakeSettings(is_test=False)
         _patch_common(monkeypatch, settings)
 
         # Patch migration helper — avoids real Alembic run.
@@ -308,7 +306,7 @@ class TestLifespanNonTestMode:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Startup cleanup path when stale_count > 0."""
-        settings = _FakeSettings(is_test=False, encryption_key=None)
+        settings = _FakeSettings(is_test=False)
         _patch_common(monkeypatch, settings)
 
         monkeypatch.setattr(lifespan_mod, "_run_pending_migrations", _noop_async)
@@ -319,16 +317,25 @@ class TestLifespanNonTestMode:
         async with lifespan_mod.lifespan(app):
             pass
 
-    async def test_sets_encryption_key_from_settings(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Encryption key is copied to env when not already set."""
+    async def test_does_not_bridge_encryption_key_to_environ(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Regression (ADR-071 §5): lifespan must NOT sync the encryption key
+        into ``os.environ``.
+
+        ``core/crypto.py`` now reads ``get_core_settings().encryption_key``
+        directly. The former env-var bridge was an architectural-discipline §4
+        workaround (bypassing an abstraction "just to make it work") and has
+        been removed. This test guards against its re-introduction.
+        """
         monkeypatch.delenv("NARRARE_ENCRYPTION_KEY", raising=False)
 
-        settings = _FakeSettings(is_test=True, encryption_key="my-secret")
+        settings = _FakeSettings(is_test=True)
         _patch_common(monkeypatch, settings)
 
         app = _make_app()
         async with lifespan_mod.lifespan(app):
-            assert os.environ["NARRARE_ENCRYPTION_KEY"] == "my-secret"
+            assert "NARRARE_ENCRYPTION_KEY" not in os.environ
 
         monkeypatch.delenv("NARRARE_ENCRYPTION_KEY", raising=False)
 
@@ -336,7 +343,7 @@ class TestLifespanNonTestMode:
         """When NARRARE_E2E_TEST is set, a startup message is logged."""
         monkeypatch.setenv("NARRARE_E2E_TEST", "1")
 
-        settings = _FakeSettings(is_test=True, encryption_key=None)
+        settings = _FakeSettings(is_test=True)
         _patch_common(monkeypatch, settings)
 
         app = _make_app()
@@ -347,7 +354,7 @@ class TestLifespanNonTestMode:
 
     async def test_migration_failure_reraises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Migration exception is re-raised (fail-fast, not swallowed)."""
-        settings = _FakeSettings(is_test=False, encryption_key=None)
+        settings = _FakeSettings(is_test=False)
         _patch_common(monkeypatch, settings)
 
         async def _failing_migrate() -> None:

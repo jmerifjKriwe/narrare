@@ -10,7 +10,6 @@ RULE-07: Service depends on repository (DB) and core (embed_texts, scoring).
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 import structlog
@@ -23,6 +22,7 @@ from narrare_core.embeddings.hash import compute_content_hash
 from narrare_core.embeddings.scoring import ScoredCandidate, ScoringConfig, rank_candidates
 from narrare_core.embeddings.store import EmbeddingStats, SearchResult
 from narrare_core.llm.embeddings import embed_texts
+from narrare_core.settings import get_core_settings
 from narrare_core.shared.errors import EmbeddingError
 
 if TYPE_CHECKING:
@@ -49,7 +49,9 @@ class EmbeddingService:
         scoring_config: ScoringConfig | None = None,
     ) -> None:
         self._repo = repo
-        self._model = model or os.environ.get("DEFAULT_EMBEDDING_MODEL", "text-embedding-3-small")
+        # DEFAULT_EMBEDDING_MODEL is owned by CoreSettings (ADR-071 §3) — read
+        # via get_core_settings(), not os.environ.
+        self._model = model or get_core_settings().default_embedding_model
         self._dimension = dimension or 1536
         self._provider = provider
         self._scoring_config = scoring_config or ScoringConfig()
