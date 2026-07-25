@@ -634,13 +634,15 @@ before implementation planning:
    calibrated at implementation / eval time (ADR-032 Pydantic Evals). Not a
    decision blocker.
 
-3. **Checker-vs-ANAL-009 overlap.** WRITE-010 (per-chapter consistency check
-   against a stored profile) and ANAL-009 (voice drift over time) both read
-   `voice_metrics`. They are distinct (check = current-chapter-vs-profile;
-   drift = profile-vs-profile-over-time) but share the Foundation + the
-   scoring-delta primitive. The scoring module should expose the delta as a
-   reusable primitive so ANAL-009 reuses it rather than duplicating. Flagged
-   for the ANAL-009 spec update (ADR-055 Review Trigger already covers it).
+3. ~~**Checker-vs-ANAL-009 overlap.**~~ **✅ SATISFIED (2026-07-25, ADR-073).**
+   WRITE-010 (per-chapter consistency check against a stored profile) and ANAL-009
+   (voice drift over time) both read `voice_metrics` — they are distinct (check =
+   current-chapter-vs-profile; drift = profile-vs-chapter-over-time) but share the
+   Foundation + the scoring-delta primitive. ADR-073 confirms ANAL-009 Phase 1
+   **reuses** `voice_metric_distances` / `metric_delta_subscore` / `band_for_score`
+   from this module (no duplication) and reads `voice_metrics` via the same
+   `VoiceProfileConsumer` contract. The reuse the original text called for is now
+   contractually guaranteed by ADR-073 § Decision 2 + Retrofit-Plan.
 
 4. **Dialogue attribution reuse.** WRITE-010 reuses `DialogueParser`
    (deterministic) for per-character utterance extraction in the checked
@@ -677,10 +679,16 @@ ADR + the spec rewrite.
 - [ ] When this ADR is implemented — verify the checker reads `voice_metrics`
       via `VoiceProfileConsumer.assemble_for_checking()` (not KB directly),
       and that `formatted_voice_profiles` does not read the new field.
-- [ ] When ANAL-009 (Voice Drift) is implemented — verify it reuses the
+- [x] When ANAL-009 (Voice Drift) is implemented — verify it reuses the
       scoring module's delta primitive (no duplication) and reads
       `voice_metrics` via the same consumer contract; update ANAL-009's stale
       "map to SpeechPatterns" assumption to ADR-055's nested contract.
+      **✅ DONE (2026-07-25, ADR-073):** ANAL-009 Phase 1 reuses
+      `voice_metric_distances` / `metric_delta_subscore` / `band_for_score` from
+      this module (no duplication — guaranteed by ADR-073 Decision 2) and reads
+      `voice_metrics` via `VoiceProfileConsumer.assemble_for_checking()`. The
+      stale assumption is removed (ADR-055 Risk #2 closed by the same ADR).
+      Implementation pending user approval of ADR-073.
 - [ ] If rewrite-on-flagged-line becomes a requirement — write a separate
       spec reusing WRITE-004 (Decision 5 rejected fusing it into the checker).
 - [ ] If `VoiceMetrics` immutability is required — a follow-up ADR marking it

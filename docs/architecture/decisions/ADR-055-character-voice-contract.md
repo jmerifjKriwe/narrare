@@ -474,12 +474,12 @@ implementation:
    directly). That is a separate downstream decision — out of scope here, tracked in
    the Review Trigger. No action needed before ANAL-008 implementation.
 
-2. **ANAL-009 spec carries the same stale "map to SpeechPatterns" assumption.**
-   ANAL-009's spec says "The `CharacterVoiceProfile` structure should map to
-   `SpeechPatterns` fields" and "Use the same `metadata["speech"]` data contract."
-   ADR-055 supersedes that with the nested `voice_analysis` contract. When ANAL-009
-   is later implemented, its spec must be updated to consume deterministic
-   `voice_metrics` (not LLM metrics). Low risk (ANAL-009 is deferred), but flagged.
+2. ~~**ANAL-009 spec carries the same stale "map to SpeechPatterns" assumption.**~~
+   **✅ RESOLVED (2026-07-25, ADR-073).** ANAL-009 has been reconceptualised as
+   **Phase 1 — Character Voice Drift** (ADR-073). Its rewritten spec consumes
+   deterministic `voice_metrics` via the `VoiceProfileConsumer` contract (not LLM
+   metrics, not the lossy "map to SpeechPatterns" mapping). The stale assumption is
+   removed. See the ANAL-009 spec §"Data contract" and ADR-073 § CR-04.
 
 3. **VOICE intent categorization/profile consistency.** `LLMIntent.VOICE` is
    "categorized ANALYSIS, profile balanced" per the composer. When VOICE becomes
@@ -520,9 +520,13 @@ implementation:
 
 - [ ] When WRITE-010 (Voice Consistency Checker) is implemented — verify it reads
       `speech.voice_analysis.voice_metrics` and uses `VoiceProfileConsumer.assemble_for_checking`.
-- [ ] When ANAL-009 (Voice Drift) is implemented — verify it consumes the deterministic
+- [x] When ANAL-009 (Voice Drift) is implemented — verify it consumes the deterministic
       `voice_metrics` (not LLM metrics) for comparison, and update ANAL-009's stale
       "map to SpeechPatterns" assumption to this contract.
+      **✅ DONE (2026-07-25, ADR-073):** ANAL-009 Phase 1 spec rewritten to consume
+      `voice_metrics` via `VoiceProfileConsumer.assemble_for_checking()`; stale
+      assumption removed (Risk #2 closed). Implementation pending user approval of
+      ADR-073.
 - [ ] When ANAL-007 (Author Voice) is implemented — add the `author_voice` context_mode
       to the VOICE route; resolve author-voice storage (separate ADR — out of scope here).
 - [ ] If `VoiceMetrics` fields prove insufficient for drift comparison — extend the

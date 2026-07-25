@@ -304,7 +304,14 @@ suitable for ANAL-009 drift comparison and WRITE-010 consistency checking.
 ## Related Features
 
 - [WRITE-010](../writing/WRITE-010-voice-checker.md) — Uses profiles + metrics for checking
-- [ANAL-009](ANAL-009-voice-drift.md) — Consumes `voice_metrics` for drift comparison (its spec's stale "map to SpeechPatterns" note is superseded by ADR-055)
+- [ANAL-009](ANAL-009-voice-drift.md) — **Phase 1 (Character Voice Drift)** consumes
+  `voice_metrics` via `VoiceProfileConsumer.assemble_for_checking()` and reuses the
+  `voice_check_scoring` delta primitive (ADR-073; the earlier stale "map to
+  SpeechPatterns" note is removed — ADR-055 Risk #2 closed, ADR-057 Risk #3 satisfied).
+  > **Voice-lane build order (recorded):** the lane `007 author → 008 character →
+  > 009 drift → WRITE-010 checker` was built as `008 → WRITE-010 → 009-Phase1
+  > (character)` with `007 + 009-Phase2 (author)` deferred — a recorded adaptation to
+  > the deferred author-voice-storage decision (ADR-073), not a planning failure.
 - [ANAL-007](ANAL-007-voice-author.md) — Author voice analysis (deferred; separate storage decision, out of scope here)
 - [KB-001](../kb/KB-001-entity-management.md) — Stores profiles (`speech.voice_analysis`)
 - [ADR-055](../../architecture/decisions/ADR-055-character-voice-contract.md) — Storage + prompt-surface contract authority
