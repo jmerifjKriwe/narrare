@@ -2,10 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus } from "lucide-react";
+import { motion } from "motion/react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { volumesApi } from "@/lib/api/client";
+import { listContainerVariants, listItemVariants } from "@/lib/motion-variants";
 import type { CreateVolumeRequest, UpdateVolumeRequest } from "@/types";
 import { VolumeFormFields } from "./VolumeCard";
 import { VolumeStatsLoader } from "./VolumeStatsLoader";
@@ -141,24 +143,30 @@ export function VolumeManagementView() {
         )}
 
         {/* Volume list */}
-        <div className="space-y-3">
+        <motion.div
+          variants={listContainerVariants}
+          initial="hidden"
+          animate="visible"
+          className="space-y-3"
+        >
           {volumes.map((volume, index) => (
-            <VolumeStatsLoader
-              key={volume.id}
-              volume={volume}
-              index={index}
-              total={volumes.length}
-              isEditing={editingId === volume.id}
-              onStartEdit={() => setEditingId(volume.id)}
-              onCancelEdit={() => setEditingId(null)}
-              onSave={(id, payload) => updateMutation.mutate({ id, payload })}
-              onDelete={(id) => deleteMutation.mutate(id)}
-              onReorderUp={() => handleReorderUp(index)}
-              onReorderDown={() => handleReorderDown(index)}
-              isSaving={updateMutation.isPending}
-            />
+            <motion.div key={volume.id} variants={listItemVariants}>
+              <VolumeStatsLoader
+                volume={volume}
+                index={index}
+                total={volumes.length}
+                isEditing={editingId === volume.id}
+                onStartEdit={() => setEditingId(volume.id)}
+                onCancelEdit={() => setEditingId(null)}
+                onSave={(id, payload) => updateMutation.mutate({ id, payload })}
+                onDelete={(id) => deleteMutation.mutate(id)}
+                onReorderUp={() => handleReorderUp(index)}
+                onReorderDown={() => handleReorderDown(index)}
+                isSaving={updateMutation.isPending}
+              />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* Empty state */}
         {volumes.length === 0 && (

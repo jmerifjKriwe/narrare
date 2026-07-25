@@ -7,11 +7,13 @@
  */
 
 import { ChevronRight, Plus, Search, Sparkles } from "lucide-react";
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { SearchInput } from "@/components/ui/search-input";
 import type { KBEntityType, KBEntry } from "@/lib/api/kb";
 import { useKBDebouncedSearch } from "@/lib/hooks/useKB";
+import { listContainerVariants, listItemVariants } from "@/lib/motion-variants";
 import { formatRelativeTime, STATUS_COLORS, TYPE_ICONS } from "./constants";
 
 interface KBEntryListProps {
@@ -117,16 +119,22 @@ export function KBEntryList({
         )}
 
         {!isLoading && !isSearching && displayEntries.length > 0 && (
-          <div className="space-y-0.5">
+          <motion.div
+            variants={listContainerVariants}
+            initial="hidden"
+            animate="visible"
+            className="space-y-0.5"
+          >
             {displayEntries.map((entry) => (
-              <EntryCard
-                key={entry.id}
-                entry={entry}
-                isSelected={selectedEntryId === entry.id}
-                onClick={() => onSelectEntry(entry.id)}
-              />
+              <motion.div key={entry.id} variants={listItemVariants}>
+                <EntryCard
+                  entry={entry}
+                  isSelected={selectedEntryId === entry.id}
+                  onClick={() => onSelectEntry(entry.id)}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

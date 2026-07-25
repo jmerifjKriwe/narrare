@@ -14,8 +14,10 @@
  */
 
 import { RefreshCw } from "lucide-react";
+import { motion } from "motion/react";
 import type { useTranslations } from "next-intl";
 import type { StorySuggestion } from "@/lib/api/story-suggest-stream";
+import { listContainerVariants, listItemVariants } from "@/lib/motion-variants";
 import { UnblockSuggestionCard } from "./UnblockSuggestionCard";
 
 type StudioTranslator = ReturnType<typeof useTranslations>;
@@ -46,18 +48,23 @@ export function UnblockResults({
 
   return (
     <div className="space-y-4">
-      <ul className="space-y-3">
+      <motion.ul
+        variants={listContainerVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-3"
+      >
         {suggestions.map((suggestion, index) => (
-          <li key={`${suggestion.type}-${suggestion.title}`}>
+          <motion.li key={`${suggestion.type}-${suggestion.title}`} variants={listItemVariants}>
             <UnblockSuggestionCard
               suggestion={suggestion}
               index={index}
               onAccept={onAccept}
               t={t}
             />
-          </li>
+          </motion.li>
         ))}
-      </ul>
+      </motion.ul>
 
       <div className="flex items-center gap-2 border-t border-border pt-3">
         <button

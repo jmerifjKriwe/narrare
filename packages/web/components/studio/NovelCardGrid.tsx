@@ -1,8 +1,10 @@
 "use client";
 
 import { BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { IconButton } from "@/components/ui/icon-button";
+import { listContainerVariants, listItemVariants } from "@/lib/motion-variants";
 import type { NovelSummary } from "@/types";
 
 /**
@@ -58,10 +60,16 @@ export function NovelCardGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <motion.div
+      variants={listContainerVariants}
+      initial="hidden"
+      animate="visible"
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+    >
       {novels.map((novel: NovelSummary) => (
-        <div
+        <motion.div
           key={novel.id}
+          variants={listItemVariants}
           data-testid="novel-card"
           className="group bg-card border border-border rounded-lg p-6 hover:shadow-md transition-shadow relative"
         >
@@ -105,7 +113,7 @@ export function NovelCardGrid({
               </span>
             </div>
           </a>
-        </div>
+        </motion.div>
       ))}
 
       {/* New novel card */}
@@ -120,6 +128,6 @@ export function NovelCardGrid({
         </div>
         <span className="text-sm font-medium text-muted-foreground">{t("dashboard.newNovel")}</span>
       </button>
-    </div>
+    </motion.div>
   );
 }
