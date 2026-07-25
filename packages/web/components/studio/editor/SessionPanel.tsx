@@ -11,9 +11,9 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { ChatMessage } from "./ChatMessage";
 import { SessionActions } from "./SessionActions";
 import { SessionHeader } from "./SessionHeader";
+import { SessionMessageList } from "./SessionMessageList";
 import { SessionReconnectBanner } from "./SessionReconnectBanner";
 import { StreamingBubble } from "./StreamingBubble";
 import { useSessionPanelActions } from "./useSessionPanelActions";
@@ -156,17 +156,14 @@ export function SessionPanel({ chapterId, novelId, mode, onClose }: SessionPanel
           localProse={preservedProse}
           onRetry={handleRecoverSession}
         />
-        {messages.map((msg) => (
-          <ChatMessage
-            key={msg.id}
-            message={msg}
-            isAdded={addedIds.has(msg.id)}
-            onAddToDraft={(prose) => handleAddToDraft(msg.id, prose)}
-            aiDraftBadge={aiDraftBadge}
-            addToDraftLabel={addToDraftLabel}
-            addedToDraftLabel={addedToDraftLabel}
-          />
-        ))}
+        <SessionMessageList
+          messages={messages}
+          addedIds={addedIds}
+          onAddToDraft={handleAddToDraft}
+          aiDraftBadge={aiDraftBadge}
+          addToDraftLabel={addToDraftLabel}
+          addedToDraftLabel={addedToDraftLabel}
+        />
         {isStreaming && streamingText && <StreamingBubble streamingText={streamingText} />}
         <div ref={chatEndRef} />
       </div>

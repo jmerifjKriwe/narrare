@@ -13,10 +13,12 @@
  */
 
 import { Bot, Loader2, MessageSquare, X } from "lucide-react";
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StatusMessage } from "@/components/ui/status-message";
 import { useChat } from "@/lib/hooks/useChat";
+import { listContainerVariants, listItemVariants } from "@/lib/motion-variants";
 import { ChatInputArea } from "./ChatInputArea";
 import { ChatMessage } from "./ChatMessage";
 
@@ -114,18 +116,26 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
           </div>
         )}
 
-        {messages.map((msg) => (
-          <ChatMessage
-            key={msg.id}
-            message={msg}
-            isAdded={false}
-            onAddToDraft={() => {}}
-            aiDraftBadge={aiDraftBadge}
-            addToDraftLabel={addToDraftLabel}
-            addedToDraftLabel={addedToDraftLabel}
-            projectId={projectId}
-          />
-        ))}
+        <motion.div
+          variants={listContainerVariants}
+          initial="hidden"
+          animate="visible"
+          className="flex flex-col gap-3"
+        >
+          {messages.map((msg) => (
+            <motion.div key={msg.id} variants={listItemVariants}>
+              <ChatMessage
+                message={msg}
+                isAdded={false}
+                onAddToDraft={() => {}}
+                aiDraftBadge={aiDraftBadge}
+                addToDraftLabel={addToDraftLabel}
+                addedToDraftLabel={addedToDraftLabel}
+                projectId={projectId}
+              />
+            </motion.div>
+          ))}
+        </motion.div>
 
         {isStreaming && (
           <div className="flex justify-start">
