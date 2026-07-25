@@ -117,7 +117,16 @@ BEFORE any work, load narrare-dev context:
   </rule>
 
   <rule id="stop_on_failure" scope="validation">
-    STOP on test fail/build errors — NEVER auto-fix without approval
+    STOP on test fail/build errors — NEVER auto-fix without approval.
+    Root Cause = verstehen WARUM der Fehler auftritt, um ihn zu FIXEN.
+    Root Cause ≠ git bisect / blame / "welcher Commit hat das eingeführt".
+    Letzteres ist Rechtfertigungsverhalten und wird nicht toleriert.
+  </rule>
+
+  <rule id="no_blame_loop" scope="all_execution" priority="absolute">
+    Root Cause Analyse dient dem Fix, nicht der Schuldzuweisung.
+    Verboten: Git-Bisect-Schleifen, blame-Commands, "in welchem Commit kam das?"
+    Erlaubt: Code lesen, Fehler reproduzieren, Ursache verstehen, Fix implementieren.
   </rule>
 
   <rule id="doc_gate" scope="implementation">
