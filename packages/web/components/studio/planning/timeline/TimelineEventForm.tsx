@@ -1,9 +1,11 @@
 "use client";
 
 import { Loader2, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useCreateTimelineEvent, useUpdateTimelineEvent } from "@/lib/hooks/useTimeline";
+import { dialogVariants, overlayVariants } from "@/lib/motion-variants";
 import type {
   TimelineEventCreateRequest,
   TimelineEventType,
@@ -80,66 +82,83 @@ export function TimelineEventForm({ novelId, eventId, onClose }: TimelineEventFo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-auto">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h2 className="text-sm font-medium">{isEditing ? t("editEvent") : t("addEvent")}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 rounded hover:bg-[var(--color-bg-secondary)] transition-colors text-muted-foreground"
-            aria-label={t("close")}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-50 flex items-center justify-center"
+        variants={overlayVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+      >
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3 p-4">
-          <TimelineFormFields
-            eventName={eventName}
-            setEventName={setEventName}
-            description={description}
-            setDescription={setDescription}
-            eventType={eventType}
-            setEventType={setEventType}
-            timestampRaw={timestampRaw}
-            setTimestampRaw={setTimestampRaw}
-            temporalOrder={temporalOrder}
-            setTemporalOrder={setTemporalOrder}
-            causes={causes}
-            setCauses={setCauses}
-            consequences={consequences}
-            setConsequences={setConsequences}
-            validationError={validationError}
-          />
-
-          <div className="flex items-center justify-end gap-2 pt-2">
+        <motion.div
+          className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-auto"
+          variants={dialogVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+        >
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <h2 className="text-sm font-medium">{isEditing ? t("editEvent") : t("addEvent")}</h2>
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-[var(--color-bg-secondary)] transition-colors"
+              className="p-1 rounded hover:bg-[var(--color-bg-secondary)] transition-colors text-muted-foreground"
+              aria-label={t("close")}
             >
-              {t("cancel")}
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="px-3 py-1.5 text-sm rounded-md bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {isPending ? (
-                <span className="flex items-center gap-1">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  {t("saving")}
-                </span>
-              ) : isEditing ? (
-                t("save")
-              ) : (
-                t("create")
-              )}
+              <X className="w-4 h-4" />
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3 p-4">
+            <TimelineFormFields
+              eventName={eventName}
+              setEventName={setEventName}
+              description={description}
+              setDescription={setDescription}
+              eventType={eventType}
+              setEventType={setEventType}
+              timestampRaw={timestampRaw}
+              setTimestampRaw={setTimestampRaw}
+              temporalOrder={temporalOrder}
+              setTemporalOrder={setTemporalOrder}
+              causes={causes}
+              setCauses={setCauses}
+              consequences={consequences}
+              setConsequences={setConsequences}
+              validationError={validationError}
+            />
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-[var(--color-bg-secondary)] transition-colors"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                type="submit"
+                disabled={isPending}
+                className="px-3 py-1.5 text-sm rounded-md bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {isPending ? (
+                  <span className="flex items-center gap-1">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    {t("saving")}
+                  </span>
+                ) : isEditing ? (
+                  t("save")
+                ) : (
+                  t("create")
+                )}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

@@ -1,9 +1,11 @@
 "use client";
 
 import { Sparkles, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { RewriteMode } from "@/lib/api/generation";
+import { dialogVariants, overlayVariants } from "@/lib/motion-variants";
 import { RewriteFooter } from "./RewriteFooter";
 import { RewriteModeOptions } from "./RewriteModeOptions";
 
@@ -81,62 +83,79 @@ export function RewriteModeSelector({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card border border-border rounded-xl shadow-2xl max-w-lg w-full overflow-hidden">
-        <div className="p-5 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <h3 className="font-medium">{t("rewrite.title")}</h3>
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 flex items-center justify-center z-50 p-4"
+        variants={overlayVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+      >
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black/50" onClick={onCancel} aria-hidden="true" />
+
+        <motion.div
+          className="relative bg-card border border-border rounded-xl shadow-2xl max-w-lg w-full overflow-hidden"
+          variants={dialogVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+        >
+          <div className="p-5 border-b border-border flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <h3 className="font-medium">{t("rewrite.title")}</h3>
+            </div>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="p-1 rounded-md hover:bg-accent transition-colors"
+              aria-label={t("aiActions.stop")}
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="p-1 rounded-md hover:bg-accent transition-colors"
-            aria-label={t("aiActions.stop")}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
 
-        <div className="p-5 border-b border-border">
-          <div className="flex gap-2">
-            {MODES.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                onClick={() => handleModeChange(m.value)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
-                  mode === m.value
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                {t(m.labelKey)}
-              </button>
-            ))}
+          <div className="p-5 border-b border-border">
+            <div className="flex gap-2">
+              {MODES.map((m) => (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => handleModeChange(m.value)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+                    mode === m.value
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  {t(m.labelKey)}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <RewriteModeOptions
-          mode={mode}
-          option={option}
-          setOption={setOption}
-          voiceCharacter={voiceCharacter}
-          setVoiceCharacter={setVoiceCharacter}
-          customInstructions={customInstructions}
-          setCustomInstructions={setCustomInstructions}
-        />
+          <RewriteModeOptions
+            mode={mode}
+            option={option}
+            setOption={setOption}
+            voiceCharacter={voiceCharacter}
+            setVoiceCharacter={setVoiceCharacter}
+            customInstructions={customInstructions}
+            setCustomInstructions={setCustomInstructions}
+          />
 
-        <RewriteFooter
-          mode={mode}
-          customInstructions={customInstructions}
-          count={count}
-          setCount={setCount}
-          isGenerating={isGenerating}
-          onGenerate={handleGenerate}
-          onCancel={onCancel}
-        />
-      </div>
-    </div>
+          <RewriteFooter
+            mode={mode}
+            customInstructions={customInstructions}
+            count={count}
+            setCount={setCount}
+            isGenerating={isGenerating}
+            onGenerate={handleGenerate}
+            onCancel={onCancel}
+          />
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
