@@ -1,6 +1,6 @@
 # ADR-072 — pydantic-ai-harness Adoption Strategy
 
-> **Status:** 🔄 Proposed
+> **Status:** ✅ Accepted
 > **Date:** 2026-07-25
 > **Deciders:** Architecture Specialist (Phase 1 + 2 evaluation), Coordinator (escalation resolution)
 > **Supersedes:** —
