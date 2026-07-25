@@ -126,8 +126,10 @@ reduziert (kein Scale, kein Translate, kein Stagger).
 > verfehlte ~22 weitere animierte Komponenten; der zentrale Provider behebt
 > das (eine Quelle, automatisch für jeden `motion.*`-Nachkommen).
 > Regression-Test: `components/shared/__tests__/MotionProvider.test.tsx`.
-> Die pro-Komponente Hook-Datei `lib/hooks/use-reduced-motion.ts` existiert
-> weiterhin, wird aber aktuell nicht mehr importiert.
+> Die pro-Komponente Hook-Datei `lib/hooks/use-reduced-motion.ts` wurde als
+> Dead Code entfernt (orphaned, nachdem `panel-shell.tsx` den globalen
+> Provider übernahm); der globale `MotionProvider` ist nun der EINZIGE
+> Reduced-Motion-Mechanismus.
 
 ## Phasen
 
@@ -242,6 +244,12 @@ dieser Mock ist der Branchenstandard dafür.
 
 - [ ] `lib/motion-variants.ts` existiert mit allen 6 Variant-Typen
 - [ ] `hooks/useReducedMotion.ts` existiert
+  > **Supersediert (2026-07-25)** — statt einer pro-Komponenten Hook-Datei
+  > (korrekter Pfad wäre `lib/hooks/use-reduced-motion.ts` gewesen) wird
+  > Reduced Motion zentral über den globalen `MotionProvider`
+  > (`<MotionConfig reducedMotion="user">`) in `app/layout.tsx` gelöst.
+  > Die Hook-Datei wurde als Dead Code entfernt; siehe "Reduced Motion"
+  > oben.
 - [ ] tw-animate-css ist aus `confirm-dialog.tsx` migriert
   > **Akzeptierte Ausnahme** — siehe "Abweichungen / Accepted Exceptions" §1:
   > statt motion werden CSS-`@keyframes` in `styles/tailwind.css` genutzt

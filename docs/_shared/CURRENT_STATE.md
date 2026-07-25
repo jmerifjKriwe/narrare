@@ -63,7 +63,7 @@ Alembic migrations 0001 through 0035 (0028: invocation_evidence table; 0030: evi
 - Next.js 16 App Router with TipTap v3 editor
 - 3 demo novels (de: "Im stillen Wald", en: "Echoes of the Thornwall", en: "Dead Signal")
 - Key UI areas: Dashboard, Setup Wizard (5-step), Editor (full TipTap + chapters + context panel), Settings, Worldbuilding (3-column KB browser), Storyboard, Generation, Analysis panels
-- Animation: `motion` (v12, Framer Motion successor) with centralized variants in `lib/motion-variants.ts`, reduced-motion support via `useReducedMotion()` hook
+- Animation: `motion` (v12, Framer Motion successor) with centralized variants in `lib/motion-variants.ts`, reduced-motion support via a global `<MotionConfig reducedMotion="user">` root provider (`components/shared/MotionProvider.tsx`, wired into `app/layout.tsx`)
 - Custom TipTap extensions: NarrareDocument, SceneBreak, DialogueMark, Autosave, GhostText (inline suggestions), AIAnnotation (modify tracking)
 - State: TanStack Query (server) + Zustand (UI) + useState (ephemeral)
 - i18n: 3 locales (en, de, fr) via next-intl
