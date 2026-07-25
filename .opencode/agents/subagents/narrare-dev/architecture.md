@@ -57,6 +57,7 @@ permission:
     codereviewer: "allow"
   tool:
     "code-review-graph_*": "allow"
+    "codebase-memory-mcp_*": "allow"
 ---
 
 # Architecture Layer Specialist

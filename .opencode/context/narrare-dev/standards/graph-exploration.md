@@ -22,9 +22,10 @@ code-review-graph_list_graph_stats_tool
 
 ### Step 2: Check codebase-memory-mcp
 ```
-codebase-memory-mcp_search_graph(project="narrare", query="ping")
+codebase-memory-mcp_list_projects
 ```
-- **Available**: Returns results → proceed with `codebase-memory-mcp`
+- **Available**: Returns projects with nodes > 0 → proceed with `codebase-memory-mcp`
+- **No projects indexed**: Returns empty list → run `codebase-memory-mcp_index_repository(repo_path=".", mode="full")` first, then proceed
 - **Unavailable**: Returns error → fall back to Read/Glob/Grep
 
 ### Step 3: Choose the best tool for your task
@@ -168,11 +169,19 @@ Even then: try to narrow down with what the graph does provide, then use Read fo
 At the beginning of every session, check graph availability:
 
 ```
-# Check code-review-graph
+# Step 1: Check code-review-graph
 code-review-graph_list_graph_stats_tool
-# OR check codebase-memory-mcp
-codebase-memory-mcp_search_graph(project="narrare", query="ping")
+# Returns stats with node count > 0? → CRG available
+
+# Step 2: Check codebase-memory-mcp
+codebase-memory-mcp_list_projects
+# Returns project with nodes > 0? → CBM available
+# Returns empty list? → Run: codebase-memory-mcp_index_repository(repo_path=".", mode="full")
+# Then retry: codebase-memory-mcp_list_projects
 ```
+
+If CBM has no indexed projects, you must index first before using it — calls
+to an unindexed project will return empty results.
 
 If one is down, try the other. If both are down, proceed with Read/Glob/Grep
 and note the gap in your session summary.

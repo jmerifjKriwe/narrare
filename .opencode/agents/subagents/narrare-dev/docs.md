@@ -55,6 +55,7 @@ permission:
     contextscout: "allow"
   tool:
     "code-review-graph_*": "allow"
+    "codebase-memory-mcp_*": "allow"
 ---
 
 # Documentation Layer Specialist

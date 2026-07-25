@@ -337,6 +337,9 @@ task(
   <stage id="1" name="SessionOpening" required="true">
     Goal: Restore project context.
 
+    0. Verify codebase-memory-mcp indexing: call `codebase-memory-mcp_list_projects`.
+       If the project "home-kiesow-projects-narrare" is missing or has 0 nodes,
+       call `codebase-memory-mcp_index_repository(repo_path=".", mode="full")` to index.
     1. Read last session handoff notes (if any)
     2. Read `docs/_shared/CURRENT_STATE.md`
     3. Read `docs/architecture/questions/INDEX.md` for blockers

@@ -59,6 +59,7 @@ permission:
     externalscout: "allow"
   tool:
     "code-review-graph_*": "allow"
+    "codebase-memory-mcp_*": "allow"
 ---
 
 # Frontend Layer Specialist
