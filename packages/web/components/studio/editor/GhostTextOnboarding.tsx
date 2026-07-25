@@ -63,7 +63,7 @@ export function GhostTextOnboarding({ anchorElement, onDismiss }: GhostTextOnboa
 
   return (
     <div
-      className="fixed z-50 px-3 py-2 rounded-lg bg-card border border-border shadow-lg text-xs text-muted-foreground animate-in fade-in duration-300"
+      className="fixed z-50 px-3 py-2 rounded-lg bg-card border border-border shadow-lg text-xs text-muted-foreground animate-[overlay-show_0.3s_ease-out]"
       style={{ top: position.top, left: position.left }}
       role="status"
     >
