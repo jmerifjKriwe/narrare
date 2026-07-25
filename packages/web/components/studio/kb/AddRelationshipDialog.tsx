@@ -7,9 +7,11 @@
  */
 
 import { X } from "lucide-react";
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useKBEntries } from "@/lib/hooks/useKB";
+import { dialogVariants, overlayVariants } from "@/lib/motion-variants";
 
 interface AddRelationshipDialogProps {
   novelId: string;
@@ -59,8 +61,20 @@ export function AddRelationshipDialog({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-card border border-border rounded-xl shadow-2xl max-w-xl w-full overflow-hidden">
+    <motion.div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      variants={overlayVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+    >
+      <motion.div
+        className="bg-card border border-border rounded-xl shadow-2xl max-w-xl w-full overflow-hidden"
+        variants={dialogVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+      >
         <div className="p-6 border-b border-border flex items-center justify-between">
           <h3 className="font-medium">{t("kb.addRelationship")}</h3>
           <button
@@ -177,7 +191,7 @@ export function AddRelationshipDialog({
             {t("kb.create")}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

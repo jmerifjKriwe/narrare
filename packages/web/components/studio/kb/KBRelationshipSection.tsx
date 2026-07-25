@@ -7,6 +7,7 @@
  */
 
 import { Plus, X } from "lucide-react";
+import { AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { KBEntry, KBRelationship } from "@/lib/api/kb";
@@ -60,17 +61,19 @@ export function KBRelationshipSection({
         </div>
       )}
 
-      {showDialog && (
-        <AddRelationshipDialog
-          novelId={novelId}
-          sourceEntryId={entry.id}
-          onClose={() => setShowDialog(false)}
-          onCreate={(data) => {
-            createRelMutation.mutate(data, { onSuccess: () => setShowDialog(false) });
-          }}
-          isPending={createRelMutation.isPending}
-        />
-      )}
+      <AnimatePresence>
+        {showDialog && (
+          <AddRelationshipDialog
+            novelId={novelId}
+            sourceEntryId={entry.id}
+            onClose={() => setShowDialog(false)}
+            onCreate={(data) => {
+              createRelMutation.mutate(data, { onSuccess: () => setShowDialog(false) });
+            }}
+            isPending={createRelMutation.isPending}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
