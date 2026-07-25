@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { Editor } from "@tiptap/react";
+import { AnimatePresence } from "motion/react";
 import { CommandPalette } from "../editor/CommandPalette";
 import type { CommandContext, CommandState } from "../editor/commands";
 import { ExtractionPanel } from "../extraction/ExtractionPanel";
@@ -48,16 +49,18 @@ export function EditorOverlays({
         isOpen={nameGeneratorOpen}
         onClose={() => setNameGeneratorOpen(false)}
       />
-      {extractionPanelOpen && (
-        <ExtractionPanel
-          novelId={novelId}
-          chapterId={activeChapterId}
-          onClose={toggleExtractionPanel}
-          onApplied={() => {
-            void queryClient.invalidateQueries({ queryKey: ["kb", novelId] });
-          }}
-        />
-      )}
+      <AnimatePresence>
+        {extractionPanelOpen && (
+          <ExtractionPanel
+            novelId={novelId}
+            chapterId={activeChapterId}
+            onClose={toggleExtractionPanel}
+            onApplied={() => {
+              void queryClient.invalidateQueries({ queryKey: ["kb", novelId] });
+            }}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

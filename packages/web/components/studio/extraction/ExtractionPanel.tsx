@@ -11,8 +11,10 @@
  * studio.aiActions.* labels, actionable error messages.
  */
 
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { ConnectionLostBanner } from "@/components/ui/connection-lost-banner";
+import { dialogVariants, overlayVariants } from "@/lib/motion-variants";
 import { ExtractionContent } from "./ExtractionContent";
 import { ExtractionFooter } from "./ExtractionFooter";
 import { ExtractionHeader } from "./ExtractionHeader";
@@ -45,8 +47,20 @@ export function ExtractionPanel({ novelId, chapterId, onClose, onApplied }: Extr
   } = useExtractionPhase({ novelId, chapterId, onClose, onApplied, t });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-background rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      variants={overlayVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+    >
+      <motion.div
+        className="bg-background rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+        variants={dialogVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+      >
         <ExtractionHeader
           title={phase === "done" ? t("kb.extractionComplete") : t("kb.extractionLoadingTitle")}
           closeLabel={t("kb.extractionCancel")}
@@ -82,7 +96,7 @@ export function ExtractionPanel({ novelId, chapterId, onClose, onApplied }: Extr
             onApply={handleApply}
           />
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
