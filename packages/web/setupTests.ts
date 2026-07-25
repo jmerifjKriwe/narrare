@@ -1,5 +1,6 @@
 /// <reference types="vitest/globals" />
 import "@testing-library/jest-dom/vitest";
+import type { ReactElement, ReactNode } from "react";
 import { expect, vi } from "vitest";
 import * as axeMatchers from "vitest-axe/matchers";
 import { server } from "./mocks/server";
@@ -15,6 +16,106 @@ expect.extend(axeMatchers);
 vi.mock("styled-jsx", () => ({
   style: ({ children }: { children: React.ReactNode }) => children,
 }));
+
+// ---------------------------------------------------------------------------
+// motion/react — neutralize the animation engine in the test environment
+// ---------------------------------------------------------------------------
+// ROOT CAUSE this addresses: components such as `PhaseCrossfade` wrap content
+// in `<AnimatePresence mode="wait"><motion.div key={phase}>…</motion.div>`.
+// With `mode="wait"` the entering phase is NOT mounted until the exiting
+// phase's exit animation has completed. happy-dom cannot drive motion's
+// rAF/WAAPI animation loop, so across rapid sequential phase transitions
+// (idle → loading → results) the exit-completion callback never fires and the
+// final phase's content never mounts within a test's `waitFor` window — every
+// analysis-panel component test would otherwise time out.
+//
+// Component tests verify behaviour (state transitions, copy, a11y), NEVER
+// animation timing. The industry-standard remedy is to replace the animation
+// primitives with plain render pass-throughs so content is always mounted,
+// leaving the real crossfade UX untouched for actual browsers (see spec
+// `docs/superpowers/specs/2026-07-24-motion-activation-design.md`).
+//
+// `MotionConfig` and `MotionConfigContext` are intentionally kept REAL (via
+// importActual) so the global reduced-motion wiring — asserted by
+// `MotionProvider.test.tsx` — continues to verify the genuine context value
+// (`reducedMotion === "user"`).
+vi.mock("motion/react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("motion/react")>();
+  const { createElement, Fragment } = await import("react");
+
+  // Props that exist only on motion components and have no DOM equivalent.
+  // Stripped so React does not warn about unknown attributes on plain elements.
+  const MOTION_ONLY_PROPS = new Set([
+    "variants",
+    "initial",
+    "animate",
+    "exit",
+    "transition",
+    "whileHover",
+    "whileTap",
+    "whileFocus",
+    "whileDrag",
+    "whileInView",
+    "drag",
+    "dragConstraints",
+    "dragElastic",
+    "dragMomentum",
+    "layout",
+    "layoutId",
+    "onAnimationStart",
+    "onAnimationComplete",
+    "onUpdate",
+    "onDrag",
+    "onDragStart",
+    "onDragEnd",
+  ]);
+
+  type MotionComponentProps = Record<string, unknown> & {
+    readonly children?: ReactNode;
+  };
+
+  // `motion.div`, `motion.section`, `motion.li`, `motion.ul`, … → render as the
+  // equivalent plain DOM element, forwarding DOM-valid props (className, style,
+  // aria-*, data-*, …) while dropping animation-only props.
+  //
+  // The component function for each tag is CACHED: `motion.div` must return the
+  // SAME function reference across renders, otherwise React sees a new component
+  // type on every render and unmounts/remounts the whole subtree (which breaks
+  // controlled inputs and click handlers in components like EditorView).
+  const componentCache = new Map<string, (props: MotionComponentProps) => ReactElement>();
+  const motion = new Proxy(
+    {},
+    {
+      get: (_target: unknown, tag: string) => {
+        let component = componentCache.get(tag);
+        if (!component) {
+          component = (props: MotionComponentProps) => {
+            const clean: Record<string, unknown> = {};
+            for (const [key, value] of Object.entries(props)) {
+              if (!MOTION_ONLY_PROPS.has(key)) {
+                clean[key] = value;
+              }
+            }
+            return createElement(tag, clean);
+          };
+          componentCache.set(tag, component);
+        }
+        return component;
+      },
+    },
+  );
+
+  // `AnimatePresence` → render children directly. No exit/enter sequencing, so
+  // the current phase's content mounts immediately (mode="wait" no longer gates).
+  const AnimatePresence = ({ children }: { readonly children?: ReactNode }) =>
+    createElement(Fragment, null, children);
+
+  return {
+    ...actual,
+    AnimatePresence,
+    motion,
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Zustand Store Mocks - NOT IMPLEMENTED
