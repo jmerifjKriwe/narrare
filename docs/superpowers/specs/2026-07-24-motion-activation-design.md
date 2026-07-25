@@ -118,6 +118,17 @@ export const bannerSlideVariants = {
 genutzt. Wenn aktiv, werden alle Animationen auf einfache Opacity-Wechsel
 reduziert (kein Scale, kein Translate, kein Stagger).
 
+> **Implementierung (2026-07-25):** Umgesetzt über einen globalen
+> `<MotionConfig reducedMotion="user">`-Provider
+> (`packages/web/components/shared/MotionProvider.tsx`, gewired in
+> `app/layout.tsx`) statt eines pro-Komponenten Hooks. Eine erste
+> Implementation gate nur `panel-shell.tsx` via `useReducedMotion()` und
+> verfehlte ~22 weitere animierte Komponenten; der zentrale Provider behebt
+> das (eine Quelle, automatisch für jeden `motion.*`-Nachkommen).
+> Regression-Test: `components/shared/__tests__/MotionProvider.test.tsx`.
+> Die pro-Komponente Hook-Datei `lib/hooks/use-reduced-motion.ts` existiert
+> weiterhin, wird aber aktuell nicht mehr importiert.
+
 ## Phasen
 
 ### Phase 1 — Foundation
@@ -177,6 +188,47 @@ Dialog-Scale:
 - **Tailwind CSS transitions** bleiben für einfache Hover-Effekte
   (`transition-colors` etc.) — motion ergänzt, ersetzt nicht Hover-Basics
 
+## Abweichungen / Accepted Exceptions
+
+Die folgenden zwei bewusst akzeptierten Abweichungen vom "single animation
+system (motion)"-Ziel wurden nach der Implementierung dokumentiert. Sie
+verletzen nicht den Sinn der Regel, sondern adressieren technische
+Randbedingungen, die motion nicht abdecken kann.
+
+### 1. ConfirmDialog — CSS-Keyframes statt motion
+
+`packages/web/components/ui/confirm-dialog.tsx` nutzt weiterhin CSS-`@keyframes`
+(definiert in `packages/web/styles/tailwind.css`: `overlay-show`,
+`overlay-hide`, `dialog-show`, `dialog-hide`), gesteuert über Radix'
+`data-[state=open]` / `data-[state=closed]`-Attribute — **nicht**
+`motion` / `AnimatePresence`.
+
+**Grund:** Radix `AlertDialog` rendert über einen Portal und kontrolliert den
+eigenen Exit-Lifecycle via `data-[state]`. Das komponiert nicht sauber mit
+motions `AnimatePresence`-Exit (motion erwartet, das Mounting selbst zu
+steuern). Für diese Komponenten-Klasse (Radix-Portal-gesteuerte Dialoge) sind
+daten-gesteuerte CSS-Keyframes der idiomatic Ansatz und qualifizieren die
+"single animation system"-Zielsetzung, ohne ihren Sinn zu verletzen.
+
+### 2. Test-Environment — `motion/react`-Mock in `setupTests.ts`
+
+`PhaseCrossfade` nutzt `<AnimatePresence mode="wait">`. happy-dom kann motions
+rAF/WAAPI-Animation-Loop nicht treiben, sodass `mode="wait"` bei schnellen
+Phasenwechseln (idle → loading → results) den Mount der Folgephase blockiert
+— das würde jede Analysis-Panel-Component-Test timeouten lassen (51 betroffene
+Tests).
+
+**Lösung:** Ein globaler, scoped Mock in `packages/web/setupTests.ts` ersetzt
+`AnimatePresence` → `Fragment` und `motion.*` → zwischengespeicherte
+plain-DOM-Elemente (motion-only Props wie `variants`/`initial`/`animate`/
+`exit` werden gestrippt; Komponenten-Funktionen werden gecacht, damit React
+sie nicht bei jedem Render als neuen Typ ansieht). `MotionConfig` bzw.
+`MotionConfigContext` bleiben **real** (via `importActual`), sodass die globale
+Reduced-Motion-Wiring weiterhin echt getestet wird (siehe
+`MotionProvider.test.tsx`). Real-Browser-Crossfade-Verhalten ist davon nicht
+betroffen. Component-Tests verifizieren Verhalten, nicht Animation-Timing —
+dieser Mock ist der Branchenstandard dafür.
+
 ## Risiken
 
 | Risiko | Gegenmaßnahme |
@@ -191,8 +243,14 @@ Dialog-Scale:
 - [ ] `lib/motion-variants.ts` existiert mit allen 6 Variant-Typen
 - [ ] `hooks/useReducedMotion.ts` existiert
 - [ ] tw-animate-css ist aus `confirm-dialog.tsx` migriert
+  > **Akzeptierte Ausnahme** — siehe "Abweichungen / Accepted Exceptions" §1:
+  > statt motion werden CSS-`@keyframes` in `styles/tailwind.css` genutzt
+  > (Radix-Portal + `data-[state]`-Exit-Lifecycle komponiert nicht mit
+  > `AnimatePresence`). `tw-animate-css` ist dennoch entfernt.
 - [ ] tw-animate-css ist aus `package.json` und `tailwind.css` entfernt
 - [ ] Alle 12 Modals haben AnimatePresence + motion.div
+  > `ConfirmDialog` (Modal #12) ist die dokumentierte Ausnahme (CSS-Keyframes
+  > statt motion) — siehe "Abweichungen / Accepted Exceptions" §1.
 - [ ] PanelShell hat Slide-Animation
 - [ ] Alle Listen haben Stagger-Animation
 - [ ] Alle Banner haben Slide-Animation

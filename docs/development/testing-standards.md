@@ -908,6 +908,23 @@ asserting anything passes coverage. We check assertion quality in PR review.
 **Test Data:** `packages/web/mocks/data.ts`
 **Setup:** `packages/web/setupTests.ts`
 
+> **Global `motion/react` mock (component tests):** `setupTests.ts` installs a
+> scoped mock that replaces `AnimatePresence` → `Fragment` and `motion.*` →
+> cached plain-DOM elements (motion-only props like `variants`/`initial`/
+> `animate`/`exit` are stripped; the per-tag component function is cached so
+> React does not see a new component type each render). This is required
+> because components such as `PhaseCrossfade` use
+> `<AnimatePresence mode="wait">`, which cannot complete its exit animation in
+> happy-dom (no rAF/WAAPI loop) and would otherwise block the entering phase
+> from mounting — 51 analysis-panel tests were restored to green by this mock.
+> The REAL `MotionConfig`/`MotionConfigContext` are kept (via `importActual`)
+> so the global reduced-motion wiring stays genuinely tested
+> (`components/shared/__tests__/MotionProvider.test.tsx`). Component tests
+> verify behaviour, not animation timing — consistent with §"What NOT to
+> Test". Real-browser animation behaviour is unaffected. See
+> `docs/superpowers/specs/2026-07-24-motion-activation-design.md`
+> ("Abweichungen / Accepted Exceptions").
+
 ### Runtime Baseline and Vitest Configuration
 
 Frontend tests have a **warning-only** CI budget of **240 seconds** for the full
