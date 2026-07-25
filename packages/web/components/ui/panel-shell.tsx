@@ -1,7 +1,10 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode, useRef } from "react";
 import { usePanelFocus } from "@/lib/hooks/use-panel-focus";
+import { useReducedMotion } from "@/lib/hooks/use-reduced-motion";
+import { panelSlideRightVariants } from "@/lib/motion-variants";
 import { cn } from "@/lib/utils";
 
 interface PanelShellProps {
@@ -51,22 +54,29 @@ export function PanelShell({
 }: PanelShellProps) {
   const shellRef = useRef<HTMLElement | null>(null);
   usePanelFocus({ open, panelRef: shellRef, onClose });
-
-  if (!open) return null;
+  const reducedMotion = useReducedMotion();
 
   const desktopBorder = side === "left" ? "lg:border-l-0 lg:border-r" : "lg:border-r-0 lg:border-l";
 
   return (
-    <section
-      ref={shellRef}
-      data-testid={testId}
-      aria-labelledby={titleId}
-      className={cn(SHELL_CLASSES, desktopBorder)}
-    >
-      <h2 id={titleId} className="sr-only">
-        {dialogLabel}
-      </h2>
-      {children}
-    </section>
+    <AnimatePresence>
+      {open && (
+        <motion.section
+          ref={shellRef}
+          data-testid={testId}
+          aria-labelledby={titleId}
+          variants={reducedMotion ? undefined : panelSlideRightVariants}
+          initial={reducedMotion ? undefined : "hidden"}
+          animate={reducedMotion ? undefined : "visible"}
+          exit={reducedMotion ? undefined : "exit"}
+          className={cn(SHELL_CLASSES, desktopBorder)}
+        >
+          <h2 id={titleId} className="sr-only">
+            {dialogLabel}
+          </h2>
+          {children}
+        </motion.section>
+      )}
+    </AnimatePresence>
   );
 }
