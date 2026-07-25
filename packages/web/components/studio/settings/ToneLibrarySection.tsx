@@ -130,9 +130,11 @@ export function ToneLibrarySection() {
       )}
 
       {/* Create / Edit dialog */}
-      {(isCreating || editingTone) && (
-        <ToneFormDialog tone={editingTone} onClose={handleCloseDialog} />
-      )}
+      <ToneFormDialog
+        open={isCreating || editingTone !== null}
+        tone={editingTone}
+        onClose={handleCloseDialog}
+      />
     </div>
   );
 }

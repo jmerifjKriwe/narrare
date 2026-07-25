@@ -62,17 +62,16 @@ export function KBRelationshipSection({
       )}
 
       <AnimatePresence>
-        {showDialog && (
-          <AddRelationshipDialog
-            novelId={novelId}
-            sourceEntryId={entry.id}
-            onClose={() => setShowDialog(false)}
-            onCreate={(data) => {
-              createRelMutation.mutate(data, { onSuccess: () => setShowDialog(false) });
-            }}
-            isPending={createRelMutation.isPending}
-          />
-        )}
+        <AddRelationshipDialog
+          open={showDialog}
+          novelId={novelId}
+          sourceEntryId={entry.id}
+          onClose={() => setShowDialog(false)}
+          onCreate={(data) => {
+            createRelMutation.mutate(data, { onSuccess: () => setShowDialog(false) });
+          }}
+          isPending={createRelMutation.isPending}
+        />
       </AnimatePresence>
     </div>
   );

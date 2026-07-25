@@ -55,6 +55,7 @@ const existingTone: CustomTone = {
 };
 
 const defaultProps = {
+  open: true,
   tone: null as CustomTone | null,
   onClose: vi.fn(),
 };
