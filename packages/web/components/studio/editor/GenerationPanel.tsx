@@ -4,6 +4,7 @@ import { AlertTriangle, RotateCcw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { LearningStatus } from "@/components/studio/learning/LearningStatus";
+import { PhaseCrossfade } from "@/components/ui/phase-crossfade";
 import { isApplyShortcut } from "@/lib/ai-action-shortcuts";
 import { ContextInspector } from "./ContextInspector";
 import { GenerationConfig } from "./GenerationConfig";
@@ -72,78 +73,83 @@ export function GenerationPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
-        {controller.phase === "config" && (
-          <GenerationConfig
-            mode={controller.mode}
-            setMode={controller.setMode}
-            outline={controller.outline}
-            setOutline={controller.setOutline}
-            prompt={controller.prompt}
-            setPrompt={controller.setPrompt}
-            wordTarget={controller.wordTarget}
-            setWordTarget={controller.setWordTarget}
-            tone={controller.tone}
-            setTone={controller.setTone}
-            isPending={controller.isLoading}
-            onGenerate={controller.handleGenerate}
-            onStartSession={onStartSession}
-          />
-        )}
-
-        {(controller.phase === "streaming" || controller.phase === "review") && (
-          <>
-            <ContextInspector meta={controller.contextMeta} />
-            <GenerationDraft
-              phase={controller.phase}
-              draftText={controller.draftText}
-              wordCount={controller.wordCount}
-              targetNum={controller.targetNum}
-              tokenUsage={controller.tokenUsage}
-              isAcceptPending={controller.acceptMutation.isPending}
-              isRejectPending={controller.rejectMutation.isPending}
-              onStop={controller.handleStop}
-              onAccept={controller.acceptDraft}
-              onReject={controller.rejectDraft}
-              onRegenerate={controller.handleRegenerate}
+        <PhaseCrossfade phase={controller.phase}>
+          {controller.phase === "config" && (
+            <GenerationConfig
+              mode={controller.mode}
+              setMode={controller.setMode}
+              outline={controller.outline}
+              setOutline={controller.setOutline}
+              prompt={controller.prompt}
+              setPrompt={controller.setPrompt}
+              wordTarget={controller.wordTarget}
+              setWordTarget={controller.setWordTarget}
+              tone={controller.tone}
+              setTone={controller.setTone}
+              isPending={controller.isLoading}
+              onGenerate={controller.handleGenerate}
+              onStartSession={onStartSession}
             />
-            {controller.showRating && (
-              <RatingPrompt
-                action={controller.showRating}
-                onSubmit={({ rating, reason }) => controller.handleRatingDone(rating, reason)}
-                onDismiss={() => controller.handleRatingDone()}
-              />
-            )}
-          </>
-        )}
+          )}
 
-        {controller.phase === "error" && (
-          <div className="flex flex-col gap-3">
-            <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm" role="alert">
-              {controller.errorMsg || t("generationPanel.unknownError")}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={controller.handleRetry}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+          {(controller.phase === "streaming" || controller.phase === "review") && (
+            <>
+              <ContextInspector meta={controller.contextMeta} />
+              <GenerationDraft
+                phase={controller.phase}
+                draftText={controller.draftText}
+                wordCount={controller.wordCount}
+                targetNum={controller.targetNum}
+                tokenUsage={controller.tokenUsage}
+                isAcceptPending={controller.acceptMutation.isPending}
+                isRejectPending={controller.rejectMutation.isPending}
+                onStop={controller.handleStop}
+                onAccept={controller.acceptDraft}
+                onReject={controller.rejectDraft}
+                onRegenerate={controller.handleRegenerate}
+              />
+              {controller.showRating && (
+                <RatingPrompt
+                  action={controller.showRating}
+                  onSubmit={({ rating, reason }) => controller.handleRatingDone(rating, reason)}
+                  onDismiss={() => controller.handleRatingDone()}
+                />
+              )}
+            </>
+          )}
+
+          {controller.phase === "error" && (
+            <div className="flex flex-col gap-3">
+              <div
+                className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm"
+                role="alert"
               >
-                <RotateCcw className="w-4 h-4" />
-                <span>{t("aiActions.retry")}</span>
-              </button>
-              {controller.errorMsg?.includes(
-                t("generationPanel.contextTooLargeGeneric").slice(0, 10),
-              ) && (
+                {controller.errorMsg || t("generationPanel.unknownError")}
+              </div>
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={controller.handleRetry}
-                  className="flex items-center justify-center gap-2 px-3 py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-accent transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
                 >
-                  {t("generationPanel.contextInspectorAction")}
+                  <RotateCcw className="w-4 h-4" />
+                  <span>{t("aiActions.retry")}</span>
                 </button>
-              )}
+                {controller.errorMsg?.includes(
+                  t("generationPanel.contextTooLargeGeneric").slice(0, 10),
+                ) && (
+                  <button
+                    type="button"
+                    onClick={controller.handleRetry}
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-accent transition-colors"
+                  >
+                    {t("generationPanel.contextInspectorAction")}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </PhaseCrossfade>
 
         {controller.connectionLost && (
           <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-border bg-yellow-500/10">
