@@ -36,11 +36,15 @@ ROOT = Path(__file__).resolve().parent.parent
 DECISIONS_DIR = ROOT / "docs" / "architecture" / "decisions"
 
 # Files that live in the decisions directory but are intentionally not ADRs.
-# These are explicitly exempt from the naming convention.
+# These are explicitly exempt from the naming convention. The `_`-prefix
+# convention marks supporting docs (spike findings, capability evaluations,
+# etc.) that are referenced by an ADR but are not ADRs themselves.
 EXEMPT_BASENAMES: frozenset[str] = frozenset(
     {
         "INDEX.md",
         "_TEMPLATE.md",
+        "_phase2-capability-evaluation.md",
+        "_spike-pydantic-ai-upgrade-findings.md",
     }
 )
 

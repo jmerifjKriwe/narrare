@@ -7,7 +7,7 @@ requires-python = ">=3.14"
 dependencies = [
   "pydantic==2.13.4",
   "pydantic-settings==2.14.2",
-  "pydantic-ai-slim[openai,anthropic,google,groq]==2.13.0",
+  "pydantic-ai-slim[openai,anthropic,google,groq]==2.18.0",
   "structlog==26.1.0",
   "pyyaml==6.0.3",
   "aiofiles==25.1.0",
@@ -27,6 +27,9 @@ embeddings = ["sentence-transformers>=3.0"]
 nlp = [
     "spacy>=3.8",
 ]
+# Available for spec-time Harness Build-vs-Buy evaluation (ADR-072).
+# NOT installed by default. No production code may import pydantic_ai_harness.
+harness-eval = ["pydantic-ai-harness==0.11.0"]
 
 [build-system]
 requires = ["hatchling"]
