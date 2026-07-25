@@ -11,6 +11,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
+import { SaveNotification } from "./SaveNotification";
 import { SessionActions } from "./SessionActions";
 import { SessionHeader } from "./SessionHeader";
 import { SessionMessageList } from "./SessionMessageList";
@@ -167,11 +168,7 @@ export function SessionPanel({ chapterId, novelId, mode, onClose }: SessionPanel
         {isStreaming && streamingText && <StreamingBubble streamingText={streamingText} />}
         <div ref={chatEndRef} />
       </div>
-      {saveNotification && (
-        <div className="mx-4 mb-2 px-3 py-2 rounded-lg bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-medium text-center">
-          {saveNotification}
-        </div>
-      )}
+      {saveNotification && <SaveNotification message={saveNotification} />}
       <SessionActions
         mode={mode}
         isConnected={isConnected}

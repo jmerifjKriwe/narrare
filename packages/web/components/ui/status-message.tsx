@@ -1,5 +1,7 @@
 import { Loader2 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
+import { bannerSlideVariants } from "@/lib/motion-variants";
 import { cn } from "@/lib/utils";
 
 type StatusState = "idle" | "loading" | "success" | "error" | "empty";
@@ -30,20 +32,26 @@ export function StatusMessage({ state, message, action, politeness }: StatusMess
   }
 
   return (
-    <div
-      role={role}
-      aria-live={live}
-      aria-busy={busy || undefined}
-      className={cn(
-        "flex items-center gap-2 rounded-md p-3 text-sm",
-        isError
-          ? "border border-destructive/40 bg-destructive/5 text-destructive"
-          : "text-muted-foreground",
-      )}
-    >
-      {busy && <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin" />}
-      {message && <span className="flex-1">{message}</span>}
-      {action && <span className="shrink-0">{action}</span>}
-    </div>
+    <AnimatePresence>
+      <motion.div
+        variants={bannerSlideVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+        role={role}
+        aria-live={live}
+        aria-busy={busy || undefined}
+        className={cn(
+          "flex items-center gap-2 rounded-md p-3 text-sm",
+          isError
+            ? "border border-destructive/40 bg-destructive/5 text-destructive"
+            : "text-muted-foreground",
+        )}
+      >
+        {busy && <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin" />}
+        {message && <span className="flex-1">{message}</span>}
+        {action && <span className="shrink-0">{action}</span>}
+      </motion.div>
+    </AnimatePresence>
   );
 }

@@ -1,11 +1,13 @@
 "use client";
 
 import { AlertTriangle, RotateCcw, Sparkles, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { LearningStatus } from "@/components/studio/learning/LearningStatus";
 import { PhaseCrossfade } from "@/components/ui/phase-crossfade";
 import { isApplyShortcut } from "@/lib/ai-action-shortcuts";
+import { bannerSlideVariants } from "@/lib/motion-variants";
 import { ContextInspector } from "./ContextInspector";
 import { GenerationConfig } from "./GenerationConfig";
 import { GenerationDraft } from "./GenerationDraft";
@@ -151,21 +153,29 @@ export function GenerationPanel({
           )}
         </PhaseCrossfade>
 
-        {controller.connectionLost && (
-          <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-border bg-yellow-500/10">
-            <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              <span>{t("aiActions.connectionLost")}</span>
-            </div>
-            <button
-              type="button"
-              onClick={controller.handleRetry}
-              className="px-3 py-1 text-xs font-medium rounded-md bg-yellow-600 text-white hover:bg-yellow-700 transition-colors"
+        <AnimatePresence>
+          {controller.connectionLost && (
+            <motion.div
+              variants={bannerSlideVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-border bg-yellow-500/10"
             >
-              {t("aiActions.connectionLostRetry")}
-            </button>
-          </div>
-        )}
+              <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                <span>{t("aiActions.connectionLost")}</span>
+              </div>
+              <button
+                type="button"
+                onClick={controller.handleRetry}
+                className="px-3 py-1 text-xs font-medium rounded-md bg-yellow-600 text-white hover:bg-yellow-700 transition-colors"
+              >
+                {t("aiActions.connectionLostRetry")}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
