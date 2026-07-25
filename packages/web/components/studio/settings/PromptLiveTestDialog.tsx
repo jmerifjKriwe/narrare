@@ -20,8 +20,10 @@
  */
 
 import { Loader2, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
+import { dialogVariants, overlayVariants } from "@/lib/motion-variants";
 
 interface PromptLiveTestDialogProps {
   readonly open: boolean;
@@ -69,108 +71,121 @@ export function PromptLiveTestDialog({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, streaming, onCancel, onOpenChange]);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={() => {
-          if (streaming) onCancel();
-          onOpenChange(false);
-        }}
-        aria-hidden="true"
-      />
-
-      {/* Dialog */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("settings.prompts.promptCustomization.testTitle")}
-        className="relative flex max-h-[85vh] w-full max-w-3xl flex-col rounded-xl border border-border bg-card p-6 shadow-2xl"
-      >
-        <header className="mb-4 flex items-start justify-between gap-4">
-          <h2 className="text-base font-medium text-foreground">
-            {t("settings.prompts.promptCustomization.testTitle")}
-          </h2>
-          <button
-            type="button"
-            aria-label={t("settings.prompts.promptCustomization.close")}
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          variants={overlayVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="fixed inset-0 z-50 flex items-center justify-center"
+        >
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => {
               if (streaming) onCancel();
               onOpenChange(false);
             }}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </header>
+            aria-hidden="true"
+          />
 
-        {!acknowledged ? (
-          <section
-            className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm"
-            aria-label={t("settings.prompts.promptCustomization.tokenWarning")}
+          {/* Dialog */}
+          <motion.div
+            variants={dialogVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("settings.prompts.promptCustomization.testTitle")}
+            className="relative flex max-h-[85vh] w-full max-w-3xl flex-col rounded-xl border border-border bg-card p-6 shadow-2xl"
           >
-            <p className="text-foreground">
-              {t("settings.prompts.promptCustomization.tokenWarning")}
-            </p>
-            <button
-              type="button"
-              onClick={onConfirm}
-              className="mt-3 rounded-md bg-amber-500/20 px-3 py-1.5 text-sm hover:bg-amber-500/30"
-            >
-              {t("settings.prompts.promptCustomization.confirmRun")}
-            </button>
-          </section>
-        ) : (
-          <section className="flex-1 overflow-y-auto pr-1">
-            <pre
-              className="min-h-[200px] whitespace-pre-wrap rounded-md bg-muted p-3 font-mono text-sm"
-              aria-live="polite"
-            >
-              {output || (streaming ? "…" : t("settings.prompts.promptCustomization.testEmpty"))}
-            </pre>
-            {error && (
-              <p role="alert" className="mt-2 text-sm text-destructive">
-                {t(`settings.prompts.promptCustomization.${error}`)}
-              </p>
+            <header className="mb-4 flex items-start justify-between gap-4">
+              <h2 className="text-base font-medium text-foreground">
+                {t("settings.prompts.promptCustomization.testTitle")}
+              </h2>
+              <button
+                type="button"
+                aria-label={t("settings.prompts.promptCustomization.close")}
+                onClick={() => {
+                  if (streaming) onCancel();
+                  onOpenChange(false);
+                }}
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+
+            {!acknowledged ? (
+              <section
+                className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm"
+                aria-label={t("settings.prompts.promptCustomization.tokenWarning")}
+              >
+                <p className="text-foreground">
+                  {t("settings.prompts.promptCustomization.tokenWarning")}
+                </p>
+                <button
+                  type="button"
+                  onClick={onConfirm}
+                  className="mt-3 rounded-md bg-amber-500/20 px-3 py-1.5 text-sm hover:bg-amber-500/30"
+                >
+                  {t("settings.prompts.promptCustomization.confirmRun")}
+                </button>
+              </section>
+            ) : (
+              <section className="flex-1 overflow-y-auto pr-1">
+                <pre
+                  className="min-h-[200px] whitespace-pre-wrap rounded-md bg-muted p-3 font-mono text-sm"
+                  aria-live="polite"
+                >
+                  {output ||
+                    (streaming ? "…" : t("settings.prompts.promptCustomization.testEmpty"))}
+                </pre>
+                {error && (
+                  <p role="alert" className="mt-2 text-sm text-destructive">
+                    {t(`settings.prompts.promptCustomization.${error}`)}
+                  </p>
+                )}
+                <div className="mt-3 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    disabled={!streaming}
+                    className="rounded-md bg-muted px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                  >
+                    {t("aiActions.stop")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onRetry ?? onConfirm}
+                    disabled={streaming}
+                    className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  >
+                    {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {t("aiActions.retry")}
+                  </button>
+                </div>
+              </section>
             )}
-            <div className="mt-3 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={onCancel}
-                disabled={!streaming}
-                className="rounded-md bg-muted px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
-              >
-                {t("aiActions.stop")}
-              </button>
-              <button
-                type="button"
-                onClick={onRetry ?? onConfirm}
-                disabled={streaming}
-                className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {t("aiActions.retry")}
-              </button>
-            </div>
-          </section>
-        )}
 
-        <footer className="mt-4 flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              if (streaming) onCancel();
-              onOpenChange(false);
-            }}
-            className="rounded-md bg-muted px-4 py-2 text-sm hover:bg-accent"
-          >
-            {t("settings.prompts.promptCustomization.close")}
-          </button>
-        </footer>
-      </div>
-    </div>
+            <footer className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  if (streaming) onCancel();
+                  onOpenChange(false);
+                }}
+                className="rounded-md bg-muted px-4 py-2 text-sm hover:bg-accent"
+              >
+                {t("settings.prompts.promptCustomization.close")}
+              </button>
+            </footer>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
