@@ -1,9 +1,11 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { tonesApi } from "@/lib/api/client";
+import { dialogVariants, overlayVariants } from "@/lib/motion-variants";
 import type { CustomTone } from "@/types";
 
 interface ToneFormDialogProps {
@@ -47,74 +49,86 @@ export function ToneFormDialog({ tone, onClose }: ToneFormDialogProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Dialog */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={isEditing ? t("tones.editTone") : t("tones.addTone")}
-        className="relative w-full max-w-md bg-card border border-border rounded-lg p-6 shadow-2xl"
+    <AnimatePresence>
+      <motion.div
+        variants={overlayVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+        className="fixed inset-0 z-50 flex items-center justify-center"
       >
-        <h3 className="text-lg font-medium mb-4">
-          {isEditing ? t("tones.editTone") : t("tones.addTone")}
-        </h3>
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+          aria-hidden="true"
+        />
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label htmlFor="tone-name" className="block text-sm font-medium mb-1.5">
-              {t("tones.toneName")}
-            </label>
-            <input
-              id="tone-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={100}
-              className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-            />
-          </div>
+        {/* Dialog */}
+        <motion.div
+          variants={dialogVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          role="dialog"
+          aria-modal="true"
+          aria-label={isEditing ? t("tones.editTone") : t("tones.addTone")}
+          className="relative w-full max-w-md bg-card border border-border rounded-lg p-6 shadow-2xl"
+        >
+          <h3 className="text-lg font-medium mb-4">
+            {isEditing ? t("tones.editTone") : t("tones.addTone")}
+          </h3>
 
-          <div>
-            <label htmlFor="tone-instructions" className="block text-sm font-medium mb-1.5">
-              {t("tones.toneInstructions")}
-            </label>
-            <textarea
-              id="tone-instructions"
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              rows={4}
-              maxLength={2000}
-              className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm resize-y"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div>
+              <label htmlFor="tone-name" className="block text-sm font-medium mb-1.5">
+                {t("tones.toneName")}
+              </label>
+              <input
+                id="tone-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={100}
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
+              />
+            </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+            <div>
+              <label htmlFor="tone-instructions" className="block text-sm font-medium mb-1.5">
+                {t("tones.toneInstructions")}
+              </label>
+              <textarea
+                id="tone-instructions"
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                rows={4}
+                maxLength={2000}
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm resize-y"
+              />
+            </div>
 
-          <div className="flex justify-end gap-3 mt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-muted rounded-md hover:bg-accent transition-colors text-sm"
-            >
-              {t("settings.ai.cancel")}
-            </button>
-            <button
-              type="submit"
-              disabled={saveMutation.isPending}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-sm disabled:opacity-50"
-            >
-              {saveMutation.isPending ? t("settings.ai.loading") : t("settings.ai.save")}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+
+            <div className="flex justify-end gap-3 mt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 bg-muted rounded-md hover:bg-accent transition-colors text-sm"
+              >
+                {t("settings.ai.cancel")}
+              </button>
+              <button
+                type="submit"
+                disabled={saveMutation.isPending}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-sm disabled:opacity-50"
+              >
+                {saveMutation.isPending ? t("settings.ai.loading") : t("settings.ai.save")}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
