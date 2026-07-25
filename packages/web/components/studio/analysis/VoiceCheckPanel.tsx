@@ -21,6 +21,7 @@
 
 import { ArrowLeft, BadgeCheck, Info, Loader2, RefreshCw, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { AnalysisPanelWrapper } from "@/components/ui/analysis-panel-wrapper";
 import { useCharacterVoiceCheck } from "@/lib/hooks/useCharacterVoiceCheck";
 import { VoiceCheckResults } from "./_components/VoiceCheckResults";
 import { VoiceCheckTrigger } from "./VoiceCheckTrigger";
@@ -101,59 +102,65 @@ export function VoiceCheckPanel({ chapterId, onClose }: VoiceCheckPanelProps) {
       {/* Content area */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto p-6 space-y-4">
-          {/* Idle — on-demand trigger CTA */}
-          {viewState === "idle" && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-16 h-16 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center mb-6">
-                <BadgeCheck className="w-8 h-8 text-violet-500" />
-              </div>
-              <VoiceCheckTrigger onClick={handleRun} disabled={!chapterId} isLoading={inFlight} />
-            </div>
-          )}
-
-          {/* Loading state */}
-          {viewState === "loading" && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="relative mb-6">
-                <div className="w-16 h-16 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                  <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
+          <AnalysisPanelWrapper phase={viewState}>
+            {/* Idle — on-demand trigger CTA */}
+            {viewState === "idle" && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-16 h-16 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center mb-6">
+                  <BadgeCheck className="w-8 h-8 text-violet-500" />
                 </div>
-              </div>
-              <p className="text-lg font-medium mb-2">{t("voiceCheck.analyzing")}</p>
-              <p className="text-sm text-muted-foreground">
-                {progress ?? t("voiceCheck.analyzingSubtext")}
-              </p>
-            </div>
-          )}
-
-          {/* Error state */}
-          {viewState === "error" && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-                <Info className="w-6 h-6 text-red-500" />
-              </div>
-              <p className="text-lg font-medium mb-1">{t("voiceCheck.analysisFailed")}</p>
-              <p className="text-sm text-muted-foreground mb-4">{error?.userMessage}</p>
-              <button
-                type="button"
-                onClick={handleRun}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm border border-border rounded-md hover:bg-muted transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-                {t("voiceCheck.retry")}
-              </button>
-            </div>
-          )}
-
-          {/* Results */}
-          {viewState === "results" && results && (
-            <>
-              <div className="flex justify-end">
                 <VoiceCheckTrigger onClick={handleRun} disabled={!chapterId} isLoading={inFlight} />
               </div>
-              <VoiceCheckResults results={results} t={t} />
-            </>
-          )}
+            )}
+
+            {/* Loading state */}
+            {viewState === "loading" && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="relative mb-6">
+                  <div className="w-16 h-16 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
+                  </div>
+                </div>
+                <p className="text-lg font-medium mb-2">{t("voiceCheck.analyzing")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {progress ?? t("voiceCheck.analyzingSubtext")}
+                </p>
+              </div>
+            )}
+
+            {/* Error state */}
+            {viewState === "error" && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+                  <Info className="w-6 h-6 text-red-500" />
+                </div>
+                <p className="text-lg font-medium mb-1">{t("voiceCheck.analysisFailed")}</p>
+                <p className="text-sm text-muted-foreground mb-4">{error?.userMessage}</p>
+                <button
+                  type="button"
+                  onClick={handleRun}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm border border-border rounded-md hover:bg-muted transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  {t("voiceCheck.retry")}
+                </button>
+              </div>
+            )}
+
+            {/* Results */}
+            {viewState === "results" && results && (
+              <>
+                <div className="flex justify-end">
+                  <VoiceCheckTrigger
+                    onClick={handleRun}
+                    disabled={!chapterId}
+                    isLoading={inFlight}
+                  />
+                </div>
+                <VoiceCheckResults results={results} t={t} />
+              </>
+            )}
+          </AnalysisPanelWrapper>
         </div>
       </div>
     </div>

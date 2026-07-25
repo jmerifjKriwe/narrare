@@ -27,6 +27,7 @@ import type { Editor } from "@tiptap/react";
 import { ArrowLeft, MessagesSquare, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
+import { AnalysisPanelWrapper } from "@/components/ui/analysis-panel-wrapper";
 import { useDialogueCoach } from "@/lib/hooks/useDialogueCoach";
 import type { DialogueCoachMode } from "@/types";
 import { DialogueIssueList } from "./_components/DialogueIssueList";
@@ -53,6 +54,7 @@ export function DialogueCoachPanel({
 
   const inFlight = isLoading || isStreaming;
   const hasSelection = !!selectionText && selectionText.trim().length > 0;
+  const phase = inFlight ? "loading" : isError ? "error" : isComplete ? "results" : "idle";
 
   /**
    * Selecting a mode is the primary action: it stages the mode and — when a
@@ -117,32 +119,38 @@ export function DialogueCoachPanel({
       {/* Body */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto p-4 space-y-4">
-          {inFlight && (
-            <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
-              {progress ?? t("dialogueCoach.analyzing")}
-            </p>
-          )}
-          {isError && (
-            <div className="text-sm text-destructive" role="alert">
-              {error?.userMessage ?? t("dialogueCoach.failed")}
-            </div>
-          )}
-          {isComplete && result && (
-            <section aria-live="polite" className="space-y-3">
-              {result.adaptive_summary && (
-                <p className="text-xs text-muted-foreground border border-border rounded-md p-2">
-                  {result.adaptive_summary}
-                </p>
-              )}
-              <DialogueIssueList issues={result.issues} editor={editor} onApplied={handleApplied} />
-            </section>
-          )}
-          {/* Idle with a selection but no run yet — nudge toward the modes. */}
-          {!inFlight && !isError && !isComplete && hasSelection && (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              {t("dialogueCoach.idleHint")}
-            </p>
-          )}
+          <AnalysisPanelWrapper phase={phase}>
+            {inFlight && (
+              <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
+                {progress ?? t("dialogueCoach.analyzing")}
+              </p>
+            )}
+            {isError && (
+              <div className="text-sm text-destructive" role="alert">
+                {error?.userMessage ?? t("dialogueCoach.failed")}
+              </div>
+            )}
+            {isComplete && result && (
+              <section aria-live="polite" className="space-y-3">
+                {result.adaptive_summary && (
+                  <p className="text-xs text-muted-foreground border border-border rounded-md p-2">
+                    {result.adaptive_summary}
+                  </p>
+                )}
+                <DialogueIssueList
+                  issues={result.issues}
+                  editor={editor}
+                  onApplied={handleApplied}
+                />
+              </section>
+            )}
+            {/* Idle with a selection but no run yet — nudge toward the modes. */}
+            {!inFlight && !isError && !isComplete && hasSelection && (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {t("dialogueCoach.idleHint")}
+              </p>
+            )}
+          </AnalysisPanelWrapper>
         </div>
       </div>
     </div>

@@ -16,6 +16,7 @@
 import { ArrowLeft, Info, Loader2, RefreshCw, Users, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
+import { AnalysisPanelWrapper } from "@/components/ui/analysis-panel-wrapper";
 import { useCoreference } from "@/lib/hooks/useCoreference";
 import { CoreferenceResults } from "./_components/CoreferenceResults";
 
@@ -118,40 +119,42 @@ export function CoreferencePanel({ novelId, chapterIds, onClose }: CoreferencePa
       {/* Content area */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto p-6 space-y-4">
-          {/* Loading state */}
-          {viewState === "loading" && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="relative mb-6">
-                <div className="w-16 h-16 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
-                  <Loader2 className="w-8 h-8 text-sky-500 animate-spin" />
+          <AnalysisPanelWrapper phase={viewState}>
+            {/* Loading state */}
+            {viewState === "loading" && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="relative mb-6">
+                  <div className="w-16 h-16 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 text-sky-500 animate-spin" />
+                  </div>
                 </div>
+                <p className="text-lg font-medium mb-2">{t("coreference.analyzing")}</p>
+                <p className="text-sm text-muted-foreground">{t("coreference.analyzingSubtext")}</p>
               </div>
-              <p className="text-lg font-medium mb-2">{t("coreference.analyzing")}</p>
-              <p className="text-sm text-muted-foreground">{t("coreference.analyzingSubtext")}</p>
-            </div>
-          )}
+            )}
 
-          {/* Error state */}
-          {viewState === "error" && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-                <Info className="w-6 h-6 text-red-500" />
+            {/* Error state */}
+            {viewState === "error" && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+                  <Info className="w-6 h-6 text-red-500" />
+                </div>
+                <p className="text-lg font-medium mb-1">{t("coreference.analysisFailed")}</p>
+                <p className="text-sm text-muted-foreground mb-4">{error?.userMessage}</p>
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm border border-border rounded-md hover:bg-muted transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  {t("retry")}
+                </button>
               </div>
-              <p className="text-lg font-medium mb-1">{t("coreference.analysisFailed")}</p>
-              <p className="text-sm text-muted-foreground mb-4">{error?.userMessage}</p>
-              <button
-                type="button"
-                onClick={handleRetry}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm border border-border rounded-md hover:bg-muted transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-                {t("retry")}
-              </button>
-            </div>
-          )}
+            )}
 
-          {/* Results */}
-          {viewState === "results" && result && <CoreferenceResults result={result} t={t} />}
+            {/* Results */}
+            {viewState === "results" && result && <CoreferenceResults result={result} t={t} />}
+          </AnalysisPanelWrapper>
         </div>
       </div>
     </div>

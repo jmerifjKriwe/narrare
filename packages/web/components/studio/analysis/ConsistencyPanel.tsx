@@ -13,6 +13,7 @@
 
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AnalysisPanelWrapper } from "@/components/ui/analysis-panel-wrapper";
 import type { ConsistencyCheckRequest } from "@/lib/api/consistency-stream";
 import { useConsistencyStream } from "@/lib/hooks/useConsistencyStream";
 import { useEditorStore } from "@/lib/stores/editorStore";
@@ -141,29 +142,31 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
       {/* Content area */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto p-6 space-y-4">
-          {/* Loading state */}
-          {viewState === "loading" && (
-            <ConsistencyLoadingState
-              elapsed={elapsed}
-              loadingStep={loadingStep}
-              progress={progress}
-              t={tFn}
-            />
-          )}
+          <AnalysisPanelWrapper phase={viewState}>
+            {/* Loading state */}
+            {viewState === "loading" && (
+              <ConsistencyLoadingState
+                elapsed={elapsed}
+                loadingStep={loadingStep}
+                progress={progress}
+                t={tFn}
+              />
+            )}
 
-          {/* Error state */}
-          {viewState === "error" && (
-            <ConsistencyErrorState
-              errorMessage={errorMessage}
-              isConnectionLost={isConnectionLost}
-              onRetry={() => runCheck()}
-              t={t}
-              tStudio={tStudio}
-            />
-          )}
+            {/* Error state */}
+            {viewState === "error" && (
+              <ConsistencyErrorState
+                errorMessage={errorMessage}
+                isConnectionLost={isConnectionLost}
+                onRetry={() => runCheck()}
+                t={t}
+                tStudio={tStudio}
+              />
+            )}
 
-          {/* Results */}
-          {viewState === "results" && result && <ConsistencyResults result={result} t={tFn} />}
+            {/* Results */}
+            {viewState === "results" && result && <ConsistencyResults result={result} t={tFn} />}
+          </AnalysisPanelWrapper>
         </div>
       </div>
     </div>

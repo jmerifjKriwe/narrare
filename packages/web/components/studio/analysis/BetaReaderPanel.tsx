@@ -9,6 +9,7 @@
 import { Info } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { AnalysisPanelWrapper } from "@/components/ui/analysis-panel-wrapper";
 import { ConnectionLostBanner } from "@/components/ui/connection-lost-banner";
 import type { BetaReaderResponse, FeedbackCategory } from "@/lib/api/analysis";
 import { useBetaReaderAnalyze, useBetaReaderDeepDive } from "@/lib/hooks/useBetaReader";
@@ -108,37 +109,39 @@ export function BetaReaderPanel({ novelId, chapterIds, onClose }: BetaReaderPane
           {t("betaReader.aiDisclaimer")}
         </p>
       </div>
-      {analyzeMutation.isConnectionLost && (
-        <div className="p-4 pb-0">
-          <ConnectionLostBanner onRetry={() => analyzeMutation.retry()} />
+      <AnalysisPanelWrapper phase={viewState}>
+        {analyzeMutation.isConnectionLost && (
+          <div className="p-4 pb-0">
+            <ConnectionLostBanner onRetry={() => analyzeMutation.retry()} />
+          </div>
+        )}
+        {viewState === "results" && (
+          <BetaReaderTabBar activeTab={activeTab} result={result} onTabChange={setActiveTab} />
+        )}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto p-6 space-y-4">
+            <BetaReaderPanelContent
+              viewState={viewState}
+              activeTab={activeTab}
+              result={result}
+              error={error}
+              isPending={analyzeMutation.isPending}
+              onRetry={() => void runAnalysis(false)}
+              onCancel={viewState === "loading" ? handleCancel : undefined}
+              t={tFn}
+            />
+          </div>
         </div>
-      )}
-      {viewState === "results" && (
-        <BetaReaderTabBar activeTab={activeTab} result={result} onTabChange={setActiveTab} />
-      )}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto p-6 space-y-4">
-          <BetaReaderPanelContent
-            viewState={viewState}
+        {viewState === "results" && isCategoryTab && (
+          <BetaReaderDeepDiveFooter
             activeTab={activeTab}
             result={result}
-            error={error}
-            isPending={analyzeMutation.isPending}
-            onRetry={() => void runAnalysis(false)}
-            onCancel={viewState === "loading" ? handleCancel : undefined}
-            t={tFn}
+            isPending={deepDiveMutation.isPending}
+            deepDiveCategory={deepDiveCategory}
+            onDeepDive={(category) => void handleDeepDive(category)}
           />
-        </div>
-      </div>
-      {viewState === "results" && isCategoryTab && (
-        <BetaReaderDeepDiveFooter
-          activeTab={activeTab}
-          result={result}
-          isPending={deepDiveMutation.isPending}
-          deepDiveCategory={deepDiveCategory}
-          onDeepDive={(category) => void handleDeepDive(category)}
-        />
-      )}
+        )}
+      </AnalysisPanelWrapper>
     </div>
   );
 }

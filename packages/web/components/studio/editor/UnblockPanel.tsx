@@ -25,9 +25,11 @@
  */
 
 import { AlertTriangle, Loader2, Sparkles } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { ConnectionLostBanner } from "@/components/ui/connection-lost-banner";
 import type { StorySuggestion } from "@/lib/api/story-suggest-stream";
+import { panelSlideRightVariants } from "@/lib/motion-variants";
 import { UnblockInputForm } from "./UnblockInputForm";
 import { UnblockPanelHeader } from "./UnblockPanelHeader";
 import { UnblockResults } from "./UnblockResults";
@@ -69,101 +71,107 @@ export function UnblockPanel({ novelId, chapterId, onAccept }: UnblockPanelProps
     ? t((error.i18nKey ?? "unblock.error") as Parameters<typeof t>[0])
     : "";
 
-  // -- Render: closed (trigger button) --
-
-  if (!isOpen) {
-    return (
-      <button
-        type="button"
-        onClick={handleOpen}
-        className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
-      >
-        <Sparkles className="h-4 w-4 text-primary" />
-        {t("unblock.button")}
-      </button>
-    );
-  }
-
-  // -- Render: open panel --
+  // -- Render: trigger button (hidden when panel is open) --
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="unblock-panel-title"
-      aria-busy={isBusy}
-      className="flex h-full w-[400px] min-w-[400px] flex-col border-l border-border bg-background"
-    >
-      <UnblockPanelHeader onClose={handleClose} t={t} />
-
-      {isConnectionLost ? (
-        <div className="p-4 pb-0">
-          <ConnectionLostBanner onRetry={retrySuggestions} />
-        </div>
+    <>
+      {!isOpen ? (
+        <button
+          type="button"
+          onClick={handleOpen}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
+        >
+          <Sparkles className="h-4 w-4 text-primary" />
+          {t("unblock.button")}
+        </button>
       ) : null}
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl space-y-4 p-6">
-          {/* Input form — idle only (also re-shown after Dismiss). */}
-          {isIdle ? (
-            <UnblockInputForm
-              textareaRef={textareaRef}
-              stuckText={stuckText}
-              onStuckTextChange={setStuckText}
-              onGetSuggestions={handleGetSuggestions}
-              t={t}
-            />
-          ) : null}
+      <AnimatePresence>
+        {isOpen ? (
+          <motion.div
+            variants={panelSlideRightVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="unblock-panel-title"
+            aria-busy={isBusy}
+            className="flex h-full w-[400px] min-w-[400px] flex-col border-l border-border bg-background"
+          >
+            <UnblockPanelHeader onClose={handleClose} t={t} />
 
-          {/* Loading / streaming */}
-          {isBusy ? (
-            <div role="status" aria-live="polite" className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>{t("unblock.loading")}</span>
+            {isConnectionLost ? (
+              <div className="p-4 pb-0">
+                <ConnectionLostBanner onRetry={retrySuggestions} />
               </div>
-              <button
-                type="button"
-                onClick={cancelSuggestions}
-                className="inline-flex w-fit items-center rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
-              >
-                {t("aiActions.stop")}
-              </button>
-            </div>
-          ) : null}
+            ) : null}
 
-          {/* Error */}
-          {isError ? (
-            <div
-              role="alert"
-              className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm dark:border-red-800 dark:bg-red-950/20"
-            >
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
-              <div>
-                <p className="font-medium text-red-700 dark:text-red-400">{errorMessage}</p>
-                <button
-                  type="button"
-                  onClick={retrySuggestions}
-                  className="mt-1 text-red-600 underline hover:no-underline dark:text-red-400"
-                >
-                  {t("aiActions.retry")}
-                </button>
+            <div className="flex-1 overflow-y-auto">
+              <div className="mx-auto max-w-3xl space-y-4 p-6">
+                {/* Input form — idle only (also re-shown after Dismiss). */}
+                {isIdle ? (
+                  <UnblockInputForm
+                    textareaRef={textareaRef}
+                    stuckText={stuckText}
+                    onStuckTextChange={setStuckText}
+                    onGetSuggestions={handleGetSuggestions}
+                    t={t}
+                  />
+                ) : null}
+
+                {/* Loading / streaming */}
+                {isBusy ? (
+                  <div role="status" aria-live="polite" className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>{t("unblock.loading")}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={cancelSuggestions}
+                      className="inline-flex w-fit items-center rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
+                    >
+                      {t("aiActions.stop")}
+                    </button>
+                  </div>
+                ) : null}
+
+                {/* Error */}
+                {isError ? (
+                  <div
+                    role="alert"
+                    className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm dark:border-red-800 dark:bg-red-950/20"
+                  >
+                    <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
+                    <div>
+                      <p className="font-medium text-red-700 dark:text-red-400">{errorMessage}</p>
+                      <button
+                        type="button"
+                        onClick={retrySuggestions}
+                        className="mt-1 text-red-600 underline hover:no-underline dark:text-red-400"
+                      >
+                        {t("aiActions.retry")}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Results */}
+                {isComplete && suggestions ? (
+                  <UnblockResults
+                    suggestions={suggestions}
+                    onAccept={onAccept}
+                    onDismiss={handleDismiss}
+                    onRegenerate={handleGetSuggestions}
+                    t={t}
+                  />
+                ) : null}
               </div>
             </div>
-          ) : null}
-
-          {/* Results */}
-          {isComplete && suggestions ? (
-            <UnblockResults
-              suggestions={suggestions}
-              onAccept={onAccept}
-              onDismiss={handleDismiss}
-              onRegenerate={handleGetSuggestions}
-              t={t}
-            />
-          ) : null}
-        </div>
-      </div>
-    </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </>
   );
 }
