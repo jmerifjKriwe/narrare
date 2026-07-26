@@ -52,6 +52,10 @@ _VALIDATION_MODES: list[tuple[str, str, LLMIntent]] = [
     # same final-validation path (RuntimeVariableValidatorImpl +
     # FinalPromptValidatorImpl) as character_voice.
     ("analysis", "voice_check", LLMIntent.VOICE),
+    # ADR-073 D3 / ANAL-009: voice_drift shares the VOICE intent and runs the
+    # same final-validation path (RuntimeVariableValidatorImpl +
+    # FinalPromptValidatorImpl) as character_voice and voice_check.
+    ("analysis", "voice_drift", LLMIntent.VOICE),
     ("analysis", "fact_extraction", LLMIntent.FACT_EXTRACT),
     # ANALYSE intent representative — covers readability, pov, coreference
     # (all use LLMIntent.ANALYSE; review is the default context_mode).
@@ -81,6 +85,7 @@ _VALIDATION_FEATURES: dict[str, list[str]] = {
         "preferences",
         "character_voice",
         "voice_check",
+        "voice_drift",
         "summarize",
         "remap",
         "consistency",

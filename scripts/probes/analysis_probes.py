@@ -84,6 +84,17 @@ MODE_INPUTS: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "chapter_text": "He spoke in a clipped, formal register throughout.",
         },
     ),
+    # ADR-073 D3 / ANAL-009: voice_drift (longitudinal trend classifier) shares
+    # the VOICE intent and exercises the same invocation pipeline as
+    # character_voice and voice_check.
+    (
+        "analysis",
+        "voice_drift",
+        LLMIntent.VOICE,
+        {
+            "chapter_text": "Across chapters his cadence shifted measurably.",
+        },
+    ),
     (
         "analysis",
         "summarize",

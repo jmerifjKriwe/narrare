@@ -23,6 +23,7 @@
       "preferences",
       "character_voice",
       "voice_check",
+      "voice_drift",
       "summarize",
       "remap",
       "consistency",

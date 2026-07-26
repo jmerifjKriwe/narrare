@@ -158,6 +158,19 @@ ALL_MODES: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "chapter_text": "Voice check dialogue sample text.",
         },
     ),
+    # ADR-073 D3 / ANAL-009: voice_drift is the third VOICE context_mode
+    # (a longitudinal trend classifier, distinct from the character_voice
+    # profiler and the voice_check checker). It shares LLMIntent.VOICE; the
+    # runtime path resolves the governed analysis/voice_drift template via
+    # Mode 1 + CharacterVoiceDriftAgent.
+    (
+        "analysis",
+        "voice_drift",
+        LLMIntent.VOICE,
+        {
+            "chapter_text": "Voice drift longitudinal sample text.",
+        },
+    ),
     (
         "analysis",
         "summarize",
