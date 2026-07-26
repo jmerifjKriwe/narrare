@@ -2413,6 +2413,63 @@
         }
       }
     },
+    "/api/v1/analysis/voice-drift/{novel_id}": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Analyze Voice Drift",
+        "description": "SSE stream for longitudinal character-voice drift analysis (ANAL-009).\n\nFor each character with a stored ANAL-008 profile (``voice_metrics``) who\nspeaks in ≥1 selected chapter, computes the per-chapter match trend +\nadjacent-chapter jumps, runs the governed ``voice_drift`` agent (1 call\nper character), and streams per-character results. Read-only — nothing is\npersisted.\n\n**SSE Event Stream:**\n\n1. ``\"progress\"`` event (character/chapter count / status).\n2. One ``\"character_result\"`` event per analysable character (carrying\n   that character's trend + jumps + overall score/band + agent\n   classification), OR a ``\"no_profile\"`` event per character that cannot\n   be analysed (RULE-11 graceful skip).\n3. ``\"done\"`` event (``is_final=True``).\n4. ``data: [DONE]`` termination signal.\n\nOn failure, an ``\"error\"`` event (``is_final=True``) precedes the\n``[DONE]`` sentinel.",
+        "operationId": "analyze_voice_drift_api_v1_analysis_voice_drift__novel_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceDriftRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/adaptive/{project_id}/context": {
       "get": {
         "tags": [
@@ -18515,6 +18572,40 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VoiceDriftRequest": {
+        "properties": {
+          "character_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Id",
+            "description": "Scope to one character by profile.character_id, or null for all."
+          },
+          "chapter_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Ids",
+            "description": "Specific chapter IDs to analyse, or null/empty for all chapters."
+          }
+        },
+        "type": "object",
+        "title": "VoiceDriftRequest",
+        "description": "Request body for ``POST /analysis/voice-drift/{novel_id}``.\n\nThe novel id is carried by the URL path parameter (mirrors\n``CharacterVoiceRequest`` — novel-scoped endpoint). The body carries\noptional filters:\n\nAttributes:\n    character_id: Scope the analysis to a single character by their\n        stored profile ``character_id`` (the KB entity UUID string).\n        ``None`` means \"analyse every profiled character\" (the default).\n    chapter_ids: Specific chapter ids to analyse (UUID strings). ``None``\n        or an empty list means \"analyse every chapter in the novel\"\n        (the service resolves the full chapter list via the novel\n        repository). Mirrors ``CharacterVoiceRequest.chapter_ids``."
       },
       "VolumeResponse": {
         "properties": {

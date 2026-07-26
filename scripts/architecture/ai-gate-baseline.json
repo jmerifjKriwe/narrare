@@ -29,7 +29,7 @@
   ],
   "frontend_file_size_violations": [],
   "streaming_compliance_gaps": [
-    "ai_assist/router has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/ai_assist/router.py"
+    "analysis/router_voice_drift has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/analysis/router_voice_drift.py"
   ],
   "python_file_size_violations": [],
   "empty_kb_vars": [
@@ -38,6 +38,9 @@
     "apps/api/narrare/analysis/character_voice_prompt.py | kb_locations",
     "apps/api/narrare/analysis/voice_check_prompt.py | kb_characters",
     "apps/api/narrare/analysis/voice_check_prompt.py | kb_factions",
-    "apps/api/narrare/analysis/voice_check_prompt.py | kb_locations"
+    "apps/api/narrare/analysis/voice_check_prompt.py | kb_locations",
+    "apps/api/narrare/analysis/voice_drift_prompt.py | kb_characters",
+    "apps/api/narrare/analysis/voice_drift_prompt.py | kb_factions",
+    "apps/api/narrare/analysis/voice_drift_prompt.py | kb_locations"
   ]
 }

@@ -28,7 +28,7 @@ Status: every remaining entry is ``RULE-11`` (legitimately optional). All
 ``kb_locations``/``kb_factions`` — were wired through the canonical
 ``KBContextProvider`` in W4a). With §7 stub-gaps at 0 the detector
 (:mod:`doc_drift.stub_variable_checks`) is now **CI-blocking** (critical):
-any *new* unallowlisted stub fails CI, while the 7 RULE-11 entries stay
+any *new* unallowlisted stub fails CI, while the 10 RULE-11 entries stay
 absorbed (no finding).
 
 The detector imports :data:`STUB_ALLOWLIST` and :func:`allowlist_pairs` from
@@ -78,6 +78,23 @@ STUB_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
         "apps/api/narrare/analysis/voice_check_prompt.py",
         "kb_factions",
         "RULE-11: optional KB-context var (see voice_check_prompt.py comment).",
+    ),
+    (
+        "apps/api/narrare/analysis/voice_drift_prompt.py",
+        "kb_characters",
+        "RULE-11: optional KB-context var declared explicitly so the "
+        "template renders empty rather than crash the variable engine "
+        "(per in-code comment).",
+    ),
+    (
+        "apps/api/narrare/analysis/voice_drift_prompt.py",
+        "kb_locations",
+        "RULE-11: optional KB-context var (see voice_drift_prompt.py comment).",
+    ),
+    (
+        "apps/api/narrare/analysis/voice_drift_prompt.py",
+        "kb_factions",
+        "RULE-11: optional KB-context var (see voice_drift_prompt.py comment).",
     ),
     # ── analysis/coreference_prompt.py — §7 gaps CLOSED (kb_characters/
     #    kb_locations/kb_factions/kb_relationships now wired through the
