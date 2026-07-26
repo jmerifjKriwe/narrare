@@ -15,6 +15,7 @@ import { POVTrigger } from "../analysis/POVTrigger";
 import { ReadabilityTrigger } from "../analysis/ReadabilityTrigger";
 import { SentimentTrigger } from "../analysis/SentimentTrigger";
 import { VoiceCheckTrigger } from "../analysis/VoiceCheckTrigger";
+import { VoiceDriftTrigger } from "../analysis/VoiceDriftTrigger";
 import { GhostTextConfig } from "../editor/GhostTextConfig";
 import { AdaptiveStatusIndicator } from "./AdaptiveStatusIndicator";
 
@@ -119,6 +120,7 @@ export function EditorToolbar({
       <CoreferenceTrigger />
       <CharacterVoiceTrigger />
       <VoiceCheckTrigger onClick={() => toggleRightPanel("voice_check", "toolbar")} />
+      <VoiceDriftTrigger />
       <DialogueCoachTrigger />
       <ToolbarSeparator />
       <GhostTextConfig editor={editor} />

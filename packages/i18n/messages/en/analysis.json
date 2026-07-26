@@ -285,5 +285,64 @@
     "flaggedLines": "Flagged lines ({count})",
     "flaggedLineReason": "Reason",
     "retry": "Retry"
+  },
+  "voiceDrift": {
+    "trigger": "Voice Drift",
+    "triggerTooltip": "Track how each character's voice drifts across chapters",
+    "title": "Character Voice Drift",
+    "description": "See how each character's voice drifts across your book \u2014 intentional evolution, context shifts, or inconsistency.",
+    "aiDisclaimer": "Hybrid analysis \u00b7 Deterministic trend + AI classification",
+    "idleTitle": "Voice Drift",
+    "idleSubtext": "Analyse how each character's voice changes across the whole novel, against their stored profile.",
+    "analyze": "Analyze",
+    "analyzing": "Analyzing voice drift...",
+    "analyzingSubtext": "Tracking each character's voice across chapters",
+    "analysisFailed": "Failed to analyze voice drift",
+    "retry": "Retry",
+    "noProfiledCharacters": "No profiled characters found. Profile characters first (Character Voice) to detect drift.",
+    "skippedCharacters": "Not analyzed",
+    "noProfileReason": {
+      "no_stored_profile": "No stored voice profile",
+      "no_voice_metrics": "No voice metrics on profile",
+      "no_dialogue_in_selected_chapters": "No dialogue in the selected chapters"
+    },
+    "character": "Character",
+    "classificationHeader": "Classification",
+    "overallHeader": "Overall",
+    "silentChapter": "Character does not speak in this chapter",
+    "jumpTooltip": "Jump in {chapter}",
+    "toggleRowAria": "Toggle detail for {name}",
+    "band": {
+      "stable": "stable",
+      "minor": "minor",
+      "moderate": "moderate",
+      "major": "major"
+    },
+    "bandRange": {
+      "stable": "90%+",
+      "minor": "70\u201389%",
+      "moderate": "50\u201369%",
+      "major": "<50%"
+    },
+    "classification": {
+      "stable": "Stable",
+      "mildVariation": "Mild variation",
+      "evolution": "Evolution",
+      "context": "Context",
+      "inconsistency": "Inconsistent"
+    },
+    "bandsLabel": "Drift bands",
+    "jumpKey": "jump point",
+    "chaptersAnalyzed": "{count} chapters analyzed",
+    "matchToProfile": "match to profile",
+    "trendLabel": "Drift trend",
+    "trendAria": "{name} drift trend",
+    "jumpPoints": "Jump points",
+    "noJumps": "No jumps detected.",
+    "agentReasoning": "Agent reasoning",
+    "viewNotes": "View per-chapter notes",
+    "hideNotes": "Hide per-chapter notes",
+    "perChapterNotes": "Per-chapter notes",
+    "suggestedAttention": "Review these chapters"
   }
 }

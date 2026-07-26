@@ -425,6 +425,33 @@ operations:
     exclude_entry: none
     status: compliant
 
+  - operation_id: analysis.voice_drift
+    feature: Character Voice Drift (ANAL-009 Phase 1)
+    entry_points:
+      - packages/web/lib/hooks/useCharacterVoiceDrift.ts
+      - packages/web/lib/api/voice-drift-stream.ts (streamVoiceDrift)
+    transport: sse
+    lifecycle_owner: useAIOperation
+    loading_feedback: "isLoading/isStreaming via useCharacterVoiceDrift.ts; connection-loss watchdog 15s"
+    cancel_ui: "cancel() via hook (no manual AbortController — ADR-043)"
+    signal_propagation: "execute: (signal) bridges streamVoiceDrift SSE to useAIOperation's Promise contract; abort → AbortError rejection"
+    error_mapping: mapSSEError (ai-error-mapping.ts)
+    partial_output: "Per-character results + no-profile skips accumulated across the run and surfaced once on completion"
+    contract_parity: "RULE-17 — request body mirrors Python VoiceDriftRequest (character_id?, chapter_ids?); VoiceDriftCharacterResult / TrendPoint / JumpPoint / VoiceDriftResult field names mirror the Core + backend schemas; SSE event union mirrors VoiceDriftEvent (character_result | no_profile | progress | done | error)"
+    ai_action_i18n: analysis.voiceDrift.* (DE/EN/FR) + analysis.retry / .refresh
+    deprecated_key_usage: "No deprecated aliases in use"
+    keyboard: "n/a — on-demand whole-novel run from the panel/toolbar; results displayed after completion"
+    tests:
+      - packages/web/components/studio/analysis/VoiceDriftPanel.test.tsx
+      - packages/web/components/studio/analysis/__tests__/VoiceDriftTrigger.test.tsx
+      - packages/web/lib/hooks/__tests__/useCharacterVoiceDrift.test.tsx
+      - packages/web/lib/api/voice-drift-stream.test.ts
+      - packages/web/components/studio/analysis/_components/__tests__/voice-drift-bands.test.ts
+      - packages/web/lib/hooks/__tests__/useAIOperation/execution.test.ts
+    aufg_id: n/a
+    exclude_entry: none
+    status: compliant
+
   # ------------------------------------------------------------------
   # Chat & Extraction
   # ------------------------------------------------------------------

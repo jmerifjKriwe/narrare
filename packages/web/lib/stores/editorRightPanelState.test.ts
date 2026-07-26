@@ -21,6 +21,7 @@ describe("editor right panel state", () => {
       "coreference",
       "character_voice",
       "voice_check",
+      "voice_drift",
       "dialogue_coach",
       "sentiment",
       "consistency",
@@ -53,6 +54,7 @@ describe("editor right panel state", () => {
     expect(isEditorRightPanelId("sentiment")).toBe(true);
     expect(isEditorRightPanelId("session")).toBe(true);
     expect(isEditorRightPanelId("dialogue_coach")).toBe(true);
+    expect(isEditorRightPanelId("voice_drift")).toBe(true);
     expect(isEditorRightPanelId("extraction")).toBe(false);
   });
 });

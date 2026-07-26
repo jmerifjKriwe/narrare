@@ -285,5 +285,64 @@
     "flaggedLines": "Markierte Zeilen ({count})",
     "flaggedLineReason": "Grund",
     "retry": "Erneut versuchen"
+  },
+  "voiceDrift": {
+    "trigger": "Stimmverschiebung",
+    "triggerTooltip": "Verfolgen, wie die Stimme jedes Charakters über die Kapitel driftet",
+    "title": "Charakter-Stimmverschiebung",
+    "description": "Sehen, wie die Stimme jedes Charakters über das Buch driftet \u2014 beabsichtigte Entwicklung, Kontextwechsel oder Inkonsistenz.",
+    "aiDisclaimer": "Hybrid-Analyse \u00b7 Deterministischer Trend + KI-Klassifizierung",
+    "idleTitle": "Stimmverschiebung",
+    "idleSubtext": "Analysieren, wie sich die Stimme jedes Charakters über den ganzen Roman verändert, gegen das gespeicherte Profil.",
+    "analyze": "Analysieren",
+    "analyzing": "Analysiere Stimmverschiebung...",
+    "analyzingSubtext": "Verfolge die Stimme jedes Charakters über die Kapitel",
+    "analysisFailed": "Stimmverschiebungs-Analyse fehlgeschlagen",
+    "retry": "Erneut versuchen",
+    "noProfiledCharacters": "Keine profilierten Charaktere gefunden. Profilieren Sie Charaktere zuerst (Charakterstimmen), um Verschiebung zu erkennen.",
+    "skippedCharacters": "Nicht analysiert",
+    "noProfileReason": {
+      "no_stored_profile": "Kein gespeichertes Stimmprofil",
+      "no_voice_metrics": "Keine Stimmmetriken im Profil",
+      "no_dialogue_in_selected_chapters": "Kein Dialog in den ausgewählten Kapiteln"
+    },
+    "character": "Charakter",
+    "classificationHeader": "Klassifizierung",
+    "overallHeader": "Gesamt",
+    "silentChapter": "Charakter spricht in diesem Kapitel nicht",
+    "jumpTooltip": "Sprung in {chapter}",
+    "toggleRowAria": "Detail für {name} umschalten",
+    "band": {
+      "stable": "stabil",
+      "minor": "gering",
+      "moderate": "moderat",
+      "major": "stark"
+    },
+    "bandRange": {
+      "stable": "90%+",
+      "minor": "70\u201389%",
+      "moderate": "50\u201369%",
+      "major": "<50%"
+    },
+    "classification": {
+      "stable": "Stabil",
+      "mildVariation": "Leichte Variation",
+      "evolution": "Entwicklung",
+      "context": "Kontext",
+      "inconsistency": "Inkonsistent"
+    },
+    "bandsLabel": "Verschiebungsbänder",
+    "jumpKey": "Sprungpunkt",
+    "chaptersAnalyzed": "{count} Kapitel analysiert",
+    "matchToProfile": "Profilübereinstimmung",
+    "trendLabel": "Verschiebungstrend",
+    "trendAria": "{name} Verschiebungstrend",
+    "jumpPoints": "Sprungpunkte",
+    "noJumps": "Keine Sprünge erkannt.",
+    "agentReasoning": "KI-Begründung",
+    "viewNotes": "Kapitel-Notizen anzeigen",
+    "hideNotes": "Kapitel-Notizen ausblenden",
+    "perChapterNotes": "Notizen pro Kapitel",
+    "suggestedAttention": "Diese Kapitel prüfen"
   }
 }

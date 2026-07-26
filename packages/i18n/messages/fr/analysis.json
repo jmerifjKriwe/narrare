@@ -285,5 +285,64 @@
     "flaggedLines": "Lignes signalées ({count})",
     "flaggedLineReason": "Raison",
     "retry": "Réessayer"
+  },
+  "voiceDrift": {
+    "trigger": "Dérive vocale",
+    "triggerTooltip": "Suivre comment la voix de chaque personnage dérive à travers les chapitres",
+    "title": "Dérive vocale des personnages",
+    "description": "Voir comment la voix de chaque personnage dérive à travers votre livre \u2014 évolution intentionnelle, changements de contexte ou incohérence.",
+    "aiDisclaimer": "Analyse hybride \u00b7 Tendance déterministe + classification IA",
+    "idleTitle": "Dérive vocale",
+    "idleSubtext": "Analyser comment la voix de chaque personnage change à travers tout le roman, par rapport à son profil enregistré.",
+    "analyze": "Analyser",
+    "analyzing": "Analyse de la dérive vocale...",
+    "analyzingSubtext": "Suivi de la voix de chaque personnage à travers les chapitres",
+    "analysisFailed": "Échec de l'analyse de la dérive vocale",
+    "retry": "Réessayer",
+    "noProfiledCharacters": "Aucun personnage profilé trouvé. Profilez d'abord les personnages (Voix des personnages) pour détecter la dérive.",
+    "skippedCharacters": "Non analysé",
+    "noProfileReason": {
+      "no_stored_profile": "Aucun profil de voix enregistré",
+      "no_voice_metrics": "Aucune métrique vocale sur le profil",
+      "no_dialogue_in_selected_chapters": "Aucun dialogue dans les chapitres sélectionnés"
+    },
+    "character": "Personnage",
+    "classificationHeader": "Classification",
+    "overallHeader": "Global",
+    "silentChapter": "Le personnage ne parle pas dans ce chapitre",
+    "jumpTooltip": "Saut en {chapter}",
+    "toggleRowAria": "Basculer le détail pour {name}",
+    "band": {
+      "stable": "stable",
+      "minor": "mineur",
+      "moderate": "modéré",
+      "major": "majeur"
+    },
+    "bandRange": {
+      "stable": "90%+",
+      "minor": "70\u201389%",
+      "moderate": "50\u201369%",
+      "major": "<50%"
+    },
+    "classification": {
+      "stable": "Stable",
+      "mildVariation": "Variation légère",
+      "evolution": "Évolution",
+      "context": "Contexte",
+      "inconsistency": "Incohérent"
+    },
+    "bandsLabel": "Bandes de dérive",
+    "jumpKey": "point de saut",
+    "chaptersAnalyzed": "{count} chapitres analysés",
+    "matchToProfile": "correspondance au profil",
+    "trendLabel": "Tendance de dérive",
+    "trendAria": "Tendance de dérive de {name}",
+    "jumpPoints": "Points de saut",
+    "noJumps": "Aucun saut détecté.",
+    "agentReasoning": "Raisonnement de l'IA",
+    "viewNotes": "Voir les notes par chapitre",
+    "hideNotes": "Masquer les notes par chapitre",
+    "perChapterNotes": "Notes par chapitre",
+    "suggestedAttention": "Réviser ces chapitres"
   }
 }

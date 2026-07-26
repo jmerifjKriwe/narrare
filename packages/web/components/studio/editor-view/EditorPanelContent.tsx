@@ -11,6 +11,7 @@ import { POVPanel } from "../analysis/POVPanel";
 import { ReadabilityPanel } from "../analysis/ReadabilityPanel";
 import { SentimentPanel } from "../analysis/SentimentPanel";
 import { VoiceCheckPanel } from "../analysis/VoiceCheckPanel";
+import { VoiceDriftPanel } from "../analysis/VoiceDriftPanel";
 import { GenerationPanel } from "../editor/GenerationPanel";
 import { MetadataSidebar } from "../editor/MetadataSidebar";
 import { SessionPanel } from "../editor/SessionPanel";
@@ -156,6 +157,8 @@ export function EditorPanelContent({
       return (
         <VoiceCheckPanel chapterId={activeChapterId} onClose={() => closePanel("voice_check")} />
       );
+    case "voice_drift":
+      return <VoiceDriftPanel novelId={novelId} onClose={() => closePanel("voice_drift")} />;
     case "dialogue_coach":
       // The coach needs the editor + its live selection. Render through a
       // scoped slot so the selection subscription re-renders only this side
