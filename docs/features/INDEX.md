@@ -113,7 +113,7 @@
 | [ANAL-006](analysis/ANAL-006-sensitivity.md) | Sensitivity Review | 📋 | ❌ |
 | [ANAL-007](analysis/ANAL-007-voice-author.md) | Author Voice Profiling | 📋 | ❌ |
 | [ANAL-008](analysis/ANAL-008-voice-character.md) | Character Voice Profiling | ✅ | ❌ |
-| [ANAL-009](analysis/ANAL-009-voice-drift.md) | Voice Drift Detection | 📋 | ❌ |
+| [ANAL-009](analysis/ANAL-009-voice-drift.md) | Voice Drift Detection | ✅ | ❌ |
 | [ANAL-010](analysis/ANAL-010-literary-suite.md) | Literary Analysis Suite | 📋 | ❌ |
 | [ANAL-011](analysis/ANAL-011-plot-analysis.md) | Plot Analysis | 📋 | ❌ |
 
@@ -139,6 +139,26 @@
 > flag+score scope (no rewrites). All layers (Core 0/1/2a/2b + Backend 3a/3b/3c +
 > Frontend 4) implemented and validated; `voice_check` is static ✅, runtime ✅,
 > and adopted ✅ (adoption_debt 5 → 1 — true debt only). Status → `stable`.
+
+> **ANAL-009 (Voice Drift Detection — Phase 1: Character Voice Drift):** Implemented
+> + runtime-adopted (2026-07-26) across all layers against
+> [ADR-073](../architecture/decisions/ADR-073-voice-drift-character.md)
+> (✅ Implemented) — the character-voice-drift longitudinal contract. Phase 1 is the
+> **third** governed mode on the routeable `LLMIntent.VOICE` (`voice_drift`
+> context_mode + governed EN template, Mode 1 ADR-054). Comparison model =
+> profile-trend signal (i) + adjacent-chapter jump detection (iii), both reusing
+> `voice_check_scoring.voice_metric_distances` (no duplication — satisfies ADR-057
+> Risk #3; closes ADR-055 Risk #2). New `CharacterVoiceDriftAgent` (1 call per
+> character, trend-classifier) + `voice_drift_scoring` (pure Core, deterministic
+> banding). Novel-scoped SSE `POST /analysis/voice-drift/{novel_id}` (read-only —
+> writes nothing to KB; consumes `VoiceProfileConsumer.assemble_for_checking`, no
+> SSOT bypass). Frontend `VoiceDriftPanel` (Layout γ: heatmap overview +
+> expandable per-row detail) + `useCharacterVoiceDrift` hook + i18n (en/de/fr).
+> Commit range `a7aa3286` → `e899faae` (Core → Backend → Frontend → Platform).
+> `voice_drift` is static ✅ / runtime ✅ / adopted ✅ (PASS); adoption_debt 5 → 1.
+> `just check` 9/9, 9759 unit + 3002 frontend tests, pyright 0. Status → `stable`.
+> **Phase 2 (Author Voice: storage SSOT + profiling + drift) remains deferred** to
+> a separate future ADR — not claimed done.
 
 ### Planning
 | ID | Feature | Status | MVP |
@@ -347,5 +367,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-07-24 — ASSIST-004 (Dialogue Coach) → `stable` (implemented all layers against [ADR-069](../architecture/decisions/ADR-069-adaptive-context-dialogue-coach.md); Core agent + governed template, Backend `DialogueCoachService` run/stream + SSE router, Frontend `DialogueCoachPanel` + editor wiring, RULE-18b weight-effect eval suite via Pydantic Evals; commits `ace72dc7`→`a9a740b8`, 28 commits). LEARN-002 (Adaptivity Dashboard) → `stable` (implemented all layers; 4 REST endpoints + `AdaptiveContextService`, `AdaptiveDashboard` + 4 weight sliders + `AdaptiveStatusIndicator`, evidence project-scoping [ADR-070](../architecture/decisions/ADR-070-evidence-project-scoping.md) with `novel_id` + migration `0035`, i18n 3×3=9 files). Earlier 2026-07-19 — LEARN-002 recalibrated from "Style Adaptation" (statistical pipeline) to "Adaptivity Dashboard"; ASSIST-004 detailed with implementation paths; pilot consumer of the new `AdaptiveContext` Core contract. Earlier 2026-06-30 — WRITE-010 (Voice Consistency Checker) → `stable` (ADR-057 ✅ Implemented; implemented across all layers + runtime-verified; `voice_check` static/runtime/adopted, adoption_debt 5 → 1 — true debt). Earlier 2026-06-30 — WRITE-010 spec authored against ADR-057 (checking-path contract + `voice_check` prompt surface; closes ADR-055 Risk #1), promoted to `stable` after all layers + runtime evidence landed. 2026-06-29 — ANAL-008 (Character Voice Profiling) → `stable` (implemented all layers; ADR-055 implemented); INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-07-26 — ANAL-009 Phase 1 (Character Voice Drift) → `stable` (implemented all layers against [ADR-073](../architecture/decisions/ADR-073-voice-drift-character.md); Core scoring + agent + `voice_drift` governed template (third VOICE mode), Backend `VoiceDriftService` + SSE `POST /analysis/voice-drift/{novel_id}`, Frontend `VoiceDriftPanel` (Layout γ) + hook + i18n, Platform probes + runtime markers; commits `a7aa3286`→`e899faae`; `voice_drift` static/runtime/adopted ✅, adoption_debt 5 → 1; Phase 2 author-voice deferred). Earlier 2026-07-24 — ASSIST-004 (Dialogue Coach) → `stable` (implemented all layers against [ADR-069](../architecture/decisions/ADR-069-adaptive-context-dialogue-coach.md); Core agent + governed template, Backend `DialogueCoachService` run/stream + SSE router, Frontend `DialogueCoachPanel` + editor wiring, RULE-18b weight-effect eval suite via Pydantic Evals; commits `ace72dc7`→`a9a740b8`, 28 commits). LEARN-002 (Adaptivity Dashboard) → `stable` (implemented all layers; 4 REST endpoints + `AdaptiveContextService`, `AdaptiveDashboard` + 4 weight sliders + `AdaptiveStatusIndicator`, evidence project-scoping [ADR-070](../architecture/decisions/ADR-070-evidence-project-scoping.md) with `novel_id` + migration `0035`, i18n 3×3=9 files). Earlier 2026-07-19 — LEARN-002 recalibrated from "Style Adaptation" (statistical pipeline) to "Adaptivity Dashboard"; ASSIST-004 detailed with implementation paths; pilot consumer of the new `AdaptiveContext` Core contract. Earlier 2026-06-30 — WRITE-010 (Voice Consistency Checker) → `stable` (ADR-057 ✅ Implemented; implemented across all layers + runtime-verified; `voice_check` static/runtime/adopted, adoption_debt 5 → 1 — true debt). Earlier 2026-06-30 — WRITE-010 spec authored against ADR-057 (checking-path contract + `voice_check` prompt surface; closes ADR-055 Risk #1), promoted to `stable` after all layers + runtime evidence landed. 2026-06-29 — ANAL-008 (Character Voice Profiling) → `stable` (implemented all layers; ADR-055 implemented); INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after

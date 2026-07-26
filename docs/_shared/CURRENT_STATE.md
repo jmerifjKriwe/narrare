@@ -7,6 +7,7 @@
 
 ## Last Updated
 
+Date: 2026-07-26 (ANAL-009 Phase 1 — Character Voice Drift — implemented across all layers + runtime-adopted against [ADR-073](architecture/decisions/ADR-073-voice-drift-character.md) (✅ Implemented); the **third** governed VOICE mode `voice_drift` (profile-trend signal i + adjacent-jump signal iii, both reusing `voice_metric_distances` — no duplication; new `CharacterVoiceDriftAgent` 1 call/character); novel-scoped SSE `POST /analysis/voice-drift/{novel_id}` (read-only); Frontend `VoiceDriftPanel` (Layout γ) + hook + i18n (en/de/fr). `voice_drift` static ✅/runtime ✅/adopted ✅ (PASS); adoption_debt 5 → 1; `just check` 9/9, 9759 unit + 3002 frontend tests, pyright 0; commits `a7aa3286`→`e899faae` (Core → Backend → Frontend → Platform). ANAL-009 → `stable`; Phase 2 (Author Voice) remains deferred.)
 Date: 2026-07-25 (Motion activation — activated motion (Framer Motion successor) across entire frontend: 7 variant sets, 14 modals, 6 panels, 5 lists, 4 banners, 6 crossfade points; tw-animate-css removed; 24 commits. A post-implementation review found two gaps — reduced-motion was honored in only one component, and PhaseCrossfade's AnimatePresence mode="wait" broke 51 analysis-panel tests under happy-dom — both now fixed via the global MotionProvider (`<MotionConfig reducedMotion="user">`) and the scoped motion/react mock in setupTests.ts. ConfirmDialog uses CSS keyframes as a documented exception. See item #77 and the spec's "Abweichungen / Accepted Exceptions".)
 Date: 2026-07-24 (ADR-071 CoreSettings implemented — centralised Core env-var configuration via standalone `CoreSettings(BaseSettings)` + `get_core_settings()` in `packages/core/narrare_core/settings.py`; eliminated 14 scattered `os.environ.get()` calls + API lifespan env-var bridge workaround; API Settings duplicates removed; enforced via regression test + RULE-07 architecture checker; commit `281e09e8`, 9630 tests + pyright 0 errors)
 Date: 2026-07-24 (PR #139 merged — ADR-069 Adaptive Context + Dialogue Coach vertical, ADR-070 evidence project-scoping; ASSIST-004 Dialogue Coach + LEARN-002 Adaptivity Dashboard + Phase 6 eval suite across all layers; 40+ commits, Alembic 0035)
@@ -217,6 +218,44 @@ Completed in Phase 6 so far:
    - **`PhaseCrossfade` broke 51 analysis-panel tests under happy-dom.** `<AnimatePresence mode="wait">` cannot complete its exit animation without a real rAF/WAAPI loop, so rapid phase transitions (idle → loading → results) never mounted the final phase within the test's `waitFor` window. Fixed by a global, scoped `motion/react` mock in `packages/web/setupTests.ts` that replaces `AnimatePresence` → Fragment and `motion.*` → cached plain-DOM elements (stripping motion-only props), while keeping the REAL `MotionConfig`/`MotionConfigContext` so the reduced-motion wiring stays genuinely tested. Real-browser crossfade behaviour is unchanged. Full frontend suite: 2957 passed / 0 failed.
    - **ConfirmDialog (accepted exception):** uses CSS `@keyframes` in `styles/tailwind.css` keyed off Radix's `data-[state]` attribute rather than `motion`/`AnimatePresence`, because Radix AlertDialog renders via a Portal and controls its own exit lifecycle. See the spec subsection.
 
+   78. ✅ **ANAL-009 Phase 1: Character Voice Drift** — Longitudinal per-character
+   voice-drift detection (the third member of the Voice lane to ship, after
+   ANAL-008 profiling + WRITE-010 checking). Implemented across all layers against
+   [ADR-073](architecture/decisions/ADR-073-voice-drift-character.md) (✅
+   Implemented). **Comparison model (ADR-073 Decision 2):** profile-trend signal
+   (i) — each chapter's metrics vs the stored ANAL-008 profile via
+   `voice_metric_distances` → per-chapter match sub-score → trend; plus
+   adjacent-chapter jump detection (iii) — delta between consecutive chapters'
+   metrics, labelled with which metric jumped. Both signals reuse the single
+   deterministic `voice_check_scoring.voice_metric_distances` primitive (no second
+   scoring engine — satisfies ADR-057 Risk #3; closes ADR-055 Risk #2). **New
+   `CharacterVoiceDriftAgent`** (1 call/character, trend-classifier) consuming the
+   precomputed trend + jumps + stored descriptive profile; emits
+   `CharacterVoiceDriftResult` (`drift_type ∈ {evolution, context, inconsistency}`,
+   `confidence`, `longitudinal_reasons`, `per_chapter_notes`, `suggested_attention`).
+   Measurement deterministic (ADR-021); agent only interprets qualitatively (hybrid
+   tier, mirrors ANAL-003/008/057). **New `voice_drift` prompt surface** — the
+   **third** governed mode on the routeable `LLMIntent.VOICE` (after
+   `character_voice`, `voice_check`): `voice_drift` context_mode + governed EN
+   template (Mode 1, ADR-054) + manifest/registry entries. **Core:** `voice_drift_scoring`
+   (pure: `chapter_metric_trend`/`trend_against_profile`/`adjacent_jumps`/`classify_severity`),
+   `character_voice_drift_agent` + `_types`. **Backend:** `VoiceDriftService`
+   (Mode-1 PromptComposer; binds `VoiceProfileConsumer.assemble_for_checking` — no
+   KB bypass, no SSOT bypass per ADR-050), `contracts_voice_drift`,
+   `schemas_voice_drift`, `dependencies_voice_drift` (+ RULE-04 split helpers), SSE
+   `POST /api/v1/analysis/voice-drift/{novel_id}` (novel-scoped, under
+   `AI_ANALYSIS_LIMITER`; read-only — writes nothing to KB). **Frontend:**
+   `VoiceDriftPanel` (Layout γ: heatmap overview + expandable per-row detail with
+   sparkline + jump list + agent reasoning) + `useCharacterVoiceDrift` hook
+   (`useAIOperation`, ADR-043) + SSE client + i18n (en/de/fr). **Validation:**
+   `just check` 9/9; Core 108 drift tests + Backend 21 unit + 4 integration +
+   Frontend 45 new (3002 total); 9759 unit + 3002 frontend green; pyright 0. Commit
+   range `a7aa3286`→`e899faae` (Core → Backend `26e1023b` → Frontend `8ea28176` →
+   Platform `e899faae`). `voice_drift` is static ✅ / runtime ✅ / adopted ✅ (PASS);
+   adoption_debt 5 → 1 (true debt only). ANAL-009 → `stable`. **Phase 2 (Author
+   Voice: storage SSOT + profiling + drift) remains deferred** to a separate future
+   ADR — not claimed done.
+
 ## What's Next
 
 ### CR-04 Follow-up Debt (known ratcheted baseline — recorded, not concealed)
@@ -341,6 +380,7 @@ These were not marked `resolved` from audit prose, checker green, or ADR existen
 | ADR-065 | RULE-13 Two-Method run/stream Contract Reconciliation | ✅ Accepted (2026-07-08) — declares `run()` (non-streaming `T`) + `stream()` (`AsyncIterator[StreamChunk]`) as the standard; reconciles CONSTRAINTS.md RULE-13 §5/§6 text/example to the realised architecture (rejects the single-method `stream: bool` union-return form). |
 | ADR-069 | Adaptive Context + Dialogue Coach Vertical | ✅ Accepted (2026-07-24) — consolidates `PreferenceProfile` + `CharacterVoiceProfile` into `AdaptiveContext` (Core) + `AdaptiveContextEnricher`; new `LLMIntent.DIALOGUE_COACH` + `ai_assist` prompt category; ASSIST-004 pilot consumer; LEARN-002 recalibrated as Adaptivity Dashboard; `voice_metrics` stay checking-path only; `AdaptiveSettings` on `ProjectSettings` JSONB; adaptive snapshot extends `invocation_evidence`. Full vertical: Core → Backend → Frontend. |
 | ADR-070 | Evidence Project-Scoping (novel_id) | ✅ Accepted (2026-07-24) — adds nullable indexed `novel_id` to `invocation_evidence` (Alembic `0035`) + asymmetric read-only `created_at` on Core `FeatureInvocationEvidence`; threads `novel_id = context.project_id` at one boundary. Enables project-scoped evidence queries for Adaptivity Dashboard. |
+| ADR-073 | Character Voice Drift Contract & `voice_drift` Prompt Surface (ANAL-009 Phase 1) | ✅ Implemented (2026-07-26) — implemented across all layers (Core 1/2a/2b + prompt + Backend 3a/3b/3c + Frontend 4) and runtime-adopted. Adds the **third** governed mode `voice_drift` on the routeable `LLMIntent.VOICE` (+ governed EN template, Mode 1 ADR-054). Comparison model = profile-trend signal (i) + adjacent-jump detection (iii), both reusing `voice_check_scoring.voice_metric_distances` (no duplication — satisfies ADR-057 Risk #3; closes ADR-055 Risk #2). New `CharacterVoiceDriftAgent` (1 call/character, trend-classifier) + `voice_drift_scoring` (pure Core). Novel-scoped SSE `POST /analysis/voice-drift/{novel_id}` (read-only; consumes `VoiceProfileConsumer.assemble_for_checking`, no SSOT bypass per ADR-050). Frontend `VoiceDriftPanel` (Layout γ) + hook + i18n (en/de/fr). `voice_drift` static ✅ / runtime ✅ / adopted ✅ (PASS); adoption_debt 5 → 1. `just check` 9/9, 9759 unit + 3002 frontend tests, pyright 0. Commit range `a7aa3286`→`e899faae`. ANAL-009 status → `stable`. **Phase 2 (Author Voice) remains deferred** to a separate future ADR. |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
@@ -382,4 +422,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-07-25 (Motion activation — activated motion (Framer Motion successor) across entire frontend: 8 variant sets, 14 modals, 6 panels, 5 lists, 4 banners, 6 crossfade points; tw-animate-css removed; 24 commits, code review APPROVED). Prior: 2026-07-24 (PR #139 merged — ADR-069 Adaptive Context + Dialogue Coach vertical, ADR-070 evidence project-scoping; ASSIST-004 Dialogue Coach + LEARN-002 Adaptivity Dashboard + Phase 6 eval suite across all layers; 40+ commits, Alembic 0035). Prior: 2026-07-08 (review-01 architecture audit remediated — 6 AUFG resolved with implementation+enforcement; ADR-064 mem0 RULE-02b scope boundary + ADR-065 RULE-13 two-method contract; 2 preventive file-splits at the RULE-04 limit; doc-drift checker for RULE-16 locale path; AUFG-01-06 gap task = prompt_loader OSError logging. ADR-061/062 superseded — governance toolchain removed.). Prior: 2026-06-30 (WRITE-010 Voice Consistency Checker implemented across all layers + ADR-057 voice-check checking-path contract implemented — `voice_check` static ✅/runtime ✅/adopted ✅, adoption_debt 5 → 1 (true debt); WRITE-010 → `stable`). Prior: ANAL-008 Character Voice Profiling implemented across all layers + ADR-055 character-voice storage contract implemented; `character_voice` runtime adoption runtime-verified (probes in `ee1cfc50`; local commit-gate runtime-evidence-aware via ADR-056); ADR-054 inline feature-prompt debt retired 3 → 0; INFRA-012 assessed complete; INFRA-007 Background Tasks, PLAN-006 Character Arc UI, CR-AUFG-07-22 Increment B, WRITE-009, and ANAL-005 Coreference Analysis implemented)
+> Last content update: 2026-07-26 (ANAL-009 Phase 1 — Character Voice Drift — implemented across all layers + runtime-adopted; ADR-073 ✅ Implemented; `voice_drift` static ✅/runtime ✅/adopted ✅ (PASS); adoption_debt 5 → 1; `just check` 9/9, 9759 unit + 3002 frontend tests, pyright 0; commits `a7aa3286`→`e899faae`; ANAL-009 → `stable`; Phase 2 author-voice deferred). Prior: 2026-07-25 (Motion activation — activated motion (Framer Motion successor) across entire frontend: 8 variant sets, 14 modals, 6 panels, 5 lists, 4 banners, 6 crossfade points; tw-animate-css removed; 24 commits, code review APPROVED). Prior: 2026-07-24 (PR #139 merged — ADR-069 Adaptive Context + Dialogue Coach vertical, ADR-070 evidence project-scoping; ASSIST-004 Dialogue Coach + LEARN-002 Adaptivity Dashboard + Phase 6 eval suite across all layers; 40+ commits, Alembic 0035). Prior: 2026-07-08 (review-01 architecture audit remediated — 6 AUFG resolved with implementation+enforcement; ADR-064 mem0 RULE-02b scope boundary + ADR-065 RULE-13 two-method contract; 2 preventive file-splits at the RULE-04 limit; doc-drift checker for RULE-16 locale path; AUFG-01-06 gap task = prompt_loader OSError logging. ADR-061/062 superseded — governance toolchain removed.). Prior: 2026-06-30 (WRITE-010 Voice Consistency Checker implemented across all layers + ADR-057 voice-check checking-path contract implemented — `voice_check` static ✅/runtime ✅/adopted ✅, adoption_debt 5 → 1 (true debt); WRITE-010 → `stable`). Prior: ANAL-008 Character Voice Profiling implemented across all layers + ADR-055 character-voice storage contract implemented; `character_voice` runtime adoption runtime-verified (probes in `ee1cfc50`; local commit-gate runtime-evidence-aware via ADR-056); ADR-054 inline feature-prompt debt retired 3 → 0; INFRA-012 assessed complete; INFRA-007 Background Tasks, PLAN-006 Character Arc UI, CR-AUFG-07-22 Increment B, WRITE-009, and ANAL-005 Coreference Analysis implemented)

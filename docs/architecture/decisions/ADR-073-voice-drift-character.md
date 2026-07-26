@@ -1,8 +1,8 @@
 # ADR-073 — Character Voice Drift Contract & `voice_drift` Prompt Surface (ANAL-009 Phase 1)
 
-> **Status:** ✅ Accepted (user-approved on session resume; implementation started
-> 2026-07-26 — ANAL-009 Phase 1 Task 1, Core foundation)
-> **Date:** 2026-07-25 (authored); 2026-07-26 (approved)
+> **Status:** ✅ Implemented (decision approved by user; implemented end-to-end
+> across all layers + runtime-verified — see History)
+> **Date:** 2026-07-25 (authored); 2026-07-26 (approved + implemented)
 > **Deciders:** Architecture Specialist; User (approved the five decisions in brainstorming)
 > **Supersedes:** —
 > **Related:** ADR-021 (deterministic analysis), ADR-035 (agent output validation),
@@ -19,6 +19,49 @@
 > evidence live in the modules named in the Retrofit-Plan and Cross-References, not in
 > this ADR. **Phase 2 (Author Voice: storage SSOT + profiling + drift) is explicitly
 > deferred** to a separate future ADR + cycle (see Decision 1 + Phase 2 Deferral).
+
+## History
+
+- **2026-07-25 — 🔄 Proposed.** ADR authored (contracts + five decisions; no code).
+- **2026-07-25 — ✅ Accepted.** The user reviewed the design and approved it in
+  brainstorming. The five decisions (§Decision 1–5) are in effect; production code
+  across Core + Backend depends on the contract.
+- **2026-07-26 — ✅ Implemented.** All layers implemented end-to-end and validated;
+  `voice_drift` is static ✅, runtime ✅, and adopted ✅ (Doc Gate passed — frontend
+  Layer 4 landed + ADR-056 runtime-evidence gate satisfied). Commit range
+  `a7aa3286` → `e899faae` (four tasks: Core `a7aa3286`, Backend `26e1023b`,
+  Frontend `8ea28176`, Platform `e899faae`). The five Decisions (§Decision 1–5) are
+  **unchanged**.
+
+### Implementation status — ✅ Implemented (runtime-verified)
+
+The decision is implemented across all layers and runtime-verified. Per
+architectural-discipline §7 ("documented ≠ implemented") and ADR-056, the
+`✅ Implemented` Doc Gate now passes: the frontend (Layer 4) has landed and the
+ADR-056 runtime adoption evidence is satisfied. **Decisions 1–5 are unchanged.**
+**Phase 2 (Author Voice) remains deferred** — see Phase 2 Deferral; this
+implementation covers Phase 1 (Character Voice Drift) only.
+
+Verified on disk (2026-07-26):
+
+| Layer | Artifact(s) | On-disk status |
+|-------|-------------|----------------|
+| Core 1 | `LLMIntent.VOICE` routeable + `voice_drift` context_mode (third mode) + manifest/registry entries (`prompts/route_table.py`) | ✅ present |
+| Core 2a | `voice_drift_scoring` (profile-trend signal i + adjacent-jump signal iii, both reusing `voice_metric_distances`; deterministic banding via `band_for_score`) + unit tests | ✅ present |
+| Core 2b | `CharacterVoiceDriftAgent` + `character_voice_drift_types` (`CharacterVoiceDriftResult` structured output; 1 call/character) + TestModel validation tests | ✅ present |
+| Core prompt | governed EN template `_bundled/analysis/en/voice_drift/system.md` (Mode 1, ADR-054) | ✅ present |
+| Backend 3a/3b | `voice_drift_service` (Mode-1 PromptComposer; binds `VoiceProfileConsumer`), `contracts_voice_drift`, `schemas_voice_drift`, `dependencies_voice_drift` (+ RULE-04 split helpers) | ✅ present |
+| Backend 3c | `router_voice_drift.py` — SSE `POST /analysis/voice-drift/{novel_id}` (novel-scoped, under `AI_ANALYSIS_LIMITER`) + DI factory + app registration | ✅ present |
+| Frontend 4 | `VoiceDriftPanel` (Layout γ: heatmap overview + expandable per-row detail) + `useCharacterVoiceDrift` hook (`useAIOperation`) + SSE client + editor wiring + i18n (en/de/fr) | ✅ present |
+| Runtime evidence | ADR-056 adoption-gate probes (agent + service) + runtime-evidence markers | ✅ verified & adopted |
+
+**Validation:** `just check` 9/9; 9759 unit + 3002 frontend tests green; pyright 0
+errors. Core drift tests 108; Backend 21 unit + 4 integration; Frontend 45 new (3002
+total). `voice_drift` is static ✅ / runtime ✅ / adopted ✅ (PASS);
+adoption_debt 5 → 1 (true debt only). The drift service reads `voice_metrics` via
+`VoiceProfileConsumer.assemble_for_checking()` (no SSOT bypass — verified);
+`formatted_voice_profiles` is unaffected (ANAL-009 is read-only); the agent is called
+once per character; silent chapters are skipped (RULE-11).
 
 ---
 
@@ -48,7 +91,7 @@ own future ADR.
 |---------------|----------|-------|-------|
 | Profiling — author | ANAL-007 | — | ⏸ Deferred (Phase 2 of ANAL-009 lane; own ADR) |
 | Profiling — character | ANAL-008 | ANAL-008 | ✅ Stable |
-| Drift | ANAL-009 | ANAL-009 Phase 1 (character) | 🔄 This ADR |
+| Drift | ANAL-009 | ANAL-009 Phase 1 (character) | ✅ This ADR (implemented 2026-07-26) |
 | Checker | WRITE-010 | WRITE-010 | ✅ Stable |
 
 Built order: `ANAL-008 → WRITE-010 → ANAL-009-Phase1 (character)` with
@@ -826,10 +869,11 @@ spec rewrite.
 - [x] When this ADR is approved + the spec is rewritten — ADR-055 Risk #2 (stale
       "map to SpeechPatterns" assumption) is resolved; ADR-057 Risk #3 (delta-primitive
       reuse) is satisfied. (Closed by this ADR's authoring.)
-- [ ] When this ADR is implemented — verify the drift service reads `voice_metrics` via
+- [x] When this ADR is implemented — verify the drift service reads `voice_metrics` via
       `VoiceProfileConsumer.assemble_for_checking()` (not KB directly); verify
       `formatted_voice_profiles` is unaffected; verify the agent is called once per
-      character; verify silent chapters are skipped.
+      character; verify silent chapters are skipped. (Verified at implementation
+      2026-07-26 — see Implementation status; all four invariants hold.)
 - [ ] When Phase 2 (Author Voice) is scoped — open a separate ADR resolving the
       author-voice storage SSOT (User-Settings vs Project-Settings vs a new
       `AuthorVoiceProfile` model; `ProjectWritingProfile` is not yet runtime SSOT per

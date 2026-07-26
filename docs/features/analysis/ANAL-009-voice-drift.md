@@ -1,7 +1,7 @@
 ---
 id: ANAL-009
 title: "Character Voice Drift Detection (Phase 1)"
-status: planned
+status: stable
 area: analysis
 mvp: false
 
@@ -76,8 +76,9 @@ requires: [INFRA-001, INFRA-002, KB-001, ANAL-008, WRITE-010]
 
 > **Architecture authority:** [ADR-073](../../architecture/decisions/ADR-073-voice-drift-character.md)
 > (Character Voice Drift Contract & `voice_drift` Prompt Surface). The technical
-> sections below implement that ADR. This spec is `planned` (Phase 1 not yet
-> implemented). Author-voice drift is **Phase 2** — deferred, own future ADR.
+> sections below implement that ADR. **Phase 1 is implemented (2026-07-26) across
+> all layers and runtime-adopted** (`status: stable`; ADR-073 ✅ Implemented).
+> Author-voice drift is **Phase 2** — deferred, own future ADR.
 
 ## Phasing (read this first)
 
@@ -85,7 +86,7 @@ ANAL-009 is split into two phases. **This spec covers Phase 1 only.**
 
 | Phase | Scope | Status | Authority |
 |-------|-------|--------|-----------|
-| **Phase 1 (this spec)** | **Character** Voice Drift — longitudinal drift of one character across chapters, against their stored ANAL-008 profile. Builds on existing ANAL-008 + WRITE-010 infra. | `planned` | ADR-073 |
+| **Phase 1 (this spec)** | **Character** Voice Drift — longitudinal drift of one character across chapters, against their stored ANAL-008 profile. Builds on existing ANAL-008 + WRITE-010 infra. | `stable` | ADR-073 |
 | Phase 2 (deferred) | **Author** Voice — author-voice storage SSOT decision + author-voice profiling (ANAL-007) + author-voice drift. | not started | separate future ADR |
 
 **Why the split?** The voice lane was built "backwards" (ANAL-008 + WRITE-010
@@ -359,3 +360,22 @@ per-chapter fan-out.
   both reusing `voice_metric_distances` (ADR-057 Risk #3 satisfied).
   Visualization fixed as Layout γ (approved mockup in `_scratch/`, gitignored).
   Status remains `planned` (implementation pending user approval of ADR-073).
+- `2026-07-26` — **Phase 1 implemented across all layers and runtime-adopted.**
+  Status → `stable`. All four task layers landed against [ADR-073](../../architecture/decisions/ADR-073-voice-drift-character.md)
+  (✅ Implemented): **Core** (`a7aa3286`) — `voice_drift_scoring` (profile-trend
+  signal i + adjacent-jump signal iii, both reusing `voice_metric_distances` — no
+  duplication) + `CharacterVoiceDriftAgent` + `character_voice_drift_types` + the
+  `voice_drift` governed EN template (third VOICE mode, Mode 1 ADR-054) + route +
+  manifest/registry entries (108 drift tests); **Backend** (`26e1023b`) —
+  `VoiceDriftService` (Mode-1 PromptComposer, binds `VoiceProfileConsumer`) + SSE
+  `POST /analysis/voice-drift/{novel_id}` + contracts/schemas/dependencies
+  (21 unit + 4 integration tests); **Frontend** (`8ea28176`) — `VoiceDriftPanel`
+  (Layout γ: heatmap overview + expandable per-row detail) + `useCharacterVoiceDrift`
+  hook + SSE client + i18n (en/de/fr) (45 new / 3002 total); **Platform** (`e899faae`)
+  — `voice_drift` probes + runtime-evidence markers; `just check` 9/9, 9759 unit +
+  3002 frontend tests, pyright 0. `voice_drift` is static ✅ / runtime ✅ / adopted ✅
+  (PASS); adoption_debt 5 → 1 (true debt only). The drift service reads
+  `voice_metrics` via `VoiceProfileConsumer.assemble_for_checking()` (no SSOT
+  bypass — verified); read-only; 1 agent call per character; silent chapters
+  skipped (RULE-11). **Phase 2 (Author Voice) remains deferred** to a separate
+  future ADR — not claimed done.
