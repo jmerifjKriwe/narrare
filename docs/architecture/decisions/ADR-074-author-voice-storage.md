@@ -1,6 +1,6 @@
 # ADR-074 — Author Voice Storage Contract (ANAL-007 / ANAL-009 Phase 2 enabler)
 
-> **Status:** 🔄 Proposed (awaits user approval before ANAL-007 implementation)
+> **Status:** ✅ Accepted (user approved by directing the coordinator to proceed to the ANAL-007 spec rewrite; 2026-07-26)
 > **Date:** 2026-07-26
 > **Deciders:** Architecture Specialist; User (approved Option 1 after brainstorming four options)
 > **Supersedes:** —
