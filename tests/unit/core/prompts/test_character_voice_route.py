@@ -59,9 +59,13 @@ class TestVoiceIntentRouteability:
         assert config.default_mode == "character_voice"
         # character_voice is the default governed mode. ADR-057 D3 added a
         # second governed context_mode, voice_check (a flag+score checker for
-        # WRITE-010); author_voice / voice_drift are added by ANAL-007 /
-        # ANAL-009 later. See test_voice_check_route.py for voice_check coverage.
-        assert config.allowed_context_modes == frozenset({"character_voice", "voice_check"})
+        # WRITE-010); ADR-073 D3 added a third, voice_drift (a longitudinal
+        # trend classifier for ANAL-009 Phase 1). author_voice (ANAL-007) is
+        # added later (Phase 2). See test_voice_check_route.py +
+        # test_voice_drift_route.py for the second/third mode coverage.
+        assert config.allowed_context_modes == frozenset(
+            {"character_voice", "voice_check", "voice_drift"}
+        )
 
 
 class TestVoiceRouteResolution:
@@ -78,10 +82,14 @@ class TestVoiceRouteResolution:
         assert route.mode == "character_voice"
 
     def test_undeferred_voice_modes_are_rejected(self) -> None:
-        """author_voice / voice_drift are deferred — not yet governed routes."""
-        for deferred_mode in ("author_voice", "voice_drift"):
-            with pytest.raises(PromptRouteNotConfiguredError, match=LLMIntent.VOICE.value):
-                resolve_prompt_route(LLMIntent.VOICE, deferred_mode)
+        """author_voice remains deferred — not yet a governed route.
+
+        ADR-073 D3 promoted voice_drift to a governed route (ANAL-009 Phase 1);
+        it is no longer rejected. Only author_voice (ANAL-007, Phase 2 deferral)
+        remains un-governed.
+        """
+        with pytest.raises(PromptRouteNotConfiguredError, match=LLMIntent.VOICE.value):
+            resolve_prompt_route(LLMIntent.VOICE, "author_voice")
 
 
 class TestVoicePromptPathCompliance:

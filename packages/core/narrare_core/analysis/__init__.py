@@ -58,11 +58,21 @@ from narrare_core.analysis.voice_check_scoring import (
     metric_delta_subscore,
     voice_metric_distances,
 )
+from narrare_core.analysis.voice_drift_scoring import (
+    DEFAULT_JUMP_THRESHOLD,
+    JumpPoint,
+    PerChapterMetrics,
+    TrendPoint,
+    compute_per_chapter_metrics,
+    detect_adjacent_jumps,
+    trend_against_profile,
+)
 from narrare_core.analysis.voice_merge import merge_character_voice
 from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
 from narrare_core.analysis.voice_types import AttributedUtterance
 
 __all__ = [
+    "DEFAULT_JUMP_THRESHOLD",
     "AnalysisAssemblerProtocol",
     "AnalysisBudgetManager",
     "AnalysisContextAssembler",
@@ -72,6 +82,7 @@ __all__ = [
     "DurationImpossibilityCheck",
     "EmotionScores",
     "FormulaReadabilityAnalyzer",
+    "JumpPoint",
     "LexiconSentimentAnalyzer",
     "NarrativeArc",
     "NarrativeArcType",
@@ -80,6 +91,7 @@ __all__ = [
     "POVIssueType",
     "POVResult",
     "POVScene",
+    "PerChapterMetrics",
     "ReadabilityAgentProtocol",
     "ReadabilityAnalyzer",
     "ReadabilityMetrics",
@@ -92,6 +104,7 @@ __all__ = [
     "TemporalIssue",
     "TemporalIssueSeverity",
     "TemporalOrderingCheck",
+    "TrendPoint",
     "VADScores",
     "VoiceCheckBand",
     "VoiceCheckScore",
@@ -99,8 +112,11 @@ __all__ = [
     "VoiceMetricsAnalyzer",
     "band_for_score",
     "blend_scores",
+    "compute_per_chapter_metrics",
+    "detect_adjacent_jumps",
     "merge_character_voice",
     "metric_delta_subscore",
     "run_deterministic_checks",
+    "trend_against_profile",
     "voice_metric_distances",
 ]

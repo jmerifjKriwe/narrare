@@ -1,7 +1,8 @@
 # ADR-073 — Character Voice Drift Contract & `voice_drift` Prompt Surface (ANAL-009 Phase 1)
 
-> **Status:** 🔄 Proposed (spec/ADR authored; awaiting user approval before implementation)
-> **Date:** 2026-07-25
+> **Status:** ✅ Accepted (user-approved on session resume; implementation started
+> 2026-07-26 — ANAL-009 Phase 1 Task 1, Core foundation)
+> **Date:** 2026-07-25 (authored); 2026-07-26 (approved)
 > **Deciders:** Architecture Specialist; User (approved the five decisions in brainstorming)
 > **Supersedes:** —
 > **Related:** ADR-021 (deterministic analysis), ADR-035 (agent output validation),

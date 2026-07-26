@@ -28,6 +28,14 @@ from narrare_core.agents.character_voice_checker_types import (
     CharacterVoiceCheckerOutput,
     FlaggedLine,
 )
+from narrare_core.agents.character_voice_drift_agent import CharacterVoiceDriftAgent
+from narrare_core.agents.character_voice_drift_types import (
+    ChapterMeta,
+    ChapterNote,
+    CharacterVoiceDriftDeps,
+    DriftType,
+    VoiceDriftResult,
+)
 from narrare_core.agents.character_voice_types import (
     CharacterVoiceDeps,
     CharacterVoiceEntry,
@@ -184,6 +192,8 @@ __all__ = [
     "BetaReaderDeps",
     "BetaReaderPhase1Output",
     "BetaReaderPhase2Output",
+    "ChapterMeta",
+    "ChapterNote",
     "ChapterSummaryAgent",
     "CharacterArcAgent",
     "CharacterArcDeps",
@@ -195,6 +205,8 @@ __all__ = [
     "CharacterVoiceCheckerEntry",
     "CharacterVoiceCheckerOutput",
     "CharacterVoiceDeps",
+    "CharacterVoiceDriftAgent",
+    "CharacterVoiceDriftDeps",
     "CharacterVoiceEntry",
     "CharacterVoiceOutput",
     "ConsistencyAgent",
@@ -217,6 +229,7 @@ __all__ = [
     "DraftConfig",
     "DraftDeps",
     "DraftOutput",
+    "DriftType",
     "ExtractedFact",
     "ExtractedTemporalExpression",
     "ExtractionAgent",
@@ -294,6 +307,7 @@ __all__ = [
     "TimelineEvent",
     "TimelineEventEnvelope",
     "TimelineOutput",
+    "VoiceDriftResult",
     "WorldbuildingAgent",
     "WorldbuildingDeps",
     "WorldbuildingPhase1Output",

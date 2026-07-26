@@ -101,6 +101,13 @@ prompt_path_compliance:
   # .evidence/{final_validation,preference_enrichment}.json and
   # features.analysis.modes.voice_check.
   analysis/voice_check: true
+  # ADR-073 D3: voice_drift (ANAL-009 Phase 1) prompt surface is governed
+  # Mode 1 (a longitudinal trend classifier, distinct from the character_voice
+  # profiler and the voice_check checker). The governed template + route +
+  # manifest entries exist; runtime evidence (agent + service probes per
+  # ADR-056) lands at Task 2 (Backend service) + Task 4 (runtime probes) of
+  # the ANAL-009 Phase 1 implementation — see features.analysis.modes.voice_drift.
+  analysis/voice_drift: true
   analysis/readability: true
   analysis/pov: true
   analysis/coreference: true
@@ -244,6 +251,16 @@ features:
       # LLMIntent.VOICE + context_mode "voice_check" → CharacterVoiceCheckerAgent
       # via Mode-1 resolution + InvocationPipeline + the SSE service.
       voice_check:
+        requires_runtime_evidence: true
+      # ADR-073 D3: voice_drift (ANAL-009 Phase 1) is a longitudinal trend
+      # classifier — distinct intent from the character_voice profiler and the
+      # voice_check checker. The governed template + route + manifest entries
+      # exist (Task 1 of the ANAL-009 Phase 1 implementation); runtime evidence
+      # (agent + service probes per ADR-056) lands at Task 2 (Backend service)
+      # + Task 4 (runtime probes). Runtime path: LLMIntent.VOICE + context_mode
+      # "voice_drift" → CharacterVoiceDriftAgent via Mode-1 resolution + the
+      # SSE service.
+      voice_drift:
         requires_runtime_evidence: true
       readability:
         requires_runtime_evidence: true

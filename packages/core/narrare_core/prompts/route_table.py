@@ -27,9 +27,10 @@ INTENT_TO_CATEGORY: dict[LLMIntent, str] = {
     LLMIntent.EXTRACT: "analysis",
     LLMIntent.FACT_EXTRACT: "analysis",
     # ADR-055 D4: VOICE promoted from non-routeable to a multi-mode analysis
-    # intent. First mode is character_voice (ANAL-008); author_voice (ANAL-007)
-    # and voice_drift (ANAL-009) are deferred. Mirrors how PLAN serves several
-    # planning context_modes.
+    # intent. First mode is character_voice (ANAL-008); voice_check (WRITE-010,
+    # ADR-057 D3) is the second governed mode; voice_drift (ANAL-009 Phase 1,
+    # ADR-073 D3) is the third. author_voice (ANAL-007) remains deferred
+    # (Phase 2). Mirrors how PLAN serves several planning context_modes.
     LLMIntent.VOICE: "analysis",
     LLMIntent.SUGGEST: "writing",
     # ADR-024 / ADR-049: CHAT is a writing-craft assistant (category "writing",
@@ -63,7 +64,9 @@ INTENT_TO_MODE: dict[LLMIntent, str] = {
     LLMIntent.SUGGEST: "inline_suggest",
     # ADR-055 D4: default mode for the VOICE intent. character_voice (ANAL-008)
     # is the first governed mode; voice_check (WRITE-010, ADR-057 D3) is an
-    # opt-in non-default checker mode; author_voice / voice_drift follow later.
+    # opt-in non-default checker mode; voice_drift (ANAL-009 Phase 1, ADR-073
+    # D3) is an opt-in non-default longitudinal trend-classifier mode.
+    # author_voice (ANAL-007) follows later (Phase 2).
     LLMIntent.VOICE: "character_voice",
     # ADR-024 / ADR-049: CHAT mode is "chat" (not root-mode ""). Root-mode is
     # forbidden for routeable intents per ADR-049 D3.
@@ -237,8 +240,10 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
     # ADR-055 D4: VOICE is a multi-mode analysis intent. character_voice
     # (ANAL-008) is the first governed context_mode (a *profiler*); voice_check
     # (WRITE-010, ADR-057 D3) is the second (a flag+score *checker* — distinct
-    # intent, own governed template). author_voice (ANAL-007) and voice_drift
-    # (ANAL-009) are added to allowed_context_modes later. Mirrors ANALYSE
+    # intent, own governed template); voice_drift (ANAL-009 Phase 1, ADR-073 D3)
+    # is the third (a longitudinal *trend classifier* — distinct intent, own
+    # governed template). author_voice (ANAL-007) remains deferred (Phase 2 of
+    # the ANAL-009 lane; own future ADR). Mirrors ANALYSE
     # (review/coreference/pov/readability) and PLAN
     # (outline/timeline/character_arc/timeline_extraction): no
     # required_variables at intent level — the resolving service (Layer 2/3)
@@ -247,17 +252,18 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
     # receive the analysed passage as runtime input.
     #
     # optional_variables mirrors the prompt-surface-manifest declaration for
-    # analysis/character_voice + analysis/voice_check (RULE-22 runtime↔governance
-    # coherence). The template references the KB world-context variables
-    # (kb_characters / kb_locations / kb_factions / kb_relationships) as optional
-    # context that aids attribution normalisation; a project may legitimately
-    # have none of them, so they MUST render as empty rather than crash the
-    # variable engine (RULE-11 graceful degradation — prepare_variables_for_template
-    # raises PromptVariableError on any template placeholder that is neither
-    # supplied nor declared optional). Genre / writing_language / project_title /
-    # user_preferences / avoidance_patterns are PromptContext dataclass fields
-    # (always present), declared here for explicit manifest parity exactly as
-    # FACT_EXTRACT declares its full optional set.
+    # analysis/character_voice + analysis/voice_check + analysis/voice_drift
+    # (RULE-22 runtime↔governance coherence). The template references the KB
+    # world-context variables (kb_characters / kb_locations / kb_factions /
+    # kb_relationships) as optional context that aids attribution
+    # normalisation; a project may legitimately have none of them, so they MUST
+    # render as empty rather than crash the variable engine (RULE-11 graceful
+    # degradation — prepare_variables_for_template raises PromptVariableError on
+    # any template placeholder that is neither supplied nor declared optional).
+    # Genre / writing_language / project_title / user_preferences /
+    # avoidance_patterns are PromptContext dataclass fields (always present),
+    # declared here for explicit manifest parity exactly as FACT_EXTRACT
+    # declares its full optional set.
     LLMIntent.VOICE: PromptRouteConfig(
         "analysis",
         "character_voice",
@@ -274,7 +280,7 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
                 "avoidance_patterns",
             }
         ),
-        allowed_context_modes=frozenset({"character_voice", "voice_check"}),
+        allowed_context_modes=frozenset({"character_voice", "voice_check", "voice_drift"}),
     ),
     LLMIntent.NAME_GENERATE: PromptRouteConfig("generation", "names"),
     LLMIntent.EXTRACT: PromptRouteConfig(
