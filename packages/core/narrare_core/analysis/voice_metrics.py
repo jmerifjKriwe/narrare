@@ -175,6 +175,38 @@ class VoiceMetricsAnalyzer:
             results[speaker] = self._compute_metrics(texts, candidates)
         return results
 
+    def analyze_text(self, chapter_texts: list[str]) -> VoiceMetrics:
+        """Prose-level VoiceMetrics for author-voice profiling (ANAL-007 / ADR-074).
+
+        Runs the **same** :meth:`_compute_metrics` pipeline as :meth:`analyze`,
+        but over the author's full chapter prose (narrator + dialogue together)
+        rather than per-speaker attributed utterances. Deterministic (ADR-021).
+        The author's narrative voice is one voice, so the result is a single
+        :class:`VoiceMetrics` block, not a per-speaker dict.
+
+        Documented difference (binding, ANAL-007 spec):
+        - :meth:`analyze` is for **character voice** — per-utterance dialogue
+          grouped by speaker via :class:`DialogueParser` (returns ``dict[str, VoiceMetrics]``).
+        - :meth:`analyze_text` is for **author voice** — prose-level, single
+          narrator voice over full chapter text (returns ``VoiceMetrics``).
+        Both call the same :meth:`_compute_metrics` (zero measurement-logic
+        duplication). ``verbal_tic_frequency`` is ``None`` here because verbal
+        tics are a per-character concept, not a narrator concept.
+
+        RULE-11: empty / all-blank input → all-None :class:`VoiceMetrics`
+        (graceful degradation, never raises).
+
+        Args:
+            chapter_texts: Full chapter prose (one string per chapter;
+                narration + dialogue together). 3+ chapters recommended for a
+                meaningful profile (the caller enforces the threshold).
+
+        Returns:
+            A single :class:`VoiceMetrics` block characterising the narrator's
+            prose voice.
+        """
+        return self._compute_metrics(chapter_texts, verbal_tic_candidates=None)
+
     # ------------------------------------------------------------------
     # Core computation
     # ------------------------------------------------------------------

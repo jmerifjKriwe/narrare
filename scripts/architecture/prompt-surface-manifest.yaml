@@ -365,22 +365,24 @@ routes:
     note: "ADR-049 Phase D: manifest entry added — the governed template existed but had no manifest coverage (governance gap exposed by the Phase D PROMPT-IDENTITY checker)."
 
   # ── Voice operations ───────────────────────────────────────────────
-  # ADR-055 D4 / ADR-057 D3 / ADR-073 D3: VOICE is a multi-mode analysis intent.
-  # character_voice (ANAL-008) is the first governed context_mode — a *profiler*
-  # that builds a descriptive + metric voice profile per character. voice_check
-  # (WRITE-010, ADR-057 D3) is the second — a flag+score *checker* that compares
-  # chapter dialogue against the stored profile (distinct intent, own governed
-  # template). voice_drift (ANAL-009 Phase 1, ADR-073 D3) is the third — a
-  # longitudinal *trend classifier* that classifies the per-chapter drift of a
-  # single character across the book (distinct intent, own governed template).
-  # author_voice (ANAL-007) is deferred (Phase 2 of the ANAL-009 lane) and will
-  # be appended to context_modes later. Mirrors how PLAN serves several planning
+  # ADR-055 D4 / ADR-057 D3 / ADR-073 D3 / ADR-074: VOICE is a multi-mode
+  # analysis intent. character_voice (ANAL-008) is the first governed
+  # context_mode — a *profiler* that builds a descriptive + metric voice profile
+  # per character. voice_check (WRITE-010, ADR-057 D3) is the second — a
+  # flag+score *checker* that compares chapter dialogue against the stored
+  # profile (distinct intent, own governed template). voice_drift (ANAL-009
+  # Phase 1, ADR-073 D3) is the third — a longitudinal *trend classifier* that
+  # classifies the per-chapter drift of a single character across the book
+  # (distinct intent, own governed template). author_voice (ANAL-007, ADR-074)
+  # is the fourth — an *author-voice profiler* for the narrator's prose (distinct
+  # intent, own governed template). Mirrors how PLAN serves several planning
   # context_modes. The analysed dialogue + deterministic voice metrics
   # (profiler) / chapter dialogue + stored profile + metric-delta (checker) /
-  # per-chapter trend + jump points + stored descriptive profile (drift) are
-  # category-3 runtime data supplied as the run prompt (user channel), exactly as
-  # coreference/readability receive the analysed passage as runtime input — hence
-  # required_variables is [] and xml_required is [].
+  # per-chapter trend + jump points + stored descriptive profile (drift) /
+  # chapter prose + precomputed metrics (author_voice) are category-3 runtime
+  # data supplied as the run prompt (user channel), exactly as
+  # coreference/readability receive the analysed passage as runtime input —
+  # hence required_variables is [] and xml_required is [].
 
   - intent: VOICE
     routeable: true
@@ -421,6 +423,18 @@ routes:
       # and stored descriptive profile are runtime user-channel data).
       - mode: voice_drift
         template: packages/core/narrare_core/prompts/_bundled/analysis/en/voice_drift/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: [project_title, genre, writing_language, kb_characters, kb_locations, kb_factions, kb_relationships, user_preferences, avoidance_patterns]
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
+      # ADR-074 / ANAL-007: author_voice is an AUTHOR-VOICE PROFILER for
+      # narrator prose — distinct intent from the character_voice profiler
+      # (per-character), the voice_check checker (snapshot), and the voice_drift
+      # classifier (longitudinal). Same variable surface; the chapter prose +
+      # precomputed metrics are runtime user-channel data (category-3).
+      - mode: author_voice
+        template: packages/core/narrare_core/prompts/_bundled/analysis/en/author_voice/system.md
         content_type: customizable_feature_prompt
         required_variables: []
         optional_variables: [project_title, genre, writing_language, kb_characters, kb_locations, kb_factions, kb_relationships, user_preferences, avoidance_patterns]

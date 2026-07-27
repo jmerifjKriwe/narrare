@@ -3,6 +3,11 @@
 Siehe ADR-015 für die vollständige Modul-Architektur.
 """
 
+from narrare_core.agents.author_voice_agent import AuthorVoiceAgent
+from narrare_core.agents.author_voice_types import (
+    AuthorVoiceDeps,
+    AuthorVoiceOutput,
+)
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.beta_reader_agent import BetaReaderAgent
 from narrare_core.agents.beta_reader_types import (
@@ -188,6 +193,9 @@ __all__ = [
     "AgentTimeoutError",
     "Approved",
     "ArcPhase",
+    "AuthorVoiceAgent",
+    "AuthorVoiceDeps",
+    "AuthorVoiceOutput",
     "BetaReaderAgent",
     "BetaReaderDeps",
     "BetaReaderPhase1Output",

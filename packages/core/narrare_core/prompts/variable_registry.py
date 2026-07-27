@@ -100,6 +100,13 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "cross_session_context",
         "style_profile",
         "character_voice_profiles",
+        # ADR-074 / ANAL-007 Q3 decision: {{author_voice}} is the
+        # author-voice analogue of {{character_voice_profiles}}. System-
+        # attributed descriptive text rendered from a machine-derived stored
+        # profile (the AuthorVoiceConsumer curates it from the author's prose)
+        # — NOT user-authored prompt content, so no XML-wrapping is required
+        # (RULE-22 §6 does not apply). Mirrors {{character_voice_profiles}}.
+        "author_voice",
         # ADR-069: system-attributed speaker list for DIALOGUE_COACH.
         # Produced by DialogueParser-backed attribution (ADR-055 D3).
         "characters",

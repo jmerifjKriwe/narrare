@@ -111,6 +111,15 @@ prompt_path_compliance:
   # context_mode "voice_drift" → CharacterVoiceDriftAgent via Mode-1 resolution
   # + the SSE service.
   analysis/voice_drift: true
+  # ADR-074 / ANAL-007: author_voice prompt surface is governed Mode 1 (an
+  # author-voice profiler for narrator prose, distinct from the character_voice
+  # profiler, the voice_check checker, and the voice_drift classifier). Runtime
+  # evidence lands in Backend Task 3 (the AuthorVoiceService SSE integration
+  # test); this Core registration locks the prompt surface so the Backend
+  # service cannot accidentally resolve via an inline fallback. Runtime path:
+  # LLMIntent.VOICE + context_mode "author_voice" → AuthorVoiceAgent via
+  # Mode-1 resolution + the SSE service.
+  analysis/author_voice: true
   analysis/readability: true
   analysis/pov: true
   analysis/coreference: true
@@ -264,6 +273,17 @@ features:
       # evidence markers. Runtime path: LLMIntent.VOICE + context_mode "voice_drift"
       # → CharacterVoiceDriftAgent via Mode-1 resolution + the SSE service.
       voice_drift:
+        requires_runtime_evidence: true
+      # ADR-074 / ANAL-007: author_voice is an author-voice profiler for
+      # narrator prose — distinct intent from the character_voice profiler
+      # (per-character), the voice_check checker (snapshot), and the voice_drift
+      # classifier (longitudinal). Core Layer (this Task 2) ships the governed
+      # prompt surface + the Core author-voice types + the AuthorVoiceAgent +
+      # the descriptive renderer (binding boundary enforced). Runtime evidence
+      # lands in Backend Task 3 (AuthorVoiceService SSE integration test).
+      # Runtime path: LLMIntent.VOICE + context_mode "author_voice" →
+      # AuthorVoiceAgent via Mode-1 resolution + the SSE service.
+      author_voice:
         requires_runtime_evidence: true
       readability:
         requires_runtime_evidence: true

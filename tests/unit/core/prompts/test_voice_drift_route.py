@@ -30,8 +30,6 @@ See:
 
 from __future__ import annotations
 
-import pytest
-
 from narrare_core.llm import LLMIntent
 from narrare_core.prompts.composer import PromptComposer
 from narrare_core.prompts.context import PromptContext
@@ -41,7 +39,6 @@ from narrare_core.prompts.route_table import (
     ROUTE_CONFIGS,
 )
 from narrare_core.prompts.routes import resolve_prompt_route
-from narrare_core.shared.errors import PromptRouteNotConfiguredError
 from tests.unit.core._bundled import bundled_prompts_root
 
 _BUNDLED_ROOT = bundled_prompts_root()
@@ -73,15 +70,15 @@ class TestVoiceDriftRouteability:
         assert "voice_drift" in config.allowed_context_modes
 
     def test_voice_route_is_three_mode(self) -> None:
-        """character_voice (profiler), voice_check (checker), and voice_drift
-        (longitudinal trend classifier) are all allowed VOICE context_modes.
+        """character_voice (profiler), voice_check (checker), voice_drift
+        (longitudinal trend classifier), and author_voice (author-voice
+        profiler) are all allowed VOICE context_modes.
 
-        ADR-073 D3 added voice_drift as the third governed mode; author_voice
-        (ANAL-007) remains deferred (Phase 2).
+        ADR-074 + ANAL-007 added author_voice as the fourth governed mode.
         """
         config = ROUTE_CONFIGS[LLMIntent.VOICE]
         assert config.allowed_context_modes == frozenset(
-            {"character_voice", "voice_check", "voice_drift"}
+            {"character_voice", "voice_check", "voice_drift", "author_voice"}
         )
 
     def test_default_mode_still_character_voice(self) -> None:
@@ -123,11 +120,6 @@ class TestVoiceDriftRouteResolution:
         """Adding voice_drift did not break the existing voice_check route."""
         route = resolve_prompt_route(LLMIntent.VOICE, "voice_check")
         assert route.mode == "voice_check"
-
-    def test_author_voice_remains_rejected(self) -> None:
-        """author_voice (Phase 2 deferral) is not yet a governed route."""
-        with pytest.raises(PromptRouteNotConfiguredError, match=LLMIntent.VOICE.value):
-            resolve_prompt_route(LLMIntent.VOICE, "author_voice")
 
 
 class TestVoiceDriftPromptPathCompliance:

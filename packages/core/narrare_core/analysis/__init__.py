@@ -11,6 +11,7 @@ ADR-025 Decision 3 — ContextAssembler Centralization (Phase 5).
 
 from narrare_core.analysis.age_check import CharacterAgeCheck
 from narrare_core.analysis.assembler import AnalysisContextAssembler
+from narrare_core.analysis.author_metrics import AuthorMetrics, AuthorMetricsAnalyzer
 from narrare_core.analysis.budget import AnalysisBudgetManager
 from narrare_core.analysis.contracts import (
     AnalysisAssemblerProtocol,
@@ -77,6 +78,8 @@ __all__ = [
     "AnalysisBudgetManager",
     "AnalysisContextAssembler",
     "AttributedUtterance",
+    "AuthorMetrics",
+    "AuthorMetricsAnalyzer",
     "CharacterAgeCheck",
     "DuplicateEventCheck",
     "DurationImpossibilityCheck",

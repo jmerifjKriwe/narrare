@@ -2,9 +2,10 @@
 
 Layer-1 test for the ANAL-008 character-voice prompt surface. ADR-055 Decision 4
 promotes ``LLMIntent.VOICE`` from non-routeable to a multi-mode routeable intent
-whose first context_mode is ``character_voice`` (author_voice / voice_drift are
-deferred to ANAL-007 / ANAL-009). This mirrors how ``LLMIntent.PLAN`` serves
-outline / timeline / character_arc / timeline_extraction.
+whose first context_mode is ``character_voice`` (voice_check, voice_drift, and
+author_voice were added later by ADR-057 / ADR-073 / ADR-074 respectively).
+This mirrors how ``LLMIntent.PLAN`` serves outline / timeline / character_arc /
+timeline_extraction.
 
 This is the ADR-046 §D.1 Prompt-Path-Compliance test for the VOICE route at the
 Layer-1 (prompt-surface) level: it proves the route resolves through
@@ -20,8 +21,6 @@ See:
 
 from __future__ import annotations
 
-import pytest
-
 from narrare_core.llm import LLMIntent
 from narrare_core.prompts.composer import PromptComposer
 from narrare_core.prompts.context import PromptContext
@@ -33,7 +32,6 @@ from narrare_core.prompts.route_table import (
     ROUTE_CONFIGS,
 )
 from narrare_core.prompts.routes import resolve_prompt_route
-from narrare_core.shared.errors import PromptRouteNotConfiguredError
 from tests.unit.core._bundled import bundled_prompts_root
 
 _BUNDLED_ROOT = bundled_prompts_root()
@@ -60,11 +58,12 @@ class TestVoiceIntentRouteability:
         # character_voice is the default governed mode. ADR-057 D3 added a
         # second governed context_mode, voice_check (a flag+score checker for
         # WRITE-010); ADR-073 D3 added a third, voice_drift (a longitudinal
-        # trend classifier for ANAL-009 Phase 1). author_voice (ANAL-007) is
-        # added later (Phase 2). See test_voice_check_route.py +
-        # test_voice_drift_route.py for the second/third mode coverage.
+        # trend classifier for ANAL-009 Phase 1); ADR-074 + ANAL-007 added a
+        # fourth, author_voice (an author-voice profiler for narrator prose).
+        # See test_voice_check_route.py / test_voice_drift_route.py /
+        # test_author_voice_route.py for the second/third/fourth mode coverage.
         assert config.allowed_context_modes == frozenset(
-            {"character_voice", "voice_check", "voice_drift"}
+            {"character_voice", "voice_check", "voice_drift", "author_voice"}
         )
 
 
@@ -80,16 +79,6 @@ class TestVoiceRouteResolution:
         """Without an explicit context_mode, VOICE resolves to its default mode."""
         route = resolve_prompt_route(LLMIntent.VOICE)
         assert route.mode == "character_voice"
-
-    def test_undeferred_voice_modes_are_rejected(self) -> None:
-        """author_voice remains deferred — not yet a governed route.
-
-        ADR-073 D3 promoted voice_drift to a governed route (ANAL-009 Phase 1);
-        it is no longer rejected. Only author_voice (ANAL-007, Phase 2 deferral)
-        remains un-governed.
-        """
-        with pytest.raises(PromptRouteNotConfiguredError, match=LLMIntent.VOICE.value):
-            resolve_prompt_route(LLMIntent.VOICE, "author_voice")
 
 
 class TestVoicePromptPathCompliance:
