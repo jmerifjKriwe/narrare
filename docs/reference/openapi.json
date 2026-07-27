@@ -2470,6 +2470,63 @@
         }
       }
     },
+    "/api/v1/analysis/author-voice/{novel_id}": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Analyze Author Voice",
+        "description": "SSE stream for author-voice analysis of a novel's chapters (ANAL-007).\n\nProfiles the narrator's voice (deterministic metrics + LLM qualitative\njudgement over the full prose), writes the resulting\n:class:`AuthorVoiceProfile` to ``ProjectSettings.author_voice``, and\nstreams the assembled profile.\n\n**SSE Event Stream:**\n\n1. ``\"progress\"`` event (chapter count / status; soft warning when below\n   the 3-chapter minimum).\n2. One ``\"result\"`` event carrying the assembled\n   :class:`AuthorVoiceProfile` (single profile per novel — author voice\n   is the narrator's voice, not per-character).\n3. ``\"done\"`` event (``is_final=True``).\n4. ``data: [DONE]`` termination signal.\n\nOn failure, an ``\"error\"`` event (``is_final=True``) precedes the\n``[DONE]`` sentinel.",
+        "operationId": "analyze_author_voice_api_v1_analysis_author_voice__novel_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorVoiceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/adaptive/{project_id}/context": {
       "get": {
         "tags": [
@@ -10378,6 +10435,28 @@
         "type": "object",
         "title": "ArcPhaseResponse",
         "description": "A single phase in a character arc."
+      },
+      "AuthorVoiceRequest": {
+        "properties": {
+          "chapter_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Ids",
+            "description": "Specific chapter IDs to analyse, or null/empty for all chapters."
+          }
+        },
+        "type": "object",
+        "title": "AuthorVoiceRequest",
+        "description": "Request body for ``POST /analysis/author-voice/{novel_id}``.\n\nAttributes:\n    chapter_ids: Specific chapters to analyse. ``None`` or an empty list\n        means \"analyse every chapter in the novel\" (the service resolves\n        the full chapter list via the chapter repository). 3+ chapters\n        recommended for a meaningful profile (the service surfaces a soft\n        warning below the threshold but does not block)."
       },
       "AvailableModelsResponse": {
         "properties": {

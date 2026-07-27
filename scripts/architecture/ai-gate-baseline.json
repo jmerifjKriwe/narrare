@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "description": "Ratcheted baseline for Review-03 AI stabilization gates + INFRA-012 prompt governance. Existing debt may decrease; growth requires ADR/user-approved baseline update. ADR-069 ai_assist/dialogue_coach adoption debt resolved (Phase 4 Task 14 integration test + adoption probe markers in .evidence/). ADR-073 voice_drift (ANAL-009 Phase 1) adoption debt resolved — runtime probes registered (validation_budget + analysis + preference_enrichment + mode_data) and markers committed in .evidence/ per ADR-056. ADR-074 author_voice (ANAL-007 Task 2) adoption debt declared — runtime evidence lands at the Backend service task per ADR-056.",
+  "description": "Ratcheted baseline for Review-03 AI stabilization gates + INFRA-012 prompt governance. Existing debt may decrease; growth requires ADR/user-approved baseline update. ADR-069 ai_assist/dialogue_coach adoption debt resolved (Phase 4 Task 14 integration test + adoption probe markers in .evidence/). ADR-073 voice_drift (ANAL-009 Phase 1) adoption debt resolved — runtime probes registered (validation_budget + analysis + preference_enrichment + mode_data) and markers committed in .evidence/ per ADR-056; voice_drift SSE frontend consumer landed (streaming gap resolved). ADR-074 author_voice (ANAL-007) adoption debt declared — Backend service (Task 3) landed; runtime evidence + frontend SSE consumer (Task 4) pending; streaming gap declared for the Task 4 frontend SSE consumer.",
   "prompt_structure_warnings": [],
   "frontmatter_schema_warnings": [],
   "adoption_debt": [
@@ -29,7 +29,7 @@
   ],
   "frontend_file_size_violations": [],
   "streaming_compliance_gaps": [
-    "analysis/router_voice_drift has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/analysis/router_voice_drift.py"
+    "analysis/router_author_voice has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/analysis/router_author_voice.py"
   ],
   "python_file_size_violations": [],
   "empty_kb_vars": [
@@ -41,6 +41,10 @@
     "apps/api/narrare/analysis/voice_check_prompt.py | kb_locations",
     "apps/api/narrare/analysis/voice_drift_prompt.py | kb_characters",
     "apps/api/narrare/analysis/voice_drift_prompt.py | kb_factions",
-    "apps/api/narrare/analysis/voice_drift_prompt.py | kb_locations"
+    "apps/api/narrare/analysis/voice_drift_prompt.py | kb_locations",
+    "apps/api/narrare/analysis/author_voice_prompt.py | kb_characters",
+    "apps/api/narrare/analysis/author_voice_prompt.py | kb_factions",
+    "apps/api/narrare/analysis/author_voice_prompt.py | kb_locations",
+    "apps/api/narrare/analysis/author_voice_prompt.py | kb_relationships"
   ]
 }

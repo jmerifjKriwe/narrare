@@ -174,4 +174,5 @@ class TestRealRegistry:
         # planning/character_arc, planning/timeline, planning/timeline_extraction
         # (ADR-054), and ai_assist/dialogue_coach (ADR-069).
         # ADR-073 D3 added analysis/voice_drift (ANAL-009 Phase 1) → 40 modes.
-        assert mode_count == 40, f"expected 40 feature modes, got {mode_count}"
+        # ADR-074 / ANAL-007 added analysis/author_voice (the 4th VOICE mode) → 41 modes.
+        assert mode_count == 41, f"expected 41 feature modes, got {mode_count}"

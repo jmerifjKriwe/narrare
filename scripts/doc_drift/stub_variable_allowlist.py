@@ -96,6 +96,36 @@ STUB_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
         "kb_factions",
         "RULE-11: optional KB-context var (see voice_drift_prompt.py comment).",
     ),
+    # ── analysis/author_voice_prompt.py — RULE-11 optional KB-context vars ──
+    #    Author voice profiles the NARRATOR (prose-level), not individual
+    #    characters — character-specific KB context is not relevant. The vars
+    #    are declared explicitly empty so the template renders rather than
+    #    crash the variable engine (per in-code comment).
+    (
+        "apps/api/narrare/analysis/author_voice_prompt.py",
+        "kb_characters",
+        "RULE-11: optional KB-context var declared explicitly so the "
+        "template renders empty rather than crash the variable engine "
+        "(per in-code comment). Author voice profiles the narrator, not "
+        "characters — character KB context is not relevant here.",
+    ),
+    (
+        "apps/api/narrare/analysis/author_voice_prompt.py",
+        "kb_locations",
+        "RULE-11: optional KB-context var (see author_voice_prompt.py comment).",
+    ),
+    (
+        "apps/api/narrare/analysis/author_voice_prompt.py",
+        "kb_factions",
+        "RULE-11: optional KB-context var (see author_voice_prompt.py comment).",
+    ),
+    (
+        "apps/api/narrare/analysis/author_voice_prompt.py",
+        "kb_relationships",
+        "RULE-11: optional KB-context var (see author_voice_prompt.py comment). "
+        "Character relationships are charakterprägend for CHARACTER voice but "
+        "not for the NARRATOR's voice (the author-voice difference).",
+    ),
     # ── analysis/coreference_prompt.py — §7 gaps CLOSED (kb_characters/
     #    kb_locations/kb_factions/kb_relationships now wired through the
     #    canonical KBContextProvider, ADR-067; spread from

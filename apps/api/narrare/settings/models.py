@@ -58,6 +58,11 @@ class ProjectSettings(Base):
     # row yet → AdaptiveContextProviderImpl returns defaults (graceful
     # degradation, Phase 2 contract preserved).
     adaptive_settings: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
+    # ADR-074: per-novel author-voice profile (ANAL-007 writes; ANAL-009
+    # Phase 2 + generation read). JSONB mirrors the adaptive_settings pattern
+    # (ADR-069 D2). NULL = no profile yet → consumers degrade gracefully
+    # (RULE-11: generation renders empty {{author_voice}}; drift skips).
+    author_voice: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
