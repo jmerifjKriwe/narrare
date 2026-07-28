@@ -184,6 +184,20 @@ ALL_MODES: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "chapter_text": "Author voice profiling sample text.",
         },
     ),
+    # ANAL-009 Phase 2B: author_voice_drift is the fifth VOICE context_mode
+    # (a longitudinal narrator-voice trend classifier, distinct from the
+    # character_voice profiler, the voice_check checker, the voice_drift
+    # character classifier, and the author_voice profiler). It shares
+    # LLMIntent.VOICE; the runtime path resolves the governed
+    # analysis/author_voice_drift template via Mode 1 + AuthorVoiceDriftAgent.
+    (
+        "analysis",
+        "author_voice_drift",
+        LLMIntent.VOICE,
+        {
+            "chapter_text": "Author voice drift longitudinal sample text.",
+        },
+    ),
     (
         "analysis",
         "summarize",

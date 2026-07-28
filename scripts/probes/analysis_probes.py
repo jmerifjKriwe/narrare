@@ -106,6 +106,18 @@ MODE_INPUTS: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "chapter_text": "The author's prose favoured terse, declarative clauses.",
         },
     ),
+    # ANAL-009 Phase 2B: author_voice_drift (longitudinal narrator-voice
+    # trend classifier) shares the VOICE intent and exercises the same
+    # invocation pipeline as character_voice, voice_check, voice_drift, and
+    # author_voice.
+    (
+        "analysis",
+        "author_voice_drift",
+        LLMIntent.VOICE,
+        {
+            "chapter_text": "Across chapters the narrator's cadence shifted measurably.",
+        },
+    ),
     (
         "analysis",
         "summarize",

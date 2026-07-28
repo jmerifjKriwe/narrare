@@ -23,6 +23,7 @@
       "voice_check",
       "voice_drift",
       "author_voice",
+      "author_voice_drift",
       "summarize",
       "remap",
       "consistency",

@@ -1,14 +1,10 @@
 {
   "version": 2,
-  "description": "Ratcheted baseline for Review-03 AI stabilization gates + INFRA-012 prompt governance. Existing debt may decrease; growth requires ADR/user-approved baseline update. ADR-069 ai_assist/dialogue_coach adoption debt resolved (Phase 4 Task 14 integration test + adoption probe markers in .evidence/). ADR-073 voice_drift (ANAL-009 Phase 1) adoption debt resolved — runtime probes registered (validation_budget + analysis + preference_enrichment + mode_data) and markers committed in .evidence/ per ADR-056; voice_drift SSE frontend consumer landed (streaming gap resolved). ADR-074 author_voice (ANAL-007) adoption debt resolved — runtime probes registered (validation_budget + analysis + preference_enrichment + mode_data) and markers committed in .evidence/ per ADR-056; author_voice SSE frontend consumer landed (streaming gap resolved).",
+  "description": "Ratcheted baseline for Review-03 AI stabilization gates + INFRA-012 prompt governance. Existing debt may decrease; growth requires ADR/user-approved baseline update. ADR-069 ai_assist/dialogue_coach adoption debt resolved (Phase 4 Task 14 integration test + adoption probe markers in .evidence/). ADR-073 voice_drift (ANAL-009 Phase 1) adoption debt resolved — runtime probes registered (validation_budget + analysis + preference_enrichment + mode_data) and markers committed in .evidence/ per ADR-056; voice_drift SSE frontend consumer landed (streaming gap resolved). ADR-074 author_voice (ANAL-007) adoption debt resolved — runtime probes registered (validation_budget + analysis + preference_enrichment + mode_data) and markers committed in .evidence/ per ADR-056; author_voice SSE frontend consumer landed (streaming gap resolved). ADR-056 ANAL-009 Phase 2B author_voice_drift adoption debt resolved — runtime probes registered (validation_budget + analysis + preference_enrichment + mode_data) and markers committed in .evidence/ per ADR-056; author_voice_drift SSE frontend consumer landed (streaming gap resolved).",
   "prompt_structure_warnings": [],
   "frontmatter_schema_warnings": [],
   "adoption_debt": [
-    "writing | inline_fallback_count | 1",
-    "analysis | author_voice_drift | not_adopted",
-    "analysis | author_voice_drift | runtime | final_validation | missing",
-    "analysis | author_voice_drift | runtime | kb_suggested | not_applicable",
-    "analysis | author_voice_drift | runtime | preference_enrichment | missing"
+    "writing | inline_fallback_count | 1"
   ],
   "prompt_integrity_findings": [
     "PROMPT-VARS | packages/core/narrare_core/prompts/variable_registry.py | Dead variable(s) in SYSTEM_VARS — registered but never used in any prompt template: feedback_text, mode, style_constraints"
@@ -28,9 +24,7 @@
     "pyproject | RULE-02b | packages/core/narrare_core/memory/mem0_client.py | mem0 custom_instructions is a third-party-library config string for mem0's internal extraction LLM, not a Narrare prompt-resolution path (RULE-02b scope boundary)."
   ],
   "frontend_file_size_violations": [],
-  "streaming_compliance_gaps": [
-    "analysis/router_author_voice_drift has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/analysis/router_author_voice_drift.py"
-  ],
+  "streaming_compliance_gaps": [],
   "python_file_size_violations": [],
   "empty_kb_vars": [
     "apps/api/narrare/analysis/character_voice_prompt.py | kb_characters",
