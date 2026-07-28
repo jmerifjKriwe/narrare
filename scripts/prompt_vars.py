@@ -99,7 +99,7 @@ MODE_EXEMPT_VARS: dict[str, dict[str, set[str]]] = {
 
 # ── SHOULD: Recommended variables (warn, don't fail) ───────────
 SHOULD_VARS_BY_CATEGORY: dict[str, set[str]] = {
-    "writing": {"character_voice_profiles", "kb_suggested", "style_profile"},
+    "writing": {"character_voice_profiles", "author_voice", "kb_suggested", "style_profile"},
     "analysis": {"kb_characters", "kb_locations", "kb_factions", "kb_relationships"},
     "kb": {"world_context", "writing_language"},
 }

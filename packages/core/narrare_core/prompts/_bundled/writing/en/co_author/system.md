@@ -58,6 +58,12 @@ When rewriting dialogue or narration in a character's voice, maintain their dist
 - Match their personality traits when they speak (formal, casual, terse, eloquent)
 - Characters should be identifiable by their speech alone, without dialogue tags
 
+### Author Voice
+
+The narrator's prose voice for this novel (descriptive profile, not raw metrics):
+
+{{author_voice}}
+
 ### Recent Chapters
 
 {{recent_chapters}}

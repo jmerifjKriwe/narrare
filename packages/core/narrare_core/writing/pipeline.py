@@ -269,6 +269,7 @@ class WritingPipeline:
             "kb_locations": context.kb_locations,
             "recent_chapters": context.recent_chapters,
             "character_voice_profiles": context.character_voice_profiles,
+            "author_voice": context.author_voice,
             "word_target": str(context.word_target) if context.word_target else "",
             "tone_instructions": tone_instr,
             "writing_language": context.writing_language,
@@ -289,6 +290,7 @@ class WritingPipeline:
             avoidance_patterns=context.avoidance_patterns,
             cross_session_context=context.cross_session_context,
             character_voice_profiles=context.character_voice_profiles,
+            author_voice=context.author_voice,
             extra=extra,
         )
 

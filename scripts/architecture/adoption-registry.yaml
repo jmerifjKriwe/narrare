@@ -227,6 +227,7 @@ features:
         - culture_guidelines
       should:
         - character_voice_profiles
+        - author_voice
         - kb_suggested
 
   analysis:

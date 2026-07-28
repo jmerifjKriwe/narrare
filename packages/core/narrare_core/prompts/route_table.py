@@ -78,6 +78,11 @@ _COMMON_OPTIONAL_VARIABLES = frozenset(
     {
         "avoidance_patterns",
         "character_voice_profiles",
+        # ADR-074 / ANAL-007: author-voice analogue of
+        # {{character_voice_profiles}}. Declared optional so routes that do
+        # NOT run full KB assembly (REWRITE, EXTEND, …) render it as ""
+        # instead of raising PromptVariableError (RULE-11 graceful).
+        "author_voice",
         "cross_session_context",
         "culture_guidelines",
         # CR-AUFG-04-06 / CR-AUFG-04-04: KB diagnostic vars surfaced into the

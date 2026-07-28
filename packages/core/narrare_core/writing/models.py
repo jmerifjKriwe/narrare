@@ -86,6 +86,13 @@ class WritingContext:
     # Character voice profiles (extracted from KB character speech metadata)
     character_voice_profiles: str = ""
 
+    # Author voice (ANAL-007 / ADR-074): the narrator's prose voice, rendered
+    # descriptive-only from ProjectSettings.author_voice by the
+    # AuthorVoiceConsumer. Empty when no profile is stored (RULE-11 graceful).
+    # Parallel to ``character_voice_profiles`` (per-character) — this is the
+    # author/narrator voice (novel-scoped). NEVER contains raw metrics.
+    author_voice: str = ""
+
     # Memory layer
     user_preferences: str = ""
     avoidance_patterns: str = ""
@@ -167,6 +174,7 @@ class WritingContext:
             "kb_pinned": self.kb_pinned,
             "kb_context_warnings": self.kb_context_warnings,
             "character_voice_profiles": self.character_voice_profiles,
+            "author_voice": self.author_voice,
             "project_title": self.project_title,
             "genre": self.genre,
             "tone": self.tone,

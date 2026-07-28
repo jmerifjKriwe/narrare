@@ -78,6 +78,12 @@ When writing dialogue, maintain each character's distinct voice based on their s
 - Characters should be identifiable by their speech alone, without dialogue tags
 - Do NOT make all characters sound the same — preserve their linguistic individuality
 
+### Author Voice
+
+The narrator's prose voice for this novel (descriptive profile, not raw metrics):
+
+{{author_voice}}
+
 ### Instructions
 
 Continue the text from the `[CONTINUE FROM HERE]` marker. Follow these guidelines:

@@ -139,6 +139,12 @@ class PromptContext:
     # --- Character voice profiles ---
     character_voice_profiles: str = ""  # Voice consistency data for dialogue generation
 
+    # --- Author voice (ADR-074 / ANAL-007) ---
+    # The narrator's prose voice, novel-scoped. Rendered descriptive-only
+    # from ProjectSettings.author_voice by the AuthorVoiceConsumer. Empty
+    # when no profile is stored (RULE-11 graceful). NEVER raw metrics.
+    author_voice: str = ""
+
     # --- Memory / Preference context ---
     user_preferences: str = ""  # Formatted preference text from memory layer
     avoidance_patterns: str = ""  # Things the user dislikes (from feedback)

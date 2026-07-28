@@ -169,6 +169,7 @@ async def stream_coauthor(
         user_preferences=context.user_preferences,
         avoidance_patterns=context.avoidance_patterns,
         character_voice_profiles=context.character_voice_profiles,
+        author_voice=context.author_voice,
         extra=extra,
     )
 

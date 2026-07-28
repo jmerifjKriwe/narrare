@@ -230,4 +230,9 @@ class TestAuthorVoiceVariableRegistration:
 
         cls = get_variable_classification("author_voice")
         assert cls is not None, "{{author_voice}} must be a registered variable."
-        assert cls.provenance == VariableProvenance.SYSTEM_GENERATED
+        # ADR-074 / ANAL-007 Task 5a-i: author_voice is classified as
+        # PROJECT_WRITING_PROFILE provenance (mirrors character_voice_profiles —
+        # both are derived from project-level stored profiles, not runtime-
+        # generated). LABEL_REQUIRED security: rendered descriptive text the
+        # LLM treats as labelled context, not system instruction.
+        assert cls.provenance == VariableProvenance.PROJECT_WRITING_PROFILE

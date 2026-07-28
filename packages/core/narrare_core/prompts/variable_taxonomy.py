@@ -130,6 +130,10 @@ def _classification_overrides() -> dict[str, VariableClassification]:
                 # rendered voice text is data the LLM must treat as
                 # labelled context, not as system instruction.
                 ("character_voice_profiles", VariableSecurity.LABEL_REQUIRED),
+                # ADR-074 / ANAL-007: author-voice analogue. Same provenance
+                # (project writing profile) and security (LABEL_REQUIRED —
+                # rendered descriptive text the LLM treats as labelled context).
+                ("author_voice", VariableSecurity.LABEL_REQUIRED),
             )
         },
         **{

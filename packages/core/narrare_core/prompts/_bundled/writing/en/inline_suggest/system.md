@@ -74,6 +74,7 @@ project profile, current scene/timeline context, curated KB, or the immediate te
 If the text before the cursor is mid-dialogue:
 - Continue in the same character's voice
 - Use established speech patterns if available via {{character_voice_profiles}}
+- Match the narrator's prose voice if available via {{author_voice}}
 - Do not switch speakers mid-quotation
 
 ### Text Before Cursor

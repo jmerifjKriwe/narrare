@@ -69,6 +69,7 @@ class TestWritingContextPromptVariables:
             "kb_pinned",
             "kb_context_warnings",
             "character_voice_profiles",
+            "author_voice",
             "project_title",
             "genre",
             "tone",

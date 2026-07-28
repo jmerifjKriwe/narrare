@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare_core.context.types import TierBudget
-    from narrare_core.profiles.contracts import VoiceProfileConsumer
+    from narrare_core.profiles.contracts import AuthorVoiceConsumer, VoiceProfileConsumer
     from narrare_core.project.profile import ProjectWritingProfile
     from narrare_core.wiki.types import WikiSummaryData
     from narrare_core.writing.context_models import KBEntity, RecentChapter
@@ -144,6 +144,7 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
         story_structure: str = "",
         profile: ProjectWritingProfile | None = None,
         voice_profile_consumer: VoiceProfileConsumer | None = None,
+        author_voice_consumer: AuthorVoiceConsumer | None = None,
         **_extra: Any,
     ) -> WritingContext:
         """Assemble writing context with budget enforcement.
@@ -166,6 +167,12 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
             mode: Generation mode string (e.g. ``"extend"``,
                 ``"extend_chapter"``).  When set, adjusts budget
                 allocation to prioritise immediate context.
+            author_voice_consumer: Optional ADR-074 consumer that loads
+                the novel-scoped author-voice profile and renders the
+                descriptive group into ``{{author_voice}}``.  When
+                ``None`` or no profile is stored, ``author_voice``
+                renders empty (RULE-11 graceful — generation proceeds
+                without it).  Parallel to ``voice_profile_consumer``.
         """
         recent = recent_chapters or []
         entities = kb_entities or []
@@ -238,6 +245,16 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
             character_voice_profiles = voice_profile.formatted_voice_profiles
             voice_profile_warnings = list(voice_profile.freshness_warnings)
 
+        # Author voice (ADR-074 / ANAL-007): the narrator's prose voice,
+        # novel-scoped. Rendered descriptive-only via the AuthorVoiceConsumer
+        # — NEVER raw metrics (the binding boundary). Parallel to
+        # character_voice_profiles above (per-character vs. author/narrator).
+        # RULE-11 graceful: no consumer / no project / no profile → "".
+        author_voice = ""
+        if author_voice_consumer is not None and project_id is not None:
+            author_profile = await author_voice_consumer.get_profile(project_id)
+            author_voice = author_voice_consumer.render_for_generation(author_profile)
+
         # Check for orphan references (referenced in frontmatter but not in KB)
         all_classified = pinned + referenced + connected + suggested
         orphan_reference_warnings = check_orphan_references(ref_ids, all_classified)
@@ -280,6 +297,7 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
             chapter_frontmatter=chapter_frontmatter,
             chapter_outline=chapter_outline,
             character_voice_profiles=character_voice_profiles,
+            author_voice=author_voice,
             recent_chapters=recent_text,
             recent_chapter_count=len(recent),
             kb_characters=chars_text,
