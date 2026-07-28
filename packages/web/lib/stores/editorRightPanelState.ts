@@ -9,6 +9,7 @@ export type EditorRightPanelId =
   | "character_voice"
   | "voice_check"
   | "voice_drift"
+  | "author_voice"
   | "dialogue_coach"
   | "sentiment"
   | "consistency";
@@ -19,6 +20,17 @@ export type EditorRightPanelRequestSource =
   | "ai_result"
   | "recovery"
   | "url";
+
+/**
+ * Analysis panels rendered through the shared {@link EditorAnalysisPanels}
+ * switch (RULE-04 extraction from {@link EditorPanelContent}). Derived from
+ * {@link EditorRightPanelId} so it cannot drift — the non-analysis panels
+ * (session / generation / metadata / dialogue_coach) stay in EditorPanelContent.
+ */
+export type AnalysisPanelId = Exclude<
+  EditorRightPanelId,
+  "session" | "generation" | "metadata" | "dialogue_coach"
+>;
 
 export interface EditorRightPanelState {
   active: EditorRightPanelId | null;
@@ -36,6 +48,7 @@ export const EDITOR_RIGHT_PANEL_PRIORITY = [
   "character_voice",
   "voice_check",
   "voice_drift",
+  "author_voice",
   "dialogue_coach",
   "sentiment",
   "consistency",

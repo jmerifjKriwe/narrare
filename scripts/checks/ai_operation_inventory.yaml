@@ -452,6 +452,32 @@ operations:
     exclude_entry: none
     status: compliant
 
+  - operation_id: analysis.author_voice
+    feature: Author Voice Profiling (ANAL-007 / ADR-074)
+    entry_points:
+      - packages/web/lib/hooks/useAuthorVoice.ts
+      - packages/web/lib/api/author-voice-stream.ts (streamAuthorVoice)
+    transport: sse
+    lifecycle_owner: useAIOperation
+    loading_feedback: "isLoading/isStreaming via useAuthorVoice.ts; connection-loss watchdog 15s"
+    cancel_ui: "cancel() via hook (no manual AbortController — ADR-043)"
+    signal_propagation: "execute: (signal) bridges streamAuthorVoice SSE to useAIOperation's Promise contract; abort → AbortError rejection"
+    error_mapping: mapSSEError (ai-error-mapping.ts)
+    partial_output: "Single profile captured across the run and surfaced once on completion (author voice is ONE profile per novel — ADR-074); backend auto-saves the profile to ProjectSettings.author_voice"
+    contract_parity: "RULE-17 — request body mirrors Python AuthorVoiceRequest (chapter_ids?); AuthorVoiceResult / AuthorVoiceProfile / VoiceAnalysis / VoiceMetrics / AuthorMetrics field names mirror the Core + backend schemas; SSE event union mirrors AuthorVoiceStreamEvent (progress | result | done | error)"
+    ai_action_i18n: analysis.authorVoice.* (DE/EN/FR) + analysis.retry / .refresh
+    deprecated_key_usage: "No deprecated aliases in use"
+    keyboard: "n/a — on-demand whole-novel run from the panel/toolbar; results displayed after completion"
+    tests:
+      - packages/web/components/studio/analysis/AuthorVoicePanel.test.tsx
+      - packages/web/components/studio/analysis/__tests__/AuthorVoiceTrigger.test.tsx
+      - packages/web/lib/hooks/__tests__/useAuthorVoice.test.tsx
+      - packages/web/lib/api/author-voice-stream.test.ts
+      - packages/web/lib/hooks/__tests__/useAIOperation/execution.test.ts
+    aufg_id: n/a
+    exclude_entry: none
+    status: compliant
+
   # ------------------------------------------------------------------
   # Chat & Extraction
   # ------------------------------------------------------------------

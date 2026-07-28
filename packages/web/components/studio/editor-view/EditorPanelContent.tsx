@@ -3,20 +3,12 @@
 import type { Editor } from "@tiptap/react";
 import type { EditorRightPanelId } from "@/lib/stores/editorRightPanelState";
 import type { Chapter, ChapterSummary, VolumeStats } from "@/types";
-import { BetaReaderPanel } from "../analysis/BetaReaderPanel";
-import { CharacterVoicePanel } from "../analysis/CharacterVoicePanel";
-import { ConsistencyPanel } from "../analysis/ConsistencyPanel";
-import { CoreferencePanel } from "../analysis/CoreferencePanel";
-import { POVPanel } from "../analysis/POVPanel";
-import { ReadabilityPanel } from "../analysis/ReadabilityPanel";
-import { SentimentPanel } from "../analysis/SentimentPanel";
-import { VoiceCheckPanel } from "../analysis/VoiceCheckPanel";
-import { VoiceDriftPanel } from "../analysis/VoiceDriftPanel";
 import { GenerationPanel } from "../editor/GenerationPanel";
 import { MetadataSidebar } from "../editor/MetadataSidebar";
 import { SessionPanel } from "../editor/SessionPanel";
 import { WikiChapterSummaryPanel } from "../kb/WikiChapterSummaryPanel";
 import { DialogueCoachPanelSlot } from "./DialogueCoachPanelSlot";
+import { EditorAnalysisPanels } from "./EditorAnalysisPanels";
 
 export interface EditorPanelContentProps {
   activePanel: EditorRightPanelId;
@@ -49,8 +41,9 @@ export interface EditorPanelContentProps {
  *
  * Extracted from {@link EditorRightPanelSlot} so the slot stays a thin
  * accessibility/ownership shell (Escape handling, shell live region,
- * responsive frame) while this module owns the exhaustive panel switch.
- * Keeps both files under the RULE-04 200-line component limit.
+ * responsive frame) while this module owns the panel switch. Analysis panels
+ * are further delegated to {@link EditorAnalysisPanels} (RULE-04). Keeps all
+ * three files under the RULE-04 200-line component limit.
  */
 export function EditorPanelContent({
   activePanel,
@@ -113,52 +106,6 @@ export function EditorPanelContent({
           </div>
         </div>
       );
-    case "beta_reader":
-      return (
-        <BetaReaderPanel
-          novelId={novelId}
-          chapterIds={[activeChapterId]}
-          onClose={() => closePanel("beta_reader")}
-        />
-      );
-    case "readability":
-      return (
-        <ReadabilityPanel
-          novelId={novelId}
-          chapterIds={[activeChapterId]}
-          onClose={() => closePanel("readability")}
-        />
-      );
-    case "pov":
-      return (
-        <POVPanel
-          novelId={novelId}
-          chapterIds={[activeChapterId]}
-          onClose={() => closePanel("pov")}
-        />
-      );
-    case "coreference":
-      return (
-        <CoreferencePanel
-          novelId={novelId}
-          chapterIds={[activeChapterId]}
-          onClose={() => closePanel("coreference")}
-        />
-      );
-    case "character_voice":
-      return (
-        <CharacterVoicePanel
-          novelId={novelId}
-          chapterIds={[activeChapterId]}
-          onClose={() => closePanel("character_voice")}
-        />
-      );
-    case "voice_check":
-      return (
-        <VoiceCheckPanel chapterId={activeChapterId} onClose={() => closePanel("voice_check")} />
-      );
-    case "voice_drift":
-      return <VoiceDriftPanel novelId={novelId} onClose={() => closePanel("voice_drift")} />;
     case "dialogue_coach":
       // The coach needs the editor + its live selection. Render through a
       // scoped slot so the selection subscription re-renders only this side
@@ -170,20 +117,25 @@ export function EditorPanelContent({
           onClose={() => closePanel("dialogue_coach")}
         />
       );
+    case "beta_reader":
+    case "readability":
+    case "pov":
+    case "coreference":
+    case "character_voice":
+    case "voice_check":
+    case "voice_drift":
+    case "author_voice":
     case "sentiment":
-      return (
-        <SentimentPanel
-          novelId={novelId}
-          chapterIds={[activeChapterId]}
-          onClose={() => closePanel("sentiment")}
-        />
-      );
     case "consistency":
+      // Analysis panels share the same wiring shape — delegated to a dedicated
+      // switch (RULE-04). `activePanel` narrows to AnalysisPanelId here.
       return (
-        <ConsistencyPanel
+        <EditorAnalysisPanels
+          panel={activePanel}
           novelId={novelId}
-          chapterIds={[activeChapterId]}
-          onClose={() => closePanel("consistency")}
+          activeChapterId={activeChapterId}
+          chapters={chapters}
+          closePanel={closePanel}
         />
       );
     default: {
