@@ -23,6 +23,7 @@ describe("editor right panel state", () => {
       "voice_check",
       "voice_drift",
       "author_voice",
+      "author_voice_drift",
       "dialogue_coach",
       "sentiment",
       "consistency",
@@ -57,6 +58,7 @@ describe("editor right panel state", () => {
     expect(isEditorRightPanelId("dialogue_coach")).toBe(true);
     expect(isEditorRightPanelId("voice_drift")).toBe(true);
     expect(isEditorRightPanelId("author_voice")).toBe(true);
+    expect(isEditorRightPanelId("author_voice_drift")).toBe(true);
     expect(isEditorRightPanelId("extraction")).toBe(false);
   });
 });

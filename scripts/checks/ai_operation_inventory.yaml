@@ -478,6 +478,32 @@ operations:
     exclude_entry: none
     status: compliant
 
+  - operation_id: analysis.author_voice_drift
+    feature: Author Voice Drift (ANAL-009 Phase 2B)
+    entry_points:
+      - packages/web/lib/hooks/useAuthorVoiceDrift.ts
+      - packages/web/lib/api/author-voice-drift-stream.ts (streamAuthorVoiceDrift)
+    transport: sse
+    lifecycle_owner: useAIOperation
+    loading_feedback: "isLoading/isStreaming via useAuthorVoiceDrift.ts; connection-loss watchdog 15s"
+    cancel_ui: "cancel() via hook (no manual AbortController — ADR-043)"
+    signal_propagation: "execute: (signal) bridges streamAuthorVoiceDrift SSE to useAIOperation's Promise contract; abort → AbortError rejection"
+    error_mapping: mapSSEError (ai-error-mapping.ts)
+    partial_output: "Single narrator result OR single graceful no-profile skip captured across the run and surfaced once on completion (author voice is ONE narrator per novel — ADR-074); drift analysis is read-only, nothing is persisted (ADR-073 D5)"
+    contract_parity: "RULE-17 — request body mirrors Python AuthorVoiceDriftRequest (chapter_ids?); AuthorVoiceDriftResult (novel_id, trend, jumps, overall_match_score, overall_band, drift) field names mirror the backend schemas; shared TrendPoint / JumpPoint / VoiceDriftResult reused from voice-drift-stream (locked Core shapes); SSE event union mirrors AuthorVoiceDriftEvent (result | no_profile | progress | done | error)"
+    ai_action_i18n: analysis.authorVoiceDrift.* (DE/EN/FR) + analysis.retry / .refresh
+    deprecated_key_usage: "No deprecated aliases in use"
+    keyboard: "n/a — on-demand whole-novel run from the panel/toolbar; results displayed after completion"
+    tests:
+      - packages/web/components/studio/analysis/AuthorVoiceDriftPanel.test.tsx
+      - packages/web/components/studio/analysis/__tests__/AuthorVoiceDriftTrigger.test.tsx
+      - packages/web/lib/hooks/__tests__/useAuthorVoiceDrift.test.tsx
+      - packages/web/lib/api/author-voice-drift-stream.test.ts
+      - packages/web/lib/hooks/__tests__/useAIOperation/execution.test.ts
+    aufg_id: n/a
+    exclude_entry: none
+    status: compliant
+
   # ------------------------------------------------------------------
   # Chat & Extraction
   # ------------------------------------------------------------------

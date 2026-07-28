@@ -395,5 +395,43 @@
     "hideNotes": "Kapitel-Notizen ausblenden",
     "perChapterNotes": "Notizen pro Kapitel",
     "suggestedAttention": "Diese Kapitel prüfen"
+  },
+  "authorVoiceDrift": {
+    "trigger": "Autor-Drift",
+    "triggerTooltip": "Verfolgen Sie, wie Ihre Erzählstimme über die Kapitel driftet",
+    "title": "Autor-Stimm-Drift",
+    "description": "Sehen Sie, wie Ihre Erzählstimme über Ihr Buch driftet \u2014 beabsichtigte Entwicklung, Kontextwechsel oder Inkonsistenz.",
+    "aiDisclaimer": "Hybride Analyse \u00b7 Deterministischer Trend + KI-Klassifizierung",
+    "idleTitle": "Autor-Stimm-Drift",
+    "idleSubtext": "Analysieren Sie, wie sich Ihre Erzählstimme über den ganzen Roman verändert, gegen Ihr gespeichertes Autor-Stimm-Profil.",
+    "analyze": "Analysieren",
+    "analyzing": "Autor-Stimm-Drift wird analysiert...",
+    "analyzingSubtext": "Ihre Erzählstimme wird kapitelweise verfolgt",
+    "analysisFailed": "Analyse der Autor-Stimm-Drift fehlgeschlagen",
+    "retry": "Erneut versuchen",
+    "narrator": "Erzählerstimme",
+    "chaptersAnalyzed": "{count} Kapitel analysiert",
+    "matchToProfile": "Übereinstimmung mit Profil",
+    "trendLabel": "Drift-Trend",
+    "trendAria": "Erzähler-Drift-Trend",
+    "classification": {
+      "stable": "Stabil",
+      "mildVariation": "Leichte Variation",
+      "evolution": "Entwicklung",
+      "context": "Kontext",
+      "inconsistency": "Inkonsistent"
+    },
+    "agentReasoning": "KI-Begründung",
+    "viewNotes": "Kapitel-Notizen anzeigen",
+    "hideNotes": "Kapitel-Notizen ausblenden",
+    "perChapterNotes": "Notizen pro Kapitel",
+    "suggestedAttention": "Diese Kapitel prüfen",
+    "noProfileTitle": "Kein Autor-Stimm-Profil",
+    "noProfileReason": {
+      "no_stored_profile": "Kein gespeichertes Autor-Stimm-Profil",
+      "no_profile_metrics": "Keine Stimm-Metriken im Profil",
+      "no_chapters_with_prose": "Kein Text in den ausgewählten Kapiteln"
+    },
+    "noProfileHint": "Führen Sie zuerst eine Autor-Stimm-Analyse durch, um ein Profil zu erstellen, und verfolgen Sie dann, wie Ihre Erzählstimme driftet."
   }
 }

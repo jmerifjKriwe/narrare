@@ -395,5 +395,43 @@
     "hideNotes": "Hide per-chapter notes",
     "perChapterNotes": "Per-chapter notes",
     "suggestedAttention": "Review these chapters"
+  },
+  "authorVoiceDrift": {
+    "trigger": "Author Drift",
+    "triggerTooltip": "Track how your narrative voice drifts across chapters",
+    "title": "Author Voice Drift",
+    "description": "See how your narrative voice drifts across your book \u2014 intentional evolution, context shifts, or inconsistency.",
+    "aiDisclaimer": "Hybrid analysis \u00b7 Deterministic trend + AI classification",
+    "idleTitle": "Author Voice Drift",
+    "idleSubtext": "Analyze how your narrative voice changes across the whole novel, against your stored author-voice profile.",
+    "analyze": "Analyze",
+    "analyzing": "Analyzing author voice drift...",
+    "analyzingSubtext": "Tracking your narrative voice across chapters",
+    "analysisFailed": "Failed to analyze author voice drift",
+    "retry": "Retry",
+    "narrator": "Narrator voice",
+    "chaptersAnalyzed": "{count} chapters analyzed",
+    "matchToProfile": "match to profile",
+    "trendLabel": "Drift trend",
+    "trendAria": "Narrator drift trend",
+    "classification": {
+      "stable": "Stable",
+      "mildVariation": "Mild variation",
+      "evolution": "Evolution",
+      "context": "Context",
+      "inconsistency": "Inconsistent"
+    },
+    "agentReasoning": "Agent reasoning",
+    "viewNotes": "View per-chapter notes",
+    "hideNotes": "Hide per-chapter notes",
+    "perChapterNotes": "Per-chapter notes",
+    "suggestedAttention": "Review these chapters",
+    "noProfileTitle": "No author-voice profile",
+    "noProfileReason": {
+      "no_stored_profile": "No stored author-voice profile",
+      "no_profile_metrics": "No voice metrics on the profile",
+      "no_chapters_with_prose": "No prose in the selected chapters"
+    },
+    "noProfileHint": "Run Author Voice analysis first to build a profile, then track how your narrative voice drifts."
   }
 }

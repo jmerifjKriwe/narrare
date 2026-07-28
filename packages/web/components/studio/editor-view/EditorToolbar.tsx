@@ -6,6 +6,7 @@ import type {
   EditorRightPanelId,
   EditorRightPanelRequestSource,
 } from "@/lib/stores/editorRightPanelState";
+import { AuthorVoiceDriftTrigger } from "../analysis/AuthorVoiceDriftTrigger";
 import { AuthorVoiceTrigger } from "../analysis/AuthorVoiceTrigger";
 import { BetaReaderTrigger } from "../analysis/BetaReaderTrigger";
 import { CharacterVoiceTrigger } from "../analysis/CharacterVoiceTrigger";
@@ -123,6 +124,7 @@ export function EditorToolbar({
       <VoiceCheckTrigger onClick={() => toggleRightPanel("voice_check", "toolbar")} />
       <VoiceDriftTrigger />
       <AuthorVoiceTrigger />
+      <AuthorVoiceDriftTrigger />
       <DialogueCoachTrigger />
       <ToolbarSeparator />
       <GhostTextConfig editor={editor} />

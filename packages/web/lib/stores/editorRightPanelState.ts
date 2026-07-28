@@ -10,6 +10,7 @@ export type EditorRightPanelId =
   | "voice_check"
   | "voice_drift"
   | "author_voice"
+  | "author_voice_drift"
   | "dialogue_coach"
   | "sentiment"
   | "consistency";
@@ -49,6 +50,7 @@ export const EDITOR_RIGHT_PANEL_PRIORITY = [
   "voice_check",
   "voice_drift",
   "author_voice",
+  "author_voice_drift",
   "dialogue_coach",
   "sentiment",
   "consistency",

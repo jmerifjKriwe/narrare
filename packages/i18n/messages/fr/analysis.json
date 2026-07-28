@@ -395,5 +395,43 @@
     "hideNotes": "Masquer les notes par chapitre",
     "perChapterNotes": "Notes par chapitre",
     "suggestedAttention": "Réviser ces chapitres"
+  },
+  "authorVoiceDrift": {
+    "trigger": "Dérive auteur",
+    "triggerTooltip": "Suivez comment votre voix narrative dérive à travers les chapitres",
+    "title": "Dérive de la voix d'auteur",
+    "description": "Voyez comment votre voix narrative dérive à travers votre livre \u2014 évolution intentionnelle, changements de contexte ou incohérence.",
+    "aiDisclaimer": "Analyse hybride \u00b7 Tendance déterministe + classification IA",
+    "idleTitle": "Dérive de la voix d'auteur",
+    "idleSubtext": "Analysez comment votre voix narrative change à travers tout le roman, par rapport à votre profil d'auteur stocké.",
+    "analyze": "Analyser",
+    "analyzing": "Analyse de la dérive de la voix d'auteur...",
+    "analyzingSubtext": "Suivi de votre voix narrative chapitre par chapitre",
+    "analysisFailed": "Échec de l'analyse de la dérive de la voix d'auteur",
+    "retry": "Réessayer",
+    "narrator": "Voix du narrateur",
+    "chaptersAnalyzed": "{count} chapitres analysés",
+    "matchToProfile": "correspondance au profil",
+    "trendLabel": "Tendance de dérive",
+    "trendAria": "Tendance de dérive du narrateur",
+    "classification": {
+      "stable": "Stable",
+      "mildVariation": "Légère variation",
+      "evolution": "Évolution",
+      "context": "Contexte",
+      "inconsistency": "Incohérent"
+    },
+    "agentReasoning": "Raisonnement de l'IA",
+    "viewNotes": "Voir les notes par chapitre",
+    "hideNotes": "Masquer les notes par chapitre",
+    "perChapterNotes": "Notes par chapitre",
+    "suggestedAttention": "Réviser ces chapitres",
+    "noProfileTitle": "Aucun profil de voix d'auteur",
+    "noProfileReason": {
+      "no_stored_profile": "Aucun profil de voix d'auteur stocké",
+      "no_profile_metrics": "Aucune métrique de voix sur le profil",
+      "no_chapters_with_prose": "Aucun texte dans les chapitres sélectionnés"
+    },
+    "noProfileHint": "Lancez d'abord l'analyse de voix d'auteur pour créer un profil, puis suivez comment votre voix narrative dérive."
   }
 }

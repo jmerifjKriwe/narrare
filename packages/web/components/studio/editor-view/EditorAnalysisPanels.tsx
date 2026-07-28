@@ -18,6 +18,7 @@
 
 import type { AnalysisPanelId, EditorRightPanelId } from "@/lib/stores/editorRightPanelState";
 import type { ChapterSummary } from "@/types";
+import { AuthorVoiceDriftPanel } from "../analysis/AuthorVoiceDriftPanel";
 import { AuthorVoicePanel } from "../analysis/AuthorVoicePanel";
 import { BetaReaderPanel } from "../analysis/BetaReaderPanel";
 import { CharacterVoicePanel } from "../analysis/CharacterVoicePanel";
@@ -100,6 +101,10 @@ export function EditorAnalysisPanels({
           chapters={chapters}
           onClose={() => closePanel("author_voice")}
         />
+      );
+    case "author_voice_drift":
+      return (
+        <AuthorVoiceDriftPanel novelId={novelId} onClose={() => closePanel("author_voice_drift")} />
       );
     case "sentiment":
       return (

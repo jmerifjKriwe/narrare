@@ -125,6 +125,7 @@ export function EditorPanelContent({
     case "voice_check":
     case "voice_drift":
     case "author_voice":
+    case "author_voice_drift":
     case "sentiment":
     case "consistency":
       // Analysis panels share the same wiring shape — delegated to a dedicated
