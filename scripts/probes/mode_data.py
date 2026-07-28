@@ -171,6 +171,19 @@ ALL_MODES: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "chapter_text": "Voice drift longitudinal sample text.",
         },
     ),
+    # ADR-074 / ANAL-007: author_voice is the fourth VOICE context_mode
+    # (an author-voice profiler, distinct from the character_voice profiler,
+    # the voice_check checker, and the voice_drift classifier). It shares
+    # LLMIntent.VOICE; the runtime path resolves the governed
+    # analysis/author_voice template via Mode 1 + AuthorVoiceAgent.
+    (
+        "analysis",
+        "author_voice",
+        LLMIntent.VOICE,
+        {
+            "chapter_text": "Author voice profiling sample text.",
+        },
+    ),
     (
         "analysis",
         "summarize",

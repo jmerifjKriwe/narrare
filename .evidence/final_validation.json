@@ -24,6 +24,7 @@
       "character_voice",
       "voice_check",
       "voice_drift",
+      "author_voice",
       "summarize",
       "remap",
       "consistency",

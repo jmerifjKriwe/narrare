@@ -95,6 +95,17 @@ MODE_INPUTS: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "chapter_text": "Across chapters his cadence shifted measurably.",
         },
     ),
+    # ADR-074 / ANAL-007: author_voice (author-voice profiler) shares the
+    # VOICE intent and exercises the same invocation pipeline as
+    # character_voice, voice_check, and voice_drift.
+    (
+        "analysis",
+        "author_voice",
+        LLMIntent.VOICE,
+        {
+            "chapter_text": "The author's prose favoured terse, declarative clauses.",
+        },
+    ),
     (
         "analysis",
         "summarize",
