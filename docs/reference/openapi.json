@@ -2527,6 +2527,63 @@
         }
       }
     },
+    "/api/v1/analysis/author-voice-drift/{novel_id}": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Analyze Author Voice Drift",
+        "description": "SSE stream for longitudinal author-voice drift analysis (ANAL-009 Phase 2B).\n\nCompares the narrator's per-chapter metrics (voice-generic + author-\nspecific) against the stored :class:`AuthorVoiceProfile`'s metric group,\ncomputes the per-chapter match trend + adjacent-chapter jumps, runs the\ngoverned ``author_voice_drift`` agent (1 call), and streams the single\nnarrator result. Read-only — nothing is persisted.\n\n**SSE Event Stream:**\n\n1. ``\"progress\"`` event (chapter count / status).\n2. One ``\"result\"`` event carrying the narrator's trend + jumps + overall\n   score/band + agent classification, OR a ``\"no_profile\"`` event when the\n   narrator cannot be analysed (no stored profile / missing metric blocks\n   / no chapter with prose — RULE-11 graceful).\n3. ``\"done\"`` event (``is_final=True``).\n4. ``data: [DONE]`` termination signal.\n\nOn failure, an ``\"error\"`` event (``is_final=True``) precedes the\n``[DONE]`` sentinel.",
+        "operationId": "analyze_author_voice_drift_api_v1_analysis_author_voice_drift__novel_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorVoiceDriftRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/adaptive/{project_id}/context": {
       "get": {
         "tags": [
@@ -10435,6 +10492,28 @@
         "type": "object",
         "title": "ArcPhaseResponse",
         "description": "A single phase in a character arc."
+      },
+      "AuthorVoiceDriftRequest": {
+        "properties": {
+          "chapter_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Ids",
+            "description": "Specific chapter IDs to analyse, or null/empty for all chapters."
+          }
+        },
+        "type": "object",
+        "title": "AuthorVoiceDriftRequest",
+        "description": "Request body for ``POST /analysis/author-voice-drift/{novel_id}``.\n\nThe novel id is carried by the URL path parameter (mirrors\n:class:`AuthorVoiceRequest` / :class:`VoiceDriftRequest` — novel-scoped\nendpoints). The body carries the optional chapter filter (author voice is\none narrator per novel, so there is no per-character filter):\n\nAttributes:\n    chapter_ids: Specific chapter ids to analyse (UUID strings). ``None``\n        or an empty list means \"analyse every chapter in the novel\" (the\n        service resolves the full chapter list via the novel/chapter\n        repositories). Mirrors ``AuthorVoiceRequest.chapter_ids``."
       },
       "AuthorVoiceRequest": {
         "properties": {

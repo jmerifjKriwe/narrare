@@ -28,7 +28,9 @@
     "pyproject | RULE-02b | packages/core/narrare_core/memory/mem0_client.py | mem0 custom_instructions is a third-party-library config string for mem0's internal extraction LLM, not a Narrare prompt-resolution path (RULE-02b scope boundary)."
   ],
   "frontend_file_size_violations": [],
-  "streaming_compliance_gaps": [],
+  "streaming_compliance_gaps": [
+    "analysis/router_author_voice_drift has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/analysis/router_author_voice_drift.py"
+  ],
   "python_file_size_violations": [],
   "empty_kb_vars": [
     "apps/api/narrare/analysis/character_voice_prompt.py | kb_characters",
@@ -43,6 +45,10 @@
     "apps/api/narrare/analysis/author_voice_prompt.py | kb_characters",
     "apps/api/narrare/analysis/author_voice_prompt.py | kb_factions",
     "apps/api/narrare/analysis/author_voice_prompt.py | kb_locations",
-    "apps/api/narrare/analysis/author_voice_prompt.py | kb_relationships"
+    "apps/api/narrare/analysis/author_voice_prompt.py | kb_relationships",
+    "apps/api/narrare/analysis/author_voice_drift_prompt.py | kb_characters",
+    "apps/api/narrare/analysis/author_voice_drift_prompt.py | kb_factions",
+    "apps/api/narrare/analysis/author_voice_drift_prompt.py | kb_locations",
+    "apps/api/narrare/analysis/author_voice_drift_prompt.py | kb_relationships"
   ]
 }

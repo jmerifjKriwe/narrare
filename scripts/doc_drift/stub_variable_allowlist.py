@@ -28,7 +28,7 @@ Status: every remaining entry is ``RULE-11`` (legitimately optional). All
 ``kb_locations``/``kb_factions`` — were wired through the canonical
 ``KBContextProvider`` in W4a). With §7 stub-gaps at 0 the detector
 (:mod:`doc_drift.stub_variable_checks`) is now **CI-blocking** (critical):
-any *new* unallowlisted stub fails CI, while the 10 RULE-11 entries stay
+any *new* unallowlisted stub fails CI, while the 18 RULE-11 entries stay
 absorbed (no finding).
 
 The detector imports :data:`STUB_ALLOWLIST` and :func:`allowlist_pairs` from
@@ -123,6 +123,37 @@ STUB_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
         "apps/api/narrare/analysis/author_voice_prompt.py",
         "kb_relationships",
         "RULE-11: optional KB-context var (see author_voice_prompt.py comment). "
+        "Character relationships are charakterprägend for CHARACTER voice but "
+        "not for the NARRATOR's voice (the author-voice difference).",
+    ),
+    # ── analysis/author_voice_drift_prompt.py — RULE-11 optional KB-context
+    #    vars ── Author-voice DRIFT profiles the NARRATOR (prose-level), not
+    #    individual characters — character-specific KB context is not relevant
+    #    (mirrors author_voice_prompt.py / resolve_author_voice_prompt). The
+    #    vars are declared explicitly empty so the template renders rather than
+    #    crash the variable engine (per in-code comment).
+    (
+        "apps/api/narrare/analysis/author_voice_drift_prompt.py",
+        "kb_characters",
+        "RULE-11: optional KB-context var declared explicitly so the "
+        "template renders empty rather than crash the variable engine "
+        "(per in-code comment). Author voice drift profiles the narrator, "
+        "not characters — character KB context is not relevant here.",
+    ),
+    (
+        "apps/api/narrare/analysis/author_voice_drift_prompt.py",
+        "kb_locations",
+        "RULE-11: optional KB-context var (see author_voice_drift_prompt.py comment).",
+    ),
+    (
+        "apps/api/narrare/analysis/author_voice_drift_prompt.py",
+        "kb_factions",
+        "RULE-11: optional KB-context var (see author_voice_drift_prompt.py comment).",
+    ),
+    (
+        "apps/api/narrare/analysis/author_voice_drift_prompt.py",
+        "kb_relationships",
+        "RULE-11: optional KB-context var (see author_voice_drift_prompt.py comment). "
         "Character relationships are charakterprägend for CHARACTER voice but "
         "not for the NARRATOR's voice (the author-voice difference).",
     ),
