@@ -1,7 +1,7 @@
 ---
 id: ANAL-007
 title: "Author Voice Profiling"
-status: planned
+status: stable
 area: analysis
 mvp: false
 
@@ -800,3 +800,13 @@ class AuthorVoiceServiceProtocol(Protocol):
   `AuthorVoiceConsumer` parallels `VoiceProfileConsumer`. Phasing documented
   (Phase 2A; Phase 2B drift builds on it). Status remains `planned`
   (implementation is the next cycle, pending user approval of this spec).
+- `2026-07-26` — **Implemented across all layers + runtime-adopted (`author_voice`
+  PASS).** Commits `c4c29867` → `ceab228c`. Phase 2A complete. Storage contract
+  (ADR-074) realised: `ProjectSettings.author_voice` JSONB + Alembic migration +
+  `AuthorVoiceRepository`; voice-generic type extraction with backward-compat
+  re-exports; `AuthorMetricsAnalyzer` + `VoiceMetricsAnalyzer.analyze_text()`;
+  `AuthorVoiceAgent`; fourth VOICE mode `author_voice` + governed EN template;
+  `{{author_voice}}` generation variable + `AuthorVoiceConsumer` (descriptive-only);
+  Backend `AuthorVoiceService` + SSE `POST /api/v1/analysis/author-voice/{novel_id}`;
+  Frontend `AuthorVoicePanel` + `useAuthorVoice` + i18n. ADR-074 → ✅ Implemented;
+  ANAL-007 → `stable`. Phase 2B (Author Voice Drift) remains future work.

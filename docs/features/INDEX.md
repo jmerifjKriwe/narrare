@@ -111,7 +111,7 @@
 | [ANAL-004](analysis/ANAL-004-pov.md) | POV Analysis | ✅ | ❌ |
 | [ANAL-005](analysis/ANAL-005-coreference.md) | Coreference Analysis | ✅ | ❌ |
 | [ANAL-006](analysis/ANAL-006-sensitivity.md) | Sensitivity Review | 📋 | ❌ |
-| [ANAL-007](analysis/ANAL-007-voice-author.md) | Author Voice Profiling | 📋 | ❌ |
+| [ANAL-007](analysis/ANAL-007-voice-author.md) | Author Voice Profiling | ✅ | ❌ |
 | [ANAL-008](analysis/ANAL-008-voice-character.md) | Character Voice Profiling | ✅ | ❌ |
 | [ANAL-009](analysis/ANAL-009-voice-drift.md) | Voice Drift Detection | ✅ | ❌ |
 | [ANAL-010](analysis/ANAL-010-literary-suite.md) | Literary Analysis Suite | 📋 | ❌ |

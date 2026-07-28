@@ -7,6 +7,8 @@
 
 ## Last Updated
 
+Date: 2026-07-26 (ANAL-007 — Author Voice Profiling — implemented across all layers + runtime-adopted; [ADR-074](architecture/decisions/ADR-074-author-voice-storage.md) → ✅ Implemented. Novel-scoped `ProjectSettings.author_voice` JSONB (mirrors `adaptive_settings`) + Alembic migration (RULE-14) + `AuthorVoiceRepository`; voice-generic `VoiceAnalysis`/`VoiceMetrics` extracted to a voice-generic Core home + backward-compat re-exports; new prose-level `AuthorMetrics`. Hybrid pipeline (ADR-021): `VoiceMetricsAnalyzer.analyze_text()` + `AuthorMetricsAnalyzer` (deterministic) + `AuthorVoiceAgent` (one LLM call, descriptive-only — preserves ADR-055/057 boundary). Fourth VOICE mode `author_voice` + governed EN template (Mode 1). New `{{author_voice}}` generation variable (SYSTEM_VARS) + `AuthorVoiceConsumer` (descriptive-only; metrics never reach generation). Backend `AuthorVoiceService` + SSE `POST /api/v1/analysis/author-voice/{novel_id}`. Frontend `AuthorVoicePanel` + `useAuthorVoice` + i18n (en/de/fr). `author_voice` static ✅/runtime ✅/adopted ✅ (PASS); adoption_debt 5 → 1. Commit range `c4c29867`→`ceab228c`. ANAL-007 → `stable`; Phase 2A complete. Phase 2B — Author Voice Drift (ANAL-009 Phase 2) — remains future work.)
+
 Date: 2026-07-26 (ANAL-009 Phase 1 — Character Voice Drift — implemented across all layers + runtime-adopted against [ADR-073](architecture/decisions/ADR-073-voice-drift-character.md) (✅ Implemented); the **third** governed VOICE mode `voice_drift` (profile-trend signal i + adjacent-jump signal iii, both reusing `voice_metric_distances` — no duplication; new `CharacterVoiceDriftAgent` 1 call/character); novel-scoped SSE `POST /analysis/voice-drift/{novel_id}` (read-only); Frontend `VoiceDriftPanel` (Layout γ) + hook + i18n (en/de/fr). `voice_drift` static ✅/runtime ✅/adopted ✅ (PASS); adoption_debt 5 → 1; `just check` 9/9, 9759 unit + 3002 frontend tests, pyright 0; commits `a7aa3286`→`e899faae` (Core → Backend → Frontend → Platform). ANAL-009 → `stable`; Phase 2 (Author Voice) remains deferred.)
 Date: 2026-07-25 (Motion activation — activated motion (Framer Motion successor) across entire frontend: 7 variant sets, 14 modals, 6 panels, 5 lists, 4 banners, 6 crossfade points; tw-animate-css removed; 24 commits. A post-implementation review found two gaps — reduced-motion was honored in only one component, and PhaseCrossfade's AnimatePresence mode="wait" broke 51 analysis-panel tests under happy-dom — both now fixed via the global MotionProvider (`<MotionConfig reducedMotion="user">`) and the scoped motion/react mock in setupTests.ts. ConfirmDialog uses CSS keyframes as a documented exception. See item #77 and the spec's "Abweichungen / Accepted Exceptions".)
 Date: 2026-07-24 (ADR-071 CoreSettings implemented — centralised Core env-var configuration via standalone `CoreSettings(BaseSettings)` + `get_core_settings()` in `packages/core/narrare_core/settings.py`; eliminated 14 scattered `os.environ.get()` calls + API lifespan env-var bridge workaround; API Settings duplicates removed; enforced via regression test + RULE-07 architecture checker; commit `281e09e8`, 9630 tests + pyright 0 errors)
@@ -256,6 +258,35 @@ Completed in Phase 6 so far:
    Voice: storage SSOT + profiling + drift) remains deferred** to a separate future
    ADR — not claimed done.
 
+   79. ✅ **ANAL-007: Author Voice Profiling (Phase 2A)** — The AUTHOR half of the
+   voice lane, complementing ANAL-008 character-voice profiling. Implemented across
+   all layers + runtime-adopted against
+   [ADR-074](architecture/decisions/ADR-074-author-voice-storage.md) (✅
+   Implemented). **Storage (ADR-074 Option 1):** novel-scoped
+   `ProjectSettings.author_voice` JSONB column (mirrors `adaptive_settings`,
+   ADR-069 D2) via `AuthorVoiceRepository`; voice-generic `VoiceAnalysis` /
+   `VoiceMetrics` extracted to a voice-generic Core home + backward-compat
+   re-exports (ANAL-008/WRITE-010/ANAL-009-Phase-1 stay green); new prose-level
+   `AuthorMetrics` (dialogue_ratio, description_density,
+   action_introspection_ratio, metaphor_density). **Hybrid pipeline (ADR-021):**
+   `VoiceMetricsAnalyzer.analyze_text()` (prose-level reuse of `_compute_metrics`)
+   + `AuthorMetricsAnalyzer` (deterministic prose metrics) + `AuthorVoiceAgent`
+   (one LLM call, descriptive-only — preserves the ADR-055/057 descriptive/metric
+   boundary; metrics comparison-only for Phase 2B drift). **Fourth VOICE mode:**
+   `author_voice` context_mode on the routeable `LLMIntent.VOICE` + governed EN
+   template (Mode 1, ADR-054). **Generation consumer:** new `{{author_voice}}`
+   variable registered in `SYSTEM_VARS` + `AuthorVoiceConsumer` renders the
+   descriptive group into generation (metrics never reach generation);
+   `WritingContext.author_voice` field wired. **Backend:** `AuthorVoiceService`
+   (Mode-1 PromptComposer), contracts/schemas/dependencies + RULE-04 helper split,
+   SSE `POST /api/v1/analysis/author-voice/{novel_id}` (novel-scoped, under
+   `AI_ANALYSIS_LIMITER`), Alembic migration for the `author_voice` column
+   (RULE-14). **Frontend:** `AuthorVoicePanel` + `useAuthorVoice` hook
+   (`useAIOperation`, ADR-043) + SSE client + i18n (en/de/fr). `author_voice` is
+   static ✅ / runtime ✅ / adopted ✅ (PASS); adoption_debt 5 → 1. Commit range
+   `c4c29867`→`ceab228c`. ANAL-007 → `stable`. Phase 2A complete; Phase 2B (Author
+   Voice Drift, ANAL-009 Phase 2) builds on the delta-comparable `AuthorMetrics`.
+
 ## What's Next
 
 ### CR-04 Follow-up Debt (known ratcheted baseline — recorded, not concealed)
@@ -381,6 +412,8 @@ These were not marked `resolved` from audit prose, checker green, or ADR existen
 | ADR-069 | Adaptive Context + Dialogue Coach Vertical | ✅ Accepted (2026-07-24) — consolidates `PreferenceProfile` + `CharacterVoiceProfile` into `AdaptiveContext` (Core) + `AdaptiveContextEnricher`; new `LLMIntent.DIALOGUE_COACH` + `ai_assist` prompt category; ASSIST-004 pilot consumer; LEARN-002 recalibrated as Adaptivity Dashboard; `voice_metrics` stay checking-path only; `AdaptiveSettings` on `ProjectSettings` JSONB; adaptive snapshot extends `invocation_evidence`. Full vertical: Core → Backend → Frontend. |
 | ADR-070 | Evidence Project-Scoping (novel_id) | ✅ Accepted (2026-07-24) — adds nullable indexed `novel_id` to `invocation_evidence` (Alembic `0035`) + asymmetric read-only `created_at` on Core `FeatureInvocationEvidence`; threads `novel_id = context.project_id` at one boundary. Enables project-scoped evidence queries for Adaptivity Dashboard. |
 | ADR-073 | Character Voice Drift Contract & `voice_drift` Prompt Surface (ANAL-009 Phase 1) | ✅ Implemented (2026-07-26) — implemented across all layers (Core 1/2a/2b + prompt + Backend 3a/3b/3c + Frontend 4) and runtime-adopted. Adds the **third** governed mode `voice_drift` on the routeable `LLMIntent.VOICE` (+ governed EN template, Mode 1 ADR-054). Comparison model = profile-trend signal (i) + adjacent-jump detection (iii), both reusing `voice_check_scoring.voice_metric_distances` (no duplication — satisfies ADR-057 Risk #3; closes ADR-055 Risk #2). New `CharacterVoiceDriftAgent` (1 call/character, trend-classifier) + `voice_drift_scoring` (pure Core). Novel-scoped SSE `POST /analysis/voice-drift/{novel_id}` (read-only; consumes `VoiceProfileConsumer.assemble_for_checking`, no SSOT bypass per ADR-050). Frontend `VoiceDriftPanel` (Layout γ) + hook + i18n (en/de/fr). `voice_drift` static ✅ / runtime ✅ / adopted ✅ (PASS); adoption_debt 5 → 1. `just check` 9/9, 9759 unit + 3002 frontend tests, pyright 0. Commit range `a7aa3286`→`e899faae`. ANAL-009 status → `stable`. **Phase 2 (Author Voice) remains deferred** to a separate future ADR. |
+
+| ADR-074 | Author Voice Storage Contract (ANAL-007 / ANAL-009 Phase 2 enabler) | ✅ Implemented (2026-07-26) — novel-scoped `ProjectSettings.author_voice` JSONB nested sub-model mirroring `adaptive_settings` (ADR-069 D2); reuses voice-generic `VoiceAnalysis`/`VoiceMetrics` (extracted to a voice-generic Core home + backward-compat re-exports preserving ANAL-008/WRITE-010/ANAL-009-Phase-1) + adds prose-level `AuthorMetrics` (dialogue_ratio, description_density, action_introspection_ratio, metaphor_density); preserves ADR-055/057 descriptive/metric boundary (metrics never reach generation); Alembic migration (RULE-14). Storage contract + the full ANAL-007 profiling vertical + `{{author_voice}}` generation consumer + `author_voice` prompt surface implemented across all layers and runtime-adopted (`author_voice` static ✅/runtime ✅/adopted ✅; adoption_debt 5 → 1). Commit range `c4c29867`→`ceab228c`. |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
