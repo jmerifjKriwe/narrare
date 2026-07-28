@@ -75,27 +75,51 @@ requires: [INFRA-001, INFRA-002, KB-001, ANAL-008, WRITE-010]
 # ANAL-009 — Character Voice Drift Detection (Phase 1)
 
 > **Architecture authority:** [ADR-073](../../architecture/decisions/ADR-073-voice-drift-character.md)
-> (Character Voice Drift Contract & `voice_drift` Prompt Surface). The technical
-> sections below implement that ADR. **Phase 1 is implemented (2026-07-26) across
+> (Character Voice Drift Contract & `voice_drift` Prompt Surface) for Phase 1;
+> [ADR-074](../../architecture/decisions/ADR-074-author-voice-storage.md) (Author
+> Voice Storage Contract) for Phase 2. The technical sections below implement
+> ADR-073. **Phase 1 (Character Voice Drift) is implemented (2026-07-26) across
 > all layers and runtime-adopted** (`status: stable`; ADR-073 ✅ Implemented).
-> Author-voice drift is **Phase 2** — deferred, own future ADR.
+> **Phase 2 (Author Voice) is now also complete** — Phase 2A (Author Voice
+> Profiling, [ANAL-007](ANAL-007-voice-author.md)) and Phase 2B (Author Voice
+> Drift, this spec) are both implemented and runtime-adopted (2026-07-28).
+> **The voice lane is fully done.**
 
 ## Phasing (read this first)
 
-ANAL-009 is split into two phases. **This spec covers Phase 1 only.**
+ANAL-009 is split into two phases. **Both are now implemented.**
 
 | Phase | Scope | Status | Authority |
 |-------|-------|--------|-----------|
-| **Phase 1 (this spec)** | **Character** Voice Drift — longitudinal drift of one character across chapters, against their stored ANAL-008 profile. Builds on existing ANAL-008 + WRITE-010 infra. | `stable` | ADR-073 |
-| Phase 2 (deferred) | **Author** Voice — author-voice storage SSOT decision + author-voice profiling (ANAL-007) + author-voice drift. | not started | separate future ADR |
+| **Phase 1 (detailed below)** | **Character** Voice Drift — longitudinal drift of one character across chapters, against their stored ANAL-008 profile. Builds on existing ANAL-008 + WRITE-010 infra. | `stable` | ADR-073 |
+| **Phase 2A** | **Author** Voice Profiling ([ANAL-007](ANAL-007-voice-author.md)) — author-voice storage (novel-scoped `ProjectSettings.author_voice`) + `AuthorVoiceProfile` baseline + `author_voice` prompt surface. | `stable` | ADR-074 |
+| **Phase 2B** | **Author** Voice Drift — longitudinal drift of the narrator's voice across chapters, against the stored `AuthorVoiceProfile` from Phase 2A. Reuses the Phase 1 scoring primitive (extended to `author_metric_distances`) + a single narrator baseline. | `stable` | ADR-074 (+ this spec) |
 
-**Why the split?** The voice lane was built "backwards" (ANAL-008 + WRITE-010
-shipped first and are ✅ stable; ANAL-007 is deferred). Phase 1 unblocks on
-existing infrastructure and validates the longitudinal pattern. Phase 2 is
-blocked on an unresolved author-voice *storage* question (where do author-voice
-metrics live? — User-Settings? Project-Settings? a new model? `ProjectWritingProfile`
-is not yet runtime SSOT per SET-006 deferral) that deserves its own cycle. See
-ADR-073 § Phase 2 Deferral. **Phase 1 drops the ANAL-007 dependency.**
+> **Phase 2B reuse note.** Phase 2B does **not** build a second scoring engine.
+> The shared delta normalization was extracted from `voice_check_scoring` into
+> `_metric_distances.py` (DRY — one normalization, two typed facades:
+> `voice_metric_distances` for character metrics + `author_metric_distances` for
+> prose-level `AuthorMetrics`), and `voice_drift_scoring` was refactored onto
+> shared builders (`subscore_from_distances` / `drift_band_for_subscore` /
+> `jumped_metrics_from_distances`) — behaviour-preserving for Phase 1. Phase 2B
+> adds `author_voice_drift_scoring` (`compute_per_chapter_author_metrics`,
+> `trend_against_author_profile`, `detect_adjacent_author_jumps`) and an
+> `AuthorVoiceDriftAgent` (1 LLM call, reuses `VoiceDriftResult`), driven by the
+> `AuthorVoiceProfile` baseline produced by Phase 2A (ANAL-007). Commit range
+> `dd9da4ee`→`03251eb4` (Core → Backend → Frontend → Platform).
+
+**Why was it split originally?** The voice lane was built "backwards":
+ANAL-008 (character profiling) + WRITE-010 (checker) shipped first and are
+✅ stable, so Phase 1 (character drift) unblocked on existing infrastructure and
+validated the longitudinal pattern. Phase 2 was held back by an unresolved
+author-voice *storage* question (where do author-voice metrics live?) that
+[ADR-074](../../architecture/decisions/ADR-074-author-voice-storage.md) has since
+resolved (novel-scoped `ProjectSettings.author_voice` JSONB, mirroring
+`adaptive_settings`). With storage decided, Phase 2A (ANAL-007) shipped the
+profiling baseline and Phase 2B (this spec) ships the drift consumer. **The voice
+lane is now fully complete** (character profiling + character drift + author
+profiling + author drift + voice checking). See ADR-073 § Phase 2 Deferral for
+the original deferral rationale.
 
 ## What it does
 
@@ -335,8 +359,10 @@ per-chapter fan-out.
   this feature compares against (✅ stable).
 - [WRITE-010](../writing/WRITE-010-voice-checker.md) — Sibling checking consumer;
   ANAL-009 reuses its `voice_check_scoring` delta primitive (✅ stable).
-- [ANAL-007](ANAL-007-voice-author.md) — Author voice analysis (**Phase 2**;
-  deferred; separate storage decision, out of Phase 1 scope).
+- [ANAL-007](ANAL-007-voice-author.md) — Author Voice Profiling (**Phase 2A**;
+  ✅ stable; produces the `AuthorVoiceProfile` baseline that Phase 2B author
+  drift compares against; storage decided by
+  [ADR-074](../../architecture/decisions/ADR-074-author-voice-storage.md)).
 - [ANAL-010](ANAL-010-literary-suite.md) — Comprehensive comparison.
 - [ADR-073](../../architecture/decisions/ADR-073-voice-drift-character.md) —
   Phase 1 architecture authority.
@@ -379,3 +405,41 @@ per-chapter fan-out.
   bypass — verified); read-only; 1 agent call per character; silent chapters
   skipped (RULE-11). **Phase 2 (Author Voice) remains deferred** to a separate
   future ADR — not claimed done.
+- `2026-07-28` — **Phase 2B (Author Voice Drift) implemented across all layers
+  and runtime-adopted. The voice lane is now fully complete** (character
+  profiling + character drift + author profiling + author drift + voice
+  checking). Implemented against [ADR-074](../../architecture/decisions/ADR-074-author-voice-storage.md)
+  (Phase 2B reuses the ADR-074 storage + the `AuthorVoiceProfile` baseline
+  produced by Phase 2A / [ANAL-007](ANAL-007-voice-author.md)): **Core** (`dd9da4ee`)
+  — shared delta normalization extracted to `analysis/_metric_distances.py` (one
+  normalization, two typed facades: `voice_metric_distances` +
+  `author_metric_distances` — no second scoring engine, satisfies ADR-057 Risk
+  #3); `voice_drift_scoring` refactored onto shared builders
+  (`subscore_from_distances` / `drift_band_for_subscore` /
+  `jumped_metrics_from_distances`, behaviour-preserving for Phase 1); new
+  `author_voice_drift_scoring` (`compute_per_chapter_author_metrics` /
+  `trend_against_author_profile` / `detect_adjacent_author_jumps`) +
+  `AuthorVoiceDriftAgent` (1 LLM call, reuses `VoiceDriftResult`) + the **fifth**
+  governed VOICE mode `author_voice_drift` + Mode-1 EN template + manifest/registry
+  entries (74 new tests; 9986 total). **Backend** (`36d11f88`) —
+  `AuthorVoiceDriftService` (loads the stored `AuthorVoiceProfile` via
+  `AuthorVoiceRepository` → per-chapter `VoiceMetrics` + `AuthorMetrics` →
+  trend + jumps → 1 agent call → SSE) + RULE-04 helper split (service/prompt/
+  agent_runner/results/runtime_content/pipeline) + contracts (RULE-03) + schemas
+  + DI + SSE `POST /api/v1/analysis/author-voice-drift/{novel_id}` (novel-scoped,
+  under `AI_ANALYSIS_LIMITER`; events progress/result/no_profile/done/error;
+  read-only; missing profile → graceful `no_profile` event, RULE-11).
+  **Frontend** (`03cb037c`) — `AuthorVoiceDriftPanel` (singular narrator result:
+  trend card + jump markers + classification badge + agent reasoning +
+  collapsible per-chapter notes; states idle/loading/results/error/no-profile) +
+  `useAuthorVoiceDrift` hook (`useAIOperation`, ADR-043) +
+  `author-voice-drift-stream` SSE client (RULE-17 types, reuses
+  `TrendPoint`/`JumpPoint`/`VoiceDriftResult`) + component reuse
+  (`VoiceDriftSparkline`/`VoiceDriftJumpList`/`VoiceDriftBandLegend`) + i18n
+  (en/de/fr) + editor wiring + AI-Op Inventory (26 ops). **Platform** (`03251eb4`)
+  — `author_voice_drift` runtime-evidence probes; `author_voice_drift` is
+  static ✅ / runtime ✅ / adopted ✅ (PASS); adoption_debt 5 → 1 (true debt only).
+  Commit range `dd9da4ee`→`03251eb4` (Core → Backend `36d11f88` → Frontend
+  `03cb037c` → Platform `03251eb4`). The detailed Phase 1 body above is unchanged
+  (character drift); Phase 2B is the author-side mirror driven by the
+  `AuthorVoiceProfile` baseline.
