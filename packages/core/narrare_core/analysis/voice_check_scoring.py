@@ -48,6 +48,16 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import ClassVar
 
+# Re-export the per-metric delta primitives from :mod:`_metric_distances` (split
+# out so this module stays under the RULE-04 400-line limit once author drift
+# added a second typed facade). Declared in ``__all__`` below so existing
+# ``from voice_check_scoring import voice_metric_distances`` callers + tests keep
+# working — the public API of this module is unchanged.
+from narrare_core.analysis._metric_distances import (
+    author_metric_distances,
+    metric_delta_subscore,
+    voice_metric_distances,
+)
 from narrare_core.kb.schemas.character import VoiceMetrics
 
 # Match-band thresholds (ADR-057 Decision 2: green >=90, yellow 70-89, fair 50-69,
@@ -85,101 +95,6 @@ def band_for_score(score: float) -> VoiceCheckBand:
     if score >= _FAIR_THRESHOLD:
         return VoiceCheckBand.FAIR
     return VoiceCheckBand.RED
-
-
-# ---------------------------------------------------------------------------
-# Per-metric distance primitives (reusable by ANAL-009 drift -- ADR-057 Risk #3)
-# ---------------------------------------------------------------------------
-
-
-def _scalar_distance(a: float, b: float) -> float:
-    """Symmetric bounded relative difference in [0, 1].
-
-    ``d = |a - b| / (|a| + |b|)``; ``0.0`` when ``a == b`` (incl. both ``0``).
-    Bounded by the triangle inequality (``|a - b| <= |a| + |b|``).
-    """
-    if a == b:
-        return 0.0
-    return abs(a - b) / (abs(a) + abs(b))
-
-
-def _dict_distance(stored: dict[str, float], current: dict[str, float]) -> float:
-    """Mean per-key distance over the union of keys.
-
-    Shared keys use :func:`_scalar_distance` on their values; a key present on
-    only one side is a full mismatch (``1.0``). Two empty dicts are identical
-    (``0.0``).
-    """
-    keys = stored.keys() | current.keys()
-    if not keys:
-        return 0.0
-    total = 0.0
-    for key in keys:
-        if key in stored and key in current:
-            total += _scalar_distance(stored[key], current[key])
-        else:
-            total += 1.0
-    return total / len(keys)
-
-
-def voice_metric_distances(stored: VoiceMetrics, current: VoiceMetrics) -> dict[str, float]:
-    """Normalized [0, 1] distance per comparable metric (ADR-057 Decision 2).
-
-    A metric that is ``None`` on either side is skipped (RULE-11 graceful: nothing
-    to compare, never a crash). Dict metrics are skipped unless both sides provide
-    a dict; their value is the mean per-key distance over the key union.
-
-    Args:
-        stored: The character's stored (profiled) metrics.
-        current: The current-chapter metrics (from ``VoiceMetricsAnalyzer``).
-
-    Returns:
-        Mapping from metric name to its [0, 1] distance. Only metrics present on
-        both sides appear.
-    """
-    distances: dict[str, float] = {}
-    # Scalar metrics -- explicit access keeps pyright strict (no getattr -> Any).
-    scalar_pairs: list[tuple[str, float | None, float | None]] = [
-        ("avg_sentence_length", stored.avg_sentence_length, current.avg_sentence_length),
-        ("sentence_length_std", stored.sentence_length_std, current.sentence_length_std),
-        ("type_token_ratio", stored.type_token_ratio, current.type_token_ratio),
-        ("avg_syllables_per_word", stored.avg_syllables_per_word, current.avg_syllables_per_word),
-        ("contraction_rate", stored.contraction_rate, current.contraction_rate),
-    ]
-    for name, s, c in scalar_pairs:
-        if s is None or c is None:
-            continue
-        distances[name] = _scalar_distance(s, c)
-    # Dict metrics.
-    dict_pairs: list[tuple[str, dict[str, float] | None, dict[str, float] | None]] = [
-        ("verbal_tic_frequency", stored.verbal_tic_frequency, current.verbal_tic_frequency),
-        ("punctuation_profile", stored.punctuation_profile, current.punctuation_profile),
-    ]
-    for name, s, c in dict_pairs:
-        if s is None or c is None:
-            continue
-        distances[name] = _dict_distance(s, c)
-    return distances
-
-
-def metric_delta_subscore(stored: VoiceMetrics, current: VoiceMetrics) -> float | None:
-    """Aggregate deterministic metric-delta sub-score in [0, 100] (100 == identical).
-
-    Returns ``None`` when no metric is comparable on both sides (RULE-11 graceful);
-    the caller then falls back to the qualitative signal alone.
-
-    Args:
-        stored: The character's stored (profiled) metrics.
-        current: The current-chapter metrics.
-
-    Returns:
-        Sub-score in [0, 100], or ``None`` if nothing is comparable.
-    """
-    distances = voice_metric_distances(stored, current)
-    if not distances:
-        return None
-    mean_distance = sum(distances.values()) / len(distances)
-    return (1.0 - mean_distance) * 100.0
 
 
 # ---------------------------------------------------------------------------
@@ -357,3 +272,19 @@ class VoiceCheckScorer:
             has_profile=True,
             n_comparable_metrics=len(distances),
         )
+
+
+# Declares the re-exported primitives (from :mod:`_metric_distances`) as part of
+# this module's public API so static checkers recognise the re-export and so
+# existing ``from voice_check_scoring import voice_metric_distances`` callers
+# keep working after the RULE-04 split.
+__all__ = [
+    "VoiceCheckBand",
+    "VoiceCheckScore",
+    "VoiceCheckScorer",
+    "author_metric_distances",
+    "band_for_score",
+    "blend_scores",
+    "metric_delta_subscore",
+    "voice_metric_distances",
+]

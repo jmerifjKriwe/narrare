@@ -4,6 +4,8 @@ Siehe ADR-015 für die vollständige Modul-Architektur.
 """
 
 from narrare_core.agents.author_voice_agent import AuthorVoiceAgent
+from narrare_core.agents.author_voice_drift_agent import AuthorVoiceDriftAgent
+from narrare_core.agents.author_voice_drift_types import AuthorVoiceDriftDeps
 from narrare_core.agents.author_voice_types import (
     AuthorVoiceDeps,
     AuthorVoiceOutput,
@@ -195,6 +197,8 @@ __all__ = [
     "ArcPhase",
     "AuthorVoiceAgent",
     "AuthorVoiceDeps",
+    "AuthorVoiceDriftAgent",
+    "AuthorVoiceDriftDeps",
     "AuthorVoiceOutput",
     "BetaReaderAgent",
     "BetaReaderDeps",

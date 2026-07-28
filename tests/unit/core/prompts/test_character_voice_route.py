@@ -59,11 +59,20 @@ class TestVoiceIntentRouteability:
         # second governed context_mode, voice_check (a flag+score checker for
         # WRITE-010); ADR-073 D3 added a third, voice_drift (a longitudinal
         # trend classifier for ANAL-009 Phase 1); ADR-074 + ANAL-007 added a
-        # fourth, author_voice (an author-voice profiler for narrator prose).
+        # fourth, author_voice (an author-voice profiler for narrator prose);
+        # ANAL-009 Phase 2B added a fifth, author_voice_drift (a longitudinal
+        # narrator trend classifier).
         # See test_voice_check_route.py / test_voice_drift_route.py /
-        # test_author_voice_route.py for the second/third/fourth mode coverage.
+        # test_author_voice_route.py / test_author_voice_drift_route.py for the
+        # other modes' coverage.
         assert config.allowed_context_modes == frozenset(
-            {"character_voice", "voice_check", "voice_drift", "author_voice"}
+            {
+                "character_voice",
+                "voice_check",
+                "voice_drift",
+                "author_voice",
+                "author_voice_drift",
+            }
         )
 
 

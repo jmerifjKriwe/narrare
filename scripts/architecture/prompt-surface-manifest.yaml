@@ -375,14 +375,18 @@ routes:
   # classifies the per-chapter drift of a single character across the book
   # (distinct intent, own governed template). author_voice (ANAL-007, ADR-074)
   # is the fourth — an *author-voice profiler* for the narrator's prose (distinct
+  # intent, own governed template). author_voice_drift (ANAL-009 Phase 2B) is
+  # the fifth — a longitudinal *narrator trend classifier* that classifies the
+  # per-chapter drift of the narrator's prose voice across the book (distinct
   # intent, own governed template). Mirrors how PLAN serves several planning
   # context_modes. The analysed dialogue + deterministic voice metrics
   # (profiler) / chapter dialogue + stored profile + metric-delta (checker) /
   # per-chapter trend + jump points + stored descriptive profile (drift) /
-  # chapter prose + precomputed metrics (author_voice) are category-3 runtime
-  # data supplied as the run prompt (user channel), exactly as
-  # coreference/readability receive the analysed passage as runtime input —
-  # hence required_variables is [] and xml_required is [].
+  # chapter prose + precomputed metrics (author_voice) / per-chapter narrator
+  # trend + jump points + stored descriptive author profile (author_voice_drift)
+  # are category-3 runtime data supplied as the run prompt (user channel),
+  # exactly as coreference/readability receive the analysed passage as runtime
+  # input — hence required_variables is [] and xml_required is [].
 
   - intent: VOICE
     routeable: true
@@ -435,6 +439,20 @@ routes:
       # precomputed metrics are runtime user-channel data (category-3).
       - mode: author_voice
         template: packages/core/narrare_core/prompts/_bundled/analysis/en/author_voice/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: [project_title, genre, writing_language, kb_characters, kb_locations, kb_factions, kb_relationships, user_preferences, avoidance_patterns]
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
+      # ANAL-009 Phase 2B: author_voice_drift is a longitudinal NARRATOR TREND
+      # CLASSIFIER — distinct intent from the character_voice profiler
+      # (per-character), the voice_check checker (snapshot), the voice_drift
+      # classifier (per-character longitudinal), and the author_voice profiler
+      # (snapshot narrator). Same variable surface; the per-chapter narrator
+      # trend (voice + author deltas merged), jump points, and stored
+      # descriptive author profile are runtime user-channel data (category-3).
+      - mode: author_voice_drift
+        template: packages/core/narrare_core/prompts/_bundled/analysis/en/author_voice_drift/system.md
         content_type: customizable_feature_prompt
         required_variables: []
         optional_variables: [project_title, genre, writing_language, kb_characters, kb_locations, kb_factions, kb_relationships, user_preferences, avoidance_patterns]

@@ -120,6 +120,14 @@ prompt_path_compliance:
   # LLMIntent.VOICE + context_mode "author_voice" → AuthorVoiceAgent via
   # Mode-1 resolution + the SSE service.
   analysis/author_voice: true
+  # ANAL-009 Phase 2B: author_voice_drift prompt surface is governed Mode 1
+  # (a longitudinal narrator trend classifier, distinct from the character_voice
+  # profiler, the voice_check checker, the voice_drift classifier, and the
+  # author_voice profiler). This Core registration locks the prompt surface so
+  # the Backend service cannot accidentally resolve via an inline fallback.
+  # Runtime path: LLMIntent.VOICE + context_mode "author_voice_drift" →
+  # AuthorVoiceDriftAgent via Mode-1 resolution + the SSE service.
+  analysis/author_voice_drift: true
   analysis/readability: true
   analysis/pov: true
   analysis/coreference: true
@@ -285,6 +293,17 @@ features:
       # Runtime path: LLMIntent.VOICE + context_mode "author_voice" →
       # AuthorVoiceAgent via Mode-1 resolution + the SSE service.
       author_voice:
+        requires_runtime_evidence: true
+      # ANAL-009 Phase 2B: author_voice_drift is a longitudinal narrator trend
+      # classifier — distinct intent from the character_voice profiler
+      # (per-character), the voice_check checker (snapshot), the voice_drift
+      # classifier (per-character longitudinal), and the author_voice profiler
+      # (snapshot narrator). Core Layer ships the governed prompt surface + the
+      # Core author-voice-drift scoring + the AuthorVoiceDriftAgent. Runtime
+      # evidence lands in the Backend service SSE integration test. Runtime
+      # path: LLMIntent.VOICE + context_mode "author_voice_drift" →
+      # AuthorVoiceDriftAgent via Mode-1 resolution + the SSE service.
+      author_voice_drift:
         requires_runtime_evidence: true
       readability:
         requires_runtime_evidence: true

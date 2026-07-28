@@ -175,4 +175,6 @@ class TestRealRegistry:
         # (ADR-054), and ai_assist/dialogue_coach (ADR-069).
         # ADR-073 D3 added analysis/voice_drift (ANAL-009 Phase 1) → 40 modes.
         # ADR-074 / ANAL-007 added analysis/author_voice (the 4th VOICE mode) → 41 modes.
-        assert mode_count == 41, f"expected 41 feature modes, got {mode_count}"
+        # ANAL-009 Phase 2B added analysis/author_voice_drift (the 5th VOICE
+        # mode, a narrator trend classifier) → 42 modes.
+        assert mode_count == 42, f"expected 42 feature modes, got {mode_count}"

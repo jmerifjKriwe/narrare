@@ -75,14 +75,22 @@ class TestAuthorVoiceRouteability:
 
     def test_voice_route_is_four_mode(self) -> None:
         """character_voice (profiler), voice_check (checker), voice_drift
-        (longitudinal trend classifier), and author_voice (author-voice
-        profiler) are all allowed VOICE context_modes.
+        (longitudinal trend classifier), author_voice (author-voice profiler),
+        and author_voice_drift (narrator trend classifier) are all allowed VOICE
+        context_modes.
 
-        ADR-074 + ANAL-007 added author_voice as the fourth governed mode.
+        ADR-074 + ANAL-007 added author_voice as the fourth governed mode;
+        ANAL-009 Phase 2B added author_voice_drift as the fifth.
         """
         config = ROUTE_CONFIGS[LLMIntent.VOICE]
         assert config.allowed_context_modes == frozenset(
-            {"character_voice", "voice_check", "voice_drift", "author_voice"}
+            {
+                "character_voice",
+                "voice_check",
+                "voice_drift",
+                "author_voice",
+                "author_voice_drift",
+            }
         )
 
     def test_default_mode_still_character_voice(self) -> None:

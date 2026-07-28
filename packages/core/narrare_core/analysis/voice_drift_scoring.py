@@ -227,28 +227,98 @@ def trend_against_profile(
     trend: list[TrendPoint] = []
     for pcm in per_chapter:
         distances = voice_metric_distances(profile_metrics, pcm.metrics)
-        if distances:
-            mean_distance = sum(distances.values()) / len(distances)
-            subscore = (1.0 - mean_distance) * 100.0
-        else:
-            # No comparable metric — RULE-11 graceful: surface a 0.0 score so
-            # the trend shape is preserved, but flag it as "major" so the agent
-            # knows it is unscorable (mirrors VoiceCheckScorer graceful None).
-            subscore = 0.0
-        # Clamp to [0, 100] defensively (mean_distance is in [0, 1] so the
-        # arithmetic cannot escape, but the clamp keeps the Field invariant
-        # honest under float rounding at the boundaries).
-        subscore = max(0.0, min(100.0, subscore))
-        band_label = _VOICE_CHECK_BAND_TO_DRIFT_LABEL[band_for_score(subscore)]
+        subscore = subscore_from_distances(distances)
         trend.append(
             TrendPoint(
                 chapter_id=pcm.chapter_id,
                 match_subscore=subscore,
                 per_metric_deltas=dict(distances),
-                band=band_label,
+                band=drift_band_for_subscore(subscore),
             )
         )
     return trend
+
+
+# ---------------------------------------------------------------------------
+# Shared trend/jump builders (ADR-073 D2 — one aggregation, two consumers)
+# ---------------------------------------------------------------------------
+#
+# Extracted so ANAL-009 Phase 2B author drift
+# (:mod:`narrare_core.analysis.author_voice_drift_scoring`) reuses the SAME
+# subscore / band / jump aggregation as character drift — only the distance
+# *source* differs (voice deltas vs merged voice+author deltas). This is the
+# ADR-057 Risk #3 / ADR-073 D2 no-duplication guarantee applied to the
+# orchestration layer (the delta normalization itself is shared via
+# ``voice_metric_distances`` / ``author_metric_distances``).
+
+
+def subscore_from_distances(distances: Mapping[str, float]) -> float:
+    """[0, 100] match sub-score from a per-metric [0, 1] distance dict.
+
+    The mean-distance rule shared by character + author drift:
+    ``(1 - mean(distances)) * 100`` (100 = identical). An empty distance dict
+    (no metric comparable on both sides) yields ``0.0`` — RULE-11 graceful
+    (the trend shape is preserved, the point flagged 'unscorable' via band
+    'major').
+
+    Clamped to ``[0.0, 100.0]`` defensively (the mean of [0, 1] values cannot
+    escape, but the clamp keeps the :class:`TrendPoint` Field invariant honest
+    under float rounding at the boundaries).
+
+    Args:
+        distances: Per-metric normalized ``[0, 1]`` distances (from
+            :func:`voice_metric_distances` and/or
+            :func:`author_metric_distances`).
+
+    Returns:
+        Match sub-score in ``[0.0, 100.0]``.
+    """
+    if distances:
+        mean_distance = sum(distances.values()) / len(distances)
+        subscore = (1.0 - mean_distance) * 100.0
+    else:
+        subscore = 0.0
+    return max(0.0, min(100.0, subscore))
+
+
+def drift_band_for_subscore(subscore: float) -> str:
+    """Drift-facing band label (``stable|minor|moderate|major``) for a sub-score.
+
+    Wraps :func:`band_for_score` (the WRITE-010 thresholds) via
+    :data:`_VOICE_CHECK_BAND_TO_DRIFT_LABEL` so character + author drift share
+    IDENTICAL band boundaries with WRITE-010 (ADR-073 Decision 4).
+    """
+    return _VOICE_CHECK_BAND_TO_DRIFT_LABEL[band_for_score(subscore)]
+
+
+def jumped_metrics_from_distances(
+    distances: Mapping[str, float],
+    *,
+    jump_threshold: float,
+) -> tuple[list[str], float] | None:
+    """Metrics that jumped between two points + their mean magnitude.
+
+    Returns ``(sorted jumped metric names, mean [0, 1] magnitude)`` when at
+    least one metric's distance exceeds *jump_threshold*; ``None`` otherwise
+    (no jump — the caller emits no :class:`JumpPoint`). Shared by character +
+    author adjacent-chapter jump detection (ADR-073 D2 — one jump builder).
+
+    Args:
+        distances: Per-metric normalized ``[0, 1]`` distances between the two
+            chapters.
+        jump_threshold: A metric is flagged as "jumped" when its distance
+            exceeds this value (RULE-18 eval-tunable via ADR-032).
+
+    Returns:
+        ``(jumped_metrics, magnitude)`` or ``None`` when nothing jumped.
+    """
+    jumped = sorted(name for name, d in distances.items() if d > jump_threshold)
+    if not jumped:
+        return None
+    magnitude = sum(distances[name] for name in jumped) / len(jumped)
+    # Defensive clamp — distances are each in [0, 1] so the mean is too, but
+    # the clamp keeps the JumpPoint Field invariant honest at the boundaries.
+    return jumped, max(0.0, min(1.0, magnitude))
 
 
 # ---------------------------------------------------------------------------
@@ -295,15 +365,10 @@ def detect_adjacent_jumps(
     # — the canonical Python 3.10+ idiom (ruff RUF007).
     for prev, curr in pairwise(per_chapter):
         distances = voice_metric_distances(prev.metrics, curr.metrics)
-        jumped = sorted(name for name, d in distances.items() if d > jump_threshold)
-        if not jumped:
+        result = jumped_metrics_from_distances(distances, jump_threshold=jump_threshold)
+        if result is None:
             continue
-        # Magnitude: mean of the jumped metrics' distances (in [0, 1]).
-        jumped_distances = [distances[name] for name in jumped]
-        magnitude = sum(jumped_distances) / len(jumped_distances)
-        # Defensive clamp — distances are each in [0, 1] so the mean is too,
-        # but the clamp keeps the Field invariant honest at the boundaries.
-        magnitude = max(0.0, min(1.0, magnitude))
+        jumped, magnitude = result
         jumps.append(
             JumpPoint(
                 from_chapter_id=prev.chapter_id,
@@ -323,6 +388,9 @@ __all__ = [
     "band_for_score",
     "compute_per_chapter_metrics",
     "detect_adjacent_jumps",
+    "drift_band_for_subscore",
+    "jumped_metrics_from_distances",
+    "subscore_from_distances",
     "trend_against_profile",
     "voice_metric_distances",
 ]

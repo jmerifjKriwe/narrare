@@ -12,6 +12,12 @@ ADR-025 Decision 3 — ContextAssembler Centralization (Phase 5).
 from narrare_core.analysis.age_check import CharacterAgeCheck
 from narrare_core.analysis.assembler import AnalysisContextAssembler
 from narrare_core.analysis.author_metrics import AuthorMetrics, AuthorMetricsAnalyzer
+from narrare_core.analysis.author_voice_drift_scoring import (
+    PerAuthorChapterMetrics,
+    compute_per_chapter_author_metrics,
+    detect_adjacent_author_jumps,
+    trend_against_author_profile,
+)
 from narrare_core.analysis.budget import AnalysisBudgetManager
 from narrare_core.analysis.contracts import (
     AnalysisAssemblerProtocol,
@@ -54,6 +60,7 @@ from narrare_core.analysis.voice_check_scoring import (
     VoiceCheckBand,
     VoiceCheckScore,
     VoiceCheckScorer,
+    author_metric_distances,
     band_for_score,
     blend_scores,
     metric_delta_subscore,
@@ -94,6 +101,7 @@ __all__ = [
     "POVIssueType",
     "POVResult",
     "POVScene",
+    "PerAuthorChapterMetrics",
     "PerChapterMetrics",
     "ReadabilityAgentProtocol",
     "ReadabilityAnalyzer",
@@ -113,13 +121,17 @@ __all__ = [
     "VoiceCheckScore",
     "VoiceCheckScorer",
     "VoiceMetricsAnalyzer",
+    "author_metric_distances",
     "band_for_score",
     "blend_scores",
+    "compute_per_chapter_author_metrics",
     "compute_per_chapter_metrics",
+    "detect_adjacent_author_jumps",
     "detect_adjacent_jumps",
     "merge_character_voice",
     "metric_delta_subscore",
     "run_deterministic_checks",
+    "trend_against_author_profile",
     "trend_against_profile",
     "voice_metric_distances",
 ]
