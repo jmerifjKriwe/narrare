@@ -32,10 +32,24 @@ class KBEntry(Base):
     __tablename__ = "kb_entries"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    novel_id: Mapped[uuid.UUID] = mapped_column(
+    novel_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("novels.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,  # CHANGED: was nullable=False. NULL = Series-Canon entry.
+        index=True,
+    )
+    # Series-Canon scope: when novel_id is NULL, this entry is canon for the series.
+    series_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("series.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    # For Novel-Overlay entries: optional link to the Series-Canon entry this overlays.
+    base_entry_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("kb_entries.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
     entity_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
@@ -100,7 +114,11 @@ class KBEntry(Base):
             "review_status IN ('approved', 'pending', 'rejected')",
             name="ck_kb_entries_review_status",
         ),
-        UniqueConstraint("novel_id", "slug", name="uq_kb_entries_novel_slug"),
+        # REMOVED: UniqueConstraint("novel_id", "slug", name="uq_kb_entries_novel_slug")
+        # REPLACED BY (in Alembic migration 0036):
+        #   - uq_kb_canon_per_series ON (series_id, slug) WHERE novel_id IS NULL
+        #   - uq_kb_overlay_per_novel ON (novel_id, slug) WHERE novel_id IS NOT NULL
+        #   - ck_kb_entries_scope_invariant CHECK
         Index("ix_kb_entries_entity_type", "entity_type"),
         Index("ix_kb_entries_novel_id", "novel_id"),
         Index("ix_kb_entries_novel_type", "novel_id", "entity_type"),

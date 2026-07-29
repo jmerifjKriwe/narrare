@@ -68,6 +68,11 @@ class EmbeddingHookManager:
         try:
             content = entry.body or ""
             await self._dispatch_task(entry.id, content, trigger="create")
+            # Skip wiki sync for Series-Canon entries (novel_id IS NULL).
+            # Wiki sync is novel-scoped; Canon entries belong to a series, not
+            # a novel. Series-scoped wiki sync is a future concern (Spec 2+).
+            if entry.novel_id is None:
+                return
             await self._publish_wiki_sync_event(entry.id, entry.novel_id)
         except Exception:
             logger.warning(
@@ -113,6 +118,11 @@ class EmbeddingHookManager:
                     return
 
             await self._dispatch_task(entry.id, content, trigger="update")
+            # Skip wiki sync for Series-Canon entries (novel_id IS NULL).
+            # Wiki sync is novel-scoped; Canon entries belong to a series, not
+            # a novel. Series-scoped wiki sync is a future concern (Spec 2+).
+            if entry.novel_id is None:
+                return
             await self._publish_wiki_sync_event(entry.id, entry.novel_id)
         except Exception:
             logger.warning(
