@@ -21,6 +21,7 @@ import narrare.memory.models
 import narrare.novels.models
 import narrare.planning.models
 import narrare.prompts.models
+import narrare.series.models  # register Series/SeriesSettings metadata for autogenerate (Spec 1)
 import narrare.settings.models
 import narrare.settings.token_limits.models
 import narrare.templates.models
