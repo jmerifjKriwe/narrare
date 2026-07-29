@@ -23,6 +23,21 @@ class NovelRepositoryProtocol(Protocol):
     async def update(self, novel: Novel, request: UpdateNovelRequest) -> Novel: ...
     async def delete(self, novel: Novel) -> None: ...
 
+    async def update_series_membership(
+        self,
+        novel_id: uuid.UUID,
+        *,
+        series_id: uuid.UUID,
+        series_position: int,
+    ) -> None:
+        """Assign a novel to a series at ``series_position`` (join flow).
+
+        Sets ``series_id`` and ``series_position`` on the novel row. Used by
+        ``SeriesJoinService.apply_join`` (RULE-06: membership mutation goes
+        through the repository, not the session directly).
+        """
+        ...
+
 
 @runtime_checkable
 class NovelServiceProtocol(Protocol):

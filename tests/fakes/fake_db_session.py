@@ -121,3 +121,25 @@ class FakeDbSession:
             self._idx += 1
             return queued if isinstance(queued, FakeResult) else FakeResult(value=queued)
         return FakeResult()
+
+
+class FakeTxSession:
+    """Minimal transaction-control spy (commit/rollback counters only).
+
+    For services that use the session solely for transaction boundaries (e.g.
+    ``SeriesJoinService.apply_join``), this fake lets tests assert the
+    commit/rollback contract without a real database. It intentionally does
+    not implement ``execute``/``add`` — those go through repositories.
+    """
+
+    def __init__(self) -> None:
+        self.commit_count: int = 0
+        self.rollback_count: int = 0
+
+    async def commit(self) -> None:
+        """Record a commit."""
+        self.commit_count += 1
+
+    async def rollback(self) -> None:
+        """Record a rollback."""
+        self.rollback_count += 1

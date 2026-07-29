@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from narrare._app.base_repository import BaseRepository
 from narrare.novels.models import Novel
@@ -58,3 +58,22 @@ class NovelRepository(BaseRepository):
     async def delete(self, novel: Novel) -> None:
         await self._session.delete(novel)
         await self._flush()
+
+    async def update_series_membership(
+        self,
+        novel_id: uuid.UUID,
+        *,
+        series_id: uuid.UUID,
+        series_position: int,
+    ) -> None:
+        """Assign a novel to a series at ``series_position`` (join flow).
+
+        Single atomic UPDATE within the caller's transaction — the join
+        service commits or rolls back the whole join (membership + KB
+        promotions) together.
+        """
+        await self._session.execute(
+            update(Novel)
+            .where(Novel.id == novel_id)
+            .values(series_id=series_id, series_position=series_position)
+        )

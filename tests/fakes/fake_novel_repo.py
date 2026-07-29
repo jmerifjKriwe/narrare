@@ -77,6 +77,29 @@ class FakeNovelRepository:
         self.calls.append(CallRecord("delete"))
         self._store.pop((novel.id, novel.user_id), None)
 
+    async def update_series_membership(
+        self,
+        novel_id: uuid.UUID,
+        *,
+        series_id: uuid.UUID,
+        series_position: int,
+    ) -> None:
+        """Apply series membership to the in-memory novel (join flow)."""
+        self.calls.append(
+            CallRecord(
+                "update_series_membership",
+                kwargs={
+                    "novel_id": novel_id,
+                    "series_id": series_id,
+                    "series_position": series_position,
+                },
+            )
+        )
+        for n in self._store.values():
+            if n.id == novel_id:
+                _apply_setattr(n, {"series_id": series_id, "series_position": series_position})
+                return
+
     def call_count(self, method: str) -> int:
         return sum(1 for c in self.calls if c.method == method)
 
