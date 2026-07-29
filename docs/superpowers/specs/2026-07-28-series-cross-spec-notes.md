@@ -9,7 +9,7 @@
 > to the relevant Spec owner.
 >
 > **Created:** 2026-07-28
-> **Last updated:** 2026-07-28 (6/6 clarifying questions resolved; design phase pending)
+> **Last updated:** 2026-07-29 (Doc-Gate-Deferrals komplett in YAGNI-Tabelle dokumentiert)
 
 ---
 
@@ -215,6 +215,36 @@ Series-scope drift adds:
 
 ---
 
+## YAGNI — What's Deferred from Spec 1 (transparency per user request)
+
+The following features are **deliberately out of scope for Spec 1** to keep
+the Foundation focused. They are tracked here transparently so they don't
+get lost. Each item lists its target Spec.
+
+| Feature | Target | Rationale for deferral |
+|---------|--------|------------------------|
+| **Conflict detection** (Canon says X, Overlay says Y → warn user) | Spec 2+ | Needs diff-logic across scope boundaries; complex; not critical for Foundation |
+| **Series stats endpoint** (Reihen-Fortschritt, Wortzahl, etc.) | Spec 2 | Nice-to-have; not load-bearing for Foundation |
+| **Drag-sort for novel order** | Spec 2 (initial: up/down buttons suffice) | Polish; not Foundation-critical |
+| **Batch promote/demote** (multi-select entries, bulk scope change) | Spec 2 | Per-Entry is sufficient for Foundation |
+| **Series search/filter in Dashboard** | Spec 2 | Premature optimisation |
+| **Series cover image upload** | Spec 5 (Export) | Cosmetic; not Foundation |
+| **Series-Voice tab functional** | Spec 3 | Disabled-placeholder in Spec 1; Spec 3 fills (closes ADR-074 Review Trigger) |
+| **Series-Export** (Manuscript, Bibel) | Spec 5 | Out of Foundation scope |
+| **Generation-Context for Band N** (state-at-(N−1) read-merge) | Spec 2 | Needs the Foundation to exist first |
+| **Cross-Novel-Drift** (ANAL-009 series-scope extension) | Spec 4 | Needs Spec 1+2+3 |
+| **Multi-Series-Membership / Crossover** | No Spec (YAGNI) | Migration path to join-table known if real demand emerges |
+| **Optional Docs** (`docs/reference/directory-structure.md` update, `CHANGELOG.md` entry, `docs/development/orchestrator.md` Series-Notes) | Later Specs (when natural) | Not DoD-critical for Spec 1; will be picked up by later Specs when those docs are touched for other reasons. YAGNI to do them now without concrete trigger. |
+| **Series-Stats-UI** (Fortschrittsanzeige, Bände-Completion-Visualisierung) | Spec 2 | Depends on stats endpoint |
+
+### Reversal cost awareness
+
+Each deferred item is **additive** when it lands — none requires undoing
+Spec 1 work. The Foundation (Series entity, KB scope-discriminator, N2
+Workspace) is designed to host all later additions without restructuring.
+
+---
+
 ## Decisions Log (chronological)
 
 | Date | Decision | Rationale | Affects |
@@ -227,6 +257,9 @@ Series-scope drift adds:
 | 2026-07-28 | Series data model confirmed; status enum `draft\|active\|completed`; `SeriesSettings.author_voice` created in Spec 1 (empty); `Novel.subtitle` added | Narrare-vokabular; forward-compat for Spec 3 without migration; consistent Novel identity | Spec 1 (data model) |
 | 2026-07-28 | Navigation = N2 (Series-Workspace, first-class) | Specs 2–5 all need a Heimat for series-level UI; Series-Canon KB needs dedicated editor; mental clarity „working on series" vs „working on novel" | Spec 1 (UI) |
 | 2026-07-28 | Multi-series membership = Single-Series in Spec 1 (no Crossover) | YAGNI; migration path to join-table is known if real demand emerges | Spec 1 (data model) |
+| 2026-07-29 | Schema = Option 2A + STI (Single `kb_entries` table with scope discriminator at DB level + discriminated `SeriesKBEntry` / `NovelKBEntry` Pydantic types in Core) | 2B (two tables) rejected: real benefits (type safety) but UNION-read-path + cross-table-relationships + ~15-module blast radius outweigh benefits. 2A+STI gets 2B's type-safety without 2B's main costs. | Spec 1 (data model, Core types) |
+| 2026-07-29 | Phasing = 5 vertical slices (Data Foundation → KB Scope → Series CRUD + Join → Frontend Dashboard + Workspace → KB Scope UI) | Each slice is independently reviewable + deployable; matches Narrane's Core → Backend → Frontend → Platform pattern; lets dependencies flow naturally | Spec 1 (implementation order) |
+| 2026-07-29 | YAGNI list documented transparently in this file | User request: deferred items must be tracked, not silently dropped. Each deferred feature has a target Spec and rationale. | All Specs |
 
 ---
 
