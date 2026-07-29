@@ -10,14 +10,14 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, or_, select
 
-from narrare._app.base_repository import BaseRepository
 from narrare.kb.models import KBEntry
+from narrare.kb.scope_repository import KBScopeRepository
 
 if TYPE_CHECKING:
     import uuid
 
 
-class KBRepository(BaseRepository):
+class KBRepository(KBScopeRepository):
     """Persistence operations for KB entries."""
 
     async def create(self, entry: KBEntry) -> KBEntry:
