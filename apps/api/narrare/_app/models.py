@@ -42,6 +42,9 @@ from narrare.planning.models import ChapterOutline  # noqa: F401
 # ── Prompts (prompt_revisions history table — CR-AUFG-07-19) ──
 from narrare.prompts.models import PromptRevision  # noqa: F401
 
+# ── Series ──
+from narrare.series.models import Series, SeriesSettings  # noqa: F401
+
 # ── Settings ──
 from narrare.settings.models import (  # noqa: F401
     ProjectSettings,
