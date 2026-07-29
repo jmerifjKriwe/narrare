@@ -1,6 +1,10 @@
 """KB metadata schemas — Pydantic models for entity-type-specific metadata.
 
 Public exports:
+    KBEntry — Discriminated union (Series-Canon | Novel-Overlay), Schema 2A+STI
+    KBEntryBase — Common fields for all KB entries (scope-aware STI base)
+    SeriesKBEntry — Series-Canon KB entry (novel_id IS NULL)
+    NovelKBEntry — Novel-Overlay KB entry (novel_id IS NOT NULL)
     KBEntryMetadata — Base model (fallback for unknown entity types)
     CharacterMetadata — Character entity metadata (inc. grouped fields)
     LocationMetadata — Location entity metadata (inc. grouped fields)
@@ -55,6 +59,7 @@ from .character import (
     VoiceMetrics,
 )
 from .concept import ConceptDefinition, ConceptHistory, ConceptMetadata
+from .entry import KBEntry, KBEntryBase, NovelKBEntry, SeriesKBEntry
 from .faction import FactionHistory, FactionIdeology, FactionMetadata, FactionStructure
 from .location import (
     LocationFeatures,
@@ -87,17 +92,21 @@ __all__ = [
     "FactionIdeology",
     "FactionMetadata",
     "FactionStructure",
+    "KBEntry",
+    "KBEntryBase",
     "KBEntryMetadata",
     "LocationFeatures",
     "LocationHistory",
     "LocationInhabitants",
     "LocationMetadata",
+    "NovelKBEntry",
     "ObjectMetadata",
     "ObjectOrigin",
     "ObjectProperties",
     "ObjectSignificance",
     "PersonalityFields",
     "RelationshipFields",
+    "SeriesKBEntry",
     "SettingBasics",
     "SettingGeography",
     "SettingMetadata",
