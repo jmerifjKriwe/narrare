@@ -15873,6 +15873,18 @@
             "format": "uuid",
             "title": "Id"
           },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
           "title": {
             "type": "string",
             "title": "Title"
@@ -15943,6 +15955,18 @@
             "type": "string",
             "format": "uuid",
             "title": "Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
           },
           "title": {
             "type": "string",

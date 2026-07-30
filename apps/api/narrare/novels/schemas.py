@@ -34,6 +34,9 @@ class NovelResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    # Series membership (Spec 1, ADR-075). None = standalone novel.
+    # Mapped automatically via from_attributes=True from the Novel ORM column.
+    series_id: uuid.UUID | None = None
     title: str
     author: str
     genre: str
@@ -53,6 +56,9 @@ class NovelSummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    # Series membership, surfaced for list views (incl. the series novels list).
+    # None = standalone novel. Mapped automatically via from_attributes=True.
+    series_id: uuid.UUID | None = None
     title: str
     author: str
     genre: str

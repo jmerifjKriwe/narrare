@@ -3,11 +3,21 @@
 These introspect the SQLAlchemy ``Novel.__table__`` metadata directly — no
 database is needed. The migration that materialises these columns in Postgres
 arrives separately in Task 1.5 (RULE-14: one batched Alembic file).
+
+The schema-level tests below also verify that ``series_id`` is surfaced in the
+Pydantic response schemas, closing the contract gap that previously hid the
+column from the API layer (frontend ``useNovelSeries`` hook).
 """
 
 from __future__ import annotations
 
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
 from narrare.novels.models import Novel
+from narrare.novels.schemas import NovelResponse, NovelSummaryResponse
+from tests.factories import make_novel
 
 
 def test_novel_has_series_id_column() -> None:
@@ -29,3 +39,38 @@ def test_novel_has_subtitle_column() -> None:
     cols = {c.name: c for c in Novel.__table__.columns}
     assert "subtitle" in cols
     assert cols["subtitle"].nullable is True
+
+
+def _novel(**overrides: Any) -> Any:
+    """Build a ``Novel`` with timestamps populated so schema validation succeeds."""
+    now = datetime.now(UTC)
+    return make_novel(created_at=now, updated_at=now, **overrides)
+
+
+def test_novel_response_exposes_series_id_when_set() -> None:
+    """``NovelResponse`` maps the ORM ``series_id`` to the API response."""
+    series_id = uuid.uuid4()
+    novel = _novel(series_id=series_id)
+
+    response = NovelResponse.model_validate(novel)
+
+    assert response.series_id == series_id
+
+
+def test_novel_response_series_id_is_none_for_standalone_novel() -> None:
+    """Standalone novels (no series membership) expose ``series_id=None``."""
+    novel = _novel(series_id=None)
+
+    response = NovelResponse.model_validate(novel)
+
+    assert response.series_id is None
+
+
+def test_novel_summary_response_exposes_series_id() -> None:
+    """``NovelSummaryResponse`` (used by the series novels list) surfaces ``series_id``."""
+    series_id = uuid.uuid4()
+    novel = _novel(series_id=series_id)
+
+    response = NovelSummaryResponse.model_validate(novel)
+
+    assert response.series_id == series_id
