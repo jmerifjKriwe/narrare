@@ -106,6 +106,19 @@ export type {
 } from "./prompts";
 export { PROMPT_HISTORY_ACTIVE_TOKEN } from "./prompts";
 export type {
+  JoinEntryTreatment,
+  JoinPreview,
+  JoinResult,
+  KBScope,
+  Series,
+  SeriesCreate,
+  SeriesSettings,
+  SeriesSettingsUpdate,
+  SeriesStatus,
+  SeriesSummary,
+  SeriesUpdate,
+} from "./series";
+export type {
   CalibrationMetadata,
   CalibrationStatus,
   ContextTier,
