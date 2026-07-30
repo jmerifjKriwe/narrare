@@ -262,3 +262,14 @@ class TestErrorTypes:
 
         assert err.current_status == "draft"
         assert err.target_status == "completed"
+
+    def test_invalid_status_transition_is_a_conflict_error_for_409_mapping(self) -> None:
+        from narrare.series.service import InvalidStatusTransitionError
+        from narrare_core.shared.errors import ConflictError
+
+        err = InvalidStatusTransitionError("draft", "completed")
+
+        # The global NarrareError handler maps ConflictError → HTTP 409.
+        assert isinstance(err, ConflictError)
+        # Specific code is preserved (ConflictError defaults to "CONFLICT").
+        assert err.code == "INVALID_STATUS_TRANSITION"

@@ -10,7 +10,7 @@ not needed at runtime for Protocol structural checks.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     import uuid
@@ -59,8 +59,13 @@ class SeriesRepositoryProtocol(Protocol):
         """Delete a Series; True on success, False if not found."""
         ...
 
-    async def list_novels(self, series_id: uuid.UUID) -> list[object]:
-        """Novels in series ordered by ``series_position`` (NovelRow list)."""
+    async def list_novels(self, series_id: uuid.UUID) -> list[Any]:
+        """Novels in series ordered by ``series_position`` (NovelRow list).
+
+        Element type is intentionally ``Any`` (not ``Novel``) so the protocol
+        stays decoupled from the ORM model and remains compatible with the
+        concrete ``list[Novel]`` return (lists are invariant).
+        """
         ...
 
     async def reorder_novels(self, series_id: uuid.UUID, novel_ids: list[uuid.UUID]) -> None:

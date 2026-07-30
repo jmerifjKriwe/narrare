@@ -38,6 +38,15 @@ class NovelRepositoryProtocol(Protocol):
         """
         ...
 
+    async def clear_series_membership(self, novel_id: uuid.UUID) -> None:
+        """Remove a novel from its series (leave flow).
+
+        Nulls ``series_id`` and ``series_position`` on the novel row. Used by
+        ``SeriesJoinService.remove_novel`` — the inverse of
+        :meth:`update_series_membership`.
+        """
+        ...
+
 
 @runtime_checkable
 class NovelServiceProtocol(Protocol):

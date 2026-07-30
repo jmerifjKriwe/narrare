@@ -432,6 +432,617 @@
         }
       }
     },
+    "/api/v1/series": {
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "List Series",
+        "description": "List all series for the current user.",
+        "operationId": "list_series_api_v1_series_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SeriesSummary"
+                  },
+                  "type": "array",
+                  "title": "Response List Series Api V1 Series Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Create Series",
+        "description": "Create a new series (status defaults to 'draft').",
+        "operationId": "create_series_api_v1_series_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/series/{series_id}": {
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Get Series",
+        "description": "Get a single series by ID.",
+        "operationId": "get_series_api_v1_series__series_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Update Series",
+        "description": "Update series metadata (status transitions enforced, 409 on violation).",
+        "operationId": "update_series_api_v1_series__series_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Delete Series",
+        "description": "Delete a series.",
+        "operationId": "delete_series_api_v1_series__series_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/settings": {
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Get Settings",
+        "description": "Get series settings.",
+        "operationId": "get_settings_api_v1_series__series_id__settings_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Update Settings",
+        "description": "Update series settings.",
+        "operationId": "update_settings_api_v1_series__series_id__settings_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesSettingsUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/novels": {
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "List Novels In Series",
+        "description": "List novels in a series, ordered by ``series_position``.",
+        "operationId": "list_novels_in_series_api_v1_series__series_id__novels_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NovelSummaryResponse"
+                  },
+                  "title": "Response List Novels In Series Api V1 Series  Series Id  Novels Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Preview Join",
+        "description": "Preview joining a novel to a series (Policy alpha; does NOT mutate).",
+        "operationId": "preview_join_api_v1_series__series_id__novels_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinPreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/novels/{novel_id}/apply": {
+      "post": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Apply Join",
+        "description": "Apply the join — executes the previewed treatments atomically.",
+        "operationId": "apply_join_api_v1_series__series_id__novels__novel_id__apply_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinApplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/novels/{novel_id}": {
+      "delete": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Remove Novel From Series",
+        "description": "Remove a novel from a series (back to standalone).",
+        "operationId": "remove_novel_from_series_api_v1_series__series_id__novels__novel_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/novels/reorder": {
+      "patch": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Reorder Novels",
+        "description": "Reorder novels within a series (full ordered id list).",
+        "operationId": "reorder_novels_api_v1_series__series_id__novels_reorder_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderNovelsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/planning/timeline/{novel_id}/events": {
       "get": {
         "tags": [
@@ -13563,6 +14174,151 @@
         "title": "InlineSuggestRequest",
         "description": "Request for an inline ghost text suggestion.\n\nSent when the user pauses typing.  Contains the text before and\noptionally after the cursor.  The backend returns a short (1-3\nsentence) completion streamed via SSE."
       },
+      "JoinApplyRequest": {
+        "properties": {
+          "position": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Position"
+          }
+        },
+        "type": "object",
+        "required": [
+          "position"
+        ],
+        "title": "JoinApplyRequest",
+        "description": "POST /api/v1/series/{id}/novels/{novel_id}/apply body.\n\n``position`` is the 1-based slot the novel takes within the series."
+      },
+      "JoinEntryTreatment": {
+        "properties": {
+          "entry_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entry Id"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "current_scope": {
+            "type": "string",
+            "const": "novel",
+            "title": "Current Scope"
+          },
+          "target_scope": {
+            "type": "string",
+            "enum": [
+              "series",
+              "novel"
+            ],
+            "title": "Target Scope"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entry_id",
+          "slug",
+          "entity_type",
+          "current_scope",
+          "target_scope",
+          "reason"
+        ],
+        "title": "JoinEntryTreatment",
+        "description": "Per-entry decision in a JoinPreview: what would happen to this entry."
+      },
+      "JoinPreview": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "canon_empty": {
+            "type": "boolean",
+            "title": "Canon Empty"
+          },
+          "treatments": {
+            "items": {
+              "$ref": "#/components/schemas/JoinEntryTreatment"
+            },
+            "type": "array",
+            "title": "Treatments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "novel_id",
+          "canon_empty",
+          "treatments"
+        ],
+        "title": "JoinPreview",
+        "description": "Result of POST /api/v1/series/{id}/novels (preview step).\n\nLists every KB entry of the joining novel + how it would be treated\non apply (promoted to Canon or kept as Overlay) based on Policy alpha."
+      },
+      "JoinPreviewRequest": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id"
+        ],
+        "title": "JoinPreviewRequest",
+        "description": "POST /api/v1/series/{id}/novels body — the novel to preview joining."
+      },
+      "JoinResult": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "promoted_to_canon": {
+            "type": "integer",
+            "title": "Promoted To Canon"
+          },
+          "kept_as_overlay": {
+            "type": "integer",
+            "title": "Kept As Overlay"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "novel_id",
+          "position",
+          "promoted_to_canon",
+          "kept_as_overlay"
+        ],
+        "title": "JoinResult",
+        "description": "Result of POST /api/v1/series/{id}/novels/{novel_id}/apply."
+      },
       "KBEntryCreate": {
         "properties": {
           "entity_type": {
@@ -15952,6 +16708,24 @@
         "title": "ReorderChaptersRequest",
         "description": "Batch reorder — provide full ordered list of chapter IDs."
       },
+      "ReorderNovelsRequest": {
+        "properties": {
+          "novel_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Novel Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_ids"
+        ],
+        "title": "ReorderNovelsRequest",
+        "description": "PATCH /api/v1/series/{id}/novels/reorder body — full ordered id list.\n\nThe caller supplies every novel id of the series in the desired order;\nthe service reassigns sequential 1-based ``series_position`` values."
+      },
       "ReorderVolumesRequest": {
         "properties": {
           "volume_ids": {
@@ -16379,6 +17153,375 @@
         ],
         "title": "SentimentRequest",
         "description": "Request to analyze chapter sentiment.\n\nAttributes:\n    chapter_ids: One or more chapter UUIDs to analyze.\n    language: Optional language override. If omitted, uses novel's\n        ``writing_language`` setting.\n    detect_arc: Whether to attempt narrative arc detection.\n        Defaults to ``True``. Set to ``False`` for short texts."
+      },
+      "SeriesCreateRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
+          "writing_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Writing Language"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "active",
+                  "completed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "planned_novel_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Novel Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "SeriesCreateRequest",
+        "description": "POST /api/v1/series body."
+      },
+      "SeriesResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
+          "writing_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Writing Language"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "completed"
+            ],
+            "title": "Status"
+          },
+          "planned_novel_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Novel Count"
+          },
+          "novel_count": {
+            "type": "integer",
+            "title": "Novel Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "title",
+          "subtitle",
+          "description",
+          "genre",
+          "writing_language",
+          "status",
+          "planned_novel_count"
+        ],
+        "title": "SeriesResponse",
+        "description": "Response for single Series GET/POST/PATCH."
+      },
+      "SeriesSettingsResponse": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "author_voice": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Voice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "author_voice"
+        ],
+        "title": "SeriesSettingsResponse",
+        "description": "Response for GET /api/v1/series/{id}/settings."
+      },
+      "SeriesSettingsUpdateRequest": {
+        "properties": {
+          "author_voice": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Voice"
+          }
+        },
+        "type": "object",
+        "title": "SeriesSettingsUpdateRequest",
+        "description": "PATCH /api/v1/series/{id}/settings body. Spec 1: usually null."
+      },
+      "SeriesSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "completed"
+            ],
+            "title": "Status"
+          },
+          "novel_count": {
+            "type": "integer",
+            "title": "Novel Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "subtitle",
+          "status"
+        ],
+        "title": "SeriesSummary",
+        "description": "List item: lighter than SeriesResponse."
+      },
+      "SeriesUpdateRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
+          "writing_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Writing Language"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "active",
+                  "completed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "planned_novel_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Novel Count"
+          }
+        },
+        "type": "object",
+        "title": "SeriesUpdateRequest",
+        "description": "PATCH /api/v1/series/{id} body. All fields optional."
       },
       "ShortestPathResponse": {
         "properties": {

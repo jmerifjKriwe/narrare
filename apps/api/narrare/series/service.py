@@ -20,14 +20,20 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.series.schemas import SeriesResponse, SeriesSummary
-from narrare_core.shared.errors import NarrareError, NotFoundError
+from narrare.novels.schemas import NovelSummaryResponse
+from narrare.series.schemas import SeriesResponse, SeriesSettingsResponse, SeriesSummary
+from narrare_core.series.schemas import SeriesSettings
+from narrare_core.shared.errors import ConflictError, NotFoundError
 
 if TYPE_CHECKING:
     import uuid
 
     from narrare.series.contracts import SeriesRepositoryProtocol
-    from narrare.series.schemas import SeriesCreateRequest, SeriesUpdateRequest
+    from narrare.series.schemas import (
+        SeriesCreateRequest,
+        SeriesSettingsUpdateRequest,
+        SeriesUpdateRequest,
+    )
     from narrare_core.series.schemas import Series, SeriesStatus
 
 logger = structlog.get_logger(__name__)
@@ -55,14 +61,18 @@ class SeriesNotFoundError(NotFoundError):
         self.series_id = series_id
 
 
-class InvalidStatusTransitionError(NarrareError):
-    """Raised when a requested Series status transition is not allowed."""
+class InvalidStatusTransitionError(ConflictError):
+    """Raised when a requested Series status transition is not allowed.
+
+    Subclasses :class:`ConflictError` so the app's global ``NarrareError``
+    handler (``_app/main.py``) maps it to HTTP 409 (state conflict), mirroring
+    :class:`~narrare.series.join_service.NovelAlreadyInSeriesError`.
+    """
 
     def __init__(self, current: SeriesStatus, target: SeriesStatus) -> None:
-        super().__init__(
-            f"Cannot transition series status from '{current}' to '{target}'",
-            code="INVALID_STATUS_TRANSITION",
-        )
+        super().__init__(f"Cannot transition series status from '{current}' to '{target}'")
+        # Preserve the specific code (ConflictError defaults to "CONFLICT").
+        self.code = "INVALID_STATUS_TRANSITION"
         self.current_status = current
         self.target_status = target
 
@@ -170,7 +180,59 @@ class SeriesService:
             raise SeriesNotFoundError(series_id)
         logger.info("series_deleted", series_id=str(series_id))
 
+    # -- novels in series + settings ------------------------------------
+
+    async def list_novels(self, series_id: uuid.UUID) -> list[NovelSummaryResponse]:
+        """List the novels in a series, ordered by ``series_position``.
+
+        Raises:
+            SeriesNotFoundError: If the Series does not exist.
+        """
+        await self._require_series(series_id)
+        novels = await self._repo.list_novels(series_id)
+        return [NovelSummaryResponse.model_validate(novel) for novel in novels]
+
+    async def reorder_novels(self, series_id: uuid.UUID, novel_ids: list[uuid.UUID]) -> None:
+        """Reassign sequential 1-based positions to the series' novels.
+
+        Raises:
+            SeriesNotFoundError: If the Series does not exist.
+        """
+        await self._require_series(series_id)
+        await self._repo.reorder_novels(series_id, novel_ids)
+        logger.info("series_novels_reordered", series_id=str(series_id))
+
+    async def get_settings(self, series_id: uuid.UUID) -> SeriesSettingsResponse:
+        """Get Series settings (synthesises a default if no row exists yet).
+
+        Raises:
+            SeriesNotFoundError: If the Series does not exist.
+        """
+        await self._require_series(series_id)
+        settings = await self._repo.get_settings(series_id)
+        if settings is None:
+            settings = SeriesSettings(series_id=series_id, author_voice=None)
+        return SeriesSettingsResponse.model_validate(settings)
+
+    async def update_settings(
+        self, series_id: uuid.UUID, request: SeriesSettingsUpdateRequest
+    ) -> SeriesSettingsResponse:
+        """Patch Series settings (only explicitly-provided fields forward).
+
+        Raises:
+            SeriesNotFoundError: If the Series does not exist.
+        """
+        await self._require_series(series_id)
+        patch = request.model_dump(exclude_unset=True)
+        settings = await self._repo.update_settings(series_id, patch)
+        return SeriesSettingsResponse.model_validate(settings)
+
     # -- helpers --------------------------------------------------------
+
+    async def _require_series(self, series_id: uuid.UUID) -> None:
+        """Raise ``SeriesNotFoundError`` if the series does not exist."""
+        if await self._repo.get(series_id) is None:
+            raise SeriesNotFoundError(series_id)
 
     async def _novel_count(self, series_id: uuid.UUID) -> int:
         """Count novels in a series via the repository."""

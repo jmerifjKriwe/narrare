@@ -171,6 +171,33 @@ class SeriesJoinService:
             kept_as_overlay=kept,
         )
 
+    async def remove_novel(self, series_id: uuid.UUID, novel_id: uuid.UUID) -> None:
+        """Remove a novel from a series — the inverse of :meth:`apply_join`.
+
+        Clears ``series_id`` / ``series_position`` on the novel, returning it
+        to standalone. Idempotent: a novel not currently in ``series_id`` is a
+        no-op (still 204). Only the membership is cleared — KB scope
+        adjustments on leave are intentionally out of scope here.
+
+        Args:
+            series_id: The series the novel should leave.
+            novel_id: The novel to remove.
+
+        Raises:
+            NotFoundError: If the novel does not exist.
+        """
+        novel = await self._novel_repo.get(novel_id)
+        if novel is None:
+            raise NotFoundError("Novel", identifier=str(novel_id))
+        if novel.series_id == series_id:
+            await self._novel_repo.clear_series_membership(novel_id)
+            await self._session.commit()
+        logger.info(
+            "novel_removed_from_series",
+            series_id=str(series_id),
+            novel_id=str(novel_id),
+        )
+
     @staticmethod
     def _treatment_for(entry: NovelKBEntry, canon_empty: bool) -> JoinEntryTreatment:
         """Derive a JoinEntryTreatment for one novel entry under Policy alpha."""

@@ -77,3 +77,14 @@ class NovelRepository(BaseRepository):
             .where(Novel.id == novel_id)
             .values(series_id=series_id, series_position=series_position)
         )
+
+    async def clear_series_membership(self, novel_id: uuid.UUID) -> None:
+        """Remove a novel from its series (leave flow).
+
+        Single atomic UPDATE within the caller's transaction — the join
+        service commits or rolls back. Nulls both ``series_id`` and
+        ``series_position``, returning the novel to standalone.
+        """
+        await self._session.execute(
+            update(Novel).where(Novel.id == novel_id).values(series_id=None, series_position=None)
+        )

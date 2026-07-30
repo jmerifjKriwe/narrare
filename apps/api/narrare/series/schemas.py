@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid  # noqa: TC003 - needed at runtime for Pydantic model resolution
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from narrare_core.series.schemas import (
     SeriesStatus,  # noqa: TC001 - needed at runtime for Pydantic model resolution
@@ -85,6 +85,16 @@ class SeriesSettingsUpdateRequest(BaseModel):
     author_voice: dict[str, object] | None = None
 
 
+class ReorderNovelsRequest(BaseModel):
+    """PATCH /api/v1/series/{id}/novels/reorder body — full ordered id list.
+
+    The caller supplies every novel id of the series in the desired order;
+    the service reassigns sequential 1-based ``series_position`` values.
+    """
+
+    novel_ids: list[uuid.UUID]
+
+
 # --- Join Flow types ---------------------------------------------------------
 
 
@@ -120,3 +130,21 @@ class JoinResult(BaseModel):
     position: int
     promoted_to_canon: int  # 0 if canon was non-empty
     kept_as_overlay: int
+
+
+# --- Join Flow request bodies -----------------------------------------------
+
+
+class JoinPreviewRequest(BaseModel):
+    """POST /api/v1/series/{id}/novels body — the novel to preview joining."""
+
+    novel_id: uuid.UUID
+
+
+class JoinApplyRequest(BaseModel):
+    """POST /api/v1/series/{id}/novels/{novel_id}/apply body.
+
+    ``position`` is the 1-based slot the novel takes within the series.
+    """
+
+    position: int = Field(ge=1)

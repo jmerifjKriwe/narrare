@@ -183,6 +183,8 @@ def _register_routers(app: FastAPI) -> None:
         router as prompts_prompt_history_router,
     )
     from narrare.prompts.router_prompt_ux import router as prompts_prompt_ux_router
+    from narrare.series.router import router as series_router
+    from narrare.series.router_novels import router as series_novels_router
     from narrare.settings.router import router as settings_router
     from narrare.setup.router import router as setup_router
     from narrare.tasks.router import router as tasks_router
@@ -209,6 +211,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(auth_router, prefix=prefix)
     app.include_router(auth_me_router, prefix=prefix)
     app.include_router(novels_router, prefix=prefix)
+    app.include_router(series_router, prefix=prefix)
+    app.include_router(series_novels_router, prefix=prefix)
     app.include_router(planning_router, prefix=prefix)
     app.include_router(chapters_router, prefix=prefix)
     app.include_router(chapter_versions_router, prefix=prefix)
