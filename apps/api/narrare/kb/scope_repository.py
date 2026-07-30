@@ -38,6 +38,22 @@ class KBScopeRepository(BaseRepository):
         )
         return [self._to_series_kb_entry(e) for e in result.scalars()]
 
+    async def find_canon_by_slug(self, series_id: uuid.UUID, slug: str) -> KBEntry | None:
+        """Fetch a single Series-Canon entry by series + slug (``novel_id IS NULL``).
+
+        Canon-scoped analogue of ``get_by_slug`` (which is novel-scoped): used by
+        :class:`~narrare.kb.canon_service.KBCanonService` for the create / update
+        slug-uniqueness check, mirroring the novel CRUD's pre-flush ConflictError.
+        """
+        result = await self._session.execute(
+            select(KBEntry).where(
+                KBEntry.series_id == series_id,
+                KBEntry.novel_id.is_(None),
+                KBEntry.slug == slug,
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def find_overlay_for_novel(self, novel_id: uuid.UUID) -> list[NovelKBEntry]:
         """All Novel-Overlay entries for a novel (``novel_id = X``)."""
         result = await self._session.execute(select(KBEntry).where(KBEntry.novel_id == novel_id))

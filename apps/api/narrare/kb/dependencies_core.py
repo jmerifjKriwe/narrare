@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, cast
 from narrare._app.dependencies import SessionDep  # noqa: TC001 - needed at runtime for FastAPI DI
 
 if TYPE_CHECKING:
+    from narrare.kb.canon_service import KBCanonService
     from narrare.kb.graph_service import GraphService
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.relationship_service import RelationshipService
@@ -30,6 +31,23 @@ def get_kb_scope_service(session: SessionDep) -> KBScopeService:
     from narrare.kb.scope_service import KBScopeService
 
     return KBScopeService(KBRepository(session))
+
+
+def get_kb_canon_service(session: SessionDep) -> KBCanonService:
+    """Create a KBCanonService with the KB + Series repositories (canon CRUD).
+
+    Both repositories share ``session`` so canon writes and ownership lookups
+    run in one transaction. The canon scope is enforced inside the service via
+    the ``novel_id IS NULL`` invariant — no extra wiring needed.
+    """
+    from narrare.kb.canon_service import KBCanonService
+    from narrare.kb.repository import KBRepository
+    from narrare.series.repository import SeriesRepository
+
+    return KBCanonService(
+        kb_repo=KBRepository(session),
+        series_repo=SeriesRepository(session),
+    )
 
 
 def get_kb_service(session: SessionDep) -> KBService:

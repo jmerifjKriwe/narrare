@@ -11,10 +11,10 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.kb._entry_updates import build_entry_updates
 from narrare.kb._reference_resolution import (
     resolve_references as resolve_references_impl,
 )
-from narrare.kb._utils import slugify
 from narrare.kb._validators import resolve_entry_slug, validate_entry_metadata
 from narrare_core.shared.errors import (
     ConflictError,
@@ -160,39 +160,9 @@ class KBService:
         # Snapshot pre-update identity for ADR-050 P1-B lifecycle dispatch.
         old_name = entry.name
         was_deprecated = entry.status == "deprecated"
-        updates: dict[str, object] = {}
 
-        if data.name is not None:
-            updates["name"] = data.name
-            # Regenerate slug when name changes (unless slug also provided)
-            if data.slug is None:
-                new_slug = slugify(data.name)
-                if new_slug and new_slug != entry.slug:
-                    updates["slug"] = new_slug
-
-        if data.slug is not None:
-            updates["slug"] = data.slug
-
-        if data.entity_type is not None:
-            updates["entity_type"] = data.entity_type
-
-        if data.status is not None:
-            updates["status"] = data.status
-
-        if data.tags is not None:
-            updates["tags"] = data.tags
-
-        if data.body is not None:
-            updates["body"] = data.body
-
-        if data.template_version is not None:
-            updates["template_version"] = data.template_version
-
-        # Re-validate metadata if changed
-        effective_type = updates.get("entity_type", entry.entity_type)
-        if data.metadata is not None:
-            validate_entry_metadata(str(effective_type), data.metadata)
-            updates["metadata_"] = data.metadata
+        # Field mapping is shared with the canon CRUD path (RULE-04 extraction).
+        updates = build_entry_updates(entry, data)
 
         # Check slug uniqueness if slug changed
         new_slug = updates.get("slug")

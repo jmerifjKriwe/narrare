@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare.kb.dependencies import get_kb_service
+from narrare.kb.router_canon import router as _canon_router
 from narrare.kb.router_references import router as _references_router
 from narrare.kb.router_scope import router as _scope_router
 from narrare.kb.schemas import (
@@ -19,6 +20,7 @@ from narrare.kb.service import KBService
 router = APIRouter(tags=["kb"])
 router.include_router(_references_router)
 router.include_router(_scope_router)
+router.include_router(_canon_router)
 
 
 @router.post(

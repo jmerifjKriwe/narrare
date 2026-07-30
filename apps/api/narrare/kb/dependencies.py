@@ -14,6 +14,9 @@ from narrare.kb.dependencies_core import (
     get_graph_service as get_graph_service,
 )
 from narrare.kb.dependencies_core import (
+    get_kb_canon_service as get_kb_canon_service,
+)
+from narrare.kb.dependencies_core import (
     get_kb_repository as get_kb_repository,
 )
 from narrare.kb.dependencies_core import (
@@ -52,6 +55,7 @@ __all__ = [
     "get_dismissed_service",
     "get_extraction_service",
     "get_graph_service",
+    "get_kb_canon_service",
     "get_kb_improve_service",
     "get_kb_lifecycle_dispatcher",
     "get_kb_repository",
