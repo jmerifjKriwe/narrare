@@ -17,6 +17,9 @@ from narrare.kb.dependencies_core import (
     get_kb_repository as get_kb_repository,
 )
 from narrare.kb.dependencies_core import (
+    get_kb_scope_service as get_kb_scope_service,
+)
+from narrare.kb.dependencies_core import (
     get_kb_service as get_kb_service,
 )
 from narrare.kb.dependencies_core import (
@@ -52,6 +55,7 @@ __all__ = [
     "get_kb_improve_service",
     "get_kb_lifecycle_dispatcher",
     "get_kb_repository",
+    "get_kb_scope_service",
     "get_kb_service",
     "get_kb_session_service",
     "get_kb_suggest_service",

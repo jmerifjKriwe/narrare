@@ -4159,6 +4159,136 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/{entry_id}/promote": {
+      "post": {
+        "tags": [
+          "kb",
+          "kb"
+        ],
+        "summary": "Promote Entry To Canon",
+        "description": "Promote a Novel-Overlay KB entry to Series-Canon.\n\nReturns 409 Conflict if the entry is not an overlay of ``novel_id`` or the\nnovel is not in a series (scope invariant violation).",
+        "operationId": "promote_entry_to_canon_api_v1_novels__novel_id__kb__entry_id__promote_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesKBEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/{entry_id}/demote": {
+      "post": {
+        "tags": [
+          "kb",
+          "kb"
+        ],
+        "summary": "Demote Entry To Overlay",
+        "description": "Demote a Series-Canon KB entry to a Novel-Overlay for the target novel.\n\nThe path ``novel_id`` is the routing anchor; the authoritative target novel\nand series are taken from the request body. Returns 409 Conflict if the\nentry is not canon of the given series (scope invariant violation).",
+        "operationId": "demote_entry_to_overlay_api_v1_novels__novel_id__kb__entry_id__demote_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KBDemoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NovelKBEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/entries": {
       "post": {
         "tags": [
@@ -14319,6 +14449,27 @@
         "title": "JoinResult",
         "description": "Result of POST /api/v1/series/{id}/novels/{novel_id}/apply."
       },
+      "KBDemoteRequest": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "target_novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Target Novel Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "target_novel_id"
+        ],
+        "title": "KBDemoteRequest",
+        "description": "Request body for demoting a Series-Canon entry to a Novel-Overlay.\n\n``target_novel_id`` is the novel the canon entry becomes an overlay of;\n``series_id`` identifies the series whose canon is being demoted."
+      },
       "KBEntryCreate": {
         "properties": {
           "entity_type": {
@@ -15247,6 +15398,182 @@
         "type": "object",
         "title": "NarrativeArc",
         "description": "Detected narrative arc from sentiment progression.\n\nAttributes:\n    arc_type: The detected narrative arc type.\n    confidence: How well the text matches this arc (0.0 to 1.0).\n    segments: List of arc segments (e.g. ``\"exposition\"``,\n        ``\"rising_action\"``, ``\"climax\"``, ``\"falling_action\"``,\n        ``\"resolution\"``) with VAD per segment.\n    explanation: Human-readable description of why this arc was detected."
+      },
+      "NovelKBEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "draft"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "metadata_": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "template_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Version"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "manual"
+          },
+          "review_status": {
+            "type": "string",
+            "title": "Review Status",
+            "default": "approved"
+          },
+          "embeddings_dirty": {
+            "type": "boolean",
+            "title": "Embeddings Dirty",
+            "default": false
+          },
+          "last_referenced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Referenced At"
+          },
+          "usage_count": {
+            "type": "integer",
+            "title": "Usage Count",
+            "default": 0
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "scope": {
+            "type": "string",
+            "const": "novel",
+            "title": "Scope",
+            "default": "novel"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "base_entry_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Entry Id"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "id",
+          "entity_type",
+          "name",
+          "slug",
+          "novel_id"
+        ],
+        "title": "NovelKBEntry",
+        "description": "Novel-Overlay KB entry — valid in one specific novel.\n\nDB invariant (ck_kb_entries_scope_invariant):\n    novel_id IS NOT NULL. series_id / base_entry_id are optional links\n    back to the series and the Canon entry this overlay modifies."
       },
       "NovelResponse": {
         "properties": {
@@ -17238,6 +17565,166 @@
         ],
         "title": "SeriesCreateRequest",
         "description": "POST /api/v1/series body."
+      },
+      "SeriesKBEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "draft"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "metadata_": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "template_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Version"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "manual"
+          },
+          "review_status": {
+            "type": "string",
+            "title": "Review Status",
+            "default": "approved"
+          },
+          "embeddings_dirty": {
+            "type": "boolean",
+            "title": "Embeddings Dirty",
+            "default": false
+          },
+          "last_referenced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Referenced At"
+          },
+          "usage_count": {
+            "type": "integer",
+            "title": "Usage Count",
+            "default": 0
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "scope": {
+            "type": "string",
+            "const": "series",
+            "title": "Scope",
+            "default": "series"
+          },
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "novel_id": {
+            "type": "null",
+            "title": "Novel Id"
+          },
+          "base_entry_id": {
+            "type": "null",
+            "title": "Base Entry Id"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "id",
+          "entity_type",
+          "name",
+          "slug",
+          "series_id"
+        ],
+        "title": "SeriesKBEntry",
+        "description": "Series-Canon KB entry — shared across all novels in the series.\n\nDB invariant (ck_kb_entries_scope_invariant):\n    novel_id IS NULL, series_id IS NOT NULL, base_entry_id IS NULL."
       },
       "SeriesResponse": {
         "properties": {

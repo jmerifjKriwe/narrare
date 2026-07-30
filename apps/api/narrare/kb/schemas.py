@@ -80,6 +80,17 @@ class KBEntryListResponse(BaseModel):
     page_size: int
 
 
+class KBDemoteRequest(BaseModel):
+    """Request body for demoting a Series-Canon entry to a Novel-Overlay.
+
+    ``target_novel_id`` is the novel the canon entry becomes an overlay of;
+    ``series_id`` identifies the series whose canon is being demoted.
+    """
+
+    series_id: uuid.UUID
+    target_novel_id: uuid.UUID
+
+
 # ---------------------------------------------------------------------------
 # KB Relationship
 # ---------------------------------------------------------------------------

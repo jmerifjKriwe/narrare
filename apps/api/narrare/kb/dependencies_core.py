@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.relationship_service import RelationshipService
     from narrare.kb.repository import KBRepository
+    from narrare.kb.scope_service import KBScopeService
     from narrare.kb.service import KBService
     from narrare.kb.suggest_service import KBSuggestService
     from narrare_core.embeddings.store import EmbeddingStoreProtocol
@@ -21,6 +22,14 @@ def get_kb_repository(session: SessionDep) -> KBRepository:
     from narrare.kb.repository import KBRepository
 
     return KBRepository(session)
+
+
+def get_kb_scope_service(session: SessionDep) -> KBScopeService:
+    """Create a KBScopeService with the KB repository (scope-toggle wiring)."""
+    from narrare.kb.repository import KBRepository
+    from narrare.kb.scope_service import KBScopeService
+
+    return KBScopeService(KBRepository(session))
 
 
 def get_kb_service(session: SessionDep) -> KBService:
