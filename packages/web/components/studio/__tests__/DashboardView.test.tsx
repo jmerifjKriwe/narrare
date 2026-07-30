@@ -106,26 +106,123 @@ describe("DashboardView", () => {
         if (queryKey[0] === "auth") {
           return { data: { display_name: "Test User", email: "test@test.com" }, isLoading: false };
         }
-        if (queryKey[0] === "demos") {
-          return { data: [], isLoading: false };
+        if (queryKey[0] === "novels") {
+          return {
+            data: [
+              {
+                id: "1",
+                title: "My Novel",
+                author: "Author",
+                genre: "Fantasy",
+                updated_at: "2024-01-01",
+              },
+            ],
+            isLoading: false,
+          };
         }
-        return {
-          data: [
-            {
-              id: "1",
-              title: "My Novel",
-              author: "Author",
-              genre: "Fantasy",
-              updated_at: "2024-01-01",
-            },
-          ],
-          isLoading: false,
-        };
+        // series / demos / novel-series etc. — must NOT receive novel data
+        return { data: [], isLoading: false };
       },
     );
     render(<DashboardView />);
     expect(screen.getByText("My Novel")).toBeDefined();
     expect(screen.getByText("Author")).toBeDefined();
     expect(screen.getByText("Fantasy")).toBeDefined();
+  });
+
+  it("renders series cards and standalone novels together (N2 mixed grid)", () => {
+    mockUseQuery.mockImplementation(
+      ({ queryKey }: { queryKey: string[] }): { data: unknown; isLoading: boolean } => {
+        if (queryKey[0] === "auth") {
+          return { data: { display_name: "Test User", email: "test@test.com" }, isLoading: false };
+        }
+        if (queryKey[0] === "series") {
+          return {
+            data: [
+              {
+                id: "s1",
+                title: "The Expanse",
+                subtitle: null,
+                status: "active",
+                novel_count: 4,
+              },
+            ],
+            isLoading: false,
+          };
+        }
+        if (queryKey[0] === "novels") {
+          return {
+            data: [
+              {
+                id: "n1",
+                title: "Standalone Book",
+                author: "Author",
+                genre: "Fantasy",
+                updated_at: "2024-01-01",
+                series_id: null,
+              },
+            ],
+            isLoading: false,
+          };
+        }
+        // demos / novel-series etc. — must NOT receive novel data
+        return { data: [], isLoading: false };
+      },
+    );
+    render(<DashboardView />);
+    expect(screen.getByText("The Expanse")).toBeDefined();
+    expect(screen.getByText("Standalone Book")).toBeDefined();
+  });
+
+  it("does not show novels that belong to a series as standalone cards", () => {
+    mockUseQuery.mockImplementation(
+      ({ queryKey }: { queryKey: string[] }): { data: unknown; isLoading: boolean } => {
+        if (queryKey[0] === "auth") {
+          return { data: { display_name: "Test User", email: "test@test.com" }, isLoading: false };
+        }
+        if (queryKey[0] === "series") {
+          return {
+            data: [
+              {
+                id: "s1",
+                title: "The Expanse",
+                subtitle: null,
+                status: "active",
+                novel_count: 1,
+              },
+            ],
+            isLoading: false,
+          };
+        }
+        if (queryKey[0] === "novels") {
+          return {
+            data: [
+              {
+                id: "n2",
+                title: "Member Novel",
+                author: "Author",
+                genre: "Fantasy",
+                updated_at: "2024-01-01",
+                series_id: "s1",
+              },
+            ],
+            isLoading: false,
+          };
+        }
+        // demos / novel-series etc. — must NOT receive novel data, otherwise
+        // DemoProjectCards would render the member novel as a demo card and
+        // defeat the purpose of this assertion.
+        return { data: [], isLoading: false };
+      },
+    );
+    render(<DashboardView />);
+    // The series still shows; its member novel is NOT duplicated as standalone.
+    expect(screen.getByText("The Expanse")).toBeDefined();
+    expect(screen.queryByText("Member Novel")).toBeNull();
+  });
+
+  it("renders a New Series entry point", () => {
+    render(<DashboardView />);
+    expect(screen.getByTestId("new-series-btn")).toBeDefined();
   });
 });

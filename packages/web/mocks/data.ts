@@ -45,6 +45,7 @@ export function createTokenResponse(overrides: Partial<TokenResponse> = {}): Tok
 export function createNovel(overrides: Partial<Novel> = {}): Novel {
   return {
     id: "test-novel-id",
+    series_id: null,
     title: "Test Novel",
     author: "",
     genre: "",
@@ -63,6 +64,7 @@ export function createNovel(overrides: Partial<Novel> = {}): Novel {
 export function createNovelSummary(overrides: Partial<NovelSummary> = {}): NovelSummary {
   return {
     id: "test-novel-id",
+    series_id: null,
     title: "Test Novel",
     author: "",
     genre: "",
