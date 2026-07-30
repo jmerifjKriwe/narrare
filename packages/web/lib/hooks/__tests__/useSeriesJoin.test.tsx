@@ -20,8 +20,8 @@ vi.mock("@/lib/api/series", () => ({
   },
 }));
 
-import { useApplyJoin, useJoinPreview } from "@/hooks/useSeriesJoin";
 import { seriesApi } from "@/lib/api/series";
+import { useApplyJoin, useJoinPreview } from "@/lib/hooks/useSeriesJoin";
 
 const mockPreviewJoin = seriesApi.previewJoin as ReturnType<typeof vi.fn>;
 const mockApplyJoin = seriesApi.applyJoin as ReturnType<typeof vi.fn>;

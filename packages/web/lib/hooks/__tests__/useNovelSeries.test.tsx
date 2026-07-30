@@ -24,9 +24,9 @@ vi.mock("@/lib/api/series", () => ({
   seriesApi: { get: vi.fn() },
 }));
 
-import { useNovelSeries } from "@/hooks/useNovelSeries";
 import { novelsApi } from "@/lib/api/novels";
 import { seriesApi } from "@/lib/api/series";
+import { useNovelSeries } from "@/lib/hooks/useNovelSeries";
 
 const mockNovelGet = novelsApi.get as ReturnType<typeof vi.fn>;
 const mockSeriesGet = seriesApi.get as ReturnType<typeof vi.fn>;

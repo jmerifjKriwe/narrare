@@ -25,14 +25,14 @@ vi.mock("@/lib/api/series", () => ({
   },
 }));
 
+import { seriesApi } from "@/lib/api/series";
 import {
   useCreateSeries,
   useDeleteSeries,
   useSeries,
   useSeriesList,
   useUpdateSeries,
-} from "@/hooks/useSeries";
-import { seriesApi } from "@/lib/api/series";
+} from "@/lib/hooks/useSeries";
 
 const mockList = seriesApi.list as ReturnType<typeof vi.fn>;
 const mockGet = seriesApi.get as ReturnType<typeof vi.fn>;
