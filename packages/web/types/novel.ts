@@ -2,6 +2,12 @@
 
 export interface Novel {
   id: string;
+  /**
+   * Series membership. `null` = standalone novel. Optional on the client
+   * because the backend NovelResponse does not yet expose it (contract gap —
+   * see hooks/useNovelSeries.ts). The DB column exists (migration 0037).
+   */
+  series_id?: string | null;
   title: string;
   author: string;
   genre: string;
