@@ -1539,6 +1539,17 @@
         "expand": "Expand",
         "reorganize": "Reorganize"
       }
+    },
+    "scope": {
+      "label": "Knowledge Base scope",
+      "canon": "Series Canon",
+      "overlay": "Novel Overlay",
+      "body": "Body",
+      "promoteTitle": "Promote to Series Canon?",
+      "promoteDescription": "This entry will be removed from this novel and shared across all novels in the series as Series-Canon.",
+      "demoteTitle": "Demote to Novel Overlay?",
+      "demoteDescription": "This entry will be scoped to this novel only and no longer shared across the series.",
+      "confirm": "Confirm"
     }
   },
   "graph": {
@@ -2108,6 +2119,15 @@
       },
       "targetSeries": "→ Series-Canon",
       "targetNovel": "→ Novel-Overlay"
+    },
+    "canon": {
+      "title": "Series Canon",
+      "loading": "Loading canon entries...",
+      "error": "Failed to load canon entries.",
+      "empty": "No canon entries yet. Create one to share it across all novels in the series.",
+      "create": "Create new Canon entry",
+      "entityType": "Entity type",
+      "name": "Name"
     }
   }
 }

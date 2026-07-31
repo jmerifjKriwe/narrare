@@ -1539,6 +1539,17 @@
         "expand": "Erweitern",
         "reorganize": "Neu organisieren"
       }
+    },
+    "scope": {
+      "label": "Wissensbasis-Geltungsbereich",
+      "canon": "Reihen-Kanon",
+      "overlay": "Roman-Overlay",
+      "body": "Inhalt",
+      "promoteTitle": "Zum Reihen-Kanon befördern?",
+      "promoteDescription": "Dieser Eintrag wird aus diesem Roman entfernt und als Reihen-Kanon für alle Romane der Reihe geteilt.",
+      "demoteTitle": "Zum Roman-Overlay herabstufen?",
+      "demoteDescription": "Dieser Eintrag wird nur auf diesen Roman beschränkt und nicht mehr in der Reihe geteilt.",
+      "confirm": "Bestätigen"
     }
   },
   "graph": {
@@ -2108,6 +2119,15 @@
       },
       "targetSeries": "→ Reihen-Kanon",
       "targetNovel": "→ Roman-Overlay"
+    },
+    "canon": {
+      "title": "Reihen-Kanon",
+      "loading": "Kanon-Einträge werden geladen...",
+      "error": "Kanon-Einträge konnten nicht geladen werden.",
+      "empty": "Noch keine Kanon-Einträge. Erstelle einen, um ihn in der gesamten Reihe zu teilen.",
+      "create": "Neuen Kanon-Eintrag erstellen",
+      "entityType": "Entitätstyp",
+      "name": "Name"
     }
   }
 }

@@ -1539,6 +1539,17 @@
         "expand": "Développer",
         "reorganize": "Réorganiser"
       }
+    },
+    "scope": {
+      "label": "Portée de la base de connaissances",
+      "canon": "Canon de série",
+      "overlay": "Overlay de roman",
+      "body": "Corps",
+      "promoteTitle": "Promouvoir au Canon de série ?",
+      "promoteDescription": "Cette entrée sera retirée de ce roman et partagée dans toute la série en tant que Canon de série.",
+      "demoteTitle": "Rétrograder en Overlay de roman ?",
+      "demoteDescription": "Cette entrée sera limitée à ce roman uniquement et ne sera plus partagée dans la série.",
+      "confirm": "Confirmer"
     }
   },
   "graph": {
@@ -2108,6 +2119,15 @@
       },
       "targetSeries": "→ Canon de série",
       "targetNovel": "→ Overlay de roman"
+    },
+    "canon": {
+      "title": "Canon de série",
+      "loading": "Chargement des entrées du canon...",
+      "error": "Échec du chargement des entrées du canon.",
+      "empty": "Aucune entrée de canon pour l'instant. Créez-en une pour la partager dans toute la série.",
+      "create": "Créer une nouvelle entrée Canon",
+      "entityType": "Type d'entité",
+      "name": "Nom"
     }
   }
 }
