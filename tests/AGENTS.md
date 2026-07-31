@@ -56,6 +56,7 @@ Infrastruktur erlaubt (z. B. reine Wert-Container ohne Verhalten).
 # Für pydantic-ai-Agent-Tests gibt es zusätzlich tests/fakes/fake_pydantic_agent.py.
 from tests.fakes.fake_llm_gateway import FakeLLMGateway
 
+
 @pytest.fixture
 def fake_gateway() -> FakeLLMGateway:
     gateway = FakeLLMGateway()

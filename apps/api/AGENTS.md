@@ -49,6 +49,7 @@ from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
 from narrare_core.llm.gateway import ModelRegistry
 from narrare_core.prompts.composer import PromptComposer
 
+
 class ChapterSummaryService:
     def __init__(
         self,
@@ -75,6 +76,7 @@ class ChapterSummaryService:
             deps=deps,
         )
         return SummaryResult(summary=result.summary)
+
 
 # ❌ Verboten: direkter LLM-Import
 import openai  # RULE-01b Verletzung → CI schlägt fehl
@@ -109,10 +111,9 @@ class ChapterRepository:
         self._session = session
 
     async def get_by_id(self, chapter_id: UUID) -> Chapter | None:
-        result = await self._session.execute(
-            select(Chapter).where(Chapter.id == chapter_id)
-        )
+        result = await self._session.execute(select(Chapter).where(Chapter.id == chapter_id))
         return result.scalar_one_or_none()
+
 
 # ❌ Verboten: SQLAlchemy direkt im Service
 class ChapterService:
@@ -157,6 +158,8 @@ async def write_chapter(
 ) -> ChapterDraftResponse:
     result = await service.write(chapter_id=chapter_id, request=request)
     return ChapterDraftResponse.model_validate(result)
+
+
 # Keine Business-Logik hier. Fertig.
 ```
 
