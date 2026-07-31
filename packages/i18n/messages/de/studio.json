@@ -37,7 +37,22 @@
     "cancel": "Abbrechen",
     "untitledNovel": "Unbenannter Roman",
     "emptyTitle": "Noch keine Romane",
-    "emptySubtitle": "Erstelle deinen ersten Roman"
+    "emptySubtitle": "Erstelle deinen ersten Roman",
+    "series": {
+      "badge": "Reihe",
+      "new_series": "Neue Reihe",
+      "novel_count": "{count, plural, one {# Roman} other {# Romane}}",
+      "status": {
+        "draft": "Entwurf",
+        "active": "Aktiv",
+        "completed": "Abgeschlossen"
+      },
+      "cancel": "Abbrechen",
+      "create_title": "Neue Reihe erstellen",
+      "title_label": "Titel",
+      "title_placeholder": "Reihen-Titel eingeben...",
+      "create_label": "Erstellen"
+    }
   },
   "editor": {
     "chapterTitlePlaceholder": "Kapiteltitel...",
@@ -2025,6 +2040,74 @@
       "wiki_generate_entity": "Wiki: Entität erstellen",
       "wiki_mark_all_stale": "Wiki: alle als veraltet markieren",
       "wiki_refresh_summary": "Wiki: Zusammenfassung aktualisieren"
+    }
+  },
+  "series": {
+    "workspace": {
+      "loading": "Reihe wird geladen...",
+      "notFound": "Reihe nicht gefunden.",
+      "badgeSeries": "Reihe",
+      "backToDashboard": "← Zurück zum Dashboard",
+      "genre": "Genre",
+      "planned": "Geplante Romane",
+      "tabsLabel": "Reihen-Tabs",
+      "comingInSpec3": "kommt in Spec 3",
+      "status": {
+        "draft": "Entwurf",
+        "active": "Aktiv",
+        "completed": "Abgeschlossen"
+      }
+    },
+    "baende": {
+      "title": "Romane in dieser Reihe",
+      "loading": "Romane werden geladen...",
+      "empty": "Keine Romane in dieser Reihe.",
+      "demoBadge": "Demo",
+      "reorderUp": "Nach oben",
+      "reorderDown": "Nach unten",
+      "addNovel": "Roman zur Reihe hinzufügen",
+      "selectNovel": "Roman auswählen...",
+      "noStandaloneNovels": "Keine Standalone-Romane verfügbar."
+    },
+    "settings": {
+      "title": "Reihen-Einstellungen",
+      "description": "Reihen-Metadaten und Konfiguration bearbeiten.",
+      "loading": "Einstellungen werden geladen...",
+      "error": "Reihe konnte nicht geladen werden.",
+      "save": "Änderungen speichern",
+      "fields": {
+        "title": "Titel",
+        "subtitle": "Untertitel",
+        "description": "Beschreibung",
+        "genre": "Genre",
+        "writingLanguage": "Schreibsprache",
+        "status": "Status",
+        "plannedNovelCount": "Geplante Anzahl Romane"
+      },
+      "status": {
+        "draft": "Entwurf",
+        "active": "Aktiv",
+        "completed": "Abgeschlossen"
+      },
+      "voice": {
+        "title": "Reihen-Voice",
+        "comingInSpec3": "Reihen-Voice-Hierarchie wird in Spec 3 verfügbar sein."
+      }
+    },
+    "join": {
+      "title": "\"{novel}\" zur Reihe hinzufügen",
+      "cancel": "Abbrechen",
+      "confirm": "Beitritt bestätigen",
+      "close": "Schließen",
+      "loading": "Vorschau wird geladen...",
+      "previewError": "Vorschau konnte nicht geladen werden.",
+      "applyError": "Beitritt fehlgeschlagen.",
+      "explanation": {
+        "canon_empty": "Der Reihen-Kanon ist leer. Kanon-bevorzugende Einträge (Systeme, Konzepte, Settings, Orte, Objekte, Zeitlinien) werden zum Reihen-Kanon befördert; Charaktere und Fraktionen bleiben als Roman-Overlay.",
+        "canon_nonempty": "Der Reihen-Kanon existiert bereits. Alle Einträge dieses Romans bleiben als Roman-Overlay."
+      },
+      "targetSeries": "→ Reihen-Kanon",
+      "targetNovel": "→ Roman-Overlay"
     }
   }
 }

@@ -37,7 +37,22 @@
     "cancel": "Annuler",
     "untitledNovel": "Roman sans titre",
     "emptyTitle": "Pas encore de romans",
-    "emptySubtitle": "Créez votre premier roman"
+    "emptySubtitle": "Créez votre premier roman",
+    "series": {
+      "badge": "Série",
+      "new_series": "Nouvelle série",
+      "novel_count": "{count, plural, one {# roman} other {# romans}}",
+      "status": {
+        "draft": "Brouillon",
+        "active": "Actif",
+        "completed": "Terminé"
+      },
+      "cancel": "Annuler",
+      "create_title": "Créer une nouvelle série",
+      "title_label": "Titre",
+      "title_placeholder": "Entrez le titre de la série...",
+      "create_label": "Créer"
+    }
   },
   "editor": {
     "chapterTitlePlaceholder": "Titre du chapitre...",
@@ -2025,6 +2040,74 @@
       "wiki_generate_entity": "Wiki : générer une entité",
       "wiki_mark_all_stale": "Wiki : tout marquer obsolète",
       "wiki_refresh_summary": "Wiki : actualiser le résumé"
+    }
+  },
+  "series": {
+    "workspace": {
+      "loading": "Chargement de la série...",
+      "notFound": "Série introuvable.",
+      "badgeSeries": "Série",
+      "backToDashboard": "← Retour au tableau de bord",
+      "genre": "Genre",
+      "planned": "Romans prévus",
+      "tabsLabel": "Onglets de la série",
+      "comingInSpec3": "à venir dans Spec 3",
+      "status": {
+        "draft": "Brouillon",
+        "active": "Actif",
+        "completed": "Terminé"
+      }
+    },
+    "baende": {
+      "title": "Romans dans cette série",
+      "loading": "Chargement des romans...",
+      "empty": "Aucun roman dans cette série.",
+      "demoBadge": "Démo",
+      "reorderUp": "Monter",
+      "reorderDown": "Descendre",
+      "addNovel": "Ajouter un roman à la série",
+      "selectNovel": "Sélectionner un roman...",
+      "noStandaloneNovels": "Aucun roman autonome disponible."
+    },
+    "settings": {
+      "title": "Paramètres de la série",
+      "description": "Modifier les métadonnées et la configuration de la série.",
+      "loading": "Chargement des paramètres...",
+      "error": "Échec du chargement de la série.",
+      "save": "Enregistrer",
+      "fields": {
+        "title": "Titre",
+        "subtitle": "Sous-titre",
+        "description": "Description",
+        "genre": "Genre",
+        "writingLanguage": "Langue d'écriture",
+        "status": "Statut",
+        "plannedNovelCount": "Nombre de romans prévus"
+      },
+      "status": {
+        "draft": "Brouillon",
+        "active": "Actif",
+        "completed": "Terminé"
+      },
+      "voice": {
+        "title": "Voix de la série",
+        "comingInSpec3": "La hiérarchie des voix sera disponible dans Spec 3."
+      }
+    },
+    "join": {
+      "title": "Ajouter « {novel} » à la série",
+      "cancel": "Annuler",
+      "confirm": "Confirmer",
+      "close": "Fermer",
+      "loading": "Chargement de l'aperçu...",
+      "previewError": "Échec du chargement de l'aperçu.",
+      "applyError": "Échec de l'ajout.",
+      "explanation": {
+        "canon_empty": "Le Canon de la série est vide. Les entrées à préférence Canon (systèmes, concepts, cadres, lieux, objets, chronologies) seront promues au Canon de la série ; les personnages et factions restent en Overlay de roman.",
+        "canon_nonempty": "Le Canon de la série existe déjà. Toutes les entrées de ce roman resteront en Overlay de roman."
+      },
+      "targetSeries": "→ Canon de série",
+      "targetNovel": "→ Overlay de roman"
     }
   }
 }

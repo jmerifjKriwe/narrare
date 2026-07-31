@@ -37,7 +37,22 @@
     "cancel": "Cancel",
     "untitledNovel": "Untitled Novel",
     "emptyTitle": "No novels yet",
-    "emptySubtitle": "Create your first novel"
+    "emptySubtitle": "Create your first novel",
+    "series": {
+      "badge": "Series",
+      "new_series": "New Series",
+      "novel_count": "{count, plural, one {# novel} other {# novels}}",
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "completed": "Completed"
+      },
+      "cancel": "Cancel",
+      "create_title": "Create New Series",
+      "title_label": "Title",
+      "title_placeholder": "Enter series title...",
+      "create_label": "Create"
+    }
   },
   "editor": {
     "chapterTitlePlaceholder": "Chapter title...",
@@ -2025,6 +2040,74 @@
       "wiki_generate_entity": "Wiki: generate entity",
       "wiki_mark_all_stale": "Wiki: mark all stale",
       "wiki_refresh_summary": "Wiki: refresh summary"
+    }
+  },
+  "series": {
+    "workspace": {
+      "loading": "Loading series...",
+      "notFound": "Series not found.",
+      "badgeSeries": "Series",
+      "backToDashboard": "← Back to Dashboard",
+      "genre": "Genre",
+      "planned": "Planned novels",
+      "tabsLabel": "Series tabs",
+      "comingInSpec3": "coming in Spec 3",
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "completed": "Completed"
+      }
+    },
+    "baende": {
+      "title": "Novels in this Series",
+      "loading": "Loading novels...",
+      "empty": "No novels in this series yet.",
+      "demoBadge": "Demo",
+      "reorderUp": "Move up",
+      "reorderDown": "Move down",
+      "addNovel": "Add Novel to Series",
+      "selectNovel": "Select a novel...",
+      "noStandaloneNovels": "No standalone novels available to add."
+    },
+    "settings": {
+      "title": "Series Settings",
+      "description": "Edit series metadata and configuration.",
+      "loading": "Loading settings...",
+      "error": "Failed to load series.",
+      "save": "Save Changes",
+      "fields": {
+        "title": "Title",
+        "subtitle": "Subtitle",
+        "description": "Description",
+        "genre": "Genre",
+        "writingLanguage": "Writing Language",
+        "status": "Status",
+        "plannedNovelCount": "Planned Novel Count"
+      },
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "completed": "Completed"
+      },
+      "voice": {
+        "title": "Series Voice",
+        "comingInSpec3": "Series Voice Hierarchy will be available in Spec 3."
+      }
+    },
+    "join": {
+      "title": "Add \"{novel}\" to Series",
+      "cancel": "Cancel",
+      "confirm": "Confirm Join",
+      "close": "Close",
+      "loading": "Loading preview...",
+      "previewError": "Failed to load preview.",
+      "applyError": "Failed to apply join.",
+      "explanation": {
+        "canon_empty": "The series Canon is empty. Canon-preferring entries (systems, concepts, settings, locations, objects, timelines) will be promoted to Series-Canon; characters and factions stay as Novel-Overlays.",
+        "canon_nonempty": "The series Canon already exists. All entries from this novel will stay as Novel-Overlays."
+      },
+      "targetSeries": "→ Series-Canon",
+      "targetNovel": "→ Novel-Overlay"
     }
   }
 }
