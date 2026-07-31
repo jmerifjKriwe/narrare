@@ -648,10 +648,18 @@ No decision requires a user call before implementation beyond approving this ADR
       (no raw column access — the ADR-050 "no SSOT bypass" analogue) and reuses
       the `voice_metric_distances` primitive. *(Resolves the ADR-073 Phase 2
       Deferral blocking question this ADR answers.)*
-- [ ] When the Series / Reihe feature is designed — revisit the voice resolution
-      model (novel-only vs novel+series blend); add the sibling
-      `SeriesSettings.author_voice` home; confirm this ADR's novel-level home
-      remains the primary scope (no forced cascade).
+- [x] **PARTIALLY CLOSED by ADR-075 (2026-07-29):** the Series / Reihe feature
+      is now implemented (Series Foundation Spec 1). The sibling
+      `SeriesSettings.author_voice` home was added (empty in Spec 1, forward-compat
+      for Spec 3). ADR-075 confirms this ADR's novel-level home remains the primary
+      scope (no forced cascade) — the series voice is an additive sibling, not a
+      replacement, exactly as this ADR's Forward-compatibility analysis specified.
+
+      **Still open for Spec 3:** the voice resolution model (novel-only vs.
+      novel+series blend vs. cascade) and the actual population of
+      `SeriesSettings.author_voice` are Spec 3 (Series Voice Hierarchy) work.
+      ADR-075's Review Trigger tracks this; the Voice-Teil of this trigger stays
+      open until Spec 3 lands.
 - [ ] If the author-metric field list proves insufficient for drift comparison —
       extend `AuthorMetrics` (additive, migration-free via `extra="allow"`).
 - [ ] If the voice-generic type extraction causes any import break — fall back to
