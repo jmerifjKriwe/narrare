@@ -11,11 +11,15 @@
  */
 
 import type {
+  CanonEntryCreate,
+  CanonEntryUpdate,
   JoinPreview,
   JoinResult,
+  NovelKBEntry,
   NovelSummary,
   Series,
   SeriesCreate,
+  SeriesKBEntry,
   SeriesSettings,
   SeriesSettingsUpdate,
   SeriesSummary,
@@ -71,5 +75,48 @@ export const seriesApi = {
     fetchApi<SeriesSettings>(`/series/${seriesId}/settings`, {
       method: "PATCH",
       body: JSON.stringify(body),
+    }),
+
+  // --- Series-Canon KB CRUD (Slice 5) ---
+  // Mirrors apps/api/narrare/kb/router_canon.py. Targets /series/{id}/kb.
+
+  /** GET /series/{id}/kb — all Series-Canon entries for the series. */
+  listCanonKB: (seriesId: string) => fetchApi<SeriesKBEntry[]>(`/series/${seriesId}/kb`),
+
+  /** POST /series/{id}/kb — create a Series-Canon entry (201). */
+  createCanonEntry: (seriesId: string, body: CanonEntryCreate) =>
+    fetchApi<SeriesKBEntry>(`/series/${seriesId}/kb`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  /** PATCH /series/{id}/kb/{entryId} — update a Series-Canon entry. */
+  updateCanonEntry: (seriesId: string, entryId: string, body: CanonEntryUpdate) =>
+    fetchApi<SeriesKBEntry>(`/series/${seriesId}/kb/${entryId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  /** DELETE /series/{id}/kb/{entryId} — delete a Series-Canon entry (204). */
+  deleteCanonEntry: (seriesId: string, entryId: string) =>
+    fetchApi<void>(`/series/${seriesId}/kb/${entryId}`, { method: "DELETE" }),
+
+  // --- KB scope toggle (Slice 5) ---
+  // Mirrors apps/api/narrare/kb/router_scope.py.
+
+  /** POST /novels/{novelId}/kb/{entryId}/promote — Novel-Overlay → Series-Canon. */
+  promoteToCanon: (novelId: string, entryId: string) =>
+    fetchApi<SeriesKBEntry>(`/novels/${novelId}/kb/${entryId}/promote`, { method: "POST" }),
+
+  /**
+   * POST /novels/{novelId}/kb/{entryId}/demote — Series-Canon → Novel-Overlay.
+   *
+   * The path ``novelId`` is the routing anchor; ``seriesId`` and ``targetNovelId``
+   * (the novel the canon entry becomes an overlay of) ride in the request body.
+   */
+  demoteToOverlay: (novelId: string, entryId: string, seriesId: string, targetNovelId: string) =>
+    fetchApi<NovelKBEntry>(`/novels/${novelId}/kb/${entryId}/demote`, {
+      method: "POST",
+      body: JSON.stringify({ series_id: seriesId, target_novel_id: targetNovelId }),
     }),
 };

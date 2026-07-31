@@ -100,3 +100,84 @@ export interface JoinResult {
   promoted_to_canon: number;
   kept_as_overlay: number;
 }
+
+// --- Scope-discriminated KB entries (Slice 5) ---
+//
+// Mirror narrare_core.kb.schemas.entry (SeriesKBEntry / NovelKBEntry). The
+// physical ``kb_entries`` scope invariant (Alembic 0037 CHECK constraint) is
+// reflected at the type level: a Series-Canon entry carries ``series_id`` and
+// null ``novel_id``/``base_entry_id``; a Novel-Overlay entry carries
+// ``novel_id``. ``scope`` is the virtual discriminator (no physical column).
+//
+// NOTE: the response field is ``metadata_`` (trailing underscore) — Pydantic
+// serializes the Core attribute name as-is. This differs from the create/update
+// request bodies, which use ``metadata`` (no underscore).
+
+/** Common fields shared by both KB entry scopes. */
+interface ScopedKBEntryBase {
+  id: string;
+  entity_type: string;
+  name: string;
+  slug: string;
+  status: string;
+  body: string | null;
+  metadata_: Record<string, unknown> | null;
+  tags: string[] | null;
+  template_version: string | null;
+  source: string;
+  review_status: string;
+  embeddings_dirty: boolean;
+  last_referenced_at: string | null;
+  usage_count: number;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+/** Series-Canon KB entry — shared across all novels (scope="series"). */
+export interface SeriesKBEntry extends ScopedKBEntryBase {
+  scope: "series";
+  series_id: string;
+  novel_id: null;
+  base_entry_id: null;
+}
+
+/** Novel-Overlay KB entry — valid in one specific novel (scope="novel"). */
+export interface NovelKBEntry extends ScopedKBEntryBase {
+  scope: "novel";
+  novel_id: string;
+  series_id: string | null;
+  base_entry_id: string | null;
+}
+
+/** Union of the two scope-discriminated KB entry shapes. */
+export type ScopedKBEntry = SeriesKBEntry | NovelKBEntry;
+
+/**
+ * POST /api/v1/series/{id}/kb body (KBEntryCreate).
+ *
+ * Request uses ``metadata`` (no underscore); the response serializes ``metadata_``.
+ */
+export interface CanonEntryCreate {
+  entity_type: string;
+  name: string;
+  slug?: string | null;
+  status?: string;
+  tags?: string[] | null;
+  metadata?: Record<string, unknown> | null;
+  body?: string | null;
+  template_version?: string | null;
+  source?: string;
+  review_status?: string;
+}
+
+/** PATCH /api/v1/series/{id}/kb/{entryId} body (KBEntryUpdate) — all optional. */
+export interface CanonEntryUpdate {
+  name?: string | null;
+  slug?: string | null;
+  entity_type?: string;
+  status?: string;
+  tags?: string[] | null;
+  metadata?: Record<string, unknown> | null;
+  body?: string | null;
+  template_version?: string | null;
+}

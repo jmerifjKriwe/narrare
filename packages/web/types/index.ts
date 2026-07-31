@@ -106,12 +106,17 @@ export type {
 } from "./prompts";
 export { PROMPT_HISTORY_ACTIVE_TOKEN } from "./prompts";
 export type {
+  CanonEntryCreate,
+  CanonEntryUpdate,
   JoinEntryTreatment,
   JoinPreview,
   JoinResult,
   KBScope,
+  NovelKBEntry,
+  ScopedKBEntry,
   Series,
   SeriesCreate,
+  SeriesKBEntry,
   SeriesSettings,
   SeriesSettingsUpdate,
   SeriesStatus,
