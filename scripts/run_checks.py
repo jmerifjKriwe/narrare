@@ -74,6 +74,18 @@ def _build_steps() -> list[Step]:
                 (["uv", "run", "python", "scripts/check_prompt_surface_contract.py"], None),
                 (["uv", "run", "python", "scripts/check_empty_kb_vars.py"], None),
                 (["uv", "run", "python", "scripts/check_frontmatter_schema.py"], None),
+                # Mutation-inert convention — prevents the MutMut sandbox crash
+                # class documented in issue #146 (asset-reading tests reached
+                # via parents[N] must carry @pytest.mark.mutation_inert).
+                (
+                    [
+                        "uv",
+                        "run",
+                        "python",
+                        "scripts/checks/check_mutation_inert_assets.py",
+                    ],
+                    None,
+                ),
             ],
         ),
         Step(

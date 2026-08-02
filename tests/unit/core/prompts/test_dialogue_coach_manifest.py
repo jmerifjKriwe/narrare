@@ -29,8 +29,21 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+@pytest.mark.mutation_inert
 class TestPromptSurfaceManifest:
-    """prompt-surface-manifest.yaml declares ai_assist/dialogue_coach."""
+    """prompt-surface-manifest.yaml declares ai_assist/dialogue_coach.
+
+    ``mutation_inert``: these are static assertions on a committed repo-root
+    asset (``scripts/architecture/prompt-surface-manifest.yaml``) reached via
+    ``parents[4]``. They cannot kill any source-code mutant by construction,
+    and the asset path resolves to a non-existent location inside MutMut's
+    ``mutants/`` sandbox (``parents[4]`` lands on ``<repo>/mutants``), which
+    crashes the mutation run (issue #146). The ``mutation_inert`` marker makes
+    MutMut's ``-m "not mutation_inert"`` filter exclude them — consistent with
+    the reference asset tests (test_prompt_path_compliance, test_preview_no_provider,
+    test_mem0_prompt_path_scope, test_observability). Enforced by
+    scripts/checks/check_mutation_inert_assets.py.
+    """
 
     def test_manifest_has_ai_assist_dialogue_coach_route(self) -> None:
         content = _read(MANIFEST_PATH)
@@ -70,8 +83,14 @@ class TestPromptSurfaceManifest:
         assert "xml_required" in dialogue_coach_block
 
 
+@pytest.mark.mutation_inert
 class TestAdoptionRegistry:
-    """adoption-registry.yaml declares prompt-path compliance + runtime evidence."""
+    """adoption-registry.yaml declares prompt-path compliance + runtime evidence.
+
+    ``mutation_inert``: static assertions on ``scripts/architecture/adoption-registry.yaml``
+    reached via ``parents[4]`` — same rationale as ``TestPromptSurfaceManifest``
+    above (mutations-invariant asset structure test; MutMut sandbox crash).
+    """
 
     def test_registry_has_ai_assist_dialogue_coach_compliance(self) -> None:
         content = _read(REGISTRY_PATH)

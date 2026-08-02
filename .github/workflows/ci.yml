@@ -220,6 +220,14 @@ jobs:
         run: |
           uv run --no-sync python scripts/checks/check_ai_interaction_compliance.py
 
+      # Mutation-inert convention — asset-reading tests under the MutMut scopes
+      # (tests/unit/core/, tests/unit/api/) must carry @pytest.mark.mutation_inert
+      # so MutMut's -m "not mutation_inert" filter excludes them. Prevents the
+      # sandbox crash class that aborted the August 2026 monthly run (#146).
+      - name: Check mutation-inert convention (asset-reading tests)
+        run: |
+          uv run --no-sync python scripts/checks/check_mutation_inert_assets.py
+
       - name: System health aggregation
         run: uv run --no-sync python scripts/check_system_health.py
 

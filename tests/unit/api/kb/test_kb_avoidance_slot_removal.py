@@ -48,7 +48,21 @@ def composer() -> PromptComposer:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.mutation_inert
 def test_merge_template_drops_avoidance_keeps_user_preferences() -> None:
+    """Static template assertion — mutations-invariant asset structure check.
+
+    ``mutation_inert``: this asserts on the committed bundled template
+    (``_bundled/kb/en/merge/system.md``) reached via ``parents[4]``. It cannot
+    kill source-code mutants, and the asset path resolves to a non-existent
+    location inside MutMut's ``mutants/`` sandbox (``parents[4]`` lands on
+    ``<repo>/mutants``), crashing the mutation run (issue #146). MutMut's
+    ``-m "not mutation_inert"`` filter excludes it — consistent with the
+    reference asset tests. Enforced by
+    scripts/checks/check_mutation_inert_assets.py. (The async composition
+    tests below are NOT marked: they exercise real PromptComposer logic
+    that mutations can legitimately kill.)
+    """
     text = _read("merge")
 
     assert "{{avoidance_patterns}}" not in text, (
@@ -61,7 +75,12 @@ def test_merge_template_drops_avoidance_keeps_user_preferences() -> None:
     )
 
 
+@pytest.mark.mutation_inert
 def test_extract_template_drops_avoidance_keeps_user_preferences() -> None:
+    """Static template assertion — mutations-invariant asset structure check.
+
+    ``mutation_inert``: same rationale as ``test_merge_template_...`` above.
+    """
     text = _read("extract")
 
     assert "{{avoidance_patterns}}" not in text, (
