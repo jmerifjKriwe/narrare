@@ -1,22 +1,21 @@
-"""Unit tests for ``SeriesJoinService`` — Policy alpha (preview + apply).
+"""Unit tests for ``SeriesJoinService.preview_join`` — Policy alpha.
 
-Exercises the adaptive scope-assignment logic without a database:
+Exercises the adaptive scope-assignment preview logic without a database:
 
 * Policy alpha — empty Series-Canon triggers Policy iii heuristics
   (system/concept/setting/location/object/timeline -> Canon;
   character/faction -> Novel-Overlay).
 * Policy alpha — non-empty Series-Canon keeps every joining entry as a
   Novel-Overlay.
-* Conflict guard — a novel already in another series is rejected.
-* ``apply_join`` — executes the previewed treatments atomically (commit on
-  success; rollback + re-raise on failure), assigning series membership.
+* C3 — every treatment carries a machine-stable ``reason_code``.
+* C1 — ownership: a not-owned series/novel surfaces as ``ForbiddenError`` (403,
+  anti-enumeration); a conflict (already in another series) → 409.
+
+The ``apply_join`` execution path, atomicity, and T10 commit-time
+``IntegrityError`` mapping live in ``test_join_apply.py`` (RULE-04 split); the
+``remove_novel`` leave flow lives in ``test_join_remove.py``.
 
 Domain dependencies are real in-memory fakes (ADR-030), not ``MagicMock``.
-The KB fake returns the Core Pydantic types (``NovelKBEntry`` /
-``SeriesKBEntry``) that the real ``KBRepository`` scope methods return.
-True DB-level transaction rollback is verified by integration tests; here we
-assert the service's transaction *contract* (rollback invoked, commit
-withheld on error).
 """
 
 from __future__ import annotations
@@ -26,13 +25,22 @@ from uuid import uuid4
 import pytest
 
 from narrare.series.join_service import NovelAlreadyInSeriesError
-from narrare.series.schemas import JoinEntryTreatment, JoinPreview, JoinResult
-from narrare_core.shared.errors import ConflictError, NotFoundError
+from narrare.series.schemas import JoinEntryTreatment, JoinPreview
+from narrare_core.shared.errors import ConflictError, ForbiddenError
 from tests.factories import make_novel
 from tests.fakes.fake_kb_join_repo import FakeJoinKBRepo
 from tests.fakes.fake_novel_repo import FakeNovelRepository
+from tests.fakes.fake_series_repo import FakeSeriesRepository
 
-from ._join_helpers import build_service, canon_entry, overlay_entry, seed_mixed_novel
+from ._join_helpers import (
+    build_service,
+    canon_entry,
+    make_series,
+    overlay_entry,
+    seed_mixed_novel,
+)
+
+USER_ID = uuid4()
 
 # Policy iii entity-type defaults (mirror the production constants).
 CANON_TYPES = {"system", "concept", "setting", "location", "object", "timeline"}
@@ -47,32 +55,55 @@ OVERLAY_TYPES = {"character", "faction"}
 class TestPreviewJoinEmptyCanon:
     async def test_applies_policy_iii_heuristics(self) -> None:
         """Empty Canon -> canon-types promoted, overlay-types kept."""
-        series_id, novel_id = uuid4(), uuid4()
+        series = make_series(user_id=USER_ID)
+        novel_id = uuid4()
         novel_repo = FakeNovelRepository()
-        novel_repo.seed(make_novel(id=novel_id, series_id=None))
+        novel_repo.seed(make_novel(id=novel_id, user_id=USER_ID, series_id=None))
         kb_repo = FakeJoinKBRepo()
         seed_mixed_novel(novel_id, kb_repo)
-        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo)
+        series_repo = FakeSeriesRepository()
+        series_repo.seed(series)
+        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo, series_repo=series_repo)
 
-        preview = await service.preview_join(series_id, novel_id)
+        preview = await service.preview_join(series.id, novel_id, USER_ID)
 
         assert isinstance(preview, JoinPreview)
         assert preview.canon_empty is True
         by_type = {t.entity_type: t for t in preview.treatments}
         assert by_type["system"].target_scope == "series"
         assert by_type["character"].target_scope == "novel"
-        # current_scope is always "novel" before join.
         assert all(t.current_scope == "novel" for t in preview.treatments)
 
-    async def test_reason_strings_explain_decision(self) -> None:
-        series_id, novel_id = uuid4(), uuid4()
+    async def test_reason_codes_are_machine_stable(self) -> None:
+        """C3: each treatment carries a stable reason_code the frontend i18n-resolves."""
+        series = make_series(user_id=USER_ID)
+        novel_id = uuid4()
         novel_repo = FakeNovelRepository()
-        novel_repo.seed(make_novel(id=novel_id, series_id=None))
+        novel_repo.seed(make_novel(id=novel_id, user_id=USER_ID, series_id=None))
         kb_repo = FakeJoinKBRepo()
         seed_mixed_novel(novel_id, kb_repo)
-        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo)
+        series_repo = FakeSeriesRepository()
+        series_repo.seed(series)
+        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo, series_repo=series_repo)
 
-        preview = await service.preview_join(series_id, novel_id)
+        preview = await service.preview_join(series.id, novel_id, USER_ID)
+
+        by_type = {t.entity_type: t for t in preview.treatments}
+        assert by_type["system"].reason_code == "entity_default_canon"
+        assert by_type["character"].reason_code == "entity_default_overlay"
+
+    async def test_reason_strings_explain_decision(self) -> None:
+        series = make_series(user_id=USER_ID)
+        novel_id = uuid4()
+        novel_repo = FakeNovelRepository()
+        novel_repo.seed(make_novel(id=novel_id, user_id=USER_ID, series_id=None))
+        kb_repo = FakeJoinKBRepo()
+        seed_mixed_novel(novel_id, kb_repo)
+        series_repo = FakeSeriesRepository()
+        series_repo.seed(series)
+        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo, series_repo=series_repo)
+
+        preview = await service.preview_join(series.id, novel_id, USER_ID)
 
         by_type = {t.entity_type: t for t in preview.treatments}
         assert "Canon" in by_type["system"].reason
@@ -80,14 +111,17 @@ class TestPreviewJoinEmptyCanon:
 
     async def test_does_not_mutate_state(self) -> None:
         """preview_join must not promote anything (no side effects)."""
+        series = make_series(user_id=USER_ID)
         novel_id = uuid4()
         novel_repo = FakeNovelRepository()
-        novel_repo.seed(make_novel(id=novel_id, series_id=None))
+        novel_repo.seed(make_novel(id=novel_id, user_id=USER_ID, series_id=None))
         kb_repo = FakeJoinKBRepo()
         seed_mixed_novel(novel_id, kb_repo)
-        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo)
+        series_repo = FakeSeriesRepository()
+        series_repo.seed(series)
+        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo, series_repo=series_repo)
 
-        await service.preview_join(uuid4(), novel_id)
+        await service.preview_join(series.id, novel_id, USER_ID)
 
         assert kb_repo.promoted == []
         assert all(c.method != "promote_to_canon" for c in kb_repo.calls)
@@ -96,155 +130,94 @@ class TestPreviewJoinEmptyCanon:
 class TestPreviewJoinPopulatedCanon:
     async def test_keeps_all_entries_as_overlay(self) -> None:
         """Non-empty Canon -> every entry stays a Novel-Overlay."""
-        series_id, novel_id = uuid4(), uuid4()
+        series = make_series(user_id=USER_ID)
+        novel_id = uuid4()
         novel_repo = FakeNovelRepository()
-        novel_repo.seed(make_novel(id=novel_id, series_id=None))
+        novel_repo.seed(make_novel(id=novel_id, user_id=USER_ID, series_id=None))
         kb_repo = FakeJoinKBRepo()
-        kb_repo.seed_canon(series_id, [canon_entry(series_id)])  # non-empty
+        kb_repo.seed_canon(series.id, [canon_entry(series.id)])  # non-empty
         seed_mixed_novel(novel_id, kb_repo)
-        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo)
+        series_repo = FakeSeriesRepository()
+        series_repo.seed(series)
+        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo, series_repo=series_repo)
 
-        preview = await service.preview_join(series_id, novel_id)
+        preview = await service.preview_join(series.id, novel_id, USER_ID)
 
         assert preview.canon_empty is False
         assert all(t.target_scope == "novel" for t in preview.treatments)
+        assert all(t.reason_code == "canon_nonempty_overlay" for t in preview.treatments)
         assert all("non-empty" in t.reason for t in preview.treatments)
 
     async def test_promotes_nothing_even_for_canon_types(self) -> None:
-        series_id, novel_id = uuid4(), uuid4()
+        series = make_series(user_id=USER_ID)
+        novel_id = uuid4()
         novel_repo = FakeNovelRepository()
-        novel_repo.seed(make_novel(id=novel_id, series_id=None))
+        novel_repo.seed(make_novel(id=novel_id, user_id=USER_ID, series_id=None))
         kb_repo = FakeJoinKBRepo()
-        kb_repo.seed_canon(series_id, [canon_entry(series_id, entity_type="concept")])
+        kb_repo.seed_canon(series.id, [canon_entry(series.id, entity_type="concept")])
         kb_repo.seed_overlay(novel_id, [overlay_entry(novel_id, entity_type="system")])
-        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo)
+        series_repo = FakeSeriesRepository()
+        series_repo.seed(series)
+        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo, series_repo=series_repo)
 
-        preview = await service.preview_join(series_id, novel_id)
+        preview = await service.preview_join(series.id, novel_id, USER_ID)
 
         assert preview.treatments[0].target_scope == "novel"
 
 
-class TestPreviewJoinConflictGuard:
+class TestPreviewJoinOwnershipAndConflict:
     async def test_rejects_novel_already_in_other_series(self) -> None:
         other_series = uuid4()
-        novel = make_novel(series_id=other_series)
+        series = make_series(user_id=USER_ID)
+        novel = make_novel(user_id=USER_ID, series_id=other_series)
         novel_repo = FakeNovelRepository()
         novel_repo.seed(novel)
-        service, *_ = build_service(novel_repo=novel_repo)
+        series_repo = FakeSeriesRepository()
+        series_repo.seed(series)
+        service, *_ = build_service(novel_repo=novel_repo, series_repo=series_repo)
 
         with pytest.raises(NovelAlreadyInSeriesError) as exc_info:
-            await service.preview_join(uuid4(), novel.id)
+            await service.preview_join(series.id, novel.id, USER_ID)
 
         assert exc_info.value.novel_id == novel.id
         assert exc_info.value.existing_series_id == other_series
 
     async def test_allows_novel_already_in_same_series(self) -> None:
         """Re-previewing the same series is a no-op idempotent call."""
-        series_id = uuid4()
-        novel = make_novel(series_id=series_id)
+        series = make_series(user_id=USER_ID)
+        novel = make_novel(user_id=USER_ID, series_id=series.id)
         novel_repo = FakeNovelRepository()
         novel_repo.seed(novel)
         kb_repo = FakeJoinKBRepo()
         kb_repo.seed_overlay(novel.id, [overlay_entry(novel.id, entity_type="system")])
-        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo)
+        series_repo = FakeSeriesRepository()
+        series_repo.seed(series)
+        service, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo, series_repo=series_repo)
 
-        preview = await service.preview_join(series_id, novel.id)
+        preview = await service.preview_join(series.id, novel.id, USER_ID)
 
-        assert preview.series_id == series_id
+        assert preview.series_id == series.id
 
-    async def test_raises_not_found_when_novel_missing(self) -> None:
-        service, *_ = build_service()
+    async def test_raises_forbidden_when_novel_missing(self) -> None:
+        """Anti-enumeration: a missing novel surfaces as 403, not 404."""
+        series = make_series(user_id=USER_ID)
+        series_repo = FakeSeriesRepository()
+        series_repo.seed(series)
+        service, *_ = build_service(series_repo=series_repo)
 
-        with pytest.raises(NotFoundError):
-            await service.preview_join(uuid4(), uuid4())
+        with pytest.raises(ForbiddenError):
+            await service.preview_join(series.id, uuid4(), USER_ID)
 
+    async def test_raises_forbidden_when_series_not_owned(self) -> None:
+        """A series owned by another user surfaces as 403 (anti-enumeration)."""
+        other_user = uuid4()
+        series = make_series(user_id=other_user)  # not owned by USER_ID
+        series_repo = FakeSeriesRepository()
+        series_repo.seed(series)
+        service, *_ = build_service(series_repo=series_repo)
 
-# ---------------------------------------------------------------------------
-# apply_join
-# ---------------------------------------------------------------------------
-
-
-class TestApplyJoin:
-    async def test_promotes_canon_types_and_assigns_membership(self) -> None:
-        series_id, novel_id = uuid4(), uuid4()
-        novel = make_novel(id=novel_id, series_id=None)
-        novel_repo = FakeNovelRepository()
-        novel_repo.seed(novel)
-        kb_repo = FakeJoinKBRepo()
-        entries = seed_mixed_novel(novel_id, kb_repo)
-        service, session, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo)
-
-        result = await service.apply_join(series_id, novel_id, position=1)
-
-        assert isinstance(result, JoinResult)
-        assert result.series_id == series_id
-        assert result.novel_id == novel_id
-        assert result.position == 1
-        # one canon-type ("system") promoted, one overlay-type ("character") kept
-        assert result.promoted_to_canon == 1
-        assert result.kept_as_overlay == 1
-        # only the canon-type entry was promoted
-        system_entry = next(e for e in entries if e.entity_type == "system")
-        assert kb_repo.promoted == [(novel_id, system_entry.id)]
-        # series membership was assigned to the novel
-        updated = await novel_repo.get(novel_id)
-        assert updated is not None
-        assert updated.series_id == series_id
-        assert updated.series_position == 1
-        # committed exactly once, no rollback
-        assert session.commit_count == 1
-        assert session.rollback_count == 0
-
-    async def test_non_empty_canon_promotes_nothing(self) -> None:
-        series_id, novel_id = uuid4(), uuid4()
-        novel_repo = FakeNovelRepository()
-        novel_repo.seed(make_novel(id=novel_id, series_id=None))
-        kb_repo = FakeJoinKBRepo()
-        kb_repo.seed_canon(series_id, [canon_entry(series_id)])
-        seed_mixed_novel(novel_id, kb_repo)
-        service, session, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo)
-
-        result = await service.apply_join(series_id, novel_id, position=3)
-
-        assert result.promoted_to_canon == 0
-        assert result.kept_as_overlay == 2
-        assert kb_repo.promoted == []
-        assert session.commit_count == 1
-
-
-class TestApplyJoinAtomicity:
-    async def test_rolls_back_and_reraises_on_promote_failure(self) -> None:
-        """A failing promote triggers rollback + re-raise (RULE-11)."""
-        series_id, novel_id = uuid4(), uuid4()
-        novel_repo = FakeNovelRepository()
-        novel_repo.seed(make_novel(id=novel_id, series_id=None))
-        kb_repo = FakeJoinKBRepo()
-        seed_mixed_novel(novel_id, kb_repo)
-        kb_repo.fail_on_promote(1)  # first promote explodes
-        service, session, *_ = build_service(novel_repo=novel_repo, kb_repo=kb_repo)
-
-        with pytest.raises(RuntimeError):
-            await service.apply_join(series_id, novel_id, position=1)
-
-        # Transaction contract: rolled back, never committed.
-        assert session.rollback_count == 1
-        assert session.commit_count == 0
-
-    async def test_conflict_during_repreview_does_not_touch_transaction(self) -> None:
-        """If re-preview raises NovelAlreadyInSeriesError, no commit/rollback."""
-        other_series = uuid4()
-        novel = make_novel(series_id=other_series)
-        novel_repo = FakeNovelRepository()
-        novel_repo.seed(novel)
-        service, session, *_ = build_service(novel_repo=novel_repo)
-
-        with pytest.raises(NovelAlreadyInSeriesError):
-            await service.apply_join(uuid4(), novel.id, position=1)
-
-        # preview_join raised before the try/except block: neither commit nor
-        # rollback should have been invoked.
-        assert session.commit_count == 0
-        assert session.rollback_count == 0
+        with pytest.raises(ForbiddenError):
+            await service.preview_join(series.id, uuid4(), USER_ID)
 
 
 # ---------------------------------------------------------------------------
@@ -273,7 +246,9 @@ class TestTreatmentModel:
             entity_type="system",
             current_scope="novel",
             target_scope="series",
+            reason_code="entity_default_canon",
             reason="x",
         )
         assert treatment.entry_id == entry_id
         assert treatment.target_scope == "series"
+        assert treatment.reason_code == "entity_default_canon"

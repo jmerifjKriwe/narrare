@@ -34,17 +34,20 @@ def make_result(
     *,
     scalars: Sequence[object] | None = None,
     scalar_one_or_none: object = None,
+    scalar_one: object = None,
 ) -> MagicMock:
     """Create a MagicMock mimicking SQLAlchemy's Result.
 
     The Result returned by ``session.execute()`` has synchronous methods
-    (``.scalars()``, ``.scalar_one_or_none()``), so we use ``MagicMock``.
+    (``.scalars()``, ``.scalar_one_or_none()``, ``.scalar_one()``), so we use
+    ``MagicMock``. ``scalar_one`` covers aggregate ``COUNT(*)`` queries.
     """
     result: MagicMock = MagicMock(spec=_RESULT_ATTRS)
     if scalars is not None:
         # result.scalars() -> the sequence itself (iterable), matching repo style.
         result.scalars = _returning(scalars)
     result.scalar_one_or_none = _returning(scalar_one_or_none)
+    result.scalar_one = _returning(scalar_one)
     return result
 
 

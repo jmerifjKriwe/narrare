@@ -13,13 +13,14 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select, update
 
 from narrare._app.base_repository import BaseRepository
+from narrare.kb.models import KBEntry
 from narrare.novels.models import Novel
 from narrare.series.models import Series as SeriesModel
 from narrare.series.models import SeriesSettings as SeriesSettingsModel
-from narrare_core.series.schemas import Series, SeriesSettings
+from narrare_core.series.schemas import NovelRow, Series, SeriesSettings
 
 
 def _to_core_series(model: SeriesModel) -> Series:
@@ -30,6 +31,16 @@ def _to_core_series(model: SeriesModel) -> Series:
 def _to_core_settings(model: SeriesSettingsModel) -> SeriesSettings:
     """Map an ORM ``SeriesSettings`` row to the Core ``SeriesSettings`` type."""
     return SeriesSettings.model_validate(model, from_attributes=True)
+
+
+def _to_novel_row(model: Novel) -> NovelRow:
+    """Map an ORM ``Novel`` row to the Core ``NovelRow`` read-model (I-A2).
+
+    ``NovelRow`` is the typed Core return type of ``list_novels`` (RULE-09:
+    never ``list[Any]``); ``model_validate(..., from_attributes=True)`` copies
+    the always-set Novel columns into the value object.
+    """
+    return NovelRow.model_validate(model, from_attributes=True)
 
 
 class SeriesRepository(BaseRepository):
@@ -97,12 +108,69 @@ class SeriesRepository(BaseRepository):
         await self._flush()
         return True
 
-    async def list_novels(self, series_id: uuid.UUID) -> list[Novel]:
-        """Novels in series ordered by ``series_position`` ascending."""
+    async def list_novels(self, series_id: uuid.UUID) -> list[NovelRow]:
+        """Novels in series ordered by ``series_position`` (Core read-model).
+
+        Returns Core ``NovelRow`` value objects (not ORM ``Novel``) so the
+        protocol stays decoupled from the ORM model (I-A2 / RULE-09).
+        """
         result = await self._session.execute(
             select(Novel).where(Novel.series_id == series_id).order_by(Novel.series_position.asc())
         )
-        return list(result.scalars())
+        return [_to_novel_row(model) for model in result.scalars()]
+
+    async def count_novels(self, series_id: uuid.UUID) -> int:
+        """Count novels in a series via ``SELECT COUNT(*)`` (I-B3 N+1 fix)."""
+        result = await self._session.execute(
+            select(func.count()).select_from(Novel).where(Novel.series_id == series_id)
+        )
+        return result.scalar_one()
+
+    async def count_novels_per_series(self, user_id: uuid.UUID) -> dict[uuid.UUID, int]:
+        """``GROUP BY series_id`` novel counts for every series of ``user_id``.
+
+        A single aggregate query for the whole list path (I-B3): series with no
+        novels are absent from the map (callers default to 0).
+        """
+        result = await self._session.execute(
+            select(Novel.series_id, func.count())
+            .join(SeriesModel, Novel.series_id == SeriesModel.id)
+            .where(SeriesModel.user_id == user_id)
+            .group_by(Novel.series_id)
+        )
+        # dict(result.all()) would trip C416, but dict() mis-resolves the
+        # SQLAlchemy Row[Tuple[...]] overload under pyright — keep the explicit
+        # comprehension (type-safe + readable).
+        return {series_id: count for series_id, count in result.all()}  # noqa: C416
+
+    async def delete_canon_for_series(self, series_id: uuid.UUID) -> int:
+        """Bulk-delete Canon KB rows for a series (the Canon fate; ADR-075).
+
+        ``DELETE FROM kb_entries WHERE novel_id IS NULL AND series_id=:s``.
+        Canon rows have no home without their series, so a series delete removes
+        them in the same transaction (C2). Overlay rows (novel_id set) survive
+        via the ``ondelete=SET NULL`` FK. Returns the number of rows deleted.
+        """
+        result = await self._session.execute(
+            delete(KBEntry).where(KBEntry.novel_id.is_(None), KBEntry.series_id == series_id)
+        )
+        await self._flush()
+        return getattr(result, "rowcount", 0)
+
+    async def detach_overlay_series_id(self, novel_id: uuid.UUID, series_id: uuid.UUID) -> int:
+        """Clear ``series_id`` on the leaving novel's overlay KB rows (T7/D6).
+
+        ``UPDATE kb_entries SET series_id=NULL WHERE novel_id=:n AND series_id=:s``.
+        In the post-D6 steady state overlays never persist ``series_id``, so this
+        is usually a no-op; it exists as defence-in-depth for legacy rows that do.
+        Returns the number of rows updated.
+        """
+        result = await self._session.execute(
+            update(KBEntry)
+            .where(KBEntry.novel_id == novel_id, KBEntry.series_id == series_id)
+            .values(series_id=None)
+        )
+        return getattr(result, "rowcount", 0)
 
     async def reorder_novels(self, series_id: uuid.UUID, novel_ids: list[uuid.UUID]) -> None:
         """Reassign sequential ``series_position`` (1..N) to given novels.

@@ -79,6 +79,7 @@ class TestPreviewJoin:
                     entity_type="system",
                     current_scope="novel",
                     target_scope="series",
+                    reason_code="entity_default_canon",
                     reason="Entity type 'system' defaults to Canon (Policy iii)",
                 ),
             ],

@@ -24,9 +24,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import structlog
+from sqlalchemy.exc import IntegrityError
 
+from narrare.series._join_errors import map_join_integrity_error
 from narrare.series.schemas import JoinEntryTreatment, JoinPreview, JoinResult
-from narrare_core.shared.errors import ConflictError, NotFoundError
+from narrare_core.shared.errors import ConflictError, ForbiddenError
 
 if TYPE_CHECKING:
     import uuid
@@ -35,8 +37,10 @@ if TYPE_CHECKING:
 
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.novels.contracts import NovelRepositoryProtocol
-    from narrare.series.contracts import SeriesRepositoryProtocol
+    from narrare.novels.models import Novel
+    from narrare.series.join_contracts import SeriesJoinRepositoryProtocol
     from narrare_core.kb.schemas.entry import NovelKBEntry
+    from narrare_core.series.schemas import Series
 
 logger = structlog.get_logger(__name__)
 
@@ -68,32 +72,63 @@ class SeriesJoinService:
     def __init__(
         self,
         session: AsyncSession,
-        series_repo: SeriesRepositoryProtocol,
+        series_repo: SeriesJoinRepositoryProtocol,
         novel_repo: NovelRepositoryProtocol,
         kb_repo: KBRepositoryProtocol,
     ) -> None:
         self._session = session
-        # ``series_repo`` is injected for DI completeness (router wiring) and
-        # reserved for future series-existence/ownership checks; the current
-        # join logic operates on the novel + its KB entries only.
+        # ``series_repo`` verifies SERIES ownership (C1 / IDOR fix) and detaches
+        # a leaving novel's KB rows on remove (T7/D6).
         self._series_repo = series_repo
         self._novel_repo = novel_repo
         self._kb_repo = kb_repo
 
-    async def preview_join(self, series_id: uuid.UUID, novel_id: uuid.UUID) -> JoinPreview:
+    # -- ownership -------------------------------------------------------
+
+    async def _verify_series_ownership(self, series_id: uuid.UUID, user_id: uuid.UUID) -> Series:
+        """Load the series and verify the caller owns it (anti-enumeration 403).
+
+        Mirrors ``KBCanonService._verify_series_ownership``: a missing or
+        not-owned series surfaces as ``ForbiddenError`` (never 404).
+        """
+        series = await self._series_repo.get(series_id)
+        if series is None or series.user_id != user_id:
+            raise ForbiddenError("You do not have access to this series")
+        return series
+
+    async def _verify_join_access(
+        self, series_id: uuid.UUID, novel_id: uuid.UUID, user_id: uuid.UUID
+    ) -> tuple[Series, Novel]:
+        """Verify the caller owns BOTH the series and the novel (C1 fix).
+
+        Returns the loaded ``(series, novel)`` so callers avoid a second fetch.
+        Raises ``ForbiddenError`` (403, anti-enumeration) on a missing/not-owned
+        series or novel.
+        """
+        series = await self._verify_series_ownership(series_id, user_id)
+        novel = await self._novel_repo.get_by_id(novel_id, user_id)
+        if novel is None:
+            raise ForbiddenError("You do not have access to this novel")
+        return series, novel
+
+    async def preview_join(
+        self,
+        series_id: uuid.UUID,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> JoinPreview:
         """Compute per-entry treatments without mutating state.
 
         Args:
             series_id: The series the novel would join.
             novel_id: The novel joining the series.
+            user_id: The caller (ownership of BOTH series + novel verified).
 
         Raises:
-            NotFoundError: If the novel does not exist.
+            ForbiddenError: Series or novel missing / not owned by ``user_id``.
             NovelAlreadyInSeriesError: If the novel is already in another series.
         """
-        novel = await self._novel_repo.get(novel_id)
-        if novel is None:
-            raise NotFoundError("Novel", identifier=str(novel_id))
+        _, novel = await self._verify_join_access(series_id, novel_id, user_id)
         if novel.series_id is not None and novel.series_id != series_id:
             raise NovelAlreadyInSeriesError(novel_id, novel.series_id)
 
@@ -110,7 +145,11 @@ class SeriesJoinService:
         )
 
     async def apply_join(
-        self, series_id: uuid.UUID, novel_id: uuid.UUID, position: int
+        self,
+        series_id: uuid.UUID,
+        novel_id: uuid.UUID,
+        position: int,
+        user_id: uuid.UUID,
     ) -> JoinResult:
         """Execute the previewed treatments atomically.
 
@@ -123,13 +162,28 @@ class SeriesJoinService:
             series_id: The series to join.
             novel_id: The novel joining the series.
             position: 1-based position within the series.
+            user_id: The caller (ownership of BOTH series + novel verified).
 
         Raises:
-            NotFoundError: If the novel does not exist.
+            ForbiddenError: Series or novel missing / not owned by ``user_id``.
             NovelAlreadyInSeriesError: If the novel is already in another series.
+            ConflictError: Position/slug conflicts (HTTP 409).
+            NotFoundError: Series vanished in a commit race (HTTP 404).
         """
-        # Authoritative: re-derive treatments from current state.
-        preview = await self.preview_join(series_id, novel_id)
+        # Authoritative: re-derive treatments from current state. Ownership +
+        # the same-owner invariant are verified up front (before the
+        # transaction so neither commit nor rollback is touched on rejection).
+        series, novel = await self._verify_join_access(series_id, novel_id, user_id)
+        if novel.series_id is not None and novel.series_id != series_id:
+            raise NovelAlreadyInSeriesError(novel_id, novel.series_id)
+        # Defense-in-depth (Q2): per-resource ownership is verified above, so
+        # ``novel.user_id == series.user_id`` holds transitively. Assert it
+        # explicitly so a future refactor that loosens ownership fails loudly
+        # rather than silently joining a cross-owner novel into a series.
+        if novel.user_id != series.user_id:
+            raise ConflictError("Novel and series must belong to the same user")
+
+        preview = await self.preview_join(series_id, novel_id, user_id)
 
         promoted = 0
         kept = 0
@@ -146,6 +200,15 @@ class SeriesJoinService:
                 else:
                     kept += 1
             await self._session.commit()
+        except IntegrityError as exc:
+            logger.warning(
+                "join_apply_integrity_conflict",
+                series_id=str(series_id),
+                novel_id=str(novel_id),
+                error=str(exc),
+            )
+            await self._session.rollback()
+            raise map_join_integrity_error(exc, series_id) from exc
         except Exception:
             logger.error(
                 "join_apply_failed",
@@ -171,26 +234,35 @@ class SeriesJoinService:
             kept_as_overlay=kept,
         )
 
-    async def remove_novel(self, series_id: uuid.UUID, novel_id: uuid.UUID) -> None:
+    async def remove_novel(
+        self,
+        series_id: uuid.UUID,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> None:
         """Remove a novel from a series — the inverse of :meth:`apply_join`.
 
-        Clears ``series_id`` / ``series_position`` on the novel, returning it
-        to standalone. Idempotent: a novel not currently in ``series_id`` is a
-        no-op (still 204). Only the membership is cleared — KB scope
-        adjustments on leave are intentionally out of scope here.
+        Clears ``series_id`` / ``series_position`` on the novel (→ standalone)
+        and detaches the leaving novel's overlay KB ``series_id`` (T7/D6 — a
+        no-op in the post-D6 steady state, defence-in-depth for legacy rows).
+        Idempotent: a novel not currently in ``series_id`` is a no-op (still 204).
 
         Args:
             series_id: The series the novel should leave.
             novel_id: The novel to remove.
+            user_id: The caller (ownership of BOTH series + novel verified).
 
         Raises:
-            NotFoundError: If the novel does not exist.
+            ForbiddenError: Series or novel missing / not owned by ``user_id``.
         """
-        novel = await self._novel_repo.get(novel_id)
+        await self._verify_series_ownership(series_id, user_id)
+        novel = await self._novel_repo.get_by_id(novel_id, user_id)
         if novel is None:
-            raise NotFoundError("Novel", identifier=str(novel_id))
+            raise ForbiddenError("You do not have access to this novel")
         if novel.series_id == series_id:
             await self._novel_repo.clear_series_membership(novel_id)
+            # Detach the leaving novel's overlay KB rows from the series (T7/D6).
+            await self._series_repo.detach_overlay_series_id(novel_id, series_id)
             await self._session.commit()
         logger.info(
             "novel_removed_from_series",
@@ -198,18 +270,23 @@ class SeriesJoinService:
             novel_id=str(novel_id),
         )
 
+    # -- helpers ---------------------------------------------------------
+
     @staticmethod
     def _treatment_for(entry: NovelKBEntry, canon_empty: bool) -> JoinEntryTreatment:
         """Derive a JoinEntryTreatment for one novel entry under Policy alpha."""
         entity_type = entry.entity_type
         if canon_empty and entity_type in _CANON_TYPES:
             target_scope = "series"
+            reason_code = "entity_default_canon"
             reason = f"Entity type '{entity_type}' defaults to Canon (Policy iii)"
         elif canon_empty and entity_type in _OVERLAY_TYPES:
             target_scope = "novel"
+            reason_code = "entity_default_overlay"
             reason = f"Entity type '{entity_type}' defaults to Novel-Overlay (Policy iii)"
         else:
             target_scope = "novel"
+            reason_code = "canon_nonempty_overlay"
             reason = "Series-Canon is non-empty; new entries stay as Novel-Overlay (Policy alpha)"
         return JoinEntryTreatment(
             entry_id=entry.id,
@@ -217,5 +294,6 @@ class SeriesJoinService:
             entity_type=entity_type,
             current_scope="novel",
             target_scope=target_scope,
+            reason_code=reason_code,
             reason=reason,
         )

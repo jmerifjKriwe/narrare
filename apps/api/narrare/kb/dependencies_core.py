@@ -26,11 +26,22 @@ def get_kb_repository(session: SessionDep) -> KBRepository:
 
 
 def get_kb_scope_service(session: SessionDep) -> KBScopeService:
-    """Create a KBScopeService with the KB repository (scope-toggle wiring)."""
+    """Create a KBScopeService (scope-toggle wiring: KB + Novel + Series repos).
+
+    The scope toggle verifies NOVEL ownership (promote) / SERIES + target-novel
+    ownership (demote), so all three repositories share ``session`` — ownership
+    lookups and the scope mutation run in one transaction.
+    """
     from narrare.kb.repository import KBRepository
     from narrare.kb.scope_service import KBScopeService
+    from narrare.novels.repository import NovelRepository
+    from narrare.series.repository import SeriesRepository
 
-    return KBScopeService(KBRepository(session))
+    return KBScopeService(
+        KBRepository(session),
+        NovelRepository(session),
+        SeriesRepository(session),
+    )
 
 
 def get_kb_canon_service(session: SessionDep) -> KBCanonService:

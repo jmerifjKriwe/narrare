@@ -13,6 +13,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from narrare_core.series.schemas import (
+    JoinReasonCode,  # noqa: TC001 - needed at runtime for Pydantic model resolution
     SeriesStatus,  # noqa: TC001 - needed at runtime for Pydantic model resolution
 )
 
@@ -106,7 +107,8 @@ class JoinEntryTreatment(BaseModel):
     entity_type: str
     current_scope: Literal["novel"]  # before join, all entries are novel-scoped
     target_scope: Literal["series", "novel"]  # after join + apply
-    reason: str  # human-readable explanation
+    reason_code: JoinReasonCode  # C3: machine-stable code the frontend i18n-resolves
+    reason: str  # English human tooltip (non-i18n clients: MCP/CLI — RULE-12)
 
 
 class JoinPreview(BaseModel):

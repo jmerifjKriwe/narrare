@@ -130,14 +130,23 @@ class FakeTxSession:
     ``SeriesJoinService.apply_join``), this fake lets tests assert the
     commit/rollback contract without a real database. It intentionally does
     not implement ``execute``/``add`` — those go through repositories.
+
+    ``commit_error`` (optional): if set, the next ``commit()`` raises it then
+    clears the slot — used to simulate a commit-time ``IntegrityError`` and
+    exercise the service's error-translation path.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, commit_error: BaseException | None = None) -> None:
         self.commit_count: int = 0
         self.rollback_count: int = 0
+        self.commit_error: BaseException | None = commit_error
 
     async def commit(self) -> None:
-        """Record a commit."""
+        """Record a commit (or raise the queued commit_error once)."""
+        if self.commit_error is not None:
+            err = self.commit_error
+            self.commit_error = None
+            raise err
         self.commit_count += 1
 
     async def rollback(self) -> None:

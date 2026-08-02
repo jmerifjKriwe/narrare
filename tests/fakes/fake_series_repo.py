@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from narrare_core.series.schemas import Series, SeriesSettings
+from narrare_core.series.schemas import NovelRow, Series, SeriesSettings
 from tests.fakes._shared import CallRecord
 
 
@@ -102,9 +102,39 @@ class FakeSeriesRepository:
         self._settings.pop(series_id, None)
         return removed is not None
 
-    async def list_novels(self, series_id: uuid.UUID) -> list[Any]:
+    async def list_novels(self, series_id: uuid.UUID) -> list[NovelRow]:
+        """Novels in series as Core ``NovelRow`` value objects (I-A2)."""
         self.calls.append(CallRecord("list_novels", kwargs={"series_id": series_id}))
-        return list(self._novels.get(series_id, []))
+        return [NovelRow.model_validate(n) for n in self._novels.get(series_id, [])]
+
+    async def count_novels(self, series_id: uuid.UUID) -> int:
+        """Count novels in a series (I-B3 N+1 fix — no row materialisation)."""
+        self.calls.append(CallRecord("count_novels", kwargs={"series_id": series_id}))
+        return len(self._novels.get(series_id, []))
+
+    async def count_novels_per_series(self, user_id: uuid.UUID) -> dict[uuid.UUID, int]:
+        """``GROUP BY series_id`` novel counts for every series of ``user_id``."""
+        self.calls.append(CallRecord("count_novels_per_series", kwargs={"user_id": user_id}))
+        return {
+            sid: len(novels)
+            for sid, novels in self._novels.items()
+            if sid in self._series and self._series[sid].user_id == user_id
+        }
+
+    async def delete_canon_for_series(self, series_id: uuid.UUID) -> int:
+        """Fake has no KB rows — records the call, returns 0 rows deleted."""
+        self.calls.append(CallRecord("delete_canon_for_series", kwargs={"series_id": series_id}))
+        return 0
+
+    async def detach_overlay_series_id(self, novel_id: uuid.UUID, series_id: uuid.UUID) -> int:
+        """Fake has no KB rows — records the call, returns 0 rows updated (T7)."""
+        self.calls.append(
+            CallRecord(
+                "detach_overlay_series_id",
+                kwargs={"novel_id": novel_id, "series_id": series_id},
+            )
+        )
+        return 0
 
     async def reorder_novels(self, series_id: uuid.UUID, novel_ids: list[uuid.UUID]) -> None:
         self.calls.append(CallRecord("reorder_novels", kwargs={"series_id": series_id}))

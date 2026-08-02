@@ -20,10 +20,9 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.novels.schemas import NovelSummaryResponse
 from narrare.series.schemas import SeriesResponse, SeriesSettingsResponse, SeriesSummary
 from narrare_core.series.schemas import SeriesSettings
-from narrare_core.shared.errors import ConflictError, NotFoundError
+from narrare_core.shared.errors import ConflictError, ForbiddenError, NotFoundError
 
 if TYPE_CHECKING:
     import uuid
@@ -34,7 +33,7 @@ if TYPE_CHECKING:
         SeriesSettingsUpdateRequest,
         SeriesUpdateRequest,
     )
-    from narrare_core.series.schemas import Series, SeriesStatus
+    from narrare_core.series.schemas import NovelRow, Series, SeriesStatus
 
 logger = structlog.get_logger(__name__)
 
@@ -106,54 +105,54 @@ class SeriesService:
         logger.info("series_created", series_id=str(series.id), user_id=str(user_id))
         return self._to_response(series, novel_count)
 
-    async def get_series(self, series_id: uuid.UUID) -> SeriesResponse:
-        """Get a single Series, raising SeriesNotFoundError if missing.
-
-        Args:
-            series_id: The Series to load.
+    async def get_series(self, series_id: uuid.UUID, user_id: uuid.UUID) -> SeriesResponse:
+        """Get a single Series, verifying ownership.
 
         Raises:
-            SeriesNotFoundError: If no Series exists with this id.
+            ForbiddenError: If the series is missing or not owned by ``user_id``
+                (anti-enumeration — never ``NotFoundError`` / 404).
         """
-        series = await self._repo.get(series_id)
-        if series is None:
-            raise SeriesNotFoundError(series_id)
+        series = await self._verify_series_ownership(series_id, user_id)
         return self._to_response(series, await self._novel_count(series_id))
 
     async def list_series(self, user_id: uuid.UUID) -> list[SeriesSummary]:
-        """List all Series for a user with computed novel counts."""
+        """List all Series for a user with computed novel counts.
+
+        Uses a single ``GROUP BY`` aggregate (``count_novels_per_series``) so the
+        list path is O(1) queries, not O(N) (I-B3 N+1 fix).
+        """
         all_series = await self._repo.list_for_user(user_id)
-        summaries: list[SeriesSummary] = []
-        for s in all_series:
-            count = await self._novel_count(s.id)
-            summaries.append(
-                SeriesSummary(
-                    id=s.id,
-                    title=s.title,
-                    subtitle=s.subtitle,
-                    status=s.status,
-                    novel_count=count,
-                )
+        counts = await self._repo.count_novels_per_series(user_id)
+        return [
+            SeriesSummary(
+                id=s.id,
+                title=s.title,
+                subtitle=s.subtitle,
+                status=s.status,
+                novel_count=counts.get(s.id, 0),
             )
-        return summaries
+            for s in all_series
+        ]
 
     async def update_series(
-        self, series_id: uuid.UUID, request: SeriesUpdateRequest
+        self,
+        series_id: uuid.UUID,
+        user_id: uuid.UUID,
+        request: SeriesUpdateRequest,
     ) -> SeriesResponse:
         """Update a Series, enforcing status-transition rules.
 
         Args:
             series_id: The Series to patch.
+            user_id: The caller (ownership verified).
             request: PATCH body — only set fields are forwarded.
 
         Raises:
-            SeriesNotFoundError: If the Series does not exist.
+            ForbiddenError: Series missing or not owned by ``user_id``.
             InvalidStatusTransitionError: If ``status`` requests a non-adjacent
                 move (e.g. draft→completed).
         """
-        current = await self._repo.get(series_id)
-        if current is None:
-            raise SeriesNotFoundError(series_id)
+        current = await self._verify_series_ownership(series_id, user_id)
 
         if request.status is not None and request.status != current.status:
             self._validate_transition(current.status, request.status)
@@ -161,82 +160,108 @@ class SeriesService:
         patch = self._build_patch(request)
         updated = await self._repo.update(series_id, **patch) if patch else current
         if updated is None:
-            # Race: deleted between get and update.
-            raise SeriesNotFoundError(series_id)
+            # Race: deleted between ownership check and update — treat as not
+            # owned (anti-enumeration: never reveal existence via 404).
+            raise ForbiddenError("You do not have access to this series")
         logger.info("series_updated", series_id=str(series_id))
         return self._to_response(updated, await self._novel_count(series_id))
 
-    async def delete_series(self, series_id: uuid.UUID) -> None:
-        """Delete a Series, raising SeriesNotFoundError if missing.
+    async def delete_series(self, series_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        """Delete a Series + its Canon KB rows (the Canon fate; ADR-075 §D6).
 
-        Args:
-            series_id: The Series to delete.
+        Canon rows (``novel_id IS NULL``) are bulk-deleted in-transaction before
+        the series row is removed — Canon has no home without its series (C2).
+        Member novels become standalones (``novels.series_id`` SET NULL via the
+        FK) and their Novel-Overlay KB rows survive (``kb_entries.series_id`` SET
+        NULL via the FK).
 
         Raises:
-            SeriesNotFoundError: If the Series does not exist.
+            ForbiddenError: Series missing or not owned by ``user_id``.
         """
+        await self._verify_series_ownership(series_id, user_id)
+        # Canon fate: remove Canon rows first (they cannot survive the series).
+        canon_deleted = await self._repo.delete_canon_for_series(series_id)
         deleted = await self._repo.delete(series_id)
         if not deleted:
-            raise SeriesNotFoundError(series_id)
-        logger.info("series_deleted", series_id=str(series_id))
+            # Race: vanished between ownership check and delete — anti-enumeration.
+            raise ForbiddenError("You do not have access to this series")
+        logger.info("series_deleted", series_id=str(series_id), canon_deleted=canon_deleted)
 
     # -- novels in series + settings ------------------------------------
 
-    async def list_novels(self, series_id: uuid.UUID) -> list[NovelSummaryResponse]:
-        """List the novels in a series, ordered by ``series_position``.
+    async def list_novels(self, series_id: uuid.UUID, user_id: uuid.UUID) -> list[NovelRow]:
+        """List a series' novels ordered by ``series_position`` (Core read-model).
 
         Raises:
-            SeriesNotFoundError: If the Series does not exist.
+            ForbiddenError: If the series is missing or not owned by ``user_id``.
         """
-        await self._require_series(series_id)
-        novels = await self._repo.list_novels(series_id)
-        return [NovelSummaryResponse.model_validate(novel) for novel in novels]
+        await self._verify_series_ownership(series_id, user_id)
+        return await self._repo.list_novels(series_id)
 
-    async def reorder_novels(self, series_id: uuid.UUID, novel_ids: list[uuid.UUID]) -> None:
+    async def reorder_novels(
+        self,
+        series_id: uuid.UUID,
+        user_id: uuid.UUID,
+        novel_ids: list[uuid.UUID],
+    ) -> None:
         """Reassign sequential 1-based positions to the series' novels.
 
         Raises:
-            SeriesNotFoundError: If the Series does not exist.
+            ForbiddenError: If the series is missing or not owned by ``user_id``.
         """
-        await self._require_series(series_id)
+        await self._verify_series_ownership(series_id, user_id)
         await self._repo.reorder_novels(series_id, novel_ids)
         logger.info("series_novels_reordered", series_id=str(series_id))
 
-    async def get_settings(self, series_id: uuid.UUID) -> SeriesSettingsResponse:
+    async def get_settings(
+        self, series_id: uuid.UUID, user_id: uuid.UUID
+    ) -> SeriesSettingsResponse:
         """Get Series settings (synthesises a default if no row exists yet).
 
         Raises:
-            SeriesNotFoundError: If the Series does not exist.
+            ForbiddenError: If the series is missing or not owned by ``user_id``.
         """
-        await self._require_series(series_id)
+        await self._verify_series_ownership(series_id, user_id)
         settings = await self._repo.get_settings(series_id)
         if settings is None:
             settings = SeriesSettings(series_id=series_id, author_voice=None)
         return SeriesSettingsResponse.model_validate(settings)
 
     async def update_settings(
-        self, series_id: uuid.UUID, request: SeriesSettingsUpdateRequest
+        self,
+        series_id: uuid.UUID,
+        user_id: uuid.UUID,
+        request: SeriesSettingsUpdateRequest,
     ) -> SeriesSettingsResponse:
         """Patch Series settings (only explicitly-provided fields forward).
 
         Raises:
-            SeriesNotFoundError: If the Series does not exist.
+            ForbiddenError: If the series is missing or not owned by ``user_id``.
         """
-        await self._require_series(series_id)
+        await self._verify_series_ownership(series_id, user_id)
         patch = request.model_dump(exclude_unset=True)
         settings = await self._repo.update_settings(series_id, patch)
         return SeriesSettingsResponse.model_validate(settings)
 
     # -- helpers --------------------------------------------------------
 
-    async def _require_series(self, series_id: uuid.UUID) -> None:
-        """Raise ``SeriesNotFoundError`` if the series does not exist."""
-        if await self._repo.get(series_id) is None:
-            raise SeriesNotFoundError(series_id)
+    async def _verify_series_ownership(self, series_id: uuid.UUID, user_id: uuid.UUID) -> Series:
+        """Load a series and verify the caller owns it.
+
+        Mirrors ``KBCanonService._verify_series_ownership``: a *missing* series
+        and a *not-owned* series both surface as ``ForbiddenError`` (HTTP 403) —
+        never ``NotFoundError`` (404) — so series ids are not enumerable
+        (anti-enumeration, C1 / IDOR fix). Returns the loaded Series so callers
+        avoid a second fetch.
+        """
+        series = await self._repo.get(series_id)
+        if series is None or series.user_id != user_id:
+            raise ForbiddenError("You do not have access to this series")
+        return series
 
     async def _novel_count(self, series_id: uuid.UUID) -> int:
-        """Count novels in a series via the repository."""
-        return len(await self._repo.list_novels(series_id))
+        """Count novels in a series via the repository (``SELECT COUNT(*)``)."""
+        return await self._repo.count_novels(series_id)
 
     @staticmethod
     def _validate_transition(current: SeriesStatus, target: SeriesStatus) -> None:

@@ -14,12 +14,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from narrare._app.base_repository import BaseRepository
 from narrare.kb.models import KBEntry
 from narrare.novels.models import Novel
 from narrare_core.kb.schemas.entry import NovelKBEntry, SeriesKBEntry
+from narrare_core.shared.errors import ConflictError
 
 if TYPE_CHECKING:
     import uuid
@@ -82,15 +83,20 @@ class KBScopeRepository(BaseRepository):
         return list(merged.values())
 
     async def promote_to_canon(self, novel_id: uuid.UUID, entry_id: uuid.UUID) -> SeriesKBEntry:
-        """Promote a Novel-Overlay to Series-Canon."""
+        """Promote a Novel-Overlay to Series-Canon.
+
+        Raises:
+            ConflictError: The entry is missing or not an overlay of ``novel_id``,
+                or the novel is not in a series (scope invariant → HTTP 409).
+        """
         entry = await self._get_kb_entry(entry_id)
         if entry is None or entry.novel_id != novel_id:
-            raise ValueError(f"Entry {entry_id} not found or not overlay of novel {novel_id}")
+            raise ConflictError(f"Entry {entry_id} is not an overlay of novel {novel_id}")
 
         novel_result = await self._session.execute(select(Novel).where(Novel.id == novel_id))
         novel_obj = novel_result.scalar_one_or_none()
         if novel_obj is None or novel_obj.series_id is None:
-            raise ValueError(f"Novel {novel_id} not in a series")
+            raise ConflictError(f"Novel {novel_id} is not in a series")
 
         entry.novel_id = None
         entry.series_id = novel_obj.series_id
@@ -104,12 +110,31 @@ class KBScopeRepository(BaseRepository):
         entry_id: uuid.UUID,
         target_novel_id: uuid.UUID,
     ) -> NovelKBEntry:
-        """Demote a Series-Canon to Novel-Overlay for ``target_novel_id``."""
+        """Demote a Series-Canon to Novel-Overlay for ``target_novel_id``.
+
+        Raises:
+            ConflictError: The entry is missing/not canon of ``series_id`` (scope
+                invariant → 409), OR another member novel relies on this Canon
+                entry and would lose it from its merged view (Canon-integrity
+                guard, SERIES-001 §151-152 / D4 → 409).
+        """
         entry = await self._get_kb_entry(entry_id)
         if entry is None or entry.series_id != series_id or entry.novel_id is not None:
-            raise ValueError(f"Entry {entry_id} not found or not canon of series {series_id}")
+            raise ConflictError(f"Entry {entry_id} is not a Canon entry of series {series_id}")
+
+        # Canon-integrity guard (D4): refuse if another member novel relies on
+        # this Canon entry (has no same-slug Overlay of its own). Demoting would
+        # silently remove it from that novel's merged view (RULE-11: no silent
+        # breakage). The target novel itself is excluded — it receives the entry.
+        relying = await self._count_relying_novels(series_id, entry.slug, target_novel_id)
+        if relying > 0:
+            raise ConflictError(
+                f"Cannot demote Canon entry '{entry.slug}': {relying} other member "
+                f"novel(s) rely on it and would lose it from their merged view"
+            )
 
         entry.novel_id = target_novel_id
+        entry.series_id = None  # D6: overlays never persist series_id (derivable)
         entry.base_entry_id = None
         await self._flush()
         return self._to_novel_kb_entry(entry)
@@ -122,6 +147,34 @@ class KBScopeRepository(BaseRepository):
         """Fetch a single KB entry by id (scope-repo-local lookup)."""
         result = await self._session.execute(select(KBEntry).where(KBEntry.id == entry_id))
         return result.scalar_one_or_none()
+
+    async def _count_relying_novels(
+        self, series_id: uuid.UUID, slug: str, target_novel_id: uuid.UUID
+    ) -> int:
+        """Count member novels of ``series_id`` that rely on a Canon ``slug``.
+
+        A novel "relies on" the Canon entry when it is a member of the series
+        but has NO own Overlay with the same slug — i.e. the Canon is its only
+        source for that slug. Used by the D4 Canon-integrity guard in
+        :meth:`demote_to_overlay`. The ``target_novel_id`` (the novel receiving
+        the demoted entry) is excluded from the count.
+        """
+        # Member novels of the series that DO carry a same-slug overlay.
+        covered = select(KBEntry.novel_id).where(
+            KBEntry.slug == slug,
+            KBEntry.novel_id.in_(select(Novel.id).where(Novel.series_id == series_id)),
+        )
+        # Relying = members (minus target) NOT in the covered set.
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(Novel)
+            .where(
+                Novel.series_id == series_id,
+                Novel.id != target_novel_id,
+                ~Novel.id.in_(covered),
+            )
+        )
+        return result.scalar_one()
 
     def _to_series_kb_entry(self, model: KBEntry) -> SeriesKBEntry:
         """Convert an ORM row to a Core ``SeriesKBEntry`` (canon scope)."""

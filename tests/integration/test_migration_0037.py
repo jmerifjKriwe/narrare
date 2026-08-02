@@ -248,3 +248,7 @@ class TestCheckConstraints:
 
     async def test_kb_entries_scope_invariant_check_exists(self, db_session: AsyncSession) -> None:
         assert await _constraint_type(db_session, "ck_kb_entries_scope_invariant") == "c"
+
+
+# Round-trip safety (upgrade -> seed Canon -> downgrade -> upgrade) lives in
+# the sibling ``test_migration_0037_round_trip.py`` (RULE-04 400-line split).

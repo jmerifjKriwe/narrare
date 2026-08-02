@@ -14,9 +14,28 @@ pyright's ``reportPrivateUsage``.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from narrare.kb.scope_service import KBScopeService
 from narrare_core.kb.schemas.entry import NovelKBEntry, SeriesKBEntry
+from narrare_core.series.schemas import Series
+from tests.fakes.fake_novel_repo import FakeNovelRepository
+from tests.fakes.fake_series_repo import FakeSeriesRepository
+
+
+@dataclass
+class ScopeFixture:
+    """Bundle of a wired ``KBScopeService`` + its fakes and seeded ownership ids."""
+
+    service: KBScopeService
+    kb_repo: FakeKBRepo
+    novel_repo: FakeNovelRepository
+    series_repo: FakeSeriesRepository
+    user_id: uuid.UUID
+    novel_id: uuid.UUID
+    target_novel_id: uuid.UUID
+    series_id: uuid.UUID
 
 
 def make_series_entry(**overrides: object) -> SeriesKBEntry:
@@ -99,3 +118,41 @@ class FakeKBRepo:
             raise self._demote_error
         assert self._demote_result is not None
         return self._demote_result
+
+
+def build_scope_service(
+    *,
+    user_id: uuid.UUID | None = None,
+    novel_id: uuid.UUID | None = None,
+    series_id: uuid.UUID | None = None,
+    target_novel_id: uuid.UUID | None = None,
+) -> ScopeFixture:
+    """Wire a ``KBScopeService`` with ownership-seeded Novel + Series fakes.
+
+    The Novel + Series fakes are seeded so the caller owns the novel(s)/series
+    (C1 ownership happy path); the KB fake records promote/demote calls. All
+    seeded ids are exposed on the returned :class:`ScopeFixture`.
+    """
+    user_id = user_id or uuid.uuid4()
+    novel_id = novel_id or uuid.uuid4()
+    series_id = series_id or uuid.uuid4()
+    target_novel_id = target_novel_id or uuid.uuid4()
+    kb_repo = FakeKBRepo()
+    novel_repo = FakeNovelRepository()
+    from tests.factories import make_novel
+
+    novel_repo.seed(make_novel(id=novel_id, user_id=user_id))
+    novel_repo.seed(make_novel(id=target_novel_id, user_id=user_id))
+    series_repo = FakeSeriesRepository()
+    series_repo.seed(Series(id=series_id, user_id=user_id, title="Test Series"))
+    service = KBScopeService(kb_repo, novel_repo, series_repo)
+    return ScopeFixture(
+        service=service,
+        kb_repo=kb_repo,
+        novel_repo=novel_repo,
+        series_repo=series_repo,
+        user_id=user_id,
+        novel_id=novel_id,
+        target_novel_id=target_novel_id,
+        series_id=series_id,
+    )

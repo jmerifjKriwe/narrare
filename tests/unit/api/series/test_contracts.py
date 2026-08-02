@@ -1,10 +1,10 @@
 """Smoke test: Protocols are importable and have expected method signatures."""
 
 from narrare.series.contracts import (
-    SeriesJoinServiceProtocol,
     SeriesRepositoryProtocol,
     SeriesServiceProtocol,
 )
+from narrare.series.join_contracts import SeriesJoinServiceProtocol
 
 
 def test_series_repository_protocol_methods():

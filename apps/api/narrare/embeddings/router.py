@@ -8,7 +8,7 @@ RULE-06: Router only delegates — no business logic.
 
 from __future__ import annotations
 
-import uuid  # noqa: TC003
+import uuid
 
 from fastapi import APIRouter, Depends
 

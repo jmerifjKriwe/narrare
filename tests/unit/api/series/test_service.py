@@ -21,8 +21,9 @@ from narrare.series.schemas import (
     SeriesSummary,
     SeriesUpdateRequest,
 )
-from narrare.series.service import SeriesNotFoundError, SeriesService
+from narrare.series.service import InvalidStatusTransitionError, SeriesNotFoundError, SeriesService
 from narrare_core.series.schemas import Series
+from narrare_core.shared.errors import ForbiddenError
 from tests.fakes.fake_series_repo import FakeSeriesRepository
 
 USER_ID = uuid4()
@@ -113,25 +114,36 @@ class TestCreateSeries:
 
 class TestGetSeries:
     async def test_returns_response_with_computed_novel_count(self) -> None:
-        """get_series counts novels via repo.list_novels."""
+        """get_series counts novels via repo.count_novels."""
         series = _make_core_series(status="active")
         repo = FakeSeriesRepository()
         repo.seed(series, novels=["novel-a", "novel-b"])
         service = SeriesService(repo)
 
-        result = await service.get_series(series.id)
+        result = await service.get_series(series.id, USER_ID)
 
         assert isinstance(result, SeriesResponse)
         assert result.id == series.id
         assert result.status == "active"
         assert result.novel_count == 2
 
-    async def test_raises_series_not_found_when_missing(self) -> None:
+    async def test_missing_series_raises_forbidden(self) -> None:
+        """Anti-enumeration: a missing series surfaces as 403, not 404."""
         repo = FakeSeriesRepository()
         service = SeriesService(repo)
 
-        with pytest.raises(SeriesNotFoundError):
-            await service.get_series(uuid4())
+        with pytest.raises(ForbiddenError):
+            await service.get_series(uuid4(), USER_ID)
+
+    async def test_not_owned_series_raises_forbidden(self) -> None:
+        """A series owned by another user surfaces as 403 (anti-enumeration)."""
+        series = _make_core_series(user_id=uuid4())  # different owner
+        repo = FakeSeriesRepository()
+        repo.seed(series)
+        service = SeriesService(repo)
+
+        with pytest.raises(ForbiddenError):
+            await service.get_series(series.id, USER_ID)
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +153,7 @@ class TestGetSeries:
 
 class TestListSeries:
     async def test_returns_summaries_with_per_series_novel_counts(self) -> None:
+        """list_series uses a single aggregate (count_novels_per_series), not N+1."""
         s1 = _make_core_series(title="One")
         s2 = _make_core_series(title="Two")
         repo = FakeSeriesRepository()
@@ -154,6 +167,9 @@ class TestListSeries:
         assert all(isinstance(r, SeriesSummary) for r in result)
         counts = {r.title: r.novel_count for r in result}
         assert counts == {"One": 1, "Two": 3}
+        # I-B3: exactly one aggregate query (not one count_novels per series).
+        assert repo.call_count("count_novels_per_series") == 1
+        assert repo.call_count("count_novels") == 0
 
     async def test_returns_empty_list_when_user_has_no_series(self) -> None:
         repo = FakeSeriesRepository()
@@ -176,6 +192,7 @@ class TestUpdateSeries:
 
         result = await service.update_series(
             series.id,
+            USER_ID,
             SeriesUpdateRequest(title="New", genre="horror"),
         )
 
@@ -189,7 +206,7 @@ class TestUpdateSeries:
         repo.seed(series)
         service = SeriesService(repo)
 
-        await service.update_series(series.id, SeriesUpdateRequest(title="New"))
+        await service.update_series(series.id, USER_ID, SeriesUpdateRequest(title="New"))
 
         update_call = next(c for c in repo.calls if c.method == "update")
         # Only title was set — subtitle/genre/etc. must not appear as None.
@@ -204,16 +221,18 @@ class TestUpdateSeries:
         repo.seed(series)
         service = SeriesService(repo)
 
-        result = await service.update_series(series.id, SeriesUpdateRequest(status="active"))
+        result = await service.update_series(
+            series.id, USER_ID, SeriesUpdateRequest(status="active")
+        )
 
         assert result.status == "active"
 
-    async def test_raises_series_not_found_when_missing(self) -> None:
+    async def test_missing_series_raises_forbidden(self) -> None:
         repo = FakeSeriesRepository()
         service = SeriesService(repo)
 
-        with pytest.raises(SeriesNotFoundError):
-            await service.update_series(uuid4(), SeriesUpdateRequest(title="X"))
+        with pytest.raises(ForbiddenError):
+            await service.update_series(uuid4(), USER_ID, SeriesUpdateRequest(title="X"))
 
 
 # ---------------------------------------------------------------------------
@@ -222,24 +241,26 @@ class TestUpdateSeries:
 
 
 class TestDeleteSeries:
-    async def test_deletes_existing_series(self) -> None:
+    async def test_deletes_existing_series_and_canon(self) -> None:
+        """delete_series removes Canon rows in-transaction before the series (T6)."""
         series = _make_core_series()
         repo = FakeSeriesRepository()
         repo.seed(series)
         service = SeriesService(repo)
 
-        await service.delete_series(series.id)
+        await service.delete_series(series.id, USER_ID)
 
         assert repo.call_count("delete") == 1
-        # Verify removal through the public API, not internal state.
+        # T6: Canon rows are bulk-deleted before the series row.
+        assert repo.call_count("delete_canon_for_series") == 1
         assert await repo.get(series.id) is None
 
-    async def test_raises_series_not_found_when_missing(self) -> None:
+    async def test_missing_series_raises_forbidden(self) -> None:
         repo = FakeSeriesRepository()
         service = SeriesService(repo)
 
-        with pytest.raises(SeriesNotFoundError):
-            await service.delete_series(uuid4())
+        with pytest.raises(ForbiddenError):
+            await service.delete_series(uuid4(), USER_ID)
 
 
 # ---------------------------------------------------------------------------
@@ -256,7 +277,6 @@ class TestErrorTypes:
         assert isinstance(err.identifier, str)
 
     def test_invalid_status_transition_carries_current_and_target(self) -> None:
-        from narrare.series.service import InvalidStatusTransitionError
 
         err = InvalidStatusTransitionError("draft", "completed")
 
@@ -264,7 +284,6 @@ class TestErrorTypes:
         assert err.target_status == "completed"
 
     def test_invalid_status_transition_is_a_conflict_error_for_409_mapping(self) -> None:
-        from narrare.series.service import InvalidStatusTransitionError
         from narrare_core.shared.errors import ConflictError
 
         err = InvalidStatusTransitionError("draft", "completed")

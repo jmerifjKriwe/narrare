@@ -55,8 +55,16 @@ class TestKBEntriesSchema:
         )
         assert result.scalar_one_or_none() == "slug"
 
-    async def test_kb_entries_novel_slug_unique_constraint(self, db_session: AsyncSession) -> None:
-        """kb_entries should have unique constraint on (novel_id, slug)."""
+    async def test_kb_entries_novel_slug_unique_constraint_dropped(
+        self, db_session: AsyncSession
+    ) -> None:
+        """The old (novel_id, slug) unique constraint was dropped by migration 0037.
+
+        It assumed every entry belongs to a novel — false once Series-Canon
+        entries (``novel_id IS NULL``) exist. 0037 replaced it with the two
+        PARTIAL unique indexes ``uq_kb_canon_per_series`` /
+        ``uq_kb_overlay_per_novel`` (covered in ``test_migration_0037.py``).
+        """
         result = await db_session.execute(
             sqlalchemy.text(
                 "SELECT constraint_name FROM information_schema.table_constraints "
@@ -64,7 +72,7 @@ class TestKBEntriesSchema:
                 "AND constraint_name = 'uq_kb_entries_novel_slug'"
             )
         )
-        assert result.scalar_one_or_none() == "uq_kb_entries_novel_slug"
+        assert result.scalar_one_or_none() is None
 
 
 class TestKBRelationshipsSchema:

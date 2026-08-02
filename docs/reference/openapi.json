@@ -766,7 +766,7 @@
           "series"
         ],
         "summary": "List Novels In Series",
-        "description": "List novels in a series, ordered by ``series_position``.",
+        "description": "List novels in a series, ordered by ``series_position``.\n\nReturns Core ``NovelRow`` value objects; ``response_model`` projects them to\n``NovelSummaryResponse`` for the HTTP body.",
         "operationId": "list_novels_in_series_api_v1_series__series_id__novels_get",
         "security": [
           {
@@ -4166,7 +4166,7 @@
           "kb"
         ],
         "summary": "Promote Entry To Canon",
-        "description": "Promote a Novel-Overlay KB entry to Series-Canon.\n\nReturns 409 Conflict if the entry is not an overlay of ``novel_id`` or the\nnovel is not in a series (scope invariant violation).",
+        "description": "Promote a Novel-Overlay KB entry to Series-Canon.\n\nReturns 403 if the novel is not owned by the caller; 409 Conflict if the\nentry is not an overlay of ``novel_id`` or the novel is not in a series\n(scope invariant violation).",
         "operationId": "promote_entry_to_canon_api_v1_novels__novel_id__kb__entry_id__promote_post",
         "security": [
           {
@@ -14638,6 +14638,15 @@
             ],
             "title": "Target Scope"
           },
+          "reason_code": {
+            "type": "string",
+            "enum": [
+              "entity_default_canon",
+              "entity_default_overlay",
+              "canon_nonempty_overlay"
+            ],
+            "title": "Reason Code"
+          },
           "reason": {
             "type": "string",
             "title": "Reason"
@@ -14650,6 +14659,7 @@
           "entity_type",
           "current_scope",
           "target_scope",
+          "reason_code",
           "reason"
         ],
         "title": "JoinEntryTreatment",

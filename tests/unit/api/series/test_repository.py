@@ -233,16 +233,22 @@ class TestSeriesRepositoryDelete:
 
 
 class TestSeriesRepositoryListNovels:
-    async def test_list_novels_returns_novels_ordered(self) -> None:
+    async def test_list_novels_returns_novel_rows_ordered(self) -> None:
+        """list_novels maps ORM rows → Core NovelRow value objects (I-A2)."""
+        from narrare_core.series.schemas import NovelRow
+
         series_id = uuid4()
-        n1 = make_novel(series_id=series_id, series_position=1)
-        n2 = make_novel(series_id=series_id, series_position=2)
+        n1 = make_novel(series_id=series_id, series_position=1, title="First")
+        n2 = make_novel(series_id=series_id, series_position=2, title="Second")
         session = FakeDbSession([FakeResult(scalars=[n1, n2])])
         repo = SeriesRepository(cast("AsyncSession", session))
 
         result = await repo.list_novels(series_id)
 
-        assert result == [n1, n2]
+        assert all(isinstance(r, NovelRow) for r in result)
+        assert [r.title for r in result] == ["First", "Second"]
+        assert [r.series_position for r in result] == [1, 2]
+        assert all(r.series_id == series_id for r in result)
 
     async def test_list_novels_returns_empty_when_none(self) -> None:
         session = FakeDbSession([FakeResult(scalars=[])])

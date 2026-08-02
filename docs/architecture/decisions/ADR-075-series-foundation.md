@@ -445,6 +445,85 @@ No decision required a user call beyond approving the design spec.
 
 ---
 
+## Post-Implementation Amendment (PR #145 Review — Contract & Integrity Fixes)
+
+> The PR #145 review found that the Series Foundation's *implementation* diverged
+> from its *contracts/spec* in several places. This amendment records the
+> architecture-level corrections (the contracts/decisions are fixed here by the
+> Architecture Specialist; Backend/Frontend/Platform implement against them).
+> Architectural-discipline §7 ("documented ≠ implemented") applies — these were
+> documented-but-not-implemented gaps, now closed at the contract layer.
+
+### A. Ownership is enforced at the service boundary (C1 / IDOR)
+
+`user_id` is now a parameter on every ownership-relevant method of
+`SeriesServiceProtocol`, `SeriesJoinServiceProtocol` (`series/contracts.py`),
+`KBCanonServiceProtocol`, and `KBScopeServiceProtocol`. The ownership semantic
+mirrors the *already-correct* `KBCanonService._verify_series_ownership`: a
+missing or not-owned resource raises `ForbiddenError` (403, anti-enumeration —
+never 404). It is encoded as a documented Protocol contract (a private helper
+per concrete service), NOT a separate `OwnershipVerifier` Protocol — consistency
+with the established canon/novel pattern.
+
+### B. Missing RULE-03 Protocols added (I-A1)
+
+`KBCanonServiceProtocol` + `KBScopeServiceProtocol` are added in a new
+`apps/api/narrare/kb/scope_contracts.py` (split from `contracts.py`, which sat
+at its 197-line ceiling — RULE-04; mirrors the `context_contracts.py`
+extraction). ADR-075's RULE-03 evidence is now complete and no longer
+misleading.
+
+### C. `list[Any]` → typed `NovelRow` (I-A2 / RULE-09)
+
+`SeriesRepositoryProtocol.list_novels` now returns `list[NovelRow]`, a new
+pure Core value object in `packages/core/narrare_core/series/schemas.py`. The
+apps-layer `NovelSummaryResponse` is built FROM it (Core → apps, never reverse).
+
+### D. Demote Canon-integrity guard (I-A3 / D4) — DECISION: implement the 409
+
+**Option A (implement) chosen** over amending the spec to drop the guarantee.
+Rationale: a Canon entry is shared across all novels of the series; if another
+member novel relies on it as Canon (no same-slug Overlay of its own), demoting it
+to a single novel's overlay silently removes it from that novel's merged view —
+violating Canon integrity and RULE-11 (silent breakage). The 409 forces explicit
+resolution. Behaviour contract specified in the PR #145 fix plan §D7.
+
+### E. FK policy + overlay `series_id` (C2 / D6) — DECISION: `ON DELETE SET NULL`
+
+`kb_entries.series_id` changes from `CASCADE` → `ON DELETE SET NULL` (one Alembic
+migration edit — RULE-14). Combined with two invariants:
+
+1. **Overlays never persist `series_id`** — it is derived from `novel.series_id`.
+   `demote_to_overlay` clears `series_id`; `remove_novel` detaches it (a no-op
+   on KB rows since overlays never carry it). This *amends* the original Decision
+   text ("Novel-Overlay — `series_id` set iff the novel is in a series"): the
+   redundantly persisted copy was the root cause of C2.
+2. **`delete_series` deletes Canon rows in-transaction** (the Canon fate) — Canon
+   rows have `novel_id IS NULL`, so they cannot survive `SET NULL` under
+   `ck_kb_entries_scope_invariant`; the service makes the fate explicit.
+
+Justification: symmetry with `novels.series_id` (SET NULL → standalone) makes the
+FK itself the guarantee that Novel-Overlays survive a series delete, instead of a
+load-bearing application `UPDATE`. Canon entries have no novel to fall back to, so
+deletion is their correct fate.
+
+### F. Stable `reason_code` for join treatments (C3)
+
+`JoinReasonCode` (Literal: `entity_default_canon` / `entity_default_overlay` /
+`canon_nonempty_overlay`) added to Core; `JoinEntryTreatment` gains
+`reason_code` (machine-stable, i18n-resolvable) alongside the English `reason`
+tooltip (kept for MCP/CLI — RULE-12). Fixes the frontend
+`t(series.join.reason.${reason})` that could never resolve against free-form
+English sentences.
+
+> These corrections do not reverse Decision 1–6 (the Canon/Overlay hybrid,
+> Schema 2A+STI, Policy α/iii stand). They tighten ownership enforcement, close
+> RULE-03 gaps, and fix a data-integrity FK bug. RULE-21: the contract/FK changes
+> are material and are recorded here; re-review is not required because this ADR
+> amendment is the re-review artefact.
+
+---
+
 ## Review Trigger
 
 - [ ] When **Spec 2 (Series Generation Context)** is implemented — verify

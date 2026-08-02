@@ -1,10 +1,10 @@
 """Unit tests for ``SeriesService`` novels-in-series + settings methods.
 
-Covers the router-facing surface added in Task 3.6 (``list_novels``,
-``reorder_novels``, ``get_settings``, ``update_settings``): happy path +
-``SeriesNotFoundError`` (404) when the series does not exist. Uses the
-in-memory ``FakeSeriesRepository`` (ADR-030); CRUD/transition coverage is
-in the sibling ``test_service.py`` / ``test_service_transitions.py``.
+Covers the router-facing surface (``list_novels``, ``reorder_novels``,
+``get_settings``, ``update_settings``): happy path + ``ForbiddenError`` (403,
+anti-enumeration) when the series is missing/not owned. Uses the in-memory
+``FakeSeriesRepository`` (ADR-030); CRUD/transition coverage is in the sibling
+``test_service.py`` / ``test_service_transitions.py``.
 """
 
 from __future__ import annotations
@@ -14,10 +14,10 @@ from uuid import uuid4
 
 import pytest
 
-from narrare.novels.schemas import NovelSummaryResponse
 from narrare.series.schemas import SeriesSettingsUpdateRequest
-from narrare.series.service import SeriesNotFoundError, SeriesService
-from narrare_core.series.schemas import Series
+from narrare.series.service import SeriesService
+from narrare_core.series.schemas import NovelRow, Series
+from narrare_core.shared.errors import ForbiddenError
 from tests.factories import make_novel
 from tests.fakes.fake_series_repo import FakeSeriesRepository
 
@@ -41,24 +41,35 @@ def _make_series(**overrides: object) -> Series:
 
 
 class TestListNovels:
-    async def test_returns_novels_as_summary_responses(self) -> None:
+    async def test_returns_novels_as_novel_rows(self) -> None:
+        """list_novels returns Core ``NovelRow`` value objects (I-A2)."""
         series = _make_series()
-        novel = make_novel(id=uuid4(), updated_at=datetime.now(UTC))
+        novel = make_novel(id=uuid4(), user_id=USER_ID, updated_at=datetime.now(UTC))
         repo = FakeSeriesRepository()
         repo.seed(series, novels=[novel])
         service = SeriesService(repo)
 
-        result = await service.list_novels(series.id)
+        result = await service.list_novels(series.id, USER_ID)
 
         assert len(result) == 1
-        assert isinstance(result[0], NovelSummaryResponse)
+        assert isinstance(result[0], NovelRow)
         assert result[0].title == novel.title
 
-    async def test_unknown_series_raises_not_found(self) -> None:
+    async def test_unknown_series_raises_forbidden(self) -> None:
+        """Anti-enumeration: a missing series surfaces as 403, not 404."""
         service = SeriesService(FakeSeriesRepository())
 
-        with pytest.raises(SeriesNotFoundError):
-            await service.list_novels(uuid4())
+        with pytest.raises(ForbiddenError):
+            await service.list_novels(uuid4(), USER_ID)
+
+    async def test_not_owned_series_raises_forbidden(self) -> None:
+        series = _make_series(user_id=uuid4())  # different owner
+        repo = FakeSeriesRepository()
+        repo.seed(series)
+        service = SeriesService(repo)
+
+        with pytest.raises(ForbiddenError):
+            await service.list_novels(series.id, USER_ID)
 
 
 class TestReorderNovels:
@@ -69,15 +80,15 @@ class TestReorderNovels:
         service = SeriesService(repo)
         order = [uuid4(), uuid4()]
 
-        await service.reorder_novels(series.id, order)
+        await service.reorder_novels(series.id, USER_ID, order)
 
         assert repo.call_count("reorder_novels") == 1
 
-    async def test_unknown_series_raises_not_found(self) -> None:
+    async def test_unknown_series_raises_forbidden(self) -> None:
         service = SeriesService(FakeSeriesRepository())
 
-        with pytest.raises(SeriesNotFoundError):
-            await service.reorder_novels(uuid4(), [uuid4()])
+        with pytest.raises(ForbiddenError):
+            await service.reorder_novels(uuid4(), USER_ID, [uuid4()])
 
 
 class TestGetSettings:
@@ -89,7 +100,7 @@ class TestGetSettings:
         await repo.update_settings(series.id, {"author_voice": {"tone": "formal"}})
         service = SeriesService(repo)
 
-        result = await service.get_settings(series.id)
+        result = await service.get_settings(series.id, USER_ID)
 
         assert result.series_id == series.id
         assert result.author_voice == {"tone": "formal"}
@@ -102,15 +113,15 @@ class TestGetSettings:
         repo._settings.pop(series.id)  # pyright: ignore[reportPrivateUsage]
         service = SeriesService(repo)
 
-        result = await service.get_settings(series.id)
+        result = await service.get_settings(series.id, USER_ID)
 
         assert result.author_voice is None
 
-    async def test_unknown_series_raises_not_found(self) -> None:
+    async def test_unknown_series_raises_forbidden(self) -> None:
         service = SeriesService(FakeSeriesRepository())
 
-        with pytest.raises(SeriesNotFoundError):
-            await service.get_settings(uuid4())
+        with pytest.raises(ForbiddenError):
+            await service.get_settings(uuid4(), USER_ID)
 
 
 class TestUpdateSettings:
@@ -121,7 +132,7 @@ class TestUpdateSettings:
         service = SeriesService(repo)
 
         result = await service.update_settings(
-            series.id, SeriesSettingsUpdateRequest(author_voice={"tone": "wry"})
+            series.id, USER_ID, SeriesSettingsUpdateRequest(author_voice={"tone": "wry"})
         )
 
         assert result.author_voice == {"tone": "wry"}
@@ -134,14 +145,14 @@ class TestUpdateSettings:
         await repo.update_settings(series.id, {"author_voice": {"tone": "wry"}})
         service = SeriesService(repo)
 
-        result = await service.update_settings(series.id, SeriesSettingsUpdateRequest())
+        result = await service.update_settings(series.id, USER_ID, SeriesSettingsUpdateRequest())
 
         assert result.author_voice == {"tone": "wry"}
 
-    async def test_unknown_series_raises_not_found(self) -> None:
+    async def test_unknown_series_raises_forbidden(self) -> None:
         service = SeriesService(FakeSeriesRepository())
 
-        with pytest.raises(SeriesNotFoundError):
+        with pytest.raises(ForbiddenError):
             await service.update_settings(
-                uuid4(), SeriesSettingsUpdateRequest(author_voice={"tone": "x"})
+                uuid4(), USER_ID, SeriesSettingsUpdateRequest(author_voice={"tone": "x"})
             )

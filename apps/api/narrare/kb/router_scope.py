@@ -32,10 +32,11 @@ async def promote_entry_to_canon(
 ) -> SeriesKBEntry:
     """Promote a Novel-Overlay KB entry to Series-Canon.
 
-    Returns 409 Conflict if the entry is not an overlay of ``novel_id`` or the
-    novel is not in a series (scope invariant violation).
+    Returns 403 if the novel is not owned by the caller; 409 Conflict if the
+    entry is not an overlay of ``novel_id`` or the novel is not in a series
+    (scope invariant violation).
     """
-    return await service.promote_to_canon(novel_id, entry_id)
+    return await service.promote_to_canon(novel_id, entry_id, uuid.UUID(user_id))
 
 
 @router.post(
@@ -59,4 +60,5 @@ async def demote_entry_to_overlay(
         series_id=request.series_id,
         entry_id=entry_id,
         target_novel_id=request.target_novel_id,
+        user_id=uuid.UUID(user_id),
     )

@@ -62,6 +62,7 @@ class TestStatusTransitions:
 
         result = await service.update_series(
             series.id,
+            USER_ID,
             SeriesUpdateRequest(status=target),  # type: ignore[arg-type]
         )
 
@@ -81,6 +82,7 @@ class TestStatusTransitions:
         with pytest.raises(InvalidStatusTransitionError):
             await service.update_series(
                 series.id,
+                USER_ID,
                 SeriesUpdateRequest(status=target),  # type: ignore[arg-type]
             )
 
@@ -94,6 +96,7 @@ class TestStatusTransitions:
         with pytest.raises(InvalidStatusTransitionError):
             await service.update_series(
                 series.id,
+                USER_ID,
                 SeriesUpdateRequest(status="completed"),
             )
 

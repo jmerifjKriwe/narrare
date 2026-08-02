@@ -56,7 +56,7 @@ async def get_series(
     service: SeriesService = Depends(get_series_service),
 ) -> SeriesResponse:
     """Get a single series by ID."""
-    return await service.get_series(series_id)
+    return await service.get_series(series_id, uuid.UUID(user_id))
 
 
 @router.patch("/{series_id}", response_model=SeriesResponse)
@@ -67,7 +67,7 @@ async def update_series(
     service: SeriesService = Depends(get_series_service),
 ) -> SeriesResponse:
     """Update series metadata (status transitions enforced, 409 on violation)."""
-    return await service.update_series(series_id, request)
+    return await service.update_series(series_id, uuid.UUID(user_id), request)
 
 
 @router.delete("/{series_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -77,7 +77,7 @@ async def delete_series(
     service: SeriesService = Depends(get_series_service),
 ) -> None:
     """Delete a series."""
-    await service.delete_series(series_id)
+    await service.delete_series(series_id, uuid.UUID(user_id))
 
 
 @router.get("/{series_id}/settings", response_model=SeriesSettingsResponse)
@@ -87,7 +87,7 @@ async def get_settings(
     service: SeriesService = Depends(get_series_service),
 ) -> SeriesSettingsResponse:
     """Get series settings."""
-    return await service.get_settings(series_id)
+    return await service.get_settings(series_id, uuid.UUID(user_id))
 
 
 @router.patch("/{series_id}/settings", response_model=SeriesSettingsResponse)
@@ -98,4 +98,4 @@ async def update_settings(
     service: SeriesService = Depends(get_series_service),
 ) -> SeriesSettingsResponse:
     """Update series settings."""
-    return await service.update_settings(series_id, request)
+    return await service.update_settings(series_id, uuid.UUID(user_id), request)

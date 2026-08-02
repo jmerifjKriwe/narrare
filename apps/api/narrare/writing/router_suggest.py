@@ -10,7 +10,7 @@ limit).  Follows the same SSE-direct pattern as ``router_extend.py``.
 from __future__ import annotations
 
 import json
-import uuid  # noqa: TC003 — needed at runtime for FastAPI path parameter type resolution
+import uuid
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends

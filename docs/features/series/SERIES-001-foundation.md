@@ -145,11 +145,22 @@ Drift (Spec 4), and Series Export (Spec 5).
 - A novel belongs to at most one series (Single-Series in Spec 1; Crossover is
   deliberately YAGNI — the migration path to a join-table is known but not
   pre-built).
-- Deleting a series: novels become standalones (`series_id` → NULL via
-  `ON DELETE SET NULL`); `SeriesSettings` is CASCADE-deleted.
+- Deleting a series: member novels become standalones (`novels.series_id` →
+  NULL via `ON DELETE SET NULL`); `SeriesSettings` is CASCADE-deleted. **Canon
+  KB rows are deleted in-transaction by `delete_series`** (the Canon fate — a
+  Canon entry has no novel to fall back to, so it cannot survive its series);
+  member novels' **Novel-Overlay KB rows survive** as standalone-novel entries
+  (`kb_entries.series_id` is `ON DELETE SET NULL`, mirroring `novels.series_id`
+  — see ADR-075 §D6). *(CR-04 correction, PR #145: the original CASCADE on
+  `kb_entries.series_id` destroyed overlays of member novels on series delete.)*
 - Promote requires confirmation (the entry becomes visible to all books).
-- Demote requires confirmation (the entry leaves canon; other books lose it); a
-  409 is returned if Canon has Overlays in other books.
+- Demote requires confirmation (the entry leaves canon; other books lose it). A
+  **409 ConflictError is returned if demoting would remove the Canon entry from
+  the merged view of any OTHER member novel that relies on it as Canon** (i.e.
+  any member novel that does not itself carry a same-slug Overlay). This is the
+  Canon-integrity guard — demoting a Canon entry depended on by other books is
+  blocked rather than silently orphaning their references (RULE-11). *(CR-04
+  correction, PR #145: this guarantee was documented but not implemented.)*
 - Status transitions: `draft → active → completed` (and back). No skipping.
 - A standalone novel sees no ScopeToggle (graceful, not an error).
 

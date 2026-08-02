@@ -2,11 +2,12 @@
 
 Series Foundation Spec 1, Slice 3 Task 3.7.
 
-Covers the thin :class:`KBScopeService` wrapper: delegation to the repository
-scope methods, return-value pass-through, and translation of the repository's
-invariant-violation ``ValueError`` into a domain ``ConflictError`` (the cause
-of the HTTP 409 surfaced to clients). HTTP-level status codes are covered in
-the sibling ``test_scope_endpoints.py`` (RULE-04 file-size split).
+Covers the :class:`KBScopeService` layer: ownership verification (C1 —
+``ForbiddenError`` 403 on a missing/not-owned novel or series), delegation to
+the repository scope methods, return-value pass-through, and propagation of the
+repository's ``ConflictError`` (scope invariant / Canon-integrity guard D4 →
+HTTP 409). HTTP-level status codes are covered in the sibling
+``test_scope_endpoints.py`` (RULE-04 file-size split).
 """
 
 from __future__ import annotations
@@ -15,20 +16,16 @@ import uuid
 
 import pytest
 
-from narrare.kb.scope_service import KBScopeService
-from narrare_core.shared.errors import ConflictError
+from narrare_core.kb.schemas.entry import SeriesKBEntry
+from narrare_core.shared.errors import ConflictError, ForbiddenError
 
-from ._scope_service_helpers import FakeKBRepo
+from ._scope_service_helpers import (
+    build_scope_service,
+    make_novel_entry,
+    make_series_entry,
+)
 
-
-@pytest.fixture
-def fake_repo() -> FakeKBRepo:
-    return FakeKBRepo()
-
-
-@pytest.fixture
-def service(fake_repo: FakeKBRepo) -> KBScopeService:
-    return KBScopeService(fake_repo)  # type: ignore[arg-type]
+USER_ID = uuid.uuid4()
 
 
 # ---------------------------------------------------------------------------
@@ -37,39 +34,34 @@ def service(fake_repo: FakeKBRepo) -> KBScopeService:
 
 
 class TestPromoteToCanon:
-    async def test_delegates_to_repository_with_args(
-        self, service: KBScopeService, fake_repo: FakeKBRepo
-    ) -> None:
-        """Promote forwards novel_id/entry_id to the repo and returns its result."""
-        from ._scope_service_helpers import make_series_entry
-
-        novel_id = uuid.uuid4()
+    async def test_delegates_to_repository_and_returns_result(self) -> None:
+        """Promote verifies NOVEL ownership, forwards args, returns the result."""
+        fx = build_scope_service(user_id=USER_ID)
         entry_id = uuid.uuid4()
-        expected = make_series_entry(series_id=uuid.uuid4())
-        fake_repo.set_promote_result(expected)
+        expected = make_series_entry(series_id=fx.series_id)
+        fx.kb_repo.set_promote_result(expected)
 
-        result = await service.promote_to_canon(novel_id, entry_id)
+        result = await fx.service.promote_to_canon(fx.novel_id, entry_id, USER_ID)
 
         assert result is expected
-        assert fake_repo.promote_calls == [(novel_id, entry_id)]
+        assert fx.kb_repo.promote_calls == [(fx.novel_id, entry_id)]
 
-    async def test_translates_value_error_to_conflict(
-        self, service: KBScopeService, fake_repo: FakeKBRepo
-    ) -> None:
-        """A repository invariant violation surfaces as a ConflictError (→ HTTP 409)."""
-        fake_repo.set_promote_error(ValueError("Entry not found or not overlay"))
+    async def test_not_owned_novel_raises_forbidden(self) -> None:
+        """A novel not owned by the caller → 403 (anti-enumeration), no promote."""
+        fx = build_scope_service(user_id=USER_ID)
 
-        with pytest.raises(ConflictError, match="not overlay"):
-            await service.promote_to_canon(uuid.uuid4(), uuid.uuid4())
+        with pytest.raises(ForbiddenError):
+            await fx.service.promote_to_canon(uuid.uuid4(), uuid.uuid4(), USER_ID)
 
-    async def test_preserves_cause(self, service: KBScopeService, fake_repo: FakeKBRepo) -> None:
-        """The original ValueError is chained for diagnostics (RULE-11)."""
-        original = ValueError("Novel not in a series")
-        fake_repo.set_promote_error(original)
+        assert fx.kb_repo.promote_calls == []
 
-        with pytest.raises(ConflictError) as exc_info:
-            await service.promote_to_canon(uuid.uuid4(), uuid.uuid4())
-        assert exc_info.value.__cause__ is original
+    async def test_repo_conflict_propagates(self) -> None:
+        """A repository ConflictError (scope invariant) surfaces unchanged (409)."""
+        fx = build_scope_service(user_id=USER_ID)
+        fx.kb_repo.set_promote_error(ConflictError("Entry not an overlay"))
+
+        with pytest.raises(ConflictError, match="not an overlay"):
+            await fx.service.promote_to_canon(fx.novel_id, uuid.uuid4(), USER_ID)
 
 
 # ---------------------------------------------------------------------------
@@ -78,37 +70,54 @@ class TestPromoteToCanon:
 
 
 class TestDemoteToOverlay:
-    async def test_delegates_to_repository_with_args(
-        self, service: KBScopeService, fake_repo: FakeKBRepo
-    ) -> None:
-        """Demote forwards series_id/entry_id/target_novel_id and returns its result."""
-        from ._scope_service_helpers import make_novel_entry
-
-        series_id = uuid.uuid4()
+    async def test_delegates_to_repository_and_returns_result(self) -> None:
+        """Demote verifies SERIES + target-novel ownership, forwards, returns."""
+        fx = build_scope_service(user_id=USER_ID)
         entry_id = uuid.uuid4()
-        target_novel_id = uuid.uuid4()
-        expected = make_novel_entry(novel_id=target_novel_id)
-        fake_repo.set_demote_result(expected)
+        expected = make_novel_entry(novel_id=fx.target_novel_id)
+        fx.kb_repo.set_demote_result(expected)
 
-        result = await service.demote_to_overlay(series_id, entry_id, target_novel_id)
+        result = await fx.service.demote_to_overlay(
+            fx.series_id, entry_id, fx.target_novel_id, USER_ID
+        )
 
         assert result is expected
-        assert fake_repo.demote_calls == [(series_id, entry_id, target_novel_id)]
+        assert fx.kb_repo.demote_calls == [(fx.series_id, entry_id, fx.target_novel_id)]
 
-    async def test_translates_value_error_to_conflict(
-        self, service: KBScopeService, fake_repo: FakeKBRepo
-    ) -> None:
-        """A repository invariant violation surfaces as a ConflictError (→ HTTP 409)."""
-        fake_repo.set_demote_error(ValueError("Entry not canon of series"))
+    async def test_not_owned_series_raises_forbidden(self) -> None:
+        fx = build_scope_service(user_id=USER_ID)
 
-        with pytest.raises(ConflictError, match="not canon"):
-            await service.demote_to_overlay(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
+        with pytest.raises(ForbiddenError):
+            await fx.service.demote_to_overlay(uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), USER_ID)
 
-    async def test_preserves_cause(self, service: KBScopeService, fake_repo: FakeKBRepo) -> None:
-        """The original ValueError is chained for diagnostics (RULE-11)."""
-        original = ValueError("not canon")
-        fake_repo.set_demote_error(original)
+        assert fx.kb_repo.demote_calls == []
 
-        with pytest.raises(ConflictError) as exc_info:
-            await service.demote_to_overlay(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
-        assert exc_info.value.__cause__ is original
+    async def test_not_owned_target_novel_raises_forbidden(self) -> None:
+        """Series owned but target novel not owned → 403."""
+        fx = build_scope_service(user_id=USER_ID)
+
+        with pytest.raises(ForbiddenError):
+            await fx.service.demote_to_overlay(fx.series_id, uuid.uuid4(), uuid.uuid4(), USER_ID)
+
+        assert fx.kb_repo.demote_calls == []
+
+    async def test_repo_conflict_propagates(self) -> None:
+        """A repository ConflictError (guard D4 / invariant) surfaces unchanged."""
+        fx = build_scope_service(user_id=USER_ID)
+        fx.kb_repo.set_demote_error(ConflictError("rely on it"))
+
+        with pytest.raises(ConflictError, match="rely"):
+            await fx.service.demote_to_overlay(
+                fx.series_id, uuid.uuid4(), fx.target_novel_id, USER_ID
+            )
+
+
+# ---------------------------------------------------------------------------
+# Sanity
+# ---------------------------------------------------------------------------
+
+
+def test_make_series_entry_is_series_scope() -> None:
+    entry = make_series_entry()
+    assert isinstance(entry, SeriesKBEntry)
+    assert entry.novel_id is None

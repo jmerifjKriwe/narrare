@@ -26,6 +26,7 @@ class TestJoinEntryTreatment:
             entity_type="system",
             current_scope="novel",
             target_scope="series",
+            reason_code="entity_default_canon",
             reason="Entity type 'system' defaults to Canon",
         )
         assert t.current_scope == "novel"
@@ -39,6 +40,7 @@ class TestJoinEntryTreatment:
                 entity_type="system",
                 current_scope="series",  # type: ignore[arg-type]
                 target_scope="series",
+                reason_code="entity_default_canon",
                 reason="r",
             )
 
@@ -50,6 +52,7 @@ class TestJoinEntryTreatment:
                 entity_type="system",
                 current_scope="novel",
                 target_scope="canon",  # type: ignore[arg-type]
+                reason_code="entity_default_canon",
                 reason="r",
             )
 
@@ -62,6 +65,7 @@ class TestJoinPreview:
             entity_type="system",
             current_scope="novel",
             target_scope="series",
+            reason_code="entity_default_canon",
             reason="Entity type 'system' defaults to Canon",
         )
         p = JoinPreview(

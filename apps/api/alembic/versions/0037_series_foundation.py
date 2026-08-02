@@ -14,9 +14,16 @@ What this migration does, in order:
 3. ALTER ``novels``: add ``series_id`` (nullable FK, ON DELETE SET NULL → the
    novel becomes standalone if its series is deleted), ``series_position``,
    ``subtitle``; + ``ix_novels_series_id`` + ``uq_novels_series_position``.
-4. ALTER ``kb_entries``: add ``series_id`` (FK ON DELETE CASCADE),
+4. ALTER ``kb_entries``: add ``series_id`` (FK ON DELETE SET NULL),
    ``base_entry_id`` (self-FK ON DELETE SET NULL); make ``novel_id`` NULLABLE
    (NULL = Series-Canon entry); + indexes on both new columns.
+   Note (C2 / D6): the ``kb_entries.series_id`` FK is ``SET NULL`` (not
+   CASCADE) so a series delete leaves Novel-Overlay rows (``novel_id`` set)
+   intact as standalone-novel entries. Series-Canon rows (``novel_id`` IS NULL)
+   cannot survive their series (the CHECK invariant forbids canon without a
+   series), so the application deletes them in-transaction on series delete
+   (``SeriesService.delete_series`` → ``delete_canon_for_series``); the
+   downgrade below likewise removes them before restoring ``novel_id NOT NULL``.
 5. DROP the old ``uq_kb_entries_novel_slug`` unique constraint (it assumed
    every entry belongs to a novel — false once Canon entries exist).
 6. CREATE two PARTIAL unique indexes replacing it:
@@ -158,12 +165,15 @@ def upgrade() -> None:
     )
 
     # ── 4. kb_entries: scope discriminator columns ───────────────────────
+    # series_id FK is SET NULL (C2/D6): a series delete leaves Novel-Overlay
+    # rows intact as standalone-novel entries. Canon rows (novel_id IS NULL)
+    # are deleted in-transaction by the application on series delete.
     op.add_column(
         "kb_entries",
         sa.Column(
             "series_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("series.id", ondelete="CASCADE"),
+            sa.ForeignKey("series.id", ondelete="SET NULL"),
             nullable=True,
         ),
     )
@@ -220,8 +230,14 @@ def downgrade() -> None:
     op.drop_index("uq_kb_canon_per_series", table_name="kb_entries")
 
     # ── 5. Recreate old unique constraint ────────────────────────────────
-    # Safe only after all Canon entries (novel_id IS NULL) are gone — the
-    # caller is responsible for removing them before running this downgrade.
+    # Canon entries (novel_id IS NULL) cannot exist under the pre-0037 schema
+    # (novel_id was NOT NULL), so they are removed here before the NOT NULL
+    # restore in step 4. This mirrors the application's series-delete Canon
+    # fate (C2) and keeps the downgrade round-trip safe even when Canon data
+    # is present (verified by tests/integration/test_migration_0037.py).
+    # Logged, not silent (RULE-11) — Canon is the canonical KB so its loss on
+    # downgrade is a deliberate, documented data change.
+    op.execute("DELETE FROM kb_entries WHERE novel_id IS NULL")
     op.create_unique_constraint(
         "uq_kb_entries_novel_slug",
         "kb_entries",
