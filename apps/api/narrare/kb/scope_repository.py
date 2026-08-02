@@ -101,7 +101,7 @@ class KBScopeRepository(BaseRepository):
         entry.novel_id = None
         entry.series_id = novel_obj.series_id
         entry.base_entry_id = None
-        await self._flush()
+        await self._flush_and_refresh(entry)
         return self._to_series_kb_entry(entry)
 
     async def demote_to_overlay(
@@ -136,7 +136,7 @@ class KBScopeRepository(BaseRepository):
         entry.novel_id = target_novel_id
         entry.series_id = None  # D6: overlays never persist series_id (derivable)
         entry.base_entry_id = None
-        await self._flush()
+        await self._flush_and_refresh(entry)
         return self._to_novel_kb_entry(entry)
 
     # ------------------------------------------------------------------ #

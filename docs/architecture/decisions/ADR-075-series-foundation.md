@@ -330,8 +330,10 @@ fixed **here**, so the first series-aware consumer cannot accidentally mix layer
 
 Backend — **new** `apps/api/narrare/series/` domain (mirrors `novels/`):
 - `models.py` — `Series`, `SeriesSettings` SQLAlchemy.
-- `contracts.py` — `SeriesRepositoryProtocol`, `SeriesServiceProtocol`,
-  `SeriesJoinServiceProtocol` (RULE-03 — defined before implementation).
+- `contracts.py` — `SeriesRepositoryProtocol`, `SeriesServiceProtocol`
+  (RULE-03 — defined before implementation); `join_contracts.py` —
+  `SeriesJoinServiceProtocol` (extracted for RULE-04, mirrors the
+  `kb/scope_contracts.py` split — see Post-Implementation Amendment §B).
 - `schemas.py`, `repository.py`, `service.py` (CRUD + status transitions),
   `join_service.py` (Policy α preview/apply), `router.py`, `router_novels.py`,
   `dependencies.py`.
@@ -340,6 +342,8 @@ Backend — **KB scope additions** in `apps/api/narrare/kb/`:
 - `scope_repository.py` — `KBScopeRepository`:
   `find_canon_for_series`, `find_overlay_for_novel`, `find_merged_for_novel`,
   `promote_to_canon`, `demote_to_overlay`.
+- `scope_contracts.py` — `KBCanonServiceProtocol`, `KBScopeServiceProtocol`,
+  `KBScopeMutationProtocol` (RULE-03 — added post-PR-#145 review; see §B).
 - `canon_service.py` — `KBCanonService` (Canon CRUD).
 - `router_canon.py` — Canon CRUD endpoints; `router_scope.py` — promote/demote.
 - `models.py` — `series_id`, `base_entry_id` columns; partial unique indexes
@@ -435,7 +439,7 @@ No decision required a user call beyond approving the design spec.
 
 | Rule | Status | Evidence |
 |------|--------|----------|
-| RULE-03 | ✅ | `SeriesRepositoryProtocol` / `SeriesServiceProtocol` / `SeriesJoinServiceProtocol` defined in `series/contracts.py` before the service/repository; Core STI types defined in `kb/schemas/entry.py` before the scope repository. |
+| RULE-03 | ✅ | `SeriesRepositoryProtocol` / `SeriesServiceProtocol` (`series/contracts.py`) + `SeriesJoinServiceProtocol` (`series/join_contracts.py`) + `KBCanonServiceProtocol` / `KBScopeServiceProtocol` (`kb/scope_contracts.py`) defined before implementation; Core STI types in `kb/schemas/entry.py` before the scope repository. (Post-PR-#145 split — see Amendment §B; the original single `series/contracts.py` is now three files for RULE-04.) |
 | RULE-04 | ✅ | Modularised: `series/` domain mirrors `novels/`; KB scope logic split into its own `scope_repository.py` (not bloating `repository.py`); STI in its own `kb/schemas/entry.py`; join logic in its own `join_service.py`. |
 | RULE-05/06 | ✅ | Core owns `series/schemas.py` + `kb/schemas/entry.py`; Backend owns repository + migration + service; one responsibility per file; the `series/` domain owns its own models, contracts, service, router. |
 | RULE-07 | ✅ | Dependency direction `router → service → repository → DB`; Core data contracts have no `apps/` imports; the STI is additive to the acyclic KB schema read direction. |
@@ -457,8 +461,10 @@ No decision required a user call beyond approving the design spec.
 ### A. Ownership is enforced at the service boundary (C1 / IDOR)
 
 `user_id` is now a parameter on every ownership-relevant method of
-`SeriesServiceProtocol`, `SeriesJoinServiceProtocol` (`series/contracts.py`),
-`KBCanonServiceProtocol`, and `KBScopeServiceProtocol`. The ownership semantic
+`SeriesServiceProtocol` (`series/contracts.py`),
+`SeriesJoinServiceProtocol` (`series/join_contracts.py`),
+`KBCanonServiceProtocol`, and `KBScopeServiceProtocol` (`kb/scope_contracts.py`).
+The ownership semantic
 mirrors the *already-correct* `KBCanonService._verify_series_ownership`: a
 missing or not-owned resource raises `ForbiddenError` (403, anti-enumeration —
 never 404). It is encoded as a documented Protocol contract (a private helper

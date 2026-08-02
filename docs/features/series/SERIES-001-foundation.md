@@ -106,15 +106,19 @@ Drift (Spec 4), and Series Export (Spec 5).
 ### Backend (implemented)
 
 - `apps/api/narrare/series/` — full domain: `models`, `contracts`
-  (`SeriesRepositoryProtocol` / `SeriesServiceProtocol` /
-  `SeriesJoinServiceProtocol`), `schemas`, `repository`, `service` (CRUD + status
-  transitions), `join_service` (Policy α preview/apply), `router`,
-  `router_novels`, `dependencies`. Mirrors the `novels/` pattern.
+  (`SeriesRepositoryProtocol` / `SeriesServiceProtocol`), `join_contracts`
+  (`SeriesJoinServiceProtocol` — split for RULE-04), `schemas`, `repository`,
+  `service` (CRUD + status transitions), `join_service` (Policy α preview/apply),
+  `router`, `router_novels`, `dependencies`. Mirrors the `novels/` pattern.
 - `apps/api/narrare/kb/scope_repository.py` — `KBScopeRepository`:
   `find_canon_for_series`, `find_overlay_for_novel`, `find_merged_for_novel`
   (Canon + latest-Overlay merge; Overlay wins on slug collision — pre-built for
   Spec 2), `promote_to_canon`, `demote_to_overlay`.
+- `apps/api/narrare/kb/scope_contracts.py` — `KBCanonServiceProtocol`,
+  `KBScopeServiceProtocol`, `KBScopeMutationProtocol` (RULE-03 Protocols —
+  added in the PR #145 review; see ADR-075 §B).
 - `apps/api/narrare/kb/canon_service.py` — `KBCanonService` (Canon CRUD);
+  `scope_service.py` — `KBScopeService` (promote/demote orchestration);
   `router_canon.py` (Canon CRUD endpoints); `router_scope.py` (promote/demote).
 - `apps/api/alembic/versions/0037_series_foundation.py` — atomic `upgrade()` +
   `downgrade()` (RULE-14).

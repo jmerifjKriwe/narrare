@@ -41,7 +41,7 @@ class KBEntry(Base):
     # Series-Canon scope: when novel_id is NULL, this entry is canon for the series.
     series_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("series.id", ondelete="CASCADE"),
+        ForeignKey("series.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
