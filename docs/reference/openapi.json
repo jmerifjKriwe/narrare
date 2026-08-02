@@ -15978,6 +15978,17 @@
             ],
             "title": "Series Id"
           },
+          "series_position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Position"
+          },
           "title": {
             "type": "string",
             "title": "Title"

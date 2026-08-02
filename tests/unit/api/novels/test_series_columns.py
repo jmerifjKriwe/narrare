@@ -74,3 +74,27 @@ def test_novel_summary_response_exposes_series_id() -> None:
     response = NovelSummaryResponse.model_validate(novel)
 
     assert response.series_id == series_id
+
+
+def test_novel_summary_response_exposes_series_position() -> None:
+    """``NovelSummaryResponse`` surfaces ``series_position`` for list views.
+
+    The BändeList component renders each band's number from this field; previously
+    it could only show a placeholder badge because the field was absent from the
+    schema (Spec 1 cleanup, ADR-075).
+    """
+    series_id = uuid.uuid4()
+    novel = _novel(series_id=series_id, series_position=2)
+
+    response = NovelSummaryResponse.model_validate(novel)
+
+    assert response.series_position == 2
+
+
+def test_novel_summary_response_series_position_is_none_for_standalone() -> None:
+    """Standalone novels expose ``series_position=None`` (no band number)."""
+    novel = _novel(series_id=None, series_position=None)
+
+    response = NovelSummaryResponse.model_validate(novel)
+
+    assert response.series_position is None

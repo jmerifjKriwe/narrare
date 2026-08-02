@@ -59,6 +59,10 @@ class NovelSummaryResponse(BaseModel):
     # Series membership, surfaced for list views (incl. the series novels list).
     # None = standalone novel. Mapped automatically via from_attributes=True.
     series_id: uuid.UUID | None = None
+    # 1-based position within the series; None for standalone novels. Surfaced
+    # so list views (e.g. BändeList) can render the band number without an extra
+    # fetch. Auto-mapped from the Novel ORM column via from_attributes=True.
+    series_position: int | None = None
     title: str
     author: str
     genre: str
