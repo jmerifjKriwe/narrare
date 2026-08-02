@@ -110,6 +110,7 @@ export type {
   CanonEntryUpdate,
   JoinEntryTreatment,
   JoinPreview,
+  JoinReasonCode,
   JoinResult,
   KBScope,
   NovelKBEntry,

@@ -117,17 +117,17 @@ export function DashboardLibrary({
               />
             ))}
 
-            {/* New Series card — blue-tinted to match the SeriesCard accent */}
+            {/* New Series card — tinted with the Series accent token */}
             <button
               type="button"
               data-testid="new-series-btn"
               onClick={onNewSeries}
-              className="flex flex-col items-center justify-center bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg p-6 hover:border-blue-500/60 hover:bg-blue-100/60 transition-colors min-h-[180px] dark:bg-blue-950/40 dark:border-blue-800 dark:hover:bg-blue-900/40"
+              className="flex flex-col items-center justify-center bg-accent-series-muted border-2 border-dashed border-accent-series-border rounded-lg p-6 hover:border-accent-series hover:bg-accent-series-muted/60 transition-colors min-h-[180px]"
             >
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mb-3 dark:bg-blue-900/60">
-                <Plus className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+              <div className="w-10 h-10 rounded-full bg-accent-series-muted flex items-center justify-center mb-3">
+                <Plus className="w-5 h-5 text-accent-series-muted-foreground" />
               </div>
-              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              <span className="text-sm font-medium text-accent-series-muted-foreground">
                 {t("dashboard.series.new_series")}
               </span>
             </button>

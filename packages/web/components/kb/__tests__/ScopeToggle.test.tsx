@@ -155,7 +155,11 @@ describe("ScopeToggle", () => {
 
     expect(mock.demote).toHaveBeenCalledTimes(1);
     // Demote routes via the current novel and targets it as the overlay home.
-    expect(mock.demote).toHaveBeenCalledWith({ novelId: "novel-1", targetNovelId: "novel-1" });
+    // I-F3: an onSuccess callback closes the confirm dialog only on success.
+    expect(mock.demote).toHaveBeenCalledWith(
+      { novelId: "novel-1", targetNovelId: "novel-1" },
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    );
   });
 
   it("disables both buttons while a mutation is pending", () => {

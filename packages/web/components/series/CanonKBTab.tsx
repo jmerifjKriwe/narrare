@@ -12,9 +12,8 @@
  * row (``CanonEntryRow``) owns its own edit / delete via the canon CRUD hooks.
  *
  * RULE-04: the row is a focused sub-component (``CanonEntryRow``); this file
- * owns data + list + create. All copy goes through ``useTranslations("studio")``
- * under ``series.canon.*`` / ``kb.*`` (keys added by Task 5.6; until then they
- * render as their key path — the established slice pattern).
+ * owns data + list + create. All copy goes through `useTranslations("studio")`
+ * under `series.canon.*` / `kb.*`.
  */
 import { Loader2, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -38,9 +37,17 @@ export function CanonKBTab({ seriesId }: CanonKBTabProps) {
   const [entityType, setEntityType] = useState<KBEntityType>("character");
 
   function handleCreate(): void {
-    create.mutate({ entity_type: entityType, name });
-    setName("");
-    setCreateOpen(false);
+    // Only reset/close on success — on error the inline message surfaces and
+    // the user can retry without losing their input (I-F3).
+    create.mutate(
+      { entity_type: entityType, name },
+      {
+        onSuccess: () => {
+          setName("");
+          setCreateOpen(false);
+        },
+      },
+    );
   }
 
   if (isLoading) {
@@ -124,6 +131,15 @@ export function CanonKBTab({ seriesId }: CanonKBTabProps) {
             {create.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {t("series.canon.create")}
           </button>
+          {create.isError ? (
+            <p
+              role="alert"
+              data-testid="canon-kb-create-error"
+              className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {t("series.canon.createError")}
+            </p>
+          ) : null}
         </div>
       ) : null}
 

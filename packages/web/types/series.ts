@@ -74,6 +74,22 @@ export interface SeriesSettingsUpdate {
   author_voice?: Record<string, unknown> | null;
 }
 
+/**
+ * Machine-stable reason code for one Policy-alpha join treatment.
+ *
+ * Mirrors the backend ``JoinReasonCode`` Literal
+ * (narrare_core.series.schemas). The frontend resolves each code via i18n
+ * (``series.join.reason.<code>``); the English ``reason`` tooltip on the same
+ * schema is the human fallback for non-i18n clients (MCP/CLI). These are
+ * STABLE WIRE VALUES — do NOT rename without a coordinated i18n migration, or
+ * the frontend translation breaks silently (the exact C3 failure this union
+ * exists to prevent).
+ */
+export type JoinReasonCode =
+  | "entity_default_canon"
+  | "entity_default_overlay"
+  | "canon_nonempty_overlay";
+
 /** Per-entry decision in a JoinPreview (JoinEntryTreatment). */
 export interface JoinEntryTreatment {
   entry_id: string;
@@ -81,6 +97,12 @@ export interface JoinEntryTreatment {
   entity_type: string;
   current_scope: "novel";
   target_scope: KBScope;
+  /**
+   * Machine-stable code the frontend resolves via i18n
+   * (``series.join.reason.<code>``). C3 fix.
+   */
+  reason_code: JoinReasonCode;
+  /** Human-readable English tooltip (MCP/CLI fallback, RULE-12 four-client). */
   reason: string;
 }
 

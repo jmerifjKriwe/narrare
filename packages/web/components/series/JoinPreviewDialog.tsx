@@ -19,6 +19,8 @@
 import { Loader2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
+import { useRef } from "react";
+import { useDialogFocus } from "@/lib/hooks/use-dialog-focus";
 import { dialogVariants, overlayVariants } from "@/lib/motion-variants";
 import type { JoinPreview } from "@/types";
 import { JoinTreatmentRow } from "./JoinTreatmentRow";
@@ -54,6 +56,10 @@ export function JoinPreviewDialog({
 }: JoinPreviewDialogProps) {
   const t = useTranslations("studio");
   const close = () => onOpenChange(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  // I-F4: modal focus lifecycle — focus on open, ESC close, Tab trap, return
+  // focus to the opener on close.
+  useDialogFocus({ open, dialogRef, onClose: close });
 
   return (
     <AnimatePresence>
@@ -74,18 +80,20 @@ export function JoinPreviewDialog({
 
           {/* Dialog */}
           <motion.div
+            ref={dialogRef}
             variants={dialogVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
             role="dialog"
             aria-modal="true"
-            aria-label={t("series.join.title", { novel: novelTitle })}
+            aria-labelledby="join-preview-dialog-title"
+            tabIndex={-1}
             data-testid="join-preview-dialog"
             className="relative w-full max-w-xl rounded-xl border border-border bg-card p-6 shadow-2xl"
           >
             <header className="mb-4 flex items-start justify-between gap-4">
-              <h2 className="text-base font-medium text-foreground">
+              <h2 id="join-preview-dialog-title" className="text-base font-medium text-foreground">
                 {t("series.join.title", { novel: novelTitle })}
               </h2>
               <button

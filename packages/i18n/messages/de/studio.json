@@ -51,7 +51,8 @@
       "create_title": "Neue Reihe erstellen",
       "title_label": "Titel",
       "title_placeholder": "Reihen-Titel eingeben...",
-      "create_label": "Erstellen"
+      "create_label": "Erstellen",
+      "create_error": "Reihe konnte nicht erstellt werden. Bitte erneut versuchen."
     }
   },
   "editor": {
@@ -1549,7 +1550,8 @@
       "promoteDescription": "Dieser Eintrag wird aus diesem Roman entfernt und als Reihen-Kanon für alle Romane der Reihe geteilt.",
       "demoteTitle": "Zum Roman-Overlay herabstufen?",
       "demoteDescription": "Dieser Eintrag wird nur auf diesen Roman beschränkt und nicht mehr in der Reihe geteilt.",
-      "confirm": "Bestätigen"
+      "confirm": "Bestätigen",
+      "error": "Der Geltungsbereich konnte nicht geändert werden. Bitte erneut versuchen."
     }
   },
   "graph": {
@@ -2063,6 +2065,12 @@
       "planned": "Geplante Romane",
       "tabsLabel": "Reihen-Tabs",
       "comingInSpec3": "kommt in Spec 3",
+      "tabs": {
+        "baende": "Bände",
+        "canon": "Kanon",
+        "settings": "Einstellungen",
+        "voice": "Voice"
+      },
       "status": {
         "draft": "Entwurf",
         "active": "Aktiv",
@@ -2078,7 +2086,8 @@
       "reorderDown": "Nach unten",
       "addNovel": "Roman zur Reihe hinzufügen",
       "selectNovel": "Roman auswählen...",
-      "noStandaloneNovels": "Keine Standalone-Romane verfügbar."
+      "noStandaloneNovels": "Keine Standalone-Romane verfügbar.",
+      "error": "Romane konnten nicht geladen werden."
     },
     "settings": {
       "title": "Reihen-Einstellungen",
@@ -2118,7 +2127,12 @@
         "canon_nonempty": "Der Reihen-Kanon existiert bereits. Alle Einträge dieses Romans bleiben als Roman-Overlay."
       },
       "targetSeries": "→ Reihen-Kanon",
-      "targetNovel": "→ Roman-Overlay"
+      "targetNovel": "→ Roman-Overlay",
+      "reason": {
+        "entity_default_canon": "Eintragstyp wird standardmäßig zum Kanon (Policy iii)",
+        "entity_default_overlay": "Eintragstyp bleibt standardmäßig als Roman-Overlay (Policy iii)",
+        "canon_nonempty_overlay": "Reihen-Kanon existiert; Eintrag bleibt als Roman-Overlay (Policy α)"
+      }
     },
     "canon": {
       "title": "Reihen-Kanon",
@@ -2127,7 +2141,8 @@
       "empty": "Noch keine Kanon-Einträge. Erstelle einen, um ihn in der gesamten Reihe zu teilen.",
       "create": "Neuen Kanon-Eintrag erstellen",
       "entityType": "Entitätstyp",
-      "name": "Name"
+      "name": "Name",
+      "createError": "Kanon-Eintrag konnte nicht erstellt werden. Bitte erneut versuchen."
     }
   }
 }

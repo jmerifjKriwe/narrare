@@ -8,10 +8,17 @@
  *   Settings → /series/[id]/settings (Task 4.7)
  *   Voice    → /series/[id]/voice    (DISABLED placeholder — Spec 3)
  *
- * The Voice tab is rendered as a non-navigable element (aria-disabled) so users
- * cannot route into an unbuilt feature. Extracted from SeriesWorkspace (RULE-04:
- * one responsibility per file). All copy goes through `useTranslations("studio")`
- * — no hardcoded JSX text (enforced by scripts/validate-i18n.ts).
+ * I-F5: these are ROUTE-NAVIGATION LINKS, not ARIA tabs. ARIA `tablist`/`tab`
+ * imply an in-page tab panel contract (arrow-key roving, `aria-controls`/
+ * `aria-selected`, single `tabindex` management) that these route links do not
+ * honour. Using plain links inside a `<nav>` (with `aria-current="page"` on the
+ * active route) is the semantically correct pattern for navigation. The Voice
+ * tab is rendered as a non-navigable element (`aria-disabled`) so users cannot
+ * route into an unbuilt feature.
+ *
+ * Extracted from SeriesWorkspace (RULE-04: one responsibility per file). All
+ * copy goes through `useTranslations("studio")` — no hardcoded JSX text
+ * (enforced by scripts/validate-i18n.ts).
  */
 import type { Route } from "next";
 import Link from "next/link";
@@ -66,30 +73,23 @@ export function SeriesTabNav({ seriesId, pathname }: SeriesTabNavProps) {
 
   return (
     <nav aria-label={t("series.workspace.tabsLabel")} className="border-b px-6">
-      <div role="tablist" className="flex gap-1">
+      <div className="flex gap-1">
         {tabs.map((tab) => {
           const active = isActive(tab);
           const label = t(tab.labelKey);
           const baseClass = "border-b-2 px-4 py-3 text-sm font-medium transition-colors";
           const stateClass = active
-            ? "border-blue-600 text-blue-600"
+            ? "border-accent-series text-accent-series"
             : "border-transparent text-muted-foreground hover:text-foreground";
           const className = `${baseClass} ${stateClass} ${tab.disabled ? "cursor-not-allowed opacity-60" : ""}`;
 
           if (tab.disabled) {
-            // Disabled placeholder tab — non-navigable so users cannot route
-            // into the unbuilt Voice feature (Spec 3). tabIndex=-1 keeps it
-            // out of the tab order while remaining programmatically
-            // focusable (ARIA-compliant disabled-tab pattern).
+            // Disabled placeholder — non-navigable so users cannot route into
+            // the unbuilt Voice feature (Spec 3).
             return (
               <span
                 key={tab.id}
-                role="tab"
-                id={`series-tab-${tab.id}`}
                 data-testid={`series-tab-${tab.id}`}
-                data-active={active}
-                tabIndex={-1}
-                aria-selected={active}
                 aria-disabled="true"
                 className={className}
               >
@@ -105,11 +105,8 @@ export function SeriesTabNav({ seriesId, pathname }: SeriesTabNavProps) {
             <Link
               key={tab.id}
               href={tab.href as Route}
-              role="tab"
-              id={`series-tab-${tab.id}`}
               data-testid={`series-tab-${tab.id}`}
-              data-active={active}
-              aria-selected={active}
+              aria-current={active ? "page" : undefined}
               className={className}
             >
               {label}

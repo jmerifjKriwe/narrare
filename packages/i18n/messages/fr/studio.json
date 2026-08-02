@@ -50,8 +50,9 @@
       "cancel": "Annuler",
       "create_title": "Créer une nouvelle série",
       "title_label": "Titre",
-      "title_placeholder": "Entrez le titre de la série...",
-      "create_label": "Créer"
+      "title_placeholder": "Entrer le titre de la série...",
+      "create_label": "Créer",
+      "create_error": "Échec de la création de la série. Veuillez réessayer."
     }
   },
   "editor": {
@@ -1549,7 +1550,8 @@
       "promoteDescription": "Cette entrée sera retirée de ce roman et partagée dans toute la série en tant que Canon de série.",
       "demoteTitle": "Rétrograder en Overlay de roman ?",
       "demoteDescription": "Cette entrée sera limitée à ce roman uniquement et ne sera plus partagée dans la série.",
-      "confirm": "Confirmer"
+      "confirm": "Confirmer",
+      "error": "Échec de la modification de la portée. Veuillez réessayer."
     }
   },
   "graph": {
@@ -2063,6 +2065,12 @@
       "planned": "Romans prévus",
       "tabsLabel": "Onglets de la série",
       "comingInSpec3": "à venir dans Spec 3",
+      "tabs": {
+        "baende": "Romans",
+        "canon": "Canon",
+        "settings": "Paramètres",
+        "voice": "Voix"
+      },
       "status": {
         "draft": "Brouillon",
         "active": "Actif",
@@ -2078,7 +2086,8 @@
       "reorderDown": "Descendre",
       "addNovel": "Ajouter un roman à la série",
       "selectNovel": "Sélectionner un roman...",
-      "noStandaloneNovels": "Aucun roman autonome disponible."
+      "noStandaloneNovels": "Aucun roman autonome disponible.",
+      "error": "Échec du chargement des romans."
     },
     "settings": {
       "title": "Paramètres de la série",
@@ -2118,7 +2127,12 @@
         "canon_nonempty": "Le Canon de la série existe déjà. Toutes les entrées de ce roman resteront en Overlay de roman."
       },
       "targetSeries": "→ Canon de série",
-      "targetNovel": "→ Overlay de roman"
+      "targetNovel": "→ Overlay de roman",
+      "reason": {
+        "entity_default_canon": "Le type d'entrée devient Canon par défaut (Policy iii)",
+        "entity_default_overlay": "Le type d'entrée reste en Overlay de roman par défaut (Policy iii)",
+        "canon_nonempty_overlay": "Le Canon de série existe ; l'entrée reste en Overlay de roman (Policy α)"
+      }
     },
     "canon": {
       "title": "Canon de série",
@@ -2127,7 +2141,8 @@
       "empty": "Aucune entrée de canon pour l'instant. Créez-en une pour la partager dans toute la série.",
       "create": "Créer une nouvelle entrée Canon",
       "entityType": "Type d'entité",
-      "name": "Nom"
+      "name": "Nom",
+      "createError": "Échec de la création de l'entrée du canon. Veuillez réessayer."
     }
   }
 }

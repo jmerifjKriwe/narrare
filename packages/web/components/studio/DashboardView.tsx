@@ -154,6 +154,7 @@ export function DashboardView() {
         onOpenChange={setNewSeriesOpen}
         onCreate={handleCreateSeries}
         isCreating={createSeriesMutation.isPending}
+        createError={createSeriesMutation.isError}
       />
     </div>
   );

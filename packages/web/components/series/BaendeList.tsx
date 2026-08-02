@@ -14,14 +14,14 @@
  * list owns data + reorder. All copy goes through `useTranslations("studio")`
  * under `series.baende.*` (keys added by Task 4.9; none hardcoded).
  */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { seriesApi } from "@/lib/api/series";
 import { seriesKeys } from "@/lib/hooks/seriesKeys";
+import { useReorderNovels, useSeriesNovels } from "@/lib/hooks/useSeriesNovels";
 import { listContainerVariants, listItemVariants } from "@/lib/motion-variants";
 import type { NovelSummary } from "@/types";
 import { AddNovelToSeries } from "./AddNovelToSeries";
@@ -34,17 +34,8 @@ export function BaendeList({ seriesId }: BaendeListProps) {
   const t = useTranslations("studio");
   const queryClient = useQueryClient();
 
-  const { data: novels = [], isLoading } = useQuery({
-    queryKey: seriesKeys.novels(seriesId),
-    queryFn: () => seriesApi.listNovels(seriesId),
-  });
-
-  const reorder = useMutation({
-    mutationFn: (novelIds: string[]) => seriesApi.reorderNovels(seriesId, novelIds),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: seriesKeys.novels(seriesId) });
-    },
-  });
+  const { data: novels = [], isLoading, isError } = useSeriesNovels(seriesId);
+  const reorder = useReorderNovels(seriesId);
 
   function handleReorderUp(index: number): void {
     if (index <= 0) return;
@@ -68,6 +59,14 @@ export function BaendeList({ seriesId }: BaendeListProps) {
       >
         <Loader2 className="h-5 w-5 animate-spin" />
         {t("series.baende.loading")}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div data-testid="baende-list-error" className="py-12 text-center text-sm text-destructive">
+        {t("series.baende.error")}
       </div>
     );
   }
@@ -106,6 +105,7 @@ export function BaendeList({ seriesId }: BaendeListProps) {
                 novel={novel}
                 index={index}
                 total={novels.length}
+                reorderDisabled={reorder.isPending}
                 onReorderUp={() => handleReorderUp(index)}
                 onReorderDown={() => handleReorderDown(index)}
               />
@@ -123,11 +123,20 @@ interface BaendeNovelRowProps {
   readonly novel: NovelSummary;
   readonly index: number;
   readonly total: number;
+  /** Disable reorder controls while a reorder mutation is in flight (I-F7 race). */
+  readonly reorderDisabled: boolean;
   readonly onReorderUp: () => void;
   readonly onReorderDown: () => void;
 }
 
-function BaendeNovelRow({ novel, index, total, onReorderUp, onReorderDown }: BaendeNovelRowProps) {
+function BaendeNovelRow({
+  novel,
+  index,
+  total,
+  reorderDisabled,
+  onReorderUp,
+  onReorderDown,
+}: BaendeNovelRowProps) {
   const t = useTranslations("studio");
 
   return (
@@ -138,7 +147,7 @@ function BaendeNovelRow({ novel, index, total, onReorderUp, onReorderDown }: Bae
     >
       <span
         data-testid={`baende-position-${index}`}
-        className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-medium text-white"
+        className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-accent-series text-xs font-medium text-accent-series-foreground"
       >
         {index + 1}
       </span>
@@ -157,7 +166,7 @@ function BaendeNovelRow({ novel, index, total, onReorderUp, onReorderDown }: Bae
         <button
           type="button"
           onClick={onReorderUp}
-          disabled={index === 0}
+          disabled={index === 0 || reorderDisabled}
           title={t("series.baende.reorderUp")}
           aria-label={t("series.baende.reorderUp")}
           className="rounded p-1.5 hover:bg-accent disabled:opacity-30"
@@ -167,7 +176,7 @@ function BaendeNovelRow({ novel, index, total, onReorderUp, onReorderDown }: Bae
         <button
           type="button"
           onClick={onReorderDown}
-          disabled={index === total - 1}
+          disabled={index === total - 1 || reorderDisabled}
           title={t("series.baende.reorderDown")}
           aria-label={t("series.baende.reorderDown")}
           className="rounded p-1.5 hover:bg-accent disabled:opacity-30"

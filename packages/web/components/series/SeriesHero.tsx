@@ -21,10 +21,7 @@ export function SeriesHero({ series }: SeriesHeroProps) {
   const t = useTranslations("studio");
 
   return (
-    <header
-      data-testid="series-hero"
-      className="border-b bg-blue-50/50 px-6 py-6 dark:bg-blue-950/20"
-    >
+    <header data-testid="series-hero" className="border-b bg-accent-series-muted px-6 py-6">
       <Link
         href="/"
         className="mb-3 inline-block text-sm text-muted-foreground hover:text-foreground"
@@ -32,7 +29,7 @@ export function SeriesHero({ series }: SeriesHeroProps) {
         {t("series.workspace.backToDashboard")}
       </Link>
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="inline-block rounded-md bg-blue-600 px-2 py-0.5 text-xs text-white">
+        <span className="inline-block rounded-md bg-accent-series px-2 py-0.5 text-xs text-accent-series-foreground">
           {t("series.workspace.badgeSeries")}
         </span>
         <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">

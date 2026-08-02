@@ -17,9 +17,7 @@
  *   - Server `layout.tsx` extracts `params.id` and passes it here as
  *     `seriesId`; this client component owns the data fetch + composition.
  *   - All copy goes through `useTranslations("studio")` — no hardcoded JSX
- *     text (enforced by scripts/validate-i18n.ts). The `series.*` keys are
- *     added to studio.json by Task 4.9; until then they render as their key
- *     path, which is the established slice-4 pattern (see SeriesCard).
+ *     text (enforced by scripts/validate-i18n.ts).
  *   - motion/react is used only via the shared `PhaseCrossfade`; reduced-motion
  *     is respected globally by the MotionProvider.
  */

@@ -116,13 +116,14 @@ describe("Series types mirror Pydantic (RULE-17)", () => {
     expect(fieldNames(sample)).toEqual(["author_voice", "series_id"]);
   });
 
-  it("JoinEntryTreatment → 6 fields with scope literals", () => {
+  it("JoinEntryTreatment → 7 fields with scope + reason_code literals", () => {
     const sample: JoinEntryTreatment = {
       entry_id: "entry-1",
       slug: "magic",
       entity_type: "system",
       current_scope: "novel",
       target_scope: "series",
+      reason_code: "entity_default_canon",
       reason: "Entity type 'system' defaults to Canon",
     };
     expect(fieldNames(sample)).toEqual([
@@ -130,6 +131,7 @@ describe("Series types mirror Pydantic (RULE-17)", () => {
       "entity_type",
       "entry_id",
       "reason",
+      "reason_code",
       "slug",
       "target_scope",
     ]);

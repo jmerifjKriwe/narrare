@@ -54,8 +54,11 @@ export function CanonEntryRow({ seriesId, entry }: CanonEntryRowProps) {
   }
 
   function handleDelete(): void {
-    remove.mutate(entry.id);
-    setConfirmOpen(false);
+    // Only close the confirm dialog on success — on error keep it open so the
+    // inline error is visible and the user can retry (I-F3).
+    remove.mutate(entry.id, {
+      onSuccess: () => setConfirmOpen(false),
+    });
   }
 
   return (
@@ -136,6 +139,24 @@ export function CanonEntryRow({ seriesId, entry }: CanonEntryRowProps) {
               {t("kb.deleteEntry")}
             </button>
           </div>
+          {update.isError ? (
+            <p
+              role="alert"
+              data-testid="canon-entry-update-error"
+              className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {t("kb.failedToSaveEntry")}
+            </p>
+          ) : null}
+          {remove.isError ? (
+            <p
+              role="alert"
+              data-testid="canon-entry-delete-error"
+              className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {t("kb.scope.error")}
+            </p>
+          ) : null}
         </div>
       ) : null}
 

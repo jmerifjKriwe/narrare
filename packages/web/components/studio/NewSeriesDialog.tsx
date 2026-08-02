@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { useDialogFocus } from "@/lib/hooks/use-dialog-focus";
 
 /**
  * NewSeriesDialog — minimal accessible create-series dialog
@@ -17,9 +18,10 @@ import { useEffect, useRef, useState } from "react";
  *     scope (and out of this layer's authority). A plain `role="dialog"`
  *     overlay + panel gives correct semantics (NOT alert semantics — this is a
  *     form, not a confirmation).
- *   - Escape closes; overlay click closes; the title input auto-focuses.
- *   - i18n keys live under `studio.dashboard.series.*` and are added in
- *     Task 4.9; until then they render verbatim (matching SeriesCard).
+ *   - Focus lifecycle (I-F4): `useDialogFocus` handles focus-on-open (the title
+ *     input is the first focusable), Escape-to-close, Tab focus trap, and
+ *     return-focus to the opener. Overlay click also closes.
+ *   - i18n keys live under `studio.dashboard.series.*`.
  */
 export interface NewSeriesDialogProps {
   /** Controlled open state. */
@@ -30,6 +32,8 @@ export interface NewSeriesDialogProps {
   readonly onCreate: (title: string) => void;
   /** Disables the Create button while the create mutation is in flight. */
   readonly isCreating?: boolean;
+  /** When true, surfaces an inline create-error message (I-F3). */
+  readonly createError?: boolean;
 }
 
 export function NewSeriesDialog({
@@ -37,29 +41,28 @@ export function NewSeriesDialog({
   onOpenChange,
   onCreate,
   isCreating = false,
+  createError = false,
 }: NewSeriesDialogProps) {
   const t = useTranslations("studio");
   const [title, setTitle] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  const handleClose = () => onOpenChange(false);
 
   // Reset the field whenever the dialog closes so a reopen starts empty.
   useEffect(() => {
     if (!open) setTitle("");
   }, [open]);
 
-  // Autofocus the title field when the dialog opens.
-  useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
+  // I-F4: modal focus lifecycle (focus-on-open, ESC close, Tab trap,
+  // return-focus). The title input is the first focusable inside the panel.
+  useDialogFocus({ open, dialogRef, onClose: handleClose });
 
   if (!open) return null;
 
   const trimmed = title.trim();
   const canCreate = trimmed.length > 0 && !isCreating;
-
-  function handleClose() {
-    onOpenChange(false);
-  }
 
   function handleCreate() {
     if (!canCreate) return;
@@ -78,12 +81,11 @@ export function NewSeriesDialog({
         className="absolute inset-0 cursor-default bg-black/50 backdrop-blur-sm"
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-series-dialog-title"
-        onKeyDown={(e) => {
-          if (e.key === "Escape") handleClose();
-        }}
+        tabIndex={-1}
         className="relative z-10 w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl"
       >
         <h2 id="new-series-dialog-title" className="text-lg font-medium text-foreground">
@@ -107,9 +109,20 @@ export function NewSeriesDialog({
               if (e.key === "Enter" && canCreate) handleCreate();
             }}
             placeholder={t("dashboard.series.title_placeholder")}
+            aria-invalid={createError}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
+
+        {createError ? (
+          <p
+            role="alert"
+            data-testid="new-series-error"
+            className="mt-3 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+          >
+            {t("dashboard.series.create_error")}
+          </p>
+        ) : null}
 
         <div className="mt-6 flex justify-end gap-3">
           <button

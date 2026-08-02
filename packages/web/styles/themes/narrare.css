@@ -42,6 +42,12 @@
   --sidebar-accent-foreground: #1a1a1a;
   --sidebar-border: #e5e5e4;
   --sidebar-ring: #525252;
+  /* Series accent (I-F1) — semantic token replacing raw blue-* utilities. */
+  --accent-series: #2563eb;
+  --accent-series-foreground: #ffffff;
+  --accent-series-muted: #eff6ff;
+  --accent-series-muted-foreground: #1d4ed8;
+  --accent-series-border: #bfdbfe;
   --editor-max-width: 68ch;
   --editor-line-height: 1.8;
   --editor-font-size: 1.0625rem;
@@ -89,6 +95,13 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
+  /* Series accent (I-F1) */
+  --accent-series: oklch(0.546 0.215 262.881);
+  --accent-series-foreground: oklch(1 0 0);
+  --accent-series-muted: oklch(0.97 0.014 254.5);
+  --accent-series-muted-foreground: oklch(0.45 0.18 262.881);
+  --accent-series-border: oklch(0.88 0.04 254.5);
+
   /* Editor-specific */
   --editor-max-width: 65ch;
   --editor-line-height: 1.8;
@@ -126,4 +139,11 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+
+  /* Series accent (I-F1) — inverted for dark mode */
+  --accent-series: oklch(0.623 0.19 259.8);
+  --accent-series-foreground: oklch(0.145 0 0);
+  --accent-series-muted: oklch(0.27 0.04 260);
+  --accent-series-muted-foreground: oklch(0.768 0.13 252);
+  --accent-series-border: oklch(0.35 0.06 260);
 }

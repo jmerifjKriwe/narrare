@@ -40,8 +40,13 @@ export function SeriesMetadataForm({ series }: SeriesMetadataFormProps) {
   const [plannedCount, setPlannedCount] = useState(series.planned_novel_count?.toString() ?? "");
   const [dirty, setDirty] = useState(false);
 
-  // Re-sync when the underlying series changes (e.g. after a refetch).
+  // Re-sync when the underlying series changes (e.g. after a refetch) — but
+  // ONLY while the form is clean. Guarding on `dirty` prevents a React Query
+  // background refetch (new `series` object identity) from clobbering the
+  // user's unsaved edits (I-F2 data-loss fix). After Save, `dirty` flips back
+  // to false and the fresh server data resyncs in.
   useEffect(() => {
+    if (dirty) return;
     setTitle(series.title);
     setSubtitle(series.subtitle ?? "");
     setDescription(series.description ?? "");
@@ -49,7 +54,7 @@ export function SeriesMetadataForm({ series }: SeriesMetadataFormProps) {
     setWritingLanguage(series.writing_language ?? "en");
     setStatus(series.status);
     setPlannedCount(series.planned_novel_count?.toString() ?? "");
-  }, [series]);
+  }, [series, dirty]);
 
   function markDirty<T>(setter: (v: T) => void) {
     return (v: T) => {

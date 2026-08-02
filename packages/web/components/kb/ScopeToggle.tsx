@@ -69,53 +69,66 @@ export function ScopeToggle({ entry, novelId }: ScopeToggleProps) {
   const isPromoting = pendingScope === "series";
 
   function handleConfirm(): void {
+    // Only clear pendingScope (→ close the ConfirmDialog) on success. On error
+    // the dialog stays open so the inline error surfaces and the user can
+    // retry (I-F3).
+    const onSuccess = () => setPendingScope(null);
     if (pendingScope === "series") {
-      promote.mutate();
+      promote.mutate(undefined, { onSuccess });
     } else if (pendingScope === "novel") {
-      demote.mutate({ novelId, targetNovelId: novelId });
+      demote.mutate({ novelId, targetNovelId: novelId }, { onSuccess });
     }
-    setPendingScope(null);
   }
 
-  return (
-    <fieldset
-      data-testid="scope-toggle"
-      className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1"
-    >
-      <legend className="sr-only">{t("kb.scope.label")}</legend>
-      <button
-        type="button"
-        data-testid="scope-toggle-canon"
-        aria-pressed={entry.scope === "series"}
-        disabled={isPending || entry.scope === "series"}
-        onClick={() => setPendingScope("series")}
-        className="rounded-md px-3 py-1 text-xs font-medium transition-colors aria-pressed:bg-primary aria-pressed:text-primary-foreground disabled:cursor-default disabled:opacity-100"
-      >
-        {t("kb.scope.canon")}
-      </button>
-      <button
-        type="button"
-        data-testid="scope-toggle-overlay"
-        aria-pressed={entry.scope === "novel"}
-        disabled={isPending || entry.scope === "novel"}
-        onClick={() => setPendingScope("novel")}
-        className="rounded-md px-3 py-1 text-xs font-medium transition-colors aria-pressed:bg-primary aria-pressed:text-primary-foreground disabled:cursor-default disabled:opacity-100"
-      >
-        {t("kb.scope.overlay")}
-      </button>
+  const hasError = promote.isError || demote.isError;
 
-      <ConfirmDialog
-        open={pendingScope !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingScope(null);
-        }}
-        title={isPromoting ? t("kb.scope.promoteTitle") : t("kb.scope.demoteTitle")}
-        description={
-          isPromoting ? t("kb.scope.promoteDescription") : t("kb.scope.demoteDescription")
-        }
-        confirmLabel={t("kb.scope.confirm")}
-        onConfirm={handleConfirm}
-      />
-    </fieldset>
+  return (
+    <div data-testid="scope-toggle-wrap">
+      <fieldset
+        data-testid="scope-toggle"
+        className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1"
+      >
+        <legend className="sr-only">{t("kb.scope.label")}</legend>
+        <button
+          type="button"
+          data-testid="scope-toggle-canon"
+          aria-pressed={entry.scope === "series"}
+          disabled={isPending || entry.scope === "series"}
+          onClick={() => setPendingScope("series")}
+          className="rounded-md px-3 py-1 text-xs font-medium transition-colors aria-pressed:bg-primary aria-pressed:text-primary-foreground disabled:cursor-default disabled:opacity-100"
+        >
+          {t("kb.scope.canon")}
+        </button>
+        <button
+          type="button"
+          data-testid="scope-toggle-overlay"
+          aria-pressed={entry.scope === "novel"}
+          disabled={isPending || entry.scope === "novel"}
+          onClick={() => setPendingScope("novel")}
+          className="rounded-md px-3 py-1 text-xs font-medium transition-colors aria-pressed:bg-primary aria-pressed:text-primary-foreground disabled:cursor-default disabled:opacity-100"
+        >
+          {t("kb.scope.overlay")}
+        </button>
+
+        <ConfirmDialog
+          open={pendingScope !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingScope(null);
+          }}
+          title={isPromoting ? t("kb.scope.promoteTitle") : t("kb.scope.demoteTitle")}
+          description={
+            isPromoting ? t("kb.scope.promoteDescription") : t("kb.scope.demoteDescription")
+          }
+          confirmLabel={t("kb.scope.confirm")}
+          onConfirm={handleConfirm}
+        />
+      </fieldset>
+
+      {hasError ? (
+        <p role="alert" data-testid="scope-toggle-error" className="mt-1 text-xs text-destructive">
+          {t("kb.scope.error")}
+        </p>
+      ) : null}
+    </div>
   );
 }

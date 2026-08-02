@@ -16,11 +16,10 @@
  * the spec'd deliverable. All copy goes through `useTranslations("studio")`
  * under `series.baende.*` / `series.join.*` (keys added by Task 4.9).
  */
-import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { novelsApi } from "@/lib/api/client";
+import { useNovels } from "@/lib/hooks/useNovels";
 import { useApplyJoin, useJoinPreview } from "@/lib/hooks/useSeriesJoin";
 import { JoinPreviewDialog } from "./JoinPreviewDialog";
 
@@ -37,10 +36,7 @@ export function AddNovelToSeries({ seriesId, nextPosition, onAdded }: AddNovelTo
   const [selectedNovelId, setSelectedNovelId] = useState("");
   const [open, setOpen] = useState(false);
 
-  const { data: allNovels = [] } = useQuery({
-    queryKey: ["novels"],
-    queryFn: () => novelsApi.list(),
-  });
+  const { data: allNovels = [] } = useNovels();
   const standalone = allNovels.filter((novel) => novel.series_id === null);
   const selectedNovel = standalone.find((novel) => novel.id === selectedNovelId) ?? null;
 
@@ -49,13 +45,24 @@ export function AddNovelToSeries({ seriesId, nextPosition, onAdded }: AddNovelTo
 
   async function handleAdd(): Promise<void> {
     if (!selectedNovelId) return;
-    await preview.mutateAsync(selectedNovelId);
+    // Open the dialog regardless of outcome so a preview error is surfaced
+    // (preview.isError → JoinPreviewDialog error state) rather than swallowed.
+    try {
+      await preview.mutateAsync(selectedNovelId);
+    } catch {
+      // surfaced via preview.isError in the dialog below (I-F3)
+    }
     setOpen(true);
   }
 
   async function handleConfirm(): Promise<void> {
     if (!selectedNovelId) return;
-    await apply.mutateAsync({ novelId: selectedNovelId, position: nextPosition });
+    try {
+      await apply.mutateAsync({ novelId: selectedNovelId, position: nextPosition });
+    } catch {
+      // Keep the dialog open so applyError is visible (I-F3).
+      return;
+    }
     onAdded?.();
     setOpen(false);
     setSelectedNovelId("");

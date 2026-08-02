@@ -191,6 +191,11 @@ describe("CanonKBTab", () => {
     // Destructive → confirmation gate.
     await user.click(screen.getByTestId("confirm-dialog-confirm"));
 
-    expect(mock.remove).toHaveBeenCalledWith("canon-1");
+    // I-F3: remove is called with the entry id + an onSuccess callback that
+    // closes the confirm dialog only on success.
+    expect(mock.remove).toHaveBeenCalledWith(
+      "canon-1",
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    );
   });
 });

@@ -28,16 +28,18 @@ const canonEmptyFixture: JoinPreview = {
       slug: "holden",
       entity_type: "character",
       current_scope: "novel",
-      target_scope: "series",
-      reason: "unique",
+      target_scope: "novel",
+      reason_code: "entity_default_overlay",
+      reason: "Entity type 'character' defaults to Novel-Overlay (Policy iii)",
     },
     {
       entry_id: "e-2",
       slug: "rocinante",
-      entity_type: "ship",
+      entity_type: "system",
       current_scope: "novel",
-      target_scope: "novel",
-      reason: "duplicate",
+      target_scope: "series",
+      reason_code: "entity_default_canon",
+      reason: "Entity type 'system' defaults to Canon (Policy iii)",
     },
   ],
 };
@@ -80,14 +82,16 @@ describe("JoinPreviewDialog", () => {
     render(<JoinPreviewDialog {...defaultProps} />);
     expect(screen.getByText("holden")).toBeDefined();
     expect(screen.getByText("rocinante")).toBeDefined();
-    // entity type labels are rendered (keys, since i18n mock returns keys)
-    expect(screen.getByText("series.join.entity.character")).toBeDefined();
+    // entity type labels reuse the shared kb.<type>s keys (C3 fix) — the i18n
+    // mock returns keys verbatim.
+    expect(screen.getByText("kb.characters")).toBeDefined();
+    expect(screen.getByText("kb.systems")).toBeDefined();
     // target labels: series-scope → Series-Canon, novel-scope → Novel-Overlay
     expect(screen.getByText("series.join.targetSeries")).toBeDefined();
     expect(screen.getByText("series.join.targetNovel")).toBeDefined();
-    // reasons
-    expect(screen.getByText("series.join.reason.unique")).toBeDefined();
-    expect(screen.getByText("series.join.reason.duplicate")).toBeDefined();
+    // reasons resolve from the stable reason_code (C3 fix), not free-text.
+    expect(screen.getByText("series.join.reason.entity_default_overlay")).toBeDefined();
+    expect(screen.getByText("series.join.reason.entity_default_canon")).toBeDefined();
   });
 
   it("shows the canon_empty explanation when the series canon is empty", () => {

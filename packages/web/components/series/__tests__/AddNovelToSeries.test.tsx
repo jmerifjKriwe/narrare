@@ -32,7 +32,7 @@ const mock = vi.hoisted(() => ({
   applyError: false,
 }));
 
-vi.mock("@/lib/api/client", () => ({
+vi.mock("@/lib/api/novels", () => ({
   novelsApi: {
     list: () => Promise.resolve(mock.standaloneNovels),
   },

@@ -89,42 +89,48 @@ describe("SeriesWorkspace", () => {
     expect(screen.getByText("series.workspace.status.active")).toBeDefined();
   });
 
-  it("renders four tabs with translated labels", () => {
+  it("renders four nav links with translated labels", () => {
     render(
       <SeriesWorkspace seriesId="series-1">
         <div />
       </SeriesWorkspace>,
     );
-    expect(screen.getByRole("tab", { name: /series\.workspace\.tabs\.baende/ })).toBeDefined();
-    expect(screen.getByRole("tab", { name: /series\.workspace\.tabs\.canon/ })).toBeDefined();
-    expect(screen.getByRole("tab", { name: /series\.workspace\.tabs\.settings/ })).toBeDefined();
-    expect(screen.getByRole("tab", { name: /series\.workspace\.tabs\.voice/ })).toBeDefined();
+    // I-F5: route links, not ARIA tabs — assert by testid + label text.
+    expect(screen.getByTestId("series-tab-baende").textContent).toContain(
+      "series.workspace.tabs.baende",
+    );
+    expect(screen.getByTestId("series-tab-canon").textContent).toContain(
+      "series.workspace.tabs.canon",
+    );
+    expect(screen.getByTestId("series-tab-settings").textContent).toContain(
+      "series.workspace.tabs.settings",
+    );
+    expect(screen.getByTestId("series-tab-voice").textContent).toContain(
+      "series.workspace.tabs.voice",
+    );
   });
 
-  it("marks the Bände tab active on the base route", () => {
+  it("marks the Bände link current on the base route", () => {
     mock.pathname = "/series/series-1";
     render(
       <SeriesWorkspace seriesId="series-1">
         <div />
       </SeriesWorkspace>,
     );
-    const baende = screen.getByRole("tab", { name: /series\.workspace\.tabs\.baende/ });
-    const canon = screen.getByRole("tab", { name: /series\.workspace\.tabs\.canon/ });
-    expect(baende.getAttribute("aria-selected")).toBe("true");
-    expect(canon.getAttribute("aria-selected")).toBe("false");
+    // I-F5: active route uses aria-current="page" (not aria-selected).
+    expect(screen.getByTestId("series-tab-baende").getAttribute("aria-current")).toBe("page");
+    expect(screen.getByTestId("series-tab-canon").getAttribute("aria-current")).toBeNull();
   });
 
-  it("marks the Canon tab active on the canon route and Bände inactive", () => {
+  it("marks the Canon link current on the canon route and Bände not current", () => {
     mock.pathname = "/series/series-1/canon";
     render(
       <SeriesWorkspace seriesId="series-1">
         <div />
       </SeriesWorkspace>,
     );
-    const canon = screen.getByRole("tab", { name: /series\.workspace\.tabs\.canon/ });
-    const baende = screen.getByRole("tab", { name: /series\.workspace\.tabs\.baende/ });
-    expect(canon.getAttribute("aria-selected")).toBe("true");
-    expect(baende.getAttribute("aria-selected")).toBe("false");
+    expect(screen.getByTestId("series-tab-canon").getAttribute("aria-current")).toBe("page");
+    expect(screen.getByTestId("series-tab-baende").getAttribute("aria-current")).toBeNull();
   });
 
   it("renders children inside the tab content area", () => {
@@ -142,9 +148,9 @@ describe("SeriesWorkspace", () => {
         <div />
       </SeriesWorkspace>,
     );
-    const voice = screen.getByRole("tab", { name: /series\.workspace\.tabs\.voice/ });
+    const voice = screen.getByTestId("series-tab-voice");
     expect(voice.getAttribute("aria-disabled")).toBe("true");
-    // A disabled tab must not be an anchor (no route navigation).
+    // A disabled placeholder must not be an anchor (no route navigation).
     expect(voice.tagName).not.toBe("A");
     expect(voice.getAttribute("href")).toBeNull();
     // Shows the "coming in Spec 3" hint.

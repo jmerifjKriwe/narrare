@@ -22,8 +22,7 @@ interface SeriesCardProps {
  *
  * Conventions matched to NovelCardGrid:
  *   - Entrance animation via `listItemVariants` from `@/lib/motion-variants`.
- *   - i18n under the shared `studio` namespace at `dashboard.series.*` (the
- *     `series.*` keys are added in Slice 4 Task 4.9).
+ *   - i18n under the shared `studio` namespace at `dashboard.series.*`.
  *   - `data-testid` marker on the interactive element (ui-principles §18).
  *   - Only phrasing content (spans) inside the button element — keeps the
  *     HTML valid (a button's content model is phrasing content, not flow).
@@ -37,10 +36,10 @@ export function SeriesCard({ series, onClick }: SeriesCardProps) {
       data-testid="series-card"
       variants={listItemVariants}
       onClick={() => onClick(series.id)}
-      className="group relative block w-full rounded-lg border bg-blue-50 border-blue-200 p-6 text-left transition-shadow hover:shadow-md dark:bg-blue-950/40 dark:border-blue-800"
+      className="group relative block w-full rounded-lg border bg-accent-series-muted border-accent-series-border p-6 text-left transition-shadow hover:shadow-md"
     >
       <span className="mb-2 flex items-center gap-2">
-        <span className="inline-block rounded-md bg-blue-600 px-2 py-0.5 text-xs text-white">
+        <span className="inline-block rounded-md bg-accent-series px-2 py-0.5 text-xs text-accent-series-foreground">
           {t("dashboard.series.badge")}
         </span>
         <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
