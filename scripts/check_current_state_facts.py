@@ -68,8 +68,15 @@ FORBIDDEN_VOLATILE_COUNT_PATTERNS: tuple[ForbiddenPattern, ...] = (
     (
         "Router/agent/module/migration inventory count",
         re.compile(
+            # Alt 1: explicit "(current )?<kind> inventory … N" claim, anywhere.
             r"\b(?:current\s+)?(?:agent|router|module|migration)\s+inventory\b.*\b\d+\b"
-            r"|(?<![-\w])\b\d+\s+(?:agents?|routers?|modules?|migrations?)\b",
+            # Alt 2: bare "N agents/routers/modules/migrations" only counts as a
+            # volatile inventory when it opens a list entry (line start, optional
+            # "- "/"* " bullet), e.g. "- 7 agents: beta_reader". In running prose
+            # ("…1 agent call…", "3 routers configured") it is narrative, not an
+            # inventory — matching it produced false positives (CI run #465).
+            # Lookbehind keeps rejecting hyphen-preceded tokens ("ADR-054 migration").
+            r"|^\s*(?:[-*]\s*)?(?<![-\w])\b\d+\s+(?:agents?|routers?|modules?|migrations?)\b",
             re.IGNORECASE,
         ),
     ),
