@@ -17,4 +17,10 @@ regexes = [
   '''postgresql\+asyncpg://narrare:narrare@localhost:5432/narrare_(dev|test)''',
   '''redis://localhost:6379/0''',
   '''WYcr1iULJse2Oo6GPpmw1Au4ovp_fXZwbrNF11C12ZQ=''',
+  # ADR-071 doc example (multi-line span): generic-api-key joins
+  # `openai_api_key="test-key",` + newline + `encryption_key="test-encryption-key",`
+  # across the newline; the greedy secret group then includes the '=' after
+  # `encryption_key` (secret "encryption_key="), which escapes the default
+  # rule-level allowlist. Allowlist the exact doc pattern so real keys remain flagged.
+  '''test-key",\n\s*encryption_key="''',
 ]
