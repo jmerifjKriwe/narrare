@@ -18719,13 +18719,15 @@
       "StoryTone": {
         "type": "string",
         "enum": [
+          "balanced",
           "dramatic",
           "humorous",
           "suspenseful",
           "contemplative",
           "romantic",
           "dark",
-          "adventurous"
+          "adventurous",
+          "quiet"
         ],
         "title": "StoryTone"
       },

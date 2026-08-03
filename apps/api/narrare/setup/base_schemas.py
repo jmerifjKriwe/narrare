@@ -20,6 +20,10 @@ class StoryStructure(StrEnum):
 
 
 class StoryTone(StrEnum):
+    # Values mirror packages/web/types/wizard.ts (StoryTone union) — RULE-17.
+    # Core instructions live in packages/core/narrare_core/writing/_tone_data.py
+    # (TONE_INSTRUCTIONS). Add a tone in all three places, never just one.
+    BALANCED = "balanced"
     DRAMATIC = "dramatic"
     HUMOROUS = "humorous"
     SUSPENSEFUL = "suspenseful"
@@ -27,6 +31,7 @@ class StoryTone(StrEnum):
     ROMANTIC = "romantic"
     DARK = "dark"
     ADVENTUROUS = "adventurous"
+    QUIET = "quiet"
 
 
 class StarterContent(StrEnum):
