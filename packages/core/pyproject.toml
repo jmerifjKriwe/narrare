@@ -29,7 +29,7 @@ nlp = [
 ]
 # Available for spec-time Harness Build-vs-Buy evaluation (ADR-072).
 # NOT installed by default. No production code may import pydantic_ai_harness.
-harness-eval = ["pydantic-ai-harness==0.11.0"]
+harness-eval = ["pydantic-ai-harness==0.14.0"]
 
 [build-system]
 requires = ["hatchling"]
