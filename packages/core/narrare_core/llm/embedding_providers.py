@@ -13,6 +13,7 @@ See: ADR-020
 
 from __future__ import annotations
 
+import hashlib
 import time
 from typing import Protocol, runtime_checkable
 
@@ -196,6 +197,80 @@ class OpenAIEmbeddingProvider:
 
 
 # ---------------------------------------------------------------------------
+# Test provider (E2E stub — analog to pydantic_ai TestModel)
+# ---------------------------------------------------------------------------
+
+
+def _deterministic_vector(text: str, dimension: int) -> list[float]:
+    """Derive a deterministic pseudo-random vector from *text*.
+
+    Same input always yields the same vector, so downstream similarity
+    computations stay reproducible in E2E/tests. No network calls.
+
+    Values are normalised to ``[0.0, 1.0)`` from the SHA-256 byte stream.
+    """
+    seed = hashlib.sha256(text.encode("utf-8")).digest()
+    buf = bytearray(seed)
+    while len(buf) < dimension:
+        # Grow the buffer deterministically from its own tail.
+        buf.extend(hashlib.sha256(bytes(buf[-32:])).digest())
+    return [byte / 255.0 for byte in buf[:dimension]]
+
+
+class TestEmbeddingProvider:
+    """Deterministic, network-free embedding provider for E2E/test mode.
+
+    Analogous to ``pydantic_ai.models.test.TestModel``: it satisfies the
+    :class:`EmbeddingProvider` protocol but never calls a real API. Vectors
+    are derived deterministically from the input text (SHA-256 based) so
+    similarity computations stay reproducible.
+
+    Injected by :func:`get` when ``get_core_settings().e2e_test`` is true —
+    the same switch TestModel uses in ``llm/_providers/registry.py``.
+
+    Constructor parameters:
+        default_model: Model identifier reported by the provider.
+        default_dimension: Vector dimension — defaults to ``1536`` to match
+            the production ``text-embedding-3-small`` dimension (pgvector
+            columns are ``vector(1536)``).
+    """
+
+    def __init__(
+        self,
+        *,
+        default_model: str = "test-embedding",
+        default_dimension: int = 1536,
+    ) -> None:
+        self.default_model = default_model
+        self.default_dimension = default_dimension
+
+    async def embed_texts(
+        self,
+        texts: list[str],
+        *,
+        model: str | None = None,
+    ) -> list[list[float]]:
+        """Return deterministic dummy embeddings — never calls the network.
+
+        Mirrors :meth:`OpenAIEmbeddingProvider.embed_texts` semantics: empty
+        strings return zero vectors of :attr:`default_dimension`; non-empty
+        strings return deterministic hash-based vectors.
+        """
+        if not texts:
+            return []
+        return [
+            _deterministic_vector(text, self.default_dimension)
+            if text.strip()
+            else [0.0] * self.default_dimension
+            for text in texts
+        ]
+
+
+# Singleton reused across ``get()`` calls in E2E mode (providers are stateless).
+_test_embedding_provider = TestEmbeddingProvider()
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -238,6 +313,13 @@ def get(name: str) -> EmbeddingProvider:
     if name not in _embedding_providers:
         available_names = ", ".join(sorted(_embedding_providers.keys()))
         raise KeyError(f"Unknown embedding provider '{name}'. Available: {available_names}.")
+
+    # E2E test mode: override all providers with TestEmbeddingProvider
+    # (no real embedding calls — prevents 401 errors from unset API keys).
+    # Mirrors the TestModel override in llm/_providers/registry.py:get().
+    if get_core_settings().e2e_test:
+        return _test_embedding_provider
+
     return _embedding_providers[name]
 
 
