@@ -43,6 +43,7 @@ from narrare.planning.models import ChapterOutline  # noqa: F401
 from narrare.prompts.models import PromptRevision  # noqa: F401
 
 # ── Series ──
+from narrare.series.band_summary_models import BandSummary  # noqa: F401
 from narrare.series.models import Series, SeriesSettings  # noqa: F401
 
 # ── Settings ──

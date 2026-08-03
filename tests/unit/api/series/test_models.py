@@ -41,3 +41,12 @@ def test_series_settings_model_has_expected_columns() -> None:
 def test_series_settings_series_id_unique() -> None:
     cols = {c.name: c for c in SeriesSettingsModel.__table__.columns}
     assert cols["series_id"].unique is True
+
+
+def test_series_settings_has_context_window_size_column() -> None:
+    # Break caught: dropping the recency-window setting that SeriesHistoryTier
+    # (Spec 2, Task 6) reads to decide how many bands to include.
+    cols = {c.name: c for c in SeriesSettingsModel.__table__.columns}
+    assert "context_window_size" in cols
+    # server_default keeps existing rows + non-ORM inserts valid (default band = 3).
+    assert cols["context_window_size"].server_default is not None

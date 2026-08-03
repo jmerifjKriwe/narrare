@@ -59,6 +59,12 @@ class SeriesSettings(Base):
         unique=True,
     )
     author_voice: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
+    # Recency-window (Spec 2): how many preceding bands get a full summary in
+    # the SeriesHistoryTier context. Default 3 — also enforced at the DB level
+    # by migration 0038's server_default for non-ORM inserts.
+    context_window_size: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="3", default=3
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
