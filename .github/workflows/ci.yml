@@ -607,7 +607,11 @@ jobs:
   # -------------------------------------------------------------------------
   frontend:
     name: Frontend
-    runs-on: ubuntu-latest
+    # Pinned to ubuntu-22.04 (not ubuntu-latest) for reproducible font
+    # library versions (libpango/libcairo/libfreetype) — VRT screenshot
+    # baselines are font-rendering-sensitive. ubuntu-latest silently
+    # rotates OS versions and would drift baselines without warning.
+    runs-on: ubuntu-22.04
     needs: [architecture, changes]
     if: >-
       github.event_name == 'push' ||
@@ -725,7 +729,10 @@ jobs:
   # -------------------------------------------------------------------------
   test-e2e:
     name: E2E Tests
-    runs-on: ubuntu-latest
+    # Pinned to ubuntu-22.04 to match the frontend (VRT) job — both use
+    # Playwright, keeping them on the same OS version avoids environment
+    # divergence between the two browser-driven jobs.
+    runs-on: ubuntu-22.04
     needs: [lint, typecheck]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
