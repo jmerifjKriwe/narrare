@@ -3,6 +3,9 @@
 > **Status:** ✅ Accepted (active — CI-blocking + pre-commit-enforced)
 > **Date:** 2026-08-03
 > **Deciders:** Architecture Specialist, User
+> **RULE-XX elevation:** Not elevated — formally decided 2026-08-03 (see
+> §"RULE-XX Elevation Decision" below). Enforcement is independent of RULE-XX
+> status (§7).
 > **Supersedes:** — (does **not** supersede ADR-047; it adopts a narrow policy that pre-existed ADR-047 and survived its withdrawal — see Context)
 > **Related:** ADR-047 (🗄️ Deprecated — governance toolchain withdrawn via FIND-014; this ADR carves out the one surviving checker), ADR-041 (doc/gate/registry drift checkers — sibling SSOT gates), CONSTRAINTS.md §8 (SSOT hierarchy)
 
@@ -222,15 +225,75 @@ consumed kept their original homes and remained CI-blocking on their own merit.
 
 ---
 
-## Candidate RULE-XX Assessment
+## RULE-XX Elevation Decision
 
-Candidate wording: *"CURRENT_STATE.md must not contain volatile generated count
-claims; authoritative facts require a link or command."*
+> **Formal decision recorded 2026-08-03 by the Architecture Specialist.** This
+> section replaces the earlier "Candidate RULE-XX Assessment" and closes the
+> open "Folge-Punkt" from the initial handoff. It is a *decision*, not an
+> assessment.
 
-**Decision:** Do **not** add a RULE-XX yet — mirror ADR-047's §"Candidate
-RULE-24 Assessment" reasoning. Keep the policy ADR-backed first; elevate to
-`CONSTRAINTS.md` only after the mechanics are proven stable across multiple
-review cycles and the user approves. (See "Folge-Punkte" in the handoff.)
+**Candidate wording (preserved for a future elevation, if any):**
+
+> *"CURRENT_STATE.md must not contain volatile generated count claims;
+> authoritative facts require a link or command."*
+
+**Decision:** **Do not elevate to RULE-XX.** The policy remains ADR-backed
+(this ADR). CONSTRAINTS.md §1–§5, §6, and §7 are unchanged.
+
+**Architectural reasoning:**
+
+1. **Enforcement is independent of canonical status (§7 discipline).** The
+   gate is real and blocking **today**, without RULE-XX: CI-blocking in the
+   `architecture` job (no `continue-on-error`) and pre-commit-enforced via the
+   `ssot-consistency` hook (`always_run: true`). §8 already documents this
+   enforcement surface honestly. Elevating to RULE-XX would change the
+   *documentation status*, not the *enforcement behaviour*. There is no false
+   control to fix — unlike the ADR-047 mis-attribution that motivated this
+   ADR, the enforcement here is correctly attributed and active.
+
+2. **RULE-XX is earned, not reflexive (§8 SSOT-hierarchy).** CONSTRAINTS.md is
+   the constitution of the codebase. A RULE-XX is a curated, long-stable
+   constraint. ADR-076 was created the same day as this decision; the policy
+   has not yet been proven stable across multiple review cycles. This mirrors
+   ADR-047's §"Candidate RULE-24 Assessment" discipline ("a new RULE-XX
+   belongs in CONSTRAINTS.md only after the mechanics are proven, the baseline
+   is clean, and the user approves elevating it to the architecture
+   constitution"). Granting canonical status on day one would violate our own
+   stated principle and set a precedent for RULE-XX inflation.
+
+3. **Category mismatch.** The 23 RULE-XX govern *code architecture* — module
+   boundaries (RULE-05/06/07), prompt assembly (RULE-02/02a/02b), type
+   signatures (RULE-09), streaming interfaces (RULE-13), migration discipline
+   (RULE-14). They constrain how *code* is structured. The CURRENT_STATE
+   volatility policy governs *documentation hygiene* — how a handoff document
+   is authored. It is an operational governance policy, naturally ADR-backed,
+   already correctly seated under §8 "Enforcement." Forcing it into the
+   RULE-XX namespace would dilute the concept of a "code architecture rule."
+
+4. **ADR-backing preserves evolvability.** A RULE-XX change requires an
+   explicit new ADR + PR review ("never unilaterally"). An ADR can be
+   superseded or narrowed more nimbly (as ADR-047 itself demonstrated when its
+   scope was withdrawn via FIND-014). The volatility policy is likely to
+   evolve — new forbidden-pattern categories, or a future typed/structured
+   CURRENT_STATE format that obsoletes the regex pass (see Review Trigger).
+   Keeping it ADR-backed preserves that flexibility without constitutional
+   amendment overhead.
+
+**What this decision does NOT change:**
+
+- The checker (`scripts/check_current_state_facts.py`) keeps running,
+  CI-blocking + pre-commit-enforced.
+- §8 already references ADR-076 as the policy origin — no repointing needed.
+- The checker docstring already cites ADR-076 — no change needed.
+
+**Review trigger for re-evaluating elevation:**
+
+- After the gate has run cleanly across at least **two full review cycles**
+  with no policy escapes (a forbidden-category claim that slipped through) and
+  no need to amend the forbidden-pattern list.
+- If the project adopts a typed/structured CURRENT_STATE format that makes
+  the policy structurally un-violatable (elevation would then be moot).
+- On explicit user request to promote the policy to canonical status.
 
 ---
 
@@ -252,3 +315,6 @@ review cycles and the user approves. (See "Folge-Punkte" in the handoff.)
 - [x] CONSTRAINTS.md §8 respected: `ADR-*.md` remains authoritative for
       decisions; this ADR does not redefine the SSOT hierarchy.
 - [x] §7 respected: enforcement (CI-blocking + pre-commit) is documented as such.
+- [x] RULE-XX elevation formally decided (2026-08-03): **not elevated** —
+      enforcement is independent of canonical status; policy remains ADR-backed.
+      See §"RULE-XX Elevation Decision". CONSTRAINTS.md unchanged.
