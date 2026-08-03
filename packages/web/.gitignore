@@ -1,8 +1,9 @@
 # dependencies
 node_modules/
 
-# next.js
-.next/
+# next.js — match any .next* variant (.next/, .next-stale-vrt/, etc.)
+# next-env.d.ts has no leading dot and stays tracked.
+.next*
 
 # production
 build/

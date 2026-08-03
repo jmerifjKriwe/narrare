@@ -322,9 +322,17 @@ test-frontend:
 test-frontend-coverage:
     cd packages/web && pnpm test:coverage
 
-# Run Playwright VRT screenshot tests (frontend only, no backend needed)
+# Run Playwright VRT screenshot tests (frontend only; preflight: deps + free :3000).
+vrt:
+    bash scripts/run_vrt.sh
+
+# Regenerate VRT baselines (--update-snapshots) — review the diff before committing.
+vrt-update:
+    bash scripts/run_vrt.sh --update
+
+# Back-compat alias for `just vrt`.
 test-vrt:
-    cd packages/web && pnpm playwright test --project=vrt
+    just vrt
 
 # Run all tests (backend + frontend)
 test-all: test test-frontend
