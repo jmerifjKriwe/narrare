@@ -2,14 +2,17 @@
 # ---------------------------------------------------------------------------
 # scripts/run_vrt.sh — Run Playwright VRT screenshot tests
 #
-# Portable wrapper around `playwright test --project=vrt` that performs two
+# Portable wrapper around `playwright test --project=vrt` that performs three
 # preflight checks and then hands off to Playwright:
 #
-#   1. Browser system dependencies — verifies the Chromium runtime libraries
+#   1. VRT mock contract (ADR-059 BINDING) — static check that every spec has
+#      the catch-all route + expect.poll guard + timezoneId. Fails in <1s
+#      before the expensive browser/server start.
+#   2. Browser system dependencies — verifies the Chromium runtime libraries
 #      are resolvable (via ldconfig cache OR LD_LIBRARY_PATH). On Linux a
 #      missing libcups/libnss/etc. causes Chromium to fail to launch AFTER
 #      the expensive Next.js dev-server cold compile — this check fails fast.
-#   2. Port 3000 free — Playwright's webServer uses `reuseExistingServer: true`
+#   3. Port 3000 free — Playwright's webServer uses `reuseExistingServer: true`
 #      (see packages/web/playwright.config.ts). A stale or broken server
 #      already bound to :3000 is silently reused, producing false/duplicated
 #      baselines. We refuse to run and point at the offending PID instead.
@@ -61,7 +64,30 @@ if [ -n "${PTIMEOUT:-}" ]; then
   PW_ARGS+=(--timeout="$PTIMEOUT")
 fi
 
-# ── preflight 1: Chromium system dependencies (Linux only) ──────────────────
+# ── preflight 1: VRT mock contract (ADR-059 BINDING) ────────────────────────
+# Static check — catches missing catch-all route / expect.poll guard /
+# timezoneId in <1s, before the expensive browser install + dev-server
+# compile. A spec missing the catch-all silently produces stale baselines
+# (the CI-Run-30758014183 lesson documented in ADR-059).
+check_vrt_mock_contract() {
+  echo "📐 Checking VRT mock contract (ADR-059 BINDING)..."
+  if ! (cd "$WEB_DIR" && npx tsx scripts/check-vrt-mock-contract.ts); then
+    cat >&2 <<EOF
+
+❌ VRT mock contract check failed (see report above).
+
+   One or more specs are missing the catch-all route, expect.poll guard, or
+   timezoneId required by ADR-059 §"Mock Contract (BINDING)". Fix them before
+   running VRT — a missing catch-all produces silent stale baselines.
+
+   Reference: tests/screenshots/adaptive.spec.ts
+   See: docs/architecture/decisions/ADR-059-vrt-and-design-system-strategy.md
+EOF
+    return 1
+  fi
+}
+
+# ── preflight 2: Chromium system dependencies (Linux only) ──────────────────
 # macOS / Windows bundle their own browser via Playwright; the shared-library
 # model is Linux-specific.
 
@@ -125,7 +151,7 @@ EOF
   fi
 }
 
-# ── preflight 2: is $VRT_PORT already listening? ────────────────────────────
+# ── preflight 3: is $VRT_PORT already listening? ────────────────────────────
 
 port_listening() {
   # Returns 0 (true) if something is LISTENing on $VRT_PORT.
@@ -197,6 +223,7 @@ EOF
 
 # ── run preflight, then Playwright ──────────────────────────────────────────
 
+check_vrt_mock_contract
 check_browser_deps
 check_port_free
 

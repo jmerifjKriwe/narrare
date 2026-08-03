@@ -31,6 +31,7 @@ name: CI
 # | --   | check_eval_drift.py                     | ✅ Blocking  | architecture Job                   |
 # | --   | check_module_coverage.py (RULE-10)    | ✅ Blocking   | test-unit Job (--fail, ratcheted baselines) |
 # | --   | check-testid.ts (data-testid gate)      | ✅ Blocking  | frontend Job                       |
+# | --   | check-vrt-mock-contract.ts (ADR-059)    | ✅ Blocking  | frontend Job (before VRT run)     |
 # | --   | Gitleaks (secret scanning, AUFG-05-09) | ✅ Blocking  | security Job                       |
 # | --   | bandit + pip-audit                     | ✅ Blocking  | security Job                       |
 # | --   | biome check (frontend lint/format)     | ✅ Blocking  | frontend Job                       |
@@ -681,6 +682,13 @@ jobs:
 
       - name: Check component markers (data-testid)
         run: cd packages/web && npx tsx scripts/check-testid.ts --strict --fail --ratchet-baseline scripts/testid_baselines.json
+
+      # ADR-059 Mock Contract (BINDING) — static check that every VRT spec
+      # has the catch-all route, expect.poll guard, and timezoneId. Runs
+      # BEFORE the expensive Playwright browser install + dev-server compile
+      # so a contract violation fails in <1s instead of after minutes.
+      - name: Check VRT mock contract (ADR-059 BINDING)
+        run: cd packages/web && npx tsx scripts/check-vrt-mock-contract.ts
 
       - name: Install Playwright Chromium
         run: cd packages/web && pnpm playwright install chromium

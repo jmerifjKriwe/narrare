@@ -417,7 +417,14 @@ check-frontend:
     just lint-frontend
     just typecheck-frontend
     just test-frontend
+    just check-vrt-contract
     @echo "✅ Frontend checks passed"
+
+# Check VRT mock contract (ADR-059 BINDING) — every VRT spec must have
+# catch-all route + expect.poll guard + timezoneId. Runs before VRT in CI.
+check-vrt-contract:
+    @echo "📐 Checking VRT mock contract (ADR-059 BINDING)..."
+    cd packages/web && npx tsx scripts/check-vrt-mock-contract.ts
 
 # ---------------------------------------------------------------------------
 # Additional Checks

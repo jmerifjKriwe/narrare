@@ -72,13 +72,55 @@ const STATE_LABEL: Record<keyof typeof CONTEXT_FIXTURES, string> = {
   "no-data": "No data",
 };
 
+/**
+ * Deterministic adaptive-snapshots fixture (ADR-070).
+ *
+ * Deliberately EMPTY: `AdaptiveStatusIndicator` derives its state purely from
+ * the `/context` query (see component) — it never reads snapshot rows. The
+ * `/snapshots` request fires from the co-mounted `AdaptiveDashboard` on this
+ * shared `/dev/vrt/adaptive` VRT page (both sections render together), and
+ * that dashboard's timeline lives OUTSIDE the `#adaptive-indicator` screenshot
+ * scope. So an empty-but-valid envelope satisfies the ADR-059 systemic guard
+ * (no unmocked call) without coupling THIS indicator baseline to dashboard
+ * timeline content that is out of scope and owned by `adaptive.spec.ts`.
+ * Empty = maximal determinism: no timestamps, no per-row variation.
+ *
+ * RULE-17: shape mirrors `AdaptiveSnapshotsResponse` (types/adaptive.ts) — the
+ * wrapper `{ project_id, items }`, never a bare array.
+ */
+const SNAPSHOTS_FIXTURE = {
+  project_id: VRT_NOVEL_ID,
+  items: [],
+};
+
+/** Unmocked /api/v1/** requests observed by the catch-all route (reset per test). */
+const unmockedApiCalls: string[] = [];
+
 test.describe("AdaptiveStatusIndicator VRT", () => {
   // First on-demand dev-server compile of the `/dev/vrt/adaptive` route can
   // exceed the default 30s test timeout; 120s gives the cold compile room — only
   // the first test pays it, subsequent tests reuse the compiled route.
   test.describe.configure({ timeout: 120000 });
 
+  // Pin the timezone so baselines are identical on CI (UTC) and local machines
+  // (ADR-059 Mock Contract BINDING — timezoneId is required for every VRT spec).
+  test.use({ timezoneId: "UTC" });
+
   test.beforeEach(async ({ page }) => {
+    // Systemic guard: every /api/v1/** request must be explicitly mocked below.
+    // Registered FIRST — Playwright tries routes in reverse registration order,
+    // so the specific mocks are always checked before this catch-all. Unmocked
+    // calls are recorded and asserted empty before the screenshot (ADR-059).
+    unmockedApiCalls.length = 0;
+    await page.route("**/api/v1/**", async (route) => {
+      unmockedApiCalls.push(`${route.request().method()} ${route.request().url()}`);
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Unmocked API request in VRT" }),
+      });
+    });
+
     // `/dev/*` is NOT protected by proxy.ts (only /dashboard, /wizard, /novel
     // are), so no server-side JWT cookie is needed — only the client-side
     // AuthGate `/auth/me` mock. Mirrors the design-tokens VRT setup.
@@ -100,6 +142,19 @@ test.describe("AdaptiveStatusIndicator VRT", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({ access_token: "mock-vrt-token", token_type: "bearer" }),
+      });
+    });
+
+    // Canonical adaptive-snapshots query (ADR-070). The indicator itself does
+    // not consume snapshots, but the co-mounted AdaptiveDashboard on this VRT
+    // page fires the request — registering an empty-but-valid envelope here
+    // keeps it off the catch-all / unmocked list (ADR-059). Registered AFTER
+    // the catch-all so Playwright's reverse-order matching checks it first.
+    await page.route(`**/api/v1/adaptive/${VRT_NOVEL_ID}/snapshots*`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(SNAPSHOTS_FIXTURE),
       });
     });
 
@@ -141,6 +196,10 @@ test.describe("AdaptiveStatusIndicator VRT", () => {
         // Guard: the resolved label matches the expected state, so we never
         // snapshot a stale loading frame.
         await expect(indicator).toContainText(STATE_LABEL[state]);
+
+        // Systemic guard: no /api/v1/** request may go unmocked (see
+        // beforeEach). Polled so a late-firing request is still caught.
+        await expect.poll(() => unmockedApiCalls).toEqual([]);
 
         await expect(indicator).toHaveScreenshot(`adaptive-indicator-${state}-${mode}.png`);
       });

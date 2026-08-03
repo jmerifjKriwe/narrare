@@ -157,7 +157,7 @@ repos:
         pass_filenames: false
         files: ^docs/architecture/decisions/
 
-      # SSOT consistency — CURRENT_STATE.md volatility policy (ADR-047).
+      # SSOT consistency — CURRENT_STATE.md volatility policy (ADR-076).
       # always_run: a violation can be introduced by editing CURRENT_STATE.md
       # OR by code changes that make its claims stale, and the check is a
       # cheap single-file regex pass — so it runs on every commit (matches the
@@ -271,6 +271,18 @@ repos:
         language: system
         types_or: [ts, tsx]
         files: ^packages/web/
+        pass_filenames: false
+        stages: [pre-commit]
+
+      # VRT Mock Contract — ADR-059 BINDING enforcement (mirrors CI frontend job).
+      # Ensures every VRT spec has catch-all route + expect.poll guard + timezoneId.
+      # Scoped to spec files only — cheap, runs only when a VRT spec changes.
+      - id: check-vrt-mock-contract
+        name: VRT Mock Contract (ADR-059)
+        entry: bash -c 'cd packages/web && npx tsx scripts/check-vrt-mock-contract.ts' --
+        language: system
+        types_or: [ts, tsx]
+        files: ^packages/web/tests/screenshots/.*\.spec\.ts$
         pass_filenames: false
         stages: [pre-commit]
 
