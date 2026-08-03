@@ -174,9 +174,9 @@ class TestChapterManagement:
         base_url: str,
         api_url: str,
         register_unique_user,
+        api_session,
     ) -> None:
         """Deleting a chapter via API updates the sidebar correctly."""
-        import requests as http_requests
 
         result = _complete_wizard_to_editor(page, base_url, register_unique_user)
         _setup_auth_proxy(page, result["access_token"])
@@ -191,7 +191,7 @@ class TestChapterManagement:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         }
-        create_resp = http_requests.post(
+        create_resp = api_session.post(
             f"{api_url}/api/v1/novels/{novel_id}/chapters",
             json={"title": "Chapter To Delete", "position": 1},
             headers=headers,
@@ -214,7 +214,7 @@ class TestChapterManagement:
         assert count_before >= 2, f"Expected >= 2 chapters, got {count_before}"
 
         # Delete the chapter via API
-        delete_resp = http_requests.delete(
+        delete_resp = api_session.delete(
             f"{api_url}/api/v1/novels/{novel_id}/chapters/{chapter_id}",
             headers=headers,
             timeout=30,
@@ -241,9 +241,9 @@ class TestChapterManagement:
         base_url: str,
         api_url: str,
         register_unique_user,
+        api_session,
     ) -> None:
         """Switching chapters replaces editor content correctly."""
-        import requests as http_requests
 
         result = _complete_wizard_to_editor(page, base_url, register_unique_user)
         _setup_auth_proxy(page, result["access_token"])
@@ -269,7 +269,7 @@ class TestChapterManagement:
         }
 
         # Create a second chapter via API
-        create_resp = http_requests.post(
+        create_resp = api_session.post(
             f"{api_url}/api/v1/novels/{novel_id}/chapters",
             json={"title": "Chapter B", "position": 1},
             headers=headers,
