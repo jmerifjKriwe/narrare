@@ -5,13 +5,10 @@ import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { promptsApi } from "@/lib/api/client";
+import { mergeFilterCategories } from "@/lib/constants/prompt-categories";
 import { cn } from "@/lib/utils";
 import type { PromptInfo, UpdateInfo } from "@/types";
 import { PromptEditor } from "./PromptEditor";
-
-// --- Static config ---
-
-const PROMPT_CATEGORIES = ["generation", "writing", "analysis", "kb"] as const;
 
 // --- Helpers ---
 
@@ -60,6 +57,10 @@ export function PromptsTab() {
     }
   }
 
+  // Filter pills: curated order first, then any unexpected categories the
+  // API returned (defensive merge — see ``mergeFilterCategories``).
+  const filterCategories = mergeFilterCategories(Object.keys(groupedPrompts));
+
   // Editor view
   if (selectedPromptId) {
     return (
@@ -94,7 +95,7 @@ export function PromptsTab() {
             >
               {t("settings.prompts.allCategories")}
             </button>
-            {PROMPT_CATEGORIES.map((cat) => (
+            {filterCategories.map((cat) => (
               <button
                 key={cat}
                 type="button"
@@ -106,7 +107,7 @@ export function PromptsTab() {
                     : "bg-muted text-muted-foreground hover:bg-accent",
                 )}
               >
-                {t(`settings.prompts.${cat === "kb" ? "kb" : cat}`)}
+                {t(`settings.prompts.${cat}`)}
               </button>
             ))}
           </div>
@@ -134,7 +135,7 @@ export function PromptsTab() {
           {Object.entries(groupedPrompts).map(([category, categoryPrompts]) => (
             <div key={category} className="mb-4 last:mb-0">
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-                {t(`settings.prompts.${category === "kb" ? "kb" : category}`)}
+                {t(`settings.prompts.${category}`)}
               </h3>
               <div className="space-y-1">
                 {categoryPrompts.map((prompt) => {
