@@ -967,14 +967,20 @@ the runtime baseline is revalidated.
 
 ### Frontend Coverage Targets
 
-| Module | Minimum | Target |
-|--------|---------|--------|
-| `lib/utils.ts` | 90% | 95% |
-| `lib/stores/` | 85% | 90% |
-| `lib/api/` (token management) | 85% | 90% |
-| `components/ui/` | 80% | 85% |
-| `components/editor/` | 70% | 80% |
-| `components/dashboard/` | 70% | 80% |
+**CI-enforced Floor (`vitest.config.ts`):** `lib/**` ≥ 80%
+(lines/functions/branches/statements). `components/**` ratcheted (aktuell 65%).
+Diese Schwellen blocken den `frontend`-CI-Job direkt (`pnpm test:coverage`).
+Die folgende Tabelle enthält *Stretch-Ziele* über dem Floor — sie sind nicht die
+CI-Schwelle.
+
+| Module | Stretch-Target |
+|--------|----------------|
+| `lib/utils.ts` | 95% |
+| `lib/stores/` | 90% |
+| `lib/api/` (token management) | 90% |
+| `components/ui/` | 85% |
+| `components/editor/` | 80% |
+| `components/dashboard/` | 80% |
 
 ### Testing Patterns
 
@@ -1035,19 +1041,21 @@ it("applies variant-specific Tailwind classes", () => {
 
 VISUAL REGRESSION TESTING (VRT) is handled via Playwright's `toHaveScreenshot()` — NOT via Storybook. See ADR-059.
 
-VRT test files live in `packages/web/tests/screenshots/` and are executed via the `vrt` Playwright project (configured in `playwright.config.ts`). Each test mocks API authentication via `page.route()` and captures full-page or section-specific screenshots in light and dark modes.
+VRT test files live in `packages/web/tests/screenshots/` and are executed via the `vrt` Playwright project (configured in `playwright.config.ts`). Each test mocks **every** API endpoint the screened component calls — not just authentication — and captures full-page or section-specific screenshots in light and dark modes.
 
-Run VRT tests locally:
+**Canonical invocation** (do not call raw `pnpm exec playwright` — the `just`
+recipes wrap browser/port dependency checks):
+
 ```bash
-pnpm playwright test --project=vrt
+just vrt          # standard run (use this before every UI PR)
+just vrt-update   # regenerate baselines (--update-snapshots) AFTER visual verification
 ```
 
-Update snapshots:
-```bash
-pnpm playwright test --project=vrt --update-snapshots
-```
-
-Currently screenshots target the `/dev/design-tokens` dev page. Add new screenshot tests for other pages by creating `.spec.ts` files in `tests/screenshots/` with appropriate auth mocks.
+New screenshot specs must follow the Catch-all + Guard pattern (see
+[ADR-059 §"Mock Contract (BINDING)"](../architecture/decisions/ADR-059-vrt-and-design-system-strategy.md)
+and [`packages/web/tests/screenshots/README.md`](../../packages/web/tests/screenshots/README.md)).
+Snapshots dürfen **nur** nach visueller Verifikation via `just vrt-update`
+aktualisiert werden — nie blind.
 
 ### Snapshot Testing Rules — RULE-TEST-04
 

@@ -200,7 +200,7 @@ is a quick orientation only and may lag behind the canonical source.
 
 | Job | Purpose | Notes |
 |-----|---------|-------|
-| `architecture` | Architecture, prompt surface/structure, version drift, exception sync, configuration matrix, OpenAPI drift, invocation probes, adoption, locale, doc/registry/gate drift, governance, streaming, AI-interaction, system health, test-coverage gaps, eval-smoke (blocking), eval-drift (warning), SSOT-facts (warning) | Fail-fast root; downstream jobs depend on it |
+| `architecture` | Architecture, prompt surface/structure, version drift, exception sync, configuration matrix, OpenAPI drift, invocation probes, adoption, locale, doc/registry/gate drift, governance, streaming, AI-interaction, system health, test-coverage gaps, eval-smoke (blocking), eval-drift (warning), SSOT-facts (blocking — ADR-047, matches pre-commit hook `ssot-consistency`) | Fail-fast root; downstream jobs depend on it |
 | `lint` | `ruff check` + `ruff format --check` (Python) | Runs after `architecture` |
 | `typecheck` | `pyright --strict` | Runs after `architecture` |
 | `security` | `bandit -r` + `pip-audit` (with documented ignore-IDs) + `check_secrets.py`/Gitleaks | Runs after `architecture` |
@@ -270,7 +270,14 @@ Current hook groups:
 | Python quality | pre-commit | Ruff lint/format, pyright, bandit |
 | Frontend quality | pre-commit | Biome, i18n validation, TypeScript type check |
 | File hygiene | pre-commit | Whitespace, EOF, YAML/TOML/JSON, merge-conflict, large-file checks |
+| SSOT consistency | pre-commit | check_current_state_facts.py — CURRENT_STATE.md volatility policy (always_run, ADR-047) |
+| Secret scanning | pre-commit | check_secrets.py (Gitleaks wrapper, AUFG-05-09) — always_run, blocks on any unapproved secret repo-wide |
 | Commit message | commit-msg | Conventional commit validation |
+
+Die Hooks `ssot-consistency` und `secrets-gitleaks` laufen mit `always_run: true`
+bei **jedem** Commit auf allen Dateien — auch wenn `CURRENT_STATE.md` bzw.
+`.gitleaks.toml` nicht angerührt wurden. Das spiegelt die CI-Architektur-Job-
+bzw. Security-Job-Blockade wider (ADR-047 / AUFG-05-09).
 
 ### Fast-Path for Quick Iterations
 
@@ -365,6 +372,34 @@ Runs as part of the INFRA-011 architecture gate set and is ratcheted against the
 AI gate baseline. Existing classified gaps may be tracked while they shrink; new
 streaming gaps fail stabilization review unless explicitly approved by
 Architecture/user exception.
+
+## Visual Regression Testing (VRT)
+
+Narrare uses Playwright's `toHaveScreenshot()` for visual regression testing.
+The strategy, scope, and the **binding Mock Contract** are defined in
+[ADR-059](../architecture/decisions/ADR-059-vrt-and-design-system-strategy.md);
+the per-spec boilerplate lives in
+[`packages/web/tests/screenshots/README.md`](../../packages/web/tests/screenshots/README.md).
+
+Two `just` recipes wrap the Playwright invocation so contributors do not need to
+memorize raw `pnpm exec playwright` flags:
+
+| Command | Purpose |
+|---------|---------|
+| `just vrt` | Standard VRT run. Kapselt Port- und Browser-Dependency-Checks (baut fehlende Chromium-Binaries bei, prüft, dass der Dev-Port frei ist) und führt den `vrt`-Playwright-Projekt aus. Der kanonische Aufruf vor jedem PR, der UI berührt. |
+| `just vrt-update` | Regeneriert die Baselines via `--update-snapshots` nach visueller Verifikation. **Nie blind ausführen** — jeder Diff muss vom Verfasser geprüft worden sein (sonst verfestigt sich ein visueller Bug als neue Wahrheit). |
+
+**Fehlende Dependencies:** Wenn Chromium oder andere Playwright-Browser-Binaries
+fehlen, gibt `just vrt` eine kopierbare Installationsanleitung aus (z. B. den
+`pnpm exec playwright install chromium`-Aufruf plus ggf. System-Pakete), statt
+stumm einen kryptischen Fehler zu werfen. Führe sie aus und starte `just vrt`
+erneut.
+
+**Mock Contract (BINDING, ADR-059):** Jede Spec MUSS jeden API-Endpoint, den die
+gescreente Komponente aufruft, explizit mocken — abgesichert durch eine
+Catch-all-Route (`**/api/v1/**`) plus `expect.poll(() => unmockedApiCalls).toEqual([])`
+vor dem Screenshot. Details und Boilerplate: ADR-059 §"Mock Contract (BINDING)"
+und `packages/web/tests/screenshots/README.md`.
 
 ## Justfile Command Catalog
 

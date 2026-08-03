@@ -138,7 +138,7 @@ This approach leverages zero new dependencies (Playwright is already configured,
 - No interactive component playground — developers cannot experiment with component props in isolation
   - Acceptable: Vitest + Testing Library covers component behavior; TipTap live editing happens in the app itself
 - Page-level snapshots may flake on dynamic content
-  - Mitigation: mock API responses for snapshot tests; target stable pages (settings, saved analysis results)
+  - Mitigation: mock API responses for snapshot tests; target stable pages (settings, saved analysis results). See also the **Mock Contract (BINDING)** section below — mocking is not optional, it is enforced via Catch-all + Guard.
 - Chromium only — no Firefox/WebKit coverage
   - Acceptable: Narrare targets modern browsers; Cross-browser testing can be added later if needed
 - Snapshot updates require explicit developer action (`--update-snapshots`)
@@ -253,6 +253,36 @@ npx playwright test --project=vrt --update-snapshots
 - Use deterministic seed data (no random content, no real dates in snapshot view)
 - Set `animations: "disabled"` in Playwright config for VRT project
 - Set viewport to fixed dimensions (1280×720)
+
+### Mock Contract (BINDING)
+
+**Jeder API-Endpoint, den eine in VRT gescreente Komponente aufruft, MUSS in
+der Spec explizit gemockt werden.** Dies wird durch zwei Mechanismen
+abgesichert:
+
+1. **Catch-all-Route** `page.route("**/api/v1/**", …)` als **erstes**
+   registriert (Playwright matcht in umgekehrter Registrierungsreihenfolge —
+   spezifische Mocks gewinnen), die jeden ungemockten Call in ein Array
+   aufzeichnet.
+2. **`expect.poll(() => unmockedApiCalls).toEqual([])`** als Assertion **vor**
+   dem Screenshot (polled, kein One-Shot — spät feuernde Requests werden noch
+   erfasst).
+
+**Warum `requestfailed` nicht reicht:** Der Next.js-Dev-Rewrite macht aus
+`ECONNREFUSED` (VRT-Job hat keine API) einen HTTP-500, sodass `requestfailed`
+nie feuert. Nur die Catch-all-Route intercept vor dem Netzwerk-Layer fängt das
+ab. (Beispiel: CI-Run 30758014183, `adaptive.spec.ts` — vergessener
+`/snapshots`-Mock → 44px Empty-State-Diff → 7% > 2%.)
+
+**Zeitzonen-Pflicht:** Spec MUSS `test.use({ timezoneId: "UTC" })` setzen, wenn
+die Komponente `Intl.DateTimeFormat` o.ä. nutzt — sonst driftet der Baseline je
+nach CI-Runner-Lokalzeit.
+
+**Referenz-Implementierung:** `packages/web/tests/screenshots/adaptive.spec.ts`.
+
+**Aufruf:** `just vrt` (Standard) bzw. `just vrt-update` (Snapshot-Updates nach
+visueller Verifikation). Siehe auch
+[`packages/web/tests/screenshots/README.md`](../../../packages/web/tests/screenshots/README.md).
 
 ---
 
