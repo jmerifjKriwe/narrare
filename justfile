@@ -310,9 +310,15 @@ test-file +files:
 test-match pattern:
     uv run pytest tests/ -v -k "{{pattern}}"
 
-# Run E2E tests (requires full stack: just dev + dev-services)
+# Run E2E tests directly against an already-running stack (60s per-test timeout).
+# For the CI-faithful wrapper (starts services, ENVIRONMENT=test, --timeout=300),
+# prefer:  just e2e
 test-e2e:
     uv run pytest tests/e2e/ -v -m e2e --timeout=60
+
+# Run E2E tests against full stack — CI-faithful (starts API+frontend with ENVIRONMENT=test, narrare_test DB on :5433, --timeout=300; cleans up on exit). Requires: docker compose -f docker-compose.dev.yml up -d postgres_test redis. Frontend mode override: E2E_FRONTEND_MODE=build just e2e. See scripts/run_e2e.sh, .github/workflows/ci.yml (test-e2e job), tests/AGENTS.md.
+e2e:
+    bash scripts/run_e2e.sh
 
 # Run frontend tests (Vitest)
 test-frontend:
