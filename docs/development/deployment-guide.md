@@ -200,7 +200,7 @@ is a quick orientation only and may lag behind the canonical source.
 
 | Job | Purpose | Notes |
 |-----|---------|-------|
-| `architecture` | Architecture, prompt surface/structure, version drift, exception sync, configuration matrix, OpenAPI drift, invocation probes, adoption, locale, doc/registry/gate drift, governance, streaming, AI-interaction, system health, test-coverage gaps, eval-smoke (blocking), eval-drift (warning), SSOT-facts (blocking — ADR-047, matches pre-commit hook `ssot-consistency`) | Fail-fast root; downstream jobs depend on it |
+| `architecture` | Architecture, prompt surface/structure, version drift, exception sync, configuration matrix, OpenAPI drift, invocation probes, adoption, locale, doc/registry/gate drift, governance, streaming, AI-interaction, system health, test-coverage gaps, eval-smoke (blocking), eval-drift (warning), SSOT-facts (blocking — ADR-076, matches pre-commit hook `ssot-consistency`) | Fail-fast root; downstream jobs depend on it |
 | `lint` | `ruff check` + `ruff format --check` (Python) | Runs after `architecture` |
 | `typecheck` | `pyright --strict` | Runs after `architecture` |
 | `security` | `bandit -r` + `pip-audit` (with documented ignore-IDs) + `check_secrets.py`/Gitleaks | Runs after `architecture` |
@@ -270,14 +270,14 @@ Current hook groups:
 | Python quality | pre-commit | Ruff lint/format, pyright, bandit |
 | Frontend quality | pre-commit | Biome, i18n validation, TypeScript type check |
 | File hygiene | pre-commit | Whitespace, EOF, YAML/TOML/JSON, merge-conflict, large-file checks |
-| SSOT consistency | pre-commit | check_current_state_facts.py — CURRENT_STATE.md volatility policy (always_run, ADR-047) |
+| SSOT consistency | pre-commit | check_current_state_facts.py — CURRENT_STATE.md volatility policy (always_run, ADR-076) |
 | Secret scanning | pre-commit | check_secrets.py (Gitleaks wrapper, AUFG-05-09) — always_run, blocks on any unapproved secret repo-wide |
 | Commit message | commit-msg | Conventional commit validation |
 
 Die Hooks `ssot-consistency` und `secrets-gitleaks` laufen mit `always_run: true`
 bei **jedem** Commit auf allen Dateien — auch wenn `CURRENT_STATE.md` bzw.
 `.gitleaks.toml` nicht angerührt wurden. Das spiegelt die CI-Architektur-Job-
-bzw. Security-Job-Blockade wider (ADR-047 / AUFG-05-09).
+bzw. Security-Job-Blockade wider (ADR-076 / AUFG-05-09).
 
 ### Fast-Path for Quick Iterations
 

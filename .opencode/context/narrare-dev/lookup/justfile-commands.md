@@ -56,7 +56,6 @@
 | `just check-frontend-size` | Check TS/TSX RULE-04 file-size no-growth gate |
 | `just check-streaming` | Check RULE-20 SSE frontend coverage for backend streaming endpoints |
 | `just check-prompts-strict` | Run prompt structure checker with warnings treated as failures |
-| `just check-governance` | Check governance health — review-finding coverage vs AUFG lifecycle + SSOT/gate drift aggregation (ADR-047). CI-blocking. |
 | `just lint` | Run ruff lint + fix |
 | `just format` | Run ruff format |
 | `just typecheck` | Run pyright |

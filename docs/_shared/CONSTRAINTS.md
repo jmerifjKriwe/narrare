@@ -1335,9 +1335,13 @@ RULE-02") but MUST NOT reproduce, paraphrase, or contradict its rules.
   (`scripts/check_gate_drift.py`). ADR-047 (Governance Health Checker) was
   **superseded**; its SSOT/gate-drift aggregation responsibilities now live in
   these dedicated checkers.
+- CURRENT_STATE.md volatility: `scripts/check_current_state_facts.py` (ADR-076)
+  rejects volatile generated count claims and requires links/commands for
+  authoritative facts. CI-blocking in the architecture job + pre-commit
+  (`ssot-consistency` hook, `always_run: true`).
 
 ---
 
-> Last updated: 2026-07-15 — RULE-18b enforcement claims aligned with reality: the Configuration Adoption Matrix / `check_configuration_matrix.py` / `scripts/governance/` toolchain was deliberately removed in `f8abb42c` (ADR-047/051/061/062 ⛔ Superseded); RULE-18b is now enforced via per-value regression tests + ADR-045 + ad-hoc audits (review file as SSOT). The earlier "ADR-047 Governance Health Checker implemented, CI-blocking" claim is hereby corrected. (Prior: 2026-06-24 — §8 Enforcement updated: AUFG-NEW-01 concretized by ADR-047. Prior: 2026-06-20 — RULE-18b Configuration Effect Integrity added, ADR-051 Accepted)
+> Last updated: 2026-08-03 — ADR-076 created as the active governance home for the CURRENT_STATE.md volatility policy (`check_current_state_facts.py`); all active SSOT-check references repointed from the deprecated ADR-047 to ADR-076 (ADR-047 remains 🗄️ Deprecated for its withdrawn governance toolchain). (Prior: 2026-07-15 — RULE-18b enforcement claims aligned with reality: the Configuration Adoption Matrix / `check_configuration_matrix.py` / `scripts/governance/` toolchain was deliberately removed in `f8abb42c` (ADR-047/051/061/062 ⛔ Superseded); RULE-18b is now enforced via per-value regression tests + ADR-045 + ad-hoc audits (review file as SSOT). The earlier "ADR-047 Governance Health Checker implemented, CI-blocking" claim is hereby corrected. (Prior: 2026-06-24 — §8 Enforcement updated: AUFG-NEW-01 concretized by ADR-047. Prior: 2026-06-20 — RULE-18b Configuration Effect Integrity added, ADR-051 Accepted)
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone

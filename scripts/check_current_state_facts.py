@@ -2,7 +2,7 @@
 """CURRENT_STATE volatility-policy checker.
 
 ``docs/_shared/CURRENT_STATE.md`` is a human handoff document, not a metrics
-registry. This checker enforces ADR-047's policy:
+registry. This checker enforces ADR-076's policy (CURRENT_STATE.md volatility):
 
 * reject volatile generated count claims;
 * require links/commands for fresh authoritative facts.
