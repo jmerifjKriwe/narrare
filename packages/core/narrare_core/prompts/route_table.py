@@ -243,7 +243,22 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
             }
         ),
     ),
-    LLMIntent.SUMMARIZE: PromptRouteConfig("analysis", "summarize"),
+    # SERIES-002 (Spec 2 Task 2): SUMMARIZE gains a context_modes list. The
+    # default mode `summarize` is the per-chapter summary (ChapterSummaryAgent);
+    # `band_summary` aggregates chapter summaries into a novel-level band
+    # summary (BandSummaryAgent) — used by SeriesHistoryTier to give later
+    # series volumes awareness of prior novels. Mirrors ANALYSE
+    # (review/coreference/pov/readability) and PLAN (outline/timeline/...):
+    # no required_variables at intent level — the chapter summaries / novel
+    # metadata are category-3 runtime data supplied as the run prompt (user
+    # channel), exactly as coreference/readability receive the analysed
+    # passage as runtime input. analysis-category convention: no
+    # MODE_REQUIRED_VARS entry (see test_non_writing_category_has_no_mode_requirements).
+    LLMIntent.SUMMARIZE: PromptRouteConfig(
+        "analysis",
+        "summarize",
+        allowed_context_modes=frozenset({"summarize", "band_summary"}),
+    ),
     # ADR-055 D4: VOICE is a multi-mode analysis intent. character_voice
     # (ANAL-008) is the first governed context_mode (a *profiler*); voice_check
     # (WRITE-010, ADR-057 D3) is the second (a flag+score *checker* — distinct

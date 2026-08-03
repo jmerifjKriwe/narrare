@@ -10,6 +10,8 @@ from narrare_core.agents.author_voice_types import (
     AuthorVoiceDeps,
     AuthorVoiceOutput,
 )
+from narrare_core.agents.band_summary_agent import BandSummaryAgent
+from narrare_core.agents.band_summary_types import BandSummaryDeps, BandSummaryOutput
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.beta_reader_agent import BetaReaderAgent
 from narrare_core.agents.beta_reader_types import (
@@ -200,6 +202,9 @@ __all__ = [
     "AuthorVoiceDriftAgent",
     "AuthorVoiceDriftDeps",
     "AuthorVoiceOutput",
+    "BandSummaryAgent",
+    "BandSummaryDeps",
+    "BandSummaryOutput",
     "BetaReaderAgent",
     "BetaReaderDeps",
     "BetaReaderPhase1Output",
