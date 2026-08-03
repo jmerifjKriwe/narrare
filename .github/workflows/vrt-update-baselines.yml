@@ -1,0 +1,143 @@
+name: VRT Update Baselines
+
+# ---------------------------------------------------------------------------
+# CI-native VRT baseline regeneration (ADR-059 — Option B)
+# ---------------------------------------------------------------------------
+# VRT baselines generated locally use the developer's local font libraries
+# (libpango/libcairo/libfreetype), which differ from CI's ubuntu-22.04 runner.
+# The 1–2px dimension difference this produces CANNOT be absorbed by
+# `maxDiffPixelRatio` — Playwright requires matching image dimensions, so any
+# dimension mismatch fails regardless of tolerance.
+#
+# Option B fix: generate baselines ON CI (identical environment to the CI
+# VRT comparison step) and commit them back to the branch. CI then compares
+# CI-native baselines against CI-native renders → stable, dimension-matched.
+#
+# WHEN TO USE THIS WORKFLOW:
+#   - After first enabling VRT on a branch (replaces local baselines with
+#     CI-native ones).
+#   - When GitHub Actions rotates the ubuntu-22.04 image (rare) and
+#     rendering shifts.
+#   - After intentional visual changes have been merged and baselines need
+#     a refresh.
+#
+# HOW: GitHub Actions UI → Actions → "VRT Update Baselines" → Run workflow →
+#      pick the branch (native workflow_dispatch branch picker).
+#
+# This workflow intentionally reuses the EXACT setup of the `frontend` job in
+# ci.yml (runner, pnpm/node versions, install steps, Playwright Chromium
+# install, webServer via playwright.config.ts) so regenerated baselines are
+# byte-compatible with what the CI VRT step compares against.
+#
+# Ref: docs/architecture/decisions/ADR-059-vrt-and-design-system-strategy.md
+#       (section "Regenerating baselines from CI artifacts")
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_dispatch:
+    # No inputs.branch input: GitHub's native workflow_dispatch branch picker
+    # already lets the operator choose the branch to run on, and guarantees
+    # the ref exists (a free-form string input could typo into a 404). The
+    # workflow checks out whatever branch was selected via actions/checkout.
+
+# contents: write is required to commit + push regenerated PNG baselines
+# back to the selected branch.
+permissions:
+  contents: write
+
+# Do not cancel a baseline regeneration mid-flight — a half-regenerated
+# commit would leave the branch with mixed old/new baselines.
+concurrency:
+  group: vrt-update-baselines-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update-baselines:
+    name: Regenerate VRT Baselines (CI-native)
+    # MUST match the ci.yml `frontend` job runner exactly — font library
+    # versions are tied to the OS image, and baselines are only valid if
+    # generated on the same image that runs the comparison.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      # ── Setup (mirrors ci.yml `frontend` job 1:1) ──────────────────────
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.5.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ADR-059 Mock Contract (BINDING) — fail fast (<1s) if a VRT spec is
+      # missing its catch-all route / expect.poll guard / timezoneId before
+      # spending minutes on browser install + dev-server compile.
+      - name: Check VRT mock contract (ADR-059 BINDING)
+        run: cd packages/web && npx tsx scripts/check-vrt-mock-contract.ts
+
+      - name: Install Playwright Chromium
+        run: cd packages/web && pnpm playwright install chromium
+
+      # ── Regenerate baselines ───────────────────────────────────────────
+      # webServer (Next.js `pnpm dev` on :3000) is started automatically by
+      # playwright.config.ts — same mechanism the CI VRT step relies on, so
+      # no separate dev-server step is needed here.
+      - name: Regenerate VRT baselines (--update-snapshots)
+        run: cd packages/web && pnpm playwright test --project=vrt --update-snapshots
+
+      # ── Detect + commit changes ────────────────────────────────────────
+      - name: Check for baseline changes
+        id: changes
+        run: |
+          if git diff --quiet -- packages/web/tests/screenshots/; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "changed_count=0" >> "$GITHUB_OUTPUT"
+            echo "::notice::No baseline changes — committed baselines already match CI-native rendering."
+          else
+            count=$(git diff --name-only -- packages/web/tests/screenshots/ | wc -l | tr -d ' ')
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "changed_count=$count" >> "$GITHUB_OUTPUT"
+            echo "::notice::$count baseline file(s) changed — will commit + push to $GITHUB_REF_NAME."
+          fi
+
+      - name: Commit + push regenerated baselines
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packages/web/tests/screenshots/*-snapshots/
+          git commit -m "test(web): regenerate VRT baselines (CI-native ubuntu-22.04)
+
+          Generated via vrt-update-baselines.yml workflow to ensure baselines match
+          CI's font-rendering environment (ubuntu-22.04). Local VRT runs may differ
+          due to local font-lib versions — use this workflow to regenerate.
+
+          Ref: ADR-059 (VRT & Design System Strategy)"
+          git push
+
+      # ── Summary ────────────────────────────────────────────────────────
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## VRT Baseline Regeneration"
+            echo ""
+            if [ "${{ steps.changes.outputs.changed }}" == "true" ]; then
+              echo "✅ Committed and pushed **${{ steps.changes.outputs.changed_count }}** baseline file(s) to \`${{ github.ref_name }}\`."
+              echo ""
+              echo "Baselines are now CI-native (ubuntu-22.04). The \`continue-on-error: true\` on the VRT step in \`.github/workflows/ci.yml\` can be removed in a follow-up commit once a regular CI run confirms the VRT step passes."
+            else
+              echo "ℹ️ No baseline changes — existing baselines already match CI-native rendering."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
