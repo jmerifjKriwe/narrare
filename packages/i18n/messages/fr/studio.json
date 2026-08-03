@@ -502,6 +502,9 @@
       "writing": "Écriture",
       "analysis": "Analyse",
       "kb": "Base de connaissances",
+      "ai_assist": "Assistance IA",
+      "planning": "Planification",
+      "wiki": "Wiki",
       "preview": "Aperçu",
       "edit": "Modifier",
       "capabilityHintTitle": "Règles garanties",
@@ -711,6 +714,17 @@
       "heros_journey": "Le voyage du héros",
       "save_the_cat": "Save the Cat",
       "seven_point": "Structure en sept points"
+    },
+    "tone": {
+      "balanced": "Équilibré",
+      "dramatic": "Dramatique",
+      "humorous": "Humoristique",
+      "suspenseful": "Suspense",
+      "contemplative": "Contemplatif",
+      "romantic": "Romantique",
+      "dark": "Sombre",
+      "adventurous": "Aventureux",
+      "quiet": "Calme"
     },
     "validation": {
       "projectNameRequired": "Le nom du projet est requis",
@@ -1950,9 +1964,9 @@
     "error": "Impossible de charger les projets de démonstration",
     "retry": "Réessayer",
     "empty": "Aucune démo disponible",
-    "chapters": "{{count}} chapitres",
-    "words": "{{count}} mots",
-    "characters": "{{count}} personnages"
+    "chapters": "{count} chapitres",
+    "words": "{count} mots",
+    "characters": "{count} personnages"
   },
   "quickStart": {
     "label": "Démarrage rapide",

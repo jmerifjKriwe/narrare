@@ -502,6 +502,9 @@
       "writing": "Schreiben",
       "analysis": "Analyse",
       "kb": "Wissensdatenbank",
+      "ai_assist": "KI-Unterstützung",
+      "planning": "Planung",
+      "wiki": "Wiki",
       "preview": "Vorschau",
       "edit": "Bearbeiten",
       "capabilityHintTitle": "Garantierte Regeln",
@@ -711,6 +714,17 @@
       "heros_journey": "Heldenreise",
       "save_the_cat": "Save the Cat",
       "seven_point": "Sieben-Punkt-Struktur"
+    },
+    "tone": {
+      "balanced": "Ausgewogen",
+      "dramatic": "Dramatisch",
+      "humorous": "Humorvoll",
+      "suspenseful": "Spannend",
+      "contemplative": "Nachdenklich",
+      "romantic": "Romantisch",
+      "dark": "Düster",
+      "adventurous": "Abenteuerlich",
+      "quiet": "Ruhig"
     },
     "validation": {
       "projectNameRequired": "Projektname ist erforderlich",
@@ -1950,9 +1964,9 @@
     "error": "Demo-Projekte konnten nicht geladen werden",
     "retry": "Erneut versuchen",
     "empty": "Keine Demo-Projekte verfügbar",
-    "chapters": "{{count}} Kapitel",
-    "words": "{{count}} Wörter",
-    "characters": "{{count}} Charaktere"
+    "chapters": "{count} Kapitel",
+    "words": "{count} Wörter",
+    "characters": "{count} Charaktere"
   },
   "quickStart": {
     "label": "Sofort loslegen",

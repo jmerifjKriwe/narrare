@@ -502,6 +502,9 @@
       "writing": "Writing",
       "analysis": "Analysis",
       "kb": "Knowledge Base",
+      "ai_assist": "AI Assistance",
+      "planning": "Planning",
+      "wiki": "Wiki",
       "preview": "Preview",
       "edit": "Edit",
       "capabilityHintTitle": "Guaranteed Rules",
@@ -711,6 +714,17 @@
       "heros_journey": "Hero's Journey",
       "save_the_cat": "Save the Cat",
       "seven_point": "Seven-Point Structure"
+    },
+    "tone": {
+      "balanced": "Balanced",
+      "dramatic": "Dramatic",
+      "humorous": "Humorous",
+      "suspenseful": "Suspenseful",
+      "contemplative": "Contemplative",
+      "romantic": "Romantic",
+      "dark": "Dark",
+      "adventurous": "Adventurous",
+      "quiet": "Quiet"
     },
     "validation": {
       "projectNameRequired": "Project name is required",
@@ -1950,9 +1964,9 @@
     "error": "Failed to load demo projects",
     "retry": "Try again",
     "empty": "No demos available",
-    "chapters": "{{count}} chapters",
-    "words": "{{count}} words",
-    "characters": "{{count}} characters"
+    "chapters": "{count} chapters",
+    "words": "{count} words",
+    "characters": "{count} characters"
   },
   "quickStart": {
     "label": "Quick Start",
