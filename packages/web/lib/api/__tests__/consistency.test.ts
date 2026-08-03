@@ -317,7 +317,7 @@ describe("consistencyApi", () => {
       server.use(
         http.delete(
           "*/api/v1/novels/novel-1/kb/consistency/dismissed/:fingerprint",
-          ({ request, params }) => {
+          ({ request }) => {
             capturedUrl = new URL(request.url).pathname;
             capturedMethod = request.method;
             return HttpResponse.json({ success: true });

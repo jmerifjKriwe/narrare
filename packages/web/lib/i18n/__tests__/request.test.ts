@@ -38,7 +38,7 @@ type RequestConfig = (ctx: { requestLocale: Promise<string | undefined> }) => Pr
 
 const getConfig = requestConfig as unknown as RequestConfig;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mocking Next.js cookies internals
+// biome-ignore lint/suspicious/noExplicitAny: mocking Next.js cookies internals — ReadonlyRequestCookies has many members; a partial structural stub is intentional and a full interface would couple the test to Next.js internals.
 type AnyCookieJar = any;
 
 function mockCookies(cookieMap: Record<string, string> = {}): void {

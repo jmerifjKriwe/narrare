@@ -23,7 +23,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import type { ReactNode } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdaptiveSourceList } from "@/components/studio/settings/_components/AdaptiveSourceList";
 import { AdaptiveToggle } from "@/components/studio/settings/_components/AdaptiveToggle";
 import { AdaptiveWeightSliders } from "@/components/studio/settings/_components/AdaptiveWeightSliders";
@@ -172,6 +172,18 @@ describe("AdaptiveSourceList a11y + edge cases", () => {
 // ---------------------------------------------------------------------------
 
 describe("AdaptiveDashboard a11y (states)", () => {
+  // AdaptiveDashboard renders AdaptiveSnapshotHistory, which fires
+  // GET /snapshots — mock it for every test in this describe so no unmocked
+  // fetch hits the network (ECONNREFUSED to localhost:3000; Next.js dev
+  // isn't running in the vitest step). resetHandlers() runs in afterEach.
+  beforeEach(() => {
+    server.use(
+      http.get("*/api/v1/adaptive/proj-1/snapshots*", () =>
+        HttpResponse.json({ project_id: "proj-1", items: [] }),
+      ),
+    );
+  });
+
   it("loaded: toggle + 4 sliders + sources, no violations", async () => {
     server.use(http.get("*/api/v1/adaptive/proj-1/context", () => HttpResponse.json(CTX)));
     const { container } = render(<AdaptiveDashboard novelId="proj-1" />, {

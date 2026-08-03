@@ -14,7 +14,6 @@
  */
 
 import type { JumpPoint, TrendPoint, VoiceDriftBand } from "@/lib/api/voice-drift-stream";
-import { DRIFT_BANDS } from "./voice-drift-bands";
 
 interface VoiceDriftSparklineProps {
   /** Per-chapter match trend (signal i), in chapter order. */

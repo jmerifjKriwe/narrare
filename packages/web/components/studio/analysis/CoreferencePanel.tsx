@@ -45,7 +45,6 @@ export function CoreferencePanel({ novelId, chapterIds, onClose }: CoreferencePa
   const startedRef = useRef(false);
 
   // Auto-trigger analysis once a chapter is available.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Runs once on mount
   useEffect(() => {
     if (startedRef.current || !chapterId) return;
     startedRef.current = true;

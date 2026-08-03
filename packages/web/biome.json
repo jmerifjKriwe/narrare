@@ -16,21 +16,21 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "a11y": {
-        "recommended": true
+        "preset": "recommended"
       },
       "correctness": {
-        "recommended": true,
+        "preset": "recommended",
         "noUnusedVariables": "error",
         "useExhaustiveDependencies": "warn"
       },
       "style": {
-        "recommended": true,
+        "preset": "recommended",
         "noNonNullAssertion": "off"
       },
       "suspicious": {
-        "recommended": true,
+        "preset": "recommended",
         "noExplicitAny": "warn"
       }
     }

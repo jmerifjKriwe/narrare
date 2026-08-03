@@ -29,7 +29,15 @@ afterEach(() => server.resetHandlers());
 
 describe("AdaptiveDashboard", () => {
   it("renders toggle, 4 sliders, and sources", async () => {
-    server.use(http.get("*/api/v1/adaptive/proj-1/context", () => HttpResponse.json(CTX)));
+    server.use(
+      http.get("*/api/v1/adaptive/proj-1/context", () => HttpResponse.json(CTX)),
+      // AdaptiveDashboard also renders AdaptiveSnapshotHistory, which fires
+      // GET /snapshots — mock it so no unmocked fetch hits the network
+      // (ECONNREFUSED to localhost:3000; Next.js dev isn't running in vitest).
+      http.get("*/api/v1/adaptive/proj-1/snapshots*", () =>
+        HttpResponse.json({ project_id: "proj-1", items: [] }),
+      ),
+    );
     render(<AdaptiveDashboard novelId="proj-1" />, { wrapper: wrapper(new QueryClient()) });
     await waitFor(() =>
       expect(screen.getByRole("switch", { name: "enableLabel" })).toBeInTheDocument(),
@@ -45,6 +53,9 @@ describe("AdaptiveDashboard", () => {
     const spy = vi.fn();
     server.use(
       http.get("*/api/v1/adaptive/proj-1/context", () => HttpResponse.json(CTX)),
+      http.get("*/api/v1/adaptive/proj-1/snapshots*", () =>
+        HttpResponse.json({ project_id: "proj-1", items: [] }),
+      ),
       http.post("*/api/v1/adaptive/proj-1/weights", async ({ request }) => {
         spy(await request.json());
         return HttpResponse.json({ enabled: true, weights: CTX.weights });
