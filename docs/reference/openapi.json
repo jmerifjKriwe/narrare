@@ -1043,6 +1043,269 @@
         }
       }
     },
+    "/api/v1/series/{series_id}/novels/{novel_id}/band-summary": {
+      "post": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Generate Band Summary",
+        "description": "Trigger (re)generation of the band summary for ``novel_id``.\n\nUpsert semantics: an existing row is updated, a missing row is created.\nReturns ``200`` (not ``201``) because the endpoint is a \"trigger\" action\non a resource that may already exist, not a strict create.",
+        "operationId": "generate_band_summary_api_v1_series__series_id__novels__novel_id__band_summary_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BandSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Get Band Summary",
+        "description": "Fetch the existing band summary (no generation; 404 if none).\n\nDeliberately not lazy — a GET should not trigger an LLM call. Use POST to\n(re)generate.",
+        "operationId": "get_band_summary_api_v1_series__series_id__novels__novel_id__band_summary_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BandSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Set Band Summary Override",
+        "description": "Set the user override (takes precedence over generated text at assembly).",
+        "operationId": "set_band_summary_override_api_v1_series__series_id__novels__novel_id__band_summary_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BandSummaryOverrideRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BandSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/novels/{novel_id}/band-summary/override": {
+      "delete": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Clear Band Summary Override",
+        "description": "Clear the user override (generated text is unaffected).",
+        "operationId": "clear_band_summary_override_api_v1_series__series_id__novels__novel_id__band_summary_override_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/planning/timeline/{novel_id}/events": {
       "get": {
         "tags": [
@@ -11598,6 +11861,79 @@
           "models"
         ],
         "title": "AvailableModelsResponse"
+      },
+      "BandSummaryOverrideRequest": {
+        "properties": {
+          "override": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Override"
+          }
+        },
+        "type": "object",
+        "required": [
+          "override"
+        ],
+        "title": "BandSummaryOverrideRequest",
+        "description": "PATCH /api/v1/series/{id}/novels/{novel_id}/band-summary body.\n\nA non-empty ``override`` replaces the user override; an empty/whitespace\nstring clears it (the service treats whitespace-only as \"clear\" so no\nempty override is ever persisted)."
+      },
+      "BandSummaryResponse": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "full_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Summary"
+          },
+          "short_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Summary"
+          },
+          "override": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id",
+          "full_summary",
+          "short_summary",
+          "override",
+          "generated_at"
+        ],
+        "title": "BandSummaryResponse",
+        "description": "Response for the band-summary GET/POST/PATCH endpoints.\n\nMirrors the ``BandSummary`` ORM model (``band_summary_models.py``): the\ngenerated ``full_summary`` / ``short_summary`` plus the optional user\n``override`` that takes precedence at assembly time (Spec 2 Task 6)."
       },
       "BeatSchema": {
         "properties": {

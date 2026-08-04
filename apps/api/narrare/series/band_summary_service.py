@@ -115,6 +115,21 @@ class BandSummaryService:
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
 
+    async def get(self, novel_id: uuid.UUID) -> BandSummary:
+        """Return the existing band summary (no generation).
+
+        Used by the GET endpoint (Task 4) to fetch a previously generated
+        summary without triggering an LLM call. Distinct from
+        ``get_or_generate`` (lazy) and ``generate`` (forced).
+
+        Raises:
+            NotFoundError: If no band summary row exists for ``novel_id``.
+        """
+        existing = await self._repo.get(novel_id)
+        if existing is None:
+            raise NotFoundError("BandSummary", identifier=str(novel_id))
+        return existing
+
     async def generate(self, novel_id: uuid.UUID) -> BandSummary:
         """Auto-generate: fetch chapter summaries → agent → upsert.
 

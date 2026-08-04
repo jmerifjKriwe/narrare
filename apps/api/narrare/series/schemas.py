@@ -3,11 +3,14 @@
 Consumes ``SeriesStatus`` from Core (Task 1.1). Used by the router
 (Task 3.6) and the frontend (Slice 4). Join-flow types expose the
 per-entry treatment so the UI can show "what would happen" before apply.
+Band-summary request/response DTOs (Spec 2 Task 4) live here too — they
+share the ``/api/v1/series`` prefix and follow the join-schemas precedent.
 """
 
 from __future__ import annotations
 
 import uuid  # noqa: TC003 - needed at runtime for Pydantic model resolution
+from datetime import datetime  # noqa: TC003 - needed at runtime for Pydantic model resolution
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -150,3 +153,34 @@ class JoinApplyRequest(BaseModel):
     """
 
     position: int = Field(ge=1)
+
+
+# --- Band Summary types (Spec 2 Task 4) --------------------------------------
+
+
+class BandSummaryResponse(BaseModel):
+    """Response for the band-summary GET/POST/PATCH endpoints.
+
+    Mirrors the ``BandSummary`` ORM model (``band_summary_models.py``): the
+    generated ``full_summary`` / ``short_summary`` plus the optional user
+    ``override`` that takes precedence at assembly time (Spec 2 Task 6).
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    novel_id: uuid.UUID
+    full_summary: str | None
+    short_summary: str | None
+    override: str | None
+    generated_at: datetime
+
+
+class BandSummaryOverrideRequest(BaseModel):
+    """PATCH /api/v1/series/{id}/novels/{novel_id}/band-summary body.
+
+    A non-empty ``override`` replaces the user override; an empty/whitespace
+    string clears it (the service treats whitespace-only as "clear" so no
+    empty override is ever persisted).
+    """
+
+    override: str = Field(min_length=1, max_length=5000)

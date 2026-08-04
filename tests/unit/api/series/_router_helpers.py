@@ -79,12 +79,50 @@ def use_join_service(app: FastAPI, service: AsyncMock) -> None:
     app.dependency_overrides[get_series_join_service] = lambda: service
 
 
+def mock_band_summary_service() -> AsyncMock:
+    """A mock BandSummaryService exposing the router-facing surface."""
+    service = AsyncMock()
+    for method in ("generate", "get", "get_or_generate", "update_override"):
+        setattr(service, method, AsyncMock())
+    return service
+
+
+def use_band_summary_service(app: FastAPI, service: AsyncMock) -> None:
+    """Override ``get_band_summary_service`` with a mock."""
+    from narrare.series.dependencies import get_band_summary_service
+
+    app.dependency_overrides[get_band_summary_service] = lambda: service
+
+
+def bypass_novel_ownership(app: FastAPI) -> None:
+    """Override ``verify_novel_in_owned_series`` with a no-op (happy-path tests)."""
+    from narrare.series.dependencies import verify_novel_in_owned_series
+
+    app.dependency_overrides[verify_novel_in_owned_series] = lambda: None
+
+
+def deny_novel_ownership(app: FastAPI) -> None:
+    """Override ``verify_novel_in_owned_series`` to raise ForbiddenError (403)."""
+    from narrare_core.shared.errors import ForbiddenError
+
+    async def _deny() -> None:
+        raise ForbiddenError("You do not have access to this series")
+
+    from narrare.series.dependencies import verify_novel_in_owned_series
+
+    app.dependency_overrides[verify_novel_in_owned_series] = _deny
+
+
 __all__ = [
     "NovelSummaryResponse",
+    "bypass_novel_ownership",
+    "deny_novel_ownership",
+    "mock_band_summary_service",
     "mock_join_service",
     "mock_series_service",
     "series_response",
     "uid",
+    "use_band_summary_service",
     "use_join_service",
     "use_series_service",
 ]

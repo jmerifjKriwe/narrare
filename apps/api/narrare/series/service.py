@@ -4,14 +4,16 @@ Implements ``SeriesServiceProtocol`` (contracts.py). Business logic only:
 no DB queries (delegated to ``SeriesRepository``), no HTTP. Converts between
 Pydantic request/response schemas and Core ``Series`` types.
 
-Status transitions follow an adjacency matrix — only the allowed
-forward/back moves (e.g. draft→active, active→completed) are permitted; a
-skip move (e.g. draft→completed) raises ``InvalidStatusTransitionError``.
-Setting the status to its current value is a no-op, not a transition.
+Status transitions follow an adjacency matrix (``status_transitions.py``) —
+only the allowed forward/back moves (e.g. draft→active, active→completed) are
+permitted; a skip move (e.g. draft→completed) raises
+``InvalidStatusTransitionError``. Setting the status to its current value is a
+no-op, not a transition.
 
-Patch field filtering (Task 3.3 note): the repository's ``update`` applies
-arbitrary kwargs via ``setattr``. ``_build_patch`` whitelists known columns
-and uses ``exclude_unset`` so only explicitly-provided fields are forwarded.
+When a series transitions to ``completed`` (Spec 2 Task 5), the service
+enqueues background band-summary generation for each novel via the injected
+``BandSummaryEnqueuer`` callable. When ``None`` (backward compat), no
+enqueuing happens.
 """
 
 from __future__ import annotations
@@ -20,9 +22,20 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.series.band_summary_auto_trigger import (
+    BandSummaryEnqueuer,
+    enqueue_band_summaries,
+)
 from narrare.series.schemas import SeriesResponse, SeriesSettingsResponse, SeriesSummary
+from narrare.series.status_transitions import (
+    InvalidStatusTransitionError as InvalidStatusTransitionError,
+)
+from narrare.series.status_transitions import (
+    build_patch,
+    validate_transition,
+)
 from narrare_core.series.schemas import SeriesSettings
-from narrare_core.shared.errors import ConflictError, ForbiddenError, NotFoundError
+from narrare_core.shared.errors import ForbiddenError, NotFoundError
 
 if TYPE_CHECKING:
     import uuid
@@ -33,23 +46,9 @@ if TYPE_CHECKING:
         SeriesSettingsUpdateRequest,
         SeriesUpdateRequest,
     )
-    from narrare_core.series.schemas import NovelRow, Series, SeriesStatus
+    from narrare_core.series.schemas import NovelRow, Series
 
 logger = structlog.get_logger(__name__)
-
-# Only adjacent status moves are allowed. Same-status "transitions" are
-# no-ops and handled before this lookup (never reach the matrix).
-_ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
-    "draft": frozenset({"active"}),
-    "active": frozenset({"completed", "draft"}),
-    "completed": frozenset({"draft"}),
-}
-
-# Columns the service may patch through the repository. ``status`` is added
-# back separately in ``_build_patch`` (after transition validation).
-_PATCHABLE_FIELDS = frozenset(
-    {"title", "subtitle", "description", "genre", "writing_language", "planned_novel_count"}
-)
 
 
 class SeriesNotFoundError(NotFoundError):
@@ -60,27 +59,22 @@ class SeriesNotFoundError(NotFoundError):
         self.series_id = series_id
 
 
-class InvalidStatusTransitionError(ConflictError):
-    """Raised when a requested Series status transition is not allowed.
+class SeriesService:
+    """Business-logic surface for Series CRUD (delegates DB to repository).
 
-    Subclasses :class:`ConflictError` so the app's global ``NarrareError``
-    handler (``_app/main.py``) maps it to HTTP 409 (state conflict), mirroring
-    :class:`~narrare.series.join_service.NovelAlreadyInSeriesError`.
+    The optional ``enqueue_band_summary`` callable (Spec 2 Task 5) lets
+    ``update_series`` trigger background band-summary generation when a series
+    transitions to ``completed``. When ``None``, no enqueuing happens — this
+    preserves backward compatibility with existing callers.
     """
 
-    def __init__(self, current: SeriesStatus, target: SeriesStatus) -> None:
-        super().__init__(f"Cannot transition series status from '{current}' to '{target}'")
-        # Preserve the specific code (ConflictError defaults to "CONFLICT").
-        self.code = "INVALID_STATUS_TRANSITION"
-        self.current_status = current
-        self.target_status = target
-
-
-class SeriesService:
-    """Business-logic surface for Series CRUD (delegates DB to repository)."""
-
-    def __init__(self, repo: SeriesRepositoryProtocol) -> None:
+    def __init__(
+        self,
+        repo: SeriesRepositoryProtocol,
+        enqueue_band_summary: BandSummaryEnqueuer | None = None,
+    ) -> None:
         self._repo = repo
+        self._enqueue_band_summary = enqueue_band_summary
 
     async def create_series(
         self, user_id: uuid.UUID, request: SeriesCreateRequest
@@ -154,43 +148,46 @@ class SeriesService:
         """
         current = await self._verify_series_ownership(series_id, user_id)
 
-        if request.status is not None and request.status != current.status:
-            self._validate_transition(current.status, request.status)
+        transitioning_to_completed = (
+            request.status is not None
+            and request.status == "completed"
+            and current.status != "completed"
+        )
 
-        patch = self._build_patch(request)
+        if request.status is not None and request.status != current.status:
+            validate_transition(current.status, request.status)
+
+        patch = build_patch(request)
         updated = await self._repo.update(series_id, **patch) if patch else current
         if updated is None:
-            # Race: deleted between ownership check and update — treat as not
-            # owned (anti-enumeration: never reveal existence via 404).
             raise ForbiddenError("You do not have access to this series")
+
+        # Auto-trigger (Spec 2 Task 5): enqueue band-summary generation for
+        # every novel when the series is marked completed (best-effort).
+        if transitioning_to_completed and self._enqueue_band_summary is not None:
+            novels = await self._repo.list_novels(series_id)
+            await enqueue_band_summaries(novels, self._enqueue_band_summary, series_id=series_id)
+
         logger.info("series_updated", series_id=str(series_id))
         return self._to_response(updated, await self._novel_count(series_id))
 
     async def delete_series(self, series_id: uuid.UUID, user_id: uuid.UUID) -> None:
         """Delete a Series + its Canon KB rows (the Canon fate; ADR-075 §D6).
 
-        Canon rows (``novel_id IS NULL``) are bulk-deleted in-transaction before
-        the series row is removed — Canon has no home without its series (C2).
-        Member novels become standalones (``novels.series_id`` SET NULL via the
-        FK) and their Novel-Overlay KB rows survive (``kb_entries.series_id`` SET
-        NULL via the FK).
-
         Raises:
             ForbiddenError: Series missing or not owned by ``user_id``.
         """
         await self._verify_series_ownership(series_id, user_id)
-        # Canon fate: remove Canon rows first (they cannot survive the series).
         canon_deleted = await self._repo.delete_canon_for_series(series_id)
         deleted = await self._repo.delete(series_id)
         if not deleted:
-            # Race: vanished between ownership check and delete — anti-enumeration.
             raise ForbiddenError("You do not have access to this series")
         logger.info("series_deleted", series_id=str(series_id), canon_deleted=canon_deleted)
 
     # -- novels in series + settings ------------------------------------
 
     async def list_novels(self, series_id: uuid.UUID, user_id: uuid.UUID) -> list[NovelRow]:
-        """List a series' novels ordered by ``series_position`` (Core read-model).
+        """List a series' novels ordered by ``series_position``.
 
         Raises:
             ForbiddenError: If the series is missing or not owned by ``user_id``.
@@ -246,13 +243,11 @@ class SeriesService:
     # -- helpers --------------------------------------------------------
 
     async def _verify_series_ownership(self, series_id: uuid.UUID, user_id: uuid.UUID) -> Series:
-        """Load a series and verify the caller owns it.
+        """Load a series and verify the caller owns it (anti-enumeration).
 
-        Mirrors ``KBCanonService._verify_series_ownership``: a *missing* series
-        and a *not-owned* series both surface as ``ForbiddenError`` (HTTP 403) —
-        never ``NotFoundError`` (404) — so series ids are not enumerable
-        (anti-enumeration, C1 / IDOR fix). Returns the loaded Series so callers
-        avoid a second fetch.
+        A *missing* series and a *not-owned* series both surface as
+        ``ForbiddenError`` (HTTP 403) — never ``NotFoundError`` (404) — so
+        series ids are not enumerable (C1 / IDOR fix).
         """
         series = await self._repo.get(series_id)
         if series is None or series.user_id != user_id:
@@ -262,26 +257,6 @@ class SeriesService:
     async def _novel_count(self, series_id: uuid.UUID) -> int:
         """Count novels in a series via the repository (``SELECT COUNT(*)``)."""
         return await self._repo.count_novels(series_id)
-
-    @staticmethod
-    def _validate_transition(current: SeriesStatus, target: SeriesStatus) -> None:
-        """Raise if ``current``→``target`` is not an allowed adjacent move."""
-        allowed = _ALLOWED_TRANSITIONS.get(current, frozenset())
-        if target not in allowed:
-            raise InvalidStatusTransitionError(current, target)
-
-    @staticmethod
-    def _build_patch(request: SeriesUpdateRequest) -> dict[str, object]:
-        """Filter the request to known columns, excluding unset fields.
-
-        ``exclude_unset`` implements PATCH semantics: only fields the caller
-        explicitly provided appear. The whitelist (``_PATCHABLE_FIELDS`` plus
-        ``status``) keeps arbitrary keys out of the repository's ``setattr``
-        loop (Task 3.3 note).
-        """
-        allowed = _PATCHABLE_FIELDS | {"status"}
-        provided = request.model_dump(exclude_unset=True)
-        return {key: value for key, value in provided.items() if key in allowed}
 
     @staticmethod
     def _to_response(series: Series, novel_count: int) -> SeriesResponse:
