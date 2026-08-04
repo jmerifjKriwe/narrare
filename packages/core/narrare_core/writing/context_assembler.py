@@ -139,6 +139,7 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
         user_preferences: str = "",
         avoidance_patterns: str = "",
         cross_session_context: str = "",
+        series_history: str = "",
         mode: str | None = None,
         timeline_position: str = "",
         story_structure: str = "",
@@ -167,6 +168,11 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
             mode: Generation mode string (e.g. ``"extend"``,
                 ``"extend_chapter"``).  When set, adjusts budget
                 allocation to prioritise immediate context.
+            series_history: Pre-assembled ``Previously in this series:`` block
+                (Spec 2 / SERIES-002) from
+                :class:`~narrare_core.context.series_history.SeriesHistoryTier`.
+                Backend-fetched, passed through to ``{{series_history}}``;
+                empty for standalone novels (RULE-11 graceful).
             author_voice_consumer: Optional ADR-074 consumer that loads
                 the novel-scoped author-voice profile and renders the
                 descriptive group into ``{{author_voice}}``.  When
@@ -320,6 +326,7 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
             user_preferences=user_preferences,
             avoidance_patterns=avoidance_patterns,
             cross_session_context=cross_session_context,
+            series_history=series_history,
             is_first_chapter=is_first,
             is_sparse_kb=is_sparse,
             voice_profile_warnings=voice_profile_warnings,

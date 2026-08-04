@@ -101,6 +101,11 @@ _COMMON_OPTIONAL_VARIABLES = frozenset(
         "kb_suggested",
         "novel_synopsis",
         "recent_chapters",
+        # Spec 2 / SERIES-002: series-history block. Declared optional so
+        # routes that do not run series-history assembly (and standalone
+        # novels) render it as "" instead of raising PromptVariableError
+        # (RULE-11 graceful). When supplied via WritingContext, the value wins.
+        "series_history",
         "style_profile",
         "timeline_position",
         "tone_instructions",

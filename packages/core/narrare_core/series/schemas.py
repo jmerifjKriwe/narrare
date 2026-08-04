@@ -40,6 +40,7 @@ class SeriesSettings(BaseModel):
 
     series_id: UUID
     author_voice: dict[str, object] | None = None
+    context_window_size: int = 3  # Spec 2 recency-window default
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

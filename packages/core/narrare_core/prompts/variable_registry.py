@@ -107,6 +107,11 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         # — NOT user-authored prompt content, so no XML-wrapping is required
         # (RULE-22 §6 does not apply). Mirrors {{character_voice_profiles}}.
         "author_voice",
+        # Spec 2 / SERIES-002: series-history context block (BandSummary
+        # recency-window text), assembled by SeriesHistoryTier in the Backend
+        # and injected at generation time. System-generated narrative context
+        # (not user-authored) — empty for standalone novels (RULE-11 graceful).
+        "series_history",
         # ADR-069: system-attributed speaker list for DIALOGUE_COACH.
         # Produced by DialogueParser-backed attribution (ADR-055 D3).
         "characters",

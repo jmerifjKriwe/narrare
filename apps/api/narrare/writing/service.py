@@ -23,6 +23,7 @@ from sqlalchemy.exc import IntegrityError
 
 from narrare.writing._helpers import (
     build_pipeline_request,
+    get_validated_request,
     prepare_generation_context,
     record_feedback,
     record_session_memory,
@@ -43,8 +44,8 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.series.series_history_provider import SeriesHistoryProvider
     from narrare.settings.custom_tone_service import CustomToneService
-    from narrare.writing.models import GenerationRequest
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.scene_service import SceneService
     from narrare.writing.stats_service import StatsService
@@ -74,6 +75,7 @@ class WritingService:
         tone_service: CustomToneService | None = None,
         relationship_repo: RelationshipRepository | None = None,
         session_memory: SessionMemoryCollector | None = None,
+        series_history_provider: SeriesHistoryProvider | None = None,
     ) -> None:
         self._repo = repo
         self._pipeline = pipeline
@@ -87,6 +89,7 @@ class WritingService:
         self._tone_service = tone_service
         self._relationship_repo = relationship_repo
         self._session_memory = session_memory
+        self._series_history_provider = series_history_provider
 
     # -- Generation lifecycle -------------------------------------------
 
@@ -131,7 +134,7 @@ class WritingService:
         """Stream generated text chunks for an existing request."""
         from narrare_core.writing._enums import GenerationMode
 
-        request_model = await self._get_validated_request(request_id, user_id)
+        request_model = await get_validated_request(self._repo, request_id, user_id)
         await self._repo.update_status(
             request_id,
             "streaming",
@@ -143,12 +146,19 @@ class WritingService:
         mode = GenerationMode(request_model.mode)
         pipeline_request = build_pipeline_request(request_model, mode)
 
-        # Resolve tone, KB relationships, and cross-session context (RULE-04 helper)
-        custom_tone_instructions, kb_text, cross_session_context = await prepare_generation_context(
+        # Resolve tone, KB relationships, cross-session + series-history context
+        # (RULE-04 helper).
+        (
+            custom_tone_instructions,
+            kb_text,
+            cross_session_context,
+            series_history,
+        ) = await prepare_generation_context(
             request_model,
             tone_service=self._tone_service,
             relationship_repo=self._relationship_repo,
             session_memory=self._session_memory,
+            series_history_provider=self._series_history_provider,
         )
 
         accumulated: list[str] = []
@@ -161,6 +171,7 @@ class WritingService:
                 custom_tone_instructions=custom_tone_instructions,
                 kb_relationships=kb_text,
                 cross_session_context=cross_session_context,
+                series_history=series_history,
                 **cast("dict[str, Any]", context_kwargs),
             ):
                 if chunk.is_final:
@@ -199,7 +210,7 @@ class WritingService:
 
     async def stop_generation(self, request_id: UUID, user_id: str) -> StopResponse:
         """Stop an in-progress generation."""
-        request_model = await self._get_validated_request(request_id, user_id)
+        request_model = await get_validated_request(self._repo, request_id, user_id)
         await self._pipeline.stop(request_id)
         word_count = request_model.word_count
         await self._repo.update_status(request_id, "stopped", completed_at=datetime.now(UTC))
@@ -215,7 +226,7 @@ class WritingService:
         modified_text: str | None = None,
     ) -> AcceptResponse:
         """Accept a generated draft."""
-        request_model = await self._get_validated_request(request_id, user_id)
+        request_model = await get_validated_request(self._repo, request_id, user_id)
         await record_feedback(self._feedback, request_model, "accept", modified_text=modified_text)
         logger.info("draft_accepted", request_id=str(request_id))
         return AcceptResponse(
@@ -226,7 +237,7 @@ class WritingService:
 
     async def reject_draft(self, request_id: UUID, user_id: str) -> RejectResponse:
         """Reject a generated draft."""
-        request_model = await self._get_validated_request(request_id, user_id)
+        request_model = await get_validated_request(self._repo, request_id, user_id)
         await record_feedback(self._feedback, request_model, "reject")
         logger.info("draft_rejected", request_id=str(request_id))
         return RejectResponse(request_id=request_id)
@@ -235,7 +246,7 @@ class WritingService:
 
     async def next_scene(self, request_id: UUID, user_id: str) -> SceneNextResponse:
         """Request the next scene in scene-by-scene mode."""
-        request_model = await self._get_validated_request(request_id, user_id)
+        request_model = await get_validated_request(self._repo, request_id, user_id)
         if self._scene_service is not None:
             return await self._scene_service.next_scene(request_model)
         return SceneNextResponse(request_id=request_id, scene_number=1, status=request_model.status)
@@ -244,7 +255,7 @@ class WritingService:
         self, request_id: UUID, scene_number: int, user_id: str
     ) -> AcceptResponse:
         """Accept a specific scene."""
-        request_model = await self._get_validated_request(request_id, user_id)
+        request_model = await get_validated_request(self._repo, request_id, user_id)
         if self._scene_service is not None:
             return await self._scene_service.accept_scene(request_model, scene_number)
         return AcceptResponse(
@@ -280,17 +291,4 @@ class WritingService:
         Raises NotFoundError if not found or access denied.
         Used by router to validate before starting SSE response.
         """
-        await self._get_validated_request(request_id, user_id)
-
-    async def _get_validated_request(
-        self,
-        request_id: UUID,
-        user_id: str,
-    ) -> GenerationRequest:
-        """Fetch and validate a generation request."""
-        request_model = await self._repo.get_by_id(request_id)
-        if request_model is None:
-            raise NotFoundError("Generation request", identifier=str(request_id))
-        if str(request_model.user_id) != user_id:
-            raise NotFoundError("Generation request", identifier=str(request_id))
-        return request_model
+        await get_validated_request(self._repo, request_id, user_id)

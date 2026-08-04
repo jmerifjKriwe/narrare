@@ -96,6 +96,21 @@ async def get_writing_service(
     tone_service = CustomToneService(repo=UserSettingsRepository(session))
     session_memory = get_session_memory_instance()
 
+    # Spec 2 / SERIES-002: series-history context provider. Pre-fetches prior
+    # bands' BandSummary data and assembles ``{{series_history}}``. Returns ""
+    # for standalone novels (RULE-11 graceful), so wiring it here is safe for
+    # non-series writing.
+    from narrare.novels.repository import NovelRepository
+    from narrare.series.band_summary_repository import BandSummaryRepository
+    from narrare.series.repository import SeriesRepository
+    from narrare.series.series_history_provider import SeriesHistoryProvider
+
+    series_history_provider = SeriesHistoryProvider(
+        novel_repo=NovelRepository(session),
+        series_repo=SeriesRepository(session),
+        band_summary_repo=BandSummaryRepository(session),
+    )
+
     return WritingService(
         repo=repo,
         pipeline=pipeline,
@@ -106,4 +121,5 @@ async def get_writing_service(
         tone_service=tone_service,
         relationship_repo=relationship_repo,
         session_memory=session_memory,
+        series_history_provider=series_history_provider,
     )

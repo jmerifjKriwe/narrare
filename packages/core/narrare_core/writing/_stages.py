@@ -83,6 +83,7 @@ async def assemble_writing_context(
     user_preferences: str,
     avoidance_patterns: str,
     cross_session_context: str = "",
+    series_history: str = "",
 ) -> WritingContext:
     """Stage 2 — context assembly.
 
@@ -110,6 +111,9 @@ async def assemble_writing_context(
         cross_session_context: Cross-session writing memories from mem0,
             formatted by :class:`~narrare_core.memory.session_memory_service.SessionMemoryService`.
             Empty string when no memories exist (graceful degradation).
+        series_history: Pre-assembled series-history block (Spec 2 / SERIES-002)
+            from :class:`~narrare_core.context.series_history.SeriesHistoryTier`.
+            Backend-fetched; empty for standalone novels (RULE-11 graceful).
 
     Returns:
         The assembled WritingContext ready for prompt construction.
@@ -133,6 +137,7 @@ async def assemble_writing_context(
         user_preferences=user_preferences,
         avoidance_patterns=avoidance_patterns,
         cross_session_context=cross_session_context,
+        series_history=series_history,
         mode=str(request.mode),
         voice_profile_consumer=voice_profile_consumer,
     )
