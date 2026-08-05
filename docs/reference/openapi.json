@@ -1306,6 +1306,213 @@
         }
       }
     },
+    "/api/v1/series/{series_id}/voice/profile": {
+      "post": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Profile Series Voice",
+        "description": "Profile a novel's voice → store as the series voice (Delta foundation).\n\nUpsert semantics: an existing profile is overwritten (HTTP 200, not 201 —\ntrigger action on a resource that may already exist, like band-summary).\nThe novel MUST belong to the series (403 otherwise — anti-enumeration).",
+        "operationId": "profile_series_voice_api_v1_series__series_id__voice_profile_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesVoiceProfileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesVoiceStateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/voice": {
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Get Series Voice",
+        "description": "Fetch the series voice profile (``author_voice`` is null when empty).",
+        "operationId": "get_series_voice_api_v1_series__series_id__voice_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesVoiceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Update Series Voice Override",
+        "description": "Set a manual voice-profile override (validated as AuthorVoiceProfile).",
+        "operationId": "update_series_voice_override_api_v1_series__series_id__voice_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesVoiceOverrideRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesVoiceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/voice/override": {
+      "delete": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Clear Series Voice Override",
+        "description": "Clear the series voice (null ``SeriesSettings.author_voice``).",
+        "operationId": "clear_series_voice_override_api_v1_series__series_id__voice_override_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/planning/timeline/{novel_id}/events": {
       "get": {
         "tags": [
@@ -11788,6 +11995,58 @@
         "title": "ArcPhaseResponse",
         "description": "A single phase in a character arc."
       },
+      "AuthorMetrics": {
+        "properties": {
+          "dialogue_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dialogue Ratio"
+          },
+          "description_density": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description Density"
+          },
+          "action_introspection_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Introspection Ratio"
+          },
+          "metaphor_density": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metaphor Density"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "AuthorMetrics",
+        "description": "Author-specific PROSE-LEVEL metrics — comparison ONLY (ANAL-009 Phase 2B).\n\nNEVER rendered into generation. Populated by the deterministic\n:class:`AuthorMetricsAnalyzer`, never by the LLM agent. ``extra=\"allow\"``\nlets the metric block grow without a migration (ADR-074 binding).\n\nEvery field is ``float | None`` in ``[0.0, 1.0]`` so the\n:func:`~narrare_core.analysis.voice_check_scoring.voice_metric_distances`\ndelta primitive generalises trivially to author metrics in Phase 2B.\n\nAttributes:\n    dialogue_ratio: Quoted-dialogue word count / total word count\n        (``0.0``-``1.0``). Deterministic, stable.\n    description_density: Modifier (adj/adv) density proxy\n        (``0.0`` sparse - ``1.0`` rich). Deterministic; provisional.\n    action_introspection_ratio: Introspection-marker density vs action\n        density (``0.0`` action-heavy -> ``1.0`` introspection-heavy).\n        Deterministic; provisional.\n    metaphor_density: Simile/figurative-cue density (``0.0``-``1.0``).\n        Deterministic; deliberately crude; the hardest metric - see the\n        spec's metaphor_density decision (Q1)."
+      },
       "AuthorVoiceDriftRequest": {
         "properties": {
           "chapter_ids": {
@@ -11809,6 +12068,64 @@
         "type": "object",
         "title": "AuthorVoiceDriftRequest",
         "description": "Request body for ``POST /analysis/author-voice-drift/{novel_id}``.\n\nThe novel id is carried by the URL path parameter (mirrors\n:class:`AuthorVoiceRequest` / :class:`VoiceDriftRequest` — novel-scoped\nendpoints). The body carries the optional chapter filter (author voice is\none narrator per novel, so there is no per-character filter):\n\nAttributes:\n    chapter_ids: Specific chapter ids to analyse (UUID strings). ``None``\n        or an empty list means \"analyse every chapter in the novel\" (the\n        service resolves the full chapter list via the novel/chapter\n        repositories). Mirrors ``AuthorVoiceRequest.chapter_ids``."
+      },
+      "AuthorVoiceProfile": {
+        "properties": {
+          "voice_analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VoiceAnalysis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "author_examples": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Examples"
+          },
+          "author_metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "is_fresh": {
+            "type": "boolean",
+            "title": "Is Fresh",
+            "default": true
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "AuthorVoiceProfile",
+        "description": "Machine-derived author-voice profile (ANAL-007 / ADR-074).\n\nPersisted as ``ProjectSettings.author_voice`` JSONB. Novel-scoped.\nMirrors the ADR-055 descriptive/metric structure (deterministic metrics +\nLLM qualitative descriptors), REUSING the voice-generic\n:class:`~narrare_core.schemas.voice.VoiceAnalysis` /\n:class:`~narrare_core.schemas.voice.VoiceMetrics` and ADDING\nauthor-specific prose-level metrics.\n\nDescriptive group (rendered into ``{{author_voice}}`` by\n:func:`render_author_voice_for_generation`):\n    - ``voice_analysis`` descriptive fields (formality, vocabulary_level,\n      sentence_profile, emotional_range, cultural_regional_markers,\n      voice_examples).\n    - ``author_examples``.\n\nMetric group (comparison ONLY — NEVER rendered into generation):\n    - ``voice_analysis.voice_metrics`` (voice-generic metrics).\n    - ``author_metrics`` (author-specific prose-level metrics).\n\nThe descriptive/metric boundary is enforced at the consumer contract\n(:func:`render_author_voice_for_generation`), not at the data model — the\nsame place ADR-055 enforces it for character voice (``get_speech_data``).\nThe profile itself deliberately carries BOTH groups so the future Phase 2B\nauthor-drift checker can read the metric group via the repository contract.\n\nAttributes:\n    voice_analysis: Voice-generic descriptive block (also carries the\n        voice-generic ``voice_metrics`` sub-block).\n    author_examples: Author-specific curated representative prose passages\n        (the agent's ``author_examples``).\n    author_metrics: Author-specific prose-level metrics. Comparison-only.\n    updated_at: ISO timestamp of the last profile build (freshness signal).\n    is_fresh: Freshness flag (mirrors character-voice ``profiles/_freshness``)."
       },
       "AuthorVoiceRequest": {
         "properties": {
@@ -16949,6 +17266,11 @@
             "type": "object",
             "title": "Token Limit Overrides"
           },
+          "use_series_voice": {
+            "type": "boolean",
+            "title": "Use Series Voice",
+            "default": true
+          },
           "updated_at": {
             "type": "string",
             "format": "date-time",
@@ -18699,6 +19021,89 @@
         "type": "object",
         "title": "SeriesUpdateRequest",
         "description": "PATCH /api/v1/series/{id} body. All fields optional."
+      },
+      "SeriesVoiceOverrideRequest": {
+        "properties": {
+          "author_voice": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Author Voice",
+            "description": "A full author-voice profile dict (validated server-side)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "author_voice"
+        ],
+        "title": "SeriesVoiceOverrideRequest",
+        "description": "PATCH /api/v1/series/{id}/voice body — manual voice-profile override.\n\nThe dict is validated as :class:`AuthorVoiceProfile` by the service for\ntype safety before persisting (a malformed override → ``ValidationError``).\nCarried as a raw dict on the wire so the UI can edit the full profile shape\nwithout the schema enumerating every nested field here."
+      },
+      "SeriesVoiceProfileRequest": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id",
+            "description": "The novel (band) whose voice is profiled."
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id"
+        ],
+        "title": "SeriesVoiceProfileRequest",
+        "description": "POST /api/v1/series/{id}/voice/profile body — the band (novel) to profile.\n\nThe novel MUST belong to the series (the service verifies membership and\nraises ``ForbiddenError`` otherwise — anti-enumeration)."
+      },
+      "SeriesVoiceResponse": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "author_voice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorVoiceProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "author_voice"
+        ],
+        "title": "SeriesVoiceResponse",
+        "description": "Response for GET / PATCH /api/v1/series/{id}/voice.\n\nCarries the stored series-voice profile (the Delta-model foundation,\nADR-078). ``None`` means \"no series voice profiled yet\" (RULE-11 graceful\ndegradation — generation renders empty ``{{author_voice}}``)."
+      },
+      "SeriesVoiceStateResponse": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "author_voice": {
+            "$ref": "#/components/schemas/AuthorVoiceProfile"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "novel_id",
+          "author_voice"
+        ],
+        "title": "SeriesVoiceStateResponse",
+        "description": "Response for POST /api/v1/series/{id}/voice/profile (profiling result).\n\nMirrors :class:`SeriesVoiceResponse` but is the explicit return type of the\nprofiling trigger (HTTP 200 — upsert semantics, like band-summary POST)."
       },
       "ShortestPathResponse": {
         "properties": {
@@ -20523,6 +20928,17 @@
               }
             ],
             "title": "Model Overrides"
+          },
+          "use_series_voice": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Series Voice"
           }
         },
         "type": "object",
@@ -21053,6 +21469,93 @@
         ],
         "title": "ValidationError"
       },
+      "VoiceAnalysis": {
+        "properties": {
+          "formality": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formality"
+          },
+          "vocabulary_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vocabulary Level"
+          },
+          "sentence_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentence Profile"
+          },
+          "emotional_range": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emotional Range"
+          },
+          "cultural_regional_markers": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cultural Regional Markers"
+          },
+          "voice_examples": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Examples"
+          },
+          "voice_metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VoiceMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "VoiceAnalysis",
+        "description": "Machine-derived character voice profile (ADR-055 Decision 1).\n\nANAL-008 writes this; the extended ``get_speech_data`` consumer renders\nthe descriptive group into ``{{character_voice_profiles}}``. The metric\ngroup is comparison-only and NEVER reaches generation."
+      },
       "VoiceDriftRequest": {
         "properties": {
           "character_id": {
@@ -21086,6 +21589,97 @@
         "type": "object",
         "title": "VoiceDriftRequest",
         "description": "Request body for ``POST /analysis/voice-drift/{novel_id}``.\n\nThe novel id is carried by the URL path parameter (mirrors\n``CharacterVoiceRequest`` — novel-scoped endpoint). The body carries\noptional filters:\n\nAttributes:\n    character_id: Scope the analysis to a single character by their\n        stored profile ``character_id`` (the KB entity UUID string).\n        ``None`` means \"analyse every profiled character\" (the default).\n    chapter_ids: Specific chapter ids to analyse (UUID strings). ``None``\n        or an empty list means \"analyse every chapter in the novel\"\n        (the service resolves the full chapter list via the novel\n        repository). Mirrors ``CharacterVoiceRequest.chapter_ids``."
+      },
+      "VoiceMetrics": {
+        "properties": {
+          "avg_sentence_length": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Sentence Length"
+          },
+          "sentence_length_std": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentence Length Std"
+          },
+          "type_token_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type Token Ratio"
+          },
+          "avg_syllables_per_word": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Syllables Per Word"
+          },
+          "contraction_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contraction Rate"
+          },
+          "verbal_tic_frequency": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verbal Tic Frequency"
+          },
+          "punctuation_profile": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Punctuation Profile"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "VoiceMetrics",
+        "description": "Deterministic numeric metrics — for ANAL-009 drift / WRITE-010 checking.\n\nNOT rendered into generation. Populated by the deterministic\n``VoiceMetricsAnalyzer`` (ADR-021/ADR-055), never by the LLM agent.\n``extra=\"allow\"`` lets the metric block grow without a migration."
       },
       "VolumeResponse": {
         "properties": {

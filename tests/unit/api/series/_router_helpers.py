@@ -94,6 +94,21 @@ def use_band_summary_service(app: FastAPI, service: AsyncMock) -> None:
     app.dependency_overrides[get_band_summary_service] = lambda: service
 
 
+def mock_series_voice_service() -> AsyncMock:
+    """A mock SeriesVoiceService exposing the router-facing surface."""
+    service = AsyncMock()
+    for method in ("profile_from_novel", "get", "update_override", "clear_override"):
+        setattr(service, method, AsyncMock())
+    return service
+
+
+def use_series_voice_service(app: FastAPI, service: AsyncMock) -> None:
+    """Override ``get_series_voice_service`` with a mock."""
+    from narrare.series.dependencies_voice import get_series_voice_service
+
+    app.dependency_overrides[get_series_voice_service] = lambda: service
+
+
 def bypass_novel_ownership(app: FastAPI) -> None:
     """Override ``verify_novel_in_owned_series`` with a no-op (happy-path tests)."""
     from narrare.series.dependencies import verify_novel_in_owned_series
@@ -120,9 +135,11 @@ __all__ = [
     "mock_band_summary_service",
     "mock_join_service",
     "mock_series_service",
+    "mock_series_voice_service",
     "series_response",
     "uid",
     "use_band_summary_service",
     "use_join_service",
     "use_series_service",
+    "use_series_voice_service",
 ]

@@ -152,3 +152,29 @@ class TestProjectSettingsRepositoryUpdate:
         )
         assert second.default_language == "de"
         assert second.autosave_interval == 300
+
+    async def test_update_project_settings_use_series_voice_false_is_persisted(
+        self,
+    ) -> None:
+        """Spec 3: a ``False`` opt-out survives ``exclude_none`` (not dropped).
+
+        ``UpdateProjectSettingsRequest.use_series_voice`` defaults to ``None``
+        (omitted → skipped by ``exclude_none``). An explicit ``False`` MUST
+        persist (the repository uses ``exclude_none=True``, which keeps
+        ``False``) — this is the regression guard for the per-novel
+        series-voice opt-out (ADR-078).
+        """
+        from narrare.settings.repository import ProjectSettingsRepository
+
+        # 1. Explicit False reaches the ORM column (the critical opt-out case).
+        novel_id = uuid4()
+        repo = ProjectSettingsRepository(cast("AsyncSession", _UpdateSession()))
+        result = await repo.update(novel_id, UpdateProjectSettingsRequest(use_series_voice=False))
+        assert result.use_series_voice is False
+
+        # 2. Schema-level: an omitted field is NOT in the dump (PATCH leaves
+        #    the column untouched — verified at the schema boundary so the
+        #    fake-session carry-over does not muddy the assertion).
+        omitted = UpdateProjectSettingsRequest(default_language="en")
+        assert "use_series_voice" not in omitted.model_dump(exclude_none=True)
+        assert omitted.model_dump(exclude_none=True) == {"default_language": "en"}
