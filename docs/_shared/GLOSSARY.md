@@ -57,6 +57,17 @@ within its series. Plural: Bände. Contrast with *Volume* (which groups chapters
 *within* one novel); a Band is the whole novel viewed as a member of a series.
 See *Series / Reihe*, SERIES-001.
 
+**Band Summary**
+The auto-generated + overrideable recap of one novel's place in a series
+(SERIES-002 / ADR-077). A `BandSummary` row (1:1 to `Novel`, `novel_id` PK +
+unique FK `ON DELETE CASCADE`) holds a multi-paragraph `full_summary`, a
+one-sentence `short_summary`, an optional user `override`, and `generated_at`.
+Produced by `BandSummaryAgent` from the band's chapter summaries. At generation
+time the `SeriesHistoryTier` selects which text each prior band contributes
+based on recency: in-window bands use `override or full_summary`; out-of-window
+bands use only `short_summary`. See *Series History (Context Tier)*,
+*Context Window*, SERIES-002, ADR-077.
+
 **Budget (Token Budget)**
 The maximum number of tokens allocated for a specific part of a prompt — typically
 for KB context injection. Managed by `core/context/budget.py`. When context exceeds
@@ -88,6 +99,18 @@ assignment, and a summary (AI-generated or manual). The primary unit of writing.
 The assembled collection of KB entries, chapter summaries, and memory items
 that are injected into a prompt. Built by `core/context/assembler.py`. Represented
 as `ContextBundle` type.
+
+**Context Window (Series)**
+The recency setting on `SeriesSettings.context_window_size` (default 3,
+SERIES-002 / ADR-077) that controls how many of the most-recent prior bands
+contribute their **full** summary to the `{{series_history}}` generation
+block. Bands older than the window contribute only their one-sentence
+`short_summary`. Under token-budget pressure the tier sacrifices older entries
+first ("sacrifice older first"), so the most recent context is always
+preserved last. Read by `SeriesHistoryTier` (via the Backend
+`SeriesHistoryProvider`). Distinct from an LLM's *model context window* (the
+provider's input-token limit). See *Series History (Context Tier)*,
+*Band Summary*, SERIES-002, ADR-077.
 
 **ContextEnricher**
 A Protocol for runtime context enrichment before `PromptComposer`. Implementations
@@ -541,6 +564,20 @@ systems, world rules, canonical character bios, and foundational artifacts.
 Persisted in `kb_entries` with `novel_id IS NULL` and `series_id` set.
 Contrast with *Novel-Overlay*. See *Scope (KB)*, SERIES-001, ADR-075.
 
+**Series History (Context Tier)**
+The pure-Core context tier (`SeriesHistoryTier`,
+`packages/core/narrare_core/context/series_history.py`) that assembles the
+"Previously in this series:" text block injected at generation time via the
+`{{series_history}}` governed prompt variable (SERIES-002 / ADR-077). Applies
+a *recency-window*: the last `context_window_size` prior bands contribute their
+full summary (or a user override); older bands contribute only their
+short summary. Emits newest-first and enforces a token budget by truncating
+then dropping the oldest entries ("sacrifice older first"). Stateless and
+I/O-free — the Backend `SeriesHistoryProvider` pre-fetches `BandSummaryData`
+and hands it to `tier.assemble()`. Gracefully degrades to `""` for standalone
+novels, band 1, or missing summaries (RULE-11). See *Band Summary*,
+*Context Window*, SERIES-002, ADR-077.
+
 **Service Layer**
 The set of service classes in `apps/api/narrare/*/service.py`.
 Contains business logic. Called by routers (HTTP), MCP tools, A2A agents, and CLI.
@@ -701,6 +738,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-07-29 — Added Series-program terms (Series/Reihe, Series-Canon, Novel-Overlay, Scope (KB), STI, Band, Policy α, Policy iii) for SERIES-001 / ADR-075. 2026-07-01 — Removed stale `character_voice` governed-debt example (it is runtime-verified per ADR-055/057, no longer governed debt). 2026-06-30 — Corrected "Voice Check" definition to match ADR-057/WRITE-010 (character dialogue checked against stored per-character voice profiles, not the author's style profile). 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
+> Last updated: 2026-08-02 — Added Spec 2 terms (Band Summary, Series History (Context Tier), Context Window) for SERIES-002 / ADR-077. 2026-07-29 — Added Series-program terms (Series/Reihe, Series-Canon, Novel-Overlay, Scope (KB), STI, Band, Policy α, Policy iii) for SERIES-001 / ADR-075. 2026-07-01 — Removed stale `character_voice` governed-debt example (it is runtime-verified per ADR-055/057, no longer governed debt). 2026-06-30 — Corrected "Voice Check" definition to match ADR-057/WRITE-010 (character dialogue checked against stored per-character voice profiles, not the author's style profile). 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist
