@@ -127,6 +127,7 @@ export function createProjectSettings(overrides: Partial<ProjectSettings> = {}):
     ai_provider: "openai",
     ai_model: "gpt-4o",
     model_overrides: "",
+    use_series_voice: true,
     updated_at: "2026-01-01T00:00:00Z",
     ...overrides,
   };

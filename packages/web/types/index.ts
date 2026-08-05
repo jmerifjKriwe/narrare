@@ -125,6 +125,11 @@ export type {
   SeriesStatus,
   SeriesSummary,
   SeriesUpdate,
+  SeriesVoice,
+  SeriesVoiceAnalysis,
+  SeriesVoiceOverrideRequest,
+  SeriesVoiceProfile,
+  SeriesVoiceState,
 } from "./series";
 export type {
   CalibrationMetadata,

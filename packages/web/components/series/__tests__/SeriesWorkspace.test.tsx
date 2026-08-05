@@ -142,19 +142,17 @@ describe("SeriesWorkspace", () => {
     expect(screen.getByTestId("tab-content")).toBeDefined();
   });
 
-  it("renders the Voice tab as disabled and non-navigable", () => {
+  it("renders the Voice tab as navigable (enabled in Spec 3)", () => {
     render(
       <SeriesWorkspace seriesId="series-1">
         <div />
       </SeriesWorkspace>,
     );
     const voice = screen.getByTestId("series-tab-voice");
-    expect(voice.getAttribute("aria-disabled")).toBe("true");
-    // A disabled placeholder must not be an anchor (no route navigation).
-    expect(voice.tagName).not.toBe("A");
-    expect(voice.getAttribute("href")).toBeNull();
-    // Shows the "coming in Spec 3" hint.
-    expect(screen.getByText(/series\.workspace\.comingInSpec3/)).toBeDefined();
+    // No longer disabled — it is an anchor that routes into the Voice tab.
+    expect(voice.getAttribute("aria-disabled")).toBeNull();
+    expect(voice.tagName).toBe("A");
+    expect(voice.getAttribute("href")).toBe("/series/series-1/voice");
   });
 
   it("shows a loading state while the series is loading", () => {

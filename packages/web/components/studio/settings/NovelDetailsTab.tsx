@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { SeriesVoiceOptOutCard } from "@/components/series/SeriesVoiceOptOutCard";
 import { novelsApi, tonesApi } from "@/lib/api/client";
 import type { Novel } from "@/types";
 import { StructureChangeDialog } from "../planning/StructureChangeDialog";
@@ -14,6 +15,7 @@ import { NovelDetailsHeader } from "./_components/NovelDetailsHeader";
 import { SaveFooter } from "./_components/SaveFooter";
 import { StoryCard } from "./_components/StoryCard";
 import { SummaryCard } from "./_components/SummaryCard";
+import { useStructureChangeGuard } from "./_components/useStructureChangeGuard";
 
 // --- Types ---
 
@@ -50,9 +52,8 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
     queryFn: () => tonesApi.list(),
   });
 
-  // Structure change dialog state
-  const [remapDialogOpen, setRemapDialogOpen] = useState(false);
-  const [pendingStructure, setPendingStructure] = useState<string | null>(null);
+  // Structure change dialog guard (extracted — RULE-04).
+  const structureGuard = useStructureChangeGuard({ novel });
 
   // Sync novel data → local state when query resolves
   useEffect(() => {
@@ -91,15 +92,13 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
     };
     const payload = buildChangedPayload(form, novel);
 
-    // Check if story structure changed — show remap dialog instead of direct save
-    if (payload.story_structure && payload.story_structure !== novel.story_structure) {
-      const otherPayload = { ...payload };
-      delete otherPayload.story_structure;
-      if (Object.keys(otherPayload).length > 0) {
-        saveMutation.mutate(otherPayload);
+    // Story-structure change → open the remap dialog instead of direct save
+    // (the guard returns the structure-stripped payload to apply immediately).
+    const { intercepted, immediatePayload } = structureGuard.intercept(payload);
+    if (intercepted) {
+      if (Object.keys(immediatePayload).length > 0) {
+        saveMutation.mutate(immediatePayload);
       }
-      setPendingStructure(payload.story_structure);
-      setRemapDialogOpen(true);
       return;
     }
 
@@ -113,15 +112,6 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
     setter(value);
     setDirty(true);
   };
-
-  // Remap dialog: cancel reverts local structure to original
-  function handleRemapCancel() {
-    if (novel) {
-      setLocalStoryStructure(novel.story_structure);
-    }
-    setPendingStructure(null);
-    setDirty(false);
-  }
 
   // Loading state
   if (isLoading) {
@@ -169,6 +159,9 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
           t={t}
         />
 
+        {/* Spec 3: per-novel series-voice opt-out. Self-hides for standalone novels. */}
+        <SeriesVoiceOptOutCard novelId={novelId} seriesId={novel?.series_id ?? null} />
+
         <SaveFooter
           dirty={dirty}
           isSaving={saveMutation.isPending}
@@ -181,18 +174,22 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
       </div>
 
       {/* Structure Change Dialog */}
-      {pendingStructure && (
+      {structureGuard.pendingStructure && (
         <StructureChangeDialog
-          open={remapDialogOpen}
+          open={structureGuard.remapDialogOpen}
           novelId={novelId}
-          newStructure={pendingStructure}
+          newStructure={structureGuard.pendingStructure}
           currentStructure={novel?.story_structure ?? "three_act"}
           onClose={() => {
-            setRemapDialogOpen(false);
-            setPendingStructure(null);
+            structureGuard.close();
             setDirty(false);
           }}
-          onCancel={handleRemapCancel}
+          onCancel={() => {
+            // Cancel reverts the local structure to the original + closes the guard.
+            if (novel) setLocalStoryStructure(novel.story_structure);
+            structureGuard.close();
+            setDirty(false);
+          }}
         />
       )}
     </div>

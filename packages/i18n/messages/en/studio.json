@@ -2174,6 +2174,42 @@
       "empty": "Generate band summary",
       "loading": "Loading band summary...",
       "overrideActive": "Override active"
+    },
+    "voice": {
+      "title": "Series Voice",
+      "loading": "Loading series voice...",
+      "status": {
+        "empty": "No voice profiled yet",
+        "autoProfiled": "Auto-profiled",
+        "overrideActive": "Override active"
+      },
+      "profileFrom": "Profile from band",
+      "profileFromPlaceholder": "Select a novel...",
+      "profile": "Profile",
+      "showProfile": "Voice profile",
+      "profileEmpty": "The profiled voice has no descriptive data yet.",
+      "profiledAt": "Profiled at {date}",
+      "fields": {
+        "vocabularyLevel": "Vocabulary level",
+        "sentenceProfile": "Sentence profile",
+        "emotionalRange": "Emotional range",
+        "markers": "Cultural / regional markers",
+        "voiceExamples": "Voice examples",
+        "authorExamples": "Author examples"
+      },
+      "override": "Manual override (JSON)",
+      "overridePlaceholder": "Paste a full author-voice profile as JSON...",
+      "overrideInvalid": "Invalid JSON — could not parse the override.",
+      "saveOverride": "Save Override",
+      "clearOverride": "Clear Override"
+    }
+  },
+  "novel": {
+    "settings": {
+      "useSeriesVoice": {
+        "label": "Use series voice as base",
+        "description": "When on, generation blends this series' voice profile with the novel's own voice (Delta model). Turn off to use only this novel's voice."
+      }
     }
   }
 }

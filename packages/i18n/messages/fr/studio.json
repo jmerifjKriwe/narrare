@@ -2174,6 +2174,42 @@
       "empty": "Générer le résumé du tome",
       "loading": "Chargement du résumé...",
       "overrideActive": "Remplacement actif"
+    },
+    "voice": {
+      "title": "Voix de la série",
+      "loading": "Chargement de la voix de la série...",
+      "status": {
+        "empty": "Aucune voix profilée",
+        "autoProfiled": "Profilée automatiquement",
+        "overrideActive": "Remplacement actif"
+      },
+      "profileFrom": "Profiler à partir du tome",
+      "profileFromPlaceholder": "Sélectionner un roman...",
+      "profile": "Profiler",
+      "showProfile": "Profil de voix",
+      "profileEmpty": "La voix profilée ne contient pas encore de données descriptives.",
+      "profiledAt": "Profilée le {date}",
+      "fields": {
+        "vocabularyLevel": "Niveau de vocabulaire",
+        "sentenceProfile": "Profil de phrase",
+        "emotionalRange": "Registre émotionnel",
+        "markers": "Marqueurs culturels / régionaux",
+        "voiceExamples": "Exemples de voix",
+        "authorExamples": "Exemples d'auteur"
+      },
+      "override": "Remplacement manuel (JSON)",
+      "overridePlaceholder": "Collez un profil de voix d'auteur complet en JSON...",
+      "overrideInvalid": "JSON invalide — impossible de lire le remplacement.",
+      "saveOverride": "Enregistrer le remplacement",
+      "clearOverride": "Effacer le remplacement"
+    }
+  },
+  "novel": {
+    "settings": {
+      "useSeriesVoice": {
+        "label": "Utiliser la voix de la série comme base",
+        "description": "Si activé, la génération mélange le profil de voix de cette série avec la voix propre du roman (modèle Delta). Désactivez pour n'utiliser que la voix de ce roman."
+      }
     }
   }
 }

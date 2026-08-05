@@ -10,6 +10,7 @@
  *   ["series", seriesId, "kb"]          — Series-Canon KB list (Slice 5)
  *   ["series", seriesId, "kb", entryId] — single Series-Canon KB entry
  *   ["series", seriesId, "novels", novelId, "bandSummary"] — band summary (Spec 2)
+ *   ["series", seriesId, "voice"]                     — series voice (Spec 3)
  *   ["novel-series", novelId]           — resolved Series for a novel (useNovelSeries)
  */
 
@@ -26,5 +27,7 @@ export const seriesKeys = {
   /** Band summary for one novel in the series (Spec 2). */
   bandSummary: (seriesId: string, novelId: string) =>
     [...seriesKeys.novels(seriesId), novelId, "bandSummary"] as const,
+  /** Series voice profile — the Delta-model foundation (Spec 3). */
+  voice: (seriesId: string) => [...seriesKeys.detail(seriesId), "voice"] as const,
   novelSeries: (novelId: string) => ["novel-series", novelId] as const,
 };

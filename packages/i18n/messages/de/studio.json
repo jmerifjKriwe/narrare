@@ -2174,6 +2174,42 @@
       "empty": "Band-Zusammenfassung generieren",
       "loading": "Band-Zusammenfassung wird geladen...",
       "overrideActive": "Überschreibung aktiv"
+    },
+    "voice": {
+      "title": "Reihen-Stimme",
+      "loading": "Reihen-Stimme wird geladen...",
+      "status": {
+        "empty": "Noch keine Stimme profiliert",
+        "autoProfiled": "Automatisch profiliert",
+        "overrideActive": "Überschreibung aktiv"
+      },
+      "profileFrom": "Aus Band profilieren",
+      "profileFromPlaceholder": "Roman auswählen...",
+      "profile": "Profilieren",
+      "showProfile": "Stimmprofil",
+      "profileEmpty": "Das Stimmprofil enthält noch keine beschreibenden Daten.",
+      "profiledAt": "Profiliert am {date}",
+      "fields": {
+        "vocabularyLevel": "Wortebene",
+        "sentenceProfile": "Satzprofil",
+        "emotionalRange": "Emotionale Bandbreite",
+        "markers": "Kulturelle / regionale Marker",
+        "voiceExamples": "Stimm-Beispiele",
+        "authorExamples": "Autoren-Beispiele"
+      },
+      "override": "Manuelle Überschreibung (JSON)",
+      "overridePlaceholder": "Vollständiges Autoren-Stimmprofil als JSON einfügen...",
+      "overrideInvalid": "Ungültiges JSON — Überschreibung konnte nicht gelesen werden.",
+      "saveOverride": "Überschreibung speichern",
+      "clearOverride": "Überschreibung löschen"
+    }
+  },
+  "novel": {
+    "settings": {
+      "useSeriesVoice": {
+        "label": "Reihen-Stimme als Basis verwenden",
+        "description": "Wenn aktiv, mischt die Generierung das Stimmprofil dieser Reihe mit der Stimme des Romans (Delta-Modell). Ausschalten, um nur die Stimme dieses Romans zu verwenden."
+      }
     }
   }
 }

@@ -102,6 +102,71 @@ export interface BandSummaryOverrideRequest {
   override: string;
 }
 
+// --- Series Voice types (Spec 3 Tasks 5–6) -----------------------------------
+//
+// Mirror apps/api/narrare/series/series_voice_schemas.py
+// (SeriesVoiceResponse / SeriesVoiceStateResponse / SeriesVoiceOverrideRequest)
+// and narrare_core.profiles.author_voice.AuthorVoiceProfile (RULE-17 parity).
+// snake_case is preserved to match the Pydantic SSOT.
+//
+// The ``SeriesVoiceProfile`` is a structural mirror of the Core
+// ``AuthorVoiceProfile``: the UI reads ONLY the descriptive group
+// (``voice_analysis`` descriptive fields + ``author_examples``) — the metric
+// blocks (``voice_analysis.voice_metrics`` / ``author_metrics``) are
+// comparison-only and never rendered (ADR-074 binding, enforced Core-side at
+// the consumer). They stay loose-typed here so the wire JSON validates without
+// enumerating every nested metric field.
+
+/** Descriptive subset of ``VoiceAnalysis`` (mirrors Core). */
+export interface SeriesVoiceAnalysis {
+  formality?: number;
+  vocabulary_level?: string;
+  sentence_profile?: string;
+  emotional_range?: string;
+  cultural_regional_markers?: string;
+  voice_examples?: string[];
+  /** Comparison-only metric block (never rendered by the UI). */
+  voice_metrics?: Record<string, unknown>;
+}
+
+/**
+ * Structural mirror of ``AuthorVoiceProfile`` persisted as
+ * ``SeriesSettings.author_voice`` (the Delta-model foundation, ADR-078).
+ */
+export interface SeriesVoiceProfile {
+  voice_analysis?: SeriesVoiceAnalysis | null;
+  author_examples?: string[] | null;
+  /** Comparison-only author prose-level metrics (never rendered by the UI). */
+  author_metrics?: Record<string, unknown> | null;
+  updated_at?: string | null;
+  is_fresh?: boolean;
+}
+
+/** GET /api/v1/series/{id}/voice response (SeriesVoiceResponse). */
+export interface SeriesVoice {
+  series_id: string;
+  /** ``null`` = no series voice profiled yet (RULE-11 graceful degradation). */
+  author_voice: SeriesVoiceProfile | null;
+}
+
+/** POST /api/v1/series/{id}/voice/profile response (SeriesVoiceStateResponse). */
+export interface SeriesVoiceState {
+  series_id: string;
+  novel_id: string;
+  author_voice: SeriesVoiceProfile;
+}
+
+/**
+ * PATCH /api/v1/series/{id}/voice body (SeriesVoiceOverrideRequest).
+ *
+ * Carried as a raw dict on the wire so the UI can edit the full profile shape;
+ * the service validates it as ``AuthorVoiceProfile`` (a malformed override →
+ * 422 ``ValidationError``).
+ */
+export interface SeriesVoiceOverrideRequest {
+  author_voice: Record<string, unknown>;
+}
+
 /** PATCH /api/v1/series/{id}/settings body (SeriesSettingsUpdateRequest). */
 export interface SeriesSettingsUpdate {
   author_voice?: Record<string, unknown> | null;

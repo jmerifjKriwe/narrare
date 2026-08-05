@@ -25,6 +25,9 @@ import type {
   SeriesSettingsUpdate,
   SeriesSummary,
   SeriesUpdate,
+  SeriesVoice,
+  SeriesVoiceOverrideRequest,
+  SeriesVoiceState,
 } from "@/types";
 import { fetchApi } from "./core";
 
@@ -147,4 +150,31 @@ export const seriesApi = {
     fetchApi<void>(`/series/${seriesId}/novels/${novelId}/band-summary/override`, {
       method: "DELETE",
     }),
+
+  // --- Series Voice Hierarchy (Spec 3 Tasks 5–6) ---
+  // Mirrors apps/api/narrare/series/router_voice.py. Targets /series/{id}/voice.
+  // The Delta-model foundation (ADR-078): one author-voice profile per series,
+  // stored as SeriesSettings.author_voice. POST profiles a band (novel); PATCH
+  // sets a manual override (validated server-side); DELETE nulls the column.
+
+  /** POST /series/{id}/voice/profile — profile a novel's voice → store as series voice (200). */
+  profileVoice: (seriesId: string, novelId: string) =>
+    fetchApi<SeriesVoiceState>(`/series/${seriesId}/voice/profile`, {
+      method: "POST",
+      body: JSON.stringify({ novel_id: novelId }),
+    }),
+
+  /** GET /series/{id}/voice — fetch the series voice (author_voice may be null). */
+  getVoice: (seriesId: string) => fetchApi<SeriesVoice>(`/series/${seriesId}/voice`),
+
+  /** PATCH /series/{id}/voice — set a manual voice-profile override. */
+  updateVoiceOverride: (seriesId: string, voice: SeriesVoiceOverrideRequest) =>
+    fetchApi<SeriesVoice>(`/series/${seriesId}/voice`, {
+      method: "PATCH",
+      body: JSON.stringify(voice),
+    }),
+
+  /** DELETE /series/{id}/voice/override — clear the series voice (204). */
+  clearVoiceOverride: (seriesId: string) =>
+    fetchApi<void>(`/series/${seriesId}/voice/override`, { method: "DELETE" }),
 };
