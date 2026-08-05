@@ -37,6 +37,25 @@ vi.mock("@/lib/hooks/useSeries", () => ({
     isPending: mock.updatePending,
     isError: mock.updateError,
   }),
+  // SeriesContextWindowField (rendered inside the tab) reads/writes the
+  // settings endpoint via these hooks. Stubbed with valid settings so the
+  // field renders cleanly; its own behaviour is covered by
+  // SeriesContextWindowField.test.tsx.
+  useSeriesSettings: () => ({
+    data: {
+      series_id: "series-1",
+      author_voice: null,
+      context_window_size: 3,
+    },
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useUpdateSeriesSettings: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+  }),
 }));
 
 import { SeriesSettings } from "@/components/series/SeriesSettings";

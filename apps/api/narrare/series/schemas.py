@@ -81,12 +81,22 @@ class SeriesSettingsResponse(BaseModel):
 
     series_id: uuid.UUID
     author_voice: dict[str, object] | None
+    # Spec 2 recency-window: how many preceding bands get a full summary in
+    # the SeriesHistoryTier context. Mirrors the ORM column (migration 0038)
+    # and the Core schema default (narrare_core.series.schemas.SeriesSettings).
+    context_window_size: int = 3
 
 
 class SeriesSettingsUpdateRequest(BaseModel):
-    """PATCH /api/v1/series/{id}/settings body. Spec 1: usually null."""
+    """PATCH /api/v1/series/{id}/settings body.
+
+    All fields optional (PATCH semantics); ``context_window_size`` is bounded
+    to [1, 50] — values outside that range make no sense for a recency window
+    and would distort the series-history context at assembly time.
+    """
 
     author_voice: dict[str, object] | None = None
+    context_window_size: int | None = Field(default=None, ge=1, le=50)
 
 
 class ReorderNovelsRequest(BaseModel):

@@ -95,6 +95,12 @@ def _make_settings(**overrides: object) -> SeriesSettingsModel:
     attrs: dict[str, object] = {
         "series_id": overrides.pop("series_id", uuid4()),
         "author_voice": overrides.pop("author_voice", None),
+        # context_window_size has a column default of 3, but the Python-side
+        # default is only applied at flush/insert — in the unit-test path (no
+        # DB) the attribute reads as None, which the Core SeriesSettings schema
+        # (non-nullable int) rejects. Set it explicitly so the mock ORM is
+        # valid without depending on DB behaviour.
+        "context_window_size": overrides.pop("context_window_size", 3),
         **overrides,
     }
     for key, value in attrs.items():
@@ -325,7 +331,10 @@ class TestSeriesRepositoryUpdateSettings:
 
     async def test_update_settings_creates_row_when_missing(self) -> None:
         """No settings row → create-on-demand, then patch + return."""
-        session = FakeDbSession([FakeResult(value=None)])
+        # _DefaultingSession applies the context_window_size Python-side
+        # default (3) on flush — a plain FakeDbSession.flush is a no-op, so
+        # the non-nullable Core field would otherwise read as None.
+        session = _DefaultingSession([FakeResult(value=None)])
         repo = SeriesRepository(cast("AsyncSession", session))
 
         series_id = uuid4()

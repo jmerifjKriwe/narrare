@@ -18517,6 +18517,11 @@
               }
             ],
             "title": "Author Voice"
+          },
+          "context_window_size": {
+            "type": "integer",
+            "title": "Context Window Size",
+            "default": 3
           }
         },
         "type": "object",
@@ -18540,11 +18545,24 @@
               }
             ],
             "title": "Author Voice"
+          },
+          "context_window_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 50.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Window Size"
           }
         },
         "type": "object",
         "title": "SeriesSettingsUpdateRequest",
-        "description": "PATCH /api/v1/series/{id}/settings body. Spec 1: usually null."
+        "description": "PATCH /api/v1/series/{id}/settings body.\n\nAll fields optional (PATCH semantics); ``context_window_size`` is bounded\nto [1, 50] — values outside that range make no sense for a recency window\nand would distort the series-history context at assembly time."
       },
       "SeriesSummary": {
         "properties": {

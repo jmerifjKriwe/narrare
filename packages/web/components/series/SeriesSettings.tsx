@@ -12,6 +12,7 @@
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSeries } from "@/lib/hooks/useSeries";
+import { SeriesContextWindowField } from "./SeriesContextWindowField";
 import { SeriesMetadataForm } from "./SeriesMetadataForm";
 
 interface SeriesSettingsProps {
@@ -54,6 +55,9 @@ export function SeriesSettings({ seriesId }: SeriesSettingsProps) {
       {/* `key` on series.id re-mounts the form when switching series so local
           form state re-initializes cleanly instead of partially syncing. */}
       <SeriesMetadataForm key={series.id} series={series} />
+      {/* Generation setting — persisted to a distinct endpoint
+          (/series/{id}/settings), so it owns its own Save button. */}
+      <SeriesContextWindowField key={`cw-${series.id}`} seriesId={series.id} />
     </section>
   );
 }

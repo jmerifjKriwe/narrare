@@ -109,12 +109,13 @@ describe("Series types mirror Pydantic (RULE-17)", () => {
     ]);
   });
 
-  it("SeriesSettings → 2 fields", () => {
+  it("SeriesSettings → 3 fields", () => {
     const sample: SeriesSettings = {
       series_id: "uuid-1",
       author_voice: null,
+      context_window_size: 3,
     };
-    expect(fieldNames(sample)).toEqual(["author_voice", "series_id"]);
+    expect(fieldNames(sample)).toEqual(["author_voice", "context_window_size", "series_id"]);
   });
 
   it("BandSummary → 5 fields mirroring BandSummaryResponse", () => {

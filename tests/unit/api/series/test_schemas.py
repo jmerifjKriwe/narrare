@@ -121,3 +121,39 @@ class TestSeriesSettings:
         r = SeriesSettingsResponse(series_id=uuid4(), author_voice=None)
         assert r.author_voice is None
         assert SeriesSettingsUpdateRequest().author_voice is None
+
+
+class TestSeriesSettingsContextWindow:
+    """Spec 2: context_window_size exposed + validated in settings schemas."""
+
+    def test_response_defaults_to_three(self):
+        r = SeriesSettingsResponse(series_id=uuid4(), author_voice=None)
+        assert r.context_window_size == 3
+
+    def test_response_carries_value_from_attributes(self):
+        """ORM compatibility: the column value flows through model_validate."""
+        orm = SimpleNamespace(
+            series_id=uuid4(),
+            author_voice=None,
+            context_window_size=7,
+        )
+        r = SeriesSettingsResponse.model_validate(orm)
+        assert r.context_window_size == 7
+
+    def test_update_request_field_is_optional_unset(self):
+        assert SeriesSettingsUpdateRequest().context_window_size is None
+
+    def test_update_request_accepts_valid_value(self):
+        assert SeriesSettingsUpdateRequest(context_window_size=5).context_window_size == 5
+
+    def test_update_request_rejects_zero(self):
+        with pytest.raises(ValueError):
+            SeriesSettingsUpdateRequest(context_window_size=0)  # type: ignore[arg-type]
+
+    def test_update_request_rejects_negative(self):
+        with pytest.raises(ValueError):
+            SeriesSettingsUpdateRequest(context_window_size=-1)  # type: ignore[arg-type]
+
+    def test_update_request_rejects_above_max(self):
+        with pytest.raises(ValueError):
+            SeriesSettingsUpdateRequest(context_window_size=51)  # type: ignore[arg-type]

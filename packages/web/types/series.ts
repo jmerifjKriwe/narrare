@@ -67,6 +67,12 @@ export interface SeriesUpdate {
 export interface SeriesSettings {
   series_id: string;
   author_voice: Record<string, unknown> | null;
+  /**
+   * Spec 2 recency-window: how many preceding bands contribute their full
+   * summary to the SeriesHistoryTier context (default 3). Mirrors the API
+   * SeriesSettingsResponse field and the ORM/Core default.
+   */
+  context_window_size: number;
 }
 
 // --- Band Summary types (Spec 2 Task 8) --------------------------------------
@@ -99,6 +105,8 @@ export interface BandSummaryOverrideRequest {
 /** PATCH /api/v1/series/{id}/settings body (SeriesSettingsUpdateRequest). */
 export interface SeriesSettingsUpdate {
   author_voice?: Record<string, unknown> | null;
+  /** Bounded to [1, 50] by the backend (SeriesSettingsUpdateRequest). */
+  context_window_size?: number | null;
 }
 
 /**
