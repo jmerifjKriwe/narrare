@@ -537,11 +537,14 @@ English sentences.
       latest-Overlay merge, Overlay wins on slug collision) and that the token
       budget for the merged set is sane. *(This ADR pre-builds the method; Spec 2
       consumes it.)*
-- [ ] When **Spec 3 (Series Voice Hierarchy)** is implemented — resolve the
-      voice model (novel-only vs novel+series blend vs cascade), populate the
-      empty `SeriesSettings.author_voice` column, and **close the Voice-Teil of
-      ADR-074's Review Trigger**. *(This ADR adds the empty column; Spec 3 fills
-      it.)*
+- [x] **Spec 3 (Series Voice Hierarchy) — CLOSED by ADR-078 (2026-08-05):** the
+      voice model is resolved (**Delta** — series voice as foundation, novel voice
+      additive, per-novel `use_series_voice` opt-out), the empty
+      `SeriesSettings.author_voice` column is populated (reusing the existing
+      `AuthorVoiceAgent` — no new agent), and **the Voice-Teil of ADR-074's Review
+      Trigger is fully closed** (storage by this ADR, voice model by ADR-078).
+      `{{author_voice}}` is extended (no new variable); `AuthorVoiceConsumer`
+      renders the Delta composition. See ADR-078.
 - [x] **Series-storage portion of ADR-074's Review Trigger — CLOSED by this ADR
       (2026-07-29):** the `SeriesSettings.author_voice` sibling home now exists
       (empty in Spec 1). ADR-074's novel-level home remains the primary scope

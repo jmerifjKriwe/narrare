@@ -578,6 +578,15 @@ and hands it to `tier.assemble()`. Gracefully degrades to `""` for standalone
 novels, band 1, or missing summaries (RULE-11). See *Band Summary*,
 *Context Window*, SERIES-002, ADR-077.
 
+**Series Voice**
+The shared foundational voice profile for all novels in a series (SERIES-003 /
+ADR-078). Stored as `SeriesSettings.author_voice` JSONB — the sibling home added
+empty in Spec 1 (ADR-075) and populated in Spec 3. Profiles one band's prose via
+the existing `AuthorVoiceAgent` (no new agent) and serves as the **foundation**
+layer in the *Voice Delta* model. At generation time `AuthorVoiceConsumer`
+composes it with the novel's own voice into the extended `{{author_voice}}`
+variable. See *Voice Delta*, *Voice Opt-out*, SERIES-003, ADR-078.
+
 **Service Layer**
 The set of service classes in `apps/api/narrare/*/service.py`.
 Contains business logic. Called by routers (HTTP), MCP tools, A2A agents, and CLI.
@@ -676,6 +685,29 @@ and *Prompt Language* (the language of prompt template files).
 An optional grouping of chapters within a Novel (e.g., Part 1, Book 1).
 Chapters belong to at most one volume.
 
+**Voice Delta**
+The resolution model for combining a *Series Voice* with a novel's own
+`author_voice` at generation time (SERIES-003 / ADR-078). The series voice is the
+**foundation**; the novel voice is **additive** ("Series voice is X. Additionally,
+this novel has Y."). Chosen over **Override** (loses series consistency when a
+novel has its own profile), **Blend** (ill-defined for LLM prompts — what does a
+weighted percentage of a prose style mean as text?), and **Cascade** (triggers the
+ADR-074 Cascade-Fallback-Kritik — forced cascade injects an author's "usual"
+patterns into an experimental standalone). Implemented as the pure Core function
+`render_author_voice_delta`. Respects the per-novel opt-out and degrades
+byte-identically to the legacy renderer for standalone novels. See *Series Voice*,
+*Voice Opt-out*, SERIES-003, ADR-078.
+
+**Voice Opt-out**
+The per-novel toggle (`ProjectSettings.use_series_voice: bool`, default `True`,
+SERIES-003 / ADR-078) that lets a novel ignore its series' *Series Voice* and use
+only its own `author_voice` profile. Managed via Novel Settings (the
+`SeriesVoiceOptOutCard`, which self-hides for standalone novels). When `False`,
+`{{author_voice}}` renders only the novel's profile (the series voice is
+skipped). Default `True` so every series novel inherits the series voice as base
+unless explicitly disabled — the mechanism that distinguishes Delta from a forced
+Cascade. See *Series Voice*, *Voice Delta*, SERIES-003, ADR-078.
+
 **voice_analysis**
 Ein Sub-Modell auf `SpeechPatterns` (in `kb/schemas/character.py`), das deskriptive
 und Metrik-Daten zur Charakter-Stimme enthält. Die deskriptive Gruppe (formality,
@@ -738,6 +770,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-08-02 — Added Spec 2 terms (Band Summary, Series History (Context Tier), Context Window) for SERIES-002 / ADR-077. 2026-07-29 — Added Series-program terms (Series/Reihe, Series-Canon, Novel-Overlay, Scope (KB), STI, Band, Policy α, Policy iii) for SERIES-001 / ADR-075. 2026-07-01 — Removed stale `character_voice` governed-debt example (it is runtime-verified per ADR-055/057, no longer governed debt). 2026-06-30 — Corrected "Voice Check" definition to match ADR-057/WRITE-010 (character dialogue checked against stored per-character voice profiles, not the author's style profile). 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
+> Last updated: 2026-08-05 — Added Spec 3 terms (Series Voice, Voice Delta, Voice Opt-out) for SERIES-003 / ADR-078. 2026-08-02 — Added Spec 2 terms (Band Summary, Series History (Context Tier), Context Window) for SERIES-002 / ADR-077. 2026-07-29 — Added Series-program terms (Series/Reihe, Series-Canon, Novel-Overlay, Scope (KB), STI, Band, Policy α, Policy iii) for SERIES-001 / ADR-075. 2026-07-01 — Removed stale `character_voice` governed-debt example (it is runtime-verified per ADR-055/057, no longer governed debt). 2026-06-30 — Corrected "Voice Check" definition to match ADR-057/WRITE-010 (character dialogue checked against stored per-character voice profiles, not the author's style profile). 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist
