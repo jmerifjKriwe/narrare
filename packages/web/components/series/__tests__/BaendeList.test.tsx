@@ -37,6 +37,14 @@ vi.mock("@/components/series/AddNovelToSeries", () => ({
   AddNovelToSeries: () => <div data-testid="add-novel-to-series-stub" />,
 }));
 
+// BandSummaryCard has its own suite — stub it here to isolate the list. The
+// stub echoes the novelId prop so the integration test can assert per-row wiring.
+vi.mock("@/components/series/BandSummaryCard", () => ({
+  BandSummaryCard: ({ novelId }: { novelId: string }) => (
+    <div data-testid={`band-summary-card-stub-${novelId}`} />
+  ),
+}));
+
 // --- Fixtures ----------------------------------------------------------------
 const novels: NovelSummary[] = [
   {

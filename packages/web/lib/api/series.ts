@@ -11,6 +11,7 @@
  */
 
 import type {
+  BandSummary,
   CanonEntryCreate,
   CanonEntryUpdate,
   JoinPreview,
@@ -118,5 +119,32 @@ export const seriesApi = {
     fetchApi<NovelKBEntry>(`/novels/${novelId}/kb/${entryId}/demote`, {
       method: "POST",
       body: JSON.stringify({ series_id: seriesId, target_novel_id: targetNovelId }),
+    }),
+
+  // --- Band summaries (Spec 2 Task 4 / Task 8) ---
+  // Mirrors apps/api/narrare/series/router_band_summary.py. One summary row
+  // per novel; override takes precedence at SeriesHistoryTier assembly time.
+
+  /** GET /series/{id}/novels/{novelId}/band-summary — existing summary (404 if none). */
+  getBandSummary: (seriesId: string, novelId: string) =>
+    fetchApi<BandSummary>(`/series/${seriesId}/novels/${novelId}/band-summary`),
+
+  /** POST /series/{id}/novels/{novelId}/band-summary — trigger (re)generation (upsert). */
+  generateBandSummary: (seriesId: string, novelId: string) =>
+    fetchApi<BandSummary>(`/series/${seriesId}/novels/${novelId}/band-summary`, {
+      method: "POST",
+    }),
+
+  /** PATCH /series/{id}/novels/{novelId}/band-summary — set the user override. */
+  updateBandSummaryOverride: (seriesId: string, novelId: string, override: string) =>
+    fetchApi<BandSummary>(`/series/${seriesId}/novels/${novelId}/band-summary`, {
+      method: "PATCH",
+      body: JSON.stringify({ override }),
+    }),
+
+  /** DELETE /series/{id}/novels/{novelId}/band-summary/override — clear override (204). */
+  clearBandSummaryOverride: (seriesId: string, novelId: string) =>
+    fetchApi<void>(`/series/${seriesId}/novels/${novelId}/band-summary/override`, {
+      method: "DELETE",
     }),
 };

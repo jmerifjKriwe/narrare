@@ -12,6 +12,7 @@
 
 import { describe, expect, it } from "vitest";
 import type {
+  BandSummary,
   JoinEntryTreatment,
   JoinPreview,
   JoinResult,
@@ -114,6 +115,23 @@ describe("Series types mirror Pydantic (RULE-17)", () => {
       author_voice: null,
     };
     expect(fieldNames(sample)).toEqual(["author_voice", "series_id"]);
+  });
+
+  it("BandSummary → 5 fields mirroring BandSummaryResponse", () => {
+    const sample: BandSummary = {
+      novel_id: "novel-1",
+      full_summary: "The crew discovers…",
+      short_summary: "Discovery.",
+      override: null,
+      generated_at: "2026-08-02T12:00:00Z",
+    };
+    expect(fieldNames(sample)).toEqual([
+      "full_summary",
+      "generated_at",
+      "novel_id",
+      "override",
+      "short_summary",
+    ]);
   });
 
   it("JoinEntryTreatment → 7 fields with scope + reason_code literals", () => {

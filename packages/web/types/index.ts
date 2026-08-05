@@ -106,6 +106,8 @@ export type {
 } from "./prompts";
 export { PROMPT_HISTORY_ACTIVE_TOKEN } from "./prompts";
 export type {
+  BandSummary,
+  BandSummaryOverrideRequest,
   CanonEntryCreate,
   CanonEntryUpdate,
   JoinEntryTreatment,

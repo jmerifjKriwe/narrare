@@ -69,6 +69,33 @@ export interface SeriesSettings {
   author_voice: Record<string, unknown> | null;
 }
 
+// --- Band Summary types (Spec 2 Task 8) --------------------------------------
+//
+// Mirror apps/api/narrare/series/schemas.py BandSummaryResponse /
+// BandSummaryOverrideRequest (RULE-17 parity). snake_case preserved to match
+// the Pydantic SSOT.
+
+/**
+ * Response for the band-summary GET/POST/PATCH endpoints
+ * (BandSummaryResponse).
+ *
+ * ``override`` takes precedence over the generated ``full_summary`` /
+ * ``short_summary`` at SeriesHistoryTier assembly time. ``generated_at`` is the
+ * server timestamp of the last (re)generation (ISO-8601 string).
+ */
+export interface BandSummary {
+  novel_id: string;
+  full_summary: string | null;
+  short_summary: string | null;
+  override: string | null;
+  generated_at: string;
+}
+
+/** PATCH /api/v1/series/{id}/novels/{novelId}/band-summary body. */
+export interface BandSummaryOverrideRequest {
+  override: string;
+}
+
 /** PATCH /api/v1/series/{id}/settings body (SeriesSettingsUpdateRequest). */
 export interface SeriesSettingsUpdate {
   author_voice?: Record<string, unknown> | null;

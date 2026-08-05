@@ -9,6 +9,7 @@
  *   ["series", seriesId, "settings"]    — series settings
  *   ["series", seriesId, "kb"]          — Series-Canon KB list (Slice 5)
  *   ["series", seriesId, "kb", entryId] — single Series-Canon KB entry
+ *   ["series", seriesId, "novels", novelId, "bandSummary"] — band summary (Spec 2)
  *   ["novel-series", novelId]           — resolved Series for a novel (useNovelSeries)
  */
 
@@ -22,5 +23,8 @@ export const seriesKeys = {
   /** Single Series-Canon KB entry detail. */
   canonDetail: (seriesId: string, entryId: string) =>
     [...seriesKeys.canonList(seriesId), entryId] as const,
+  /** Band summary for one novel in the series (Spec 2). */
+  bandSummary: (seriesId: string, novelId: string) =>
+    [...seriesKeys.novels(seriesId), novelId, "bandSummary"] as const,
   novelSeries: (novelId: string) => ["novel-series", novelId] as const,
 };
