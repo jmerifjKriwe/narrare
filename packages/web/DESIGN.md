@@ -107,6 +107,9 @@ ist dezent: 0.15–0.2s, ein einziges Easing, Fade/Scale/Slide-Vokabular.
 - Ein Indigo-Akzent pro Aufmerksamkeitspunkt, sonst Monochrom
 - Zwei Themes (narrare / neutral) in Light und Dark, System-Sans-Typografie
 
+### Named Rule
+**The Lektor Rule.** The UI speaks like a quiet editor: informal (du), functional, and only when there is something to say. No AI-slop ("As an AI, I..."), no "Yay!", no hipster slang, no jargon, no hollow praise. The copy is as quiet as the surface.
+
 ## Colors
 
 Eine monochrome Tinte-auf-Papier-Palette mit einem einzigen Indigo-Akzent
@@ -236,6 +239,7 @@ Border kommt erst über bg-input-background und Focus-Ring).
 - **Do** Editor's Red nur für destruktive Aktionen und echte Fehler verwenden.
 - **Do** AI-Ergebnisse als annotierten, rückgängig machbaren Text zeigen (ai-generated-pending = 8–15% Primary-Tint), nie als unmarkierten Final-Content.
 - **Do** Motion auf das minimale Vokabular beschränken: Fade (Overlay), Scale 0.95→1 (Dialog), Slide (Panel), 0.15–0.2s, ease-out.
+- **Do** speak like the Lektor: informal (du), functional, direct — "Weiter geht's" only when the action deserves it, never chatter.
 
 ### Don't:
 - **Don't** Neon-Startup-Look: keine leuchtenden Verläufe, keine gesättigten Banner-Farben, kein Glow.
@@ -244,3 +248,4 @@ Border kommt erst über bg-input-background und Focus-Ring).
 - **Don't** AI-Unterstützung aufdrängen: kein Auto-Complete, das in den Text schreibt, keine Popups ohne Nutzeraktion (The On-Demand Rule).
 - **Don't** die UI lauter machen als den Text — Schriftgrößen, Gewichte und Radien der UI bleiben unterhalb der Editor-Typografie.
 - **Don't** neue Formsprache einführen (neue Radien, neue Akzentfarben, neue Schatten) außerhalb des definierten Token-Systems.
+- **Don't** write AI-slop: no "As an AI, I...", no "Yay!", no hipster slang, no jargon, no hollow praise (The Lektor Rule).

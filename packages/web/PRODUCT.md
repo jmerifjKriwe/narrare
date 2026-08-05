@@ -107,18 +107,30 @@ Constraints:
 - Local first: data is not stored on Narrare servers.
 - Graceful degradation is required: editor works without AI provider, mem0,
   or KB content.
-- Explicitly undecided: brand voice / visual identity — no binding
-  commitments exist yet; voice development is future work.
+- Confirmed voice constraints (see ## Brand Commitments): informal (du),
+  functional UI copy; no AI-slop, no "Yay!", no hipster slang, no jargon,
+  no hollow praise. Visual identity: The Writer's Study world (DESIGN.md).
 
 ## Brand Commitments
 
 Name: Narrare — Latin, "to tell, to narrate"; root of "narrative",
 "narrator", "narration." Confirmed and binding.
 
-No other binding brand commitments (voice, tone, assets, personality,
-visual identity) are established yet. The owner signaled that developing a
-fitting voice/identity is desirable future work — it is not a current
-constraint and must not be assumed.
+Confirmed voice:
+
+- **Personality:** A quiet, well-read editor and experienced writing partner
+  at the next desk — approachable, committed, but restrained. Speaks only
+  when there is something to say.
+- **Tone:** Informal (du/Sie-form duzen), functional. Direct and matter-of-fact
+  UI copy — no filler words, no small talk.
+- **Copy taboos:** No typical AI-slop ("As an AI, I..."), no "Yay!", no
+  hipster slang, no technical jargon, no meaningless praise.
+- **Undecided:** A user-selectable tone (familiar vs. neutral) is a documented
+  open product question (see docs/architecture/questions/). Default until then:
+  informal, functional.
+
+Visual identity remains as documented in DESIGN.md (The Writer's Study world,
+Ink/Paper/Indigo palette). No other binding visual assets exist yet.
 
 ## Evidence on Hand
 
