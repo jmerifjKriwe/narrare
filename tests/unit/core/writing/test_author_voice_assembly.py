@@ -11,12 +11,16 @@ metric groups are comparison-only for the future Phase 2B author-drift checker).
 
 RULE-11 graceful degradation: no consumer / no project / no profile →
 ``author_voice = ""`` (generation proceeds without it).
+
+The Series Voice Hierarchy Delta-model assembly (Spec 3 / ADR-078) is tested
+in :mod:`tests.unit.core.writing.test_author_voice_delta_assembly` (RULE-04
+split — the combined file exceeded the 400-line hard limit).
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -30,7 +34,9 @@ from narrare_core.writing.context_assembler import WritingContextAssembler
 from narrare_core.writing.models import WritingContext
 
 if TYPE_CHECKING:
-    from narrare_core.profiles.contracts import AuthorVoiceConsumer
+    from uuid import UUID
+
+    from narrare_core.profiles.author_voice_consumer import AuthorVoiceConsumer
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -91,6 +97,11 @@ class _FakeAuthorVoiceConsumer:
     Uses the Core ``render_author_voice_for_generation`` renderer (the same
     function the real Backend consumer delegates to) so the boundary is
     exercised identically to production.
+
+    ``resolve_for_generation`` (the Delta-model generation API, Spec 3) is
+    satisfied for protocol compliance; the legacy novel-only path is retained
+    for the boundary-regression tests here. The Delta-aware variant lives in
+    :mod:`tests.unit.core.writing.test_author_voice_delta_assembly`.
     """
 
     def __init__(self, profile: AuthorVoiceProfile | None) -> None:
@@ -104,9 +115,24 @@ class _FakeAuthorVoiceConsumer:
     def render_for_generation(self, profile: AuthorVoiceProfile | None) -> str:
         return render_author_voice_for_generation(profile)
 
+    async def resolve_for_generation(
+        self,
+        project_id: UUID,
+        series_id: UUID | None = None,
+    ) -> str:
+        """Legacy-equivalent resolution: novel-only, ignores series context.
+
+        The Delta-aware variant lives in
+        :class:`tests.unit.core.writing.test_author_voice_delta_assembly._FakeDeltaAuthorVoiceConsumer`.
+        Keeping this one novel-only preserves the boundary-regression tests'
+        original intent (a standalone novel's descriptive-only render).
+        """
+        del project_id, series_id
+        return self.render_for_generation(self._profile)
+
 
 class _NullAuthorVoiceConsumer:
-    """Fake consumer that always returns None (no profile stored)."""
+    """Fake consumer that always returns None / empty (no profile stored)."""
 
     async def get_profile(self, project_id: UUID) -> AuthorVoiceProfile | None:
         del project_id
@@ -114,6 +140,14 @@ class _NullAuthorVoiceConsumer:
 
     def render_for_generation(self, profile: AuthorVoiceProfile | None) -> str:
         return render_author_voice_for_generation(profile)
+
+    async def resolve_for_generation(
+        self,
+        project_id: UUID,
+        series_id: UUID | None = None,
+    ) -> str:
+        del project_id, series_id
+        return ""
 
 
 @pytest.fixture()
@@ -207,7 +241,7 @@ class TestAuthorVoiceAssembly:
         self,
         assembler: WritingContextAssembler,
     ) -> None:
-        """Both voice fields can coexist — author + character (default empty)."""
+        """Both voice field can coexist — author + character (default empty)."""
         consumer: AuthorVoiceConsumer = _FakeAuthorVoiceConsumer(_full_profile())
 
         ctx = await assembler.assemble(

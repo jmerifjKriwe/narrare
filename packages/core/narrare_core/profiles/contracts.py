@@ -31,7 +31,6 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from narrare_core.profiles.author_voice import AuthorVoiceProfile
     from narrare_core.profiles.models import CharacterVoiceProfile, ProjectWritingProfile
 
 
@@ -149,51 +148,5 @@ class VoiceProfileConsumer(Protocol):
         Stale profiles MUST be included with ``is_fresh=False`` —
         checking needs to see them to flag drift, not silently drop
         them.
-        """
-        ...
-
-
-@runtime_checkable
-class AuthorVoiceConsumer(Protocol):
-    """Consumer-side contract for author-voice data (ADR-074 / ANAL-007).
-
-    Parallel to :class:`VoiceProfileConsumer`, but for the AUTHOR voice (the
-    narrator's prose voice, novel-scoped). Reads ``ProjectSettings.author_voice``
-    JSONB via the Backend ``AuthorVoiceRepository`` and renders the DESCRIPTIVE
-    group into ``{{author_voice}}``.
-
-    Descriptive/metric boundary (ADR-055 / ADR-057 / ADR-074 — binding):
-        ``render_for_generation`` renders ONLY the descriptive group
-        (``voice_analysis`` descriptive fields + ``author_examples``). It MUST
-        NOT read ``voice_analysis.voice_metrics`` or ``author_metrics`` — those
-        metric groups are comparison-only for the future Phase 2B author-drift
-        checker and never reach generation. The default Core renderer enforces
-        this structurally.
-
-    Bound at Backend DI composition time. ONE implementation per Backend
-    deployment. The first planned consumer is the ``WritingContextAssembler``
-    (cross-feature wiring sequenced after this Core type lands).
-    """
-
-    async def get_profile(self, project_id: UUID) -> AuthorVoiceProfile | None:
-        """Load the author-voice profile for a project.
-
-        Args:
-            project_id: Project (novel) to scope the lookup.
-
-        Returns:
-            The :class:`AuthorVoiceProfile`, or ``None`` when no profile is
-            stored / the JSONB is malformed (RULE-11 graceful — Pydantic
-            validation on read rejects malformed payloads and the repository
-            returns ``None``; never raises to the caller).
-        """
-        ...
-
-    def render_for_generation(self, profile: AuthorVoiceProfile | None) -> str:
-        """Render the DESCRIPTIVE group → ``{{author_voice}}`` text.
-
-        Empty string when no profile (RULE-11). NEVER reads metrics
-        (ADR-074 binding). Delegates to
-        :func:`narrare_core.profiles.author_voice.render_author_voice_for_generation`.
         """
         ...

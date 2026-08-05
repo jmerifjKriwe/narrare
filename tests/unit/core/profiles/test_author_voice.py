@@ -21,6 +21,10 @@ This suite covers:
       + a binding-boundary regression test asserting the metric groups NEVER
       appear in the rendered text.
 
+The Series Voice Hierarchy Delta-model renderer
+(:func:`render_author_voice_delta`) is tested in
+:mod:`tests.unit.core.profiles.test_author_voice_delta` (RULE-04 split).
+
 See:
     - ``docs/architecture/decisions/ADR-074-author-voice-storage.md`` (storage
       contract — this module's data shape).
@@ -40,7 +44,7 @@ from narrare_core.profiles.author_voice import (
     AuthorVoiceProfile,
     render_author_voice_for_generation,
 )
-from narrare_core.profiles.contracts import AuthorVoiceConsumer
+from narrare_core.profiles.author_voice_consumer import AuthorVoiceConsumer
 from narrare_core.schemas.voice import VoiceAnalysis, VoiceMetrics
 
 if TYPE_CHECKING:
@@ -187,6 +191,14 @@ class TestAuthorVoiceConsumerProtocol:
             def render_for_generation(self, profile: AuthorVoiceProfile | None) -> str:
                 return render_author_voice_for_generation(profile)
 
+            async def resolve_for_generation(
+                self,
+                project_id: UUID,
+                series_id: UUID | None = None,
+            ) -> str:
+                del project_id, series_id  # minimal fake — no resolution
+                return ""
+
         consumer = FakeAuthorVoiceConsumer()
         assert isinstance(consumer, AuthorVoiceConsumer), (
             "FakeAuthorVoiceConsumer must satisfy the AuthorVoiceConsumer Protocol "
@@ -194,9 +206,12 @@ class TestAuthorVoiceConsumerProtocol:
         )
 
     def test_protocol_has_required_methods(self) -> None:
-        # Protocol members: get_profile + render_for_generation.
+        # Protocol members: get_profile + render_for_generation
+        # (low-level building blocks) + resolve_for_generation (the Delta-model
+        # generation API added by Spec 3 / ADR-078).
         assert "get_profile" in AuthorVoiceConsumer.__dict__
         assert "render_for_generation" in AuthorVoiceConsumer.__dict__
+        assert "resolve_for_generation" in AuthorVoiceConsumer.__dict__
 
 
 # ---------------------------------------------------------------------------

@@ -26,6 +26,7 @@ from narrare_core.writing._token_utils import (
     enforce_budget,
     truncate_to_budget,
 )
+from narrare_core.writing._voice_resolution import resolve_voice_blocks
 from narrare_core.writing.budget import TokenBudgetManager
 from narrare_core.writing.context_validators import check_orphan_references, extract_entity_names
 from narrare_core.writing.models import WritingContext
@@ -35,7 +36,8 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare_core.context.types import TierBudget
-    from narrare_core.profiles.contracts import AuthorVoiceConsumer, VoiceProfileConsumer
+    from narrare_core.profiles.author_voice_consumer import AuthorVoiceConsumer
+    from narrare_core.profiles.contracts import VoiceProfileConsumer
     from narrare_core.project.profile import ProjectWritingProfile
     from narrare_core.wiki.types import WikiSummaryData
     from narrare_core.writing.context_models import KBEntity, RecentChapter
@@ -125,6 +127,7 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
         chapter_frontmatter: str = "",
         chapter_outline: str = "",
         project_id: UUID | None = None,
+        series_id: UUID | None = None,
         recent_chapters: list[RecentChapter] | None = None,
         kb_entities: list[KBEntity] | None = None,
         entity_connections: dict[str, set[str]] | None = None,
@@ -173,12 +176,18 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
                 :class:`~narrare_core.context.series_history.SeriesHistoryTier`.
                 Backend-fetched, passed through to ``{{series_history}}``;
                 empty for standalone novels (RULE-11 graceful).
-            author_voice_consumer: Optional ADR-074 consumer that loads
-                the novel-scoped author-voice profile and renders the
-                descriptive group into ``{{author_voice}}``.  When
-                ``None`` or no profile is stored, ``author_voice``
-                renders empty (RULE-11 graceful — generation proceeds
-                without it).  Parallel to ``voice_profile_consumer``.
+            series_id: The novel's series, or ``None`` for a standalone novel
+                (Spec 3 / ADR-078). Forwarded to
+                :meth:`AuthorVoiceConsumer.resolve_for_generation` so the
+                ``{{author_voice}}`` Delta composition (series foundation +
+                novel nuances) is applied for series novels. ``None`` collapses
+                to the legacy novel-only render (backward-compat — standalone
+                novels are unaffected).
+            author_voice_consumer: Optional ADR-074 / ADR-078 consumer that
+                resolves the author-voice content (Delta model) into
+                ``{{author_voice}}``. When ``None`` or no project is supplied,
+                ``author_voice`` renders empty (RULE-11 graceful — generation
+                proceeds without it). Parallel to ``voice_profile_consumer``.
         """
         recent = recent_chapters or []
         entities = kb_entities or []
@@ -243,23 +252,16 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
         # Tier 5: Pinned (bypass — always included)
         pinned_text = format_entities(pinned).text
 
-        # Voice profiles are assembled through the ADR-050 consumer SSOT.
-        character_voice_profiles = ""
-        voice_profile_warnings: list[str] = []
-        if voice_profile_consumer is not None and project_id is not None:
-            voice_profile = await voice_profile_consumer.assemble_for_generation(project_id)
-            character_voice_profiles = voice_profile.formatted_voice_profiles
-            voice_profile_warnings = list(voice_profile.freshness_warnings)
-
-        # Author voice (ADR-074 / ANAL-007): the narrator's prose voice,
-        # novel-scoped. Rendered descriptive-only via the AuthorVoiceConsumer
-        # — NEVER raw metrics (the binding boundary). Parallel to
-        # character_voice_profiles above (per-character vs. author/narrator).
-        # RULE-11 graceful: no consumer / no project / no profile → "".
-        author_voice = ""
-        if author_voice_consumer is not None and project_id is not None:
-            author_profile = await author_voice_consumer.get_profile(project_id)
-            author_voice = author_voice_consumer.render_for_generation(author_profile)
+        # Voice blocks (character ADR-050 + author ADR-074/078 Delta model)
+        # resolved through the consumer SSOTs. Extracted to
+        # :mod:`narrare_core.writing._voice_resolution` (RULE-04). RULE-11
+        # graceful: no consumer / no project → empty blocks.
+        character_voice_profiles, voice_profile_warnings, author_voice = await resolve_voice_blocks(
+            voice_profile_consumer,
+            author_voice_consumer,
+            project_id,
+            series_id,
+        )
 
         # Check for orphan references (referenced in frontmatter but not in KB)
         all_classified = pinned + referenced + connected + suggested
