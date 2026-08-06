@@ -205,13 +205,14 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
     # ANAL-005: "coreference" added for coreference resolution analysis
     # (CoreferenceAgent). "review" remains the default general-review mode.
     # ANAL-004: "pov" added for POV detection analysis (POVDetectionAgent).
-    # ADR-021: "readability" added for AI-powered sentence-level readability
-    # analysis (ReadabilityAgent); deterministic metrics live separately in
-    # analysis/readability.py.
+    # ADR-021: "readability" (ReadabilityAgent); deterministic metrics in analysis/readability.py.
+    # SERIES-004: "series_consistency" — canon-contradiction (SeriesConsistencyAgent).
     LLMIntent.ANALYSE: PromptRouteConfig(
         "analysis",
         "review",
-        allowed_context_modes=frozenset({"review", "coreference", "pov", "readability"}),
+        allowed_context_modes=frozenset(
+            {"review", "coreference", "pov", "readability", "series_consistency"}
+        ),
     ),
     LLMIntent.CONSISTENCY: PromptRouteConfig(
         "analysis",
