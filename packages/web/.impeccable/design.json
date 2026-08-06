@@ -4,31 +4,200 @@
   "title": "Design System: Narrare",
   "extensions": {
     "colorMeta": {
-      "ink": { "role": "primary", "displayName": "Ink", "canonical": "oklch(0.145 0 0)", "tonalRamp": ["oklch(0.02 0 0)", "oklch(0.1 0 0)", "oklch(0.2 0 0)", "oklch(0.35 0 0)", "oklch(0.5 0 0)", "oklch(0.65 0 0)", "oklch(0.8 0 0)", "oklch(0.95 0 0)"] },
-      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "oklch(1 0 0)", "tonalRamp": ["oklch(0.92 0 0)", "oklch(0.94 0 0)", "oklch(0.96 0 0)", "oklch(0.97 0 0)", "oklch(0.985 0 0)", "oklch(0.99 0 0)", "oklch(0.995 0 0)", "oklch(1 0 0)"] },
-      "paper-ink": { "role": "neutral", "displayName": "Paper Ink", "canonical": "oklch(0.145 0 0)", "tonalRamp": ["oklch(0.02 0 0)", "oklch(0.1 0 0)", "oklch(0.2 0 0)", "oklch(0.35 0 0)", "oklch(0.5 0 0)", "oklch(0.65 0 0)", "oklch(0.8 0 0)", "oklch(0.95 0 0)"] },
-      "ash": { "role": "neutral", "displayName": "Ash", "canonical": "oklch(0.55 0.02 264)", "tonalRamp": ["oklch(0.3 0.02 264)", "oklch(0.38 0.02 264)", "oklch(0.45 0.02 264)", "oklch(0.55 0.02 264)", "oklch(0.62 0.02 264)", "oklch(0.7 0.015 264)", "oklch(0.8 0.01 264)", "oklch(0.9 0.005 264)"] },
-      "mist": { "role": "neutral", "displayName": "Mist", "canonical": "oklch(0.92 0.005 264)", "tonalRamp": ["oklch(0.7 0.01 264)", "oklch(0.76 0.008 264)", "oklch(0.82 0.006 264)", "oklch(0.87 0.005 264)", "oklch(0.92 0.005 264)", "oklch(0.94 0.004 264)", "oklch(0.96 0.003 264)", "oklch(0.98 0.002 264)"] },
-      "fog": { "role": "neutral", "displayName": "Fog", "canonical": "oklch(0.93 0.004 264)", "tonalRamp": ["oklch(0.7 0.008 264)", "oklch(0.76 0.007 264)", "oklch(0.82 0.005 264)", "oklch(0.88 0.005 264)", "oklch(0.93 0.004 264)", "oklch(0.95 0.003 264)", "oklch(0.97 0.002 264)", "oklch(0.985 0.001 264)"] },
-      "indigo": { "role": "accent", "displayName": "Indigo", "canonical": "oklch(0.546 0.215 262.881)", "tonalRamp": ["oklch(0.3 0.18 262.9)", "oklch(0.38 0.19 262.9)", "oklch(0.46 0.2 262.9)", "oklch(0.546 0.215 262.9)", "oklch(0.62 0.18 262.9)", "oklch(0.72 0.12 262.9)", "oklch(0.85 0.06 262.9)", "oklch(0.95 0.02 262.9)"] },
-      "editor-red": { "role": "tertiary", "displayName": "Editor's Red", "canonical": "oklch(0.55 0.22 25)", "tonalRamp": ["oklch(0.3 0.2 25)", "oklch(0.38 0.21 25)", "oklch(0.46 0.22 25)", "oklch(0.55 0.22 25)", "oklch(0.62 0.19 25)", "oklch(0.72 0.13 25)", "oklch(0.85 0.07 25)", "oklch(0.95 0.02 25)"] },
-      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "oklch(0.92 0 0)", "tonalRamp": ["oklch(0.85 0 0)", "oklch(0.88 0 0)", "oklch(0.9 0 0)", "oklch(0.92 0 0)", "oklch(0.94 0 0)", "oklch(0.96 0 0)", "oklch(0.98 0 0)", "oklch(1 0 0)"] },
-      "ring": { "role": "neutral", "displayName": "Ring", "canonical": "oklch(0.708 0 0)", "tonalRamp": ["oklch(0.4 0 0)", "oklch(0.5 0 0)", "oklch(0.6 0 0)", "oklch(0.708 0 0)", "oklch(0.78 0 0)", "oklch(0.85 0 0)", "oklch(0.92 0 0)", "oklch(0.98 0 0)"] },
-      "sidebar": { "role": "neutral", "displayName": "Sidebar", "canonical": "oklch(0.985 0 0)", "tonalRamp": ["oklch(0.9 0 0)", "oklch(0.93 0 0)", "oklch(0.95 0 0)", "oklch(0.965 0 0)", "oklch(0.985 0 0)", "oklch(0.99 0 0)", "oklch(0.995 0 0)", "oklch(1 0 0)"] }
+      "ink": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "oklch(0.145 0 0)",
+        "tonalRamp": [
+          "oklch(0.02 0 0)",
+          "oklch(0.1 0 0)",
+          "oklch(0.2 0 0)",
+          "oklch(0.35 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.65 0 0)",
+          "oklch(0.8 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.92 0 0)",
+          "oklch(0.94 0 0)",
+          "oklch(0.96 0 0)",
+          "oklch(0.97 0 0)",
+          "oklch(0.985 0 0)",
+          "oklch(0.99 0 0)",
+          "oklch(0.995 0 0)",
+          "oklch(1 0 0)"
+        ]
+      },
+      "paper-ink": {
+        "role": "neutral",
+        "displayName": "Paper Ink",
+        "canonical": "oklch(0.145 0 0)",
+        "tonalRamp": [
+          "oklch(0.02 0 0)",
+          "oklch(0.1 0 0)",
+          "oklch(0.2 0 0)",
+          "oklch(0.35 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.65 0 0)",
+          "oklch(0.8 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "ash": {
+        "role": "neutral",
+        "displayName": "Ash",
+        "canonical": "oklch(0.55 0.02 264)",
+        "tonalRamp": [
+          "oklch(0.3 0.02 264)",
+          "oklch(0.38 0.02 264)",
+          "oklch(0.45 0.02 264)",
+          "oklch(0.55 0.02 264)",
+          "oklch(0.62 0.02 264)",
+          "oklch(0.7 0.015 264)",
+          "oklch(0.8 0.01 264)",
+          "oklch(0.9 0.005 264)"
+        ]
+      },
+      "mist": {
+        "role": "neutral",
+        "displayName": "Mist",
+        "canonical": "oklch(0.92 0.005 264)",
+        "tonalRamp": [
+          "oklch(0.7 0.01 264)",
+          "oklch(0.76 0.008 264)",
+          "oklch(0.82 0.006 264)",
+          "oklch(0.87 0.005 264)",
+          "oklch(0.92 0.005 264)",
+          "oklch(0.94 0.004 264)",
+          "oklch(0.96 0.003 264)",
+          "oklch(0.98 0.002 264)"
+        ]
+      },
+      "fog": {
+        "role": "neutral",
+        "displayName": "Fog",
+        "canonical": "oklch(0.93 0.004 264)",
+        "tonalRamp": [
+          "oklch(0.7 0.008 264)",
+          "oklch(0.76 0.007 264)",
+          "oklch(0.82 0.005 264)",
+          "oklch(0.88 0.005 264)",
+          "oklch(0.93 0.004 264)",
+          "oklch(0.95 0.003 264)",
+          "oklch(0.97 0.002 264)",
+          "oklch(0.985 0.001 264)"
+        ]
+      },
+      "indigo": {
+        "role": "accent",
+        "displayName": "Indigo",
+        "canonical": "oklch(0.546 0.215 262.881)",
+        "tonalRamp": [
+          "oklch(0.3 0.18 262.9)",
+          "oklch(0.38 0.19 262.9)",
+          "oklch(0.46 0.2 262.9)",
+          "oklch(0.546 0.215 262.9)",
+          "oklch(0.62 0.18 262.9)",
+          "oklch(0.72 0.12 262.9)",
+          "oklch(0.85 0.06 262.9)",
+          "oklch(0.95 0.02 262.9)"
+        ]
+      },
+      "editor-red": {
+        "role": "tertiary",
+        "displayName": "Editor's Red",
+        "canonical": "oklch(0.55 0.22 25)",
+        "tonalRamp": [
+          "oklch(0.3 0.2 25)",
+          "oklch(0.38 0.21 25)",
+          "oklch(0.46 0.22 25)",
+          "oklch(0.55 0.22 25)",
+          "oklch(0.62 0.19 25)",
+          "oklch(0.72 0.13 25)",
+          "oklch(0.85 0.07 25)",
+          "oklch(0.95 0.02 25)"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(0.92 0 0)",
+        "tonalRamp": [
+          "oklch(0.85 0 0)",
+          "oklch(0.88 0 0)",
+          "oklch(0.9 0 0)",
+          "oklch(0.92 0 0)",
+          "oklch(0.94 0 0)",
+          "oklch(0.96 0 0)",
+          "oklch(0.98 0 0)",
+          "oklch(1 0 0)"
+        ]
+      },
+      "ring": {
+        "role": "neutral",
+        "displayName": "Ring",
+        "canonical": "oklch(0.708 0 0)",
+        "tonalRamp": [
+          "oklch(0.4 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.6 0 0)",
+          "oklch(0.708 0 0)",
+          "oklch(0.78 0 0)",
+          "oklch(0.85 0 0)",
+          "oklch(0.92 0 0)",
+          "oklch(0.98 0 0)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Sidebar",
+        "canonical": "oklch(0.985 0 0)",
+        "tonalRamp": [
+          "oklch(0.9 0 0)",
+          "oklch(0.93 0 0)",
+          "oklch(0.95 0 0)",
+          "oklch(0.965 0 0)",
+          "oklch(0.985 0 0)",
+          "oklch(0.99 0 0)",
+          "oklch(0.995 0 0)",
+          "oklch(1 0 0)"
+        ]
+      }
     },
     "typographyMeta": {
       "body": { "displayName": "Body", "purpose": "Standard-UI-Text." },
-      "editor": { "displayName": "Editor Body", "purpose": "Der Schreibtext — 65ch, line-height 1.8." },
+      "editor": {
+        "displayName": "Editor Body",
+        "purpose": "Der Schreibtext — 65ch, line-height 1.8."
+      },
       "label": { "displayName": "Label", "purpose": "Formular-Labels und Buttons, Weight 500." }
     },
     "shadows": [
-      { "name": "button-lift", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "Primary-Buttons und aktive Stepper." },
-      { "name": "panel-lift", "value": "0 25px 50px -12px rgb(0 0 0 / 0.25)", "purpose": "Mobile Bottom-Sheets (shadow-2xl)." }
+      {
+        "name": "button-lift",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Primary-Buttons und aktive Stepper."
+      },
+      {
+        "name": "panel-lift",
+        "value": "0 25px 50px -12px rgb(0 0 0 / 0.25)",
+        "purpose": "Mobile Bottom-Sheets (shadow-2xl)."
+      }
     ],
     "motion": [
       { "name": "duration-fast", "value": "0.15s", "purpose": "Exit-Transitions." },
       { "name": "duration-normal", "value": "0.2s", "purpose": "Default-Transitions." },
-      { "name": "ease-out", "value": "cubic-bezier(0, 0, 0.2, 1)", "purpose": "Einziges Easing im System." }
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0, 0, 0.2, 1)",
+        "purpose": "Einziges Easing im System."
+      }
     ],
     "breakpoints": [
       { "name": "lg", "value": "1024px", "purpose": "Panels werden statische Sidebars." }
@@ -79,14 +248,45 @@
   "narrative": {
     "northStar": "The Writer's Study",
     "overview": "Narrare ist eine Schreibumgebung, kein Tool. Der North Star ist ein ruhiger Arbeitsraum bei Lampenlicht: der Manuscript Desk, an dem der Writer sitzt, umgeben von seinem Material. Die Oberfläche verhält sich wie ein gut eingerichteter Schreibtisch — alles Wichtige ist griffbereit, nichts drängt sich auf, und der Text selbst ist das, was Licht bekommt. Die Ästhetik ist editorial und handwerklich: Tinte auf Papier statt leuchtender Panels, präzise 8–10px-Radien statt verspielter Formen, eine einzige Indigo-Akzentfarbe statt eines Farbfeuerwerks. Die UI ist flach und ruhig; Tiefe entsteht nur dort, wo Interaktion sie rechtfertigt.",
-    "keyCharacteristics": ["Ruhig, präzise, hilfreich — die UI tritt hinter den Text zurück", "Tinte-auf-Papier-Kontrast statt bunter Panels", "Flach by default; Tiefe nur als Reaktion auf Interaktion", "AI-Unterstützung ist on demand — nichts blinkt, nichts drängt sich auf", "Ein Indigo-Akzent pro Aufmerksamkeitspunkt, sonst Monochrom", "Zwei Themes (narrare / neutral) in Light und Dark, System-Sans-Typografie"],
+    "keyCharacteristics": [
+      "Ruhig, präzise, hilfreich — die UI tritt hinter den Text zurück",
+      "Tinte-auf-Papier-Kontrast statt bunter Panels",
+      "Flach by default; Tiefe nur als Reaktion auf Interaktion",
+      "AI-Unterstützung ist on demand — nichts blinkt, nichts drängt sich auf",
+      "Ein Indigo-Akzent pro Aufmerksamkeitspunkt, sonst Monochrom",
+      "Zwei Themes (narrare / neutral) in Light und Dark, System-Sans-Typografie"
+    ],
     "rules": [
-      { "name": "The Ink Rule", "body": "Die Primärfarbe ist Tinte, kein Akzent. Alles, das als wichtig erscheinen soll, wird mit Ink gefüllt — Indigo markiert höchstens einen einzigen Fokuspunkt pro Bildschirm.", "section": "colors" },
-      { "name": "The Red Rule", "body": "Editor's Red erscheint nur bei destruktiven Aktionen oder echten Fehlern. Warnungen und sekundäre Zustände nutzen Ash, nie Red.", "section": "colors" },
-      { "name": "The Study Rule", "body": "Die UI-Typografie ist leiser als der Text. Editor-Body hat die größte Zeilenhöhe (1.8) und die ruhigste Breite (65ch) — alles drumherum ist kleiner, gedämpfter und enger.", "section": "typography" },
-      { "name": "The Flat-By-Default Rule", "body": "Flächen sind flach im Ruhezustand. Schatten erscheinen nur als Reaktion auf Interaktion (Hover, Fokus, temporäre Überlagerung) — nie als dauerhafte Hierarchie-Aussage.", "section": "elevation" },
-      { "name": "The Quiet Desk Rule", "body": "Die UI tritt hinter den Text zurück. Nichts blinkt, nichts animiert unaufgefordert. Ruhe ist das Feature.", "section": "elevation" },
-      { "name": "The On-Demand Rule", "body": "AI-Unterstützung erscheint nur, wenn der Writer sie aufruft. Kein Vorschlag drängt sich in den Text.", "section": "elevation" }
+      {
+        "name": "The Ink Rule",
+        "body": "Die Primärfarbe ist Tinte, kein Akzent. Alles, das als wichtig erscheinen soll, wird mit Ink gefüllt — Indigo markiert höchstens einen einzigen Fokuspunkt pro Bildschirm.",
+        "section": "colors"
+      },
+      {
+        "name": "The Red Rule",
+        "body": "Editor's Red erscheint nur bei destruktiven Aktionen oder echten Fehlern. Warnungen und sekundäre Zustände nutzen Ash, nie Red.",
+        "section": "colors"
+      },
+      {
+        "name": "The Study Rule",
+        "body": "Die UI-Typografie ist leiser als der Text. Editor-Body hat die größte Zeilenhöhe (1.8) und die ruhigste Breite (65ch) — alles drumherum ist kleiner, gedämpfter und enger.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Flächen sind flach im Ruhezustand. Schatten erscheinen nur als Reaktion auf Interaktion (Hover, Fokus, temporäre Überlagerung) — nie als dauerhafte Hierarchie-Aussage.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Quiet Desk Rule",
+        "body": "Die UI tritt hinter den Text zurück. Nichts blinkt, nichts animiert unaufgefordert. Ruhe ist das Feature.",
+        "section": "elevation"
+      },
+      {
+        "name": "The On-Demand Rule",
+        "body": "AI-Unterstützung erscheint nur, wenn der Writer sie aufruft. Kein Vorschlag drängt sich in den Text.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do den Text führen: Editor 65ch, line-height 1.8, große Ruhe um den Schreibbereich.",
