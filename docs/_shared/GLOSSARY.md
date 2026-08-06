@@ -82,6 +82,18 @@ source.
 
 ## C
 
+**Canon Contradiction**
+A conflict detected when a novel's (band's) chapter prose contradicts the
+series' shared **Series-Canon** KB — the cross-novel fixed-facts layer
+(SERIES-004 / ADR-079). Detected by `SeriesConsistencyAgent` (one LLM call;
+input: Canon entries + chapter prose as runtime user-channel content). Each
+conflict carries the `canon_statement`, the contradicting `chapter_text_excerpt`,
+an `explanation`, and a `severity` ∈ `{error, warning}`. An empty conflicts list
+is a valid, common result (no contradictions). Read-only — it reports; it does
+not rewrite. Distinct from CONS-001 (which checks *within* one novel); this is
+the *novel-vs-series-Canon* check. See *Series-Canon*, *Series Drift*,
+SERIES-004, ADR-079.
+
 **Cascade (Prompt Cascade)**
 The resolution order for prompt files:
 1. DB template (user-saved override, highest priority)
@@ -558,6 +570,19 @@ Voice, Generation Context, and Export. A novel belongs to at most one series
 (Single-Series in Spec 1; Crossover is deferred). Contrast with *Volume*
 (intra-novel grouping). See SERIES-001, ADR-075.
 
+**Series Drift**
+The cross-novel drift detected when writing a novel that belongs to a series
+(SERIES-004 / ADR-079). Two modes: (1) **Canon Contradiction** — the band's
+prose contradicts the series' shared Canon KB; (2) **Series Voice Drift** — the
+band's narrator has drifted from the `SeriesSettings.author_voice` baseline.
+Per-band, read-only, on-demand; the **read-scope is current-band-vs-series**
+(evaluate the band being worked on against the series references — not a
+full-series batch scan). The series voice is treated as **one signal** (a trend
+baseline via `author_metric_distances`), not a fixed template every band must
+match. Detected by `SeriesConsistencyAgent` (canon) + the reused
+`AuthorVoiceDriftAgent` pipeline (voice). See *Canon Contradiction*, *Series
+Voice*, *Series-Canon*, SERIES-004, ADR-079.
+
 **Series-Canon**
 A KB entry shared across all novels in a series — stable facts such as magic
 systems, world rules, canonical character bios, and foundational artifacts.
@@ -770,6 +795,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-08-05 — Added Spec 3 terms (Series Voice, Voice Delta, Voice Opt-out) for SERIES-003 / ADR-078. 2026-08-02 — Added Spec 2 terms (Band Summary, Series History (Context Tier), Context Window) for SERIES-002 / ADR-077. 2026-07-29 — Added Series-program terms (Series/Reihe, Series-Canon, Novel-Overlay, Scope (KB), STI, Band, Policy α, Policy iii) for SERIES-001 / ADR-075. 2026-07-01 — Removed stale `character_voice` governed-debt example (it is runtime-verified per ADR-055/057, no longer governed debt). 2026-06-30 — Corrected "Voice Check" definition to match ADR-057/WRITE-010 (character dialogue checked against stored per-character voice profiles, not the author's style profile). 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
+> Last updated: 2026-08-06 — Added Spec 4 terms (Canon Contradiction, Series Drift) for SERIES-004 / ADR-079. 2026-08-05 — Added Spec 3 terms (Series Voice, Voice Delta, Voice Opt-out) for SERIES-003 / ADR-078. 2026-08-02 — Added Spec 2 terms (Band Summary, Series History (Context Tier), Context Window) for SERIES-002 / ADR-077. 2026-07-29 — Added Series-program terms (Series/Reihe, Series-Canon, Novel-Overlay, Scope (KB), STI, Band, Policy α, Policy iii) for SERIES-001 / ADR-075. 2026-07-01 — Removed stale `character_voice` governed-debt example (it is runtime-verified per ADR-055/057, no longer governed debt). 2026-06-30 — Corrected "Voice Check" definition to match ADR-057/WRITE-010 (character dialogue checked against stored per-character voice profiles, not the author's style profile). 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist
