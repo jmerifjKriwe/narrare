@@ -10,9 +10,10 @@
  *   (``series_id`` taken from the response — the overlay's home novel may not
  *   know its series id client-side).
  * useDemoteToOverlay: POST /novels/{novelId}/kb/{entryId}/demote with body
- *   {series_id, target_novel_id} → NovelKBEntry. On success invalidates the
- *   Canon-KB list (``seriesId`` captured at hook construction) AND the target
- *   novel's KB entries (``novel_id`` taken from the response).
+ *   {series_id} → NovelKBEntry. The path ``novelId`` is the overlay target.
+ *   On success invalidates the Canon-KB list (``seriesId`` captured at hook
+ *   construction) AND the target novel's KB entries (``novel_id`` taken from
+ *   the response).
  *
  * Mirrors the useSeries / useKB mutation conventions (real
  * ``queryClient.invalidateQueries`` calls via centralized key factories).
@@ -24,12 +25,13 @@ import { seriesApi } from "@/lib/api/series";
 import { kbKeys } from "./kbKeys";
 import { seriesKeys } from "./seriesKeys";
 
-/** Arguments for {@link useDemoteToOverlay} — the routing + target novel ids. */
+/** Arguments for {@link useDemoteToOverlay} — the routing novel id. */
 export interface DemoteToOverlayArgs {
-  /** Novel used as the URL routing anchor for the demote endpoint. */
+  /**
+   * Novel used as the URL routing anchor for the demote endpoint. The path
+   * novel IS the overlay target (mirrors the promote endpoint).
+   */
   novelId: string;
-  /** Novel the canon entry becomes an overlay of. */
-  targetNovelId: string;
 }
 
 /**
@@ -49,18 +51,18 @@ export function usePromoteToCanon(novelId: string, entryId: string) {
 }
 
 /**
- * Demote a Series-Canon entry to a Novel-Overlay for the target novel.
+ * Demote a Series-Canon entry to a Novel-Overlay for the path novel.
  *
- * ``seriesId``/``entryId`` are captured at hook construction; ``novelId`` and
- * ``targetNovelId`` are passed to each ``mutate`` call. Invalidates the Canon-KB
- * list (by captured ``seriesId``) and the target novel's KB entries (by response
- * ``novel_id``).
+ * ``seriesId``/``entryId`` are captured at hook construction; ``novelId`` (the
+ * routing anchor, which is also the overlay target) is passed to each ``mutate``
+ * call. Invalidates the Canon-KB list (by captured ``seriesId``) and the target
+ * novel's KB entries (by response ``novel_id``).
  */
 export function useDemoteToOverlay(seriesId: string, entryId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ novelId, targetNovelId }: DemoteToOverlayArgs) =>
-      seriesApi.demoteToOverlay(novelId, entryId, seriesId, targetNovelId),
+    mutationFn: ({ novelId }: DemoteToOverlayArgs) =>
+      seriesApi.demoteToOverlay(novelId, entryId, seriesId),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: seriesKeys.canonList(seriesId) });
       void queryClient.invalidateQueries({ queryKey: kbKeys.entries(data.novel_id) });

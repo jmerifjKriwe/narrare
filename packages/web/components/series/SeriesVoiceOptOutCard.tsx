@@ -83,6 +83,11 @@ export function SeriesVoiceOptOutCard({ novelId, seriesId }: SeriesVoiceOptOutCa
           </span>
         </span>
       </label>
+      {update.isError ? (
+        <p data-testid="series-voice-opt-out-error" className="text-sm text-destructive">
+          {t("novel.settings.useSeriesVoice.error")}
+        </p>
+      ) : null}
     </div>
   );
 }

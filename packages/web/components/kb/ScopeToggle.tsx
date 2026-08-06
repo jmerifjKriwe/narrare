@@ -15,8 +15,8 @@
  *     because both directions have side effects (promote removes the entry from
  *     this novel's list; demote re-scopes it to a single novel).
  *   - Promote → ``usePromoteToCanon(novelId, entryId)``.
- *     Demote  → ``useDemoteToOverlay(seriesId, entryId)`` with the current novel
- *     as both the routing anchor and the overlay target.
+ *     Demote  → ``useDemoteToOverlay(seriesId, entryId)``; the current novel is
+ *     the routing anchor and (via the path) the overlay target.
  *
  * The ``entry`` prop is the minimal ``{ id, scope }`` discriminator (plus an
  * optional ``series_id`` for series-scoped entries). It is structurally
@@ -76,7 +76,7 @@ export function ScopeToggle({ entry, novelId }: ScopeToggleProps) {
     if (pendingScope === "series") {
       promote.mutate(undefined, { onSuccess });
     } else if (pendingScope === "novel") {
-      demote.mutate({ novelId, targetNovelId: novelId }, { onSuccess });
+      demote.mutate({ novelId }, { onSuccess });
     }
   }
 

@@ -2141,6 +2141,7 @@
       "loading": "Vorschau wird geladen...",
       "previewError": "Vorschau konnte nicht geladen werden.",
       "applyError": "Beitritt fehlgeschlagen.",
+      "noTreatments": "Dieser Roman hat noch keine Wissensbasis-Einträge — nichts in der Vorschau. Der Beitritt fügt ihn einfach zur Reihe hinzu.",
       "explanation": {
         "canon_empty": "Der Reihen-Kanon ist leer. Kanon-bevorzugende Einträge (Systeme, Konzepte, Settings, Orte, Objekte, Zeitlinien) werden zum Reihen-Kanon befördert; Charaktere und Fraktionen bleiben als Roman-Overlay.",
         "canon_nonempty": "Der Reihen-Kanon existiert bereits. Alle Einträge dieses Romans bleiben als Roman-Overlay."
@@ -2245,7 +2246,8 @@
     "settings": {
       "useSeriesVoice": {
         "label": "Reihen-Stimme als Basis verwenden",
-        "description": "Wenn aktiv, mischt die Generierung das Stimmprofil dieser Reihe mit der Stimme des Romans (Delta-Modell). Ausschalten, um nur die Stimme dieses Romans zu verwenden."
+        "description": "Wenn aktiv, mischt die Generierung das Stimmprofil dieser Reihe mit der Stimme des Romans (Delta-Modell). Ausschalten, um nur die Stimme dieses Romans zu verwenden.",
+        "error": "Einstellung konnte nicht gespeichert werden. Bitte erneut versuchen."
       }
     }
   }

@@ -95,4 +95,14 @@ describe("SeriesVoiceOptOutCard", () => {
     await user.click(toggle);
     expect(mock.updateProject).toHaveBeenCalledWith(NOVEL_ID, { use_series_voice: true });
   });
+
+  it("surfaces an error message when the PATCH fails", async () => {
+    mock.updateProject.mockRejectedValueOnce(new Error("boom"));
+    const user = userEvent.setup();
+    renderWithClient(<SeriesVoiceOptOutCard novelId={NOVEL_ID} seriesId="series-1" />);
+    const toggle = (await screen.findByTestId("series-voice-opt-out-toggle")) as HTMLInputElement;
+    await user.click(toggle);
+    const error = await screen.findByTestId("series-voice-opt-out-error");
+    expect(error.textContent).toContain("novel.settings.useSeriesVoice.error");
+  });
 });

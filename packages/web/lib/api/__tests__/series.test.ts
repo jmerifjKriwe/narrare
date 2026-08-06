@@ -290,6 +290,58 @@ describe("seriesApi", () => {
     expect(result.author_voice).toEqual({ tone: "warm" });
   });
 
+  // --- KB scope toggle -----------------------------------------------------
+  // Mirrors apps/api/narrare/kb/router_scope.py. The demote body carries ONLY
+  // series_id — the target novel comes from the request PATH (the path novel_id
+  // IS the overlay target, mirroring promote), so no target id rides in the body
+  // (RULE-17 wire parity with KBDemoteRequest).
+
+  const mockOverlayEntry = {
+    scope: "novel",
+    id: "entry-1",
+    novel_id: "novel-1",
+    series_id: "series-1",
+    base_entry_id: null,
+    entity_type: "character",
+    name: "Anna",
+    slug: "anna",
+    status: "draft",
+    body: null,
+    metadata_: null,
+    tags: null,
+    template_version: null,
+    source: "manual",
+    review_status: "approved",
+    embeddings_dirty: false,
+    last_referenced_at: null,
+    usage_count: 0,
+    created_at: null,
+    updated_at: null,
+  };
+
+  it("demoteToOverlay → POST /novels/{novelId}/kb/{entryId}/demote with series_id only", async () => {
+    let capturedUrl = "";
+    let capturedMethod = "";
+    let capturedBody = "";
+    server.use(
+      http.post("*/api/v1/novels/novel-1/kb/entry-1/demote", async ({ request }) => {
+        capturedUrl = request.url;
+        capturedMethod = request.method;
+        capturedBody = (await request.text()) as string;
+        return HttpResponse.json(mockOverlayEntry);
+      }),
+    );
+
+    const result = await seriesApi.demoteToOverlay("novel-1", "entry-1", "series-1");
+
+    // The routing novel_id (and overlay target) is in the PATH, not the body.
+    expect(capturedUrl).toContain("/api/v1/novels/novel-1/kb/entry-1/demote");
+    expect(capturedMethod).toBe("POST");
+    expect(JSON.parse(capturedBody)).toEqual({ series_id: "series-1" });
+    expect(result.scope).toBe("novel");
+    expect(result.novel_id).toBe("novel-1");
+  });
+
   // --- Error propagation ---------------------------------------------------
 
   it("throws on a non-2xx error response", async () => {

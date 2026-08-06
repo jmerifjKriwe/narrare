@@ -117,13 +117,14 @@ export const seriesApi = {
   /**
    * POST /novels/{novelId}/kb/{entryId}/demote — Series-Canon → Novel-Overlay.
    *
-   * The path ``novelId`` is the routing anchor; ``seriesId`` and ``targetNovelId``
-   * (the novel the canon entry becomes an overlay of) ride in the request body.
+   * The path ``novelId`` is BOTH the routing anchor AND the overlay target
+   * (mirrors the promote endpoint). The body carries only ``seriesId`` (the
+   * canon's series) — there is no target id that could disagree with the path.
    */
-  demoteToOverlay: (novelId: string, entryId: string, seriesId: string, targetNovelId: string) =>
+  demoteToOverlay: (novelId: string, entryId: string, seriesId: string) =>
     fetchApi<NovelKBEntry>(`/novels/${novelId}/kb/${entryId}/demote`, {
       method: "POST",
-      body: JSON.stringify({ series_id: seriesId, target_novel_id: targetNovelId }),
+      body: JSON.stringify({ series_id: seriesId }),
     }),
 
   // --- Band summaries (Spec 2 Task 4 / Task 8) ---

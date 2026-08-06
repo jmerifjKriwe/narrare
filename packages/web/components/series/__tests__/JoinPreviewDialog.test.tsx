@@ -128,4 +128,29 @@ describe("JoinPreviewDialog", () => {
     fireEvent.click(screen.getByTestId("join-preview-cancel"));
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it("shows a friendly message when there are no treatments to preview", () => {
+    const empty: JoinPreview = { ...canonEmptyFixture, treatments: [] };
+    render(<JoinPreviewDialog {...defaultProps} preview={empty} />);
+    const emptyState = screen.getByTestId("join-preview-empty");
+    expect(emptyState.textContent).toContain("series.join.noTreatments");
+    // No treatment rows rendered — the bordered box only holds the message.
+    expect(screen.queryAllByTestId("join-treatment")).toHaveLength(0);
+  });
+
+  it("does not close while a join is applying — cancel is a no-op", () => {
+    const onOpenChange = vi.fn();
+    render(<JoinPreviewDialog {...defaultProps} isApplying={true} onOpenChange={onOpenChange} />);
+    fireEvent.click(screen.getByTestId("join-preview-cancel"));
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("does not close while a join is applying — backdrop click is a no-op", () => {
+    const onOpenChange = vi.fn();
+    render(<JoinPreviewDialog {...defaultProps} isApplying={true} onOpenChange={onOpenChange} />);
+    // The backdrop is the overlay's first child div (aria-hidden).
+    const backdrop = document.querySelector('[aria-hidden="true"]') as HTMLElement;
+    fireEvent.click(backdrop);
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
 });

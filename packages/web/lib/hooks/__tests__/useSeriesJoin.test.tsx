@@ -3,7 +3,10 @@
  *
  * useJoinPreview: POST /series/{id}/novels → JoinPreview (does NOT mutate).
  * useApplyJoin:   POST /series/{id}/novels/{novelId}/apply → JoinResult,
- *                 invalidates the series detail + list on success.
+ *                 invalidates the series detail + list AND the novels list on
+ *                 success (joining flips the novel's server-side series_id, so
+ *                 the ["novels"] query must refetch or the joined novel lingers
+ *                 as a standalone ghost card / dropdown entry).
  *
  * Invalidation is verified with a real queryClient.invalidateQueries spy.
  */
@@ -21,6 +24,7 @@ vi.mock("@/lib/api/series", () => ({
 }));
 
 import { seriesApi } from "@/lib/api/series";
+import { novelsKeys } from "@/lib/hooks/novelsKeys";
 import { useApplyJoin, useJoinPreview } from "@/lib/hooks/useSeriesJoin";
 
 const mockPreviewJoin = seriesApi.previewJoin as ReturnType<typeof vi.fn>;
@@ -86,7 +90,7 @@ describe("useApplyJoin", () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(() => cleanup());
 
-  it("calls seriesApi.applyJoin and invalidates series detail + list", async () => {
+  it("calls seriesApi.applyJoin and invalidates series detail + list + novels list", async () => {
     mockApplyJoin.mockResolvedValueOnce(joinResultFixture);
 
     const queryClient = new QueryClient({
@@ -106,5 +110,8 @@ describe("useApplyJoin", () => {
     expect(result.current.data?.position).toBe(2);
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["series", "series-1"] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["series"] });
+    // Joining flips the novel's series_id server-side, so the novels list must
+    // refetch — otherwise the joined novel lingers as a ghost standalone card.
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: novelsKeys.all });
   });
 });

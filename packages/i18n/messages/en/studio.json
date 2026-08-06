@@ -2141,6 +2141,7 @@
       "loading": "Loading preview...",
       "previewError": "Failed to load preview.",
       "applyError": "Failed to apply join.",
+      "noTreatments": "This novel has no Knowledge Base entries yet — nothing to preview. Joining will simply add it to the series.",
       "explanation": {
         "canon_empty": "The series Canon is empty. Canon-preferring entries (systems, concepts, settings, locations, objects, timelines) will be promoted to Series-Canon; characters and factions stay as Novel-Overlays.",
         "canon_nonempty": "The series Canon already exists. All entries from this novel will stay as Novel-Overlays."
@@ -2245,7 +2246,8 @@
     "settings": {
       "useSeriesVoice": {
         "label": "Use series voice as base",
-        "description": "When on, generation blends this series' voice profile with the novel's own voice (Delta model). Turn off to use only this novel's voice."
+        "description": "When on, generation blends this series' voice profile with the novel's own voice (Delta model). Turn off to use only this novel's voice.",
+        "error": "Couldn't save this setting. Please try again."
       }
     }
   }

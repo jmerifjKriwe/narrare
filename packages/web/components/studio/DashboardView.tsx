@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { authApi, novelsApi } from "@/lib/api/client";
+import { novelsKeys } from "@/lib/hooks/novelsKeys";
 import { useCreateSeries, useSeriesList } from "@/lib/hooks/useSeries";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { DashboardHeader } from "./DashboardHeader";
@@ -35,14 +36,14 @@ export function DashboardView() {
   });
 
   const { data: novels = [], isLoading: novelsLoading } = useQuery({
-    queryKey: ["novels"],
+    queryKey: novelsKeys.all,
     queryFn: novelsApi.list,
   });
 
   const deleteMutation = useMutation({
     mutationFn: novelsApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["novels"] });
+      queryClient.invalidateQueries({ queryKey: novelsKeys.all });
     },
   });
 

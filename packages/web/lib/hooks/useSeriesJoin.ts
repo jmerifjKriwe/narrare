@@ -14,6 +14,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { seriesApi } from "@/lib/api/series";
+import { novelsKeys } from "./novelsKeys";
 import { seriesKeys } from "./seriesKeys";
 
 /**
@@ -38,6 +39,11 @@ export function useApplyJoin(seriesId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: seriesKeys.detail(seriesId) });
       void queryClient.invalidateQueries({ queryKey: seriesKeys.all });
+      // Joining flips the novel's server-side series_id, so the novels list
+      // must refetch — otherwise the joined novel lingers in the standalone
+      // filter (AddNovelToSeries dropdown) / as a ghost card (Dashboard) until
+      // a window-focus refetch.
+      void queryClient.invalidateQueries({ queryKey: novelsKeys.all });
     },
   });
 }

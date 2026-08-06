@@ -2141,6 +2141,7 @@
       "loading": "Chargement de l'aperçu...",
       "previewError": "Échec du chargement de l'aperçu.",
       "applyError": "Échec de l'ajout.",
+      "noTreatments": "Ce roman n'a pas encore d'entrées de base de connaissances — rien à prévisualiser. L'ajout l'intégrera simplement à la série.",
       "explanation": {
         "canon_empty": "Le Canon de la série est vide. Les entrées à préférence Canon (systèmes, concepts, cadres, lieux, objets, chronologies) seront promues au Canon de la série ; les personnages et factions restent en Overlay de roman.",
         "canon_nonempty": "Le Canon de la série existe déjà. Toutes les entrées de ce roman resteront en Overlay de roman."
@@ -2245,7 +2246,8 @@
     "settings": {
       "useSeriesVoice": {
         "label": "Utiliser la voix de la série comme base",
-        "description": "Si activé, la génération mélange le profil de voix de cette série avec la voix propre du roman (modèle Delta). Désactivez pour n'utiliser que la voix de ce roman."
+        "description": "Si activé, la génération mélange le profil de voix de cette série avec la voix propre du roman (modèle Delta). Désactivez pour n'utiliser que la voix de ce roman.",
+        "error": "Impossible d'enregistrer ce paramètre. Veuillez réessayer."
       }
     }
   }

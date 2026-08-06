@@ -23,7 +23,7 @@ import { useRef } from "react";
 import { useDialogFocus } from "@/lib/hooks/use-dialog-focus";
 import { dialogVariants, overlayVariants } from "@/lib/motion-variants";
 import type { JoinPreview } from "@/types";
-import { JoinTreatmentRow } from "./JoinTreatmentRow";
+import { JoinPreviewBody } from "./JoinPreviewBody";
 
 interface JoinPreviewDialogProps {
   /** Controlled open state. */
@@ -55,7 +55,14 @@ export function JoinPreviewDialog({
   onConfirm,
 }: JoinPreviewDialogProps) {
   const t = useTranslations("studio");
-  const close = () => onOpenChange(false);
+  // Don't allow dismissal mid-mutation: gating `close` on `!isApplying` covers
+  // the backdrop click, the X button, the cancel button, and Escape
+  // (`useDialogFocus` reads `onClose` through a ref, so the latest guarded
+  // callback is always used) — a user can't lose the applying spinner or
+  // re-trigger the join by dismissing the dialog while a request is in flight.
+  const close = () => {
+    if (!isApplying) onOpenChange(false);
+  };
   const dialogRef = useRef<HTMLDivElement>(null);
   // I-F4: modal focus lifecycle — focus on open, ESC close, Tab trap, return
   // focus to the opener on close.
@@ -137,60 +144,5 @@ export function JoinPreviewDialog({
         </motion.div>
       )}
     </AnimatePresence>
-  );
-}
-
-// --- Body (loading / error / treatments) -------------------------------------
-
-interface JoinPreviewBodyProps {
-  readonly preview: JoinPreview | null;
-  readonly isLoading: boolean;
-  readonly isError: boolean;
-  readonly applyError: boolean;
-}
-
-function JoinPreviewBody({ preview, isLoading, isError, applyError }: JoinPreviewBodyProps) {
-  const t = useTranslations("studio");
-
-  if (isLoading) {
-    return (
-      <div
-        data-testid="join-preview-loading"
-        className="flex items-center gap-2 py-6 text-sm text-muted-foreground"
-      >
-        <Loader2 className="h-4 w-4 animate-spin" />
-        {t("series.join.loading")}
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <p data-testid="join-preview-error" className="py-6 text-sm text-destructive">
-        {t("series.join.previewError")}
-      </p>
-    );
-  }
-
-  if (!preview) return null;
-
-  const explanationKey = preview.canon_empty
-    ? "series.join.explanation.canon_empty"
-    : "series.join.explanation.canon_nonempty";
-
-  return (
-    <div className="space-y-3">
-      <p data-testid="join-preview-explanation" className="text-sm text-muted-foreground">
-        {t(explanationKey)}
-      </p>
-      <ul className="divide-y divide-border rounded-md border border-border">
-        {preview.treatments.map((treatment) => (
-          <JoinTreatmentRow key={treatment.entry_id} treatment={treatment} />
-        ))}
-      </ul>
-      {applyError ? (
-        <p className="text-sm text-destructive">{t("series.join.applyError")}</p>
-      ) : null}
-    </div>
   );
 }

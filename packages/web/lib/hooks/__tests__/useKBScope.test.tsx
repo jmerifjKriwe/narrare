@@ -7,8 +7,9 @@
  *   On success invalidates the novel-scoped KB entries cache AND the series
  *   Canon-KB cache (series_id taken from the response).
  * useDemoteToOverlay: POST /novels/{novelId}/kb/{entryId}/demote with body
- *   {series_id, target_novel_id} → NovelKBEntry. On success invalidates the
- *   Canon-KB cache AND the target novel's KB entries (novel_id from response).
+ *   {series_id} → NovelKBEntry (the path novel is the overlay target). On
+ *   success invalidates the Canon-KB cache AND the target novel's KB entries
+ *   (novel_id from response).
  *
  * Invalidation is verified with a real queryClient.invalidateQueries spy
  * (asserts on actual cache-invalidation behavior, not mock internals). Mirrors
@@ -143,18 +144,18 @@ describe("useDemoteToOverlay", () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(() => cleanup());
 
-  it("calls seriesApi.demoteToOverlay with the routing novel, entry, series, and target", async () => {
+  it("calls seriesApi.demoteToOverlay with the routing novel, entry, and series", async () => {
     mockDemote.mockResolvedValueOnce(overlayEntryFixture);
 
     const { result } = renderHook(() => useDemoteToOverlay("series-1", "entry-1"), {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate({ novelId: "novel-1", targetNovelId: "novel-2" });
+    result.current.mutate({ novelId: "novel-1" });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(mockDemote).toHaveBeenCalledWith("novel-1", "entry-1", "series-1", "novel-2");
+    expect(mockDemote).toHaveBeenCalledWith("novel-1", "entry-1", "series-1");
     expect(result.current.data?.scope).toBe("novel");
     expect(result.current.data?.novel_id).toBe("novel-2");
   });
@@ -171,7 +172,7 @@ describe("useDemoteToOverlay", () => {
       wrapper: createWrapper(queryClient),
     });
 
-    result.current.mutate({ novelId: "novel-1", targetNovelId: "novel-2" });
+    result.current.mutate({ novelId: "novel-1" });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 

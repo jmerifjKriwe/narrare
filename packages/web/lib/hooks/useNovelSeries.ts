@@ -7,12 +7,9 @@
  * `seriesApi.get` when one is set. Used by: ScopeToggle (Slice 5),
  * SeriesCard context, and the Bände list.
  *
- * NOTE (contract gap — see task-4-2-3 report §Concerns): the backend
- * `NovelResponse` schema (apps/api/narrare/novels/schemas.py) does not yet
- * expose `series_id`, although the DB column exists (migration 0037) and the
- * frontend `Novel` type carries the field. Until the backend exposes it, this
- * hook resolves every novel to `null` at runtime. The hook itself is correct
- * for the intended contract.
+ * The backend exposes `series_id` on both `NovelResponse` and
+ * `NovelSummaryResponse` (apps/api/narrare/novels/schemas.py), so this resolves
+ * the real membership at runtime — `null` for a standalone novel.
  */
 
 import { useQuery } from "@tanstack/react-query";
