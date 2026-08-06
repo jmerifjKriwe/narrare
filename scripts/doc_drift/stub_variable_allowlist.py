@@ -157,6 +157,42 @@ STUB_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
         "Character relationships are charakterprägend for CHARACTER voice but "
         "not for the NARRATOR's voice (the author-voice difference).",
     ),
+    # ── series/series_consistency_prompt.py — RULE-11 optional KB-context
+    #    vars ── Series-consistency (Spec 4 Task 2) detects Canon-KB
+    #    contradictions; the authoritative cross-novel facts are the Canon
+    #    entries supplied at runtime as user input — not these per-novel KB
+    #    context variables. The vars are declared explicitly (empty) so the
+    #    template's optional placeholders render rather than crash the variable
+    #    engine (per in-code comment; mirrors author_voice_drift_prompt).
+    #    NOTE: user_preferences / avoidance_patterns are intentionally NOT
+    #    allowlisted here — they are not assigned a stub in the prompt file
+    #    (they resolve via PromptContext dataclass fields +
+    #    _COMMON_OPTIONAL_VARIABLES; a literal "" extra= override would
+    #    suppress enricher-supplied adaptive preferences).
+    (
+        "apps/api/narrare/series/series_consistency_prompt.py",
+        "kb_characters",
+        "RULE-11: optional KB-context var declared explicitly so the "
+        "template renders empty rather than crash the variable engine "
+        "(per in-code comment). Series consistency's authoritative facts "
+        "are the Canon entries supplied at runtime; per-novel character KB "
+        "context is not relevant to the contradiction check.",
+    ),
+    (
+        "apps/api/narrare/series/series_consistency_prompt.py",
+        "kb_locations",
+        "RULE-11: optional KB-context var (see series_consistency_prompt.py comment).",
+    ),
+    (
+        "apps/api/narrare/series/series_consistency_prompt.py",
+        "kb_factions",
+        "RULE-11: optional KB-context var (see series_consistency_prompt.py comment).",
+    ),
+    (
+        "apps/api/narrare/series/series_consistency_prompt.py",
+        "kb_relationships",
+        "RULE-11: optional KB-context var (see series_consistency_prompt.py comment).",
+    ),
     # ── analysis/coreference_prompt.py — §7 gaps CLOSED (kb_characters/
     #    kb_locations/kb_factions/kb_relationships now wired through the
     #    canonical KBContextProvider, ADR-067; spread from
