@@ -1,6 +1,15 @@
 // Series types — mirror apps/api/narrare/series/schemas.py (RULE-17 parity).
 // snake_case is preserved to match the Pydantic SSOT.
 
+// The series-scope voice-drift RESPONSE is reused verbatim from the novel-level
+// analysis module (AuthorVoiceDriftResponse, RULE-22 — no duplication); only the
+// wrapper is named for the series context. The reused sub-types are imported here
+// so SeriesVoiceDriftResult is a single self-contained contract mirror.
+import type {
+  AuthorVoiceDriftNoProfile,
+  AuthorVoiceDriftResult,
+} from "@/lib/api/author-voice-drift-stream";
+
 /** Lifecycle of a Series. Mirrors narrare_core.series.schemas.SeriesStatus. */
 export type SeriesStatus = "draft" | "active" | "completed";
 
@@ -302,4 +311,68 @@ export interface CanonEntryUpdate {
   metadata?: Record<string, unknown> | null;
   body?: string | null;
   template_version?: string | null;
+}
+
+// --- Series Cross-Novel Drift types (Spec 4 Task 4) --------------------------
+//
+// Mirror apps/api/narrare/series/series_consistency_schemas.py
+// (SeriesConsistencyCheckResponse) and narrare_core.agents.series_consistency_types
+// (CanonConflict) — RULE-17 parity. The check is read-only and stateless in this
+// slice: nothing is persisted; every field is a display-only report artifact.
+// The voice-drift RESPONSE shape is reused from the novel-level analysis module
+// (AuthorVoiceDriftResponse) — only the wrapper is named for the series context
+// (RULE-22). snake_case is preserved to match the Pydantic SSOT.
+
+/** Severity of a canon contradiction. Mirrors the CanonConflict.severity Literal. */
+export type CanonConflictSeverity = "error" | "warning";
+
+/**
+ * A single contradiction between a chapter passage and a Canon entry.
+ *
+ * RULE-17 contract parity: mirrors ``CanonConflict``
+ * (packages/core/narrare_core/agents/series_consistency_types.py).
+ */
+export interface CanonConflict {
+  /** Slug identifying the Canon entry that is contradicted. */
+  canon_entry_slug: string;
+  /** Human-readable name of the Canon entry. */
+  canon_entry_name: string;
+  /** Verbatim passage from the chapter text that contradicts Canon. */
+  chapter_text_excerpt: string;
+  /** What Canon actually says (the contradicted fact). */
+  canon_statement: string;
+  /** Why the excerpt and the Canon statement cannot both be true. */
+  explanation: string;
+  /** ``"error"`` = hard contradiction; ``"warning"`` = possible issue. */
+  severity: CanonConflictSeverity;
+}
+
+/**
+ * POST /api/v1/series/{id}/consistency/check response.
+ *
+ * Mirrors SeriesConsistencyCheckResponse. An **empty** ``conflicts`` list means
+ * no contradictions were found — a valid and common result. ``summary`` is the
+ * agent's 1-2 sentence overall assessment; the counts are transparency metadata.
+ */
+export interface SeriesConsistencyResult {
+  series_id: string;
+  novel_id: string;
+  conflicts: CanonConflict[];
+  summary: string;
+  canon_entry_count: number;
+  chapter_count: number;
+}
+
+/**
+ * POST /api/v1/series/{id}/voice-drift/check response.
+ *
+ * Reuses the novel-level AuthorVoiceDriftResponse shape verbatim (RULE-22):
+ * exactly one of ``result`` / ``no_profile`` is set (author voice is one narrator
+ * per novel). Named for the series context because the series endpoint takes the
+ * series id in the URL and the novel id in the body; the payload is identical.
+ */
+export interface SeriesVoiceDriftResult {
+  novel_id: string;
+  result: AuthorVoiceDriftResult | null;
+  no_profile: AuthorVoiceDriftNoProfile | null;
 }

@@ -2202,6 +2202,43 @@
       "overrideInvalid": "Ungültiges JSON — Überschreibung konnte nicht gelesen werden.",
       "saveOverride": "Überschreibung speichern",
       "clearOverride": "Überschreibung löschen"
+    },
+    "drift": {
+      "title": "Romanübergreifender Drift",
+      "description": "Prüfe den Kapiteltext eines Bandes gegen den Serien-Kanon und die Serien-Stimme.",
+      "selectBand": "Zu prüfender Band",
+      "selectBandPlaceholder": "Roman auswählen...",
+      "checkConsistency": "Konsistenz prüfen",
+      "checkVoiceDrift": "Stimm-Drift",
+      "conflicts": "Kanon-Widersprüche",
+      "loading": "Wird geprüft...",
+      "error": "Die Prüfung ist fehlgeschlagen. Bitte erneut versuchen.",
+      "noConflicts": "Es wurden keine Widersprüche zum Serien-Kanon gefunden.",
+      "noDrift": "Kein Stimm-Drift gegenüber der Serien-Stimme festgestellt.",
+      "canonStatement": "Kanon besagt",
+      "excerpt": "Kapitelauszug",
+      "severity": {
+        "error": "Widerspruch",
+        "warning": "Möglicher Hinweis"
+      },
+      "band": {
+        "stable": "Stabil",
+        "minor": "Leichter Drift",
+        "moderate": "Mittlerer Drift",
+        "major": "Starker Drift"
+      },
+      "driftType": {
+        "evolution": "Natürliche Entwicklung",
+        "context": "Kontextbedingte Veränderung",
+        "inconsistency": "Inkonsistenz"
+      },
+      "reasons": "Begründung",
+      "attention": "Prüfungswürdige Kapitel",
+      "noProfileReason": {
+        "no_stored_profile": "Noch keine Serien-Stimme profiliert — zuerst einen Band profilieren.",
+        "no_profile_metrics": "Das Serien-Stimmprofil enthält keine für die Drift-Analyse nötigen Metriken.",
+        "no_chapters_with_prose": "Keine Kapitel mit Text zum Analysieren gefunden."
+      }
     }
   },
   "novel": {

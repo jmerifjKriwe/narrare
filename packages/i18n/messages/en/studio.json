@@ -2202,6 +2202,43 @@
       "overrideInvalid": "Invalid JSON — could not parse the override.",
       "saveOverride": "Save Override",
       "clearOverride": "Clear Override"
+    },
+    "drift": {
+      "title": "Cross-Novel Drift",
+      "description": "Check a band's chapter prose against the series Canon and voice baseline.",
+      "selectBand": "Band to check",
+      "selectBandPlaceholder": "Select a novel...",
+      "checkConsistency": "Check consistency",
+      "checkVoiceDrift": "Voice drift",
+      "conflicts": "Canon contradictions",
+      "loading": "Checking...",
+      "error": "The check failed. Please try again.",
+      "noConflicts": "No contradictions with the series Canon were found.",
+      "noDrift": "No voice drift detected against the series voice.",
+      "canonStatement": "Canon says",
+      "excerpt": "Chapter excerpt",
+      "severity": {
+        "error": "Contradiction",
+        "warning": "Possible issue"
+      },
+      "band": {
+        "stable": "Stable",
+        "minor": "Minor drift",
+        "moderate": "Moderate drift",
+        "major": "Major drift"
+      },
+      "driftType": {
+        "evolution": "Natural evolution",
+        "context": "Context-driven change",
+        "inconsistency": "Inconsistency"
+      },
+      "reasons": "Reasons",
+      "attention": "Chapters worth review",
+      "noProfileReason": {
+        "no_stored_profile": "No series voice profiled yet — profile a band first.",
+        "no_profile_metrics": "The series voice profile lacks the metrics needed for drift analysis.",
+        "no_chapters_with_prose": "No chapters with prose found to analyse."
+      }
     }
   },
   "novel": {

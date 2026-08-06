@@ -19,6 +19,7 @@ import type {
   NovelKBEntry,
   NovelSummary,
   Series,
+  SeriesConsistencyResult,
   SeriesCreate,
   SeriesKBEntry,
   SeriesSettings,
@@ -26,6 +27,7 @@ import type {
   SeriesSummary,
   SeriesUpdate,
   SeriesVoice,
+  SeriesVoiceDriftResult,
   SeriesVoiceOverrideRequest,
   SeriesVoiceState,
 } from "@/types";
@@ -177,4 +179,32 @@ export const seriesApi = {
   /** DELETE /series/{id}/voice/override — clear the series voice (204). */
   clearVoiceOverride: (seriesId: string) =>
     fetchApi<void>(`/series/${seriesId}/voice/override`, { method: "DELETE" }),
+
+  // --- Series Cross-Novel Drift (Spec 4 Tasks 2–3) ---
+  // Mirrors apps/api/narrare/series/router_consistency.py +
+  // router_voice_drift.py. Both checks are read-only analyses (HTTP 200); the
+  // series id is the URL anchor, the band (novel) id rides in the request body
+  // (the path-based verify_novel_in_owned_series dependency does not apply).
+
+  /**
+   * POST /series/{id}/consistency/check — check a band's chapter prose against
+   * the series Canon KB. Returns the canon contradictions found (possibly empty
+   * — no contradictions is a valid result). Read-only; nothing is persisted.
+   */
+  checkSeriesConsistency: (seriesId: string, novelId: string) =>
+    fetchApi<SeriesConsistencyResult>(`/series/${seriesId}/consistency/check`, {
+      method: "POST",
+      body: JSON.stringify({ novel_id: novelId }),
+    }),
+
+  /**
+   * POST /series/{id}/voice-drift/check — analyse a band's narrator drift
+   * against the series voice baseline. Reuses the novel-level response shape
+   * (AuthorVoiceDriftResponse). Read-only; nothing is persisted.
+   */
+  checkSeriesVoiceDrift: (seriesId: string, novelId: string) =>
+    fetchApi<SeriesVoiceDriftResult>(`/series/${seriesId}/voice-drift/check`, {
+      method: "POST",
+      body: JSON.stringify({ novel_id: novelId }),
+    }),
 };

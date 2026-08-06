@@ -2202,6 +2202,43 @@
       "overrideInvalid": "JSON invalide — impossible de lire le remplacement.",
       "saveOverride": "Enregistrer le remplacement",
       "clearOverride": "Effacer le remplacement"
+    },
+    "drift": {
+      "title": "Dérive inter-romans",
+      "description": "Vérifiez le texte des chapitres d'un volume par rapport au canon de la série et à la voix de référence.",
+      "selectBand": "Volume à vérifier",
+      "selectBandPlaceholder": "Sélectionner un roman...",
+      "checkConsistency": "Vérifier la cohérence",
+      "checkVoiceDrift": "Dérive de voix",
+      "conflicts": "Contradictions du canon",
+      "loading": "Vérification...",
+      "error": "La vérification a échoué. Veuillez réessayer.",
+      "noConflicts": "Aucune contradiction avec le canon de la série n'a été trouvée.",
+      "noDrift": "Aucune dérive de voix détectée par rapport à la voix de la série.",
+      "canonStatement": "Le canon indique",
+      "excerpt": "Extrait du chapitre",
+      "severity": {
+        "error": "Contradiction",
+        "warning": "Point à vérifier"
+      },
+      "band": {
+        "stable": "Stable",
+        "minor": "Dérive légère",
+        "moderate": "Dérive modérée",
+        "major": "Dérive majeure"
+      },
+      "driftType": {
+        "evolution": "Évolution naturelle",
+        "context": "Changement contextuel",
+        "inconsistency": "Incohérence"
+      },
+      "reasons": "Raisons",
+      "attention": "Chapitres à revoir",
+      "noProfileReason": {
+        "no_stored_profile": "Aucune voix de série profilée pour l'instant — profilez d'abord un volume.",
+        "no_profile_metrics": "Le profil de voix de la série manque des métriques nécessaires à l'analyse de dérive.",
+        "no_chapters_with_prose": "Aucun chapitre avec du texte à analyser."
+      }
     }
   },
   "novel": {
