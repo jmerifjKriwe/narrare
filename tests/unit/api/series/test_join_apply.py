@@ -172,6 +172,17 @@ class TestMapJoinIntegrityError:
         assert isinstance(result, ConflictError)
         assert "Slug conflict" in str(result)
 
+    def test_overlay_slug_constraint_maps_to_conflict(self) -> None:
+        """``uq_kb_overlay_per_novel`` → ConflictError (not a misleading 404).
+
+        Without this case a demote/scope collision falls through to the catch-all
+        ``NotFoundError("Series")`` (404) — the misleading mapping the canon case
+        already avoids. Mirrors the canon-case structure.
+        """
+        result = map_join_integrity_error(_integrity("uq_kb_overlay_per_novel"), uuid4())
+        assert isinstance(result, ConflictError)
+        assert "Slug conflict" in str(result)
+
     def test_unknown_constraint_maps_to_not_found(self) -> None:
         series_id = uuid4()
         result = map_join_integrity_error(_integrity("some_other_fk"), series_id)

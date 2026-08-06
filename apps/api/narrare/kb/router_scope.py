@@ -50,15 +50,18 @@ async def demote_entry_to_overlay(
     user_id: CurrentUserIdDep,
     service: KBScopeService = Depends(get_kb_scope_service),
 ) -> NovelKBEntry:
-    """Demote a Series-Canon KB entry to a Novel-Overlay for the target novel.
+    """Demote a Series-Canon KB entry to a Novel-Overlay for ``novel_id``.
 
-    The path ``novel_id`` is the routing anchor; the authoritative target novel
-    and series are taken from the request body. Returns 409 Conflict if the
-    entry is not canon of the given series (scope invariant violation).
+    The path ``novel_id`` IS the target novel (the overlay's new owner) —
+    mirroring the promote endpoint, which also keys off the path novel. The body
+    carries only ``series_id`` (the canon's series). Returns 409 Conflict if the
+    entry is not canon of ``series_id`` (scope invariant), another member novel
+    relies on it (D4 guard), or the target novel already owns the slug (overlay
+    collision).
     """
     return await service.demote_to_overlay(
         series_id=request.series_id,
         entry_id=entry_id,
-        target_novel_id=request.target_novel_id,
+        target_novel_id=novel_id,
         user_id=uuid.UUID(user_id),
     )

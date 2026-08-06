@@ -130,7 +130,7 @@ class TestDemoteEndpoint:
 
         response = client.post(
             f"/api/v1/novels/{target_novel_id}/kb/{entry_id}/demote",
-            json={"series_id": str(series_id), "target_novel_id": str(target_novel_id)},
+            json={"series_id": str(series_id)},
         )
 
         assert response.status_code == 200
@@ -146,10 +146,7 @@ class TestDemoteEndpoint:
 
         response = client.post(
             f"/api/v1/novels/{target_novel_id}/kb/{uuid.uuid4()}/demote",
-            json={
-                "series_id": str(uuid.uuid4()),  # not owned / unknown
-                "target_novel_id": str(target_novel_id),
-            },
+            json={"series_id": str(uuid.uuid4())},  # not owned / unknown
         )
 
         assert response.status_code == 403
@@ -161,17 +158,17 @@ class TestDemoteEndpoint:
 
         response = client.post(
             f"/api/v1/novels/{target_novel_id}/kb/{uuid.uuid4()}/demote",
-            json={"series_id": str(series_id), "target_novel_id": str(target_novel_id)},
+            json={"series_id": str(series_id)},
         )
 
         assert response.status_code == 409
         assert response.json()["code"] == "CONFLICT"
 
-    def test_returns_422_on_missing_body_fields(self, scope_app: tuple) -> None:
-        """A body missing series_id/target_novel_id is rejected with 422."""
+    def test_returns_422_on_missing_series_id(self, scope_app: tuple) -> None:
+        """A body missing series_id is rejected with 422."""
         _, client, _, _, _, _, _ = scope_app
         response = client.post(
             f"/api/v1/novels/{uuid.uuid4()}/kb/{uuid.uuid4()}/demote",
-            json={"series_id": str(uuid.uuid4())},
+            json={},
         )
         assert response.status_code == 422

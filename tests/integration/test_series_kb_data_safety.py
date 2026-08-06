@@ -8,11 +8,9 @@ series delete. The fix has two halves, both asserted here:
 
 1. **Migration 0037** declares ``kb_entries.series_id`` as ``ON DELETE SET
    NULL`` at the DB level (lines 174-176 — the migration is authoritative for
-   runtime DB shape; the ORM ``models.py`` declaration on line 44 still says
-   ``ondelete="CASCADE"``, a documentation drift that does not affect runtime
-   because ``Base.metadata.create_all()`` is forbidden in integration tests).
-   A series delete leaves the novel's overlay KB rows intact as standalone-
-   novel entries.
+   runtime DB shape; the ORM ``models.py`` declaration on line 44 agrees,
+   ``ondelete="SET NULL"``). A series delete leaves the novel's overlay KB
+   rows intact as standalone-novel entries.
 2. **``SeriesService.delete_series``** removes the Canon rows
    (``novel_id IS NULL``) in-transaction before the series row — Canon has no
    home without its series (the scope-invariant CHECK forbids it), so SET NULL

@@ -7,7 +7,8 @@ kept separate so the join service stays focused on Policy alpha.
 
 Mapping (per ADR-075 / Series Foundation):
 * ``uq_novels_series_position`` → :class:`ConflictError` ("Position occupied").
-* ``uq_kb_canon_per_series``    → :class:`ConflictError` ("Slug conflict …").
+* ``uq_kb_canon_per_series``    → :class:`ConflictError` ("Slug conflict … Canon").
+* ``uq_kb_overlay_per_novel``   → :class:`ConflictError` ("Slug conflict … Overlay").
 * anything else (a membership FK firing because the series vanished in a
   commit race) → :class:`NotFoundError` ("Series").
 """
@@ -51,6 +52,8 @@ def map_join_integrity_error(exc: IntegrityError, series_id: uuid.UUID) -> Excep
             return ConflictError("Position occupied")
         case "uq_kb_canon_per_series":
             return ConflictError("Slug conflict: a Canon entry with this slug exists")
+        case "uq_kb_overlay_per_novel":
+            return ConflictError("Slug conflict: an Overlay entry with this slug exists")
         case _:
             # An unrecognised violation is treated as a membership FK firing
             # because the series vanished in a commit race (anti-enumeration

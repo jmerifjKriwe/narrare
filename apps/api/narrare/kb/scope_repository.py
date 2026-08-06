@@ -86,8 +86,10 @@ class KBScopeRepository(BaseRepository):
         """Promote a Novel-Overlay to Series-Canon.
 
         Raises:
-            ConflictError: The entry is missing or not an overlay of ``novel_id``,
-                or the novel is not in a series (scope invariant → HTTP 409).
+            ConflictError: the entry is missing or not an overlay of ``novel_id``,
+                the novel is not in a series (scope invariant → HTTP 409), or a
+                Canon entry with the same slug already exists in the series
+                (``uq_kb_canon_per_series`` collision → 409).
         """
         entry = await self._get_kb_entry(entry_id)
         if entry is None or entry.novel_id != novel_id:
@@ -97,6 +99,16 @@ class KBScopeRepository(BaseRepository):
         novel_obj = novel_result.scalar_one_or_none()
         if novel_obj is None or novel_obj.series_id is None:
             raise ConflictError(f"Novel {novel_id} is not in a series")
+
+        # Pre-flush slug-uniqueness check (mirrors ``canon_service.create_canon``
+        # via ``find_canon_by_slug``): surface the ``uq_kb_canon_per_series``
+        # collision as a typed ConflictError (→ 409) instead of a raw
+        # IntegrityError (→ 500). The entry is still an overlay here, so it
+        # cannot self-collide with the canon query (``novel_id IS NULL``).
+        if await self.find_canon_by_slug(novel_obj.series_id, entry.slug) is not None:
+            raise ConflictError(
+                f"An entry with slug '{entry.slug}' already exists in Canon for this series"
+            )
 
         entry.novel_id = None
         entry.series_id = novel_obj.series_id
@@ -116,7 +128,9 @@ class KBScopeRepository(BaseRepository):
             ConflictError: The entry is missing/not canon of ``series_id`` (scope
                 invariant → 409), OR another member novel relies on this Canon
                 entry and would lose it from its merged view (Canon-integrity
-                guard, SERIES-001 §151-152 / D4 → 409).
+                guard, SERIES-001 §151-152 / D4 → 409), OR the target novel
+                already has an Overlay with the same slug
+                (``uq_kb_overlay_per_novel`` collision → 409).
         """
         entry = await self._get_kb_entry(entry_id)
         if entry is None or entry.series_id != series_id or entry.novel_id is not None:
@@ -133,6 +147,17 @@ class KBScopeRepository(BaseRepository):
                 f"novel(s) rely on it and would lose it from their merged view"
             )
 
+        # Pre-flush slug-uniqueness check (parallel to the promote/canon path):
+        # surface the ``uq_kb_overlay_per_novel`` collision as a typed
+        # ConflictError (→ 409) instead of a raw IntegrityError (→ 500). The
+        # entry is still Canon here, so it cannot self-collide with the overlay
+        # query (``novel_id = target``).
+        if await self._find_overlay_by_slug(target_novel_id, entry.slug) is not None:
+            raise ConflictError(
+                f"An entry with slug '{entry.slug}' already exists as an Overlay "
+                f"for novel {target_novel_id}"
+            )
+
         entry.novel_id = target_novel_id
         entry.series_id = None  # D6: overlays never persist series_id (derivable)
         entry.base_entry_id = None
@@ -146,6 +171,23 @@ class KBScopeRepository(BaseRepository):
     async def _get_kb_entry(self, entry_id: uuid.UUID) -> KBEntry | None:
         """Fetch a single KB entry by id (scope-repo-local lookup)."""
         result = await self._session.execute(select(KBEntry).where(KBEntry.id == entry_id))
+        return result.scalar_one_or_none()
+
+    async def _find_overlay_by_slug(self, novel_id: uuid.UUID, slug: str) -> KBEntry | None:
+        """Fetch a Novel-Overlay entry by novel + slug (``novel_id = X``).
+
+        Overlay-scoped analogue of :meth:`find_canon_by_slug`: the pre-flush
+        collision check in :meth:`demote_to_overlay` calls this to surface a
+        ``uq_kb_overlay_per_novel`` violation as a typed ``ConflictError``
+        instead of a raw ``IntegrityError``. ``novel_id = X`` already implies
+        ``novel_id IS NOT NULL``, matching the partial index's predicate.
+        """
+        result = await self._session.execute(
+            select(KBEntry).where(
+                KBEntry.novel_id == novel_id,
+                KBEntry.slug == slug,
+            )
+        )
         return result.scalar_one_or_none()
 
     async def _count_relying_novels(

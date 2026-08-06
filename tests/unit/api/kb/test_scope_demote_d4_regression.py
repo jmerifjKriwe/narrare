@@ -8,20 +8,24 @@ without warning. The fix added the Canon-integrity guard in
 own Overlay with the demoted entry's slug, the demotion is refused with
 ``ConflictError`` (HTTP 409) — no silent breakage (RULE-11).
 
-Two scenarios pin the contract at the service layer (real in-memory fake with
-real D4 logic, ADR-030):
+Scenarios pin the contract at the service layer (real in-memory fake with real
+D4 logic + partial-index enforcement, ADR-030):
 
-* **Scenario A (409):** N2 is a member of series S, has no overlay for the
-  Canon slug, and so "relies" on the Canon. Demoting Canon entry E to N1
-  would drop E from N2's merged view → ``ConflictError``.
-* **Scenario B (200):** BOTH N1 and N2 carry an overlay with the same slug.
-  No novel relies on the Canon → demotion succeeds and the entry becomes
-  N1's overlay.
+* **Scenario A (409, D4 guard):** N2 is a member of series S, has no overlay
+  for the Canon slug, and so "relies" on the Canon. Demoting Canon entry E to
+  N1 would drop E from N2's merged view → ``ConflictError``.
+* **Scenario B (409, slug collision):** BOTH N1 and N2 carry an overlay with
+  the same slug. The D4 guard passes (N2 is covered), but demoting Canon E to
+  N1 would collide with N1's existing overlay (``uq_kb_overlay_per_novel``) →
+  ``ConflictError``. This was previously a FALSE POSITIVE that asserted the
+  demote "succeeds" only because the fake did not enforce the partial index.
 
 The D4 logic lives in the repository; the service delegates unchanged. The
 fake (:mod:`tests.fakes.fake_kb_scope_repo`) mirrors the real
-``_count_relying_novels`` SQL line-for-line in pure Python, so a divergence
-between the fake's contract and the repo's would surface in integration.
+``_count_relying_novels`` SQL line-for-line in pure Python AND enforces the
+``uq_kb_canon_per_series`` / ``uq_kb_overlay_per_novel`` partial-index
+semantics, so a divergence between the fake's contract and the repo's would
+surface in integration (CR-04 safeguard).
 """
 
 from __future__ import annotations
@@ -138,27 +142,34 @@ class TestDemoteCanonIntegrityGuard:
 
 
 # ---------------------------------------------------------------------------
-# Scenario B — demotion succeeds when every other novel has an overlay (200)
+# Scenario B — demote refused on slug collision with the target's overlay (409)
 # ---------------------------------------------------------------------------
 
 
-class TestDemoteCanonIntegrityPass:
-    """D4: demotion succeeds when no other novel relies on the Canon."""
+class TestDemoteSlugCollision:
+    """Demoting a Canon whose slug the target novel already owns → 409.
 
-    async def test_demote_succeeds_when_all_members_carry_overlay(self) -> None:
-        """Both N1 and N2 carry a "magic" overlay → Canon demotes cleanly to N1."""
+    The scenario that was previously a FALSE POSITIVE (it asserted the demote
+    "succeeds" only because ``FakeScopeKBRepo`` did not enforce the partial
+    unique index). With both members carrying a same-slug overlay, demoting the
+    Canon to N1 collides with N1's existing overlay (``uq_kb_overlay_per_novel``,
+    migration 0037). The D4 Canon-integrity guard passes (N2 is covered), so the
+    collision is the sole reason the demotion is refused.
+    """
+
+    async def test_demote_into_existing_target_slug_raises_conflict(self) -> None:
+        """Both N1 and N2 carry a 'magic' overlay → demoting Canon 'magic' to N1
+        collides with N1's overlay → ConflictError (HTTP 409), Canon untouched."""
         service, kb_repo, series_id, n1_id, _, canon_entry_id = _build_d4_service(
             n1_has_overlay=True, n2_has_overlay=True
         )
 
-        result = await service.demote_to_overlay(series_id, canon_entry_id, n1_id, USER_ID)
+        with pytest.raises(ConflictError, match="already exists"):
+            await service.demote_to_overlay(series_id, canon_entry_id, n1_id, USER_ID)
 
-        assert isinstance(result, NovelKBEntry)
-        assert result.id == canon_entry_id
-        assert result.novel_id == n1_id
-        # The Canon row is gone (it became an overlay).
+        # The Canon row is untouched (no silent mutation alongside the refusal).
         canon_rows = await kb_repo.find_canon_for_series(series_id)
-        assert not any(e.id == canon_entry_id for e in canon_rows)
+        assert any(e.id == canon_entry_id for e in canon_rows)
 
 
 # ---------------------------------------------------------------------------

@@ -4814,7 +4814,7 @@
           "kb"
         ],
         "summary": "Demote Entry To Overlay",
-        "description": "Demote a Series-Canon KB entry to a Novel-Overlay for the target novel.\n\nThe path ``novel_id`` is the routing anchor; the authoritative target novel\nand series are taken from the request body. Returns 409 Conflict if the\nentry is not canon of the given series (scope invariant violation).",
+        "description": "Demote a Series-Canon KB entry to a Novel-Overlay for ``novel_id``.\n\nThe path ``novel_id`` IS the target novel (the overlay's new owner) —\nmirroring the promote endpoint, which also keys off the path novel. The body\ncarries only ``series_id`` (the canon's series). Returns 409 Conflict if the\nentry is not canon of ``series_id`` (scope invariant), another member novel\nrelies on it (D4 guard), or the target novel already owns the slug (overlay\ncollision).",
         "operationId": "demote_entry_to_overlay_api_v1_novels__novel_id__kb__entry_id__demote_post",
         "security": [
           {
@@ -15723,20 +15723,14 @@
             "type": "string",
             "format": "uuid",
             "title": "Series Id"
-          },
-          "target_novel_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Target Novel Id"
           }
         },
         "type": "object",
         "required": [
-          "series_id",
-          "target_novel_id"
+          "series_id"
         ],
         "title": "KBDemoteRequest",
-        "description": "Request body for demoting a Series-Canon entry to a Novel-Overlay.\n\n``target_novel_id`` is the novel the canon entry becomes an overlay of;\n``series_id`` identifies the series whose canon is being demoted."
+        "description": "Request body for demoting a Series-Canon entry to a Novel-Overlay.\n\n``series_id`` identifies the canon's series; the target novel comes from the\nrequest PATH (``/novels/{novel_id}/.../demote``), mirroring the promote\nendpoint — so the body carries no target id that could disagree with the path."
       },
       "KBEntryCreate": {
         "properties": {

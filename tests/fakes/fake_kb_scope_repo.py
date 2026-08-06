@@ -17,7 +17,17 @@ This fake expresses that in pure Python (sets over the seeded state) so the
 behaviour is obviously correct and a deviation in the real repository's SQL
 cannot silently agree with a wrong fake.
 
-Stores entries internally as mutable ``_EntryRecord``s and exposes the
+Partial unique-index enforcement (CR-04 safeguard): the fake also mirrors the
+two DB-level partial indexes from migration 0037 — ``uq_kb_canon_per_series``
+(``series_id``, ``slug`` WHERE ``novel_id IS NULL``) and
+``uq_kb_overlay_per_novel`` (``novel_id``, ``slug`` WHERE ``novel_id IS NOT
+NULL``). ``promote_to_canon`` / ``demote_to_overlay`` raise ``ConflictError``
+BEFORE mutating when the destination scope already owns the slug, so the fake
+can never certify a collision that the real DB would reject (the original
+false-positive ``test_demote_succeeds_when_all_members_carry_overlay``).
+
+Stores entries internally as mutable :class:`EntryRecord` s (defined in the
+sibling :mod:`tests.fakes._kb_scope_record` module) and exposes the
 ``KBScopeMutationProtocol`` surface (``promote_to_canon`` /
 ``demote_to_overlay``) plus the ``find_canon_for_series`` /
 ``find_overlay_for_novel`` readers so tests can seed and assert directly.
@@ -29,49 +39,26 @@ import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from narrare_core.kb.schemas.entry import NovelKBEntry, SeriesKBEntry
 from narrare_core.shared.errors import ConflictError
+from tests.fakes._kb_scope_record import EntryRecord, to_novel_entry, to_series_entry
 from tests.fakes._shared import CallRecord
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-
-@dataclass
-class _EntryRecord:
-    """Mutable internal KB row — mirrors the columns the D4 logic needs.
-
-    The full ``KBEntry`` ORM has ~20 columns; only the scope-discriminating
-    ones (``novel_id`` / ``series_id`` / ``slug`` / ``entity_type``) and
-    ``name`` (returned on the Core types) participate in the D4 contract.
-    """
-
-    id: uuid.UUID
-    slug: str
-    entity_type: str
-    name: str
-    novel_id: uuid.UUID | None = None
-    series_id: uuid.UUID | None = None
-
-    @property
-    def is_canon(self) -> bool:
-        return self.novel_id is None and self.series_id is not None
-
-    @property
-    def is_overlay(self) -> bool:
-        return self.novel_id is not None
+    from narrare_core.kb.schemas.entry import NovelKBEntry, SeriesKBEntry
 
 
 @dataclass
 class FakeScopeKBRepo:
     """Real in-memory fake for ``KBScopeMutationProtocol`` with D4 enforcement.
 
-    The Canon-integrity guard is computed from seeded ``_EntryRecord`` state
+    The Canon-integrity guard is computed from seeded ``EntryRecord`` state
     plus the seeded series membership (``seed_series_members``) — the same two
     facts the real SQL query joins over.
     """
 
-    _entries: dict[uuid.UUID, _EntryRecord] = field(default_factory=dict)
+    _entries: dict[uuid.UUID, EntryRecord] = field(default_factory=dict)
     _series_members: dict[uuid.UUID, set[uuid.UUID]] = field(default_factory=dict)
     calls: list[CallRecord] = field(default_factory=list)
     # Per-method call logs (mirrors ``_scope_service_helpers.FakeKBRepo``'s
@@ -90,9 +77,9 @@ class FakeScopeKBRepo:
         entry_id: uuid.UUID | None = None,
         novel_id: uuid.UUID | None = None,
         series_id: uuid.UUID | None = None,
-    ) -> _EntryRecord:
+    ) -> EntryRecord:
         """Seed one KB row. Canon if ``novel_id`` is None + ``series_id`` set."""
-        record = _EntryRecord(
+        record = EntryRecord(
             id=entry_id or uuid.uuid4(),
             slug=slug,
             entity_type=entity_type,
@@ -112,7 +99,7 @@ class FakeScopeKBRepo:
     async def find_canon_for_series(self, series_id: uuid.UUID) -> list[SeriesKBEntry]:
         self.calls.append(CallRecord("find_canon_for_series", kwargs={"series_id": series_id}))
         return [
-            self._to_series_entry(r)
+            to_series_entry(r)
             for r in self._entries.values()
             if r.is_canon and r.series_id == series_id
         ]
@@ -120,7 +107,7 @@ class FakeScopeKBRepo:
     async def find_overlay_for_novel(self, novel_id: uuid.UUID) -> list[NovelKBEntry]:
         self.calls.append(CallRecord("find_overlay_for_novel", kwargs={"novel_id": novel_id}))
         return [
-            self._to_novel_entry(r)
+            to_novel_entry(r)
             for r in self._entries.values()
             if r.is_overlay and r.novel_id == novel_id
         ]
@@ -143,9 +130,15 @@ class FakeScopeKBRepo:
         )
         if series_id is None:
             raise ConflictError(f"Novel {novel_id} is not in a series")
+        # Enforce uq_kb_canon_per_series: (series_id, slug) UNIQUE WHERE novel_id IS NULL.
+        # The record being promoted is still an overlay, so it cannot self-collide.
+        if self._has_canon_slug(series_id, record.slug):
+            raise ConflictError(
+                f"An entry with slug '{record.slug}' already exists in Canon for this series"
+            )
         record.novel_id = None
         record.series_id = series_id
-        return self._to_series_entry(record)
+        return to_series_entry(record)
 
     async def demote_to_overlay(
         self,
@@ -153,12 +146,13 @@ class FakeScopeKBRepo:
         entry_id: uuid.UUID,
         target_novel_id: uuid.UUID,
     ) -> NovelKBEntry:
-        """Demote Canon to Overlay for ``target_novel_id`` (with the D4 guard).
+        """Demote Canon to Overlay for ``target_novel_id`` (D4 + collision guards).
 
         Raises:
             ConflictError: entry is missing / not canon of ``series_id``
-                (scope invariant), OR another member novel relies on this
-                Canon entry (D4 Canon-integrity guard, HTTP 409).
+                (scope invariant), another member novel relies on this Canon
+                entry (D4 Canon-integrity guard, HTTP 409), or the target novel
+                already owns the slug (``uq_kb_overlay_per_novel`` collision).
         """
         self.calls.append(
             CallRecord(
@@ -182,11 +176,44 @@ class FakeScopeKBRepo:
                 f"novel(s) rely on it and would lose it from their merged view"
             )
 
+        # Enforce uq_kb_overlay_per_novel: (novel_id, slug) UNIQUE WHERE novel_id IS
+        # NOT NULL. The record being demoted is still Canon, so it cannot self-collide.
+        if self._has_overlay_slug(target_novel_id, record.slug):
+            raise ConflictError(
+                f"An entry with slug '{record.slug}' already exists as an Overlay "
+                f"for novel {target_novel_id}"
+            )
+
         record.series_id = None  # D6: overlays never persist series_id.
         record.novel_id = target_novel_id
-        return self._to_novel_entry(record)
+        return to_novel_entry(record)
 
-    # -- D4 logic (pure-Python mirror of the SQL) -----------------------
+    # -- partial-index + D4 logic (pure-Python mirror of the SQL) -------
+
+    def _has_canon_slug(self, series_id: uuid.UUID, slug: str) -> bool:
+        """Whether a Canon entry (``novel_id IS NULL``) owns ``(series_id, slug)``.
+
+        Mirrors the ``uq_kb_canon_per_series`` partial unique index enforced at
+        the DB level (migration 0037). Used by :meth:`promote_to_canon` for the
+        pre-flush collision check (parallel to
+        ``canon_service.create_canon`` → ``find_canon_by_slug``).
+        """
+        return any(
+            r.is_canon and r.series_id == series_id and r.slug == slug
+            for r in self._entries.values()
+        )
+
+    def _has_overlay_slug(self, novel_id: uuid.UUID, slug: str) -> bool:
+        """Whether an Overlay entry (``novel_id IS NOT NULL``) owns ``(novel_id, slug)``.
+
+        Mirrors the ``uq_kb_overlay_per_novel`` partial unique index (migration
+        0037). Used by :meth:`demote_to_overlay` for the pre-flush collision
+        check against the target novel's existing overlays.
+        """
+        return any(
+            r.is_overlay and r.novel_id == novel_id and r.slug == slug
+            for r in self._entries.values()
+        )
 
     def _count_relying_novels(
         self, series_id: uuid.UUID, slug: str, target_novel_id: uuid.UUID
@@ -207,27 +234,3 @@ class FakeScopeKBRepo:
         }
         relying = members_excluding_target - covered
         return len(relying)
-
-    # -- Core type converters ------------------------------------------
-
-    @staticmethod
-    def _to_series_entry(record: _EntryRecord) -> SeriesKBEntry:
-        assert record.series_id is not None  # Canon invariant.
-        return SeriesKBEntry(
-            id=record.id,
-            entity_type=record.entity_type,
-            name=record.name,
-            slug=record.slug,
-            series_id=record.series_id,
-        )
-
-    @staticmethod
-    def _to_novel_entry(record: _EntryRecord) -> NovelKBEntry:
-        assert record.novel_id is not None  # Overlay invariant.
-        return NovelKBEntry(
-            id=record.id,
-            entity_type=record.entity_type,
-            name=record.name,
-            slug=record.slug,
-            novel_id=record.novel_id,
-        )

@@ -115,7 +115,7 @@ class KBEntry(Base):
             name="ck_kb_entries_review_status",
         ),
         # REMOVED: UniqueConstraint("novel_id", "slug", name="uq_kb_entries_novel_slug")
-        # REPLACED BY (in Alembic migration 0036):
+        # REPLACED BY (in Alembic migration 0037_series_foundation):
         #   - uq_kb_canon_per_series ON (series_id, slug) WHERE novel_id IS NULL
         #   - uq_kb_overlay_per_novel ON (novel_id, slug) WHERE novel_id IS NOT NULL
         #   - ck_kb_entries_scope_invariant CHECK

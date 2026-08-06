@@ -67,10 +67,11 @@ class TestPromoteToCanon:
         )
         novel = make_novel(id=novel_id, series_id=series_id)
 
-        # Execute called 2x: entry lookup, novel lookup.
+        # Execute called 3x: entry lookup, novel lookup, canon-slug collision check.
         mock_session.execute.side_effect = [
             make_result(scalar_one_or_none=entry),
             make_result(scalar_one_or_none=novel),
+            make_result(scalar_one_or_none=None),
         ]
 
         result = await repo.promote_to_canon(novel_id, entry.id)
@@ -131,6 +132,35 @@ class TestPromoteToCanon:
         with pytest.raises(ConflictError, match="not in a series"):
             await repo.promote_to_canon(novel_id, entry.id)
 
+    async def test_raises_conflict_when_canon_slug_already_exists(
+        self, repo: KBRepository, mock_session: AsyncMock
+    ) -> None:
+        """Promoting an overlay whose slug an existing Canon owns → 409.
+
+        Mirrors the create path's pre-flush ``find_canon_by_slug`` check
+        (``canon_service.create_canon``): the collision is surfaced as a typed
+        ``ConflictError`` (→ 409), not a raw ``IntegrityError`` from
+        ``uq_kb_canon_per_series`` (→ 500).
+        """
+        novel_id = uuid.uuid4()
+        series_id = uuid.uuid4()
+        entry = make_kb_model(id=uuid.uuid4(), novel_id=novel_id, series_id=None, slug="alice")
+        novel = make_novel(id=novel_id, series_id=series_id)
+        existing_canon = make_kb_model(
+            id=uuid.uuid4(), novel_id=None, series_id=series_id, slug="alice"
+        )
+        # Execute called 3x: entry lookup, novel lookup, canon-slug collision check.
+        mock_session.execute.side_effect = [
+            make_result(scalar_one_or_none=entry),
+            make_result(scalar_one_or_none=novel),
+            make_result(scalar_one_or_none=existing_canon),
+        ]
+
+        with pytest.raises(ConflictError, match="already exists"):
+            await repo.promote_to_canon(novel_id, entry.id)
+
+        mock_session.flush.assert_not_awaited()
+
 
 # ---------------------------------------------------------------------------
 # demote_to_overlay
@@ -153,10 +183,12 @@ class TestDemoteToOverlay:
             base_entry_id=None,
             slug="shared-lore",
         )
-        # Execute called 2x: entry lookup, reliance-count (D4 guard) → 0.
+        # Execute called 3x: entry lookup, reliance-count (D4 guard) → 0,
+        # overlay-slug collision check → none.
         mock_session.execute.side_effect = [
             make_result(scalar_one_or_none=entry),
             make_result(scalar_one=0),
+            make_result(scalar_one_or_none=None),
         ]
 
         result = await repo.demote_to_overlay(series_id, entry.id, target_novel_id)
@@ -215,6 +247,36 @@ class TestDemoteToOverlay:
         ]
 
         with pytest.raises(ConflictError, match="rely on it"):
+            await repo.demote_to_overlay(series_id, entry.id, target_novel_id)
+
+        mock_session.flush.assert_not_awaited()
+
+    async def test_raises_conflict_when_target_overlay_slug_already_exists(
+        self, repo: KBRepository, mock_session: AsyncMock
+    ) -> None:
+        """Demoting a Canon whose slug an existing target overlay owns → 409.
+
+        The D4 guard passes (relying = 0); the target-novel overlay collision
+        check then refuses the demotion with a typed ``ConflictError`` (→ 409),
+        not a raw ``IntegrityError`` from ``uq_kb_overlay_per_novel`` (→ 500).
+        """
+        series_id = uuid.uuid4()
+        target_novel_id = uuid.uuid4()
+        entry = make_kb_model(
+            id=uuid.uuid4(), series_id=series_id, novel_id=None, slug="shared-lore"
+        )
+        existing_overlay = make_kb_model(
+            id=uuid.uuid4(), novel_id=target_novel_id, series_id=None, slug="shared-lore"
+        )
+        # Execute called 3x: entry lookup, reliance-count (D4 → 0), overlay-slug
+        # collision check.
+        mock_session.execute.side_effect = [
+            make_result(scalar_one_or_none=entry),
+            make_result(scalar_one=0),
+            make_result(scalar_one_or_none=existing_overlay),
+        ]
+
+        with pytest.raises(ConflictError, match="already exists"):
             await repo.demote_to_overlay(series_id, entry.id, target_novel_id)
 
         mock_session.flush.assert_not_awaited()
