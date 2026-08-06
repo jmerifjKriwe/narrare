@@ -1,9 +1,10 @@
 # ADR-079 — Series Cross-Novel Drift (SERIES-004 — Spec 4: Canon Contradiction + Series Voice Drift)
 
-> **Status:** ✅ Accepted (decision in effect). Implementation in progress — **Core (Task 1)
-> + Backend (Tasks 2–3) landed**; Frontend (Task 4) + i18n (Task 5) pending. See
-> *Retrofit-Plan* for the per-slice state and *architectural-discipline §7* ("documented ≠
-> implemented") — the ADR decision is accepted; not every slice is shipped yet.
+> **Status:** ✅ Implemented (decision in effect; all five slices shipped). Core (Task 1) +
+> Backend (Tasks 2–3) landed; Frontend (Task 4) + i18n (Task 5) landed in commit `ede62081`
+> (before the doc gate). See *Retrofit-Plan* for the per-slice state. Slice 6 (persistence —
+> `GET …/consistency/{novel_id}` + results repository) is a deferred out-of-v1 follow-up, not
+> part of this ADR's decision.
 > **Date:** 2026-08-06
 > **Deciders:** Architecture Specialist; User (approved the design spec
 > `docs/superpowers/specs/2026-08-02-series-cross-novel-drift-design.md`)
@@ -71,7 +72,7 @@ Two distinct drift questions arise once a series has both a shared canon and a s
 | Per-novel `ConsistencyAgent` (CONS-001) | EXISTS — ADR-044; the *within-novel* checker. This ADR's `SeriesConsistencyAgent` is the *cross-novel* complement, NOT a replacement. | `packages/core/narrare_core/agents/consistency_agent.py` |
 | `BandSummaryAgent` pattern (1-call Output-Function agent) | EXISTS — ADR-077; the implementation pattern `SeriesConsistencyAgent` mirrors. | `packages/core/narrare_core/agents/band_summary_agent.py` |
 | `LLMIntent.ANALYSE` routeable intent | EXISTS — `series_consistency` added as a new `context_mode` (Mode 1). | `packages/core/narrare_core/prompts/route_table.py` |
-| Frontend Bände-Tab | EXISTS — Spec 1; the integration surface for the per-band "Check" button (Task 4, pending). | `packages/web/app/series/[id]/` |
+| Frontend Bände-Tab | EXISTS — Spec 1; the integration surface for the per-band "Check" button (Task 4 — now landed in `ede62081`). | `packages/web/app/series/[id]/` |
 
 ### Program-level position
 
@@ -82,7 +83,7 @@ This is **Spec 4 of 5** in the Series program:
 | 1 | Series Foundation + KB Evolution (ADR-075) | ✅ Implemented |
 | 2 | Series Generation Context (ADR-077) | ✅ Implemented |
 | 3 | Series Voice Hierarchy (ADR-078) | ✅ Implemented |
-| **4** | **Series Cross-Novel Drift (this ADR)** | **🔄 In progress (Core + Backend landed)** |
+| **4** | **Series Cross-Novel Drift (this ADR)** | **✅ Implemented** |
 | 5 | Series Export | Downstream |
 
 ---
@@ -178,7 +179,7 @@ Bände-Tab · Separate `SeriesVoiceDriftService` (pipeline reused).**
   the series references (canon + voice). Full-series batch scan is deferred (Spec §4 YAGNI).
 - **Presentation — integrated in Bände-Tab.** A per-band "Check Series Consistency"
   affordance + a results panel (conflicts + drift warnings) reusing existing analysis-panel
-  patterns. (Frontend — Task 4 — pending.)
+  patterns. (Frontend — Task 4 — landed in `ede62081`.)
 - **Persistence — stateless (v1).** The v1 check runs the agent and returns the result; it
   persists nothing. A results repository + the `GET …/consistency/{novel_id}` retrieval
   endpoint from the plan are deferred to a follow-up slice.
@@ -254,10 +255,11 @@ unchanged — the only difference is the *source* of the reference profile
   follow-up adds an SSE variant.
 - **Stateless v1 — no persistence.** The `GET …/consistency/{novel_id}` retrieval endpoint
   and a results repository from the plan are deferred to a follow-up slice (see Retrofit-Plan).
-- **`route_table.py` is at the hard limit (400/400).** Adding `series_consistency` required
-  consolidating a comment; any future route addition will require modularising the file
-  (extracting `INTENT_TO_CATEGORY` / `INTENT_TO_MODE`). Pre-existing debt surfaced, not
-  introduced.
+- **`route_table.py` reached the hard limit (400/400) — since resolved.** Adding
+  `series_consistency` required consolidating a comment; the file has since been modularised
+  by extracting `INTENT_TO_CATEGORY` / `INTENT_TO_MODE` into `route_table_intents.py`
+  (re-exported from `route_table.py`; the architecture AST checker follows the dicts to the
+  new SSOT). Pre-existing debt surfaced by this ADR, now paid down.
 
 **Constraints introduced:**
 
@@ -344,14 +346,17 @@ bypass the SSOT.
 - `scripts/architecture/ai-gate-baseline.json` — +4 intentional empty-KB-var entries for
   `series_consistency_prompt.py` (Canon facts flow as runtime user input, ADR-074 binding).
 
-**Frontend (Task 4 — PENDING):**
-- Bände-Tab "Check Series Consistency" affordance per band + results panel (conflicts +
-  drift warnings) + TanStack hooks + TS types (RULE-17 parity).
-- *Not yet implemented.*
+**Frontend (Task 4 — implemented):**
+- Bände-Tab `SeriesDriftPanel` + `SeriesConflictList` + `SeriesDriftSummary` components +
+  `useSeriesDrift` / `useSeriesConsistency` TanStack hooks + TS types (RULE-17 parity) +
+  API client methods (`packages/web/lib/api/series.ts`).
+- ✅ Landed (commit `ede62081`).
 
-**i18n (Task 5 — PENDING):**
-- `series.consistency.*` + `series.voiceDrift.*` namespaces (en/de/fr parity).
-- *Not yet implemented.*
+**i18n (Task 5 — implemented):**
+- `series.drift.*` namespace (en/de/fr parity) in
+  `packages/i18n/messages/{en,de,fr}/studio.json` (consolidates the consistency + voice-drift
+  UI strings under one namespace, rather than the originally-predicted split namespaces).
+- ✅ Landed (commit `ede62081`).
 
 ### 2. Migration steps (vertical slices)
 
@@ -364,9 +369,8 @@ bypass the SSOT.
    schemas + DI + router (`POST …/voice-drift/check`); reuses ANAL-009 Phase 2B pipeline.
    ✅ Landed.
 4. **Slice 4 — Frontend (Task 4):** Bände-Tab integration + results panel + hooks + types.
-   ⏳ Pending.
-5. **Slice 5 — i18n (Task 5):** `series.consistency.*` + `series.voiceDrift.*` (en/de/fr).
-   ⏳ Pending.
+   ✅ Landed (commit `ede62081`).
+5. **Slice 5 — i18n (Task 5):** `series.drift.*` (en/de/fr). ✅ Landed (commit `ede62081`).
 6. **Slice 6 (deferred follow-up):** results repository + `GET …/consistency/{novel_id}`
    retrieval endpoint (persistence). ⏳ Out of v1 scope.
 
@@ -395,7 +399,8 @@ bypass the SSOT.
   `test_router_consistency.py` (4) + `test_series_voice_drift_service.py` (12, incl.
   `TestNovelLevelRegression`) + `test_router_voice_drift.py` (4). Combined series + analysis:
   548 passed. All Fake-based (ADR-030).
-- **Frontend (Task 4 — pending):** component + hook + integration tests (TDD: RED → GREEN).
+- **Frontend (Task 4 — landed):** component + hook + integration tests
+  (`SeriesConflictList.test.tsx` + `SeriesDriftPanel.test.tsx` + `SeriesDriftSummary.test.tsx`).
 - **Regression:** standalone drift (ANAL-009) + per-novel consistency (CONS-001) lanes green.
 
 ---
@@ -415,9 +420,9 @@ These are NOT blockers for this ADR; they are acknowledged and mitigated:
 3. **Stateless v1 — no persistence.** The `GET …/consistency/{novel_id}` retrieval endpoint
    + results repository from the plan are deferred. Each check re-runs the agent. Acceptable
    for v1 (checks are on-demand, rate-limited); persistence is a follow-up slice. Low risk.
-4. **`route_table.py` at the hard limit (400/400).** Pre-existing debt surfaced by the
-   `series_consistency` addition. The next route addition MUST modularise the file. Low risk
-   for this ADR.
+4. **`route_table.py` at the hard limit (400/400) — since resolved.** Pre-existing debt
+   surfaced by the `series_consistency` addition; the file has since been modularised
+   (`route_table_intents.py`). Low risk for this ADR.
 5. **Template is EN-only.** Consistent with all existing analysis templates (band_summary,
    coreference, etc. are EN-only). UI-string i18n (de/fr) is Task 5. Low risk.
 
@@ -436,7 +441,7 @@ No decision required a user call beyond approving the design spec.
 | RULE-05/06 | ✅ | Core owns the agent + types + governed template; Backend owns the services + routers; one responsibility per file; canon-contradiction and series-voice-drift are two separate service families. |
 | RULE-07 | ✅ | `router → service → repository → DB`; Canon read via `KBRepository.find_canon_for_series` (no raw SQL); series-voice read via `SeriesRepository` (no raw column access — the ADR-050 "no SSOT bypass" analogue ADR-078's Review Trigger demanded); Core agent has no `apps/` imports. |
 | RULE-11 | ✅ | Empty Canon / empty chapters / missing series voice / voice with no metrics → graceful no-op (canon: empty conflicts; voice-drift: `no_profile`) — no LLM call, no crash; ownership errors are 403 (anti-enumeration). |
-| RULE-17 | 🔄 | TS mirrors will preserve snake_case (Task 4 — pending). |
+| RULE-17 | ✅ | TS mirrors preserve snake_case (Task 4 landed in `ede62081`). |
 | RULE-22 / CR-04 | ✅ | Cross-feature coherence: Canon + series voice are shared data read through repository contracts; producer + consumer defined together; the read path is read-only and additive (no producer change); descriptive/metric boundary preserved by construction (`author_metric_distances` is comparison-only). |
 
 ---
@@ -447,8 +452,9 @@ No decision required a user call beyond approving the design spec.
 - [x] **Core (Task 1) implemented** — `SeriesConsistencyAgent` + types + governed template.
 - [x] **Backend (Tasks 2–3) implemented** — `SeriesConsistencyService` +
       `SeriesVoiceDriftService` + APIs (stateless v1).
-- [ ] **Frontend (Task 4) implemented** — Bände-Tab integration + results panel + hooks.
-- [ ] **i18n (Task 5) implemented** — `series.consistency.*` + `series.voiceDrift.*` (en/de/fr).
+- [x] **Frontend (Task 4) implemented** — Bände-Tab integration + results panel + hooks
+      (commit `ede62081`).
+- [x] **i18n (Task 5) implemented** — `series.drift.*` (en/de/fr) (commit `ede62081`).
 - [ ] When **Spec 5 (Series Export)** is implemented — verify the drift/consistency results
       (once persisted) can feed an export-quality report if desired.
 - [ ] If **progressive streaming** is wanted on the series drift/consistency checks — add

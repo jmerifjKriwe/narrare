@@ -9,7 +9,10 @@
 > to the relevant Spec owner.
 >
 > **Created:** 2026-07-28
-> **Last updated:** 2026-07-29 (Doc-Gate-Deferrals komplett in YAGNI-Tabelle dokumentiert)
+> **Last updated:** 2026-08-06 (Specs 1–4 COMPLETE; Spec 5 deferred as a separate feature)
+>
+> **Program status:** Specs 1–4 COMPLETE (ADR-075 / ADR-077 / ADR-078 / ADR-079 — all ✅
+> Implemented). Spec 5 (Series Export) is deferred as a separate feature.
 
 ---
 
@@ -260,6 +263,9 @@ Workspace) is designed to host all later additions without restructuring.
 | 2026-07-29 | Schema = Option 2A + STI (Single `kb_entries` table with scope discriminator at DB level + discriminated `SeriesKBEntry` / `NovelKBEntry` Pydantic types in Core) | 2B (two tables) rejected: real benefits (type safety) but UNION-read-path + cross-table-relationships + ~15-module blast radius outweigh benefits. 2A+STI gets 2B's type-safety without 2B's main costs. | Spec 1 (data model, Core types) |
 | 2026-07-29 | Phasing = 5 vertical slices (Data Foundation → KB Scope → Series CRUD + Join → Frontend Dashboard + Workspace → KB Scope UI) | Each slice is independently reviewable + deployable; matches Narrane's Core → Backend → Frontend → Platform pattern; lets dependencies flow naturally | Spec 1 (implementation order) |
 | 2026-07-29 | YAGNI list documented transparently in this file | User request: deferred items must be tracked, not silently dropped. Each deferred feature has a target Spec and rationale. | All Specs |
+| 2026-08-02 | Spec 2 = Series Generation Context (ADR-077) — `BandSummaryAgent` aggregates chapter summaries into a novel-level band summary; `series_history` optional var + `band_summary` context_mode on SUMMARIZE; series-canon + latest-known-state read-merge injected when generating Band N | Lets Band N generation see the series canon + state-at-(N−1) without a curated per-novel summary field (reuses WIKI-001 chapter summaries) | Spec 2 (and feeds Specs 3/4 baselines) |
+| 2026-08-05 | Spec 3 = Series Voice Hierarchy (ADR-078) — opt-in cascade: `SeriesSettings.author_voice` is a trend baseline (one signal), novel-level voice wins when profiled (no forced injection into deliberately different-voiced books); closes ADR-074 Review Trigger | Forced cascade would inject the author's usual patterns into an experimental book; opt-in cascade respects both series coherence and per-novel intent | Spec 3 (closes ADR-074); Spec 4 reads the series voice as drift baseline |
+| 2026-08-06 | Spec 4 = Series Cross-Novel Drift (ADR-079) — both cross-novel drift modes: (a) canon-contradiction via new `SeriesConsistencyAgent` (novel prose vs series Canon KB) and (b) series-scope voice drift reusing the `AuthorVoiceDriftAgent` pipeline with `SeriesSettings.author_voice` as trend baseline; read-scope = current-band-vs-series (not full-series batch scan — YAGNI); integrated in Bände-Tab; stateless v1 | Two distinct drift signals (factual canon break vs stylistic voice drift) need separate detection but share the per-band surface; reusing the voice pipeline avoids a new drift agent | Spec 4; Spec 5 (Export) remains deferred as a separate feature |
 
 ---
 

@@ -70,24 +70,25 @@ def _named_assigns(tree: ast.AST) -> list[tuple[str, ast.expr]]:
 
 
 def parse_route_table_dicts(path: Path) -> dict[str, dict[str, Any]]:
-    """Parse INTENT_TO_CATEGORY and INTENT_TO_MODE from route_table.py."""
-    if not path.is_file():
-        return {}
+    """Parse INTENT_TO_CATEGORY and INTENT_TO_MODE.
 
-    source = path.read_text(encoding="utf-8")
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return {}
+    These two intent-mapping dicts are the SSOT for routeable categories/modes.
+    They were modularised out of ``route_table.py`` into a sibling
+    ``route_table_intents.py`` (RULE-04 — ``route_table.py`` reached the
+    400-line hard limit; see ADR-079 Consequences) and re-exported from
+    ``route_table.py``. Because re-exports are ``ast.ImportFrom`` nodes (not
+    dict-literal assignments), this helper reads ``path`` first — so inline
+    test fixtures keep working — and then, when a sibling
+    ``route_table_intents.py`` exists, parses it too. The sibling wins on
+    conflict because it holds the authoritative dict literals.
+    """
+    categories, modes = _extract_intent_maps(path)
 
-    categories: dict[str, str] = {}
-    modes: dict[str, str] = {}
-
-    for name, value in _named_assigns(tree):
-        if name == "INTENT_TO_CATEGORY":
-            categories = parse_intent_dict(value)
-        elif name == "INTENT_TO_MODE":
-            modes = parse_intent_dict(value)
+    intents_path = path.parent / "route_table_intents.py"
+    if intents_path != path and intents_path.is_file():
+        sibling_categories, sibling_modes = _extract_intent_maps(intents_path)
+        categories.update(sibling_categories)
+        modes.update(sibling_modes)
 
     result: dict[str, dict[str, Any]] = {}
     for intent in set(categories) | set(modes):
@@ -102,6 +103,30 @@ def parse_route_table_dicts(path: Path) -> dict[str, dict[str, Any]]:
             "has_explicit_mode": intent in modes,
         }
     return result
+
+
+def _extract_intent_maps(path: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """Read the ``INTENT_TO_CATEGORY`` and ``INTENT_TO_MODE`` dict literals.
+
+    Returns ``(categories, modes)``. A missing file or a syntax error yields
+    empty dicts. Both dicts use annotated assignments
+    (``INTENT_TO_CATEGORY: dict[...] = {...}``).
+    """
+    if not path.is_file():
+        return {}, {}
+    source = path.read_text(encoding="utf-8")
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return {}, {}
+    categories: dict[str, str] = {}
+    modes: dict[str, str] = {}
+    for name, value in _named_assigns(tree):
+        if name == "INTENT_TO_CATEGORY":
+            categories = parse_intent_dict(value)
+        elif name == "INTENT_TO_MODE":
+            modes = parse_intent_dict(value)
+    return categories, modes
 
 
 def parse_intent_dict(node: ast.expr) -> dict[str, str]:
