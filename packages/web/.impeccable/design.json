@@ -1,0 +1,308 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-05T00:00:00Z",
+  "title": "Design System: Narrare",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "oklch(0.145 0 0)",
+        "tonalRamp": [
+          "oklch(0.02 0 0)",
+          "oklch(0.1 0 0)",
+          "oklch(0.2 0 0)",
+          "oklch(0.35 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.65 0 0)",
+          "oklch(0.8 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.92 0 0)",
+          "oklch(0.94 0 0)",
+          "oklch(0.96 0 0)",
+          "oklch(0.97 0 0)",
+          "oklch(0.985 0 0)",
+          "oklch(0.99 0 0)",
+          "oklch(0.995 0 0)",
+          "oklch(1 0 0)"
+        ]
+      },
+      "paper-ink": {
+        "role": "neutral",
+        "displayName": "Paper Ink",
+        "canonical": "oklch(0.145 0 0)",
+        "tonalRamp": [
+          "oklch(0.02 0 0)",
+          "oklch(0.1 0 0)",
+          "oklch(0.2 0 0)",
+          "oklch(0.35 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.65 0 0)",
+          "oklch(0.8 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "ash": {
+        "role": "neutral",
+        "displayName": "Ash",
+        "canonical": "oklch(0.55 0.02 264)",
+        "tonalRamp": [
+          "oklch(0.3 0.02 264)",
+          "oklch(0.38 0.02 264)",
+          "oklch(0.45 0.02 264)",
+          "oklch(0.55 0.02 264)",
+          "oklch(0.62 0.02 264)",
+          "oklch(0.7 0.015 264)",
+          "oklch(0.8 0.01 264)",
+          "oklch(0.9 0.005 264)"
+        ]
+      },
+      "mist": {
+        "role": "neutral",
+        "displayName": "Mist",
+        "canonical": "oklch(0.92 0.005 264)",
+        "tonalRamp": [
+          "oklch(0.7 0.01 264)",
+          "oklch(0.76 0.008 264)",
+          "oklch(0.82 0.006 264)",
+          "oklch(0.87 0.005 264)",
+          "oklch(0.92 0.005 264)",
+          "oklch(0.94 0.004 264)",
+          "oklch(0.96 0.003 264)",
+          "oklch(0.98 0.002 264)"
+        ]
+      },
+      "fog": {
+        "role": "neutral",
+        "displayName": "Fog",
+        "canonical": "oklch(0.93 0.004 264)",
+        "tonalRamp": [
+          "oklch(0.7 0.008 264)",
+          "oklch(0.76 0.007 264)",
+          "oklch(0.82 0.005 264)",
+          "oklch(0.88 0.005 264)",
+          "oklch(0.93 0.004 264)",
+          "oklch(0.95 0.003 264)",
+          "oklch(0.97 0.002 264)",
+          "oklch(0.985 0.001 264)"
+        ]
+      },
+      "indigo": {
+        "role": "accent",
+        "displayName": "Indigo",
+        "canonical": "oklch(0.546 0.215 262.881)",
+        "tonalRamp": [
+          "oklch(0.3 0.18 262.9)",
+          "oklch(0.38 0.19 262.9)",
+          "oklch(0.46 0.2 262.9)",
+          "oklch(0.546 0.215 262.9)",
+          "oklch(0.62 0.18 262.9)",
+          "oklch(0.72 0.12 262.9)",
+          "oklch(0.85 0.06 262.9)",
+          "oklch(0.95 0.02 262.9)"
+        ]
+      },
+      "editor-red": {
+        "role": "tertiary",
+        "displayName": "Editor's Red",
+        "canonical": "oklch(0.55 0.22 25)",
+        "tonalRamp": [
+          "oklch(0.3 0.2 25)",
+          "oklch(0.38 0.21 25)",
+          "oklch(0.46 0.22 25)",
+          "oklch(0.55 0.22 25)",
+          "oklch(0.62 0.19 25)",
+          "oklch(0.72 0.13 25)",
+          "oklch(0.85 0.07 25)",
+          "oklch(0.95 0.02 25)"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(0.92 0 0)",
+        "tonalRamp": [
+          "oklch(0.85 0 0)",
+          "oklch(0.88 0 0)",
+          "oklch(0.9 0 0)",
+          "oklch(0.92 0 0)",
+          "oklch(0.94 0 0)",
+          "oklch(0.96 0 0)",
+          "oklch(0.98 0 0)",
+          "oklch(1 0 0)"
+        ]
+      },
+      "ring": {
+        "role": "neutral",
+        "displayName": "Ring",
+        "canonical": "oklch(0.708 0 0)",
+        "tonalRamp": [
+          "oklch(0.4 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.6 0 0)",
+          "oklch(0.708 0 0)",
+          "oklch(0.78 0 0)",
+          "oklch(0.85 0 0)",
+          "oklch(0.92 0 0)",
+          "oklch(0.98 0 0)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Sidebar",
+        "canonical": "oklch(0.985 0 0)",
+        "tonalRamp": [
+          "oklch(0.9 0 0)",
+          "oklch(0.93 0 0)",
+          "oklch(0.95 0 0)",
+          "oklch(0.965 0 0)",
+          "oklch(0.985 0 0)",
+          "oklch(0.99 0 0)",
+          "oklch(0.995 0 0)",
+          "oklch(1 0 0)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "body": { "displayName": "Body", "purpose": "Standard-UI-Text." },
+      "editor": {
+        "displayName": "Editor Body",
+        "purpose": "Der Schreibtext — 65ch, line-height 1.8."
+      },
+      "label": { "displayName": "Label", "purpose": "Formular-Labels und Buttons, Weight 500." }
+    },
+    "shadows": [
+      {
+        "name": "button-lift",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Primary-Buttons und aktive Stepper."
+      },
+      {
+        "name": "panel-lift",
+        "value": "0 25px 50px -12px rgb(0 0 0 / 0.25)",
+        "purpose": "Mobile Bottom-Sheets (shadow-2xl)."
+      }
+    ],
+    "motion": [
+      { "name": "duration-fast", "value": "0.15s", "purpose": "Exit-Transitions." },
+      { "name": "duration-normal", "value": "0.2s", "purpose": "Default-Transitions." },
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0, 0, 0.2, 1)",
+        "purpose": "Einziges Easing im System."
+      }
+    ],
+    "breakpoints": [
+      { "name": "lg", "value": "1024px", "purpose": "Panels werden statische Sidebars." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Die Hauptaktion — Ink-Fill, ruhig und präzise.",
+      "html": "<button type=\"button\" class=\"ds-btn-primary\">Save Chapter</button>",
+      "css": ".ds-btn-primary { background: #030213; color: #ffffff; height: 36px; padding: 0 16px; border: none; border-radius: 8px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); transition: opacity 0.2s ease-out; } .ds-btn-primary:hover { opacity: 0.9; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 1px oklch(0.708 0 0); } .ds-btn-primary:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Ghost Icon Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Icon-only Aktion mit Pflicht-Aria-Label.",
+      "html": "<button type=\"button\" class=\"ds-btn-ghost\" aria-label=\"Toggle sidebar\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 12h16\"/><path d=\"M4 6h16\"/><path d=\"M4 18h16\"/></svg></button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; background: transparent; color: #717182; padding: 6px; border: none; border-radius: 6px; font-size: 14px; transition: background-color 0.2s ease-out, color 0.2s ease-out; } .ds-btn-ghost:hover { background: #ececf0; color: oklch(0.145 0 0); } .ds-btn-ghost:focus-visible { outline: none; box-shadow: 0 0 0 1px oklch(0.708 0 0); }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge-default",
+      "description": "Kompaktes Status-/Kategorie-Label, nicht interaktiv.",
+      "html": "<div class=\"ds-badge\">Canon</div>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; background: #030213; color: #ffffff; padding: 2px 10px; border-radius: 6px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 600; } .ds-badge-outline { background: transparent; color: oklch(0.145 0 0); border: 1px solid rgba(0, 0, 0, 0.1); }"
+    },
+    {
+      "name": "Panel Shell",
+      "kind": "custom",
+      "refersTo": "panel-shell",
+      "description": "Rechtes Kontext-Panel: Mobile Bottom-Sheet, Desktop statische Sidebar.",
+      "html": "<section class=\"ds-panel\"><header class=\"ds-panel-header\"><h2>Context</h2><button type=\"button\" class=\"ds-btn-ghost\" aria-label=\"Close panel\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></button></header><div class=\"ds-panel-body\"><p>Panel content</p></div></section>",
+      "css": ".ds-panel { background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 14px 14px 0 0; box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25); display: flex; flex-direction: column; max-height: 85vh; overflow-y: auto; font-family: ui-sans-serif, system-ui, sans-serif; } .ds-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid rgba(0, 0, 0, 0.1); background: #ffffff; } .ds-panel-header h2 { margin: 0; font-size: 18px; font-weight: 500; } .ds-panel-body { padding: 16px; font-size: 14px; color: oklch(0.145 0 0); }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Ruhiges Textfeld mit transparentem Border und Focus-Ring.",
+      "html": "<label class=\"ds-label\" for=\"title\">Title</label><input id=\"title\" class=\"ds-input\" type=\"text\" placeholder=\"Chapter title\" />",
+      "css": ".ds-label { display: block; margin-bottom: 6px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; color: oklch(0.145 0 0); } .ds-input { display: block; width: 100%; height: 36px; padding: 0 12px; background: #f3f3f5; color: oklch(0.145 0 0); border: 1px solid transparent; border-radius: 8px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; transition: box-shadow 0.2s ease-out; } .ds-input::placeholder { color: #717182; } .ds-input:focus-visible { outline: none; box-shadow: 0 0 0 1px oklch(0.708 0 0); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Writer's Study",
+    "overview": "Narrare ist eine Schreibumgebung, kein Tool. Der North Star ist ein ruhiger Arbeitsraum bei Lampenlicht: der Manuscript Desk, an dem der Writer sitzt, umgeben von seinem Material. Die Oberfläche verhält sich wie ein gut eingerichteter Schreibtisch — alles Wichtige ist griffbereit, nichts drängt sich auf, und der Text selbst ist das, was Licht bekommt. Die Ästhetik ist editorial und handwerklich: Tinte auf Papier statt leuchtender Panels, präzise 8–10px-Radien statt verspielter Formen, eine einzige Indigo-Akzentfarbe statt eines Farbfeuerwerks. Die UI ist flach und ruhig; Tiefe entsteht nur dort, wo Interaktion sie rechtfertigt.",
+    "keyCharacteristics": [
+      "Ruhig, präzise, hilfreich — die UI tritt hinter den Text zurück",
+      "Tinte-auf-Papier-Kontrast statt bunter Panels",
+      "Flach by default; Tiefe nur als Reaktion auf Interaktion",
+      "AI-Unterstützung ist on demand — nichts blinkt, nichts drängt sich auf",
+      "Ein Indigo-Akzent pro Aufmerksamkeitspunkt, sonst Monochrom",
+      "Zwei Themes (narrare / neutral) in Light und Dark, System-Sans-Typografie"
+    ],
+    "rules": [
+      {
+        "name": "The Ink Rule",
+        "body": "Die Primärfarbe ist Tinte, kein Akzent. Alles, das als wichtig erscheinen soll, wird mit Ink gefüllt — Indigo markiert höchstens einen einzigen Fokuspunkt pro Bildschirm.",
+        "section": "colors"
+      },
+      {
+        "name": "The Red Rule",
+        "body": "Editor's Red erscheint nur bei destruktiven Aktionen oder echten Fehlern. Warnungen und sekundäre Zustände nutzen Ash, nie Red.",
+        "section": "colors"
+      },
+      {
+        "name": "The Study Rule",
+        "body": "Die UI-Typografie ist leiser als der Text. Editor-Body hat die größte Zeilenhöhe (1.8) und die ruhigste Breite (65ch) — alles drumherum ist kleiner, gedämpfter und enger.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Flächen sind flach im Ruhezustand. Schatten erscheinen nur als Reaktion auf Interaktion (Hover, Fokus, temporäre Überlagerung) — nie als dauerhafte Hierarchie-Aussage.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Quiet Desk Rule",
+        "body": "Die UI tritt hinter den Text zurück. Nichts blinkt, nichts animiert unaufgefordert. Ruhe ist das Feature.",
+        "section": "elevation"
+      },
+      {
+        "name": "The On-Demand Rule",
+        "body": "AI-Unterstützung erscheint nur, wenn der Writer sie aufruft. Kein Vorschlag drängt sich in den Text.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do den Text führen: Editor 65ch, line-height 1.8, große Ruhe um den Schreibbereich.",
+      "Do Tinte als Primärfarbe nutzen und Indigo auf genau einen Fokuspunkt pro Bildschirm beschränken.",
+      "Do Tiefe als Reaktion einsetzen: flach im Ruhezustand, shadow-sm auf Primary-Buttons, shadow-2xl nur für Mobile-Panels.",
+      "Do Editor's Red nur für destruktive Aktionen und echte Fehler verwenden.",
+      "Do AI-Ergebnisse als annotierten, rückgängig machbaren Text zeigen (ai-generated-pending = 8–15% Primary-Tint), nie als unmarkierten Final-Content.",
+      "Do Motion auf das minimale Vokabular beschränken: Fade (Overlay), Scale 0.95→1 (Dialog), Slide (Panel), 0.15–0.2s, ease-out."
+    ],
+    "donts": [
+      "Don't Neon-Startup-Look: keine leuchtenden Verläufe, keine gesättigten Banner-Farben, kein Glow.",
+      "Don't überfrachten: keine Doppel-Panels, keine redundanten Toolbars, keine dekorativen Elemente ohne Funktion.",
+      "Don't Blinki-Bunti: keine unaufgeforderten Animationen, keine Blink-Effekte, keine Auto-rotierenden Karussells, kein pulsierendes AI-Branding.",
+      "Don't AI-Unterstützung aufdrängen: kein Auto-Complete, das in den Text schreibt, keine Popups ohne Nutzeraktion (The On-Demand Rule).",
+      "Don't die UI lauter machen als den Text — Schriftgrößen, Gewichte und Radien der UI bleiben unterhalb der Editor-Typografie.",
+      "Don't neue Formsprache einführen (neue Radien, neue Akzentfarben, neue Schatten) außerhalb des definierten Token-Systems."
+    ]
+  }
+}

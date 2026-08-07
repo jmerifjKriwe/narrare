@@ -98,6 +98,12 @@ class WritingContext:
     avoidance_patterns: str = ""
     cross_session_context: str = ""  # cross-session writing memories from mem0
 
+    # Series history (Spec 2 / SERIES-002): the ``Previously in this series:``
+    # block assembled by SeriesHistoryTier from prior bands' BandSummary data.
+    # Pre-fetched by the Backend (RULE-07) and passed in as a kwarg — empty for
+    # standalone novels (RULE-11 graceful — renders nothing in the template).
+    series_history: str = ""
+
     # Context metadata (populated by assembler)
     character_names: list[str] = field(default_factory=lambda: [])
     location_names: list[str] = field(default_factory=lambda: [])
@@ -183,6 +189,7 @@ class WritingContext:
             "user_preferences": self.user_preferences,
             "avoidance_patterns": self.avoidance_patterns,
             "cross_session_context": self.cross_session_context,
+            "series_history": self.series_history,
             "is_first_chapter": str(self.is_first_chapter).lower(),
             "is_sparse_kb": str(self.is_sparse_kb).lower(),
             "story_structure": self.story_structure,

@@ -15,6 +15,13 @@ export interface ProjectSettings {
   ai_provider: string;
   ai_model: string;
   model_overrides: string;
+  /**
+   * Spec 3: per-novel opt-out flag for the series-voice Delta model (ADR-078).
+   * Read from the ORM column added in migration 0039 (defaults ``true``). When
+   * ``false`` the novel falls back to its own ``author_voice`` only and the
+   * series voice is skipped at generation-assembly time.
+   */
+  use_series_voice: boolean;
   updated_at: string;
 }
 

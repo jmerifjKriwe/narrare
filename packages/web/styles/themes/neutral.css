@@ -43,6 +43,13 @@
   --sidebar-border: #e5e5e4;
   --sidebar-ring: #525252;
 
+  /* Series accent (I-F1) — semantic token replacing raw blue-* utilities. */
+  --accent-series: #2563eb;
+  --accent-series-foreground: #ffffff;
+  --accent-series-muted: #eff6ff;
+  --accent-series-muted-foreground: #1d4ed8;
+  --accent-series-border: #bfdbfe;
+
   /* Editor-specific */
   --editor-max-width: 68ch;
   --editor-line-height: 1.8;
@@ -88,4 +95,11 @@
   --sidebar-accent-foreground: #fafafa;
   --sidebar-border: #262626;
   --sidebar-ring: #737373;
+
+  /* Series accent (I-F1) — inverted for dark mode */
+  --accent-series: #3b82f6;
+  --accent-series-foreground: #0a0a0a;
+  --accent-series-muted: #172554;
+  --accent-series-muted-foreground: #93c5fd;
+  --accent-series-border: #1e3a8a;
 }

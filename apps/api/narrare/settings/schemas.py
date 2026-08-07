@@ -53,6 +53,9 @@ class ProjectSettingsResponse(BaseModel):
     category_overrides: dict[str, object]
     intent_overrides: dict[str, object]
     token_limit_overrides: dict[str, object]
+    # Spec 3: per-novel opt-out flag for the series-voice Delta model (ADR-078).
+    # Read from the ORM column added in migration 0039 (defaults True).
+    use_series_voice: bool = True
     updated_at: datetime
 
 
@@ -62,6 +65,10 @@ class UpdateProjectSettingsRequest(BaseModel):
     ai_provider: str | None = Field(default=None, max_length=50)
     ai_model: str | None = Field(default=None, max_length=200)
     model_overrides: str | None = None  # JSON string
+    # Spec 3: per-novel opt-out. ``False`` opts out of the series-voice Delta
+    # model (the novel falls back to its own author_voice only). ``None`` =
+    # "not provided" → omitted from the PATCH (repository uses exclude_none).
+    use_series_voice: bool | None = Field(default=None)
 
 
 # ---------------------------------------------------------------------------

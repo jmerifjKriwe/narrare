@@ -80,6 +80,17 @@ class KBEntryListResponse(BaseModel):
     page_size: int
 
 
+class KBDemoteRequest(BaseModel):
+    """Request body for demoting a Series-Canon entry to a Novel-Overlay.
+
+    ``series_id`` identifies the canon's series; the target novel comes from the
+    request PATH (``/novels/{novel_id}/.../demote``), mirroring the promote
+    endpoint — so the body carries no target id that could disagree with the path.
+    """
+
+    series_id: uuid.UUID
+
+
 # ---------------------------------------------------------------------------
 # KB Relationship
 # ---------------------------------------------------------------------------

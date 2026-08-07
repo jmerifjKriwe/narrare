@@ -41,7 +41,7 @@
 | RULE-TEST-03 | Auto-tagging by directory (unit/integration/e2e) |
 | RULE-TEST-04 | No snapshots for dynamic content |
 
-**Coverage minimums:** `core/` ≥90%, `apps/api/` ≥80%. CI: `--cov-fail-under=60` (hard), 80% (target).
+**Coverage minimums (Backend):** `core/` ≥90%, `apps/api/` ≥80%. CI: `--cov-fail-under=80` (global, hard) + `check_module_coverage.py --fail` (RULE-10-Modul-Ziele + ratcheted Baselines). Frontend: `lib/**` ≥80% branches (`vitest.config.ts`, hard), `components/**` ratcheted 65%.
 **Test location:** `tests/unit/`, `tests/integration/`, `tests/e2e/` — never in source packages.
 **DB in tests:** Unit = no DB. Integration = real Alembic migrations, never `create_all()`.
 

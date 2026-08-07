@@ -9,6 +9,7 @@ from narrare.setup.schemas import (
     AIProvider,
     StarterContent,
     Step1LocationRequest,
+    Step2NovelRequest,
     Step4ProviderRequest,
     StoryStructure,
     StoryTone,
@@ -62,6 +63,56 @@ class TestStoryStructureEnum:
 
         req = Step2NovelRequest(title="My Novel")
         assert req.story_structure == StoryStructure.THREE_ACT
+
+
+class TestStoryToneEnum:
+    """RULE-17 parity: backend ``StoryTone`` must match the frontend wizard type.
+
+    Source of truth for the expected value set is
+    ``packages/web/types/wizard.ts`` (``StoryTone`` union). When a tone is
+    added here, the frontend type AND
+    ``packages/core/narrare_core/writing/_tone_data.py`` (``TONE_INSTRUCTIONS``)
+    must carry the same value — otherwise the wizard selection is rejected by
+    backend validation (CR: ``balanced``/``quiet`` were once missing here while
+    the frontend already offered them).
+    """
+
+    EXPECTED_TONES: frozenset[str] = frozenset(
+        {
+            "balanced",
+            "dramatic",
+            "humorous",
+            "suspenseful",
+            "contemplative",
+            "romantic",
+            "dark",
+            "adventurous",
+            "quiet",
+        }
+    )
+
+    def test_enum_values_match_frontend_wizard_type(self) -> None:
+        """Backend enum values must exactly equal the frontend ``StoryTone`` union."""
+        actual = {t.value for t in StoryTone}
+        extra = actual - self.EXPECTED_TONES
+        missing = self.EXPECTED_TONES - actual
+        assert not extra, f"RULE-17 drift — backend-only tones: {sorted(extra)}"
+        assert not missing, f"RULE-17 drift — backend missing tones: {sorted(missing)}"
+
+    def test_step2_accepts_every_frontend_tone(self) -> None:
+        """``Step2NovelRequest`` must accept every tone the wizard can send.
+
+        Uses ``model_validate`` to exercise the JSON-body coercion path that
+        FastAPI uses when the frontend posts the wizard state.
+        """
+        for tone in self.EXPECTED_TONES:
+            req = Step2NovelRequest.model_validate({"title": "T", "tone": tone})
+            assert req.tone == tone
+
+    def test_step2_rejects_unknown_tone(self) -> None:
+        """Unknown tone strings are still rejected (enum validation intact)."""
+        with pytest.raises(ValidationError):
+            Step2NovelRequest.model_validate({"title": "T", "tone": "not-a-real-tone"})
 
 
 class TestAIProviderEnum:

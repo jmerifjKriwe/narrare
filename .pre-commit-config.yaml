@@ -125,6 +125,18 @@ repos:
         files: ^packages/core/narrare_core/prompts/
         stages: [pre-commit]
 
+      # Mutation-inert convention — asset-reading tests (parents[N] + repo-root
+      # asset) must carry @pytest.mark.mutation_inert so MutMut's
+      # -m "not mutation_inert" filter excludes them. Prevents the sandbox
+      # crash class that aborted the August 2026 monthly mutation run (#146).
+      - id: mutation-inert-assets
+        name: Mutation-inert convention (asset-reading tests)
+        entry: uv run --no-sync python scripts/checks/check_mutation_inert_assets.py
+        language: system
+        pass_filenames: false
+        files: ^tests/unit/(core|api)/.*\.py$
+        stages: [pre-commit]
+
       # OpenAPI spec auto-regeneration — mutates docs/openapi.json when API surface changes
       # Uses --no-sync to rely on the already-synced venv (deterministic-venv contract;
       # see ci.yml architecture job). Run from repo root so the script path is canonical.
@@ -144,6 +156,19 @@ repos:
         language: system
         pass_filenames: false
         files: ^docs/architecture/decisions/
+
+      # SSOT consistency — CURRENT_STATE.md volatility policy (ADR-076).
+      # always_run: a violation can be introduced by editing CURRENT_STATE.md
+      # OR by code changes that make its claims stale, and the check is a
+      # cheap single-file regex pass — so it runs on every commit (matches the
+      # blocking CI architecture job).
+      - id: ssot-consistency
+        name: SSOT Consistency (CURRENT_STATE)
+        entry: uv run --no-sync python scripts/check_current_state_facts.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
 
       # Documentation drift — validates just-recipe references, ADR
       # cross-refs, spec/RULE alignment, and checker terminology.
@@ -214,6 +239,21 @@ repos:
         types: [python]
         require_serial: false
 
+      # Secret scanning — Gitleaks gate (AUFG-05-09). The wrapper is
+      # stdlib-only and locates the gitleaks binary on PATH, so it runs with
+      # system python3 (no venv dependency — the security gate must not depend
+      # on the project venv being synced). always_run: check_secrets.py invokes
+      # `gitleaks detect --source ROOT` over the whole repo (incl. history), so
+      # a secret added in ANY file (code, docs, config) must trip the gate —
+      # not only when .gitleaks.toml changes. Matches the CI security job.
+      - id: secrets-gitleaks
+        name: Secrets (Gitleaks)
+        entry: python3 scripts/check_secrets.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # ── Frontend checks ────────────────────────────────────────────
 
       # Biome lint + format — mutating hook that writes safe frontend fixes
@@ -231,6 +271,18 @@ repos:
         language: system
         types_or: [ts, tsx]
         files: ^packages/web/
+        pass_filenames: false
+        stages: [pre-commit]
+
+      # VRT Mock Contract — ADR-059 BINDING enforcement (mirrors CI frontend job).
+      # Ensures every VRT spec has catch-all route + expect.poll guard + timezoneId.
+      # Scoped to spec files only — cheap, runs only when a VRT spec changes.
+      - id: check-vrt-mock-contract
+        name: VRT Mock Contract (ADR-059)
+        entry: bash -c 'cd packages/web && npx tsx scripts/check-vrt-mock-contract.ts' --
+        language: system
+        types_or: [ts, tsx]
+        files: ^packages/web/tests/screenshots/.*\.spec\.ts$
         pass_filenames: false
         stages: [pre-commit]
 

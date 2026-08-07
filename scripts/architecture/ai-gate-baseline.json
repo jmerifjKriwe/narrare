@@ -43,6 +43,10 @@
     "apps/api/narrare/analysis/author_voice_drift_prompt.py | kb_characters",
     "apps/api/narrare/analysis/author_voice_drift_prompt.py | kb_factions",
     "apps/api/narrare/analysis/author_voice_drift_prompt.py | kb_locations",
-    "apps/api/narrare/analysis/author_voice_drift_prompt.py | kb_relationships"
+    "apps/api/narrare/analysis/author_voice_drift_prompt.py | kb_relationships",
+    "apps/api/narrare/series/series_consistency_prompt.py | kb_characters",
+    "apps/api/narrare/series/series_consistency_prompt.py | kb_factions",
+    "apps/api/narrare/series/series_consistency_prompt.py | kb_locations",
+    "apps/api/narrare/series/series_consistency_prompt.py | kb_relationships"
   ]
 }

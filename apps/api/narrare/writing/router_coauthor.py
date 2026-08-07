@@ -10,7 +10,7 @@ metadata in the final SSE event.
 
 from __future__ import annotations
 
-import uuid  # noqa: TC003 — needed at runtime for FastAPI path parameter type resolution
+import uuid
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse

@@ -310,9 +310,15 @@ test-file +files:
 test-match pattern:
     uv run pytest tests/ -v -k "{{pattern}}"
 
-# Run E2E tests (requires full stack: just dev + dev-services)
+# Run E2E tests directly against an already-running stack (60s per-test timeout).
+# For the CI-faithful wrapper (starts services, ENVIRONMENT=test, --timeout=300),
+# prefer:  just e2e
 test-e2e:
     uv run pytest tests/e2e/ -v -m e2e --timeout=60
+
+# Run E2E tests against full stack — CI-faithful (starts API+frontend with ENVIRONMENT=test, narrare_test DB on :5433, --timeout=300; cleans up on exit). Requires: docker compose -f docker-compose.dev.yml up -d postgres_test redis. Frontend mode override: E2E_FRONTEND_MODE=build just e2e. See scripts/run_e2e.sh, .github/workflows/ci.yml (test-e2e job), tests/AGENTS.md.
+e2e:
+    bash scripts/run_e2e.sh
 
 # Run frontend tests (Vitest)
 test-frontend:
@@ -322,9 +328,17 @@ test-frontend:
 test-frontend-coverage:
     cd packages/web && pnpm test:coverage
 
-# Run Playwright VRT screenshot tests (frontend only, no backend needed)
+# Run Playwright VRT screenshot tests (frontend only; preflight: deps + free :3000).
+vrt:
+    bash scripts/run_vrt.sh
+
+# Regenerate VRT baselines (--update-snapshots) — review the diff before committing.
+vrt-update:
+    bash scripts/run_vrt.sh --update
+
+# Back-compat alias for `just vrt`.
 test-vrt:
-    cd packages/web && pnpm playwright test --project=vrt
+    just vrt
 
 # Run all tests (backend + frontend)
 test-all: test test-frontend
@@ -403,7 +417,14 @@ check-frontend:
     just lint-frontend
     just typecheck-frontend
     just test-frontend
+    just check-vrt-contract
     @echo "✅ Frontend checks passed"
+
+# Check VRT mock contract (ADR-059 BINDING) — every VRT spec must have
+# catch-all route + expect.poll guard + timezoneId. Runs before VRT in CI.
+check-vrt-contract:
+    @echo "📐 Checking VRT mock contract (ADR-059 BINDING)..."
+    cd packages/web && npx tsx scripts/check-vrt-mock-contract.ts
 
 # ---------------------------------------------------------------------------
 # Additional Checks
@@ -434,7 +455,7 @@ check-python-size:
     @echo "📏 Checking Python file-size limits..."
     uv run python scripts/check_python_file_size.py
 
-# Check SSOT consistency — CURRENT_STATE.md claims vs reality (warn-only)
+# Check SSOT consistency — CURRENT_STATE.md claims vs reality (blocking; matches CI)
 check-ssot:
     @echo "📋 Checking CURRENT_STATE.md SSOT consistency..."
     uv run python scripts/check_current_state_facts.py
@@ -606,10 +627,12 @@ hooks-update:
 # Full check
 # ---------------------------------------------------------------------------
 
-# Full pre-merge check (everything, strict mode, SSOT warn-only)
+# Full pre-merge check (everything, strict mode)
 #
-# check-ssot is warn-only: it reports discrepancies but does not block the merge.
-# The `|| true` prevents its non-zero exit code from failing the entire recipe.
+# SSOT (check_current_state_facts.py) is blocking — matches CI's architecture
+# job. The volatility-policy checker currently exits 0 (verified after the
+# regex false-positive fix, commit 41efa086), so a non-zero exit is a real
+# regression and must block the merge.
 check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health check-feature-paths
-    -uv run python scripts/check_current_state_facts.py || true
+    uv run python scripts/check_current_state_facts.py
     @echo "✅ All checks passed — ready to merge"

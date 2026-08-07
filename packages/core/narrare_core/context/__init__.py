@@ -42,15 +42,18 @@ from narrare_core.context.budget import TokenBudgetManager
 from narrare_core.context.contracts import ContextAssemblerProtocol, ProactiveContextProtocol
 from narrare_core.context.name_matching import match_entity_names
 from narrare_core.context.proactive_service import ProactiveContextService
+from narrare_core.context.series_history import BandSummaryData, SeriesHistoryTier
 from narrare_core.context.suggestion import EntityMetadata, Suggestion
 from narrare_core.context.types import TierBudget
 
 __all__ = [
+    "BandSummaryData",
     "ContextAssembler",
     "ContextAssemblerProtocol",
     "EntityMetadata",
     "ProactiveContextProtocol",
     "ProactiveContextService",
+    "SeriesHistoryTier",
     "Suggestion",
     "TierBudget",
     "TokenBudgetManager",

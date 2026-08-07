@@ -23,6 +23,7 @@ from narrare_core.memory.availability import (
     is_mem0_available,
 )
 from narrare_core.prompts import PromptComposer, PromptRegistry
+from narrare_core.settings import get_core_settings
 
 if TYPE_CHECKING:
     from narrare_core.memory.protocols import PreferenceProvider
@@ -99,11 +100,21 @@ def _get_preference_service_instance() -> PreferenceProvider | None:
     )
 
     if isinstance(client, NullMemoryClient):
-        logger.warning(
-            "preference_service_client_creation_failed",
-            provider=provider_config.provider,
-        )
-        return None
+        if get_core_settings().e2e_test:
+            # E2E: NullMemoryClient is an intentional stub (see
+            # mem0_client.create_memory_client_sync). Wrap it in a
+            # PreferenceService so the preference path runs through its
+            # NORMAL code path (search → empty results → empty profile)
+            # rather than being skipped — exercising real code without any
+            # OpenAI embedding calls. Mirrors how TestModel keeps the agent
+            # running with a fake model instead of short-circuiting it.
+            logger.info("preference_service_e2e_stub_active")
+        else:
+            logger.warning(
+                "preference_service_client_creation_failed",
+                provider=provider_config.provider,
+            )
+            return None
 
     _preference_service_instance = cast(
         "PreferenceProvider",

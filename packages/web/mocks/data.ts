@@ -45,6 +45,7 @@ export function createTokenResponse(overrides: Partial<TokenResponse> = {}): Tok
 export function createNovel(overrides: Partial<Novel> = {}): Novel {
   return {
     id: "test-novel-id",
+    series_id: null,
     title: "Test Novel",
     author: "",
     genre: "",
@@ -63,6 +64,7 @@ export function createNovel(overrides: Partial<Novel> = {}): Novel {
 export function createNovelSummary(overrides: Partial<NovelSummary> = {}): NovelSummary {
   return {
     id: "test-novel-id",
+    series_id: null,
     title: "Test Novel",
     author: "",
     genre: "",
@@ -125,6 +127,7 @@ export function createProjectSettings(overrides: Partial<ProjectSettings> = {}):
     ai_provider: "openai",
     ai_model: "gpt-4o",
     model_overrides: "",
+    use_series_voice: true,
     updated_at: "2026-01-01T00:00:00Z",
     ...overrides,
   };

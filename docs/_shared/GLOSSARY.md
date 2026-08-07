@@ -51,6 +51,23 @@ Lifecycle wurde via `scripts/checks/check_ai_interaction_compliance.py` (Check 1
 
 ## B
 
+**Band**
+A novel that belongs to a series (Reihe). Each Band has a 1-based position
+within its series. Plural: Bände. Contrast with *Volume* (which groups chapters
+*within* one novel); a Band is the whole novel viewed as a member of a series.
+See *Series / Reihe*, SERIES-001.
+
+**Band Summary**
+The auto-generated + overrideable recap of one novel's place in a series
+(SERIES-002 / ADR-077). A `BandSummary` row (1:1 to `Novel`, `novel_id` PK +
+unique FK `ON DELETE CASCADE`) holds a multi-paragraph `full_summary`, a
+one-sentence `short_summary`, an optional user `override`, and `generated_at`.
+Produced by `BandSummaryAgent` from the band's chapter summaries. At generation
+time the `SeriesHistoryTier` selects which text each prior band contributes
+based on recency: in-window bands use `override or full_summary`; out-of-window
+bands use only `short_summary`. See *Series History (Context Tier)*,
+*Context Window*, SERIES-002, ADR-077.
+
 **Budget (Token Budget)**
 The maximum number of tokens allocated for a specific part of a prompt — typically
 for KB context injection. Managed by `core/context/budget.py`. When context exceeds
@@ -64,6 +81,18 @@ source.
 ---
 
 ## C
+
+**Canon Contradiction**
+A conflict detected when a novel's (band's) chapter prose contradicts the
+series' shared **Series-Canon** KB — the cross-novel fixed-facts layer
+(SERIES-004 / ADR-079). Detected by `SeriesConsistencyAgent` (one LLM call;
+input: Canon entries + chapter prose as runtime user-channel content). Each
+conflict carries the `canon_statement`, the contradicting `chapter_text_excerpt`,
+an `explanation`, and a `severity` ∈ `{error, warning}`. An empty conflicts list
+is a valid, common result (no contradictions). Read-only — it reports; it does
+not rewrite. Distinct from CONS-001 (which checks *within* one novel); this is
+the *novel-vs-series-Canon* check. See *Series-Canon*, *Series Drift*,
+SERIES-004, ADR-079.
 
 **Cascade (Prompt Cascade)**
 The resolution order for prompt files:
@@ -82,6 +111,18 @@ assignment, and a summary (AI-generated or manual). The primary unit of writing.
 The assembled collection of KB entries, chapter summaries, and memory items
 that are injected into a prompt. Built by `core/context/assembler.py`. Represented
 as `ContextBundle` type.
+
+**Context Window (Series)**
+The recency setting on `SeriesSettings.context_window_size` (default 3,
+SERIES-002 / ADR-077) that controls how many of the most-recent prior bands
+contribute their **full** summary to the `{{series_history}}` generation
+block. Bands older than the window contribute only their one-sentence
+`short_summary`. Under token-budget pressure the tier sacrifices older entries
+first ("sacrifice older first"), so the most recent context is always
+preserved last. Read by `SeriesHistoryTier` (via the Backend
+`SeriesHistoryProvider`). Distinct from an LLM's *model context window* (the
+provider's input-token limit). See *Series History (Context Tier)*,
+*Band Summary*, SERIES-002, ADR-077.
 
 **ContextEnricher**
 A Protocol for runtime context enrichment before `PromptComposer`. Implementations
@@ -396,6 +437,14 @@ and focus mode animations. Located in `packages/web/` dependencies.
 The top-level project container. Has metadata (genre, writing_language, tone, style),
 volumes, chapters, a KB, and a Knowledge Graph.
 
+**Novel-Overlay**
+A KB entry valid in one specific novel that belongs to a series — per-book state
+such as character evolution in that band, or a location introduced in that book.
+Persisted in `kb_entries` with `novel_id IS NOT NULL`. Contrast with
+*Series-Canon*. The two layers coexist in one physical table (Schema 2A+STI); a
+Canon entry can optionally be linked to an Overlay via `base_entry_id`. See
+*Scope (KB)*, SERIES-001, ADR-075.
+
 **Name Style**
 A freetext field (1–100 chars) describing the cultural or aesthetic style for
 generated character/place names (e.g., "Norse mythology", "Victorian English",
@@ -431,6 +480,22 @@ instead of the legacy `DraftProcessor` pipeline path. Defined inline in
 ---
 
 ## P
+
+**Policy α (Join Migration)**
+The adaptive scope-assignment policy applied when a novel joins a series. If the
+target series' Canon is empty, Policy iii heuristics promote the joining novel's
+stable-fact entries to Canon (`system/concept/setting/location/object/timeline`)
+while evolving entries (`character/faction`) stay Novel-Overlay. If Canon is
+non-empty, all joining entries stay Novel-Overlay (the series already has its
+canon). The assignment plan is shown in a Preview step before Apply. Overridable
+per entry via the ScopeToggle. See *Policy iii*, SERIES-001, ADR-075.
+
+**Policy iii (Scope-Default Heuristics)**
+The entity-type-based default scope for new KB entries in series-novels:
+`system/concept/setting/location/object/timeline → Series-Canon`;
+`character/faction → Novel-Overlay`. The user can override per entry. These are
+the same heuristics Policy α applies during a join (when Canon is empty). See
+*Scope (KB)*, *Policy α*, SERIES-001, ADR-075.
 
 **Precomputed Context Layer**
 Ein Architekturpattern, bei dem Daten vorverarbeitet (precomputed) und als optimierte, LLM-lesbare Zusammenfassungen gespeichert werden — statt Rohdaten bei jedem LLM-Call live zu laden. Ermöglicht deterministischen, token-effizienten Context Assembly. In Narrare implementiert als LLM Wiki (WIKI-001, ADR-022).
@@ -490,6 +555,63 @@ Der Status wird durch `just check-adoption` überwacht.
 
 ## S
 
+**Scope (KB)**
+The validity range of a KB entry: either `series` (Series-Canon — shared across
+all novels in the series) or `novel` (Novel-Overlay — valid in one specific
+novel). Discriminated at the application layer via STI and enforced physically
+by the `ck_kb_entries_scope_invariant` CHECK constraint. See *Series-Canon*,
+*Novel-Overlay*, *STI*, SERIES-001, ADR-075.
+
+**Series / Reihe**
+A group of multiple novels sharing a canon Knowledge Base. Each novel in a
+series is a *Band*. Series are first-class objects in Narrare with their own
+workspace (`/series/[id]`), KB scope (Canon), settings, and (in future Specs)
+Voice, Generation Context, and Export. A novel belongs to at most one series
+(Single-Series in Spec 1; Crossover is deferred). Contrast with *Volume*
+(intra-novel grouping). See SERIES-001, ADR-075.
+
+**Series Drift**
+The cross-novel drift detected when writing a novel that belongs to a series
+(SERIES-004 / ADR-079). Two modes: (1) **Canon Contradiction** — the band's
+prose contradicts the series' shared Canon KB; (2) **Series Voice Drift** — the
+band's narrator has drifted from the `SeriesSettings.author_voice` baseline.
+Per-band, read-only, on-demand; the **read-scope is current-band-vs-series**
+(evaluate the band being worked on against the series references — not a
+full-series batch scan). The series voice is treated as **one signal** (a trend
+baseline via `author_metric_distances`), not a fixed template every band must
+match. Detected by `SeriesConsistencyAgent` (canon) + the reused
+`AuthorVoiceDriftAgent` pipeline (voice). See *Canon Contradiction*, *Series
+Voice*, *Series-Canon*, SERIES-004, ADR-079.
+
+**Series-Canon**
+A KB entry shared across all novels in a series — stable facts such as magic
+systems, world rules, canonical character bios, and foundational artifacts.
+Persisted in `kb_entries` with `novel_id IS NULL` and `series_id` set.
+Contrast with *Novel-Overlay*. See *Scope (KB)*, SERIES-001, ADR-075.
+
+**Series History (Context Tier)**
+The pure-Core context tier (`SeriesHistoryTier`,
+`packages/core/narrare_core/context/series_history.py`) that assembles the
+"Previously in this series:" text block injected at generation time via the
+`{{series_history}}` governed prompt variable (SERIES-002 / ADR-077). Applies
+a *recency-window*: the last `context_window_size` prior bands contribute their
+full summary (or a user override); older bands contribute only their
+short summary. Emits newest-first and enforces a token budget by truncating
+then dropping the oldest entries ("sacrifice older first"). Stateless and
+I/O-free — the Backend `SeriesHistoryProvider` pre-fetches `BandSummaryData`
+and hands it to `tier.assemble()`. Gracefully degrades to `""` for standalone
+novels, band 1, or missing summaries (RULE-11). See *Band Summary*,
+*Context Window*, SERIES-002, ADR-077.
+
+**Series Voice**
+The shared foundational voice profile for all novels in a series (SERIES-003 /
+ADR-078). Stored as `SeriesSettings.author_voice` JSONB — the sibling home added
+empty in Spec 1 (ADR-075) and populated in Spec 3. Profiles one band's prose via
+the existing `AuthorVoiceAgent` (no new agent) and serves as the **foundation**
+layer in the *Voice Delta* model. At generation time `AuthorVoiceConsumer`
+composes it with the novel's own voice into the extended `{{author_voice}}`
+variable. See *Voice Delta*, *Voice Opt-out*, SERIES-003, ADR-078.
+
 **Service Layer**
 The set of service classes in `apps/api/narrare/*/service.py`.
 Contains business logic. Called by routers (HTTP), MCP tools, A2A agents, and CLI.
@@ -528,6 +650,16 @@ Used as the foundation for UI primitives (Button, Dialog, Toast, etc.).
 **Style Profile**
 An AI-generated and embedding-based representation of an author's writing style.
 Used for voice consistency checking and drift detection.
+
+**STI (Single-Table-Inheritance)**
+A persistence pattern where multiple subtypes share a single physical database
+table, with type discrimination at the application layer. In Narrare's KB,
+`SeriesKBEntry` and `NovelKBEntry` share the `kb_entries` table; the `scope`
+field (`"series"` / `"novel"`) discriminates them, and the DB CHECK
+`ck_kb_entries_scope_invariant` enforces the same invariant physically. Chosen
+(Schema 2A+STI) over a two-table design (Pure 2B) to keep the read-path simple
+and the migration additive while still recovering type safety via discriminated
+Pydantic types. See *Scope (KB)*, SERIES-001, ADR-075.
 
 ---
 
@@ -577,6 +709,29 @@ and *Prompt Language* (the language of prompt template files).
 **Volume**
 An optional grouping of chapters within a Novel (e.g., Part 1, Book 1).
 Chapters belong to at most one volume.
+
+**Voice Delta**
+The resolution model for combining a *Series Voice* with a novel's own
+`author_voice` at generation time (SERIES-003 / ADR-078). The series voice is the
+**foundation**; the novel voice is **additive** ("Series voice is X. Additionally,
+this novel has Y."). Chosen over **Override** (loses series consistency when a
+novel has its own profile), **Blend** (ill-defined for LLM prompts — what does a
+weighted percentage of a prose style mean as text?), and **Cascade** (triggers the
+ADR-074 Cascade-Fallback-Kritik — forced cascade injects an author's "usual"
+patterns into an experimental standalone). Implemented as the pure Core function
+`render_author_voice_delta`. Respects the per-novel opt-out and degrades
+byte-identically to the legacy renderer for standalone novels. See *Series Voice*,
+*Voice Opt-out*, SERIES-003, ADR-078.
+
+**Voice Opt-out**
+The per-novel toggle (`ProjectSettings.use_series_voice: bool`, default `True`,
+SERIES-003 / ADR-078) that lets a novel ignore its series' *Series Voice* and use
+only its own `author_voice` profile. Managed via Novel Settings (the
+`SeriesVoiceOptOutCard`, which self-hides for standalone novels). When `False`,
+`{{author_voice}}` renders only the novel's profile (the series voice is
+skipped). Default `True` so every series novel inherits the series voice as base
+unless explicitly disabled — the mechanism that distinguishes Delta from a forced
+Cascade. See *Series Voice*, *Voice Delta*, SERIES-003, ADR-078.
 
 **voice_analysis**
 Ein Sub-Modell auf `SpeechPatterns` (in `kb/schemas/character.py`), das deskriptive
@@ -640,6 +795,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-07-01 — Removed stale `character_voice` governed-debt example (it is runtime-verified per ADR-055/057, no longer governed debt). 2026-06-30 — Corrected "Voice Check" definition to match ADR-057/WRITE-010 (character dialogue checked against stored per-character voice profiles, not the author's style profile). 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
+> Last updated: 2026-08-06 — Added Spec 4 terms (Canon Contradiction, Series Drift) for SERIES-004 / ADR-079. 2026-08-05 — Added Spec 3 terms (Series Voice, Voice Delta, Voice Opt-out) for SERIES-003 / ADR-078. 2026-08-02 — Added Spec 2 terms (Band Summary, Series History (Context Tier), Context Window) for SERIES-002 / ADR-077. 2026-07-29 — Added Series-program terms (Series/Reihe, Series-Canon, Novel-Overlay, Scope (KB), STI, Band, Policy α, Policy iii) for SERIES-001 / ADR-075. 2026-07-01 — Removed stale `character_voice` governed-debt example (it is runtime-verified per ADR-055/057, no longer governed debt). 2026-06-30 — Corrected "Voice Check" definition to match ADR-057/WRITE-010 (character dialogue checked against stored per-character voice profiles, not the author's style profile). 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist

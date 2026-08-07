@@ -23,6 +23,7 @@ vi.mock("@/lib/api/client", () => ({
 
 const mockNovel: Novel = {
   id: "novel-1",
+  series_id: null,
   title: "Test Novel",
   author: "Jane Doe",
   genre: "Fantasy",

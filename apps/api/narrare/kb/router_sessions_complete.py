@@ -6,7 +6,7 @@ as complete. Returns both the serialized session and the entry ID.
 
 from __future__ import annotations
 
-from uuid import UUID  # noqa: TC003 — needed at runtime for FastAPI path parameter resolution
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 

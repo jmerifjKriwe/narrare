@@ -110,3 +110,48 @@ def test_current_state_without_required_authorities_fails(
     assert "Missing required authority" in output
     assert "docs/_shared/CONSTRAINTS.md" in output
     assert "just check-health" in output
+
+
+def test_inventory_pattern_with_prose_mentions_returns_no_finding() -> None:
+    """Running prose mentioning agents/routers/modules/migrations is not an inventory count."""
+    current_state = (
+        _VALID_AUTHORITY_CURRENT_STATE
+        + """
+The voice lane streams each result in one step: trend + jumps → 1 agent call → SSE.
+The mesh uses 3 routers configured in the mesh for scaling.
+Operational note: 5 migrations pending can block a deploy.
+The pipeline reports 2 modules imported by the pipeline every run.
+"""
+    )
+
+    findings = checker.find_forbidden_volatile_counts(current_state)
+
+    labels = [label for _, label, _ in findings]
+    assert "Router/agent/module/migration inventory count" not in labels
+
+
+def test_inventory_pattern_with_list_entries_returns_finding() -> None:
+    """List-style inventory counts are volatile and must still be flagged."""
+    current_state = (
+        _VALID_AUTHORITY_CURRENT_STATE
+        + """
+- 7 agents: beta_reader, chat
+- 3 routers registered
+- 5 modules in the pipeline
+current agent inventory: 12
+"""
+    )
+
+    findings = checker.find_forbidden_volatile_counts(current_state)
+
+    inventory_lines = {
+        line
+        for _, label, line in findings
+        if label == "Router/agent/module/migration inventory count"
+    }
+    assert inventory_lines == {
+        "- 7 agents: beta_reader, chat",
+        "- 3 routers registered",
+        "- 5 modules in the pipeline",
+        "current agent inventory: 12",
+    }

@@ -9,8 +9,6 @@
 import { X } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
-import { useKBEntries } from "@/lib/hooks/useKB";
 import { dialogVariants, overlayVariants } from "@/lib/motion-variants";
 import { AddRelationshipForm } from "./AddRelationshipForm";
 

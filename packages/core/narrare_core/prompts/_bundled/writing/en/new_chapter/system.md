@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.3.0"
+prompt_version: "1.4.0"
 ---
 
 ## System Prompt
@@ -49,6 +49,14 @@ or curated KB.
 ### Recent Chapters
 
 {{recent_chapters}}
+
+### Series History
+
+For novels that are part of a series, this block summarises what happened in
+the preceding bands. Use it to preserve continuity of plot, world state, and
+character arcs across the series. It is empty for standalone novels.
+
+{{series_history}}
 
 ### Story Synopsis
 

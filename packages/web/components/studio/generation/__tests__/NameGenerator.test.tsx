@@ -32,6 +32,7 @@ import { createAbortSignal } from "./helpers/ai-test-helpers";
 const { mockNovel, mockNameResponse, createMockAiOp } = vi.hoisted(() => {
   const mockNovel = {
     id: "novel-1",
+    series_id: null,
     title: "Test Novel",
     writing_language: "en",
     author: "Test Author",

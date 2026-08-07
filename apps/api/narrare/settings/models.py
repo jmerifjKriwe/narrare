@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -63,6 +63,16 @@ class ProjectSettings(Base):
     # (ADR-069 D2). NULL = no profile yet → consumers degrade gracefully
     # (RULE-11: generation renders empty {{author_voice}}; drift skips).
     author_voice: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
+    # Spec 3 (Series Voice Hierarchy): per-novel opt-out flag. When a novel
+    # belongs to a series, this controls whether the series-level author voice
+    # is used as the foundation of the Delta model (ADR-078). TRUE by default
+    # — series voice is the base, novel voice is additive. Setting FALSE makes
+    # the novel fall back to its own author_voice only. server_default mirrors
+    # the established UserProvider.is_active pattern (migration 0001) so the
+    # NOT NULL column backfills existing rows during migration 0039.
+    use_series_voice: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("true"), nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )

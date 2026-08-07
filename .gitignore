@@ -41,7 +41,9 @@ pyrightcache/
 
 # Node / Frontend
 node_modules/
-packages/web/.next/
+# Match any .next* variant (covers .next/, .next-stale-vrt/, future experimental dirs).
+# next-env.d.ts (no leading dot) is intentionally NOT matched and stays tracked.
+packages/web/.next*
 packages/web/out/
 packages/web/.turbo/
 *.tsbuildinfo

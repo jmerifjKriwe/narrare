@@ -37,7 +37,23 @@
     "cancel": "Cancel",
     "untitledNovel": "Untitled Novel",
     "emptyTitle": "No novels yet",
-    "emptySubtitle": "Create your first novel"
+    "emptySubtitle": "Create your first novel",
+    "series": {
+      "badge": "Series",
+      "new_series": "New Series",
+      "novel_count": "{count, plural, one {# novel} other {# novels}}",
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "completed": "Completed"
+      },
+      "cancel": "Cancel",
+      "create_title": "Create New Series",
+      "title_label": "Title",
+      "title_placeholder": "Enter series title...",
+      "create_label": "Create",
+      "create_error": "Failed to create the series. Please try again."
+    }
   },
   "editor": {
     "chapterTitlePlaceholder": "Chapter title...",
@@ -486,6 +502,9 @@
       "writing": "Writing",
       "analysis": "Analysis",
       "kb": "Knowledge Base",
+      "ai_assist": "AI Assistance",
+      "planning": "Planning",
+      "wiki": "Wiki",
       "preview": "Preview",
       "edit": "Edit",
       "capabilityHintTitle": "Guaranteed Rules",
@@ -695,6 +714,17 @@
       "heros_journey": "Hero's Journey",
       "save_the_cat": "Save the Cat",
       "seven_point": "Seven-Point Structure"
+    },
+    "tone": {
+      "balanced": "Balanced",
+      "dramatic": "Dramatic",
+      "humorous": "Humorous",
+      "suspenseful": "Suspenseful",
+      "contemplative": "Contemplative",
+      "romantic": "Romantic",
+      "dark": "Dark",
+      "adventurous": "Adventurous",
+      "quiet": "Quiet"
     },
     "validation": {
       "projectNameRequired": "Project name is required",
@@ -1524,6 +1554,18 @@
         "expand": "Expand",
         "reorganize": "Reorganize"
       }
+    },
+    "scope": {
+      "label": "Knowledge Base scope",
+      "canon": "Series Canon",
+      "overlay": "Novel Overlay",
+      "body": "Body",
+      "promoteTitle": "Promote to Series Canon?",
+      "promoteDescription": "This entry will be removed from this novel and shared across all novels in the series as Series-Canon.",
+      "demoteTitle": "Demote to Novel Overlay?",
+      "demoteDescription": "This entry will be scoped to this novel only and no longer shared across the series.",
+      "confirm": "Confirm",
+      "error": "Failed to change the entry scope. Please try again."
     }
   },
   "graph": {
@@ -1922,9 +1964,9 @@
     "error": "Failed to load demo projects",
     "retry": "Try again",
     "empty": "No demos available",
-    "chapters": "{{count}} chapters",
-    "words": "{{count}} words",
-    "characters": "{{count}} characters"
+    "chapters": "{count} chapters",
+    "words": "{count} words",
+    "characters": "{count} characters"
   },
   "quickStart": {
     "label": "Quick Start",
@@ -2025,6 +2067,188 @@
       "wiki_generate_entity": "Wiki: generate entity",
       "wiki_mark_all_stale": "Wiki: mark all stale",
       "wiki_refresh_summary": "Wiki: refresh summary"
+    }
+  },
+  "series": {
+    "workspace": {
+      "loading": "Loading series...",
+      "notFound": "Series not found.",
+      "badgeSeries": "Series",
+      "backToDashboard": "← Back to Dashboard",
+      "genre": "Genre",
+      "planned": "Planned novels",
+      "tabsLabel": "Series tabs",
+      "comingInSpec3": "coming in Spec 3",
+      "tabs": {
+        "baende": "Novels",
+        "canon": "Canon",
+        "settings": "Settings",
+        "voice": "Voice"
+      },
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "completed": "Completed"
+      }
+    },
+    "baende": {
+      "title": "Novels in this Series",
+      "loading": "Loading novels...",
+      "empty": "No novels in this series yet.",
+      "demoBadge": "Demo",
+      "reorderUp": "Move up",
+      "reorderDown": "Move down",
+      "addNovel": "Add Novel to Series",
+      "selectNovel": "Select a novel...",
+      "noStandaloneNovels": "No standalone novels available to add.",
+      "error": "Failed to load novels."
+    },
+    "settings": {
+      "title": "Series Settings",
+      "description": "Edit series metadata and configuration.",
+      "loading": "Loading settings...",
+      "error": "Failed to load series.",
+      "save": "Save Changes",
+      "fields": {
+        "title": "Title",
+        "subtitle": "Subtitle",
+        "description": "Description",
+        "genre": "Genre",
+        "writingLanguage": "Writing Language",
+        "status": "Status",
+        "plannedNovelCount": "Planned Novel Count"
+      },
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "completed": "Completed"
+      },
+      "voice": {
+        "title": "Series Voice",
+        "comingInSpec3": "Series Voice Hierarchy will be available in Spec 3."
+      },
+      "contextWindow": {
+        "label": "How many previous bands to include?",
+        "description": "Controls how many prior bands contribute their full summary to the series-history context when generating a new novel.",
+        "help": "Only the most recent bands within this window get their full summary; older bands contribute only a one-sentence summary. Lower values save tokens; higher values give the AI more series memory."
+      }
+    },
+    "join": {
+      "title": "Add \"{novel}\" to Series",
+      "cancel": "Cancel",
+      "confirm": "Confirm Join",
+      "close": "Close",
+      "loading": "Loading preview...",
+      "previewError": "Failed to load preview.",
+      "applyError": "Failed to apply join.",
+      "noTreatments": "This novel has no Knowledge Base entries yet — nothing to preview. Joining will simply add it to the series.",
+      "explanation": {
+        "canon_empty": "The series Canon is empty. Canon-preferring entries (systems, concepts, settings, locations, objects, timelines) will be promoted to Series-Canon; characters and factions stay as Novel-Overlays.",
+        "canon_nonempty": "The series Canon already exists. All entries from this novel will stay as Novel-Overlays."
+      },
+      "targetSeries": "→ Series-Canon",
+      "targetNovel": "→ Novel-Overlay",
+      "reason": {
+        "entity_default_canon": "Entity type defaults to Canon (Policy iii)",
+        "entity_default_overlay": "Entity type defaults to Novel-Overlay (Policy iii)",
+        "canon_nonempty_overlay": "Series-Canon exists; entry stays as Novel-Overlay (Policy α)"
+      }
+    },
+    "canon": {
+      "title": "Series Canon",
+      "loading": "Loading canon entries...",
+      "error": "Failed to load canon entries.",
+      "empty": "No canon entries yet. Create one to share it across all novels in the series.",
+      "create": "Create new Canon entry",
+      "entityType": "Entity type",
+      "name": "Name",
+      "createError": "Failed to create the canon entry. Please try again."
+    },
+    "bandSummary": {
+      "title": "Band Summary",
+      "autoGenerated": "Auto-generated on {date}",
+      "regenerate": "Regenerate",
+      "override": "Override",
+      "overridePlaceholder": "Write a custom summary that replaces the auto-generated one...",
+      "saveOverride": "Save Override",
+      "clearOverride": "Clear Override",
+      "empty": "Generate band summary",
+      "loading": "Loading band summary...",
+      "overrideActive": "Override active"
+    },
+    "voice": {
+      "title": "Series Voice",
+      "loading": "Loading series voice...",
+      "status": {
+        "empty": "No voice profiled yet",
+        "autoProfiled": "Auto-profiled",
+        "overrideActive": "Override active"
+      },
+      "profileFrom": "Profile from band",
+      "profileFromPlaceholder": "Select a novel...",
+      "profile": "Profile",
+      "showProfile": "Voice profile",
+      "profileEmpty": "The profiled voice has no descriptive data yet.",
+      "profiledAt": "Profiled at {date}",
+      "fields": {
+        "vocabularyLevel": "Vocabulary level",
+        "sentenceProfile": "Sentence profile",
+        "emotionalRange": "Emotional range",
+        "markers": "Cultural / regional markers",
+        "voiceExamples": "Voice examples",
+        "authorExamples": "Author examples"
+      },
+      "override": "Manual override (JSON)",
+      "overridePlaceholder": "Paste a full author-voice profile as JSON...",
+      "overrideInvalid": "Invalid JSON — could not parse the override.",
+      "saveOverride": "Save Override",
+      "clearOverride": "Clear Override"
+    },
+    "drift": {
+      "title": "Cross-Novel Drift",
+      "description": "Check a band's chapter prose against the series Canon and voice baseline.",
+      "selectBand": "Band to check",
+      "selectBandPlaceholder": "Select a novel...",
+      "checkConsistency": "Check consistency",
+      "checkVoiceDrift": "Voice drift",
+      "conflicts": "Canon contradictions",
+      "loading": "Checking...",
+      "error": "The check failed. Please try again.",
+      "noConflicts": "No contradictions with the series Canon were found.",
+      "noDrift": "No voice drift detected against the series voice.",
+      "canonStatement": "Canon says",
+      "excerpt": "Chapter excerpt",
+      "severity": {
+        "error": "Contradiction",
+        "warning": "Possible issue"
+      },
+      "band": {
+        "stable": "Stable",
+        "minor": "Minor drift",
+        "moderate": "Moderate drift",
+        "major": "Major drift"
+      },
+      "driftType": {
+        "evolution": "Natural evolution",
+        "context": "Context-driven change",
+        "inconsistency": "Inconsistency"
+      },
+      "reasons": "Reasons",
+      "attention": "Chapters worth review",
+      "noProfileReason": {
+        "no_stored_profile": "No series voice profiled yet — profile a band first.",
+        "no_profile_metrics": "The series voice profile lacks the metrics needed for drift analysis.",
+        "no_chapters_with_prose": "No chapters with prose found to analyse."
+      }
+    }
+  },
+  "novel": {
+    "settings": {
+      "useSeriesVoice": {
+        "label": "Use series voice as base",
+        "description": "When on, generation blends this series' voice profile with the novel's own voice (Delta model). Turn off to use only this novel's voice.",
+        "error": "Couldn't save this setting. Please try again."
+      }
     }
   }
 }

@@ -6,7 +6,7 @@ ChapterSummaryService. No business logic lives here.
 
 from __future__ import annotations
 
-from uuid import UUID  # noqa: TC003 — needed at runtime for FastAPI route params
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field

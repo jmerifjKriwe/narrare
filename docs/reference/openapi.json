@@ -432,6 +432,1205 @@
         }
       }
     },
+    "/api/v1/series": {
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "List Series",
+        "description": "List all series for the current user.",
+        "operationId": "list_series_api_v1_series_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SeriesSummary"
+                  },
+                  "type": "array",
+                  "title": "Response List Series Api V1 Series Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Create Series",
+        "description": "Create a new series (status defaults to 'draft').",
+        "operationId": "create_series_api_v1_series_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/series/{series_id}": {
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Get Series",
+        "description": "Get a single series by ID.",
+        "operationId": "get_series_api_v1_series__series_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Update Series",
+        "description": "Update series metadata (status transitions enforced, 409 on violation).",
+        "operationId": "update_series_api_v1_series__series_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Delete Series",
+        "description": "Delete a series.",
+        "operationId": "delete_series_api_v1_series__series_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/settings": {
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Get Settings",
+        "description": "Get series settings.",
+        "operationId": "get_settings_api_v1_series__series_id__settings_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Update Settings",
+        "description": "Update series settings.",
+        "operationId": "update_settings_api_v1_series__series_id__settings_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesSettingsUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/novels": {
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "List Novels In Series",
+        "description": "List novels in a series, ordered by ``series_position``.\n\nReturns Core ``NovelRow`` value objects; ``response_model`` projects them to\n``NovelSummaryResponse`` for the HTTP body.",
+        "operationId": "list_novels_in_series_api_v1_series__series_id__novels_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NovelSummaryResponse"
+                  },
+                  "title": "Response List Novels In Series Api V1 Series  Series Id  Novels Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Preview Join",
+        "description": "Preview joining a novel to a series (Policy alpha; does NOT mutate).",
+        "operationId": "preview_join_api_v1_series__series_id__novels_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinPreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/novels/{novel_id}/apply": {
+      "post": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Apply Join",
+        "description": "Apply the join — executes the previewed treatments atomically.",
+        "operationId": "apply_join_api_v1_series__series_id__novels__novel_id__apply_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinApplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/novels/{novel_id}": {
+      "delete": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Remove Novel From Series",
+        "description": "Remove a novel from a series (back to standalone).",
+        "operationId": "remove_novel_from_series_api_v1_series__series_id__novels__novel_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/novels/reorder": {
+      "patch": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Reorder Novels",
+        "description": "Reorder novels within a series (full ordered id list).",
+        "operationId": "reorder_novels_api_v1_series__series_id__novels_reorder_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderNovelsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/novels/{novel_id}/band-summary": {
+      "post": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Generate Band Summary",
+        "description": "Trigger (re)generation of the band summary for ``novel_id``.\n\nUpsert semantics: an existing row is updated, a missing row is created.\nReturns ``200`` (not ``201``) because the endpoint is a \"trigger\" action\non a resource that may already exist, not a strict create.",
+        "operationId": "generate_band_summary_api_v1_series__series_id__novels__novel_id__band_summary_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BandSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Get Band Summary",
+        "description": "Fetch the existing band summary (no generation; 404 if none).\n\nDeliberately not lazy — a GET should not trigger an LLM call. Use POST to\n(re)generate.",
+        "operationId": "get_band_summary_api_v1_series__series_id__novels__novel_id__band_summary_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BandSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Set Band Summary Override",
+        "description": "Set the user override (takes precedence over generated text at assembly).",
+        "operationId": "set_band_summary_override_api_v1_series__series_id__novels__novel_id__band_summary_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BandSummaryOverrideRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BandSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/novels/{novel_id}/band-summary/override": {
+      "delete": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Clear Band Summary Override",
+        "description": "Clear the user override (generated text is unaffected).",
+        "operationId": "clear_band_summary_override_api_v1_series__series_id__novels__novel_id__band_summary_override_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/voice/profile": {
+      "post": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Profile Series Voice",
+        "description": "Profile a novel's voice → store as the series voice (Delta foundation).\n\nUpsert semantics: an existing profile is overwritten (HTTP 200, not 201 —\ntrigger action on a resource that may already exist, like band-summary).\nThe novel MUST belong to the series (403 otherwise — anti-enumeration).",
+        "operationId": "profile_series_voice_api_v1_series__series_id__voice_profile_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesVoiceProfileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesVoiceStateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/voice": {
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Get Series Voice",
+        "description": "Fetch the series voice profile (``author_voice`` is null when empty).",
+        "operationId": "get_series_voice_api_v1_series__series_id__voice_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesVoiceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Update Series Voice Override",
+        "description": "Set a manual voice-profile override (validated as AuthorVoiceProfile).",
+        "operationId": "update_series_voice_override_api_v1_series__series_id__voice_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesVoiceOverrideRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesVoiceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/voice/override": {
+      "delete": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Clear Series Voice Override",
+        "description": "Clear the series voice (null ``SeriesSettings.author_voice``).",
+        "operationId": "clear_series_voice_override_api_v1_series__series_id__voice_override_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/consistency/check": {
+      "post": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Check Series Consistency",
+        "description": "Check a band's chapter prose against the series Canon KB.\n\nRuns the governed ``series_consistency`` agent (1 LLM call) over the\nnovel's chapter texts + the series Canon entries and returns the detected\ncontradictions (possibly empty — no contradictions found is a valid\nresult). Read-only — nothing is persisted.\n\nOwnership + novel-membership are verified inside the service\n(anti-enumeration: a missing/not-owned series and a non-member novel both\nsurface as ``403``).",
+        "operationId": "check_series_consistency_api_v1_series__series_id__consistency_check_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesConsistencyCheckRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesConsistencyCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/voice-drift/check": {
+      "post": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Check Series Voice Drift",
+        "description": "Check a band's narrator drift against the series voice baseline.\n\nLoads the series voice profile (``SeriesSettings.author_voice``), computes\nthe per-chapter narrator trend + jumps against the SERIES metric group,\nruns the governed ``author_voice_drift`` agent (1 LLM call), and returns\nthe aggregate drift result (or a graceful ``no_profile`` when the series\nvoice cannot be analysed). Read-only — nothing is persisted.\n\nOwnership + novel-membership are verified inside the service\n(anti-enumeration: a missing/not-owned series and a non-member novel both\nsurface as ``403``).",
+        "operationId": "check_series_voice_drift_api_v1_series__series_id__voice_drift_check_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesVoiceDriftCheckRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorVoiceDriftResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/planning/timeline/{novel_id}/events": {
       "get": {
         "tags": [
@@ -3534,6 +4733,427 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/{entry_id}/promote": {
+      "post": {
+        "tags": [
+          "kb",
+          "kb"
+        ],
+        "summary": "Promote Entry To Canon",
+        "description": "Promote a Novel-Overlay KB entry to Series-Canon.\n\nReturns 403 if the novel is not owned by the caller; 409 Conflict if the\nentry is not an overlay of ``novel_id`` or the novel is not in a series\n(scope invariant violation).",
+        "operationId": "promote_entry_to_canon_api_v1_novels__novel_id__kb__entry_id__promote_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesKBEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/{entry_id}/demote": {
+      "post": {
+        "tags": [
+          "kb",
+          "kb"
+        ],
+        "summary": "Demote Entry To Overlay",
+        "description": "Demote a Series-Canon KB entry to a Novel-Overlay for ``novel_id``.\n\nThe path ``novel_id`` IS the target novel (the overlay's new owner) —\nmirroring the promote endpoint, which also keys off the path novel. The body\ncarries only ``series_id`` (the canon's series). Returns 409 Conflict if the\nentry is not canon of ``series_id`` (scope invariant), another member novel\nrelies on it (D4 guard), or the target novel already owns the slug (overlay\ncollision).",
+        "operationId": "demote_entry_to_overlay_api_v1_novels__novel_id__kb__entry_id__demote_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KBDemoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NovelKBEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/kb": {
+      "get": {
+        "tags": [
+          "kb",
+          "kb"
+        ],
+        "summary": "List Canon Entries",
+        "description": "List all Series-Canon KB entries for a series.",
+        "operationId": "list_canon_entries_api_v1_series__series_id__kb_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SeriesKBEntry"
+                  },
+                  "title": "Response List Canon Entries Api V1 Series  Series Id  Kb Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "kb",
+          "kb"
+        ],
+        "summary": "Create Canon Entry",
+        "description": "Create a new Series-Canon KB entry (shared across all novels of the series).",
+        "operationId": "create_canon_entry_api_v1_series__series_id__kb_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KBEntryCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesKBEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_id}/kb/{entry_id}": {
+      "get": {
+        "tags": [
+          "kb",
+          "kb"
+        ],
+        "summary": "Get Canon Entry",
+        "description": "Get a single Series-Canon KB entry.",
+        "operationId": "get_canon_entry_api_v1_series__series_id__kb__entry_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesKBEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "kb",
+          "kb"
+        ],
+        "summary": "Update Canon Entry",
+        "description": "Update a Series-Canon KB entry.",
+        "operationId": "update_canon_entry_api_v1_series__series_id__kb__entry_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KBEntryUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesKBEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "kb",
+          "kb"
+        ],
+        "summary": "Delete Canon Entry",
+        "description": "Delete a Series-Canon KB entry.",
+        "operationId": "delete_canon_entry_api_v1_series__series_id__kb__entry_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -10493,6 +12113,70 @@
         "title": "ArcPhaseResponse",
         "description": "A single phase in a character arc."
       },
+      "AuthorMetrics": {
+        "properties": {
+          "dialogue_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dialogue Ratio"
+          },
+          "description_density": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description Density"
+          },
+          "action_introspection_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Introspection Ratio"
+          },
+          "metaphor_density": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metaphor Density"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "AuthorMetrics",
+        "description": "Author-specific PROSE-LEVEL metrics — comparison ONLY (ANAL-009 Phase 2B).\n\nNEVER rendered into generation. Populated by the deterministic\n:class:`AuthorMetricsAnalyzer`, never by the LLM agent. ``extra=\"allow\"``\nlets the metric block grow without a migration (ADR-074 binding).\n\nEvery field is ``float | None`` in ``[0.0, 1.0]`` so the\n:func:`~narrare_core.analysis.voice_check_scoring.voice_metric_distances`\ndelta primitive generalises trivially to author metrics in Phase 2B.\n\nAttributes:\n    dialogue_ratio: Quoted-dialogue word count / total word count\n        (``0.0``-``1.0``). Deterministic, stable.\n    description_density: Modifier (adj/adv) density proxy\n        (``0.0`` sparse - ``1.0`` rich). Deterministic; provisional.\n    action_introspection_ratio: Introspection-marker density vs action\n        density (``0.0`` action-heavy -> ``1.0`` introspection-heavy).\n        Deterministic; provisional.\n    metaphor_density: Simile/figurative-cue density (``0.0``-``1.0``).\n        Deterministic; deliberately crude; the hardest metric - see the\n        spec's metaphor_density decision (Q1)."
+      },
+      "AuthorVoiceDriftNoProfile": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "AuthorVoiceDriftNoProfile",
+        "description": "Graceful \"narrator not analysable for drift\" signal (RULE-11).\n\nEmitted when the stored author-voice profile cannot be drift-analysed.\nThe ``reason`` disambiguates the graceful cases (mirrors Phase 1's\n:class:`VoiceDriftNoProfile`):\n\nAttributes:\n    reason: Why the narrator was skipped — ``\"no_stored_profile\"`` (no\n        :class:`AuthorVoiceProfile` stored yet), ``\"no_profile_metrics\"``\n        (profile stored but missing the ``voice_metrics`` /\n        ``author_metrics`` blocks the trend needs), or\n        ``\"no_chapters_with_prose\"`` (profile + metrics exist but no\n        selected chapter has prose to measure)."
+      },
       "AuthorVoiceDriftRequest": {
         "properties": {
           "chapter_ids": {
@@ -10514,6 +12198,153 @@
         "type": "object",
         "title": "AuthorVoiceDriftRequest",
         "description": "Request body for ``POST /analysis/author-voice-drift/{novel_id}``.\n\nThe novel id is carried by the URL path parameter (mirrors\n:class:`AuthorVoiceRequest` / :class:`VoiceDriftRequest` — novel-scoped\nendpoints). The body carries the optional chapter filter (author voice is\none narrator per novel, so there is no per-character filter):\n\nAttributes:\n    chapter_ids: Specific chapter ids to analyse (UUID strings). ``None``\n        or an empty list means \"analyse every chapter in the novel\" (the\n        service resolves the full chapter list via the novel/chapter\n        repositories). Mirrors ``AuthorVoiceRequest.chapter_ids``."
+      },
+      "AuthorVoiceDriftResponse": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "title": "Novel Id",
+            "default": ""
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorVoiceDriftResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "no_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorVoiceDriftNoProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "AuthorVoiceDriftResponse",
+        "description": "Complete non-streaming author-voice-drift response for one novel.\n\nAuthor voice is one narrator per novel, so exactly one of ``result`` /\n``no_profile`` is set (contrast Phase 1's per-character lists).\n\nAttributes:\n    novel_id: The novel that was analysed.\n    result: The narrator drift result (set when the narrator was\n        analysable — profile + metrics + ≥1 chapter with prose).\n    no_profile: The graceful skip detail (set when the narrator could not\n        be analysed, RULE-11)."
+      },
+      "AuthorVoiceDriftResult": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "title": "Novel Id",
+            "default": ""
+          },
+          "trend": {
+            "items": {
+              "$ref": "#/components/schemas/TrendPoint"
+            },
+            "type": "array",
+            "title": "Trend",
+            "default": []
+          },
+          "jumps": {
+            "items": {
+              "$ref": "#/components/schemas/JumpPoint"
+            },
+            "type": "array",
+            "title": "Jumps",
+            "default": []
+          },
+          "overall_match_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Match Score",
+            "description": "Mean per-chapter match sub-score [0, 100], or None when trend is empty."
+          },
+          "overall_band": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Band",
+            "description": "Drift severity label: stable | minor | moderate | major."
+          },
+          "drift": {
+            "$ref": "#/components/schemas/VoiceDriftResult"
+          }
+        },
+        "type": "object",
+        "title": "AuthorVoiceDriftResult",
+        "description": "Longitudinal author-voice drift result (display-only — never persisted).\n\nCarries the deterministic per-chapter match trend (signal i, with author-\nmetric deltas MERGED into each ``TrendPoint.per_metric_deltas``) + the\nadjacent-chapter jump points (signal iii) + the aggregate match score +\nthe agent's qualitative :class:`VoiceDriftResult` classification. Singular\n(one narrator per novel — contrast Phase 1's per-character list).\n\nAttributes:\n    novel_id: The novel analysed (str for JSON safety).\n    trend: The per-chapter match trend (signal i) — one\n        :class:`TrendPoint` per chapter with non-empty prose. The\n        always-visible sparkline / heatmap row.\n    jumps: The adjacent-chapter jump points (signal iii) — localise where\n        drift began. Empty when no metric shifted beyond the threshold.\n    overall_match_score: The mean of the per-chapter ``match_subscore``\n        values in ``trend`` (a single [0, 100] summary of the whole\n        trend). ``None`` when ``trend`` is empty.\n    overall_band: The drift-facing severity label for\n        ``overall_match_score`` (``\"stable\"`` / ``\"minor\"`` /\n        ``\"moderate\"`` / ``\"major\"``), derived from ``band_for_score``\n        (identical thresholds to WRITE-010 + Phase 1, ADR-073 D4).\n        ``None`` when ``overall_match_score`` is ``None``.\n    drift: The agent's qualitative longitudinal classification\n        (:class:`VoiceDriftResult` — ``drift_type``, ``confidence``,\n        ``longitudinal_reasons``, ``per_chapter_notes``,\n        ``suggested_attention``). The OUTPUT shape is reused from Phase 1\n        (ADR-073 D3 locked shape applied to the narrator trend)."
+      },
+      "AuthorVoiceProfile": {
+        "properties": {
+          "voice_analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VoiceAnalysis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "author_examples": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Examples"
+          },
+          "author_metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "is_fresh": {
+            "type": "boolean",
+            "title": "Is Fresh",
+            "default": true
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "AuthorVoiceProfile",
+        "description": "Machine-derived author-voice profile (ANAL-007 / ADR-074).\n\nPersisted as ``ProjectSettings.author_voice`` JSONB. Novel-scoped.\nMirrors the ADR-055 descriptive/metric structure (deterministic metrics +\nLLM qualitative descriptors), REUSING the voice-generic\n:class:`~narrare_core.schemas.voice.VoiceAnalysis` /\n:class:`~narrare_core.schemas.voice.VoiceMetrics` and ADDING\nauthor-specific prose-level metrics.\n\nDescriptive group (rendered into ``{{author_voice}}`` by\n:func:`render_author_voice_for_generation`):\n    - ``voice_analysis`` descriptive fields (formality, vocabulary_level,\n      sentence_profile, emotional_range, cultural_regional_markers,\n      voice_examples).\n    - ``author_examples``.\n\nMetric group (comparison ONLY — NEVER rendered into generation):\n    - ``voice_analysis.voice_metrics`` (voice-generic metrics).\n    - ``author_metrics`` (author-specific prose-level metrics).\n\nThe descriptive/metric boundary is enforced at the consumer contract\n(:func:`render_author_voice_for_generation`), not at the data model — the\nsame place ADR-055 enforces it for character voice (``get_speech_data``).\nThe profile itself deliberately carries BOTH groups so the future Phase 2B\nauthor-drift checker can read the metric group via the repository contract.\n\nAttributes:\n    voice_analysis: Voice-generic descriptive block (also carries the\n        voice-generic ``voice_metrics`` sub-block).\n    author_examples: Author-specific curated representative prose passages\n        (the agent's ``author_examples``).\n    author_metrics: Author-specific prose-level metrics. Comparison-only.\n    updated_at: ISO timestamp of the last profile build (freshness signal).\n    is_fresh: Freshness flag (mirrors character-voice ``profiles/_freshness``)."
       },
       "AuthorVoiceRequest": {
         "properties": {
@@ -10566,6 +12397,79 @@
           "models"
         ],
         "title": "AvailableModelsResponse"
+      },
+      "BandSummaryOverrideRequest": {
+        "properties": {
+          "override": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Override"
+          }
+        },
+        "type": "object",
+        "required": [
+          "override"
+        ],
+        "title": "BandSummaryOverrideRequest",
+        "description": "PATCH /api/v1/series/{id}/novels/{novel_id}/band-summary body.\n\nA non-empty ``override`` replaces the user override; an empty/whitespace\nstring clears it (the service treats whitespace-only as \"clear\" so no\nempty override is ever persisted)."
+      },
+      "BandSummaryResponse": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "full_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Summary"
+          },
+          "short_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Summary"
+          },
+          "override": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id",
+          "full_summary",
+          "short_summary",
+          "override",
+          "generated_at"
+        ],
+        "title": "BandSummaryResponse",
+        "description": "Response for the band-summary GET/POST/PATCH endpoints.\n\nMirrors the ``BandSummary`` ORM model (``band_summary_models.py``): the\ngenerated ``full_summary`` / ``short_summary`` plus the optional user\n``override`` that takes precedence at assembly time (Spec 2 Task 6)."
       },
       "BeatSchema": {
         "properties": {
@@ -11075,6 +12979,49 @@
         "title": "CalibrationSourceMetadata",
         "description": "Typed provider/model calibration evidence for a limit lookup."
       },
+      "CanonConflict": {
+        "properties": {
+          "canon_entry_slug": {
+            "type": "string",
+            "title": "Canon Entry Slug"
+          },
+          "canon_entry_name": {
+            "type": "string",
+            "title": "Canon Entry Name"
+          },
+          "chapter_text_excerpt": {
+            "type": "string",
+            "title": "Chapter Text Excerpt"
+          },
+          "canon_statement": {
+            "type": "string",
+            "title": "Canon Statement"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warning"
+            ],
+            "title": "Severity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "canon_entry_slug",
+          "canon_entry_name",
+          "chapter_text_excerpt",
+          "canon_statement",
+          "explanation",
+          "severity"
+        ],
+        "title": "CanonConflict",
+        "description": "A single contradiction between a chapter passage and a Canon entry.\n\nAttributes:\n    canon_entry_slug: Slug identifying the Canon entry that is contradicted\n        (e.g. ``\"character-elara-eye-color\"``).\n    canon_entry_name: Human-readable name of the Canon entry\n        (e.g. ``\"Elara — Eye Color\"``).\n    chapter_text_excerpt: The exact passage from the chapter text that\n        contradicts Canon. Must be a verbatim quote, not a paraphrase.\n    canon_statement: What Canon actually says (the contradicted fact).\n    explanation: Why the excerpt and the Canon statement cannot both be\n        true in the story world.\n    severity: ``\"error\"`` = hard contradiction (the two statements cannot\n        coexist); ``\"warning\"`` = possible issue that should be reviewed."
+      },
       "CascadePathResponse": {
         "properties": {
           "level": {
@@ -11172,6 +13119,23 @@
         ],
         "title": "ChapterInStoryboard",
         "description": "Compact chapter info for the storyboard view."
+      },
+      "ChapterNote": {
+        "properties": {
+          "chapter_id": {
+            "type": "string",
+            "title": "Chapter Id",
+            "default": ""
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ChapterNote",
+        "description": "A single per-chapter note in the drift result (sparse commentary).\n\nAttributes:\n    chapter_id: The chapter the note refers to (drawn from the supplied\n        trend — never invented).\n    note: Short note tied to this chapter's data (a jump point, a notable\n        low score, an arc beat). Never a generic filler."
       },
       "ChapterResponse": {
         "properties": {
@@ -13563,6 +15527,211 @@
         "title": "InlineSuggestRequest",
         "description": "Request for an inline ghost text suggestion.\n\nSent when the user pauses typing.  Contains the text before and\noptionally after the cursor.  The backend returns a short (1-3\nsentence) completion streamed via SSE."
       },
+      "JoinApplyRequest": {
+        "properties": {
+          "position": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Position"
+          }
+        },
+        "type": "object",
+        "required": [
+          "position"
+        ],
+        "title": "JoinApplyRequest",
+        "description": "POST /api/v1/series/{id}/novels/{novel_id}/apply body.\n\n``position`` is the 1-based slot the novel takes within the series."
+      },
+      "JoinEntryTreatment": {
+        "properties": {
+          "entry_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entry Id"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "current_scope": {
+            "type": "string",
+            "const": "novel",
+            "title": "Current Scope"
+          },
+          "target_scope": {
+            "type": "string",
+            "enum": [
+              "series",
+              "novel"
+            ],
+            "title": "Target Scope"
+          },
+          "reason_code": {
+            "type": "string",
+            "enum": [
+              "entity_default_canon",
+              "entity_default_overlay",
+              "canon_nonempty_overlay"
+            ],
+            "title": "Reason Code"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entry_id",
+          "slug",
+          "entity_type",
+          "current_scope",
+          "target_scope",
+          "reason_code",
+          "reason"
+        ],
+        "title": "JoinEntryTreatment",
+        "description": "Per-entry decision in a JoinPreview: what would happen to this entry."
+      },
+      "JoinPreview": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "canon_empty": {
+            "type": "boolean",
+            "title": "Canon Empty"
+          },
+          "treatments": {
+            "items": {
+              "$ref": "#/components/schemas/JoinEntryTreatment"
+            },
+            "type": "array",
+            "title": "Treatments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "novel_id",
+          "canon_empty",
+          "treatments"
+        ],
+        "title": "JoinPreview",
+        "description": "Result of POST /api/v1/series/{id}/novels (preview step).\n\nLists every KB entry of the joining novel + how it would be treated\non apply (promoted to Canon or kept as Overlay) based on Policy alpha."
+      },
+      "JoinPreviewRequest": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id"
+        ],
+        "title": "JoinPreviewRequest",
+        "description": "POST /api/v1/series/{id}/novels body — the novel to preview joining."
+      },
+      "JoinResult": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "promoted_to_canon": {
+            "type": "integer",
+            "title": "Promoted To Canon"
+          },
+          "kept_as_overlay": {
+            "type": "integer",
+            "title": "Kept As Overlay"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "novel_id",
+          "position",
+          "promoted_to_canon",
+          "kept_as_overlay"
+        ],
+        "title": "JoinResult",
+        "description": "Result of POST /api/v1/series/{id}/novels/{novel_id}/apply."
+      },
+      "JumpPoint": {
+        "properties": {
+          "from_chapter_id": {
+            "type": "string",
+            "title": "From Chapter Id"
+          },
+          "to_chapter_id": {
+            "type": "string",
+            "title": "To Chapter Id"
+          },
+          "jumped_metrics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Jumped Metrics"
+          },
+          "magnitude": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Magnitude"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_chapter_id",
+          "to_chapter_id",
+          "jumped_metrics",
+          "magnitude"
+        ],
+        "title": "JumpPoint",
+        "description": "An adjacent-chapter jump (signal iii output).\n\nProduced by :func:`narrare_core.analysis.voice_drift_scoring.detect_adjacent_jumps`\nfor each pair of consecutive chapters where at least one metric shifted\nbeyond the threshold. Jump points localise *where* drift began.\n\nAttributes:\n    from_chapter_id: The earlier chapter of the pair.\n    to_chapter_id: The later chapter of the pair.\n    jumped_metrics: Which metric(s) shifted beyond the threshold between\n        the two chapters (e.g. ``[\"avg_sentence_length\"]``). At least one\n        entry — empty jumps are never emitted.\n    magnitude: Normalized ``[0, 1]`` magnitude of the jump — the mean of\n        the jumped metrics' distances. Higher = sharper jump."
+      },
+      "KBDemoteRequest": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id"
+        ],
+        "title": "KBDemoteRequest",
+        "description": "Request body for demoting a Series-Canon entry to a Novel-Overlay.\n\n``series_id`` identifies the canon's series; the target novel comes from the\nrequest PATH (``/novels/{novel_id}/.../demote``), mirroring the promote\nendpoint — so the body carries no target id that could disagree with the path."
+      },
       "KBEntryCreate": {
         "properties": {
           "entity_type": {
@@ -14492,12 +16661,200 @@
         "title": "NarrativeArc",
         "description": "Detected narrative arc from sentiment progression.\n\nAttributes:\n    arc_type: The detected narrative arc type.\n    confidence: How well the text matches this arc (0.0 to 1.0).\n    segments: List of arc segments (e.g. ``\"exposition\"``,\n        ``\"rising_action\"``, ``\"climax\"``, ``\"falling_action\"``,\n        ``\"resolution\"``) with VAD per segment.\n    explanation: Human-readable description of why this arc was detected."
       },
+      "NovelKBEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "draft"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "metadata_": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "template_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Version"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "manual"
+          },
+          "review_status": {
+            "type": "string",
+            "title": "Review Status",
+            "default": "approved"
+          },
+          "embeddings_dirty": {
+            "type": "boolean",
+            "title": "Embeddings Dirty",
+            "default": false
+          },
+          "last_referenced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Referenced At"
+          },
+          "usage_count": {
+            "type": "integer",
+            "title": "Usage Count",
+            "default": 0
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "scope": {
+            "type": "string",
+            "const": "novel",
+            "title": "Scope",
+            "default": "novel"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "base_entry_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Entry Id"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "id",
+          "entity_type",
+          "name",
+          "slug",
+          "novel_id"
+        ],
+        "title": "NovelKBEntry",
+        "description": "Novel-Overlay KB entry — valid in one specific novel.\n\nDB invariant (ck_kb_entries_scope_invariant):\n    novel_id IS NOT NULL. series_id / base_entry_id are optional links\n    back to the series and the Canon entry this overlay modifies."
+      },
       "NovelResponse": {
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid",
             "title": "Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
           },
           "title": {
             "type": "string",
@@ -14569,6 +16926,29 @@
             "type": "string",
             "format": "uuid",
             "title": "Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "series_position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Position"
           },
           "title": {
             "type": "string",
@@ -15193,6 +17573,11 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Token Limit Overrides"
+          },
+          "use_series_voice": {
+            "type": "boolean",
+            "title": "Use Series Voice",
+            "default": true
           },
           "updated_at": {
             "type": "string",
@@ -15952,6 +18337,24 @@
         "title": "ReorderChaptersRequest",
         "description": "Batch reorder — provide full ordered list of chapter IDs."
       },
+      "ReorderNovelsRequest": {
+        "properties": {
+          "novel_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Novel Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_ids"
+        ],
+        "title": "ReorderNovelsRequest",
+        "description": "PATCH /api/v1/series/{id}/novels/reorder body — full ordered id list.\n\nThe caller supplies every novel id of the series in the desired order;\nthe service reassigns sequential 1-based ``series_position`` values."
+      },
       "ReorderVolumesRequest": {
         "properties": {
           "volume_ids": {
@@ -16380,6 +18783,725 @@
         "title": "SentimentRequest",
         "description": "Request to analyze chapter sentiment.\n\nAttributes:\n    chapter_ids: One or more chapter UUIDs to analyze.\n    language: Optional language override. If omitted, uses novel's\n        ``writing_language`` setting.\n    detect_arc: Whether to attempt narrative arc detection.\n        Defaults to ``True``. Set to ``False`` for short texts."
       },
+      "SeriesConsistencyCheckRequest": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id"
+        ],
+        "title": "SeriesConsistencyCheckRequest",
+        "description": "Request body for ``POST /api/v1/series/{series_id}/consistency/check``.\n\nThe series id is carried by the URL path parameter; the body carries the\nband (novel) whose chapter prose is checked against the series Canon.\n\nAttributes:\n    novel_id: The novel (band) to check. MUST belong to ``series_id`` (the\n        service verifies membership, anti-enumeration)."
+      },
+      "SeriesConsistencyCheckResponse": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/CanonConflict"
+            },
+            "type": "array",
+            "title": "Conflicts",
+            "default": []
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "default": ""
+          },
+          "canon_entry_count": {
+            "type": "integer",
+            "title": "Canon Entry Count",
+            "default": 0
+          },
+          "chapter_count": {
+            "type": "integer",
+            "title": "Chapter Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "novel_id"
+        ],
+        "title": "SeriesConsistencyCheckResponse",
+        "description": "Response for the series-consistency check.\n\nCarries the agent's conflicts (possibly empty — no contradictions found)\n+ the overall summary + the identifiers + transparency counts so the UI\ncan show \"checked N canon entries against M chapters\".\n\nAttributes:\n    series_id: The series whose Canon was the reference.\n    novel_id: The novel (band) that was checked.\n    conflicts: The canon contradictions found, ordered by severity (errors\n        before warnings). **Empty means no contradictions were found** — a\n        valid and common result.\n    summary: The agent's 1-2 sentence overall assessment of the band's\n        consistency with the series Canon.\n    canon_entry_count: How many Canon entries were supplied to the agent\n        (transparency; 0 → the check was a no-op graceful skip).\n    chapter_count: How many chapters with prose were supplied to the agent."
+      },
+      "SeriesCreateRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
+          "writing_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Writing Language"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "active",
+                  "completed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "planned_novel_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Novel Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "SeriesCreateRequest",
+        "description": "POST /api/v1/series body."
+      },
+      "SeriesKBEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "draft"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "metadata_": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "template_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Version"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "manual"
+          },
+          "review_status": {
+            "type": "string",
+            "title": "Review Status",
+            "default": "approved"
+          },
+          "embeddings_dirty": {
+            "type": "boolean",
+            "title": "Embeddings Dirty",
+            "default": false
+          },
+          "last_referenced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Referenced At"
+          },
+          "usage_count": {
+            "type": "integer",
+            "title": "Usage Count",
+            "default": 0
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "scope": {
+            "type": "string",
+            "const": "series",
+            "title": "Scope",
+            "default": "series"
+          },
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "novel_id": {
+            "type": "null",
+            "title": "Novel Id"
+          },
+          "base_entry_id": {
+            "type": "null",
+            "title": "Base Entry Id"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "id",
+          "entity_type",
+          "name",
+          "slug",
+          "series_id"
+        ],
+        "title": "SeriesKBEntry",
+        "description": "Series-Canon KB entry — shared across all novels in the series.\n\nDB invariant (ck_kb_entries_scope_invariant):\n    novel_id IS NULL, series_id IS NOT NULL, base_entry_id IS NULL."
+      },
+      "SeriesResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
+          "writing_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Writing Language"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "completed"
+            ],
+            "title": "Status"
+          },
+          "planned_novel_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Novel Count"
+          },
+          "novel_count": {
+            "type": "integer",
+            "title": "Novel Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "title",
+          "subtitle",
+          "description",
+          "genre",
+          "writing_language",
+          "status",
+          "planned_novel_count"
+        ],
+        "title": "SeriesResponse",
+        "description": "Response for single Series GET/POST/PATCH."
+      },
+      "SeriesSettingsResponse": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "author_voice": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Voice"
+          },
+          "context_window_size": {
+            "type": "integer",
+            "title": "Context Window Size",
+            "default": 3
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "author_voice"
+        ],
+        "title": "SeriesSettingsResponse",
+        "description": "Response for GET /api/v1/series/{id}/settings."
+      },
+      "SeriesSettingsUpdateRequest": {
+        "properties": {
+          "author_voice": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Voice"
+          },
+          "context_window_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 50.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Window Size"
+          }
+        },
+        "type": "object",
+        "title": "SeriesSettingsUpdateRequest",
+        "description": "PATCH /api/v1/series/{id}/settings body.\n\nAll fields optional (PATCH semantics); ``context_window_size`` is bounded\nto [1, 50] — values outside that range make no sense for a recency window\nand would distort the series-history context at assembly time."
+      },
+      "SeriesSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "completed"
+            ],
+            "title": "Status"
+          },
+          "novel_count": {
+            "type": "integer",
+            "title": "Novel Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "subtitle",
+          "status"
+        ],
+        "title": "SeriesSummary",
+        "description": "List item: lighter than SeriesResponse."
+      },
+      "SeriesUpdateRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
+          "writing_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Writing Language"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "active",
+                  "completed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "planned_novel_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Novel Count"
+          }
+        },
+        "type": "object",
+        "title": "SeriesUpdateRequest",
+        "description": "PATCH /api/v1/series/{id} body. All fields optional."
+      },
+      "SeriesVoiceDriftCheckRequest": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "chapter_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Ids",
+            "description": "Specific chapter IDs to analyse, or null/empty for all chapters."
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id"
+        ],
+        "title": "SeriesVoiceDriftCheckRequest",
+        "description": "Request body for ``POST /api/v1/series/{series_id}/voice-drift/check``.\n\nAttributes:\n    novel_id: The novel (band) whose chapters are analysed. MUST belong to\n        ``series_id`` (the service verifies membership, anti-enumeration).\n    chapter_ids: Specific chapter ids to analyse (UUID strings). ``None``\n        or an empty list means \"analyse every chapter in the novel\"\n        (mirrors :class:`AuthorVoiceDriftRequest.chapter_ids`)."
+      },
+      "SeriesVoiceOverrideRequest": {
+        "properties": {
+          "author_voice": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Author Voice",
+            "description": "A full author-voice profile dict (validated server-side)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "author_voice"
+        ],
+        "title": "SeriesVoiceOverrideRequest",
+        "description": "PATCH /api/v1/series/{id}/voice body — manual voice-profile override.\n\nThe dict is validated as :class:`AuthorVoiceProfile` by the service for\ntype safety before persisting (a malformed override → ``ValidationError``).\nCarried as a raw dict on the wire so the UI can edit the full profile shape\nwithout the schema enumerating every nested field here."
+      },
+      "SeriesVoiceProfileRequest": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id",
+            "description": "The novel (band) whose voice is profiled."
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id"
+        ],
+        "title": "SeriesVoiceProfileRequest",
+        "description": "POST /api/v1/series/{id}/voice/profile body — the band (novel) to profile.\n\nThe novel MUST belong to the series (the service verifies membership and\nraises ``ForbiddenError`` otherwise — anti-enumeration)."
+      },
+      "SeriesVoiceResponse": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "author_voice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorVoiceProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "author_voice"
+        ],
+        "title": "SeriesVoiceResponse",
+        "description": "Response for GET / PATCH /api/v1/series/{id}/voice.\n\nCarries the stored series-voice profile (the Delta-model foundation,\nADR-078). ``None`` means \"no series voice profiled yet\" (RULE-11 graceful\ndegradation — generation renders empty ``{{author_voice}}``)."
+      },
+      "SeriesVoiceStateResponse": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "author_voice": {
+            "$ref": "#/components/schemas/AuthorVoiceProfile"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "novel_id",
+          "author_voice"
+        ],
+        "title": "SeriesVoiceStateResponse",
+        "description": "Response for POST /api/v1/series/{id}/voice/profile (profiling result).\n\nMirrors :class:`SeriesVoiceResponse` but is the explicit return type of the\nprofiling trigger (HTTP 200 — upsert semantics, like band-summary POST)."
+      },
       "ShortestPathResponse": {
         "properties": {
           "path": {
@@ -16753,13 +19875,15 @@
       "StoryTone": {
         "type": "string",
         "enum": [
+          "balanced",
           "dramatic",
           "humorous",
           "suspenseful",
           "contemplative",
           "romantic",
           "dark",
-          "adventurous"
+          "adventurous",
+          "quiet"
         ],
         "title": "StoryTone"
       },
@@ -17916,6 +21040,39 @@
         ],
         "title": "TokenResponse"
       },
+      "TrendPoint": {
+        "properties": {
+          "chapter_id": {
+            "type": "string",
+            "title": "Chapter Id"
+          },
+          "match_subscore": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Match Subscore"
+          },
+          "per_metric_deltas": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Per Metric Deltas"
+          },
+          "band": {
+            "type": "string",
+            "title": "Band"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chapter_id",
+          "match_subscore",
+          "band"
+        ],
+        "title": "TrendPoint",
+        "description": "One point on the per-chapter match trend (signal i output).\n\nProduced by :func:`narrare_core.analysis.voice_drift_scoring.trend_against_profile`.\nThe trend is the always-visible sparkline / heatmap row.\n\nAttributes:\n    chapter_id: The chapter identifier.\n    match_subscore: Per-chapter match sub-score in ``[0.0, 100.0]``\n        (``100.0`` = perfectly matches the stored profile that chapter;\n        ``0.0`` when no metric is comparable). Derived from\n        :func:`metric_delta_subscore` semantics — ``(1 - mean_distance) * 100``.\n    per_metric_deltas: Mapping from metric name to its normalized ``[0, 1]``\n        distance vs the profile. Only metrics present on BOTH sides appear\n        (mirrors :func:`voice_metric_distances`). Empty when no metric is\n        comparable.\n    band: The drift-facing severity label (``\"stable\"`` | ``\"minor\"`` |\n        ``\"moderate\"`` | ``\"major\"``) — derived from :func:`band_for_score`\n        via :data:`narrare_core.analysis.voice_drift_scoring._VOICE_CHECK_BAND_TO_DRIFT_LABEL`\n        so thresholds are identical to WRITE-010 (ADR-073 D4)."
+      },
       "UpdateChapterContentRequest": {
         "properties": {
           "content": {
@@ -18201,6 +21358,17 @@
               }
             ],
             "title": "Model Overrides"
+          },
+          "use_series_voice": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Series Voice"
           }
         },
         "type": "object",
@@ -18731,6 +21899,93 @@
         ],
         "title": "ValidationError"
       },
+      "VoiceAnalysis": {
+        "properties": {
+          "formality": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formality"
+          },
+          "vocabulary_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vocabulary Level"
+          },
+          "sentence_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentence Profile"
+          },
+          "emotional_range": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emotional Range"
+          },
+          "cultural_regional_markers": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cultural Regional Markers"
+          },
+          "voice_examples": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Examples"
+          },
+          "voice_metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VoiceMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "VoiceAnalysis",
+        "description": "Machine-derived character voice profile (ADR-055 Decision 1).\n\nANAL-008 writes this; the extended ``get_speech_data`` consumer renders\nthe descriptive group into ``{{character_voice_profiles}}``. The metric\ngroup is comparison-only and NEVER reaches generation."
+      },
       "VoiceDriftRequest": {
         "properties": {
           "character_id": {
@@ -18764,6 +22019,143 @@
         "type": "object",
         "title": "VoiceDriftRequest",
         "description": "Request body for ``POST /analysis/voice-drift/{novel_id}``.\n\nThe novel id is carried by the URL path parameter (mirrors\n``CharacterVoiceRequest`` — novel-scoped endpoint). The body carries\noptional filters:\n\nAttributes:\n    character_id: Scope the analysis to a single character by their\n        stored profile ``character_id`` (the KB entity UUID string).\n        ``None`` means \"analyse every profiled character\" (the default).\n    chapter_ids: Specific chapter ids to analyse (UUID strings). ``None``\n        or an empty list means \"analyse every chapter in the novel\"\n        (the service resolves the full chapter list via the novel\n        repository). Mirrors ``CharacterVoiceRequest.chapter_ids``."
+      },
+      "VoiceDriftResult": {
+        "properties": {
+          "drift_type": {
+            "type": "string",
+            "enum": [
+              "evolution",
+              "context",
+              "inconsistency"
+            ],
+            "title": "Drift Type",
+            "default": "evolution"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "default": 0.0
+          },
+          "longitudinal_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Longitudinal Reasons"
+          },
+          "per_chapter_notes": {
+            "items": {
+              "$ref": "#/components/schemas/ChapterNote"
+            },
+            "type": "array",
+            "title": "Per Chapter Notes",
+            "default": []
+          },
+          "suggested_attention": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Suggested Attention"
+          }
+        },
+        "type": "object",
+        "title": "VoiceDriftResult",
+        "description": "Structured longitudinal drift classification for one character.\n\nThe locked output shape Frontend + Backend consume (ADR-073 Decision 3).\nA single flat object — the agent classifies one character per call.\n\nAttributes:\n    drift_type: Exactly one of ``\"evolution\"`` (intentional arc-driven\n        change), ``\"context\"`` (chapter-context-driven variation), or\n        ``\"inconsistency\"`` (unexplained drift). The single best-fitting\n        label — no hedging.\n    confidence: Float ``0.0``-``1.0`` capturing how confident the\n        classification is given the trend + jumps + profile.\n    longitudinal_reasons: Concrete observations that justify the\n        classification, each tied to a specific trend feature (a declining\n        metric, a jump at a specific chapter, an oscillation). May be empty\n        only when ``confidence`` is ``0.0`` (the empty-trend convention).\n    per_chapter_notes: Sparse per-chapter commentary — only chapters with\n        something concrete to say appear. Empty when no chapter warrants\n        individual commentary.\n    suggested_attention: Chapter ids (drawn from the supplied trend) most\n        worth the author's review. Empty when the voice is stable."
+      },
+      "VoiceMetrics": {
+        "properties": {
+          "avg_sentence_length": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Sentence Length"
+          },
+          "sentence_length_std": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentence Length Std"
+          },
+          "type_token_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type Token Ratio"
+          },
+          "avg_syllables_per_word": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Syllables Per Word"
+          },
+          "contraction_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contraction Rate"
+          },
+          "verbal_tic_frequency": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verbal Tic Frequency"
+          },
+          "punctuation_profile": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Punctuation Profile"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "VoiceMetrics",
+        "description": "Deterministic numeric metrics — for ANAL-009 drift / WRITE-010 checking.\n\nNOT rendered into generation. Populated by the deterministic\n``VoiceMetricsAnalyzer`` (ADR-021/ADR-055), never by the LLM agent.\n``extra=\"allow\"`` lets the metric block grow without a migration."
       },
       "VolumeResponse": {
         "properties": {

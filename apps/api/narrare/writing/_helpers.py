@@ -11,8 +11,10 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.series.series_history_provider import SeriesHistoryProvider
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.writing.models import GenerationRequest
+    from narrare.writing.repository import GenerationRepository
     from narrare.writing.schemas import GenerateRequest
     from narrare.writing.schemas_coauthor import ChangeFeedback
     from narrare_core.memory.protocols import FeedbackCollector, SessionMemoryCollector
@@ -20,7 +22,7 @@ if TYPE_CHECKING:
     from narrare_core.writing.models import GenerationRequest as CoreGenerationRequest
 
 from narrare_core.memory.models import FeedbackAction, FeedbackEvent
-from narrare_core.shared.errors import ValidationError
+from narrare_core.shared.errors import NotFoundError, ValidationError
 
 
 async def record_batch_feedback(
@@ -115,22 +117,25 @@ async def prepare_generation_context(
     tone_service: CustomToneService | None,
     relationship_repo: RelationshipRepository | None,
     session_memory: SessionMemoryCollector | None,
-) -> tuple[str | None, str, str]:
-    """Resolve tone, KB relationships, and cross-session context for generation.
+    series_history_provider: SeriesHistoryProvider | None = None,
+) -> tuple[str | None, str, str, str]:
+    """Resolve tone, KB relationships, cross-session + series-history context.
 
-    Combines three independent context-preparation steps into one call
+    Combines four independent context-preparation steps into one call
     so ``WritingService.stream_generation`` stays focused on orchestration
-    (RULE-04).  All three degrade gracefully when their service is None.
+    (RULE-04).  All four degrade gracefully when their service is None.
 
     Args:
         request_model: The persisted generation request.
         tone_service: Optional custom tone service (None → bundled lookup).
         relationship_repo: Optional KB relationship repo (None → empty).
         session_memory: Optional session memory collector (None → empty).
+        series_history_provider: Optional series-history provider (None →
+            empty — standalone path / backward compatible).
 
     Returns:
         Tuple of ``(custom_tone_instructions, kb_relationships_text,
-        cross_session_context)``.
+        cross_session_context, series_history)``.
     """
     from narrare.writing._relationship_helpers import fetch_formatted_relationships
     from narrare.writing.tone_resolver import resolve_tone_instructions
@@ -149,7 +154,56 @@ async def prepare_generation_context(
         request_model.user_id,
         request_model.novel_id,
     )
-    return custom_tone, kb_relationships.text, cross_session
+    series_history = await fetch_series_history(
+        series_history_provider,
+        request_model.novel_id,
+    )
+    return custom_tone, kb_relationships.text, cross_session, series_history
+
+
+async def fetch_series_history(
+    provider: SeriesHistoryProvider | None,
+    novel_id: UUID,
+) -> str:
+    """Fetch the series-history block (Spec 2 / SERIES-002).
+
+    Args:
+        provider: Optional SeriesHistoryProvider (no-op if None).
+        novel_id: The novel being generated for.
+
+    Returns:
+        The ``Previously in this series:`` block, or empty string when the
+        provider is absent or the novel is standalone (RULE-11 graceful).
+    """
+    if provider is None:
+        return ""
+    return await provider.assemble_series_history(novel_id)
+
+
+async def get_validated_request(
+    repo: GenerationRepository,
+    request_id: UUID,
+    user_id: str,
+) -> GenerationRequest:
+    """Fetch and authorize a generation request (extracted per RULE-04).
+
+    Args:
+        repo: Generation repository for the lookup.
+        request_id: The generation request ID.
+        user_id: Authenticated user identifier (access check).
+
+    Raises:
+        NotFoundError: If the request does not exist or belongs to another user.
+
+    Returns:
+        The validated ``GenerationRequest`` ORM model.
+    """
+    request_model = await repo.get_by_id(request_id)
+    if request_model is None:
+        raise NotFoundError("Generation request", identifier=str(request_id))
+    if str(request_model.user_id) != user_id:
+        raise NotFoundError("Generation request", identifier=str(request_id))
+    return request_model
 
 
 def build_pipeline_request(

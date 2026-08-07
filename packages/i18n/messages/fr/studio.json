@@ -37,7 +37,23 @@
     "cancel": "Annuler",
     "untitledNovel": "Roman sans titre",
     "emptyTitle": "Pas encore de romans",
-    "emptySubtitle": "Créez votre premier roman"
+    "emptySubtitle": "Créez votre premier roman",
+    "series": {
+      "badge": "Série",
+      "new_series": "Nouvelle série",
+      "novel_count": "{count, plural, one {# roman} other {# romans}}",
+      "status": {
+        "draft": "Brouillon",
+        "active": "Actif",
+        "completed": "Terminé"
+      },
+      "cancel": "Annuler",
+      "create_title": "Créer une nouvelle série",
+      "title_label": "Titre",
+      "title_placeholder": "Entrer le titre de la série...",
+      "create_label": "Créer",
+      "create_error": "Échec de la création de la série. Veuillez réessayer."
+    }
   },
   "editor": {
     "chapterTitlePlaceholder": "Titre du chapitre...",
@@ -486,6 +502,9 @@
       "writing": "Écriture",
       "analysis": "Analyse",
       "kb": "Base de connaissances",
+      "ai_assist": "Assistance IA",
+      "planning": "Planification",
+      "wiki": "Wiki",
       "preview": "Aperçu",
       "edit": "Modifier",
       "capabilityHintTitle": "Règles garanties",
@@ -695,6 +714,17 @@
       "heros_journey": "Le voyage du héros",
       "save_the_cat": "Save the Cat",
       "seven_point": "Structure en sept points"
+    },
+    "tone": {
+      "balanced": "Équilibré",
+      "dramatic": "Dramatique",
+      "humorous": "Humoristique",
+      "suspenseful": "Suspense",
+      "contemplative": "Contemplatif",
+      "romantic": "Romantique",
+      "dark": "Sombre",
+      "adventurous": "Aventureux",
+      "quiet": "Calme"
     },
     "validation": {
       "projectNameRequired": "Le nom du projet est requis",
@@ -1524,6 +1554,18 @@
         "expand": "Développer",
         "reorganize": "Réorganiser"
       }
+    },
+    "scope": {
+      "label": "Portée de la base de connaissances",
+      "canon": "Canon de série",
+      "overlay": "Overlay de roman",
+      "body": "Corps",
+      "promoteTitle": "Promouvoir au Canon de série ?",
+      "promoteDescription": "Cette entrée sera retirée de ce roman et partagée dans toute la série en tant que Canon de série.",
+      "demoteTitle": "Rétrograder en Overlay de roman ?",
+      "demoteDescription": "Cette entrée sera limitée à ce roman uniquement et ne sera plus partagée dans la série.",
+      "confirm": "Confirmer",
+      "error": "Échec de la modification de la portée. Veuillez réessayer."
     }
   },
   "graph": {
@@ -1922,9 +1964,9 @@
     "error": "Impossible de charger les projets de démonstration",
     "retry": "Réessayer",
     "empty": "Aucune démo disponible",
-    "chapters": "{{count}} chapitres",
-    "words": "{{count}} mots",
-    "characters": "{{count}} personnages"
+    "chapters": "{count} chapitres",
+    "words": "{count} mots",
+    "characters": "{count} personnages"
   },
   "quickStart": {
     "label": "Démarrage rapide",
@@ -2025,6 +2067,188 @@
       "wiki_generate_entity": "Wiki : générer une entité",
       "wiki_mark_all_stale": "Wiki : tout marquer obsolète",
       "wiki_refresh_summary": "Wiki : actualiser le résumé"
+    }
+  },
+  "series": {
+    "workspace": {
+      "loading": "Chargement de la série...",
+      "notFound": "Série introuvable.",
+      "badgeSeries": "Série",
+      "backToDashboard": "← Retour au tableau de bord",
+      "genre": "Genre",
+      "planned": "Romans prévus",
+      "tabsLabel": "Onglets de la série",
+      "comingInSpec3": "à venir dans Spec 3",
+      "tabs": {
+        "baende": "Romans",
+        "canon": "Canon",
+        "settings": "Paramètres",
+        "voice": "Voix"
+      },
+      "status": {
+        "draft": "Brouillon",
+        "active": "Actif",
+        "completed": "Terminé"
+      }
+    },
+    "baende": {
+      "title": "Romans dans cette série",
+      "loading": "Chargement des romans...",
+      "empty": "Aucun roman dans cette série.",
+      "demoBadge": "Démo",
+      "reorderUp": "Monter",
+      "reorderDown": "Descendre",
+      "addNovel": "Ajouter un roman à la série",
+      "selectNovel": "Sélectionner un roman...",
+      "noStandaloneNovels": "Aucun roman autonome disponible.",
+      "error": "Échec du chargement des romans."
+    },
+    "settings": {
+      "title": "Paramètres de la série",
+      "description": "Modifier les métadonnées et la configuration de la série.",
+      "loading": "Chargement des paramètres...",
+      "error": "Échec du chargement de la série.",
+      "save": "Enregistrer",
+      "fields": {
+        "title": "Titre",
+        "subtitle": "Sous-titre",
+        "description": "Description",
+        "genre": "Genre",
+        "writingLanguage": "Langue d'écriture",
+        "status": "Statut",
+        "plannedNovelCount": "Nombre de romans prévus"
+      },
+      "status": {
+        "draft": "Brouillon",
+        "active": "Actif",
+        "completed": "Terminé"
+      },
+      "voice": {
+        "title": "Voix de la série",
+        "comingInSpec3": "La hiérarchie des voix sera disponible dans Spec 3."
+      },
+      "contextWindow": {
+        "label": "Combien de tomes précédents inclure ?",
+        "description": "Contrôle le nombre de tomes précédents qui contribuent leur résumé complet au contexte d'historique de la série lors de la génération d'un nouveau roman.",
+        "help": "Seuls les tomes les plus récents dans cette fenêtre obtiennent leur résumé complet ; les tomes plus anciens ne contribuent qu'une phrase. Des valeurs plus basses économisent des tokens ; des valeurs plus élevées donnent à l'IA plus de mémoire de la série."
+      }
+    },
+    "join": {
+      "title": "Ajouter « {novel} » à la série",
+      "cancel": "Annuler",
+      "confirm": "Confirmer",
+      "close": "Fermer",
+      "loading": "Chargement de l'aperçu...",
+      "previewError": "Échec du chargement de l'aperçu.",
+      "applyError": "Échec de l'ajout.",
+      "noTreatments": "Ce roman n'a pas encore d'entrées de base de connaissances — rien à prévisualiser. L'ajout l'intégrera simplement à la série.",
+      "explanation": {
+        "canon_empty": "Le Canon de la série est vide. Les entrées à préférence Canon (systèmes, concepts, cadres, lieux, objets, chronologies) seront promues au Canon de la série ; les personnages et factions restent en Overlay de roman.",
+        "canon_nonempty": "Le Canon de la série existe déjà. Toutes les entrées de ce roman resteront en Overlay de roman."
+      },
+      "targetSeries": "→ Canon de série",
+      "targetNovel": "→ Overlay de roman",
+      "reason": {
+        "entity_default_canon": "Le type d'entrée devient Canon par défaut (Policy iii)",
+        "entity_default_overlay": "Le type d'entrée reste en Overlay de roman par défaut (Policy iii)",
+        "canon_nonempty_overlay": "Le Canon de série existe ; l'entrée reste en Overlay de roman (Policy α)"
+      }
+    },
+    "canon": {
+      "title": "Canon de série",
+      "loading": "Chargement des entrées du canon...",
+      "error": "Échec du chargement des entrées du canon.",
+      "empty": "Aucune entrée de canon pour l'instant. Créez-en une pour la partager dans toute la série.",
+      "create": "Créer une nouvelle entrée Canon",
+      "entityType": "Type d'entité",
+      "name": "Nom",
+      "createError": "Échec de la création de l'entrée du canon. Veuillez réessayer."
+    },
+    "bandSummary": {
+      "title": "Résumé du tome",
+      "autoGenerated": "Généré automatiquement le {date}",
+      "regenerate": "Régénérer",
+      "override": "Remplacement",
+      "overridePlaceholder": "Rédigez un résumé personnalisé qui remplace celui généré automatiquement...",
+      "saveOverride": "Enregistrer le remplacement",
+      "clearOverride": "Effacer le remplacement",
+      "empty": "Générer le résumé du tome",
+      "loading": "Chargement du résumé...",
+      "overrideActive": "Remplacement actif"
+    },
+    "voice": {
+      "title": "Voix de la série",
+      "loading": "Chargement de la voix de la série...",
+      "status": {
+        "empty": "Aucune voix profilée",
+        "autoProfiled": "Profilée automatiquement",
+        "overrideActive": "Remplacement actif"
+      },
+      "profileFrom": "Profiler à partir du tome",
+      "profileFromPlaceholder": "Sélectionner un roman...",
+      "profile": "Profiler",
+      "showProfile": "Profil de voix",
+      "profileEmpty": "La voix profilée ne contient pas encore de données descriptives.",
+      "profiledAt": "Profilée le {date}",
+      "fields": {
+        "vocabularyLevel": "Niveau de vocabulaire",
+        "sentenceProfile": "Profil de phrase",
+        "emotionalRange": "Registre émotionnel",
+        "markers": "Marqueurs culturels / régionaux",
+        "voiceExamples": "Exemples de voix",
+        "authorExamples": "Exemples d'auteur"
+      },
+      "override": "Remplacement manuel (JSON)",
+      "overridePlaceholder": "Collez un profil de voix d'auteur complet en JSON...",
+      "overrideInvalid": "JSON invalide — impossible de lire le remplacement.",
+      "saveOverride": "Enregistrer le remplacement",
+      "clearOverride": "Effacer le remplacement"
+    },
+    "drift": {
+      "title": "Dérive inter-romans",
+      "description": "Vérifiez le texte des chapitres d'un volume par rapport au canon de la série et à la voix de référence.",
+      "selectBand": "Volume à vérifier",
+      "selectBandPlaceholder": "Sélectionner un roman...",
+      "checkConsistency": "Vérifier la cohérence",
+      "checkVoiceDrift": "Dérive de voix",
+      "conflicts": "Contradictions du canon",
+      "loading": "Vérification...",
+      "error": "La vérification a échoué. Veuillez réessayer.",
+      "noConflicts": "Aucune contradiction avec le canon de la série n'a été trouvée.",
+      "noDrift": "Aucune dérive de voix détectée par rapport à la voix de la série.",
+      "canonStatement": "Le canon indique",
+      "excerpt": "Extrait du chapitre",
+      "severity": {
+        "error": "Contradiction",
+        "warning": "Point à vérifier"
+      },
+      "band": {
+        "stable": "Stable",
+        "minor": "Dérive légère",
+        "moderate": "Dérive modérée",
+        "major": "Dérive majeure"
+      },
+      "driftType": {
+        "evolution": "Évolution naturelle",
+        "context": "Changement contextuel",
+        "inconsistency": "Incohérence"
+      },
+      "reasons": "Raisons",
+      "attention": "Chapitres à revoir",
+      "noProfileReason": {
+        "no_stored_profile": "Aucune voix de série profilée pour l'instant — profilez d'abord un volume.",
+        "no_profile_metrics": "Le profil de voix de la série manque des métriques nécessaires à l'analyse de dérive.",
+        "no_chapters_with_prose": "Aucun chapitre avec du texte à analyser."
+      }
+    }
+  },
+  "novel": {
+    "settings": {
+      "useSeriesVoice": {
+        "label": "Utiliser la voix de la série comme base",
+        "description": "Si activé, la génération mélange le profil de voix de cette série avec la voix propre du roman (modèle Delta). Désactivez pour n'utiliser que la voix de ce roman.",
+        "error": "Impossible d'enregistrer ce paramètre. Veuillez réessayer."
+      }
     }
   }
 }

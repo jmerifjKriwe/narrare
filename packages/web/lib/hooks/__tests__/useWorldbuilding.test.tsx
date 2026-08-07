@@ -19,7 +19,11 @@ import { cleanup, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { AIOperationState, UseAIOperationReturn } from "@/lib/hooks/use-ai-operation";
+import type {
+  AIOperationState,
+  UseAIOperationOptions,
+  UseAIOperationReturn,
+} from "@/lib/hooks/use-ai-operation";
 
 // ---------------------------------------------------------------------------
 // Hoisted mock data factory
@@ -60,6 +64,23 @@ vi.mock("@/lib/hooks/use-ai-operation", () => ({
   useAIOperation: vi.fn(),
 }));
 
+// Mock the worldbuilding API so the captured `execute` (which calls the real
+// worldbuildingApi.applyConnections) does not fire a live fetch() against
+// localhost:3000 — Next.js dev is not running in the vitest step, so unmocked
+// calls fail with ECONNREFUSED. The "proceeds past guard" test only asserts
+// that the guard error is NOT thrown; a controlled rejection satisfies that
+// deterministically without touching the network. See ADR-059 Mock Contract.
+vi.mock("@/lib/api/worldbuilding", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/worldbuilding")>();
+  return {
+    ...actual,
+    worldbuildingApi: {
+      ...actual.worldbuildingApi,
+      applyConnections: vi.fn().mockRejectedValue(new Error("Mocked applyConnections failure")),
+    },
+  };
+});
+
 import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { useWorldbuildingAnalyze, useWorldbuildingApply } from "@/lib/hooks/useWorldbuilding";
 
@@ -73,7 +94,7 @@ let capturedConfig: CapturedConfig | null = null;
 
 function setupWithCapture(overrides: Partial<UseAIOperationReturn<unknown>> = {}) {
   const mockAiOp = createDefaultMockAiOp(overrides);
-  mockedUseAIOperation.mockImplementation((config: any) => {
+  mockedUseAIOperation.mockImplementation((config: UseAIOperationOptions<unknown>) => {
     capturedConfig = { execute: config.execute };
     return mockAiOp;
   });

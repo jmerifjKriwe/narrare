@@ -52,6 +52,13 @@ class _FakeProvider:
 class TestEmbedTexts:
     """Tests for the embed_texts convenience function (backward compatible)."""
 
+    @pytest.fixture(autouse=True)
+    def _clear_e2e_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Ensure NARRARE_E2E_TEST is unset — these tests exercise the real
+        registry. See tests/unit/core/llm/test_providers_registry.py for the
+        rationale (justfile exports NARRARE_E2E_TEST=1 from .env)."""
+        monkeypatch.delenv("NARRARE_E2E_TEST", raising=False)
+
     async def test_returns_empty_list_for_empty_input(self) -> None:
         from narrare_core.llm.embeddings import embed_texts
 
@@ -231,6 +238,11 @@ class TestEmbedTexts:
 class TestEmbeddingProviderRegistry:
     """Tests for the registry functions in embedding_providers."""
 
+    @pytest.fixture(autouse=True)
+    def _clear_e2e_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Ensure NARRARE_E2E_TEST is unset — see TestEmbedTexts._clear_e2e_env."""
+        monkeypatch.delenv("NARRARE_E2E_TEST", raising=False)
+
     async def test_register_and_get(self) -> None:
         from narrare_core.llm.embedding_providers import (
             available,
@@ -295,6 +307,11 @@ class TestEmbeddingProviderRegistry:
 
 class TestEmbedTextsProviderSelection:
     """Tests for the provider kwarg in the embed_texts convenience function."""
+
+    @pytest.fixture(autouse=True)
+    def _clear_e2e_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Ensure NARRARE_E2E_TEST is unset — see TestEmbedTexts._clear_e2e_env."""
+        monkeypatch.delenv("NARRARE_E2E_TEST", raising=False)
 
     async def test_uses_specified_provider(self) -> None:
         from narrare_core.llm.embedding_providers import (

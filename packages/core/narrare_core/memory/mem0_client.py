@@ -22,6 +22,7 @@ import structlog
 
 from narrare_core.memory._null_client import NullMemoryClient
 from narrare_core.memory.embedding_cascade import EmbeddingCascadeResolver
+from narrare_core.settings import get_core_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -273,6 +274,17 @@ async def create_memory_client(
     Any
         A ``mem0.AsyncMemory`` instance, or ``NullMemoryClient`` on failure.
     """
+    # E2E test mode: return NullMemoryClient before configuring OpenAI.
+    # mem0 manages its own embedder (configured below) which does NOT go
+    # through narrare_core.llm.embedding_providers — so the TestEmbeddingProvider
+    # override does not cover it. mem0's config validator/EmbedderFactory reject
+    # a "mock" provider (only the internal upstash_vector special-case returns
+    # MockEmbeddings), so the clean E2E stub is NullMemoryClient (the existing
+    # Tier 4 graceful-degradation mechanism). Same switch TestModel uses.
+    if get_core_settings().e2e_test:
+        logger.info("mem0_e2e_test_mode", reason="NARRARE_E2E_TEST set — NullMemoryClient")
+        return NullMemoryClient()
+
     config = _build_mem0_config(
         provider=provider,
         api_key=api_key,
@@ -344,6 +356,11 @@ def create_memory_client_sync(
     Returns ``Any`` because mem0 may not be installed — callers should
     not rely on a specific type from the mem0 package.
     """
+    # E2E test mode: see create_memory_client() for rationale.
+    if get_core_settings().e2e_test:
+        logger.info("mem0_e2e_test_mode_sync", reason="NARRARE_E2E_TEST set — NullMemoryClient")
+        return NullMemoryClient()
+
     config = _build_mem0_config(
         provider=provider,
         api_key=api_key,

@@ -193,6 +193,7 @@ Unit Tests in `tests/unit/core/` — kein I/O, keine echte API:
 from pydantic_ai.models.test import TestModel
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
 
+
 async def test_summary_agent_returns_output():
     model = TestModel(custom_output_text="Summary text.")
     agent = ChapterSummaryAgent(model=model)

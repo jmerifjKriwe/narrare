@@ -25,6 +25,8 @@ from typing import TYPE_CHECKING, Any
 import pytest
 import requests as http_requests
 
+from tests.e2e.http_session import build_api_session
+
 if TYPE_CHECKING:
     from collections.abc import Generator
 
@@ -119,6 +121,25 @@ def api_url() -> str:
 
 
 @pytest.fixture(scope="session")
+def api_session() -> http_requests.Session:
+    """A ``requests.Session`` that mimics a browser for direct API calls.
+
+    E2E tests make direct HTTP calls to the API (outside the browser) to
+    seed data (``register_unique_user``) and drive state changes. The
+    ``OriginValidationMiddleware`` (AUFG-05-13) rejects state-changing
+    requests with no ``Origin`` / ``Referer`` / ``Bearer``. A real browser
+    always sends an ``Origin`` header, so this session sets ``Origin`` /
+    ``Referer`` to the frontend page origin (``BASE_URL``) by default —
+    matching production behaviour instead of relying on CI's ``is_test``
+    CSRF bypass.
+
+    Per-call ``headers=`` (e.g. ``Authorization``) merge with these
+    defaults, so ``Origin`` survives even when callers pass extra headers.
+    """
+    return build_api_session(BASE_URL)
+
+
+@pytest.fixture(scope="session")
 def browser_type_launch_args() -> dict[str, Any]:
     """Launch Chromium only. Headless in CI, headed locally for debugging."""
     return {
@@ -171,10 +192,13 @@ def authenticated_page(browser: Browser, browser_context_args: dict[str, Any]) -
 
     # -----------------------------------------------------------------------
     # Step 1: Log in via the API (direct HTTP, not through the browser).
+    # Send a browser-like Origin header so the request survives the CSRF
+    # OriginValidationMiddleware even when CI's is_test bypass is off.
     # -----------------------------------------------------------------------
     login_response = page.request.post(
         f"{BASE_URL}/api/v1/auth/login",
         data={"email": DEV_EMAIL, "password": DEV_PASSWORD},
+        headers={"Origin": BASE_URL},
     )
 
     if login_response.status == 429:
@@ -240,33 +264,37 @@ def authenticated_page(browser: Browser, browser_context_args: dict[str, Any]) -
 
 
 @pytest.fixture
-def api_request(api_url: str, base_url: str):
-    """Provide a helper to make authenticated API requests via the browser proxy.
+def api_request(api_session: http_requests.Session, api_url: str):
+    """Provide a helper to make direct API requests via the shared browser-mimic session.
 
-    Returns a callable: api_request(method, path, **kwargs) -> Response
+    Returns a callable: ``api_request(method, path, **kwargs) -> Response``.
+    The session sets ``Origin`` / ``Referer`` by default so CSRF validation
+    passes on state-changing methods.
     """
-    import requests as http_requests
 
     def _request(method: str, path: str, **kwargs) -> http_requests.Response:
         """Make an API request. path is relative to api_url (e.g. /api/v1/auth/login)."""
         url = f"{api_url}{path}"
-        return http_requests.request(method, url, **kwargs)
+        return api_session.request(method, url, **kwargs)
 
     return _request
 
 
 @pytest.fixture
-def register_unique_user(api_url: str):
+def register_unique_user(api_session: http_requests.Session, api_url: str):
     """Register a unique test user and return credentials + token.
+
+    Uses the shared ``api_session`` (browser-mimic ``Origin`` / ``Referer``)
+    so the CSRF ``OriginValidationMiddleware`` accepts the registration POST
+    outside CI's ``is_test`` bypass.
 
     Returns dict with: email, password, access_token, refresh_token
     """
-    import requests as http_requests
 
     def _register() -> dict[str, str]:
         email = f"e2e-{uuid.uuid4().hex[:8]}@example.com"
         password = "E2eTest123!pass"
-        resp = http_requests.post(
+        resp = api_session.post(
             f"{api_url}/api/v1/auth/register",
             json={"email": email, "password": password, "display_name": "E2E Test User"},
         )

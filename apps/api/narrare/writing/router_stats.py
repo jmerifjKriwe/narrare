@@ -5,7 +5,7 @@ Extracted from ``router.py`` for RULE-04 compliance (max 150 lines).
 
 from __future__ import annotations
 
-import uuid  # noqa: TC003 — needed at runtime for FastAPI path parameter type resolution
+import uuid
 
 from fastapi import APIRouter
 

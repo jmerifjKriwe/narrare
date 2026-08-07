@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ScopeToggle } from "@/components/kb/ScopeToggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { KBEntry, KBEntryStatus, KBRelationship } from "@/lib/api/kb";
 import { useDeleteKBEntry, useKBTemplate, useUpdateKBEntry } from "@/lib/hooks/useKB";
@@ -113,6 +114,14 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
           deleteLabel={t("kb.deleteEntry")}
           saveLabel={t("kb.save")}
         />
+
+        {/*
+         * Scope toggle — Series-Canon vs Novel-Overlay. Renders nothing when the
+         * novel is standalone (useNovelSeries → null inside the component), so it
+         * is a no-op for non-series novels. Novel-editor entries are always
+         * Novel-Overlays (Canon entries live under /series/{id}/kb).
+         */}
+        <ScopeToggle entry={{ id: entry.id, scope: "novel" }} novelId={novelId} />
 
         <KBMetadataBar
           status={status}

@@ -82,6 +82,80 @@
 | [WRITE-013](writing/WRITE-013-workflows.md) | Writing Workflows | 📋 | ❌ |
 | [WRITE-014](writing/WRITE-014-context-inspector.md) | Context Inspector | ✅ | ❌ |
 
+### Series
+| ID | Feature | Status | MVP |
+|----|---------|--------|-----|
+| [SERIES-001](series/SERIES-001-foundation.md) | Series Foundation | ✅ | ❌ |
+| [SERIES-002](series/SERIES-002-generation-context.md) | Series Generation Context | ✅ | ❌ |
+| [SERIES-003](series/SERIES-003-voice-hierarchy.md) | Series Voice Hierarchy | ✅ | ❌ |
+| [SERIES-004](series/SERIES-004-cross-novel-drift.md) | Series Cross-Novel Drift | 🔨 | ❌ |
+
+> **SERIES-004 in progress (2026-08-06):** Series Cross-Novel Drift (Spec 4 of
+> the Series program) — Core (Task 1) + Backend (Tasks 2–3) implemented against
+> [ADR-079](../architecture/decisions/ADR-079-series-cross-novel-drift.md)
+> (✅ Accepted, implementation in progress). Two cross-novel drift modes: (a)
+> **canon-contradiction** via new `SeriesConsistencyAgent` (novel chapter prose
+> vs series **Canon KB**; `CanonConflict` list with severity; mirrors the
+> `BandSummaryAgent` 1-call pattern + ADR-035 validator; governed Mode-1
+> `analysis/en/series_consistency` template) and (b) **series-scope voice drift**
+> reusing the existing `AuthorVoiceDriftAgent` pipeline (no new drift agent) with
+> `SeriesSettings.author_voice` (Spec 3) as the **trend baseline** (one signal,
+> not a fixed template — closes ADR-078's Spec-4 Review-Trigger item).
+> **Read-scope = current-band-vs-series** (not full-series batch scan — YAGNI);
+> **integrated in Bände-Tab** (no separate tab); **stateless v1** (no
+> persistence — results repository + retrieval endpoint deferred); new
+> `SeriesVoiceDriftService` (pipeline reused, not duplicated — keeps the
+> novel-level `AuthorVoiceDriftService` byte-identical, RULE-06); standalone
+> regression-tested; JSON endpoints (not SSE). **Frontend (Task 4) + i18n (Task
+> 5) pending.** Coordinator commit pending.
+
+> **SERIES-003 implemented (2026-08-05):** Series Voice Hierarchy (Spec 3 of the
+> Series program) implemented across Core → Backend → Frontend against
+> [ADR-078](../architecture/decisions/ADR-078-series-voice-hierarchy.md)
+> (✅ Implemented) — **Delta** resolution model (series voice as foundation, novel
+> voice additive, per-novel opt-out; chosen over Override/Blend/Cascade). Pure-Core
+> `render_author_voice_delta()` composes the existing descriptive-only renderer;
+> `{{author_voice}}` is **extended** (no new prompt variable/route/manifest entry).
+> `SeriesVoiceService` **reuses the existing `AuthorVoiceAgent`** (no new agent,
+> RULE-01b). `ProjectSettings.use_series_voice: bool` (default True) + Alembic
+> `0039` (RULE-14). Frontend Voice tab activated + opt-out card +
+> `useSeriesVoice` hooks + `series.voice.*` / `novel.settings.useSeriesVoice.*`
+> i18n (en/de/fr). **Closes ADR-074 Review Trigger Voice-Teil — FULLY CLOSED**
+> (storage by ADR-075, voice model by ADR-078) + ADR-075 Spec-3 item. Status →
+> `stable`. Coordinator commit pending.
+
+> **SERIES-002 implemented (2026-08-02):** Series Generation Context (Spec 2 of
+> the Series program) implemented across all layers against
+> [ADR-077](../architecture/decisions/ADR-077-series-generation-context.md)
+> (✅ Implemented) — per-band `BandSummary` (1:1 to Novel) with auto-generated
+> `full`/`short` summary + user `override`; pure-Core `SeriesHistoryTier`
+> (recency-window: last `context_window_size` bands full, older short;
+> "sacrifice older first" token budget); `SeriesHistoryProvider` Backend→Core
+> bridge + KB-Redirect (merged Canon+Overlay via Spec 1's
+> `find_merged_for_novel`); `{{series_history}}` governed SYSTEM_VAR threaded
+> through `WritingPipeline`; Triple-Trigger generation (manual / auto
+> series→completed / lazy). Frontend `BandSummaryCard` + `BandOverrideEditor`
+> + `useBandSummary` hooks + `series.bandSummary.*` i18n (en/de/fr). Alembic
+> `0038` (RULE-14). Closes ADR-075's Spec 2 Review Trigger. **Open work:** the
+> context-window *slider* (UI to tune `context_window_size`) — the setting
+> works at default 3; the settings API exposure + slider remain. *(Planned as
+> ADR-076; renumbered to 077 — ADR-076 was claimed by the CURRENT_STATE
+> volatility policy.)* Status → `stable`.
+
+> **SERIES-001 implemented (2026-07-29):** Foundation + KB Evolution (Spec 1 of
+> the Series program) implemented across all layers against
+> [ADR-075](../architecture/decisions/ADR-075-series-foundation.md) (✅
+> Implemented) — hybrid KB Series-Canon+Novel-Overlay (Option C), Schema 2A+STI,
+> N2 Series-Workspace, Single-Series, Policy iii scope defaults + Policy α
+> adaptive join. Alembic `0037` (RULE-14). Closes the Series-storage portion of
+> ADR-074's Review Trigger (Voice-Teil open for Spec 3). Commit range
+> `46a5c425`→`37f0cc17`. Status → `stable`.
+> **PR #145 review fixes (2026-08-02):** C1 IDOR ownership enforcement,
+> C2 `kb_entries.series_id` FK SET NULL + Canon-fate, C3 `JoinReasonCode`,
+> D4 demote-409 Canon-integrity guard, I-A1/I-A2 Protocol splits + typed
+> `NovelRow` — backend `c6d24472` + frontend `9ed37bc0`; documented in
+> ADR-075 §A–F (Post-Implementation Amendment). Status remains `stable`.
+
 ### Chat
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
@@ -367,5 +441,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-07-26 — ANAL-009 Phase 1 (Character Voice Drift) → `stable` (implemented all layers against [ADR-073](../architecture/decisions/ADR-073-voice-drift-character.md); Core scoring + agent + `voice_drift` governed template (third VOICE mode), Backend `VoiceDriftService` + SSE `POST /analysis/voice-drift/{novel_id}`, Frontend `VoiceDriftPanel` (Layout γ) + hook + i18n, Platform probes + runtime markers; commits `a7aa3286`→`e899faae`; `voice_drift` static/runtime/adopted ✅, adoption_debt 5 → 1; Phase 2 author-voice deferred). Earlier 2026-07-24 — ASSIST-004 (Dialogue Coach) → `stable` (implemented all layers against [ADR-069](../architecture/decisions/ADR-069-adaptive-context-dialogue-coach.md); Core agent + governed template, Backend `DialogueCoachService` run/stream + SSE router, Frontend `DialogueCoachPanel` + editor wiring, RULE-18b weight-effect eval suite via Pydantic Evals; commits `ace72dc7`→`a9a740b8`, 28 commits). LEARN-002 (Adaptivity Dashboard) → `stable` (implemented all layers; 4 REST endpoints + `AdaptiveContextService`, `AdaptiveDashboard` + 4 weight sliders + `AdaptiveStatusIndicator`, evidence project-scoping [ADR-070](../architecture/decisions/ADR-070-evidence-project-scoping.md) with `novel_id` + migration `0035`, i18n 3×3=9 files). Earlier 2026-07-19 — LEARN-002 recalibrated from "Style Adaptation" (statistical pipeline) to "Adaptivity Dashboard"; ASSIST-004 detailed with implementation paths; pilot consumer of the new `AdaptiveContext` Core contract. Earlier 2026-06-30 — WRITE-010 (Voice Consistency Checker) → `stable` (ADR-057 ✅ Implemented; implemented across all layers + runtime-verified; `voice_check` static/runtime/adopted, adoption_debt 5 → 1 — true debt). Earlier 2026-06-30 — WRITE-010 spec authored against ADR-057 (checking-path contract + `voice_check` prompt surface; closes ADR-055 Risk #1), promoted to `stable` after all layers + runtime evidence landed. 2026-06-29 — ANAL-008 (Character Voice Profiling) → `stable` (implemented all layers; ADR-055 implemented); INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-08-06 — SERIES-004 (Series Cross-Novel Drift) added as `in-progress` (Spec 4 of the Series program; Core + Backend implemented against [ADR-079](../architecture/decisions/ADR-079-series-cross-novel-drift.md) — canon-contradiction via new `SeriesConsistencyAgent` + series-scope voice drift reusing `AuthorVoiceDriftAgent` with `SeriesSettings.author_voice` as trend baseline; current-band-vs-series read-scope; integrated in Bände-Tab; stateless v1; Frontend + i18n pending; closes ADR-078 Spec-4 Review-Trigger item). Prior 2026-08-05 — SERIES-003 (Series Voice Hierarchy) → `stable` (implemented all layers against [ADR-078](../architecture/decisions/ADR-078-series-voice-hierarchy.md); Delta resolution model — series voice foundation, novel voice additive, per-novel `use_series_voice` opt-out; pure-Core `render_author_voice_delta` extends `{{author_voice}}` (no new variable); `SeriesVoiceService` reuses existing `AuthorVoiceAgent` (no new agent); Alembic `0039`; Frontend Voice tab + opt-out card + `useSeriesVoice` hooks + `series.voice.*` i18n (en/de/fr); **closes ADR-074 Review Trigger Voice-Teil — FULLY CLOSED** (storage by ADR-075, voice model by ADR-078) + ADR-075 Spec-3 item). Prior 2026-08-02 — SERIES-002 (Series Generation Context) → `stable` (implemented all layers against [ADR-077](../architecture/decisions/ADR-077-series-generation-context.md); per-band `BandSummary` + pure-Core `SeriesHistoryTier` recency-window + `SeriesHistoryProvider` Backend→Core bridge + KB-Redirect (merged Canon+Overlay via Spec 1's `find_merged_for_novel`) + `{{series_history}}` SYSTEM_VAR + Triple-Trigger generation (manual / auto series→completed / lazy); Alembic `0038`; Frontend `BandSummaryCard` + `BandOverrideEditor` + `useBandSummary` hooks + `series.bandSummary.*` i18n (en/de/fr); closes ADR-075 Spec 2 Review Trigger. **Open work:** the context-window *slider* — the setting works at default 3; settings-API exposure + slider remain. Renumbering: planned as ADR-076, landed as ADR-077 — ADR-076 was claimed by the CURRENT_STATE volatility policy). Same-day — SERIES-001 docs reconciliation for PR #145 review fixes (C1–C4 + D4 + contract splits; stale `contracts.py` path references corrected in ADR-075 + SERIES-001; ADR-075 Post-Implementation Amendment §A–F verified accurate against implementation; status remains `stable`). Prior 2026-07-29 — SERIES-001 (Series Foundation) → `stable` (implemented all layers against [ADR-075](../architecture/decisions/ADR-075-series-foundation.md); hybrid KB Canon+Overlay + Schema 2A+STI + Series-Workspace; Alembic `0037`; closes ADR-074 Review Trigger Series-storage-Teil; commits `46a5c425`→`37f0cc17`). Prior 2026-07-26 — ANAL-009 Phase 1 (Character Voice Drift) → `stable` (implemented all layers against [ADR-073](../architecture/decisions/ADR-073-voice-drift-character.md); Core scoring + agent + `voice_drift` governed template (third VOICE mode), Backend `VoiceDriftService` + SSE `POST /analysis/voice-drift/{novel_id}`, Frontend `VoiceDriftPanel` (Layout γ) + hook + i18n, Platform probes + runtime markers; commits `a7aa3286`→`e899faae`; `voice_drift` static/runtime/adopted ✅, adoption_debt 5 → 1; Phase 2 author-voice deferred). Earlier 2026-07-24 — ASSIST-004 (Dialogue Coach) → `stable` (implemented all layers against [ADR-069](../architecture/decisions/ADR-069-adaptive-context-dialogue-coach.md); Core agent + governed template, Backend `DialogueCoachService` run/stream + SSE router, Frontend `DialogueCoachPanel` + editor wiring, RULE-18b weight-effect eval suite via Pydantic Evals; commits `ace72dc7`→`a9a740b8`, 28 commits). LEARN-002 (Adaptivity Dashboard) → `stable` (implemented all layers; 4 REST endpoints + `AdaptiveContextService`, `AdaptiveDashboard` + 4 weight sliders + `AdaptiveStatusIndicator`, evidence project-scoping [ADR-070](../architecture/decisions/ADR-070-evidence-project-scoping.md) with `novel_id` + migration `0035`, i18n 3×3=9 files). Earlier 2026-07-19 — LEARN-002 recalibrated from "Style Adaptation" (statistical pipeline) to "Adaptivity Dashboard"; ASSIST-004 detailed with implementation paths; pilot consumer of the new `AdaptiveContext` Core contract. Earlier 2026-06-30 — WRITE-010 (Voice Consistency Checker) → `stable` (ADR-057 ✅ Implemented; implemented across all layers + runtime-verified; `voice_check` static/runtime/adopted, adoption_debt 5 → 1 — true debt). Earlier 2026-06-30 — WRITE-010 spec authored against ADR-057 (checking-path contract + `voice_check` prompt surface; closes ADR-055 Risk #1), promoted to `stable` after all layers + runtime evidence landed. 2026-06-29 — ANAL-008 (Character Voice Profiling) → `stable` (implemented all layers; ADR-055 implemented); INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after

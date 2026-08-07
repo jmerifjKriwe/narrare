@@ -29,6 +29,8 @@ ADR-057 — Voice-check checking-path contract (metrics never reach generation).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from pydantic import BaseModel, ConfigDict
 
 # Runtime imports (not TYPE_CHECKING): both AuthorMetrics and VoiceAnalysis
@@ -40,6 +42,9 @@ from pydantic import BaseModel, ConfigDict
 # frozen-dataclass field, noqa: TC001).
 from narrare_core.analysis.author_metrics import AuthorMetrics  # noqa: TC001
 from narrare_core.schemas.voice import VoiceAnalysis  # noqa: TC001
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 
 class AuthorVoiceProfile(BaseModel):
@@ -179,3 +184,75 @@ def render_author_voice_for_generation(profile: AuthorVoiceProfile | None) -> st
     # metric block is NEVER rendered into {{author_voice}}.
 
     return "; ".join(parts) if parts else ""
+
+
+# ---------------------------------------------------------------------------
+# Series Voice Hierarchy — Delta-model renderer (Spec 3 / ADR-078)
+# ---------------------------------------------------------------------------
+
+
+def render_author_voice_delta(
+    novel_profile: AuthorVoiceProfile | None,
+    series_profile: AuthorVoiceProfile | None,
+    *,
+    use_series_voice: bool = True,
+    series_id: UUID | None = None,
+) -> str:
+    """Render ``{{author_voice}}`` with the Series Voice Hierarchy Delta model.
+
+    Pure function — no I/O. Composes the existing descriptive-only renderer
+    (:func:`render_author_voice_for_generation`) once per profile, then applies
+    the ADR-078 resolution:
+
+    - ``series_id`` set AND ``use_series_voice`` AND a non-empty series voice
+      AND a non-empty novel voice → **Delta** —
+      ``"Series voice:\\n{series}\\n\\nNovel nuances:\\n{novel}"``.
+    - ``series_id`` set AND ``use_series_voice`` AND a non-empty series voice
+      but NO novel voice → **series foundation only** —
+      ``"Series voice:\\n{series}"``.
+    - Otherwise (standalone novel / opt-out / series has no voice / both empty)
+      → **novel-only** — identical to
+      :func:`render_author_voice_for_generation` (may be ``""``).
+
+    Backward-compatibility guarantee (Spec 3 Task 4, binding): for a standalone
+    novel (``series_id is None``) the output is byte-identical to the legacy
+    renderer — no new labels, no reformatting. The Delta framing is added ONLY
+    when a series voice is actually present and opted into.
+
+    The descriptive/metric boundary (ADR-074) is preserved by construction:
+    each block is produced by the descriptive-only renderer, so neither
+    ``voice_metrics`` nor ``author_metrics`` from either profile can reach the
+    composed output.
+
+    Args:
+        novel_profile: The novel-scoped profile (``ProjectSettings.author_voice``
+            JSONB), or ``None`` when the novel has none.
+        series_profile: The series-scoped profile (``SeriesSettings.author_voice``
+            JSONB), or ``None`` when the series has none. Ignored entirely when
+            ``series_id is None`` (standalone) or ``use_series_voice`` is False.
+        use_series_voice: The per-novel opt-out flag
+            (``ProjectSettings.use_series_voice``, default ``True``). When
+            ``False`` the series voice is skipped and the novel voice is used
+            alone.
+        series_id: The novel's series, or ``None`` for a standalone novel. The
+            sentinel that activates the Delta path; ``None`` collapses to the
+            legacy novel-only render.
+
+    Returns:
+        The ``{{author_voice}}`` text: Delta composition, series-only, novel-only,
+        or empty string (RULE-11 graceful degradation).
+    """
+    novel_voice = render_author_voice_for_generation(novel_profile)
+
+    # The series voice participates only when the novel belongs to a series,
+    # the user has not opted out, and the series actually has a profiled voice.
+    if series_id is not None and use_series_voice:
+        series_voice = render_author_voice_for_generation(series_profile)
+        if series_voice:
+            if novel_voice:
+                return f"Series voice:\n{series_voice}\n\nNovel nuances:\n{novel_voice}"
+            return f"Series voice:\n{series_voice}"
+
+    # Standalone / opt-out / no series voice / no novel voice → novel-only
+    # (unchanged from the legacy renderer, including the empty-string case).
+    return novel_voice

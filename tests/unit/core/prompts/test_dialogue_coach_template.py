@@ -38,8 +38,19 @@ def _read_template() -> str:
     return TEMPLATE_PATH.read_text(encoding="utf-8")
 
 
+@pytest.mark.mutation_inert
 class TestDialogueCoachTemplateStructure:
-    """9-section Mode-1 skeleton (ADR-054)."""
+    """9-section Mode-1 skeleton (ADR-054).
+
+    ``mutation_inert``: static assertions on the committed bundled template
+    (``packages/core/narrare_core/prompts/_bundled/ai_assist/en/dialogue_coach/system.md``)
+    reached via ``parents[4]``. These cannot kill source-code mutants, and the
+    asset path resolves to a non-existent location inside MutMut's ``mutants/``
+    sandbox (``parents[4]`` lands on ``<repo>/mutants``), crashing the run
+    (issue #146). MutMut's ``-m "not mutation_inert"`` filter excludes them —
+    consistent with the reference asset tests. Enforced by
+    scripts/checks/check_mutation_inert_assets.py.
+    """
 
     def test_template_exists(self) -> None:
         assert TEMPLATE_PATH.exists()
@@ -74,8 +85,13 @@ class TestDialogueCoachTemplateStructure:
         assert "## Do NOT" in _read_template()
 
 
+@pytest.mark.mutation_inert
 class TestDialogueCoachTemplateVariables:
-    """Variable references match Phase 1 Task 5 registrations."""
+    """Variable references match Phase 1 Task 5 registrations.
+
+    ``mutation_inert``: reads the same bundled template via ``parents[4]``
+    — see ``TestDialogueCoachTemplateStructure`` for the full rationale.
+    """
 
     def test_references_mode_variable(self) -> None:
         assert "{{mode}}" in _read_template()
@@ -109,8 +125,13 @@ class TestDialogueCoachTemplateVariables:
         assert "{{text_to_analyze}}" in content
 
 
+@pytest.mark.mutation_inert
 class TestDialogueCoachVoiceBoundary:
-    """ADR-055/057: voice_metrics NEVER reach this template."""
+    """ADR-055/057: voice_metrics NEVER reach this template.
+
+    ``mutation_inert``: reads the same bundled template via ``parents[4]``
+    — see ``TestDialogueCoachTemplateStructure`` for the full rationale.
+    """
 
     def test_does_not_reference_voice_metrics(self) -> None:
         content = _read_template().lower()

@@ -119,6 +119,7 @@ class WritingPipeline:
         user_preferences: str = "",
         avoidance_patterns: str = "",
         cross_session_context: str = "",
+        series_history: str = "",
         custom_tone_instructions: str | None = None,
         selection_text: str = "",
         context_before: str = "",
@@ -155,6 +156,11 @@ class WritingPipeline:
             cross_session_context: Cross-session writing memories from mem0,
                 formatted as a string of past writing-session observations.
                 Empty when no memories exist (graceful degradation).
+            series_history: Pre-assembled ``Previously in this series:`` block
+                (Spec 2 / SERIES-002) produced by
+                :class:`~narrare_core.context.series_history.SeriesHistoryTier`
+                in the Backend. Threaded into ``{{series_history}}``. Empty for
+                standalone novels (RULE-11 graceful — renders nothing).
             custom_tone_instructions: User-defined tone instructions
                 to override bundled tones. When provided, used directly
                 instead of looking up ``_TONE_INSTRUCTIONS``.
@@ -195,6 +201,7 @@ class WritingPipeline:
             user_preferences=user_preferences,
             avoidance_patterns=avoidance_patterns,
             cross_session_context=cross_session_context,
+            series_history=series_history,
         )
 
         # Stage 3 — emit assembled context metadata (CR-07 Context Inspector)
@@ -270,6 +277,7 @@ class WritingPipeline:
             "recent_chapters": context.recent_chapters,
             "character_voice_profiles": context.character_voice_profiles,
             "author_voice": context.author_voice,
+            "series_history": context.series_history,
             "word_target": str(context.word_target) if context.word_target else "",
             "tone_instructions": tone_instr,
             "writing_language": context.writing_language,

@@ -66,6 +66,16 @@ just check-frontend  # frontend lint + typecheck + test
 
 Both must pass cleanly.
 
+**Was bei jedem Commit läuft:** Neben den Architektur-/Lint-/Format-Checks führt
+jeder Commit zwei Repo-weite Gates aus: (1) **SSOT-Check**
+(`check_current_state_facts.py`) — prüft `CURRENT_STATE.md` auf verbotene
+volatile Count-Claims; (2) **Secret-Scan** (Gitleaks) — scannt das gesamte Repo
+inkl. History auf Secrets. Beide blocken den Commit. Wenn Gitleaks einen
+dokumentierten Example-Key markiert (z. B. `openai_api_key="test-key"` aus
+ADR-071), wird der Key in `.gitleaks.toml` explizit allowlisted — siehe
+`.gitleaks.toml` für die Allowlist-Regel und ADR-071 für die Herkunft des
+Beispiel-Keys.
+
 ## PR Process
 
 1. Push your feature branch and open a Pull Request against `main`.
@@ -77,6 +87,8 @@ Both must pass cleanly.
    - [ ] Tests pass (`just test` and/or `just test-frontend`)
    - [ ] No `--no-verify` was used for any commit
    - [ ] Architecture checks are green (CI job "Architecture Constraints")
+   - [ ] Neue `packages/web/lib/**`-Dateien haben Unit-Tests (CI-Floor 80% branches — `pnpm test:coverage`)
+   - [ ] Neue/Geänderte VRT-Specs folgen dem Mock-Contract (ADR-059 BINDING): `just vrt` lokal grün
 4. CI runs the full pipeline on every PR — all applicable jobs must be green.
    There is no bypass.
 5. Address review feedback with new commits; the merge will squash them.

@@ -14,7 +14,7 @@ request body to bypass the cache.  Dismissed findings are persisted per-novel
 
 from __future__ import annotations
 
-import uuid  # noqa: TC003 — needed at runtime for FastAPI path parameter resolution
+import uuid
 
 from fastapi import APIRouter, Depends
 

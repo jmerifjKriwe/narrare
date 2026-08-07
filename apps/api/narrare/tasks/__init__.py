@@ -10,6 +10,7 @@ Tasks:
 - Feedback / preference memory (mem0) — stubs, wired for future implementation.
 - Embedding generation — see :mod:`narrare.embeddings.tasks`.
 - Wiki summary generation — see :mod:`narrare.wiki.tasks`.
+- Band summary generation — see :mod:`narrare.series.tasks`.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from __future__ import annotations
 import structlog
 
 import narrare.embeddings.tasks as _embeddings_tasks_module
+import narrare.series.tasks as _series_tasks_module
 import narrare.wiki.tasks as _wiki_tasks_module
 
 # Runtime import (not TYPE_CHECKING): taskiq's @broker.task resolves type hints
@@ -27,7 +29,7 @@ from narrare.events.feedback_events import (  # noqa: TC001
 )
 from narrare.tasks.broker import broker
 
-_TASK_MODULES = (_embeddings_tasks_module, _wiki_tasks_module)
+_TASK_MODULES = (_embeddings_tasks_module, _series_tasks_module, _wiki_tasks_module)
 """Task modules whose import registers tasks on :data:`broker`."""
 
 logger = structlog.get_logger(__name__)

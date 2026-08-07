@@ -31,7 +31,7 @@ decisions, and governance policies. These run in pre-commit and CI.
 - **check_adr_naming.py** — Validates ADR filename convention
   (`ADR-XXX-short-title.md`). Fast check that only runs when the decisions
   directory changes.
-- **check_current_state_facts.py** — Enforces ADR-047 volatility policy on
+- **check_current_state_facts.py** — Enforces ADR-076 volatility policy on
   `docs/_shared/CURRENT_STATE.md`: rejects volatile count claims, requires
   links or commands for authoritative facts.
 - **check_registry_drift.py** — Validates `adoption-registry.yaml` against

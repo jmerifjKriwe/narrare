@@ -87,6 +87,7 @@ const MAPPINGS: Mapping[] = [
 export function TailwindMapping({ previewDark }: { previewDark: boolean }) {
   const [values, setValues] = useState<Record<string, string>>({});
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: previewDark is not read in the effect body, but toggling it flips the .dark class on <html>, which changes the computed CSS var values this effect reads. The dep is intentional so the effect re-reads vars on theme switch.
   useEffect(() => {
     const style = getComputedStyle(document.documentElement);
     const allVars = [...new Set(MAPPINGS.map((m) => m.cssVar))];

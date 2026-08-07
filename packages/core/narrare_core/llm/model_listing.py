@@ -17,6 +17,9 @@ import httpx
 import structlog
 from pydantic import BaseModel
 
+from narrare_core.llm._model_listing_test_catalog import _test_catalog
+from narrare_core.settings import get_core_settings
+
 __all__ = [
     "SUPPORTED_CATALOG_PROVIDERS",
     "ModelCatalogClient",
@@ -83,6 +86,15 @@ not hide production-relevant models from the UI.
 """
 
 # ---------------------------------------------------------------------------
+# Test catalog (E2E stub — analog to TestModel / TestEmbeddingProvider)
+# ---------------------------------------------------------------------------
+# The ``_TEST_CATALOG`` dict and ``_test_catalog()`` helper live in a
+# separate internal module (``_model_listing_test_catalog.py``) to keep
+# this file under the RULE-04 line limit. The E2E guard in
+# ``list_models()`` calls the imported ``_test_catalog`` helper. See the
+# dedicated module for the rationale.
+
+# ---------------------------------------------------------------------------
 # Client
 # ---------------------------------------------------------------------------
 
@@ -146,6 +158,21 @@ class ModelCatalogClient:
                 provider,
                 f"Unsupported provider. Supported: {sorted(SUPPORTED_CATALOG_PROVIDERS)}",
             )
+
+        # E2E test mode: return a deterministic catalog WITHOUT touching the
+        # network — prevents 401/rate-limit flakes from real provider APIs and
+        # keeps E2E hermetic. Mirrors the TestModel override in
+        # ``_providers/registry.py:get()`` and TestEmbeddingProvider in
+        # ``embedding_providers.get()`` (same ``e2e_test`` switch). The
+        # unsupported-provider check above still runs first, so unknown names
+        # raise even in E2E mode (same ordering as the embedding override).
+        if get_core_settings().e2e_test:
+            logger.info(
+                "model_catalog_e2e_test_mode",
+                reason="NARRARE_E2E_TEST set — returning test catalog",
+                provider=normalized,
+            )
+            return _test_catalog(normalized)
 
         try:
             async with httpx.AsyncClient(timeout=self._catalog_timeout) as client:

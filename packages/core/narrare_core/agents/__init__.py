@@ -10,6 +10,8 @@ from narrare_core.agents.author_voice_types import (
     AuthorVoiceDeps,
     AuthorVoiceOutput,
 )
+from narrare_core.agents.band_summary_agent import BandSummaryAgent
+from narrare_core.agents.band_summary_types import BandSummaryDeps, BandSummaryOutput
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.beta_reader_agent import BetaReaderAgent
 from narrare_core.agents.beta_reader_types import (
@@ -140,6 +142,12 @@ from narrare_core.agents.readability_types import (
 from narrare_core.agents.registry import AgentRegistry
 from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.review_types import ReviewOutput
+from narrare_core.agents.series_consistency_agent import SeriesConsistencyAgent
+from narrare_core.agents.series_consistency_types import (
+    CanonConflict,
+    SeriesConsistencyDeps,
+    SeriesConsistencyOutput,
+)
 from narrare_core.agents.story_suggest_agent import StorySuggestAgent
 from narrare_core.agents.story_suggest_types import (
     StorySuggestDeps,
@@ -200,10 +208,14 @@ __all__ = [
     "AuthorVoiceDriftAgent",
     "AuthorVoiceDriftDeps",
     "AuthorVoiceOutput",
+    "BandSummaryAgent",
+    "BandSummaryDeps",
+    "BandSummaryOutput",
     "BetaReaderAgent",
     "BetaReaderDeps",
     "BetaReaderPhase1Output",
     "BetaReaderPhase2Output",
+    "CanonConflict",
     "ChapterMeta",
     "ChapterNote",
     "ChapterSummaryAgent",
@@ -303,6 +315,9 @@ __all__ = [
     "ReviewOutput",
     "SentenceIssue",
     "SentenceSuggestion",
+    "SeriesConsistencyAgent",
+    "SeriesConsistencyDeps",
+    "SeriesConsistencyOutput",
     "StorySuggestAgent",
     "StorySuggestDeps",
     "StorySuggestOutput",

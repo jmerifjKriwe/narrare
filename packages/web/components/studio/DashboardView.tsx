@@ -7,10 +7,13 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { authApi, novelsApi } from "@/lib/api/client";
+import { novelsKeys } from "@/lib/hooks/novelsKeys";
+import { useCreateSeries, useSeriesList } from "@/lib/hooks/useSeries";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { DashboardHeader } from "./DashboardHeader";
+import { DashboardLibrary } from "./DashboardLibrary";
 import { DemoProjectCards } from "./DemoProjectCards";
-import { NovelCardGrid } from "./NovelCardGrid";
+import { NewSeriesDialog } from "./NewSeriesDialog";
 
 export function DashboardView() {
   const t = useTranslations("studio");
@@ -33,19 +36,33 @@ export function DashboardView() {
   });
 
   const { data: novels = [], isLoading: novelsLoading } = useQuery({
-    queryKey: ["novels"],
+    queryKey: novelsKeys.all,
     queryFn: novelsApi.list,
   });
 
   const deleteMutation = useMutation({
     mutationFn: novelsApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["novels"] });
+      queryClient.invalidateQueries({ queryKey: novelsKeys.all });
     },
   });
 
+  // Series (Spec 1, Slice 4, Task 4.5) — rendered alongside standalone novels
+  // in the mixed DashboardLibrary grid.
+  const { data: series = [], isLoading: seriesLoading } = useSeriesList();
+  const createSeriesMutation = useCreateSeries();
+  const [newSeriesOpen, setNewSeriesOpen] = useState(false);
+
   function handleNewNovel() {
     router.push("/wizard");
+  }
+
+  function handleNewSeries() {
+    setNewSeriesOpen(true);
+  }
+
+  function handleCreateSeries(title: string) {
+    createSeriesMutation.mutate({ title }, { onSuccess: () => setNewSeriesOpen(false) });
   }
 
   function formatDate(dateStr: string): string {
@@ -97,12 +114,15 @@ export function DashboardView() {
             <p className="text-muted-foreground">{t("dashboard.subtitle")}</p>
           </div>
 
-          <NovelCardGrid
+          <DashboardLibrary
+            series={series}
             novels={novels}
-            isLoading={novelsLoading}
-            onDelete={handleDeleteNovel}
-            onEdit={(novelId) => router.push(`/novel/${novelId}/settings`)}
-            onNew={handleNewNovel}
+            isLoading={novelsLoading || seriesLoading}
+            onOpenSeries={(seriesId) => router.push(`/series/${seriesId}`)}
+            onNewSeries={handleNewSeries}
+            onDeleteNovel={handleDeleteNovel}
+            onEditNovel={(novelId) => router.push(`/novel/${novelId}/settings`)}
+            onNewNovel={handleNewNovel}
             isDeleting={deleteMutation.isPending}
             formatDate={formatDate}
           />
@@ -127,6 +147,15 @@ export function DashboardView() {
           pendingAction.current = null;
           setConfirmOpen(false);
         }}
+      />
+
+      {/* New series dialog (Spec 1 — basic create flow) */}
+      <NewSeriesDialog
+        open={newSeriesOpen}
+        onOpenChange={setNewSeriesOpen}
+        onCreate={handleCreateSeries}
+        isCreating={createSeriesMutation.isPending}
+        createError={createSeriesMutation.isError}
       />
     </div>
   );

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from narrare_core.memory._null_client import NullMemoryClient
 from narrare_core.memory.mem0_client import (
     _build_mem0_config,
@@ -175,6 +177,13 @@ class TestBuildMem0Config:
 class TestCreateMemoryClientSync:
     """Tests for the synchronous client factory."""
 
+    @pytest.fixture(autouse=True)
+    def _clear_e2e_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Ensure NARRARE_E2E_TEST is unset — these tests exercise the real
+        config-building path. See tests/unit/core/llm/test_providers_registry.py
+        for the rationale (justfile exports NARRARE_E2E_TEST=1 from .env)."""
+        monkeypatch.delenv("NARRARE_E2E_TEST", raising=False)
+
     def test_returns_null_on_disabled_embeddings(self) -> None:
         client = create_memory_client_sync(
             provider="openai",
@@ -227,3 +236,65 @@ class TestCreateMemoryClientSync:
         config = call_args.kwargs.get("config_dict") or call_args[0][0]
         assert config["llm"]["model"] == "gpt-4o-mini"
         assert config["vector_store"]["provider"] == "pgvector"
+
+
+class TestCreateMemoryClientSyncE2ETestMode:
+    """When NARRARE_E2E_TEST is set, create_memory_client_sync returns
+    NullMemoryClient — no OpenAI embedding calls.
+
+    Root cause this guards: in E2E mode, mem0 is configured with a real
+    OpenAI embedder (Tier 1 cascade + dummy key). mem0.search() embeds the
+    query via its OWN OpenAI embedder (it does NOT go through
+    narrare_core.llm.embedding_providers), causing 401s logged as
+    ``preference_query_failed``. mem0's config validator/EmbedderFactory
+    reject a "mock" provider, so NullMemoryClient (the existing Tier 4
+    graceful-degradation mechanism) is the clean E2E stub.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _set_e2e_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("NARRARE_E2E_TEST", "1")
+
+    def test_returns_null_memory_client_in_e2e(self) -> None:
+        client = create_memory_client_sync(
+            provider="openai",
+            api_key="sk-test-dummy",
+        )
+        assert isinstance(client, NullMemoryClient)
+
+    def test_e2e_does_not_build_openai_embedder_config(self) -> None:
+        """In E2E, _build_mem0_config must not even be called (no OpenAI
+        embedder config assembled)."""
+        with patch("narrare_core.memory.mem0_client._build_mem0_config") as mock_build:
+            client = create_memory_client_sync(
+                provider="openai",
+                api_key="sk-test-dummy",
+            )
+        mock_build.assert_not_called()
+        assert isinstance(client, NullMemoryClient)
+
+    def test_e2e_does_not_import_or_call_mem0(self) -> None:
+        """E2E must short-circuit before touching the mem0 package."""
+        with patch.dict("sys.modules", {"mem0": None}):
+            client = create_memory_client_sync(
+                provider="openai",
+                api_key="sk-test-dummy",
+            )
+        assert isinstance(client, NullMemoryClient)
+
+
+class TestCreateMemoryClientE2ETestMode:
+    """Async factory E2E override (mirrors the sync factory)."""
+
+    @pytest.fixture(autouse=True)
+    def _set_e2e_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("NARRARE_E2E_TEST", "1")
+
+    async def test_returns_null_memory_client_in_e2e(self) -> None:
+        from narrare_core.memory.mem0_client import create_memory_client
+
+        client = await create_memory_client(
+            provider="openai",
+            api_key="sk-test-dummy",
+        )
+        assert isinstance(client, NullMemoryClient)

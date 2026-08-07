@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         KBRelationshipCreate,
         ResolveReferencesResponse,
     )
+    from narrare_core.kb.schemas.entry import NovelKBEntry, SeriesKBEntry
 
 
 @runtime_checkable
@@ -61,6 +62,19 @@ class KBRepositoryProtocol(Protocol):
         page_size: int = 50,
     ) -> tuple[list[KBEntry], int]: ...
     async def count_by_novel(self, novel_id: uuid.UUID) -> int: ...
+    async def find_canon_for_series(self, series_id: uuid.UUID) -> list[SeriesKBEntry]: ...
+    async def find_canon_by_slug(self, series_id: uuid.UUID, slug: str) -> KBEntry | None: ...
+    async def find_overlay_for_novel(self, novel_id: uuid.UUID) -> list[NovelKBEntry]: ...
+    async def find_merged_for_novel(
+        self, novel_id: uuid.UUID
+    ) -> list[NovelKBEntry | SeriesKBEntry]: ...
+    async def promote_to_canon(self, novel_id: uuid.UUID, entry_id: uuid.UUID) -> SeriesKBEntry: ...
+    async def demote_to_overlay(
+        self,
+        series_id: uuid.UUID,
+        entry_id: uuid.UUID,
+        target_novel_id: uuid.UUID,
+    ) -> NovelKBEntry: ...
 
 
 @runtime_checkable

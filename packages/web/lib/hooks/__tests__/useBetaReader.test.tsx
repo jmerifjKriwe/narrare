@@ -19,7 +19,12 @@ import { cleanup, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { AIOperationState, UseAIOperationReturn } from "@/lib/hooks/use-ai-operation";
+import type {
+  AIErrorResponse,
+  AIOperationState,
+  UseAIOperationOptions,
+  UseAIOperationReturn,
+} from "@/lib/hooks/use-ai-operation";
 
 // ---------------------------------------------------------------------------
 // Hoisted mock data factory (needed in vi.mock, which is hoisted)
@@ -60,6 +65,25 @@ vi.mock("@/lib/hooks/use-ai-operation", () => ({
   useAIOperation: vi.fn(),
 }));
 
+// Mock the analysis API so the captured `execute` (which calls the real
+// analysisApi.analyze / analysisApi.deepDive) does not fire a live fetch()
+// against localhost:3000 — Next.js dev is not running in the vitest step, so
+// unmocked calls fail with ECONNREFUSED. The "executes API call" tests only
+// assert that the guard error is NOT thrown (analyze) / that execute runs
+// past the guard (deepDive); controlled rejections satisfy both
+// deterministically without touching the network. See ADR-059 Mock Contract.
+vi.mock("@/lib/api/analysis", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/analysis")>();
+  return {
+    ...actual,
+    analysisApi: {
+      ...actual.analysisApi,
+      analyze: vi.fn().mockRejectedValue(new Error("Mocked analyze failure")),
+      deepDive: vi.fn().mockRejectedValue(new Error("Mocked deepDive failure")),
+    },
+  };
+});
+
 import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { useBetaReaderAnalyze, useBetaReaderDeepDive } from "@/lib/hooks/useBetaReader";
 
@@ -69,8 +93,8 @@ const mockedUseAIOperation = vi.mocked(useAIOperation);
 // Each test using setupWithCapture() must call this BEFORE renderHook.
 interface CapturedConfig {
   execute: (signal: AbortSignal) => Promise<unknown>;
-  onSuccess: (data: unknown) => void;
-  onError: (error: unknown) => void;
+  onSuccess?: (data: unknown) => void;
+  onError?: (error: AIErrorResponse) => void;
 }
 
 let capturedConfig: CapturedConfig | null = null;
@@ -79,7 +103,7 @@ function setupWithCapture<T>(
   overrides: Partial<UseAIOperationReturn<T>> = {},
 ): UseAIOperationReturn<T> {
   const mockAiOp = createDefaultMockAiOp(overrides);
-  mockedUseAIOperation.mockImplementation((config: any) => {
+  mockedUseAIOperation.mockImplementation((config: UseAIOperationOptions<unknown>) => {
     capturedConfig = {
       execute: config.execute,
       onSuccess: config.onSuccess,
@@ -252,7 +276,7 @@ describe("useBetaReaderAnalyze", () => {
     });
 
     result.current.mutate({ chapter_ids: ["ch-1"], phase: "full" });
-    capturedConfig!.onSuccess(mockAnalysisResponse);
+    capturedConfig!.onSuccess!(mockAnalysisResponse);
 
     expect(setQueryDataSpy).toHaveBeenCalledWith(
       ["analysis", "novel-1", "beta-reader", "ch-1"],
@@ -275,7 +299,7 @@ describe("useBetaReaderAnalyze", () => {
     });
 
     // Don't call mutate — requestRef.current stays null
-    capturedConfig!.onSuccess(mockAnalysisResponse);
+    capturedConfig!.onSuccess!(mockAnalysisResponse);
 
     expect(setQueryDataSpy).not.toHaveBeenCalled();
   });

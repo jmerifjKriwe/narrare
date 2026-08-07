@@ -44,6 +44,7 @@ export {
 } from "./generation";
 export { chaptersApi, novelsApi, volumesApi } from "./novels";
 export { promptsApi, streamPromptLiveTest, templatesApi } from "./prompts";
+export { seriesApi } from "./series";
 export type { AvailableModelsResponse, ModelRefreshResponse } from "./settings";
 export { aiSettingsApi, settingsApi, tokenLimitsApi } from "./settings";
 export { setupApi } from "./setup";
