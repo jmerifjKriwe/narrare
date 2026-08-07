@@ -165,8 +165,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """
     FastAPI lifespan context manager.
 
-    Startup: configure logging, TaskIQ broker, event bus.
-    Shutdown: event bus, TaskIQ broker.
+    Startup: configure logging, TaskIQ broker.
+    Shutdown: TaskIQ broker.
     """
     # --- Startup ---
     _configure_logging()
@@ -211,19 +211,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             logger.info("taskiq_broker_started")
     except ImportError:
         pass  # Tasks not yet configured in Phase 2
-
-    # Event bus startup (graceful — won't block if Redis is unavailable).
-    # Skip in test environment: the CI test infrastructure does not manage
-    # a Redis connection, and event-bus startup/shutdown creates asyncio
-    # tasks that reference a destroyed event loop during TestClient teardown.
-    if not settings.is_test:
-        try:
-            from narrare._app.events import init_event_bus
-
-            await init_event_bus(settings.redis_url)
-            logger.info("event_bus_initialized")
-        except Exception:
-            logger.warning("event_bus_init_failed", exc_info=True)
 
     # Wiki event listeners — register typed handlers on a global EventPublisher
     try:
@@ -278,15 +265,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         with suppress(asyncio.CancelledError):
             await cleanup_task
         logger.info("periodic_cleanup_cancelled")
-
-    # Event bus shutdown — skip in test environment (see startup comment).
-    if not settings.is_test:
-        try:
-            from narrare._app.events import shutdown_event_bus
-
-            await shutdown_event_bus()
-        except Exception:
-            logger.warning("event_bus_shutdown_failed", exc_info=True)
 
     # TaskIQ broker shutdown — skip in test environment (same rationale as
     # event bus and database: the test infrastructure handles cleanup, and

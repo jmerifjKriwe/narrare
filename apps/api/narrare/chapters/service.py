@@ -105,9 +105,6 @@ class ChapterService:
 
         logger.debug("chapter_content_updated", chapter_id=str(chapter_id), words=word_count)
 
-        # Publish event — never blocks or fails the main operation
-        await self._publish_content_event(chapter_id, novel_id, user_id, word_count)
-
         return updated
 
     async def update_meta(
@@ -178,36 +175,3 @@ class ChapterService:
             version_id=str(version_id),
         )
         return restored
-
-    # -- Event helpers --
-
-    async def _publish_content_event(
-        self,
-        chapter_id: uuid.UUID,
-        novel_id: uuid.UUID,
-        user_id: uuid.UUID,
-        word_count: int,
-    ) -> None:
-        """Publish a CHAPTER_CONTENT_UPDATED event.
-
-        Wrapped in try/except so event publishing never blocks or fails
-        the main operation (RULE-11: no silent failures — errors are logged).
-        """
-        try:
-            from narrare._app.events import get_event_bus
-            from narrare_core.events.types import DomainEvent, EventType
-
-            bus = get_event_bus()
-            await bus.publish(
-                DomainEvent(
-                    event_type=EventType.CHAPTER_CONTENT_UPDATED,
-                    aggregate_id=chapter_id,
-                    payload={"novel_id": str(novel_id), "word_count": word_count},
-                    user_id=user_id,
-                )
-            )
-        except RuntimeError:
-            # Bus not initialized — graceful degradation
-            logger.debug("event_bus_not_available", chapter_id=str(chapter_id))
-        except Exception:
-            logger.debug("event_publish_failed_chapter_update", exc_info=True)

@@ -147,16 +147,6 @@ def _patch_common(monkeypatch: pytest.MonkeyPatch, settings: _FakeSettings) -> N
     # Settings — return our fake instead of real Settings().
     monkeypatch.setattr("narrare._app.config.get_settings", lambda: settings)
 
-    # Event bus — avoid real Redis connections.
-    async def _fake_init(_url: str) -> None:
-        pass
-
-    async def _fake_shutdown() -> None:
-        pass
-
-    monkeypatch.setattr("narrare._app.events.init_event_bus", _fake_init)
-    monkeypatch.setattr("narrare._app.events.shutdown_event_bus", _fake_shutdown)
-
     # Wiki listener builder — avoid DB and heavy imports inside lifespan.
     async def _fake_build_wiki() -> None:
         return None
@@ -300,7 +290,7 @@ class TestLifespanNonTestMode:
             pass
 
         # Startup ran migrations, cleanup, created periodic task.
-        # Shutdown cancelled task, shut down event bus, disposed DB.
+        # Shutdown cancelled task, disposed DB.
 
     async def test_startup_cleanup_logs_when_stale_found(
         self, monkeypatch: pytest.MonkeyPatch

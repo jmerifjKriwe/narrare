@@ -21,7 +21,6 @@ import pytest
 # app lifespan (``apps/api/narrare/_app/lifespan.py``) runs production
 # code paths that do not compose with per-test ``TestClient`` portal
 # event loops: ``broker.startup()/shutdown()`` (redis.asyncio),
-# ``init_event_bus`` / ``shutdown_event_bus`` (redis.asyncio),
 # ``_run_stale_cleanup`` (asyncpg pool — ``lifespan.py:140``), and
 # ``dispose_database()``. These bind redis/asyncpg resources to whatever
 # loop is current at lifespan startup; when the ``TestClient`` portal
