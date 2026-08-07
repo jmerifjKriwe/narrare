@@ -18,7 +18,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import (
     ModelRetry,
@@ -125,5 +125,4 @@ class OutlineAgent(NarrareAgent[OutlineDeps, OutlineOutput]):
         **kwargs: Any,
     ) -> OutlineOutput:
         """Execute the outline agent and return structured output."""
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return cast("OutlineOutput", result.output)
+        return await super().run(prompt, deps, **kwargs)

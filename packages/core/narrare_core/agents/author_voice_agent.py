@@ -65,7 +65,7 @@ ADR-054 — Mode-1 PromptComposer mandate.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 # RunContext is intentionally a RUNTIME import (not TYPE_CHECKING): pydantic-ai
 # evaluates the output function's type hints via typing.get_type_hints() at
@@ -190,5 +190,4 @@ class AuthorVoiceAgent(NarrareAgent[AuthorVoiceDeps, AuthorVoiceOutput]):
             The structured :class:`AuthorVoiceOutput` (descriptive-only —
             binding boundary enforced at the output-type level).
         """
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return cast("AuthorVoiceOutput", result.output)
+        return await super().run(prompt, deps, **kwargs)

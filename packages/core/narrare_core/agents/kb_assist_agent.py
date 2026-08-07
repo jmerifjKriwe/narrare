@@ -176,5 +176,4 @@ class KBAssistAgent(NarrareAgent[KBAssistDeps, KBAssistOutput]):
         **kwargs: Any,
     ) -> KBAssistOutput:
         """Execute the assist agent and return structured output."""
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return cast("KBAssistOutput", result.output)
+        return await super().run(prompt, deps, **kwargs)

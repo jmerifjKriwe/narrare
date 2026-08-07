@@ -27,7 +27,7 @@ Usage::
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 from pydantic_ai import (
     ModelRetry,
@@ -120,5 +120,4 @@ class CoreferenceAgent(NarrareAgent[CoreferenceDeps, CoreferenceOutput]):
         **kwargs: Any,
     ) -> CoreferenceOutput:
         """Execute the coreference agent and return structured output."""
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return cast("CoreferenceOutput", result.output)
+        return await super().run(prompt, deps, **kwargs)

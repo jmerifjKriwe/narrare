@@ -46,7 +46,7 @@ ADR-054 — Mode-1 PromptComposer mandate.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 from pydantic_ai import (
     ModelRetry,
@@ -131,5 +131,4 @@ class CharacterVoiceAgent(NarrareAgent[CharacterVoiceDeps, CharacterVoiceOutput]
         **kwargs: Any,
     ) -> CharacterVoiceOutput:
         """Execute the character-voice agent and return structured output."""
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return cast("CharacterVoiceOutput", result.output)
+        return await super().run(prompt, deps, **kwargs)

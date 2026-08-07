@@ -74,8 +74,7 @@ class PromptLiveTestAgent(NarrareAgent[PromptLiveTestDeps, PromptLiveTestResult]
         **kwargs: Any,
     ) -> PromptLiveTestResult:
         """Run the live test and wrap free-form model text in a typed result."""
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return PromptLiveTestResult(text=cast("str", result.output))
+        return PromptLiveTestResult(text=cast("str", await super().run(prompt, deps, **kwargs)))
 
     async def run_stream(
         self,

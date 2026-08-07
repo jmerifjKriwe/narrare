@@ -27,7 +27,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 from pydantic_ai import (
     ModelRetry,
@@ -168,5 +168,4 @@ class FactExtractorAgent(NarrareAgent[FactExtractorDeps, FactExtractorOutput]):
         Returns:
             Structured fact extraction output with provenance-traced facts.
         """
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return cast("FactExtractorOutput", result.output)
+        return await super().run(prompt, deps, **kwargs)

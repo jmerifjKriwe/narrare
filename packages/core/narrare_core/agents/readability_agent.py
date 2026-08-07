@@ -22,7 +22,7 @@ Usage::
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 from pydantic_ai import (
     ModelRetry,
@@ -126,5 +126,4 @@ class ReadabilityAgent(NarrareAgent[ReadabilityDeps, ReadabilityAgentOutput]):
         **kwargs: Any,
     ) -> ReadabilityAgentOutput:
         """Execute the readability agent and return structured output."""
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return cast("ReadabilityAgentOutput", result.output)
+        return await super().run(prompt, deps, **kwargs)

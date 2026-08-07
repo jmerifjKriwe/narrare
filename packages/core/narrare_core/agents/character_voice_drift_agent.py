@@ -69,7 +69,7 @@ See Also
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 # RunContext is intentionally a RUNTIME import (not TYPE_CHECKING): pydantic-ai
 # evaluates the output function's type hints via typing.get_type_hints() at
@@ -179,5 +179,4 @@ class CharacterVoiceDriftAgent(NarrareAgent[CharacterVoiceDriftDeps, VoiceDriftR
         **kwargs: Any,
     ) -> VoiceDriftResult:
         """Execute the voice-drift agent and return structured output."""
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return cast("VoiceDriftResult", result.output)
+        return await super().run(prompt, deps, **kwargs)

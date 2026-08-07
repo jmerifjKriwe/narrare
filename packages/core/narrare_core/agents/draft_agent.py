@@ -14,7 +14,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
 from pydantic_ai.capabilities import ToolSearch, Toolset
@@ -157,5 +157,4 @@ class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
         **kwargs: Any,
     ) -> DraftOutput:
         """Execute the draft agent and return structured output."""
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return cast("DraftOutput", result.output)
+        return await super().run(prompt, deps, **kwargs)

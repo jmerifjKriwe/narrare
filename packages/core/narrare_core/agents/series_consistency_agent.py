@@ -37,7 +37,7 @@ the analysed passage.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 from pydantic_ai import (
     ModelRetry,
@@ -148,5 +148,4 @@ class SeriesConsistencyAgent(NarrareAgent[SeriesConsistencyDeps, SeriesConsisten
             Structured output with conflicts (empty = no contradictions) and
             an overall summary.
         """
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return cast("SeriesConsistencyOutput", result.output)
+        return await super().run(prompt, deps, **kwargs)

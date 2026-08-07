@@ -28,7 +28,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import (
     ModelRetry,
@@ -169,5 +169,4 @@ class ConsistencyAgent(NarrareAgent[ConsistencyDeps, ConsistencyOutput]):
         Returns:
             Structured consistency output with issues and overall assessment.
         """
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return cast("ConsistencyOutput", result.output)
+        return await super().run(prompt, deps, **kwargs)

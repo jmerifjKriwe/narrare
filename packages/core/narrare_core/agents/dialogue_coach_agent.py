@@ -45,7 +45,7 @@ ADR-035 — Agent output validation.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 from pydantic import ValidationError
 from pydantic_ai import RunContext  # noqa: TC002 — pydantic-ai introspects signatures at runtime
@@ -138,8 +138,7 @@ class DialogueCoachAgent(NarrareAgent[DialogueCoachDeps, DialogueCoachOutput]):
         issue must point at a verbatim quote). This is a defensive
         guard; the governed template instructs the model accordingly.
         """
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        output = cast("DialogueCoachOutput", result.output)
+        output = await super().run(prompt, deps, **kwargs)
         # Defensive filter — protects against whitespace-only quotes that
         # pass Pydantic's min_length=1 but are semantically empty.
         valid_issues = [i for i in output.issues if i.original_quote.strip()]

@@ -20,7 +20,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import (
     ModelRetry,
@@ -170,5 +170,4 @@ class CharacterArcAgent(NarrareAgent[CharacterArcDeps, CharacterArcOutput]):
         **kwargs: Any,
     ) -> CharacterArcOutput:
         """Execute the character arc agent and return structured output."""
-        result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return cast("CharacterArcOutput", result.output)
+        return await super().run(prompt, deps, **kwargs)

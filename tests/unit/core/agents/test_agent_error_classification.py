@@ -4,6 +4,9 @@ Verifies that ``run()`` translates raw pydantic-ai exceptions into typed
 NarrareAgent errors, and that ``classify_error()`` produces correct mappings
 when called directly.  Uses FunctionModel to inject failures
 deterministically — no real LLM calls.
+
+The subclass-override regression suite lives in
+``test_subclass_override_error_classification.py`` (split for RULE-04).
 """
 
 from __future__ import annotations
