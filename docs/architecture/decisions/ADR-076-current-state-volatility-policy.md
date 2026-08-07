@@ -223,6 +223,30 @@ consumed kept their original homes and remained CI-blocking on their own merit.
 - **pre-commit:** `ssot-consistency` hook, `always_run: true`.
 - **Reference in code/docs:** cite `ADR-076` (not ADR-047) for this policy.
 
+### Amendment 2026-08-07 — Temporal validity invariant (`find_future_dated_entries`)
+
+A second invariant class joined the count-volatility gate: **temporal
+validity** of `## Last Updated` entries. No `Date: YYYY-MM-DD` line in the
+`## Last Updated` section may be set to a future date (`entry_date > today`),
+because a forward-dated entry is a false fact — it reads as authoritative but
+describes work that has not happened yet. Purely hand-maintained dates could
+otherwise be slipped forward unhindered; this invariant rejects that class of
+bug. It is recorded here per this ADR's own "Constraints introduced" rule,
+which requires new checker categories to be noted in the Implementation Notes.
+
+- **Checker function:** `find_future_dated_entries` in
+  `scripts/check_current_state_facts.py` (regex `LAST_UPDATED_DATE_RE`;
+  malformed or calendar-invalid dates are **skipped**, not flagged — they are
+  out of scope for the temporal invariant and surface no false fact).
+- **Invariant class:** *temporal validity* — a date-bounds check, distinct from
+  the *count-volatility* categories above (which ban generated numbers) and
+  from the *required-authority* rule (which mandates links/commands). Three
+  invariant classes now share one gate.
+- **Enforcement surface:** unchanged — `just check-ssot`, pre-commit
+  `ssot-consistency` hook (`always_run: true`), CI `architecture` job
+  (blocking, no `continue-on-error`). The invariant feeds the same exit-1
+  failure mode as the count/authority checks.
+
 ---
 
 ## RULE-XX Elevation Decision

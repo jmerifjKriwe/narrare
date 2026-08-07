@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -155,3 +156,45 @@ current agent inventory: 12
         "- 5 modules in the pipeline",
         "current agent inventory: 12",
     }
+
+
+def test_future_dated_entry_is_flagged() -> None:
+    """A 'Last Updated' entry dated after today is a false fact and is flagged."""
+    cs_text = "Date: 2099-12-31\n"
+    today = date(2026, 8, 7)
+
+    findings = checker.find_future_dated_entries(cs_text, today)
+
+    assert findings == [(1, "2099-12-31")]
+
+
+def test_today_entry_passes() -> None:
+    """An entry dated exactly today is current (not future), so it passes."""
+    cs_text = "Date: 2026-08-07\n"
+    today = date(2026, 8, 7)
+
+    findings = checker.find_future_dated_entries(cs_text, today)
+
+    assert findings == []
+
+
+def test_past_entry_passes() -> None:
+    """An entry dated in the past is valid and is not flagged."""
+    cs_text = "Date: 2026-01-01\n"
+    today = date(2026, 8, 7)
+
+    findings = checker.find_future_dated_entries(cs_text, today)
+
+    assert findings == []
+
+
+def test_malformed_date_skipped() -> None:
+    """Malformed/calendar-invalid dates are skipped, not flagged (no crash)."""
+    # "2026-13-45" matches the regex's digit shape but is not a real calendar
+    # date; date.fromisoformat() raises ValueError, which the checker swallows.
+    cs_text = "Date: 2026-13-45\n"
+    today = date(2026, 8, 7)
+
+    findings = checker.find_future_dated_entries(cs_text, today)
+
+    assert findings == []
