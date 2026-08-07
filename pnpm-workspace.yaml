@@ -16,4 +16,11 @@ overrides:
   ip-address: ">=10.3.1 <11"
   qs: ">=6.15.2"
   sharp: ">=0.35.0"
-  "@hono/node-server": ">=2.0.5"
+  # Forced to 2.x: GHSA-frvp-7c67-39w9 (Windows path-traversal in serve-static,
+  # published 2026-07-21) has NO 1.x patch — only fix is 2.0.5. Latest 1.x
+  # (1.19.17) is flagged, so any 1.x resolution reopens `pnpm audit` (verified
+  # 2026-08-07). MCP SDK declares ^1.19.9; this major override is intentional.
+  # Floor 2.0.10 also covers GHSA-9mqv-5hh9-4cgg (WebSocket mem-leak DoS, <2.0.10).
+  # Floor is major-bounded (<3) to prevent drift (#116-class: an open floor would
+  # pull a future 3.x major), consistent with undici/js-yaml/ip-address.
+  "@hono/node-server": ">=2.0.10 <3"
