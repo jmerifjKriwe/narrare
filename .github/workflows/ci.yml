@@ -702,23 +702,16 @@ jobs:
 
       - name: VRT Screenshot Tests
         id: vrt-tests
-        continue-on-error: true  # INTERIM (Option B — CI-native baselines):
-                                 # Local baselines have different font-rendering dimensions
-                                 # than CI ubuntu-22.04. CI-native baselines will be generated
-                                 # via .github/workflows/vrt-update-baselines.yml (manual trigger).
-                                 # Remove this continue-on-error after baselines are CI-native.
         run: |
           start_time=$(date +%s)
           trap 'end_time=$(date +%s); echo "duration=$((end_time - start_time))" >> "$GITHUB_OUTPUT"' EXIT
           cd packages/web && pnpm playwright test --project=vrt
 
-      # With continue-on-error above, `failure()` no longer fires (the step's
-      # conclusion is `success` even when its outcome is `failure`). Switch to
-      # an explicit outcome check so the diff artifacts are still uploaded for
-      # diagnosis. Revert to `failure() && steps.vrt-tests.outcome != 'skipped'`
-      # once the continue-on-error is removed.
+      # VRT is a hard gate: baselines are CI-native (ubuntu-22.04), regenerated
+      # via .github/workflows/vrt-update-baselines.yml. Diffs are uploaded on
+      # failure for diagnosis.
       - name: Upload VRT diffs
-        if: always() && steps.vrt-tests.outcome == 'failure'
+        if: failure() && steps.vrt-tests.outcome != 'skipped'
         uses: actions/upload-artifact@v7
         with:
           name: vrt-test-results

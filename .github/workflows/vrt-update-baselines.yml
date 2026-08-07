@@ -136,7 +136,7 @@ jobs:
             if [ "${{ steps.changes.outputs.changed }}" == "true" ]; then
               echo "✅ Committed and pushed **${{ steps.changes.outputs.changed_count }}** baseline file(s) to \`${{ github.ref_name }}\`."
               echo ""
-              echo "Baselines are now CI-native (ubuntu-22.04). The \`continue-on-error: true\` on the VRT step in \`.github/workflows/ci.yml\` can be removed in a follow-up commit once a regular CI run confirms the VRT step passes."
+              echo "Baselines are now CI-native (ubuntu-22.04). The VRT step in \`.github/workflows/ci.yml\` is now a hard gate (\`continue-on-error\` removed 2026-08-07 after CI-native baselines were confirmed green on CI run 31159464431). Regenerate baselines via this workflow whenever CI rendering drifts."
             else
               echo "ℹ️ No baseline changes — existing baselines already match CI-native rendering."
             fi
