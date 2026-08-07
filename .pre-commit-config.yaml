@@ -242,13 +242,17 @@ repos:
       # Secret scanning — Gitleaks gate (AUFG-05-09). The wrapper is
       # stdlib-only and locates the gitleaks binary on PATH, so it runs with
       # system python3 (no venv dependency — the security gate must not depend
-      # on the project venv being synced). always_run: check_secrets.py invokes
-      # `gitleaks detect --source ROOT` over the whole repo (incl. history), so
-      # a secret added in ANY file (code, docs, config) must trip the gate —
-      # not only when .gitleaks.toml changes. Matches the CI security job.
+      # on the project venv being synced). --staged scopes the scan to the
+      # currently staged file contents (added/copied/modified/renamed) with NO
+      # git history, so it stays fast regardless of repo age. always_run
+      # ensures a secret staged in ANY file (code, docs, config) trips the gate
+      # — not only when .gitleaks.toml changes. --timeout 90 plus a
+      # machine-wide flock guarantee the gitleaks process group is always
+      # reaped (no orphan pile-up / VM overload). The CI security job runs the
+      # same wrapper in full-history mode for the comprehensive repo-wide audit.
       - id: secrets-gitleaks
         name: Secrets (Gitleaks)
-        entry: python3 scripts/check_secrets.py
+        entry: python3 scripts/check_secrets.py --staged --timeout 90
         language: system
         pass_filenames: false
         always_run: true

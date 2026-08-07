@@ -271,13 +271,15 @@ Current hook groups:
 | Frontend quality | pre-commit | Biome, i18n validation, TypeScript type check |
 | File hygiene | pre-commit | Whitespace, EOF, YAML/TOML/JSON, merge-conflict, large-file checks |
 | SSOT consistency | pre-commit | check_current_state_facts.py — CURRENT_STATE.md volatility policy (always_run, ADR-076) |
-| Secret scanning | pre-commit | check_secrets.py (Gitleaks wrapper, AUFG-05-09) — always_run, blocks on any unapproved secret repo-wide |
+| Secret scanning | pre-commit | check_secrets.py --staged (Gitleaks wrapper, AUFG-05-09) — scans staged file contents only (no history); the CI security job runs the full-history audit |
 | Commit message | commit-msg | Conventional commit validation |
 
 Die Hooks `ssot-consistency` und `secrets-gitleaks` laufen mit `always_run: true`
-bei **jedem** Commit auf allen Dateien — auch wenn `CURRENT_STATE.md` bzw.
-`.gitleaks.toml` nicht angerührt wurden. Das spiegelt die CI-Architektur-Job-
-bzw. Security-Job-Blockade wider (ADR-076 / AUFG-05-09).
+bei **jedem** Commit. `ssot-consistency` liest `CURRENT_STATE.md` repo-wide
+(auch wenn die Datei nicht angerührt wurde — ADR-076); `secrets-gitleaks`
+scannt die **gestageten Dateiinhalte** (keine Git-Historie) für schnelles
+Pre-Commit-Feedback. Das umfassende repo-weite Full-History-Audit übernimmt der
+CI-Security-Job (AUFG-05-09).
 
 ### Fast-Path for Quick Iterations
 

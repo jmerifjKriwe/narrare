@@ -76,8 +76,11 @@ safety, prompt structure, and security scanning.
   (ADR-040 Decision 2).
 - **check_module_coverage.py** — Checks per-module test coverage against
   RULE-10 targets and ratcheted baselines from pytest's coverage XML.
-- **check_secrets.py** — Gitleaks wrapper for repository secret scanning.
-  Local and CI invocation are kept aligned by this single entry point.
+- **check_secrets.py** — Gitleaks wrapper for repository secret scanning. Two
+  modes share one entry point: `--staged` (pre-commit, scans staged file
+  contents only — no git history, fast) and the default full-history mode
+  (CI, `just check-secrets`). A hard `--timeout` plus a machine-wide flock
+  prevent orphaned-gitleaks pile-up.
 - **check_commit_message.py** — Validates commit messages follow the
   Conventional Commits format. Runs in the `commit-msg` pre-commit stage.
 - **check_version_consistency.py** — Detects dependency version drift across
