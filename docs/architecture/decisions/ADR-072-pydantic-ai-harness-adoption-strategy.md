@@ -7,6 +7,9 @@
 > **Relates to:** ADR-058 (ProcessHistory Sliding Window — confirmed, **not** superseded),
 > ADR-015 (pydantic-AI Agents as First-Class Citizens), ADR-033 (mem0 Memory Architecture),
 > ADR-066 (Agent Context Store)
+> **Amendment (2026-08-07):** `pydantic-ai-harness` dependency **fully removed**
+> from `packages/core/pyproject.toml` + `uv.lock`; 0 capabilities adopted; strategic
+> decision (Option C) unchanged. See [Amendment below](#adr-072-amendment--dependency-fully-removed-2026-08-07).
 
 ---
 
@@ -290,6 +293,16 @@ table below consolidates the decisions and their re-evaluation triggers.
 
 ### Harness dependency handling
 
+> **Superseded 2026-08-07:** The relocation target described in this section was
+> implemented in code (commit `03f253e2`, 2026-07-25 — `harness-eval` optional
+> group present in `packages/core/pyproject.toml`), but was **never closed out as
+> this ADR's final state** (Gate 12 remained open). On **2026-08-07 the dependency
+> was fully removed** instead — from `packages/core/pyproject.toml` **and**
+> `uv.lock` — so the `harness-eval` optional group no longer exists anywhere.
+> The historical relocation description below is preserved for context; the
+> current, authoritative state is **full removal**. See
+> [Amendment below](#adr-072-amendment--dependency-fully-removed-2026-08-07).
+
 The Phase 1 spike added `pydantic-ai-harness==0.11.0` to `packages/core/pyproject.toml`.
 Since no capability is adopted, this ADR requires it to move to an **optional/dev
 dependency** so it remains available for spec-time evaluation without shipping to
@@ -351,7 +364,10 @@ This ADR is revisited when **any** of the following fires:
 
 - [ ] **`pydantic-ai-harness` reaches 1.0** (stable API promise) → re-evaluate the
       entire strategy. At minimum, review every In-House solution built in the interim
-      (Compaction, Guardrails, and any DEFER-turned-BUILD) for migration ROI.
+      (Compaction, Guardrails, and any DEFER-turned-BUILD) for migration ROI. Note
+      (amended 2026-08-07): the dependency was removed from the project; a future
+      re-introduction — for evaluation or adoption — happens only **via its own
+      adoption ADR**, never by re-adding the dependency on spec.
 - [ ] **A concrete spec exists for WRITE-008, GEN-002, PLAN-001/002, WRITE-013,
       CONS-002, or ANAL-006** → the corresponding DEFER is lifted and that capability
       gets a focused Build-vs-Buy ADR.
@@ -423,16 +439,95 @@ as "✅ Implemented":
 - [ ] Entry added to `docs/architecture/decisions/INDEX.md`
 - [ ] `pydantic-ai-slim` bumped to 2.18.0 in `packages/core/pyproject.toml` (Phase 4 — Platform Specialist)
 - [ ] `pydantic-evals` bumped to 2.18.0 in `pyproject.toml` (root) (Phase 4 — Platform Specialist)
-- [ ] `pydantic-ai-harness==0.11.0` relocated from production to `[project.optional-dependencies] harness-eval` in `packages/core/pyproject.toml` (Phase 4 — Platform Specialist)
+- [x] `pydantic-ai-harness` **fully removed** from `packages/core/pyproject.toml` **and** `uv.lock` (2026-08-07). Supersedes the original "relocate to `[project.optional-dependencies] harness-eval`" item: the optional-group target was implemented in commit `03f253e2` but never closed out, and is now obsolete — removal is the actual outcome. Dependabot PR #147 (Bump 0.11.0 → 0.14.0) closed as stale. See [Amendment below](#adr-072-amendment--dependency-fully-removed-2026-08-07)
 - [ ] `uv lock` regenerates cleanly with the above
 - [ ] `pyright --strict` passes (baseline: 0 errors per Phase 1 spike)
 - [ ] `pytest tests/unit/` passes (baseline: 9630 passed per Phase 1 spike)
 - [ ] No production source file imports `pydantic_ai_harness` (grep verification)
 - [ ] ADR-058 status and content unchanged (this ADR confirms, does not supersede)
 
-> **Note:** Items 3–9 (the version bump + dependency relocation) are Phase 4
+> **Note:** Items 3–9 (the version bump + dependency handling — originally
+> "relocation", amended 2026-08-07 to **full removal**, see
+> [Amendment below](#adr-072-amendment--dependency-fully-removed-2026-08-07)) are
 > implementation work for the Platform Specialist, not part of this ADR's authoring.
 > This ADR authorises those changes; it does not enact them.
+
+---
+
+## ADR-072 Amendment — Dependency Fully Removed (2026-08-07)
+
+> **Amendment Date:** 2026-08-07
+> **Amends:** Implementation Notes — Harness dependency handling; Gate 12 checklist item;
+> Review Trigger — "`pydantic-ai-harness` reaches 1.0" (confirmed still valid)
+> **Trigger:** Dependabot PR #147 (Bump `pydantic-ai-harness` 0.11.0 → 0.14.0) closed as
+> stale; `pydantic-ai-harness` fully removed from `packages/core/pyproject.toml` + `uv.lock`
+
+### Summary
+
+**2026-08-07:** Abhängigkeit vollständig entfernt (`packages/core/pyproject.toml` +
+`uv.lock`) — **0 Capabilities adoptiert** seit der Entscheidung; Dependabot-PR #147
+(Bump 0.11.0 → 0.14.0) geschlossen als **stale**. Strategische Entscheidung
+(Option C) **unverändert**.
+
+### What happened
+
+The original decision (2026-07-25) chose Option C: adopt zero Harness capabilities,
+and relocate the spike-installed `pydantic-ai-harness==0.11.0` to an optional/dev
+dependency (`harness-eval` group) so it would remain available for spec-time
+evaluation. That relocation **was implemented** in commit `03f253e2` (the same
+commit that created this ADR) — the `harness-eval` optional group existed in
+`packages/core/pyproject.toml`. However, the ADR's implementation gate
+(Gate 12) was **never formally closed** for the relocation item, and the optional
+group was **never used** for any evaluation.
+
+On **2026-08-07** the dependency was **fully removed** — from
+`packages/core/pyproject.toml` **and** `uv.lock` (0 imports of `pydantic_ai_harness`
+in the codebase). The `harness-eval` optional-group target state therefore **no
+longer exists**; the current, authoritative state is **full removal**. The
+relocation description in the Implementation Notes is preserved as history but is
+superseded.
+
+Dependabot PR #147, which proposed bumping `pydantic-ai-harness` 0.11.0 → 0.14.0,
+was closed as **stale** after the removal — consistent with this ADR's position
+that a 0.x/Alpha dependency has no place in Narrare absent an adopted capability.
+
+### Why removal, not continued optional presence
+
+- **0 capabilities adopted since the decision** — the optional group served no
+  evaluation purpose in the intervening period.
+- **0.x/Alpha lock-in avoidance** (Decision Driver) argues against even an optional
+  dependency that is never used: it still appears in `uv.lock`, attracts Dependabot
+  bump PRs, and creates surface area for accidental imports.
+- **Re-evaluation discipline unchanged** — Harness capabilities are still evaluated
+  per-capability at spec-time (WRITE-008 → Step Persistence, GEN-002 → Exa Search,
+  etc.). A re-introduction happens **via its own adoption ADR** (see below), never
+  by re-adding the dependency on spec.
+
+### Effect on Review Trigger
+
+The **"`pydantic-ai-harness` reaches 1.0"** review trigger **remains valid** and is
+now clarified: a future re-introduction — whether for evaluation or adoption —
+occurs **only via a dedicated adoption ADR**, with the full Build-vs-Buy rigour
+this ADR established. The dependency itself is absent from the project until such
+an ADR is accepted.
+
+### Effect on Implementation Notes / Gate 12
+
+- **Implementation Notes — "Harness dependency handling":** marked superseded
+  (see note at the top of that section). The historical relocation description is
+  preserved; the authoritative outcome is removal on 2026-08-07.
+- **Gate 12 checklist:** the relocation item is replaced by the actual outcome
+  (full removal, checked 2026-08-07). The remaining Gate-12 items (version bumps,
+  `uv lock`, `pyright`, `pytest`, import-free verification, ADR-058 unchanged)
+  are unaffected by this amendment.
+
+### Constraint status (unchanged)
+
+The constraint "Production `pyproject.toml` must NOT add `pydantic-ai-harness`
+until a capability is adopted via its own ADR" remains in force — now trivially
+satisfied, since the dependency is absent entirely. The related requirement that
+every future Architecture session for WRITE-008, GEN-002, PLAN-001/002, WRITE-013,
+CONS-002, or ANAL-006 includes a Harness Build-vs-Buy re-evaluation also stands.
 
 ---
 
