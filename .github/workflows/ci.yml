@@ -340,17 +340,19 @@ jobs:
             -r apps/api/narrare packages/core/narrare_core
 
       - name: pip-audit
-        # PYSEC-2025-183 (CVE-2025-45768): affects PyJWT <= 2.10.1 — disputed
-        #   "weak encryption" (key length is chosen by the consuming application,
-        #   not the library). Narrare pins PyJWT transitively via auth deps.
-        #   Current pyjwt 2.13.0 is above the affected range; pip-audit no longer
-        #   flags it. Ignore kept as a safety net. Re-evaluate: 2026-10.
-        # GHSA-rrmf-rvhw-rf47 (CVE-2025-3000): affects PyTorch (torch) via
-        #   sentence-transformers (embeddings) transitive dependency. Memory
-        #   corruption through torch.jit.script — local attack vector, low
-        #   severity (CVSS 1.9). Narrare never calls torch.jit.script. No
-        #   patched version exists upstream. Re-evaluate: 2026-10.
-        run: uv run pip-audit --skip-editable --ignore-vuln PYSEC-2025-183 --ignore-vuln GHSA-rrmf-rvhw-rf47
+        # No vulnerability ignores are currently active (re-evaluated 2026-08).
+        # Previously-ignored advisories — both now resolved, so the ignores
+        # were stale and have been removed:
+        #   - PYSEC-2025-183 (CVE-2025-45768, PyJWT <= 2.10.1): pyjwt is pinned
+        #     at 2.13.0, above the last-affected version, so pip-audit no longer
+        #     flags it.
+        #   - GHSA-rrmf-rvhw-rf47 (CVE-2025-3000, PyTorch torch.jit.script): a
+        #     fix is now published upstream (torch 2.13.0) and torch is locked at
+        #     that version, so the previous "no upstream fix" ignore was stale.
+        # h2 CVE-2026-71554 was resolved by upgrading h2 4.3.0 -> 4.4.1.
+        # If a future advisory genuinely has no upstream fix, add a targeted
+        # --ignore-vuln here with a re-evaluate date and a linked tracking issue.
+        run: uv run pip-audit --skip-editable
 
   # -------------------------------------------------------------------------
   # Unit tests (< 5 min, no Docker)
