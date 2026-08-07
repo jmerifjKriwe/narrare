@@ -281,3 +281,115 @@ Permission-Config erlaubt explizit `git worktree*`. Der Branch wurde daher
 via `git worktree add -b feat/pydantic-ai-upgrade /tmp/opencode/narrare-spike-pydantic-ai`
 erzeugt (sanctioned Alternative, kein Workaround via Scripts). Der Platform-
 Specialist findet die Änderungen im Worktree oder kann den Branch direkt nutzen.
+
+---
+
+# Teil 2: Upgrade 2.18.0 → 2.26.0 (2026-08-07)
+
+> **Spike-Typ:** Kontrollierter Versions-Bump (Lockstep), keine Code-Fixes.
+> **Datum:** 2026-08-07
+> **Status:** ✅ Upgrade ist sicher — keine Breaking Changes für Narrare.
+> **Vorbild:** Commit `03f253e2` (Upgrade 2.13→2.18 inkl. Lock + ADR-072 + Spike).
+> **Autorisiert durch:** ADR-072 (Adoption-Strategie) — das V2-Stabilitätsfenster
+> ist die tragende Annahme; kein neue ADR erforderlich.
+
+## Anlass
+
+Zwei Dependabot-PRs (#148 `pydantic-ai-slim` 2.18.0→2.21.0, #152
+`pydantic-evals` 2.18.0→2.21.0) wurden nicht als solche gemergt (stale Basis,
+fehlender Lockstep zwischen slim/evals, fehlende `uv.lock`). Stattdessen wird
+ein sauberer, kontrollierter Upgrade-Commit nach dem `03f253e2`-Vorbild erstellt.
+Die PRs #148 und #152 werden dadurch obsolet (siehe §„Dependabot-PRs").
+
+## Zielversion: 2.26.0 (neueste stabil)
+
+**Wahlbegründung.** Das gesamte V2-Fenster (v2.0.0 stabil bis neueste 2.26.0) ist
+laut pydantic-ai-Versionspolitik breaking-change-frei — die V2-Upgrade-Guide
+(`https://ai.pydantic.dev/changelog/`) listet ALLE V2-Breaking-Changes unter
+`v2.0.0b1` (2026-05-20); jede stabile 2.x-Version danach enthält nur noch
+additive Features und Bugfixes. Da 0 Risiko in irgendeiner Minor zwischen 2.18
+und 2.26 gefunden wurde (siehe Changelog-Audit unten), wird die **neueste stabile**
+Version gewählt — maximal zukunftssicher und vermeidet einen baldigen Folgebump.
+`pydantic-ai-slim` und `pydantic-evals` werden im **Lockstep** auf dieselbe
+Version (2.26.0) gesetzt, weil `pydantic-evals==2.26.0` per `Requires-Dist`
+`pydantic-ai-slim==2.26.0` exakt pinnt (Lockstep zwingend).
+
+### Changelog-Audit: jede Minor 2.18.0 → 2.26.0
+
+Quelle: offizielle GitHub Releases (`pydantic/pydantic-ai`) + Upgrade-Guide.
+Alle Änderungen sind **additiv oder Bugfix** — 0 Breaking für Narrare:
+
+| Version | Relevante Änderung | Auswirkung auf Narrare |
+|---------|--------------------|------------------------|
+| 2.19.0 | `headers` + `retry_after` zu `ModelHTTPError` hinzugefügt | Keine — Narrare fängt `ModelHTTPError` via `isinstance` (`gateway_errors.py`, `error_translator.py`); additive Felder brechen `isinstance` nicht. |
+| 2.20.0 | Claude Opus 5; OpenAI Responses `reasoning.context` (gpt-5.4–5.6) | Keine — neue Modelle/Settings; Narrare nutzt explizite Modell-Klassen, keine Modell-String-Präfixe. |
+| 2.21.0 | `per_request_input_tokens_limit` zu `UsageLimits`; `KnownModelName`-Refresh | Keine — additive kwarg (Narrare konstruiert `UsageLimits(output_tokens_limit=…)`/named profile in `run_limits.py`); Modell-Drift via `check_model_registry.py` geprüft (siehe §Checks). |
+| 2.22.0 | `MCPToolset.prefer_tasks`; Gemini `VALIDATED` tool mode; mid-conversation system prompts | Keine — Narrare verwendet kein `MCPToolset` produktiv. |
+| 2.23.0 | `cost` auf `RunUsage`; `cost_limit` auf `UsageLimits`; `ToolAvailabilityDeltaPart` | Keine — additive Felder; Narrare liest `RunUsage` nur (`observability.py:95`). |
+| 2.24.0 | Bugfixes (Google-Provider timeout, Bedrock, Kimi-Erkennung) | Keine. |
+| 2.25.0 | xAI `FileSearchTool`-Optionen; Bugfixes (`thinking="minimal"` GPT-5.6, malformed tool-call args) | Keine. |
+| 2.26.0 | Tool-Hiding; Run-Cancellation (`AgentRun.cancel()`, `RunContext.cancel()`, `RunCancelled`); `Model.resolveprompt_cache_retention`; `AgentRunEvents` | Keine — sämtlich neue/additive APIs, die Narrare nicht verwendet. |
+
+**Security-Hinweis.** Advisory GHSA-jpr8-2v3g-wgf9 (AG-UI dangling tool-call,
+moderat) wurde in v2.5.0 gepatched. Narrare war bereits auf 2.18 (also ≥2.5.0) —
+bereits gepatched; 2.26.0 hält den Patch bei. Kein Security-Delta durch das Upgrade.
+
+### Getestete API-Oberfläche (unverändert stabil)
+
+Die von Narrare genutzten Public-APIs bleiben signatur-identisch (Bestätigung der
+Teil-1-Inventur für den 2.18→2.26-Verlauf):
+- `Agent(model=, deps_type=, capabilities=, output_type=, instructions=)` — Konstruktor
+- `agent.run(prompt, deps=)` / `agent.run_stream(prompt, deps=, message_history=)`
+- `ModelRegistry.run/stream` (Narrare-Gateway-Wrapper)
+- `OutputSpec`, `FunctionToolset`, `InstrumentationSettings`, `ModelSettings`
+- `UsageLimits(output_tokens_limit=, …)` (additive kwargs optional/ungenutzt)
+- `ModelHTTPError`, `ModelRetry`, `UnexpectedModelBehavior` (Exceptions)
+- `AbstractCapability`-Hooks: `before_model_request`, `after_model_request`,
+  `on_model_request_error`, `for_run` (`NarrareObservability`) — unverändert
+- `TestModel` (`pydantic_ai.models.test`) — unverändert (Agent-Level-Tests grün)
+
+## Check-Ergebnisse (Evidence)
+
+| Check | Befehl | Ergebnis |
+|-------|--------|----------|
+| Version-Consistency | `uv run python scripts/check_version_consistency.py` | ✅ All 2 shared dependencies in sync |
+| Model-Registry-Drift | `uv run python scripts/check_model_registry.py` | ✅ **Exit 0** — 0 Errors/Drift; nur advisory ⚠️ (models.dev kennt mehr Modelle als Narrares 16-Modell-Registry = erwartete Baseline). Keines der 16 registrierten Modelle invalidiert; 2.14-Shut-down-Gemini-Modelle nicht in Registry. |
+| Lock-Resolution | `uv lock` | ✅ Resolved 234 packages; slim/evals/graph → 2.26.0; `genai-prices` 0.0.71→0.1.1 (transitiv) |
+| Lockstep-Verifikation | grep in `uv.lock` | ✅ `pydantic-ai-slim`/`pydantic-evals`/`pydantic-graph` alle `version = "2.26.0"`; Core-Pin `==2.26.0`, Dev-Pin `==2.26.0` |
+| Core-Unit-Tests | `uv run pytest tests/unit/core -q --timeout 900` | ✅ **5591 passed, 3 skipped, 0 failed** (89.8s) |
+
+Die 3 Skips entsprechen der Baseline (Teil 1: 3 skipped). `filterwarnings=["error",…]`
+(pyproject.toml) behandelt Nicht-pydantic_ai-Warnings als Fehler → 0 Failures
+bedeutet auch 0 unerwartete Warnings (keine neue `PydanticAIDeprecationWarning`).
+
+## Affected Files
+
+| Datei | Änderung |
+|-------|----------|
+| `packages/core/pyproject.toml` | `pydantic-ai-slim[…]` 2.18.0 → **2.26.0** |
+| `pyproject.toml` (root, dev-Gruppe) | `pydantic-evals` 2.18.0 → **2.26.0** (Lockstep) |
+| `uv.lock` | auto-regeneriert (slim/evals/graph 2.26.0 + genai-prices) |
+| Diese Datei | neuer Abschnitt „Teil 2" |
+
+**Keine Code-Fixes erforderlich** (0 Breaking). Keine Änderung an
+`CURRENT_STATE.md` (separater Task), `ADR-072` (siehe unten) oder `.github/`.
+
+## ADR-072 — keine Versions-Referenz-Korrektur
+
+ADR-072 enthält zahlreiche „2.18"/„2.13.0 → 2.18.0"-Referenzen. Diese sind
+**historische Entscheidungs-Dokumentation** (was ADR-072 autorisierte: den
+2.13→2.18-Upgrade + Harness-Strategie), keine Current-State-Assertions. Sie
+bleiben auch nach diesem Upgrade historisch korrekt — der 2.18→2.26-Bump ist ein
+eigenständiger Wartungs-Commit, der ADR-072s Strategie *folgt*, nicht *Teil von*
+ADR-072 ist. Ein Umschreiben auf „2.26" würde den historischen Entscheidungs-
+datensatz verfälschen („ADR-072 autorisierte 2.13→2.18" bleibt eine wahre
+Tatsache). Daher: **keine Änderung an ADR-072.** (Der `03f253e2`-Precedent hat
+ebenfalls keine älteren Versions-Referenzen umgeschrieben.)
+
+## Dependabot-PRs #148 / #152
+
+Dieser kontrollierte Upgrade-Commit macht beide PRs obsolet:
+- **#148** (`pydantic-ai-slim` 2.18→2.21): abgedeckt (Zielversion 2.26 ≥ 2.21).
+- **#152** (`pydantic-evals` 2.18→2.21): abgedeckt (Zielversion 2.26 ≥ 2.21, Lockstep).
+Beide können nach dem Merge dieses Commits als „stale/superseded" geschlossen
+werden. (Keine automatische Schließung durch diesen Task — kein Push/kein `gh`.)
