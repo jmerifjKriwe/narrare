@@ -16,11 +16,10 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
     for system prompts, KBContextProvider for curated world context
     (ADR-067 — single source for KB prompt context), and KBRepository +
-    KBService + RelationshipRepository for data access. Uses Redis-backed
+    KBService + RelationshipRepository for data access. Uses the in-memory
     KBImproveCache for 10min TTL on analysis results. Includes
     InvocationPipeline for invocation evidence (ADR-040).
     """
-    from narrare._app.config import get_settings
     from narrare._app.dependencies import (
         get_composer,
         get_invocation_pipeline,
@@ -37,7 +36,7 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
     from narrare.kb.improve_service import KBImproveService
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
-    from narrare_core.cache.redis_client import RedisSessionCache
+    from narrare_core.cache import InMemorySessionCache
 
     registry = get_model_registry()
     composer = get_composer()
@@ -52,10 +51,9 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
 
     kb_service = get_kb_service(session)
 
-    # Redis-backed improve cache with 10min TTL
-    settings = get_settings()
-    redis_cache = RedisSessionCache(settings.redis_url)
-    improve_cache = KBImproveCache(redis_cache)
+    # In-memory improve cache with 10min TTL (ADR-080)
+    cache = InMemorySessionCache()
+    improve_cache = KBImproveCache(cache)
 
     # Analyzer handles all LLM interaction + caching
     analyzer = KBImproveAnalyzer(

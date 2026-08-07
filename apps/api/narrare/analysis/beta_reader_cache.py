@@ -1,4 +1,4 @@
-"""Beta reader analysis result cache — Redis-backed with 30min TTL.
+"""Beta reader analysis result cache — in-memory with 30min TTL.
 
 Caches BetaReaderResponse per novel+chapters so that:
 - Repeated analyze() calls reuse cached results
@@ -6,7 +6,7 @@ Caches BetaReaderResponse per novel+chapters so that:
 - Cache key includes chapter IDs for natural invalidation
 
 Usage:
-    cache = BetaReaderCache(RedisSessionCache(settings.redis_url))
+    cache = BetaReaderCache(InMemorySessionCache())
     await cache.set(novel_id, chapter_ids, result.model_dump_json())
     data = await cache.get(novel_id, chapter_ids)  # str | None
     await cache.delete(novel_id, chapter_ids)

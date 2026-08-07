@@ -1,4 +1,4 @@
-"""Redis-backed cache for consistency check results.
+"""In-memory cache for consistency check results.
 
 Follows the same pattern as worldbuilding_cache.py but with a different
 key prefix and project-level caching.
@@ -7,7 +7,7 @@ Cache key format: kb:consistency:{novel_id}{entity_types_hash}
 TTL: 10 minutes (600s)
 
 Usage:
-    cache = ConsistencyCache(RedisSessionCache(settings.redis_url))
+    cache = ConsistencyCache(InMemorySessionCache())
     await cache.set(novel_id, result.model_dump_json())
     data = await cache.get(novel_id)             # str | None
     await cache.delete_all(novel_id)             # Invalidate all variants

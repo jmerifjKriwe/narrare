@@ -1,4 +1,4 @@
-"""KB improve result cache — Redis-backed with 10min TTL.
+"""KB improve result cache — in-memory with 10min TTL.
 
 Caches KBImproveAnalysisResponse per entry_id so that:
 - Repeated analyze() calls reuse cached results
@@ -6,7 +6,7 @@ Caches KBImproveAnalysisResponse per entry_id so that:
 - Cache is invalidated on successful apply()
 
 Usage:
-    cache = KBImproveCache(RedisSessionCache(settings.redis_url))
+    cache = KBImproveCache(InMemorySessionCache())
     await cache.set(entry_id, result.model_dump_json())
     data = await cache.get(entry_id)       # str | None
     await cache.delete(entry_id)

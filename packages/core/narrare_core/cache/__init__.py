@@ -1,15 +1,21 @@
-"""Redis abstraction layer for caching.
+"""Cache abstraction layer.
 
-Provides a clean interface for caching expensive operations such as
-LLM responses, prompt cascade results, and session state. All Redis
-interactions go through this module.
+Provides cache backends implementing
+:class:`~narrare_core.writing.session_manager.SessionCacheProtocol` for
+session state and other short-lived values.
 
-Planned features:
-- LLM response caching with configurable TTL
-- Prompt cascade result caching (resolved prompts by category/language/mode)
-- Session state storage for active writing sessions
-- Cache invalidation strategies (TTL-based, event-driven)
-- Graceful degradation when Redis is unavailable
+The Redis-free, single-user default is
+:class:`InMemorySessionCache` (ADR-080): a TTL-capable, in-process cache.
+The legacy Redis-backed implementation was removed in migration Step 2b; a
+Redis (or equivalent) implementation can be re-plugged into the same
+Protocol when multi-user deployment arrives (see ADR-080).
 
-See: docs/_shared/CONSTRAINTS.md (RULE-08 — Redis in core/cache/ only)
+See: docs/_shared/CONSTRAINTS.md (RULE-08 — cache adapters live in
+``core/cache/``).
 """
+
+from narrare_core.cache.in_memory import InMemorySessionCache
+
+__all__ = [
+    "InMemorySessionCache",
+]

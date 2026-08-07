@@ -16,10 +16,9 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
     for system prompts, and KBContextProvider for curated world context
     (ADR-067 — single source for KB prompt context). For session storage,
-    uses RedisSessionCache for persistence with TTL. Includes
+    uses InMemorySessionCache for persistence with TTL. Includes
     InvocationPipeline for invocation evidence (ADR-040).
     """
-    from narrare._app.config import get_settings
     from narrare._app.dependencies import (
         get_composer,
         get_invocation_pipeline,
@@ -35,11 +34,10 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
     from narrare.kb.repository import KBRepository
     from narrare.kb.session_service import KBSessionService
     from narrare.kb.session_store import KBCreationSessionStore
-    from narrare_core.cache.redis_client import RedisSessionCache
+    from narrare_core.cache import InMemorySessionCache
 
-    # Session storage: Redis-backed with 30min TTL.
-    settings = get_settings()
-    cache = RedisSessionCache(settings.redis_url)
+    # Session storage: in-memory cache with 30min TTL (ADR-080).
+    cache = InMemorySessionCache()
     session_store = KBCreationSessionStore(cache=cache)
 
     # KBAssistService with real ModelRegistry + PromptComposer. World context

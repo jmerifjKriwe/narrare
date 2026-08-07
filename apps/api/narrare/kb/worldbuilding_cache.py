@@ -1,4 +1,4 @@
-"""Redis-backed cache for worldbuilding analysis results.
+"""In-memory cache for worldbuilding analysis results.
 
 Follows the same pattern as improve_cache.py but with a different
 key prefix and project-level (not entity-level) caching.
@@ -7,7 +7,7 @@ Cache key format: kb:worldbuild:{novel_id}{entity_types_hash}
 TTL: 10 minutes (600s)
 
 Usage:
-    cache = WorldbuildingCache(RedisSessionCache(settings.redis_url))
+    cache = WorldbuildingCache(InMemorySessionCache())
     await cache.set(novel_id, result.model_dump_json())
     data = await cache.get(novel_id)             # str | None
     await cache.delete_all(novel_id)             # Invalidate all variants
