@@ -71,6 +71,7 @@ permission:
     "gh pr comment*": "allow"
     "gh pr checkout*": "allow"
     "gh pr edit*": "allow"
+    "gh pr close*": "allow"
     "gh issue create*": "allow"
     "gh issue comment*": "allow"
     "gh api*": "allow"
