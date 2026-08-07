@@ -5,8 +5,8 @@ Times pytest's collection phase and warns if it exceeds a threshold.
 Useful for detecting import-cycle bloat and slow conftest.py files.
 
 Exit codes:
-  0: Under threshold
-  1: Over threshold (WARNING in CI)
+  0: Under threshold, or over threshold (warning-only — never blocks CI;
+     over-threshold emits a ::warning:: annotation only)
   2: Error
 
 Usage:
@@ -58,19 +58,13 @@ def main() -> int:
     print(f"Timing pytest collection for {args.path}...")
 
     start = time.time()
-    result = subprocess.run(  # noqa: S603  # nosec B603
+    subprocess.run(  # noqa: S603  # nosec B603
         cmd,
         cwd=str(ROOT),
         capture_output=True,
         text=True,
     )
     elapsed = time.time() - start
-
-    # Print last few lines of collection output for reference
-    if result.stdout:
-        lines = result.stdout.strip().splitlines()
-        for line in lines[-5:]:
-            print(f"  {line}")
 
     print(f"\nCollection time: {elapsed:.1f}s (threshold: {args.threshold}s)")
 

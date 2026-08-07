@@ -417,9 +417,13 @@ jobs:
         if: always() && steps.tests.outcome != 'cancelled'
         run: |
           mkdir -p /tmp/warnings
-          uv run python scripts/check_pytest_collection_performance.py \
-            | tee -a /tmp/warnings/report.txt
-          exit ${PIPESTATUS[0]}
+          # Capture output for the step log; only real ::warning:: lines go
+          # to the warnings report (keeps the summary clean when under threshold).
+          output=$(uv run python scripts/check_pytest_collection_performance.py 2>&1)
+          printf '%s\n' "$output"
+          if printf '%s\n' "$output" | grep -q "::warning::"; then
+            printf '%s\n' "$output" >> /tmp/warnings/report.txt
+          fi
 
       - name: Pytest coverage comment
         if: github.event_name == 'pull_request'
@@ -682,10 +686,14 @@ jobs:
             echo "⚠️ Frontend test duration unavailable (cancelled)" >> /tmp/warnings/report.txt
             exit 0
           fi
-          python3 scripts/check_test_performance.py \
-            --duration "$duration" --threshold "$threshold" \
-            | tee -a /tmp/warnings/report.txt
-          exit ${PIPESTATUS[0]}
+          # Capture output for the step log; only real ::warning:: lines go to
+          # the warnings report (keeps the summary clean when under threshold).
+          output=$(python3 scripts/check_test_performance.py \
+            --duration "$duration" --threshold "$threshold" 2>&1)
+          printf '%s\n' "$output"
+          if printf '%s\n' "$output" | grep -q "::warning::"; then
+            printf '%s\n' "$output" >> /tmp/warnings/report.txt
+          fi
 
       - name: Check component markers (data-testid)
         run: cd packages/web && npx tsx scripts/check-testid.ts --strict --fail --ratchet-baseline scripts/testid_baselines.json
@@ -899,9 +907,11 @@ jobs:
 
       - name: Build warning summary
         run: |
-          echo "# ⚠️ CI Warning Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Show ⚠️ header only when there are real warnings; otherwise a clean
+          # all-clear line so an all-green run no longer looks like a problem.
           if [ -f report.txt ] && [ -s report.txt ]; then
+            echo "# ⚠️ CI Warning Summary" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat report.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
@@ -909,5 +919,5 @@ jobs:
             echo "See individual job steps for full ::warning:: annotation details." \
               >> $GITHUB_STEP_SUMMARY
           else
-            echo "✅ No warnings across all jobs." >> $GITHUB_STEP_SUMMARY
+            echo "✅ No CI warnings across all jobs." >> $GITHUB_STEP_SUMMARY
           fi
