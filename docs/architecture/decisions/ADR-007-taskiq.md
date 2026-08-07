@@ -1,6 +1,6 @@
 # ADR-007 — TaskIQ for Background Task Processing
 
-> **Status:** ✅ Accepted
+> **Status:** ⛔ Superseded by [ADR-080](ADR-080-remove-redis-taskiq-in-process-execution.md) (2026-08-07)
 > **Date:** project-init+2
 > **Deciders:** Architecture Agent
 > **Supersedes:** ADR-007 draft (arq) — arq is in maintenance-only mode

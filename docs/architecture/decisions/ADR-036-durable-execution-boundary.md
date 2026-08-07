@@ -1,10 +1,23 @@
 # ADR-036 — Durable Execution Boundary
 
-> **Status:** ✅ Accepted
+> **Status:** ✅ Accepted (amended 2026-08-07)
 > **Date:** 2026-06-04
 > **Deciders:** User, Architecture Agent
 > **Supersedes:** —
-> **Related:** ADR-007, ADR-012, ADR-031, ADR-032, ADR-034
+> **Related:** ADR-007, ADR-012, ADR-031, ADR-032, ADR-034, ADR-080
+> **Amended by:** [ADR-080](ADR-080-remove-redis-taskiq-in-process-execution.md)
+> (2026-08-07) — substrate references only (TaskIQ → in-process asyncio
+> execution boundary); the durable-execution gate **policy** (Option A: block a
+> second workflow stack behind a dedicated ADR) is unchanged.
+
+> ⚠️ **Amended 2026-08-07 by [ADR-080](ADR-080-remove-redis-taskiq-in-process-execution.md).**
+> The execution *substrate* referenced throughout this ADR (TaskIQ as "the only
+> execution substrate") is updated to the **in-process asyncio execution
+> boundary** defined by ADR-080. The gate *policy* (block durable execution
+> behind a dedicated ADR; no second workflow stack) is **unchanged**. Read this
+> ADR's Options A/B/C as referencing the current substrate (in-process per
+> ADR-080), not TaskIQ. The execution *boundary* that this ADR exists to govern
+> is exactly what ADR-080 relocates (cross-process Redis-queue → process-lifetime).
 
 ---
 
