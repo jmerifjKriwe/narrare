@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from structlog.testing import capture_logs
 
 from narrare.embeddings.models import Embedding
 from narrare.kb.embedding_hooks import EmbeddingHookManager
@@ -329,3 +330,41 @@ class TestDispatchTask:
         # Allow it to finish so it does not leak into other tests.
         await task
         assert started == [True]
+
+    @pytest.mark.asyncio
+    async def test_failing_runner_logs_background_task_failed(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A failing background task logs via structlog and is retrieved.
+
+        Regression for IMP-1: the done-callback must call ``task.exception()``
+        so asyncio does not emit an un-retrieved-exception warning, and the
+        failure is surfaced as a structured error event (RULE-11). The GC
+        guard must still discard the task.
+        """
+        from narrare.kb import embedding_hooks
+
+        async def boom_runner(source_type: str, source_id: str, content: str) -> None:
+            raise RuntimeError("embed runner boom")
+
+        monkeypatch.setattr(embedding_hooks, "run_embed_source_inprocess", boom_runner)
+
+        with capture_logs() as logs:
+            manager = EmbeddingHookManager()
+            await manager._dispatch_task(uuid4(), "content", trigger="create")
+
+            assert len(embedding_hooks._INFLIGHT_TASKS) == 1
+            task = next(iter(embedding_hooks._INFLIGHT_TASKS))
+            # Wait for completion without re-raising (asyncio.wait never raises
+            # — it just returns the done set). Then yield once so the
+            # add_done_callback fires.
+            await asyncio.wait([task])
+            await asyncio.sleep(0)
+
+        failures = [r for r in logs if r.get("event") == "background_task_failed"]
+        assert len(failures) == 1, f"expected one error log, got {logs}"
+        assert failures[0]["log_level"] == "error"
+        assert "embed runner boom" in failures[0]["error"]
+        # The GC guard still discards the failed task.
+        assert len(embedding_hooks._INFLIGHT_TASKS) == 0

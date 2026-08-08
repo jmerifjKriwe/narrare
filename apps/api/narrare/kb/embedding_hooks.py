@@ -37,6 +37,23 @@ logger = structlog.get_logger(__name__)
 _INFLIGHT_TASKS: set[asyncio.Task[None]] = set()
 
 
+def _on_done(task: asyncio.Task[None]) -> None:
+    """Done-callback for in-flight embedding tasks.
+
+    Removes the task from the GC-guard set and retrieves any exception so
+    asyncio does not emit an un-retrieved-exception warning (IMP-1). A
+    surfaced failure is logged via structlog at error level (RULE-11): the
+    inner runner already logs, but this guarantees a structured error signal
+    even on the retry-exhaustion / premature-failure paths.
+    """
+    _INFLIGHT_TASKS.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        logger.error("background_task_failed", error=str(exc), exc_info=exc)
+
+
 class EmbeddingHookManager:
     """Manages embedding hooks for KB entry lifecycle events.
 
@@ -196,14 +213,16 @@ class EmbeddingHookManager:
 
         A strong reference is held in the module-level ``_INFLIGHT_TASKS`` set
         to prevent the garbage collector from cancelling the in-flight
-        coroutine; the reference is discarded automatically on completion.
+        coroutine; the reference is discarded automatically on completion
+        (via ``_on_done``), which also retrieves any task exception so it is
+        logged rather than surfacing as un-retrieved-exception noise (IMP-1).
 
         Fire-and-forget: the task is not awaited here.
         """
         source_type = "kb_entry"
         task = asyncio.create_task(run_embed_source_inprocess(source_type, str(source_id), content))
         _INFLIGHT_TASKS.add(task)
-        task.add_done_callback(_INFLIGHT_TASKS.discard)
+        task.add_done_callback(_on_done)
         logger.info(
             "embedding_task_dispatched",
             entry_id=str(source_id),

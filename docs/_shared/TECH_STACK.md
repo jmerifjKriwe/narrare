@@ -77,7 +77,7 @@ We need transactions. We need pgvector. Postgres does both well.
 
 **Historical record (pre-ADR-080):** Redis was chosen for fast ephemeral state —
 session storage, TaskIQ task broker, and provider model-list cache (24h TTL) — used
-only via `core/cache/client.py`. It was preferred over Memcached (no pub/sub, no
+only via `core/cache/redis_client.py`. It was preferred over Memcached (no pub/sub, no
 sorted sets) and over in-process caching (doesn't survive restarts). The
 single-user deployment model (ADR-029) made that operational overhead unjustified;
 the in-process trade-off is now accepted (see ADR-080 Durability Trade-off).

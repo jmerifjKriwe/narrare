@@ -36,6 +36,23 @@ logger = structlog.get_logger(__name__)
 _INFLIGHT_TASKS: set[asyncio.Task[None]] = set()
 
 
+def _on_done(task: asyncio.Task[None]) -> None:
+    """Done-callback for in-flight band-summary tasks.
+
+    Removes the task from the GC-guard set and retrieves any exception so
+    asyncio does not emit an un-retrieved-exception warning (IMP-1). A
+    surfaced failure is logged via structlog at error level (RULE-11): the
+    inner runner already logs, but this guarantees a structured error signal
+    even on the retry-exhaustion / premature-failure paths.
+    """
+    _INFLIGHT_TASKS.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        logger.error("background_task_failed", error=str(exc), exc_info=exc)
+
+
 async def enqueue_band_summary_generation(novel_id: uuid.UUID) -> None:
     """Production enqueuer: launch band-summary generation in-process (ADR-080).
 
@@ -48,7 +65,7 @@ async def enqueue_band_summary_generation(novel_id: uuid.UUID) -> None:
     """
     task = asyncio.create_task(generate_band_summary_inprocess(novel_id))
     _INFLIGHT_TASKS.add(task)
-    task.add_done_callback(_INFLIGHT_TASKS.discard)
+    task.add_done_callback(_on_done)
     logger.info("band_summary_dispatched", novel_id=str(novel_id))
 
 

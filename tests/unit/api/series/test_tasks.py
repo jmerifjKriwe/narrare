@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
+from structlog.testing import capture_logs
 
 from narrare.series import tasks as series_tasks
 
@@ -77,6 +78,42 @@ class TestEnqueueBandSummaryGeneration:
         task = next(iter(series_tasks._INFLIGHT_TASKS))
         await task
         assert started == [True]
+
+    @pytest.mark.asyncio
+    async def test_failing_runner_logs_background_task_failed(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A failing background task logs via structlog and is retrieved.
+
+        Regression for IMP-1: the done-callback must call ``task.exception()``
+        so asyncio does not emit an un-retrieved-exception warning, and the
+        failure is surfaced as a structured error event (RULE-11). The GC
+        guard must still discard the task.
+        """
+
+        async def boom_inprocess(novel_id: object) -> None:
+            raise RuntimeError("band-summary boom")
+
+        monkeypatch.setattr(series_tasks, "generate_band_summary_inprocess", boom_inprocess)
+
+        with capture_logs() as logs:
+            await series_tasks.enqueue_band_summary_generation(uuid4())
+
+            assert len(series_tasks._INFLIGHT_TASKS) == 1
+            task = next(iter(series_tasks._INFLIGHT_TASKS))
+            # Wait for completion without re-raising (asyncio.wait never raises
+            # — it just returns the done set). Then yield once so the
+            # add_done_callback fires.
+            await asyncio.wait([task])
+            await asyncio.sleep(0)
+
+        failures = [r for r in logs if r.get("event") == "background_task_failed"]
+        assert len(failures) == 1, f"expected one error log, got {logs}"
+        assert failures[0]["log_level"] == "error"
+        assert "band-summary boom" in failures[0]["error"]
+        # The GC guard still discards the failed task.
+        assert len(series_tasks._INFLIGHT_TASKS) == 0
 
     def test_signature_matches_band_summary_enqueuer_alias(self) -> None:
         """The enqueuer is assignable to the BandSummaryEnqueuer callable alias.
