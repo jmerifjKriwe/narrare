@@ -30,10 +30,26 @@ from narrare_core.llm.cost_rates import (
 
 
 @pytest.fixture(autouse=True)
-def isolate_cache(tmp_path: Path) -> None:
-    """Redirect CACHE to a temp directory for each test."""
-    _cr.CACHE_DIR = tmp_path / ".narrare" / "cache"
-    _cr.CACHE_FILE = _cr.CACHE_DIR / "models_cache.json"
+def isolate_cache(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Redirect CACHE to a temp directory for each test (restored after).
+
+    Uses ``monkeypatch.setattr`` so the module-global ``CACHE_DIR`` /
+    ``CACHE_FILE`` are restored to their real values when the test ends. The
+    previous direct assignment (``_cr.CACHE_DIR = ...``) leaked the per-test
+    ``tmp_path`` into the module globals with no teardown: once that temp dir
+    was deleted, every later test in the session reached ``get_rates`` /
+    ``get_model_limits`` with a cache-miss and triggered a *real synchronous*
+    ``_fetch_models()`` call to models.dev, blocking the event loop and
+    intermittently exceeding the 10 s pytest-timeout. (Confirmed empirically:
+    a leaked ``CACHE_FILE`` whose path no longer exists forces exactly one
+    ``_fetch_models`` call per lookup.) The ``_block_models_dev_network``
+    autouse guard in ``tests/unit/conftest.py`` remains as defense-in-depth;
+    this fixture fixes the leak at its source so the global cache path is
+    never invalid mid-session.
+    """
+    cache_dir = tmp_path / ".narrare" / "cache"
+    monkeypatch.setattr(_cr, "CACHE_DIR", cache_dir)
+    monkeypatch.setattr(_cr, "CACHE_FILE", cache_dir / "models_cache.json")
 
 
 @pytest.fixture

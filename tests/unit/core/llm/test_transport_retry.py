@@ -120,6 +120,17 @@ async def _count_429_attempts(max_retries: int) -> int:
     return attempts
 
 
+def _zero_sdk_backoff(_self: Any, *_args: Any) -> float:
+    """Return 0.0 so the SDK's ``_sleep_for_retry`` does ``anyio.sleep(0.0)``.
+
+    Neutralizes only the *wait*; the retry loop, ``_should_retry`` and the
+    attempt count stay real. Used by the ``_neutralize_sdk_backoff_sleep``
+    autouse fixture on ``TestTransportRetryBehavioralEffect``. Fully typed
+    (``*_args: Any``, not bare ``*args``) to keep pyright clean.
+    """
+    return 0.0
+
+
 class TestTransportRetryBehavioralEffect:
     """Changing the governed ``max_retries`` changes observable retry behaviour.
 
@@ -127,6 +138,37 @@ class TestTransportRetryBehavioralEffect:
     changes what happens at the runtime boundary (HTTP attempts against a
     transient error). The provider SDK's retry loop is exercised for real.
     """
+
+    @pytest.fixture(autouse=True)
+    def _neutralize_sdk_backoff_sleep(  # pyright: ignore[reportUnusedFunction] — autouse fixture, invoked via decorator reflection, not direct call. Pyright false-positive.
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Neutralize the OpenAI SDK's real exponential-backoff *sleep*.
+
+        The SDK retry **loop** stays 100 % real — ``_should_retry``,
+        ``retries_taken`` and the per-attempt HTTP call count are entirely
+        unmocked; only the *wait* between retries is removed. The async client
+        computes its backoff in ``_calculate_retry_timeout``
+        (``min(0.5 * 2**n, 8.0)`` s, jittered) and then sleeps it via
+        ``await anyio.sleep(...)`` in ``_sleep_for_retry``. For ``max_retries=4``
+        that is ~0.5 + 1 + 2 + 4 = 7.5 s of real wall-clock waiting — within
+        striking distance of the 10 s pytest-timeout and non-deterministically
+        tipping over on slower / contended CI (the original flake).
+
+        Forcing ``_calculate_retry_timeout`` to ``0.0`` makes
+        ``_sleep_for_retry`` do ``anyio.sleep(0.0)`` (a cooperative yield, no
+        delay). The retry-count guarantee under test
+        (``max_retries=N`` -> ``N+1`` HTTP attempts) is governed by
+        ``max_retries`` + ``_should_retry``, NOT by the sleep duration, so this
+        does not weaken the effect regression — the test still proves that
+        changing the governed value changes the *observable* number of HTTP
+        attempts.
+        """
+        monkeypatch.setattr(
+            AsyncOpenAI,
+            "_calculate_retry_timeout",
+            _zero_sdk_backoff,
+        )
 
     @pytest.mark.parametrize(
         ("governed", "expected_attempts"),
