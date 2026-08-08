@@ -82,7 +82,6 @@ export NARRARE_E2E_TEST=1                     # → all LLM factories return pyd
 export ANTHROPIC_API_KEY=sk-test-dummy        # required by settings validation; unused under NARRARE_E2E_TEST
 export OPENAI_API_KEY=sk-test-dummy
 export NARRARE_ENCRYPTION_KEY=WYcr1iULJse2Oo6GPpmw1Au4ovp_fXZwbrNF11C12ZQ=
-export REDIS_URL=redis://localhost:6379/0
 export AUTH_JWT_SECRET=test-secret-key-not-for-production   # must match backend SECRET_KEY for JWT verify
 export NEXT_PUBLIC_API_URL=http://localhost:8000
 export E2E_BASE_URL=http://localhost:3000
@@ -92,7 +91,6 @@ export CI=true                               # matches pytest-e2e step env; some
 E2E_FRONTEND_MODE="${E2E_FRONTEND_MODE:-dev}"
 
 PG_TEST_PORT=5433
-REDIS_PORT=6379
 API_PORT=8000
 WEB_PORT=3000
 
@@ -201,26 +199,25 @@ EOF
 # preflight: docker services up + app ports free
 # ---------------------------------------------------------------------------
 preflight_services() {
-  # :5433 + :6379 must be LISTENing. If not: tell the user how to start them.
+  # :5433 must be LISTENing. If not: tell the user how to start it.
   # We do NOT auto-start docker — that is a user/environment decision
   # (and `docker compose` is outside this agent's bash permission set).
   local missing=()
   port_listening "$PG_TEST_PORT" || missing+=("$PG_TEST_PORT (postgres_test)")
-  port_listening "$REDIS_PORT"   || missing+=("$REDIS_PORT (redis)")
   if [ "${#missing[@]}" -gt 0 ]; then
     err "Required Docker services are not listening:"
     for m in "${missing[@]}"; do echo "    - port $m" >&2; done
     cat >&2 <<EOF
 
-   Start them (the test DB lives on :5433, NOT the dev DB on :5432):
+   Start it (the test DB lives on :5433, NOT the dev DB on :5432):
 
-     docker compose -f docker-compose.dev.yml up -d postgres_test redis
+     docker compose -f docker-compose.dev.yml up -d postgres_test
 
    Then re-run:  just e2e
 EOF
     return 1
   fi
-  log "  docker services reachable: postgres_test :$PG_TEST_PORT, redis :$REDIS_PORT"
+  log "  docker services reachable: postgres_test :$PG_TEST_PORT"
 }
 
 preflight_ports_free() {

@@ -38,7 +38,6 @@ os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://narrare:narrare@localhost:5433/narrare_test",
 )
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 # NOTE: NARRARE_TEST_MODE is intentionally NOT set here. It was previously
 # set globally, which leaked the CSRF bypass into unit tests that explicitly
 # test OriginValidationMiddleware rejection behaviour. The env var is now set

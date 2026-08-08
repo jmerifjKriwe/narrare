@@ -103,8 +103,8 @@ These surfaces are **obsolete**; listed only to document what changed:
   `apps/api/narrare/tasks/broker.py` **deleted**.
 - ~~Read-only monitoring API `GET /tasks/status`~~ —
   `apps/api/narrare/tasks/router.py` **deleted**.
-- ~~Dedicated worker process~~ — `just dev-worker` and the Docker `worker`
-  service **removed**.
+- ~~Dedicated worker process~~ — the `dev-worker` recipe and the Docker
+  `worker` service **removed**.
 - ~~Event-listener task map / Redis Pub/Sub dispatch~~ — ADR-012 superseded;
   the dormant `EventListener` and the publish-to-nobody `_publish_content_event`
   caller were removed.

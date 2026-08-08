@@ -114,10 +114,8 @@ class _FakeSettings:
         self,
         *,
         is_test: bool = True,
-        redis_url: str = "redis://test:6379",
     ) -> None:
         self.is_test = is_test
-        self.redis_url = redis_url
 
 
 class _FakeState:

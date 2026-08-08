@@ -95,7 +95,7 @@ class TestGetBetaReaderService:
                 novel_repo=mock_novel_repo_cls.return_value,
             )
 
-            # -- verify in-memory cache built with no args (ADR-080: no redis_url)
+            # -- verify in-memory cache built with no args (ADR-080: in-process)
             mock_inmemory_cls.assert_called_once_with()
 
             # -- verify BetaReaderCache wraps the in-memory cache

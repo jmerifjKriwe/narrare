@@ -221,13 +221,7 @@ dev-frontend:
     [ ! -f packages/web/.env.local ] && cp packages/web/.env.local.example packages/web/.env.local
     cd packages/web && pnpm dev
 
-# Start TaskIQ worker only (requires broker module — Phase 5+)
-dev-worker:
-    cd apps/api && uv run taskiq worker narrare.tasks.broker:broker \
-        --fs-discover \
-        --log-level DEBUG
-
-# Start Docker services (postgres + redis)
+# Start Docker services (postgres)
 dev-services:
     just _ensure-services
 
@@ -316,7 +310,7 @@ test-match pattern:
 test-e2e:
     uv run pytest tests/e2e/ -v -m e2e --timeout=60
 
-# Run E2E tests against full stack — CI-faithful (starts API+frontend with ENVIRONMENT=test, narrare_test DB on :5433, --timeout=300; cleans up on exit). Requires: docker compose -f docker-compose.dev.yml up -d postgres_test redis. Frontend mode override: E2E_FRONTEND_MODE=build just e2e. See scripts/run_e2e.sh, .github/workflows/ci.yml (test-e2e job), tests/AGENTS.md.
+# Run E2E tests against full stack — CI-faithful (starts API+frontend with ENVIRONMENT=test, narrare_test DB on :5433, --timeout=300; cleans up on exit). Requires: docker compose -f docker-compose.dev.yml up -d postgres_test. Frontend mode override: E2E_FRONTEND_MODE=build just e2e. See scripts/run_e2e.sh, .github/workflows/ci.yml (test-e2e job), tests/AGENTS.md.
 e2e:
     bash scripts/run_e2e.sh
 

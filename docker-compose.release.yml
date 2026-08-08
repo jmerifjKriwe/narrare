@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # This is the release compose file for running Narrare on your own server.
-# It starts the Narrare application, PostgreSQL (with pgvector), and Redis.
+# It starts the Narrare application and PostgreSQL (with pgvector).
 #
 # Requirements:
 #   - Docker Engine 24+ with Docker Compose v2
@@ -26,7 +26,6 @@
 #   Docker network. Configure your release .env with service hostnames:
 #
 #     DATABASE_URL=postgresql+asyncpg://narrare:narrare@postgres:5432/narrare
-#     REDIS_URL=redis://redis:6379/0
 #
 #   The release bundle includes .env.example as a template; update it before use.
 #
@@ -46,8 +45,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
@@ -55,30 +52,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-
-  # ── Background Worker (INFRA-007) ───────────────────────────────────────
-  # TaskIQ worker process. Consumes the background task queue (embedding
-  # generation, wiki summary generation, feedback/preference stubs) from Redis
-  # and executes it against the database. Reuses the narrare image with a
-  # taskiq entrypoint instead of the combined api+frontend entrypoint.
-  # Task registration happens at import time via narrare.tasks.__init__, so the
-  # bare broker target `narrare.tasks.broker:broker` discovers all 7 tasks.
-  worker:
-    image: ${NARRARE_IMAGE:-ghcr.io/jmerifjkriwe/narrare}:${NARRARE_VERSION:-latest}
-    entrypoint: ["/app/.venv/bin/taskiq", "worker", "narrare.tasks.broker:broker"]
-    env_file:
-      - path: .env
-        required: false
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    # taskiq workers expose no HTTP health endpoint; process-level restart
-    # (above) covers liveness.
-    healthcheck:
-      disable: true
 
   # ── PostgreSQL + pgvector ───────────────────────────────────────────────
   # Primary database. The pgvector extension is required for AI features.
@@ -98,20 +71,5 @@ services:
       retries: 10
       start_period: 10s
 
-  # ── Redis Cache ─────────────────────────────────────────────────────────
-  # Used for session caching, rate limiting, and background task queues.
-  redis:
-    image: redis:8-alpine
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
-
 volumes:
   postgres_data:
-  redis_data:
