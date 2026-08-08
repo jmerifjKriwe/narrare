@@ -159,7 +159,11 @@ WebSocket cache is **not** unbounded: it is TTL-bounded (`SessionManager`
 persists every session with a 30-minute TTL, refreshed on each write),
 explicitly end-session-evicted (`SessionManager.end_session()` is wired into the
 WS router), and size-capped via the core cache's `max_entries` safety net (WS
-singleton: `10_000`).
+singleton: `10_000`). The eviction race with an in-flight stream is benign and
+resolved: the stream's final `add_message` fails with the session already
+evicted, the message is dropped and logged at info
+(`direction_stream_session_ended`), and the turn is always unregistered — see
+ADR-052 "Explicit end_session semantics".
 
 The `RedisEventBus`, the dormant `EventListener`, the live
 `_publish_content_event` caller, the `GET /tasks/status` endpoint, the frontend
