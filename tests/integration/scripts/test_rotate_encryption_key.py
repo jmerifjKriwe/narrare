@@ -33,6 +33,16 @@ from scripts.rotate_encryption_key import rotate_keys  # noqa: E402
 from narrare.auth.models import User  # noqa: E402
 from narrare.settings.models import UserProvider  # noqa: E402
 
+# Carries @pytest.mark.schema_mutating because the module-scoped
+# ``_clean_user_providers`` fixture issues a committed ``TRUNCATE … CASCADE``
+# on shared tables (``user_providers``, ``users``). Under xdist parallelism
+# that acquires ACCESS EXCLUSIVE locks that block concurrent tests touching
+# the same tables. The marker routes this module to the serial phase-2 run,
+# eliminating both lock contention and the data-wipe race. This is data
+# isolation, not schema mutation — but the ``schema_mutating`` marker is the
+# repo's serial-phase mechanism (see Q-018 for the per-test-DB root-cause fix).
+pytestmark = pytest.mark.schema_mutating
+
 # ── Helpers ──────────────────────────────────────────────────────
 
 

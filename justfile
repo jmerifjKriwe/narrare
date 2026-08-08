@@ -270,9 +270,13 @@ db-shell:
 # Testing
 # ---------------------------------------------------------------------------
 
-# Run all tests (parallel)
+# Run all tests. Phase 1: full suite in parallel (xdist -n auto). Phase 2:
+# schema-mutating migration round-trip tests (marked @pytest.mark.schema_mutating)
+# run SERIALLY — they downgrade/re-upgrade the shared test-DB schema and must
+# never run concurrently with other tests.
 test:
-    uv run pytest tests/ -v -n auto
+    uv run pytest tests/ -v -n auto -m "not schema_mutating"
+    uv run pytest tests/integration/ -v -m schema_mutating
 
 # Run unit tests only (fast, no Docker needed, parallel)
 test-unit:

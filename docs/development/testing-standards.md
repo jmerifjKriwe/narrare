@@ -783,6 +783,9 @@ Tests are automatically tagged based on their directory path. No manual markers 
 **When you still need manual markers:**
 - Cross-cutting concerns like `@pytest.mark.filterwarnings` or `@pytest.mark.parametrize`
 - Special markers for specific test behaviors (e.g., `@pytest.mark.timeout(30)`)
+- `@pytest.mark.schema_mutating` — for tests that mutate the SHARED test-DB
+  schema (alembic downgrade/upgrade round-trips). `just test` and CI run them
+  in a dedicated serial phase, never under xdist.
 
 **Do NOT add** `pytestmark = pytest.mark.requires_db` to integration test files — auto-tagging handles this.
 
@@ -790,7 +793,7 @@ Tests are automatically tagged based on their directory path. No manual markers 
 
 ```bash
 # justfile commands:
-just test          # Parallel execution (xdist -n auto, randomly enabled)
+just test          # Two-phase: parallel full suite, then schema_mutating tests serially
 just test-unit     # Parallel unit tests only
 just test-single   # Single-threaded for debugging (disables randomly)
 ```

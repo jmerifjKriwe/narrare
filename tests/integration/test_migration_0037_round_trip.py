@@ -11,8 +11,10 @@ leaves the schema intact. Uses subprocess alembic + its own connections (NOT the
 rolled-back ``db_session``, which assumes head) and always restores head in a
 ``finally``.
 
-NOTE: mutates the shared test DB schema mid-run; safe because integration tests
-run sequentially and the ``finally`` restores head. Must not run under xdist.
+NOTE: mutates the shared test DB schema mid-run; the ``finally`` always restores
+head. Carries ``@pytest.mark.schema_mutating`` so ``just test`` and CI run it in
+a dedicated SERIAL phase (a second pytest invocation without xdist) — it must
+never run concurrently with other tests.
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ import subprocess
 import uuid as _uuid
 from pathlib import Path
 
+import pytest
 import sqlalchemy
 from sqlalchemy.ext.asyncio import create_async_engine as _create_async_engine
 from sqlalchemy.pool import NullPool as _NullPool
@@ -73,8 +76,14 @@ def _decode(value: object) -> str:
     return str(value)
 
 
+@pytest.mark.schema_mutating
 class TestMigration0037RoundTrip:
-    """The 0037 upgrade/downgrade is round-trip safe even with Canon data (T12)."""
+    """The 0037 upgrade/downgrade is round-trip safe even with Canon data (T12).
+
+    Runs in the serial ``schema_mutating`` phase (``just test`` / CI), never
+    under xdist: it downgrades and re-upgrades the SHARED test-DB schema, so
+    any concurrently running test could hit ``column does not exist``.
+    """
 
     async def test_seed_canon_then_downgrade_then_upgrade(self) -> None:
         db_url = os.environ.get(

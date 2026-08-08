@@ -516,7 +516,12 @@ jobs:
         run: cd apps/api && uv run alembic upgrade head
 
       - name: Run integration tests
-        run: uv run pytest tests/integration/ -v -n auto --dist=loadfile --timeout=120
+        run: |
+          uv run pytest tests/integration/ -v -n auto --dist=loadfile --timeout=120 -m "not schema_mutating"
+          # Schema-mutating migration round-trip tests (alembic downgrade/upgrade)
+          # run serially in a second phase — they must never race other tests
+          # against the shared test-DB schema.
+          uv run pytest tests/integration/ -v --timeout=120 -m schema_mutating
 
   # -------------------------------------------------------------------------
   # Update coverage badge in README (main push only)
