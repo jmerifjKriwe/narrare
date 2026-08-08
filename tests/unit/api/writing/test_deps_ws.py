@@ -29,7 +29,6 @@ def test_deps_ws_return_app_state_singletons() -> None:
     """Accessors return exactly the shared objects bound on app.state."""
     from narrare.writing.deps_ws import (
         get_active_turn_registry,
-        get_session_cache,
         get_session_manager,
         get_turn_state,
     )
@@ -40,7 +39,6 @@ def test_deps_ws_return_app_state_singletons() -> None:
     app.state.active_turn_registry = ActiveTurnRegistry()
     app.state.turn_state = SessionTurnStateStore()
 
-    assert get_session_cache(app) is app.state.session_cache
     assert get_session_manager(app) is app.state.session_manager
     assert get_active_turn_registry(app) is app.state.active_turn_registry
     assert get_turn_state(app) is app.state.turn_state

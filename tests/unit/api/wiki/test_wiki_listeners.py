@@ -172,50 +172,6 @@ class TestOnWikiPromptChanged:
 
 
 # ---------------------------------------------------------------------------
-# Tests: on_wiki_sync_requested
-# ---------------------------------------------------------------------------
-
-
-class TestOnWikiSyncRequested:
-    """on_wiki_sync_requested — entity wiki generation trigger."""
-
-    async def test_calls_generate_entity(self) -> None:
-        """Delegates to run_wiki_generate_entity."""
-        listener = _make_listener()
-        event = _make_event("wiki.sync.requested")
-        entity_id = uuid.UUID(event.payload["entity_id"])
-        novel_id = uuid.UUID(event.payload["novel_id"])
-
-        with patch("narrare.wiki.listeners.run_wiki_generate_entity") as mock_gen:
-            mock_gen.return_value = True
-            await listener.on_wiki_sync_requested(event)
-
-            mock_gen.assert_called_once()
-            call_args = mock_gen.call_args
-            assert call_args[0][0] == entity_id
-            assert call_args[0][1] == novel_id
-
-    async def test_skips_on_invalid_payload(self) -> None:
-        """Does nothing when entity_id is missing from payload."""
-        listener = _make_listener()
-        event = _make_event("wiki.sync.requested")
-        event.payload = {"novel_id": str(uuid.uuid4())}  # no entity_id
-
-        with patch("narrare.wiki.listeners.run_wiki_generate_entity") as mock_gen:
-            await listener.on_wiki_sync_requested(event)
-            mock_gen.assert_not_called()
-
-    async def test_skips_on_invalid_uuid(self) -> None:
-        """Does nothing when entity_id is not a valid UUID."""
-        listener = _make_listener()
-        event = _make_event("wiki.sync.requested", entity_id="not-a-uuid")
-
-        with patch("narrare.wiki.listeners.run_wiki_generate_entity") as mock_gen:
-            await listener.on_wiki_sync_requested(event)
-            mock_gen.assert_not_called()
-
-
-# ---------------------------------------------------------------------------
 # Tests: Debouncing
 # ---------------------------------------------------------------------------
 
@@ -309,14 +265,3 @@ class TestGracefulFailure:
             side_effect=RuntimeError("DB error"),
         ):
             await listener.on_wiki_prompt_changed(event)
-
-    async def test_sync_requested_failure_does_not_raise(self) -> None:
-        """on_wiki_sync_requested swallows exceptions."""
-        listener = _make_listener()
-        event = _make_event("wiki.sync.requested")
-
-        with patch(
-            "narrare.wiki.listeners.run_wiki_generate_entity",
-            side_effect=RuntimeError("LLM down"),
-        ):
-            await listener.on_wiki_sync_requested(event)

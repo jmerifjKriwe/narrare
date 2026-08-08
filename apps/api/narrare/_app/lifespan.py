@@ -37,7 +37,7 @@ def bind_writing_session_singletons(app: FastAPI) -> None:
         from narrare_core.writing.session_manager import SessionManager
         from narrare_core.writing.session_turn_state import SessionTurnStateStore
 
-        session_cache = InMemorySessionCache()
+        session_cache = InMemorySessionCache(max_entries=10_000)
         session_manager = SessionManager(cache=session_cache)
         turn_state = SessionTurnStateStore()
         active_turn_registry = ActiveTurnRegistry()
@@ -215,7 +215,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         publisher.subscribe("kb.entry.updated", listener.on_kb_entry_updated)
         publisher.subscribe("chapter.finalized", listener.on_chapter_finalized)
         publisher.subscribe("wiki.prompt.changed", listener.on_wiki_prompt_changed)
-        publisher.subscribe("wiki.sync.requested", listener.on_wiki_sync_requested)
 
         # Store on app.state for access from other modules if needed
         app.state.wiki_event_publisher = publisher
@@ -254,6 +253,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         with suppress(asyncio.CancelledError):
             await cleanup_task
         logger.info("periodic_cleanup_cancelled")
+
+    # Drain in-flight background tasks (ADR-080 in-process dispatch).  They
+    # must be cancelled and awaited BEFORE the database engine is disposed
+    # so no background coroutine touches a disposed pool.  Cancellation is
+    # intentional — logged at info by the drain, never as an error.
+    # Skip in test environment: unit tests manage their own tasks and there
+    # is no engine to dispose (mirrors the database-dispose guard below).
+    if not settings.is_test:
+        try:
+            from narrare._app.inflight import drain_inflight_tasks
+
+            await drain_inflight_tasks()
+        except Exception:
+            logger.warning("inflight_drain_failed", exc_info=True)
 
     # Database engine shutdown — close all pooled connections.
     # Skip in test environment: the test infrastructure handles cleanup

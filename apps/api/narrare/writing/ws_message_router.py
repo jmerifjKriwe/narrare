@@ -113,6 +113,11 @@ class WritingSessionMessageRouter:
         elif msg_type == "generate_draft" and context.mode == "interview_assisted":
             await self._route_generate_draft(websocket, context)
         elif msg_type == "end_session":
+            # Explicit end: evict the session from the cache (cache.delete)
+            # BEFORE closing the transport. Deletion belongs only here —
+            # transport disconnects must NOT delete (ADR-052 reattach
+            # survives; the cache TTL is the recovery bound).
+            await self._session_manager.end_session(context.session_id)
             await websocket.close()
             return False
         else:
