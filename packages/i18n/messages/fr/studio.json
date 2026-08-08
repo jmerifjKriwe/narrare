@@ -278,7 +278,6 @@
     "aiSetup": "Configuration IA",
     "shortcuts": "Raccourcis clavier",
     "about": "À propos",
-    "backgroundTasks": "Tâches en arrière-plan",
     "generalSection": {
       "title": "Paramètres généraux",
       "description": "Ajustez les paramètres de base de l'application",
@@ -2043,30 +2042,6 @@
     "explain": {
       "label": "Expliquer",
       "description": "Demander à l'assistant d'expliquer la sélection"
-    }
-  },
-  "backgroundTasks": {
-    "title": "Tâches en arrière-plan",
-    "description": "Surveillez la file d'attente des tâches en arrière-plan qui alimente les embeddings, le wiki et l'apprentissage.",
-    "refreshInterval": "Actualisation automatique toutes les 10 secondes.",
-    "registeredTasks": "Tâches enregistrées",
-    "taskCount": "{count} tâches",
-    "noTasks": "Aucune tâche en arrière-plan enregistrée.",
-    "loadFailed": "Échec du chargement de l'état des tâches.",
-    "brokerStatus": {
-      "title": "État du broker",
-      "description": "Indique si la file des tâches en arrière-plan est en cours d'exécution",
-      "started": "En cours",
-      "stopped": "Arrêté"
-    },
-    "taskName": {
-      "embed_source": "Intégrer la source",
-      "process_feedback_memory": "Traiter la mémoire des retours",
-      "run_preference_analysis": "Exécuter l'analyse des préférences",
-      "wiki_generate_chapter": "Wiki : générer un chapitre",
-      "wiki_generate_entity": "Wiki : générer une entité",
-      "wiki_mark_all_stale": "Wiki : tout marquer obsolète",
-      "wiki_refresh_summary": "Wiki : actualiser le résumé"
     }
   },
   "series": {

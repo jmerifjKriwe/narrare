@@ -48,6 +48,4 @@ export { seriesApi } from "./series";
 export type { AvailableModelsResponse, ModelRefreshResponse } from "./settings";
 export { aiSettingsApi, settingsApi, tokenLimitsApi } from "./settings";
 export { setupApi } from "./setup";
-export type { TaskStatus } from "./tasks";
-export { tasksApi } from "./tasks";
 export { tonesApi } from "./tones";

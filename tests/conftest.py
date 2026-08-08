@@ -20,12 +20,11 @@ import pytest
 # ``environment != "test"``, ``Settings.is_test`` returns False and the
 # app lifespan (``apps/api/narrare/_app/lifespan.py``) runs production
 # code paths that do not compose with per-test ``TestClient`` portal
-# event loops: ``broker.startup()/shutdown()`` (redis.asyncio),
-# ``_run_stale_cleanup`` (asyncpg pool — ``lifespan.py:140``), and
-# ``dispose_database()``. These bind redis/asyncpg resources to whatever
+# event loops: ``_run_stale_cleanup`` (asyncpg pool — ``lifespan.py:140``),
+# and ``dispose_database()``. These bind asyncpg resources to whatever
 # loop is current at lifespan startup; when the ``TestClient`` portal
-# closes and a later WS test starts a fresh portal,
-# ``broker.shutdown()`` and asyncpg ``do_terminate`` raise
+# closes and a later WS test starts a fresh portal, asyncpg
+# ``do_terminate`` raises
 # ``RuntimeError: Task got Future attached to a different loop`` at
 # teardown — flakily, because pytest-randomly reorders the polluter.
 # Direct assignment (not ``setdefault``) is required: this conftest is

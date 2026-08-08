@@ -1,53 +1,26 @@
-"""Unit tests for ``narrare.tasks`` — async event processing stubs.
+"""Regression tests for the ``narrare.tasks`` package (ADR-080).
 
-Tests that both task stubs execute without error and log the expected
-attributes.  The event types (``FeedbackRecorded``,
-``PreferenceAnalysisTriggered``) are only imported under
-``TYPE_CHECKING``, so the stubs accept any object with the right
-attributes — we use :class:`~unittest.mock.MagicMock` to simulate them.
+The TaskIQ broker, worker process, broker-registered stubs, and the
+``GET /tasks/status`` monitoring endpoint have been removed (ADR-080).
+Background work now runs in-process. This file guards against silent
+re-introduction:
+
+- ``test_tasks_status_endpoint_not_mounted`` — asserts ``GET /tasks/status``
+  is not registered on the app, so the endpoint cannot silently reappear.
 """
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
 
-import pytest
+def test_tasks_status_endpoint_not_mounted() -> None:
+    """GET /tasks/status is not registered on the app (regression, ADR-080).
 
-from narrare.tasks import process_feedback_memory, run_preference_analysis
+    The monitoring endpoint and its backing broker were removed. If a router
+    is accidentally re-mounted, this assertion fails loudly instead of
+    silently re-introducing a Redis-backed surface.
+    """
+    from narrare._app.main import create_app
 
-# ---------------------------------------------------------------------------
-# process_feedback_memory
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.anyio
-async def test_process_feedback_memory_logs_event() -> None:
-    """process_feedback_memory completes without error on a valid event."""
-    event = MagicMock(
-        spec=object,
-        user_id="00000000-0000-0000-0000-000000000001",
-        project_id="00000000-0000-0000-0000-000000000002",
-        event_id="00000000-0000-0000-0000-000000000003",
-    )
-
-    # Should not raise
-    await process_feedback_memory(event)
-
-
-# ---------------------------------------------------------------------------
-# run_preference_analysis
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.anyio
-async def test_run_preference_analysis_logs_event() -> None:
-    """run_preference_analysis completes without error on a valid event."""
-    event = MagicMock(
-        spec=object,
-        user_id="00000000-0000-0000-0000-000000000001",
-        project_id="00000000-0000-0000-0000-000000000002",
-        event_count=5,
-    )
-
-    # Should not raise
-    await run_preference_analysis(event)
+    app = create_app(test_mode=True)
+    paths = {getattr(route, "path", None) for route in app.routes}
+    assert "/tasks/status" not in paths

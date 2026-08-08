@@ -22,9 +22,9 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-#: Callable that enqueues a band-summary generation task for a single novel.
+#: Callable that launches a band-summary generation task for a single novel.
 #: The production implementation (``series.tasks.enqueue_band_summary_generation``)
-#: finds the registered TaskIQ task on the broker and calls ``.kiq()``; unit
+#: dispatches an ``asyncio.create_task`` in-process coroutine (ADR-080); unit
 #: tests inject a recording fake.
 BandSummaryEnqueuer = Callable[[uuid.UUID], Awaitable[None]]
 

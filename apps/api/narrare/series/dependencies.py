@@ -51,9 +51,9 @@ def get_series_service(session: SessionDep) -> SeriesService:
     """Request-scoped SeriesService (CRUD + settings + novels-in-series).
 
     Wires the band-summary auto-trigger enqueuer (Spec 2 Task 5) so that
-    ``update_series`` can enqueue background generation when a series
-    transitions to ``completed``. The enqueuer is resolved lazily inside the
-    function body to avoid a module-level circular import
+    ``update_series`` can launch background generation in-process when a
+    series transitions to ``completed``. The enqueuer is resolved lazily
+    inside the function body to avoid a module-level circular import
     (``series.service`` ← ``series.tasks`` ← ``series.dependencies``).
     """
     from narrare.series.tasks import enqueue_band_summary_generation
@@ -114,10 +114,10 @@ async def build_band_summary_service(
     """Build a ``BandSummaryService`` with resolved model routing.
 
     Shared by the FastAPI factory (``get_band_summary_service``) and the
-    TaskIQ background task (``generate_band_summary_task``). Resolves the
-    SUMMARIZE model config per user/novel, then wires the three repositories
-    (band-summary, novel, chapter) from the same session so generation +
-    upsert commit together.
+    in-process background task (``generate_band_summary_inprocess``). Resolves
+    the SUMMARIZE model config per user/novel, then wires the three
+    repositories (band-summary, novel, chapter) from the same session so
+    generation + upsert commit together.
     """
     from dataclasses import replace
 

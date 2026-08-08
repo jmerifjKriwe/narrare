@@ -1,10 +1,15 @@
-"""Background tasks for embedding generation.
+"""Embedding generation — standalone runner + in-process entry point.
 
-TaskIQ integration: This module provides both a TaskIQ-decorated task
-and a standalone ``run_embed_source`` function for direct invocation.
-When TaskIQ infrastructure is fully wired up, the broker decorator will
-enable distributed task processing. Until then, ``run_embed_source`` can
-be called directly from the service layer.
+Per ADR-080, embedding generation runs **in-process** via
+``asyncio.create_task`` (no broker, no worker process). This module
+provides:
+
+- ``run_embed_source`` — the transport-independent standalone runner that
+  owns the ``[30.0, 120.0, 300.0]s`` retry loop and is callable directly.
+- ``run_embed_source_inprocess`` — the in-process entry point that builds
+  its **own** DB session (via ``get_session_factory()``), calls the
+  standalone runner, and commits/rolls back. Dispatched fire-and-forget
+  by ``EmbeddingHookManager._dispatch_task``.
 
 Retry strategy: max 3 retries with exponential backoff (30s, 120s, 300s).
 Content-hash comparison ensures idempotent processing — if the content
@@ -142,30 +147,34 @@ async def run_embed_source(
     return False  # unreachable, but satisfies type checker
 
 
-# NOTE: TaskIQ integration. The ``embed_source_task`` wrapper below bridges
-# the serializable TaskIQ call boundary to the standalone ``run_embed_source``
-# function. Arguments are JSON-serializable (UUIDs as strings) because TaskIQ
-# serializes task arguments across processes.
+# NOTE (ADR-080): the ``run_embed_source_inprocess`` wrapper below is the
+# in-process execution seam. It accepts JSON-serialisable arguments (UUID as
+# a string) so the dispatch site is a single, swappable seam — re-introducing
+# a broker later means swapping ``asyncio.create_task(...)`` back to the
+# broker enqueue call at the call site only. The wrapper builds its own DB
+# session via ``get_session_factory()`` (never the request session) and
+# commits on success / rolls back on failure.
 
-from narrare.tasks.broker import broker  # noqa: E402
 
+async def run_embed_source_inprocess(
+    source_type: str,
+    source_id: str,
+    content: str,
+) -> None:
+    """In-process entry point for embedding generation.
 
-@broker.task(task_name="embed_source", max_retries=3)
-async def embed_source_task(source_type: str, source_id: str, content: str) -> bool:
-    """TaskIQ wrapper for distributed embedding generation.
+    Mirrors :func:`run_embed_source` but accepts JSON-serialisable arguments
+    (``source_id`` as a string) so the dispatch seam is swappable. Builds its
+    own database session and commits on success / rolls back on failure.
 
-    Mirrors :func:`run_embed_source` but accepts JSON-serializable arguments
-    (``source_id`` as a string) so the task can be enqueued by a worker in a
-    separate process. The worker owns its own database session and commits
-    on success / rolls back on failure.
+    Fire-and-forget: the dispatch site (``EmbeddingHookManager._dispatch_task``)
+    schedules this via ``asyncio.create_task`` and does not await the result;
+    the return is therefore ``None``.
 
     Args:
         source_type: Content type label (e.g. "kb_entry").
         source_id: UUID of the source entity, as a string.
         content: Text content to embed.
-
-    Returns:
-        True if an embedding was generated, False if skipped (unchanged).
     """
     from uuid import UUID
 
@@ -176,9 +185,8 @@ async def embed_source_task(source_type: str, source_id: str, content: str) -> b
     async with session_factory() as session:
         repo = EmbeddingRepository(session)
         try:
-            ok = await run_embed_source(source_type, UUID(source_id), content, repo=repo)
+            await run_embed_source(source_type, UUID(source_id), content, repo=repo)
             await session.commit()
-            return ok
         except Exception:
             await session.rollback()
             raise

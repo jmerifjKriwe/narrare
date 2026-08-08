@@ -6,6 +6,7 @@ content-changed gating, hash comparison, and silent exception handling.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -234,47 +235,97 @@ class TestOnEntryUpdated:
 
 
 # ---------------------------------------------------------------------------
-# _dispatch_task — enqueues embed_source via the broker
+# _dispatch_task — launches embed_source in-process (ADR-080)
 # ---------------------------------------------------------------------------
 
 
 class TestDispatchTask:
-    """``_dispatch_task`` enqueues the embed_source task on the broker."""
+    """``_dispatch_task`` schedules the in-process embedding coroutine.
+
+    ADR-080: embedding generation runs via ``asyncio.create_task`` (no broker).
+    The dispatch site holds a strong reference in ``_INFLIGHT_TASKS`` to prevent
+    GC of the in-flight coroutine, and discards it on completion.
+    """
 
     @pytest.mark.asyncio
-    async def test_dispatch_task_enqueues(self) -> None:
-        """_dispatch_task looks up and enqueues embed_source with content."""
-        from narrare.tasks.broker import broker
+    async def test_dispatch_creates_inprocess_task(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """_dispatch_task schedules run_embed_source_inprocess with string args."""
+        from narrare.kb import embedding_hooks
 
+        captured: list[tuple[str, str, str]] = []
+
+        async def fake_runner(source_type: str, source_id: str, content: str) -> None:
+            captured.append((source_type, source_id, content))
+
+        monkeypatch.setattr(embedding_hooks, "run_embed_source_inprocess", fake_runner)
+
+        manager = EmbeddingHookManager()
         source_id = uuid4()
-        real_task = broker.find_task("embed_source")
-        fake_task = MagicMock(spec=type(real_task))
-        fake_task.kiq = AsyncMock()
-        fake_broker = MagicMock(spec=type(broker))
-        fake_broker.find_task.return_value = fake_task
+        await manager._dispatch_task(source_id, "content", trigger="create")
 
-        manager = EmbeddingHookManager()
-        with patch("narrare.kb.embedding_hooks.broker", fake_broker):
-            await manager._dispatch_task(source_id, "content", trigger="create")
+        # A task was scheduled and added to the GC-guard set.
+        assert len(embedding_hooks._INFLIGHT_TASKS) == 1
+        task = next(iter(embedding_hooks._INFLIGHT_TASKS))
+        await task
 
-        fake_broker.find_task.assert_called_once_with("embed_source")
-        fake_task.kiq.assert_awaited_once_with(
-            source_type="kb_entry",
-            source_id=str(source_id),
-            content="content",
-        )
+        assert captured == [("kb_entry", str(source_id), "content")]
 
     @pytest.mark.asyncio
-    async def test_dispatch_task_missing_task_does_not_raise(self) -> None:
-        """_dispatch_task logs and skips when embed_source is not registered."""
-        from narrare.tasks.broker import broker
+    async def test_dispatch_passes_trigger_update(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """_dispatch_task forwards the update trigger (no behavioural diff)."""
+        from narrare.kb import embedding_hooks
 
-        fake_broker = MagicMock(spec=type(broker))
-        fake_broker.find_task.return_value = None
+        async def fake_runner(source_type: str, source_id: str, content: str) -> None:
+            pass
+
+        monkeypatch.setattr(embedding_hooks, "run_embed_source_inprocess", fake_runner)
 
         manager = EmbeddingHookManager()
-        with patch("narrare.kb.embedding_hooks.broker", fake_broker):
-            # Should not raise.
-            await manager._dispatch_task(uuid4(), "content", trigger="create")
+        await manager._dispatch_task(uuid4(), "body", trigger="update")
 
-        fake_broker.find_task.assert_called_once_with("embed_source")
+        assert len(embedding_hooks._INFLIGHT_TASKS) == 1
+        await next(iter(embedding_hooks._INFLIGHT_TASKS))
+
+    @pytest.mark.asyncio
+    async def test_gc_guard_removes_completed_task(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The GC guard discards the task once it completes (ADR-080)."""
+        from narrare.kb import embedding_hooks
+
+        async def fake_runner(source_type: str, source_id: str, content: str) -> None:
+            pass
+
+        monkeypatch.setattr(embedding_hooks, "run_embed_source_inprocess", fake_runner)
+
+        manager = EmbeddingHookManager()
+        await manager._dispatch_task(uuid4(), "content", trigger="create")
+
+        assert len(embedding_hooks._INFLIGHT_TASKS) == 1
+        task = next(iter(embedding_hooks._INFLIGHT_TASKS))
+        await task
+        # add_done_callback runs on the next loop tick — yield control.
+        await asyncio.sleep(0)
+
+        assert len(embedding_hooks._INFLIGHT_TASKS) == 0
+
+    @pytest.mark.asyncio
+    async def test_dispatch_does_not_await_runner(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """_dispatch_task is fire-and-forget — the runner has not run yet on return."""
+        from narrare.kb import embedding_hooks
+
+        started: list[bool] = []
+
+        async def slow_runner(source_type: str, source_id: str, content: str) -> None:
+            started.append(True)
+            await asyncio.sleep(0.05)
+
+        monkeypatch.setattr(embedding_hooks, "run_embed_source_inprocess", slow_runner)
+
+        manager = EmbeddingHookManager()
+        await manager._dispatch_task(uuid4(), "content", trigger="create")
+
+        # The task is scheduled but we return immediately without awaiting it.
+        assert len(embedding_hooks._INFLIGHT_TASKS) == 1
+        task = next(iter(embedding_hooks._INFLIGHT_TASKS))
+        # Allow it to finish so it does not leak into other tests.
+        await task
+        assert started == [True]

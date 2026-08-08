@@ -3,8 +3,8 @@
 Tests the DB-version query, pending-migrations helper, the full lifespan
 context manager (startup + shutdown in both test and non-test modes), and
 the logging configuration helper.  All external dependencies (database,
-Redis, broker, wiki listeners) are replaced with fake classes / patched
-functions so no real I/O occurs.
+wiki listeners) are replaced with fake classes / patched functions so no
+real I/O occurs.
 """
 
 from __future__ import annotations

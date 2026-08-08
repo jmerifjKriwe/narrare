@@ -1,6 +1,11 @@
-"""Background tasks for wiki summary generation.
+"""Background tasks for wiki summary generation (ADR-080 — in-process).
 
-Standalone ``run_wiki_*`` functions with TaskIQ stubs at the bottom.
+Standalone ``run_wiki_*`` functions are invoked **directly** by
+``WikiEventListener`` (``wiki/listeners.py``). There is no broker: the
+listener awaits the runner in-process. The ``run_wiki_*`` functions are
+transport-independent — they accept a zero-arg ``wiki_service_factory``
+so the caller controls session/service construction.
+
 Retry strategy: max 3 retries with exponential backoff (30s, 120s, 300s).
 Freshness check ensures idempotent processing.
 """
@@ -150,61 +155,3 @@ async def _retry_generate(
                     f"{context}_permanently_failed", target_id=str(target_id), error=str(exc)
                 )
     return False
-
-
-# NOTE: TaskIQ integration. The ``wiki_*_task`` wrappers below bridge the
-# serializable TaskIQ call boundary to the standalone ``run_wiki_*`` functions.
-# Arguments are JSON-serializable (UUIDs as strings) because TaskIQ serializes
-# task arguments across processes. Each task builds a system-mode wiki service
-# factory so it runs with bypassed ownership checks (background system work).
-
-from narrare.tasks.broker import broker  # noqa: E402
-
-
-async def _build_wiki_service_factory() -> Callable[[], APIWikiService]:
-    """Build a system-mode wiki service factory for background tasks.
-
-    Composes :func:`build_core_wiki_service` (async model init) with
-    :func:`make_system_wiki_factory` (zero-arg factory capturing the core
-    service in a closure, per ADR background-task guidance).
-    """
-    from narrare.wiki.dependencies import build_core_wiki_service, make_system_wiki_factory
-
-    core_service = await build_core_wiki_service()
-    return make_system_wiki_factory(core_service)
-
-
-@broker.task(task_name="wiki_generate_entity", max_retries=3)
-async def wiki_generate_entity_task(entity_id: str, novel_id: str) -> bool:
-    """TaskIQ wrapper for entity wiki summary generation."""
-    factory = await _build_wiki_service_factory()
-    return await run_wiki_generate_entity(
-        uuid.UUID(entity_id), uuid.UUID(novel_id), wiki_service_factory=factory
-    )
-
-
-@broker.task(task_name="wiki_generate_chapter", max_retries=3)
-async def wiki_generate_chapter_task(chapter_id: str, novel_id: str) -> bool:
-    """TaskIQ wrapper for chapter wiki summary generation."""
-    factory = await _build_wiki_service_factory()
-    return await run_wiki_generate_chapter(
-        uuid.UUID(chapter_id), uuid.UUID(novel_id), wiki_service_factory=factory
-    )
-
-
-@broker.task(task_name="wiki_mark_all_stale", max_retries=3)
-async def wiki_mark_all_stale_task(novel_id: str, prompt_version: str) -> int:
-    """TaskIQ wrapper for marking all wiki summaries stale after a prompt change."""
-    factory = await _build_wiki_service_factory()
-    return await run_wiki_mark_all_stale(
-        uuid.UUID(novel_id), prompt_version, wiki_service_factory=factory
-    )
-
-
-@broker.task(task_name="wiki_refresh_summary", max_retries=3)
-async def wiki_refresh_summary_task(entity_id: str, novel_id: str) -> bool:
-    """TaskIQ wrapper for force-refreshing a single entity wiki summary."""
-    factory = await _build_wiki_service_factory()
-    return await run_wiki_refresh_summary(
-        uuid.UUID(entity_id), uuid.UUID(novel_id), wiki_service_factory=factory
-    )

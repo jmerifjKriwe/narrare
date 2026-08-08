@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import structlog
 from alembic.config import Config
@@ -165,8 +165,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """
     FastAPI lifespan context manager.
 
-    Startup: configure logging, TaskIQ broker.
-    Shutdown: TaskIQ broker.
+    Startup: configure logging, run migrations, register wiki listeners,
+    bind writing-session singletons.
+    Shutdown: cancel periodic cleanup, dispose database engine.
     """
     # --- Startup ---
     _configure_logging()
@@ -199,18 +200,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         except Exception:
             logger.exception("db_migration_failed")
             raise
-
-    # TaskIQ broker startup (skip in worker process — it handles its own)
-    try:
-        # Dynamic import — `narrare.tasks.broker` is a Phase 4+ module
-        # that may not exist yet. taskiq has no PEP 561 type stubs.
-        _broker_mod = __import__("narrare.tasks.broker", fromlist=["broker"])
-        broker: Any = _broker_mod.broker
-        if not broker.is_worker_process:
-            await broker.startup()
-            logger.info("taskiq_broker_started")
-    except ImportError:
-        pass  # Tasks not yet configured in Phase 2
 
     # Wiki event listeners — register typed handlers on a global EventPublisher
     try:
@@ -265,19 +254,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         with suppress(asyncio.CancelledError):
             await cleanup_task
         logger.info("periodic_cleanup_cancelled")
-
-    # TaskIQ broker shutdown — skip in test environment (same rationale as
-    # event bus and database: the test infrastructure handles cleanup, and
-    # broker.shutdown() triggers redis.asyncio connection-pool disconnect
-    # which raises "Future attached to a different loop" under pytest-asyncio).
-    if not settings.is_test:
-        try:
-            _broker_mod = __import__("narrare.tasks.broker", fromlist=["broker"])
-            broker: Any = _broker_mod.broker
-            if not broker.is_worker_process:
-                await broker.shutdown()
-        except ImportError:
-            pass
 
     # Database engine shutdown — close all pooled connections.
     # Skip in test environment: the test infrastructure handles cleanup

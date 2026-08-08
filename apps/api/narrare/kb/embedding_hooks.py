@@ -5,17 +5,19 @@ KB entry create/update.  Non-blocking: failures are logged but
 never prevent saves from completing (RULE-11).
 
 Extracted from ``service.py`` to stay under RULE-04 file-size limits.
-The ``_dispatch_task`` method enqueues the registered ``embed_source``
-task on the shared TaskIQ broker (INFRA-007).
+The ``_dispatch_task`` method launches the in-process embedding
+coroutine via ``asyncio.create_task`` (ADR-080) and holds a strong
+reference against garbage collection of the in-flight coroutine.
 """
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.tasks.broker import broker
+from narrare.embeddings.tasks import run_embed_source_inprocess
 from narrare_core.embeddings.hash import compute_content_hash
 from narrare_core.events.types import DomainEvent, EventType
 
@@ -27,6 +29,12 @@ if TYPE_CHECKING:
     from narrare_core.events.bus import EventBus
 
 logger = structlog.get_logger(__name__)
+
+#: Strong references to in-flight embedding coroutines, preventing the
+#: garbage collector from cancelling a ``asyncio.create_task`` coroutine
+#: that nothing else holds a reference to (ADR-080). Entries are removed
+#: automatically via ``add_done_callback`` when the task completes.
+_INFLIGHT_TASKS: set[asyncio.Task[None]] = set()
 
 
 class EmbeddingHookManager:
@@ -178,32 +186,26 @@ class EmbeddingHookManager:
         *,
         trigger: str,
     ) -> None:
-        """Enqueue the ``embed_source`` task via the TaskIQ broker.
+        """Launch the ``embed_source`` in-process coroutine (ADR-080).
 
-        Looks up the registered ``embed_source`` task on the shared broker and
-        enqueues it with JSON-serializable arguments (the UUID is passed as a
-        string, as required across the TaskIQ process boundary). The task
-        worker owns its own DB session and recomputes the content hash
-        internally for idempotency, so only the raw content is forwarded.
+        Schedules ``run_embed_source_inprocess`` via ``asyncio.create_task``
+        with JSON-serialisable arguments (the UUID is passed as a string,
+        keeping the dispatch seam swappable). The coroutine builds its own DB
+        session and recomputes the content hash internally for idempotency,
+        so only the raw content is forwarded.
 
-        Non-blocking: a missing task registration is logged, not raised.
+        A strong reference is held in the module-level ``_INFLIGHT_TASKS`` set
+        to prevent the garbage collector from cancelling the in-flight
+        coroutine; the reference is discarded automatically on completion.
+
+        Fire-and-forget: the task is not awaited here.
         """
         source_type = "kb_entry"
-        task = broker.find_task("embed_source")
-        if task is None:
-            logger.warning(
-                "embed_source_task_not_registered",
-                source_type=source_type,
-                source_id=str(source_id),
-            )
-            return
-        await task.kiq(
-            source_type=source_type,
-            source_id=str(source_id),
-            content=content,
-        )
+        task = asyncio.create_task(run_embed_source_inprocess(source_type, str(source_id), content))
+        _INFLIGHT_TASKS.add(task)
+        task.add_done_callback(_INFLIGHT_TASKS.discard)
         logger.info(
-            "embedding_task_queued",
+            "embedding_task_dispatched",
             entry_id=str(source_id),
             source_type=source_type,
             trigger=trigger,
