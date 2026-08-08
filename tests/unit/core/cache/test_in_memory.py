@@ -6,6 +6,8 @@ Tests cover:
 - Real TTL expiration (lazy expiry-on-access)
 - ``ttl_seconds=None`` → no expiry (for WebSocket session usage)
 - Cleanup of expired entries (no unbounded growth)
+- Opt-in ``max_entries`` LRU cap (safety net for no-TTL writers;
+  default ``None`` stays unbounded)
 
 Time is controlled via an injectable fake clock — no real sleeping.
 """
@@ -16,6 +18,7 @@ import inspect
 from typing import TYPE_CHECKING
 
 import pytest
+from structlog.testing import capture_logs
 
 from narrare_core.cache import InMemorySessionCache
 from narrare_core.writing.session_manager import SessionManager
@@ -292,3 +295,79 @@ class TestStructuralTyping:
         """
         cache: SessionCacheProtocol = InMemorySessionCache()
         assert cache is not None
+
+
+# ---------------------------------------------------------------------------
+# Opt-in max_entries LRU cap — safety net for no-TTL writers
+# ---------------------------------------------------------------------------
+
+
+class TestMaxEntries:
+    """``max_entries`` caps store growth by evicting the oldest entry.
+
+    TTL remains the primary bound; ``max_entries`` is an opt-in safety net
+    for writers that never pass a TTL (e.g. the WebSocket session store).
+    Eviction follows insertion order — the oldest-inserted key goes first.
+    """
+
+    async def test_fill_beyond_max_entries_evicts_oldest(self, clock: FakeClock) -> None:
+        """Exceeding the cap evicts the oldest-inserted entry."""
+        cache = InMemorySessionCache(clock=clock, max_entries=2)
+        await cache.set("a", "1")
+        await cache.set("b", "2")
+        await cache.set("c", "3")  # exceeds cap → evicts "a"
+
+        assert await cache.get("a") is None  # oldest evicted
+        assert await cache.get("b") == "2"
+        assert await cache.get("c") == "3"
+        assert len(cache._store) == 2
+
+    async def test_default_max_entries_is_unbounded(self, cache: InMemorySessionCache) -> None:
+        """Without ``max_entries`` the store grows without eviction."""
+        for i in range(100):
+            await cache.set(f"k{i}", str(i))
+        assert len(cache._store) == 100
+        assert await cache.get("k0") == "0"  # oldest still present
+
+    async def test_cap_evicts_oldest_even_when_ttl_unexpired(self, clock: FakeClock) -> None:
+        """The cap evicts the LRU entry regardless of TTL status.
+
+        With a fresh clock no entry has expired, so only the cap can evict
+        the oldest TTL entry.
+        """
+        cache = InMemorySessionCache(clock=clock, max_entries=3)
+        await cache.set("a", "1", ttl_seconds=100)  # oldest, TTL alive
+        await cache.set("b", "2", ttl_seconds=100)
+        await cache.set("c", "3")  # no TTL
+        await cache.set("d", "4")  # exceeds cap → evicts "a"
+
+        assert await cache.get("a") is None  # evicted by cap, not expiry
+        assert await cache.get("b") == "2"
+        assert await cache.get("c") == "3"
+        assert await cache.get("d") == "4"
+        assert len(cache._store) == 3
+
+    async def test_eviction_logged_at_info(self, clock: FakeClock) -> None:
+        """LRU eviction is logged at info — no silent data loss (RULE-11)."""
+        cache = InMemorySessionCache(clock=clock, max_entries=2)
+        await cache.set("a", "1")
+        await cache.set("b", "2")
+        with capture_logs() as logs:
+            await cache.set("c", "3")  # exceeds cap → evicts "a"
+
+        matches = [log for log in logs if log["event"] == "in_memory_cache_evicted_lru"]
+        assert len(matches) == 1
+        assert matches[0]["key"] == "a"
+        assert matches[0]["log_level"] == "info"
+
+    async def test_at_cap_no_eviction(self, clock: FakeClock) -> None:
+        """A write that lands exactly on the cap evicts nothing."""
+        cache = InMemorySessionCache(clock=clock, max_entries=2)
+        await cache.set("a", "1")
+        await cache.set("b", "2")  # exactly at cap
+        with capture_logs() as logs:
+            await cache.set("b", "updated")  # overwrite, size unchanged
+        assert len(cache._store) == 2
+        assert await cache.get("a") == "1"
+        assert await cache.get("b") == "updated"
+        assert not [log for log in logs if log["event"] == "in_memory_cache_evicted_lru"]

@@ -75,16 +75,36 @@ class InMemorySessionCache:
       unbounded.  No background task is required, avoiding event-loop
       lifecycle complexity.
 
+    TTL is the **primary bound** on growth.  ``max_entries`` is an opt-in
+    **safety net** for writers that never pass a TTL (e.g. the WebSocket
+    session store): once the store reaches the cap, the next write evicts
+    the oldest-inserted entry.  The cap is enforced on the write path
+    (after the expiry sweep), and eviction follows insertion order —
+    Python dicts preserve it, so the first key in iteration order is the
+    oldest inserted.
+
     Args:
         clock:
             Monotonic-clock callable used for expiry math, defaulting to
             :func:`time.monotonic`. Injected primarily for deterministic
             testing — production code should leave the default.
+        max_entries:
+            Optional hard cap on the number of cached entries.  When a
+            write leaves the store at/over this size, the oldest-inserted
+            entry is evicted (LRU proxy via insertion order) and the
+            eviction is logged.  ``None`` (default) keeps the current
+            unbounded behaviour — TTL expiry alone bounds the store.
     """
 
-    def __init__(self, *, clock: Clock | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        clock: Clock | None = None,
+        max_entries: int | None = None,
+    ) -> None:
         self._store: dict[str, _Entry] = {}
         self._clock: Clock = time.monotonic if clock is None else clock
+        self._max_entries: int | None = max_entries
 
     # ------------------------------------------------------------------
     # Public API — SessionCacheProtocol
@@ -111,13 +131,17 @@ class InMemorySessionCache:
         When *ttl_seconds* is ``None`` the key persists for the lifetime of
         the process (no expiry) — this is the mode used by the WebSocket
         session store.  Before storing, any already-expired entries are
-        swept so the store stays bounded.
+        swept so the store stays bounded; when a ``max_entries`` cap is
+        configured, exceeding it evicts the oldest-inserted entry.
         """
         now = self._now()
         self._purge_expired(now)
 
         expiry: float | None = None if ttl_seconds is None else now + ttl_seconds
         self._store[key] = _Entry(value, expiry)
+
+        if self._max_entries is not None and len(self._store) > self._max_entries:
+            self._evict_lru()
 
     async def delete(self, key: str) -> None:
         """Delete a cached value.
@@ -150,3 +174,19 @@ class InMemorySessionCache:
         for key in expired:
             del self._store[key]
         logger.debug("in_memory_cache_purged", count=len(expired))
+
+    def _evict_lru(self) -> None:
+        """Evict the oldest-inserted entry when the size cap is exceeded.
+
+        Called only after a write leaves the store over ``max_entries``.
+        Python dicts preserve insertion order, so the first key in
+        iteration order is the oldest inserted — the LRU proxy.  The
+        eviction is logged (RULE-11 — no silent data loss).
+        """
+        oldest = next(iter(self._store))
+        del self._store[oldest]
+        logger.info(
+            "in_memory_cache_evicted_lru",
+            key=oldest,
+            max_entries=self._max_entries,
+        )
