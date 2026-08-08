@@ -152,10 +152,14 @@ work, not multi-minute retry loops.
 the cache adapter home is `core/cache/`, not the writing layer). The 5 DI
 factories are edited at their instantiation sites; the cache *wrapper* classes
 (KBCreationSessionStore, BetaReaderCache, KBImproveCache, ConsistencyCache,
-WorldbuildingCache) are unchanged. The existing non-TTL
-`InMemorySessionCache` in `apps/api/narrare/writing/_ws_cache.py` is consolidated
-onto the new core implementation rather than left as a writing-layer
-special-case.
+WorldbuildingCache) are unchanged. The writing-layer duplicate in
+`apps/api/narrare/writing/_ws_cache.py` is consolidated onto the new core
+implementation (a thin re-export), not left as a no-expiry special-case. The
+WebSocket cache is **not** unbounded: it is TTL-bounded (`SessionManager`
+persists every session with a 30-minute TTL, refreshed on each write),
+explicitly end-session-evicted (`SessionManager.end_session()` is wired into the
+WS router), and size-capped via the core cache's `max_entries` safety net (WS
+singleton: `10_000`).
 
 The `RedisEventBus`, the dormant `EventListener`, the live
 `_publish_content_event` caller, the `GET /tasks/status` endpoint, the frontend
@@ -205,7 +209,11 @@ Per-workload impact:
 
 Both trade-offs are **explicitly accepted** for single-user deployment. They are
 not silently swallowed (RULE-11): the migration plan documents the manual
-re-trigger path for band summaries.
+re-trigger path for band summaries. On graceful shutdown, in-flight tasks are
+deliberately cancelled and awaited (`drain_inflight_tasks()` in
+`apps/api/narrare/_app/inflight.py`) **before** the DB engine is disposed, and
+each cancellation is logged at info level — the accepted loss is observable,
+not silent.
 
 ### Resource-contention note (honest)
 
@@ -307,10 +315,14 @@ touching the 5 DI factories or the cache wrapper classes.
 - **GC guard** — hold a strong reference to each `asyncio.create_task` result.
 - **Wiki flow caveat** — `EmbeddingHookManager` is instantiated in
   `dependencies_core.py:73` **without** `event_bus`, so
-  `_publish_wiki_sync_event` is already a no-op. The wiki auto-regeneration over
-  KB changes does not appear to be wired through this path today. The migration
-  must **verify the wiki flow beforehand** and must not credit the migration for
-  wiki-summary generation it did not enable (Step 5 manual test).
+  `_publish_wiki_sync_event` could never fire. As part of the PR #157 review
+  follow-up, that dead path was **removed**: `_publish_wiki_sync_event`
+  (embedding_hooks.py), the `wiki.sync.requested` subscription (lifespan),
+  `on_wiki_sync_requested` (wiki/listeners.py), and its test file
+  (`test_embedding_hooks_wiki_sync.py`) are all gone. The remaining dormant
+  subscriptions (`kb.entry.updated`, `chapter.finalized`, `wiki.prompt.changed`)
+  are flagged as follow-up (WIKI-001), **not** deleted — see
+  `docs/architecture/questions/INDEX.md`.
 - **`check_architecture.py` impact** — this is a docs-only change at the ADR
   layer; no RULE-XX code checker scans ADR *status*. `check_adr_naming.py`
   validates only the filename shape (satisfied), and

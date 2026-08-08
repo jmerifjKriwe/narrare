@@ -39,6 +39,7 @@ matches). That check is Step 5.
 | Event bus | `RedisEventBus` + dormant listener + live `_publish_content_event` | removed (publish-to-nobody deleted) |
 | Monitoring | `GET /tasks/status` + `BackgroundTasksPanel` | removed |
 | Infra | `redis` + `worker` services, `redis_data` volume, 4 deps | removed |
+| Shutdown | in-flight tasks lost silently on process exit | `drain_inflight_tasks()` cancels + awaits + logs (info) each in-flight task **before** `dispose_database()` |
 
 ---
 
@@ -197,6 +198,19 @@ panel + i18n.
 - **RULE-16 / RULE-17:** remove the i18n strings/namespace for the panel from
   `packages/web/lib/i18n/request.ts` and the `en` / `de` / `fr` locale JSONs; run
   the i18n-namespace-registry + locale-sync checks.
+
+### 3d — Graceful-shutdown drain for in-flight tasks
+
+- Add `apps/api/narrare/_app/inflight.py` — `drain_inflight_tasks()` snapshots
+  the module-level `_INFLIGHT_TASKS` GC-guard sets
+  (`narrare.kb.embedding_hooks`, `narrare.series.tasks`), cancels every tracked
+  task, awaits completion via `asyncio.gather(..., return_exceptions=True)`, and
+  logs each cancellation at **info** level (RULE-11 — intentional cancellation is
+  not an error).
+- Wire the drain into the graceful-shutdown path in
+  `apps/api/narrare/_app/lifespan.py` **before** `dispose_database()`, so no
+  background coroutine can touch a disposed pool. No-op (returns immediately,
+  no logging) when no tasks are tracked.
 
 ### Tests in this step
 - Delete `tests/unit/api/tasks/test_broker.py`

@@ -99,7 +99,7 @@ Avoid durable execution and background tasks for AI runtime modernization.
 
 Phase 0 does not approve implementation of a durable execution engine. Future work must first produce an ADR deciding one of:
 
-1. TaskIQ remains the only execution substrate and gains required patterns.
+1. The in-process asyncio execution boundary (see [ADR-080](ADR-080-remove-redis-taskiq-in-process-execution.md) amendment) remains the only execution substrate and gains required patterns.
 2. A durable execution engine replaces TaskIQ with a full migration plan.
 3. A durable execution engine extends TaskIQ with explicitly separated responsibilities and no duplicated workflow ownership.
 

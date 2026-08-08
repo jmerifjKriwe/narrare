@@ -26,6 +26,7 @@
 | [Q-003](Q-001-to-Q-004.md#q-003--embedding-provider-abstraction-from-day-one) | Should embeddings be provider-agnostic from day one? | ✅ | `core/llm/embeddings.py` | init |
 | [Q-011](Q-011-distribution-strategy.md) | Wie wird Narrare für nicht-technische Nutzer zugänglich? | 🟡 | Zielgruppen-Positionierung, Post-MVP Distribution | 2026-06-03 |
 | [Q-015](Q-015-user-selectable-copy-tone.md) | User-selectable UI copy tone (familiar vs. neutral) | 🟡 | Nothing (default in PRODUCT.md) | 2026-08-05 |
+| [Q-016](Q-016-wiki-listener-producers.md) | Decide: wire producers for `kb.entry.updated` / `chapter.finalized` / `wiki.prompt.changed`, or remove the dormant `WikiEventListener` subscriptions | 🟡 | Nothing (ADR-080 follow-up) | 2026-08-08 |
 
 ---
 
