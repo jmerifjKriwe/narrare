@@ -16,9 +16,12 @@ from typing import Any
 
 import argon2
 import jwt
+import structlog
 
-# Argon2 hasher with sensible defaults (OWASP-recommended parameters)
-_hasher = argon2.PasswordHasher(
+logger = structlog.get_logger(__name__)
+
+# Production hasher — OWASP-recommended parameters (ADR-009).
+_production_hasher = argon2.PasswordHasher(
     time_cost=3,  # iterations
     memory_cost=65536,  # 64 MB
     parallelism=4,  # threads
@@ -26,10 +29,40 @@ _hasher = argon2.PasswordHasher(
     salt_len=16,
 )
 
+# Test hasher — lighter parameters for test/E2E environments (ADR-009 Addendum).
+# Reduces the argon2 allocation flake surface under CI contention
+# (8 MB / 1 thread vs 64 MB / 4 threads). Same algorithm (argon2id),
+# same hash format — cross-mode verification works because argon2 reads
+# params from the hash encoding.
+_test_hasher = argon2.PasswordHasher(
+    time_cost=1,
+    memory_cost=8192,  # 8 MB
+    parallelism=1,
+    hash_len=32,
+    salt_len=16,
+)
+
+
+def _get_hasher() -> argon2.PasswordHasher:
+    """Return the appropriate hasher based on current settings.
+
+    Production/development: OWASP params (64 MB, 4 threads).
+    Test/E2E: lighter params (8 MB, 1 thread) to reduce flake surface.
+
+    The settings import is lazy (inside the function) to avoid a circular
+    import — ``config.py`` is in ``_app/`` and may transitively import
+    auth modules. See ADR-009 Addendum for rationale and enforcement.
+    """
+    from narrare._app.config import get_settings
+
+    if get_settings().is_test:
+        return _test_hasher
+    return _production_hasher
+
 
 def hash_password(plain: str) -> str:
     """Hash a plaintext password with argon2id."""
-    return _hasher.hash(plain)
+    return _get_hasher().hash(plain)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -37,13 +70,27 @@ def verify_password(plain: str, hashed: str) -> bool:
 
     Supports both argon2 and bcrypt hashes for backward compatibility.
     argon2 hashes start with ``$argon2``, bcrypt hashes start with ``$2b$``.
+
+    Exception handling policy (ADR-009 Addendum):
+    - ``VerifyMismatchError`` → ``return False`` (expected, no log).
+    - ``InvalidHashError`` → log ``password_hash_invalid`` + ``return False``
+      (data corruption — not a transient failure).
+    - ``VerificationError`` (transient) → log
+      ``password_verification_transient_failure`` + ``return False``
+      (RULE-11: no silent failures).
+
+    All paths return ``False`` → 401 → no account-existence oracle.
     """
     if hashed.startswith("$argon2"):
         try:
-            return _hasher.verify(hashed, plain)
+            return _get_hasher().verify(hashed, plain)
         except argon2.exceptions.VerifyMismatchError:
             return False
+        except argon2.exceptions.InvalidHashError:
+            logger.error("password_hash_invalid", hash_prefix=hashed[:10])
+            return False
         except argon2.exceptions.VerificationError:
+            logger.error("password_verification_transient_failure", exc_info=True)
             return False
 
     # Legacy bcrypt support — lazy import since bcrypt is not a dependency.
@@ -62,7 +109,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 def needs_rehash(hashed: str) -> bool:
     """Check if a hash needs rehashing (parameters changed or was bcrypt)."""
     if hashed.startswith("$argon2"):
-        return _hasher.check_needs_rehash(hashed)
+        return _get_hasher().check_needs_rehash(hashed)
     # bcrypt hashes always need rehash
     return True
 
