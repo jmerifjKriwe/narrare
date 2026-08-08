@@ -2,7 +2,11 @@
 # Requires: just (https://just.systems)
 # Usage: just <command>
 
-set dotenv-load := true
+# NOTE: no ``set dotenv-load`` here. The root ``.env`` is read by the API via
+# pydantic-settings ``env_file`` (apps/api/narrare/_app/settings_model.py) and by
+# scripts via ``Settings()`` — loading it into every recipe's environment
+# created a double source of truth (env var vs. env_file) and contaminated
+# hermetic test runs. See audit in PR / commit message.
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 # Default: list all commands

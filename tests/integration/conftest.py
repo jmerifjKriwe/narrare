@@ -25,20 +25,23 @@ from sqlalchemy.pool import NullPool
 from narrare._app.database import get_async_session
 from narrare._app.main import create_app
 
+# Session-scoped network guards (prevent real embedding/mem0 calls during the
+# integration run) live in a dedicated module to keep conftest.py under the
+# RULE-04 line limit. They are re-exported here instead of loaded via
+# ``pytest_plugins`` — pytest >= 8 hard-errors on plugin declarations in
+# non-top-level conftests. The import registers them for the integration tree
+# only, preserving BOTH ``autouse`` semantics AND by-name resolution — the
+# latter is required because ``_prewarm_composer(_no_real_mem0_clients: None)``
+# in writing/conftest.py pins session-setup ordering (ADR-068 Decision 2).
+from tests.integration._fixtures.network_guards import (  # noqa: F401 — re-exported for pytest fixture registration
+    _no_real_embedding_calls,
+    _no_real_mem0_clients,
+)
+
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from fastapi import FastAPI
-
-
-# Session-scoped network guards (prevent real embedding/mem0 calls during the
-# integration run) live in a dedicated module to keep conftest.py under the
-# RULE-04 line limit. Loading them via ``pytest_plugins`` registers the
-# fixtures for the whole integration tree, preserving BOTH ``autouse``
-# semantics AND by-name resolution — the latter is required because
-# ``_prewarm_composer(_no_real_mem0_clients: None)`` in writing/conftest.py
-# pins session-setup ordering (ADR-068 Decision 2).
-pytest_plugins = ["tests.integration._fixtures.network_guards"]
 
 
 TEST_DATABASE_URL = os.environ.get(
@@ -57,7 +60,7 @@ TEST_DATABASE_URL = os.environ.get(
 # would be too late — by the time this conftest loads,
 # ``narrare._app.database`` has already been imported (pytest's initial
 # conftest collection triggers the chain), with ``ENVIRONMENT=development``
-# from the ambient environment (just's ``dotenv-load`` exports ``.env``).
+# from the ambient environment (a developer shell that exported/sourced it).
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
 

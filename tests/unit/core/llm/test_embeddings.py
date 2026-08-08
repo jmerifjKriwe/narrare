@@ -33,7 +33,8 @@ class TestEmbedTexts:
     def _clear_e2e_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Ensure NARRARE_E2E_TEST is unset — these tests exercise the real
         registry. See tests/unit/core/llm/test_providers_registry.py for the
-        rationale (justfile exports NARRARE_E2E_TEST=1 from .env)."""
+        rationale (NARRARE_E2E_TEST may leak from a developer shell or an
+        e2e-mode invocation)."""
         monkeypatch.delenv("NARRARE_E2E_TEST", raising=False)
 
     @pytest.fixture(autouse=True)

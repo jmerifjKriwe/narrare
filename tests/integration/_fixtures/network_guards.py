@@ -3,19 +3,20 @@
 Both fixtures prevent the integration session from opening real external
 connections (embedding API sockets, mem0/Qdrant clients). They are
 ``session``-scoped and ``autouse`` and are registered for the whole
-integration tree via ``pytest_plugins`` in ``tests/integration/conftest.py``.
+integration tree by re-export from ``tests/integration/conftest.py``.
 
-Loading via ``pytest_plugins`` (rather than defining them inline in
-conftest.py) keeps conftest.py under the RULE-04 line limit while preserving
-BOTH:
+Keeping them in a dedicated module (and re-exporting the fixtures from the
+integration conftest, rather than loading via ``pytest_plugins`` — which
+pytest >= 8 hard-errors on in non-top-level conftests) keeps conftest.py
+under the RULE-04 line limit while preserving BOTH:
 
-1. ``autouse`` semantics — fixtures in a ``pytest_plugins`` module are
-   applied automatically, exactly like fixtures defined in conftest.py.
+1. ``autouse`` semantics — fixtures imported into a conftest apply
+   automatically to its whole subtree, exactly like fixtures defined inline.
 2. By-name fixture resolution — the mem0 guard is requested by name as
    ``_prewarm_composer(_no_real_mem0_clients: None)`` in
    ``tests/integration/writing/conftest.py`` to pin session-setup ordering
-   (ADR-068 Decision 2). ``pytest_plugins``-registered fixtures remain
-   requestable by name from every conftest/test in the subtree.
+   (ADR-068 Decision 2). Re-exported fixtures remain requestable by name
+   from every conftest/test in the subtree.
 
 Both fixtures use ``pytest.MonkeyPatch()`` instantiated directly rather than
 the function-scoped ``monkeypatch`` fixture, because they are session-scoped

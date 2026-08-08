@@ -11,7 +11,6 @@ Dev credentials:
 from __future__ import annotations
 
 import asyncio
-import os
 import sys
 from pathlib import Path
 
@@ -26,13 +25,15 @@ async def seed() -> None:
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.pool import NullPool
 
+    from narrare._app.config import get_settings
     from narrare.auth.models import User
     from narrare.auth.security import hash_password
 
-    database_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_dev",
-    )
+    # Resolve the dev DB URL through the app Settings (pydantic-settings reads
+    # the root .env via env_file). This keeps a custom DATABASE_URL from .env
+    # authoritative even without just's dotenv-load; precedence mirrors the
+    # previous os.environ.get: env var > .env file > dev default.
+    database_url = get_settings().database_url
 
     engine = create_async_engine(database_url, echo=False, poolclass=NullPool)
     async_session_maker = async_sessionmaker(engine, expire_on_commit=False)

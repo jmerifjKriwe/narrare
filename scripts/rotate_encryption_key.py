@@ -182,13 +182,15 @@ async def main(argv: list[str] | None = None) -> None:
         )
         sys.exit(1)
 
-    database_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_dev",
-    )
-
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.pool import NullPool
+
+    from narrare._app.config import get_settings
+
+    # Resolve the DB URL through app Settings (pydantic-settings env_file reads
+    # the root .env) so a custom DATABASE_URL stays authoritative without just's
+    # dotenv-load; precedence: env var > .env file > dev default.
+    database_url = get_settings().database_url
 
     engine = create_async_engine(database_url, echo=False, poolclass=NullPool)
     async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
