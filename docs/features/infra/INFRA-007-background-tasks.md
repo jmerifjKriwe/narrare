@@ -64,8 +64,12 @@ Trade-off in ADR-080).
 
 **Dispatch pattern:** `asyncio.create_task` inside the API process (ADR-080).
 No broker, no worker process, no queue.
-**Package home:** `apps/api/narrare/tasks/` — retained for import-path
-stability per ADR-080; it no longer owns a shared broker (see its `__init__.py`).
+**Package home:** none — the shared `apps/api/narrare/tasks/` package was
+deleted in the ADR-080 cleanup (commit `e45905fb`, 2026-08-08): nothing
+imported it, so no stub is retained. The two in-process dispatch wrappers live
+in their feature packages — `apps/api/narrare/embeddings/tasks.py`
+(`embed_source`) and `apps/api/narrare/series/tasks.py` (band summary); see
+the table below for dispatch sites and triggers.
 **Streaming:** no
 
 ### Active in-process tasks
@@ -103,6 +107,9 @@ These surfaces are **obsolete**; listed only to document what changed:
   `apps/api/narrare/tasks/broker.py` **deleted**.
 - ~~Read-only monitoring API `GET /tasks/status`~~ —
   `apps/api/narrare/tasks/router.py` **deleted**.
+- ~~Empty `apps/api/narrare/tasks/` package (retained `__init__.py` stub)~~ —
+  **deleted** in the ADR-080 CI cleanup (`e45905fb`, 2026-08-08): nothing
+  imported it, so the "import-path stability" retention was dropped.
 - ~~Dedicated worker process~~ — the `dev-worker` recipe and the Docker
   `worker` service **removed**.
 - ~~Event-listener task map / Redis Pub/Sub dispatch~~ — ADR-012 superseded;

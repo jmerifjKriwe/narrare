@@ -185,8 +185,10 @@ schedules are transport-independent (`run_embed_source`: `[30, 120, 300]s`).
   series auto-trigger when a Series flips to `completed`.
 - Wiki summaries (`wiki/tasks.py`) are invoked **directly** (awaited) by
   `wiki/listeners.py`, not as background tasks.
-**Location:** Task definitions in `*/tasks.py`; package home
-`apps/api/narrare/tasks/` (retained for import-path stability — no broker).
+**Location:** Task definitions live in feature-package `*/tasks.py` files
+(`embeddings/tasks.py`, `series/tasks.py`); the former shared
+`apps/api/narrare/tasks/` package was **deleted** in the ADR-080 cleanup —
+nothing imported it, so no stub is retained.
 **Trade-off:** In-flight tasks are lost on API restart (idempotent embeddings
 regenerate on the next dirty save; band summaries re-trigger manually). No
 queue-depth / coverage metrics or dedicated monitoring UI.

@@ -107,10 +107,12 @@ last_updated: 2026-08-08
 > **⛔ SUPERSEDED BY ADR-080 (2026-08-07).** This item is **no longer open**.
 > ADR-080 (Remove Redis & TaskIQ for Single-User Deployment) deleted the TaskIQ
 > broker (`tasks/broker.py`), the worker process, and the broker-registered task
-> stubs. `apps/api/narrare/tasks/__init__.py` is now an ~18-line docstring with
-> **no `@broker.task` stubs and no broker** — the line ranges, decorator claims,
-> and "infrastructure complete via INFRA-007" premise below describe the
-> **pre-ADR-080** state and are retained only as an audit trail. The two named
+> stubs. `apps/api/narrare/tasks/__init__.py` was reduced to an ~18-line
+> docstring with **no `@broker.task` stubs and no broker**, then **deleted**
+> entirely in the ADR-080 CI cleanup (nothing imported it — commit `e45905fb`,
+> 2026-08-08). The line ranges, decorator claims, and "infrastructure complete
+> via INFRA-007" premise below describe the **pre-ADR-080** state and are
+> retained only as an audit trail. The two named
 > tasks (`process_feedback_memory`, `run_preference_analysis`) were Phase-7 stubs
 > that were **never wired**; per ADR-080 they are removed rather than
 > implemented. Background work that *does* run now uses in-process
@@ -119,8 +121,10 @@ last_updated: 2026-08-08
 
 The following is the historical (pre-ADR-080) record:
 
-- **File:** `apps/api/narrare/tasks/__init__.py` *(phantom as described — file is
-  now an ~18-line docstring; the stubs and lines 36–81 no longer exist)*
+- **File:** `apps/api/narrare/tasks/__init__.py` *(phantom as described —
+  reduced to an ~18-line docstring by ADR-080, then **deleted** entirely in the
+  CI cleanup: nothing imported it (commit `e45905fb`, 2026-08-08); the stubs
+  and lines 36–81 no longer exist)*
 - **Marker:** `# TODO (Phase 7)` at lines 54 and 78; `status="stub"` in log calls
 - **Description:** Two async task functions are decorated with `@broker.task` (TaskIQ),
   have `max_retries=3`, and accept typed events — but their bodies only log and skip
