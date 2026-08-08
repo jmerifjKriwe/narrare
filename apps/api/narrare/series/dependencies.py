@@ -11,7 +11,7 @@ all repositories share ``session`` so generation + upsert commit together.
 ``verify_novel_in_owned_series`` (Task 4) enforces anti-enumeration at the
 router boundary: the caller must own the series AND the novel must be in it.
 ``build_band_summary_service`` (Task 5) is the shared builder used by both the
-FastAPI factory and the TaskIQ background task (no request context in the task).
+FastAPI factory and the in-process background task (no request context in the task).
 """
 
 from __future__ import annotations
@@ -95,7 +95,7 @@ async def verify_novel_in_owned_series(
 
     Used as a FastAPI dependency by every band-summary route so the
     ``BandSummaryService`` (keyed by ``novel_id`` only, usable from non-request
-    contexts like the TaskIQ auto-trigger) never needs to repeat the check.
+    contexts like the in-process auto-trigger) never needs to repeat the check.
     """
     series = await SeriesRepository(session).get(series_id)
     if series is None or series.user_id != UUID(user_id):
@@ -167,7 +167,7 @@ async def get_band_summary_service(
 ) -> BandSummaryService:
     """Request-scoped BandSummaryService (generate / get / override).
 
-    Delegates to ``build_band_summary_service`` (shared with the TaskIQ
+    Delegates to ``build_band_summary_service`` (shared with the in-process
     background task). The router supplies ``novel_id`` from the path; FastAPI
     resolves path params into sub-dependency parameters by name.
     """

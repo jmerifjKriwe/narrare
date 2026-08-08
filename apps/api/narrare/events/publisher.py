@@ -4,7 +4,8 @@ Provides a simple in-process event bus for publishing domain events.
 Events are dispatched to registered handlers synchronously.
 Supports both broadcast handlers (receive all events) and typed
 handlers (receive events of a specific type only).
-For TaskIQ integration, handlers forward events to task workers.
+Handlers run in-process (ADR-080) and may trigger further in-process
+background work.
 """
 
 from __future__ import annotations
@@ -28,8 +29,8 @@ class EventPublisher:
     When an event is published, typed handlers are called first, then
     broadcast handlers.
 
-    For TaskIQ integration, a handler is registered that forwards
-    events to the appropriate TaskIQ task.
+    Handlers run in-process (ADR-080); a handler may forward events to
+    in-process background tasks.
     """
 
     def __init__(self) -> None:

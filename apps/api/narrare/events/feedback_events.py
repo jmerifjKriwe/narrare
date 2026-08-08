@@ -1,8 +1,8 @@
 """Feedback domain events — dataclass definitions for async processing.
 
 These events are published by the memory service when feedback is recorded
-or when preference analysis should be triggered. TaskIQ workers subscribe
-to these events for async processing.
+or when preference analysis should be triggered. In-process handlers
+(ADR-080) subscribe to these events for async processing.
 """
 
 from __future__ import annotations

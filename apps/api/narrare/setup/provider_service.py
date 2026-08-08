@@ -2,7 +2,7 @@
 Provider service — fetches available models and validates API connections.
 
 Each provider gets a real test call during Step 4 validation.
-Model lists are fetched from provider APIs and cached in Redis.
+Model lists are fetched from provider APIs and cached locally.
 """
 
 from __future__ import annotations

@@ -50,7 +50,7 @@ class MemoryFeedbackService:
 
         Builds the core FeedbackEvent with enriched context (rating,
         chapter_id, genre, mode) and records it. Optionally publishes
-        a ``FeedbackRecorded`` event for TaskIQ async processing.
+        a ``FeedbackRecorded`` event for in-process async processing (ADR-080).
 
         Identifier resolution (CR-AUFG-07-24): when the caller supplies a
         ``source_id`` + ``source_type`` pair instead of a ``suggestion_id``,
@@ -127,7 +127,7 @@ class MemoryFeedbackService:
             has_rating=request.rating is not None,
         )
 
-        # Publish event for async processing (TaskIQ integration)
+        # Publish event for async processing (in-process, ADR-080)
         if self._event_publisher is not None:
             try:
                 await self._event_publisher.publish_feedback_recorded(

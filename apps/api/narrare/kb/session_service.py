@@ -28,7 +28,7 @@ class KBSessionService:
     """Manages KB creation session lifecycle.
 
     Args:
-        session_store: Redis-backed ephemeral storage.
+        session_store: In-memory ephemeral storage (ADR-080).
         assist_service: KB assisted creation service (AI orchestration).
         kb_service: KB entry service — used to persist completed sessions.
     """

@@ -176,6 +176,12 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   - `ws_timeout` (WebSocket idle timeout) is **unchanged** — it has a real runtime consumer (`WritingSessionHandler`).
   - Migration: no destructive migration required. Any stored `retry_*` DB overrides are orphan keys, ignored gracefully by the resolver's unknown-key drop behavior; operators should use `NARRARE_LLM_TRANSPORT_MAX_RETRIES` instead.
 
+- **ADR-080 — Remove Redis & TaskIQ for single-user deployment**
+  - Redis and the separate worker container are **no longer required** for self-hosting. Narrare now runs as a single API process: background tasks (embeddings, band summaries) dispatch in-process via `asyncio.create_task`, and the cache/session/rate-limit backends are in-memory.
+  - Self-hosters no longer configure `REDIS_URL` or run a Redis/worker container. The `redis` + `worker` services, the `redis_data` volume, and `depends_on: redis` were removed from `docker-compose.dev.yml` and `docker-compose.release.yml`.
+  - Dependencies dropped: `redis`, `taskiq`, `taskiq-redis`, `taskiq-fastapi`. The `GET /tasks/status` monitoring endpoint and the frontend `BackgroundTasksPanel` were removed (tasks now run in the API process).
+  - Scoped to single-user/single-process deployment; the cache adapter contract is preserved so a Redis (or equivalent) backend can be re-plugged if Narrare moves to multi-user/multi-worker operation. See ADR-080.
+
 ---
 
 ## [0.1.0] - 2026-05-12

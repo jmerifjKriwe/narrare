@@ -1,8 +1,8 @@
 # Type-Ignore Audit — Findings & Action Plan
 
-> **Status:** ✅ Completed (revalidated 2026-06-29)
+> **Status:** ✅ Completed (revalidated 2026-06-29; ADR-080-Nachbehandlung 2026-08-08)
 > **Audit-Datum:** 2026-06-10
-> **Letzte Aktualisierung:** 2026-06-29 (Revalidierung)
+> **Letzte Aktualisierung:** 2026-08-08 (ADR-080 — `tasks/broker.py` entfernt, `wiki/tasks.py`-Dependency korrigiert)
 > **Scope:** Python `# type: ignore` und TypeScript `@ts-ignore` / `@ts-expect-error`
 > **Ziel:** Systematische Reduktion auf 0 in Production-Code, strengere Agent-Vorgaben
 
@@ -24,7 +24,9 @@ Nach der vollständigen Sanierung (Phasen 1–5) und anschließender Feature-Arb
 **Kernerkenntnis:** `# type: ignore` wurde zu oft als "Quick Fix" von AI Agents vergeben,
 anstatt die Root Cause zu beheben. Die aktuellen 25 Production-Einträge sind:
 - **25 Production:** überwiegend Drittanbieter ohne Type-Stubs (mem0, pgvector, opentelemetry,
-  taskiq, redis, structlog) plus wenige defensive Runtime-Checks. Neue Einträge seit der
+  structlog) plus wenige defensive Runtime-Checks. *(Hinweis: `taskiq`/`redis` waren vor ADR-080
+  in dieser Liste; ADR-080 (2026-08-07) entfernte beide Dependencies, sodass deren
+  Production-Suppressions entfallen sind.)* Neue Einträge seit der
   Baseline stammen aus ANAL-008 (character_voice_service), CR-AUFG-07-22 (style_variant_service),
   ADR-054 (writing/ws_draft_dispatch) und weiteren Feature-Arbeiten — alle mit Error-Code und
   Reason-Kommentar (RULE-23 konform).
@@ -267,6 +269,16 @@ Vor dem Setzen einer Suppression MÜSSEN mindestens 2 dieser Alternativen versuc
 
 ### Production — 25 Suppressions (legitime third-party + defensive checks)
 
+> **Snapshot-Hinweis:** Diese Tabelle ist der Stand **2026-06-29 (vor ADR-080)**.
+> ADR-080 (2026-08-07) entfernte `taskiq`/`redis` als Dependencies. Die Zeile
+> `apps/api/narrare/tasks/broker.py` (1 × taskiq) ist daher **Phantom** — die
+> Datei wurde gelöscht und ist hier entfernt. `wiki/tasks.py` führt weiterhin
+> 1 Eintrag, aber post-ADR-080 wegen pyright-TYPE_CHECKING-Narrowing
+> (`attr-defined`), **nicht** mehr wegen taskiq. Autoritativ für CI ist die
+> JSON-Baseline (`scripts/architecture/type-ignore-baseline.json`,
+> regenerierbar via `uv run python -m scripts.check_type_ignores --update`),
+> nicht diese manuelle Markdown-Snapshot-Tabelle.
+
 | Datei | Ignore Count | Dependency |
 |-------|-------------|------------|
 | `apps/api/narrare/_app/events.py` | 1 | structlog |
@@ -278,8 +290,7 @@ Vor dem Setzen einer Suppression MÜSSEN mindestens 2 dieser Alternativen versuc
 | `apps/api/narrare/generation/graph_store.py` | 2 | networkx |
 | `apps/api/narrare/prompts/deps.py` | 1 | pyright DI narrowing |
 | `apps/api/narrare/settings/user_ai_settings_service.py` | 1 | structlog |
-| `apps/api/narrare/tasks/broker.py` | 1 | taskiq |
-| `apps/api/narrare/wiki/tasks.py` | 1 | taskiq |
+| `apps/api/narrare/wiki/tasks.py` | 1 | pyright TYPE_CHECKING narrowing (post-ADR-080; vormals taskiq) |
 | `apps/api/narrare/writing/_ws_draft_dispatch.py` | 3 | ADR-054 pipeline DI |
 | `packages/core/narrare_core/ai_invocation/validators/runtime.py` | 1 | defensiver Check |
 | `packages/core/narrare_core/memory/mem0_client.py` | 2 | mem0 |

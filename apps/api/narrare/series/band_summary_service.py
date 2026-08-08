@@ -71,7 +71,7 @@ class BandSummaryService:
 
     All dependencies are injected (RULE-07). Ownership/authorisation is
     enforced at the router boundary (Task 4) — this service is keyed by
-    ``novel_id`` and is also usable from non-request contexts (TaskIQ
+    ``novel_id`` and is also usable from non-request contexts (in-process
     auto-trigger, Task 5).
     """
 

@@ -50,7 +50,7 @@ async def run_embed_source(
     """Generate embedding for a source entity with retry and idempotency.
 
     This is the standalone entry point that can be called directly.
-    The TaskIQ decorator wrapper calls this function.
+    ``run_embed_source_inprocess`` calls this function.
 
     Steps:
     1. Compute content hash

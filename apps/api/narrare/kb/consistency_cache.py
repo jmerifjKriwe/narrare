@@ -26,12 +26,12 @@ logger = structlog.get_logger(__name__)
 
 
 class ConsistencyCache:
-    """Redis-backed cache for consistency check results.
+    """Cache for consistency check results (in-memory backend per ADR-080).
 
     Args:
         cache: Injected cache backend via SessionCacheProtocol.
         ttl: Cache TTL in seconds.
-        key_prefix: Redis key prefix for namespace isolation.
+        key_prefix: Cache key prefix for namespace isolation.
     """
 
     def __init__(

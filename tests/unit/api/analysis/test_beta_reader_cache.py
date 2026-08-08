@@ -1,7 +1,7 @@
-"""Unit tests for BetaReaderCache — Redis-backed analysis result cache.
+"""Unit tests for BetaReaderCache — analysis result cache backend.
 
 Tests key hashing, get/set/delete delegation, and graceful
-degradation when Redis is unavailable.
+degradation when the cache backend is unavailable.
 """
 
 from __future__ import annotations
@@ -80,10 +80,10 @@ class TestBetaReaderCacheGet:
 
         assert result is None
 
-    async def test_unavailable_redis_returns_none(self) -> None:
+    async def test_unavailable_cache_returns_none(self) -> None:
         """Backend raises exception → cache returns None (graceful degradation)."""
         cache, backend = _make_cache()
-        backend.get = AsyncMock(side_effect=ConnectionError("Redis down"))
+        backend.get = AsyncMock(side_effect=ConnectionError("cache backend down"))
 
         result = await cache.get("novel-1", ["ch-1"])
 

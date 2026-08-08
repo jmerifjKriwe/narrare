@@ -58,14 +58,14 @@ uv run python -c "import narrare_core; import narrare; import spacy; print('OK')
 
 VM-first development is the primary setup mode. Run `just` commands on the VM or
 host unless a command explicitly says it is for the DevContainer. Host-side
-database and Redis helpers target published `localhost` ports; container-mode
+database helpers target published `localhost` ports; container-mode
 helpers use Docker service names.
 
 ```bash
 # Validate the VM-first development Compose topology
 docker compose -f docker-compose.dev.yml config
 
-# Start all services (postgres+pgvector, redis)
+# Start all services (postgres+pgvector)
 just dev-services
 
 # Stop services
@@ -417,8 +417,7 @@ All developer commands via `just`:
 | | `dev-api` | Start API server only (port 8000) |
 | | `dev-frontend` | Start frontend only (port 3000) |
 | | `dev-e2e` | Start API in E2E test mode (no real LLM calls) + frontend |
-| | `dev-worker` | Start TaskIQ worker (Phase 5+) |
-| | `dev-services` | Start Docker services (postgres + redis) |
+| | `dev-services` | Start Docker services (postgres + pgvector) |
 | | `dev-services-stop` | Stop Docker services |
 | **Database** | `db-migrate` | Run pending Alembic migrations (also runs automatically on startup) |
 | | `db-revision "msg"` | Create a new migration (e.g. `just db-revision "add table"`) |
@@ -458,8 +457,8 @@ All developer commands via `just`:
 ## Self-Hosted Deployment
 
 Narrare ships as a single Docker image containing both the FastAPI backend and
-the Next.js frontend. PostgreSQL (with pgvector) and Redis run alongside it
-via Docker Compose.
+the Next.js frontend. PostgreSQL (with pgvector) runs alongside it via Docker
+Compose. (Redis was removed in ADR-080; background work now runs in-process.)
 
 ### Release Artifacts
 
@@ -499,7 +498,6 @@ docker compose up -d
 | `SECRET_KEY` | Yes | `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `NARRARE_ENCRYPTION_KEY` | Yes | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 | `DATABASE_URL` | Yes | For release compose, use `@postgres:5432/` (Docker service name, not localhost) |
-| `REDIS_URL` | Yes | For release compose, use `redis://redis:6379/0` (Docker service name) |
 | AI API key | At least one | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. |
 
 ### Compose Configuration Validation
@@ -613,13 +611,10 @@ Rolling back from `0.5.0` to `0.4.2`:
 - **`latest` tag moves forward only.** Reverting via tag requires pinning to the
   explicit old tag or digest as shown above; `docker compose pull` alone always
   pulls the newest `latest`. Use digest-based pinning for production rollbacks.
-- **Stateful services (Postgres, Redis) are on named volumes** and are not
+- **Stateful services (Postgres) are on named volumes** and are not
   touched by an image rollback. If the newer release changed the Postgres major
   version, a rollback may require a separate `pg_dump`/`restore` — that scenario
   is not covered by a simple image replacement.
-- **Workers (`taskiq`) also pin to `latest`** in `docker-compose.release.yml`.
-  The rollback procedure above re-tags a single image used by both the API and
-  worker services, so both revert together.
 
 ### Architecture
 
@@ -633,11 +628,11 @@ The production image is a multi-stage Docker build:
 │              ↓ /api/v1/* rewrite     │
 │  Port 8000 → FastAPI (internal)     │
 └──────────────────────────────────────┘
-         │                │
-    ┌────┘                └────┐
-    ▼                         ▼
- PostgreSQL                Redis
- (pgvector)               (cache)
+         │
+     ┌───┘
+     ▼
+ PostgreSQL
+ (pgvector)
 ```
 
 - **FastAPI** listens on `127.0.0.1:8000` (internal only)
@@ -671,9 +666,6 @@ See `.env.example` for all required variables:
 ```bash
 # Database
 DATABASE_URL=postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_dev
-
-# Redis
-REDIS_URL=redis://localhost:6379/0
 
 # Auth
 SECRET_KEY=<generate with: just generate-secret>
@@ -872,16 +864,11 @@ services:
       POSTGRES_DB: narrare_dev
     ports: ["5432:5432"]
     volumes: [postgres_data:/var/lib/postgresql/data]
-
-  redis:
-    image: redis:8-alpine
-    ports: ["6379:6379"]
 ```
 
 | Service | Image | Port | Database |
 |---------|-------|------|----------|
 | PostgreSQL | `pgvector/pgvector:pg17` | 5432 | `narrare_dev` |
-| Redis | `redis:8-alpine` | 6379 | — |
 
 The application runs locally (not in Docker) for hot reload.
 

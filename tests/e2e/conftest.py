@@ -1,6 +1,6 @@
 """E2E test configuration and shared fixtures.
 
-Playwright E2E tests run against the full stack (API + Frontend + PostgreSQL + Redis).
+Playwright E2E tests run against the full stack (API + Frontend + PostgreSQL).
 They are NOT part of the default test run — use: pytest tests/e2e/ -v -m e2e
 
 All LLM responses are mocked via page.route() — no real API tokens are consumed.

@@ -1,4 +1,4 @@
-"""Unit tests for KBCreationSessionStore — Redis-backed session storage.
+"""Unit tests for KBCreationSessionStore — session storage cache backend.
 
 Tests CRUD operations, key formatting, TTL propagation,
 and update behaviour (extends TTL via re-set).

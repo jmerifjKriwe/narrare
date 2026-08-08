@@ -1,7 +1,8 @@
 """Event system for decoupled module communication.
 
 This package defines domain events and the event bus protocol.
-Infrastructure implementations (Redis, TaskIQ) live in the API layer.
+Events are purely in-process within core; the API layer's Redis/TaskIQ
+adapters were removed per ADR-080.
 """
 
 from narrare_core.events.bus import EventBus, NullEventBus

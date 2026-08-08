@@ -490,20 +490,9 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
-      redis:
-        image: redis:8-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-
     env:
       DATABASE_URL: postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_test
       TEST_DATABASE_URL: postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_test
-      REDIS_URL: redis://localhost:6379/0
       ENVIRONMENT: test
       SECRET_KEY: test-secret-key-not-for-production
 
@@ -765,20 +754,9 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
-      redis:
-        image: redis:8-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-
     env:
       DATABASE_URL: postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_test
       TEST_DATABASE_URL: postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_test
-      REDIS_URL: redis://localhost:6379/0
       ENVIRONMENT: test
       SECRET_KEY: test-secret-key-not-for-production
       ANTHROPIC_API_KEY: sk-test-dummy

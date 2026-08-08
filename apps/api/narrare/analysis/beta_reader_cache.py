@@ -25,12 +25,12 @@ logger = structlog.get_logger(__name__)
 
 
 class BetaReaderCache:
-    """Redis-backed cache for beta reader analysis results.
+    """Cache for beta reader analysis results (in-memory backend per ADR-080).
 
     Args:
-        cache: Injected cache backend (Redis in production).
+        cache: Injected cache backend (in-memory per ADR-080).
         ttl: Cache TTL in seconds.
-        key_prefix: Redis key prefix for namespace isolation.
+        key_prefix: Cache key prefix for namespace isolation.
     """
 
     def __init__(

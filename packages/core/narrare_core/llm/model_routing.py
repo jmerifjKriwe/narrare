@@ -9,7 +9,8 @@ The cascade priority is:
     → ConfigurationError
 
 This module lives in core/ because it defines the *contract* — the
-backend (apps/) provides the implementation that reads from DB/Redis.
+backend (apps/) provides the database-backed implementation that reads
+model routing config from DB repositories.
 
 See: openspec/changes/configurable-model-routing/design.md (D3, D7, D8)
 """

@@ -1,4 +1,4 @@
-"""Unit tests for ConsistencyCache — Redis-backed consistency check result cache.
+"""Unit tests for ConsistencyCache — consistency check result cache backend.
 
 Tests key formatting, entity type hashing, get/set/delete delegation,
 and graceful degradation when the cache backend is unavailable.
@@ -149,7 +149,7 @@ class TestConsistencyCacheGet:
     async def test_exception_returns_none(self) -> None:
         """Backend raises exception → cache returns None (graceful degradation)."""
         cache, backend = _make_cache()
-        backend.get = AsyncMock(side_effect=ConnectionError("Redis down"))
+        backend.get = AsyncMock(side_effect=ConnectionError("cache backend down"))
 
         result = await cache.get("novel-1")
 

@@ -54,7 +54,7 @@ class BetaReaderService:
 
     Args:
         context_assembler: Builds BetaReaderDeps from chapter + KB data.
-        cache: Redis-backed result cache (30min TTL).
+        cache: In-memory result cache (30min TTL, ADR-080).
         registry: ModelRegistry for LLM model resolution.
         config: Default ResolvedModelConfig for BETA_READ intent.
         composer: PromptComposer for system prompt assembly.

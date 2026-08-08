@@ -61,14 +61,26 @@ We need transactions. We need pgvector. Postgres does both well.
 **Location:** Only used in `core/embeddings/store.py`.
 **Not:** Pinecone, Weaviate, Qdrant — operational complexity not justified at our scale.
 
-### Redis
-**Why:** Fast ephemeral state. Session storage, task broker, provider model cache.
-**Role:** Three distinct uses:
-  - TaskIQ broker for background tasks
-  - Writing session state (TTL-based)
-  - Provider model list cache (24h TTL)
-**Location:** Only used via `core/cache/client.py`.
-**Not:** Memcached (no pub/sub, no sorted sets), in-process cache (doesn't survive restarts).
+### Redis — ⛔ Removed (ADR-080)
+
+> **⛔ Removed in ADR-080 (2026-08-07):** Redis is **no longer a dependency** and is
+> absent from the runtime path. The former uses — TaskIQ broker, writing-session
+> cache (`RedisSessionCache`), and provider model-list cache — were replaced by the
+> in-process execution boundary (ADR-080) and a TTL-capable `InMemorySessionCache`
+> in `core/cache/` (`packages/core/narrare_core/cache/in_memory.py`). The
+> `core/cache/redis_client.py` adapter and the `apps/api/narrare/_app/events.py`
+> event bus are deleted. ADR-080 supersedes ADR-007 / ADR-012 and amends ADR-036.
+>
+> **Re-introduction guard (RULE-08):** if Redis returns for multi-user /
+> multi-worker deployment, it must go through `core/cache/` only, via a new ADR
+> superseding ADR-080.
+
+**Historical record (pre-ADR-080):** Redis was chosen for fast ephemeral state —
+session storage, TaskIQ task broker, and provider model-list cache (24h TTL) — used
+only via `core/cache/client.py`. It was preferred over Memcached (no pub/sub, no
+sorted sets) and over in-process caching (doesn't survive restarts). The
+single-user deployment model (ADR-029) made that operational overhead unjustified;
+the in-process trade-off is now accepted (see ADR-080 Durability Trade-off).
 
 ### Alembic
 **Why:** The only safe way to manage schema migrations. No alternatives considered.

@@ -11,7 +11,7 @@ RULE-06: every route immediately delegates to ``BandSummaryService``. No
 business logic lives here. Ownership / anti-enumeration is enforced by the
 ``verify_novel_in_owned_series`` dependency (caller owns the series AND the
 novel is in it) so the service — keyed by ``novel_id`` only and reusable from
-the TaskIQ auto-trigger (Task 5) — never repeats the check.
+the in-process auto-trigger (Task 5) — never repeats the check.
 
 Errors map via the global ``NarrareError`` handler in ``_app/main.py``
 (``NotFoundError`` → 404, ``ForbiddenError`` → 403, ``ValidationError`` → 422).

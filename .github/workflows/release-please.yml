@@ -145,9 +145,8 @@ jobs:
           - At least one AI provider API key (e.g. `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`)
 
           **Important:** The bundled `.env.example` is the VM-first template from the repository.
-          Change the DATABASE_URL and REDIS_URL to use Docker service names for release compose:
+          Change the DATABASE_URL to use the Docker service name for release compose:
           - `DATABASE_URL=postgresql+asyncpg://narrare:narrare@postgres:5432/narrare`
-          - `REDIS_URL=redis://redis:6379/0`
 
           The compose file defaults to image `${{ steps.image.outputs.IMAGE_NAME }}:<version>`.
 

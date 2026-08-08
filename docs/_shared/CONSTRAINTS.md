@@ -446,14 +446,25 @@ No direct SDK calls to external services outside their dedicated adapter:
 | Service | Allowed location |
 |---------|-----------------|
 | PostgreSQL / SQLAlchemy | `*/repository.py` only |
-| Redis | `core/cache/client.py` only |
+| Redis | **Removed from the runtime path by ADR-080** (supersedes ADR-007/012, amends ADR-036); not present in the codebase today. If re-introduced for multi-worker deployment, it MUST go through `core/cache/` only. |
 | pgvector | `core/embeddings/store.py` only |
 | mem0 | `core/memory/client.py` only |
 | SMTP | `core/notifications/email.py` only |
 | Web search (Tavily/Serp) | `core/research/search_client.py` only |
 | Langfuse | Not allowed in core runtime; superseded by ADR-031 |
 | OpenTelemetry | `apps/api/narrare/_app/telemetry.py` and approved Pydantic-AI runtime instrumentation per ADR-031 |
-| Event bus (Redis Pub/Sub) | `apps/api/narrare/_app/events.py` only |
+| Event bus (Redis Pub/Sub) | **Removed entirely by ADR-080** (supersedes ADR-012); `apps/api/narrare/_app/events.py` is deleted. No event bus exists today. If decoupled multi-consumer eventing is needed for multi-user/multi-process, a new ADR reintroduces it (not ADR-012). |
+
+> **ADR-080 note:** Redis is **absent from the runtime path** today — the
+> `packages/core/narrare_core/cache/redis_client.py` adapter and the
+> `apps/api/narrare/_app/events.py` event bus are deleted; the replacement is a
+> TTL-capable `InMemorySessionCache` in `core/cache/`
+> (`packages/core/narrare_core/cache/in_memory.py`). The confine entries above
+> (Redis → `core/cache/`, event bus → `_app/events.py`) are therefore **not active
+> constraints on existing code**. They are retained as a **re-introduction guard**:
+> if Redis is ever re-introduced for multi-user / multi-worker deployment, it goes
+> back through `core/cache/` only, via a new ADR superseding ADR-080. ADR-080
+> supersedes ADR-007 / ADR-012 and amends ADR-036.
 
 ---
 
