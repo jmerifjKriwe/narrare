@@ -17,7 +17,7 @@ ui_help_long: |
   is no broker, queue, or monitoring panel.
 ui_available_in: []
 
-service: apps/api/narrare/tasks/
+service: ""
 contract: ""
 router: ""
 prompt: ""

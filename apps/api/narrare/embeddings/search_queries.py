@@ -119,7 +119,7 @@ def build_search_query(
     Constructs a ``SELECT`` with cosine distance filtering via
     ``<=>`` operator. Returns ``(sql_text, params_dict)``.
     """
-    conditions = ["1 - (embedding <=> :query_vec::vector) >= :threshold"]
+    conditions = ["1 - (embedding <=> CAST(:query_vec AS vector)) >= :threshold"]
     params: dict[str, object] = {
         "query_vec": query_vec_str,
         "threshold": threshold,
@@ -144,7 +144,7 @@ def build_search_query(
     sql = sqlalchemy.text(
         "SELECT e.id, e.source_type, e.source_id, e.content_hash, "  # nosec B608
         "e.embedding, e.model, e.dimension, e.generated_at, "
-        "1 - (e.embedding <=> :query_vec::vector) AS similarity, "
+        "1 - (e.embedding <=> CAST(:query_vec AS vector)) AS similarity, "
         "COALESCE(kb.usage_count, 0) AS usage_count, "
         "kb.last_referenced_at "
         "FROM embeddings e "
@@ -204,9 +204,9 @@ def build_batch_upsert_query(
             + prefix
             + "sid, :"
             + prefix
-            + "ch, :"
+            + "ch, CAST(:"
             + prefix
-            + "vec::vector, :"
+            + "vec AS vector), :"
             + prefix
             + "mdl, :"
             + prefix

@@ -16,37 +16,14 @@ import pytest
 
 from narrare_core.shared.errors import EmbeddingError
 
-# ── Fake classes for MagicMock spec (RULE-TEST-01 compliance) ──────────────
-
-
-class _FakeEmbeddingItem:
-    """Fake for OpenAI embedding response item (has .index + .embedding)."""
-
-    index = 0
-    embedding = None
-
-
-class _FakeEmbeddingResponse:
-    """Fake for OpenAI create embeddings response (has .data)."""
-
-    data = None
-
-
-class _FakeEmbeddingsResource:
-    """Fake for OpenAI embeddings resource (has .create method)."""
-
-    def create(self, **kwargs) -> None: ...
-
-
-class _FakeProvider:
-    """Fake for an EmbeddingProvider protocol implementation."""
-
-    default_model = ""
-    default_dimension = 0
-
-    async def embed_texts(
-        self, texts: list[str], model: str | None = None
-    ) -> list[list[float]]: ...
+# ── Fake classes (shared MagicMock spec) — extracted to _embedding_fakes.py
+# per RULE-04; imported here and in test_embedding_providers_leak.py.
+from ._embedding_fakes import (
+    _FakeEmbeddingItem,
+    _FakeEmbeddingResponse,
+    _FakeEmbeddingsResource,
+    _FakeProvider,
+)
 
 
 class TestEmbedTexts:
@@ -58,6 +35,24 @@ class TestEmbedTexts:
         registry. See tests/unit/core/llm/test_providers_registry.py for the
         rationale (justfile exports NARRARE_E2E_TEST=1 from .env)."""
         monkeypatch.delenv("NARRARE_E2E_TEST", raising=False)
+
+    @pytest.fixture(autouse=True)
+    def _reset_openai_singleton_client(self) -> None:
+        """Clear the import-time singleton OpenAIEmbeddingProvider's cached
+        client before each test.
+
+        With lazy client init (one client reused per provider instance), the
+        module-level singleton would otherwise retain the mock client from a
+        previous test. Each test here patches ``openai.AsyncOpenAI`` with its
+        own mock, so the cached client must be reset to give every test a
+        clean lazy-init path.
+        """
+        from narrare_core.llm import embedding_providers as ep
+        from narrare_core.llm.embedding_providers import OpenAIEmbeddingProvider
+
+        provider = ep._embedding_providers.get("openai")
+        if isinstance(provider, OpenAIEmbeddingProvider):
+            provider._client = None
 
     async def test_returns_empty_list_for_empty_input(self) -> None:
         from narrare_core.llm.embeddings import embed_texts
