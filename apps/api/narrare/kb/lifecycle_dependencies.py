@@ -18,9 +18,10 @@ Rationale:
   contract and this DI composition module. Consumers remain in their owning
   modules (planning/chapters/consistency), preserving RULE-05/RULE-07.
 
-ADR-012 remains the right mechanism for decoupled background tasks such as
-embedding generation, wiki refresh, and long-running analysis jobs. KB lifecycle
-ref repair is request-scoped consistency work, not background task triggering.
+Per ADR-080, decoupled background tasks (embedding generation, wiki refresh) now
+run in-process via ``asyncio.create_task`` — the ADR-012 Redis Pub/Sub bus was
+removed. KB lifecycle ref repair remains request-scoped consistency work, not
+background task triggering.
 """
 
 from __future__ import annotations
