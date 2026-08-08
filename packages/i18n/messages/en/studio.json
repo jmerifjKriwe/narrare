@@ -278,7 +278,6 @@
     "aiSetup": "AI setup",
     "shortcuts": "Keyboard shortcuts",
     "about": "About",
-    "backgroundTasks": "Background tasks",
     "generalSection": {
       "title": "General settings",
       "description": "Adjust the basic application settings",
@@ -2043,30 +2042,6 @@
     "explain": {
       "label": "Explain",
       "description": "Ask the assistant to explain the selection"
-    }
-  },
-  "backgroundTasks": {
-    "title": "Background tasks",
-    "description": "Monitor the background task queue that powers embeddings, wiki, and learning jobs.",
-    "refreshInterval": "Auto-refreshes every 10 seconds.",
-    "registeredTasks": "Registered tasks",
-    "taskCount": "{count} tasks",
-    "noTasks": "No background tasks registered.",
-    "loadFailed": "Failed to load task status.",
-    "brokerStatus": {
-      "title": "Broker status",
-      "description": "Whether the background task queue is running",
-      "started": "Running",
-      "stopped": "Not running"
-    },
-    "taskName": {
-      "embed_source": "Embed source",
-      "process_feedback_memory": "Process feedback memory",
-      "run_preference_analysis": "Run preference analysis",
-      "wiki_generate_chapter": "Wiki: generate chapter",
-      "wiki_generate_entity": "Wiki: generate entity",
-      "wiki_mark_all_stale": "Wiki: mark all stale",
-      "wiki_refresh_summary": "Wiki: refresh summary"
     }
   },
   "series": {

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 from logging.config import fileConfig
 from typing import TYPE_CHECKING
 
@@ -33,6 +32,7 @@ from alembic import context
 
 # Import the declarative base and all ORM models so Alembic can detect tables.
 # pyright: reportUnusedImport=false
+from narrare._app.config import get_settings
 from narrare._app.database import Base
 
 if TYPE_CHECKING:
@@ -47,10 +47,9 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
-    return os.environ.get(
-        "DATABASE_URL",
-        "postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_dev",
-    )
+    # Resolve through app Settings (pydantic-settings env_file reads the root
+    # .env) — env var DATABASE_URL wins, then .env, then the dev default.
+    return get_settings().database_url
 
 
 def run_migrations_offline() -> None:

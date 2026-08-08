@@ -17,10 +17,9 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
     for system prompts, PromptRegistry for prompt resolution, and
     KBRepository + RelationshipRepository for data access.
     Reuses WorldbuildingAnalyzer for cross-entity Phase 2 consistency.
-    Uses Redis-backed ConsistencyCache for 10min TTL on results.
+    Uses the in-memory ConsistencyCache for 10min TTL on results.
     Includes InvocationPipeline for invocation evidence (ADR-040).
     """
-    from narrare._app.config import get_settings
     from narrare._app.dependencies import (
         get_composer,
         get_invocation_pipeline,
@@ -42,7 +41,7 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
     from narrare.kb.repository import KBRepository
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
     from narrare.kb.worldbuilding_cache import WorldbuildingCache
-    from narrare_core.cache.redis_client import RedisSessionCache
+    from narrare_core.cache import InMemorySessionCache
 
     registry = get_model_registry()
     composer = get_composer()
@@ -51,10 +50,10 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
     kb_repo = KBRepository(session)
     rel_repo = RelationshipRepository(session)
 
-    # Redis-backed consistency cache with 10min TTL
-    settings = get_settings()
-    redis_cache = RedisSessionCache(settings.redis_url)
-    consistency_cache = ConsistencyCache(redis_cache)
+    # In-memory consistency cache with 10min TTL (ADR-080). Shared with the
+    # worldbuilding cache below (both consume SessionCacheProtocol).
+    cache = InMemorySessionCache()
+    consistency_cache = ConsistencyCache(cache)
 
     # Entry-internal analyzer (LLM per entry)
     consistency_analyzer = KBConsistencyAnalyzer(
@@ -72,7 +71,7 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
     )
 
     # Worldbuilding analyzer (reused for cross-entity Phase 2)
-    worldbuilding_cache = WorldbuildingCache(redis_cache)
+    worldbuilding_cache = WorldbuildingCache(cache)
     worldbuilding_analyzer = WorldbuildingAnalyzer(
         kb_repo=kb_repo,
         rel_repo=rel_repo,

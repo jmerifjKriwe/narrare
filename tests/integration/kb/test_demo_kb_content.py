@@ -17,9 +17,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
     AsyncSession,
     create_async_engine,
 )
@@ -43,74 +42,16 @@ TEST_DATABASE_URL = os.environ.get(
 )
 
 
-async def _create_tables_if_needed(engine: AsyncEngine) -> None:
-    """Create novels + kb_entries tables if they don't exist yet."""
-    async with engine.begin() as conn:
-        await conn.execute(
-            text("""
-            CREATE TABLE IF NOT EXISTS novels (
-                id UUID PRIMARY KEY,
-                user_id UUID NOT NULL,
-                title VARCHAR(500) NOT NULL,
-                author VARCHAR(200) NOT NULL DEFAULT '',
-                genre VARCHAR(100) NOT NULL DEFAULT '',
-                language VARCHAR(10) NOT NULL DEFAULT 'en',
-                tone VARCHAR(100) NOT NULL DEFAULT '',
-                story_structure VARCHAR(100) NOT NULL DEFAULT '',
-                logline TEXT NOT NULL DEFAULT '',
-                synopsis TEXT NOT NULL DEFAULT '',
-                is_demo BOOLEAN NOT NULL DEFAULT FALSE,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
-        )
-        await conn.execute(
-            text("""
-            CREATE TABLE IF NOT EXISTS kb_entries (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                novel_id UUID NOT NULL REFERENCES novels(id) ON DELETE CASCADE,
-                entity_type VARCHAR(50) NOT NULL,
-                name VARCHAR(500) NOT NULL,
-                slug VARCHAR(500) NOT NULL,
-                status VARCHAR(20) NOT NULL DEFAULT 'draft',
-                tags JSONB,
-                metadata JSONB,
-                body TEXT,
-                template_version VARCHAR(20),
-                embeddings_dirty BOOLEAN NOT NULL DEFAULT FALSE,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                CONSTRAINT ck_kb_entries_entity_type
-                    CHECK (entity_type IN (
-                        'character','location','faction',
-                        'object','system','timeline'
-                    )),
-                CONSTRAINT ck_kb_entries_status
-                    CHECK (status IN ('draft','reviewed','canon','deprecated')),
-                CONSTRAINT uq_kb_entries_novel_slug UNIQUE (novel_id, slug)
-            )
-        """)
-        )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS ix_kb_entries_novel_id ON kb_entries (novel_id)")
-        )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS ix_kb_entries_entity_type ON kb_entries (entity_type)")
-        )
-        await conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS ix_kb_entries_novel_type "
-                "ON kb_entries (novel_id, entity_type)"
-            )
-        )
-
-
 @pytest_asyncio.fixture
 async def kb_session() -> AsyncGenerator[AsyncSession]:
-    """Provide a transaction-wrapped session with KB tables created."""
+    """Provide a transaction-wrapped session against the migrated schema.
+
+    The integration session fixture (``tests/integration/conftest.py``) runs
+    ``alembic upgrade head`` once per session, so ``novels`` and ``kb_entries``
+    already exist with the current migrated shape. RULE-14: no ``create_all()``
+    or manual ``CREATE TABLE`` — rely exclusively on migrations.
+    """
     engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True)
-    await _create_tables_if_needed(engine)
 
     async with engine.connect() as conn:
         transaction = await conn.begin()

@@ -5,7 +5,7 @@ status: active
 area: architecture
 mvp: false
 date_created: 2026-06-10
-last_updated: 2026-06-29
+last_updated: 2026-08-08
 source: INCOMPLETE-FEATURES.md
 ---
 
@@ -28,15 +28,24 @@ The Narrare codebase is at Phase 6 (Post-MVP Features) with ~8,300+ backend test
 
 **Key change since last review (2026-06-10):** INFRA-007 was implemented (2026-06-29),
 deploying the TaskIQ broker (Redis transport + result backend), Docker Compose worker
-service, monitoring API, and 7 registered tasks. This **removes the infrastructure
-blocker** for Wave C. Wave C items (IF-01, IF-02) are now blocked only on task logic
-implementation and event mapping — not on worker infrastructure.
+service, monitoring API, and 7 registered tasks.
+
+> **⛔ Update (2026-08-07): ADR-080 supersedes Wave C entirely.** ADR-080
+> (Remove Redis & TaskIQ for Single-User Deployment) deleted the TaskIQ broker,
+> worker process, the broker-registered task stubs (IF-01), and the dormant
+> EventListener + Redis event bus (IF-02). The two Phase-7 stubs
+> (`process_feedback_memory`, `run_preference_analysis`) were **never wired** and
+> are removed rather than implemented. The "infra exists, task logic missing"
+> premise below is the **pre-ADR-080** state. IF-01 and IF-02 are now classified
+> **superseded**, not open — see `INCOMPLETE-FEATURES.md`. The two background
+> tasks that *do* run (`embed_source`, `generate_band_summary`) use in-process
+> `asyncio.create_task` (INFRA-007 / ADR-080).
 
 | Wave | Theme | Items | Sessions | Blocked |
 |------|-------|-------|----------|---------|
 | A | Quick Wins | IF-03, IF-08, IF-04 | 2-3 | No |
 | B | Feature Completion | IF-05, IF-06, IF-12, IF-13 | 4-6 | No |
-| C | Infrastructure | IF-01, IF-02 | 6-10 | **Partially** — infra exists, task logic missing |
+| C | ~~Infrastructure~~ | IF-01, IF-02 | — | **Superseded by ADR-080 (2026-08-07)** |
 | D | Future Enhancements | IF-09, IF-10, IF-11, IF-07 | Untimed | No |
 
 ---
@@ -44,10 +53,10 @@ implementation and event mapping — not on worker infrastructure.
 ## Dependency Graph
 
 ```
-IF-01 (Task stubs — logic not implemented)
+IF-01 (Task stubs — logic not implemented)        ⛔ SUPERSEDED (ADR-080)
   |
   v
-IF-02 (Event dispatch — empty map, inactive listener)
+IF-02 (Event dispatch — empty map, inactive listener)  ⛔ SUPERSEDED (ADR-080)
      depends on IF-01
 
 IF-03 (Settings cascade)    ✅ RESOLVED
@@ -67,8 +76,8 @@ IF-13 (Doc placeholders)    ✅ RESOLVED
 
 | Item | Depends On | Blocks | Wave |
 |------|-----------|--------|------|
-| IF-01 | Task logic implementation (infra exists via INFRA-007) | IF-02 | C |
-| IF-02 | IF-01 implementation + event mapping + lifespan wiring | Nothing | C |
+| IF-01 | ~~Task logic implementation (infra exists via INFRA-007)~~ | ~~IF-02~~ | ~~C~~ ⛔ Superseded (ADR-080) |
+| IF-02 | ~~IF-01 implementation + event mapping + lifespan wiring~~ | Nothing | ~~C~~ ⛔ Superseded (ADR-080) |
 | IF-03 | Nothing | Nothing | A ✅ |
 | IF-04 | Nothing | Nothing | A ✅ |
 | IF-05 | Nothing | Nothing | B ✅ |
@@ -97,6 +106,17 @@ All four Wave B items (IF-05, IF-06, IF-12, IF-13) were resolved 2026-06-10.
 
 ## Wave C: Infrastructure (Task Logic Implementation)
 
+> **⛔ SUPERSEDED BY ADR-080 (2026-08-07) — NOT PLANNED.** The entire Wave C
+> scope (IF-01 task-stub implementation, IF-02 event-listener dispatch) has been
+> removed rather than implemented. ADR-080 deleted the TaskIQ broker
+> (`tasks/broker.py`), the worker process, the broker-registered task stubs, the
+> dormant `EventListener` (`_app/event_listener.py` — now a phantom file), and
+> the Redis Pub/Sub event bus. The "INFRA-007 deployed" status update and
+> prerequisite checklist below describe the **pre-ADR-080** state and are
+> retained only as an audit trail. The detailed C1/C2 plans are **moot**.
+> See [ADR-080](decisions/ADR-080-remove-redis-taskiq-in-process-execution.md)
+> and `INCOMPLETE-FEATURES.md` (IF-01/IF-02 → superseded).
+
 > **Status update (2026-06-29):** TaskIQ worker infrastructure is NOW DEPLOYED via
 > INFRA-007 (broker, worker, monitoring, Docker Compose). All four Wave C prerequisites
 > are met. The remaining work is implementing the actual task logic and wiring the event
@@ -118,6 +138,11 @@ The tasks are decorated with `@broker.task` and accept typed events. What remain
 - [x] Worker can access PostgreSQL and Redis from its runtime environment (Docker Compose)
 
 ### C1: IF-01 -- TaskIQ Task Implementation (Replace Stubs)
+
+> ⛔ **Moot — superseded by ADR-080.** The stubs (`tasks/__init__.py`) and broker
+> (`tasks/broker.py`) this plan targeted are deleted; `process_feedback_memory`
+> / `run_preference_analysis` are removed, not implemented. The DoD checklist
+> below is retained as the pre-ADR-080 record only.
 
 - **ID:** IF-01
 - **Layer:** Backend + Infrastructure
@@ -175,6 +200,12 @@ The tasks are decorated with `@broker.task` and accept typed events. What remain
 ---
 
 ### C2: IF-02 -- Event Listener Dispatch
+
+> ⛔ **Moot — superseded by ADR-080.** The `EventListener`
+> (`_app/event_listener.py` — now a phantom file) and the Redis Pub/Sub event
+> bus this plan targeted are deleted; there is no `_EVENT_TASK_MAP` or
+> `broker.kiq()` dispatch to wire. The DoD checklist below is retained as the
+> pre-ADR-080 record only.
 
 - **ID:** IF-02
 - **Layer:** Infrastructure
@@ -375,18 +406,22 @@ no-DB-in-core constraint.
 
 ## Blocked Items Register
 
-The following items cannot proceed until prerequisites are met:
+> **Update (2026-08-07):** Both formerly-blocked items are **superseded by
+> ADR-080** and are no longer open or blocked. The table below is retained as
+> the pre-ADR-080 audit trail.
 
-| ID | Item | Blocker | Resolution | Estimated Unblock |
-|----|------|---------|------------|-------------------|
-| IF-01 | TaskIQ Task Stubs | Task logic not implemented (infrastructure exists via INFRA-007) | Implement real task bodies with DI + mem0 + PreferenceAnalysisService | Next available session |
-| IF-02 | Event Listener Dispatch | Depends on IF-01 (tasks must do real work first) + empty event map + inactive listener | Complete IF-01 first, then populate `_EVENT_TASK_MAP` and wire lifespan | After IF-01 |
+| ID | Item | Blocker | Resolution | Status |
+|----|------|---------|------------|--------|
+| ~~IF-01~~ | ~~TaskIQ Task Stubs~~ | ~~Task logic not implemented~~ | ~~Implement real task bodies~~ | ⛔ Superseded by ADR-080 (broker + stubs removed) |
+| ~~IF-02~~ | ~~Event Listener Dispatch~~ | ~~Depends on IF-01 + empty event map~~ | ~~Populate `_EVENT_TASK_MAP`, wire lifespan~~ | ⛔ Superseded by ADR-080 (listener + event bus removed) |
 
-**Updated reasoning (2026-06-29):** The TaskIQ worker infrastructure is NO LONGER
-the blocker. INFRA-007 deployed the broker, worker, monitoring API, and Docker Compose
-service. The tasks are already registered with `@broker.task` decorators. The remaining
-blocker is implementing the stub bodies (loading data from DB, calling mem0, running
-PreferenceAnalysisService) which requires DI-aware task factories.
+**Updated reasoning (2026-08-08):** ADR-080 collapsed the execution boundary from
+a Redis-queue (cross-process durable) to process-lifetime (in-process
+`asyncio.create_task`) for single-user self-hosted deployment. The TaskIQ broker,
+worker, result backend, monitoring API, frontend panel, and Redis event bus were
+removed; the two Phase-7 stubs (`process_feedback_memory`,
+`run_preference_analysis`) were never wired and are deleted rather than
+implemented. Wave C is closed as superseded.
 
 ---
 
@@ -411,15 +446,15 @@ amendment. Do not start implementation until the decision is recorded.
 |------|-------|-----------------|----------|---------|
 | A: Quick Wins | 3 | ~3.5 hours | 2-3 | ✅ Complete |
 | B: Feature Completion | 4 | ~14 hours | 4-6 | ✅ Complete |
-| C: Infrastructure | 2 | ~8 hours (revised down from ~11) | 4-6 | Partially — task logic |
+| C: Infrastructure | 2 | — | — | ⛔ Superseded by ADR-080 (2026-08-07) |
 | D: Future Enhancements | 4 | ~12 hours | Untimed | No |
-| **Total** | **13** | **~37.5 hours** | **10-15+** | 2 blocked on implementation |
+| **Total** | **13** | **~37.5 hours** | **10-15+** | 2 superseded; 0 actively blocked |
 
 ### By Layer (Remaining)
 
 | Layer | Items | IDs |
 |-------|-------|-----|
-| Backend + Infrastructure | 2 | IF-01, IF-02 |
+| ~~Backend + Infrastructure~~ | ~~2~~ | ~~IF-01, IF-02~~ (superseded by ADR-080) |
 | Core | 3 | IF-09, IF-10, IF-11 |
 | Architecture Decision | 1 | IF-07 |
 
@@ -435,8 +470,8 @@ amendment. Do not start implementation until the decision is recorded.
 
 | Order | ID | Wave | Rationale |
 |-------|----|------|-----------|
-| 1 | IF-01 | C | Infrastructure exists — implement task logic next available session |
-| 2 | IF-02 | C | Depends on IF-01 — wire event dispatch after tasks are real |
+| ~~1~~ | ~~IF-01~~ | ~~C~~ | ~~Infrastructure exists — implement task logic~~ ⛔ Superseded by ADR-080 |
+| ~~2~~ | ~~IF-02~~ | ~~C~~ | ~~Depends on IF-01 — wire event dispatch~~ ⛔ Superseded by ADR-080 |
 | 3-6 | IF-09, IF-10, IF-11, IF-07 | D | Opportunistic — no fixed order |
 
 ---
@@ -471,5 +506,5 @@ This document should be updated:
 
 ---
 
-> **Last reviewed:** 2026-06-29
-> **Next review:** When IF-01 implementation begins, or at next phase transition
+> **Last reviewed:** 2026-08-08 (Wave C / IF-01/IF-02 reclassified as superseded by ADR-080)
+> **Next review:** At next phase transition, or if a future ADR re-introduces a broker

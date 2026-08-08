@@ -43,10 +43,6 @@ def _make_vector(dim: int = 1536, value: float = 0.01) -> list[float]:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(
-    True,  # Default skip — enable when pgvector is available
-    reason="Requires pgvector extension in test database",
-)
 class TestEmbeddingRepositoryCRUD:
     """CRUD operations with real pgvector."""
 
@@ -221,10 +217,6 @@ class TestEmbeddingRepositoryCRUD:
         assert result is None
 
 
-@pytest.mark.skipif(
-    True,
-    reason="Requires pgvector extension in test database",
-)
 class TestEmbeddingDeduplication:
     """Content hash deduplication — upsert same source twice."""
 

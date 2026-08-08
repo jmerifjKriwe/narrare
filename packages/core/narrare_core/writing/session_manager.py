@@ -1,8 +1,9 @@
 """Session manager for interactive writing flows.
 
 Implements :class:`SessionManagerProtocol` from ``contracts.py``.
-Uses an injected cache backend (Redis in production) for persistence —
-core never imports Redis directly (RULE-08).
+Uses an injected cache backend (in-memory per ADR-080; Redis re-plugs at
+the :class:`SessionCacheProtocol` for multi-worker) for persistence —
+core never imports the cache implementation directly (RULE-08).
 
 See: docs/features/writing-session.md
 """
@@ -39,8 +40,9 @@ logger = structlog.get_logger(__name__)
 class SessionCacheProtocol(Protocol):
     """Cache backend for session persistence.
 
-    The API layer injects a Redis-backed implementation.  Core never
-    imports Redis directly (RULE-08).
+    The API layer injects an in-memory implementation (per ADR-080).
+    Redis can re-plug here for multi-worker deployments.  Core never
+    imports the cache implementation directly (RULE-08).
     """
 
     async def get(self, key: str) -> str | None:
@@ -65,8 +67,9 @@ class SessionManager:
     """Manages interactive writing session state.
 
     Uses a :class:`SessionCacheProtocol` for persistence — the API layer
-    injects a Redis-backed implementation.  Core never imports Redis
-    directly (RULE-08).
+    injects an in-memory implementation (per ADR-080; Redis re-plugs at
+    the protocol for multi-worker).  Core never imports the cache
+    implementation directly (RULE-08).
     """
 
     KEY_PREFIX = "writing:session:"

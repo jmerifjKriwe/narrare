@@ -25,8 +25,21 @@ from sqlalchemy.pool import NullPool
 from narrare._app.database import get_async_session
 from narrare._app.main import create_app
 
+# Session-scoped network guards (prevent real embedding/mem0 calls during the
+# integration run) live in a dedicated module to keep conftest.py under the
+# RULE-04 line limit. They are re-exported here instead of loaded via
+# ``pytest_plugins`` — pytest >= 8 hard-errors on plugin declarations in
+# non-top-level conftests. The import registers them for the integration tree
+# only, preserving BOTH ``autouse`` semantics AND by-name resolution — the
+# latter is required because ``_prewarm_composer(_no_real_mem0_clients: None)``
+# in writing/conftest.py pins session-setup ordering (ADR-068 Decision 2).
+from tests.integration._fixtures.network_guards import (  # noqa: F401 — re-exported for pytest fixture registration
+    _no_real_embedding_calls,
+    _no_real_mem0_clients,
+)
+
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Iterator
+    from collections.abc import AsyncGenerator
 
     from fastapi import FastAPI
 
@@ -47,7 +60,7 @@ TEST_DATABASE_URL = os.environ.get(
 # would be too late — by the time this conftest loads,
 # ``narrare._app.database`` has already been imported (pytest's initial
 # conftest collection triggers the chain), with ``ENVIRONMENT=development``
-# from the ambient environment (just's ``dotenv-load`` exports ``.env``).
+# from the ambient environment (a developer shell that exported/sourced it).
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
 
@@ -87,75 +100,6 @@ def _set_encryption_key(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ig
     from cryptography.fernet import Fernet
 
     monkeypatch.setenv("NARRARE_ENCRYPTION_KEY", Fernet.generate_key().decode())
-
-
-@pytest.fixture(autouse=True, scope="session")
-def _no_real_mem0_clients() -> Iterator[None]:  # pyright: ignore[reportUnusedFunction] — autouse fixture, invoked via decorator reflection.
-    """Prevent real mem0/QdrantClient creation during the integration session (RULE-20).
-
-    SESSION-SCOPED (ADR-068 Decision 2): the integration suite has a
-    session-scoped ``_prewarm_composer`` fixture (in
-    ``tests/integration/writing/conftest.py``) that calls ``get_composer()``
-    → ``_get_preference_service_instance()``. A function-scoped guard would
-    activate only at the first test function, AFTER ``_prewarm_composer``
-    has already run at session start — creating a real ``mem0.AsyncMemory``
-    client once per integration session before any guard could prevent it.
-    Session-scoping the guard ensures it runs before ``_prewarm_composer``;
-    the explicit fixture dependency declared in
-    ``_prewarm_composer(_no_real_mem0_clients: None)`` pins the ordering
-    (autouse session fixtures otherwise have non-deterministic order).
-
-    Uses ``pytest.MonkeyPatch()`` instantiated directly — the ``monkeypatch``
-    fixture is function-scoped by design and cannot be used at session
-    scope. Teardown via ``mp.undo()`` runs at session end.
-
-    Integration counterpart of the unit-test guard in
-    ``tests/unit/conftest.py`` (which stays function-scoped — unit tests
-    do not use session-scoped prewarm fixtures). Patches the re-imported
-    ``is_mem0_available`` reference in each mem0-backed singleton module
-    so the singletons short-circuit before reaching
-    ``create_memory_client_sync()``.
-
-    Without this guard, mem0-backed singletons create real
-    ``mem0.AsyncMemory`` clients (mem0 IS installed in the test env and
-    ``tests/conftest.py`` sets dummy ``OPENAI_API_KEY`` /
-    ``ANTHROPIC_API_KEY``). The clients' Qdrant/sqlite resources bind to
-    the event loop active at creation time, then leak across loops under
-    pytest-asyncio + pytest-xdist (each worker process has its own
-    session loop; TestClient-based tests additionally use a portal-thread
-    loop). At teardown this surfaces as
-    ``RuntimeError: Task got Future attached to a different loop`` — the
-    proximate cause of the PR #126 regression in
-    ``test_session_stop_and_recovery.py``.
-
-    Targets the same module set as the unit-test guard:
-    - ``narrare._app.dependencies_prompts`` — preference-service singleton
-    - ``narrare.kb._feedback_memory_deps`` — consistency-feedback singleton
-    - ``narrare.writing._session_memory_deps`` — session-memory singleton
-      (extracted from ``deps_writing.py`` per RULE-04; the singleton
-      state and module-level availability imports move together)
-
-    Integration tests that specifically exercise the mem0-available path
-    override ``is_mem0_available`` via their own ``monkeypatch.setattr``
-    (function-scoped — those overrides are tighter than this session
-    guard and compose correctly because they patch the same module
-    attribute after the session guard has).
-    """
-    mp = pytest.MonkeyPatch()
-    mp.setattr(
-        "narrare._app.dependencies_prompts.is_mem0_available",
-        lambda: False,
-    )
-    mp.setattr(
-        "narrare.kb._feedback_memory_deps.is_mem0_available",
-        lambda: False,
-    )
-    mp.setattr(
-        "narrare.writing._session_memory_deps.is_mem0_available",
-        lambda: False,
-    )
-    yield
-    mp.undo()
 
 
 @pytest.fixture(autouse=True)

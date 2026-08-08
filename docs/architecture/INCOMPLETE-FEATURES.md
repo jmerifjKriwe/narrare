@@ -5,7 +5,7 @@ status: active
 area: architecture
 mvp: false
 date_created: 2026-06-10
-last_updated: 2026-06-29
+last_updated: 2026-08-08
 ---
 
 # Incomplete Features, Stubs, and TODO Markers
@@ -20,8 +20,8 @@ last_updated: 2026-06-29
 
 | ID | Priority | Area | Description | Status | Blocking |
 |----|----------|------|-------------|--------|----------|
-| IF-01 | High | Tasks / Memory | TaskIQ task stubs (`process_feedback_memory`, `run_preference_analysis`) — tasks registered with `@broker.task` and retries, but bodies only log (TODO Phase 7) | **Open** | Yes — task logic not implemented (infrastructure complete via INFRA-007) |
-| IF-02 | High | Events / Embeddings | Event listener `_dispatch` code exists but `_EVENT_TASK_MAP` is empty, listener is not wired into application lifespan | **Open** | Yes — depends on IF-01 real task implementation |
+| ~~IF-01~~ | ~~High~~ | ~~Tasks / Memory~~ | ~~TaskIQ task stubs (`process_feedback_memory`, `run_preference_analysis`) — tasks registered with `@broker.task` and retries, but bodies only log~~ | **SUPERSEDED** | ~~Superseded 2026-08-07 by ADR-080 — broker + stubs removed~~ |
+| ~~IF-02~~ | ~~High~~ | ~~Events / Embeddings~~ | ~~Event listener `_dispatch` code exists but `_EVENT_TASK_MAP` is empty, listener is not wired into lifespan~~ | **SUPERSEDED** | ~~Superseded 2026-08-07 by ADR-080 — EventListener + event bus removed~~ |
 | ~~IF-03~~ | ~~High~~ | ~~Settings / Writing~~ | ~~Co-author word limit uses hardcoded default~~ | **RESOLVED** | ~~Resolved 2026-06-10~~ |
 | ~~IF-04~~ | ~~Medium~~ | ~~Embeddings / Search~~ | ~~`ScoredCandidate` missing metadata~~ | **RESOLVED** | ~~Resolved 2026-06-10~~ |
 | ~~IF-05~~ | ~~Medium~~ | ~~KB / Provenance~~ | ~~Auto-extracted KB entries lack origin metadata~~ | **RESOLVED** | ~~Resolved 2026-06-10~~ |
@@ -104,8 +104,27 @@ last_updated: 2026-06-29
 
 ### IF-01: TaskIQ Task Stubs (Task Logic Not Implemented)
 
-- **File:** `apps/api/narrare/tasks/__init__.py`
-- **Lines:** 36--81
+> **⛔ SUPERSEDED BY ADR-080 (2026-08-07).** This item is **no longer open**.
+> ADR-080 (Remove Redis & TaskIQ for Single-User Deployment) deleted the TaskIQ
+> broker (`tasks/broker.py`), the worker process, and the broker-registered task
+> stubs. `apps/api/narrare/tasks/__init__.py` was reduced to an ~18-line
+> docstring with **no `@broker.task` stubs and no broker**, then **deleted**
+> entirely in the ADR-080 CI cleanup (nothing imported it — commit `e45905fb`,
+> 2026-08-08). The line ranges, decorator claims, and "infrastructure complete
+> via INFRA-007" premise below describe the **pre-ADR-080** state and are
+> retained only as an audit trail. The two named
+> tasks (`process_feedback_memory`, `run_preference_analysis`) were Phase-7 stubs
+> that were **never wired**; per ADR-080 they are removed rather than
+> implemented. Background work that *does* run now uses in-process
+> `asyncio.create_task` (see INFRA-007 / ADR-080). See
+> [ADR-080](decisions/ADR-080-remove-redis-taskiq-in-process-execution.md).
+
+The following is the historical (pre-ADR-080) record:
+
+- **File:** `apps/api/narrare/tasks/__init__.py` *(phantom as described —
+  reduced to an ~18-line docstring by ADR-080, then **deleted** entirely in the
+  CI cleanup: nothing imported it (commit `e45905fb`, 2026-08-08); the stubs
+  and lines 36–81 no longer exist)*
 - **Marker:** `# TODO (Phase 7)` at lines 54 and 78; `status="stub"` in log calls
 - **Description:** Two async task functions are decorated with `@broker.task` (TaskIQ),
   have `max_retries=3`, and accept typed events — but their bodies only log and skip
@@ -127,7 +146,21 @@ last_updated: 2026-06-29
 
 ### IF-02: Event Listener -- Empty Event Map + Inactive Listener
 
-- **File:** `apps/api/narrare/_app/event_listener.py`
+> **⛔ SUPERSEDED BY ADR-080 (2026-08-07).** This item is **no longer open**.
+> ADR-080 deleted the dormant `EventListener` class together with the Redis
+> Pub/Sub event bus it depended on, so the `_EVENT_TASK_MAP` / `broker.kiq()`
+> dispatch path no longer exists. The referenced file
+> `apps/api/narrare/_app/event_listener.py` is a **phantom — it has been
+> deleted**. The "INFRA-007 broker + worker exist" premise below describes the
+> **pre-ADR-080** state only. See
+> [ADR-080](decisions/ADR-080-remove-redis-taskiq-in-process-execution.md)
+> (supersedes ADR-007 / ADR-012).
+
+The following is the historical (pre-ADR-080) record:
+
+- **File:** `apps/api/narrare/_app/event_listener.py` *(phantom — file deleted
+  by ADR-080; the listener, `_EVENT_TASK_MAP`, and `broker.kiq()` dispatch no
+  longer exist)*
 - **Lines:** 35--38 (event map), 99--107 (start method)
 - **Marker:** `# pending: no registered chapter-embedding task` and `# pending: no registered cleanup task` — commented-out map entries
 - **Description:** The `_EVENT_TASK_MAP` is empty (only commented-out entries). The
@@ -212,22 +245,22 @@ last_updated: 2026-06-29
 |--------|-------|
 | **Total items** | **13** |
 | **Resolved** | **7** (IF-03, IF-04, IF-05, IF-06, IF-08, IF-12, IF-13) |
-| **Remaining** | **6** (IF-01, IF-02, IF-07, IF-09, IF-10, IF-11) |
+| **Superseded** | **2** (IF-01, IF-02 — superseded by ADR-080, 2026-08-07) |
+| **Remaining** | **4** (IF-07, IF-09, IF-10, IF-11) |
 
 ### By Priority (Remaining Only)
 
-| Priority | Resolved | Remaining | Remaining IDs |
-|----------|----------|-----------|---------------|
-| High | 1 (IF-03) | 2 | IF-01, IF-02 |
-| Medium | 4 (IF-04, IF-05, IF-06, IF-08) | 1 | IF-07 |
-| Low | 1 (IF-12) | 3 | IF-09, IF-10, IF-11 |
-| Documentation | 1 (IF-13) | 0 | — |
+| Priority | Resolved | Superseded | Remaining | Remaining IDs |
+|----------|----------|-----------|-----------|---------------|
+| High | 1 (IF-03) | 2 (IF-01, IF-02) | 0 | — |
+| Medium | 4 (IF-04, IF-05, IF-06, IF-08) | 0 | 1 | IF-07 |
+| Low | 1 (IF-12) | 0 | 3 | IF-09, IF-10, IF-11 |
+| Documentation | 1 (IF-13) | 0 | 0 | — |
 
 ### By Area (Remaining Only)
 
 | Area | Remaining | IDs |
 |------|-----------|-----|
-| Tasks / Memory / Events | 2 | IF-01, IF-02 |
 | Wiki | 1 | IF-07 |
 | Analysis / NLP | 2 | IF-09, IF-10 |
 | Memory / Embeddings | 1 | IF-11 |
@@ -236,18 +269,16 @@ last_updated: 2026-06-29
 
 | Marker Type | Count |
 |------------|-------|
-| `TODO (Phase N)` | 2 |
 | `NotImplementedError` | 1 |
 | Stub comment | 1 |
 | `TODO` (unqualified) | 1 |
 | Future hook comment | 1 |
-| **Total remaining** | **6** |
+| **Total remaining** | **4** |
 
 ### Blocking Status (Remaining Only)
 
 | Status | Count |
 |--------|-------|
-| Blocking (depends on task implementation) | 2 |
 | Non-blocking (quality gap) | 4 |
 
 ---
@@ -261,10 +292,12 @@ This document should be updated:
 2. When a new TODO/stub is discovered during code review -- add an entry following the
    same format.
 3. At each phase transition -- review all entries for relevance and priority changes.
-4. When IF-01 is resolved (task logic implemented) -- update IF-02 blocking status and
-   re-evaluate priority.
+4. ~~When IF-01 is resolved (task logic implemented) -- update IF-02 blocking status and
+   re-evaluate priority.~~ *(Moot — IF-01 and IF-02 were superseded by ADR-080 on
+   2026-08-07: the TaskIQ broker, worker, task stubs, and dormant EventListener
+   were removed in favour of in-process `asyncio.create_task`.)*
 
 ---
 
-> **Last reviewed:** 2026-06-29
-> **Next review:** Before Phase 7 planning, or when IF-01 implementation begins
+> **Last reviewed:** 2026-08-08 (IF-01/IF-02 reclassified as superseded by ADR-080)
+> **Next review:** Before Phase 7 planning, or when a future ADR re-introduces a broker

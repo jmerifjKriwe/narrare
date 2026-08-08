@@ -19,14 +19,6 @@ dependencies = [
   "alembic==1.18.5",
   "pgvector==0.5.0",
 
-  # Background tasks
-  "taskiq==0.12.4",
-  "taskiq-redis==1.2.3",
-  "taskiq-fastapi==0.5.0",
-
-  # Cache & broker
-  "redis>=7.0.0,<9",
-
   # Auth
   "PyJWT==2.13.0",
   "argon2-cffi>=25.1.0",

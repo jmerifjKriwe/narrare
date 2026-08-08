@@ -191,7 +191,6 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.series.router_voice_drift import router as series_voice_drift_router
     from narrare.settings.router import router as settings_router
     from narrare.setup.router import router as setup_router
-    from narrare.tasks.router import router as tasks_router
     from narrare.templates.router import router as templates_router
     from narrare.volumes.router import router as volumes_router
     from narrare.wiki.router import router as wiki_router
@@ -260,7 +259,6 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(setup_router, prefix=prefix)
     app.include_router(templates_router, prefix=prefix)
     app.include_router(metrics_router)  # No prefix — /health, /ready, /metrics
-    app.include_router(tasks_router)  # No prefix — /tasks/status (monitoring)
     app.include_router(writing_router, prefix=prefix)
     app.include_router(writing_extend_router, prefix=prefix)
     app.include_router(writing_rewrite_router, prefix=prefix)

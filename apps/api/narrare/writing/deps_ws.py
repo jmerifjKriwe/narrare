@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from narrare.writing.ws_session_control_service import WritingSessionControlService
     from narrare.writing.ws_turn_service import WritingTurnService
     from narrare_core.llm import ResolvedModelConfig
-    from narrare_core.writing.session_manager import SessionCacheProtocol, SessionManager
+    from narrare_core.writing.session_manager import SessionManager
     from narrare_core.writing.session_turn_state import SessionTurnStateStore
 
 
@@ -66,12 +66,6 @@ def _state_value(app: _StatefulApp, name: str) -> object:
     if value is None:
         raise RuntimeError(f"app.state.{name} is not bound; lifespan did not initialize")
     return value
-
-
-def get_session_cache(app: _StatefulApp) -> SessionCacheProtocol:
-    """Return the shared writing-session cache bound on ``app.state``."""
-    # Cast is safe: lifespan binds a SessionCacheProtocol implementation.
-    return cast("SessionCacheProtocol", _state_value(app, "session_cache"))
 
 
 def get_session_manager(app: _StatefulApp) -> SessionManager:

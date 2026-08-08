@@ -157,7 +157,14 @@ class OpenAIEmbeddingProvider:
             # All empty — return zero vectors of the default dimension
             return [[0.0] * self.default_dimension for _ in texts]
 
-        client = self._client or openai.AsyncOpenAI()
+        if self._client is None:
+            # Lazy-init: build ONE client per provider instance and reuse it
+            # across calls (httpx connection pooling). Constructing a fresh
+            # ``AsyncOpenAI()`` on every call leaks an un-closed httpx client
+            # + socket each time. Injected clients (self._client already set)
+            # bypass this path entirely.
+            self._client = openai.AsyncOpenAI()
+        client = self._client
 
         all_embeddings: list[list[float]] = []
         start = time.monotonic()

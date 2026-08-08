@@ -28,10 +28,9 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
     - ChapterRepository + NovelRepository for context
     - Canonical KBContextProvider (ADR-067) for kb_characters / kb_locations,
       rendered through the ADR-050 envelope with provenance (FIND-017).
-    - RedisSessionCache for result caching (30min TTL)
+    - InMemorySessionCache for result caching (30min TTL)
     - InvocationPipeline for invocation evidence (ADR-040)
     """
-    from narrare._app.config import get_settings
     from narrare._app.dependencies import (
         get_composer,
         get_invocation_pipeline,
@@ -49,7 +48,7 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
-    from narrare_core.cache.redis_client import RedisSessionCache
+    from narrare_core.cache import InMemorySessionCache
 
     registry = get_model_registry()
     composer = get_composer()
@@ -76,10 +75,9 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
         novel_repo=novel_repo,
     )
 
-    # Redis-backed cache with 30min TTL
-    settings = get_settings()
-    redis_cache = RedisSessionCache(settings.redis_url)
-    beta_cache = BetaReaderCache(redis_cache)
+    # In-memory cache with 30min TTL (ADR-080)
+    cache = InMemorySessionCache()
+    beta_cache = BetaReaderCache(cache)
 
     return BetaReaderService(
         context_assembler=assembler,

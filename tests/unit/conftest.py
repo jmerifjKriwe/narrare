@@ -89,6 +89,58 @@ def _no_real_mem0_clients(  # pyright: ignore[reportUnusedFunction] — autouse 
 
 
 @pytest.fixture(autouse=True)
+def _block_models_dev_network(  # pyright: ignore[reportUnusedFunction] — autouse fixture, invoked via decorator reflection, not direct call. Pyright false-positive.
+    monkeypatch: pytest.MonkeyPatch,
+) -> Any:
+    """Prevent real models.dev HTTP fetches in unit tests (RULE-20).
+
+    ``narrare_core.llm.cost_rates._fetch_models`` performs a *real synchronous*
+    ``httpx.Client.get("https://models.dev/api.json")`` whenever the on-disk
+    metadata cache at ``~/.narrare/cache/models_cache.json`` is missing or stale.
+    Several unit tests reach this path transitively without mocking it:
+
+    - ``ModelRegistry.run()`` → ``result.cost_estimate_usd`` → ``get_rates``
+      (e.g. ``tests/unit/core/llm/test_gateway.py``).
+    - the WebSocket draft path → ``run_limits.resolve`` → ``get_model_limits``
+      (e.g. ``tests/unit/api/writing/test_ws_draft_regression.py``).
+
+    Because the call is synchronous it blocks the asyncio event loop, and under
+    full-suite load it intermittently exceeded the 10 s per-test pytest-timeout
+    → flaky ``Timeout`` failures. Worse, ``tests/unit/core/llm/test_cost_rates.py``'s
+    ``isolate_cache`` autouse fixture reassigns the module-level ``CACHE_FILE``
+    to a per-test ``tmp_path`` *without restoring it*, so once that file has run
+    the global ``CACHE_FILE`` points at a since-deleted temp dir, forcing every
+    later test in the session straight into the real fetch.
+
+    This guard patches ``_fetch_models`` to raise. The cost-rates layer catches
+    ``Exception`` for graceful degradation (returns ``DEFAULT_RATES`` /
+    ``ModelLimits | None``), so unaffected tests keep working deterministically
+    *offline*; tests that intentionally exercise the fetch path
+    (``test_cost_rates.py``, ``test_provider_service.py``) override the symbol
+    with their own ``unittest.mock.patch`` which takes precedence inside its
+    ``with`` block. The blocked sentinel raises ``AssertionError`` so any
+    accidental fetch attempt leaves a diagnostic ``models_fetch_failed`` warning
+    in the log.
+
+    Regression pin: ``tests/unit/core/llm/test_network_isolation_guard.py``.
+    """
+
+    def _blocked(*_args: Any, **_kwargs: Any) -> Any:
+        raise AssertionError(
+            "Unit test attempted a real network fetch from models.dev "
+            "(narrare_core.llm.cost_rates._fetch_models). Unit tests must not "
+            "perform network I/O (RULE-20). Mock _fetch_models explicitly if "
+            "the fetch path must be exercised."
+        )
+
+    monkeypatch.setattr(
+        "narrare_core.llm.cost_rates._fetch_models",
+        _blocked,
+    )
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _isolate_core_settings(  # pyright: ignore[reportUnusedFunction] — autouse fixture, invoked via decorator reflection, not direct call. Pyright false-positive.
     monkeypatch: pytest.MonkeyPatch,
 ) -> Any:

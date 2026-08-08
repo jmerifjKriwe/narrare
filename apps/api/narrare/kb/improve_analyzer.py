@@ -59,7 +59,7 @@ class KBImproveAnalyzer:
         prompt_composer: PromptComposer for building system prompts.
         kb_repo: KB entry repository.
         rel_repo: Relationship repository.
-        improve_cache: Optional Redis-backed cache for 10min TTL.
+        improve_cache: Optional in-memory cache for 10min TTL (ADR-080).
         kb_agent: Optional KBAgent for cross-agent tool access.
     """
 
@@ -212,7 +212,7 @@ class KBImproveAnalyzer:
     ) -> KBImproveAnalysisResponse:
         """Analyze an existing KB entry and return improvement suggestions.
 
-        Checks the Redis cache first (10min TTL).  On a cache miss, runs the
+        Checks the cache first (10min TTL).  On a cache miss, runs the
         KBImproveAgent and stores the result for subsequent calls.
         """
         entry_id_str = str(entry_id)

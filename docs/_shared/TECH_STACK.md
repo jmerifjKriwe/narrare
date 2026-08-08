@@ -61,14 +61,26 @@ We need transactions. We need pgvector. Postgres does both well.
 **Location:** Only used in `core/embeddings/store.py`.
 **Not:** Pinecone, Weaviate, Qdrant — operational complexity not justified at our scale.
 
-### Redis
-**Why:** Fast ephemeral state. Session storage, task broker, provider model cache.
-**Role:** Three distinct uses:
-  - TaskIQ broker for background tasks
-  - Writing session state (TTL-based)
-  - Provider model list cache (24h TTL)
-**Location:** Only used via `core/cache/client.py`.
-**Not:** Memcached (no pub/sub, no sorted sets), in-process cache (doesn't survive restarts).
+### Redis — ⛔ Removed (ADR-080)
+
+> **⛔ Removed in ADR-080 (2026-08-07):** Redis is **no longer a dependency** and is
+> absent from the runtime path. The former uses — TaskIQ broker, writing-session
+> cache (`RedisSessionCache`), and provider model-list cache — were replaced by the
+> in-process execution boundary (ADR-080) and a TTL-capable `InMemorySessionCache`
+> in `core/cache/` (`packages/core/narrare_core/cache/in_memory.py`). The
+> `core/cache/redis_client.py` adapter and the `apps/api/narrare/_app/events.py`
+> event bus are deleted. ADR-080 supersedes ADR-007 / ADR-012 and amends ADR-036.
+>
+> **Re-introduction guard (RULE-08):** if Redis returns for multi-user /
+> multi-worker deployment, it must go through `core/cache/` only, via a new ADR
+> superseding ADR-080.
+
+**Historical record (pre-ADR-080):** Redis was chosen for fast ephemeral state —
+session storage, TaskIQ task broker, and provider model-list cache (24h TTL) — used
+only via `core/cache/redis_client.py`. It was preferred over Memcached (no pub/sub, no
+sorted sets) and over in-process caching (doesn't survive restarts). The
+single-user deployment model (ADR-029) made that operational overhead unjustified;
+the in-process trade-off is now accepted (see ADR-080 Durability Trade-off).
 
 ### Alembic
 **Why:** The only safe way to manage schema migrations. No alternatives considered.
@@ -155,26 +167,40 @@ See ADR-033 for full rationale.
 
 ## Background Processing
 
-### TaskIQ `[redis]` (0.12.x)
-**Why:** Async-native task queue with FastAPI DI integration via TaskiqDepends.
-Redis broker is already in our stack. See ADR-007 for full rationale.
-**Role:** Long-running tasks: batch embedding, consistency checks, chapter summarization,
-fact extraction, timeline analysis, wiki generation.
-**Canonical source:** `apps/api/pyproject.toml` pins `taskiq`, `taskiq-redis`,
-and `taskiq-fastapi`. This document records only the major-version commitment
-(0.12.x); check the manifest for the installed patch versions.
+### In-Process Async Tasks (asyncio)
+**Why:** Single-user, self-hosted deployment (ADR-029) needs no distributed
+queue, no cross-process durability, and no second always-on process. See ADR-080
+for the full rationale and the explicit durability trade-off.
+**Role:** Slow, idempotent or best-effort operations that must not block writing:
+embedding generation (`embed_source`) and band-summary generation
+(`generate_band_summary`) for a completed series.
+**Dispatch:** Tasks run as `asyncio.create_task` coroutines inside the API
+process. Each wrapper builds its own DB session (`get_session_factory()`, never
+the request session) and the caller holds a strong reference (GC guard). Retry
+schedules are transport-independent (`run_embed_source`: `[30, 120, 300]s`).
 **Architecture (INFRA-007, stable):**
-- `ListQueueBroker` über Redis + `RedisAsyncResultBackend`
-- 7 registrierte Tasks in `kb/embedding_hooks.py` + `wiki/tasks.py`: embed_source,
-  wiki_generate_entity, wiki_generate_chapter, wiki_mark_all_stale, wiki_refresh_summary,
-  process_feedback_memory, run_preference_analysis
-- Event-Listener-Task-Map (`_EVENT_TASK_MAP`) routed via Redis Pub/Sub (ADR-012)
-- KB embedding-hook enqueueing bei Entity-Änderungen
-- Read-only Monitoring API: `GET /tasks/status` + Settings-Panel
-- Docker Worker Service im Release-Deployment
-**Location:** Task definitions in `*/tasks.py`. Broker in `apps/api/narrare/tasks/broker.py`.
-**Not:** Celery (async impedance mismatch, needs asyncio.run wrapper), arq (maintenance-only),
-asyncio background tasks (no persistence, no retry, no visibility).
+- `embed_source` — defined in `embeddings/tasks.py`, dispatched by
+  `kb/embedding_hooks.py` on KB source content changes.
+- `generate_band_summary` — defined in `series/tasks.py`, dispatched by the
+  series auto-trigger when a Series flips to `completed`.
+- Wiki summaries (`wiki/tasks.py`) are invoked **directly** (awaited) by
+  `wiki/listeners.py`, not as background tasks.
+**Location:** Task definitions live in feature-package `*/tasks.py` files
+(`embeddings/tasks.py`, `series/tasks.py`); the former shared
+`apps/api/narrare/tasks/` package was **deleted** in the ADR-080 cleanup —
+nothing imported it, so no stub is retained.
+**Trade-off:** In-flight tasks are lost on API restart (idempotent embeddings
+regenerate on the next dirty save; band summaries re-trigger manually). No
+queue-depth / coverage metrics or dedicated monitoring UI.
+
+> **⛔ Removed in ADR-080 (2026-08-07):** TaskIQ (`taskiq`, `taskiq-redis`,
+> `taskiq-fastapi`) and the `redis` datastore are no longer dependencies. The
+> `ListQueueBroker` + `RedisAsyncResultBackend` (`tasks/broker.py`), the worker
+> process, the `GET /tasks/status` monitoring API, the Redis Pub/Sub event bus
+> (ADR-012), and the frontend `BackgroundTasksPanel` were deleted. ADR-080
+> supersedes ADR-007 / ADR-012 and amends ADR-036. If multi-user / multi-worker
+> deployment returns, re-introduce a broker via a new ADR superseding ADR-080
+> (the dispatch site is the single swap seam).
 
 ---
 

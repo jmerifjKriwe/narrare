@@ -4,29 +4,33 @@ Root test configuration and shared fixtures.
 
 from __future__ import annotations
 
+import inspect
 import os
 import sys
+from typing import TYPE_CHECKING
 
 import pytest
+
+from tests._schema_guard import scan_for_schema_mutation
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 # NOTE: Python path resolution (apps/api, packages/core) is handled by the
 # `pythonpath` setting in [tool.pytest.ini_options] in pyproject.toml.
 
 # Force test environment BEFORE any narrare import. ``setdefault`` is too
-# weak — ``justfile`` sets ``set dotenv-load := true``, so ``just
-# test-integration`` exports every ``.env`` key (including
-# ``ENVIRONMENT=development``) into the pytest subprocess; a developer
-# shell with ``export ENVIRONMENT=development`` does the same. With
+# weak — a developer shell that exported/sourced ``ENVIRONMENT=development``
+# (the justfile no longer auto-loads ``.env`` via dotenv-load) would leak it
+# into the pytest subprocess. With
 # ``environment != "test"``, ``Settings.is_test`` returns False and the
 # app lifespan (``apps/api/narrare/_app/lifespan.py``) runs production
 # code paths that do not compose with per-test ``TestClient`` portal
-# event loops: ``broker.startup()/shutdown()`` (redis.asyncio),
-# ``init_event_bus`` / ``shutdown_event_bus`` (redis.asyncio),
-# ``_run_stale_cleanup`` (asyncpg pool — ``lifespan.py:140``), and
-# ``dispose_database()``. These bind redis/asyncpg resources to whatever
+# event loops: ``_run_stale_cleanup`` (asyncpg pool — ``lifespan.py:140``),
+# and ``dispose_database()``. These bind asyncpg resources to whatever
 # loop is current at lifespan startup; when the ``TestClient`` portal
-# closes and a later WS test starts a fresh portal,
-# ``broker.shutdown()`` and asyncpg ``do_terminate`` raise
+# closes and a later WS test starts a fresh portal, asyncpg
+# ``do_terminate`` raises
 # ``RuntimeError: Task got Future attached to a different loop`` at
 # teardown — flakily, because pytest-randomly reorders the polluter.
 # Direct assignment (not ``setdefault``) is required: this conftest is
@@ -40,7 +44,6 @@ os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://narrare:narrare@localhost:5433/narrare_test",
 )
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 # NOTE: NARRARE_TEST_MODE is intentionally NOT set here. It was previously
 # set globally, which leaked the CSRF bypass into unit tests that explicitly
 # test OriginValidationMiddleware rejection behaviour. The env var is now set
@@ -104,11 +107,17 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    """Auto-tag tests based on directory path.
+    """Auto-tag tests based on directory path + enforce schema_mutating guard.
 
     - tests/unit/ → unit
     - tests/integration/ → integration + requires_db
     - tests/e2e/ → e2e
+
+    Schema-mutation guard: any integration test whose module source contains
+    schema-mutating patterns (alembic downgrade, create_all/drop_all, SQL DDL)
+    MUST carry ``@pytest.mark.schema_mutating``. Unmarked mutants fail
+    collection loudly so the two-phase serial mitigation cannot silently lapse.
+    Unit tests are exempt (they mock all DB access per testing standards).
     """
     for item in items:
         nodeid = item.nodeid
@@ -119,6 +128,62 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
             item.add_marker(pytest.mark.requires_db)
         elif "tests/e2e/" in nodeid:
             item.add_marker(pytest.mark.e2e)
+
+    _enforce_schema_mutating_guard(items)
+
+
+# Module-level cache: module file path → matched patterns (or [] if clean).
+# Avoids re-parsing the same module for every test item it contains.
+_schema_scan_cache: dict[str, list[str]] = {}
+
+
+def _enforce_schema_mutating_guard(items: list[pytest.Item]) -> None:
+    """Fail collection if any schema-mutating integration test lacks the marker."""
+    violations: list[str] = []
+    for item in items:
+        if "tests/integration/" not in item.nodeid:
+            continue
+        # Defensive: unit-test fakes (FakeItem in test_auto_tagging.py) lack
+        # get_closest_marker; real pytest.Items always have it. Skip items we
+        # can't introspect — they'll also fail the module lookup below.
+        get_marker = getattr(item, "get_closest_marker", None)
+        if get_marker is not None and get_marker("schema_mutating"):
+            continue
+
+        module: ModuleType | None = getattr(item, "module", None)
+        if module is None:
+            func = getattr(item, "function", None)
+            if func is not None:
+                module = inspect.getmodule(func)
+        if module is None:
+            continue
+
+        module_file = getattr(module, "__file__", None)
+        if module_file is None:
+            continue
+
+        if module_file not in _schema_scan_cache:
+            try:
+                source = inspect.getsource(module)
+            except OSError, TypeError:
+                source = ""
+            _schema_scan_cache[module_file] = scan_for_schema_mutation(source)
+
+        patterns = _schema_scan_cache[module_file]
+        if patterns:
+            violations.append(f"  {item.nodeid}  (patterns: {', '.join(sorted(set(patterns)))})")
+
+    if violations:
+        pytest.exit(
+            "schema_mutating guard — unmarked schema-mutating integration "
+            "tests found:\n\n"
+            + "\n".join(violations)
+            + "\n\nThese tests mutate the shared test-DB schema but lack "
+            "@pytest.mark.schema_mutating. Add the marker (runs serially in "
+            "test phase 2) or refactor to not mutate schema (RULE-14).\n"
+            "See: docs/development/testing-standards.md (schema_mutating).",
+            returncode=1,
+        )
 
 
 # ---------------------------------------------------------------------------

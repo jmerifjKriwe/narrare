@@ -1,6 +1,6 @@
 # ADR-012 — Event-Driven Architecture
 
-> **Status:** ✅ Accepted
+> **Status:** ⛔ Superseded by [ADR-080](ADR-080-remove-redis-taskiq-in-process-execution.md) (2026-08-07)
 > **Date:** 2026-05-12
 > **Deciders:** Architecture Agent
 > **Supersedes:** `embeddings_dirty` flag pattern

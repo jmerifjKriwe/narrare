@@ -1,4 +1,4 @@
-"""Unit tests for ``WorldbuildingCache`` — Redis-backed worldbuilding cache.
+"""Unit tests for ``WorldbuildingCache`` — worldbuilding cache backend.
 
 Mirrors ``test_kb_improve_cache.py``: key formatting, entity-type hashing,
 get/set/delete delegation, graceful degradation when the backend is
@@ -64,7 +64,7 @@ class TestWorldbuildingCacheGet:
     async def test_unavailable_backend_returns_none(self) -> None:
         """A backend exception degrades to None instead of propagating."""
         cache, backend = _make_cache()
-        backend.get = AsyncMock(side_effect=ConnectionError("Redis down"))
+        backend.get = AsyncMock(side_effect=ConnectionError("cache backend down"))
 
         assert await cache.get("novel-1") is None
 

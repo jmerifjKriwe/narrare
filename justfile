@@ -2,7 +2,11 @@
 # Requires: just (https://just.systems)
 # Usage: just <command>
 
-set dotenv-load := true
+# NOTE: no ``set dotenv-load`` here. The root ``.env`` is read by the API via
+# pydantic-settings ``env_file`` (apps/api/narrare/_app/settings_model.py) and by
+# scripts via ``Settings()`` — loading it into every recipe's environment
+# created a double source of truth (env var vs. env_file) and contaminated
+# hermetic test runs. See audit in PR / commit message.
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 # Default: list all commands
@@ -221,13 +225,7 @@ dev-frontend:
     [ ! -f packages/web/.env.local ] && cp packages/web/.env.local.example packages/web/.env.local
     cd packages/web && pnpm dev
 
-# Start TaskIQ worker only (requires broker module — Phase 5+)
-dev-worker:
-    cd apps/api && uv run taskiq worker narrare.tasks.broker:broker \
-        --fs-discover \
-        --log-level DEBUG
-
-# Start Docker services (postgres + redis)
+# Start Docker services (postgres)
 dev-services:
     just _ensure-services
 
@@ -272,9 +270,13 @@ db-shell:
 # Testing
 # ---------------------------------------------------------------------------
 
-# Run all tests (parallel)
+# Run all tests. Phase 1: full suite in parallel (xdist -n auto). Phase 2:
+# schema-mutating migration round-trip tests (marked @pytest.mark.schema_mutating)
+# run SERIALLY — they downgrade/re-upgrade the shared test-DB schema and must
+# never run concurrently with other tests.
 test:
-    uv run pytest tests/ -v -n auto
+    uv run pytest tests/ -v -n auto -m "not schema_mutating"
+    uv run pytest tests/integration/ -v -m schema_mutating
 
 # Run unit tests only (fast, no Docker needed, parallel)
 test-unit:
@@ -316,7 +318,7 @@ test-match pattern:
 test-e2e:
     uv run pytest tests/e2e/ -v -m e2e --timeout=60
 
-# Run E2E tests against full stack — CI-faithful (starts API+frontend with ENVIRONMENT=test, narrare_test DB on :5433, --timeout=300; cleans up on exit). Requires: docker compose -f docker-compose.dev.yml up -d postgres_test redis. Frontend mode override: E2E_FRONTEND_MODE=build just e2e. See scripts/run_e2e.sh, .github/workflows/ci.yml (test-e2e job), tests/AGENTS.md.
+# Run E2E tests against full stack — CI-faithful (starts API+frontend with ENVIRONMENT=test, narrare_test DB on :5433, --timeout=300; cleans up on exit). Requires: docker compose -f docker-compose.dev.yml up -d postgres_test. Frontend mode override: E2E_FRONTEND_MODE=build just e2e. See scripts/run_e2e.sh, .github/workflows/ci.yml (test-e2e job), tests/AGENTS.md.
 e2e:
     bash scripts/run_e2e.sh
 

@@ -11,9 +11,17 @@ import sys
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+import pytest_asyncio
+import sqlalchemy
 from cryptography.fernet import Fernet, InvalidToken
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
+    from sqlalchemy.ext.asyncio import AsyncEngine
 
 # Ensure scripts/ is importable (project root on sys.path).
 _ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -24,6 +32,16 @@ from scripts.rotate_encryption_key import rotate_keys  # noqa: E402
 
 from narrare.auth.models import User  # noqa: E402
 from narrare.settings.models import UserProvider  # noqa: E402
+
+# Carries @pytest.mark.schema_mutating because the module-scoped
+# ``_clean_user_providers`` fixture issues a committed ``TRUNCATE … CASCADE``
+# on shared tables (``user_providers``, ``users``). Under xdist parallelism
+# that acquires ACCESS EXCLUSIVE locks that block concurrent tests touching
+# the same tables. The marker routes this module to the serial phase-2 run,
+# eliminating both lock contention and the data-wipe race. This is data
+# isolation, not schema mutation — but the ``schema_mutating`` marker is the
+# repo's serial-phase mechanism (see Q-018 for the per-test-DB root-cause fix).
+pytestmark = pytest.mark.schema_mutating
 
 # ── Helpers ──────────────────────────────────────────────────────
 
@@ -69,6 +87,30 @@ async def _create_provider(
     db_session.add(provider)  # type: ignore[attr-defined]
     await db_session.flush()  # type: ignore[attr-defined]
     return provider
+
+
+# ── Fixtures ────────────────────────────────────────────────────
+
+
+@pytest_asyncio.fixture(scope="module", autouse=True, loop_scope="session")
+async def _clean_user_providers(test_engine: AsyncEngine) -> AsyncGenerator[None]:  # pyright: ignore[reportUnusedFunction] — autouse fixture, invoked via decorator reflection.
+    """Remove pre-existing ``user_providers``/``users`` rows before this module.
+
+    ``rotate_keys`` iterates over *every* ``user_providers`` row (by design —
+    production rotates the whole table).  Leftover rows committed by earlier
+    sessions (dev seeding, manual script runs) are invisible to the per-test
+    rollback isolation of ``db_session``, so absolute count assertions
+    (``total_rows == 2`` etc.) and decryption with a freshly generated test
+    key would fail with ``InvalidToken``.  Truncating once per module makes
+    these tests self-contained; the per-test rollback still isolates the
+    rows each test creates from its neighbours.
+
+    This is DML cleanup on the test database only — no schema change, so
+    RULE-14 (schema exclusively via Alembic migrations) stays intact.
+    """
+    async with test_engine.begin() as conn:
+        await conn.execute(sqlalchemy.text("TRUNCATE user_providers, users CASCADE"))
+    yield
 
 
 # ── Tests ────────────────────────────────────────────────────────

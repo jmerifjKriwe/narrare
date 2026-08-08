@@ -1,6 +1,6 @@
-"""KB creation session storage — Redis-backed with TTL.
+"""KB creation session storage — in-memory (ADR-080) with TTL.
 
-Uses SessionCacheProtocol (injected Redis) following RULE-08.
+Uses SessionCacheProtocol (injected cache backend) following RULE-08.
 Sessions are ephemeral — 30min TTL, auto-deleted on abandonment.
 """
 
@@ -22,12 +22,12 @@ logger = structlog.get_logger(__name__)
 
 
 class KBCreationSessionStore:
-    """Redis-backed ephemeral storage for KB creation sessions.
+    """Ephemeral in-memory storage for KB creation sessions (ADR-080).
 
     Args:
-        cache: Injected cache backend (Redis in production).
+        cache: Injected cache backend (in-memory per ADR-080).
         ttl: Session TTL in seconds.
-        key_prefix: Redis key prefix for namespace isolation.
+        key_prefix: Cache key prefix for namespace isolation.
     """
 
     def __init__(

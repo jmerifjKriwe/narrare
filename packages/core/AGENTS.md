@@ -32,7 +32,7 @@ narrare_core/
 ├── context/     ← Context-Assembler (KB + Chapters → PromptContext)
 ├── embeddings/  ← pgvector-Abstraktionsschicht
 ├── memory/      ← mem0-Adapter
-├── cache/       ← Redis-Abstraktion
+├── cache/       ← In-Memory-Cache (Redis-Abstraktion per ADR-080 entfernt; Redis re-plugs am Protocol bei Multi-Worker)
 └── schemas/     ← Geteilte Pydantic-Schemas
 ```
 

@@ -1,4 +1,4 @@
-"""Beta reader analysis result cache — Redis-backed with 30min TTL.
+"""Beta reader analysis result cache — in-memory with 30min TTL.
 
 Caches BetaReaderResponse per novel+chapters so that:
 - Repeated analyze() calls reuse cached results
@@ -6,7 +6,7 @@ Caches BetaReaderResponse per novel+chapters so that:
 - Cache key includes chapter IDs for natural invalidation
 
 Usage:
-    cache = BetaReaderCache(RedisSessionCache(settings.redis_url))
+    cache = BetaReaderCache(InMemorySessionCache())
     await cache.set(novel_id, chapter_ids, result.model_dump_json())
     data = await cache.get(novel_id, chapter_ids)  # str | None
     await cache.delete(novel_id, chapter_ids)
@@ -25,12 +25,12 @@ logger = structlog.get_logger(__name__)
 
 
 class BetaReaderCache:
-    """Redis-backed cache for beta reader analysis results.
+    """Cache for beta reader analysis results (in-memory backend per ADR-080).
 
     Args:
-        cache: Injected cache backend (Redis in production).
+        cache: Injected cache backend (in-memory per ADR-080).
         ttl: Cache TTL in seconds.
-        key_prefix: Redis key prefix for namespace isolation.
+        key_prefix: Cache key prefix for namespace isolation.
     """
 
     def __init__(

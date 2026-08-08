@@ -16,10 +16,9 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
     for system prompts, PromptRegistry for prompt resolution, and
     KBRepository + RelationshipRepository for data access.
-    Uses Redis-backed WorldbuildingCache for 10min TTL on analysis results.
+    Uses the in-memory WorldbuildingCache for 10min TTL on analysis results.
     Includes InvocationPipeline for invocation evidence (ADR-040).
     """
-    from narrare._app.config import get_settings
     from narrare._app.dependencies import (
         get_composer,
         get_invocation_pipeline,
@@ -34,7 +33,7 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
     from narrare.kb.worldbuilding_cache import WorldbuildingCache
     from narrare.kb.worldbuilding_service import WorldbuildingService
-    from narrare_core.cache.redis_client import RedisSessionCache
+    from narrare_core.cache import InMemorySessionCache
 
     registry = get_model_registry()
     composer = get_composer()
@@ -43,10 +42,9 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
     kb_repo = KBRepository(session)
     rel_repo = RelationshipRepository(session)
 
-    # Redis-backed worldbuilding cache with 10min TTL
-    settings = get_settings()
-    redis_cache = RedisSessionCache(settings.redis_url)
-    worldbuilding_cache = WorldbuildingCache(redis_cache)
+    # In-memory worldbuilding cache with 10min TTL (ADR-080)
+    cache = InMemorySessionCache()
+    worldbuilding_cache = WorldbuildingCache(cache)
 
     # Analyzer handles all LLM interaction + caching
     analyzer = WorldbuildingAnalyzer(

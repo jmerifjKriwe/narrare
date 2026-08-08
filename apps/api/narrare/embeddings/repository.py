@@ -72,7 +72,7 @@ class EmbeddingRepository(BaseRepository):
                      embedding, model, dimension, generated_at)
                 VALUES
                     (gen_random_uuid(), :source_type, :source_id, :content_hash,
-                     :embedding::vector, :model, :dimension, now())
+                     CAST(:embedding AS vector), :model, :dimension, now())
                 ON CONFLICT (source_type, source_id, model)
                     DO UPDATE SET
                         content_hash = EXCLUDED.content_hash,

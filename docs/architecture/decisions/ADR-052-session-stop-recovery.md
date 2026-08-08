@@ -396,6 +396,41 @@ enhancement may add a turn queue; out of scope here.)
 
 ---
 
+## Explicit end_session semantics
+
+The deletion point for a session is the explicit `end_session` message: the WS
+router calls `SessionManager.end_session()`, which deletes the cached entry
+(`cache.delete`). Transport disconnects never delete (Decision 6 — reattach
+survives until the cache TTL expires). ADR-080 wired `end_session` into the WS
+router as the explicit eviction point; the semantics below were sharpened by the
+PR #157 review follow-up.
+
+### Race with an in-flight stream
+
+Because the receive loop stays live while a turn streams (Decision 1), an
+`end_session` can arrive while the turn task is still running. When the
+stream's success tail then calls `add_message`, the session is already evicted
+and `_load_or_raise` raises `ValueError` ("Session ... not found or expired.").
+The race is **benign by design**:
+
+- The final `ValueError` is deliberately dropped: the assistant message is not
+  persisted — no transcript is written for a session after explicit end — and
+  the `text_done` frame is skipped. The race is logged at info as
+  `direction_stream_session_ended`.
+- The turn is **always unregistered**: the success tail runs `unregister` in a
+  `finally`, and a last-resort done-callback attached at the dispatch site
+  (`direction_stream_task_failed` at error) guarantees registry cleanup even if
+  an exception escapes the task body.
+
+### Non-decision (flagged, not resolved)
+
+Explicit `end_session` does **not** cancel in-flight generation. The stream is
+allowed to finish at bounded LLM cost; `stop_generation` remains the
+cancellation path. Cancelling on `end_session` is listed as a future
+consideration, not resolved here.
+
+---
+
 ## Rationale
 
 The common thread across all seven decisions is **separating three concerns

@@ -9,11 +9,17 @@ Covers:
 
 from __future__ import annotations
 
+import inspect
 from uuid import uuid4
 
+from sqlalchemy.dialects import postgresql
+
+from narrare.embeddings import repository as repository_module
+from narrare.embeddings import search_queries as search_queries_module
 from narrare.embeddings.search_queries import (
     build_batch_upsert_query,
     build_get_by_source_query,
+    build_search_query,
 )
 
 # ---------------------------------------------------------------------------
@@ -118,3 +124,70 @@ class TestBuildBatchUpsertQuery:
         assert "VALUES" in sql_str
         assert "ON CONFLICT" in sql_str
         assert "now()" in sql_str
+
+
+# ---------------------------------------------------------------------------
+# Regression: vector bind params must be CAST(), never ``:param::vector``
+# ---------------------------------------------------------------------------
+
+
+class TestVectorParamsAreBoundByDialect:
+    """Regression guard for the ``:param::vector`` asyncpg/SQLAlchemy bug.
+
+    SQLAlchemy's ``text()`` bind-param regex does NOT recognise ``:name`` when
+    it is immediately followed by ``:`` (the ``::TYPE`` cast), so
+    ``:v::vector`` is emitted as a literal and asyncpg raises
+    ``PostgresSyntaxError: syntax error at or near ":"``. The dialect-safe
+    form is ``CAST(:name AS vector)``.
+
+    This bug stayed latent because the only tests exercising ``upsert``/
+    ``search`` with real pgvector were hard-skipped (``skipif(True)`` in
+    ``test_embedding_repository_crud.py``); ADR-080's in-process embedding hook
+    surfaced it via the fire-and-forget task. These tests compile each vector
+    query with the asyncpg dialect and assert the vector param is recognised
+    (present in ``positiontup``) so the regression cannot silently return.
+    """
+
+    @staticmethod
+    def _bound_keys(sql_text: object) -> set[str]:
+        compiled = (
+            sql_text.compile(dialect=postgresql.asyncpg.dialect())  # pyright: ignore[reportAttributeAccessIssue]
+        )
+        return set(compiled.positiontup)  # pyright: ignore[reportAttributeAccessIssue]
+
+    def test_search_query_binds_query_vec(self) -> None:
+        """``query_vec`` is a real bind param, not an inline ``::vector`` cast."""
+        sql, _params = build_search_query("[0.1]", source_type="kb_entry", threshold=0.5, limit=5)
+        assert "query_vec" in self._bound_keys(sql)
+        rendered = str(sql.compile(dialect=postgresql.asyncpg.dialect()))
+        # asyncpg renders the bind as ``$N``; CAST survives, ``::vector`` must not.
+        assert "CAST(" in rendered
+        assert "AS vector)" in rendered
+        assert "::vector" not in rendered
+
+    def test_batch_upsert_binds_each_vec(self) -> None:
+        """Every batch row's ``pN_vec`` is a real bind param."""
+        items = [
+            ("kb_entry", uuid4(), "h1", [0.1, 0.2], "m1", 2),
+            ("chapter", uuid4(), "h2", [0.3, 0.4, 0.5], "m2", 3),
+        ]
+        sql, _params = build_batch_upsert_query(items)
+        bound = self._bound_keys(sql)
+        assert {"p0_vec", "p1_vec"} <= bound
+        rendered = str(sql.compile(dialect=postgresql.asyncpg.dialect()))
+        assert rendered.count("CAST(") == 2
+        assert "::vector" not in rendered
+
+    def test_no_inline_vector_cast_in_embeddings_module(self) -> None:
+        """Source-level guard: no ``:param::vector`` inline cast anywhere.
+
+        Covers ``repository.upsert``'s inline SQL (not built by a
+        ``search_queries`` function) so the invariant holds for all four
+        vector-typed sites.
+        """
+        for mod in (repository_module, search_queries_module):
+            source = inspect.getsource(mod)
+            assert "::vector" not in source, (
+                f"{mod.__name__} reintroduced an inline ``::vector`` cast — "
+                "use ``CAST(:param AS vector)`` instead (see this test class)."
+            )

@@ -5,20 +5,21 @@ status: stable
 area: infra
 mvp: false
 
-ui_tooltip: "Monitor the asynchronous background processing infrastructure."
+ui_tooltip: "Embeddings and summaries generate behind the scenes while you write."
 ui_help_short: |
-  Monitor the background processing infrastructure (embedding generation and knowledge-graph summary tasks).
-  These tasks run asynchronously so you can continue writing without waiting.
+  Embedding and band-summary generation run as in-process async tasks so they
+  never slow down writing. There is no dedicated task panel.
 ui_help_long: |
-  Narrare processes several tasks in the background using TaskIQ workers, including embedding generation,
-  knowledge-graph (wiki) summary generation, and feedback/preference memory processing.
-  The Background Tasks panel shows the broker status and the list of registered tasks so you can confirm
-  the background infrastructure is running.
-ui_available_in: ["editor", "cli", "mcp"]
+  Narrare runs a few slow operations — embedding generation for knowledge-base
+  sources and band-summary generation for a completed series — as in-process
+  async tasks, so they never block the writing experience. Per ADR-080 these
+  tasks run inside the API process (asyncio), not on a separate worker; there
+  is no broker, queue, or monitoring panel.
+ui_available_in: []
 
-service: apps/api/narrare/tasks/
-contract: apps/api/narrare/tasks/broker.py
-router: apps/api/narrare/tasks/router.py
+service: ""
+contract: ""
+router: ""
 prompt: ""
 requires: []
 ---
@@ -27,117 +28,133 @@ requires: []
 
 ## What it does
 
-Runs expensive operations (embedding generation, knowledge-graph summary
-generation, feedback/preference memory processing) asynchronously so they do
-not block the writing experience, and exposes read-only monitoring of the
-background task infrastructure.
+Runs a small number of slow operations — embedding generation
+(`embed_source`) and band-summary generation (`generate_band_summary`) — as
+**in-process asynchronous tasks** so they do not block the writing experience.
 
 ## Why it exists
 
-Operations like embedding generation and wiki summary generation take time and
-should not interrupt the creative flow. Background Tasks lets Narrare offload
-these heavy operations to a worker process while giving the writer visibility
-that the infrastructure is up.
+Operations like embedding generation take time and should not interrupt the
+creative flow. Background Tasks offloads these operations onto the API
+process's async event loop (never the request handler), giving the writer
+uninterrupted typing while the work completes asynchronously.
+
+> **Architectural change (ADR-080, 2026-08-07).** This feature previously ran
+> on a TaskIQ broker + dedicated Redis-backed worker process with a read-only
+> monitoring API (`GET /tasks/status`) and a Settings panel. That substrate is
+> **⛔ superseded by ADR-080** for single-user, self-hosted deployment: the
+> broker, worker, monitoring endpoint, frontend panel, and the
+> `taskiq`/`redis` dependencies were removed. The two active tasks now run
+> in-process via `asyncio.create_task`. See
+> [ADR-080](../../architecture/decisions/ADR-080-remove-redis-taskiq-in-process-execution.md)
+> (supersedes ADR-007 / ADR-012; amends ADR-036).
 
 ## How it works (User perspective)
 
-1. The writer performs an action (e.g., saves a knowledge-base entry).
-2. Narrare offloads processing to a background worker.
-3. The writer opens the **Background Tasks** panel (Settings) to see the broker
-   status (running / stopped) and the list of registered background tasks,
-   confirming the infrastructure is operating.
-
-> The panel is currently **read-only monitoring**. Per-task queue depth,
-   coverage statistics, and manual retry are not exposed — TaskIQ's
-   `ListQueueBroker` provides no queue-depth API. See *Roadmap* below.
+There is **no dedicated user-facing UI** for background tasks — the Settings
+panel was removed in ADR-080. The writer simply experiences responsive
+editing: when they save a knowledge-base entry, the embedding is generated in
+the background; when a series flips to `completed`, a band summary is
+generated. If the API process restarts while a task is in flight, idempotent
+workloads regenerate on the next triggering save, and band summaries can be
+re-triggered manually (see *Constraints & Edge Cases* and the Durability
+Trade-off in ADR-080).
 
 ## How it works (Technical)
 
-**Broker:** `apps/api/narrare/tasks/broker.py`
-**Task registry:** `apps/api/narrare/tasks/__init__.py`
-**Monitoring API:** `apps/api/narrare/tasks/router.py` → `GET /tasks/status`
+**Dispatch pattern:** `asyncio.create_task` inside the API process (ADR-080).
+No broker, no worker process, no queue.
+**Package home:** none — the shared `apps/api/narrare/tasks/` package was
+deleted in the ADR-080 cleanup (commit `e45905fb`, 2026-08-08): nothing
+imported it, so no stub is retained. The two in-process dispatch wrappers live
+in their feature packages — `apps/api/narrare/embeddings/tasks.py`
+(`embed_source`) and `apps/api/narrare/series/tasks.py` (band summary); see
+the table below for dispatch sites and triggers.
 **Streaming:** no
 
-Narrare uses **TaskIQ** (ADR-007 / Q-004) — not Celery — as its background task
-framework. The shared broker is a `ListQueueBroker` over Redis with a matching
-`RedisAsyncResultBackend`; both transports use the application `REDIS_URL`.
+### Active in-process tasks
 
-### Implemented architecture
+| Task (wrapper) | Definition | Dispatch site | Trigger |
+|-----------------|-----------|---------------|---------|
+| `run_embed_source_inprocess` | `apps/api/narrare/embeddings/tasks.py` | `apps/api/narrare/kb/embedding_hooks.py` (`asyncio.create_task`) | KB source content changes |
+| `generate_band_summary_inprocess` | `apps/api/narrare/series/tasks.py` | `apps/api/narrare/series/tasks.py` (`enqueue_band_summary_generation` → `asyncio.create_task`) | A Series flips to `completed` (via the series auto-trigger) |
 
-- **Broker & result backend** — `ListQueueBroker(url=REDIS_URL)` combined with
-  `RedisAsyncResultBackend(redis_url=REDIS_URL)`. The broker is started by the
-  application lifespan (`apps/api/narrare/_app/lifespan.py`) in the API process and is
-  self-managed inside the dedicated worker process (`broker.is_worker_process`).
-- **7 registered tasks** (registered at import time via
-  `narrare.tasks.__init__`, which imports the embeddings and wiki task modules):
-  | Task name | Module | Purpose |
-  |-----------|--------|---------|
-  | `embed_source` | `apps/api/narrare/embeddings/tasks.py` | Generate / refresh an embedding (idempotent via content hash) |
-  | `wiki_generate_entity` | `apps/api/narrare/wiki/tasks.py` | Generate an entity wiki summary |
-  | `wiki_generate_chapter` | `apps/api/narrare/wiki/tasks.py` | Generate a chapter wiki summary |
-  | `wiki_mark_all_stale` | `apps/api/narrare/wiki/tasks.py` | Invalidate summaries after a prompt change |
-  | `wiki_refresh_summary` | `apps/api/narrare/wiki/tasks.py` | Force-refresh a single entity summary |
-  | `process_feedback_memory` | `apps/api/narrare/tasks/__init__.py` | Forward feedback to mem0 (stub) |
-  | `run_preference_analysis` | `apps/api/narrare/tasks/__init__.py` | Run preference analysis (stub) |
-- **Serialization boundary** — TaskIQ serializes arguments across processes, so
-  task wrappers take JSON-serializable args (UUIDs as strings) and build their
-  own database session / wiki-service factory inside the task body. Each task
-  has a matching standalone `run_*` function for direct in-process invocation.
-- **KB embedding hooks** — `apps/api/narrare/kb/embedding_hooks.py` enqueues `embed_source`
-  through the broker when KB content changes, instead of embedding inline.
-- **Event listener dispatch** — `apps/api/narrare/_app/event_listener.py` subscribes to Redis
-  Pub/Sub event channels and routes events to registered tasks via
-  `_EVENT_TASK_MAP` (`KB_ENTRY_UPDATED → embed_source`). The listener is
-  currently dormant infrastructure (not started by the lifespan); when wired,
-  the dispatcher must adapt each event payload to its target task's signature.
-- **Monitoring API** — `GET /tasks/status` returns the broker process role
-  (`is_worker_process` / `broker_started`), the registered task count, and the
-  sorted list of registered `task_name` labels.
+> Wiki summary generation (`apps/api/narrare/wiki/tasks.py`) is **not** a
+> background task in this sense — it is invoked **directly** (awaited) by
+> `apps/api/narrare/wiki/listeners.py`, not dispatched via
+> `asyncio.create_task`.
 
-### Worker process
+### Execution-boundary guarantees
 
-The taskiq worker is the process that actually executes queued tasks. In
-development it runs locally:
+- **Own DB session** — each in-process wrapper builds its own session via
+  `get_session_factory()`, never the request session.
+- **GC guard** — the caller holds a strong reference to each
+  `asyncio.create_task` result (a module-level container) so the runtime does
+  not garbage-collect in-flight coroutines.
+- **Retry** — the transport-independent retry schedule in the standalone
+  `run_embed_source` (`[30.0, 120.0, 300.0]s`, max 3) is retained as-is. It is
+  **not** reimplemented via FastAPI `BackgroundTasks`, which is appropriate
+  only for short work, not multi-minute retry loops.
+- **Content-hash / freshness** — embedding and band-summary checks make the
+  workloads idempotent, so a lost in-flight task is regenerated on the next
+  triggering save.
 
-```bash
-just dev-worker   # taskiq worker narrare.tasks.broker:broker
-```
+### ⛔ Removed in ADR-080 (historical)
 
-In the self-hosted release deployment (`docker-compose.release.yml`) a
-`worker` service reuses the `narrare` image with a taskiq entrypoint and the
-same database / Redis access as the application:
+These surfaces are **obsolete**; listed only to document what changed:
 
-```yaml
-worker:
-  image: ${NARRARE_IMAGE:-ghcr.io/jmerifjkriwe/narrare}:${NARRARE_VERSION:-latest}
-  entrypoint: ["/app/.venv/bin/taskiq", "worker", "narrare.tasks.broker:broker"]
-  env_file: [.env]
-  depends_on: [postgres, redis]
-```
+- ~~TaskIQ `ListQueueBroker` + `RedisAsyncResultBackend`~~ —
+  `apps/api/narrare/tasks/broker.py` **deleted**.
+- ~~Read-only monitoring API `GET /tasks/status`~~ —
+  `apps/api/narrare/tasks/router.py` **deleted**.
+- ~~Empty `apps/api/narrare/tasks/` package (retained `__init__.py` stub)~~ —
+  **deleted** in the ADR-080 CI cleanup (`e45905fb`, 2026-08-08): nothing
+  imported it, so the "import-path stability" retention was dropped.
+- ~~Dedicated worker process~~ — the `dev-worker` recipe and the Docker
+  `worker` service **removed**.
+- ~~Event-listener task map / Redis Pub/Sub dispatch~~ — ADR-012 superseded;
+  the dormant `EventListener` and the publish-to-nobody `_publish_content_event`
+  caller were removed.
+- ~~Frontend `BackgroundTasksPanel`~~ (`BrokerStatusCard`,
+  `RegisteredTasksCard`, i18n strings) **deleted**.
 
 ## Constraints & Edge Cases
 
-- Tasks retry with exponential backoff (30s / 120s / 300s, max 3 retries).
-  Content-hash / freshness checks make embedding and wiki tasks idempotent.
-- Large imports may heavily load the worker.
-- No queue-depth or coverage metrics are exposed (ListQueueBroker limitation).
+- **In-flight tasks are lost on API restart.** `embed_source` is idempotent
+  (regenerated on the next dirty save); `generate_band_summary` is best-effort
+  and rare (manual re-trigger available). Both trade-offs are explicitly
+  accepted in ADR-080 (Durability Trade-off).
+- **Shared event loop.** In-process tasks share the API request event loop.
+  For a single-user workload the contention is negligible but not zero — a
+  long embedding batch or a 300 s retry loop runs on the same loop as HTTP
+  requests.
+- **No queue-depth / coverage metrics.** There is no broker to query, so no
+  per-task queue depth, coverage statistics, or manual retry are exposed.
 
 ## Related Features
 
-- [INFRA-004](../infra/INFRA-004-embedding-store.md) — Embeddings generated via background tasks
-- [KB-008](../kb/KB-008-knowledge-graph.md) — Knowledge graph summary generation handled in the background
+- [INFRA-004](../infra/INFRA-004-embedding-store.md) — Embeddings generated via the `embed_source` background task
+- [KB-008](../kb/KB-008-knowledge-graph.md) — Knowledge-graph summary generation (wiki summaries are invoked directly, not as background tasks)
 
 ## Roadmap
 
-- Wire the event listener into the application lifespan and add per-event
-  payload adaptation so `KB_ENTRY_UPDATED` actually enqueues `embed_source`.
-- Implement the `process_feedback_memory` / `run_preference_analysis` bodies
-  (currently stubs).
-- Queue-depth / coverage metrics and manual retry UI (requires a richer broker).
+- If Narrare moves to **multi-user / multi-worker** deployment → re-introduce a
+  broker + worker via a **new ADR that supersedes ADR-080**. The dispatch site
+  (`asyncio.create_task(...)` ↔ `task.kiq(...)`) is the single swap seam; the
+  TTL-capable `InMemorySessionCache` Protocol in `core/cache/` is the cache
+  re-plug point.
+- Per-task queue depth / coverage metrics and a manual-retry UI would require a
+  richer (re-introduced) broker — out of scope for single-user deployment.
 
 ## Status & History
 
-- `2026-05-19` — Added to registry
+- `2026-05-19` — Added to registry.
 - `2026-06-25` — Implemented: TaskIQ broker (Redis transport + result backend),
   7 registered tasks, KB embedding-hook enqueueing, event-listener task map,
-  read-only monitoring API + Settings panel, release Docker worker. Status → stable.
+  read-only monitoring API + Settings panel, release Docker worker. Status →
+  `stable`.
+- `2026-08-07` — **ADR-080 superseded the broker-based implementation.**
+  Broker, worker, `GET /tasks/status`, frontend panel, event bus, and the
+  `taskiq`/`redis` dependencies removed. The two active tasks (`embed_source`,
+  `generate_band_summary`) now run in-process via `asyncio.create_task`.
+  Implementation substrate changed; feature remains `stable`.

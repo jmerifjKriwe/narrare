@@ -1,9 +1,8 @@
-"""Unit tests for ChapterService — update_content, get, list, event publishing."""
+"""Unit tests for ChapterService — update_content, get, list."""
 
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -149,61 +148,3 @@ class TestChapterServiceList:
 
         result = await service.list_chapters(novel_id, user_id)
         assert len(result) == 2
-
-
-# ---------------------------------------------------------------------------
-# _publish_content_event (called from update_content)
-# ---------------------------------------------------------------------------
-
-
-class TestChapterServiceUpdateContentEventPublishing:
-    """Test the _publish_content_event edge cases within update_content."""
-
-    async def test_update_content_publishes_event_when_bus_available(
-        self,
-        service: ChapterService,
-        fake_repo: FakeChapterRepository,
-        fake_novel_service: FakeNovelService,
-    ) -> None:
-        """When event bus is available, a CHAPTER_CONTENT_UPDATED event is published."""
-        novel_id, user_id = _seed_ownership(fake_novel_service)
-        chapter = make_chapter(novel_id=novel_id)
-        fake_repo.seed(chapter)
-
-        mock_bus = AsyncMock()
-        mock_bus.publish = AsyncMock()
-
-        with patch("narrare._app.events.get_event_bus", return_value=mock_bus):
-            result = await service.update_content(
-                chapter.id,
-                novel_id,
-                user_id,
-                UpdateChapterContentRequest(content="updated content"),
-            )
-
-        assert result.content == "updated content"
-        mock_bus.publish.assert_awaited_once()
-
-    async def test_update_content_succeeds_when_event_publish_fails(
-        self,
-        service: ChapterService,
-        fake_repo: FakeChapterRepository,
-        fake_novel_service: FakeNovelService,
-    ) -> None:
-        """When event bus publish raises, update_content still succeeds (non-blocking)."""
-        novel_id, user_id = _seed_ownership(fake_novel_service)
-        chapter = make_chapter(novel_id=novel_id)
-        fake_repo.seed(chapter)
-
-        mock_bus = AsyncMock()
-        mock_bus.publish = AsyncMock(side_effect=Exception("Bus unavailable"))
-
-        with patch("narrare._app.events.get_event_bus", return_value=mock_bus):
-            result = await service.update_content(
-                chapter.id,
-                novel_id,
-                user_id,
-                UpdateChapterContentRequest(content="updated content"),
-            )
-
-        assert result.content == "updated content"

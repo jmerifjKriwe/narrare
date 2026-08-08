@@ -76,7 +76,7 @@ class KBConsistencyService:
         worldbuilding_analyzer: Cross-entity consistency via Phase 2.
         kb_repo: KB entry repository for building Phase 3 deps.
         rel_repo: Relationship repository for candidate pair generation.
-        cache: Redis-backed cache for consistency results (10min TTL).
+        cache: In-memory cache for consistency results (10min TTL, ADR-080).
         invocation_pipeline: Optional pipeline for invocation evidence.
         feedback_memory: Optional mem0-backed dismissal collector. When
             present and the caller authenticates a user, issues that match a

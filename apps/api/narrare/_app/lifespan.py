@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import structlog
 from alembic.config import Config
@@ -37,7 +37,7 @@ def bind_writing_session_singletons(app: FastAPI) -> None:
         from narrare_core.writing.session_manager import SessionManager
         from narrare_core.writing.session_turn_state import SessionTurnStateStore
 
-        session_cache = InMemorySessionCache()
+        session_cache = InMemorySessionCache(max_entries=10_000)
         session_manager = SessionManager(cache=session_cache)
         turn_state = SessionTurnStateStore()
         active_turn_registry = ActiveTurnRegistry()
@@ -165,8 +165,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """
     FastAPI lifespan context manager.
 
-    Startup: configure logging, TaskIQ broker, event bus.
-    Shutdown: event bus, TaskIQ broker.
+    Startup: configure logging, run migrations, register wiki listeners,
+    bind writing-session singletons.
+    Shutdown: cancel periodic cleanup, dispose database engine.
     """
     # --- Startup ---
     _configure_logging()
@@ -200,31 +201,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             logger.exception("db_migration_failed")
             raise
 
-    # TaskIQ broker startup (skip in worker process — it handles its own)
-    try:
-        # Dynamic import — `narrare.tasks.broker` is a Phase 4+ module
-        # that may not exist yet. taskiq has no PEP 561 type stubs.
-        _broker_mod = __import__("narrare.tasks.broker", fromlist=["broker"])
-        broker: Any = _broker_mod.broker
-        if not broker.is_worker_process:
-            await broker.startup()
-            logger.info("taskiq_broker_started")
-    except ImportError:
-        pass  # Tasks not yet configured in Phase 2
-
-    # Event bus startup (graceful — won't block if Redis is unavailable).
-    # Skip in test environment: the CI test infrastructure does not manage
-    # a Redis connection, and event-bus startup/shutdown creates asyncio
-    # tasks that reference a destroyed event loop during TestClient teardown.
-    if not settings.is_test:
-        try:
-            from narrare._app.events import init_event_bus
-
-            await init_event_bus(settings.redis_url)
-            logger.info("event_bus_initialized")
-        except Exception:
-            logger.warning("event_bus_init_failed", exc_info=True)
-
     # Wiki event listeners — register typed handlers on a global EventPublisher
     try:
         from narrare.events.publisher import EventPublisher
@@ -239,7 +215,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         publisher.subscribe("kb.entry.updated", listener.on_kb_entry_updated)
         publisher.subscribe("chapter.finalized", listener.on_chapter_finalized)
         publisher.subscribe("wiki.prompt.changed", listener.on_wiki_prompt_changed)
-        publisher.subscribe("wiki.sync.requested", listener.on_wiki_sync_requested)
 
         # Store on app.state for access from other modules if needed
         app.state.wiki_event_publisher = publisher
@@ -279,27 +254,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             await cleanup_task
         logger.info("periodic_cleanup_cancelled")
 
-    # Event bus shutdown — skip in test environment (see startup comment).
+    # Drain in-flight background tasks (ADR-080 in-process dispatch).  They
+    # must be cancelled and awaited BEFORE the database engine is disposed
+    # so no background coroutine touches a disposed pool.  Cancellation is
+    # intentional — logged at info by the drain, never as an error.
+    # Skip in test environment: unit tests manage their own tasks and there
+    # is no engine to dispose (mirrors the database-dispose guard below).
     if not settings.is_test:
         try:
-            from narrare._app.events import shutdown_event_bus
+            from narrare._app.inflight import drain_inflight_tasks
 
-            await shutdown_event_bus()
+            await drain_inflight_tasks()
         except Exception:
-            logger.warning("event_bus_shutdown_failed", exc_info=True)
-
-    # TaskIQ broker shutdown — skip in test environment (same rationale as
-    # event bus and database: the test infrastructure handles cleanup, and
-    # broker.shutdown() triggers redis.asyncio connection-pool disconnect
-    # which raises "Future attached to a different loop" under pytest-asyncio).
-    if not settings.is_test:
-        try:
-            _broker_mod = __import__("narrare.tasks.broker", fromlist=["broker"])
-            broker: Any = _broker_mod.broker
-            if not broker.is_worker_process:
-                await broker.shutdown()
-        except ImportError:
-            pass
+            logger.warning("inflight_drain_failed", exc_info=True)
 
     # Database engine shutdown — close all pooled connections.
     # Skip in test environment: the test infrastructure handles cleanup

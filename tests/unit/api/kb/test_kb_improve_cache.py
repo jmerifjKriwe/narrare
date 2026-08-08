@@ -1,7 +1,7 @@
-"""Unit tests for KBImproveCache — Redis-backed improve result cache.
+"""Unit tests for KBImproveCache — improve result cache backend.
 
 Tests key formatting, get/set/delete delegation, and graceful
-degradation when Redis is unavailable.
+degradation when the cache backend is unavailable.
 """
 
 from __future__ import annotations
@@ -77,10 +77,10 @@ class TestKBImproveCacheGet:
         assert result is None
         backend.get.assert_awaited_once_with("kb:improve:entry-1")
 
-    async def test_unavailable_redis_returns_none(self) -> None:
+    async def test_unavailable_cache_returns_none(self) -> None:
         """Backend raises an exception → cache returns None (graceful degradation)."""
         cache, backend = _make_cache()
-        backend.get = AsyncMock(side_effect=ConnectionError("Redis down"))
+        backend.get = AsyncMock(side_effect=ConnectionError("cache backend down"))
 
         result = await cache.get("entry-1")
 

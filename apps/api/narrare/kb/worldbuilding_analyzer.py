@@ -68,7 +68,7 @@ class WorldbuildingAnalyzer:
     Args:
         kb_repo: KB entry repository.
         rel_repo: Relationship repository.
-        cache: Redis-backed worldbuilding cache.
+        cache: In-memory worldbuilding cache (ADR-080).
         registry: Model registry for LLM access.
         config: Resolved model configuration.
         composer: Prompt composer for building prompts (both phases).

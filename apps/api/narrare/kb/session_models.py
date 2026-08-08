@@ -1,7 +1,7 @@
 """KB creation session models.
 
 Pydantic models for the assisted creation session lifecycle.
-Sessions are ephemeral (Redis-backed with 30min TTL), not persisted in PostgreSQL.
+Sessions are ephemeral (in-memory per ADR-080 with 30min TTL), not persisted in PostgreSQL.
 """
 
 from __future__ import annotations

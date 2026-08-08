@@ -2,6 +2,8 @@
 
 Tests on_entry_created and on_entry_updated behaviour: task dispatch,
 content-changed gating, hash comparison, and silent exception handling.
+The ADR-080 ``_dispatch_task`` internals live in
+``test_embedding_hooks_dispatch.py`` (RULE-04 split).
 """
 
 from __future__ import annotations
@@ -234,47 +236,38 @@ class TestOnEntryUpdated:
 
 
 # ---------------------------------------------------------------------------
-# _dispatch_task — enqueues embed_source via the broker
+# No wiki-sync coupling — dead path removed (PR #157 finding #4)
 # ---------------------------------------------------------------------------
 
 
-class TestDispatchTask:
-    """``_dispatch_task`` enqueues the embed_source task on the broker."""
+class TestNoWikiSyncCoupling:
+    """The hook has no ``wiki.sync.requested`` event-bus path.
+
+    Regression guard against silent resurrection of the dead wiki-sync
+    publish path: the constructor must not accept an ``event_bus`` and
+    instances must not carry a ``_event_bus`` attribute. Embedding dispatch
+    is the hook's only side effect.
+    """
+
+    def test_constructor_has_no_event_bus_parameter(self) -> None:
+        """EmbeddingHookManager.__init__ no longer accepts ``event_bus``."""
+        import inspect
+
+        params = inspect.signature(EmbeddingHookManager.__init__).parameters
+        assert "event_bus" not in params
+
+    def test_instance_has_no_event_bus_attribute(self) -> None:
+        """Instances do not carry a ``_event_bus`` attribute."""
+        manager = EmbeddingHookManager()
+        assert not hasattr(manager, "_event_bus")
 
     @pytest.mark.asyncio
-    async def test_dispatch_task_enqueues(self) -> None:
-        """_dispatch_task looks up and enqueues embed_source with content."""
-        from narrare.tasks.broker import broker
-
-        source_id = uuid4()
-        real_task = broker.find_task("embed_source")
-        fake_task = MagicMock(spec=type(real_task))
-        fake_task.kiq = AsyncMock()
-        fake_broker = MagicMock(spec=type(broker))
-        fake_broker.find_task.return_value = fake_task
-
+    async def test_on_entry_created_dispatches_without_event_bus(self) -> None:
+        """on_entry_created dispatches embeddings with zero bus coupling."""
         manager = EmbeddingHookManager()
-        with patch("narrare.kb.embedding_hooks.broker", fake_broker):
-            await manager._dispatch_task(source_id, "content", trigger="create")
+        entry = FakeKBEntry(body="content")
+        manager._dispatch_task = AsyncMock()
 
-        fake_broker.find_task.assert_called_once_with("embed_source")
-        fake_task.kiq.assert_awaited_once_with(
-            source_type="kb_entry",
-            source_id=str(source_id),
-            content="content",
-        )
+        await manager.on_entry_created(cast("KBEntry", entry))
 
-    @pytest.mark.asyncio
-    async def test_dispatch_task_missing_task_does_not_raise(self) -> None:
-        """_dispatch_task logs and skips when embed_source is not registered."""
-        from narrare.tasks.broker import broker
-
-        fake_broker = MagicMock(spec=type(broker))
-        fake_broker.find_task.return_value = None
-
-        manager = EmbeddingHookManager()
-        with patch("narrare.kb.embedding_hooks.broker", fake_broker):
-            # Should not raise.
-            await manager._dispatch_task(uuid4(), "content", trigger="create")
-
-        fake_broker.find_task.assert_called_once_with("embed_source")
+        manager._dispatch_task.assert_awaited_once()

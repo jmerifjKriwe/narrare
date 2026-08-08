@@ -11,7 +11,7 @@ all repositories share ``session`` so generation + upsert commit together.
 ``verify_novel_in_owned_series`` (Task 4) enforces anti-enumeration at the
 router boundary: the caller must own the series AND the novel must be in it.
 ``build_band_summary_service`` (Task 5) is the shared builder used by both the
-FastAPI factory and the TaskIQ background task (no request context in the task).
+FastAPI factory and the in-process background task (no request context in the task).
 """
 
 from __future__ import annotations
@@ -51,9 +51,9 @@ def get_series_service(session: SessionDep) -> SeriesService:
     """Request-scoped SeriesService (CRUD + settings + novels-in-series).
 
     Wires the band-summary auto-trigger enqueuer (Spec 2 Task 5) so that
-    ``update_series`` can enqueue background generation when a series
-    transitions to ``completed``. The enqueuer is resolved lazily inside the
-    function body to avoid a module-level circular import
+    ``update_series`` can launch background generation in-process when a
+    series transitions to ``completed``. The enqueuer is resolved lazily
+    inside the function body to avoid a module-level circular import
     (``series.service`` ← ``series.tasks`` ← ``series.dependencies``).
     """
     from narrare.series.tasks import enqueue_band_summary_generation
@@ -95,7 +95,7 @@ async def verify_novel_in_owned_series(
 
     Used as a FastAPI dependency by every band-summary route so the
     ``BandSummaryService`` (keyed by ``novel_id`` only, usable from non-request
-    contexts like the TaskIQ auto-trigger) never needs to repeat the check.
+    contexts like the in-process auto-trigger) never needs to repeat the check.
     """
     series = await SeriesRepository(session).get(series_id)
     if series is None or series.user_id != UUID(user_id):
@@ -114,10 +114,10 @@ async def build_band_summary_service(
     """Build a ``BandSummaryService`` with resolved model routing.
 
     Shared by the FastAPI factory (``get_band_summary_service``) and the
-    TaskIQ background task (``generate_band_summary_task``). Resolves the
-    SUMMARIZE model config per user/novel, then wires the three repositories
-    (band-summary, novel, chapter) from the same session so generation +
-    upsert commit together.
+    in-process background task (``generate_band_summary_inprocess``). Resolves
+    the SUMMARIZE model config per user/novel, then wires the three
+    repositories (band-summary, novel, chapter) from the same session so
+    generation + upsert commit together.
     """
     from dataclasses import replace
 
@@ -167,7 +167,7 @@ async def get_band_summary_service(
 ) -> BandSummaryService:
     """Request-scoped BandSummaryService (generate / get / override).
 
-    Delegates to ``build_band_summary_service`` (shared with the TaskIQ
+    Delegates to ``build_band_summary_service`` (shared with the in-process
     background task). The router supplies ``novel_id`` from the path; FastAPI
     resolves path params into sub-dependency parameters by name.
     """

@@ -1,8 +1,9 @@
 """Event bus protocol — defines the interface.
 
-Actual implementations live in the API layer (Redis Pub/Sub).
 This module defines what an event bus looks like so core stays
 infrastructure-free (RULE-07: core defines protocol, API implements).
+Events are purely in-process; the API layer's Redis Pub/Sub adapter was
+removed per ADR-080.
 """
 
 from __future__ import annotations
@@ -18,7 +19,8 @@ class EventBus(Protocol):
     """Protocol for event bus implementations.
 
     Implementations must provide ``publish`` and ``subscribe``.
-    The API layer provides a Redis-backed version; tests use NullEventBus.
+    Core ships ``NullEventBus``; the API layer's Redis-backed version was
+    removed per ADR-080.
     """
 
     async def publish(self, event: DomainEvent) -> None:

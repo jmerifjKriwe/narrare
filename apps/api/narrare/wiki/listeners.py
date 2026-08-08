@@ -1,8 +1,8 @@
 """Event listeners connecting domain events to wiki summary regeneration.
 
-Handles KB entity changes, chapter finalization, prompt updates, and
-wiki sync requests.  Debounces rapid-fire events and gracefully logs
-all failures without propagating exceptions (RULE-11).
+Handles KB entity changes, chapter finalization, and prompt updates.
+Debounces rapid-fire events and gracefully logs all failures without
+propagating exceptions (RULE-11).
 """
 
 from __future__ import annotations
@@ -128,15 +128,3 @@ class WikiEventListener:
             logger.info("wiki_listener_prompt_changed", novel_id=str(novel_id), stale_count=count)
         except Exception:
             logger.exception("wiki_listener_prompt_change_failed", novel_id=str(novel_id))
-
-    async def on_wiki_sync_requested(self, event: DomainEvent) -> None:
-        """Handle ``wiki.sync.requested`` — generate entity wiki summary."""
-        entity_id = _uuid_from_payload(event.payload, "entity_id")
-        novel_id = _uuid_from_payload(event.payload, "novel_id")
-        if entity_id is None or novel_id is None:
-            logger.warning("wiki_listener_invalid_payload", event_type=str(event.event_type))
-            return
-        try:
-            await run_wiki_generate_entity(entity_id, novel_id, wiki_service_factory=self._factory)
-        except Exception:
-            logger.exception("wiki_listener_sync_failed", entity_id=str(entity_id))
