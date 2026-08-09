@@ -294,12 +294,20 @@ jobs:
           path: |
             .pyright/
             **/.pyc
-          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'tests/pyrightConfig.json') }}
+          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'tests/pyrightconfig.json') }}
           restore-keys: |
             pyright-${{ runner.os }}-
 
       - name: Pyright
         run: uv run pyright
+
+      # Mirror the local `just typecheck-tests` gate (and pre-commit
+      # `pyright-tests` hook): the main pyright config (pyproject.toml)
+      # excludes tests/ for performance, so test files are type-checked
+      # separately by tests/pyrightconfig.json (basic mode). Q-015-Q-019
+      # gate-coverage follow-up.
+      - name: Pyright (Tests)
+        run: uv run pyright --project tests/pyrightconfig.json
 
   # -------------------------------------------------------------------------
   # Security (< 60s)
