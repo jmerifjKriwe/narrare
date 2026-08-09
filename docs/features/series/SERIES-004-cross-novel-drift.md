@@ -1,7 +1,7 @@
 ---
 id: SERIES-004
 title: "Series Cross-Novel Drift"
-status: in-progress
+status: stable
 area: series
 mvp: false  # post-MVP (Phase 6); Spec 4 of the Series program
 
@@ -44,8 +44,8 @@ ui_help_long: |
     retrieval (persistence is a follow-up)
 
   **UI Location:** `/series/[id]` workspace → **Bände-Tab** → per-band
-  "Check Series Consistency" affordance + results panel (conflicts + drift
-  warnings). *(Frontend — Task 4 — pending.)*
+  "Check Series Consistency" affordance + results panel
+  (`SeriesDriftPanel` → canon conflicts + voice-drift summary).
 
 ui_available_in: [series-workspace]
 
@@ -103,8 +103,6 @@ This is Spec 4 of 5 in the Series program. Specs 1–3 are implemented; Spec 5
 6. The check is **read-only** — it reports; you decide what to fix. Canon
    contradictions are factual errors; voice drift may be intentional.
 
-*(Frontend — Task 4 — pending. The backend endpoints are live.)*
-
 ## How it works (Technical)
 
 - **Canon-Contradiction — new `SeriesConsistencyAgent`.** One LLM call per
@@ -151,16 +149,19 @@ This is Spec 4 of 5 in the Series program. Specs 1–3 are implemented; Spec 5
   `POST /api/v1/series/{id}/voice-drift/check`.
 - Ownership verified internally (anti-enumeration; mirrors `SeriesService`).
 
-### Frontend (Task 4 — pending)
+### Frontend (implemented)
 
-- Bände-Tab "Check Series Consistency" affordance per band + results panel
-  (conflicts + drift warnings) + TanStack hooks + TS types (RULE-17 parity).
-- *Not yet implemented.*
+- Bände-Tab "Check Series Consistency" affordance per band (band selector +
+  two checks: canon consistency + voice drift) + results panel
+  (`SeriesDriftPanel` → `SeriesConflictList` + `SeriesDriftSummary`),
+  integrated in the Bände-Tab (no separate tab).
+- TanStack hooks (`useSeriesDrift`) + TS types (RULE-17 parity).
 
-### i18n (Task 5 — pending)
+### i18n (implemented)
 
-- `series.consistency.*` + `series.voiceDrift.*` namespaces (en/de/fr parity).
-- *Not yet implemented.*
+- `series.drift.*` namespace in `studio.json` (en/de/fr parity) — consolidates
+  the canon-consistency and voice-drift copy under one namespace (not the
+  originally-predicted `consistency` / `voiceDrift` split).
 
 ## Constraints & Edge Cases
 
@@ -199,9 +200,14 @@ This is Spec 4 of 5 in the Series program. Specs 1–3 are implemented; Spec 5
 ## Status & History
 
 - **2026-08-06:** Feature spec created as part of Series Cross-Novel Drift
-  (Spec 4 of the Series program). Core (Task 1: `SeriesConsistencyAgent`) +
-  Backend (Tasks 2–3: `SeriesConsistencyService` + `SeriesVoiceDriftService` +
-  APIs) implemented against ADR-079 (✅ Accepted, implementation in progress).
-  Frontend (Task 4) + i18n (Task 5) pending. Closes ADR-078's Spec-4
-  Review-Trigger item (series voice read as one signal via the repository
-  contract). Coordinator commit pending.
+  (Spec 4 of the Series program). Implemented against ADR-079 (✅ Implemented)
+  — all five slices shipped (Core Task 1: `SeriesConsistencyAgent`; Backend
+  Tasks 2–3: `SeriesConsistencyService` + `SeriesVoiceDriftService` + APIs;
+  Frontend Task 4: `SeriesDriftPanel` → `SeriesConflictList` +
+  `SeriesDriftSummary`; i18n Task 5: the `series.drift.*` namespace, en/de/fr).
+  Frontend Task 4 + i18n Task 5 landed in commit `ede62081`; merged to `main`
+  via PR #145 (squash `c007b559`). **Stateless v1** — Slice 6 (persistence:
+  results repository + `GET …/consistency/{novel_id}` retrieval) is deferred
+  out-of-v1. Closes ADR-078's Spec-4 Review-Trigger item (series voice read as
+  one signal via the repository contract). Status → `stable`. The Series
+  program Spec 1–4 is complete; Spec 5 (Export) is downstream.
