@@ -7,6 +7,7 @@ Uses the shared fakes in ``history_service_fakes.py``.
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -20,7 +21,11 @@ from tests.unit.api.prompts.history_service_fakes import (
     hash_text,
 )
 
+if TYPE_CHECKING:
+    from narrare_core.events.types import DomainEvent
+
 PROMPT_ID = "writing/en/new_chapter"
+WIKI_PROMPT_ID = "wiki/en/entity_summary"
 
 
 @pytest.fixture
@@ -40,6 +45,32 @@ def service(fake_core: FakeCore, fake_repo: FakeRepo) -> PromptHistoryApiService
         repo=fake_repo,
         retention_limit=100,
     )
+
+
+def _service_with_publisher(
+    fake_core: FakeCore, fake_repo: FakeRepo
+) -> tuple[PromptHistoryApiService, list[object]]:
+    """Build a service wired to an ``EventPublisher`` recording ``DomainEvent``s.
+
+    Mirrors the helper in ``test_prompt_history_service.py`` (Q-016) so the
+    restore path is exercised against the same in-process publish contract.
+    """
+    from narrare.events.publisher import EventPublisher
+
+    publisher = EventPublisher()
+    received: list[object] = []
+
+    async def _record(event: DomainEvent) -> None:
+        received.append(event)
+
+    publisher.subscribe("wiki.prompt.changed", _record)
+    service = PromptHistoryApiService(
+        core=fake_core,
+        repo=fake_repo,
+        retention_limit=100,
+        event_publisher=publisher,
+    )
+    return service, received
 
 
 class TestCompareRevisions:
@@ -123,6 +154,106 @@ class TestRestoreRevision:
     async def test_restore_unknown_revision_raises(self, service: PromptHistoryApiService) -> None:
         with pytest.raises(NotFoundError):
             await service.restore_revision(PROMPT_ID, uuid.uuid4(), actor_id=uuid.uuid4())
+
+
+# ---------------------------------------------------------------------------
+# Q-016 follow-up — restore_revision must publish wiki.prompt.changed
+# (the save path publishes via save_override_recorded; restore used to skip it).
+# ---------------------------------------------------------------------------
+
+
+class TestRestoreRevisionWikiPublishing:
+    """Restoring a wiki-category prompt revision publishes ``wiki.prompt.changed``.
+
+    Regression: ``restore_revision`` writes the active override file but
+    previously did NOT fire ``wiki.prompt.changed`` (only ``save_override_recorded``
+    did), so restoring a wiki-prompt revision left wiki summaries stale-but-fresh.
+    """
+
+    async def test_restore_wiki_revision_publishes_wiki_prompt_changed(
+        self, fake_core: FakeCore, fake_repo: FakeRepo
+    ) -> None:
+        """Restore of a wiki revision (changed content) fires the event once."""
+        from narrare_core.events.types import EventType
+
+        service, received = _service_with_publisher(fake_core, fake_repo)
+
+        # Two distinct wiki-prompt saves each publish once (content changed).
+        await service.save_override_recorded(
+            WIKI_PROMPT_ID, SaveOverrideRequest(content="v1"), actor_id=uuid.uuid4()
+        )
+        await service.save_override_recorded(
+            WIKI_PROMPT_ID, SaveOverrideRequest(content="v2"), actor_id=uuid.uuid4()
+        )
+        save_publish_count = len(received)
+        v1_row = fake_repo.rows[0]
+
+        await service.restore_revision(WIKI_PROMPT_ID, v1_row.id, actor_id=uuid.uuid4())
+
+        # Restoring v1 (different from active v2) publishes ONE more event.
+        assert len(received) == save_publish_count + 1
+        event = received[-1]
+        assert event.event_type == EventType.WIKI_PROMPT_CHANGED  # type: ignore[attr-defined]
+        # Prompts are GLOBAL — NO novel_id is carried; the listener marks all
+        # novels' summaries stale (mark-all-across-novels, Q-016 decision).
+        assert "novel_id" not in event.payload  # type: ignore[attr-defined]
+        assert "prompt_version" in event.payload  # type: ignore[attr-defined]
+
+    async def test_restore_non_wiki_revision_does_not_publish(
+        self, fake_core: FakeCore, fake_repo: FakeRepo
+    ) -> None:
+        """A non-wiki prompt restore fires nothing."""
+        service, received = _service_with_publisher(fake_core, fake_repo)
+
+        await service.save_override_recorded(
+            PROMPT_ID, SaveOverrideRequest(content="v1"), actor_id=uuid.uuid4()
+        )
+        await service.save_override_recorded(
+            PROMPT_ID, SaveOverrideRequest(content="v2"), actor_id=uuid.uuid4()
+        )
+        v1_row = fake_repo.rows[0]
+
+        await service.restore_revision(PROMPT_ID, v1_row.id, actor_id=uuid.uuid4())
+
+        assert received == []
+
+    async def test_noop_restore_does_not_publish(
+        self, fake_core: FakeCore, fake_repo: FakeRepo
+    ) -> None:
+        """Restoring the already-active revision is a no-op -> no event.
+
+        Mirrors the save path's "only fires when content genuinely changed"
+        guard (the dedup check there; here an unchanged-content restore).
+        """
+        service, received = _service_with_publisher(fake_core, fake_repo)
+
+        await service.save_override_recorded(
+            WIKI_PROMPT_ID, SaveOverrideRequest(content="only"), actor_id=uuid.uuid4()
+        )
+        save_publish_count = len(received)
+        active_row = fake_repo.rows[0]  # holds the currently-active content
+
+        await service.restore_revision(WIKI_PROMPT_ID, active_row.id, actor_id=uuid.uuid4())
+
+        # No content change -> no additional publish.
+        assert len(received) == save_publish_count
+
+    async def test_restore_without_publisher_does_not_block(
+        self, fake_core: FakeCore, fake_repo: FakeRepo
+    ) -> None:
+        """Graceful degradation: no publisher wired -> restore still succeeds."""
+        service = PromptHistoryApiService(core=fake_core, repo=fake_repo, retention_limit=100)
+        await service.save_override_recorded(
+            WIKI_PROMPT_ID, SaveOverrideRequest(content="v1"), actor_id=uuid.uuid4()
+        )
+        await service.save_override_recorded(
+            WIKI_PROMPT_ID, SaveOverrideRequest(content="v2"), actor_id=uuid.uuid4()
+        )
+        v1_row = fake_repo.rows[0]
+
+        result = await service.restore_revision(WIKI_PROMPT_ID, v1_row.id, actor_id=uuid.uuid4())
+
+        assert result.restored_revision.is_active is True
 
 
 class TestClearHistory:

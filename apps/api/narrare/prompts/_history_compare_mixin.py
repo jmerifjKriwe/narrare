@@ -17,6 +17,10 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
+from narrare.prompts._wiki_prompt_event import (
+    WIKI_PROMPT_CATEGORY_PREFIX,
+    publish_wiki_prompt_changed,
+)
 from narrare.prompts.history_mapping import (
     ACTIVE_TOKEN,
     content_hash,
@@ -30,6 +34,7 @@ from narrare.prompts.schemas_prompt_history import (
 from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
+    from narrare.events.publisher import EventPublisher
     from narrare.prompts.repository import PromptHistoryRepository
     from narrare_core.prompts.management import PromptManagementService
 
@@ -38,14 +43,16 @@ class HistoryCompareRestoreMixin:
     """Compare & restore revision operations (mixed into PromptHistoryApiService).
 
     Relies on host-provided collaborators (declared for type checkers):
-    ``_core``, ``_repo``, ``_retention_limit``, and the ``_active_content``
-    method — all assigned/implemented by :class:`PromptHistoryApiService`.
+    ``_core``, ``_repo``, ``_retention_limit``, ``_event_publisher``, and the
+    ``_active_content`` method — all assigned/implemented by
+    :class:`PromptHistoryApiService`.
     """
 
     if TYPE_CHECKING:
         _core: PromptManagementService
         _repo: PromptHistoryRepository
         _retention_limit: int
+        _event_publisher: EventPublisher | None
 
     async def _active_content(self, prompt_id: str) -> str | None:
         """Return the active override FILE content, or ``None`` if none set.
@@ -127,11 +134,26 @@ class HistoryCompareRestoreMixin:
         #    already carries it, the write is effectively idempotent.
         await self._core.save_override(prompt_id, content)
 
+        digest = content_hash(content)
+
+        # Q-016 follow-up: a wiki-category prompt restore changes the wiki
+        # generation prompt globally. Publish ``wiki.prompt.changed`` (same
+        # helper/guard as ``save_override_recorded``) so the listener marks
+        # wiki summaries stale for regeneration. Only fires when content
+        # genuinely changed (a no-op restore -> no event), mirroring the save
+        # path's dedup-guarded publish. Non-blocking (the helper swallows
+        # publish failures -- RULE-11).
+        if (
+            self._event_publisher is not None
+            and prompt_id.startswith(WIKI_PROMPT_CATEGORY_PREFIX)
+            and previous_active_hash != digest
+        ):
+            await publish_wiki_prompt_changed(self._event_publisher, prompt_id, digest)
+
         # 2. Record a NEW revision (append-only).  Restore recording is NOT
         #    best-effort: the action should surface errors so the user knows
         #    the revision was not recorded.  The file write already succeeded
         #    and remains authoritative.
-        digest = content_hash(content)
         restored = await self._repo.insert_revision(
             prompt_id,
             scope.value,

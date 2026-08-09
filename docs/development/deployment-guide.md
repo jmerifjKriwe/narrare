@@ -435,7 +435,8 @@ All developer commands via `just`:
 | **Quality (Python)** | `check` | Run all checks (architecture + lint + typecheck + security + frontend) |
 | | `check-architecture` | Run architecture constraint checker |
 | | `lint` | Run ruff linter with auto-fix |
-| | `typecheck` | Run pyright type checker |
+| | `typecheck` | Run pyright type checker (production code, strict) |
+| | `typecheck-tests` | Run pyright on test files (`tests/pyrightconfig.json`, basic mode) |
 | | `security` | Run security checks |
 | **Quality (Frontend)** | `check-frontend` | Run all frontend checks (lint + typecheck + test) |
 | | `lint-frontend` | Run non-mutating frontend lint/format checks |

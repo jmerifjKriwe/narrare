@@ -391,6 +391,12 @@ lint-check:
 typecheck:
     uv run pyright
 
+# Run pyright on test files (basic mode, tests/pyrightconfig.json). Closes the
+# gate gap: the main pyright config excludes tests/ for performance, so test-
+# file type errors surface here and in `just check` — not only at commit time.
+typecheck-tests:
+    uv run pyright --project tests/pyrightconfig.json
+
 # Run secret-scanning gate (Gitleaks) — AUFG-05-09
 # Blocks on new unapproved secrets; returns 127 with install guidance if the
 # gitleaks binary is missing locally.

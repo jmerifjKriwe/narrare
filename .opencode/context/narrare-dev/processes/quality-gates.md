@@ -63,6 +63,7 @@ Coverage below minimum = CI failure. No exceptions.
 ## Gate 6: Type Checking
 
 - `pyright` in CI (RULE-09); pyright is the sole type checker (no other checker configured)
+- **Two scopes:** the main config (`pyproject.toml`, strict) covers production code (`apps/`, `packages/`, `scripts/`) and excludes `tests/` for performance; test files are type-checked by `tests/pyrightconfig.json` (basic mode) via the pre-commit `pyright-tests` hook AND the `just check` gate (step "Typecheck (Tests)", also runnable as `just typecheck-tests`)
 - No untyped public functions
 - `Any` forbidden except in approved adapters
 

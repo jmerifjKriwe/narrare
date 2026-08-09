@@ -17,9 +17,8 @@ import re
 import subprocess  # nosec B404
 import sys
 from dataclasses import dataclass
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+from _check_steps import ROOT, Step, build_steps  # type: ignore[import-untyped]
 
 # ── ANSI helpers ──────────────────────────────────────────────
 
@@ -42,14 +41,6 @@ _SEP = "━" * 55
 
 
 @dataclass
-class Step:
-    """One logical check step (may run multiple commands)."""
-
-    label: str
-    commands: list[tuple[list[str], Path | None]]  # (cmd, cwd)
-
-
-@dataclass
 class Result:
     """Outcome of a single check step."""
 
@@ -57,136 +48,6 @@ class Result:
     passed: bool
     output: str
     summary: str
-
-
-# ── Step definitions ──────────────────────────────────────────
-
-
-def _build_steps() -> list[Step]:
-    web = ROOT / "packages" / "web"
-    steps: list[Step] = [
-        Step(
-            "Architecture",
-            [
-                (["uv", "run", "python", "scripts/check_architecture.py"], None),
-                (["uv", "run", "python", "scripts/check_exception_baseline.py"], None),
-                (["uv", "run", "python", "scripts/check_python_file_size.py"], None),
-                (["uv", "run", "python", "scripts/check_prompt_surface_contract.py"], None),
-                (["uv", "run", "python", "scripts/check_empty_kb_vars.py"], None),
-                (["uv", "run", "python", "scripts/check_frontmatter_schema.py"], None),
-                # Mutation-inert convention — prevents the MutMut sandbox crash
-                # class documented in issue #146 (asset-reading tests reached
-                # via parents[N] must carry @pytest.mark.mutation_inert).
-                (
-                    [
-                        "uv",
-                        "run",
-                        "python",
-                        "scripts/checks/check_mutation_inert_assets.py",
-                    ],
-                    None,
-                ),
-            ],
-        ),
-        Step(
-            "Lint & Format",
-            [
-                (["uv", "run", "ruff", "check", "apps/", "packages/", "scripts/", "tests/"], None),
-                (
-                    [
-                        "uv",
-                        "run",
-                        "ruff",
-                        "format",
-                        "--check",
-                        "apps/",
-                        "packages/",
-                        "scripts/",
-                        "tests/",
-                    ],
-                    None,
-                ),
-            ],
-        ),
-        Step(
-            "Typecheck",
-            [
-                (["uv", "run", "pyright"], None),
-            ],
-        ),
-        Step(
-            "Security",
-            [
-                (
-                    [
-                        "uv",
-                        "run",
-                        "bandit",
-                        "-c",
-                        "pyproject.toml",
-                        "-r",
-                        "apps/api/narrare",
-                        "packages/core/narrare_core",
-                    ],
-                    None,
-                ),
-                (["uv", "run", "pip-audit"], None),
-            ],
-        ),
-        Step(
-            "Model Registry",
-            [
-                (["uv", "run", "python", "scripts/check_model_registry.py"], None),
-            ],
-        ),
-        Step(
-            "Prompts",
-            [
-                (["uv", "run", "python", "scripts/check_prompt_structure.py"], None),
-                # ADR-056 — runtime-evidence-aware adoption gate (matches
-                # `just check-adoption` and CI). Reads committed .evidence markers.
-                (
-                    [
-                        "uv",
-                        "run",
-                        "python",
-                        "scripts/check_adoption.py",
-                        "--evidence-dir",
-                        ".evidence",
-                    ],
-                    None,
-                ),
-                (["uv", "run", "python", "scripts/check_streaming_compliance.py"], None),
-            ],
-        ),
-    ]
-
-    if web.is_dir() and (web / "package.json").exists():
-        steps.extend(
-            [
-                Step(
-                    "Frontend Lint",
-                    [
-                        (["uv", "run", "python", "scripts/check_frontend_file_size.py"], None),
-                        (["pnpm", "lint:check"], web),
-                    ],
-                ),
-                Step(
-                    "i18n Validation",
-                    [
-                        (["npx", "tsx", "scripts/validate-i18n.ts"], None),
-                    ],
-                ),
-                Step(
-                    "Frontend Types",
-                    [
-                        (["pnpm", "type-check"], web),
-                    ],
-                ),
-            ]
-        )
-
-    return steps
 
 
 # ── Execution ─────────────────────────────────────────────────
@@ -348,7 +209,7 @@ def _print_compact(results: list[Result]) -> None:
 
 
 def _run_verbose() -> int:
-    steps = _build_steps()
+    steps = build_steps()
     total = len(steps)
 
     print()
@@ -389,7 +250,7 @@ def main() -> int:
     if "--verbose" in sys.argv:
         return _run_verbose()
 
-    steps = _build_steps()
+    steps = build_steps()
     results = [_run_step(s) for s in steps]
     _print_compact(results)
     return 1 if any(not r.passed for r in results) else 0
