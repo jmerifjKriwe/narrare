@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 from narrare._app.dependencies import SessionDep  # noqa: TC001 - needed at runtime for FastAPI DI
+from narrare.events.publisher import (
+    WikiEventPublisherDep,  # noqa: TC001 - needed at runtime for FastAPI DI
+)
 
 if TYPE_CHECKING:
     from narrare.kb.canon_service import KBCanonService
@@ -61,8 +64,17 @@ def get_kb_canon_service(session: SessionDep) -> KBCanonService:
     )
 
 
-def get_kb_service(session: SessionDep) -> KBService:
-    """Create a KBService with injected dependencies."""
+def get_kb_service(
+    session: SessionDep,
+    event_publisher: WikiEventPublisherDep,
+) -> KBService:
+    """Create a KBService with injected dependencies.
+
+    ``event_publisher`` is the in-process wiki EventPublisher bound on
+    ``app.state`` by the lifespan (Q-016). It is ``None`` when the lifespan
+    failed to initialise it (graceful degradation — KB updates proceed
+    without firing wiki-regeneration events).
+    """
     from narrare.embeddings.repository import EmbeddingRepository
     from narrare.kb.embedding_hooks import EmbeddingHookManager
     from narrare.kb.lifecycle_dependencies import get_kb_lifecycle_dispatcher
@@ -78,6 +90,7 @@ def get_kb_service(session: SessionDep) -> KBService:
         novel_repo=NovelRepository(session),
         embedding_hooks=embedding_hooks,
         lifecycle=get_kb_lifecycle_dispatcher(session),
+        event_publisher=event_publisher,
     )
 
 

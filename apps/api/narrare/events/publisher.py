@@ -10,13 +10,16 @@ background work.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import structlog
+from fastapi import Depends
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from uuid import UUID
+
+    from narrare_core.events.types import EventType
 
 logger = structlog.get_logger(__name__)
 
@@ -56,6 +59,33 @@ class EventPublisher:
             handler: Async callable accepting a single DomainEvent.
         """
         self._typed_handlers.setdefault(event_type, []).append(handler)
+
+    async def publish(
+        self,
+        event_type: EventType,
+        *,
+        aggregate_id: UUID,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        """Publish a domain event to subscribed handlers (in-process, ADR-080).
+
+        Constructs a :class:`~narrare_core.events.types.DomainEvent` and
+        dispatches it to typed handlers whose subscribed event-type string
+        matches ``str(event_type)`` (``EventType`` is a ``StrEnum``).
+
+        Args:
+            event_type: The ``EventType`` to publish.
+            aggregate_id: The primary entity the event is about.
+            payload: Arbitrary data relevant to the event (may be empty).
+        """
+        from narrare_core.events.types import DomainEvent
+
+        event = DomainEvent(
+            event_type=event_type,
+            aggregate_id=aggregate_id,
+            payload=payload or {},
+        )
+        await self._dispatch(event)
 
     async def publish_feedback_recorded(
         self,
@@ -137,3 +167,26 @@ class EventPublisher:
                     event_type=type(event).__name__,
                     exc_info=True,
                 )
+
+
+def get_wiki_event_publisher(request: Any) -> EventPublisher | None:
+    """Return the in-process wiki ``EventPublisher`` from ``app.state``.
+
+    The lifespan binds ``app.state.wiki_event_publisher`` at startup. When
+    initialisation failed (the lifespan swallows that error) the attribute
+    is absent and this returns ``None`` — producers then degrade to a
+    no-op (graceful degradation, RULE-11).
+
+    Args:
+        request: The FastAPI ``Request`` (``request.app.state`` is read).
+
+    Returns:
+        The shared ``EventPublisher`` or ``None`` if unbound.
+    """
+    return getattr(request.app.state, "wiki_event_publisher", None)
+
+
+# FastAPI dependency alias (avoids bare ``Depends()`` in default arguments —
+# ruff B008 — matching the ``SessionDep`` Annotated pattern). Resolves the
+# in-process wiki EventPublisher from ``app.state``, or ``None``.
+WikiEventPublisherDep = Annotated[EventPublisher | None, Depends(get_wiki_event_publisher)]

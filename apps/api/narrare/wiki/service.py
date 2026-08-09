@@ -283,3 +283,15 @@ class APIWikiService(WikiSystemAccessors):
             prompt_version=version,
         )
         return count
+
+    async def mark_all_stale_global(self) -> int:
+        """Mark EVERY wiki summary stale, across all novels (Q-016).
+
+        Triggered when the wiki generation prompt is overridden globally
+        (prompts have no novel dimension). No ownership check — the call is
+        system-initiated from ``WikiEventListener`` via the system-mode
+        factory. Contrast with :meth:`mark_all_stale` (per-novel, version-gated).
+        """
+        count = await self._wiki_repo.mark_all_stale_global()
+        logger.info("wiki_marked_stale_global", count=count)
+        return count

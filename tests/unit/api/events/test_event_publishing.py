@@ -76,6 +76,68 @@ class TestEventPublisher:
         assert len(received) == 1
 
 
+class TestGenericPublish:
+    """``EventPublisher.publish`` — typed dispatch for domain events (Q-016).
+
+    Producers (KBService / ChapterService / prompt save) publish via the
+    generic ``publish``; typed handlers subscribed by event-type string
+    receive the constructed ``DomainEvent``.
+    """
+
+    def _make_publisher(self) -> Any:
+        from narrare.events.publisher import EventPublisher
+
+        return EventPublisher()
+
+    async def test_publish_dispatches_to_typed_handler(self) -> None:
+        from narrare_core.events.types import EventType
+
+        publisher = self._make_publisher()
+        received: list[Any] = []
+        publisher.subscribe("kb.entry.updated", lambda event: _async_append(received, event))
+
+        agg_id = uuid4()
+        await publisher.publish(
+            EventType.KB_ENTRY_UPDATED,
+            aggregate_id=agg_id,
+            payload={"entity_id": str(agg_id), "novel_id": str(uuid4())},
+        )
+
+        assert len(received) == 1
+        assert received[0].event_type == EventType.KB_ENTRY_UPDATED
+        assert received[0].aggregate_id == agg_id
+        assert "entity_id" in received[0].payload
+
+    async def test_publish_does_not_dispatch_to_other_type(self) -> None:
+        from narrare_core.events.types import EventType
+
+        publisher = self._make_publisher()
+        received: list[Any] = []
+        publisher.subscribe("chapter.finalized", lambda event: _async_append(received, event))
+
+        # Publishing an unrelated event type must not trigger the handler.
+        await publisher.publish(
+            EventType.KB_ENTRY_UPDATED,
+            aggregate_id=uuid4(),
+        )
+        assert received == []
+
+    async def test_publish_handler_failure_does_not_raise(self) -> None:
+        from narrare_core.events.types import EventType
+
+        publisher = self._make_publisher()
+
+        async def _fail(event: Any) -> None:
+            raise RuntimeError("handler failed")
+
+        publisher.subscribe("wiki.prompt.changed", _fail)
+        # Must not raise (RULE-11 graceful degradation at dispatch).
+        await publisher.publish(
+            EventType.WIKI_PROMPT_CHANGED,
+            aggregate_id=uuid4(),
+        )
+
+
 class TestFeedbackEvents:
     def test_feedback_recorded_is_frozen(self) -> None:
         from narrare.events.feedback_events import FeedbackRecorded

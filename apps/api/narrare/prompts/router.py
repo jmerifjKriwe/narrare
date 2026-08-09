@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare.events.publisher import WikiEventPublisherDep
 from narrare.prompts.deps import get_prompt_history_service
 from narrare.prompts.schemas import (
     CascadePathResponse,
@@ -109,14 +110,19 @@ async def save_override(
     request: SaveOverrideRequest,
     user_id: CurrentUserIdDep,
     session: SessionDep,
+    event_publisher: WikiEventPublisherDep,
 ) -> None:
     """Save a prompt override and record a history revision (CR-AUFG-07-19).
 
     Delegates to ``PromptHistoryApiService.save_override_recorded``: the
     active override FILE is written via the core service (authoritative),
     then a revision row is recorded (best-effort, deduplicated).
+
+    ``event_publisher`` is the in-process wiki EventPublisher (Q-016): a
+    wiki-category override publishes ``wiki.prompt.changed`` so wiki
+    summaries are marked stale for regeneration.
     """
-    service = await get_prompt_history_service(session)
+    service = await get_prompt_history_service(session, event_publisher)
     await service.save_override_recorded(
         prompt_id,
         request,

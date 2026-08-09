@@ -18,6 +18,7 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from narrare.events.publisher import EventPublisher
 from narrare.prompts.router import (
     cascade_info,
     detect_updates,
@@ -138,11 +139,39 @@ class TestManagementRouter:
             SaveOverrideRequest(content="custom"),
             user_id=_USER,
             session=MagicMock(spec=AsyncSession),
+            event_publisher=None,
         )
         history.save_override_recorded.assert_awaited_once()
         # actor_id is parsed from the authenticated user id.
         kwargs = history.save_override_recorded.call_args
         assert kwargs.kwargs["actor_id"] == uuid.UUID(_USER)
+
+    async def test_save_override_forwards_event_publisher_to_factory(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Q-016 producer #3 wiring: ``save_override`` forwards the request's
+        ``event_publisher`` into ``get_prompt_history_service`` so a
+        wiki-category override fires ``wiki.prompt.changed``. Without this
+        pass-through the producer is dead in production (the factory requires
+        the publisher; pyright flags a missing arg, and the call site raises
+        ``TypeError`` at runtime).
+        """
+        captured: dict[str, object] = {}
+
+        async def _spy(session: object, event_publisher: object) -> AsyncMock:
+            captured["publisher"] = event_publisher
+            return AsyncMock()
+
+        monkeypatch.setattr("narrare.prompts.router.get_prompt_history_service", _spy)
+        publisher = EventPublisher()  # sentinel — must be the exact object forwarded
+        await save_override(
+            "wiki/en/entity_summary",
+            SaveOverrideRequest(content="custom"),
+            user_id=_USER,
+            session=MagicMock(spec=AsyncSession),
+            event_publisher=publisher,
+        )
+        assert captured.get("publisher") is publisher
 
 
 # ===========================================================================
@@ -263,6 +292,7 @@ class TestHistoryRouter:
             "writing/en/new_chapter",
             user_id=_USER,
             session=MagicMock(spec=AsyncSession),
+            event_publisher=None,
             limit=10,
             offset=5,
         )
@@ -277,6 +307,7 @@ class TestHistoryRouter:
             "writing/en/new_chapter",
             user_id=_USER,
             session=MagicMock(spec=AsyncSession),
+            event_publisher=None,
             from_revision="active",
             to_revision="22222222-2222-2222-2222-222222222222",
         )
@@ -290,6 +321,7 @@ class TestHistoryRouter:
             revision_id=revision_id,
             user_id=_USER,
             session=MagicMock(spec=AsyncSession),
+            event_publisher=None,
         )
         wired_history.restore_revision.assert_awaited_once()
         assert wired_history.restore_revision.call_args.kwargs["actor_id"] == uuid.UUID(_USER)
@@ -300,5 +332,6 @@ class TestHistoryRouter:
             "writing/en/new_chapter",
             user_id=_USER,
             session=MagicMock(spec=AsyncSession),
+            event_publisher=None,
         )
         wired_history.clear_history.assert_awaited_once()

@@ -14,10 +14,12 @@ Owns the complete streaming-turn lifecycle spawned by
 
 end_session race (PR #157 follow-up): the success tail is exception-safe
 with ``unregister`` in a ``finally`` — the registry entry is cleaned up
-unconditionally. The benign end_session ``ValueError`` from
-``add_message`` (session already evicted) is deliberately dropped: the
-assistant message is not persisted, ``text_done`` is skipped, and the
-race is logged at info as ``direction_stream_session_ended``.
+unconditionally. The benign end_session race (``SessionNotFoundError`` from
+``add_message`` — session already evicted; Q-017 narrowed this from a bare
+``except ValueError`` so a corrupt cached payload is no longer swallowed)
+is deliberately dropped: the assistant message is not persisted,
+``text_done`` is skipped, and the race is logged at info as
+``direction_stream_session_ended``.
 :func:`on_stream_done` is the last-resort safety net attached at the
 dispatch site: it retrieves any escaped exception (logged at error as
 ``direction_stream_task_failed``) and guarantees registry cleanup.
@@ -33,7 +35,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.writing.ws_streaming import StreamChunkRecorder, StreamSendResult, send_stream_chunks
-from narrare_core.shared.errors import WritingError
+from narrare_core.shared.errors import SessionNotFoundError, WritingError
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -164,15 +166,17 @@ async def run_direction_stream(
                     "assistant",
                     result.full_text,
                 )
-            except ValueError as e:
-                # Benign end_session/expiry race: end_session evicted the
-                # cache while this turn was streaming, so _load_or_raise
-                # in add_message raises "Session ... not found or
-                # expired." — the ONLY ValueError source in this path
-                # (verified against session_manager.py). The session was
-                # intentionally ended: the assistant message is
-                # deliberately dropped and the transport is already
-                # closed, so there is no text_done listener either.
+            except SessionNotFoundError as e:
+                # Benign end_session/expiry race (Q-017): end_session evicted
+                # the cache while this turn was streaming, so _load_or_raise
+                # in add_message raises SessionNotFoundError. Catching the
+                # typed error (NOT bare ValueError) keeps a corrupt cached
+                # payload (json.JSONDecodeError, a ValueError subclass) from
+                # being swallowed here — corruption propagates to the outer
+                # handler and surfaces as a real error (RULE-11). The session
+                # was intentionally ended: the assistant message is
+                # deliberately dropped and the transport is already closed,
+                # so there is no text_done listener either.
                 logger.info(
                     "direction_stream_session_ended",
                     session_id=session_id_str,

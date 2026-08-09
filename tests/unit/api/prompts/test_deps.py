@@ -163,7 +163,7 @@ async def test_get_prompt_history_service_applies_retention_limit_from_settings(
     mocked_wiring: dict[str, MagicMock],
 ) -> None:
     session = MagicMock(spec=AsyncSession, name="AsyncSession")
-    service = await get_prompt_history_service(session)
+    service = await get_prompt_history_service(session, event_publisher=None)
 
     assert isinstance(service, PromptHistoryApiService)
     assert service._retention_limit == 42  # type: ignore[attr-defined]

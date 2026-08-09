@@ -170,6 +170,20 @@ class WikiRepository(BaseRepository):
         await self._flush()
         return getattr(result, "rowcount", 0)
 
+    async def mark_all_stale_global(self) -> int:
+        """Mark EVERY WikiSummary STALE, across all novels (Q-016).
+
+        Used when the wiki GENERATION PROMPT is overridden globally: a content
+        change to the shared prompt invalidates every existing summary
+        regardless of stored ``wiki_prompt_version`` (an override can change
+        content without bumping a version number, so version-gating would be
+        unreliable). Contrast with :meth:`mark_all_stale`, which is per-novel
+        and version-gated for the programmatic "bump to this version" path.
+        """
+        result = await self._session.execute(update(WikiSummary).values(status="stale"))
+        await self._flush()
+        return getattr(result, "rowcount", 0)
+
     async def mark_related_stale(self, entity_id: uuid.UUID) -> int:
         """KARPATHY: Mark WikiSummaries STALE that reference the entity
         (JSONB containment ``@>`` on ``relationships`` array).

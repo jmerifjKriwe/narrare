@@ -5,12 +5,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from narrare._app.dependencies import SessionDep  # noqa: TC001 - needed at runtime for FastAPI DI
+from narrare.events.publisher import (
+    WikiEventPublisherDep,  # noqa: TC001 - needed at runtime for FastAPI DI
+)
 
 if TYPE_CHECKING:
     from narrare.kb.improve_service import KBImproveService
 
 
-def get_kb_improve_service(session: SessionDep) -> KBImproveService:
+def get_kb_improve_service(
+    session: SessionDep,
+    event_publisher: WikiEventPublisherDep,
+) -> KBImproveService:
     """Create a KBImproveService with injected dependencies.
 
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
@@ -49,7 +55,7 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
     # ProactiveContext call.
     kb_context_provider = KBContextProvider(kb_repo, rel_repo)
 
-    kb_service = get_kb_service(session)
+    kb_service = get_kb_service(session, event_publisher=event_publisher)
 
     # In-memory improve cache with 10min TTL (ADR-080)
     cache = InMemorySessionCache()

@@ -212,3 +212,8 @@ class TestKBServiceDelete:
 
         await service.delete(entry.novel_id, uuid.uuid4(), uuid.uuid4())
         repo.delete.assert_called_once_with(entry)
+
+
+# Q-016 event-publishing tests live in ``test_kb_service_events.py`` (RULE-04
+# file-size split). They verify KBService.update publishes kb.entry.updated to
+# the in-process EventPublisher that regenerates wiki summaries.

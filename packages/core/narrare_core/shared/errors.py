@@ -195,6 +195,41 @@ class NotFoundError(NarrareError):
         self.identifier = identifier
 
 
+class SessionNotFoundError(NotFoundError):
+    """The cached writing session was not found or has expired (Q-017).
+
+    Raised by :meth:`SessionManager._load_or_raise` when the session is
+    missing from the cache. Subclasses :class:`NotFoundError` so generic
+    not-found handlers still match, while carrying the precise "not found
+    or expired" cache-lifecycle message.
+
+    Why a dedicated type (not ``ValueError``): the benign end_session race
+    catch (``_ws_direction_stream.py``) used ``except ValueError``, which
+    also caught ``json.JSONDecodeError`` (a ``ValueError`` subclass) on a
+    corrupt cached payload — silently swallowing cache corruption as a
+    benign race (RULE-11). Narrowing the catch to ``SessionNotFoundError``
+    lets corruption surface as a real error. Deliberately NOT a
+    ``ValueError`` subclass — that would let stale ``except ValueError``
+    sites keep catching it, defeating the precision this type adds.
+
+    Note: the ``SessionNotFound`` / ``SessionExpired`` dataclasses in
+    ``writing/requests.py`` are ``ReattachOutcome`` *result values*
+    (returned by ``reattach_session``), not exceptions — different
+    responsibility (RULE-06); do not conflate them with this type.
+    """
+
+    def __init__(self, session_id: object) -> None:
+        # Bypass NotFoundError's "X not found" composition in favour of the
+        # precise cache-lifecycle phrasing; keep its attributes populated.
+        NarrareError.__init__(
+            self,
+            f"Session {session_id} not found or expired.",
+            code="SESSION_NOT_FOUND",
+        )
+        self.resource = "Writing session"
+        self.identifier = str(session_id)
+
+
 class ForbiddenError(NarrareError):
     """User does not have permission to access this resource."""
 

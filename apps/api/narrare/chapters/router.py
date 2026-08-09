@@ -17,6 +17,7 @@ from narrare.chapters.schemas import (
     UpdateChapterMetaRequest,
 )
 from narrare.chapters.service import ChapterService
+from narrare.events.publisher import WikiEventPublisherDep
 from narrare.novels.repository import NovelRepository
 from narrare.novels.service import NovelService
 from narrare.volumes.repository import VolumeRepository
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/novels/{novel_id}/chapters", tags=["chapters"])
 
 def _get_service(
     session: SessionDep,
+    event_publisher: WikiEventPublisherDep,
 ) -> ChapterService:
     return ChapterService(
         repo=ChapterRepository(session),
@@ -34,6 +36,7 @@ def _get_service(
             volume_repo=VolumeRepository(session),
         ),
         volume_repo=VolumeRepository(session),
+        event_publisher=event_publisher,
     )
 
 

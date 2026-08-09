@@ -736,7 +736,7 @@ file_size_limits = {router = 150, service = 300, repository = 250, default = 400
 
 ## Open Questions Blocking MVP
 
-See `docs/architecture/questions/Q-005-resolved.md`
+See `docs/architecture/questions/resolved/Q-005-resolved.md`
 
 The Z.AI/GLM provider adapter must be confirmed working before Phase 1 is complete.
 All other providers (OpenAI, Anthropic) are unblocked and can proceed in parallel.

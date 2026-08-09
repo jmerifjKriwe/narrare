@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.chapters.repository import count_words
+from narrare_core.events.types import EventType
 from narrare_core.shared.errors import NotFoundError, ValidationError
 
 if TYPE_CHECKING:
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
         UpdateChapterContentRequest,
         UpdateChapterMetaRequest,
     )
+    from narrare.events.publisher import EventPublisher
     from narrare.novels.contracts import NovelServiceProtocol
     from narrare.volumes.contracts import VolumeRepositoryProtocol
 
@@ -31,12 +33,14 @@ class ChapterService:
         repo: ChapterRepositoryProtocol,
         novel_service: NovelServiceProtocol,
         volume_repo: VolumeRepositoryProtocol | None = None,
+        event_publisher: EventPublisher | None = None,
         *,
         max_content_length: int = 100_000,
     ) -> None:
         self._repo = repo
         self._novel_service = novel_service
         self._volume_repo = volume_repo
+        self._event_publisher = event_publisher
         self._max_content_length = max_content_length
 
     async def get(
@@ -115,7 +119,34 @@ class ChapterService:
         request: UpdateChapterMetaRequest,
     ) -> Chapter:
         chapter = await self.get(chapter_id, novel_id, user_id)
-        return await self._repo.update_meta(chapter, request)
+        # Snapshot status BEFORE the repo mutates the chapter (some repos
+        # update in place) so the →final transition is detected correctly.
+        previous_status = chapter.status
+        updated = await self._repo.update_meta(chapter, request)
+
+        # Q-016: publish chapter.finalized only on the transition INTO "final"
+        # (not on every status write, not when already final). In-process
+        # (ADR-080); non-blocking + logged (RULE-11).
+        if (
+            self._event_publisher is not None
+            and request.status == "final"
+            and previous_status != "final"
+        ):
+            try:
+                await self._event_publisher.publish(
+                    EventType.CHAPTER_FINALIZED,
+                    aggregate_id=chapter_id,
+                    payload={"chapter_id": str(chapter_id), "novel_id": str(novel_id)},
+                )
+            except Exception:
+                logger.warning(
+                    "chapter_finalized_publish_failed",
+                    chapter_id=str(chapter_id),
+                    novel_id=str(novel_id),
+                    exc_info=True,
+                )
+
+        return updated
 
     async def reorder(
         self,

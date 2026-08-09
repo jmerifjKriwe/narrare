@@ -1,0 +1,14 @@
+{
+  "dashboard": {
+    "noNovelsHint": "Veuillez créer votre premier roman pour commencer.",
+    "confirmDelete": "Souhaitez-vous vraiment supprimer ce roman ? Cette action est irréversible."
+  },
+  "wizard": {
+    "step1": {
+      "description": "Veuillez choisir un nom et une langue pour votre projet d'écriture."
+    },
+    "step5": {
+      "description": "Veuillez vérifier votre configuration avant la création de votre projet."
+    }
+  }
+}

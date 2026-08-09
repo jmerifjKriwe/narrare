@@ -2640,6 +2640,14 @@
               ],
               "title": "Volume Id"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -2689,6 +2697,14 @@
               "type": "string",
               "format": "uuid",
               "title": "Novel Id"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -2758,6 +2774,14 @@
               "format": "uuid",
               "title": "Chapter Id"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -2813,6 +2837,14 @@
               "type": "string",
               "format": "uuid",
               "title": "Chapter Id"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -2880,6 +2912,14 @@
               "format": "uuid",
               "title": "Chapter Id"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -2931,6 +2971,14 @@
               "type": "string",
               "format": "uuid",
               "title": "Chapter Id"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -2989,6 +3037,14 @@
               "type": "string",
               "format": "uuid",
               "title": "Novel Id"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -4633,6 +4689,14 @@
               "format": "uuid",
               "title": "Novel Id"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "requestBody": {
@@ -4713,6 +4777,14 @@
               "minimum": 1,
               "default": 10,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -5191,6 +5263,14 @@
               "format": "uuid",
               "title": "Novel Id"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "requestBody": {
@@ -5322,6 +5402,14 @@
               "default": 50,
               "title": "Page Size"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -5439,6 +5527,14 @@
               "default": 50,
               "title": "Page Size"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -5498,6 +5594,14 @@
               "format": "uuid",
               "title": "Entry Id"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -5554,6 +5658,14 @@
               "type": "string",
               "format": "uuid",
               "title": "Entry Id"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -5621,6 +5733,14 @@
               "type": "string",
               "format": "uuid",
               "title": "Entry Id"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -6450,6 +6570,14 @@
               "format": "uuid",
               "title": "Novel Id"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "requestBody": {
@@ -6521,6 +6649,14 @@
               "format": "uuid",
               "title": "Session Id"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -6579,6 +6715,14 @@
               "type": "string",
               "format": "uuid",
               "title": "Session Id"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -6640,6 +6784,14 @@
             "schema": {
               "type": "string",
               "title": "Field Key"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -6721,6 +6873,14 @@
               "type": "string",
               "title": "Field Key"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -6781,6 +6941,14 @@
               "type": "string",
               "format": "uuid",
               "title": "Session Id"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -6843,6 +7011,14 @@
               "format": "uuid",
               "title": "Session Id"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -6904,6 +7080,14 @@
               "format": "uuid",
               "title": "Session Id"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -6963,6 +7147,14 @@
               "format": "uuid",
               "title": "Entry Id"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -7021,6 +7213,14 @@
               "type": "string",
               "format": "uuid",
               "title": "Entry Id"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -8465,6 +8665,14 @@
               "default": 0,
               "title": "Offset"
             }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -8510,6 +8718,14 @@
             "schema": {
               "type": "string",
               "title": "Prompt Id"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -8581,6 +8797,14 @@
               "title": "To"
             },
             "description": "Revision UUID or 'active'."
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
+            }
           }
         ],
         "responses": {
@@ -8638,6 +8862,14 @@
               "type": "string",
               "format": "uuid",
               "title": "Revision Id"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],
@@ -8915,7 +9147,7 @@
           "prompts"
         ],
         "summary": "Save Override",
-        "description": "Save a prompt override and record a history revision (CR-AUFG-07-19).\n\nDelegates to ``PromptHistoryApiService.save_override_recorded``: the\nactive override FILE is written via the core service (authoritative),\nthen a revision row is recorded (best-effort, deduplicated).",
+        "description": "Save a prompt override and record a history revision (CR-AUFG-07-19).\n\nDelegates to ``PromptHistoryApiService.save_override_recorded``: the\nactive override FILE is written via the core service (authoritative),\nthen a revision row is recorded (best-effort, deduplicated).\n\n``event_publisher`` is the in-process wiki EventPublisher (Q-016): a\nwiki-category override publishes ``wiki.prompt.changed`` so wiki\nsummaries are marked stale for regeneration.",
         "operationId": "save_override_api_v1_prompts__prompt_id__put",
         "security": [
           {
@@ -8930,6 +9162,14 @@
             "schema": {
               "type": "string",
               "title": "Prompt Id"
+            }
+          },
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Request"
             }
           }
         ],

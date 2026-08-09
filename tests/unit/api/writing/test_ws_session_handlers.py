@@ -16,6 +16,7 @@ from uuid import UUID, uuid4
 from fastapi import WebSocket
 
 from narrare.writing._ws_session_handlers import handle_feedback, handle_save
+from narrare_core.shared.errors import SessionNotFoundError
 from narrare_core.writing.session_manager import SessionManager
 
 
@@ -210,3 +211,26 @@ class TestHandleSave:
         payload = ws.send_json.call_args[0][0]
         assert payload["type"] == "error"
         assert "Prose buffer is empty" in payload["message"]
+
+    async def test_save_session_not_found_sends_session_ended(self) -> None:
+        """Q-017: an evicted/expired session is a benign 'session ended'
+        outcome, distinct from the prose-empty ValueError error.
+
+        The split from ``except ValueError`` is the RULE-11 fix: previously
+        one catch conflated both sources. Now ``SessionNotFoundError`` maps
+        to a ``session_ended`` DTO while the prose-empty ``ValueError``
+        still maps to an ``error`` DTO (test above).
+        """
+        ws = _ws()
+        session_id = uuid4()
+        mgr = _session_manager()
+        mgr.save_to_chapter.side_effect = SessionNotFoundError(session_id)
+
+        await handle_save(ws, session_id, mgr)
+
+        mgr.save_to_chapter.assert_awaited_once_with(session_id)
+        ws.send_json.assert_awaited_once()
+        payload = ws.send_json.call_args[0][0]
+        assert payload["type"] == "session_ended"
+        # A benign outcome must not surface as a user-facing error.
+        assert "message" not in payload

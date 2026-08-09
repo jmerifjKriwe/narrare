@@ -14,6 +14,7 @@ import uuid
 from fastapi import APIRouter, Query, status
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare.events.publisher import WikiEventPublisherDep
 from narrare.prompts.deps import get_prompt_history_service
 from narrare.prompts.schemas_prompt_history import (
     PromptHistoryClearedResponse,
@@ -38,11 +39,12 @@ async def list_history(
     prompt_id: str,
     user_id: CurrentUserIdDep,
     session: SessionDep,
+    event_publisher: WikiEventPublisherDep,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> PromptHistoryListResponse:
     """List recorded prompt override revisions, newest first."""
-    service = await get_prompt_history_service(session)
+    service = await get_prompt_history_service(session, event_publisher)
     return await service.list_history(
         prompt_id,
         scope=_DEFAULT_SCOPE,
@@ -59,11 +61,12 @@ async def compare_revisions(
     prompt_id: str,
     user_id: CurrentUserIdDep,
     session: SessionDep,
+    event_publisher: WikiEventPublisherDep,
     from_revision: str = Query(..., alias="from", description="Revision UUID or 'active'."),
     to_revision: str = Query(..., alias="to", description="Revision UUID or 'active'."),
 ) -> PromptRevisionCompareResponse:
     """Compare two revisions (or either against the active override)."""
-    service = await get_prompt_history_service(session)
+    service = await get_prompt_history_service(session, event_publisher)
     return await service.compare_revisions(
         prompt_id,
         from_id=from_revision,
@@ -81,9 +84,10 @@ async def restore_revision(
     revision_id: uuid.UUID,
     user_id: CurrentUserIdDep,
     session: SessionDep,
+    event_publisher: WikiEventPublisherDep,
 ) -> PromptRevisionRestoredResponse:
     """Append-only restore: write the active file + record a NEW revision."""
-    service = await get_prompt_history_service(session)
+    service = await get_prompt_history_service(session, event_publisher)
     return await service.restore_revision(
         prompt_id,
         revision_id,
@@ -101,7 +105,8 @@ async def clear_history(
     prompt_id: str,
     user_id: CurrentUserIdDep,
     session: SessionDep,
+    event_publisher: WikiEventPublisherDep,
 ) -> PromptHistoryClearedResponse:
     """Delete all history revisions; the active override file is untouched."""
-    service = await get_prompt_history_service(session)
+    service = await get_prompt_history_service(session, event_publisher)
     return await service.clear_history(prompt_id, scope=_DEFAULT_SCOPE)

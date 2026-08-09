@@ -9,6 +9,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from narrare.events.publisher import (
+    WikiEventPublisherDep,  # noqa: TC001 - needed at runtime for FastAPI DI
+)
+
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,7 +77,10 @@ async def get_live_test_service(session: AsyncSession) -> PromptLiveTestApiServi
     )
 
 
-async def get_prompt_history_service(session: AsyncSession) -> PromptHistoryApiService:
+async def get_prompt_history_service(
+    session: AsyncSession,
+    event_publisher: WikiEventPublisherDep,
+) -> PromptHistoryApiService:
     """Wire ``PromptHistoryApiService`` (CR-AUFG-07-19).
 
     Composes the core file-based ``PromptManagementService`` (authoritative
@@ -81,6 +88,8 @@ async def get_prompt_history_service(session: AsyncSession) -> PromptHistoryApiS
     the request session.  The active override stays a FILE; revisions are a
     secondary record.  Retention is driven by
     ``Settings.prompt_history_retention_limit`` (RULE-18 operator-config).
+    ``event_publisher`` is the in-process wiki EventPublisher (Q-016) so a
+    wiki-category override fires ``wiki.prompt.changed``.
     """
     from narrare._app.config import get_settings
     from narrare._app.dependencies import get_registry
@@ -96,4 +105,5 @@ async def get_prompt_history_service(session: AsyncSession) -> PromptHistoryApiS
         core=core,
         repo=repo,
         retention_limit=settings.prompt_history_retention_limit,
+        event_publisher=event_publisher,
     )

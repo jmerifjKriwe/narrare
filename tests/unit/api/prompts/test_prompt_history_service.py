@@ -10,6 +10,7 @@ module ``test_prompt_history_service_restore.py`` (RULE-04 file-size limit).
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -22,6 +23,9 @@ from tests.unit.api.prompts.history_service_fakes import (
     FakeRepo,
     hash_text,
 )
+
+if TYPE_CHECKING:
+    from narrare_core.events.types import DomainEvent
 
 PROMPT_ID = "writing/en/new_chapter"
 
@@ -131,6 +135,83 @@ class TestSaveOverrideRecorded:
             PROMPT_ID, SaveOverrideRequest(content="x"), actor_id=uuid.uuid4()
         )
         assert calls == [100]
+
+
+# ---------------------------------------------------------------------------
+# Q-016 — wiki.prompt.changed producer (wiki-category override only)
+# ---------------------------------------------------------------------------
+
+WIKI_PROMPT_ID = "wiki/en/entity_summary"
+
+
+def _service_with_publisher(
+    fake_core: FakeCore, fake_repo: FakeRepo
+) -> tuple[PromptHistoryApiService, list[object]]:
+    from narrare.events.publisher import EventPublisher
+
+    publisher = EventPublisher()
+    received: list[object] = []
+
+    async def _record(event: DomainEvent) -> None:
+        received.append(event)
+
+    publisher.subscribe("wiki.prompt.changed", _record)
+    service = PromptHistoryApiService(
+        core=fake_core,
+        repo=fake_repo,
+        retention_limit=100,
+        event_publisher=publisher,
+    )
+    return service, received
+
+
+class TestWikiPromptChangedPublishing:
+    """A wiki-category prompt override publishes ``wiki.prompt.changed``."""
+
+    async def test_wiki_override_publishes_wiki_prompt_changed(
+        self, fake_core: FakeCore, fake_repo: FakeRepo
+    ) -> None:
+        from narrare_core.events.types import EventType
+
+        service, received = _service_with_publisher(fake_core, fake_repo)
+
+        await service.save_override_recorded(
+            WIKI_PROMPT_ID,
+            SaveOverrideRequest(content="new wiki tone"),
+            actor_id=uuid.uuid4(),
+        )
+
+        assert len(received) == 1
+        event = received[0]
+        assert event.event_type == EventType.WIKI_PROMPT_CHANGED  # type: ignore[attr-defined]
+        # Prompts are global — NO novel_id is carried; the listener marks all
+        # novels' summaries stale (mark-all-across-novels, Q-016 decision).
+        assert "novel_id" not in event.payload  # type: ignore[attr-defined]
+        assert "prompt_version" in event.payload  # type: ignore[attr-defined]
+
+    async def test_non_wiki_override_does_not_publish(
+        self, fake_core: FakeCore, fake_repo: FakeRepo
+    ) -> None:
+        service, received = _service_with_publisher(fake_core, fake_repo)
+
+        await service.save_override_recorded(
+            PROMPT_ID,  # "writing/en/new_chapter" — not wiki
+            SaveOverrideRequest(content="x"),
+            actor_id=uuid.uuid4(),
+        )
+        assert received == []
+
+    async def test_no_publisher_does_not_block_save(
+        self, fake_core: FakeCore, fake_repo: FakeRepo
+    ) -> None:
+        """Graceful degradation: no publisher wired → save still succeeds."""
+        service = PromptHistoryApiService(core=fake_core, repo=fake_repo, retention_limit=100)
+        await service.save_override_recorded(
+            WIKI_PROMPT_ID,
+            SaveOverrideRequest(content="x"),
+            actor_id=uuid.uuid4(),
+        )
+        assert fake_core.save_calls == [(WIKI_PROMPT_ID, "x")]
 
 
 class TestListHistory:

@@ -40,7 +40,10 @@ class EventType(StrEnum):
 
     # Wiki events (WIKI-001)
     WIKI_PROMPT_CHANGED = "wiki.prompt.changed"
-    WIKI_SYNC_REQUESTED = "wiki.sync.requested"
+    # WIKI_SYNC_REQUESTED removed (Q-016): orphaned under Option A — its
+    # producer (``_publish_wiki_sync_event``) and consumer
+    # (``on_wiki_sync_requested``) were removed in PR #157, and the three
+    # granular events above fully cover the regeneration triggers.
 
 
 @dataclass(frozen=True, slots=True)

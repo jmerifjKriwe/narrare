@@ -68,6 +68,33 @@ requires: [INFRA-001, INFRA-002, INFRA-003, INFRA-005, KB-001, ADR-007, ADR-012,
 > WikiChapterSummaryPanel (editor sidebar), KBCategorySidebar wiki tab,
 > WorldBuilding wiki mode, 22 i18n keys (en/de/fr), 16 Vitest tests.
 
+> **⚠️ Post-ADR-080 correction (2026-08-08 — Q-016 → Option A):** ADR-080 removed the Redis/
+> TaskIQ event bus for single-user local-first deployment, which **severed the automatic-
+> regeneration chain** described below ("How it works" steps 1–4 and the
+> `KB Entity Update → EmbeddingHooks → EventBus → TaskIQ` diagram). Verified at the code level:
+> all three wiki event subscriptions (`kb.entry.updated` / `chapter.finalized` /
+> `wiki.prompt.changed`) are **publish-to-nobody** today — the Core `WikiService` is wired with
+> `NullEventBus`, the lifespan's `EventPublisher` is never published to, and
+> `wiki/listeners.py:35` contains a `SyntaxError` so the listener module fails to import entirely.
+>
+> **Decision (Q-016 → Option A, Product-Owner approved):** the automatic-regeneration chain
+> **WILL be restored** as a deliberate WIKI-001 follow-up — by re-wiring the producers against
+> the in-process `EventPublisher` the lifespan already creates. This stays **inside ADR-080's
+> in-process boundary** (no Redis, no TaskIQ): producers fire in-process handlers. The reason this
+> is a correctness fix, not just a UX nicety: with the chain severed, an entity edit leaves the
+> summary at `fresh` with **old** content, and the raw-data fallback (which engages only on
+> `stale`/`pending`) does **not** trigger — so the AI silently writes against a stale character
+> view. Restoring the producers closes that gap.
+>
+> **Current runtime state (pre-implementation): the chain is still severed.** Until the
+> producers land, only **MANUAL refresh** works (the "refresh" button / `POST` endpoint →
+> `APIWikiService.mark_all_stale` / `generate_*`), with graceful fallback to raw KB data when a
+> summary is stale/pending. So today a changed entity's summary is served as `fresh` with old
+> content unless the user manually refreshes. The "How it works" sections below describe the
+> **original design intent** that Option A restores — read them through that lens.
+> See: `docs/architecture/questions/resolved/Q-016-wiki-listener-producers.md` (resolved → Option A),
+> ADR-080, `docs/_shared/CURRENT_STATE.md` (ADR-022 row + line 200).
+
 ## What it does
 
 A precomputed, deterministic context layer that converts raw KB entities and

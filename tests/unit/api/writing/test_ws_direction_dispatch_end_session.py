@@ -23,6 +23,7 @@ its size limit; this mirrors its controlled-turn pattern).
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import TYPE_CHECKING
 
@@ -226,6 +227,72 @@ class TestEndSessionDuringStream:
 
         # dropped-transcript behavior: no text_done after end_session
         assert all(m.get("type") != "text_done" for m in ws.sent)
+
+
+class TestCorruptPayloadNotSwallowed:
+    """Regression guard (Q-017, RULE-11): cache corruption must NOT be
+    swallowed as a benign end_session race.
+
+    ``_load_or_raise`` → ``_deserialize`` → ``json.loads`` raises
+    ``json.JSONDecodeError`` (a ``ValueError`` subclass) on a corrupt cached
+    payload. The success tail used to catch ``except ValueError`` for the
+    benign missing-session race, which therefore ALSO swallowed corruption
+    as ``direction_stream_session_ended`` (info) — a silent failure (RULE-11).
+    With the narrowed ``except SessionNotFoundError`` catch, corruption
+    propagates and surfaces as ``direction_stream_task_failed`` (error).
+    """
+
+    async def test_corrupt_payload_during_stream_surfaces_as_error_not_benign(
+        self,
+        caplog: pytest.LogCaptureFixture,
+        structlog_stdlib: None,
+    ) -> None:
+        dispatcher, session_manager, _, registry, turn_service = _make_dispatcher()
+        context = await _make_context(session_manager)
+        ws = _RecordingSocket()
+        session_id_str = str(context.session_id)
+
+        invocation_id = await dispatcher.dispatch(
+            ws,  # type: ignore[arg-type]
+            context,
+            "Write a scene",
+        )
+        assert invocation_id is not None
+
+        # Capture the in-flight task before we perturb the cache.
+        active_turn = registry.get(session_id_str)
+        assert active_turn is not None
+        task = active_turn.task
+
+        # Corrupt the cached payload mid-flight: json.loads will raise
+        # JSONDecodeError (a ValueError subclass) on the success tail's
+        # add_message -> _load_or_raise -> _deserialize path.
+        cache_key = f"writing:session:{context.session_id}"
+        await session_manager._cache.set(  # pyright: ignore[reportPrivateUsage]
+            cache_key, "{this is not valid json"
+        )
+
+        turn_service.release.set()
+        caplog.set_level(logging.INFO)
+
+        # Corruption must surface (not be swallowed). On the OLD code the
+        # broad ``except ValueError`` caught the JSONDecodeError and the task
+        # returned None; on the NEW code it propagates as a task exception.
+        with pytest.raises(json.JSONDecodeError):
+            await asyncio.wait_for(task, timeout=5)
+
+        # The benign-race log must NOT fire for corruption (proves the swallow
+        # is gone).
+        benign = [r for r in caplog.records if _record_event(r) == "direction_stream_session_ended"]
+        assert benign == []
+
+        # Corruption surfaced as an error via the last-resort done-callback.
+        failed = [r for r in caplog.records if _record_event(r) == "direction_stream_task_failed"]
+        assert len(failed) == 1
+        assert failed[0].levelno == logging.ERROR
+
+        # registry cleaned up regardless (no leak).
+        assert registry.get(session_id_str) is None
 
 
 class TestDoneCallbackLastResort:

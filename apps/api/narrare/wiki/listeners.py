@@ -17,6 +17,7 @@ from narrare.wiki.tasks import (
     run_wiki_generate_chapter,
     run_wiki_generate_entity,
     run_wiki_mark_all_stale,
+    run_wiki_mark_all_stale_global,
 )
 
 if TYPE_CHECKING:
@@ -115,16 +116,37 @@ class WikiEventListener:
             logger.exception("wiki_listener_chapter_failed", chapter_id=str(chapter_id))
 
     async def on_wiki_prompt_changed(self, event: DomainEvent) -> None:
-        """Handle ``wiki.prompt.changed`` — mark all summaries stale."""
+        """Handle ``wiki.prompt.changed`` — mark summaries stale.
+
+        Q-016: wiki prompts are GLOBAL (cascade ``{category}/{lang}/{mode}``,
+        no novel dimension). When ``novel_id`` is present (per-novel trigger,
+        e.g. Core ``mark_all_stale``), only that novel is marked stale. When
+        ``novel_id`` is absent (global prompt override from the prompt-save
+        producer), ALL novels' summaries are marked stale.
+        """
         novel_id = _uuid_from_payload(event.payload, "novel_id")
         prompt_version = event.payload.get("prompt_version", "")
-        if novel_id is None:
-            logger.warning("wiki_listener_invalid_payload", event_type=str(event.event_type))
-            return
         try:
-            count = await run_wiki_mark_all_stale(
-                novel_id, prompt_version, wiki_service_factory=self._factory
-            )
-            logger.info("wiki_listener_prompt_changed", novel_id=str(novel_id), stale_count=count)
+            if novel_id is not None:
+                count = await run_wiki_mark_all_stale(
+                    novel_id, prompt_version, wiki_service_factory=self._factory
+                )
+                logger.info(
+                    "wiki_listener_prompt_changed",
+                    novel_id=str(novel_id),
+                    stale_count=count,
+                )
+            else:
+                # Global prompt override → mark all summaries stale.
+                count = await run_wiki_mark_all_stale_global(
+                    prompt_version, wiki_service_factory=self._factory
+                )
+                logger.info(
+                    "wiki_listener_prompt_changed_global",
+                    stale_count=count,
+                )
         except Exception:
-            logger.exception("wiki_listener_prompt_change_failed", novel_id=str(novel_id))
+            logger.exception(
+                "wiki_listener_prompt_change_failed",
+                novel_id=str(novel_id) if novel_id else "(global)",
+            )

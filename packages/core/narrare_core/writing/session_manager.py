@@ -16,6 +16,7 @@ from uuid import UUID, uuid4
 
 import structlog
 
+from narrare_core.shared.errors import SessionNotFoundError
 from narrare_core.writing.models import SessionState
 from narrare_core.writing.requests import (
     OwnershipMismatch,
@@ -163,9 +164,10 @@ class SessionManager:
     async def save_to_chapter(self, session_id: UUID) -> str:
         """Save prose buffer as chapter draft, return content.
 
-        Raises :class:`ValueError` if the prose buffer is empty.
-        The prose buffer is preserved — call :meth:`end_session` to
-        clear it.
+        Raises :class:`SessionNotFoundError` if the session is missing or
+        expired (propagated from :meth:`_load_or_raise`), and
+        :class:`ValueError` if the prose buffer is empty. The prose buffer
+        is preserved — call :meth:`end_session` to clear it.
         """
         state = await self._load_or_raise(session_id)
         if not state.prose_buffer:
@@ -271,10 +273,16 @@ class SessionManager:
         return self._deserialize(raw)
 
     async def _load_or_raise(self, session_id: UUID) -> SessionState:
-        """Load session from cache, raising if not found."""
+        """Load session from cache, raising if not found.
+
+        Raises :class:`SessionNotFoundError` (a :class:`NotFoundError`, not a
+        ``ValueError``) when the session is missing/expired — see Q-017. This
+        lets callers catch the benign end_session race precisely without
+        also swallowing a corrupt cached payload (``json.JSONDecodeError``).
+        """
         state = await self._load(session_id)
         if state is None:
-            raise ValueError(f"Session {session_id} not found or expired.")
+            raise SessionNotFoundError(session_id)
         return state
 
     def _trim_history(self, state: SessionState) -> None:

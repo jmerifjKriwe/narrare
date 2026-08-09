@@ -31,26 +31,26 @@ Pure mapping helpers live in ``history_mapping.py`` (RULE-04 split).
 
 from __future__ import annotations
 
-import uuid
 from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.prompts.history_mapping import (
-    ACTIVE_TOKEN,
-    content_hash,
-    revision_to_response,
+from narrare.prompts._history_compare_mixin import HistoryCompareRestoreMixin
+from narrare.prompts._wiki_prompt_event import (
+    WIKI_PROMPT_CATEGORY_PREFIX,
+    publish_wiki_prompt_changed,
 )
+from narrare.prompts.history_mapping import content_hash, revision_to_response
 from narrare.prompts.schemas_prompt_history import (
     PromptHistoryClearedResponse,
     PromptHistoryListResponse,
     PromptHistoryScope,
-    PromptRevisionCompareResponse,
-    PromptRevisionRestoredResponse,
 )
-from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
+    import uuid
+
+    from narrare.events.publisher import EventPublisher
     from narrare.prompts.repository import PromptHistoryRepository
     from narrare.prompts.schemas import SaveOverrideRequest
     from narrare_core.prompts.management import PromptManagementService
@@ -58,7 +58,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 
-class PromptHistoryApiService:
+class PromptHistoryApiService(HistoryCompareRestoreMixin):
     """Prompt History service implementing ``PromptHistoryServiceProtocol``."""
 
     def __init__(
@@ -67,10 +67,12 @@ class PromptHistoryApiService:
         repo: PromptHistoryRepository,
         *,
         retention_limit: int,
+        event_publisher: EventPublisher | None = None,
     ) -> None:
         self._core = core
         self._repo = repo
         self._retention_limit = retention_limit
+        self._event_publisher = event_publisher
 
     # -- helpers -----------------------------------------------------------
 
@@ -84,31 +86,6 @@ class PromptHistoryApiService:
         if detail is None or not detail.is_overridden:
             return None
         return detail.content
-
-    async def _resolve_compare_side(
-        self,
-        prompt_id: str,
-        side: str,
-    ) -> tuple[str, str]:
-        """Resolve a compare side to ``(content, source_label)``.
-
-        ``side`` is either the literal ``"active"`` or a revision UUID string.
-        """
-        if side == ACTIVE_TOKEN:
-            active = await self._active_content(prompt_id)
-            if active is None:
-                raise NotFoundError("Active override", identifier=prompt_id)
-            return active, ACTIVE_TOKEN
-
-        try:
-            revision_id = uuid.UUID(side)
-        except (ValueError, TypeError) as exc:
-            raise NotFoundError("Prompt revision", identifier=side) from exc
-
-        revision = await self._repo.get_revision(revision_id)
-        if revision is None:
-            raise NotFoundError("Prompt revision", identifier=side)
-        return revision.content, revision.source
 
     # -- public API --------------------------------------------------------
 
@@ -153,6 +130,14 @@ class PromptHistoryApiService:
                 scope=scope.value,
             )
             return
+
+        # Q-016: a wiki-category prompt override changes the wiki generation
+        # prompt globally. Publish ``wiki.prompt.changed`` so the listener
+        # marks wiki summaries stale for regeneration. Non-blocking (the
+        # helper swallows publish failures — RULE-11). Only fires when content
+        # genuinely changed (past the dedup check above).
+        if self._event_publisher is not None and prompt_id.startswith(WIKI_PROMPT_CATEGORY_PREFIX):
+            await publish_wiki_prompt_changed(self._event_publisher, prompt_id, digest)
 
         # 4. Best-effort DB record + retention.  Failure is non-fatal.
         try:
@@ -208,81 +193,8 @@ class PromptHistoryApiService:
             revisions=[revision_to_response(rev, active_hash=active_hash) for rev in revisions],
         )
 
-    async def compare_revisions(
-        self,
-        prompt_id: str,
-        *,
-        from_id: str,
-        to_id: str,
-        scope: PromptHistoryScope = PromptHistoryScope.PROJECT,
-    ) -> PromptRevisionCompareResponse:
-        """Compare two revisions (or the literal ``"active"``) by content."""
-        from_content, from_source = await self._resolve_compare_side(prompt_id, from_id)
-        to_content, to_source = await self._resolve_compare_side(prompt_id, to_id)
-
-        return PromptRevisionCompareResponse(
-            prompt_id=prompt_id,
-            from_id=from_id,
-            to_id=to_id,
-            from_source=from_source,
-            to_source=to_source,
-            from_content=from_content,
-            to_content=to_content,
-        )
-
-    async def restore_revision(
-        self,
-        prompt_id: str,
-        revision_id: uuid.UUID,
-        *,
-        actor_id: uuid.UUID,
-        scope: PromptHistoryScope = PromptHistoryScope.PROJECT,
-    ) -> PromptRevisionRestoredResponse:
-        """Append-only restore: write the active file + record a NEW revision."""
-        revision = await self._repo.get_revision(revision_id)
-        if revision is None:
-            raise NotFoundError("Prompt revision", identifier=str(revision_id))
-
-        # Capture the previous active hash (before overwrite) for the response.
-        previous_active = await self._active_content(prompt_id)
-        previous_active_hash = (
-            content_hash(previous_active) if previous_active is not None else None
-        )
-
-        content = revision.content
-
-        # 1. Write the active file (authoritative) with the revision's content.
-        #    The core re-injects override_of_version; since the stored content
-        #    already carries it, the write is effectively idempotent.
-        await self._core.save_override(prompt_id, content)
-
-        # 2. Record a NEW revision (append-only).  Restore recording is NOT
-        #    best-effort: the action should surface errors so the user knows
-        #    the revision was not recorded.  The file write already succeeded
-        #    and remains authoritative.
-        digest = content_hash(content)
-        restored = await self._repo.insert_revision(
-            prompt_id,
-            scope.value,
-            content=content,
-            content_hash=digest,
-            actor_id=actor_id,
-            source="restore",
-            restored_from_id=revision.id,
-        )
-        await self._repo.enforce_retention(
-            prompt_id,
-            scope.value,
-            keep=self._retention_limit,
-        )
-
-        # The restored revision is now active (its content == the file content).
-        return PromptRevisionRestoredResponse(
-            prompt_id=prompt_id,
-            restored_revision=revision_to_response(restored, active_hash=digest),
-            active_content=content,
-            previous_active_hash=previous_active_hash,
-        )
+    # compare_revisions / restore_revision live in HistoryCompareRestoreMixin
+    # (RULE-04 split — see _history_compare_mixin.py).
 
     async def clear_history(
         self,

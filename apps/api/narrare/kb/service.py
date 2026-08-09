@@ -16,6 +16,7 @@ from narrare.kb._reference_resolution import (
     resolve_references as resolve_references_impl,
 )
 from narrare.kb._validators import resolve_entry_slug, validate_entry_metadata
+from narrare_core.events.types import EventType
 from narrare_core.shared.errors import (
     ConflictError,
     ForbiddenError,
@@ -25,6 +26,7 @@ from narrare_core.shared.errors import (
 if TYPE_CHECKING:
     import uuid
 
+    from narrare.events.publisher import EventPublisher
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.embedding_hooks import EmbeddingHookManager
     from narrare.kb.lifecycle_dispatcher import KBLifecycleDispatcher
@@ -48,11 +50,13 @@ class KBService:
         novel_repo: NovelRepositoryProtocol | None = None,
         embedding_hooks: EmbeddingHookManager | None = None,
         lifecycle: KBLifecycleDispatcher | None = None,
+        event_publisher: EventPublisher | None = None,
     ) -> None:
         self._repo = repo
         self._novel_repo = novel_repo
         self._embedding_hooks = embedding_hooks
         self._lifecycle = lifecycle
+        self._event_publisher = event_publisher
 
     async def _verify_novel_ownership(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> None:
         """Raise ForbiddenError if the novel does not belong to the user."""
@@ -192,6 +196,25 @@ class KBService:
                 new_name=data.name,
                 new_status=data.status,
             )
+
+        # Q-016: publish kb.entry.updated so wiki summaries referencing this
+        # entity are marked stale / regenerated (in-process, ADR-080). Non-
+        # blocking + logged (RULE-11): a publish failure never aborts the
+        # user's save. No publisher → graceful no-op (e.g. unbound app.state).
+        if self._event_publisher is not None:
+            try:
+                await self._event_publisher.publish(
+                    EventType.KB_ENTRY_UPDATED,
+                    aggregate_id=entry_id,
+                    payload={"entity_id": str(entry_id), "novel_id": str(novel_id)},
+                )
+            except Exception:
+                logger.warning(
+                    "kb_entry_updated_publish_failed",
+                    entry_id=str(entry_id),
+                    novel_id=str(novel_id),
+                    exc_info=True,
+                )
 
         return updated
 

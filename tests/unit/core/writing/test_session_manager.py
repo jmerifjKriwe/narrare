@@ -370,24 +370,9 @@ class TestSerialization:
 
 # ---------------------------------------------------------------------------
 # Error handling
+#
+# Q-017: the error-handling tests (SessionNotFoundError vs ValueError vs
+# json.JSONDecodeError) have been extracted to ``test_session_errors.py``
+# (RULE-04 split — that file owns the error contract; this file owns
+# lifecycle / history / persistence / serialization).
 # ---------------------------------------------------------------------------
-
-
-class TestErrorHandling:
-    """Graceful handling of missing/expired sessions."""
-
-    async def test_add_message_to_nonexistent_session_raises(self, manager: SessionManager) -> None:
-        with pytest.raises(ValueError, match="not found or expired"):
-            await manager.add_message(uuid4(), "user", "Hello")
-
-    async def test_append_prose_to_nonexistent_session_raises(
-        self, manager: SessionManager
-    ) -> None:
-        with pytest.raises(ValueError, match="not found or expired"):
-            await manager.append_prose(uuid4(), "Some text")
-
-    async def test_save_to_chapter_nonexistent_session_raises(
-        self, manager: SessionManager
-    ) -> None:
-        with pytest.raises(ValueError, match="not found or expired"):
-            await manager.save_to_chapter(uuid4())

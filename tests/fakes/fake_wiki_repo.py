@@ -165,6 +165,17 @@ class FakeWikiRepository:
             return self._return_values.pop("mark_related_stale")
         return 0
 
+    async def mark_all_stale_global(self) -> int:
+        """Mirror ``WikiRepository.mark_all_stale_global`` (Q-016)."""
+        self.calls.append(CallRecord("mark_all_stale_global"))
+        if "mark_all_stale_global" in self._return_values:
+            return self._return_values.pop("mark_all_stale_global")
+        count = 0
+        for summary in self._entity_summaries.values():
+            summary.status = "stale"
+            count += 1
+        return count
+
     async def delete_summary(self, entity_id: uuid.UUID) -> None:
         self.calls.append(CallRecord("delete_summary", kwargs={"entity_id": entity_id}))
         keys = [k for k in self._entity_summaries if k[0] == entity_id]

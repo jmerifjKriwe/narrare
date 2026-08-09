@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from narrare_core.shared.errors import SessionNotFoundError
+
 if TYPE_CHECKING:
     from uuid import UUID
 
@@ -64,6 +66,18 @@ async def handle_save(
     """
     try:
         content = await session_manager.save_to_chapter(session_id)
+    except SessionNotFoundError:
+        # Evicted/expired session (Q-017): a benign "session ended" outcome,
+        # mirroring the stream success tail's handling. Distinct from the
+        # prose-empty ValueError below, which is a real user-facing error.
+        await websocket.send_json({"type": "session_ended"})
+    except ValueError as e:
+        # Prose buffer is empty — a genuine user-facing error (the session is
+        # live, there is just nothing to save). The split from
+        # SessionNotFoundError (above) is the Q-017 RULE-11 fix: previously a
+        # single ``except ValueError`` conflated both sources.
+        await websocket.send_json({"type": "error", "message": str(e)})
+    else:
         await websocket.send_json(
             {
                 "type": "saved",
@@ -71,5 +85,3 @@ async def handle_save(
                 "word_count": len(content.split()),
             }
         )
-    except ValueError as e:
-        await websocket.send_json({"type": "error", "message": str(e)})

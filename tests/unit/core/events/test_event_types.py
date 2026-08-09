@@ -65,9 +65,8 @@ class TestEventTypeIsStrEnum:
 
     def test_iteration(self) -> None:
         all_values = list(EventType)
-        assert (
-            len(all_values) == 13
-        )  # 10 original + CHAPTER_FINALIZED + WIKI_PROMPT_CHANGED + WIKI_SYNC_REQUESTED
+        assert len(all_values) == 12  # 10 original + CHAPTER_FINALIZED + WIKI_PROMPT_CHANGED
+        # (WIKI_SYNC_REQUESTED removed — Q-016: orphaned, no producer/consumer)
 
 
 # ---------------------------------------------------------------------------

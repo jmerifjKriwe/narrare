@@ -1,0 +1,14 @@
+{
+  "dashboard": {
+    "noNovelsHint": "Erstellen Sie Ihren ersten Roman, um zu beginnen.",
+    "confirmDelete": "Möchten Sie diesen Roman wirklich löschen? Dies kann nicht rückgängig gemacht werden."
+  },
+  "wizard": {
+    "step1": {
+      "description": "Wählen Sie einen Namen und eine Sprache für Ihr Schreibprojekt."
+    },
+    "step5": {
+      "description": "Überprüfen Sie Ihre Einrichtung, bevor wir Ihr Projekt erstellen."
+    }
+  }
+}

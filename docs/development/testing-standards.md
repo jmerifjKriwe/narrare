@@ -787,6 +787,44 @@ Tests are automatically tagged based on their directory path. No manual markers 
   schema (alembic downgrade/upgrade round-trips). `just test` and CI run them
   in a dedicated serial phase, never under xdist.
 
+#### `schema_mutating` — enforced two-phase serial (review break-point)
+
+Schema-mutating integration tests (alembic downgrade/upgrade round-trips,
+`TRUNCATE`-based key-rotation tests) share a single test database with all
+other integration tests. Running them concurrently under xdist corrupts the
+shared schema mid-run (`column "..." does not exist` during the downgrade
+window). The **current mitigation is enforced, not convention**:
+
+1. **`@pytest.mark.schema_mutating` marker** — routes marked tests to a
+   dedicated **serial phase 2** in both `just test` and CI
+   (`pytest tests/integration/ -m schema_mutating`, no xdist).
+2. **AST collection guard** (`tests/_schema_guard.py` +
+   `tests/conftest.py` `pytest_collection_modifyitems` hook) — fails collection
+   **loudly** if any integration test exhibits schema-mutating patterns
+   (alembic `downgrade`, `metadata.create_all`/`drop_all`, SQL DDL:
+   `CREATE/DROP/ALTER TABLE`, `CREATE/DROP INDEX`, `CREATE/DROP SCHEMA`)
+   without the marker. This is a safety net so the race cannot silently recur.
+
+This is the **contained** mitigation, not the root-cause fix. The true root
+cause is that schema-mutating tests share one database; the root-cause fix is
+**per-test-DB isolation** (`CREATE DATABASE … TEMPLATE narrare_test …`, Q-018
+Option A), which would let these tests run concurrently. That infra is
+non-trivial (template DB at head, per-test CREATE/DROP outside transactions,
+robust teardown-under-crash) and is premature at the current scale
+(2 modules, ~20 s serial phase-2 wall time).
+
+**Review trigger — revisit and move to per-test-DB isolation (Option A) when
+EITHER threshold is met, whichever comes first:**
+
+- the `schema_mutating` **module count reaches 5**, OR
+- the serial **phase-2 wall time exceeds 60 s** on CI.
+
+The guard + marker remain as the safety net regardless of which approach is
+active.
+
+**Reference:** `docs/architecture/questions/resolved/Q-018-per-test-database-isolation.md`,
+`tests/_schema_guard.py`.
+
 **Do NOT add** `pytestmark = pytest.mark.requires_db` to integration test files — auto-tagging handles this.
 
 ### Running Tests
@@ -794,9 +832,28 @@ Tests are automatically tagged based on their directory path. No manual markers 
 ```bash
 # justfile commands:
 just test          # Two-phase: parallel full suite, then schema_mutating tests serially
+just test-lowmem   # Same two phases, but phase 1 uses -n 2 (reduced parallelism) — see below
 just test-unit     # Parallel unit tests only
 just test-single   # Single-threaded for debugging (disables randomly)
 ```
+
+#### Running tests on low-memory machines (< 16 GB RAM)
+
+`just test` uses `-n auto` (one xdist worker per CPU core). Each worker is a
+full Python process that imports the entire Narrare app (FastAPI app, all
+routers, SQLAlchemy models, pydantic-ai) plus the full test suite (~11 k
+items). On machines with < 16 GB RAM, accumulated per-worker memory pressure
+can push one worker over the limit and the kernel OOM killer SIGKILLs a
+**random** worker mid-run (no Python traceback — the victim test is
+arbitrary). The local crash rate was ~25 % on a 9.6 GB machine; CI
+(16 GB runners, ~4 GB/worker headroom) is unaffected and keeps `-n auto`.
+
+**Use `just test-lowmem`** (`-n 2`) on machines with < 16 GB RAM. It halves
+memory pressure at the cost of ~2× slower local wall time. The two-phase
+schema_mutating split is identical to `just test`; only the phase-1 worker
+count changes.
+
+**Reference:** `docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md`.
 
 Use `just test-single` when:
 - Debugging a test that fails only under random ordering

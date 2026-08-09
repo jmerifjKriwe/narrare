@@ -5,12 +5,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from narrare._app.dependencies import SessionDep  # noqa: TC001 - needed at runtime for FastAPI DI
+from narrare.events.publisher import (
+    WikiEventPublisherDep,  # noqa: TC001 - needed at runtime for FastAPI DI
+)
 
 if TYPE_CHECKING:
     from narrare.kb.session_service import KBSessionService
 
 
-def get_kb_session_service(session: SessionDep) -> KBSessionService:
+def get_kb_session_service(
+    session: SessionDep,
+    event_publisher: WikiEventPublisherDep,
+) -> KBSessionService:
     """Create a KBSessionService with injected dependencies.
 
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
@@ -58,7 +64,7 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
         invocation_pipeline=get_invocation_pipeline(),
     )
 
-    kb_service = get_kb_service(session)
+    kb_service = get_kb_service(session, event_publisher=event_publisher)
 
     return KBSessionService(
         session_store=session_store,

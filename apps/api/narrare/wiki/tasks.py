@@ -93,6 +93,26 @@ async def run_wiki_mark_all_stale(
         return 0
 
 
+async def run_wiki_mark_all_stale_global(
+    prompt_version: str,
+    *,
+    wiki_service_factory: Callable[[], APIWikiService],
+) -> int:
+    """Mark ALL wiki summaries stale across all novels (Q-016).
+
+    Used when the wiki generation prompt is overridden globally (no novel_id).
+    No retry (DB only).
+    """
+    svc = wiki_service_factory()
+    try:
+        count = await svc.mark_all_stale_global()
+        logger.info("wiki_marked_stale_global", count=count, prompt_version=prompt_version)
+        return count
+    except Exception:
+        logger.exception("wiki_mark_stale_global_failed")
+        return 0
+
+
 async def run_wiki_refresh_summary(
     entity_id: uuid.UUID,
     novel_id: uuid.UUID,

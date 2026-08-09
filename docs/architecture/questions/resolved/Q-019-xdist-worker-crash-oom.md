@@ -1,6 +1,6 @@
 # Q-019 — xdist Worker Crash (OOM) Under `-n auto` on Memory-Constrained Machines
 
-> **Status:** 🟡 Open
+> **Status:** ✅ Resolved (2026-08-08) — Option A (`just test-lowmem` recipe; default unchanged)
 > **Blocks:** Nothing (3/4 local runs clean; CI has 16 GB RAM — unlikely to hit)
 > **Raised:** 2026-08-08
 > **Source:** Worker crash during `just test` validation (schema_mutating enforcement PR)
@@ -114,6 +114,93 @@ CR-08).
 
 ---
 
-> **Status:** 🟡 Open — pre-existing memory-pressure flake under xdist on
-> machines with <16 GB RAM. Unrelated to the schema_mutating enforcement PR.
-> CI (16 GB) is unlikely to hit it. No fix in this PR; rerun on crash.
+## Resolution — Option A (low-memory justfile recipe; document; default unchanged)
+
+> **Status:** ✅ Resolved (2026-08-08) — **Option A** chosen.
+> **Documentation:** Resolution in this question file + justfile recipe comment +
+> `docs/development/testing-standards.md` note. No full ADR (a tooling recipe within
+> existing xdist infrastructure — no new pattern/dependency).
+
+### Root cause (identified; pragmatic, not code-fixable)
+
+The root cause is **accumulated per-worker memory pressure** when 4 xdist workers each
+import the full Narrare app + ~11 k test items on a machine with < 16 GB RAM. It is a
+**hardware-budget reality**, not a code defect: the victim is random, the victim test's
+own memory delta is 0 MB, and CI (16 GB, ~4 GB/worker headroom) is unaffected. There is
+no in-code "fix" that makes 4 full-app worker processes fit in 9.6 GB once accumulated
+footprint exceeds the budget — except reducing parallelism (the standard, correct
+response to OOM-under-xdist, which directly addresses "too many worker processes for
+available memory").
+
+### Alternatives considered
+
+- **Option B — Mark repo-scanning tests serial.** *Rejected as a non-fix.* The crash
+  victim is random; marking the observed victim serial just shifts the crash to the
+  next random victim. It does not reduce total worker memory pressure.
+- **Option C — Document and accept (rerun on crash).** *Rejected as the sole response.*
+  A 25 % local crash rate with "just rerun" is poor DX and hides a real memory
+  pressure signal. A working mitigation (Option A) exists and is low-effort; "accept
+  and rerun" when a real fix exists is the "good enough for now" anti-pattern (§4).
+- **Option D — Per-worker memory limit + retry.** *Rejected.* pytest-xdist restarts a
+  crashed worker but **does not retry** the killed test — it marks it FAILED. Native
+  retry would need `pytest-rerunfailures` (a **new dependency** → would require an ADR)
+  and would mask the underlying pressure by silently retrying (treating the symptom).
+  Discard.
+- **Option A — Reduce local parallelism (chosen).** A `test-lowmem` recipe (`-n 2` /
+  `--maxprocesses=2`) halves memory pressure at ~2× local wall time on constrained
+  machines. This is the correct tooling response to a known hardware constraint, not a
+  workaround. The default stays `-n auto` (correct for 16 GB / CI).
+
+### Sustainability check
+
+1. *Correct in 3 months?* Yes — the recipe stays valid as long as xdist is used; the
+   deeper lever (reducing per-worker import footprint via lazy imports / smaller
+   fixtures) is noted below as a long-term option, not required now.
+2. *Hard-to-undo coupling?* None — an additive justfile recipe.
+3. *Simplest correct solution?* Yes — vs. a new dependency (D) or non-fixes (B/C).
+4. *Understandable to next dev?* Yes — the recipe + comment explain *why* `-n auto`
+   can OOM locally and *what to do* about it.
+
+### Decision
+
+Add a `test-lowmem` justfile recipe; **do not** change the default `test` recipe
+(`-n auto` is correct for CI's 16 GB and for 16 GB dev machines — the default serves
+the common/canonical case; CI is the source of truth). Document the memory-budget
+reality in `docs/development/testing-standards.md` so developers on < 16 GB machines
+know to use `just test-lowmem`.
+
+### Implementation handoff → Platform specialist
+
+1. `justfile` — add after the `test` recipe (around line 279):
+   ```just
+   # Run all tests with reduced parallelism for machines with < 16 GB RAM.
+   # `-n auto` (= one worker per core) can trigger the OOM killer on memory-constrained
+   # machines because each xdist worker imports the full app + test suite. Use this on
+   # < 16 GB RAM; see docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
+   # CI (16 GB) and 16 GB dev machines should keep the default `just test`.
+   test-lowmem:
+       uv run pytest tests/ -v -n 2 --dist loadfile -m "not schema_mutating"
+       uv run pytest tests/integration/ -v -m schema_mutating
+   ```
+2. `docs/development/testing-standards.md` — add a short "Running tests on low-memory
+   machines" note: "`-n auto` may SIGKILL a worker on < 16 GB RAM (Q-019); use
+   `just test-lowmem` (`-n 2`)."
+3. No `ci.yml` change — CI uses 16 GB runners and is unaffected.
+
+**Test plan:** run `just test-lowmem` on the 9.6 GB machine and confirm no OOM crash
+across 4 runs (vs. the 25 % crash rate under `-n auto`). `just test` (default) must
+remain unchanged and green on 16 GB / CI.
+
+### Long-term lever (not in scope)
+
+The deeper root cause is the **per-worker import footprint** (each worker imports the
+full FastAPI app + all routers + SQLAlchemy models + pydantic-ai + ~11 k test items). A
+future investigation into lazy imports / smaller fixture scopes / test-suite diet could
+lower the per-worker base footprint and raise the `-n auto` ceiling. Track separately;
+not needed to resolve this question.
+
+---
+
+> **Status:** ✅ Resolved (2026-08-08) — **Option A**: add `just test-lowmem` (`-n 2`)
+> for < 16 GB RAM machines; default `just test` unchanged (CI = 16 GB). Options B/D are
+> non-fixes; C-only is rejected (a working mitigation exists).

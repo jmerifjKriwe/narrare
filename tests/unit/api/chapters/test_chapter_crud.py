@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -14,6 +15,9 @@ from narrare.chapters.service import ChapterService
 from narrare_core.shared.errors import NotFoundError
 from tests.factories import make_chapter, make_novel
 from tests.fakes import FakeChapterRepository, FakeNovelService
+
+if TYPE_CHECKING:
+    from narrare_core.events.types import DomainEvent
 
 
 @pytest.fixture
@@ -110,6 +114,116 @@ class TestChapterServiceUpdateMeta:
             UpdateChapterMetaRequest(title="New Title"),
         )
         assert result.title == "New Title"
+
+
+# ---------------------------------------------------------------------------
+# update_meta → chapter.finalized event (Q-016 — wiki staleness gap)
+# ---------------------------------------------------------------------------
+
+
+class TestChapterServiceEventPublishing:
+    """``chapter.finalized`` fires only on the status → ``final`` transition."""
+
+    @staticmethod
+    def _service_with_publisher(
+        fake_repo: FakeChapterRepository, fake_novel_service: FakeNovelService
+    ) -> tuple[ChapterService, list[object]]:
+        from narrare.events.publisher import EventPublisher
+
+        publisher = EventPublisher()
+        received: list[object] = []
+
+        async def _record(event: DomainEvent) -> None:
+            received.append(event)
+
+        publisher.subscribe("chapter.finalized", _record)
+        service = ChapterService(
+            repo=fake_repo, novel_service=fake_novel_service, event_publisher=publisher
+        )
+        return service, received
+
+    async def test_transition_to_final_publishes_chapter_finalized(
+        self,
+        fake_repo: FakeChapterRepository,
+        fake_novel_service: FakeNovelService,
+    ) -> None:
+        service, received = self._service_with_publisher(fake_repo, fake_novel_service)
+        novel_id, user_id = _seed_ownership(fake_novel_service)
+        chapter = make_chapter(novel_id=novel_id, status="draft")
+        fake_repo.seed(chapter)
+
+        await service.update_meta(
+            chapter.id, novel_id, user_id, UpdateChapterMetaRequest(status="final")
+        )
+
+        from narrare_core.events.types import EventType
+
+        assert len(received) == 1
+        event = received[0]
+        assert event.event_type == EventType.CHAPTER_FINALIZED  # type: ignore[attr-defined]
+        assert event.payload["chapter_id"] == str(chapter.id)  # type: ignore[attr-defined]
+        assert event.payload["novel_id"] == str(novel_id)  # type: ignore[attr-defined]
+
+    async def test_title_only_does_not_publish(
+        self,
+        fake_repo: FakeChapterRepository,
+        fake_novel_service: FakeNovelService,
+    ) -> None:
+        service, received = self._service_with_publisher(fake_repo, fake_novel_service)
+        novel_id, user_id = _seed_ownership(fake_novel_service)
+        chapter = make_chapter(novel_id=novel_id, status="draft")
+        fake_repo.seed(chapter)
+
+        await service.update_meta(
+            chapter.id, novel_id, user_id, UpdateChapterMetaRequest(title="Renamed")
+        )
+        assert received == []
+
+    async def test_non_final_status_does_not_publish(
+        self,
+        fake_repo: FakeChapterRepository,
+        fake_novel_service: FakeNovelService,
+    ) -> None:
+        service, received = self._service_with_publisher(fake_repo, fake_novel_service)
+        novel_id, user_id = _seed_ownership(fake_novel_service)
+        chapter = make_chapter(novel_id=novel_id, status="draft")
+        fake_repo.seed(chapter)
+
+        await service.update_meta(
+            chapter.id, novel_id, user_id, UpdateChapterMetaRequest(status="reviewed")
+        )
+        assert received == []
+
+    async def test_already_final_re_finalized_does_not_double_publish(
+        self,
+        fake_repo: FakeChapterRepository,
+        fake_novel_service: FakeNovelService,
+    ) -> None:
+        """Re-saving status=final on an already-final chapter is not a transition."""
+        service, received = self._service_with_publisher(fake_repo, fake_novel_service)
+        novel_id, user_id = _seed_ownership(fake_novel_service)
+        chapter = make_chapter(novel_id=novel_id, status="final")
+        fake_repo.seed(chapter)
+
+        await service.update_meta(
+            chapter.id, novel_id, user_id, UpdateChapterMetaRequest(status="final")
+        )
+        assert received == []
+
+    async def test_no_publisher_does_not_raise(
+        self,
+        service: ChapterService,
+        fake_repo: FakeChapterRepository,
+        fake_novel_service: FakeNovelService,
+    ) -> None:
+        """Graceful degradation: no publisher wired → update still succeeds."""
+        novel_id, user_id = _seed_ownership(fake_novel_service)
+        chapter = make_chapter(novel_id=novel_id, status="draft")
+        fake_repo.seed(chapter)
+
+        await service.update_meta(
+            chapter.id, novel_id, user_id, UpdateChapterMetaRequest(status="final")
+        )
 
 
 # ---------------------------------------------------------------------------
