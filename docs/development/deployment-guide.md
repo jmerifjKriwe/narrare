@@ -205,7 +205,7 @@ is a quick orientation only and may lag behind the canonical source.
 | `typecheck` | `pyright --strict` | Runs after `architecture` |
 | `security` | `bandit -r` + `pip-audit` (with documented ignore-IDs) + `check_secrets.py`/Gitleaks | Runs after `architecture` |
 | `test-unit` | `pytest tests/unit/` with global `--cov-fail-under=80`, then `check_module_coverage.py --fail` (RULE-10 module targets + ratcheted baselines) | Runs after lint/typecheck |
-| `test-integration` | `pytest tests/integration/` against `pgvector/pgvector:pg17` and `redis:8-alpine` services | Runs after lint/typecheck |
+| `test-integration` | `pytest tests/integration/` against `pgvector/pgvector:pg17` service | Runs after lint/typecheck |
 | `update-coverage-badge` | Refreshes coverage badge | Non-blocking helper job |
 | `frontend` | `check_frontend_file_size.py`, biome, i18n validation, `pnpm type-check`, `pnpm test`, component marker (`check-testid.ts`), `pnpm build`; test performance is warning-only (threshold 240s) | Runs after `architecture` |
 | `test-e2e` | Full-stack end-to-end tests | Runs only on pushes to `main` |

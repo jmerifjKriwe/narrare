@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/adr-index | Priority: medium | Source: docs/architecture/decisions/INDEX.md | Updated: 2026-06-24 -->
+<!-- Context: narrare-dev/lookup/adr-index | Priority: medium | Source: docs/architecture/decisions/INDEX.md | Updated: 2026-08-10 -->
 
 # Architecture Decision Records — Index
 
@@ -24,12 +24,12 @@
 | ADR-004 | Hard file size limits with enforcement | ✅ | init | all files |
 | ADR-005 | Module structure and ownership boundaries | ✅ | init | all modules |
 | ADR-006 | Technology choices and explicit exclusions | ✅ | init | all |
-| ADR-007 | TaskIQ for background task processing | ✅ | init+2 | `core/tasks/` |
+| ADR-007 | TaskIQ for background task processing | ⛔ | init+2 | `core/tasks/` (superseded by ADR-080) |
 | ADR-008 | Frontend architecture: fetch, Tailwind v4, TanStack Query, shadcn/ui | ✅ | 2026-05-12 | `packages/web/` |
 | ADR-009 | Security Stack Modernization (argon2 + fastapi-limiter) | ✅ | 2026-05-12 | `auth/`, `_app/middleware.py` |
 | ADR-010 | Observability Strategy (OpenTelemetry + Langfuse) | ⛔ | 2026-05-12 | `core/llm/`, `_app/middleware.py`, observability |
 | ADR-011 | Content Versioning for Chapters | ✅ | 2026-05-12 | `chapters/`, DB schema |
-| ADR-012 | Event-Driven Architecture (Redis Pub/Sub) | ✅ | 2026-05-12 | `core/events/`, TaskIQ integration |
+| ADR-012 | Event-Driven Architecture (Redis Pub/Sub) | ⛔ | 2026-05-12 | `core/events/`, TaskIQ integration (superseded by ADR-080) |
 | ADR-013 | Internationalization Architecture | ✅ | 2026-05-12 | `packages/i18n/`, `packages/web/lib/i18n/` |
 | ADR-014 | TDD Agent Workflow & Regression-First Fixes | ✅ | 2026-05-14 | Agent System, Testing |
 | ADR-015 | Pydantic-AI Agents as First-Class Citizens | ✅ | 2026-05-20 | `core/llm/`, `core/agents/`, RULE-01b |
@@ -53,7 +53,7 @@
 | ADR-033 | mem0 2.0.x OSS Memory Architecture | ✅ | 2026-06-04 | `core/memory/`, `apps/api/narrare/memory/`, preference retrieval |
 | ADR-034 | Conversational History Policy for Narrare Agents | ✅ | 2026-06-04 | `core/agents/`, chat, writing sessions, task agents |
 | ADR-035 | Agent Output Validation Policy | ✅ | 2026-06-04 | `core/agents/`, structured outputs, Pydantic Evals |
-| ADR-036 | Durable Execution Boundary | ✅ | 2026-06-04 | TaskIQ, events, agent workflows, runtime infrastructure |
+| ADR-036 | Durable Execution Boundary | ✅ | 2026-06-04 | TaskIQ, events, agent workflows, runtime infrastructure (amended by ADR-080 — substrate refs; gate policy unchanged) |
 | ADR-037 | Prompt Surface Contract Manifest | ✅ | 2026-06-05 | `core/prompts/`, `scripts/architecture/`, prompt governance, RULE-22 |
 | ADR-038 | AI Invocation Adoption Contract | ✅ | 2026-06-05 | `core/ai_invocation/`, `core/prompts/`, `apps/api/`, `scripts/adoption/`, CR-03 |
 | ADR-040 | KG Consistency / Voice Profile SSOT / Audit Lifecycle | ✅ | 2026-06-06 | `core/profiles/`, `core/ai_invocation/consistency`, `scripts/adoption/audit_report.py`, CR-03 P2 |

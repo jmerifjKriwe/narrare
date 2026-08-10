@@ -11,7 +11,7 @@ What must pass before code is considered "done." Every gate must pass for a feat
 | Level | Location | Scope | Time Target | Requirement |
 |-------|----------|-------|-------------|-------------|
 | **Unit** | `tests/unit/` | Fast, pure, no I/O | < 5s total | Every public service method: 3+ tests (happy path, domain error, edge case) |
-| **Integration** | `tests/integration/` | Real DB + Redis, mocked LLM | < 60s total | Every repository method + router endpoint (200/201 schema validation, 401, 404, 422) |
+| **Integration** | `tests/integration/` | Real DB (PostgreSQL/pgvector), mocked LLM | < 60s total | Every repository method + router endpoint (200/201 schema validation, 401, 404, 422) |
 | **E2E** | `tests/e2e/` | Full stack, Playwright | < 5min total | Critical user flows. Main branch CI only |
 
 **Never** use a real DB in unit tests. **Never** mock the DB in integration tests.

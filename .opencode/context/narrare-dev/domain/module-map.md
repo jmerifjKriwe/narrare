@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/domain/module-map | Priority: high | Source: docs/reference/directory-structure.md (788 lines) | Updated: 2026-06-12 -->
+<!-- Context: narrare-dev/domain/module-map | Priority: high | Source: docs/reference/directory-structure.md (788 lines) | Updated: 2026-08-10 -->
 
 # Module Map — Quick Reference
 
@@ -17,8 +17,7 @@ Where things live. Compact reference — not the full directory tree.
 | `writing/` | Writing generation pipeline | `pipeline.py`, `session_manager.py`, `draft_processor.py` |
 | `embeddings/` | Vector operations (pgvector) | `store.py`, `similarity.py` |
 | `memory/` | Memory layer (mem0) | `service.py`, `client.py` |
-| `cache/` | Redis abstraction | `client.py` |
-| `tasks/` | TaskIQ background tasks | `worker.py` |
+| `cache/` | In-memory session cache (TTL-capable `InMemorySessionCache`; Redis removed by ADR-080) | `in_memory.py` |
 | `shared/` | Pure utilities | `result.py`, `errors.py`, `crypto.py`, `frontmatter.py`, `pagination.py` |
 | `schemas/` | Shared Pydantic schemas | `auth.py`, `novels.py`, `chapters.py`, `kb.py`, `writing.py`, `analysis.py` |
 
@@ -45,7 +44,6 @@ Where things live. Compact reference — not the full directory tree.
 | `planning/` | Story structure | `service.py`, `router.py` |
 | `storyboard/` | Storyboard view | `service.py`, `router.py` |
 | `memory/` | Memory API (thin) | `router.py` (delegates to `core/memory/`) |
-| `providers/` | Provider model lists | `service.py` (caches in Redis) |
 
 ---
 
@@ -90,7 +88,7 @@ Where things live. Compact reference — not the full directory tree.
 | Settings/config | — | `apps/api/settings/` | `components/settings/` |
 | i18n changes | — | — | `lib/i18n/request.ts`, `packages/i18n/messages/` |
 | New agent | `core/agents/`, `core/prompts/` | `apps/api/{domain}/service.py` | SSE via `lib/api/streaming.ts` |
-| Background task | `core/tasks/` | `apps/api/{domain}/tasks.py` | — |
+| Background task | (in-process, ADR-080) | `apps/api/{domain}/tasks.py` | — |
 
 ---
 

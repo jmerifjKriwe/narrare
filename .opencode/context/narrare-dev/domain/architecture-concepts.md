@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/domain/architecture-concepts | Priority: high | Source: docs/_shared/CONSTRAINTS.md + docs/_shared/TECH_STACK.md | Updated: 2026-06-12 -->
+<!-- Context: narrare-dev/domain/architecture-concepts | Priority: high | Source: docs/_shared/CONSTRAINTS.md + docs/_shared/TECH_STACK.md | Updated: 2026-08-10 -->
 
 # Architecture Concepts
 
@@ -73,12 +73,13 @@ are injected by `NarrareAgent.__init__` and cannot be forgotten. `with_meta()` h
 
 ---
 
-## Event-Driven Architecture
+## Background Execution (ADR-080)
 
-- **Event bus**: Redis Pub/Sub (ADR-012)
-- **Location**: `apps/api/narrare/_app/events.py`
-- **Flow**: Domain events → Redis Pub/Sub → TaskIQ workers → background tasks
-- **Use cases**: Embedding generation, consistency checks, chapter summarization
+- **Model**: In-process execution boundary — no broker, no worker process (supersedes ADR-007 TaskIQ and ADR-012 Redis Pub/Sub event bus)
+- **Dispatch**: `asyncio.create_task` fire-and-forget inside the API process
+- **Location**: `apps/api/narrare/embeddings/tasks.py` (embedding runner), `apps/api/narrare/series/tasks.py` (band summaries)
+- **Event bus**: none — `apps/api/narrare/_app/events.py` was deleted; no event bus exists today
+- **Use cases**: Embedding generation, band-summary generation
 
 ---
 
@@ -110,7 +111,7 @@ Streaming and non-streaming share one interface (RULE-13): `stream: bool = False
 | Store | Purpose | Access |
 |-------|---------|--------|
 | PostgreSQL + pgvector | Primary data + embeddings | `*/repository.py` only |
-| Redis | Cache, sessions, task broker, event bus | `core/cache/client.py` only |
+| Redis | ⛔ Removed (ADR-080) — no longer in the runtime path | Former uses (session cache, task broker, event bus) replaced by in-process execution + TTL `InMemorySessionCache` (`core/cache/in_memory.py`) |
 | Alembic | Schema migrations | Required for every model change (RULE-14) |
 
 ---

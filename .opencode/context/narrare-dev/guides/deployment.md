@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/guides/deployment | Priority: high | Source: docs/development/deployment-guide.md | Updated: 2026-07-06 -->
+<!-- Context: narrare-dev/guides/deployment | Priority: high | Source: docs/development/deployment-guide.md | Updated: 2026-08-10 -->
 
 # Deployment & Dev Environment
 
@@ -10,12 +10,12 @@
 
 ```bash
 just dev-setup    # First-time: install dev + NLP deps/models, create .env, run migrations
-just dev          # Start API (port 8000) + frontend (port 3000) + workers (auto-starts PostgreSQL + Redis via _ensure-services)
-just dev-services # Start backing Docker services only (PostgreSQL pgvector:pg17 + Redis 8-alpine) — use this when you want the DBs without the app
+just dev          # Start API (port 8000) + frontend (port 3000) (auto-starts PostgreSQL via _ensure-services)
+just dev-services # Start backing Docker services only (PostgreSQL pgvector:pg17) — use this when you want the DBs without the app
 ```
 
 > **No `just dev-up`.** There is no separate `dev-up` recipe. `just dev` already ensures
-> PostgreSQL + Redis are running via `_ensure-services`; for a pure service start use
+> PostgreSQL is running via `_ensure-services`; for a pure service start use
 > `just dev-services`, and stop them with `just dev-services-stop`.
 
 Auto-migration: API runs `alembic upgrade head` on every startup via `lifespan.py`.
@@ -25,7 +25,6 @@ Auto-migration: API runs `alembic upgrade head` on every startup via `lifespan.p
 | Service | Image | Port | Database |
 |---------|-------|------|----------|
 | PostgreSQL | `pgvector/pgvector:pg17` | 5432 | `narrare_dev` |
-| Redis | `redis:8-alpine` | 6379 | — |
 
 App runs locally (not in Docker) for hot reload.
 
@@ -84,7 +83,6 @@ App runs locally (not in Docker) for hot reload.
 | Variable | Required | Notes |
 |----------|----------|-------|
 | `DATABASE_URL` | Yes | `postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_dev` |
-| `REDIS_URL` | Yes | `redis://localhost:6379/0` |
 | `SECRET_KEY` | Yes | Generate with `just generate-secret` |
 | `NARRARE_ENCRYPTION_KEY` | Yes | Fernet key for user API keys. **Lost = unrecoverable** |
 | AI API key | At least one | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `ZAI_API_KEY`, etc. |
