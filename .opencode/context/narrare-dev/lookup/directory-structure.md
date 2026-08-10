@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/directory-structure | Priority: P1 | Source: docs/reference/directory-structure.md | Updated: 2026-06-12 -->
+<!-- Context: narrare-dev/lookup/directory-structure | Priority: P1 | Source: docs/reference/directory-structure.md | Updated: 2026-08-10 -->
 
 # Directory Structure
 
@@ -28,17 +28,16 @@ narrare/
 | `writing/` | `pipeline.py` (4-mode), `context_assembler.py`, `draft_processor.py`, `session_manager.py`, `pipeline_scene.py`, `pipeline_interview.py` |
 | `embeddings/` | `store.py` (pgvector), `similarity.py` |
 | `memory/` | `service.py`, `client.py` (mem0) |
-| `cache/` | `client.py` (Redis) |
+| `cache/` | `in_memory.py` (TTL-capable InMemorySessionCache; Redis removed by ADR-080) |
 | `notifications/` | `email.py` (SMTP) |
 | `research/` | `contracts.py`, `search_client.py` |
-| `tasks/` | `worker.py` (TaskIQ) |
 | `init/` | `service.py`, `template_resolver.py` |
 | `shared/` | `frontmatter.py`, `file_utils.py`, `pagination.py`, `crypto.py`, `result.py`, `errors.py` |
 | `schemas/` | `auth.py`, `novels.py`, `chapters.py`, `kb.py`, `writing.py`, `analysis.py`, `cost.py`, `context.py`, `learning.py` |
 
 ## apps/api/ — 20 Domain Modules
 
-`_app/` (main, database, dependencies, middleware, lifespan), `auth/` (router + router_me, security, cookie_helpers), `novels/`, `chapters/` (summarize_service), `volumes/`, `writing/` (ws_handler, scene_service, stats_service), `kb/` (6 services: management, editor, analyzer, suggest, worldbuilding, extraction), `analysis/` (8 service files + voice/ sub-package), `planning/`, `ai_assist/`, `chat/`, `generation/` (plot_service, name_service), `graph/` (facts_service), `consistency/` (checker + rules), `timeline/`, `learning/`, `context/`, `embeddings/` (tasks.py), `prompts/`, `settings/` (4 repos, 5 services, resolver), `analytics/`, `cost/`, `export/`, `import_service/`, `research/`, `sync/`, `setup/` (demo_data/), `storyboard/`, `memory/`, `providers/`, `metrics/`
+`_app/` (main, database, dependencies, middleware, lifespan), `auth/` (router + router_me, security, cookie_helpers), `novels/`, `chapters/` (summarize_service), `volumes/`, `writing/` (ws_handler, scene_service, stats_service), `kb/` (6 services: management, editor, analyzer, suggest, worldbuilding, extraction), `analysis/` (8 service files + voice/ sub-package), `planning/`, `ai_assist/`, `chat/`, `generation/` (plot_service, name_service), `graph/` (facts_service), `consistency/` (checker + rules), `timeline/`, `learning/`, `context/`, `embeddings/` (tasks.py), `prompts/`, `settings/` (4 repos, 5 services, resolver), `analytics/`, `cost/`, `export/`, `import_service/`, `research/`, `sync/`, `setup/` (demo_data/), `storyboard/`, `memory/`, `metrics/`
 
 ## packages/web/ — Key Structure
 

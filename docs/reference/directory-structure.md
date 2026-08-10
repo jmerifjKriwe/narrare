@@ -178,7 +178,7 @@ packages/core/narrare_core/
 │
 ├── cache/                      ← Caching abstraction
 │   ├── __init__.py
-│   └── client.py               ← Redis abstraction (only place redis is used)
+│   └── in_memory.py            ← TTL-capable InMemorySessionCache (ADR-080: Redis removed)
 │
 ├── chat/                       ← Free-Form Chat (CHAT-001, ADR-024)
 │   ├── __init__.py             ← Exports: ChatAgent, ChatDeps, ChatServiceProtocol
@@ -197,10 +197,6 @@ packages/core/narrare_core/
 │   ├── __init__.py
 │   ├── contracts.py            ← SearchClientProtocol
 │   └── search_client.py        ← Tavily/SerpAPI adapters
-│
-├── tasks/                      ← Background task infrastructure
-│   ├── __init__.py
-│   └── worker.py               ← TaskIQ broker (only place TaskIQ is configured)
 │
 ├── init/                       ← Project initialization logic
 │   ├── __init__.py
@@ -550,7 +546,7 @@ apps/api/narrare/
 │   ├── contracts.py
 │   ├── schemas.py
 │   ├── service.py              ← Queue status, reprocessing management
-│   ├── tasks.py                ← TaskIQ tasks (embedding generation)
+│   ├── tasks.py                ← In-process embedding runner (asyncio.create_task, ADR-080)
 │   └── router.py
 │
 ├── prompts/
@@ -662,12 +658,6 @@ apps/api/narrare/
 │   ├── __init__.py
 │   ├── schemas.py
 │   └── router.py               ← Thin: delegates to core/memory/service
-│
-├── providers/
-│   ├── __init__.py
-│   ├── schemas.py
-│   ├── service.py              ← Caches model lists in Redis
-│   └── router.py
 │
 └── metrics/
     └── router.py               ← Prometheus scraping endpoint
@@ -781,7 +771,7 @@ tests/
 │       │   └── ...
 │       └── ...
 │
-├── integration/                ← Real DB, real Redis, mocked LLM
+├── integration/                ← Real DB (PostgreSQL/pgvector), mocked LLM
 │   ├── writing/
 │   │   └── test_writing_api.py
 │   ├── kb/
@@ -826,7 +816,6 @@ When a file needs to grow beyond its limit, **split into a new module** — neve
 | Schema (response) | `<Name>Response` | `ChapterResponse` |
 | Schema (internal) | `<Name>` | `PromptContext`, `LLMResult` |
 | Test file | `test_<source_file>.py` | `test_draft_service.py` |
-| TaskIQ task | `<verb>_<noun>_task` | `embed_chapter_task` |
 
 ---
 
