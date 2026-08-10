@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/justfile-commands | Priority: critical | Source: docs/development/deployment-guide.md | Updated: 2026-07-06 -->
+<!-- Context: narrare-dev/lookup/justfile-commands | Priority: critical | Source: docs/development/deployment-guide.md | Updated: 2026-08-10 -->
 
 # Justfile Command Catalog
 
@@ -15,11 +15,10 @@
 
 | Command | Description |
 |---------|-------------|
-| `just dev` | Start all services (API + frontend + workers). Internally calls `_ensure-services`, so PostgreSQL + Redis are brought up automatically |
+| `just dev` | Start all services (API + frontend). Internally calls `_ensure-services`, so PostgreSQL is brought up automatically |
 | `just dev-api` | Start API only |
 | `just dev-frontend` | Start frontend only |
-| `just dev-worker` | Start background worker |
-| `just dev-services` | Start Docker services only (PostgreSQL + Redis). Use this when you want the backing services without the app |
+| `just dev-services` | Start Docker services only (PostgreSQL). Use this when you want the backing services without the app |
 | `just dev-services-stop` | Stop Docker services |
 | `just logs` | Tail Docker service logs |
 
