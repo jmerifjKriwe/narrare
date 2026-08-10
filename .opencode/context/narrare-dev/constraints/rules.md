@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/constraints/rules | Priority: critical | Source: docs/_shared/CONSTRAINTS.md | Updated: 2026-06-21 -->
+<!-- Context: narrare-dev/constraints/rules | Priority: critical | Source: docs/_shared/CONSTRAINTS.md | Updated: 2026-08-10 -->
 
 # Architecture Constraints — Rules Summary
 
@@ -117,11 +117,11 @@ Approaching limit → extract a new module. NEVER compress code to fit.
 - Services access `core/llm/gateway` and `core/prompts/composer` via DI
 
 ### RULE-08: All external integrations abstracted
-- PostgreSQL: `*/repository.py` only | Redis: `core/cache/client.py` only
+- PostgreSQL: `*/repository.py` only | Redis: ⛔ removed from the runtime path by ADR-080 (supersedes ADR-007/012, amends ADR-036) — if re-introduced for multi-worker deployment, `core/cache/` only
 - pgvector: `core/embeddings/store.py` only | mem0: `core/memory/client.py` only
 - SMTP: `core/notifications/email.py` only | Web search: `core/research/search_client.py` only
 - Langfuse: not allowed in core runtime (ADR-031) | OpenTelemetry: `_app/telemetry.py` + approved Pydantic-AI runtime instrumentation only
-- Event bus: `apps/api/.../events.py` only
+- Event bus (Redis Pub/Sub): ⛔ removed entirely by ADR-080 — `apps/api/narrare/_app/events.py` is deleted; no event bus exists today. If reintroduced, a new ADR is required (not ADR-012).
 
 ### RULE-14: Every model column needs a migration
 - Column add/rename/type-change/remove requires Alembic migration in same task

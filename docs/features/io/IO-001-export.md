@@ -45,7 +45,7 @@ requires: [WRITE-011]
 
 # IO-001 — Manuscript Export
 
-> **Status:** 📋 Planned — not yet implemented
+> **Status:** 📋 Planned — **architecturally decided ([ADR-081](../../architecture/decisions/ADR-081-export-pipeline-typst.md))**; implementation not started.
 
 ## What it does
 
@@ -66,6 +66,47 @@ The vision calls for an environment that is "available when you need it and
 invisible when you don't." Export is the off-ramp: when you are done writing,
 one click gets your manuscript out.
 
+## Architecture Decision — [ADR-081](../../architecture/decisions/ADR-081-export-pipeline-typst.md)
+
+> **The export pipeline is architecturally decided.** Summary of the decision;
+> see the ADR for full rationale, alternatives, and contract sketches.
+
+- **PDF engine: Typst** (chosen over LaTeX/SILE via a 3-way bake-off). User bar =
+  "sehr hochwertig" ≈ **95%**; LaTeX's glyph-expansion edge (last 5–10% on
+  compound-heavy German) is explicitly declined to avoid its ~300–600 MB footprint
+  + non-reproducible output. SILE is **disqualified** (f-ligature ToUnicode defect
+  breaks PDF search/copy).
+- **Rendered via a bespoke `narrare-roman` Typst package** (an owned, single-purpose
+  library — **not** a fork of a community template). Pipeline: `pandoc --to=typst
+  --shift-heading-level-by=-1` → a thin Narrare wrapper → Typst compiles PDF. Three
+  render-confirmed seam-fixes are baked in (F-1 heading shift, F-6 `\@` escape, F-7
+  scalar-string metadata). Aesthetic: clean/minimal/official; B-format 129×198 mm;
+  recto chapter starts + blank verso; mirrored Satzspiegel; running heads
+  recto≠verso (suppressed on openers/blanks); frontmatter römisch → body arabisch;
+  per-language (de/en/fr) smart quotes + hyphenation; widow/orphan protection. Drop
+  caps **optional, default off**. **Font: Libertinus Serif, bundled (OFL)** — no
+  silent font fallback.
+- **EPUB + Markdown: pandoc** (EPUB3 + EPUBCheck validation), from the normalized
+  form. pandoc is robust fire&forget for these simpler formats.
+- **Narrare Normalizer (Core, pure):** the only Narrare-specific layer. TipTap HTML
+  → clean semantic HTML/Markdown. **Strips** `AIAnnotation` + `GhostText` (editor
+  artifacts must never reach export); **normalizes** `SceneBreak` and `DialogueMark`.
+  Contract sketch: `ManuscriptNormalizer` Protocol (ADR-081).
+- **Fire&forget robustness gate — Golden-Pages Acceptance Test** (CI): a varied
+  corpus of "golden pages" (normal de prose; long-compound stress; de/en/fr mixed
+  dialogue; chapter opener ± drop cap; scene break) rendered and checked visually +
+  objectively. This is mandatory because bespoke templates can corrupt content
+  unattended.
+- **Execution:** in-process `asyncio.create_task` job (post-[ADR-080](../../architecture/decisions/ADR-080-remove-redis-taskiq-in-process-execution.md));
+  `ProcessPoolExecutor` escalation is the documented contingency for 500-page
+  manuscripts.
+- **DOCX is deferred** (out of scope for ADR-081). pandoc can add it trivially
+  later — a feature-spec change, not an engine decision.
+- **Contracts (RULE-03):** `ManuscriptNormalizer`, `ExportService` (the RULE-12
+  public API), `ManuscriptRenderer` (one RULE-08 adapter per external tool:
+  Typst / pandoc), and `NarrareRomanConfig` (the stable Typst-package config keys)
+  — all sketched in ADR-081; full definitions at implementation kickoff.
+
 ## How it works (User perspective)
 
 1. Open the Export panel from the dashboard or editor menu
@@ -83,59 +124,94 @@ one click gets your manuscript out.
 
 ## How it works (Technical)
 
-**Service:** `ExportService` in `export/service.py`
-**Contract:** `ExportProtocol` in `export/contracts.py` (to be defined)
+> **Supersedes the earlier WeasyPrint / `python-docx` / `ebooklib` sketch.**
+> The pipeline below is the [ADR-081](../../architecture/decisions/ADR-081-export-pipeline-typst.md)
+> decision.
+
+**Service:** `ExportService` in `apps/api/narrare/export/service.py`
+**Contract:** `ExportService`, `ManuscriptRenderer` Protocols in
+`apps/api/narrare/export/contracts.py` (sketched in ADR-081; full definitions at
+implementation kickoff — RULE-03)
+**Normalizer:** `ManuscriptNormalizer` Protocol in
+`packages/core/narrare_core/export/contracts.py` (pure Core, no I/O)
 **Entry point:** `POST /api/v1/export`
 
-**Export pipeline:**
+**Export pipeline (four stages — only stage 1 is Narrare-specific):**
 
-1. **Assembly** — Collect all chapters for the selected volume, ordered by
-   position. Generate front matter (title page, copyright) and back matter
-   from novel metadata.
-2. **Rendering** — Format-specific renderer converts the assembled content:
-   - **PDF:** WeasyPrint for HTML-to-PDF with CSS @page rules for layout
-   - **ePub:** `ebooklib` constructs the ePub package with TOC and metadata
-   - **DOCX:** `python-docx` builds the document with styled headings and
-     paragraph formatting
-   - **Markdown:** Direct serialization with configurable heading levels
-3. **Delivery** — File is written to a temp directory, streamed to the client
-   via a signed download URL, and cleaned up after delivery.
+1. **Normalization** (`ManuscriptNormalizer`, Core, pure) — Transform the stored
+   TipTap HTML (`Chapter.content`) into clean semantic HTML/Markdown. **Strip**
+   `AIAnnotation` + `GhostText` (editor artifacts must never reach export);
+   **normalize** `SceneBreak` (→ explicit scene break) and `DialogueMark`
+   (→ clean dialogue). Collect chapters in position order; assemble front/back
+   matter from novel metadata.
+2. **Conversion** (pandoc, with baked-in seam-fixes) — HTML → target AST:
+   `--to=typst --shift-heading-level-by=-1` for PDF; EPUB3 for ePub; Markdown
+   for `.md`. (DOCX deferred — pandoc can add it trivially later.)
+3. **Rendering** (RULE-08 adapter per external tool — `apps/api/narrare/export/renderers/`):
+   - **PDF** → `TypstPdfRenderer`: thin Narrare wrapper imports the bespoke
+     `narrare-roman` Typst package + feeds the pandoc body; Typst compiles PDF.
+     Bundled Libertinus Serif (OFL). Drop caps optional (default off, `@preview/droplet`).
+   - **ePub** → `PandocEpubRenderer`: pandoc EPUB3, EPUBCheck-validated.
+   - **Markdown** → `PandocMarkdownRenderer`: pandoc.
+4. **Delivery** — Artifact written to a temp directory, served via a signed
+   download URL, cleaned up after delivery. Export is non-destructive.
 
-**Export options schema:**
+**v1 Export options schema (per ADR-081):**
 ```python
+class ExportFormat(StrEnum):
+    PDF = "pdf"
+    EPUB = "epub"
+    MARKDOWN = "md"
+
 class ExportOptions(BaseModel):
-    format: Literal["pdf", "epub", "docx", "markdown"]
+    format: ExportFormat
     volume_id: UUID | None  # None = all volumes
     include_front_matter: bool = True
     include_back_matter: bool = True
     include_summaries: bool = False
     include_character_list: bool = False
     include_location_glossary: bool = False
-    pdf_options: PdfOptions | None
+    pdf_options: PdfOptions | None        # narrare-roman config keys (paper, margins, font, drop_caps, ...)
     epub_options: EpubOptions | None
-    docx_options: DocxOptions | None
     markdown_options: MarkdownOptions | None
 ```
 
-**Background processing:**
-Large manuscripts (>50 chapters) are exported as a background task via TaskIQ.
-The client polls for completion and receives the download URL when ready.
+**Background processing (post-ADR-080):**
+Export runs as an **off-request in-process job** via `asyncio.create_task`
+(ADR-080 in-process execution boundary) — PDF compile + normalization of large
+manuscripts is CPU-bound. Typst/pandoc run as subprocesses (off the event loop);
+the normalizer runs in-process, with `ProcessPoolExecutor` escalation as the
+documented contingency for 500-page manuscripts. In-flight export is lost on
+restart (regenerable, non-destructive — RULE-11: logged, not silent). Each job
+builds its own DB session. The client polls job status and receives the download
+URL when ready.
 
 ## Constraints & Edge Cases
 
-- PDF generation requires WeasyPrint, which needs specific system libraries
-  (Pango, GDK-Pixbuf) — these must be present in the deployment environment
+- PDF generation requires **Typst** (single ~15 MB static binary, exact version
+  pinned — pre-1.0 v0.15.x) and **pandoc** (pinned) as deploy-time dependencies
+  (ADR-029 VM-first setup). Missing binaries degrade gracefully (RULE-11): export
+  reports unavailable, never silently falls back to a wrong font (the spike's
+  headline fire&forget failure)
+- **Libertinus Serif is bundled (OFL)** for reproducible PDF output — no silent
+  font fallback
 - ePub does not support custom fonts embedded from Narrare; the reader's
   font settings apply
-- DOCX export produces a clean document without Narrare-specific markup;
-  comments, inline suggestions, and AI annotations are not included
+- DOCX is **deferred** (out of scope for ADR-081); pandoc can add it trivially
+  later. The normalizer strips Narrare-specific markup (AIAnnotation, GhostText)
+  from all formats
 - Export of a very large manuscript (500k+ words) may take 30+ seconds;
-  background processing with progress indication is required
+  background processing (in-process job, post-ADR-080) with progress indication
+  is required; `ProcessPoolExecutor` escalation is the documented contingency
+  for 500-page manuscripts
 - Export is read-only — it never modifies the Narrare project
 - No batch export of multiple formats in one action (separate requests)
 - Cover image for ePub must be provided by the user; no cover generator
 - Exported Markdown uses consistent heading levels but does not guarantee
   compatibility with every static site generator's frontmatter schema
+- **Fire&forget robustness is gate-guaranteed** by the Golden-Pages Acceptance
+  Test (CI) — bespoke templates can corrupt content unattended, so a varied
+  corpus is rendered and checked on every change
 
 ## Related Features
 
@@ -148,3 +224,7 @@ The client polls for completion and receives the download URL when ready.
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-08-10` — **Architecturally decided**: [ADR-081](../../architecture/decisions/ADR-081-export-pipeline-typst.md)
+  (Typst + `narrare-roman` + pandoc; Narrare Normalizer; Golden-Pages test).
+  Supersedes the earlier WeasyPrint / `python-docx` / `ebooklib` sketch. DOCX
+  deferred. Implementation not started.

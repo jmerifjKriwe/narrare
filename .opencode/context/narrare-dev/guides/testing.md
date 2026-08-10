@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/guides/testing | Priority: P1 | Source: docs/development/testing-standards.md | Updated: 2026-06-12 -->
+<!-- Context: narrare-dev/guides/testing | Priority: P1 | Source: docs/development/testing-standards.md | Updated: 2026-08-10 -->
 
 # Testing Guide
 
@@ -9,7 +9,7 @@ Three-level test architecture with strict level separation. A test lives at the 
 | Level | Location | Scope | Time Target |
 |-------|----------|-------|-------------|
 | **Unit** | `tests/unit/` | Fast, pure, no I/O. Mock everything external. | < 5s total |
-| **Integration** | `tests/integration/` | Real DB + Redis, mocked LLM. Docker Compose. | < 60s total |
+| **Integration** | `tests/integration/` | Real DB (PostgreSQL/pgvector), mocked LLM. Docker Compose. | < 60s total |
 | **E2E** | `tests/e2e/` | Full stack. LLM mocked via Playwright + env var. Main branch CI only. | < 5min total |
 
 **Never** use a real DB in a unit test. **Never** mock the DB in an integration test.
