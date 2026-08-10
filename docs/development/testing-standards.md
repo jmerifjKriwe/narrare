@@ -17,7 +17,7 @@ tests/
 ├── unit/           ← Fast, pure, no I/O. Mock everything external.
 │                     Run time target: < 5 seconds total.
 │
-├── integration/    ← Real DB, real Redis, mocked LLM.
+├── integration/    ← Real DB (PostgreSQL/pgvector), mocked LLM.
 │                     Docker Compose provides services.
 │                     Run time target: < 60 seconds total.
 │
@@ -1204,7 +1204,7 @@ These test that functions handle arbitrary input correctly.
 
 > **Location:** `tests/e2e/`
 > **Tool:** Playwright (Python sync API)
-> **CI:** Main branch only — full stack (API + Frontend + PostgreSQL + Redis)
+> **CI:** Main branch only — full stack (API + Frontend + PostgreSQL)
 > **Run time target:** < 5 minutes total
 > **Current status:** ~28 tests passing (snapshot 2026-07-09), implemented in Phase 5 — re-measurable via `pytest tests/e2e/ --collect-only -q`
 

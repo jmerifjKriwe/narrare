@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 
 import structlog
 from fastapi import Depends
+from starlette.requests import Request  # noqa: TC002 - runtime FastAPI DI annotation
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -169,7 +170,7 @@ class EventPublisher:
                 )
 
 
-def get_wiki_event_publisher(request: Any) -> EventPublisher | None:
+def get_wiki_event_publisher(request: Request) -> EventPublisher | None:
     """Return the in-process wiki ``EventPublisher`` from ``app.state``.
 
     The lifespan binds ``app.state.wiki_event_publisher`` at startup. When
