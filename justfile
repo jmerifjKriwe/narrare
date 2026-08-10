@@ -655,3 +655,11 @@ hooks-update:
 check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health check-feature-paths
     uv run python scripts/check_current_state_facts.py
     @echo "✅ All checks passed — ready to merge"
+
+# ---------------------------------------------------------------------------
+# Skills
+# ---------------------------------------------------------------------------
+
+# Externe Skills aktualisieren (.agents/skills + vendored superpowers) — danach git diff reviewen.
+skills-update:
+    bash scripts/update-skills.sh

@@ -103,3 +103,5 @@ clawpatch-report.md
 # Evidence store (CI artifacts)
 .evidence/*.jsonl
 test-results/
+
+graphify-out/
