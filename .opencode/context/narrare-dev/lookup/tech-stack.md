@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/tech-stack | Priority: critical | Source: docs/_shared/TECH_STACK.md | Updated: 2026-07-06 -->
+<!-- Context: narrare-dev/lookup/tech-stack | Priority: critical | Source: docs/_shared/TECH_STACK.md | Updated: 2026-08-10 -->
 
 # Tech Stack Reference
 
@@ -27,7 +27,7 @@ Three questions before adding any dependency:
 |------|------|----------|
 | PostgreSQL + asyncpg | Primary datastore | Relational: novels→chapters→KB→facts |
 | pgvector | Embedding similarity inside Postgres | Only in `core/embeddings/store.py` |
-| Redis | 3 uses: TaskIQ broker, session state (TTL), provider cache (24h) | Only via `core/cache/client.py` |
+| Redis | ⛔ Removed (ADR-080) — no longer a dependency | Former uses (TaskIQ broker, session cache, provider cache) replaced by in-process execution boundary + TTL `InMemorySessionCache` (`core/cache/in_memory.py`) |
 | Alembic | Schema migrations | Every change has a migration. No `create_all()` in prod |
 
 ## LLM & AI
@@ -48,7 +48,10 @@ Three questions before adding any dependency:
 
 | Tech | Role |
 |------|------|
-| TaskIQ [redis] >=0.11.0 | Async task queue: batch embedding, summarization, extraction |
+| In-process asyncio tasks | Batch embedding (`embed_source`), band-summary generation (`generate_band_summary`) — dispatched as `asyncio.create_task` inside the API process (ADR-080) |
+| TaskIQ [redis] | ⛔ Removed (ADR-080) — no longer a dependency; superseded by in-process async dispatch |
+
+> ⛔ Removed in ADR-080 (2026-08-07): TaskIQ (`taskiq`, `taskiq-redis`, `taskiq-fastapi`) and Redis are no longer dependencies. ADR-080 supersedes ADR-007 / ADR-012 and amends ADR-036.
 
 ## Validation & Config
 

@@ -506,14 +506,16 @@ describe("KBEnhanceReview", () => {
       />,
     );
 
-    // Wait for review phase to be active
+    // Wait for review phase to be active. The keydown listener is attached via
+    // useEffect keyed on `phase` (KBEnhanceReview.tsx) — passive effects flush
+    // asynchronously after paint, so the DOM update can be visible while the
+    // OLD listener (closure with phase === "idle") is still attached. Fire the
+    // shortcut inside waitFor so the event is re-dispatched until the
+    // re-attached listener (phase === "review") is active (CR-AUFG-07-13).
     await waitFor(() => {
-      expect(screen.getByText("kb.applySelected")).toBeDefined();
+      fireEvent.keyDown(window, { key: "Enter", ctrlKey: true });
+      expect(onApplySelected).toHaveBeenCalledTimes(1);
     });
-
-    fireEvent.keyDown(window, { key: "Enter", ctrlKey: true });
-
-    expect(onApplySelected).toHaveBeenCalledTimes(1);
   });
 
   it("calls onApplySelected on Cmd+Enter during review phase (Mac)", async () => {
@@ -530,12 +532,12 @@ describe("KBEnhanceReview", () => {
       />,
     );
 
+    // Same race hardening as the Ctrl+Enter test: waitFor retries the keyDown
+    // until the re-attached listener (phase === "review") is active, so the
+    // event never gets swallowed by the stale idle-phase listener.
     await waitFor(() => {
-      expect(screen.getByText("kb.applySelected")).toBeDefined();
+      fireEvent.keyDown(window, { key: "Enter", metaKey: true });
+      expect(onApplySelected).toHaveBeenCalledTimes(1);
     });
-
-    fireEvent.keyDown(window, { key: "Enter", metaKey: true });
-
-    expect(onApplySelected).toHaveBeenCalledTimes(1);
   });
 });
