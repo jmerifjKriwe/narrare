@@ -46,12 +46,37 @@ License: [SIL Open Font License 1.1](fonts/LICENSE-OFL.txt), upstream
 directory also feeds the EPUB renderer (pandoc `--epub-embed-font`) — one
 bundled font, two embedding mechanisms, one font policy (D7).
 
-## Current state — Slice 0 (skeleton)
+## Current state — Slice 5a (geometric spine)
 
-This is the **package skeleton**: a valid `typst.toml` manifest, an importable
-`lib.typ` entry point, and the bundled font. **No book features are
-implemented yet.** They land incrementally in **Slice 5** (sub-slices 5a–5g),
-each verified by its Golden-Pages probe before merge.
+The **geometric spine** is implemented and probe-verified:
+
+- **Paper size** — B-format 129 x 198 mm (default), A5, A4, Letter, or custom
+  (`paper-size`, `custom-width-mm`, `custom-height-mm`).
+- **Mirrored Satzspiegel** — binding-aware `inside`/`outside` margins
+  (`margins`); paper-specific defaults (B-format: 96 mm measure).
+- **Recto chapter starts** — every level-1 heading opens on a recto (odd)
+  page (`pagebreak(weak: true, to: "odd")`).
+- **Blank verso** — a chapter ending on a recto leaves a counted blank verso.
+- **Body font + leading** — bundled Libertinus Serif (OFL), `leading-ratio`
+  via `par(leading: (ratio - 1) * 1em)`.
+
+Verified by `tests/golden/export/test_geometric_spine.py` (folio-count,
+recto-start, blank-verso, mirrored-margin, and no-silent-font-fallback
+probes via PyMuPDF). Bundled Libertinus Serif is the body font with no
+fallback (`--font-path fonts/`).
+
+The remaining scope-floor features land in **Slice 5b through 5f**, each
+verified by its own probe before merge:
+
+| Sub-slice | Feature |
+|-----------|---------|
+| 5b | Running heads recto ≠ verso + suppression on openers/blanks (`is-page-empty`) |
+| 5c | 4-phase numbering (frontmatter roman → body arabic) |
+| 5d | Table of contents |
+| 5e | Per-language (de/en/fr) smart quotes + hyphenation |
+| 5f | Scene-break ornament + widow/orphan protection |
+
+Drop cap (5g) is an **optional fast-follow**, OFF by default.
 
 See the Slice 5 sub-slice map in
 [IO-001-export-pipeline.md](../../../../../../docs/architecture/implementation-plans/IO-001-export-pipeline.md)

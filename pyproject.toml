@@ -28,6 +28,11 @@ dev = [
   "pytest-playwright>=0.7",
   "pydantic-evals==2.26.0",
   "jsonschema>=4.26.0",
+  # PyMuPDF — PDF inspection for the Golden-Pages render probes
+  # (tests/golden/export/). Pulled forward from Slice 7 for the Slice 5a
+  # inline geometric-spine probe (folio count, recto-start parity, font
+  # no-fallback) and stays the probe library for every later sub-slice.
+  "pymupdf>=1.28",
 ]
 
 # Workspace root is a virtual container (no importable package here).

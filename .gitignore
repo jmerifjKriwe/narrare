@@ -22,6 +22,12 @@ coverage.xml
 htmlcov/
 .tox/
 
+# Golden-Pages Typst probes — per-test scratch docs written inside the
+# repo so Typst's --root constraint holds (the package lives in-repo).
+# Auto-cleaned by tempfile.TemporaryDirectory; this entry is the
+# defence-in-depth against a crash leaving litter behind.
+.typst-test-tmp/
+
 # MutMut (mutation testing) — regenerable mutant copies, backups, and sandbox artifacts
 mutants*/
 .mutmut.pyproject.toml.bak
