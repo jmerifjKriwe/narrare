@@ -20,7 +20,7 @@ from enum import StrEnum
 from typing import Protocol
 from uuid import UUID  # noqa: TC003 — needed at runtime for Pydantic model resolution
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Language(StrEnum):
@@ -52,11 +52,18 @@ class ManuscriptMetadata(BaseModel):
     The Backend reads this (read-only, RULE-22) from the novels/chapters/settings
     features and hands it to the Core normalizer. All fields are scalar strings
     (F-7: never arrays) so they pass straight through to the Typst wrapper.
+
+    ``chapters`` carries per-chapter DB metadata (UUIDs, position, volume). The
+    normalizer is Pure Core (RULE-05: no DB access), so it cannot derive this
+    itself — the Backend supplies it and the normalizer only enforces the
+    "in position order" output guarantee (defensive stable sort).
     """
 
     title: str
     author: str
     language: Language
+    # Per-chapter metadata in position order (assembled by the Backend).
+    chapters: list[ChapterMeta] = Field(default_factory=list[ChapterMeta])
     # Optional EPUB metadata (ignored by the PDF/MD renderers):
     isbn: str | None = None
     description: str | None = None
