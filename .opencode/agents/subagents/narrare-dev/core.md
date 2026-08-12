@@ -116,7 +116,7 @@ packages/core/narrare_core/
 3. Adapter/service following the Protocol.
 4. Test with mocked external dependencies.
 5. Verify: no HTTP/user imports leaked into Core.
-6. `just lint` / `just typecheck` / `just test-unit`.
+6. Iterate with scoped recipes: `just lint-file <path>` / `just typecheck-file <path>` / `just test-file <path> [pytest flags]` (flags pass through, e.g. `-x`, `--pdb`, `-k`); full gate before handoff: `just verify`. Long output: pipe it (`just test-file ... 2>&1 | tail -60`) — context hygiene, not a reason to bypass recipes.
 
 Standards: `@docs/_shared/CONSTRAINTS.md`, `@docs/development/coding-standards.md`,
 `@docs/reference/directory-structure.md`. Code questions via **graphify** first.
@@ -141,4 +141,8 @@ Standards: `@docs/_shared/CONSTRAINTS.md`, `@docs/development/coding-standards.m
 
 ## Permission block → report
 
+Phantom `just` recipe → report, don't workaround: if a documented
+`just <recipe>` is missing from `just --list`, report
+`BLOCKED: documented just recipe '<name>' does not exist` — never silently
+fall back to raw commands or invent a recipe.
 `BLOCKED: Need to run "<cmd>" but permission denied.` Do not retry. No `task` spawns.

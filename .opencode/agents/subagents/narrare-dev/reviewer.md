@@ -108,4 +108,8 @@ implementing specialist after coordinator approval.
 
 ## Permission block → report
 
+Phantom `just` recipe → report, don't workaround: if a documented
+`just <recipe>` is missing from `just --list`, report
+`BLOCKED: documented just recipe '<name>' does not exist` — never silently
+fall back to raw commands or invent a recipe.
 `BLOCKED: Need to run "<cmd>" but permission denied.` Do not retry. No edits, no spawns.

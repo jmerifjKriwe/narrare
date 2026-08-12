@@ -134,7 +134,7 @@ permission:
 5. Docker build (on deployment changes)
 ```
 
-Prefer `just` recipes (`just lint`, `just typecheck`, `just test`, `just verify`).
+Prefer `just` recipes: `just lint-file <path>` / `just typecheck-file <path>` / `just test-file <path> [pytest flags]` for scoped iteration; `just verify` for the full gate; `just check-full` before merge.
 Standards: `@docs/development/testing-standards.md`, `@docs/development/deployment-guide.md`.
 
 ## Git owner (all git/gh writes go through here)
@@ -154,5 +154,9 @@ Standards: `@docs/development/testing-standards.md`, `@docs/development/deployme
 
 ## Permission block → report
 
+Phantom `just` recipe → report, don't workaround: if a documented
+`just <recipe>` is missing from `just --list`, report
+`BLOCKED: documented just recipe '<name>' does not exist` — never silently
+fall back to raw commands or invent a recipe.
 `BLOCKED: Need to run "<cmd>" but permission denied.` Do not retry/workaround.
 No `task` spawns. (Docker/destructive git ops trigger `ask` = user approval.)

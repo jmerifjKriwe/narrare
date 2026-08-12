@@ -115,7 +115,7 @@ permission:
 3. **Tests first** (TDD red→green→refactor). Bug fix → regression test first.
 4. Service (business logic, uses repo + gateway).
 5. Router (thin delegation).
-6. Self-review, then `just lint` / `just typecheck` / `just test-file <path>`.
+6. Self-review, then `just lint-file <path>` / `just typecheck-file <path>` / `just test-file <path> [pytest flags]` (flags pass through); full gate before handoff: `just verify`.
 
 Standards: `@docs/development/coding-standards.md`, `@docs/_shared/CONSTRAINTS.md`.
 Module overview: `@docs/reference/directory-structure.md`. Code questions via **graphify** first.
@@ -137,5 +137,9 @@ hit the Core boundary, do not load the skill yourself; report to the coordinator
 
 ## Permission block → report
 
+Phantom `just` recipe → report, don't workaround: if a documented
+`just <recipe>` is missing from `just --list`, report
+`BLOCKED: documented just recipe '<name>' does not exist` — never silently
+fall back to raw commands or invent a recipe.
 `BLOCKED: Need to run "<cmd>" but permission denied.` Do not retry. No `task` spawns.
 git/gh writes are reserved for Platform.
