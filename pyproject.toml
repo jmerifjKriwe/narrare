@@ -193,6 +193,7 @@ markers = [
   "requires_db: marks tests requiring database connection",
   "mutation_inert: test inspects static repo structure (source tree, manifests, file existence) — cannot kill mutants and is incompatible with the MutMut copy-based sandbox; excluded from mutation runs via `-m 'not mutation_inert'`",
   "schema_mutating: test mutates the SHARED test-DB schema (alembic downgrade/upgrade round-trip) — must NEVER run concurrently under xdist; `just test` and CI run it in a dedicated serial phase after the parallel batch",
+  "golden_pages: Golden-Pages acceptance tests — real render binaries (typst/pandoc) + EPUBCheck, no LLM; collected in the integration job where the export toolchain is installed",
 ]
 norecursedirs = ["e2e", ".venv", "node_modules", ".git", "dist", "build", "__pycache__", "*.egg-info", ".hypothesis", ".pytest_cache"]
 

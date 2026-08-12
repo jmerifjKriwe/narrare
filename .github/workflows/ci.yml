@@ -551,6 +551,17 @@ jobs:
           # against the shared test-DB schema.
           uv run pytest tests/integration/ -v --timeout=120 -m schema_mutating
 
+      - name: Run Golden-Pages export tests (EPUBCheck gate)
+        # W3C EPUBCheck validates the rendered EPUB end-to-end (ADR-081 D7).
+        # EPUBCheck (installed above via INSTALL_EPUBCHECK=1) is a Java tool;
+        # the ubuntu runner image ships a JRE, so no setup-java step is needed.
+        # EPUBCheck is CI-only — never a local-dev or production dependency —
+        # so this gate lives in tests/golden/ and is exercised only here (the
+        # test-unit job installs pandoc but not EPUBCheck, so the
+        # epubcheck-subprocess test skips there; the structural EPUB
+        # assertions still run in test-unit). Serial for clear EPUBCheck output.
+        run: uv run pytest tests/golden/ -v -m golden_pages --timeout=120
+
   # -------------------------------------------------------------------------
   # Update coverage badge in README (main push only)
   # -------------------------------------------------------------------------
