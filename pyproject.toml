@@ -287,6 +287,16 @@ agent_allowed_modules = [
   "scripts/probes/",  # Probes construct fake agents (TestModel) for runtime evidence
 ]
 prompt_allowed_modules = ["packages/core/narrare_core/prompts/"]
+# RULE-08 (ADR-081): the ONLY files allowed to spawn the production render
+# binaries (typst, pandoc) via a subprocess. Exact renderer-adapter file paths.
+# Enforced by scripts/architecture/_checkers/export_binary_confinement.py.
+# EPUBCheck is CI-only (test harness) and deliberately out of scope.
+export_binary_allowed_modules = [
+  "apps/api/narrare/export/renderers/typst.py",
+  "apps/api/narrare/export/renderers/pandoc_base.py",
+  "apps/api/narrare/export/renderers/pandoc_md.py",
+  "apps/api/narrare/export/renderers/pandoc_epub.py",
+]
 forbidden_llm_imports = ["openai", "anthropic", "pydantic_ai"]
 forbidden_llm_urls = [
   "api.openai.com",

@@ -195,8 +195,10 @@ URL when ready.
   headline fire&forget failure)
 - **Libertinus Serif is bundled (OFL)** for reproducible PDF output — no silent
   font fallback
-- ePub does not support custom fonts embedded from Narrare; the reader's
-  font settings apply
+- EPUB embeds the bundled **Libertinus Serif (OFL)** via pandoc
+  `--epub-embed-font`, consistent with PDF; the reader may still override
+  via its own font settings, but there is no silent fallback to a different
+  font at export time
 - DOCX is **deferred** (out of scope for ADR-081); pandoc can add it trivially
   later. The normalizer strips Narrare-specific markup (AIAnnotation, GhostText)
   from all formats

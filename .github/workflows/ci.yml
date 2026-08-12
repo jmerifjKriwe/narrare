@@ -523,6 +523,12 @@ jobs:
       - name: Run migrations
         run: cd apps/api && uv run alembic upgrade head
 
+      - name: Install export toolchain
+        # Typst + pandoc (render binaries) + EPUBCheck (EPUB validation gate).
+        # The Golden-Pages acceptance tests (tests/golden/export/) need all
+        # three; the RULE-08 checker runs statically in the architecture job.
+        run: INSTALL_EPUBCHECK=1 bash scripts/install_export_toolchain.sh
+
       - name: Run integration tests
         run: |
           uv run pytest tests/integration/ -v -n auto --dist=loadfile --timeout=120 -m "not schema_mutating"
@@ -814,6 +820,10 @@ jobs:
 
       - name: Seed dev user
         run: uv run python scripts/seed_dev_user.py
+
+      - name: Install export toolchain
+        # Typst + pandoc so a real export E2E can run (ADR-081).
+        run: INSTALL_EPUBCHECK=1 bash scripts/install_export_toolchain.sh
 
       - name: Build frontend
         run: cd packages/web && pnpm build

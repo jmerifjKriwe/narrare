@@ -1,0 +1,21 @@
+# narrare-roman — Typst package manifest
+#
+# Vendored Typst package (ADR-081 / D3). This is the manuscript typesetting
+# package loaded by `apps/api/narrare/export/renderers/typst.py`. It is owned
+# by Narrare (not a community fork) and bundled in-repo so render time never
+# reaches the network.
+#
+# Book features land in Slice 5 (see the implementation plan). Slice 0 ships
+# only the package shape that Typst can import without error + the bundled
+# Libertinus Serif font.
+
+[package]
+name = "narrare-roman"
+version = "0.1.0"
+entrypoint = "lib.typ"
+authors = ["Narrare Project"]
+license = "OFL-1.1"
+description = "Bespoke Typst package for manuscript PDF export (recto chapter starts, mirrored Satzspiegel, running heads, 4-phase numbering, TOC)."
+homepage = "https://github.com/jmerifjKriwe/narrare"
+keywords = ["book", "manuscript", "novel", "export", "pdf"]
+categories = ["books"]

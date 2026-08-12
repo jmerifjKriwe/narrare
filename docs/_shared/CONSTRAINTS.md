@@ -453,6 +453,9 @@ No direct SDK calls to external services outside their dedicated adapter:
 | Web search (Tavily/Serp) | `core/research/search_client.py` only |
 | Langfuse | Not allowed in core runtime; superseded by ADR-031 |
 | OpenTelemetry | `apps/api/narrare/_app/telemetry.py` and approved Pydantic-AI runtime instrumentation per ADR-031 |
+| Typst (PDF engine) | `apps/api/narrare/export/renderers/typst.py` only (ADR-081) |
+| pandoc (format converter) | `apps/api/narrare/export/renderers/pandoc_*.py` only (ADR-081) |
+| EPUBCheck (EPUB validation) | CI-only — test harness validates rendered EPUBs; not a runtime dependency (ADR-081) |
 | Event bus (Redis Pub/Sub) | **Removed entirely by ADR-080** (supersedes ADR-012); `apps/api/narrare/_app/events.py` is deleted. No event bus exists today. If decoupled multi-consumer eventing is needed for multi-user/multi-process, a new ADR reintroduces it (not ADR-012). |
 
 > **ADR-080 note:** Redis is **absent from the runtime path** today — the
