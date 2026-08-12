@@ -382,6 +382,20 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --all-packages --group dev
 
+      - name: Install export toolchain
+        # pandoc is required by the real-binary renderer unit tests in
+        # tests/unit/api/export/test_pandoc_{base,md}.py (ADR-081 / Slice 3).
+        # These live in tests/unit/ (NOT tests/integration/) because they need
+        # the binary but NO postgres — the integration conftest's
+        # session-autouse fixture would skip them when the DB is down. Without
+        # pandoc here, their ``skipif(not shutil.which("pandoc"))`` guard skips
+        # them in every CI job (test-integration/test-e2e install the toolchain
+        # but only collect tests/integration|e2e/), so the real renderer would
+        # never be exercised in CI. Typst is included for the upcoming PDF
+        # renderer tests (Slice 4/5, also tests/unit/). EPUBCheck is skipped —
+        # it needs Java and is CI-validation-only (golden tests).
+        run: bash scripts/install_export_toolchain.sh
+
       - name: Run unit tests
         id: tests
         env:
