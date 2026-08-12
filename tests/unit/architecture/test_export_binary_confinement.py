@@ -147,6 +147,58 @@ class TestExemptionByLocation:
 
 
 # ===========================================================================
+# (b2) Test / validation harness exemption — typst/pandoc spawns under a
+#      ``tests/`` path are exempt (RULE-08 is a PRODUCTION-confinement rule).
+#      Mirrors the EPUBCheck rationale: a test that spawns the binary to
+#      verify rendered output is a legitimate consumer, not drift away from
+#      the adapter seam. The production confinement is unchanged.
+# ===========================================================================
+
+
+class TestTestHarnessExemption:
+    """A render-binary spawn reached through a ``tests/`` path is exempt."""
+
+    def test_typst_spawn_in_tests_exempt(self):
+        # The headline Slice-5a case: a probe that spawns typst to verify
+        # rendered output. Exempt — not drift away from the adapter seam.
+        src = "import subprocess\nsubprocess.run(['typst', 'compile', 'in.typ'])\n"
+        assert _violations(src, rel_path="tests/golden/export/test_geometric_spine.py") == []
+
+    def test_pandoc_spawn_in_tests_exempt(self):
+        src = "import subprocess\nsubprocess.run(['pandoc', '-o', 'out.pdf'])\n"
+        assert _violations(src, rel_path="tests/unit/export/test_pandoc_probe.py") == []
+
+    def test_asyncio_spawn_in_tests_exempt(self):
+        # Exemption is location-based, independent of the spawn mechanism.
+        src = "import asyncio\nasyncio.create_subprocess_exec('typst', 'compile', 'in.typ')\n"
+        assert _violations(src, rel_path="tests/integration/test_render.py") == []
+
+    def test_os_system_typst_in_tests_exempt(self):
+        # Shell-form spawn under tests/ is also exempt.
+        src = "import os\nos.system('typst compile in.typ out.pdf')\n"
+        assert _violations(src, rel_path="tests/golden/export/test_probe.py") == []
+
+    def test_nested_test_path_exempt(self):
+        # Deeply-nested test paths (the real Slice-5a helper location) are
+        # covered by the ``tests/`` prefix match.
+        src = "import subprocess\nsubprocess.run(['typst', 'compile'])\n"
+        assert _violations(src, rel_path="tests/golden/export/_typst_probe_helpers.py") == []
+
+    def test_same_spawn_outside_tests_still_flagged(self):
+        # Regression guard: the exemption does NOT leak into production paths.
+        # The identical source, outside tests/ and outside the renderers,
+        # is still flagged exactly as before.
+        src = "import subprocess\nsubprocess.run(['typst', 'compile', 'in.typ'])\n"
+        assert _count_rule08(_violations(src, rel_path=OUTSIDE_PATH)) == 1
+
+    def test_non_tests_prefix_not_exempt(self):
+        # A path that merely *contains* "tests" as a substring but is not
+        # under the tests/ root is NOT exempt (defence against a loose match).
+        src = "import subprocess\nsubprocess.run(['typst', 'compile'])\n"
+        assert _count_rule08(_violations(src, rel_path="apps/api/narrare/export/contests.py")) == 1
+
+
+# ===========================================================================
 # Negative cases — must NOT be flagged.
 # ===========================================================================
 

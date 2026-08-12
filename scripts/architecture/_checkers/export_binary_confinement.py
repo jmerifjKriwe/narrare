@@ -29,6 +29,19 @@ EPUBCheck is deliberately **out of scope**: it is CI-only (invoked from the
 ``tests/golden/export/`` harness, never from production), so confining it to a
 renderer adapter would be wrong.
 
+Test / validation harnesses are **exempt by location**. RULE-08 is a
+*production*-confinement rule: its job is to keep the production render path
+(the one a user's export job walks) honest. A test that spawns ``typst`` or
+``pandoc`` to *verify rendered output* — e.g. the Golden-Pages geometric-spine
+probes in ``tests/golden/export/``, or an EPUBCheck-style gate — is a
+legitimate consumer of the binary, not drift away from the adapter seam.
+Confining such a harness to ``apps/api/narrare/export/renderers/`` would be
+nonsense: it would place test-only verification code inside the production
+adapter tree. The same logic that exempts EPUBCheck (CI-only, harness-driven)
+exempts any typst/pandoc spawn reached through a ``tests/`` path. This is a
+principled scoping of where the rule bites, not a weakening: the production
+confinement (renderer-adapter-only) is unchanged.
+
 Limitation (documented honestly)
 --------------------------------
 Dynamic binary-name construction (e.g. ``subprocess.run(["typ" + "st"])`` or
@@ -69,6 +82,12 @@ _SHELL_ENTRY_POINTS: frozenset[str] = frozenset(
 
 # The two production render binaries. EPUBCheck is CI-only and out of scope.
 FLAGGED_BINARIES: tuple[str, ...] = ("typst", "pandoc")
+
+# RULE-08 confines PRODUCTION spawns. Test / validation harnesses that invoke
+# the binary to verify rendered output are legitimate consumers (see the module
+# docstring for the full rationale). Any file reached through a test root is
+# exempt — the production confinement (renderer-adapter-only) is unchanged.
+_TEST_ROOTS: tuple[str, ...] = ("tests/",)
 
 
 # ── Alias map ────────────────────────────────────────────────────────────
@@ -184,6 +203,14 @@ def check_export_binary_confinement(
 ) -> list[Violation]:
     """RULE-08: typst/pandoc subprocess spawns confined to renderer adapters.
 
+    Two location-based exemptions apply (see the module docstring):
+
+    - **Test / validation harnesses** — any file under a ``tests/`` root is
+      exempt: a test that spawns the binary to verify output is a legitimate
+      consumer, not drift away from the adapter seam (mirrors the EPUBCheck
+      rationale).
+    - **Renderer adapters** — files listed in ``allowed_modules``.
+
     Args:
         rel_path: file path relative to the project root.
         tree: parsed AST of the file.
@@ -194,6 +221,14 @@ def check_export_binary_confinement(
     Returns:
         Violations for every unconfined typst/pandoc spawn in this file.
     """
+    # RULE-08 is a production-confinement rule. Test / validation harnesses
+    # that spawn the binary to verify rendered output are exempt by location
+    # (mirrors the EPUBCheck rationale — see the module docstring). This does
+    # NOT touch the production confinement: a non-test, non-renderer file is
+    # still flagged exactly as before.
+    if any(rel_path.startswith(root) for root in _TEST_ROOTS):
+        return []
+
     # Exempt the allowed renderer-adapter files (exact path match, consistent
     # with the llm.py / agent_allowed_modules convention).
     if any(rel_path.startswith(m.rstrip("/")) for m in allowed_modules):
