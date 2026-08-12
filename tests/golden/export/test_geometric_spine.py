@@ -39,9 +39,7 @@ pulled forward here for the inline 5a probe.
 
 from __future__ import annotations
 
-import tempfile
 import textwrap
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pymupdf
@@ -50,7 +48,6 @@ import pytest
 from tests.golden.export._typst_probe_helpers import (
     MM_TO_PT,
     PACKAGE_IMPORT,
-    REPO_ROOT,
     SIZE_TOL_PT,
     compile_typst,
     is_typst_available,
@@ -60,7 +57,7 @@ from tests.golden.export._typst_probe_helpers import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from pathlib import Path
 
 # ── Skip guard: nothing in this module runs without the typst binary ──────
 pytestmark = [
@@ -70,25 +67,6 @@ pytestmark = [
         reason="typst not installed (install via scripts/install_export_toolchain.sh)",
     ),
 ]
-
-
-@pytest.fixture
-def typst_workdir() -> Iterator[Path]:
-    """Per-test workspace INSIDE the repo root.
-
-    Typst's ``--root`` flag requires the source file to live under it, so
-    a pytest ``tmp_path`` under ``/tmp`` cannot import the in-repo
-    package. This fixture carves a per-test scratch dir under
-    ``<repo>/.typst-test-tmp/`` (gitignored) and tears it down on exit
-    via :class:`tempfile.TemporaryDirectory`. The Slice-6 production
-    renderer will face the same constraint and resolve it the same way
-    (write the wrapper.typ next to the package, compile with
-    ``--root <repo>``).
-    """
-    parent = REPO_ROOT / ".typst-test-tmp"
-    parent.mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=str(parent), prefix="probe-") as workdir:
-        yield Path(workdir)
 
 
 def test_geometric_spine_produces_b_format_pdf_with_recto_chapter_starts(

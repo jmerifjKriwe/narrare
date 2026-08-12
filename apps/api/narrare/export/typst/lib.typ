@@ -5,13 +5,18 @@
 // namespace; never fetched at render time. Narrare owns this package —
 // it is **not** a community fork.
 //
-// ── Slice 5a scope (this revision) ───────────────────────────────────
+// ── Slice 5a scope ───────────────────────────────────────────────────
 // Geometric spine: paper + mirrored Satzspiegel + recto chapter starts
 // + blank verso. Verified by the folio-count + recto-start probes in
 // `tests/golden/export/test_geometric_spine.py`.
 //
+// ── Slice 5b scope (this revision) ───────────────────────────────────
+// Running heads: recto ≠ verso (verso = book title, recto = chapter
+// title), suppressed on chapter openers and blank versos via the
+// `is-page-empty` pattern. Verified by the running-header probe in
+// `tests/golden/export/test_running_heads.py`.
+//
 // Sub-slices still to land:
-//   5b  running heads (recto ≠ verso) + `is-page-empty` suppression
 //   5c  4-phase numbering (frontmatter römisch → body arabisch)
 //   5d  table of contents
 //   5e  per-language (de/en/fr) smart quotes + hyphenation
@@ -25,10 +30,11 @@
 #import "src/paper.typ": paper-dimensions
 #import "src/margins.typ": resolve-margins
 #import "src/opener.typ": recto-opener
+#import "src/heads.typ": running-head
 
 // Sentinel kept for back-compat with the Slice-0 skeleton; not used by
 // the entry point. Bumped when the public API changes.
-#let narrare-roman-version = "0.1.0-5a"
+#let narrare-roman-version = "0.1.0-5b"
 
 // ── Public API ───────────────────────────────────────────────────────
 //
@@ -60,8 +66,9 @@
 //   ...
 //
 // 5a reads only: paper-size, custom-width-mm, custom-height-mm,
-// body-font, body-size-pt, leading-ratio, margins, language. Later
-// sub-slices extend the surface (title/author go to TOC + heads in 5b/5d).
+// body-font, body-size-pt, leading-ratio, margins, language. 5b adds:
+// title, author, running-head-preset. Later sub-slices extend the
+// surface further (include-toc → 5d, scene-break-style → 5f, …).
 #let narrare-roman(
   config: (:),
   body,
@@ -75,6 +82,9 @@
   let leading-ratio = config.at("leading-ratio", default: 1.2)
   let margins = config.at("margins", default: none)
   let language = config.at("language", default: "en")
+  let title = config.at("title", default: "Untitled")
+  let author = config.at("author", default: "Anonymous")
+  let running-head-preset = config.at("running-head-preset", default: "default")
 
   let page-dim = paper-dimensions(
     paper-size,
@@ -89,6 +99,22 @@
   // (binding: left): inside faces the spine on every recto and verso,
   // mirrored automatically. No `flipping` flag exists in current Typst.
   set page(..page-dim, margin: resolved-margins)
+
+  // ── Running heads (5b).
+  //
+  // Set as a separate `set page(header:)` rule so it composes with the
+  // geometric setup above (Typst merges multiple `set page` rules).
+  // `running-head` returns a `context` block evaluated once per page;
+  // it suppresses itself on chapter openers and blank versos (see
+  // `src/heads.typ`). `title`/`author`/`running-head-preset` are the
+  // 5b config surface on `NarrareRomanConfig`.
+  set page(
+    header: running-head(
+      title: title,
+      author: author,
+      preset: running-head-preset,
+    ),
+  )
 
   // ── Body font + leading.
   //

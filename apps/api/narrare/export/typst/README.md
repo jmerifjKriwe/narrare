@@ -46,9 +46,10 @@ License: [SIL Open Font License 1.1](fonts/LICENSE-OFL.txt), upstream
 directory also feeds the EPUB renderer (pandoc `--epub-embed-font`) — one
 bundled font, two embedding mechanisms, one font policy (D7).
 
-## Current state — Slice 5a (geometric spine)
+## Current state — Slice 5b (geometric spine + running heads)
 
-The **geometric spine** is implemented and probe-verified:
+The **geometric spine** and **running heads** are implemented and
+probe-verified:
 
 - **Paper size** — B-format 129 x 198 mm (default), A5, A4, Letter, or custom
   (`paper-size`, `custom-width-mm`, `custom-height-mm`).
@@ -59,18 +60,23 @@ The **geometric spine** is implemented and probe-verified:
 - **Blank verso** — a chapter ending on a recto leaves a counted blank verso.
 - **Body font + leading** — bundled Libertinus Serif (OFL), `leading-ratio`
   via `par(leading: (ratio - 1) * 1em)`.
+- **Running heads** — recto (odd) carries the **current chapter title**,
+  verso (even) carries the **book title** (`title`, `author`,
+  `running-head-preset`). Suppressed on chapter openers and on blank
+  versos via the borrowed `is-page-empty` pattern (wonderous-book).
 
 Verified by `tests/golden/export/test_geometric_spine.py` (folio-count,
 recto-start, blank-verso, mirrored-margin, and no-silent-font-fallback
-probes via PyMuPDF). Bundled Libertinus Serif is the body font with no
-fallback (`--font-path fonts/`).
+probes) and `tests/golden/export/test_running_heads.py` (running-header
+present-on-body, recto≠verso, absent-on-openers, absent-on-blanks probes
+via PyMuPDF). Bundled Libertinus Serif is the body font with no fallback
+(`--font-path fonts/`).
 
-The remaining scope-floor features land in **Slice 5b through 5f**, each
+The remaining scope-floor features land in **Slice 5c through 5f**, each
 verified by its own probe before merge:
 
 | Sub-slice | Feature |
 |-----------|---------|
-| 5b | Running heads recto ≠ verso + suppression on openers/blanks (`is-page-empty`) |
 | 5c | 4-phase numbering (frontmatter roman → body arabic) |
 | 5d | Table of contents |
 | 5e | Per-language (de/en/fr) smart quotes + hyphenation |

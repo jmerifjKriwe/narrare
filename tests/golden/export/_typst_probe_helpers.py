@@ -169,6 +169,49 @@ def page_fonts(page: pymupdf.Page) -> set[str]:
     return {span["font"] for span in page_spans(page) if "font" in span}
 
 
+def header_text(page: pymupdf.Page, top_margin_mm: float = 22.0) -> str:
+    """Text rendered in the running-head band at the top of ``page``.
+
+    The running head lives inside the top margin; body text starts at the
+    top margin. Spans whose top edge sits clearly below the body origin
+    (``y0 < 0.85 * top_margin``) are the head — a band with a comfortable
+    gap to the first body line (measured head bottom ≈ 46 pt vs. body
+    start ≈ 62 pt at the 22 mm B-format default). Returns the joined,
+    whitespace-normalised head text (``""`` when the head is suppressed —
+    openers and blank versos).
+
+    ``top_margin_mm`` defaults to the B-format Satzspiegel (22 mm); pass
+    the effective top margin when a fixture overrides it.
+    """
+    threshold_pt = 0.85 * top_margin_mm * MM_TO_PT
+    parts: list[str] = []
+    for span in page_spans(page):
+        bbox = span.get("bbox")
+        if bbox is not None and bbox[1] < threshold_pt:
+            parts.append(span.get("text", ""))
+    return " ".join(p for p in (s.strip() for s in parts) if p)
+
+
+def body_text(page: pymupdf.Page, top_margin_mm: float = 22.0) -> str:
+    """Text rendered below the running-head band (the page body).
+
+    Symmetric counterpart to :func:`header_text`: spans at or beyond the
+    top-margin origin (``y0 >= 0.85 * top_margin``). Use this — not
+    :func:`page_text` — when classifying a page by its *body* content
+    (opener heading vs. flowing prose), so a head that repeats the
+    chapter title on a body recto is not mistaken for an opener heading.
+    """
+    threshold_pt = 0.85 * top_margin_mm * MM_TO_PT
+    lines: list[str] = []
+    for span in page_spans(page):
+        bbox = span.get("bbox")
+        if bbox is not None and bbox[1] >= threshold_pt:
+            text = span.get("text", "").strip()
+            if text:
+                lines.append(text)
+    return "\n".join(lines)
+
+
 def text_bbox_mm(page: pymupdf.Page) -> tuple[float, float] | None:
     """Return ``(left_gap_mm, right_gap_mm)`` of the text block on ``page``.
 
