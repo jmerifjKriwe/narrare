@@ -1,0 +1,37 @@
+<!--
+  Corpus fixture — mixed-language dialogue (de / en / fr) with per-span lang.
+
+  IO-001 / ADR-081 Slice 7 Golden-Pages corpus. Each dialogue span carries an
+  explicit lang="xx" attribute. Pandoc's Typst writer emits these as inline
+  text(lang:) scopes, so Typst's smartquote engine + hyphenation patterns
+  switch per span. Exercises: per-language smart quotes (de „“ / en “” / fr «»),
+  per-language hyphenation, multi-language text layer (ToUnicode across Latin-1
+  Supplement accented glyphs: ä ö ü ß ç é è).
+-->
+<h2>Das Gespräch in drei Sprachen</h2>
+<p>Am Tisch saßen drei Reisende, und die Kellnerin brachte den Kaffee. Keiner
+war in dieser Stadt geboren, doch alle sprachen sie die Sprache des Ortes —
+jeder auf seine Weise.</p>
+<p><span lang="de">»Ich finde, der Morgen ist ungewöhnlich klar«, sagte Mara
+und schaute zum Fenster hinaus, wo die Dächer der Altstadt im frühen Licht
+schimmerten.</span></p>
+<p><span lang="en">"I think so too," he replied quietly, "though I slept
+poorly and the coffee tastes of yesterday's grind." He wrapped both hands
+around the warm cup and watched the steam curl upward in the draught from the
+door.</span></p>
+<p><span lang="fr">«C'est exactement ça», murmura la troisième voyageuse en
+frôlant le bord de sa tasse, «le café n'est jamais aussi bon qu'on
+l'espère, mais le matin le rachète.» Elle sourit et déposa deux sucres sur
+l'étagère de bois.</span></p>
+<p><span lang="de">Mara lachte leise. »Ihr habt recht, aber seht doch — der
+Himmel über den Dächern ist heute so hell, dass ich fast vergessen hätte,
+wie müde ich bin.«</span></p>
+<p><span lang="en">"Then let's not waste it," he said, draining his cup and
+reaching for his coat. "There's a market two streets over, and I mean to buy
+something I can't pronounce."</span></p>
+<p><span lang="fr">«Tu ne prononceras jamais rien correctement», répondit-elle
+en riant, «mais c'est précisément pour ça que je t'accompagne.»</span></p>
+<p><span lang="de">Sie standen auf, ließen Münzen auf den Tisch fallen und
+gingen hinaus in das klare Morgenlicht. Die Gassen rochen nach frischem Brot
+und nassem Stein, und für einen Augenblick sprachen sie alle dieselbe Sprache:
+die der Sehnsucht nach einem guten Tag.</span></p>

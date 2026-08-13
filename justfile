@@ -353,6 +353,13 @@ vrt:
 vrt-update:
     bash scripts/run_vrt.sh --update
 
+# Regenerate Golden-Pages export baselines (sha256 + drift metrics) from the
+# current narrare-roman / Typst / pandoc output. Review the git diff and commit
+# only if the rendering change is intentional (ADR-081 §"Quality gate"). Mirrors
+# the VRT baseline workflow: drift = CI failure → human review → bless.
+golden-update:
+    uv run pytest tests/golden/export/test_golden_pages.py -v -m golden_pages --golden-update -p no:xdist
+
 # Back-compat alias for `just vrt`.
 test-vrt:
     just vrt

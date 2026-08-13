@@ -355,6 +355,11 @@ class TypstPdfRenderer:
             str(_PACKAGE_DIR),
             "--font-path",
             str(_FONTS_DIR),
+            # Byte reproducibility (ADR-081 §"Quality gate"): pin CreationDate
+            # to the epoch so identical input → byte-identical PDFs across time.
+            # Typst embeds wall-clock /CreationDate otherwise, drifting the sha256.
+            "--creation-timestamp",
+            "0",
             "-",  # read source from stdin
             str(output_path),
         ]
