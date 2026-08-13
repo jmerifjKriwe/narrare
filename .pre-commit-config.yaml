@@ -4,9 +4,9 @@ repos:
       # Architecture constraints — must pass before anything else
       - id: architecture-constraints
         name: Architecture Constraints
-        entry: uv run python scripts/check_architecture.py
+        entry: uv run python scripts/check_architecture.py --incremental
         language: system
-        pass_filenames: false
+        pass_filenames: true
         always_run: true
         stages: [pre-commit]
 
