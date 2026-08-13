@@ -27,8 +27,6 @@ if _project_root not in sys.path:
 
 import argparse  # noqa: E402
 
-from scripts.architecture.checkers import scan_file  # noqa: E402
-from scripts.architecture.helpers import ROOT, load_config  # noqa: E402
 from scripts.architecture.types import CheckResult, Violation  # noqa: E402
 
 # ── Enforced rules (self-report) ────────────────────────────────
@@ -55,34 +53,6 @@ PROMPT_INTEGRITY_RULES: tuple[str, ...] = (
     "RULE-02a",  # Prompt content categories (ADR-026)
     "RULE-02b",  # Prompt resolution path (ADR-046)
 )
-
-
-def check_forbidden_files(result: CheckResult) -> None:
-    """RULE-15: No middleware.ts in packages/web/.
-
-    Next.js 16+ uses proxy.ts exclusively. The build breaks if both exist.
-    See: docs/_shared/CONSTRAINTS.md
-    """
-    forbidden_patterns = {
-        "middleware.ts": "packages/web",
-    }
-    for filename, search_dir in forbidden_patterns.items():
-        search_path = ROOT / search_dir
-        if not search_path.exists():
-            continue
-        for match in search_path.rglob(filename):
-            result.violations.append(
-                Violation(
-                    file=match,
-                    line=0,
-                    rule="RULE-15",
-                    detail=(
-                        f"Forbidden file '{filename}' found. "
-                        f"Next.js 16+ uses proxy.ts exclusively. "
-                        f"See RULE-15 in docs/_shared/CONSTRAINTS.md."
-                    ),
-                )
-            )
 
 
 def run_prompt_integrity_checks(result: CheckResult) -> None:
@@ -120,6 +90,13 @@ def _print_enforced_rules() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Narrare Architecture Constraint Checker")
     parser.add_argument(
+        "--incremental",
+        action="store_true",
+        help="Incremental mode: scan only the files passed as positional "
+        "arguments (used by pre-commit pass_filenames). Without this flag, "
+        "a full tree scan runs (standalone / CI default).",
+    )
+    parser.add_argument(
         "--prompt-integrity",
         action="store_true",
         help="Run additional prompt integrity checks (variable registration, "
@@ -130,24 +107,27 @@ def main() -> int:
         action="store_true",
         help="Print the enforced RULE-XX identifiers and exit.",
     )
+    parser.add_argument(
+        "files",
+        nargs="*",
+        help="Files to scan (incremental mode). Provided by pre-commit.",
+    )
     args = parser.parse_args()
 
     if args.list_rules:
         _print_enforced_rules()
         return 0
 
-    config = load_config()
-    result = CheckResult()
+    from scripts.architecture.scanner import ArchitectureScanner
 
-    # RULE-15: Check for forbidden files before scanning Python sources
-    check_forbidden_files(result)
+    # --incremental with no files → scan(files=[]) (RULE-15 only).
+    # No --incremental → scan(files=None) (FULL).
+    if args.incremental:
+        scan_files: list[Path] | None = [Path(f) for f in args.files]
+    else:
+        scan_files = None  # FULL scan
 
-    scan_roots = [ROOT / "apps", ROOT / "packages", ROOT / "scripts", ROOT / "tests"]
-    for scan_root in scan_roots:
-        if not scan_root.exists():
-            continue
-        for py_file in scan_root.rglob("*.py"):
-            scan_file(py_file, config, result)
+    result = ArchitectureScanner().scan(files=scan_files)
 
     # Prompt integrity checks (--prompt-integrity flag)
     if args.prompt_integrity:
