@@ -218,7 +218,7 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
-        stages: [pre-commit]
+        stages: [pre-push]
 
       # Pyright — light type check for tests (only when test files change)
       # Uses tests/pyrightconfig.json with basic mode (less strict, faster)
@@ -229,7 +229,7 @@ repos:
         types: [python]
         pass_filenames: false
         files: ^tests/
-        stages: [pre-commit]
+        stages: [pre-push]
 
       # Security
       - id: bandit
@@ -238,6 +238,7 @@ repos:
         language: system
         types: [python]
         require_serial: false
+        stages: [pre-push]
 
       # Secret scanning — Gitleaks gate (AUFG-05-09). The wrapper is
       # stdlib-only and locates the gitleaks binary on PATH, so it runs with
