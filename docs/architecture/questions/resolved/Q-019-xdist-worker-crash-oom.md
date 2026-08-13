@@ -1,6 +1,7 @@
 # Q-019 — xdist Worker Crash (OOM) Under `-n auto` on Memory-Constrained Machines
 
 > **Status:** ✅ Resolved (2026-08-08) — Option A (`just test-lowmem` recipe; default unchanged)
+> **Evolution (2026-08-13):** default `just test` is now RAM-aware (auto `-n 2` on < 12 GB available); `test-lowmem` remains as an explicit override.
 > **Blocks:** Nothing (3/4 local runs clean; CI has 16 GB RAM — unlikely to hit)
 > **Raised:** 2026-08-08
 > **Source:** Worker crash during `just test` validation (schema_mutating enforcement PR)
@@ -201,6 +202,24 @@ not needed to resolve this question.
 
 ---
 
-> **Status:** ✅ Resolved (2026-08-08) — **Option A**: add `just test-lowmem` (`-n 2`)
-> for < 16 GB RAM machines; default `just test` unchanged (CI = 16 GB). Options B/D are
-> non-fixes; C-only is rejected (a working mitigation exists).
+### Evolution (2026-08-13): default `just test` now RAM-aware
+
+The pre-commit runtime optimization plan
+(`docs/development/plans/2026-08-13-pre-commit-runtime-optimization.md`,
+Task 8) made `just test` auto-detect available RAM and select `-n 2` when
+the machine has < 12 GB available memory (Decision A: shell detection via
+`/proc/meminfo` on Linux, `sysctl` on macOS, safe fallback to `auto`).
+This **supersedes** the original resolution's stance of "default `just test`
+unchanged; use `just test-lowmem` on < 16 GB." The default is now
+RAM-aware; `test-lowmem` remains as a redundant-but-valid explicit override for
+users who want to force `-n 2` regardless of detection.
+
+CI is unaffected — it runs `pytest` directly in `ci.yml` and never invokes
+`just test`.
+
+---
+
+> **Status:** ✅ Resolved (2026-08-08, evolved 2026-08-13) — **Option A**:
+> add `just test-lowmem` (`-n 2`) for < 16 GB RAM machines; **default
+> `just test` is now RAM-aware** (auto `-n 2` on < 12 GB available RAM).
+> Options B/D are non-fixes; C-only is rejected (a working mitigation exists).

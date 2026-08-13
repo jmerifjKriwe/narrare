@@ -831,27 +831,32 @@ active.
 
 ```bash
 # justfile commands:
-just test          # Two-phase: parallel full suite, then schema_mutating tests serially
-just test-lowmem   # Same two phases, but phase 1 uses -n 2 (reduced parallelism) — see below
+just test          # RAM-aware parallelism: -n 2 on < 12 GB available RAM, else -n auto
+just test-lowmem   # Same two phases, but phase 1 always uses -n 2 (explicit override)
 just test-unit     # Parallel unit tests only
 just test-single   # Single-threaded for debugging (disables randomly)
 ```
 
-#### Running tests on low-memory machines (< 16 GB RAM)
+#### Running tests on low-memory machines (< 12 GB available RAM)
 
-`just test` uses `-n auto` (one xdist worker per CPU core). Each worker is a
-full Python process that imports the entire Narrare app (FastAPI app, all
-routers, SQLAlchemy models, pydantic-ai) plus the full test suite (~11 k
-items). On machines with < 16 GB RAM, accumulated per-worker memory pressure
-can push one worker over the limit and the kernel OOM killer SIGKILLs a
-**random** worker mid-run (no Python traceback — the victim test is
-arbitrary). The local crash rate was ~25 % on a 9.6 GB machine; CI
-(16 GB runners, ~4 GB/worker headroom) is unaffected and keeps `-n auto`.
+`just test` is **RAM-aware**: it detects available system memory at runtime
+(via `/proc/meminfo` on Linux, `sysctl` on macOS) and automatically selects
+`-n 2` (two xdist workers) when available RAM is below the 12 GB threshold
+(12288 MB, RULE-18). On machines with ≥ 12 GB available RAM, it uses `-n
+auto` (one worker per CPU core). Each worker is a full Python process that
+imports the entire Narrare app (FastAPI app, all routers, SQLAlchemy models,
+pydantic-ai) plus the full test suite (~11 k items). On machines with < 12 GB
+available RAM, accumulated per-worker memory pressure can push one worker over
+the limit and the kernel OOM killer SIGKILLs a **random** worker mid-run (no
+Python traceback — the victim test is arbitrary). The local crash rate was ~25%
+on a 9.6 GB machine with `-n auto`; the auto-`-n 2` selection eliminates this.
+CI (16 GB runners) is unaffected — it runs `pytest` directly in `ci.yml`, not
+via `just test`.
 
-**Use `just test-lowmem`** (`-n 2`) on machines with < 16 GB RAM. It halves
-memory pressure at the cost of ~2× slower local wall time. The two-phase
-schema_mutating split is identical to `just test`; only the phase-1 worker
-count changes.
+**`just test-lowmem`** (`-n 2`) remains available as an explicit override for
+users who want to force reduced parallelism regardless of RAM detection. It
+is now redundant on < 12 GB machines (the default already selects `-n 2`)
+but valid as a manual override on larger machines or when detection fails.
 
 **Reference:** `docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md`.
 
