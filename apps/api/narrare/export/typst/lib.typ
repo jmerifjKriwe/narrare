@@ -16,7 +16,7 @@
 // `is-page-empty` pattern. Verified by the running-header probe in
 // `tests/golden/export/test_running_heads.py`.
 //
-// ── Slice 5c scope (this revision) ───────────────────────────────────
+// ── Slice 5c scope ───────────────────────────────────────────────────
 // 4-phase page numbering (title suppressed → frontmatter roman → body
 // arabic → backmatter arabic-continued). The folio lives in the page
 // FOOTER, separate from the running head (header); both are suppressed
@@ -24,9 +24,26 @@
 // delimit the sections. Verified by the folio-numbering probe in
 // `tests/golden/export/test_numbering.py`.
 //
+// ── Slice 5d scope ───────────────────────────────────────────────────
+// Table of contents: `#toc()` renders chapter entries with dot leaders
+// and *phase-relative* folios (the same value the footer prints — they
+// never disagree). Lives in the frontmatter; gated on `config.include-toc`
+// via the `_toc-enabled` document state. The shared `phase-folio` helper
+// (extracted from `numbering.typ` in this revision) is the single source
+// of truth for the folio computation. Verified by the TOC probe in
+// `tests/golden/export/test_toc.py`.
+//
+// ── Slice 5e scope ───────────────────────────────────────────────────
+// Per-language (de/en/fr) smart quotes + hyphenation. Typst's smartquote
+// engine converts straight quotes to language-appropriate typographic
+// glyphs once `#set text(lang: ...)` is active; hyphenation is forced on
+// so it also reaches non-justified spans. The glyph/pattern contracts
+// live in `src/quotes.typ` / `src/hyphenation.typ`; the `set` rules
+// themselves live here (Typst `set` rules are lexically scoped). Verified
+// by the quotes/hyphenation probe in
+// `tests/golden/export/test_quotes_hyphenation.py`.
+//
 // Sub-slices still to land:
-//   5d  table of contents
-//   5e  per-language (de/en/fr) smart quotes + hyphenation
 //   5f  scene-break ornament + widow/orphan protection
 //   5g  drop cap (optional, default OFF — @preview/droplet)
 //
@@ -39,10 +56,13 @@
 #import "src/opener.typ": recto-opener
 #import "src/heads.typ": running-head
 #import "src/numbering.typ": body, folio-footer, frontmatter, title-page
+#import "src/toc.typ": apply-toc-gate, toc
+#import "src/quotes.typ": smart-quotes-enabled
+#import "src/hyphenation.typ": hyphenate-for
 
 // Sentinel kept for back-compat with the Slice-0 skeleton; not used by
 // the entry point. Bumped when the public API changes.
-#let narrare-roman-version = "0.1.0-5c"
+#let narrare-roman-version = "0.1.0-5e"
 
 // ── Public API ───────────────────────────────────────────────────────
 //
@@ -85,8 +105,10 @@
 // body-font, body-size-pt, leading-ratio, margins, language. 5b adds:
 // title, author, running-head-preset. 5c adds the phase markers
 // (title-page, frontmatter, body) — no new config keys (the numbering
-// is structural, not configurable). Later sub-slices extend the surface
-// further (include-toc → 5d, scene-break-style → 5f, …).
+// is structural, not configurable). 5d adds include-toc (gates `#toc()`
+// — default true). 5e adds no new keys (smart quotes + hyphenation are
+// driven by the existing `language` key). Later sub-slices extend the
+// surface further (scene-break-style → 5f, …).
 #let narrare-roman(
   config: (:),
   body,
@@ -103,6 +125,7 @@
   let title = config.at("title", default: "Untitled")
   let author = config.at("author", default: "Anonymous")
   let running-head-preset = config.at("running-head-preset", default: "default")
+  let include-toc = config.at("include-toc", default: true)
 
   let page-dim = paper-dimensions(
     paper-size,
@@ -160,12 +183,34 @@
   set text(font: body-font, size: body-size-pt * 1pt, lang: language)
   set par(leading: (leading-ratio - 1.0) * 1em, justify: true)
 
+  // ── Smart quotes + hyphenation (5e).
+  //
+  // Typst's smartquote engine converts straight `"` / `'` to language-
+  // appropriate typographic glyphs once `lang` is set (see `src/quotes.typ`
+  // for the per-language glyph contract). `set smartquote(enabled: ...)`
+  // is explicit and reserves the disable surface for a future config key.
+  // Hyphenation is forced ON (not left at Typst's justified-only `auto`)
+  // so it also reaches non-justified spans (see `src/hyphenation.typ`).
+  // Both `set` rules live here — Typst `set` rules are lexically scoped.
+  set smartquote(enabled: smart-quotes-enabled())
+  set text(hyphenate: hyphenate-for(language))
+
   // ── Recto chapter openers + blank verso.
   //
   // Declared inline (not via a helper call) because Typst show rules are
   // lexically scoped — a rule set inside a called function would not
   // reach `body`. See `src/opener.typ` for the rationale + transform.
   show heading.where(level: 1): recto-opener
+
+  // ── TOC gate (5d).
+  //
+  // Publish `config.include-toc` to the TOC component via document state
+  // BEFORE the body is laid out — so a `#toc()` inside `#frontmatter[…]`
+  // reads the configured value. The state update is emitted in the
+  // content stream right before `body`; Typst has no mutable module
+  // variables, and `set` rules are lexically scoped, so a cross-component
+  // flag rides on document state (see `src/toc.typ`).
+  apply-toc-gate(include-toc)
 
   body
 }

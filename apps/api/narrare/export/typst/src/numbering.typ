@@ -1,4 +1,4 @@
-// narrare-roman · 4-phase page numbering (Slice 5c).
+// narrare-roman · 4-phase page numbering (Slice 5c, extended in 5d).
 //
 // The literary-book folio convention — the `tieffiction` 4-phase model
 // re-implemented (not forked) per ADR-081:
@@ -47,6 +47,33 @@
 
 #import "heads.typ": detectable-pagebreak, is-page-empty
 
+// Format the phase-relative folio for a physical page number.
+//
+// The single source of truth for the 4-phase folio computation, shared by
+// the page footer (`folio-footer`) and the table of contents (`toc.typ`).
+// Returns the formatted folio (an arabic string for body pages, a lowercase
+// roman string for frontmatter pages) or `none` when the page carries no
+// folio (the title page, or any page before the first phase marker).
+//
+// MUST be called inside a `context` block — it queries the phase markers
+// placed by `frontmatter` / `body`.
+#let phase-folio(page-num) = {
+  let body-start = query(<narrare-body-start>)
+  let fm-start = query(<narrare-frontmatter-start>)
+
+  if body-start.len() > 0 and page-num >= body-start.first().location().page() {
+    // Body phase — arabic, relative to body-start.
+    let base = body-start.first().location().page()
+    numbering("1", page-num - base + 1)
+  } else if fm-start.len() > 0 and page-num >= fm-start.first().location().page() {
+    // Frontmatter phase — lowercase roman, relative to frontmatter-start.
+    let base = fm-start.first().location().page()
+    numbering("i", page-num - base + 1)
+  }
+
+  // Title page / pre-frontmatter → neither branch fires → returns none.
+}
+
 // The folio (page number) footer.
 //
 // Set as the page footer by the entry point (`lib.typ`). Determines the
@@ -64,20 +91,10 @@
     // (1) Blank page → no folio (shared is-page-empty suppression).
     if is-page-empty() { return }
 
-    let page-num = here().page()
-    let body-start = query(<narrare-body-start>)
-    let fm-start = query(<narrare-frontmatter-start>)
-
-    // (2) Body phase — arabic, relative to body-start.
-    // (3) Frontmatter phase — roman, relative to frontmatter-start.
-    // (4) Title page / pre-frontmatter → neither branch fires → no folio.
-    if body-start.len() > 0 and page-num >= body-start.first().location().page() {
-      let base = body-start.first().location().page()
-      numbering("1", page-num - base + 1)
-    } else if fm-start.len() > 0 and page-num >= fm-start.first().location().page() {
-      let base = fm-start.first().location().page()
-      numbering("i", page-num - base + 1)
-    }
+    // (2)(3)(4) Body arabic / frontmatter roman / title none — one call to
+    // the shared phase-relative computation. Returns nothing (no folio)
+    // before the first phase marker.
+    phase-folio(here().page())
   }
 }
 

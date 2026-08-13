@@ -37,7 +37,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, NamedTuple, TypedDict, cast
 
 if TYPE_CHECKING:
     # pymupdf is referenced only in annotations (under future annotations
@@ -167,6 +167,42 @@ def page_spans(page: pymupdf.Page) -> list[Span]:
 def page_fonts(page: pymupdf.Page) -> set[str]:
     """Set of font PostScript names used by non-empty text spans on ``page``."""
     return {span["font"] for span in page_spans(page) if "font" in span}
+
+
+# ── Word-level extraction (for spatial layout checks — TOC entries, …) ─────
+
+
+class TextWord(NamedTuple):
+    """One word as returned by ``Page.get_text("words")`` (PyMuPDF "words" mode).
+
+    PyMuPDF returns bare tuples ``(x0, y0, x1, y1, text, block, line, word)``
+    with no field names; wrapping them in a NamedTuple keeps the probe code
+    self-documenting and gives pyright real attribute types.
+    """
+
+    x0: float
+    y0: float
+    x1: float
+    y1: float
+    text: str
+    block_no: int
+    line_no: int
+    word_no: int
+
+
+def page_words(page: pymupdf.Page) -> list[TextWord]:
+    """Flat list of words on ``page`` with their bounding boxes.
+
+    Wraps PyMuPDF's "words" extraction mode in :class:`TextWord` records.
+    Used by probes that need the SPATIAL layout of text (e.g. the TOC entry
+    probe, which reconstructs ``title … page-number`` lines from word
+    positions). The boundary ``cast`` asserts the documented tuple shape.
+    """
+    raw = cast(
+        "list[tuple[float, float, float, float, str, int, int, int]]",
+        page.get_text("words"),
+    )
+    return [TextWord(*w) for w in raw]
 
 
 def header_text(page: pymupdf.Page, top_margin_mm: float = 22.0) -> str:
