@@ -120,7 +120,7 @@ packages/core/narrare_core/
 3. Adapter/service following the Protocol.
 4. Test with mocked external dependencies.
 5. Verify: no HTTP/user imports leaked into Core.
-6. Iterate with scoped recipes: `just lint-file <path>` / `just typecheck-file <path>` / `just test-file <path> [pytest flags]` (flags pass through, e.g. `-x`, `--pdb`, `-k`); full gate before handoff: `just verify`. Long output: pipe it (`just test-file ... 2>&1 | tail -60`) — context hygiene, not a reason to bypass recipes.
+6. Iterate with scoped recipes: `just lint-file <paths>` / `just typecheck-file <paths>` / `just test-file <paths> [pytest flags]` (flags pass through, e.g. `-x`, `--pdb`, `-k`); full gate before handoff: `just verify`. Long output: pipe it (`just test-file ... 2>&1 | tail -60`) — context hygiene, not a reason to bypass recipes.
 
 Standards: `@docs/_shared/CONSTRAINTS.md`, `@docs/development/coding-standards.md`,
 `@docs/reference/directory-structure.md`. Code questions via **graphify** first.

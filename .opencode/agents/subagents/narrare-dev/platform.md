@@ -134,7 +134,7 @@ permission:
 5. Docker build (on deployment changes)
 ```
 
-Prefer `just` recipes: `just lint-file <path>` / `just typecheck-file <path>` / `just test-file <path> [pytest flags]` for scoped iteration; `just verify` for the full gate; `just check-full` before merge.
+Prefer `just` recipes: `just lint-file <paths>` / `just typecheck-file <paths>` / `just test-file <paths> [pytest flags]` for scoped iteration; `just verify` for the full gate; `just check-full` before merge.
 Standards: `@docs/development/testing-standards.md`, `@docs/development/deployment-guide.md`.
 
 ## Git owner (all git/gh writes go through here)

@@ -39,7 +39,7 @@ _stop-services:
 
 # Run SQL via psql directly in explicit host/container mode, with Docker fallback.
 [private]
-_psql-sql db sql *args:
+_psql-sql db sql:
     @mode="${NARRARE_DEV_MODE:-host}"; \
     if command -v psql >/dev/null 2>&1; then \
         if [ "$$mode" = "container" ]; then \
@@ -75,7 +75,7 @@ _psql-recreate-db db:
 
 # Open psql shell via psql directly in explicit host/container mode, with Docker fallback.
 [private]
-_psql-shell db *args:
+_psql-shell db:
     @mode="${NARRARE_DEV_MODE:-host}"; \
     if command -v psql >/dev/null 2>&1; then \
         if [ "$$mode" = "container" ]; then \
@@ -299,7 +299,8 @@ test-lowmem:
 test-unit:
     uv run pytest tests/unit/ -v -n auto --dist loadfile
 
-# Run tests single-threaded (for debugging)
+# Run tests single-threaded for debugging (disables the `randomly` plugin).
+# NOTE: the name means "single-threaded", NOT "single file" — use `test-file` for scoped files.
 test-single file="tests/":
     uv run pytest {{file}} -v -p no:randomly
 
@@ -366,7 +367,9 @@ vrt-update:
 golden-update:
     uv run pytest tests/golden/export/test_golden_pages.py -v -m golden_pages --golden-update -p no:xdist
 
-# Back-compat alias for `just vrt`.
+# Back-compat alias for `just vrt`. Implemented as a wrapper recipe (not a just
+# `alias`) because check_doc_drift.py --governance-only validates just commands
+# against the recipe set and aliases are not visible to it.
 test-vrt:
     just vrt
 
@@ -410,11 +413,11 @@ lint-check:
     uv run ruff check apps/ packages/ scripts/ tests/ evals/
     uv run ruff format --check apps/ packages/ scripts/ tests/ evals/
 
-# Fast scoped ruff check (lint + format --check) for iterating on one file/dir.
+# Fast scoped ruff check (lint + format --check) for iterating on specific files/dirs.
 # Whole-repo gate is `just lint-check`.
-lint-file path='apps/':
-    uv run ruff check {{path}}
-    uv run ruff format --check {{path}}
+lint-file +files:
+    uv run ruff check {{files}}
+    uv run ruff format --check {{files}}
 
 # Run pyright type checker
 typecheck:
