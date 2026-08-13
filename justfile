@@ -302,13 +302,12 @@ test:
     uv run pytest tests/ -v -n "$workers" -m "not schema_mutating"
     uv run pytest tests/integration/ -v -m schema_mutating
 
-# Run all tests with reduced parallelism for machines with < 16 GB RAM.
-# `-n auto` (= one worker per core, the default in `just test`) can trigger the
-# OOM killer on memory-constrained machines: each xdist worker imports the full
-# app + test suite (~11 k items), and accumulated per-worker memory pressure can
-# SIGKILL a random worker mid-run. Use this on < 16 GB RAM.
-# See docs/architecture/questions/Q-019-xdist-worker-crash-oom.md.
-# CI (16 GB runners) and 16 GB dev machines should keep the default `just test`.
+# Run all tests with forced `-n 2` (explicit override; rarely needed now).
+# The default `just test` is RAM-aware: it auto-selects `-n 2` on machines with
+# < 12 GB available RAM and `-n auto` otherwise. Use this recipe only to force
+# `-n 2` regardless of RAM detection (e.g., a large machine where you still want
+# reduced parallelism, or if detection misfires).
+# See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
 test-lowmem:
     uv run pytest tests/ -v -n 2 -m "not schema_mutating"
     uv run pytest tests/integration/ -v -m schema_mutating
