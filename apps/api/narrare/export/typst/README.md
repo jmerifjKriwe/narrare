@@ -46,11 +46,12 @@ License: [SIL Open Font License 1.1](fonts/LICENSE-OFL.txt), upstream
 directory also feeds the EPUB renderer (pandoc `--epub-embed-font`) — one
 bundled font, two embedding mechanisms, one font policy (D7).
 
-## Current state — Slice 5e (geometric spine + running heads + 4-phase numbering + TOC + smart quotes + hyphenation)
+## Current state — Slice 5f (scope floor complete)
 
 The **geometric spine**, **running heads**, **4-phase numbering**, **table of
-contents**, and **per-language smart quotes + hyphenation** are implemented and
-probe-verified:
+contents**, **per-language smart quotes + hyphenation**, **scene-break
+ornament**, and **widow/orphan protection** are implemented and
+probe-verified — the D5 scope floor (5a–5f) is complete:
 
 - **Paper size** — B-format 129 x 198 mm (default), A5, A4, Letter, or custom
   (`paper-size`, `custom-width-mm`, `custom-height-mm`).
@@ -84,6 +85,20 @@ probe-verified:
   is forced on (not left at Typst's justified-only `auto`) so it also
   reaches non-justified spans. The glyph/pattern contracts live in
   `src/quotes.typ` / `src/hyphenation.typ`.
+- **Scene-break ornament** — a scene break (the normaliser's `<hr>`, which
+  pandoc maps to `#divider()`) renders as a centred, spaced `* * *`
+  asterism (the `folklore` `major-break` pattern), set off from the body
+  by vertical space — not a literal asterisk paragraph. Gated on
+  `config.scene-break-style` (default `"asterism"`; the surface is
+  reserved for more glyphs). Wired via `#show divider` in
+  `src/scene_break.typ`.
+- **Widow / orphan protection** — ON by default (Typst 0.15 prevents
+  widows and orphans automatically via its optimised line breaker;
+  narrare-roman exposes the on/off switch as `text(costs: …)`, mapped
+  from `config.widow-orphan-protection`). The pre-0.15
+  `par(orphan-limit/widow-limit)` API no longer exists — see
+  `src/body.typ`. Justified body is set by the entry point (`set
+  par(justify: true)`, Slice 5a).
 
 Verified by `tests/golden/export/test_geometric_spine.py` (folio-count,
 recto-start, blank-verso, mirrored-margin, and no-silent-font-fallback
@@ -92,20 +107,20 @@ present-on-body, recto≠verso, absent-on-openers, absent-on-blanks probes),
 `tests/golden/export/test_numbering.py` (frontmatter-roman, body-arabic,
 body-resets-to-1, title-suppressed, blank-folio-suppressed probes),
 `tests/golden/export/test_toc.py` (TOC-present-with-phase-relative-folios,
-TOC-absent-when-disabled probes), and
+TOC-absent-when-disabled probes),
 `tests/golden/export/test_quotes_hyphenation.py` (per-language quote-glyph
-probes for de/en/fr + hyphenation-breaks-long-compound probe) via PyMuPDF.
+probes for de/en/fr + hyphenation-breaks-long-compound probe), and
+`tests/golden/export/test_scene_break.py` (scene-break-renders-centred-
+ornament + widow-orphan-protection-engages probes) via PyMuPDF.
 Bundled Libertinus Serif is the body font with no fallback
 (`--font-path fonts/`).
 
-The remaining scope-floor feature lands in **Slice 5f**, verified by its
-own probe before merge:
+The D5 scope floor is **complete**. The only remaining Slice-5 item is the
+**optional fast-follow**:
 
 | Sub-slice | Feature |
 |-----------|---------|
-| 5f | Scene-break ornament + widow/orphan protection |
-
-Drop cap (5g) is an **optional fast-follow**, OFF by default.
+| 5g | Drop cap, default OFF (`@preview/droplet`) |
 
 See the Slice 5 sub-slice map in
 [IO-001-export-pipeline.md](../../../../../../docs/architecture/implementation-plans/IO-001-export-pipeline.md)

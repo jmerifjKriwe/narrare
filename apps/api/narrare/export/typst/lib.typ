@@ -43,8 +43,17 @@
 // by the quotes/hyphenation probe in
 // `tests/golden/export/test_quotes_hyphenation.py`.
 //
+// ── Slice 5f scope ───────────────────────────────────────────────────
+// Scene-break ornament + widow/orphan protection. pandoc maps a scene
+// break (`<hr>` in the normalised HTML) to `#divider()`; a `show divider`
+// rule restyles that construct as a centred spaced `* * *` ornament (the
+// `folklore` `major-break` pattern, borrowed per ADR-081). Widow/orphan
+// prevention — ON by default — rides Typst 0.15's optimised line breaker
+// via `text(costs: ...)` (the pre-0.15 `par(orphan-limit/widow-limit)`
+// API no longer exists; see `src/body.typ`). Verified by the scene-break
+// probe in `tests/golden/export/test_scene_break.py`.
+//
 // Sub-slices still to land:
-//   5f  scene-break ornament + widow/orphan protection
 //   5g  drop cap (optional, default OFF — @preview/droplet)
 //
 // Borrowed patterns (not forks): wonderous-book `is-page-empty`;
@@ -59,10 +68,12 @@
 #import "src/toc.typ": apply-toc-gate, toc
 #import "src/quotes.typ": smart-quotes-enabled
 #import "src/hyphenation.typ": hyphenate-for
+#import "src/scene_break.typ": scene-break
+#import "src/body.typ": widow-orphan-costs
 
 // Sentinel kept for back-compat with the Slice-0 skeleton; not used by
 // the entry point. Bumped when the public API changes.
-#let narrare-roman-version = "0.1.0-5e"
+#let narrare-roman-version = "0.1.0-5f"
 
 // ── Public API ───────────────────────────────────────────────────────
 //
@@ -107,8 +118,9 @@
 // (title-page, frontmatter, body) — no new config keys (the numbering
 // is structural, not configurable). 5d adds include-toc (gates `#toc()`
 // — default true). 5e adds no new keys (smart quotes + hyphenation are
-// driven by the existing `language` key). Later sub-slices extend the
-// surface further (scene-break-style → 5f, …).
+// driven by the existing `language` key). 5f adds scene-break-style +
+// widow-orphan-protection. Later sub-slices extend the surface further
+// (drop-caps → 5g, …).
 #let narrare-roman(
   config: (:),
   body,
@@ -126,6 +138,11 @@
   let author = config.at("author", default: "Anonymous")
   let running-head-preset = config.at("running-head-preset", default: "default")
   let include-toc = config.at("include-toc", default: true)
+  let scene-break-style = config.at("scene-break-style", default: "asterism")
+  let widow-orphan-protection = config.at(
+    "widow-orphan-protection",
+    default: true,
+  )
 
   let page-dim = paper-dimensions(
     paper-size,
@@ -195,12 +212,32 @@
   set smartquote(enabled: smart-quotes-enabled())
   set text(hyphenate: hyphenate-for(language))
 
+  // ── Widow / orphan protection (5f).
+  //
+  // Typst 0.15 prevents widows and orphans automatically through its
+  // optimised line breaker; the on/off switch is `text(costs: ...)`.
+  // `widow-orphan-costs` maps `config.widow-orphan-protection` to the
+  // costs dict (default-level prevention when true, disabled when false).
+  // The pre-0.15 `par(orphan-limit/widow-limit)` API no longer exists —
+  // see `src/body.typ` for the full wrinkle. Like the other body-
+  // typography `set` rules, this one lives here (lexical scope).
+  set text(costs: widow-orphan-costs(widow-orphan-protection))
+
   // ── Recto chapter openers + blank verso.
   //
   // Declared inline (not via a helper call) because Typst show rules are
   // lexically scoped — a rule set inside a called function would not
   // reach `body`. See `src/opener.typ` for the rationale + transform.
   show heading.where(level: 1): recto-opener
+
+  // ── Scene-break ornament (5f).
+  //
+  // pandoc maps a scene break (`<hr>` in the normalised HTML) to
+  // `#divider()` (a Typst 0.15 built-in). Declared inline for the same
+  // lexical-scope reason as the heading rule above. The transform
+  // (`src/scene_break.typ`) restyles that construct as a centred spaced
+  // `* * *` ornament — the `folklore` `major-break` pattern.
+  show divider: scene-break(style: scene-break-style)
 
   // ── TOC gate (5d).
   //

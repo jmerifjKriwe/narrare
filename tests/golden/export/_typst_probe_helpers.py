@@ -137,6 +137,18 @@ def compile_typst(doc_path: Path, pdf_path: Path) -> subprocess.CompletedProcess
 # ── pymupdf accessors (typed boundary over the untyped stub) ──────────────
 
 
+def doc_page_count(doc: pymupdf.Document) -> int:
+    """The number of pages in ``doc``.
+
+    Cast asserts the documented return shape — ``Document.page_count`` is
+    left untyped in the bundled pymupdf stub, so accessing it directly
+    widens to ``Unknown`` (``reportUnknownMemberType``) and propagates
+    through every ``range(...)`` / arithmetic on it. Mirrors the boundary
+    casts below for the ``Page.get_text`` family.
+    """
+    return cast("int", doc.page_count)
+
+
 def page_text(page: pymupdf.Page) -> str:
     """The page's text as a single string (pymupdf "text" extraction mode).
 
