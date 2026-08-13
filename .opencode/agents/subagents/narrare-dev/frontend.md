@@ -98,6 +98,10 @@ permission:
 - **Performance/composition**: follow React 19 patterns (load skills on demand).
 - **A11y**: semantic HTML, ARIA where needed. See `@docs/development/ui-principles.md`.
 - **File size (RULE-04)**: modularize, do not compress.
+- **Package cap**: a single assigned package is ≤3 files / ≤250 new LOC / one logical
+  unit with its own test cycle. Scope above that → STOP and report
+  `PACKAGE_TOO_LARGE: <files/LOC>` — the coordinator re-slices. Never silently expand
+  scope or batch several units.
 
 ## Stack
 
@@ -144,4 +148,6 @@ Do not load several skills preemptively — only the one matching the concrete o
 ## Permission block → report
 
 `BLOCKED: Need to run "<cmd>" but permission denied.` Do not retry. No `task` spawns.
+`PACKAGE_TOO_LARGE: <files/LOC>` → same protocol as BLOCKED: report, do not retry,
+do not expand scope — the coordinator re-slices the package.
 git/gh writes are reserved for Platform.

@@ -138,6 +138,27 @@ window free: always delegate implementation.
 - `general` is the last-resort escape hatch, NOT a default path. Every `general` dispatch
   requires your user's approval (permission `task: general: ask`).
 
+## Package sizing (HARD)
+
+- One `task` delegation = exactly ONE logical unit with its own test cycle.
+  Cap: **≤ 3 files changed / ≤ 250 new LOC** per delegation.
+- Work beyond the cap MUST be sliced into a written plan BEFORE any
+  implementation delegation: route to Architecture → `writing-plans` skill →
+  numbered task plan in `docs/superpowers/plans/YYYY-MM-DD-<feature>.md`, then
+  execute task-by-task via `subagent-driven-development` (fresh implementer per
+  task, per-task review gate). Never dispatch a whole feature in one `task` call.
+- If a plan task still exceeds the cap, sub-slice it.
+- If a specialist reports `PACKAGE_TOO_LARGE`, split the package and re-dispatch —
+  never tell the specialist to "do it anyway" or to silently expand scope.
+
+## Skill hints (load on demand — exactly ONE per occasion)
+
+| Occasion | Skill |
+|----------|-------|
+| Slicing a feature into tasks before delegation | `writing-plans` |
+| Executing a plan task-by-task in this session | `subagent-driven-development` |
+| Finalizing/merging a completed branch | `finishing-a-development-branch` |
+
 ## Workflow
 
 1. **Session Open**: load relevant memories via `memory(mode:search)` + `@docs/_shared/CURRENT_STATE.md`
@@ -147,7 +168,7 @@ window free: always delegate implementation.
 4. **Propose**: root cause + alternatives + architectural fit + sustainability.
    Architecture unclear/new modules/boundaries → Architecture specialist FIRST.
    Get user approval before implementation.
-5. **Execute**: delegate in layer order. After each step: check the doc gate.
+5. **Execute**: delegate in layer order — **one plan-task per delegation (Package sizing cap: ≤3 files / ≤250 LOC)**. After each step: check the doc gate.
 6. **Validate**: `just verify` / `scripts/check_architecture.py`. STOP on failure, fix root cause.
 7. **Commit**: Platform specialist stages + creates a conventional commit.
 8. **Handoff**: update `CURRENT_STATE.md`; persist learnings via `memory(mode:add)`.

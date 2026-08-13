@@ -95,6 +95,10 @@ permission:
 - **Async**: all I/O async, never sync DB calls.
 - **File size (RULE-04)**: router ≤150, service ≤300, repo ≤200 lines. When exceeded,
   **modularize** — never delete comments/docstrings to fit.
+- **Package cap**: a single assigned package is ≤3 files / ≤250 new LOC / one logical
+  unit with its own test cycle. Scope above that → STOP and report
+  `PACKAGE_TOO_LARGE: <files/LOC>` — the coordinator re-slices. Never silently expand
+  scope or batch several units.
 - **No `--no-verify`** on commits (git is owned by Platform).
 
 ## File map
@@ -142,4 +146,6 @@ Phantom `just` recipe → report, don't workaround: if a documented
 `BLOCKED: documented just recipe '<name>' does not exist` — never silently
 fall back to raw commands or invent a recipe.
 `BLOCKED: Need to run "<cmd>" but permission denied.` Do not retry. No `task` spawns.
+`PACKAGE_TOO_LARGE: <files/LOC>` → same protocol as BLOCKED: report, do not retry,
+do not expand scope — the coordinator re-slices the package.
 git/gh writes are reserved for Platform.

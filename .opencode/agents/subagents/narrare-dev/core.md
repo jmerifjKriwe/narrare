@@ -94,6 +94,10 @@ permission:
 - **DI**: dependencies via `__init__`.
 - **Graceful degradation**: external service (mem0, Redis) unavailable → system keeps running.
 - **File size (RULE-04)**: modularize, do not compress.
+- **Package cap**: a single assigned package is ≤3 files / ≤250 new LOC / one logical
+  unit with its own test cycle. Scope above that → STOP and report
+  `PACKAGE_TOO_LARGE: <files/LOC>` — the coordinator re-slices. Never silently expand
+  scope or batch several units.
 
 ## Architecture
 
@@ -146,3 +150,5 @@ Phantom `just` recipe → report, don't workaround: if a documented
 `BLOCKED: documented just recipe '<name>' does not exist` — never silently
 fall back to raw commands or invent a recipe.
 `BLOCKED: Need to run "<cmd>" but permission denied.` Do not retry. No `task` spawns.
+`PACKAGE_TOO_LARGE: <files/LOC>` → same protocol as BLOCKED: report, do not retry,
+do not expand scope — the coordinator re-slices the package.
