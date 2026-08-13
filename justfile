@@ -276,12 +276,30 @@ db-shell:
 # Testing
 # ---------------------------------------------------------------------------
 
-# Run all tests. Phase 1: full suite in parallel (xdist -n auto). Phase 2:
-# schema-mutating migration round-trip tests (marked @pytest.mark.schema_mutating)
-# run SERIALLY — they downgrade/re-upgrade the shared test-DB schema and must
-# never run concurrently with other tests.
+# Run all tests. Worker count is RAM-aware: < 12 GB available → -n 2
+# (Q-019 OOM mitigation); otherwise -n auto. CI runs pytest directly
+# (not this recipe) and is unaffected.
+# See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
 test:
-    uv run pytest tests/ -v -n auto -m "not schema_mutating"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Detect available RAM (MB). Linux: /proc/meminfo. macOS: sysctl.
+    if [ -f /proc/meminfo ]; then
+        avail_mb=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
+    elif command -v sysctl >/dev/null 2>&1; then
+        avail_mb=$(( $(sysctl -n hw.memsize) / 1048576 ))
+    else
+        avail_mb=0
+    fi
+    # RULE-18: 12288 MB = 12 GB threshold (Q-19 measured ~2.4 GB/worker headroom
+    # on 9.6 GB / 4 workers; 12 GB gives ~3 GB/worker with -n auto on 4 cores).
+    _RAM_THRESHOLD_MB=12288
+    if [ "$avail_mb" -gt 0 ] && [ "$avail_mb" -lt "$_RAM_THRESHOLD_MB" ]; then
+        workers=2
+    else
+        workers=auto
+    fi
+    uv run pytest tests/ -v -n "$workers" -m "not schema_mutating"
     uv run pytest tests/integration/ -v -m schema_mutating
 
 # Run all tests with reduced parallelism for machines with < 16 GB RAM.
