@@ -10,7 +10,7 @@ Next.js 16+ uses ``proxy.ts`` exclusively; the build breaks if both
 
 from __future__ import annotations
 
-from scripts.architecture.helpers import ROOT
+from scripts.architecture import helpers
 from scripts.architecture.types import CheckResult, Violation
 
 
@@ -24,7 +24,11 @@ def check_forbidden_files(result: CheckResult) -> None:
         "middleware.ts": "packages/web",
     }
     for filename, search_dir in forbidden_patterns.items():
-        search_path = ROOT / search_dir
+        # Read ROOT lazily (helpers.ROOT) so test monkeypatching of
+        # scripts.architecture.helpers.ROOT is honored — mirrors the scanner's
+        # lazy-ROOT contract. Import-time binding (from helpers import ROOT)
+        # would freeze the value and ignore reassignment.
+        search_path = helpers.ROOT / search_dir
         if not search_path.exists():
             continue
         for match in search_path.rglob(filename):

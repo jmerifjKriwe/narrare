@@ -122,10 +122,7 @@ def main() -> int:
 
     # --incremental with no files → scan(files=[]) (RULE-15 only).
     # No --incremental → scan(files=None) (FULL).
-    if args.incremental:
-        scan_files: list[Path] | None = [Path(f) for f in args.files]
-    else:
-        scan_files = None  # FULL scan
+    scan_files: list[Path] | None = [Path(f) for f in args.files] if args.incremental else None
 
     result = ArchitectureScanner().scan(files=scan_files)
 

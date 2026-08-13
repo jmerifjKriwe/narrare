@@ -105,6 +105,11 @@ class TestIncrementalParity:
 
         # No .py violations (RULE-04/07 etc.) — only RULE-15 could appear
         # (and won't, since no middleware.ts in tmp_path).
+        # NOTE: this assertion is meaningful ONLY alongside its siblings
+        # (test_incremental_matches_full_on_all_files /
+        # test_incremental_subset_matches_full_subset), which prove the
+        # fixtures yield real RULE-04/07 violations; without them this
+        # would pass vacuously if scan() were a no-op.
         ast_rules = {v.rule for v in result.violations if v.rule != "RULE-15"}
         assert ast_rules == set()
 
