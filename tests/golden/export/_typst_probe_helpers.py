@@ -212,6 +212,28 @@ def body_text(page: pymupdf.Page, top_margin_mm: float = 22.0) -> str:
     return "\n".join(lines)
 
 
+def footer_text(page: pymupdf.Page, bottom_margin_mm: float = 22.0) -> str:
+    """Text rendered in the folio band at the bottom of ``page``.
+
+    The folio (page number, Slice 5c) lives inside the bottom margin;
+    body text ends at the bottom-margin origin. Spans whose top edge
+    sits at or beyond that origin (``y0 >= page_height - bottom_margin``)
+    are the footer. Returns the joined, whitespace-normalised footer
+    text (``""`` when the folio is suppressed — title page, blank
+    pages, or any page before the first phase marker).
+
+    ``bottom_margin_mm`` defaults to the B-format Satzspiegel (22 mm);
+    pass the effective bottom margin when a fixture overrides it.
+    """
+    bottom_start_pt = page.rect.height - bottom_margin_mm * MM_TO_PT
+    parts: list[str] = []
+    for span in page_spans(page):
+        bbox = span.get("bbox")
+        if bbox is not None and bbox[1] >= bottom_start_pt:
+            parts.append(span.get("text", ""))
+    return " ".join(p for p in (s.strip() for s in parts) if p)
+
+
 def text_bbox_mm(page: pymupdf.Page) -> tuple[float, float] | None:
     """Return ``(left_gap_mm, right_gap_mm)`` of the text block on ``page``.
 

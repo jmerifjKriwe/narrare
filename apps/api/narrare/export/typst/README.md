@@ -46,10 +46,10 @@ License: [SIL Open Font License 1.1](fonts/LICENSE-OFL.txt), upstream
 directory also feeds the EPUB renderer (pandoc `--epub-embed-font`) — one
 bundled font, two embedding mechanisms, one font policy (D7).
 
-## Current state — Slice 5b (geometric spine + running heads)
+## Current state — Slice 5c (geometric spine + running heads + 4-phase numbering)
 
-The **geometric spine** and **running heads** are implemented and
-probe-verified:
+The **geometric spine**, **running heads**, and **4-phase numbering** are
+implemented and probe-verified:
 
 - **Paper size** — B-format 129 x 198 mm (default), A5, A4, Letter, or custom
   (`paper-size`, `custom-width-mm`, `custom-height-mm`).
@@ -64,20 +64,28 @@ probe-verified:
   verso (even) carries the **book title** (`title`, `author`,
   `running-head-preset`). Suppressed on chapter openers and on blank
   versos via the borrowed `is-page-empty` pattern (wonderous-book).
+- **4-phase numbering** — title page (folio suppressed) → frontmatter
+  (lowercase roman i, ii, iii) → body (arabic 1, 2, 3, reset at first
+  chapter) → backmatter (arabic continued). The folio lives in the page
+  **footer** (bottom centre), separate from the running head (header);
+  both are suppressed on blank pages. Phase markers `title-page`,
+  `frontmatter`, `body` delimit the sections (borrowed from
+  tieffiction's 4-phase model).
 
 Verified by `tests/golden/export/test_geometric_spine.py` (folio-count,
 recto-start, blank-verso, mirrored-margin, and no-silent-font-fallback
-probes) and `tests/golden/export/test_running_heads.py` (running-header
-present-on-body, recto≠verso, absent-on-openers, absent-on-blanks probes
-via PyMuPDF). Bundled Libertinus Serif is the body font with no fallback
-(`--font-path fonts/`).
+probes), `tests/golden/export/test_running_heads.py` (running-header
+present-on-body, recto≠verso, absent-on-openers, absent-on-blanks probes),
+and `tests/golden/export/test_numbering.py` (frontmatter-roman,
+body-arabic, body-resets-to-1, title-suppressed, blank-folio-suppressed
+probes via PyMuPDF). Bundled Libertinus Serif is the body font with no
+fallback (`--font-path fonts/`).
 
-The remaining scope-floor features land in **Slice 5c through 5f**, each
+The remaining scope-floor features land in **Slice 5d through 5f**, each
 verified by its own probe before merge:
 
 | Sub-slice | Feature |
 |-----------|---------|
-| 5c | 4-phase numbering (frontmatter roman → body arabic) |
 | 5d | Table of contents |
 | 5e | Per-language (de/en/fr) smart quotes + hyphenation |
 | 5f | Scene-break ornament + widow/orphan protection |

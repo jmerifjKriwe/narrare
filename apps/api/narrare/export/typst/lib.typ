@@ -10,14 +10,21 @@
 // + blank verso. Verified by the folio-count + recto-start probes in
 // `tests/golden/export/test_geometric_spine.py`.
 //
-// ── Slice 5b scope (this revision) ───────────────────────────────────
+// ── Slice 5b scope ───────────────────────────────────────────────────
 // Running heads: recto ≠ verso (verso = book title, recto = chapter
 // title), suppressed on chapter openers and blank versos via the
 // `is-page-empty` pattern. Verified by the running-header probe in
 // `tests/golden/export/test_running_heads.py`.
 //
+// ── Slice 5c scope (this revision) ───────────────────────────────────
+// 4-phase page numbering (title suppressed → frontmatter roman → body
+// arabic → backmatter arabic-continued). The folio lives in the page
+// FOOTER, separate from the running head (header); both are suppressed
+// on blank pages. Phase markers (`title-page`, `frontmatter`, `body`)
+// delimit the sections. Verified by the folio-numbering probe in
+// `tests/golden/export/test_numbering.py`.
+//
 // Sub-slices still to land:
-//   5c  4-phase numbering (frontmatter römisch → body arabisch)
 //   5d  table of contents
 //   5e  per-language (de/en/fr) smart quotes + hyphenation
 //   5f  scene-break ornament + widow/orphan protection
@@ -31,10 +38,11 @@
 #import "src/margins.typ": resolve-margins
 #import "src/opener.typ": recto-opener
 #import "src/heads.typ": running-head
+#import "src/numbering.typ": body, folio-footer, frontmatter, title-page
 
 // Sentinel kept for back-compat with the Slice-0 skeleton; not used by
 // the entry point. Bumped when the public API changes.
-#let narrare-roman-version = "0.1.0-5b"
+#let narrare-roman-version = "0.1.0-5c"
 
 // ── Public API ───────────────────────────────────────────────────────
 //
@@ -47,7 +55,7 @@
 // Idiomatic use as a document-level show rule (the Slice-6 wrapper does
 // exactly this):
 //
-//   #import "narrare-roman": narrare-roman
+//   #import "narrare-roman": narrare-roman, title-page, frontmatter, body
 //
 //   #show: narrare-roman.with(
 //     config: (
@@ -62,13 +70,23 @@
 //     ),
 //   )
 //
-//   = Chapter One
-//   ...
+//   #title-page[Book title + author]
+//
+//   #frontmatter[
+//     Copyright, dedication (TOC content arrives in 5d).
+//   ]
+//
+//   #body[
+//     = Chapter One
+//     ...
+//   ]
 //
 // 5a reads only: paper-size, custom-width-mm, custom-height-mm,
 // body-font, body-size-pt, leading-ratio, margins, language. 5b adds:
-// title, author, running-head-preset. Later sub-slices extend the
-// surface further (include-toc → 5d, scene-break-style → 5f, …).
+// title, author, running-head-preset. 5c adds the phase markers
+// (title-page, frontmatter, body) — no new config keys (the numbering
+// is structural, not configurable). Later sub-slices extend the surface
+// further (include-toc → 5d, scene-break-style → 5f, …).
 #let narrare-roman(
   config: (:),
   body,
@@ -115,6 +133,18 @@
       preset: running-head-preset,
     ),
   )
+
+  // ── Folio footer (5c).
+  //
+  // The page number lives in the FOOTER (bottom centre), separate from
+  // the running head (header / top). `folio-footer` is a single context
+  // block that determines the phase from markers placed by the phase
+  // functions (`title-page`, `frontmatter`, `body`) and formats the
+  // phase-relative number (roman for frontmatter, arabic for body,
+  // suppressed on the title page and on blanks). Without phase markers
+  // it renders nothing — so 5a/5b probe documents (which use none)
+  // are unaffected. See `src/numbering.typ` for the 4-phase model.
+  set page(footer: folio-footer())
 
   // ── Body font + leading.
   //
