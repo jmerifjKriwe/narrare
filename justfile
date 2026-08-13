@@ -388,11 +388,15 @@ check:
 check-verbose:
     uv run python scripts/run_checks.py --verbose
 
-# Validate after every slice/step: all standard checks + full test suite.
-# This is the everyday full gate (check + test-all). `check-full` remains the
-# pre-merge gate; verify deliberately does NOT include it (check-secrets needs
-# the gitleaks binary, which is missing locally).
-verify: check test-all
+# Validate after every slice/step: full test suite (backend + frontend).
+# `check` is dropped — it duplicates pre-commit/pre-push gates that already
+# run on commit/push. For the full pre-merge gate, use `just check-full`.
+# `verify-quick` (below) is the fast variant: unit + frontend, no integration.
+verify: test-all
+
+# Quick validation: unit tests + frontend tests (no integration, no Docker).
+# Use for fast iteration between slices. Full gate is `just verify`.
+verify-quick: test-unit test-frontend
 
 # Run architecture constraint checker
 check-architecture:
