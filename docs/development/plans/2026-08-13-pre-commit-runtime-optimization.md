@@ -1166,3 +1166,79 @@ The `.pre-commit-config.yaml` line 337 (`ci: skip: [pyright]`) is vestigial
 pyright is at pre-push anyway, so `pre-commit run --all-files` (pre-commit
 stage) won't run it regardless. **No action required** — the line is inert
 and harmless. Noted for completeness.
+
+---
+
+## Implementation Deviations (post-completion notes)
+
+> Honest record of what diverged from the plan during execution. Read this
+> if you re-run or adapt this plan.
+
+### Task 8: `$$` escaping in just shebang recipes
+
+The plan's Option-A snippet (Task 8) used `$$avail_mb`, `$_RAM_THRESHOLD_MB`,
+and `$$workers`, assuming just 1.x converts `$$` → `$` for bash variables in
+shebang recipes. This is **wrong for just 1.51.0**: `$$` → `$` conversion
+applies only in non-shebang (plain) recipes. In shebang recipes (`[shebang]`
+attribute), just passes the recipe body verbatim to bash, so `$$` is expanded
+by bash to the current shell PID — not the intended variable reference. The
+fix was to use single `$` (`$avail_mb`, `$workers`) throughout the shebang
+body. **Rule: use single `$` for shell variables in just shebang recipes.**
+
+### Task 4: `_PYPROJECT_GUARD_DOC` concatenation pattern is invalid Python
+
+The contract section defines:
+
+```python
+_PYPROJECT_GUARD_DOC = (
+    "If pyproject.toml is in `files`, fall back to FULL scan. Rationale: "
+    "..."
+)
+```
+
+and then uses it inside the Protocol docstring as:
+
+```python
+"""...pyproject.toml guard:
+    """ + _PYPROJECT_GUARD_DOC
+```
+
+This is syntactically invalid Python (unterminated triple-quoted string +
+concatenation outside the string). The actual `scanner.py` implementation
+inlines the docstring content directly. **Do not transcribe the concatenation
+pattern verbatim from this plan.**
+
+### Tasks 2, 3, 6: verification wording assumes specific pre-commit output
+
+The plan's verification steps use `grep -q "skipped"` to confirm hooks were
+moved to a different stage (e.g., `pre-commit run pyright --hook-stage
+pre-commit 2>&1 | grep -q "skipped"`). The installed pre-commit version may
+output `No hook with id X in stage pre-commit` instead of the word
+"skipped". Verify via raw output inspection or exit-code semantics (the hook
+should exit 0 with no output when it is not in the requested stage) rather
+than grepping for a specific keyword.
+
+### Accepted out-of-scope commits
+
+Two commits were made by the Task-5 implementer during the execution window
+and accepted by the user:
+
+- `b3abd68c` — justfile variadic recipe support (unrelated to this plan)
+- `462dcd74` — lint `evals/` directory (unrelated to this plan)
+
+These sit in the branch history (`chore/pre-commit-runtime-optimization`)
+but are **not part of this plan's scope**. When auditing the branch, filter
+them out of the "plan commits" ledger.
+
+### Task 5: ROOT binding — lazy vs. import-time
+
+The `ArchitectureScanner` and `forbidden_files.py` read `helpers.ROOT`
+lazily (module-level attribute access, not import-time binding), which honors
+test monkeypatching of `helpers.ROOT`. However, the 4 prompt-integrity
+checkers (`prompt_integrity`, `_check_i18n`, `_check_variables`,
+`_check_intents`) still use an import-time `ROOT` binding (captured in a
+module-level variable or function default). This was confirmed **NOT a bug**:
+their tests either patch the module binding directly or they are
+production-only checks with no test need for ROOT redirection. There is no
+"lazy-ROOT contract for all checkers" — only scanner + forbidden_files
+were refactored to use lazy access.
