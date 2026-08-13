@@ -45,7 +45,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        stages: [pre-commit]
+        stages: [manual]
         # ADR-056 — runtime-evidence-aware: reads committed .evidence/*.json markers,
         # consistent with `just check-adoption` and CI. CI remains the authoritative
         # regenerator (run_all_probes.py → markers → check); the hook only reads.
