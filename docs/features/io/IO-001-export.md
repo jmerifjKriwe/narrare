@@ -45,7 +45,7 @@ requires: [WRITE-011]
 
 # IO-001 — Manuscript Export
 
-> **Status:** ✅ Implemented / Stable — [ADR-081](../../architecture/decisions/ADR-081-export-pipeline-typst.md) fully implemented across Slices 0–8; PR #163 CI green (Golden-Pages 26 passed, EPUBCheck passed). Shipped formats: **PDF** (Typst + `narrare-roman`), **EPUB** (pandoc EPUB3), **Markdown** (pandoc). Deferred: DOCX, drop cap (5g), isbn/description metadata.
+> **Status:** ✅ Implemented / Stable — [ADR-081](../../architecture/decisions/ADR-081-export-pipeline-typst.md) fully implemented across Slices 0–8 + follow-ups; PR #163 CI green (Golden-Pages 26 passed, EPUBCheck passed). Shipped formats: **PDF** (Typst + `narrare-roman`, drop cap optional default off), **EPUB** (pandoc EPUB3, isbn/description metadata), **Markdown** (pandoc). Deferred: DOCX only.
 
 ## What it does
 
@@ -84,7 +84,7 @@ one click gets your manuscript out.
   recto chapter starts + blank verso; mirrored Satzspiegel; running heads
   recto≠verso (suppressed on openers/blanks); frontmatter römisch → body arabisch;
   per-language (de/en/fr) smart quotes + hyphenation; widow/orphan protection. Drop
-  caps **optional, default off**. **Font: Libertinus Serif, bundled (OFL)** — no
+   caps **available, default off** (vendored `@preview/droplet` 0.3.1). **Font: Libertinus Serif, bundled (OFL)** — no
   silent font fallback.
 - **EPUB + Markdown: pandoc** (EPUB3 + EPUBCheck validation), from the normalized
   form. pandoc is robust fire&forget for these simpler formats.
@@ -100,8 +100,8 @@ one click gets your manuscript out.
 - **Execution:** in-process `asyncio.create_task` job (post-[ADR-080](../../architecture/decisions/ADR-080-remove-redis-taskiq-in-process-execution.md));
   `ProcessPoolExecutor` escalation is the documented contingency for 500-page
   manuscripts.
-- **DOCX is deferred** (out of scope for ADR-081). pandoc can add it trivially
-  later — a feature-spec change, not an engine decision.
+- **DOCX is the only remaining deferred format** (out of scope for ADR-081).
+  pandoc can add it trivially later — a feature-spec change, not an engine decision.
 - **Contracts (RULE-03):** `ManuscriptNormalizer`, `ExportService` (the RULE-12
   public API), `ManuscriptRenderer` (one RULE-08 adapter per external tool:
   Typst / pandoc), and `NarrareRomanConfig` (the stable Typst-package config keys)
@@ -230,6 +230,16 @@ URL when ready.
   (Typst + `narrare-roman` + pandoc; Narrare Normalizer; Golden-Pages test).
   Supersedes the earlier WeasyPrint / `python-docx` / `ebooklib` sketch. DOCX
   deferred. Implementation not started.
+- `2026-08-14` — **Follow-ups shipped** (branch `feat/io-001-followups`):
+  (a) optional ISBN and description fields added to `EpubOptions` — request-level
+  EPUB metadata (`dc:identifier` / `dc:description` via pandoc), no DB storage in
+  v1; frontend export panel extended with ISBN input and description textarea;
+  i18n keys added across en/de/fr. (b) Drop cap Slice 5g: `@preview/droplet`
+  0.3.1 (MIT) vendored at
+  `apps/api/narrare/export/typst/vendor/droplet/` with relative imports (no
+  render-time network fetch); `drop-caps` config key in `narrare-roman`, default
+  OFF, byte-neutral when off; Golden-Pages baselines unchanged. Only DOCX
+  remains deferred.
 - `2026-08-14` — **Implemented / Stable**: 4-stage non-LLM export pipeline shipped
   via PR #163 (Slices 0–8). **Stage 1:** Narrare Normalizer (Core, pure) strips
   AIAnnotation/GhostText, normalizes SceneBreak/DialogueMark — strip-guarantee
@@ -245,6 +255,6 @@ URL when ready.
   skipped (6 parametrized variants), EPUBCheck 5.3.0 passed. RULE-08 AST
   confinement checker enforced in CI. Toolchain pins: Typst 0.15.1, pandoc
   3.10.1, EPUBCheck 5.3.0. Graceful binary-absence degradation tested.
-  **Deferred:** DOCX (pandoc can add trivially — feature-spec change, not engine
-  decision), drop cap 5g (fast-follow via `@preview/droplet`), isbn/description
-  EPUB metadata (optional follow-up).
+   **Deferred:** DOCX only (pandoc can add trivially — feature-spec change, not
+   engine decision). Drop cap 5g and isbn/description EPUB metadata shipped as
+   follow-ups on branch `feat/io-001-followups`.
