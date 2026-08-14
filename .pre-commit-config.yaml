@@ -4,9 +4,9 @@ repos:
       # Architecture constraints — must pass before anything else
       - id: architecture-constraints
         name: Architecture Constraints
-        entry: uv run python scripts/check_architecture.py
+        entry: uv run python scripts/check_architecture.py --incremental
         language: system
-        pass_filenames: false
+        pass_filenames: true
         always_run: true
         stages: [pre-commit]
 
@@ -45,7 +45,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        stages: [pre-commit]
+        stages: [manual]
         # ADR-056 — runtime-evidence-aware: reads committed .evidence/*.json markers,
         # consistent with `just check-adoption` and CI. CI remains the authoritative
         # regenerator (run_all_probes.py → markers → check); the hook only reads.
@@ -218,7 +218,7 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
-        stages: [pre-commit]
+        stages: [pre-push]
 
       # Pyright — light type check for tests (only when test files change)
       # Uses tests/pyrightconfig.json with basic mode (less strict, faster)
@@ -229,7 +229,7 @@ repos:
         types: [python]
         pass_filenames: false
         files: ^tests/
-        stages: [pre-commit]
+        stages: [pre-push]
 
       # Security
       - id: bandit
@@ -238,6 +238,7 @@ repos:
         language: system
         types: [python]
         require_serial: false
+        stages: [pre-push]
 
       # Secret scanning — Gitleaks gate (AUFG-05-09). The wrapper is
       # stdlib-only and locates the gitleaks binary on PATH, so it runs with

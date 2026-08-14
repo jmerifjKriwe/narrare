@@ -39,7 +39,7 @@ _stop-services:
 
 # Run SQL via psql directly in explicit host/container mode, with Docker fallback.
 [private]
-_psql-sql db sql *args:
+_psql-sql db sql:
     @mode="${NARRARE_DEV_MODE:-host}"; \
     if command -v psql >/dev/null 2>&1; then \
         if [ "$$mode" = "container" ]; then \
@@ -75,7 +75,7 @@ _psql-recreate-db db:
 
 # Open psql shell via psql directly in explicit host/container mode, with Docker fallback.
 [private]
-_psql-shell db *args:
+_psql-shell db:
     @mode="${NARRARE_DEV_MODE:-host}"; \
     if command -v psql >/dev/null 2>&1; then \
         if [ "$$mode" = "container" ]; then \
@@ -95,12 +95,15 @@ _psql-shell db *args:
 # ---------------------------------------------------------------------------
 
 # First-time setup: install all dev + NLP dependencies, create .env, run migrations
+# NOTE: existing devs (pre-2026-08-13) must re-run `just dev-setup-min`
+# or `pre-commit install --hook-type pre-push` once to activate the
+# pre-push stage. New clones get it automatically.
 dev-setup:
     @echo "🚀 Setting up Narrare..."
     @if [ ! -f .env ]; then cp .env.example .env && echo "📋 Created .env — add your API keys"; fi
     uv sync --frozen --all-packages --group dev --extra nlp
     just install-nlp-models
-    pre-commit install --install-hooks
+    pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push
     pnpm install
     @echo "⏳ Starting services..."
     just _ensure-services
@@ -109,11 +112,14 @@ dev-setup:
     @echo "✅ Ready! Run 'just dev' to start."
 
 # Lightweight setup: dev deps without NLP models (~200 MB smaller). Use for frontend/core work.
+# NOTE: existing devs (pre-2026-08-13) must re-run `just dev-setup-min`
+# or `pre-commit install --hook-type pre-push` once to activate the
+# pre-push stage. New clones get it automatically.
 dev-setup-min:
     @echo "🚀 Setting up Narrare (lightweight — no NLP models)..."
     @if [ ! -f .env ]; then cp .env.example .env && echo "📋 Created .env — add your API keys"; fi
     uv sync --frozen --all-packages --group dev
-    pre-commit install --install-hooks
+    pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push
     pnpm install
     @echo "⏳ Starting services..."
     just _ensure-services
@@ -270,30 +276,66 @@ db-shell:
 # Testing
 # ---------------------------------------------------------------------------
 
-# Run all tests. Phase 1: full suite in parallel (xdist -n auto). Phase 2:
-# schema-mutating migration round-trip tests (marked @pytest.mark.schema_mutating)
-# run SERIALLY — they downgrade/re-upgrade the shared test-DB schema and must
-# never run concurrently with other tests.
+# Shared RAM-aware xdist worker selection (Q-019 OOM mitigation).
+# Echoes "2" when RAM < 12 GB threshold, "auto" otherwise. Used by the
+# `test` and `test-unit` recipes so both share the same guard.
+# NOTE: detection measures AVAILABLE RAM on Linux (/proc/meminfo) but
+# TOTAL RAM on macOS (sysctl hw.memsize) — macOS lacks a portable
+# "available" metric; total is an overestimate there.
+# See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
+[private]
+_xdist-workers:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Detect RAM (MB). Linux: /proc/meminfo (available). macOS: sysctl (total).
+    if [ -f /proc/meminfo ]; then
+        avail_mb=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
+    elif command -v sysctl >/dev/null 2>&1; then
+        avail_mb=$(( $(sysctl -n hw.memsize) / 1048576 ))
+    else
+        avail_mb=0
+    fi
+    # RULE-18: 12288 MB = 12 GB threshold (Q-019 measured ~2.4 GB/worker headroom
+    # on 9.6 GB / 4 workers; 12 GB gives ~3 GB/worker with -n auto on 4 cores).
+    _RAM_THRESHOLD_MB=12288
+    if [ "$avail_mb" -gt 0 ] && [ "$avail_mb" -lt "$_RAM_THRESHOLD_MB" ]; then
+        echo 2
+    else
+        echo auto
+    fi
+
+# Run all tests. Worker count is RAM-aware via `_xdist-workers`: < 12 GB
+# available → -n 2 (Q-019 OOM mitigation); otherwise -n auto. CI runs pytest
+# directly (not this recipe) and is unaffected.
+# See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
 test:
-    uv run pytest tests/ -v -n auto -m "not schema_mutating"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    workers=$(just _xdist-workers)
+    uv run pytest tests/ -v -n "$workers" -m "not schema_mutating"
     uv run pytest tests/integration/ -v -m schema_mutating
 
-# Run all tests with reduced parallelism for machines with < 16 GB RAM.
-# `-n auto` (= one worker per core, the default in `just test`) can trigger the
-# OOM killer on memory-constrained machines: each xdist worker imports the full
-# app + test suite (~11 k items), and accumulated per-worker memory pressure can
-# SIGKILL a random worker mid-run. Use this on < 16 GB RAM.
-# See docs/architecture/questions/Q-019-xdist-worker-crash-oom.md.
-# CI (16 GB runners) and 16 GB dev machines should keep the default `just test`.
+# Run all tests with forced `-n 2` (explicit override; rarely needed now).
+# The default `just test` is RAM-aware: it auto-selects `-n 2` on machines with
+# < 12 GB available RAM and `-n auto` otherwise. Use this recipe only to force
+# `-n 2` regardless of RAM detection (e.g., a large machine where you still want
+# reduced parallelism, or if detection misfires).
+# See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
 test-lowmem:
     uv run pytest tests/ -v -n 2 -m "not schema_mutating"
     uv run pytest tests/integration/ -v -m schema_mutating
 
-# Run unit tests only (fast, no Docker needed, parallel)
+# Run unit tests only (fast, no Docker needed). Parallelism is RAM-aware via
+# `_xdist-workers` — same guard as `just test` (Q-019: `-n auto` on < 12 GB
+# machines can OOM-kill a worker).
 test-unit:
-    uv run pytest tests/unit/ -v -n auto --dist loadfile
+    #!/usr/bin/env bash
+    set -euo pipefail
+    workers=$(just _xdist-workers)
+    uv run pytest tests/unit/ -v -n "$workers" --dist loadfile
 
-# Run tests single-threaded (for debugging)
+# Run tests single-threaded for debugging (disables the `randomly` plugin).
+# NOTE: the name means "single-threaded", NOT "single file" — use `test-file` for scoped files.
 test-single file="tests/":
     uv run pytest {{file}} -v -p no:randomly
 
@@ -317,8 +359,9 @@ test-unit-cov:
 #   just test-file tests/unit/core/llm/test_gateway.py
 #   just test-file tests/unit/core/llm/test_gateway.py -x -p no:xdist
 #   just test-file tests/unit/core/llm/test_gateway.py --pdb -k "session"
-# (Plain pytest runs single-process: `-n auto` only comes from the `test`/
-# `test-unit` recipes, so `-p no:xdist` is optional here.)
+# (Plain pytest runs single-process: xdist `-n` only comes from the `test`/
+# `test-unit` recipes (RAM-aware: `-n 2` or `-n auto`), so `-p no:xdist`
+# is optional here.)
 test-file +files:
     uv run pytest {{files}} -v
 
@@ -360,7 +403,9 @@ vrt-update:
 golden-update:
     uv run pytest tests/golden/export/test_golden_pages.py -v -m golden_pages --golden-update -p no:xdist
 
-# Back-compat alias for `just vrt`.
+# Back-compat alias for `just vrt`. Implemented as a wrapper recipe (not a just
+# `alias`) because check_doc_drift.py --governance-only validates just commands
+# against the recipe set and aliases are not visible to it.
 test-vrt:
     just vrt
 
@@ -379,11 +424,16 @@ check:
 check-verbose:
     uv run python scripts/run_checks.py --verbose
 
-# Validate after every slice/step: all standard checks + full test suite.
-# This is the everyday full gate (check + test-all). `check-full` remains the
-# pre-merge gate; verify deliberately does NOT include it (check-secrets needs
-# the gitleaks binary, which is missing locally).
+# Full local gate after every slice/step: all checks (`check`) + full test
+# suite (backend + frontend). `check` must stay in the gate — some of its
+# scripts (check_empty_kb_vars, check_model_registry) have no pre-commit hook
+# or CI job, so `just verify` is their only routine channel.
+# `verify-quick` (below) is the fast variant: unit + frontend tests only.
 verify: check test-all
+
+# Quick validation: unit tests + frontend tests (no integration, no Docker,
+# no `check`). Use for fast iteration between slices. Full gate is `just verify`.
+verify-quick: test-unit test-frontend
 
 # Run architecture constraint checker
 check-architecture:
@@ -404,11 +454,11 @@ lint-check:
     uv run ruff check apps/ packages/ scripts/ tests/ evals/
     uv run ruff format --check apps/ packages/ scripts/ tests/ evals/
 
-# Fast scoped ruff check (lint + format --check) for iterating on one file/dir.
+# Fast scoped ruff check (lint + format --check) for iterating on specific files/dirs.
 # Whole-repo gate is `just lint-check`.
-lint-file path='apps/':
-    uv run ruff check {{path}}
-    uv run ruff format --check {{path}}
+lint-file +files:
+    uv run ruff check {{files}}
+    uv run ruff format --check {{files}}
 
 # Run pyright type checker
 typecheck:

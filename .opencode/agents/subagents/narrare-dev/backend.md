@@ -119,7 +119,7 @@ permission:
 3. **Tests first** (TDD red→green→refactor). Bug fix → regression test first.
 4. Service (business logic, uses repo + gateway).
 5. Router (thin delegation).
-6. Self-review, then `just lint-file <path>` / `just typecheck-file <path>` / `just test-file <path> [pytest flags]` (flags pass through); full gate before handoff: `just verify`.
+6. Self-review, then `just lint-file <paths>` / `just typecheck-file <paths>` / `just test-file <paths> [pytest flags]` (flags pass through); full gate before handoff: `just verify`.
 
 Standards: `@docs/development/coding-standards.md`, `@docs/_shared/CONSTRAINTS.md`.
 Module overview: `@docs/reference/directory-structure.md`. Code questions via **graphify** first.

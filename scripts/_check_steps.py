@@ -59,7 +59,20 @@ def build_steps() -> list[Step]:
         Step(
             "Lint & Format",
             [
-                (["uv", "run", "ruff", "check", "apps/", "packages/", "scripts/", "tests/"], None),
+                (
+                    [
+                        "uv",
+                        "run",
+                        "ruff",
+                        "check",
+                        "apps/",
+                        "packages/",
+                        "scripts/",
+                        "tests/",
+                        "evals/",
+                    ],
+                    None,
+                ),
                 (
                     [
                         "uv",
@@ -71,6 +84,7 @@ def build_steps() -> list[Step]:
                         "packages/",
                         "scripts/",
                         "tests/",
+                        "evals/",
                     ],
                     None,
                 ),
