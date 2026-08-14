@@ -13,6 +13,7 @@ import { useAuthStore } from "@/lib/stores/authStore";
 import { DashboardHeader } from "./DashboardHeader";
 import { DashboardLibrary } from "./DashboardLibrary";
 import { DemoProjectCards } from "./DemoProjectCards";
+import { ExportPanel } from "./export/ExportPanel";
 import { NewSeriesDialog } from "./NewSeriesDialog";
 
 export function DashboardView() {
@@ -52,6 +53,7 @@ export function DashboardView() {
   const { data: series = [], isLoading: seriesLoading } = useSeriesList();
   const createSeriesMutation = useCreateSeries();
   const [newSeriesOpen, setNewSeriesOpen] = useState(false);
+  const [exportNovelId, setExportNovelId] = useState<string | null>(null);
 
   function handleNewNovel() {
     router.push("/wizard");
@@ -122,6 +124,7 @@ export function DashboardView() {
             onNewSeries={handleNewSeries}
             onDeleteNovel={handleDeleteNovel}
             onEditNovel={(novelId) => router.push(`/novel/${novelId}/settings`)}
+            onExportNovel={(novelId) => setExportNovelId(novelId)}
             onNewNovel={handleNewNovel}
             isDeleting={deleteMutation.isPending}
             formatDate={formatDate}
@@ -156,6 +159,13 @@ export function DashboardView() {
         onCreate={handleCreateSeries}
         isCreating={createSeriesMutation.isPending}
         createError={createSeriesMutation.isError}
+      />
+
+      {/* Export panel (IO-001 — launched from a novel card) */}
+      <ExportPanel
+        novelId={exportNovelId ?? ""}
+        isOpen={exportNovelId !== null}
+        onClose={() => setExportNovelId(null)}
       />
     </div>
   );

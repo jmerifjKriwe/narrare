@@ -1,0 +1,81 @@
+{
+  "title": "Manuskript exportieren",
+  "subtitle": "Erzeuge eine herunterladbare Datei deines Manuskripts.",
+  "openExport": "Exportieren",
+  "close": "Schließen",
+  "format": {
+    "label": "Format",
+    "pdf": "PDF",
+    "epub": "EPUB",
+    "markdown": "Markdown",
+    "pdfDescription": "Druckfertiges PDF mit Libertinus Serif.",
+    "epubDescription": "EPUB-E-Book mit eingebetteter Schrift.",
+    "markdownDescription": "Klartext-Markdown-Datei.",
+    "unavailable": "Nicht verfügbar — Render-Werkzeug nicht installiert."
+  },
+  "scope": {
+    "label": "Umfang",
+    "allVolumes": "Alle Bände",
+    "volumeLabel": "Band: {name}"
+  },
+  "content": {
+    "label": "Im Manuskript einschließen",
+    "frontMatter": "Vorderteil",
+    "backMatter": "Hinterteil",
+    "summaries": "Kapitelzusammenfassungen",
+    "characterList": "Figurenverzeichnis",
+    "locationGlossary": "Ortsverzeichnis"
+  },
+  "pdf": {
+    "label": "PDF-Optionen",
+    "paperSize": "Papierformat",
+    "paperBFormat": "B-Format (129 × 198 mm)",
+    "paperA5": "A5",
+    "paperA4": "A4",
+    "paperLetter": "US Letter",
+    "paperCustom": "Benutzerdefiniert",
+    "fontSize": "Schriftgröße Haupttext (pt)",
+    "leading": "Zeilenabstand-Verhältnis",
+    "dropCaps": "Initialbuchstaben",
+    "tableOfContents": "Inhaltsverzeichnis",
+    "margins": {
+      "label": "Ränder (mm)",
+      "inside": "Innen",
+      "outside": "Außen",
+      "top": "Oben",
+      "bottom": "Unten"
+    }
+  },
+  "epub": {
+    "label": "EPUB-Optionen",
+    "coverImage": "Pfad zum Deckblatt",
+    "css": "Eigene Formatvorlage (CSS)"
+  },
+  "markdown": {
+    "label": "Markdown-Optionen",
+    "chapterHeadingLevel": "Überschriftenebene für Kapitel"
+  },
+  "export": {
+    "action": "Exportieren",
+    "exporting": "Wird exportiert…",
+    "rememberSettings": "Einstellungen für nächstes Mal merken"
+  },
+  "status": {
+    "label": "Export-Status",
+    "pending": "Eingereiht — wartet auf Beginn…",
+    "running": "Dein Manuskript wird gerendert…",
+    "completed": "Export bereit.",
+    "failed": "Export fehlgeschlagen.",
+    "download": "Herunterladen",
+    "downloadAgain": "Erneut herunterladen",
+    "startNew": "Neuer Export",
+    "errorPrefix": "Fehler: {message}"
+  },
+  "errors": {
+    "formatsFailed": "Verfügbare Formate konnten nicht geladen werden.",
+    "createFailed": "Export konnte nicht gestartet werden.",
+    "downloadFailed": "Datei konnte nicht heruntergeladen werden.",
+    "formatUnavailable": "Dieses Format ist derzeit nicht verfügbar.",
+    "jobLost": "Dieser Export ist nicht mehr verfügbar (der Server wurde eventuell neu gestartet)."
+  }
+}

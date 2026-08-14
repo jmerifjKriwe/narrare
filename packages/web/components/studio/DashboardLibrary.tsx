@@ -37,6 +37,7 @@ export interface DashboardLibraryProps {
   readonly onNewSeries: () => void;
   readonly onDeleteNovel: (id: string, title: string) => void;
   readonly onEditNovel: (id: string) => void;
+  readonly onExportNovel: (id: string) => void;
   readonly onNewNovel: () => void;
   readonly isDeleting: boolean;
   readonly formatDate: (dateStr: string) => string;
@@ -50,6 +51,7 @@ export function DashboardLibrary({
   onNewSeries,
   onDeleteNovel,
   onEditNovel,
+  onExportNovel,
   onNewNovel,
   isDeleting,
   formatDate,
@@ -113,6 +115,7 @@ export function DashboardLibrary({
                 formatDate={formatDate}
                 onDelete={onDeleteNovel}
                 onEdit={onEditNovel}
+                onExport={onExportNovel}
                 isDeleting={isDeleting}
               />
             ))}

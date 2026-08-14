@@ -43,6 +43,7 @@ export function EditorView({ novelId }: EditorViewProps) {
   const openRightPanel = useEditorStore((s) => s.openRightPanel);
   const openerRef = useRef<HTMLElement | null>(null);
   const [nameGeneratorOpen, setNameGeneratorOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const writingSteps = useWritingGraphSteps(isGenerating, activeChapterId);
   const chapterData = useEditorChapterData({ novelId, activeChapterId, activeVolumeId, editor });
@@ -105,6 +106,7 @@ export function EditorView({ novelId }: EditorViewProps) {
             setTitle={chapterData.setTitle}
             lastSaved={persistence.lastSaved}
             handleSave={persistence.handleSave}
+            onExport={() => setExportOpen(true)}
           />
           <EditorToolbar
             editor={editor}
@@ -165,6 +167,8 @@ export function EditorView({ novelId }: EditorViewProps) {
             commandState={commandPalette.commandState}
             nameGeneratorOpen={nameGeneratorOpen}
             setNameGeneratorOpen={setNameGeneratorOpen}
+            exportOpen={exportOpen}
+            setExportOpen={setExportOpen}
             extractionPanelOpen={extractionPanelOpen}
             toggleExtractionPanel={toggleExtractionPanel}
             queryClient={queryClient}

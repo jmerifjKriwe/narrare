@@ -29,6 +29,20 @@ export type {
   DialogueIssue,
 } from "./dialogueCoach";
 export type {
+  Artifact,
+  EpubOptions,
+  ExportFormat,
+  ExportJob,
+  ExportJobStatus,
+  ExportOptions,
+  ExportRequest,
+  FormatAvailability,
+  MarkdownOptions,
+  MirroredMargins,
+  PaperSize,
+  PdfOptions,
+} from "./export";
+export type {
   AnalyzeRequest,
   AnalyzeResponse,
   FeedbackAction,
