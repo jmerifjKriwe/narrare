@@ -14791,11 +14791,33 @@
               }
             ],
             "title": "Css"
+          },
+          "isbn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isbn"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
           }
         },
         "type": "object",
         "title": "EpubOptions",
-        "description": "EPUB-specific options (pandoc).\n\nLibertinus Serif (the bundled OFL font — the same files PDF uses, D3) is\nembedded **unconditionally** via pandoc ``--epub-embed-font``\n(regular/italic/bold/bolditalic). There is intentionally NO\n``embed_fonts`` flag: PDF embeds the font structurally (Typst compiles it\nin — no toggle), and EPUB matches that one-font-policy structure so there is\na single, footgun-free embedding model across both binary formats. A v1\ntoggle would only reintroduce the silent-fallback failure mode the\nno-silent-fallback principle exists to prevent (D7). Markdown is plain text\nand carries no font."
+        "description": "EPUB-specific options (pandoc).\n\nLibertinus Serif (the bundled OFL font — the same files PDF uses, D3) is\nembedded **unconditionally** via pandoc ``--epub-embed-font``\n(regular/italic/bold/bolditalic). There is intentionally NO\n``embed_fonts`` flag: PDF embeds the font structurally (Typst compiles it\nin — no toggle), and EPUB matches that one-font-policy structure so there is\na single, footgun-free embedding model across both binary formats. A v1\ntoggle would only reintroduce the silent-fallback failure mode the\nno-silent-fallback principle exists to prevent (D7). Markdown is plain text\nand carries no font.\n\n``isbn`` / ``description`` (IO-001 follow-up) are **request-level,\nuser-optional** EPUB metadata: there is no DB storage for them in v1, so\nthe export request is their only source. The runner merges them into\n:class:`narrare_core.export.contracts.ManuscriptMetadata` (request wins\nover the DB-absent defaults) and the EPUB renderer emits them as\n``dc:identifier`` (``urn:isbn:`` URN) / ``dc:description``. EPUB-only\n(D7 precedent): the PDF/MD renderers ignore both fields."
       },
       "ExportFormat": {
         "type": "string",

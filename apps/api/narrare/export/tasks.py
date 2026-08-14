@@ -124,14 +124,20 @@ def _resolve_runner_deps() -> tuple[ManuscriptNormalizer, dict[ExportFormat, Man
 # ── Manuscript assembly (pure — tested directly, no DB) ────────────────────
 
 
-def build_metadata(source: ManuscriptSource) -> ManuscriptMetadata:
-    """Build the Core :class:`ManuscriptMetadata` from a read-only DB snapshot.
+def build_metadata(source: ManuscriptSource, options: ExportOptions) -> ManuscriptMetadata:
+    """Build the Core :class:`ManuscriptMetadata` from a read-only DB snapshot
+    plus the per-request option block.
 
     Coerces ``source.language`` to :class:`Language`; an unknown value raises
     ``ValueError`` (caught by the runner → job FAILED). This is NOT a silent
     fallback — the no-silent-fallback principle (ADR-081) forbids guessing a
     language: a manuscript whose declared language the toolchain can't
     hyphenate surfaces as a typed job failure.
+
+    ISBN/description (IO-001 follow-up): the request is their only v1 source
+    (no DB storage), so ``options.epub_options`` — when present — populates
+    the Core metadata (request wins over the DB-absent ``None`` defaults).
+    Only the EPUB renderer consumes them; PDF/MD ignore them (D7 precedent).
     """
     chapters = [
         ChapterMeta(
@@ -142,11 +148,14 @@ def build_metadata(source: ManuscriptSource) -> ManuscriptMetadata:
         )
         for c in source.chapters
     ]
+    epub = options.epub_options
     return ManuscriptMetadata(
         title=source.title,
         author=source.author,
         language=Language(source.language),
         chapters=chapters,
+        isbn=epub.isbn if epub is not None else None,
+        description=epub.description if epub is not None else None,
     )
 
 
@@ -252,7 +261,7 @@ async def run_export_inprocess(job_id: str, novel_id: UUID, options: ExportOptio
             registry.mark_failed(job_id, f"novel {novel_id} not found")
             return
 
-        metadata = build_metadata(source)
+        metadata = build_metadata(source, options)
         raw_html = assemble_raw_html(source)
 
         normalizer, renderers = _resolve_runner_deps()

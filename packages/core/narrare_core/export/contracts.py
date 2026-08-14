@@ -82,6 +82,10 @@ class NormalizedManuscript(BaseModel):
     author: str  # scalar string (F-7)
     language: Language  # primary language; per-span langs inline in HTML
     chapters: list[ChapterMeta]  # ordering + per-chapter metadata
+    # Optional EPUB metadata, carried for dc:identifier/dc:description in the
+    # EPUB renderer; ignored by the PDF/MD renderers (v1). None when unset.
+    isbn: str | None = None
+    description: str | None = None
 
 
 class ManuscriptNormalizer(Protocol):

@@ -36,7 +36,7 @@ const baseOptions: ExportOptions = {
     drop_caps: false,
     include_toc: true,
   },
-  epub_options: { cover_image_path: null, css: null },
+  epub_options: { cover_image_path: null, css: null, isbn: null, description: null },
   markdown_options: { chapter_heading_level: 1, include_front_matter: true },
 };
 
@@ -170,5 +170,84 @@ describe("ExportPanel", () => {
     renderPanel();
     expect(screen.getByTestId("export-create-error")).toBeInTheDocument();
     expect(screen.getByText("errors.createFailed")).toBeInTheDocument();
+  });
+
+  // ── EPUB metadata fields (IO-001 follow-up: isbn / description) ──────────
+
+  it("does not render the EPUB fields while another format is selected", () => {
+    renderPanel(); // default format: pdf
+    expect(screen.queryByLabelText("epub.isbn")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("epub.description")).not.toBeInTheDocument();
+  });
+
+  it("shows the ISBN and description fields with placeholders when EPUB is selected", () => {
+    panelReturn.options = { ...baseOptions, format: "epub" };
+    renderPanel();
+    expect(screen.getByLabelText("epub.isbn")).toBeInTheDocument();
+    expect(screen.getByLabelText("epub.description")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("epub.isbnPlaceholder")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("epub.descriptionPlaceholder")).toBeInTheDocument();
+  });
+
+  it("typing an ISBN updates epub_options and preserves the sibling fields", () => {
+    panelReturn.options = { ...baseOptions, format: "epub" };
+    renderPanel();
+    fireEvent.change(screen.getByLabelText("epub.isbn"), {
+      target: { value: "978-3-16-148410-0" },
+    });
+    expect(panelReturn.setOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        format: "epub",
+        epub_options: {
+          cover_image_path: null,
+          css: null,
+          isbn: "978-3-16-148410-0",
+          description: null,
+        },
+      }),
+    );
+  });
+
+  it("typing a description updates epub_options.description", () => {
+    panelReturn.options = { ...baseOptions, format: "epub" };
+    renderPanel();
+    fireEvent.change(screen.getByLabelText("epub.description"), {
+      target: { value: "A quiet novel about maps." },
+    });
+    expect(panelReturn.setOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        epub_options: {
+          cover_image_path: null,
+          css: null,
+          isbn: null,
+          description: "A quiet novel about maps.",
+        },
+      }),
+    );
+  });
+
+  it("clearing ISBN sends null (leave-empty = unset)", () => {
+    panelReturn.options = {
+      ...baseOptions,
+      format: "epub",
+      epub_options: {
+        cover_image_path: null,
+        css: null,
+        isbn: "978-3-16-148410-0",
+        description: "A quiet novel about maps.",
+      },
+    };
+    renderPanel();
+    fireEvent.change(screen.getByLabelText("epub.isbn"), { target: { value: "" } });
+    expect(panelReturn.setOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        epub_options: {
+          cover_image_path: null,
+          css: null,
+          isbn: null,
+          description: "A quiet novel about maps.",
+        },
+      }),
+    );
   });
 });

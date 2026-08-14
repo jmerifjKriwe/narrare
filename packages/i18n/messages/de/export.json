@@ -49,7 +49,11 @@
   "epub": {
     "label": "EPUB-Optionen",
     "coverImage": "Pfad zum Deckblatt",
-    "css": "Eigene Formatvorlage (CSS)"
+    "isbn": "ISBN",
+    "isbnPlaceholder": "z. B. 978-3-… (leer lassen zum Auslassen)",
+    "css": "Eigene Formatvorlage (CSS)",
+    "description": "Beschreibung",
+    "descriptionPlaceholder": "Ein kurzer Klappentext in den EPUB-Metadaten…"
   },
   "markdown": {
     "label": "Markdown-Optionen",

@@ -278,8 +278,8 @@ describe("export types mirror Pydantic (RULE-17 — IO-001 / ADR-081)", () => {
       "paper_size",
     ]);
 
-    const epub: EpubOptions = { cover_image_path: null, css: null };
-    expect(fieldNames(epub)).toEqual(["cover_image_path", "css"]);
+    const epub: EpubOptions = { cover_image_path: null, css: null, isbn: null, description: null };
+    expect(fieldNames(epub)).toEqual(["cover_image_path", "css", "description", "isbn"]);
 
     const md: MarkdownOptions = { chapter_heading_level: 1, include_front_matter: true };
     expect(fieldNames(md)).toEqual(["chapter_heading_level", "include_front_matter"]);

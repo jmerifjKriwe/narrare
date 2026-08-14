@@ -49,7 +49,11 @@
   "epub": {
     "label": "EPUB options",
     "coverImage": "Cover image path",
-    "css": "Custom stylesheet (CSS)"
+    "isbn": "ISBN",
+    "isbnPlaceholder": "e.g. 978-3-… (leave empty to omit)",
+    "css": "Custom stylesheet (CSS)",
+    "description": "Description",
+    "descriptionPlaceholder": "A short blurb embedded in the EPUB metadata…"
   },
   "markdown": {
     "label": "Markdown options",

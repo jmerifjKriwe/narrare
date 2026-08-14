@@ -240,6 +240,23 @@ class TestStructure:
         assert result.language is Language.DE
 
     @pytest.mark.asyncio
+    async def test_isbn_description_passthrough(self) -> None:
+        """Optional EPUB metadata is carried through for dc:identifier/description."""
+        meta = _meta(isbn="978-0-00-000000-1", description="A novel.")
+        result = await NarrareNormalizer().normalize("<p>Body.</p>", meta)
+
+        assert result.isbn == "978-0-00-000000-1"
+        assert result.description == "A novel."
+
+    @pytest.mark.asyncio
+    async def test_isbn_description_none_when_absent(self) -> None:
+        """Backward compat: metadata without isbn/description yields None (not an error)."""
+        result = await NarrareNormalizer().normalize("<p>Body.</p>", _meta())
+
+        assert result.isbn is None
+        assert result.description is None
+
+    @pytest.mark.asyncio
     async def test_chapters_sorted_by_position(self) -> None:
         # Seed deliberately out of order (position 2, 0, 1).
         chapters = _chapters_order(2, 0, 1)

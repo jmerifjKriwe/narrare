@@ -87,6 +87,21 @@ _FONT_VARIANTS: dict[str, tuple[str, str]] = {
 _EMPTY_TITLE_SLUG = "manuscript"
 
 
+def _urn_isbn(isbn: str) -> str:
+    """Wrap a bare ISBN into the EPUB3 ``urn:isbn:`` identifier URN.
+
+    Empirically verified against pandoc 3.10.1: ``--metadata identifier`` is
+    emitted verbatim as ``<dc:identifier>`` and replaces pandoc's uuid default
+    as the package ``unique-identifier`` (no scheme attribute — the URN prefix
+    carries the type, the idiomatic EPUB3 form). A value that already carries
+    a URI scheme (``urn:…`` or ``scheme://…``) passes through unchanged:
+    double-wrapping would produce an invalid URN.
+    """
+    if isbn.startswith("urn:") or "://" in isbn:
+        return isbn
+    return f"urn:isbn:{isbn}"
+
+
 def _slugify(title: str) -> str:
     """Reduce a manuscript title to a safe filename stem.
 
@@ -172,6 +187,13 @@ def _build_argv(
         f"--metadata=author:{manuscript.author}",
         f"--metadata=lang:{manuscript.language.value}",
     ]
+    # Optional EPUB metadata (IO-001 follow-up) — emitted only when set:
+    # no ISBN → pandoc keeps its uuid identifier default; no description →
+    # no dc:description element (byte-level backward compat when unset).
+    if manuscript.isbn:
+        argv.append(f"--metadata=identifier:{_urn_isbn(manuscript.isbn)}")
+    if manuscript.description:
+        argv.append(f"--metadata=description:{manuscript.description}")
     # D7: four unconditional --epub-embed-font entries (no flag).
     for font_path in font_paths:
         argv.append(f"--epub-embed-font={font_path}")
@@ -250,6 +272,8 @@ class PandocEpubRenderer:
                 embedded_fonts=len(font_paths),
                 cover_image=epub_options.cover_image_path is not None,
                 user_css=epub_options.css is not None,
+                isbn=manuscript.isbn is not None,
+                description=manuscript.description is not None,
             )
         except Exception:
             # RULE-11: never leave a partial/corrupt EPUB on disk; the typed
