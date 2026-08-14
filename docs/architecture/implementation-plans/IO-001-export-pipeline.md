@@ -6,7 +6,7 @@
 > **Branch:** `feat/io-001-export-pipeline`
 > **Decision ADR:** `docs/architecture/decisions/ADR-081-export-pipeline-typst.md`
 > **Feature spec:** `docs/features/io/IO-001-export.md`
-> **Status:** Ready for implementation (code phases owned by Core/Backend/Frontend/Platform specialists)
+> **Status:** ✅ Executed (Slices 0–8 landed; 5g drop cap deferred as fast-follow; PR #163)
 > **Related:** ADR-006 (Tech Stack — adds the Export Toolchain section drafted here),
 > ADR-080 (in-process execution boundary — export jobs register in the drain),
 > ADR-029 (VM-first — Typst/pandoc are deploy-time deps), IO-001 (feature).

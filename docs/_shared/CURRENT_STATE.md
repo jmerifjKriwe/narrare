@@ -7,6 +7,8 @@
 
 ## Last Updated
 
+Date: 2026-08-14 (IO-001 — Manuscript Export Pipeline — **implemented and stable** across Slices 0–8; [ADR-081](architecture/decisions/ADR-081-export-pipeline-typst.md) ✅ Implemented; [IO-001](features/io/IO-001-export.md) → `stable`; PR #163 CI fully green). The 4-stage non-LLM pipeline ships: **Stage 1** Narrare Normalizer (Core, pure: TipTap HTML → clean semantic HTML/MD, strips AIAnnotation/GhostText, normalizes SceneBreak/DialogueMark — strip-guarantee asserted per mark); **Stage 2** pandoc conversion (HTML → Typst AST / EPUB3 / Markdown with baked-in seam-fixes F-1/F-6/F-7); **Stage 3** three RULE-08 renderer adapters — TypstPdfRenderer (bespoke `narrare-roman` Typst package, scope floor 5a–5f complete: recto chapter starts, mirrored Satzspiegel, running heads recto≠verso suppressed on openers/blanks, 4-phase römisch→arabisch numbering, TOC, per-language smart quotes + hyphenation, widow/orphan protection, scene-break asterism; Libertinus Serif bundled OFL), PandocEpubRenderer (EPUB3 + Libertinus embedded via `--epub-embed-font`), PandocMarkdownRenderer; **Stage 4** in-process `asyncio.create_task` job (post-[ADR-080](architecture/decisions/ADR-080-remove-redis-taskiq-in-process-execution.md)) with in-memory registry, signed-token artifact delivery. CI gates green on PR #163 (run `31799951318`): Golden-Pages 26 passed / 0 skipped (6 parametrized `test_golden_pages` variants), EPUBCheck 5.3.0 passed; toolchain installs (Typst 0.15.1, pandoc 3.10.1) succeeded in Unit + Integration jobs. RULE-08 AST confinement checker (export binary calls only inside renderer adapters) enforced in CI. Graceful binary-absence degradation tested. **Deferred:** DOCX (pandoc can add trivially — feature-spec change, not engine decision), drop cap 5g (fast-follow via `@preview/droplet`), isbn/description EPUB metadata (optional follow-up). No Alembic migration (v1 = in-memory jobs + temp-file artifacts).
+
 Date: 2026-08-10 (CI regression #495 fixed — main fully green again + Dependabot batch merged. **Backend fix** (commit `556368cb`): `apps/api/narrare/events/publisher.py` — `get_wiki_event_publisher(request: Any)` → `request: Request`. FastAPI resolves DI annotations by type; `Any` was interpreted as a required query parameter → 422 on all wiki-event-consumer routes. New regression test `tests/unit/api/events/test_wiki_event_publisher_dep.py`; OpenAPI spec regenerated (`docs/reference/openapi.json`). **Frontend fix** (commit `7f722f48`): `packages/web/components/studio/kb/__tests__/KBEnhanceReview.test.tsx` — Cmd/Ctrl+Enter shortcut tests hardened against the listener re-attach race (fireEvent + assertion inside `waitFor`). **Dependabot batch merged** (5 PRs, 5 merge commits up to `5249c394`): #158 uvicorn 0.52.1, #159 mem0ai 2.0.17, #160 alembic 1.19.0, #161 MishaKav/pytest-coverage-comment 1.11.0, #162 mutmut 3.7.0. **CI:** main run `31409692092` (after fixes) success; final run `31413718330` (fixes + bumps) success — all 11 jobs green (Architecture, Type Check, Lint, Security, Frontend, Unit, Integration, E2E, Coverage Badge, Detect Changes, warnings-summary). **Observation (informative, non-blocking):** after the fixes, 7 modules sit marginally below their coverage baseline (e.g. `evidence/` 91.1 % vs 99.0 %) but all above the target thresholds (80 %/95 %); the final run was green and the Coverage Badge update succeeded. Follow-up for the next platform pass: reconcile per-module baselines with actuals. **CHANGELOG:** no manual entry — `CHANGELOG.md` is Release-Please auto-generated; the fixes/bumps are already Conventional Commits (`fix(events):`, `test(web):`, dependabot chore bumps) and will be captured at the next release.)
 
 Date: 2026-08-07 (CURRENT_STATE.md hygiene — this file was materially edited today (volatility-policy remediation, commit `9ebb4977`); this entry records the actual last-modification date so "Last Updated" is no longer stale.)
@@ -65,13 +67,13 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 ### Core (`packages/core/narrare_core/`)
 
-Submodules: agents, ai_invocation, analysis, cache, chat, context, embeddings, events, kb, llm, memory, nlp, planning, prompts, schemas, shared, templates, wiki, writing
+Submodules: agents, ai_invocation, analysis, cache, chat, context, embeddings, events, export, kb, llm, memory, nlp, planning, prompts, schemas, shared, templates, wiki, writing
 
 AI agents (pydantic-ai): beta_reader, character_arc, chat (ChatAgent), consistency, dialogue_coach, draft, extraction, fact_extractor, inline_suggest, kb, kb_assist, kb_improve, merge (KBMergeAgent), outline, pov_detection, preference_analysis, readability, review, summary, timeline, worldbuilding
 
 ### Backend (`apps/api/narrare/`)
 
-Domain modules: adaptive, ai_assist, analysis, auth, chapters, consistency, embeddings, events, generation, kb, memory, metrics, novels, planning, prompts, settings, setup, tasks, templates, volumes, writing (+ _app infrastructure)
+Domain modules: adaptive, ai_assist, analysis, auth, chapters, consistency, embeddings, events, export, generation, kb, memory, metrics, novels, planning, prompts, settings, setup, tasks, templates, volumes, writing (+ _app infrastructure)
 
 Router files for all CRUD + SSE + WebSocket endpoints in domain modules (KB sessions SSE removed — unused)
 
@@ -342,7 +344,9 @@ Completed in Phase 6 so far:
     Frontend `03cb037c` → Platform `03251eb4`). **The voice lane is now fully
    complete** (character profiling + character drift + author profiling + author
    drift + voice checking); ANAL-009 spans Phase 1 (character) + Phase 2B (author)
-   and is fully `stable`.
+    and is fully `stable`.
+
+   81. ✅ **IO-001: Manuscript Export Pipeline** — 4-stage non-LLM deterministic export pipeline (ADR-081). **Stage 1:** Narrare Normalizer (Core, pure: strips AIAnnotation/GhostText, normalizes SceneBreak/DialogueMark — strip-guarantee per mark). **Stage 2:** pandoc (HTML → Typst AST / EPUB3 / Markdown; seam-fixes F-1/F-6/F-7). **Stage 3:** Three RULE-08 renderer adapters — TypstPdfRenderer (bespoke `narrare-roman` Typst package: recto starts, mirrored Satzspiegel, running heads, 4-phase numbering, TOC, smart quotes/hyphenation, widow/orphan, scene-break; Libertinus Serif bundled OFL), PandocEpubRenderer (EPUB3 + Libertinus embedded), PandocMarkdownRenderer. **Stage 4:** In-process `asyncio.create_task` job (ADR-080) + in-memory registry + signed-token artifact delivery. CI gates: Golden-Pages 26 passed (6 parametrized variants), EPUBCheck 5.3.0 passed. RULE-08 AST confinement checker enforced. Graceful binary-absence degradation. Toolchain pins: Typst 0.15.1, pandoc 3.10.1, EPUBCheck 5.3.0. No Alembic migration (v1 in-memory). **Deferred:** DOCX, drop cap 5g, isbn/description metadata. PR #163.
 
 ## What's Next
 
