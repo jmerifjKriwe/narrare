@@ -121,3 +121,21 @@ class TestIncrementalParity:
         guarded = scanner.scan(files=[scan_dir / "pyproject.toml"])
 
         assert _violations_by_file(full) == _violations_by_file(guarded)
+
+    def test_adoption_registry_yaml_triggers_full_scan(self, scan_dir: Path) -> None:
+        """Registry-YAML-only changeset -> full scan (RULE-02 adoption guard).
+
+        ``check_inline_prompts`` reads ``scripts/architecture/adoption-registry.yaml``
+        (cross-file state). A YAML-only edit contains no ``.py`` files, so
+        without the guard the ``.py`` filter would select nothing and no
+        re-scan of registered inline fallbacks would happen.
+        """
+        scanner = ArchitectureScanner(scan_roots=[scan_dir])
+        registry = scan_dir / "scripts" / "architecture" / "adoption-registry.yaml"
+        registry.parent.mkdir(parents=True, exist_ok=True)
+        registry.write_text("inline_fallbacks: []\n")
+
+        full = scanner.scan(files=None)
+        guarded = scanner.scan(files=[registry])
+
+        assert _violations_by_file(full) == _violations_by_file(guarded)

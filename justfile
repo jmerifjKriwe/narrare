@@ -276,14 +276,18 @@ db-shell:
 # Testing
 # ---------------------------------------------------------------------------
 
-# Run all tests. Worker count is RAM-aware: < 12 GB available → -n 2
-# (Q-019 OOM mitigation); otherwise -n auto. CI runs pytest directly
-# (not this recipe) and is unaffected.
+# Shared RAM-aware xdist worker selection (Q-019 OOM mitigation).
+# Echoes "2" when RAM < 12 GB threshold, "auto" otherwise. Used by the
+# `test` and `test-unit` recipes so both share the same guard.
+# NOTE: detection measures AVAILABLE RAM on Linux (/proc/meminfo) but
+# TOTAL RAM on macOS (sysctl hw.memsize) — macOS lacks a portable
+# "available" metric; total is an overestimate there.
 # See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
-test:
+[private]
+_xdist-workers:
     #!/usr/bin/env bash
     set -euo pipefail
-    # Detect available RAM (MB). Linux: /proc/meminfo. macOS: sysctl.
+    # Detect RAM (MB). Linux: /proc/meminfo (available). macOS: sysctl (total).
     if [ -f /proc/meminfo ]; then
         avail_mb=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
     elif command -v sysctl >/dev/null 2>&1; then
@@ -291,14 +295,23 @@ test:
     else
         avail_mb=0
     fi
-    # RULE-18: 12288 MB = 12 GB threshold (Q-19 measured ~2.4 GB/worker headroom
+    # RULE-18: 12288 MB = 12 GB threshold (Q-019 measured ~2.4 GB/worker headroom
     # on 9.6 GB / 4 workers; 12 GB gives ~3 GB/worker with -n auto on 4 cores).
     _RAM_THRESHOLD_MB=12288
     if [ "$avail_mb" -gt 0 ] && [ "$avail_mb" -lt "$_RAM_THRESHOLD_MB" ]; then
-        workers=2
+        echo 2
     else
-        workers=auto
+        echo auto
     fi
+
+# Run all tests. Worker count is RAM-aware via `_xdist-workers`: < 12 GB
+# available → -n 2 (Q-019 OOM mitigation); otherwise -n auto. CI runs pytest
+# directly (not this recipe) and is unaffected.
+# See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
+test:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    workers=$(just _xdist-workers)
     uv run pytest tests/ -v -n "$workers" -m "not schema_mutating"
     uv run pytest tests/integration/ -v -m schema_mutating
 
@@ -312,9 +325,14 @@ test-lowmem:
     uv run pytest tests/ -v -n 2 -m "not schema_mutating"
     uv run pytest tests/integration/ -v -m schema_mutating
 
-# Run unit tests only (fast, no Docker needed, parallel)
+# Run unit tests only (fast, no Docker needed). Parallelism is RAM-aware via
+# `_xdist-workers` — same guard as `just test` (Q-019: `-n auto` on < 12 GB
+# machines can OOM-kill a worker).
 test-unit:
-    uv run pytest tests/unit/ -v -n auto --dist loadfile
+    #!/usr/bin/env bash
+    set -euo pipefail
+    workers=$(just _xdist-workers)
+    uv run pytest tests/unit/ -v -n "$workers" --dist loadfile
 
 # Run tests single-threaded for debugging (disables the `randomly` plugin).
 # NOTE: the name means "single-threaded", NOT "single file" — use `test-file` for scoped files.
@@ -341,8 +359,9 @@ test-unit-cov:
 #   just test-file tests/unit/core/llm/test_gateway.py
 #   just test-file tests/unit/core/llm/test_gateway.py -x -p no:xdist
 #   just test-file tests/unit/core/llm/test_gateway.py --pdb -k "session"
-# (Plain pytest runs single-process: `-n auto` only comes from the `test`/
-# `test-unit` recipes, so `-p no:xdist` is optional here.)
+# (Plain pytest runs single-process: xdist `-n` only comes from the `test`/
+# `test-unit` recipes (RAM-aware: `-n 2` or `-n auto`), so `-p no:xdist`
+# is optional here.)
 test-file +files:
     uv run pytest {{files}} -v
 
@@ -405,14 +424,15 @@ check:
 check-verbose:
     uv run python scripts/run_checks.py --verbose
 
-# Validate after every slice/step: full test suite (backend + frontend).
-# `check` is dropped — it duplicates pre-commit/pre-push gates that already
-# run on commit/push. For the full pre-merge gate, use `just check-full`.
-# `verify-quick` (below) is the fast variant: unit + frontend, no integration.
-verify: test-all
+# Full local gate after every slice/step: all checks (`check`) + full test
+# suite (backend + frontend). `check` must stay in the gate — some of its
+# scripts (check_empty_kb_vars, check_model_registry) have no pre-commit hook
+# or CI job, so `just verify` is their only routine channel.
+# `verify-quick` (below) is the fast variant: unit + frontend tests only.
+verify: check test-all
 
-# Quick validation: unit tests + frontend tests (no integration, no Docker).
-# Use for fast iteration between slices. Full gate is `just verify`.
+# Quick validation: unit tests + frontend tests (no integration, no Docker,
+# no `check`). Use for fast iteration between slices. Full gate is `just verify`.
 verify-quick: test-unit test-frontend
 
 # Run architecture constraint checker

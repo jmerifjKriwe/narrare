@@ -206,9 +206,12 @@ not needed to resolve this question.
 
 The pre-commit runtime optimization plan
 (`docs/development/plans/2026-08-13-pre-commit-runtime-optimization.md`,
-Task 8) made `just test` auto-detect available RAM and select `-n 2` when
-the machine has < 12 GB available memory (Decision A: shell detection via
-`/proc/meminfo` on Linux, `sysctl` on macOS, safe fallback to `auto`).
+Task 8) made `just test` auto-detect RAM and select `-n 2` when the machine
+has < 12 GB detected memory (Decision A: shell detection — **available** RAM
+via `/proc/meminfo` on Linux, **total** RAM via `sysctl -n hw.memsize` on
+macOS, which lacks a portable "available" metric and is therefore an
+overestimate; safe fallback to `auto`). `just test-unit` shares the same
+RAM-aware worker selection (shared `_xdist-workers` helper in the justfile).
 This **supersedes** the original resolution's stance of "default `just test`
 unchanged; use `just test-lowmem` on < 16 GB." The default is now
 RAM-aware; `test-lowmem` remains as a redundant-but-valid explicit override for

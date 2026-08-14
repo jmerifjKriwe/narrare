@@ -833,18 +833,20 @@ active.
 # justfile commands:
 just test          # RAM-aware parallelism: -n 2 on < 12 GB available RAM, else -n auto
 just test-lowmem   # Same two phases, but phase 1 always uses -n 2 (explicit override)
-just test-unit     # Parallel unit tests only
+just test-unit     # RAM-aware parallel unit tests only (same worker selection as `just test`)
 just test-single   # Single-threaded for debugging (disables randomly)
 ```
 
 #### Running tests on low-memory machines (< 12 GB available RAM)
 
-`just test` is **RAM-aware**: it detects available system memory at runtime
-(via `/proc/meminfo` on Linux, `sysctl` on macOS) and automatically selects
-`-n 2` (two xdist workers) when available RAM is below the 12 GB threshold
-(12288 MB, RULE-18). On machines with ≥ 12 GB available RAM, it uses `-n
-auto` (one worker per CPU core). Each worker is a full Python process that
-imports the entire Narrare app (FastAPI app, all routers, SQLAlchemy models,
+`just test` is **RAM-aware**: it detects system memory at runtime and
+automatically selects `-n 2` (two xdist workers) when the detected RAM is
+below the 12 GB threshold (12288 MB, RULE-18). Detection measures
+**available** RAM on Linux (`/proc/meminfo`) but **total** RAM on macOS
+(`sysctl -n hw.memsize` — macOS has no portable "available" metric, so the
+macOS reading is an overestimate). On machines with ≥ 12 GB detected RAM, it
+uses `-n auto` (one worker per CPU core). Each worker is a full Python process
+that imports the entire Narrare app (FastAPI app, all routers, SQLAlchemy models,
 pydantic-ai) plus the full test suite (~11 k items). On machines with < 12 GB
 available RAM, accumulated per-worker memory pressure can push one worker over
 the limit and the kernel OOM killer SIGKILLs a **random** worker mid-run (no

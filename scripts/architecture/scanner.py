@@ -43,16 +43,23 @@ class ArchitectureScanPort(Protocol):
 
     Guarantees — per-file parity:
         For any file F, the violations attributed to F are IDENTICAL in
-        FULL and INCREMENTAL mode. Every checker in ``scan_file`` operates
-        on F's AST + source_lines alone; none reads cross-file state.
-        This is verified by a parity test (Task 4).
+        FULL and INCREMENTAL mode for all AST-local checkers (they operate
+        on F's AST + source_lines alone). Two checkers read cross-file
+        state — ``_validate_exception_consistency`` (pyproject.toml
+        exceptions register) and ``check_inline_prompts``
+        (adoption-registry.yaml) — which is why edits to those state
+        files trigger a FULL scan instead (see "Full-scan guards" below).
+        Parity is verified by a parity test (Task 4).
 
-    pyproject.toml guard:
-        If pyproject.toml is in ``files``, fall back to FULL scan.
-        Rationale: ``_validate_exception_consistency`` checks inline
-        ``# narrare: allow`` markers against the pyproject.toml exceptions
-        register. A removed register entry would make an unchanged file's
-        marker unregistered — incremental would miss it.
+    Full-scan guards (cross-file state triggers):
+        If ``pyproject.toml`` or ``scripts/architecture/adoption-registry.yaml``
+        is in ``files``, fall back to FULL scan. Rationale:
+        ``_validate_exception_consistency`` checks inline ``# narrare: allow``
+        markers against the pyproject.toml exceptions register, and
+        ``check_inline_prompts`` checks RULE-02 inline-prompt exceptions
+        against adoption-registry.yaml. A register/registry-only edit would
+        otherwise be skipped by the ``.py`` selection — incremental would
+        miss violations that only the changed state file can reveal.
 
     RULE-15 (forbidden files):
         Always runs regardless of mode — it is a cheap ``rglob`` for
@@ -129,7 +136,7 @@ class ArchitectureScanner:
         """Filter changed files to .py within scan_roots.
 
         Returns:
-            None → full scan (no files given, or pyproject.toml guard).
+            None → full scan (no files given, or a full-scan guard fired).
             []   → skip AST scan (non-.py changes only).
             [...]→ incremental scan of these files.
         """
@@ -138,6 +145,13 @@ class ArchitectureScanner:
 
         # pyproject.toml guard → FULL scan
         if any(f.name == "pyproject.toml" for f in files):
+            return None
+
+        # adoption-registry.yaml guard → FULL scan. Rationale:
+        # ``check_inline_prompts`` reads this registry (cross-file state);
+        # a YAML-only edit would otherwise be filtered out by the ``.py``
+        # selection below and trigger no re-scan of registered markers.
+        if any(f.name == "adoption-registry.yaml" for f in files):
             return None
 
         resolved_roots = [r.resolve() for r in self._scan_roots]
