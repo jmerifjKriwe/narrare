@@ -184,8 +184,9 @@ def _escape_at_signs(body: str) -> str:
 def _build_config_block(config: NarrareRomanConfig) -> str:
     """Serialize :class:`NarrareRomanConfig` to the narrare-roman config dict.
 
-    Keys mirror what ``lib.typ`` reads (kebab-case). ``drop_caps`` is omitted —
-    the Typst side does not read ``drop-caps`` yet (Slice 5g is optional). The
+    Keys mirror what ``lib.typ`` reads (kebab-case). ``drop-caps`` gates the
+    chapter drop cap (Slice 5g, vendored ``droplet`` — default OFF, mirroring
+    :attr:`NarrareRomanConfig.drop_caps` / :attr:`PdfOptions.drop_caps`). The
     ``title``/``author`` reference the ``booktitle``/``bookauthor`` Typst
     variables defined in the wrapper (F-7: always scalar strings).
     """
@@ -203,6 +204,7 @@ def _build_config_block(config: NarrareRomanConfig) -> str:
         '    running-head-preset: "default",\n'
         '    scene-break-style: "asterism",\n'
         "    widow-orphan-protection: true,\n"
+        f"    drop-caps: {'true' if config.drop_caps else 'false'},\n"
         "  ),\n"
     )
 

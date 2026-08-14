@@ -53,12 +53,22 @@
 // API no longer exists; see `src/body.typ`). Verified by the scene-break
 // probe in `tests/golden/export/test_scene_break.py`.
 //
-// Sub-slices still to land:
-//   5g  drop cap (optional, default OFF — @preview/droplet)
+// ── Slice 5g scope ───────────────────────────────────────────────────
+// Optional drop cap (default OFF — `drop-caps`). Each chapter's FIRST
+// paragraph opens with a 2-line dropped capital rendered by the vendored
+// `droplet` package (`vendor/droplet/`, upstream 0.3.1, MIT — imported
+// relatively so `typst compile` never reaches the network; D3). The
+// chapter-first-paragraph targeting is a PURE content transform in
+// `src/drop_cap.typ` — no show rules, no state (both show-rule
+// mechanisms were prototyped and rejected on Typst 0.15.1; see that
+// module's header for the rejection record). When OFF the transform is
+// not applied at all — byte-neutral by construction. Verified by the
+// drop-cap probe in `tests/golden/export/test_drop_cap.py`.
 //
 // Borrowed patterns (not forks): wonderous-book `is-page-empty`;
 // tieffiction 4-phase numbering + header presets; folklore
-// `major-break` ornament.
+// `major-break` ornament. Vendored dependency: `droplet` (see
+// `vendor/droplet/README.md`).
 
 #import "src/paper.typ": paper-dimensions
 #import "src/margins.typ": resolve-margins
@@ -70,10 +80,11 @@
 #import "src/hyphenation.typ": hyphenate-for
 #import "src/scene_break.typ": scene-break
 #import "src/body.typ": widow-orphan-costs
+#import "src/drop_cap.typ": apply-drop-caps
 
 // Sentinel kept for back-compat with the Slice-0 skeleton; not used by
 // the entry point. Bumped when the public API changes.
-#let narrare-roman-version = "0.1.0-5f"
+#let narrare-roman-version = "0.1.0-5g"
 
 // ── Public API ───────────────────────────────────────────────────────
 //
@@ -119,8 +130,8 @@
 // is structural, not configurable). 5d adds include-toc (gates `#toc()`
 // — default true). 5e adds no new keys (smart quotes + hyphenation are
 // driven by the existing `language` key). 5f adds scene-break-style +
-// widow-orphan-protection. Later sub-slices extend the surface further
-// (drop-caps → 5g, …).
+// widow-orphan-protection. 5g adds drop-caps (gates the chapter drop
+// cap — default false).
 #let narrare-roman(
   config: (:),
   body,
@@ -143,6 +154,7 @@
     "widow-orphan-protection",
     default: true,
   )
+  let drop-caps = config.at("drop-caps", default: false)
 
   let page-dim = paper-dimensions(
     paper-size,
@@ -249,5 +261,16 @@
   // flag rides on document state (see `src/toc.typ`).
   apply-toc-gate(include-toc)
 
-  body
+  // ── Chapter drop cap (5g).
+  //
+  // Applied as the LAST step before the body is emitted: a pure content
+  // transform (see `src/drop_cap.typ`) — no show rule, so there is no
+  // scope constraint, and when `drop-caps` is false (the default) the
+  // body passes through UNTOUCHED: byte-neutral by construction, the
+  // Golden-Pages baselines stay valid without regeneration.
+  if drop-caps {
+    apply-drop-caps(body)
+  } else {
+    body
+  }
 }
