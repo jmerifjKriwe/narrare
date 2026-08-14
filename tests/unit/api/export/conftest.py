@@ -101,6 +101,10 @@ class FakeNormalizer:
             author=metadata.author,
             language=metadata.language,
             chapters=metadata.chapters,
+            # Mirrors NarrareNormalizer: optional EPUB metadata passes through
+            # unmodified (asserted by the wiring test for isbn/description).
+            isbn=metadata.isbn,
+            description=metadata.description,
         )
 
 

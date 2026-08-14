@@ -59,6 +59,8 @@ def _normalized(
     title: str = "Test Novel",
     author: str = "Test Author",
     language: Language = Language.EN,
+    isbn: str | None = None,
+    description: str | None = None,
 ) -> NormalizedManuscript:
     """Build a NormalizedManuscript with a single placeholder chapter."""
     return NormalizedManuscript(
@@ -67,6 +69,8 @@ def _normalized(
         author=author,
         language=language,
         chapters=[ChapterMeta(chapter_id=uuid4(), title="C1", position=0, volume_id=None)],
+        isbn=isbn,
+        description=description,
     )
 
 
@@ -221,6 +225,97 @@ class TestBuildArgv:
         output_path = Path("/tmp/out.epub")
         argv = _build_argv(manuscript, EpubOptions(), paths, Path("/tmp/f.css"), output_path)
         assert argv[-1] == "--output=/tmp/out.epub"
+
+
+class TestIsbnDescriptionArgv:
+    """ISBN/description ride the manuscript (post-normalizer) into pandoc
+    ``--metadata identifier/description`` flags — only when actually set.
+
+    Empirically verified against pandoc 3.10.1 (see the golden suite for the
+    OPF side): ``identifier`` REPLACES pandoc's uuid default as the package
+    unique-identifier; a bare ISBN is wrapped into the idiomatic EPUB3
+    ``urn:isbn:`` URN (no scheme attribute — the URN prefix carries the type).
+    """
+
+    def test_isbn_adds_urn_isbn_identifier_flag(self) -> None:
+        manuscript = _normalized(isbn="978-3-16-148410-0")
+        argv = _build_argv(
+            manuscript,
+            EpubOptions(),
+            _resolve_font_paths(),
+            Path("/tmp/f.css"),
+            Path("/tmp/o.epub"),
+        )
+        assert "--metadata=identifier:urn:isbn:978-3-16-148410-0" in argv
+
+    def test_isbn_already_uri_form_passes_through_undoubled(self) -> None:
+        """A caller-supplied URI (urn:… or scheme://…) is never double-wrapped."""
+        manuscript = _normalized(isbn="urn:isbn:978-3-16-148410-0")
+        argv = _build_argv(
+            manuscript,
+            EpubOptions(),
+            _resolve_font_paths(),
+            Path("/tmp/f.css"),
+            Path("/tmp/o.epub"),
+        )
+        identifier_entries = [a for a in argv if a.startswith("--metadata=identifier:")]
+        assert identifier_entries == ["--metadata=identifier:urn:isbn:978-3-16-148410-0"]
+
+    def test_isbn_absent_adds_no_identifier_flag(self) -> None:
+        """No ISBN → no identifier flag → pandoc keeps its uuid default."""
+        manuscript = _normalized()
+        argv = _build_argv(
+            manuscript,
+            EpubOptions(),
+            _resolve_font_paths(),
+            Path("/tmp/f.css"),
+            Path("/tmp/o.epub"),
+        )
+        assert not any(a.startswith("--metadata=identifier:") for a in argv)
+
+    def test_isbn_empty_string_treated_as_unset(self) -> None:
+        manuscript = _normalized(isbn="")
+        argv = _build_argv(
+            manuscript,
+            EpubOptions(),
+            _resolve_font_paths(),
+            Path("/tmp/f.css"),
+            Path("/tmp/o.epub"),
+        )
+        assert not any(a.startswith("--metadata=identifier:") for a in argv)
+
+    def test_description_adds_description_flag(self) -> None:
+        manuscript = _normalized(description="A tale of lighthouses and the sea.")
+        argv = _build_argv(
+            manuscript,
+            EpubOptions(),
+            _resolve_font_paths(),
+            Path("/tmp/f.css"),
+            Path("/tmp/o.epub"),
+        )
+        assert "--metadata=description:A tale of lighthouses and the sea." in argv
+
+    def test_description_absent_adds_no_flag(self) -> None:
+        manuscript = _normalized()
+        argv = _build_argv(
+            manuscript,
+            EpubOptions(),
+            _resolve_font_paths(),
+            Path("/tmp/f.css"),
+            Path("/tmp/o.epub"),
+        )
+        assert not any(a.startswith("--metadata=description:") for a in argv)
+
+    def test_description_empty_string_treated_as_unset(self) -> None:
+        manuscript = _normalized(description="")
+        argv = _build_argv(
+            manuscript,
+            EpubOptions(),
+            _resolve_font_paths(),
+            Path("/tmp/f.css"),
+            Path("/tmp/o.epub"),
+        )
+        assert not any(a.startswith("--metadata=description:") for a in argv)
 
 
 # ── Real-pandoc tests (skipif guarded) ──────────────────────────────────────

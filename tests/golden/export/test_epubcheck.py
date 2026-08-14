@@ -64,6 +64,8 @@ def _normalized(
     title: str = "Test Novel",
     author: str = "Test Author",
     language: Language = Language.EN,
+    isbn: str | None = None,
+    description: str | None = None,
 ) -> NormalizedManuscript:
     return NormalizedManuscript(
         semantic_html=semantic_html,
@@ -71,6 +73,8 @@ def _normalized(
         author=author,
         language=language,
         chapters=[ChapterMeta(chapter_id=uuid4(), title="C1", position=0, volume_id=None)],
+        isbn=isbn,
+        description=description,
     )
 
 
@@ -150,6 +154,30 @@ class TestEpubcheckGate:
         finally:
             artifact.path.unlink(missing_ok=True)
 
+    @pytest.mark.skipif(
+        shutil.which("epubcheck") is None or shutil.which("java") is None,
+        reason="epubcheck + java(JRE) not installed — W3C EPUBCheck is "
+        "CI-only (integration job: INSTALL_EPUBCHECK=1 + runner JRE)",
+    )
+    @pytest.mark.asyncio
+    async def test_rendered_epub_with_isbn_description_passes_epubcheck(self) -> None:
+        """EPUBCheck must accept the ``urn:isbn:`` identifier form (no scheme
+        attribute — the URN prefix carries the type) and dc:description. This
+        is the CI-side authority for the empirically-chosen metadata mapping;
+        locally (no JRE) the structural class below is the guarantee."""
+        manuscript = _normalized(isbn="978-3-16-148410-0", description="A tale of lighthouses.")
+        artifact = await PandocEpubRenderer().render(
+            manuscript, ExportOptions(format=ExportFormat.EPUB)
+        )
+        try:
+            result = _run_epubcheck(artifact.path)
+            assert result.returncode == 0, (
+                f"EPUBCheck reported validation errors:\n"
+                f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+            )
+        finally:
+            artifact.path.unlink(missing_ok=True)
+
 
 class TestLibertinusEmbeddedAndDeclared:
     """D7: four variants embedded in EPUB/fonts/, in the OPF manifest, AND
@@ -209,6 +237,84 @@ class TestMetadataReachesOpf:
             assert title is not None and title.text == "The Lighthouse Years"
             assert creator is not None and creator.text == "Ada Quill"
             assert language is not None and language.text == "de"
+        finally:
+            artifact.path.unlink(missing_ok=True)
+
+
+class TestIsbnDescriptionReachOpf:
+    """ISBN/description (IO-001 follow-up) reach the OPF as
+    ``dc:identifier`` / ``dc:description`` — empirically verified against
+    pandoc 3.10.1:
+
+    - ``--metadata=identifier:urn:isbn:<ISBN>`` REPLACES pandoc's uuid default
+      and stays the package ``unique-identifier`` (pandoc emits no scheme
+      attribute; the URN prefix carries the type — the idiomatic EPUB3 form).
+    - ``--metadata=description:…`` maps verbatim to ``<dc:description>``.
+    - Unset fields keep the legacy output: uuid identifier, no description.
+    """
+
+    @pytest.mark.asyncio
+    async def test_isbn_is_the_unique_identifier_in_opf(self) -> None:
+        manuscript = _normalized(isbn="978-3-16-148410-0")
+        artifact = await PandocEpubRenderer().render(
+            manuscript, ExportOptions(format=ExportFormat.EPUB)
+        )
+        try:
+            with zipfile.ZipFile(artifact.path) as z:
+                opf = _read_opf(z)
+
+            identifier = opf.find(".//dc:identifier", _NS)
+            assert identifier is not None, "dc:identifier missing from OPF"
+            assert identifier.text == "urn:isbn:978-3-16-148410-0"
+            # The ISBN is not a side identifier — it IS the package's
+            # unique-identifier (element id matches package@unique-identifier).
+            assert identifier.get("id") == opf.get("unique-identifier")
+        finally:
+            artifact.path.unlink(missing_ok=True)
+
+    @pytest.mark.asyncio
+    async def test_no_isbn_keeps_pandoc_uuid_identifier(self) -> None:
+        """Backward compat: no ISBN → pandoc's uuid default, unchanged."""
+        artifact = await PandocEpubRenderer().render(
+            _normalized(), ExportOptions(format=ExportFormat.EPUB)
+        )
+        try:
+            with zipfile.ZipFile(artifact.path) as z:
+                opf = _read_opf(z)
+
+            identifier = opf.find(".//dc:identifier", _NS)
+            assert identifier is not None
+            assert identifier.text is not None
+            assert identifier.text.startswith("urn:uuid:")
+        finally:
+            artifact.path.unlink(missing_ok=True)
+
+    @pytest.mark.asyncio
+    async def test_description_present_in_opf_when_set(self) -> None:
+        manuscript = _normalized(description="A tale of lighthouses and the sea.")
+        artifact = await PandocEpubRenderer().render(
+            manuscript, ExportOptions(format=ExportFormat.EPUB)
+        )
+        try:
+            with zipfile.ZipFile(artifact.path) as z:
+                opf = _read_opf(z)
+
+            description = opf.find(".//dc:description", _NS)
+            assert description is not None, "dc:description missing from OPF"
+            assert description.text == "A tale of lighthouses and the sea."
+        finally:
+            artifact.path.unlink(missing_ok=True)
+
+    @pytest.mark.asyncio
+    async def test_description_absent_from_opf_when_unset(self) -> None:
+        artifact = await PandocEpubRenderer().render(
+            _normalized(), ExportOptions(format=ExportFormat.EPUB)
+        )
+        try:
+            with zipfile.ZipFile(artifact.path) as z:
+                opf = _read_opf(z)
+
+            assert opf.find(".//dc:description", _NS) is None
         finally:
             artifact.path.unlink(missing_ok=True)
 

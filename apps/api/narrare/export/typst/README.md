@@ -19,8 +19,9 @@ The minimum viable book layout, verified by Golden-Pages probes (Slice 7):
 - **Per-language smart quotes + hyphenation** (de / en / fr).
 - **Widow / orphan protection** (justified body).
 - **Scene-break ornament.**
-
-Drop cap (5g) is an **optional fast-follow**, OFF by default.
+- **Drop cap** (optional, default OFF) — each chapter's first paragraph
+  opens with a 2-line dropped capital ([vendored `droplet`](vendor/droplet/),
+  MIT — imported relatively, never fetched at render time).
 
 ## Borrowed patterns (not forks)
 
@@ -29,6 +30,16 @@ Drop cap (5g) is an **optional fast-follow**, OFF by default.
 | `is-page-empty` | wonderous-book | blank-page running-head suppression |
 | 4-phase numbering + header presets | tieffiction | frontmatter / body folio scheme |
 | `major-break` | folklore | scene-break ornament |
+
+## Vendored dependency — droplet (MIT)
+
+[`vendor/droplet/`](vendor/droplet/) holds upstream
+[`@preview/droplet`](https://github.com/EpicEricEE/typst-droplet) **0.3.1**
+(MIT, Eric Biedert) — the dropped-capital engine of the optional 5g
+feature. Vendored so `typst compile` never reaches the network at render
+time (IO-001 D3): `src/drop_cap.typ` imports it via a **relative path**,
+never via `@preview/droplet:…`. See `vendor/droplet/README.md` for
+provenance, layout, and the update procedure.
 
 ## Font — Libertinus Serif (OFL)
 
@@ -46,12 +57,13 @@ License: [SIL Open Font License 1.1](fonts/LICENSE-OFL.txt), upstream
 directory also feeds the EPUB renderer (pandoc `--epub-embed-font`) — one
 bundled font, two embedding mechanisms, one font policy (D7).
 
-## Current state — Slice 5f (scope floor complete)
+## Current state — Slice 5g (Slice 5 complete)
 
 The **geometric spine**, **running heads**, **4-phase numbering**, **table of
 contents**, **per-language smart quotes + hyphenation**, **scene-break
-ornament**, and **widow/orphan protection** are implemented and
-probe-verified — the D5 scope floor (5a–5f) is complete:
+ornament**, **widow/orphan protection**, and the **optional drop cap** are
+implemented and probe-verified — the D5 scope floor (5a–5f) plus the 5g
+fast-follow are complete:
 
 - **Paper size** — B-format 129 x 198 mm (default), A5, A4, Letter, or custom
   (`paper-size`, `custom-width-mm`, `custom-height-mm`).
@@ -99,6 +111,18 @@ probe-verified — the D5 scope floor (5a–5f) is complete:
   `par(orphan-limit/widow-limit)` API no longer exists — see
   `src/body.typ`. Justified body is set by the entry point (`set
   par(justify: true)`, Slice 5a).
+- **Drop cap** — OPTIONAL, default OFF (`drop-caps` ←
+  `NarrareRomanConfig.drop_caps` ← `PdfOptions.drop_caps`). When ON,
+  each chapter's FIRST paragraph opens with a 2-line dropped capital
+  rendered by the vendored `droplet` package (conservative sizing: a
+  small `0.25em` gap keeps the cap clear of the aside text; droplet's
+  two-column grid makes glyph collisions structurally impossible). The
+  chapter-first-paragraph targeting is a pure content transform
+  (`src/drop_cap.typ`) — a conservative inline-only admission rule means
+  chapters opening with a list/quote/figure simply render uncapped.
+  Default OFF is byte-neutral: the transform is not applied (and no
+  pass-through rule is registered), so existing output is bit-for-bit
+  unchanged.
 
 Verified by `tests/golden/export/test_geometric_spine.py` (folio-count,
 recto-start, blank-verso, mirrored-margin, and no-silent-font-fallback
@@ -109,22 +133,16 @@ body-resets-to-1, title-suppressed, blank-folio-suppressed probes),
 `tests/golden/export/test_toc.py` (TOC-present-with-phase-relative-folios,
 TOC-absent-when-disabled probes),
 `tests/golden/export/test_quotes_hyphenation.py` (per-language quote-glyph
-probes for de/en/fr + hyphenation-breaks-long-compound probe), and
+probes for de/en/fr + hyphenation-breaks-long-compound probe),
 `tests/golden/export/test_scene_break.py` (scene-break-renders-centred-
-ornament + widow-orphan-protection-engages probes) via PyMuPDF.
-Bundled Libertinus Serif is the body font with no fallback
-(`--font-path fonts/`).
+ornament + widow-orphan-protection-engages probes), and
+`tests/golden/export/test_drop_cap.py` (default-OFF + explicit-false
+byte-identity, ON-presence/multi-line/no-collision, and
+renderer-round-trip probes) via PyMuPDF. Bundled Libertinus Serif is the
+body font with no fallback (`--font-path fonts/`).
 
-The D5 scope floor is **complete**. The only remaining Slice-5 item is the
-**optional fast-follow**:
-
-| Sub-slice | Feature |
-|-----------|---------|
-| 5g | Drop cap, default OFF (`@preview/droplet`) |
-
-See the Slice 5 sub-slice map in
-[IO-001-export-pipeline.md](../../../../../../docs/architecture/implementation-plans/IO-001-export-pipeline.md)
-for the file-by-file breakdown.
+The D5 scope floor **and** the 5g fast-follow (drop cap) are **complete** —
+Slice 5 is done.
 
 ## Validate locally
 

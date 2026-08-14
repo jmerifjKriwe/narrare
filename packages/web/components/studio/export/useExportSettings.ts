@@ -16,7 +16,12 @@ const DEFAULT_PDF_OPTIONS: PdfOptions = {
   include_toc: true,
 };
 
-const DEFAULT_EPUB_OPTIONS: EpubOptions = { cover_image_path: null, css: null };
+const DEFAULT_EPUB_OPTIONS: EpubOptions = {
+  cover_image_path: null,
+  css: null,
+  isbn: null,
+  description: null,
+};
 
 /** Build a fully-populated options object for a given format. */
 export function defaultExportOptions(format: ExportFormat): ExportOptions {

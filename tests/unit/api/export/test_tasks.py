@@ -16,7 +16,7 @@ import pytest
 
 from narrare.export import registry, tasks
 from narrare.export.contracts import ExportJobStatus
-from narrare.export.options import ExportFormat
+from narrare.export.options import EpubOptions, ExportFormat, ExportOptions
 from tests.unit.api.export.conftest import (
     FailingRenderer,
     FakeNormalizer,
@@ -136,7 +136,7 @@ class TestBuildMetadata:
     def test_builds_metadata_with_chapter_meta(self) -> None:
         chapter = make_chapter(title="C1", position=2)
         source = make_source(language="de", chapters=[chapter])
-        metadata = tasks.build_metadata(source)
+        metadata = tasks.build_metadata(source, make_options())
         assert metadata.title == "Test Novel"
         assert metadata.author == "Test Author"
         assert metadata.language.value == "de"
@@ -148,7 +148,28 @@ class TestBuildMetadata:
         # as a failure (caught by the runner → FAILED).
         source = make_source(language="klingon")
         with pytest.raises(ValueError):
-            tasks.build_metadata(source)
+            tasks.build_metadata(source, make_options())
+
+    def test_epub_options_populate_isbn_and_description(self) -> None:
+        """The request is the v1 source for ISBN/description (no DB storage):
+        ``epub_options`` overrides the DB-absent metadata defaults."""
+        source = make_source(chapters=[make_chapter()])
+        options = ExportOptions(
+            format=ExportFormat.EPUB,
+            epub_options=EpubOptions(isbn="978-3-16-148410-0", description="A tale."),
+        )
+        metadata = tasks.build_metadata(source, options)
+        assert metadata.isbn == "978-3-16-148410-0"
+        assert metadata.description == "A tale."
+
+    def test_no_epub_options_leave_isbn_and_description_unset(self) -> None:
+        """Backward compat: exports without epub_options carry no ISBN /
+        description → the EPUB renderer keeps pandoc's uuid identifier default
+        and omits dc:description."""
+        source = make_source(chapters=[make_chapter()])
+        metadata = tasks.build_metadata(source, make_options())
+        assert metadata.isbn is None
+        assert metadata.description is None
 
 
 # ── Dispatch mechanics (mirrors series/tasks tests) ────────────────────────
@@ -292,3 +313,26 @@ class TestRunExportInprocess:
 
         failed = registry.get(job.job_id)
         assert failed.status is ExportJobStatus.FAILED
+
+    @pytest.mark.asyncio
+    async def test_epub_request_isbn_description_reach_renderer(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Wiring: EpubOptions.isbn/description → build_metadata override →
+        (fake) normalizer passthrough → the renderer's NormalizedManuscript."""
+        renderer = FakeRenderer(ExportFormat.EPUB)
+        _install_runner_deps(monkeypatch, renderer=renderer)
+        _install_session_and_repo(monkeypatch, source=make_source(chapters=[make_chapter()]))
+        options = ExportOptions(
+            format=ExportFormat.EPUB,
+            epub_options=EpubOptions(isbn="978-3-16-148410-0", description="A tale."),
+        )
+
+        job = registry.create(NOVEL_ID, ExportFormat.EPUB)
+        await tasks.run_export_inprocess(job.job_id, NOVEL_ID, options)
+
+        completed = registry.get(job.job_id)
+        assert completed.status is ExportJobStatus.COMPLETED
+        manuscript, _opts = renderer.render_calls[0]
+        assert manuscript.isbn == "978-3-16-148410-0"
+        assert manuscript.description == "A tale."

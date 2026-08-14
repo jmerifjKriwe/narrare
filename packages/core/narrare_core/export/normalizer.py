@@ -89,4 +89,6 @@ class NarrareNormalizer:
             author=metadata.author,
             language=metadata.language,
             chapters=order_chapters(metadata.chapters),
+            isbn=metadata.isbn,
+            description=metadata.description,
         )

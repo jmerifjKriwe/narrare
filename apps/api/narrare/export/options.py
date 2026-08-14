@@ -68,10 +68,20 @@ class EpubOptions(BaseModel):
     toggle would only reintroduce the silent-fallback failure mode the
     no-silent-fallback principle exists to prevent (D7). Markdown is plain text
     and carries no font.
+
+    ``isbn`` / ``description`` (IO-001 follow-up) are **request-level,
+    user-optional** EPUB metadata: there is no DB storage for them in v1, so
+    the export request is their only source. The runner merges them into
+    :class:`narrare_core.export.contracts.ManuscriptMetadata` (request wins
+    over the DB-absent defaults) and the EPUB renderer emits them as
+    ``dc:identifier`` (``urn:isbn:`` URN) / ``dc:description``. EPUB-only
+    (D7 precedent): the PDF/MD renderers ignore both fields.
     """
 
     cover_image_path: str | None = None  # user-provided; no cover generator
     css: str | None = None
+    isbn: str | None = None  # bare ISBN or URI form; no DB storage v1
+    description: str | None = None  # book blurb → dc:description; no DB storage v1
 
 
 class MarkdownOptions(BaseModel):

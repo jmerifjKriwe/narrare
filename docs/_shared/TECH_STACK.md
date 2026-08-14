@@ -244,12 +244,12 @@ Markdown. Robust fire&forget for the simpler formats.
 **Canonical source:** `scripts/install_export_toolchain.sh` (installed only when
 `INSTALL_EPUBCHECK=1`, i.e. CI).
 
-### `@preview/droplet` (optional, pinned)
+### `@preview/droplet` (vendored, v0.3.1, MIT)
 **Why:** Drop-cap support in `narrare-roman`, OFF by default ("die mag nicht jeder").
 **Role:** Optional Typst preview package imported by `narrare-roman` only when
 `drop_caps: true`.
-**Canonical source:** pinned in `apps/api/narrare/export/typst/` (vendored or
-version-locked in the wrapper).
+**Location:** Vendored at `apps/api/narrare/export/typst/vendor/droplet/` with
+relative imports — no render-time network fetch.
 
 ### Libertinus Serif (bundled, OFL)
 **Why:** Production body font for PDF **and EPUB** export. Bundled for

@@ -44,10 +44,16 @@ export interface PdfOptions {
   include_toc: boolean;
 }
 
-/** EPUB-specific options (pandoc). Font embedding is unconditional (no flag). */
+/**
+ * EPUB-specific options (pandoc). Font embedding is unconditional (no flag).
+ * `isbn` / `description` are request-level, user-optional metadata (IO-001
+ * follow-up): null = unset → the EPUB renderer omits dc:identifier/description.
+ */
 export interface EpubOptions {
   cover_image_path: string | null;
   css: string | null;
+  isbn: string | null;
+  description: string | null;
 }
 
 /** Markdown-specific options (pandoc). */
