@@ -382,6 +382,20 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --all-packages --group dev
 
+      - name: Install export toolchain
+        # pandoc is required by the real-binary renderer unit tests in
+        # tests/unit/api/export/test_pandoc_{base,md}.py (ADR-081 / Slice 3).
+        # These live in tests/unit/ (NOT tests/integration/) because they need
+        # the binary but NO postgres — the integration conftest's
+        # session-autouse fixture would skip them when the DB is down. Without
+        # pandoc here, their ``skipif(not shutil.which("pandoc"))`` guard skips
+        # them in every CI job (test-integration/test-e2e install the toolchain
+        # but only collect tests/integration|e2e/), so the real renderer would
+        # never be exercised in CI. Typst is included for the upcoming PDF
+        # renderer tests (Slice 4/5, also tests/unit/). EPUBCheck is skipped —
+        # it needs Java and is CI-validation-only (golden tests).
+        run: bash scripts/install_export_toolchain.sh
+
       - name: Run unit tests
         id: tests
         env:
@@ -523,6 +537,12 @@ jobs:
       - name: Run migrations
         run: cd apps/api && uv run alembic upgrade head
 
+      - name: Install export toolchain
+        # Typst + pandoc (render binaries) + EPUBCheck (EPUB validation gate).
+        # The Golden-Pages acceptance tests (tests/golden/export/) need all
+        # three; the RULE-08 checker runs statically in the architecture job.
+        run: INSTALL_EPUBCHECK=1 bash scripts/install_export_toolchain.sh
+
       - name: Run integration tests
         run: |
           uv run pytest tests/integration/ -v -n auto --dist=loadfile --timeout=120 -m "not schema_mutating"
@@ -530,6 +550,17 @@ jobs:
           # run serially in a second phase — they must never race other tests
           # against the shared test-DB schema.
           uv run pytest tests/integration/ -v --timeout=120 -m schema_mutating
+
+      - name: Run Golden-Pages export tests (EPUBCheck gate)
+        # W3C EPUBCheck validates the rendered EPUB end-to-end (ADR-081 D7).
+        # EPUBCheck (installed above via INSTALL_EPUBCHECK=1) is a Java tool;
+        # the ubuntu runner image ships a JRE, so no setup-java step is needed.
+        # EPUBCheck is CI-only — never a local-dev or production dependency —
+        # so this gate lives in tests/golden/ and is exercised only here (the
+        # test-unit job installs pandoc but not EPUBCheck, so the
+        # epubcheck-subprocess test skips there; the structural EPUB
+        # assertions still run in test-unit). Serial for clear EPUBCheck output.
+        run: uv run pytest tests/golden/ -v -m golden_pages --timeout=120
 
   # -------------------------------------------------------------------------
   # Update coverage badge in README (main push only)
@@ -814,6 +845,10 @@ jobs:
 
       - name: Seed dev user
         run: uv run python scripts/seed_dev_user.py
+
+      - name: Install export toolchain
+        # Typst + pandoc so a real export E2E can run (ADR-081).
+        run: INSTALL_EPUBCHECK=1 bash scripts/install_export_toolchain.sh
 
       - name: Build frontend
         run: cd packages/web && pnpm build

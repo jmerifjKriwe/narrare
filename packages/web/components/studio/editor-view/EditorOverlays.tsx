@@ -3,6 +3,7 @@ import type { Editor } from "@tiptap/react";
 import { AnimatePresence } from "motion/react";
 import { CommandPalette } from "../editor/CommandPalette";
 import type { CommandContext, CommandState } from "../editor/commands";
+import { ExportPanel } from "../export/ExportPanel";
 import { ExtractionPanel } from "../extraction/ExtractionPanel";
 import { NameGeneratorModal } from "../generation/NameGeneratorModal";
 
@@ -18,6 +19,8 @@ interface EditorOverlaysProps {
   setNameGeneratorOpen: (open: boolean) => void;
   extractionPanelOpen: boolean;
   toggleExtractionPanel: () => void;
+  exportOpen: boolean;
+  setExportOpen: (open: boolean) => void;
   queryClient: QueryClient;
 }
 
@@ -33,6 +36,8 @@ export function EditorOverlays({
   setNameGeneratorOpen,
   extractionPanelOpen,
   toggleExtractionPanel,
+  exportOpen,
+  setExportOpen,
   queryClient,
 }: EditorOverlaysProps) {
   return (
@@ -49,6 +54,7 @@ export function EditorOverlays({
         isOpen={nameGeneratorOpen}
         onClose={() => setNameGeneratorOpen(false)}
       />
+      <ExportPanel novelId={novelId} isOpen={exportOpen} onClose={() => setExportOpen(false)} />
       <AnimatePresence>
         {extractionPanelOpen && (
           <ExtractionPanel

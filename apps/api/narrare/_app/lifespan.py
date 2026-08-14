@@ -148,7 +148,9 @@ async def _periodic_cleanup_loop() -> None:
     """Periodically clean up stale generation requests every 5 minutes.
 
     Runs indefinitely until cancelled.  Each iteration handles its own
-    errors so a single failure does not stop the loop.
+    errors so a single failure does not stop the loop.  Also sweeps the
+    in-memory export-job registry (D1): drops expired artifact records +
+    unlinks their temp files (the safety net for artifacts never downloaded).
     """
     while True:
         await asyncio.sleep(300)
@@ -158,6 +160,14 @@ async def _periodic_cleanup_loop() -> None:
                 logger.info("periodic_cleanup", stale_cleaned=count)
         except Exception:
             logger.warning("periodic_cleanup_failed", exc_info=True)
+        try:
+            from narrare.export import registry as export_registry
+
+            swept = export_registry.sweep_expired()
+            if swept > 0:
+                logger.info("export_artifact_sweep", jobs_swept=swept)
+        except Exception:
+            logger.warning("export_artifact_sweep_failed", exc_info=True)
 
 
 @asynccontextmanager

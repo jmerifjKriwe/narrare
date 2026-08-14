@@ -31,6 +31,7 @@ describe("NovelCard", () => {
         formatDate={(d) => d}
         onDelete={vi.fn()}
         onEdit={vi.fn()}
+        onExport={vi.fn()}
         isDeleting={false}
       />,
     );
@@ -46,6 +47,7 @@ describe("NovelCard", () => {
         formatDate={(d) => d}
         onDelete={vi.fn()}
         onEdit={vi.fn()}
+        onExport={vi.fn()}
         isDeleting={false}
       />,
     );
@@ -60,6 +62,7 @@ describe("NovelCard", () => {
         formatDate={(d) => d}
         onDelete={vi.fn()}
         onEdit={onEdit}
+        onExport={vi.fn()}
         isDeleting={false}
       />,
     );
@@ -75,10 +78,27 @@ describe("NovelCard", () => {
         formatDate={(d) => d}
         onDelete={onDelete}
         onEdit={vi.fn()}
+        onExport={vi.fn()}
         isDeleting={false}
       />,
     );
     fireEvent.click(screen.getByTestId("delete-novel-btn"));
     expect(onDelete).toHaveBeenCalledWith("n1", "My Novel");
+  });
+
+  it("calls onExport when the export button is clicked (IO-001)", () => {
+    const onExport = vi.fn();
+    render(
+      <NovelCard
+        novel={novel}
+        formatDate={(d) => d}
+        onDelete={vi.fn()}
+        onEdit={vi.fn()}
+        onExport={onExport}
+        isDeleting={false}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("export-novel-btn"));
+    expect(onExport).toHaveBeenCalledWith("n1");
   });
 });

@@ -204,6 +204,69 @@ queue-depth / coverage metrics or dedicated monitoring UI.
 
 ---
 
+## Export Toolchain
+
+> Added by ADR-081 (2026-08-10). Manuscript export is a deterministic, non-LLM
+> render pipeline (no ModelRegistry, no PromptComposer, no agent — see the
+> non-LLM call-out in ADR-081).
+
+### Typst (pre-1.0, exact-pinned)
+**Why:** Chosen PDF engine for manuscript export (ADR-081). Single ~15 MB static
+binary; **byte-reproducible** output (decisive for the Golden-Pages CI
+acceptance test); correct PDF text layer (ToUnicode). Knuth-Plass-class line
+breaking; no glyph expansion (the accepted ~5–10% gap vs LaTeX on compound-heavy
+German — user bar = ~95%, "sehr hochwertig"). Pre-1.0 (v0.15.x) → exact version
+pin mandatory; Golden-Pages test is the regression net across bumps.
+**Role:** PDF rendering via a bespoke `narrare-roman` Typst package (vendored at
+`apps/api/narrare/export/typst/`, owned — not a community template fork).
+**Location:** Invoked ONLY inside `apps/api/narrare/export/renderers/typst.py`
+(RULE-08).
+**Canonical source:** `scripts/install_export_toolchain.sh` pins the exact tag
+(bake-off-verified floor: v0.15.1; Platform locks the latest stable at IO-001
+Slice 0). This document records only the major-version commitment (pre-1.0
+v0.15.x); check the script for the installed tag.
+**Not:** LaTeX (footprint + non-reproducible), SILE (f-ligature ToUnicode
+defect), WeasyPrint / `python-docx` / `ebooklib` (superseded by ADR-081).
+
+### pandoc (exact-pinned)
+**Why:** Intermediate converter for all three export formats: HTML → Typst AST
+(PDF, with `--to=typst --shift-heading-level-by=-1`), HTML → EPUB3, HTML →
+Markdown. Robust fire&forget for the simpler formats.
+**Role:** HTML → target AST.
+**Location:** Invoked ONLY inside
+`apps/api/narrare/export/renderers/pandoc_*.py` (RULE-08).
+**Canonical source:** `scripts/install_export_toolchain.sh`.
+
+### EPUBCheck (CI gate, not in release image)
+**Why:** The EPUB validation standard. CI gate for the EPUB renderer
+(no half-implementations — RULE-20).
+**Role:** CI-only validation of rendered EPUBs. Not a runtime dependency.
+**Canonical source:** `scripts/install_export_toolchain.sh` (installed only when
+`INSTALL_EPUBCHECK=1`, i.e. CI).
+
+### `@preview/droplet` (optional, pinned)
+**Why:** Drop-cap support in `narrare-roman`, OFF by default ("die mag nicht jeder").
+**Role:** Optional Typst preview package imported by `narrare-roman` only when
+`drop_caps: true`.
+**Canonical source:** pinned in `apps/api/narrare/export/typst/` (vendored or
+version-locked in the wrapper).
+
+### Libertinus Serif (bundled, OFL)
+**Why:** Production body font for PDF **and EPUB** export. Bundled for
+reproducible output with **NO silent font fallback** in either binary format
+(the bake-off's headline fire&forget failure was templates silently falling back
+to the wrong font — D7 extends the no-silent-fallback principle to EPUB).
+Markdown is plain text and carries no font. EB Garamond was the bake-off
+comparison font only.
+**Role:** Body font in `narrare-roman` (PDF — compiled in by Typst) **and**
+embedded in EPUB via pandoc `--epub-embed-font` (regular/italic/bold/bolditalic
+variants) — one bundled font, two embedding mechanisms, one font policy.
+**Location:** `apps/api/narrare/export/typst/fonts/` + `LICENSE-OFL.txt`
+(recorded at vendoring). Both renderers read from this single directory (D3).
+**Not:** EB Garamond (comparison font only); system fonts (silent fallback risk).
+
+---
+
 ## Validation & Configuration
 
 ### Pydantic `v2`

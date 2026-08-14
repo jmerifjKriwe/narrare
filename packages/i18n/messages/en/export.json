@@ -1,0 +1,81 @@
+{
+  "title": "Export manuscript",
+  "subtitle": "Generate a downloadable file of your manuscript.",
+  "openExport": "Export",
+  "close": "Close",
+  "format": {
+    "label": "Format",
+    "pdf": "PDF",
+    "epub": "EPUB",
+    "markdown": "Markdown",
+    "pdfDescription": "Print-ready PDF with Libertinus Serif.",
+    "epubDescription": "EPUB e-book with embedded font.",
+    "markdownDescription": "Plain Markdown text file.",
+    "unavailable": "Unavailable — render tool not installed."
+  },
+  "scope": {
+    "label": "Scope",
+    "allVolumes": "All volumes",
+    "volumeLabel": "Volume: {name}"
+  },
+  "content": {
+    "label": "Include in manuscript",
+    "frontMatter": "Front matter",
+    "backMatter": "Back matter",
+    "summaries": "Chapter summaries",
+    "characterList": "Character list",
+    "locationGlossary": "Location glossary"
+  },
+  "pdf": {
+    "label": "PDF options",
+    "paperSize": "Paper size",
+    "paperBFormat": "B format (129 × 198 mm)",
+    "paperA5": "A5",
+    "paperA4": "A4",
+    "paperLetter": "US Letter",
+    "paperCustom": "Custom",
+    "fontSize": "Body font size (pt)",
+    "leading": "Leading ratio",
+    "dropCaps": "Drop caps",
+    "tableOfContents": "Table of contents",
+    "margins": {
+      "label": "Margins (mm)",
+      "inside": "Inside",
+      "outside": "Outside",
+      "top": "Top",
+      "bottom": "Bottom"
+    }
+  },
+  "epub": {
+    "label": "EPUB options",
+    "coverImage": "Cover image path",
+    "css": "Custom stylesheet (CSS)"
+  },
+  "markdown": {
+    "label": "Markdown options",
+    "chapterHeadingLevel": "Chapter heading level"
+  },
+  "export": {
+    "action": "Export",
+    "exporting": "Exporting…",
+    "rememberSettings": "Remember settings for next time"
+  },
+  "status": {
+    "label": "Export status",
+    "pending": "Queued — waiting to start…",
+    "running": "Rendering your manuscript…",
+    "completed": "Export ready.",
+    "failed": "Export failed.",
+    "download": "Download",
+    "downloadAgain": "Download again",
+    "startNew": "New export",
+    "errorPrefix": "Error: {message}"
+  },
+  "errors": {
+    "formatsFailed": "Could not load available formats.",
+    "createFailed": "Could not start the export.",
+    "downloadFailed": "Could not download the file.",
+    "formatUnavailable": "This format is not available right now.",
+    "jobLost": "This export is no longer available (the server may have restarted)."
+  }
+}

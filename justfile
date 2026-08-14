@@ -312,9 +312,13 @@ test-unit-cov:
     uv run pytest tests/unit/ --cov --cov-report=term-missing
     @echo "Unit coverage complete."
 
-# Run one or more specific test files
-# Usage: just test-file tests/unit/core/llm/test_gateway.py
-# Usage: just test-file tests/unit/core/llm/test_gateway.py tests/unit/core/llm/test_other.py
+# Run one or more specific test files. Everything after the recipe name is
+# passed through to pytest, so extra flags work directly:
+#   just test-file tests/unit/core/llm/test_gateway.py
+#   just test-file tests/unit/core/llm/test_gateway.py -x -p no:xdist
+#   just test-file tests/unit/core/llm/test_gateway.py --pdb -k "session"
+# (Plain pytest runs single-process: `-n auto` only comes from the `test`/
+# `test-unit` recipes, so `-p no:xdist` is optional here.)
 test-file +files:
     uv run pytest {{files}} -v
 
@@ -349,6 +353,13 @@ vrt:
 vrt-update:
     bash scripts/run_vrt.sh --update
 
+# Regenerate Golden-Pages export baselines (sha256 + drift metrics) from the
+# current narrare-roman / Typst / pandoc output. Review the git diff and commit
+# only if the rendering change is intentional (ADR-081 §"Quality gate"). Mirrors
+# the VRT baseline workflow: drift = CI failure → human review → bless.
+golden-update:
+    uv run pytest tests/golden/export/test_golden_pages.py -v -m golden_pages --golden-update -p no:xdist
+
 # Back-compat alias for `just vrt`.
 test-vrt:
     just vrt
@@ -367,6 +378,12 @@ check:
 # Run all checks with full tool output
 check-verbose:
     uv run python scripts/run_checks.py --verbose
+
+# Validate after every slice/step: all standard checks + full test suite.
+# This is the everyday full gate (check + test-all). `check-full` remains the
+# pre-merge gate; verify deliberately does NOT include it (check-secrets needs
+# the gitleaks binary, which is missing locally).
+verify: check test-all
 
 # Run architecture constraint checker
 check-architecture:
@@ -387,9 +404,19 @@ lint-check:
     uv run ruff check apps/ packages/ scripts/ tests/ evals/
     uv run ruff format --check apps/ packages/ scripts/ tests/ evals/
 
+# Fast scoped ruff check (lint + format --check) for iterating on one file/dir.
+# Whole-repo gate is `just lint-check`.
+lint-file path='apps/':
+    uv run ruff check {{path}}
+    uv run ruff format --check {{path}}
+
 # Run pyright type checker
 typecheck:
     uv run pyright
+
+# Fast scoped pyright for specific files. Whole-project gate is `just typecheck`.
+typecheck-file +files:
+    uv run pyright {{files}}
 
 # Run pyright on test files (basic mode, tests/pyrightconfig.json). Closes the
 # gate gap: the main pyright config excludes tests/ for performance, so test-
@@ -655,3 +682,11 @@ hooks-update:
 check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health check-feature-paths
     uv run python scripts/check_current_state_facts.py
     @echo "✅ All checks passed — ready to merge"
+
+# ---------------------------------------------------------------------------
+# Skills
+# ---------------------------------------------------------------------------
+
+# Externe Skills aktualisieren (.agents/skills + vendored superpowers) — danach git diff reviewen.
+skills-update:
+    bash scripts/update-skills.sh

@@ -1,6 +1,6 @@
 # ADR-081 — Manuscript Export Pipeline: Narrare Normalizer + Typst (`narrare-roman`)
 
-> **Status:** ✅ Accepted (decision recorded; implementation tracked under feature IO-001)
+> **Status:** ✅ Implemented (2026-08-14; IO-001; PR #163)
 > **Date:** 2026-08-10
 > **Deciders:** Architecture Agent, Coordinator, User (engine pick)
 > **Supersedes:** the PDF approach sketched in `docs/features/io/IO-001-export.md`

@@ -43,6 +43,7 @@ ENFORCED_RULES: tuple[str, ...] = (
     "RULE-02",  # Prompt building — only in core/prompts/
     "RULE-04",  # File size limits — modularize, don't compress
     "RULE-07",  # Import direction — no core → apps imports
+    "RULE-08",  # Export render-binary confinement — typst/pandoc only in renderers/
     "RULE-11",  # Silent failures — no bare except, no silent swallow
     "RULE-15",  # Forbidden files — no middleware.ts in packages/web/
     "RULE-18",  # Router config — no hardcoded constants

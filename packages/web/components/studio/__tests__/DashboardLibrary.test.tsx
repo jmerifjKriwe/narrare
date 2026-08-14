@@ -50,6 +50,7 @@ const handlers = {
   onDeleteNovel: vi.fn(),
   onEditNovel: vi.fn(),
   onNewNovel: vi.fn(),
+  onExportNovel: vi.fn(),
   isDeleting: false,
   formatDate: (d: string) => d,
 };

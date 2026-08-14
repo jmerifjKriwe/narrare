@@ -22,11 +22,23 @@ import type {
   AdaptiveToggleInput,
   AdaptiveWeightsInput,
   AdaptiveWeightsResponse,
+  Artifact,
   DialogueAlternative,
   DialogueCoachRequest,
   DialogueCoachResponse,
   DialogueCoachStreamEvent,
   DialogueIssue,
+  EpubOptions,
+  ExportFormat,
+  ExportJob,
+  ExportJobStatus,
+  ExportOptions,
+  ExportRequest,
+  FormatAvailability,
+  MarkdownOptions,
+  MirroredMargins,
+  PaperSize,
+  PdfOptions,
 } from "@/types";
 
 function fieldNames<T extends object>(sample: T): string[] {
@@ -180,5 +192,125 @@ describe("dialogueCoach types mirror Pydantic (RULE-17)", () => {
     };
     expect(fieldNames(sample)).toContain("event");
     expect(fieldNames(sample)).toContain("is_final");
+  });
+});
+
+describe("export types mirror Pydantic (RULE-17 — IO-001 / ADR-081)", () => {
+  // SSOT: apps/api/narrare/export/options.py + contracts.py, surfaced via the
+  // OpenAPI spec (docs/reference/openapi.json). snake_case preserved.
+
+  it("ExportFormat / ExportJobStatus / PaperSize enum values match the StrEnums", () => {
+    const formats: ExportFormat[] = ["pdf", "epub", "md"];
+    expect(formats).toEqual(["pdf", "epub", "md"]);
+
+    const statuses: ExportJobStatus[] = ["pending", "running", "completed", "failed"];
+    expect(statuses).toEqual(["pending", "running", "completed", "failed"]);
+
+    const papers: PaperSize[] = ["b-format-129x198", "a5", "a4", "letter", "custom"];
+    expect(papers).toEqual(["b-format-129x198", "a5", "a4", "letter", "custom"]);
+  });
+
+  it("ExportJob matches the public job view (ExportJob model)", () => {
+    const sample: ExportJob = {
+      job_id: "job-1",
+      novel_id: "00000000-0000-0000-0000-000000000001",
+      format: "pdf",
+      status: "completed",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:01Z",
+      artifact_url: "/api/v1/export/jobs/job-1/artifact?token=t",
+      error: null,
+    };
+    expect(fieldNames(sample)).toEqual([
+      "artifact_url",
+      "created_at",
+      "error",
+      "format",
+      "job_id",
+      "novel_id",
+      "status",
+      "updated_at",
+    ]);
+  });
+
+  it("ExportOptions matches the per-request options model", () => {
+    const sample: ExportOptions = {
+      format: "pdf",
+      volume_id: null,
+      include_front_matter: true,
+      include_back_matter: true,
+      include_summaries: false,
+      include_character_list: false,
+      include_location_glossary: false,
+      pdf_options: null,
+      epub_options: null,
+      markdown_options: null,
+    };
+    expect(fieldNames(sample)).toEqual([
+      "epub_options",
+      "format",
+      "include_back_matter",
+      "include_character_list",
+      "include_front_matter",
+      "include_location_glossary",
+      "include_summaries",
+      "markdown_options",
+      "pdf_options",
+      "volume_id",
+    ]);
+  });
+
+  it("PdfOptions / EpubOptions / MarkdownOptions field names", () => {
+    const pdf: PdfOptions = {
+      paper_size: "b-format-129x198",
+      margins: null,
+      body_size_pt: 11,
+      leading_ratio: 1.2,
+      drop_caps: false,
+      include_toc: true,
+    };
+    expect(fieldNames(pdf)).toEqual([
+      "body_size_pt",
+      "drop_caps",
+      "include_toc",
+      "leading_ratio",
+      "margins",
+      "paper_size",
+    ]);
+
+    const epub: EpubOptions = { cover_image_path: null, css: null };
+    expect(fieldNames(epub)).toEqual(["cover_image_path", "css"]);
+
+    const md: MarkdownOptions = { chapter_heading_level: 1, include_front_matter: true };
+    expect(fieldNames(md)).toEqual(["chapter_heading_level", "include_front_matter"]);
+  });
+
+  it("MirroredMargins + FormatAvailability + ExportRequest field names", () => {
+    const margins: MirroredMargins = {
+      inside_mm: 20,
+      outside_mm: 15,
+      top_mm: 18,
+      bottom_mm: 18,
+    };
+    expect(fieldNames(margins)).toEqual(["bottom_mm", "inside_mm", "outside_mm", "top_mm"]);
+
+    const availability: FormatAvailability = { format: "pdf", available: true };
+    expect(fieldNames(availability)).toEqual(["available", "format"]);
+
+    const request: ExportRequest = {
+      novel_id: "00000000-0000-0000-0000-000000000001",
+      options: { format: "epub" } as ExportOptions,
+    };
+    expect(fieldNames(request)).toEqual(["novel_id", "options"]);
+  });
+
+  it("Artifact (renderer output) field names — NOT a REST response shape", () => {
+    const artifact: Artifact = {
+      format: "pdf",
+      path: "/tmp/x.pdf",
+      media_type: "application/pdf",
+      suggested_filename: "novel.pdf",
+    };
+    expect(fieldNames(artifact)).toEqual(["format", "media_type", "path", "suggested_filename"]);
   });
 });

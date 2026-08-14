@@ -10,6 +10,29 @@
 
 ---
 
+## Project Language: English
+
+**English is the project language.** Write all of the following in English:
+
+- source code (identifiers, strings, comments, docstrings)
+- tests (names, bodies, assertions, comments)
+- documentation under `docs/`
+- scripts under `scripts/`
+
+This holds **regardless** of the language you (the developer) use to talk to your AI.
+Writing the conversation in German, French, or any other language does not change the
+project language of the artifacts you produce.
+
+**On encountering non-English text**: when you touch code, tests, docs, or scripts that
+contain German (or other) formulations, convert them to English on the fly as part of
+your change.
+
+**Exception**: user-facing i18n message files under `packages/i18n/` hold the actual
+product translations (German, French, …) and are intentionally multilingual — do not
+"translate" those to English.
+
+---
+
 ## Python Standards
 
 ### Python Version & Typing

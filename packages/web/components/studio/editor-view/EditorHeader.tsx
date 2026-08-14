@@ -1,4 +1,4 @@
-import { Clock, LayoutGrid, PanelRight, Save } from "lucide-react";
+import { Clock, Download, LayoutGrid, PanelRight, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEditorStore } from "@/lib/stores/editorStore";
 
@@ -7,10 +7,18 @@ interface EditorHeaderProps {
   setTitle: (title: string) => void;
   lastSaved: string | null;
   handleSave: () => Promise<void>;
+  onExport: () => void;
 }
 
-export function EditorHeader({ title, setTitle, lastSaved, handleSave }: EditorHeaderProps) {
+export function EditorHeader({
+  title,
+  setTitle,
+  lastSaved,
+  handleSave,
+  onExport,
+}: EditorHeaderProps) {
   const t = useTranslations("studio");
+  const tExport = useTranslations("export");
   const activeRightPanel = useEditorStore((s) => s.rightPanel.active);
   const storyboardOpen = useEditorStore((s) => s.storyboardOpen);
   const toggleContextPanel = useEditorStore((s) => s.toggleContextPanel);
@@ -31,6 +39,16 @@ export function EditorHeader({ title, setTitle, lastSaved, handleSave }: EditorH
           <Clock className="w-4 h-4" />
           <span>{lastSaved ?? "--:--"}</span>
         </div>
+        <button
+          type="button"
+          onClick={onExport}
+          className="p-2 rounded-md hover:bg-accent transition-colors"
+          title={tExport("openExport")}
+          aria-label={tExport("openExport")}
+          data-testid="editor-export-btn"
+        >
+          <Download className="w-4 h-4" />
+        </button>
         <button
           type="button"
           onClick={toggleStoryboard}

@@ -18,6 +18,7 @@ import asyncio
 import pytest
 from structlog.testing import capture_logs
 
+import narrare.export.tasks as export_tasks
 import narrare.kb.embedding_hooks as embedding_hooks
 import narrare.series.tasks as series_tasks
 from narrare._app import inflight
@@ -25,6 +26,7 @@ from narrare._app import inflight
 _DRAIN_SOURCES = {
     "narrare.kb.embedding_hooks",
     "narrare.series.tasks",
+    "narrare.export.tasks",
 }
 
 
@@ -53,6 +55,7 @@ def _empty_inflight_sets(  # pyright: ignore[reportUnusedFunction]
     """
     monkeypatch.setattr(embedding_hooks, "_INFLIGHT_TASKS", set[asyncio.Task[None]]())
     monkeypatch.setattr(series_tasks, "_INFLIGHT_TASKS", set[asyncio.Task[None]]())
+    monkeypatch.setattr(export_tasks, "_INFLIGHT_TASKS", set[asyncio.Task[None]]())
 
 
 class TestDrainInflightTasks:
@@ -63,25 +66,29 @@ class TestDrainInflightTasks:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Every task in both GC-guard sets is cancelled and awaited."""
+        """One task per drain source is cancelled, awaited, and logged."""
         task_a = asyncio.create_task(_never_finish())
         task_b = asyncio.create_task(_never_finish())
-        await asyncio.sleep(0)  # let both coroutines start
+        task_c = asyncio.create_task(_never_finish())
+        await asyncio.sleep(0)  # let the coroutines start
 
         monkeypatch.setattr(embedding_hooks, "_INFLIGHT_TASKS", {task_a})
         monkeypatch.setattr(series_tasks, "_INFLIGHT_TASKS", {task_b})
+        monkeypatch.setattr(export_tasks, "_INFLIGHT_TASKS", {task_c})
 
         with capture_logs() as logs:
             await inflight.drain_inflight_tasks()
 
         assert task_a.cancelled()
         assert task_b.cancelled()
+        assert task_c.cancelled()
         assert task_a.done()
         assert task_b.done()
+        assert task_c.done()
 
         # Each cancelled task is surfaced at info level with its source.
         events = [r for r in logs if r.get("event") == "background_task_cancelled_shutdown"]
-        assert len(events) == 2
+        assert len(events) == 3
         assert all(e.get("log_level") == "info" for e in events)
         assert {e.get("source") for e in events} == _DRAIN_SOURCES
         assert all(e.get("task_name") for e in events)

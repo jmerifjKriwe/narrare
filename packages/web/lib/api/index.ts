@@ -19,6 +19,8 @@ export {
 } from "./core";
 export type { DialogueCoachStreamHandlers } from "./dialogue-coach-stream";
 export { streamDialogueCoach } from "./dialogue-coach-stream";
+export type { DownloadedArtifact } from "./export";
+export { exportApi, parseArtifactToken } from "./export";
 export type {
   ContextMeta,
   ExtendLength,

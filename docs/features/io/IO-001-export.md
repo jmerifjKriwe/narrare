@@ -1,7 +1,7 @@
 ---
 id: IO-001
 title: "Manuscript Export"
-status: planned
+status: stable
 area: io
 mvp: false
 
@@ -45,7 +45,7 @@ requires: [WRITE-011]
 
 # IO-001 — Manuscript Export
 
-> **Status:** 📋 Planned — **architecturally decided ([ADR-081](../../architecture/decisions/ADR-081-export-pipeline-typst.md))**; implementation not started.
+> **Status:** ✅ Implemented / Stable — [ADR-081](../../architecture/decisions/ADR-081-export-pipeline-typst.md) fully implemented across Slices 0–8; PR #163 CI green (Golden-Pages 26 passed, EPUBCheck passed). Shipped formats: **PDF** (Typst + `narrare-roman`), **EPUB** (pandoc EPUB3), **Markdown** (pandoc). Deferred: DOCX, drop cap (5g), isbn/description metadata.
 
 ## What it does
 
@@ -195,8 +195,10 @@ URL when ready.
   headline fire&forget failure)
 - **Libertinus Serif is bundled (OFL)** for reproducible PDF output — no silent
   font fallback
-- ePub does not support custom fonts embedded from Narrare; the reader's
-  font settings apply
+- EPUB embeds the bundled **Libertinus Serif (OFL)** via pandoc
+  `--epub-embed-font`, consistent with PDF; the reader may still override
+  via its own font settings, but there is no silent fallback to a different
+  font at export time
 - DOCX is **deferred** (out of scope for ADR-081); pandoc can add it trivially
   later. The normalizer strips Narrare-specific markup (AIAnnotation, GhostText)
   from all formats
@@ -228,3 +230,21 @@ URL when ready.
   (Typst + `narrare-roman` + pandoc; Narrare Normalizer; Golden-Pages test).
   Supersedes the earlier WeasyPrint / `python-docx` / `ebooklib` sketch. DOCX
   deferred. Implementation not started.
+- `2026-08-14` — **Implemented / Stable**: 4-stage non-LLM export pipeline shipped
+  via PR #163 (Slices 0–8). **Stage 1:** Narrare Normalizer (Core, pure) strips
+  AIAnnotation/GhostText, normalizes SceneBreak/DialogueMark — strip-guarantee
+  asserted per mark. **Stage 2:** pandoc converts normalized HTML to target AST
+  (Typst/EPUB3/Markdown) with baked-in seam-fixes F-1/F-6/F-7. **Stage 3:**
+  Three RULE-08 renderer adapters — TypstPdfRenderer (bespoke `narrare-roman`
+  package, scope floor 5a–5f complete: recto starts, mirrored Satzspiegel, running
+  heads, 4-phase numbering, TOC, smart quotes/hyphenation, scene-break ornament;
+  Libertinus Serif bundled OFL both formats), PandocEpubRenderer (EPUB3 +
+  Libertinus embedded via `--epub-embed-font`), PandocMarkdownRenderer. **Stage 4:**
+  In-process `asyncio.create_task` job (ADR-080) with in-memory registry,
+  signed-token artifact delivery. CI gates green: Golden-Pages 26 passed / 0
+  skipped (6 parametrized variants), EPUBCheck 5.3.0 passed. RULE-08 AST
+  confinement checker enforced in CI. Toolchain pins: Typst 0.15.1, pandoc
+  3.10.1, EPUBCheck 5.3.0. Graceful binary-absence degradation tested.
+  **Deferred:** DOCX (pandoc can add trivially — feature-spec change, not engine
+  decision), drop cap 5g (fast-follow via `@preview/droplet`), isbn/description
+  EPUB metadata (optional follow-up).

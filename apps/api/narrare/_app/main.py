@@ -111,6 +111,39 @@ def create_app(*, test_mode: bool = False) -> FastAPI:
             content={"detail": str(exc), "code": exc.code},
         )
 
+    # --- Export-domain error handler (IO-001 / ADR-081) ---
+    # ExportError is its own hierarchy (NOT a NarrareError subclass — the
+    # contracts keep export errors decoupled from the shared error infra), so
+    # it needs a dedicated handler. Maps the typed errors to HTTP so the
+    # router stays free of try/except (RULE-06): 404 unknown job, 410
+    # gone/expired artifact, 503 format-unavailable (binary missing), 400 for
+    # any other ExportError (e.g. ExportRenderError surfacing unexpectedly).
+    from narrare.export.errors import (
+        ExportArtifactExpiredError,
+        ExportError,
+        ExportFormatUnavailableError,
+        ExportJobNotFoundError,
+    )
+
+    @app.exception_handler(ExportError)
+    async def _export_error_handler(  # pyright: ignore[reportUnusedFunction]
+        _: Request, exc: ExportError
+    ) -> JSONResponse:
+        if isinstance(exc, ExportJobNotFoundError):
+            status_code = 404
+        elif isinstance(exc, ExportArtifactExpiredError):
+            status_code = 410
+        elif isinstance(exc, ExportFormatUnavailableError):
+            status_code = 503
+        else:
+            status_code = 400
+        code = type(exc).__name__
+        logger.warning("export_error", code=code, detail=str(exc))
+        return JSONResponse(
+            status_code=status_code,
+            content={"detail": str(exc), "code": code},
+        )
+
     # --- Unhandled exception handler ---
     @app.exception_handler(Exception)
     async def _unhandled_exception_handler(  # pyright: ignore[reportUnusedFunction]
@@ -162,6 +195,7 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.chapters.router_versions import router as chapter_versions_router
     from narrare.chat.router import router as chat_router
     from narrare.embeddings.router import router as embeddings_router
+    from narrare.export.router import router as export_router
     from narrare.generation.router import router as generation_router
     from narrare.kb.router import router as kb_router
     from narrare.kb.router_consistency import router as kb_consistency_router
@@ -236,6 +270,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(ai_assist_router, prefix=prefix)
     app.include_router(embeddings_router)  # Full paths already include /api/v1/admin/embeddings/
     app.include_router(volumes_router, prefix=prefix)
+    app.include_router(export_router, prefix=prefix)
     app.include_router(kb_router, prefix=prefix)
     app.include_router(kb_consistency_router, prefix=prefix)
     app.include_router(kb_graph_router, prefix=prefix)

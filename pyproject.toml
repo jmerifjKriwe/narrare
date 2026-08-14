@@ -28,6 +28,11 @@ dev = [
   "pytest-playwright>=0.7",
   "pydantic-evals==2.26.0",
   "jsonschema>=4.26.0",
+  # PyMuPDF — PDF inspection for the Golden-Pages render probes
+  # (tests/golden/export/). Pulled forward from Slice 7 for the Slice 5a
+  # inline geometric-spine probe (folio count, recto-start parity, font
+  # no-fallback) and stays the probe library for every later sub-slice.
+  "pymupdf>=1.28",
 ]
 
 # Workspace root is a virtual container (no importable package here).
@@ -193,6 +198,7 @@ markers = [
   "requires_db: marks tests requiring database connection",
   "mutation_inert: test inspects static repo structure (source tree, manifests, file existence) — cannot kill mutants and is incompatible with the MutMut copy-based sandbox; excluded from mutation runs via `-m 'not mutation_inert'`",
   "schema_mutating: test mutates the SHARED test-DB schema (alembic downgrade/upgrade round-trip) — must NEVER run concurrently under xdist; `just test` and CI run it in a dedicated serial phase after the parallel batch",
+  "golden_pages: Golden-Pages acceptance tests — real render binaries (typst/pandoc) + EPUBCheck, no LLM; collected in the integration job where the export toolchain is installed",
 ]
 norecursedirs = ["e2e", ".venv", "node_modules", ".git", "dist", "build", "__pycache__", "*.egg-info", ".hypothesis", ".pytest_cache"]
 
@@ -287,6 +293,16 @@ agent_allowed_modules = [
   "scripts/probes/",  # Probes construct fake agents (TestModel) for runtime evidence
 ]
 prompt_allowed_modules = ["packages/core/narrare_core/prompts/"]
+# RULE-08 (ADR-081): the ONLY files allowed to spawn the production render
+# binaries (typst, pandoc) via a subprocess. Exact renderer-adapter file paths.
+# Enforced by scripts/architecture/_checkers/export_binary_confinement.py.
+# EPUBCheck is CI-only (test harness) and deliberately out of scope.
+export_binary_allowed_modules = [
+  "apps/api/narrare/export/renderers/typst.py",
+  "apps/api/narrare/export/renderers/pandoc_base.py",
+  "apps/api/narrare/export/renderers/pandoc_md.py",
+  "apps/api/narrare/export/renderers/pandoc_epub.py",
+]
 forbidden_llm_imports = ["openai", "anthropic", "pydantic_ai"]
 forbidden_llm_urls = [
   "api.openai.com",

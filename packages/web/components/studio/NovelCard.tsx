@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Download, Pencil, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { IconButton } from "@/components/ui/icon-button";
@@ -27,11 +27,20 @@ export interface NovelCardProps {
   readonly formatDate: (dateStr: string) => string;
   readonly onDelete: (id: string, title: string) => void;
   readonly onEdit: (id: string) => void;
+  readonly onExport: (id: string) => void;
   readonly isDeleting: boolean;
 }
 
-export function NovelCard({ novel, formatDate, onDelete, onEdit, isDeleting }: NovelCardProps) {
+export function NovelCard({
+  novel,
+  formatDate,
+  onDelete,
+  onEdit,
+  onExport,
+  isDeleting,
+}: NovelCardProps) {
   const t = useTranslations("studio");
+  const tExport = useTranslations("export");
 
   return (
     <motion.div
@@ -46,8 +55,19 @@ export function NovelCard({ novel, formatDate, onDelete, onEdit, isDeleting }: N
         onClick={() => onEdit(novel.id)}
         variant="ghost"
         size="sm"
-        className="absolute top-4 right-14 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity"
+        className="absolute top-4 right-20 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity"
         data-testid="edit-novel-btn"
+      />
+
+      {/* Export button */}
+      <IconButton
+        label={tExport("openExport")}
+        icon={Download}
+        onClick={() => onExport(novel.id)}
+        variant="ghost"
+        size="sm"
+        className="absolute top-4 right-36 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity"
+        data-testid="export-novel-btn"
       />
 
       {/* Delete button */}

@@ -10,6 +10,7 @@ const namespaces = [
   "dashboard",
   "editor",
   "errors",
+  "export",
   "generation",
   "settings",
   "settings-ai",

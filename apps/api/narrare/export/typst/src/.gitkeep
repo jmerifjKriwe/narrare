@@ -1,0 +1,4 @@
+# Slice 5 fills this directory with the narrare-roman book modules
+# (paper.typ, margins.typ, opener.typ, heads.typ, numbering.typ, toc.typ,
+# quotes.typ, hyphenation.typ, scene_break.typ, body.typ, drop_cap.typ,
+# wrapper.typ). Slice 0 ships only the package skeleton + bundled font.

@@ -4609,6 +4609,169 @@
         }
       }
     },
+    "/api/v1/export/formats": {
+      "get": {
+        "tags": [
+          "export"
+        ],
+        "summary": "List Formats",
+        "description": "List every format + whether its render binary is available (RULE-11).",
+        "operationId": "list_formats_api_v1_export_formats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FormatAvailability"
+                  },
+                  "type": "array",
+                  "title": "Response List Formats Api V1 Export Formats Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/export": {
+      "post": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Create Export",
+        "description": "Create + dispatch an export job (201). 503 if the format is unavailable.",
+        "operationId": "create_export_api_v1_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/export/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Get Export Job",
+        "description": "Poll an export job's status (404 if unknown — lost on restart, D1).",
+        "operationId": "get_export_job_api_v1_export_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/export/jobs/{job_id}/artifact": {
+      "get": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Download Export Artifact",
+        "description": "Download the artifact once (200 stream, 404 unknown, 410 gone/expired).\n\nProxies the file as an attachment (per the IO-001 decision: a proxied\nstream, NOT a 302 redirect). The temp file is unlinked after the response\nstream completes via the ``BackgroundTask``.",
+        "operationId": "download_export_artifact_api_v1_export_jobs__job_id__artifact_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Single-use artifact token from the job's artifact_url.",
+              "title": "Token"
+            },
+            "description": "Single-use artifact token from the job's artifact_url."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/resolve-references": {
       "post": {
         "tags": [
@@ -14605,6 +14768,217 @@
         "title": "EmotionScores",
         "description": "Emotion category scores for a text unit.\n\nEach emotion has a float score (0.0 to 1.0) representing the\nproportion of words in this text unit that evoke that emotion."
       },
+      "EpubOptions": {
+        "properties": {
+          "cover_image_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Image Path"
+          },
+          "css": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Css"
+          }
+        },
+        "type": "object",
+        "title": "EpubOptions",
+        "description": "EPUB-specific options (pandoc).\n\nLibertinus Serif (the bundled OFL font — the same files PDF uses, D3) is\nembedded **unconditionally** via pandoc ``--epub-embed-font``\n(regular/italic/bold/bolditalic). There is intentionally NO\n``embed_fonts`` flag: PDF embeds the font structurally (Typst compiles it\nin — no toggle), and EPUB matches that one-font-policy structure so there is\na single, footgun-free embedding model across both binary formats. A v1\ntoggle would only reintroduce the silent-fallback failure mode the\nno-silent-fallback principle exists to prevent (D7). Markdown is plain text\nand carries no font."
+      },
+      "ExportFormat": {
+        "type": "string",
+        "enum": [
+          "pdf",
+          "epub",
+          "md"
+        ],
+        "title": "ExportFormat",
+        "description": "Output format produced by a renderer."
+      },
+      "ExportJob": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ExportFormat"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExportJobStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "artifact_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Url"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "novel_id",
+          "format",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ExportJob",
+        "description": "Public job view returned by ExportService.\n\nThe ``artifact_url`` is set only on COMPLETED and carries the signed token\n(D1)."
+      },
+      "ExportJobStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "running",
+          "completed",
+          "failed"
+        ],
+        "title": "ExportJobStatus",
+        "description": "Export job lifecycle states (no ``unavailable`` — see ExportFormatUnavailableError)."
+      },
+      "ExportOptions": {
+        "properties": {
+          "format": {
+            "$ref": "#/components/schemas/ExportFormat"
+          },
+          "volume_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume Id"
+          },
+          "include_front_matter": {
+            "type": "boolean",
+            "title": "Include Front Matter",
+            "default": true
+          },
+          "include_back_matter": {
+            "type": "boolean",
+            "title": "Include Back Matter",
+            "default": true
+          },
+          "include_summaries": {
+            "type": "boolean",
+            "title": "Include Summaries",
+            "default": false
+          },
+          "include_character_list": {
+            "type": "boolean",
+            "title": "Include Character List",
+            "default": false
+          },
+          "include_location_glossary": {
+            "type": "boolean",
+            "title": "Include Location Glossary",
+            "default": false
+          },
+          "pdf_options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PdfOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "epub_options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EpubOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "markdown_options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarkdownOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "format"
+        ],
+        "title": "ExportOptions",
+        "description": "Per-export request options. Only the block matching ``format`` is consumed."
+      },
+      "ExportRequest": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "options": {
+            "$ref": "#/components/schemas/ExportOptions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id",
+          "options"
+        ],
+        "title": "ExportRequest",
+        "description": "Body of ``POST /api/v1/export``: which novel + which options.\n\n``options.format`` selects the renderer; the renderer-specific options block\n(``pdf_options`` / ``epub_options`` / ``markdown_options``) is the only one\nconsumed. The domain :class:`ExportOptions` is embedded directly — no field\nduplication."
+      },
       "ExtendLength": {
         "type": "string",
         "enum": [
@@ -14877,6 +15251,24 @@
         ],
         "title": "FeedbackSeverity",
         "description": "Severity level for analysis feedback."
+      },
+      "FormatAvailability": {
+        "properties": {
+          "format": {
+            "$ref": "#/components/schemas/ExportFormat"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          }
+        },
+        "type": "object",
+        "required": [
+          "format",
+          "available"
+        ],
+        "title": "FormatAvailability",
+        "description": "One row of ``GET /export/formats``: a format + its availability flag.\n\nCarried as an object (not a bare ``[format, bool]`` tuple) so the JSON is\nself-describing for API consumers."
       },
       "GapFinding": {
         "properties": {
@@ -16466,6 +16858,52 @@
         ],
         "title": "LoginRequest"
       },
+      "MarkdownOptions": {
+        "properties": {
+          "chapter_heading_level": {
+            "type": "integer",
+            "title": "Chapter Heading Level",
+            "default": 1
+          },
+          "include_front_matter": {
+            "type": "boolean",
+            "title": "Include Front Matter",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "MarkdownOptions",
+        "description": "Markdown-specific options (pandoc)."
+      },
+      "MirroredMargins": {
+        "properties": {
+          "inside_mm": {
+            "type": "number",
+            "title": "Inside Mm"
+          },
+          "outside_mm": {
+            "type": "number",
+            "title": "Outside Mm"
+          },
+          "top_mm": {
+            "type": "number",
+            "title": "Top Mm"
+          },
+          "bottom_mm": {
+            "type": "number",
+            "title": "Bottom Mm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "inside_mm",
+          "outside_mm",
+          "top_mm",
+          "bottom_mm"
+        ],
+        "title": "MirroredMargins",
+        "description": "Mirrored Satzspiegel (inside/outside, not left/right). Units: mm."
+      },
       "ModelCatalogProvenance": {
         "properties": {
           "source": {
@@ -17231,6 +17669,59 @@
         ],
         "title": "POVScene",
         "description": "A single scene with its detected POV character.\n\nAttributes:\n    scene_index: 0-based index of the scene within the chapter.\n    start_position: Character offset where this scene begins.\n    end_position: Character offset where this scene ends.\n    pov_character: Name of the detected POV character, or ``None``\n        if the scene appears omniscient / unclear.\n    confidence: Confidence score for the POV assignment (0.0-1.0)."
+      },
+      "PaperSize": {
+        "type": "string",
+        "enum": [
+          "b-format-129x198",
+          "a5",
+          "a4",
+          "letter",
+          "custom"
+        ],
+        "title": "PaperSize",
+        "description": "Paper sizes narrare-roman supports. CUSTOM carries width/height in mm."
+      },
+      "PdfOptions": {
+        "properties": {
+          "paper_size": {
+            "$ref": "#/components/schemas/PaperSize",
+            "default": "b-format-129x198"
+          },
+          "margins": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MirroredMargins"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "body_size_pt": {
+            "type": "number",
+            "title": "Body Size Pt",
+            "default": 11.0
+          },
+          "leading_ratio": {
+            "type": "number",
+            "title": "Leading Ratio",
+            "default": 1.2
+          },
+          "drop_caps": {
+            "type": "boolean",
+            "title": "Drop Caps",
+            "default": false
+          },
+          "include_toc": {
+            "type": "boolean",
+            "title": "Include Toc",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "PdfOptions",
+        "description": "PDF-specific options. Maps 1:1 to NarrareRomanConfig keys."
       },
       "PreferenceResponse": {
         "properties": {

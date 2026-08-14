@@ -81,6 +81,18 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+# --- Export toolchain (ADR-081) ---
+# Installs Typst + pandoc (the two production render binaries). No EPUBCheck
+# in the release image — it is CI-only (PDF/EPUB/MD don't need it at runtime).
+# The script is the single source of truth for the exact version pins (D4);
+# see scripts/install_export_toolchain.sh.
+# Vendored narrare-roman + Libertinus Serif travel inside
+# apps/api/narrare/export/typst/ (already present via the app source).
+COPY scripts/install_export_toolchain.sh /tmp/install_export_toolchain.sh
+RUN chmod +x /tmp/install_export_toolchain.sh \
+    && /tmp/install_export_toolchain.sh \
+    && rm /tmp/install_export_toolchain.sh
+
 WORKDIR /app
 
 # --- Python virtual environment (production deps only) ---
