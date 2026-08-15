@@ -107,6 +107,8 @@
 
 | [ADR-081](ADR-081-export-pipeline-typst.md) | Manuscript Export Pipeline — Narrare Normalizer (Core, pure: TipTap HTML → clean semantic HTML/MD, strips AIAnnotation/GhostText, normalizes SceneBreak/DialogueMark) + **Typst** PDF engine via bespoke `narrare-roman` package (`pandoc --to=typst --shift-heading-level-by=-1` → thin Narrare wrapper; 3 baked-in seam-fixes F-1/F-6/F-7; clean/minimal aesthetic; recto chapter starts, mirrored Satzspiegel, 4-phase röm→arab, running heads; Libertinus Serif bundled OFL; drop caps optional default OFF via `@preview/droplet`) + pandoc EPUB3/Markdown; in-process `asyncio.create_task` job (post-ADR-080, ProcessPool escalation contingency); Golden-Pages Acceptance Test in CI (fire&forget robustness gate). Chosen over LaTeX (best quality but ~300–600 MB + non-reproducible; user bar ~95% accepts no glyph expansion), SILE (disqualified: f-ligature ToUnicode breaks search/copy), pandoc+community-template (refuted: general-doc, no book features, silent font fallback). Supersedes the WeasyPrint/python-docx/ebooklib approach in IO-001. | ✅ Implemented | 2026-08-10 | `packages/core/narrare_core/export/` (normalizer), `apps/api/narrare/export/` (service + renderers + router), `narrare-roman` Typst package, IO-001, RULE-03/08/11/12/20 |
 
+| [ADR-082](ADR-082-token-budget-governance.md) | Token-Budget Governance: Cascade Integration + Model-Boundary Capping | ✅ | 2026-08-15 | `packages/core/narrare_core/context/` (budget.py, budget_resolver.py, contracts.py, series_history.py), `apps/api/narrare/settings/token_limits/`, `apps/api/narrare/writing/` (deps_pipeline, _helpers), `apps/api/narrare/analysis/beta_reader_service.py`, SET-005, CR-08 P0, RULE-03/07/11/18b/20 |
+
 ---
 
 ## How to Create a New ADR
