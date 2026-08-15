@@ -9,10 +9,11 @@
 > to the relevant Spec owner.
 >
 > **Created:** 2026-07-28
-> **Last updated:** 2026-08-06 (Specs 1–4 COMPLETE; Spec 5 deferred as a separate feature)
+> **Last updated:** 2026-08-14 (Specs 1–4 COMPLETE; **Spec 5 RETIRED as YAGNI** — PO decision; Series program formally complete)
 >
 > **Program status:** Specs 1–4 COMPLETE (ADR-075 / ADR-077 / ADR-078 / ADR-079 — all ✅
-> Implemented). Spec 5 (Series Export) is deferred as a separate feature.
+> Implemented). Spec 5 (Series Export) was RETIRED 2026-08-14 as YAGNI (PO decision) —
+> the Series program is formally complete. No Spec 5 brainstorming cycle will occur.
 
 ---
 
@@ -161,6 +162,10 @@ Series-scope drift adds:
 
 ## Notes for Spec 5 — Series Export
 
+> **⚠ RETIRED 2026-08-14 (YAGNI, PO decision):** Spec 5 will not be built.
+> The notes below are preserved as the historical brainstorming record.
+> See `2026-08-14-post-export-followups-design.md` §2 for the retirement rationale.
+
 ### Export modes (likely)
 
 - **Einzeltitel:** unchanged (current export per novel).
@@ -231,9 +236,9 @@ get lost. Each item lists its target Spec.
 | **Drag-sort for novel order** | Spec 2 (initial: up/down buttons suffice) | Polish; not Foundation-critical |
 | **Batch promote/demote** (multi-select entries, bulk scope change) | Spec 2 | Per-Entry is sufficient for Foundation |
 | **Series search/filter in Dashboard** | Spec 2 | Premature optimisation |
-| **Series cover image upload** | Spec 5 (Export) | Cosmetic; not Foundation |
+| **Series cover image upload** | No Spec (retired with Spec 5, 2026-08-14) | Cosmetic; no validated user problem |
 | **Series-Voice tab functional** | Spec 3 | Disabled-placeholder in Spec 1; Spec 3 fills (closes ADR-074 Review Trigger) |
-| **Series-Export** (Manuscript, Bibel) | Spec 5 | Out of Foundation scope |
+| **Series-Export** (Manuscript, Bibel) | RETIRED with Spec 5 (2026-08-14, YAGNI) | No real user problem for a local-first single-user tool; see design doc §2 |
 | **Generation-Context for Band N** (state-at-(N−1) read-merge) | Spec 2 | Needs the Foundation to exist first |
 | **Cross-Novel-Drift** (ANAL-009 series-scope extension) | Spec 4 | Needs Spec 1+2+3 |
 | **Multi-Series-Membership / Crossover** | No Spec (YAGNI) | Migration path to join-table known if real demand emerges |
@@ -266,6 +271,7 @@ Workspace) is designed to host all later additions without restructuring.
 | 2026-08-02 | Spec 2 = Series Generation Context (ADR-077) — `BandSummaryAgent` aggregates chapter summaries into a novel-level band summary; `series_history` optional var + `band_summary` context_mode on SUMMARIZE; series-canon + latest-known-state read-merge injected when generating Band N | Lets Band N generation see the series canon + state-at-(N−1) without a curated per-novel summary field (reuses WIKI-001 chapter summaries) | Spec 2 (and feeds Specs 3/4 baselines) |
 | 2026-08-05 | Spec 3 = Series Voice Hierarchy (ADR-078) — opt-in cascade: `SeriesSettings.author_voice` is a trend baseline (one signal), novel-level voice wins when profiled (no forced injection into deliberately different-voiced books); closes ADR-074 Review Trigger | Forced cascade would inject the author's usual patterns into an experimental book; opt-in cascade respects both series coherence and per-novel intent | Spec 3 (closes ADR-074); Spec 4 reads the series voice as drift baseline |
 | 2026-08-06 | Spec 4 = Series Cross-Novel Drift (ADR-079) — both cross-novel drift modes: (a) canon-contradiction via new `SeriesConsistencyAgent` (novel prose vs series Canon KB) and (b) series-scope voice drift reusing the `AuthorVoiceDriftAgent` pipeline with `SeriesSettings.author_voice` as trend baseline; read-scope = current-band-vs-series (not full-series batch scan — YAGNI); integrated in Bände-Tab; stateless v1 | Two distinct drift signals (factual canon break vs stylistic voice drift) need separate detection but share the per-band surface; reusing the voice pipeline avoids a new drift agent | Spec 4; Spec 5 (Export) remains deferred as a separate feature |
+| 2026-08-14 | Spec 5 (Series Export) RETIRED as YAGNI — PO decision: Reihen-Manuskript is a niche edge case (per-band export already exists via IO-001; beta readers and publishers receive individual bands), Reihen-Bibel is niche-of-niche for a local-first single-user tool; Series program formally complete with Specs 1–4 | Both hypothesized export modes were pre-IO-001 speculation, never validated against a user problem | Program closure (docs pass C0; see `2026-08-14-post-export-followups-design.md` §2) |
 
 ---
 

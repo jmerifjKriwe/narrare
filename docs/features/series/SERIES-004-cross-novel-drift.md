@@ -84,8 +84,9 @@ time. This feature is the cross-novel complement of CONS-001 (which checks
 *within* one novel) and ANAL-009 (which checks narrator drift *within* one
 novel).
 
-This is Spec 4 of 5 in the Series program. Specs 1–3 are implemented; Spec 5
-(Export) remains downstream.
+This is Spec 4 of 5 in the Series program. Specs 1–3 are implemented.
+Spec 5 (Export) was retired 2026-08-14 as YAGNI (PO decision); the Series
+program is complete with Specs 1–4.
 
 ## How it works (User perspective)
 
@@ -211,4 +212,5 @@ This is Spec 4 of 5 in the Series program. Specs 1–3 are implemented; Spec 5
   results repository + `GET …/consistency/{novel_id}` retrieval) is deferred
   out-of-v1. Closes ADR-078's Spec-4 Review-Trigger item (series voice read as
   one signal via the repository contract). Status → `stable`. The Series
-  program Spec 1–4 is complete; Spec 5 (Export) is downstream.
+  program Spec 1–4 is complete; Spec 5 (Export) was retired 2026-08-14 as
+  YAGNI (PO decision).
