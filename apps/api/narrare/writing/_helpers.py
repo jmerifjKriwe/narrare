@@ -118,6 +118,7 @@ async def prepare_generation_context(
     relationship_repo: RelationshipRepository | None,
     session_memory: SessionMemoryCollector | None,
     series_history_provider: SeriesHistoryProvider | None = None,
+    series_history_budget: int | None = None,
 ) -> tuple[str | None, str, str, str]:
     """Resolve tone, KB relationships, cross-session + series-history context.
 
@@ -132,6 +133,8 @@ async def prepare_generation_context(
         session_memory: Optional session memory collector (None → empty).
         series_history_provider: Optional series-history provider (None →
             empty — standalone path / backward compatible).
+        series_history_budget: Resolved series-history token ceiling
+            (ADR-082; ``None`` → provider default).
 
     Returns:
         Tuple of ``(custom_tone_instructions, kb_relationships_text,
@@ -157,6 +160,7 @@ async def prepare_generation_context(
     series_history = await fetch_series_history(
         series_history_provider,
         request_model.novel_id,
+        token_budget=series_history_budget,
     )
     return custom_tone, kb_relationships.text, cross_session, series_history
 
@@ -164,12 +168,18 @@ async def prepare_generation_context(
 async def fetch_series_history(
     provider: SeriesHistoryProvider | None,
     novel_id: UUID,
+    *,
+    token_budget: int | None = None,
 ) -> str:
-    """Fetch the series-history block (Spec 2 / SERIES-002).
+    """Fetch the series-history block (Spec 2 / SERIES-002, ADR-082).
 
     Args:
         provider: Optional SeriesHistoryProvider (no-op if None).
         novel_id: The novel being generated for.
+        token_budget: Resolved series-history ceiling from the
+            ContextBudgetResolver (ADR-082 — the API always passes the
+            resolved value; the parameter stays explicit per the ADR
+            inventory).  ``None`` → provider default (16,000).
 
     Returns:
         The ``Previously in this series:`` block, or empty string when the
@@ -177,7 +187,9 @@ async def fetch_series_history(
     """
     if provider is None:
         return ""
-    return await provider.assemble_series_history(novel_id)
+    if token_budget is None:
+        return await provider.assemble_series_history(novel_id)
+    return await provider.assemble_series_history(novel_id, token_budget=token_budget)
 
 
 async def get_validated_request(

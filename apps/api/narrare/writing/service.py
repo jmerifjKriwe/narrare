@@ -76,6 +76,7 @@ class WritingService:
         relationship_repo: RelationshipRepository | None = None,
         session_memory: SessionMemoryCollector | None = None,
         series_history_provider: SeriesHistoryProvider | None = None,
+        series_history_budget: int | None = None,
     ) -> None:
         self._repo = repo
         self._pipeline = pipeline
@@ -90,6 +91,7 @@ class WritingService:
         self._relationship_repo = relationship_repo
         self._session_memory = session_memory
         self._series_history_provider = series_history_provider
+        self._series_history_budget = series_history_budget
 
     # -- Generation lifecycle -------------------------------------------
 
@@ -159,6 +161,7 @@ class WritingService:
             relationship_repo=self._relationship_repo,
             session_memory=self._session_memory,
             series_history_provider=self._series_history_provider,
+            series_history_budget=self._series_history_budget,
         )
 
         accumulated: list[str] = []

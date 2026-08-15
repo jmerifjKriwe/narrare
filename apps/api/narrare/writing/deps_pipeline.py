@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 def create_pipeline(
     draft_processor: DraftProcessor,
     tier_overrides: dict[str, float] | None = None,
+    total_budget: int | None = None,
 ) -> WritingPipeline:
     """Create a WritingPipeline with the invocation pipeline wired.
 
@@ -40,6 +41,11 @@ def create_pipeline(
             Production factories source this from the resolved
             ``TokenLimitsService.get_resolved_limits().tier_percentages``
             (FIND-012 / CR-AUFG-08-02).
+        total_budget: Resolved input-context total (ADR-082 — the tier
+            base after model-boundary capping and the series-history
+            carve-out).  ``None`` (default) keeps the assembler's Core
+            default (32,000); production factories pass the resolver's
+            ``writing_tier_base``.
 
     Returns:
         Configured WritingPipeline with InvocationPipeline attached.
@@ -48,10 +54,18 @@ def create_pipeline(
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.pipeline import WritingPipeline
 
+    if total_budget is None:
+        context_assembler = WritingContextAssembler(tier_overrides=tier_overrides)
+    else:
+        context_assembler = WritingContextAssembler(
+            tier_overrides=tier_overrides,
+            total_budget=total_budget,
+        )
+
     return WritingPipeline(
         registry=get_model_registry(),
         composer=get_composer(),
-        context_assembler=WritingContextAssembler(tier_overrides=tier_overrides),
+        context_assembler=context_assembler,
         draft_processor=draft_processor,
         agent_registry=get_agent_registry(),
         invocation_pipeline=get_invocation_pipeline(),

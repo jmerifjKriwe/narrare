@@ -145,3 +145,35 @@ class TestStreamGenerationSeriesHistory:
         _ = [chunk async for chunk in service.stream_generation(request_model.id, str(user_id))]
 
         assert capture["series_history"] == ""
+
+
+class TestStreamGenerationSeriesHistoryBudget:
+    async def test_forwards_series_history_budget_to_provider(
+        self,
+        mock_repo: AsyncMock,
+        config: ResolvedModelConfig,
+    ) -> None:
+        """C5/ADR-082: the resolved series-history ceiling reaches the
+        provider call (RULE-18b runtime-consumer evidence)."""
+        user_id = uuid.uuid4()
+        request_model = _make_request_model(user_id)
+        mock_repo.get_by_id.return_value = request_model
+
+        pipeline = _make_streaming_pipeline()
+        provider = AsyncMock()
+        provider.assemble_series_history.return_value = "Previously…"
+
+        service = WritingService(
+            repo=mock_repo,
+            pipeline=pipeline,
+            draft_processor=_make_draft_processor(),
+            config=config,
+            series_history_provider=provider,
+            series_history_budget=12_000,
+        )
+
+        _ = [chunk async for chunk in service.stream_generation(request_model.id, str(user_id))]
+
+        provider.assemble_series_history.assert_awaited_once_with(
+            request_model.novel_id, token_budget=12_000
+        )
