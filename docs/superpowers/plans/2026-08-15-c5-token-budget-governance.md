@@ -2289,15 +2289,19 @@ Refs: ADR-082, docs/superpowers/specs/2026-08-14-post-export-followups-design.md
 
 ---
 
-### Task 3d: Beta-reader wiring + rewritten-default sweep + docs (slice-final gate)
+### Task 3d: Beta-reader wiring + token-limits API surface + rewritten-default sweep + docs (slice-final gate)
 
 **Files:**
 - Modify: `apps/api/narrare/analysis/dependencies_beta_reader.py` (async factory resolving the analysis budget)
+- Modify: `apps/api/narrare/settings/token_limits/schemas.py` (ADR-082 D1 HTTP-surface exposure: +2 fields on `UpdateTokenLimitsRequest`, +2 on `TokenLimitOverridesResponse` — Deviations item 9)
+- Modify: `apps/api/narrare/settings/token_limits/router.py` (GET passes both resolved budget keys to the response)
 - Modify (docs): `docs/architecture/decisions/ADR-082-token-budget-governance.md` (one-line Decision 3 window-source clarification), `docs/features/settings/SET-005-configurable-token-limits.md`, `docs/_shared/CURRENT_STATE.md`
-- Test: `tests/unit/api/analysis/test_analysis_dependencies.py` (rewrite the beta-reader factory test for the async signature + budget assertion)
+- Test: `tests/unit/api/analysis/test_analysis_dependencies.py` (rewrite the beta-reader factory test for the async signature + budget assertion), `tests/unit/api/settings/test_token_limits_router.py` (extend — ADR-082 D1 write + readback tests)
+
+> **Production-file count: exactly 3** (`dependencies_beta_reader.py`, `schemas.py`, `router.py`) — within the ≤3 cap, **no exception needed**. Placement ruling (Deviations item 9): the readback requires `router.py` alongside `schemas.py` (the GET response is constructed field-by-field, not auto-derived), which would have taken Task 3b from 3 to 5 production files; the exposure also completes the slice-closure claims this task's docs and completeness gate make ("the existing token-limits PATCH API is the configuration surface").
 
 **Interfaces:**
-- Consumes: `resolve_context_budgets` (Task 3b); `TokenLimitsService.get_resolved_limits` (Task 2b); `AnalysisContextAssembler(total_budget=...)`.
+- Consumes: `resolve_context_budgets` (Task 3b); `TokenLimitsService.get_resolved_limits` (Task 2b); `TokenLimitOverrides.context_total_budget` / `.series_history_budget` (Task 2a — GET readback kwargs); `AnalysisContextAssembler(total_budget=...)`.
 - Produces: `get_beta_reader_service(session, user_id, novel_id) -> BetaReaderService` (async; FastAPI resolves `novel_id` from the endpoints' declared `novel_id` parameter (query) and `user_id` via `CurrentUserIdDep` — both beta-reader endpoints declare them). `BetaReaderService` itself is **unchanged** (it already accepts `budget_assembler`).
 
 - [ ] **Step 1: Rewrite the beta-reader factory test (failing first)**
@@ -2518,7 +2522,112 @@ async def get_beta_reader_service(
 Run: `just test-file tests/unit/api/analysis/`
 Expected: PASS — rewritten factory test green; beta-reader service/agent/cache/router tests green (service constructors unchanged; router uses `Depends(get_beta_reader_service)` — FastAPI supports async dependencies and resolves the additional params from the endpoints' declared `novel_id` parameter (query) + `CurrentUserIdDep`).
 
-- [ ] **Step 5: Full unit sweep — rewritten-default regression gate**
+- [ ] **Step 5: Expose the budget keys on the token-limits HTTP surface (failing tests first — ADR-082 Decision 1, Deviations item 9)**
+
+5a. In `tests/unit/api/settings/test_token_limits_router.py`, append a new section at the end of the file:
+
+```python
+# ======================================================================
+# Tests: ADR-082 context-budget keys on the HTTP surface
+# ======================================================================
+
+
+class TestContextBudgetKeySurface:
+    """ADR-082 Decision 1: the token-limits API is the user-configuration
+    surface for both context-budget keys — writable via PUT, readable
+    back via GET (Deviations item 9).
+    """
+
+    async def test_budget_keys_round_trip_put_then_get(self, service) -> None:
+        """PUT persists both keys; GET reads the resolved values back."""
+        await update_user_limits(
+            request=UpdateTokenLimitsRequest(
+                context_total_budget=48_000, series_history_budget=9_000
+            ),
+            user_id="user_budget_round_trip",
+            service=service,
+        )
+
+        result = await get_resolved_limits(
+            user_id="user_budget_round_trip",
+            project_id=None,
+            service=service,
+        )
+
+        assert result.context_total_budget == 48_000
+        assert result.series_history_budget == 9_000
+
+    async def test_get_budget_keys_default_to_core_constants(self, service) -> None:
+        """No overrides -> the response reports the Core-sourced defaults."""
+        result = await get_resolved_limits(
+            user_id="user_budget_defaults",
+            project_id=None,
+            service=service,
+        )
+
+        assert result.context_total_budget == DEFAULT_TOTAL_BUDGET
+        assert result.series_history_budget == DEFAULT_SERIES_HISTORY_BUDGET
+
+    def test_budget_keys_reject_below_1024(self) -> None:
+        """The HTTP write boundary mirrors _INT_FIELD_MINIMA (ge=1_024)."""
+        with pytest.raises(ValidationError):
+            UpdateTokenLimitsRequest(context_total_budget=512)
+
+        with pytest.raises(ValidationError):
+            UpdateTokenLimitsRequest(series_history_budget=512)
+```
+
+(The file already imports `DEFAULT_TOTAL_BUDGET` / `DEFAULT_SERIES_HISTORY_BUDGET`, `get_resolved_limits`, `update_user_limits`, `UpdateTokenLimitsRequest`, `pytest`, and `ValidationError` at the top — no import changes. The `service` fixture is the real `TokenLimitsService` over the in-memory fakes, so the round trip exercises PUT → `validate_token_overrides` → fake user-DB → GET resolution → response mapping end-to-end.)
+
+- [ ] **Step 6: Run the tests to verify they fail**
+
+Run: `just test-file tests/unit/api/settings/test_token_limits_router.py`
+Expected: FAIL — `TestContextBudgetKeySurface` fails 3×: the round trip raises `HTTPException` 422 ("At least one field must be provided") at the PUT step (the request schema drops both keys — Pydantic default `extra='ignore'`), the defaults test fails with `AttributeError` (the response model lacks the fields), and the below-bound test fails because the extra kwargs are silently ignored, so no `ValidationError` is raised.
+
+- [ ] **Step 7: Expose both keys in `schemas.py` and `router.py`**
+
+7a. In `apps/api/narrare/settings/token_limits/schemas.py`, insert a new import between the `contracts` and `token_profiles` imports (isort order — identical import to Task 2a's `contracts.py` block):
+
+```python
+from narrare_core.context.budget import (
+    DEFAULT_SERIES_HISTORY_BUDGET,
+    DEFAULT_TOTAL_BUDGET,
+)
+```
+
+7b. In `UpdateTokenLimitsRequest`, append after the `ws_timeout` field line:
+
+```python
+    context_total_budget: int | None = Field(default=None, ge=1_024)
+    series_history_budget: int | None = Field(default=None, ge=1_024)
+```
+
+(The HTTP write boundary mirrors `_INT_FIELD_MINIMA` (Task 2a) — the sibling `ws_timeout` Field-constraint pattern. Before this, `extra='ignore'` silently dropped both keys, so they never reached the service validator — the write half of the Deviations-item-9 gap.)
+
+7c. In `TokenLimitOverridesResponse`, insert after the `ws_timeout: int = 1800` line:
+
+```python
+    context_total_budget: int = DEFAULT_TOTAL_BUDGET
+    series_history_budget: int = DEFAULT_SERIES_HISTORY_BUDGET
+```
+
+(Defaults single-sourced from Core, mirroring the `TokenLimitOverrides` dataclass — ADR-082 Decision 2: "API-side defaults import these constants (no drift possible)".)
+
+7d. In `apps/api/narrare/settings/token_limits/router.py`, in the `get_resolved_limits` return statement, insert after the `ws_timeout=limits.ws_timeout,` line:
+
+```python
+        context_total_budget=limits.context_total_budget,
+        series_history_budget=limits.series_history_budget,
+```
+
+(The response is constructed field-by-field, not via `model_validate` — `router.py` is the sole construction site; without these kwargs the new response fields would serve their defaults forever, even with a DB override present.)
+
+- [ ] **Step 8: Run the settings suites to verify they pass**
+
+Run: `just test-file tests/unit/api/settings/test_token_limits_router.py tests/unit/api/settings/test_token_limits_context_budgets.py tests/unit/api/settings/test_token_limits_resolution.py`
+Expected: PASS — `TestContextBudgetKeySurface` 3× green (round trip: user-DB override wins over defaults through the real resolution path); the Task 2a/2b suites are unchanged.
+
+- [ ] **Step 9: Full unit sweep — rewritten-default regression gate**
 
 Run: `rg -n "DEFAULT_TOTAL_BUDGET: int = 6000|token_budget: int = 512|_DEFAULT_TOKEN_BUDGET: int = 512" packages/ apps/`
 Expected: **no output** (all four lifted constants re-defaulted; ADR inventory items (a)1–4 complete).
@@ -2526,7 +2635,7 @@ Expected: **no output** (all four lifted constants re-defaulted; ADR inventory i
 Run: `just test-unit`
 Expected: PASS. Decision rule for any failure: (a) assertion on a *default* value → rewrite to the new default (or to the imported Core constant — prefer the constant); (b) test invoking a writing/analysis factory hermetically but now hitting the adapter → patch `narrare.settings.token_limits.context_budgets.resolve_context_budgets` in that test (never relax the production seam); (c) anything else → STOP and report (do not work around).
 
-- [ ] **Step 6: Update the SET-005 feature spec + ADR-082 window-source note**
+- [ ] **Step 10: Update the SET-005 feature spec + ADR-082 window-source note**
 
 In `docs/features/settings/SET-005-configurable-token-limits.md`, insert a new subsection directly **before** the `### Core Changes` heading:
 
@@ -2576,9 +2685,9 @@ Finally, in `docs/architecture/decisions/ADR-082-token-budget-governance.md`, ap
 > **Clarification (2026-08-15, C5 plan):** the window source is `get_model_limits` (`narrare_core.llm.cost_rates`) — the `ModelLimits | None` wrapper mirroring `DefaultRunLimitResolver`, as the Contract Sketch and resolver Protocol specify; the `get_model_limit_calibration` naming above is superseded.
 ```
 
-- [ ] **Step 7: Update CURRENT_STATE (item 13 + new date entry)**
+- [ ] **Step 11: Update CURRENT_STATE (item 13 + new date entry)**
 
-7a. In `docs/_shared/CURRENT_STATE.md`, in the numbered feature list, replace the item-13 opening (literal old text):
+11a. In `docs/_shared/CURRENT_STATE.md`, in the numbered feature list, replace the item-13 opening (literal old text):
 
 ```
 13. ✅ SET-005: Configurable Token Limits — storage/API/UI cascade exists; the CR-08 P0–P4 value-level work remains on disk (P0 model-boundary/tier-budget adoption; P1 token profile vocabulary, UI/API/Core parity/FIND-013, model-limit calibration, and suitability warnings/blocks; P2 operator/default governance; P3 governed defaults manifest; P4 status taxonomy).
@@ -2590,13 +2699,13 @@ with:
 13. ✅ SET-005: Configurable Token Limits — storage/API/UI cascade exists; **CR-08 P0 closed 2026-08-15 (ADR-082 / C5): model-boundary/tier-budget adoption** — new cascade keys `context_total_budget` (32k, writing + analysis) and `series_history_budget` (16k, guarded carve-out within the total), input-side window capping via `DefaultContextBudgetResolver` (`min(configured, window − reserve)`, `reserve = min(4,000 + effective_output_limit, window // 4)`, RULE-11 unknown-window passthrough), all four hardcoded input budgets lifted (6,000→32,000 ×2, 512→16,000 ×2). Remaining on disk: P1 token profile vocabulary, UI/API/Core parity/FIND-013, model-limit calibration, and suitability warnings/blocks; P2 operator/default governance; P3 governed defaults manifest; P4 status taxonomy.
 ```
 
-7b. Insert a new date entry directly **below** the `## Last Updated` heading (above the existing `Date: 2026-08-15 (Post-Export-Follow-ups program approved …` entry):
+11b. Insert a new date entry directly **below** the `## Last Updated` heading (above the existing `Date: 2026-08-15 (Post-Export-Follow-ups program approved …` entry):
 
 ```
-Date: 2026-08-15 (C5 — Token-Budget Governance **implemented**; [ADR-082](architecture/decisions/ADR-082-token-budget-governance.md) ✅ Implemented; CR-08 P0 "model-boundary/tier-budget adoption" closed. Two new SET-005 cascade keys — `context_total_budget` (default 32,000; one knob for writing **and** analysis, ADR-082 Decision 5) and `series_history_budget` (default 16,000; guarded carve-out `min(configured, 50% × effective_total)` within the total) — on `TokenLimitOverrides` + write-boundary bounds (≥ 1,024) + operator-env Fields `NARRARE_CONTEXT_TOTAL_BUDGET`/`NARRARE_SERIES_HISTORY_BUDGET`; JSONB store, **no migration**. New pure Core resolver `DefaultContextBudgetResolver` (`context/budget_resolver.py`, Protocol in `context/contracts.py`, mirrors `DefaultRunLimitResolver`): `reserve = min(4,000 + effective_output_limit, window // 4)`, `effective_total = min(configured, window − reserve)`, unknown window → uncapped passthrough + `cascade:window_unknown` tag (RULE-11); window source `get_model_limits` (models.dev, 24 h cache). All four hardcoded constants lifted: writing `TokenBudgetManager` 6,000→32,000, analysis `AnalysisBudgetManager` 6,000→32,000 (same Core constant), series-history tier + provider mirror 512→16,000 — documented intentional default break, regressions rewritten/pinned to the Core constants. Wiring: all five writing deps factories + beta-reader factory resolve via `settings/token_limits/context_budgets.py::resolve_context_budgets`; series-vs-standalone tier-base asymmetry per ADR-082 Decision 6 (carve-out only where `{{series_history}}` is actually injected). RULE-18b evidence: resolver unit tests (128k no-cap, 8k-window continuity 6,000/3,000, reserve boundary, containment) + per-factory wiring tests + cascade resolution tests (user→project→env→defaults). No UI, no new dependency (design doc §11; C1's slider preview consumes `EffectiveContextBudgets` next). Plan: [2026-08-15-c5-token-budget-governance.md](superpowers/plans/2026-08-15-c5-token-budget-governance.md).)
+Date: 2026-08-15 (C5 — Token-Budget Governance **implemented**; [ADR-082](architecture/decisions/ADR-082-token-budget-governance.md) ✅ Implemented; CR-08 P0 "model-boundary/tier-budget adoption" closed. Two new SET-005 cascade keys — `context_total_budget` (default 32,000; one knob for writing **and** analysis, ADR-082 Decision 5) and `series_history_budget` (default 16,000; guarded carve-out `min(configured, 50% × effective_total)` within the total) — on `TokenLimitOverrides` + write-boundary bounds (≥ 1,024) + operator-env Fields `NARRARE_CONTEXT_TOTAL_BUDGET`/`NARRARE_SERIES_HISTORY_BUDGET` + HTTP-surface exposure (writable via `UpdateTokenLimitsRequest` ge=1_024, readable via `TokenLimitOverridesResponse` — the PATCH API is the user-configuration surface, both directions); JSONB store, **no migration**. New pure Core resolver `DefaultContextBudgetResolver` (`context/budget_resolver.py`, Protocol in `context/contracts.py`, mirrors `DefaultRunLimitResolver`): `reserve = min(4,000 + effective_output_limit, window // 4)`, `effective_total = min(configured, window − reserve)`, unknown window → uncapped passthrough + `cascade:window_unknown` tag (RULE-11); window source `get_model_limits` (models.dev, 24 h cache). All four hardcoded constants lifted: writing `TokenBudgetManager` 6,000→32,000, analysis `AnalysisBudgetManager` 6,000→32,000 (same Core constant), series-history tier + provider mirror 512→16,000 — documented intentional default break, regressions rewritten/pinned to the Core constants. Wiring: all five writing deps factories + beta-reader factory resolve via `settings/token_limits/context_budgets.py::resolve_context_budgets`; series-vs-standalone tier-base asymmetry per ADR-082 Decision 6 (carve-out only where `{{series_history}}` is actually injected). RULE-18b evidence: resolver unit tests (128k no-cap, 8k-window continuity 6,000/3,000, reserve boundary, containment) + per-factory wiring tests + cascade resolution tests (user→project→env→defaults). No UI, no new dependency (design doc §11; C1's slider preview consumes `EffectiveContextBudgets` next). Plan: [2026-08-15-c5-token-budget-governance.md](superpowers/plans/2026-08-15-c5-token-budget-governance.md).)
 ```
 
-- [ ] **Step 8: Slice-final gates (ADR-082 Implementation Completeness Gate)**
+- [ ] **Step 12: Slice-final gates (ADR-082 Implementation Completeness Gate)**
 
 Run each and record exact results in the task report:
 
@@ -2609,16 +2718,19 @@ just test-unit
 
 Expected: all four PASS. Completeness-gate checklist (verify each, cite evidence in the report):
 1. ✅ Resolver + tests green (Task 1a).
-2. ✅ Both cascade keys end-to-end: storage (JSONB overrides + validators) → API (`TokenLimitOverrides` + env layer) → runtime consumers (5 writing factories + beta reader) → enforcement tests (`test_token_limits_context_budgets.py`, `test_token_limits_resolution.py::TestContextBudgetResolution`, `test_context_budget_wiring.py`, `test_analysis_dependencies.py`).
+2. ✅ Both cascade keys end-to-end: storage (JSONB overrides + validators) → API (`TokenLimitOverrides` + env layer + HTTP surface: `UpdateTokenLimitsRequest` write / `TokenLimitOverridesResponse` readback, Deviations item 9) → runtime consumers (5 writing factories + beta reader) → enforcement tests (`test_token_limits_context_budgets.py`, `test_token_limits_resolution.py::TestContextBudgetResolution`, `test_context_budget_wiring.py`, `test_analysis_dependencies.py`, `test_token_limits_router.py::TestContextBudgetKeySurface`).
 3. ✅ All four lifted constants re-defaulted with rewritten/pinned regressions (Tasks 1a/1b/2b + Step 5 sweep).
 4. ✅ Inventory documented in code comments (the four new constants + the ADR-082-tagged re-default sites; heuristic/stay constants already carry rationale comments — `_CHARS_PER_TOKEN`, `SUGGEST_MAX_TOKENS`, `APPROX_TOKEN_FACTOR`).
 5. ✅ CR-08 P0 closure recorded in CURRENT_STATE (Step 7).
 
-- [ ] **Step 9: Commit (via Platform, verbatim)**
+- [ ] **Step 13: Commit (via Platform, verbatim)**
 
 ```bash
 git add apps/api/narrare/analysis/dependencies_beta_reader.py \
+        apps/api/narrare/settings/token_limits/schemas.py \
+        apps/api/narrare/settings/token_limits/router.py \
         tests/unit/api/analysis/test_analysis_dependencies.py \
+        tests/unit/api/settings/test_token_limits_router.py \
         docs/architecture/decisions/ADR-082-token-budget-governance.md \
         docs/features/settings/SET-005-configurable-token-limits.md \
         docs/_shared/CURRENT_STATE.md
@@ -2636,7 +2748,14 @@ ADR-082 final wiring + slice closure:
   AnalysisContextAssembler(total_budget=resolved). FastAPI resolves
   novel_id from the endpoints' declared novel_id parameter (query) +
   user_id (CurrentUserIdDep) — both beta-reader endpoints already
-  declare them. BetaReaderService itself unchanged.
+   declare them. BetaReaderService itself unchanged.
+- settings/token_limits HTTP surface (ADR-082 Decision 1; Task 2b
+  review follow-up, plan Deviations item 9): UpdateTokenLimitsRequest
+  accepts both budget keys (ge=1_024, mirroring _INT_FIELD_MINIMA —
+  previously silently dropped via Pydantic extra='ignore');
+  TokenLimitOverridesResponse exposes them with Core-sourced defaults;
+  GET passes the resolved values. The PATCH API is now truly the
+  user-configuration surface D5 requires — writable AND readable.
 - ADR-082: one-line Decision 3 clarification — the window source is
   get_model_limits (cost_rates.py ModelLimits | None wrapper, the
   DefaultRunLimitResolver mirror), superseding the
@@ -2648,7 +2767,8 @@ ADR-082 final wiring + slice closure:
   entry (ADR-082 ✅ Implemented per the ADR completeness gate)
 
 Slice-complete per RULE-20: keys + resolver + all six wiring points +
-regression/pin/resolution tests landed together across Tasks 1a-3d.
+HTTP-surface exposure + regression/pin/resolution tests landed together
+across Tasks 1a-3d.
 Four hardcoded constants lifted (6,000 -> 32,000 x2, 512 -> 16,000 x2),
 documented intentional default break, no migration, no UI, no new
 dependency.
@@ -2666,15 +2786,17 @@ Refs: ADR-082, docs/superpowers/specs/2026-08-14-post-export-followups-design.md
 | Rewritten default regressions | Tasks 1a/1b/2b (default pins against imported Core constants; literal 512/6000 defaults eliminated — swept) |
 | Cascade resolution tests | Task 2b (`TestContextBudgetResolution`) |
 | Runtime-consumer enforcement | Tasks 3a–3d (seam + per-factory wiring tests, RULE-18b) |
-| `just verify` / full gates | Task 3d Step 8 (`check-architecture` + `typecheck` + `lint-check` + `test-unit`; run `just verify` if integration environment is up) |
+| HTTP-surface write + readback | Task 3d (`test_token_limits_router.py::TestContextBudgetKeySurface` — PUT→GET round trip, Core-constant default pins, ge=1_024 boundary; Deviations item 9) |
+| `just verify` / full gates | Task 3d Step 12 (`check-architecture` + `typecheck` + `lint-check` + `test-unit`; run `just verify` if integration environment is up) |
 
 ## Deviations & Interpretations (honest record — read before executing)
 
 1. **Sub-splitting for the ≤3-file cap:** the ADR's three-slice order is preserved as Tasks 1 (1a/1b), 2 (2a/2b), 3 (3a–3d). Split points: 1a/1b = contracts+resolver+writing-total vs. remaining re-defaults; 2a/2b = contract files vs. env/service/provider (service.py and settings_model.py must land together — `_apply_env_layer` reads the new Settings attributes); 3a/3b/3c/3d = seam / adapter+2 factories / 3 factories / analysis+docs.
 2. **`_merge_overrides` also changes (Task 2b):** the ADR wiring sketch names `_apply_env_layer` only; `_merge_overrides` reconstructs `TokenLimitOverrides` field-by-field and would silently discard env values for any field omitted — both functions carry the new keys, with an explicit regression test (`test_env_values_survive_unrelated_db_merge`).
-3. **Default-regression surface is smaller than "rewrite every 512/6000 assertion":** the sweeping `rg` hit list is dominated by *explicit* `total_budget=6000` / `token_budget=512` test fixtures (allocation-arithmetic inputs, not default regressions — they stay valid and untouched). The true default assertions found: `tests/unit/core/analysis/test_budget.py::test_default_total_budget` (rewritten in 1b) and the relative pin in `tests/unit/core/context/test_assembler.py` (passes unchanged). New positive default pins added for the writing manager (1b), the tier default (1b), and the provider mirror (2b); Step 5 of Task 3d sweeps production for stale literals.
+3. **Default-regression surface is smaller than "rewrite every 512/6000 assertion":** the sweeping `rg` hit list is dominated by *explicit* `total_budget=6000` / `token_budget=512` test fixtures (allocation-arithmetic inputs, not default regressions — they stay valid and untouched). The true default assertions found: `tests/unit/core/analysis/test_budget.py::test_default_total_budget` (rewritten in 1b) and the relative pin in `tests/unit/core/context/test_assembler.py` (passes unchanged). New positive default pins added for the writing manager (1b), the tier default (1b), and the provider mirror (2b); Step 9 of Task 3d sweeps production for stale literals.
 4. **`series_in_scope` interpretation (locked, see Global Constraints):** carve-out applies only where the series-history block is actually assembled (writing main path on a series novel). Extend/rewrite/coauthor/style-variants and analysis resolve with `False` (full total). Documented in-code at each call site.
 5. **Beta-reader factory signature change (async + 2 params):** required because cascade resolution needs `user_id`/`novel_id`; both router endpoints already declare these params, so FastAPI resolves them without router changes. One existing test class rewritten (Task 3d Step 1).
 6. **New API-side adapter file** (`settings/token_limits/context_budgets.py`): the ADR sketch listed wiring "indicative; finalized in the C5 implementation plan". Six call sites sharing one resolver construction justifies the module (RULE-04); it also gives tests a single hermetic patch point.
 7. **Window-source naming (ADR-082 Decision 3):** Decision 3 names `get_model_limit_calibration` (F1) as the resolver's window source, but the ADR's Contract Sketch/F1 and the resolver Protocol signature require `get_model_limits` — the `ModelLimits | None` wrapper in `core/llm/cost_rates.py:240`, the exact `DefaultRunLimitResolver` mirror the ADR mandates. Resolved to `get_model_limits` (used throughout this plan); Task 3d's docs step adds a one-line clarification note to ADR-082 Decision 3.
 8. **Task 2a RULE-04 conflict → Protocols split out of `contracts.py` (ruled 2026-08-15):** the original Task 2a brief's verbatim +18 lines (two ADR-082 budget fields with binding docstrings) took `settings/token_limits/contracts.py` from 190 to 208 lines, over the 200-line contracts hard limit (`pyproject.toml [tool.narrare.architecture.file_size_limits]`); the pre-commit `architecture-constraints` hook would have rejected the commit (same failure class as Task 1b). Ruled fix: `TokenLimitsRepositoryProtocol` + `TokenLimitsServiceProtocol` (with their section headers) move to a new `settings/token_limits/protocols.py`; `contracts.py` keeps the resolved domain model and code-default constants (≈126 lines, ≈74 headroom). Evidence for the extraction slice: verified Protocol importers are 2 production files (`consistency/checker_context.py`, `consistency/checker_service.py` — single TYPE_CHECKING lines) + 1 test file (`test_token_limits_resolution.py`, runtime import for `isinstance`), versus `TokenLimitOverrides`/constants with 3 production importers (`service.py`, `schemas.py`, `router.py`), ~9 test files, and every later C5 brief pinning `from …token_limits.contracts import TokenLimitOverrides` verbatim. Import direction stays one-way (`protocols → contracts`, TYPE_CHECKING-only; RULE-06/07 clean). Rejected alternatives: docstring compression (RULE-04 mandates modularize-not-compress; brief text verbatim-binding), a smaller authoring landing at 198/199 lines (brittle), raising the `contracts` limit or adding a checker exception (symptomatic governance change), and a `contracts.py` re-export shim to avoid touching consumers (permanent dual import path = workaround). The two new fields stay on `TokenLimitOverrides` in `contracts.py` exactly as originally specified. The fix round touches 4 production files — one over the ≤3-file delegation cap — pre-authorized here as a flagged exception (Task-1b pre-adjudicated-split precedent; two of the four files are single-line import swaps).
+9. **ADR-082 D1 HTTP-surface gap → budget keys exposed on request AND response models, folded into Task 3d (ruled 2026-08-15, Task 2b review follow-up):** the Task 2b review flagged that `TokenLimitOverridesResponse` does not expose `context_total_budget`/`series_history_budget` (a DB override cannot be read back). Investigation (schemas.py + router.py + service update path) found the gap is two-sided and structural: the token-limits HTTP surface is defined by `schemas.py`, not by `VALID_OVERRIDE_FIELDS` — `UpdateTokenLimitsRequest` (Pydantic default `extra='ignore'`) silently drops both keys before the service validator runs, and the GET response is constructed field-by-field in `router.py` (not auto-derived via `from_attributes`), so response fields alone would serve defaults forever. ADR-082 Decision 1's "the existing token-limits PATCH API thereby becomes the user-configuration surface D5 requires" was therefore false in both directions (write keys silently dropped; read impossible), and D5's scaling-up path ("only via explicit user configuration (SET-005)") would be unreachable. Ruling: expose both keys on `UpdateTokenLimitsRequest` (`ge=1_024`, mirroring `_INT_FIELD_MINIMA`) and on `TokenLimitOverridesResponse` (Core-constant defaults, single-sourced per Decision 2), plus the two readback kwargs in the GET constructor. Folded into **Task 3d** (not 3b) because (a) with `router.py` discovered as a second production file, 3d lands at exactly 3 production files (no cap exception) while 3b would have needed 5, and (b) 3d owns the slice-final completeness gate and the SET-005/CURRENT_STATE docs asserting the PATCH API *is* the configuration surface — claim and mechanism land in one commit (RULE-20). Rejected alternatives: readback-only in 3b (leaves D1 half-true and keeps the silent-drop write hazard — the worst failure mode, since a client believes a budget was configured while the default silently applies); a separate Task 3e (no new tasks mid-slice; folding keeps the established review flow). Task 3d steps renumbered (old 5–9 → 9–13); cross-references updated (Post-plan verification summary, Deviations item 3).
