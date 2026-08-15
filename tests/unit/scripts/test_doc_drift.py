@@ -69,6 +69,10 @@ class TestParseADRStatus:
         content = "> **Status:** ⛔ Superseded by ADR-031\n"
         assert _parse_adr_status(content) == "superseded"
 
+    def test_blockquote_superseded_markdown_link(self) -> None:
+        content = "> **Status:** ⛔ Superseded by [ADR-080](ADR-080-task-deletion.md)\n"
+        assert _parse_adr_status(content) == "superseded"
+
     def test_heading_format(self) -> None:
         content = "## Status\n\n⛔ Superseded by ADR-033\n"
         assert _parse_adr_status(content) == "superseded"
@@ -106,6 +110,24 @@ class TestParseSupersededBy:
     def test_no_reference(self) -> None:
         content = "> **Status:** ✅ Accepted\n"
         assert _parse_superseded_by(content) == []
+
+    def test_in_status_line_markdown_link(self) -> None:
+        content = "> **Status:** ⛔ Superseded by [ADR-080](ADR-080-task-deletion.md)\n"
+        assert _parse_superseded_by(content) == ["ADR-080"]
+
+    def test_markdown_link_in_body(self) -> None:
+        content = (
+            "> **Status:** ⛔ Superseded by [ADR-012](ADR-012-event-driven.md)\n\n"
+            "See the replacement for the new mechanism.\n"
+        )
+        assert _parse_superseded_by(content) == ["ADR-012"]
+
+    def test_plain_and_link_mixed_dedup(self) -> None:
+        content = (
+            "> **Status:** ⛔ Superseded by [ADR-080](ADR-080-task-deletion.md)\n\n"
+            "The successor is Superseded by ADR-080 again in the body.\n"
+        )
+        assert _parse_superseded_by(content) == ["ADR-080"]
 
 
 class TestParseRelatedADRs:

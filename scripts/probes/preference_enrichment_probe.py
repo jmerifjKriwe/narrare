@@ -35,7 +35,7 @@ from scripts.probes.base_probe import (  # noqa: E402
     make_pipeline,
     run_probe,
 )
-from scripts.probes.mode_data import ALL_MODES  # noqa: E402
+from scripts.probes.modes import ALL_MODES  # noqa: E402
 
 from narrare_core.ai_invocation.adaptive_context import (  # noqa: E402
     AdaptiveContext,

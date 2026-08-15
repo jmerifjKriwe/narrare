@@ -177,4 +177,6 @@ class TestRealRegistry:
         # ADR-074 / ANAL-007 added analysis/author_voice (the 4th VOICE mode) → 41 modes.
         # ANAL-009 Phase 2B added analysis/author_voice_drift (the 5th VOICE
         # mode, a narrator trend classifier) → 42 modes.
-        assert mode_count == 42, f"expected 42 feature modes, got {mode_count}"
+        # SERIES-002 added analysis/band_summary + SERIES-004 added
+        # analysis/series_consistency → 44 modes.
+        assert mode_count == 44, f"expected 44 feature modes, got {mode_count}"

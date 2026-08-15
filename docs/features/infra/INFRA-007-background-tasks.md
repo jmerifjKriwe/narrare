@@ -103,11 +103,11 @@ the table below for dispatch sites and triggers.
 
 These surfaces are **obsolete**; listed only to document what changed:
 
-- ~~TaskIQ `ListQueueBroker` + `RedisAsyncResultBackend`~~ —
-  `apps/api/narrare/tasks/broker.py` **deleted**.
-- ~~Read-only monitoring API `GET /tasks/status`~~ —
-  `apps/api/narrare/tasks/router.py` **deleted**.
-- ~~Empty `apps/api/narrare/tasks/` package (retained `__init__.py` stub)~~ —
+- ~~TaskIQ `ListQueueBroker` + `RedisAsyncResultBackend`~~ — the former broker
+  module **deleted**.
+- ~~Read-only monitoring API `GET /tasks/status`~~ — the former router module
+  **deleted**.
+- ~~Empty `apps/api/narrare/tasks/` package (retained an __init__.py stub)~~ —
   **deleted** in the ADR-080 CI cleanup (`e45905fb`, 2026-08-08): nothing
   imported it, so the "import-path stability" retention was dropped.
 - ~~Dedicated worker process~~ — the `dev-worker` recipe and the Docker
@@ -117,6 +117,15 @@ These surfaces are **obsolete**; listed only to document what changed:
   caller were removed.
 - ~~Frontend `BackgroundTasksPanel`~~ (`BrokerStatusCard`,
   `RegisteredTasksCard`, i18n strings) **deleted**.
+
+Deleted module inventory (these paths no longer exist on disk; kept here for
+the historical record):
+
+```
+apps/api/narrare/tasks/broker.py
+apps/api/narrare/tasks/router.py
+apps/api/narrare/tasks/__init__.py
+```
 
 ## Constraints & Edge Cases
 

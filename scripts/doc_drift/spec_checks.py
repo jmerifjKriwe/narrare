@@ -45,6 +45,17 @@ _STATUS_LINE_RE = re.compile(r"^status:[ \t]*(.+?)[ \t]*$", re.MULTILINE | re.IG
 # validation is skipped for these to avoid false-positive warnings.
 _SKIP_FILE_REF_STATUSES: frozenset[str] = frozenset({"planned", "idea", "deprecated"})
 
+# Tokens that make a backtick-wrapped path intentionally unverifiable: globs
+# (`test_*.py`), placeholders (`<next>_migration.py`), and ellipses
+# (`packages/.../middle.py`). They denote patterns rather than a single file,
+# so a literal existence check cannot apply.
+_PLACEHOLDER_TOKENS: tuple[str, ...] = ("*", "<", ">", "...", "\u2026")
+
+# Brace expansion `{a,b}` / `{a|b}` — resolves to the first variant so the
+# path stays a concrete, verifiable representative. Same convention as
+# scripts/check_feature_path_accuracy.py.
+_BRACE_RE = re.compile(r"\{([^{}]*)\}")
+
 
 def _extract_rule_numbers(constraints_content: str) -> set[str]:
     """Extract all RULE-XX identifiers from CONSTRAINTS.md."""
@@ -119,6 +130,34 @@ def _extract_spec_status(content: str) -> str | None:
 
 
 # ── Check functions ────────────────────────────────────────────
+
+
+def _is_placeholder_path(ref_path: str) -> bool:
+    """True if the reference is a pattern, not a single concrete file.
+
+    Paths containing glob tokens (`*`), placeholder markers (`<next>`), or
+    ellipses (`...` / ``…``) are intentionally unverifiable patterns — e.g.
+    ``test_*.py`` or ``packages/.../service.py`` — so a literal existence
+    check is skipped for them.
+    """
+    return any(token in ref_path for token in _PLACEHOLDER_TOKENS)
+
+
+def _resolve_brace_variants(ref_path: str) -> str:
+    """Resolve brace-expansion ``{a,b}`` / ``{a|b}`` to the first variant.
+
+    Braces denote a set of real alternatives (e.g. ``{en,de,fr}`` or the
+    candidate-set ``{analysis|settings}``), so the first option is a
+    representative concrete path that must exist on disk.
+    """
+
+    def _first_variant(match: re.Match[str]) -> str:
+        options = [o.strip() for o in re.split(r"[,\|]", match.group(1)) if o.strip()]
+        return options[0] if options else ""
+
+    resolved = _BRACE_RE.sub(_first_variant, ref_path)
+    # Collapse any accidental double slashes left by empty variants.
+    return re.sub(r"/{2,}", "/", resolved)
 
 
 def _check_rule_references(
@@ -205,8 +244,12 @@ def _check_file_path_references(
             # Skip non-project paths (URLs, absolute system paths)
             if ref_path.startswith(("http://", "https://", "/usr/", "/etc/")):
                 continue
-            # Normalize: strip leading ./ if present
-            normalized = ref_path.lstrip("./")
+            # Intentional glob/placeholder/ellipsis patterns cannot be
+            # existence-checked — they denote a pattern, not a single file.
+            if _is_placeholder_path(ref_path):
+                continue
+            # Normalize: strip leading ./ and resolve brace variants.
+            normalized = _resolve_brace_variants(ref_path).lstrip("./")
             full_path = REPO_ROOT / normalized
             if not full_path.exists():
                 findings.append(

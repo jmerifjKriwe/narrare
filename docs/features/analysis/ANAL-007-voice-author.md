@@ -475,7 +475,7 @@ below.
 
 Add `author_voice` to `PromptRouteConfig.allowed_context_modes` for VOICE
 (currently `{"character_voice", "voice_check", "voice_drift"}`). The governed
-EN template is `core/prompts/_bundled/analysis/en/author_voice/system.md`
+EN template is `packages/core/narrare_core/prompts/_bundled/analysis/en/author_voice/system.md`
 (Mode 1, ADR-054). It is a PROFILER (builds a descriptive + metric author-voice
 profile), distinct from the character_voice profiler, the voice_check checker,
 and the voice_drift classifier.
@@ -524,7 +524,8 @@ to how it populates `character_voice_profiles` from
 
 **Variable registration (RULE-22 §4/§6 — binding):**
 
-- Register `author_voice` in **`SYSTEM_VARS`** in `prompts/variable_registry.py`
+- Register `author_voice` in **`SYSTEM_VARS`** in
+  `packages/core/narrare_core/prompts/variable_registry.py`
   (it is system-attributed descriptive text rendered from a machine-derived
   stored profile — directly analogous to `character_voice_profiles`, which is
   already in `SYSTEM_VARS`). It is **NOT** `_USER_CONTENT_VARS` — the rendered
@@ -534,7 +535,7 @@ to how it populates `character_voice_profiles` from
   intents** that should see author voice — mirroring where
   `character_voice_profiles` appears today (WRITE, EXTEND, REWRITE, COAUTHOR,
   CHAT, OUTLINE, INLINE_SUGGEST, STORY_SUGGEST per
-  `prompt-surface-manifest.yaml`). Generation degrades gracefully to empty
+  `scripts/architecture/prompt-surface-manifest.yaml`). Generation degrades gracefully to empty
   when no profile is saved (RULE-11).
 - Update `scripts/architecture/prompt-surface-manifest.yaml` (add the
   `author_voice` context_mode under VOICE + add `author_voice` to the writing
@@ -584,7 +585,7 @@ overwrites; no versioning — YAGNI).
 | `VoiceMetricsAnalyzer.analyze_text()` | `packages/core/narrare_core/analysis/voice_metrics.py` (ADR-021) | **EXTEND** (new prose-level entry point reusing `_compute_metrics`) | ANAL-007 (now); ANAL-009 Phase 2 (future) |
 | `AuthorMetricsAnalyzer` | `packages/core/narrare_core/analysis/author_metrics.py` (NEW) | **NEW** (deterministic prose-level metrics) | ANAL-007 (now); ANAL-009 Phase 2 (future) |
 | `DialogueParser` | `packages/core/narrare_core/analysis/dialogue_parser.py` | REUSE (quote-span extraction for `dialogue_ratio`) | ANAL-007 (now); ANAL-008, WRITE-010, ANAL-009 (existing) |
-| `VoiceAnalysis` / `VoiceMetrics` (voice-generic) | extracted to a voice-generic Core home + re-exported from `kb/schemas/character.py` (ADR-074) | **EXTRACT + re-export** (backward-compat) | ANAL-007, ANAL-008, WRITE-010, ANAL-009 (all) |
+| `VoiceAnalysis` / `VoiceMetrics` (voice-generic) | extracted to a voice-generic Core home + re-exported from `packages/core/narrare_core/kb/schemas/character.py` (ADR-074) | **EXTRACT + re-export** (backward-compat) | ANAL-007, ANAL-008, WRITE-010, ANAL-009 (all) |
 
 These are infrastructure, not user-facing features — they do NOT get a
 `docs/features/INDEX.md` entry; they are documented here (mirroring ANAL-008's
@@ -599,7 +600,7 @@ Author Voice Drift** (ANAL-009 Phase 2).
 | Phase | Feature | Status | Builds on |
 |-------|---------|--------|-----------|
 | Phase 1 | ANAL-009 Phase 1 — Character Voice Drift | ✅ built (ADR-073) | `voice_metric_distances` delta primitive |
-| **Phase 2A** | **ANAL-007 — Author Voice Profiling (THIS SPEC)** | **planned** | ADR-074 storage; ANAL-008 hybrid pattern |
+| **Phase 2A** | **ANAL-007 — Author Voice Profiling (THIS SPEC)** | **implemented** (`stable`) | ADR-074 storage; ANAL-008 hybrid pattern |
 | Phase 2B | ANAL-009 Phase 2 — Author Voice Drift | deferred | THIS spec's `AuthorMetrics` + `voice_metric_distances`; its own ADR/spec |
 
 > Phase 2B will reuse the Phase 1 `voice_drift_scoring` delta primitive
@@ -656,29 +657,29 @@ it is project-scoped, never shared.
 
 | Layer | File Path | Responsibility |
 |-------|-----------|----------------|
-| Core | `packages/core/narrare_core/.../author_voice.py` | `AuthorVoiceProfile` + `AuthorMetrics` Pydantic models (ADR-074 data contract) |
+| Core | `packages/core/narrare_core/profiles/author_voice.py` | `AuthorVoiceProfile` Pydantic model + descriptive-group renderer (ADR-074 data contract; `AuthorMetrics` lives in `packages/core/narrare_core/analysis/author_metrics.py`) |
 | Core | `packages/core/narrare_core/agents/author_voice_agent.py` | `AuthorVoiceAgent` (NarrareAgent, structured output, ONE LLM call) |
 | Core | `packages/core/narrare_core/agents/author_voice_types.py` | `AuthorVoiceOutput` + `AuthorVoiceDeps` |
 | Core | `packages/core/narrare_core/analysis/voice_metrics.py` | **EXTEND** `VoiceMetricsAnalyzer.analyze_text()` (prose-level reuse) |
 | Core | `packages/core/narrare_core/analysis/author_metrics.py` | **NEW** `AuthorMetricsAnalyzer` (deterministic prose-level metrics) |
 | Core | `packages/core/narrare_core/profiles/contracts.py` | **EXTEND** `AuthorVoiceConsumer` Protocol |
-| Core | `packages/core/narrare_core/profiles/_author_voice_render.py` | **NEW** descriptive-group renderer (parallel to `_voice_extraction._add_voice_analysis_parts`) |
+| Core | `packages/core/narrare_core/profiles/author_voice.py` | **NEW** descriptive-group renderer (co-located with the model; parallel to `_voice_extraction._add_voice_analysis_parts`) |
 | Core | `packages/core/narrare_core/prompts/_bundled/analysis/en/author_voice/system.md` | **NEW** governed EN template (Mode 1, ADR-054) |
 | Core | `packages/core/narrare_core/prompts/route_table.py` | **EXTEND** add `author_voice` to VOICE `allowed_context_modes` |
 | Core | `packages/core/narrare_core/prompts/variable_registry.py` | **EXTEND** register `author_voice` in `SYSTEM_VARS` |
 | Core | `packages/core/narrare_core/writing/context_assembler.py` | **EXTEND** populate `WritingContext.author_voice` via `AuthorVoiceConsumer` |
 | Backend | `apps/api/narrare/settings/models.py` | **EXTEND** `ProjectSettings.author_voice` JSONB column (ADR-074) |
-| Backend | `apps/api/alembic/versions/<next>_author_voice_column.py` | **NEW** Alembic migration (RULE-14) |
-| Backend | `apps/api/narrare/analysis/author_voice_repository.py` | **NEW** load/save/clear JSONB ↔ `AuthorVoiceProfile` (mirrors `adaptive/repository.py`) |
-| Backend | `apps/api/narrare/analysis/author_voice_service.py` | **NEW** orchestration service (mirrors `character_voice_service.py`) |
+| Backend | `apps/api/alembic/versions/0036_author_voice_column.py` | **NEW** Alembic migration (RULE-14) |
+| Backend | `apps/api/narrare/analysis/author_voice_repository.py` | **NEW** load/save/clear JSONB ↔ `AuthorVoiceProfile` (mirrors `apps/api/narrare/adaptive/repository.py`) |
+| Backend | `apps/api/narrare/analysis/author_voice_service.py` | **NEW** orchestration service (mirrors `apps/api/narrare/analysis/character_voice_service.py`) |
 | Backend | `apps/api/narrare/analysis/contracts_author_voice.py` | **NEW** `AuthorVoiceServiceProtocol` (RULE-03) |
 | Backend | `apps/api/narrare/analysis/schemas_author_voice.py` | **NEW** SSE event + request/response models |
-| Backend | `apps/api/narrare/analysis/author_voice_prompt.py` | **NEW** Mode-1 prompt resolution helper (mirrors `voice_drift_prompt.py`) |
+| Backend | `apps/api/narrare/analysis/author_voice_prompt.py` | **NEW** Mode-1 prompt resolution helper (mirrors `apps/api/narrare/analysis/voice_drift_prompt.py`) |
 | Backend | `apps/api/narrare/analysis/author_voice_agent_runner.py` | **NEW** agent runner helper (RULE-04 split) |
-| Backend | `apps/api/narrare/analysis/router_author_voice.py` | **NEW** SSE endpoint (mirrors `router_character_voice.py`) |
-| Backend | `apps/api/narrare/analysis/dependencies_author_voice.py` | **NEW** DI wiring (mirrors `dependencies_voice_drift.py`) |
-| Frontend | `packages/web/components/analysis/author-voice-panel.tsx` | **NEW** panel (mirrors `CharacterVoicePanel`) |
-| Frontend | `packages/web/hooks/use-author-voice.ts` | **NEW** `useAuthorVoice` hook (`useAIOperation`, ADR-043) |
+| Backend | `apps/api/narrare/analysis/router_author_voice.py` | **NEW** SSE endpoint (mirrors `apps/api/narrare/analysis/router_character_voice.py`) |
+| Backend | `apps/api/narrare/analysis/dependencies_author_voice.py` | **NEW** DI wiring (mirrors `apps/api/narrare/analysis/dependencies_voice_drift.py`) |
+| Frontend | `packages/web/components/studio/analysis/AuthorVoicePanel.tsx` | **NEW** panel (mirrors `CharacterVoicePanel`) |
+| Frontend | `packages/web/lib/hooks/useAuthorVoice.ts` | **NEW** `useAuthorVoice` hook (`useAIOperation`, ADR-043) |
 | Frontend | `packages/web/lib/api/author-voice-stream.ts` | **NEW** SSE client (typed) |
 | Frontend | `packages/i18n/messages/{en,de,fr}/analysis.json` | **EXTEND** i18n strings (RULE-16 parity) |
 | Governance | `scripts/architecture/prompt-surface-manifest.yaml` | **EXTEND** `author_voice` context_mode + `author_voice` optional var on writing intents |
@@ -714,9 +715,9 @@ class AuthorVoiceServiceProtocol(Protocol):
 | Rule | Status | Evidence |
 |------|--------|----------|
 | RULE-01b | ✅ | The `AuthorVoiceAgent` is a `NarrareAgent` (subclass); models come from `ModelRegistry`. No direct `import openai` / no `pydantic_ai.Agent` outside `core/agents/`. |
-| RULE-02/02a/02b | ✅ | The `author_voice` prompt is governed Mode 1 (`LLMIntent.VOICE` + `context_mode="author_voice"` + `_bundled/analysis/en/author_voice/system.md`). Resolution is exclusively in `core/prompts/` (PromptComposer); the service passes runtime prose + metrics as the agent run prompt (user channel, category-3). No inline f-strings, no app-layer loader, no system prompt in the user channel. |
+| RULE-02/02a/02b | ✅ | The `author_voice` prompt is governed Mode 1 (`LLMIntent.VOICE` + `context_mode="author_voice"` + `packages/core/narrare_core/prompts/_bundled/analysis/en/author_voice/system.md`). Resolution is exclusively in `packages/core/narrare_core/prompts/` (PromptComposer); the service passes runtime prose + metrics as the agent run prompt (user channel, category-3). No inline f-strings, no app-layer loader, no system prompt in the user channel. |
 | RULE-03 | ✅ | `AuthorVoiceServiceProtocol` (Backend) + `AuthorVoiceConsumer` (Core profiles) Protocols defined in this spec before implementation. `AuthorVoiceProfile` + `AuthorMetrics` contract fixed (ADR-074). |
-| RULE-04 | ✅ | Service splits: `author_voice_service.py` + `author_voice_prompt.py` + `author_voice_agent_runner.py` + `author_voice_repository.py` (mirrors the character-voice / voice-drift split). Hard limits enforced by the same pattern. |
+| RULE-04 | ✅ | Service splits: `apps/api/narrare/analysis/author_voice_service.py` + `apps/api/narrare/analysis/author_voice_prompt.py` + `apps/api/narrare/analysis/author_voice_agent_runner.py` + `apps/api/narrare/analysis/author_voice_repository.py` (mirrors the character-voice / voice-drift split). Hard limits enforced by the same pattern. |
 | RULE-05/06 | ✅ | Core owns the data contract (`AuthorVoiceProfile`, `AuthorMetrics`, `AuthorVoiceConsumer`); Backend owns the repository + migration + service. One responsibility per file. Voice-generic types extracted to a voice-generic home (not a character-specific file). |
 | RULE-07 | ✅ | Dependency direction: `router → service → repository → ProjectSettings` (DB). Core data contract has no `apps/` imports. The extraction re-export preserves the existing acyclic `analysis → nlp`, `analysis → voice-types` read direction. |
 | RULE-08 | ✅ | `AuthorMetricsAnalyzer` consumes `core/nlp/` primitives (spaCy POS) for `description_density`; `DialogueParser` for `dialogue_ratio`. No raw spaCy outside `core/nlp/`. |
@@ -724,49 +725,52 @@ class AuthorVoiceServiceProtocol(Protocol):
 | RULE-10 | ✅ | Unit tests for `AuthorMetricsAnalyzer` + `AuthorVoiceAgent` (TestModel) + `AuthorVoiceRepository` (NULL→None, round-trip); integration tests for the SSE endpoint. Thresholds: core 90%, api 80%. |
 | RULE-11 | ✅ | NULL column → "no profile" (generation renders empty `{{author_voice}}`; drift skips); malformed JSONB → `None`; no chapters → empty result, no LLM call (saves cost). Never a crash or silent prompt regression. |
 | RULE-13 | ✅ | `AuthorVoiceService.analyze()` is an `AsyncIterator` (SSE stream) mirroring `CharacterVoiceService.analyze()`; the agent is a `NarrareAgent` (`run()` non-streaming structured output). The two-method contract is honoured at the layer where it applies. |
-| RULE-14 | ✅ | The `ProjectSettings.author_voice` column lands with its Alembic migration (`<next>_author_voice_column.py`, mirrors `0033_adaptive_settings_column`) in the same task as the model change. A model change without a migration is a build failure. |
+| RULE-14 | ✅ | The `ProjectSettings.author_voice` column lands with its Alembic migration (`apps/api/alembic/versions/0036_author_voice_column.py`, mirrors `0033_adaptive_settings_column`) in the same task as the model change. A model change without a migration is a build failure. |
 | RULE-16 | ✅ | UI i18n strings added with en/de/fr parity (`packages/i18n/messages/{en,de,fr}/analysis.json`). The bundled author-voice system prompt is EN-only; output language is controlled via `{{writing_language}}`. |
 | RULE-17 | ✅ | Contract tests: a Backend fake `AuthorVoiceService` implementing `AuthorVoiceServiceProtocol`; a Core fake `AuthorVoiceConsumer` implementing the Protocol. No Mock-with-`# type: ignore[arg-type]`. |
 | RULE-22 / CR-04 | ✅ | Cross-feature coherence: producer (ANAL-007 write) + generation consumer (`AuthorVoiceConsumer`) + future drift consumer defined together. The descriptive/metric boundary is fixed at the consumer contract before any consumer is built. `{{author_voice}}` registered in `SYSTEM_VARS`; manifest + adoption-registry updated. Voice-generic types are SSOT (one definition, re-exported). |
 
 ## Definition of Done
 
-> This spec is `planned`. The following is the implementation-cycle DoD (per
-> layer), sequenced for the next cycle after user approval.
+> This spec is **implemented** (`stable`). The following is the
+> implementation-cycle DoD (per layer), retained as the historical
+> implementation record; the checkboxes are left as they were written before
+> the cycle and the completion evidence is in
+> [Implementation Evidence](#implementation-evidence) + Status & History.
 
 ### Core Layer
-- [ ] Voice-generic `VoiceMetrics`/`VoiceAnalysis` extracted to a voice-generic home + re-exported from `kb/schemas/character.py` + `kb/schemas/__init__.py` (ADR-074 Retrofit-Plan step 1). Existing ANAL-008/WRITE-010/ANAL-009-Phase-1 tests stay green with zero import edits.
+- [ ] Voice-generic `VoiceMetrics`/`VoiceAnalysis` extracted to a voice-generic home + re-exported from `packages/core/narrare_core/kb/schemas/character.py` + `packages/core/narrare_core/kb/schemas/__init__.py` (ADR-074 Retrofit-Plan step 1). Existing ANAL-008/WRITE-010/ANAL-009-Phase-1 tests stay green with zero import edits.
 - [ ] `AuthorVoiceProfile` + `AuthorMetrics` Pydantic models (ADR-074 data contract).
 - [ ] `VoiceMetricsAnalyzer.analyze_text()` prose-level entry point (reuses `_compute_metrics`).
 - [ ] `AuthorMetricsAnalyzer` (deterministic prose-level metrics; `metaphor_density` = simile-cue proxy, provisional).
 - [ ] `AuthorVoiceAgent` + `AuthorVoiceOutput` + `AuthorVoiceDeps` (NarrareAgent, structured output, ONE LLM call).
 - [ ] `AuthorVoiceConsumer` Protocol + descriptive-group renderer.
-- [ ] Governed EN template `_bundled/analysis/en/author_voice/system.md` (Mode 1).
-- [ ] `route_table.py` + `variable_registry.py` (`author_voice` in VOICE modes + `SYSTEM_VARS`).
+- [ ] Governed EN template `packages/core/narrare_core/prompts/_bundled/analysis/en/author_voice/system.md` (Mode 1).
+- [ ] `packages/core/narrare_core/prompts/route_table.py` + `packages/core/narrare_core/prompts/variable_registry.py` (`author_voice` in VOICE modes + `SYSTEM_VARS`).
 - [ ] `WritingContext.author_voice` field + assembler wiring.
 - [ ] Unit tests: 3+ per public method; core coverage ≥ 90%.
 
 ### Backend Layer
-- [ ] `ProjectSettings.author_voice` JSONB column + Alembic migration `<next>_author_voice_column.py` (RULE-14, same task) + schema round-trip test.
+- [ ] `ProjectSettings.author_voice` JSONB column + Alembic migration `apps/api/alembic/versions/0036_author_voice_column.py` (RULE-14, same task) + schema round-trip test.
 - [ ] `AuthorVoiceRepository` (load/save/clear; Pydantic validation on read; NULL→None).
-- [ ] `AuthorVoiceService` + `author_voice_prompt.py` + `author_voice_agent_runner.py` (Mode-1 PromptComposer).
+- [ ] `AuthorVoiceService` + `apps/api/narrare/analysis/author_voice_prompt.py` + `apps/api/narrare/analysis/author_voice_agent_runner.py` (Mode-1 PromptComposer).
 - [ ] `AuthorVoiceServiceProtocol` (contracts) + SSE schemas.
-- [ ] `router_author_voice.py` SSE endpoint under `AI_ANALYSIS_LIMITER`.
+- [ ] `apps/api/narrare/analysis/router_author_voice.py` SSE endpoint under `AI_ANALYSIS_LIMITER`.
 - [ ] Integration tests for the SSE endpoint; contract test with a fake service.
 - [ ] api coverage ≥ 80%.
 
 ### Frontend Layer
 - [ ] `AuthorVoicePanel` (chapter multi-select, Analyze trigger, profile display, save/clear).
 - [ ] `useAuthorVoice` hook (`useAIOperation`, ADR-043); AI Operation Inventory registration.
-- [ ] Typed SSE client `author-voice-stream.ts`.
+- [ ] Typed SSE client `packages/web/lib/api/author-voice-stream.ts`.
 - [ ] i18n en/de/fr parity.
 - [ ] UI tests for key interactions.
 
 ### Cross-Cutting / Governance
-- [ ] `prompt-surface-manifest.yaml` updated (`author_voice` context_mode + `author_voice` optional var on writing intents).
-- [ ] `adoption-registry.yaml` updated (`analysis/author_voice: true` + runtime marker).
+- [ ] `scripts/architecture/prompt-surface-manifest.yaml` updated (`author_voice` context_mode + `author_voice` optional var on writing intents).
+- [ ] `scripts/architecture/adoption-registry.yaml` updated (`analysis/author_voice: true` + runtime marker).
 - [ ] Writing templates adopted for `{{author_voice}}` (mirror `character_voice_profiles` coverage).
-- [ ] `check_architecture.py` / prompt-governance checks green (RULE-14 + RULE-22 §4 variable registration).
+- [ ] `scripts/check_architecture.py` / prompt-governance checks green (RULE-14 + RULE-22 §4 variable registration).
 - [ ] Runtime adoption probes (mirroring `voice_drift`) witnessing the committed markers.
 - [ ] ADR-074 Review Trigger #1 satisfied (profiling writer uses repository; generation consumer renders descriptive-only; voice-generic extraction shipped with re-exports).
 

@@ -67,6 +67,16 @@ PROMPT_PATH_COMPLIANCE_REGISTRY: dict[str, str] = {
     "packages.core.narrare_core.agents.writing_graph_prompts": (
         "tests/unit/core/agents/test_writing_graph_prompts.py"
     ),
+    # SERIES-002: band summary must resolve via compose_invocation Mode 1
+    # (SUMMARIZE + context_mode "band_summary"), no direct-build fallback.
+    "apps.api.narrare.series.band_summary_service.BandSummaryService": (
+        "tests/unit/api/series/test_band_summary_prompt_path_compliance.py"
+    ),
+    # SERIES-004: series consistency must resolve via compose_invocation
+    # Mode 1 (ANALYSE + context_mode "series_consistency").
+    "apps.api.narrare.series.series_consistency_service.SeriesConsistencyService": (
+        "tests/unit/api/series/test_series_consistency_prompt_path_compliance.py"
+    ),
 }
 
 

@@ -21,9 +21,11 @@ def _load_module():
     sys.path.insert(0, str(_SCRIPTS_DIR))
     try:
         # Force a fresh import so REPO_ROOT/_LOOKUP_DIR resolve correctly.
+        # Force a fresh import so REPO_ROOT/_LOOKUP_DIR resolve correctly.
+        # Pop the WHOLE doc_drift family (see test_agent_name_checks for the
+        # orphaned-sys.modules rationale).
         for name in [
-            "doc_drift",
-            "doc_drift.lookup_drift_checks",
+            n for n in list(sys.modules) if n == "doc_drift" or n.startswith("doc_drift.")
         ]:
             sys.modules.pop(name, None)
         import doc_drift.lookup_drift_checks as mod  # type: ignore[import-not-found]

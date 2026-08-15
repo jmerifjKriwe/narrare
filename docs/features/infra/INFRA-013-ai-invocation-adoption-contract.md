@@ -233,7 +233,7 @@ not be labelled adopted unless runtime evidence is present.
 | Layer | Proposed path | Responsibility |
 |-------|---------------|----------------|
 | Core | `packages/core/narrare_core/ai_invocation/contracts.py` | `PromptInvocationContext`, `AdoptionPolicy`, evidence, validator/enricher/budget Protocols. |
-| Core | `packages/core/narrare_core/ai_invocation/enrichers/preferences.py` | `PreferenceContextEnricher` using memory contracts. |
+| Core | `packages/core/narrare_core/ai_invocation/enrichers/adaptive.py` | `AdaptiveContextEnricher` writing `dynamic_inputs["user_preferences"]` from the `AdaptiveContextProvider` Protocol (ADR-069 Decision 1). |
 | Core | `packages/core/narrare_core/ai_invocation/validators/runtime.py` | `RuntimeVariableValidator` — runtime variable validation. |
 | Core | `packages/core/narrare_core/ai_invocation/validators/final_prompt.py` | `FinalPromptValidator` — composed prompt validation before model call. |
 | Core | `packages/core/narrare_core/ai_invocation/budgets/resolver.py` | `IntentOutputBudgetResolver` — intent/mode output budget resolver. |

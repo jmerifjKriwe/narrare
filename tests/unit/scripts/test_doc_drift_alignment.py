@@ -10,6 +10,10 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pytest
 
 _ROOT = str(Path(__file__).resolve().parent.parent.parent.parent)
 if _ROOT not in sys.path:
@@ -19,6 +23,7 @@ if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 
 
+import doc_drift.spec_checks as spec_checks_mod  # noqa: E402
 from doc_drift.spec_checks import (  # noqa: E402
     _extract_rule_numbers,
     _extract_rule_refs_from_text,
@@ -194,6 +199,80 @@ class TestSpecFilePathReferences:
             adr_dir=tmp_path,
         )
         assert any(f.severity == "warning" and "nonexistent/path.py" in f.message for f in findings)
+
+    def test_comma_brace_path_resolves_to_first_variant(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """`{a,b}` resolves to the first variant, which must exist.
+
+        Without brace resolution the literal `{existing,missing}.py` would
+        not exist on disk, so a passing check proves the resolution happened.
+        """
+        # Object-form patch on the module bound at collection time — string-path
+        # resolution can fail when a prior test re-imported the doc_drift package
+        # (orphaned sys.modules entries; see test_agent_name_checks).
+        monkeypatch.setattr(spec_checks_mod, "REPO_ROOT", tmp_path)
+        constraints = _make_constraints_file(tmp_path, ["01"])
+        (tmp_path / "existing.py").write_text("", encoding="utf-8")
+        _make_spec_file(
+            tmp_path,
+            "test-spec.md",
+            "See `{existing,missing}.py` for implementation.\n",
+        )
+        spec_dir = tmp_path / "specs"
+
+        findings = check_spec_references(
+            specs_dir=spec_dir,
+            constraints_path=constraints,
+            adr_dir=tmp_path,
+        )
+        path_findings = [f for f in findings if "which does not exist" in f.message]
+        assert len(path_findings) == 0
+
+    def test_pipe_brace_path_resolves_to_first_variant(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """`{analysis|settings}` resolves to the first (pipe-separated) variant."""
+        # Object-form patch on the module bound at collection time — string-path
+        # resolution can fail when a prior test re-imported the doc_drift package
+        # (orphaned sys.modules entries; see test_agent_name_checks).
+        monkeypatch.setattr(spec_checks_mod, "REPO_ROOT", tmp_path)
+        constraints = _make_constraints_file(tmp_path, ["01"])
+        repo_dir = tmp_path / "apps" / "api" / "analysis"
+        repo_dir.mkdir(parents=True)
+        (repo_dir / "author_voice_repository.py").write_text("", encoding="utf-8")
+        _make_spec_file(
+            tmp_path,
+            "test-spec.md",
+            "See `apps/api/{analysis|settings}/author_voice_repository.py` for details.\n",
+        )
+        spec_dir = tmp_path / "specs"
+
+        findings = check_spec_references(
+            specs_dir=spec_dir,
+            constraints_path=constraints,
+            adr_dir=tmp_path,
+        )
+        path_findings = [f for f in findings if "which does not exist" in f.message]
+        assert len(path_findings) == 0
+
+    def test_placeholder_paths_skipped(self, tmp_path: Path) -> None:
+        """Glob/placeholder/ellipsis patterns are intentionally unverifiable."""
+        constraints = _make_constraints_file(tmp_path, ["01"])
+        _make_spec_file(
+            tmp_path,
+            "test-spec.md",
+            ("See `<next>_migration.py`, `test_*.py`, and `packages/.../middle.py` for details.\n"),
+        )
+        spec_dir = tmp_path / "specs"
+
+        findings = check_spec_references(
+            specs_dir=spec_dir,
+            constraints_path=constraints,
+            adr_dir=tmp_path,
+        )
+        path_findings = [f for f in findings if "which does not exist" in f.message]
+        assert len(path_findings) == 0
 
 
 class TestExtractRuleRefs:

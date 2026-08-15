@@ -185,6 +185,30 @@ MODE_INPUTS: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             ),
         },
     ),
+    # SERIES-002: band_summary (series-band summarizer) shares the SUMMARIZE
+    # intent and exercises the same invocation pipeline as summarize, with
+    # chapter summaries as user-channel runtime content.
+    (
+        "analysis",
+        "band_summary",
+        LLMIntent.SUMMARIZE,
+        {
+            "chapter_summaries": "1. The band discovered the hidden valley.",
+        },
+    ),
+    # SERIES-004: series_consistency (cross-novel canon-contradiction
+    # detector) shares the ANALYSE intent and exercises the same invocation
+    # pipeline as review, with Canon entries + chapter prose as user-channel
+    # runtime content.
+    (
+        "analysis",
+        "series_consistency",
+        LLMIntent.ANALYSE,
+        {
+            "canon_entries": "[world-capital] Thornhaven — The capital of the realm.",
+            "chapter_texts": "Chapter 1: The capital city gleamed.",
+        },
+    ),
 ]
 
 

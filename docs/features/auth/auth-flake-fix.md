@@ -164,7 +164,7 @@ module-level `_hasher` with no `_get_hasher()` function → `ImportError`.
 
 ---
 
-### Task 2 — Fix `security.py` (makes Task 1 tests pass)
+### Task 2 — Fix `apps/api/narrare/auth/security.py` (makes Task 1 tests pass)
 
 **File:** `apps/api/narrare/auth/security.py`
 
@@ -241,10 +241,11 @@ module-level `_hasher` with no `_get_hasher()` function → `ImportError`.
    ```
 
 **No other files need changes:**
-- `service.py` — `verify_password` signature unchanged, no changes needed
-- `contracts.py` — no Protocol changes
-- `repository.py` — no changes
-- `router.py` — no changes
+- `apps/api/narrare/auth/service.py` — `verify_password` signature unchanged,
+  no changes needed
+- `apps/api/narrare/auth/contracts.py` — no Protocol changes
+- `apps/api/narrare/auth/repository.py` — no changes
+- `apps/api/narrare/auth/router.py` — no changes
 
 ---
 
@@ -294,7 +295,7 @@ done
 | Rule | Status | Nachweis |
 |------|--------|----------|
 | RULE-03 | ✅ | No contract change — `verify_password` signature unchanged |
-| RULE-06 | ✅ | `security.py` keeps its role (password hashing utility); `structlog` is cross-cutting observability, not business I/O |
+| RULE-06 | ✅ | `apps/api/narrare/auth/security.py` keeps its role (password hashing utility); `structlog` is cross-cutting observability, not business I/O |
 | RULE-11 | ✅ | Every `except` block either returns `False` (expected mismatch) or logs + returns `False` (unexpected error). No silent failures. |
 | RULE-09 | ✅ | All new functions are type-annotated (`_get_hasher() -> argon2.PasswordHasher`) |
 
@@ -303,7 +304,7 @@ done
 ## Definition of Done
 
 - [ ] Task 1: Regression tests written, all fail against current code
-- [ ] Task 2: `security.py` fixed, all Task 1 tests pass
+- [ ] Task 2: `apps/api/narrare/auth/security.py` fixed, all Task 1 tests pass
 - [ ] Task 3: Existing tests pass (no regressions)
 - [ ] Task 4: E2E flake confirmed gone (5 consecutive runs pass)
 - [ ] ADR-009 Addendum approved by user

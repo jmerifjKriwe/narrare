@@ -119,9 +119,12 @@ remain downstream.
 - `apps/api/narrare/series/band_summary_contracts.py` —
   `BandSummaryRepositoryProtocol`, `BandSummaryServiceProtocol` (RULE-03).
 - `apps/api/narrare/series/band_summary_repository.py`,
-  `band_summary_service.py` (generate / get_or_generate / update_override),
-  `band_summary_auto_trigger.py` (`enqueue_band_summaries`),
-  `router_band_summary.py`, `tasks.py`, `dependencies.py`.
+  `apps/api/narrare/series/band_summary_service.py` (generate /
+  get_or_generate / update_override),
+  `apps/api/narrare/series/band_summary_auto_trigger.py`
+  (`enqueue_band_summaries`),
+  `apps/api/narrare/series/router_band_summary.py`,
+  `apps/api/narrare/series/tasks.py`, `apps/api/narrare/series/dependencies.py`.
 - `apps/api/narrare/series/series_history_provider.py` — Backend→Core bridge
   + `resolve_kb_fetch_mode` (KB-Redirect).
 - `apps/api/narrare/series/service.py` — `update_series` enqueues band-summary
@@ -136,8 +139,8 @@ remain downstream.
   (frozen dataclass) + `SeriesHistoryTier` (recency-window assembly + budget).
   Pure; no I/O, no `apps/` imports.
 - `packages/core/narrare_core/agents/band_summary_agent.py` +
-  `agents/band_summary_types.py` — the agent + `BandSummaryDeps` /
-  `BandSummaryOutput`.
+  `packages/core/narrare_core/agents/band_summary_types.py` — the agent +
+  `BandSummaryDeps` / `BandSummaryOutput`.
 - `packages/core/narrare_core/prompts/{variable_registry,route_table}.py` —
   `series_history` registered as a governed SYSTEM_VAR.
 - `packages/core/narrare_core/writing/{models,pipeline,_stages,context_assembler}.py`

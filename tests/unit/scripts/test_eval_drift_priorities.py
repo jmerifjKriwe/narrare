@@ -34,13 +34,11 @@ def _load_eval_drift() -> dict[str, ModuleType]:
     """Import the eval_drift package on a clean sys.path entry."""
     sys.path.insert(0, str(_SCRIPTS_DIR))
     try:
+        # Pop the WHOLE eval_drift family — popping only selected submodules
+        # would orphan the siblings in sys.modules while the fresh parent
+        # package loses their attributes.
         for name in [
-            "eval_drift",
-            "eval_drift.comparison",
-            "eval_drift.priorities",
-            "eval_drift.parser",
-            "eval_drift.reporting",
-            "eval_drift.__main__",
+            n for n in list(sys.modules) if n == "eval_drift" or n.startswith("eval_drift.")
         ]:
             sys.modules.pop(name, None)
         import eval_drift.__main__ as main_mod  # type: ignore[import-not-found]

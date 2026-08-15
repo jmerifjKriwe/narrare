@@ -130,7 +130,7 @@ This is Spec 3 of 5 in the Series program. Spec 1 (Foundation) and Spec 2
   (`profile_from_novel` / `get` / `update_override` / `clear_override`).
   Ownership verified internally (anti-enumeration; mirrors `SeriesService`).
 - `apps/api/narrare/series/series_voice_schemas.py` — request/response DTOs
-  (split from `schemas.py` for RULE-04).
+  (split from `apps/api/narrare/series/schemas.py` for RULE-04).
 - `apps/api/narrare/series/router_voice.py` — 4 endpoints (thin router).
 - `apps/api/narrare/series/dependencies_voice.py` — DI factory.
 - `apps/api/narrare/settings/models.py` — `use_series_voice` column.
@@ -149,7 +149,8 @@ This is Spec 3 of 5 in the Series program. Spec 1 (Foundation) and Spec 2
 
 ### Frontend (implemented)
 
-- `app/series/[id]/voice/page.tsx` — Voice tab activated (placeholder removed).
+- `packages/web/app/series/[id]/voice/page.tsx` — Voice tab activated
+  (placeholder removed).
 - `SeriesVoicePanel` + `SeriesVoiceProfileView` (read-only descriptive display)
   + `SeriesVoiceOverrideEditor` (JSON-textarea + local validation).
 - `SeriesVoiceOptOutCard` — per-novel opt-out toggle (self-hides for

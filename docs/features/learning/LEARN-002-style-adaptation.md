@@ -136,7 +136,6 @@ the Backend pieces owned by LEARN-002.
   `AdaptiveWeightsResponse`, `AdaptiveSourceSummary`
 - `apps/api/narrare/adaptive/service.py` — `AdaptiveContextService`
 - `apps/api/narrare/adaptive/repository.py` — settings persistence helper
-  (or extends `project_ai_settings_repository.py`)
 - `apps/api/narrare/adaptive/router.py` — 3 endpoints
 - `apps/api/narrare/adaptive/dependencies.py` — DI factories
 - `apps/api/narrare/adaptive/adaptive_context_provider.py` —
@@ -189,14 +188,16 @@ style_constraints, avoidance}}`.
 
 > **Note (path delta):** the sub-components (AdaptiveToggle,
 > AdaptiveWeightControls, AdaptiveWeightSlider, AdaptiveSourceList,
-> AdaptiveSnapshotHistory) are consolidated into `AdaptiveDashboard.tsx`
-> rather than separate files. The hooks live under `lib/hooks/` (shared
-> namespace) rather than `hooks/adaptive/`. The status indicator lives
-> under `editor-view/` (editor toolbar area) rather than `editor/`.
+> AdaptiveSnapshotHistory) are consolidated into
+> `packages/web/components/studio/settings/AdaptiveDashboard.tsx` rather
+> than separate files. The hooks live under `packages/web/lib/hooks/` (shared
+> namespace) rather than `hooks/adaptive/`. The status indicator lives under
+> `packages/web/components/studio/editor-view/` (editor toolbar area) rather
+> than `editor/`.
 
 **i18n namespaces (RULE-16):** `settings.adaptive`, `editor.adaptiveIndicator`
-(both registered in `request.ts` and present in `packages/i18n/messages/
-{en,de,fr}/`).
+(both registered in `packages/web/lib/i18n/request.ts` and present in
+`packages/i18n/messages/{en,de,fr}/`).
 
 **Cross-component updates:** TanStack Query cache invalidation
 (`queryClient.invalidateQueries({ queryKey: ['adaptive-context'] })` after
@@ -261,44 +262,50 @@ mutations). Conform with ADR-043 per ADR-069 Decision 15.
 > Evidence project-scoping:
 > [ADR-070](../../architecture/decisions/ADR-070-evidence-project-scoping.md)
 > (nullable indexed `novel_id` on `invocation_evidence` + Alembic
-> `0035_evidence_project_scoping.py`; threads `novel_id = context.project_id`
+> `apps/api/alembic/versions/0035_evidence_project_scoping.py`; threads
+> `novel_id = context.project_id`
 > at the evidence write boundary).
 > Commit range: `ace72dc7` → `a9a740b8` (28 commits).
 
 ### Backend (`apps/api/narrare/adaptive/`)
 
-- **`service.py`** — `AdaptiveContextService`. Composes the Core
+- **`apps/api/narrare/adaptive/service.py`** — `AdaptiveContextService`.
+  Composes the Core
   `AdaptiveContextProvider` (context assembly + settings persistence +
   snapshot reads).
-- **`router.py`** — **4 REST endpoints**:
+- **`apps/api/narrare/adaptive/router.py`** — **4 REST endpoints**:
   - `GET /api/v1/adaptive/{project_id}/context` — adaptive context bundle.
   - `POST /api/v1/adaptive/{project_id}/toggle` — master ON/OFF.
   - `POST /api/v1/adaptive/{project_id}/weights` — set the 4
     `AdaptiveWeights` (clamped to [0.0, 1.0]).
   - `GET /api/v1/adaptive/{project_id}/snapshots` — paginated recent
     invocation snapshots (the per-call transparency list; ADR-070 T4/T5).
-- **`contracts.py`** — `AdaptiveContextServiceProtocol`.
-- **`schemas.py`** — `AdaptiveContextResponse`, `AdaptiveSettingsResponse`,
-  `AdaptiveWeightsInput`, `AdaptiveWeightsResponse`, `AdaptiveSourceSummary`.
-- **`adaptive_context_provider.py`** + **`profile_provider_impl.py`** —
+- **`apps/api/narrare/adaptive/contracts.py`** — `AdaptiveContextServiceProtocol`.
+- **`apps/api/narrare/adaptive/schemas.py`** — `AdaptiveContextResponse`,
+  `AdaptiveSettingsResponse`, `AdaptiveWeightsInput`, `AdaptiveWeightsResponse`,
+  `AdaptiveSourceSummary`.
+- **`apps/api/narrare/adaptive/adaptive_context_provider.py`** +
+  **`apps/api/narrare/adaptive/profile_provider_impl.py`** —
   `AdaptiveContextProviderImpl` (implements the Core Protocol; wires
   `PreferenceProvider` + `ProfileProvider` + adaptive settings).
-- **`repository.py`** — settings persistence helper.
-- **`dependencies.py`** — DI factories.
+- **`apps/api/narrare/adaptive/repository.py`** — settings persistence helper.
+- **`apps/api/narrare/adaptive/dependencies.py`** — DI factories.
 - Snapshot read path added via ADR-070: `repository.get_adaptive_snapshots`
   (T3) + service/schemas/DI (T4) + router endpoint (T5).
 
 ### Frontend (`packages/web/`)
 
-- **`components/studio/settings/AdaptiveDashboard.tsx`** — master toggle
+- **`packages/web/components/studio/settings/AdaptiveDashboard.tsx`** — master
+  toggle
   + 4 weight sliders (preference, voice_fidelity, style_constraints,
   avoidance) + active-source list + snapshot history timeline. Commit
   `0197c32c`.
-- **`components/studio/editor-view/AdaptiveStatusIndicator.tsx`** — 3-state
+- **`packages/web/components/studio/editor-view/AdaptiveStatusIndicator.tsx`**
+  — 3-state
   editor-toolbar popover (ON / PAUSED / NO-DATA). Commit `363660d0`.
-- **`hooks/adaptive/useAdaptiveContext.ts`** — TanStack Query with canonical
-  cache key `['adaptive-context']`. Commit `a13905bc`.
-- **`lib/api/adaptive.ts`** — REST client. Commit `4b8fe8ae`.
+- **`packages/web/lib/hooks/useAdaptiveContext.ts`** — TanStack Query with
+  canonical cache key `['adaptive-context']`. Commit `a13905bc`.
+- **`packages/web/lib/api/adaptive.ts`** — REST client. Commit `4b8fe8ae`.
 - Snapshot history UI: commit `a9a740b8` (ADR-069 §25).
 - shadcn slider/switch/badge primitives added (`09259d05`).
 - a11y: axe-core tests for all Phase 5 surfaces (`827ec7df`); Playwright VRT
@@ -307,7 +314,8 @@ mutations). Conform with ADR-043 per ADR-069 Decision 15.
 ### Evidence project-scoping (ADR-070)
 
 The `invocation_evidence` table gained a nullable indexed `novel_id` column
-(Alembic `0035_evidence_project_scoping.py`) so the per-call snapshots shown
+(Alembic `apps/api/alembic/versions/0035_evidence_project_scoping.py`) so the
+per-call snapshots shown
 in the dashboard are scoped to the active project. The Core
 `FeatureInvocationEvidence` gained an asymmetric read-only `created_at`.
 Commits: `6665e399` (migration + model), `5e0f4b5a` (thread `novel_id` at
@@ -320,7 +328,7 @@ write boundary), `425c1a9a` / `3a70f7b6` / `410a3e2f` (snapshot read path).
 - `packages/i18n/messages/{en,de,fr}/dialogueCoach.json`
 - `packages/i18n/messages/{en,de,fr}/aiAssist.json`
 
-Commit `d709427c`. All registered in `request.ts`.
+Commit `d709427c`. All registered in `packages/web/lib/i18n/request.ts`.
 
 ## Status & History
 

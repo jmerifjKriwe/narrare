@@ -105,6 +105,12 @@ _VALIDATION_FEATURES: dict[str, list[str]] = {
         "readability",
         "pov",
         "coreference",
+        # SERIES-002: band_summary shares the SUMMARIZE-intent final-validation
+        # path (RuntimeVariableValidatorImpl + FinalPromptValidatorImpl).
+        "band_summary",
+        # SERIES-004: series_consistency shares the ANALYSE-intent
+        # final-validation path (covered by the review representative).
+        "series_consistency",
     ],
     "kb": [
         "consistency",

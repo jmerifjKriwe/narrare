@@ -118,8 +118,10 @@ Drift (Spec 4), and Series Export (Spec 5).
   `KBScopeServiceProtocol`, `KBScopeMutationProtocol` (RULE-03 Protocols —
   added in the PR #145 review; see ADR-075 §B).
 - `apps/api/narrare/kb/canon_service.py` — `KBCanonService` (Canon CRUD);
-  `scope_service.py` — `KBScopeService` (promote/demote orchestration);
-  `router_canon.py` (Canon CRUD endpoints); `router_scope.py` (promote/demote).
+  `apps/api/narrare/kb/scope_service.py` — `KBScopeService`
+  (promote/demote orchestration); `apps/api/narrare/kb/router_canon.py`
+  (Canon CRUD endpoints); `apps/api/narrare/kb/router_scope.py`
+  (promote/demote).
 - `apps/api/alembic/versions/0037_series_foundation.py` — atomic `upgrade()` +
   `downgrade()` (RULE-14).
 

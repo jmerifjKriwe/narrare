@@ -118,7 +118,8 @@ Category: `ai_assist`. Default mode: `dialogue_coach`.
 
 **Prompt:** `packages/core/narrare_core/prompts/_bundled/ai_assist/en/dialogue_coach/system.md`
 (new governed EN template; Mode 1 PromptComposer per ADR-054; registered in
-`prompt-surface-manifest.yaml` + `adoption-registry.yaml` per ADR-069
+`scripts/architecture/prompt-surface-manifest.yaml` +
+`scripts/architecture/adoption-registry.yaml` per ADR-069
 Decision 10). EN-only by default; output language is controlled via
 `{{writing_language}}` and runtime Deps, not by duplicating the template
 per locale (RULE-22 §5).
@@ -182,46 +183,47 @@ This preserves the "metrics never reach generation" boundary even when
 the coach proposes rewrites.
 
 **Speaker attribution (ADR-069 Decision 7):** Reuses
-`core/analysis/dialogue_parser.py` (deterministic; ADR-055 D3) for
-attribution. Residual ambiguous speakers are resolved inline by the
-`DialogueCoachAgent` in its single LLM call (no ANAL-005 Coreference
-runtime coupling).
+`packages/core/narrare_core/analysis/dialogue_parser.py` (deterministic;
+ADR-055 D3) for attribution. Residual ambiguous speakers are resolved
+inline by the `DialogueCoachAgent` in its single LLM call (no ANAL-005
+Coreference runtime coupling).
 
 **Frontend (per ADR-069 Retrofit-Plan §1):**
 
-- `packages/web/components/analysis/dialogue-coach/DialogueCoachPanel.tsx`
-- `packages/web/components/analysis/dialogue-coach/DialogueModeSelector.tsx`
-- `packages/web/components/analysis/dialogue-coach/DialogueIssueList.tsx`
-- `packages/web/components/analysis/dialogue-coach/DialogueIssueCard.tsx`
-- `packages/web/components/analysis/dialogue-coach/DialogueAlternativeList.tsx`
-- `packages/web/components/analysis/dialogue-coach/DialogueAlternativeCard.tsx`
+- `packages/web/components/studio/analysis/DialogueCoachPanel.tsx` —
+  mode selector + issue list + before/after alternatives
+- `packages/web/components/studio/analysis/_components/DialogueModeSelector.tsx`
+- `packages/web/components/studio/analysis/_components/DialogueIssueList.tsx`
+- `packages/web/components/studio/analysis/_components/DialogueIssueCard.tsx`
+- `packages/web/components/studio/analysis/_components/DialogueAlternativeCard.tsx`
   (renamed from `DialogueInlineDiff` per ADR-069 Decision 9 — simple
-  before/after block, no char-level diff)
-- `packages/web/components/analysis/dialogue-coach/DialogueCoachProgress.tsx`
-- `packages/web/components/analysis/dialogue-coach/DialogueCoachEmptyState.tsx`
-- `packages/web/hooks/dialogue-coach/useDialogueCoach.ts` (uses
-  `useAIOperation` per ADR-043)
-- `packages/web/hooks/dialogue-coach/useDialogueCoachAccept.ts`
-- `packages/web/lib/api/dialogue-coach.ts` (SSE client)
-- `packages/web/types/dialogue-coach.ts` (RULE-17 field-by-field match
+  before/after block, no char-level diff; apply handled via
+  `handleApply`)
+- `packages/web/components/studio/analysis/DialogueCoachTrigger.tsx`
+- `packages/web/components/studio/editor-view/DialogueCoachPanelSlot.tsx`
+- `packages/web/lib/hooks/useDialogueCoach.ts` (uses `useAIOperation`
+  per ADR-043; accept handled via `DialogueCoachPanel.handleApplied`)
+- `packages/web/lib/api/dialogue-coach-stream.ts` (SSE client)
+- `packages/web/types/dialogueCoach.ts` (RULE-17 field-by-field match
   with backend Pydantic schema)
 
 **Panel placement:** Tab in the existing Analysis Panel (per ADR-069
 Decision 16). Uses `frontend-design`, `vercel-composition-patterns`, and
 `web-design-guidelines` skills at implementation time.
 
-**i18n namespace:** `studio.dialogueCoach` (registered in `request.ts`;
-present in `packages/i18n/messages/{en,de,fr}/`).
+**i18n namespace:** `studio.dialogueCoach` (registered in
+`packages/web/lib/i18n/request.ts`; present in
+`packages/i18n/messages/{en,de,fr}/`).
 
 **Evals (RULE-18b evidence, per ADR-069 Retrofit-Plan §5):**
 
-- `evals/dialogue_coach/test_analyze_basic.py`
-- `evals/dialogue_coach/test_improve_basic.py`
-- `evals/dialogue_coach/test_voice_fidelity_weight_effect.py` — proves
-  that changing `voice_fidelity` weight from 1.0 → 0.1 measurably
-  changes the count of `voice_mismatch` issues detected (the
-  configuration-effect-integrity evidence RULE-18b requires).
-- `evals/dialogue_coach/test_preferences_respected.py`
+- `evals/tasks/dialogue_coach_runtime.py` — runs `DialogueCoachAgent`
+  twice with `voice_fidelity` 1.0 → 0.1; asserts the `voice_mismatch`
+  issue count changes measurably (the configuration-effect-integrity
+  evidence RULE-18b requires).
+- `evals/tasks/dialogue_coach_smoke.py` — TestModel-backed smoke variant.
+- `evals/datasets/dialogue_coach.py` + `evals/evaluators/dialogue_coach.py`
+  — supporting dataset + evaluator.
 
 ## Constraints & Edge Cases
 
@@ -286,51 +288,70 @@ present in `packages/i18n/messages/{en,de,fr}/`).
 
 ### Core (`packages/core/narrare_core/`)
 
-- **`agents/dialogue_coach_agent.py`** — `DialogueCoachAgent` (extends
+- **`packages/core/narrare_core/agents/dialogue_coach_agent.py`** —
+  `DialogueCoachAgent` (extends
   `NarrareAgent[DialogueCoachDeps, DialogueCoachOutput]`; structured output
   validated per ADR-035). Commit `9bf552d0`.
-- **`agents/dialogue_coach_types.py`** — `DialogueCoachDeps`,
+- **`packages/core/narrare_core/agents/dialogue_coach_types.py`** —
+  `DialogueCoachDeps`,
   `DialogueCoachOutput`, `DialogueIssue`, `DialogueAlternative`,
   `DialogueIssueType`, `DialogueSeverity`. Commit `48f58673`.
-- **`prompts/_bundled/ai_assist/en/dialogue_coach/system.md`** — governed EN
+- **`packages/core/narrare_core/prompts/_bundled/ai_assist/en/dialogue_coach/system.md`**
+  — governed EN
   template (PromptComposer Mode 1); `DIALOGUE_COACH` routing + manifest
   registration. Commit `ace72dc7`.
 
 ### Backend (`apps/api/narrare/ai_assist/`)
 
-- **`service.py`** — `DialogueCoachService` with both `run()` (non-streaming)
+- **`apps/api/narrare/ai_assist/service.py`** — `DialogueCoachService`
+  with both `run()` (non-streaming)
   and `stream()` (SSE) per ADR-065 two-method contract. Commit `10bb8b63`.
-- **`contracts.py`** — `DialogueCoachServiceProtocol`. Commit `7bbc8541`.
-- **`schemas.py`** — `DialogueCoachRequest`, `DialogueCoachResponse`,
+- **`apps/api/narrare/ai_assist/contracts.py`** — `DialogueCoachServiceProtocol`.
+  Commit `7bbc8541`.
+- **`apps/api/narrare/ai_assist/schemas.py`** — `DialogueCoachRequest`,
+  `DialogueCoachResponse`,
   `DialogueCoachStreamEvent`. Commit `7bbc8541`.
-- **`router.py`** — SSE endpoint (`POST /api/v1/ai-assist/dialogue-coach`) +
+- **`apps/api/narrare/ai_assist/router.py`** — SSE endpoint
+  (`POST /api/v1/ai-assist/dialogue-coach`) +
   integration tests. Commit `17bc4ae9` (ADR-056 runtime closure).
-- **`dependencies.py`** — DI factories. Commit `7bbc8541`.
-- Supporting helpers: `_agent_runner.py`, `_prompt.py`,
-  `_speaker_attribution.py`, `_runtime_content.py`, `_results.py`.
+- **`apps/api/narrare/ai_assist/dependencies.py`** — DI factories.
+  Commit `7bbc8541`.
+- Supporting helpers: `apps/api/narrare/ai_assist/_agent_runner.py`,
+  `apps/api/narrare/ai_assist/_prompt.py`,
+  `apps/api/narrare/ai_assist/_speaker_attribution.py`,
+  `apps/api/narrare/ai_assist/_runtime_content.py`,
+  `apps/api/narrare/ai_assist/_results.py`.
 - Backend `ProfileProvider` wired (`a0908d3b`) — closes the Phase 2
   `voice_profiles_text` gap. Adoption probe resolved dialogue_coach debt
   markers (`04d0c94e`).
 
 ### Frontend (`packages/web/`)
 
-- **`components/studio/analysis/DialogueCoachPanel.tsx`** — mode selector
+- **`packages/web/components/studio/analysis/DialogueCoachPanel.tsx`** —
+  mode selector
   (Analyze/Improve) + issue list + before/after alternatives. Commit
   `2799dc72`.
-- **`components/studio/analysis/DialogueCoachTrigger.tsx`** — analysis
+- **`packages/web/components/studio/analysis/DialogueCoachTrigger.tsx`** —
+  analysis
   toolbar trigger.
-- **`components/studio/editor-view/DialogueCoachPanelSlot.tsx`** — editor
+- **`packages/web/components/studio/editor-view/DialogueCoachPanelSlot.tsx`**
+  — editor
   wiring (commit `d4c7c782`).
-- **`lib/api/dialogue-coach-stream.ts`** — SSE client. Commit `4b8fe8ae`.
-- **`hooks/` (useDialogueCoach)** — SSE hook using `useAIOperation`
+- **`packages/web/lib/api/dialogue-coach-stream.ts`** — SSE client.
+  Commit `4b8fe8ae`.
+- **`packages/web/lib/hooks/useDialogueCoach.ts`** — SSE hook using
+  `useAIOperation`
   (ADR-043). Commit `3deb3860`.
-- **`types/`** — RULE-17 field-by-field TS match. Commit `71f2cb49`.
+- **`packages/web/types/dialogueCoach.ts`** — RULE-17 field-by-field TS
+  match. Commit `71f2cb49`.
 
-> **Note (path delta):** the frontend landed under `components/studio/analysis/`
-> + `components/studio/editor-view/` rather than the predicted
-> `components/analysis/dialogue-coach/` subtree from the Technical section
-> above. The component composition differs slightly (fewer leaf components);
-> the panel consolidates mode selector + issue list + alternative list.
+> **Note (path delta):** the frontend landed under
+> `packages/web/components/studio/analysis/` +
+> `packages/web/components/studio/editor-view/` rather than the predicted
+> `components/analysis/dialogue-coach/` subtree from the original plan. The
+> component composition is consolidated (fewer leaf components): the panel
+> holds mode selector + issue list + alternative list, with the shared leaf
+> components under `_components/`.
 
 ### Evals (RULE-18b weight-effect evidence)
 

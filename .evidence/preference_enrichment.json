@@ -30,7 +30,9 @@
       "fact_extraction",
       "readability",
       "pov",
-      "coreference"
+      "coreference",
+      "band_summary",
+      "series_consistency"
     ],
     "kb": [
       "consistency",

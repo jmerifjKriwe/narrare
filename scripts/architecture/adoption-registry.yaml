@@ -131,6 +131,18 @@ prompt_path_compliance:
   analysis/readability: true
   analysis/pov: true
   analysis/coreference: true
+  # SERIES-002: band_summary prompt surface is governed Mode 1 (a series-band
+  # summarizer fed by chapter summaries, distinct from the chapter-level
+  # summarize mode). Runtime path: LLMIntent.SUMMARIZE + context_mode
+  # "band_summary" → BandSummaryAgent via Mode-1 resolution + the series
+  # background task.
+  analysis/band_summary: true
+  # SERIES-004: series_consistency prompt surface is governed Mode 1 (a
+  # cross-novel canon-contradiction detector checking a band's chapter prose
+  # against the series Canon KB). Runtime path: LLMIntent.ANALYSE +
+  # context_mode "series_consistency" → SeriesConsistencyAgent via Mode-1
+  # resolution.
+  analysis/series_consistency: true
   # kb
   kb/consistency: true
   kb/worldbuilding/phase1: true
@@ -186,8 +198,19 @@ features:
           required_infrastructure:
             token_budget: optional
           context_variables:
+            # KG check: the low-latency template renders the compact KB set
+            # (kb_characters for the immediate context + suggested entries +
+            # warnings/residuals) — NOT the full per-type KB context, and no
+            # culture_guidelines (ADR-045 D3 Option C latency budget).
+            must:
+              - user_preferences
+              - avoidance_patterns
             should:
               - kb_suggested
+              - kb_characters
+              - kb_context_warnings
+              - kb_other
+              - character_voice_profiles
           runtime_requirements:
             # not_applicable: pipeline bypassed for <500ms latency target
             # (ADR-045 Decision 3 Option C). See suggest_service.py docstring.
@@ -208,7 +231,18 @@ features:
             must:
               - user_preferences
               - avoidance_patterns
-            should: []
+            # KG check: the co-author template renders the full per-type KB
+            # context + suggested entries + warnings/residuals + voice
+            # profiles (its must override drops only culture_guidelines).
+            should:
+              - kb_characters
+              - kb_locations
+              - kb_factions
+              - kb_relationships
+              - kb_context_warnings
+              - kb_other
+              - character_voice_profiles
+              - kb_suggested
           runtime_requirements:
             preference_enrichment: required
             kb_suggested: not_applicable
@@ -237,6 +271,10 @@ features:
         - character_voice_profiles
         - author_voice
         - kb_suggested
+        # KG check: rendered by the KB-context assembly in every KB-aware
+        # writing template (KB quality warnings + residual entities).
+        - kb_context_warnings
+        - kb_other
 
   analysis:
     modes:
@@ -248,17 +286,45 @@ features:
         requires_runtime_evidence: true
       preferences:
         requires_runtime_evidence: true
+        # KG check (check_kg_consistency): the preferences prompt analyses a
+        # passage without KB context — override the category's kb_* should
+        # vars (which apply to the KB-context analysis modes).
+        overrides:
+          context_variables:
+            should: []
       summarize:
         requires_runtime_evidence: true
       remap:
         requires_runtime_evidence: true
+        # KG check: the remap prompt analyses a passage without KB context.
+        overrides:
+          context_variables:
+            should: []
       consistency:
         requires_runtime_evidence: true
+        # KG check: the consistency prompt consumes aggregated KB entities +
+        # relationships (kb_entities / kb_relationships), not the per-type
+        # kb_characters/locations/factions context vars.
+        overrides:
+          context_variables:
+            should:
+              - kb_entities
+              - kb_relationships
       fact_extraction:
         requires_runtime_evidence: true
+        # KG check: the fact-extraction prompt consumes the per-type KB
+        # context vars AND aggregated kb_entities.
+        overrides:
+          context_variables:
+            should:
+              - kb_characters
+              - kb_locations
+              - kb_factions
+              - kb_relationships
+              - kb_entities
       # ADR-055 D4: character_voice prompt surface (ANAL-008 profiler).
       # Runtime-verified via DB-less probes (final_validation +
-      # preference_enrichment markers) — see scripts/probes/{mode_data,
+      # preference_enrichment markers) — see scripts/probes/{modes,
       # analysis_probes,validation_budget_probes}.py. Runtime path:
       # LLMIntent.VOICE + context_mode "character_voice" → CharacterVoiceAgent
       # via Mode-1 resolution + InvocationPipeline + the SSE service.
@@ -267,7 +333,7 @@ features:
       # ADR-057 D3: voice_check prompt surface (a flag+score checker for
       # WRITE-010, distinct from the character_voice profiler). Runtime-verified
       # via DB-less probes (final_validation + preference_enrichment markers),
-      # mirroring character_voice — see scripts/probes/{mode_data,
+      # mirroring character_voice — see scripts/probes/{modes,
       # analysis_probes,validation_budget_probes}.py. Runtime path:
       # LLMIntent.VOICE + context_mode "voice_check" → CharacterVoiceCheckerAgent
       # via Mode-1 resolution + InvocationPipeline + the SSE service.
@@ -277,7 +343,7 @@ features:
       # classifier — distinct intent from the character_voice profiler and the
       # voice_check checker. Runtime-verified via DB-less probes (final_validation
       # + preference_enrichment markers) and runtime-adopted (PASS), mirroring
-      # character_voice / voice_check — see scripts/probes/{mode_data,
+      # character_voice / voice_check — see scripts/probes/{modes,
       # analysis_probes,validation_budget_probes}.py + the committed runtime-
       # evidence markers. Runtime path: LLMIntent.VOICE + context_mode "voice_drift"
       # → CharacterVoiceDriftAgent via Mode-1 resolution + the SSE service.
@@ -311,6 +377,24 @@ features:
         requires_runtime_evidence: true
       coreference:
         requires_runtime_evidence: true
+      # SERIES-002: band_summary is a series-band summarizer — distinct from
+      # the chapter-level summarize mode (aggregates chapter summaries across
+      # a band into a band summary). Runtime-verified via DB-less probes
+      # (final_validation + preference_enrichment markers), mirroring the
+      # other analysis modes — see scripts/probes/{modes,analysis_probes,
+      # validation_budget_probes}.py. Runtime path: LLMIntent.SUMMARIZE +
+      # context_mode "band_summary" → BandSummaryAgent via Mode-1 resolution
+      # + the series background task.
+      band_summary:
+        requires_runtime_evidence: true
+      # SERIES-004: series_consistency is a cross-novel canon-contradiction
+      # detector — checks a band's chapter prose against the series Canon KB.
+      # Runtime-verified via DB-less probes (final_validation +
+      # preference_enrichment markers). Runtime path: LLMIntent.ANALYSE +
+      # context_mode "series_consistency" → SeriesConsistencyAgent via
+      # Mode-1 resolution.
+      series_consistency:
+        requires_runtime_evidence: true
     required_infrastructure:
       token_budget: required
       prompt_composer: required
@@ -334,6 +418,11 @@ features:
     modes:
       consistency:
         requires_runtime_evidence: true
+        # KG check: the KB-consistency prompt checks entity content directly
+        # and uses no world_context — override the category's should var.
+        overrides:
+          context_variables:
+            should: []
       worldbuilding/phase1:
         requires_runtime_evidence: true
       worldbuilding/phase2:
@@ -370,14 +459,37 @@ features:
     modes:
       outline:
         requires_runtime_evidence: true  # P3 probes active
+        # KG check: the outline prompt consumes character + location KB
+        # context (not the full per-type set).
+        overrides:
+          context_variables:
+            should:
+              - kb_characters
+              - kb_locations
       temporal_consistency:
         requires_runtime_evidence: true
       character_arc:
         requires_runtime_evidence: true
+        # KG check: the arc prompt consumes the focused character state
+        # variables, not the per-type KB context vars.
+        overrides:
+          context_variables:
+            should:
+              - character_name
+              - character_current_state
+              - character_goal_state
       timeline_extraction:
         requires_runtime_evidence: true
       timeline:
         requires_runtime_evidence: true
+        # KG check: the timeline prompt consumes the full per-type KB set.
+        overrides:
+          context_variables:
+            should:
+              - kb_characters
+              - kb_locations
+              - kb_factions
+              - kb_relationships
     required_infrastructure:
       token_budget: partial
       prompt_composer: required

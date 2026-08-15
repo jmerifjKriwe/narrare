@@ -112,7 +112,7 @@ This is Spec 4 of 5 in the Series program. Specs 1–3 are implemented; Spec 5
   `explanation`, `severity ∈ {error, warning}`). An empty list is valid (no
   contradictions). Mirrors the `BandSummaryAgent` 1-call Output-Function +
   ADR-035 validator pattern. Governed Mode-1 template
-  `analysis/en/series_consistency/system.md`.
+  `packages/core/narrare_core/prompts/_bundled/analysis/en/series_consistency/system.md`.
 - **Series Voice Drift — reuses `AuthorVoiceDriftAgent`.** No new drift agent.
   The new `SeriesVoiceDriftService` computes the band's per-chapter narrator
   metrics (reusing `compute_author_voice_per_chapter`), loads the series voice
@@ -159,7 +159,8 @@ This is Spec 4 of 5 in the Series program. Specs 1–3 are implemented; Spec 5
 
 ### i18n (implemented)
 
-- `series.drift.*` namespace in `studio.json` (en/de/fr parity) — consolidates
+- `series.drift.*` namespace in `packages/i18n/messages/{en,de,fr}/studio.json`
+  (en/de/fr parity) — consolidates
   the canon-consistency and voice-drift copy under one namespace (not the
   originally-predicted `consistency` / `voiceDrift` split).
 

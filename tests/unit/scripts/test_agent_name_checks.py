@@ -24,10 +24,13 @@ def _load_module():
     """Load agent_name_checks via the doc_drift package import path."""
     sys.path.insert(0, str(_SCRIPTS_DIR))
     try:
+        # Force a fresh import so REPO_ROOT/_SCRIPTS_DIR resolve correctly.
+        # Pop the WHOLE doc_drift family — popping only selected submodules
+        # would orphan the siblings in sys.modules while the fresh parent
+        # package loses their attributes (breaks later string-path
+        # monkeypatching of any doc_drift.* module).
         for name in [
-            "doc_drift",
-            "doc_drift.adr_checks",
-            "doc_drift.agent_name_checks",
+            n for n in list(sys.modules) if n == "doc_drift" or n.startswith("doc_drift.")
         ]:
             sys.modules.pop(name, None)
         import doc_drift.agent_name_checks as mod  # type: ignore[import-not-found]

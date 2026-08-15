@@ -100,18 +100,15 @@ def _parse_supersedes(content: str) -> list[str]:
     return re.findall(r"ADR-\d{3}", text)
 
 
+# "Superseded by ADR-NNN" or "Superseded by [ADR-NNN](…)" — the brackets are
+# optional so both the plain and markdown-link forms are recognized (the link
+# form is used e.g. by ADR-007/012: `Superseded by [ADR-080](ADR-080-…md)`).
+_SUPERSEDED_BY_RE = re.compile(r"Superseded by \[?ADR-(\d{3})\]?")
+
+
 def _parse_superseded_by(content: str) -> list[str]:
-    """Extract ADR IDs from superseded-by references in ADR content."""
-    # "Superseded by ADR-NNN" in status line or body
-    refs: list[str] = []
-    m = re.search(r"\*\*Status:\*\*\s*.*?Superseded by (ADR-\d{3})", content)
-    if m:
-        refs.append(m.group(1))
-    # Also check body: "Superseded by ADR-NNN" in any context
-    for found in re.findall(r"Superseded by (ADR-\d{3})", content):
-        if found not in refs:
-            refs.append(found)
-    return refs
+    """Extract ADR IDs from 'Superseded by …' refs (plain or markdown-link form)."""
+    return list(dict.fromkeys(f"ADR-{m}" for m in _SUPERSEDED_BY_RE.findall(content)))
 
 
 def _parse_related_adrs(content: str) -> list[str]:

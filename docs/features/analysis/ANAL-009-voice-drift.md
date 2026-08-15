@@ -97,7 +97,8 @@ ANAL-009 is split into two phases. **Both are now implemented.**
 
 > **Phase 2B reuse note.** Phase 2B does **not** build a second scoring engine.
 > The shared delta normalization was extracted from `voice_check_scoring` into
-> `_metric_distances.py` (DRY — one normalization, two typed facades:
+> `packages/core/narrare_core/analysis/_metric_distances.py` (DRY — one
+> normalization, two typed facades:
 > `voice_metric_distances` for character metrics + `author_metric_distances` for
 > prose-level `AuthorMetrics`), and `voice_drift_scoring` was refactored onto
 > shared builders (`subscore_from_distances` / `drift_band_for_subscore` /
@@ -277,12 +278,14 @@ novel → VoiceProfileConsumer.assemble_for_checking() → list[CharacterVoicePr
 ### Module homes (ADR-073 Retrofit-Plan)
 
 **Core (`packages/core/narrare_core/`):**
-- `analysis/voice_drift_scoring.py` (NEW): `chapter_metric_trend()`,
+- `packages/core/narrare_core/analysis/voice_drift_scoring.py` (NEW):
+  `chapter_metric_trend()`,
   `trend_against_profile()` (reuses `voice_metric_distances` +
   `metric_delta_subscore`), `adjacent_jumps()` (reuses `voice_metric_distances`
   on consecutive chapters), `classify_severity()` (deterministic banding via
   `band_for_score`).
-- `agents/character_voice_drift_agent.py` + `character_voice_drift_types.py`
+- `packages/core/narrare_core/agents/character_voice_drift_agent.py` +
+  `packages/core/narrare_core/agents/character_voice_drift_types.py`
   (NEW): `CharacterVoiceDriftAgent` + `CharacterVoiceDriftResult`.
 - **Reused unchanged:** `DialogueParser`, `VoiceMetricsAnalyzer`,
   `VoiceProfileConsumer.assemble_for_checking()` (ADR-050),
@@ -290,18 +293,23 @@ novel → VoiceProfileConsumer.assemble_for_checking() → list[CharacterVoicePr
   `band_for_score` (ADR-057 — no duplication).
 
 **Prompt surface:**
-- `prompts/route_table.py`: add `"voice_drift"` to
+- `packages/core/narrare_core/prompts/route_table.py`: add `"voice_drift"` to
   `ROUTE_CONFIGS[LLMIntent.VOICE].allowed_context_modes` (third mode; default
   stays `character_voice`).
-- `prompts/_bundled/analysis/en/voice_drift/system.md` (NEW, governed Mode 1).
+- `packages/core/narrare_core/prompts/_bundled/analysis/en/voice_drift/system.md`
+  (NEW, governed Mode 1).
 - `scripts/architecture/prompt-surface-manifest.yaml` +
-  `adoption-registry.yaml`: register VOICE/`voice_drift` (mirror the
+  `scripts/architecture/adoption-registry.yaml`: register VOICE/`voice_drift`
+  (mirror the
   `voice_check` entries; runtime evidence lands at implementation per ADR-056).
 
-**Backend (`apps/api/narrare/analysis/`):** `contracts_voice_drift.py`,
-`schemas_voice_drift.py`, `voice_drift_service.py` (Mode-1 PromptComposer),
-`router_voice_drift.py` (SSE `POST /analysis/voice-drift/{novel_id}`),
-`dependencies_voice_drift.py`.
+**Backend (`apps/api/narrare/analysis/`):**
+`apps/api/narrare/analysis/contracts_voice_drift.py`,
+`apps/api/narrare/analysis/schemas_voice_drift.py`,
+`apps/api/narrare/analysis/voice_drift_service.py` (Mode-1 PromptComposer),
+`apps/api/narrare/analysis/router_voice_drift.py`
+(SSE `POST /analysis/voice-drift/{novel_id}`),
+`apps/api/narrare/analysis/dependencies_voice_drift.py`.
 
 **Frontend (`packages/web/`):** `VoiceDriftPanel` + sub-components (overview
 heatmap + expandable detail per Layout γ) + `useCharacterVoiceDrift`
@@ -411,7 +419,8 @@ per-chapter fan-out.
   checking). Implemented against [ADR-074](../../architecture/decisions/ADR-074-author-voice-storage.md)
   (Phase 2B reuses the ADR-074 storage + the `AuthorVoiceProfile` baseline
   produced by Phase 2A / [ANAL-007](ANAL-007-voice-author.md)): **Core** (`dd9da4ee`)
-  — shared delta normalization extracted to `analysis/_metric_distances.py` (one
+  — shared delta normalization extracted to
+  `packages/core/narrare_core/analysis/_metric_distances.py` (one
   normalization, two typed facades: `voice_metric_distances` +
   `author_metric_distances` — no second scoring engine, satisfies ADR-057 Risk
   #3); `voice_drift_scoring` refactored onto shared builders
