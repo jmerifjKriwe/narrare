@@ -119,7 +119,10 @@ class TestStreamGeneration:
         mock_service.validate_request_access = AsyncMock()
         mock_service.stream_generation.return_value = _stream()
 
-        with patch("narrare.writing.router.get_writing_service", return_value=mock_service):
+        with patch(
+            "narrare.writing.router.get_writing_service_for_stream",
+            return_value=mock_service,
+        ):
             response = await client.get(
                 f"/api/v1/writing/generation/{request_id}/stream",
             )
@@ -156,7 +159,10 @@ class TestStreamGeneration:
             identifier=str(request_id),
         )
 
-        with patch("narrare.writing.router.get_writing_service", return_value=mock_service):
+        with patch(
+            "narrare.writing.router.get_writing_service_for_stream",
+            return_value=mock_service,
+        ):
             response = await client.get(
                 f"/api/v1/writing/generation/{request_id}/stream",
             )
@@ -190,7 +196,10 @@ class TestStreamGeneration:
         mock_service.validate_request_access = AsyncMock()
         mock_service.stream_generation.return_value = _stream_with_meta()
 
-        with patch("narrare.writing.router.get_writing_service", return_value=mock_service):
+        with patch(
+            "narrare.writing.router.get_writing_service_for_stream",
+            return_value=mock_service,
+        ):
             response = await client.get(
                 f"/api/v1/writing/generation/{request_id}/stream",
             )

@@ -101,6 +101,20 @@ async def _make_writing_service(
     )
 
 
+async def _make_writing_service_for_stream(
+    session: AsyncSession,
+    user_id: str,
+    request_id: object = None,
+) -> WritingService:
+    """Stream-path variant of ``_make_writing_service`` (Task 3e signature).
+
+    The stream endpoint's request-scoped factory takes ``request_id``
+    instead of ``project_id``; the fake builder ignores both (no model
+    routing in integration tests), so it delegates straight through.
+    """
+    return await _make_writing_service(session, user_id)
+
+
 async def _make_extend_service(
     session: AsyncSession,
     user_id: str,
@@ -249,6 +263,10 @@ def _patch_writing_service() -> object:  # pyright: ignore[reportUnusedFunction]
         patch(
             "narrare.writing.router.get_writing_service",
             new=_make_writing_service,
+        ),
+        patch(
+            "narrare.writing.router.get_writing_service_for_stream",
+            new=_make_writing_service_for_stream,
         ),
         patch(
             "narrare.writing.router_extend.get_extend_service",

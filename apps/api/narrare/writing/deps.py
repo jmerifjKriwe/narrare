@@ -25,6 +25,9 @@ from narrare.writing.deps_suggest import (
 from narrare.writing.deps_writing import (
     get_writing_service as get_writing_service,
 )
+from narrare.writing.deps_writing import (
+    get_writing_service_for_stream as get_writing_service_for_stream,
+)
 
 __all__ = [
     "get_coauthor_apply_service",
@@ -34,4 +37,5 @@ __all__ = [
     "get_style_variant_service",
     "get_suggest_service",
     "get_writing_service",
+    "get_writing_service_for_stream",
 ]

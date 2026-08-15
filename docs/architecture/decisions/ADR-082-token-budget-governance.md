@@ -524,6 +524,28 @@ enforcement test), all four lifted constants re-defaulted with rewritten
 regressions, inventory table above reflected in code comments where a constant
 was classified heuristic/stay, CR-08 P0 closure recorded in CURRENT_STATE.
 
+**Addendum (2026-08-15, final whole-branch review):** the review found that
+the SSE stream endpoint — the sole production caller of the writing context
+preparation — constructed its `WritingService` via the novel-blind factory
+shape (`get_writing_service(session, user_id)`; the stream route has only
+`request_id`). `series_in_scope` therefore resolved `False` on the real
+generation path: `series_history=0` → `assemble_series_history(token_budget=0)`
+→ empty `{{series_history}}` block for series novels (after full DB work), and
+the tier base lost the Decision-6 carve-out (standalone semantics);
+project-level model routing was ignored on the same seam. Root cause: the C5
+plan's factory wiring (Task 3b Step 4b) keyed resolution on `project_id`,
+which the stream route does not have — a plan defect (recorded as plan
+Deviations item 10), not an implementation deviation. Fixed in **Task 3e**
+(`.superpowers/sdd/2026-08-15-c5-token-budget-governance/task-3e-brief.md`):
+request-scoped `get_writing_service_for_stream` resolves the novel from the
+validated request row and delegates to the unchanged factory — one resolution
+path. Gate criterion 2 ("runtime consumer → enforcement test") was
+invalidated by the finding for the streaming path and is re-verified by
+Task 3e's request-shape wiring tests (`TestStreamFactoryRequestScopedWiring`:
+series novel → carve-out applied; standalone → full total; foreign user →
+pre-resolution `NotFoundError`). The "✅ Implemented" status stands with this
+addendum as the honest record.
+
 ---
 
 ## Review Trigger

@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare._app.rate_limits import AI_WRITE_LIMITER
-from narrare.writing.deps import get_writing_service
+from narrare.writing.deps import get_writing_service, get_writing_service_for_stream
 
 if TYPE_CHECKING:
     from typing import Any
@@ -58,7 +58,12 @@ async def stream_generation(
     session: SessionDep,
 ) -> StreamingResponse:
     """SSE stream for generated text chunks."""
-    service = await get_writing_service(session, user_id)
+    # Request-scoped factory (ADR-082 Task 3e): the novel is resolved from
+    # the request row so budget carving and project-level model routing see
+    # the real project on the actual generation path. Ownership is already
+    # validated inside the factory (pre-SSE); the explicit check below
+    # stays as defense in depth.
+    service = await get_writing_service_for_stream(session, user_id, request_id)
 
     # Pre-validate before starting SSE response to avoid
     # RuntimeError when NotFoundError fires after headers sent.

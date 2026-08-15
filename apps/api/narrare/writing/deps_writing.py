@@ -144,3 +144,43 @@ async def get_writing_service(
         series_history_provider=series_history_provider,
         series_history_budget=budgets.series_history,
     )
+
+
+async def get_writing_service_for_stream(
+    session: AsyncSession,
+    user_id: str,
+    request_id: UUID,
+) -> WritingService:
+    """Request-scoped factory for the SSE stream path (ADR-082, Task 3e).
+
+    The stream route only knows ``request_id`` — the novel is recoverable
+    solely from the generation-request row. Resolving it here keeps the one
+    factory resolution path project-aware on the real generation path:
+    ADR-082 budget carving (series in scope → series-history ceiling +
+    tier-base carve-out) and project-level model routing both key on the
+    project id. The row is validated via
+    :func:`narrare.writing._helpers.get_validated_request`, so ownership is
+    enforced before the SSE response starts (CR-07).
+
+    Args:
+        session: DB session for repository and settings lookups.
+        user_id: Authenticated user identifier (access check).
+        request_id: The generation request being streamed.
+
+    Raises:
+        NotFoundError: If the request does not exist or belongs to
+            another user.
+
+    Returns:
+        Configured WritingService with budgets resolved for the
+        request's novel.
+    """
+    from narrare.writing._helpers import get_validated_request
+    from narrare.writing.repository import GenerationRepository
+
+    request_model = await get_validated_request(
+        GenerationRepository(session),
+        request_id,
+        user_id,
+    )
+    return await get_writing_service(session, user_id, request_model.novel_id)
