@@ -12,6 +12,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from narrare.settings.token_limits.schemas import TokenLimitOverridesResponse
+from narrare_core.context.budget import (
+    DEFAULT_SERIES_HISTORY_BUDGET,
+    DEFAULT_TOTAL_BUDGET,
+)
 
 # ======================================================================
 # Test 1: max_selection_words absent from API response
@@ -72,6 +76,8 @@ async def test_env_override_affects_resolved_limits_via_internal_merge() -> None
         consistency_max_chapter_tokens: int = 2000
         consistency_max_kb_entries: int = 100
         default_max_selection_words: int = 5000  # <-- overridden
+        context_total_budget: int = DEFAULT_TOTAL_BUDGET
+        series_history_budget: int = DEFAULT_SERIES_HISTORY_BUDGET
 
     class _FakeRepo:
         """Minimal repo that returns no overrides."""

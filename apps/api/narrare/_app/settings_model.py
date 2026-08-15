@@ -13,6 +13,11 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from narrare_core.context.budget import (
+    DEFAULT_SERIES_HISTORY_BUDGET,
+    DEFAULT_TOTAL_BUDGET,
+)
+
 # Compute path to project root.
 # From apps/api/narrare/_app/settings_model.py, go up 5 levels.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
@@ -110,6 +115,25 @@ class Settings(BaseSettings):
     """Default output token limit for LLM calls.
     Used as fallback when no token_limit_profile is set.
     """
+
+    context_total_budget: int = Field(
+        default=DEFAULT_TOTAL_BUDGET,
+        ge=1_024,
+        alias="NARRARE_CONTEXT_TOTAL_BUDGET",
+    )
+    """Default total input-context budget for writing + analysis (ADR-082).
+
+    Ceiling, not a consumption mandate; runtime capping against the
+    model's context window applies on top (min(configured, window -
+    reserve) — never scaled up).
+    """
+
+    series_history_budget: int = Field(
+        default=DEFAULT_SERIES_HISTORY_BUDGET,
+        ge=1_024,
+        alias="NARRARE_SERIES_HISTORY_BUDGET",
+    )
+    """Default series-history block ceiling within the total (ADR-082)."""
 
     # ---------------------------------------------------------------------------
     # WebSocket

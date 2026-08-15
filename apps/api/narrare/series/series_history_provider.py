@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare_core.context.budget import DEFAULT_SERIES_HISTORY_BUDGET
 from narrare_core.context.series_history import BandSummaryData, SeriesHistoryTier
 
 if TYPE_CHECKING:
@@ -43,9 +44,11 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-#: Default token budget for the series-history block. Mirrors the tier default;
-#: the writing pipeline's real budgeting happens at the assembler level.
-_DEFAULT_TOKEN_BUDGET: int = 512
+#: Default token budget for the series-history block (ADR-082 D1: 16,000,
+#: derived from the Core constant — the old 512/512 mirror pair was the C5
+#: defect). The production call site passes the resolved cascade value
+#: (writing/_helpers.py, Task 3); this default covers unparameterized calls.
+_DEFAULT_TOKEN_BUDGET: int = DEFAULT_SERIES_HISTORY_BUDGET
 
 #: Default recency window when no SeriesSettings row exists (mirrors the ORM
 #: + migration 0038 server_default of 3).

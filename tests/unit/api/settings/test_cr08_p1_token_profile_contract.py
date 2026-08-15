@@ -26,6 +26,10 @@ from pydantic import ValidationError
 from narrare.settings.token_limits._validators import VALID_PROFILES
 from narrare.settings.token_limits.contracts import TokenLimitOverrides
 from narrare.settings.token_limits.schemas import UpdateTokenLimitsRequest
+from narrare_core.context.budget import (
+    DEFAULT_SERIES_HISTORY_BUDGET,
+    DEFAULT_TOTAL_BUDGET,
+)
 from narrare_core.llm.token_profiles import (
     PROFILE_OUTPUT_LIMITS,
     TokenLimitProfile,
@@ -50,6 +54,8 @@ class _FakeConfig:
     consistency_max_chapter_tokens: int = 2000
     consistency_max_kb_entries: int = 100
     default_max_selection_words: int = 2000
+    context_total_budget: int = DEFAULT_TOTAL_BUDGET
+    series_history_budget: int = DEFAULT_SERIES_HISTORY_BUDGET
 
 
 class _FakeUserRepo:

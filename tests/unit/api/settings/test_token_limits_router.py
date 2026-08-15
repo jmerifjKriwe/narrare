@@ -22,6 +22,10 @@ from narrare.settings.token_limits.schemas import (
     TokenLimitOverridesResponse,
     UpdateTokenLimitsRequest,
 )
+from narrare_core.context.budget import (
+    DEFAULT_SERIES_HISTORY_BUDGET,
+    DEFAULT_TOTAL_BUDGET,
+)
 
 # ======================================================================
 # In-memory Fakes
@@ -45,6 +49,8 @@ class _FakeConfig:
     consistency_max_chapter_tokens: int = 2000
     consistency_max_kb_entries: int = 100
     default_max_selection_words: int = 2000
+    context_total_budget: int = DEFAULT_TOTAL_BUDGET
+    series_history_budget: int = DEFAULT_SERIES_HISTORY_BUDGET
 
 
 class _FakeUserRepo:

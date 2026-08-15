@@ -5,6 +5,10 @@ from __future__ import annotations
 from narrare.settings.token_limits.contracts import TokenLimitOverrides
 from narrare.settings.token_limits.models import ProjectTokenLimits, UserTokenLimits
 from narrare.settings.token_limits.service import TokenLimitsService
+from narrare_core.context.budget import (
+    DEFAULT_SERIES_HISTORY_BUDGET,
+    DEFAULT_TOTAL_BUDGET,
+)
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -47,6 +51,8 @@ class _FakeConfig:
     consistency_max_chapter_tokens = 2000
     consistency_max_kb_entries = 100
     default_max_selection_words = 2000
+    context_total_budget = DEFAULT_TOTAL_BUDGET
+    series_history_budget = DEFAULT_SERIES_HISTORY_BUDGET
 
 
 # ---------------------------------------------------------------------------

@@ -205,6 +205,8 @@ class TokenLimitsService:
             max_chapter_tokens=cfg.consistency_max_chapter_tokens,
             max_kb_entries=cfg.consistency_max_kb_entries,
             max_selection_words=cfg.default_max_selection_words,
+            context_total_budget=cfg.context_total_budget,
+            series_history_budget=cfg.series_history_budget,
         )
 
     @staticmethod
@@ -280,5 +282,12 @@ class TokenLimitsService:
             max_kb_entries=cast("int", overrides.get("max_kb_entries", base.max_kb_entries)),
             max_selection_words=cast(
                 "int", overrides.get("max_selection_words", base.max_selection_words)
+            ),
+            context_total_budget=cast(
+                "int", overrides.get("context_total_budget", base.context_total_budget)
+            ),
+            series_history_budget=cast(
+                "int",
+                overrides.get("series_history_budget", base.series_history_budget),
             ),
         )

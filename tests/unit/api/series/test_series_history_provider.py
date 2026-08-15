@@ -328,3 +328,13 @@ class TestKBRedirect:
         # Unknown novel → safe per-novel default (never merged for a novel
         # we can't confirm is in a series).
         assert mode == "per_novel"
+
+
+class TestDefaultTokenBudget:
+    def test_provider_default_derives_from_core_constant(self) -> None:
+        """ADR-082 inventory (a)2: the mirror constant must not drift from
+        the Core default (the old 512/512 mirror pair was the defect)."""
+        from narrare.series.series_history_provider import _DEFAULT_TOKEN_BUDGET
+        from narrare_core.context.budget import DEFAULT_SERIES_HISTORY_BUDGET
+
+        assert _DEFAULT_TOKEN_BUDGET == DEFAULT_SERIES_HISTORY_BUDGET
