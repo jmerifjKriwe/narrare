@@ -5,7 +5,7 @@ Pinned tier always receives its full budget regardless of constraints.
 
 Moved from ``writing/budget.py`` per ADR-025 Decision 3.
 
-Tier allocation (default 6000-token budget):
+Tier allocation (default 32,000-token budget, ADR-082 Decision 2):
     immediate:     30%  — current chapter content + frontmatter + outline
     recent:        20%  — recent chapter summaries or full text
     kb_referenced: 25%  — KB entities referenced in frontmatter
@@ -45,6 +45,31 @@ from typing import ClassVar
 
 from narrare_core.context.types import TierBudget
 
+# ---------------------------------------------------------------------------
+# ADR-082 cascade constants — single source for every input-context budget
+# default (backend defaults import these; no literal may exist twice).
+# ---------------------------------------------------------------------------
+
+#: Default total input-context budget for writing **and** analysis
+#: (ADR-082 Decisions 2/5). Ceiling, not a consumption mandate — tiers
+#: fill by content availability (design doc D6).
+DEFAULT_TOTAL_BUDGET: int = 32_000
+
+#: Default series-history block ceiling **within** the total (ADR-082
+#: Decisions 1/3 — guarded carve-out, not additive). Sits exactly at the
+#: 50% guard boundary (16k = 50% of 32k).
+DEFAULT_SERIES_HISTORY_BUDGET: int = 16_000
+
+#: Fixed reserve component (ADR-082 Decision 4): auto-injected meta +
+#: universal capabilities (≈750 tok), feature system prompt (≈900 tok),
+#: unbudgeted pass-through variables (≈1,350 tok) — headroom-rounded.
+RESERVE_FIXED: int = 4_000
+
+#: Maximum share of the effective total the series-history block may
+#: consume (ADR-082 Axis 3 Option C): structurally prevents the
+#: degenerate small-window carve-out (both sides always ≥ half).
+SERIES_HISTORY_MAX_SHARE: float = 0.5
+
 
 class TokenBudgetManager:
     """Manages token budgets across all 5 context tiers.
@@ -56,7 +81,7 @@ class TokenBudgetManager:
         immediate_limit = budgets["immediate"].token_limit
     """
 
-    DEFAULT_TOTAL_BUDGET: int = 6000
+    DEFAULT_TOTAL_BUDGET: int = DEFAULT_TOTAL_BUDGET
 
     TIER_ORDER: ClassVar[tuple[str, ...]] = (
         "immediate",
