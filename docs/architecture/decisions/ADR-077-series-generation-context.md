@@ -22,9 +22,11 @@
 > KB read-path to Canon+Overlay for series novels, and the user-facing
 > **Band Summary Card** (auto-generated text + manual override).
 >
-> Out of scope here: Series Voice Hierarchy (Spec 3), Cross-Novel Drift
-> (Spec 4), Series Export (Spec 5). Each is downstream program work flagged in
-> ADR-075's program decomposition but not designed here.
+> Out of scope here: Series Voice Hierarchy (Spec 3) and Cross-Novel Drift
+> (Spec 4) — downstream program work (both implemented), flagged in
+> ADR-075's program decomposition but not designed here. **Spec 5 (Series
+> Export) was retired 2026-08-14 as YAGNI** (PO decision; see
+> `docs/superpowers/specs/2026-08-14-post-export-followups-design.md` §2).
 
 > **Numbering Note.** The Spec 2 implementation plan and the Alembic migration
 > `0038_band_summaries.py` docstring both reference "ADR-076" as the planned

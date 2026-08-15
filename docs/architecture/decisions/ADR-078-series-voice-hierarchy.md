@@ -29,8 +29,9 @@
 > for a novel that belongs to a series, the auto-profile-from-band source, the
 > per-novel opt-out, the `{{author_voice}}` extension (no new prompt variable), and
 > the `AuthorVoiceConsumer` Delta composition. Series **Cross-Novel Drift** (Spec 4)
-> and **Series Export** (Spec 5) are **downstream program work**, flagged here but
-> not designed here.
+> is **downstream program work** (implemented), flagged here but
+> not designed here. **Spec 5 (Series Export) was retired 2026-08-14 as YAGNI**
+> (PO decision; see `docs/superpowers/specs/2026-08-14-post-export-followups-design.md` §2).
 
 ---
 

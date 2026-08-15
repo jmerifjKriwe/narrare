@@ -17,10 +17,11 @@
 > (Series-Canon + Novel-Overlay), the schema representation (2A + STI), the
 > join-migration policies, the navigation model, and the multi-series policy.
 > Series **Generation Context** (Spec 2), **Series Voice Hierarchy** (Spec 3 —
-> closes the Voice-Teil of ADR-074's Review Trigger), **Cross-Novel Drift**
-> (Spec 4), and **Series Export** (Spec 5) are **downstream program work**,
+> closes the Voice-Teil of ADR-074's Review Trigger), and **Cross-Novel Drift**
+> (Spec 4) are **downstream program work** (all implemented),
 > flagged here but not designed here. This ADR defines the foundation those
-> specs build on.
+> specs build on. **Spec 5 (Series Export) was retired 2026-08-14 as YAGNI**
+> (PO decision; see `docs/superpowers/specs/2026-08-14-post-export-followups-design.md` §2).
 
 ---
 
