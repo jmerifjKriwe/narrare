@@ -35,6 +35,7 @@ async def get_rewrite_service(
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.settings.repository import UserSettingsRepository
+    from narrare.settings.token_limits.context_budgets import resolve_context_budgets
     from narrare.settings.token_limits.repository import (
         ProjectTokenLimitsRepository,
         UserTokenLimitsRepository,
@@ -67,8 +68,20 @@ async def get_rewrite_service(
         max_tokens=limits.output_limit,
     )
 
+    # ADR-082: this path never injects {{series_history}} -> tiers
+    # allocate over the full effective total (Decision 6 standalone
+    # semantics for rewrite/coauthor/style-variants).
+    budgets = resolve_context_budgets(
+        limits=limits,
+        config=resolved.config,
+        series_in_scope=False,
+    )
     draft_processor = DraftProcessor()
-    pipeline = create_pipeline(draft_processor, tier_overrides=limits.tier_percentages)
+    pipeline = create_pipeline(
+        draft_processor,
+        tier_overrides=limits.tier_percentages,
+        total_budget=budgets.writing_tier_base,
+    )
     repo = GenerationRepository(session)
     relationship_repo = RelationshipRepository(session)
     tone_service = CustomToneService(repo=UserSettingsRepository(session))

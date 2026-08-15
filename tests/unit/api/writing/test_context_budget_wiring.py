@@ -258,3 +258,63 @@ class TestDepsExtendFactoryWiring:
         # Extend never injects series history -> full total as tier base.
         assert adapter_spy.call_args.kwargs["series_in_scope"] is False
         assert pipeline_spy.call_args.kwargs["total_budget"] == 32_000
+
+
+class TestRemainingWritingFactoriesWiring:
+    """rewrite / coauthor / style-variants resolve like extend:
+    series_in_scope=False (they never inject series history)."""
+
+    async def test_deps_rewrite_passes_resolved_tier_base(self) -> None:
+        import importlib
+
+        budgets = _canned_budgets(tier_base=32_000, series_history=0)
+        ctx, pipeline_spy, adapter_spy = _budget_patch_context(
+            "narrare.writing.deps_rewrite", budgets
+        )
+        module = importlib.import_module("narrare.writing.deps_rewrite")
+
+        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4]:
+            await module.get_rewrite_service(
+                session=_fake_session(),
+                user_id=str(uuid.uuid4()),
+                project_id=uuid.uuid4(),
+            )
+
+        assert adapter_spy.call_args.kwargs["series_in_scope"] is False
+        assert pipeline_spy.call_args.kwargs["total_budget"] == 32_000
+
+    async def test_deps_coauthor_passes_resolved_tier_base(self) -> None:
+        import importlib
+
+        budgets = _canned_budgets(tier_base=24_000, series_history=0)
+        ctx, pipeline_spy, _adapter = _budget_patch_context(
+            "narrare.writing.deps_coauthor", budgets
+        )
+        module = importlib.import_module("narrare.writing.deps_coauthor")
+
+        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4]:
+            await module.get_coauthor_service(
+                session=_fake_session(),
+                user_id=str(uuid.uuid4()),
+                project_id=uuid.uuid4(),
+            )
+
+        assert pipeline_spy.call_args.kwargs["total_budget"] == 24_000
+
+    async def test_deps_style_variants_passes_resolved_tier_base(self) -> None:
+        import importlib
+
+        budgets = _canned_budgets(tier_base=28_000, series_history=0)
+        ctx, pipeline_spy, _adapter = _budget_patch_context(
+            "narrare.writing.deps_style_variants", budgets
+        )
+        module = importlib.import_module("narrare.writing.deps_style_variants")
+
+        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4]:
+            await module.get_style_variant_service(
+                session=_fake_session(),
+                user_id=str(uuid.uuid4()),
+                project_id=uuid.uuid4(),
+            )
+
+        assert pipeline_spy.call_args.kwargs["total_budget"] == 28_000

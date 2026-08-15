@@ -24,6 +24,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from narrare_core.context.contracts import EffectiveContextBudgets
 from narrare_core.shared.errors import NotFoundError
 
 # ---------------------------------------------------------------------------
@@ -120,6 +121,20 @@ class TestStyleVariantsFactory:
             patch(
                 "narrare.settings.token_limits.service.TokenLimitsService",
                 return_value=fake_limits_service,
+            ),
+            # ADR-082 wiring: the factory resolves context budgets before
+            # building the pipeline — patch the adapter so no models.dev
+            # window provider is constructed.
+            patch(
+                "narrare.settings.token_limits.context_budgets.resolve_context_budgets",
+                return_value=EffectiveContextBudgets(
+                    context_total=32_000,
+                    series_history=0,
+                    writing_tier_base=32_000,
+                    reserve_tokens=8_096,
+                    context_window=128_000,
+                    source="cascade:uncapped",
+                ),
             ),
             # Lazy imports inside function body — patch at definition site
             patch("narrare._app.config.get_settings", return_value=fake_settings),
