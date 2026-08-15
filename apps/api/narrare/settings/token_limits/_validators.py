@@ -33,6 +33,17 @@ VALID_OVERRIDE_FIELDS: set[str] = {
     "max_kb_entries",
     # Co-author selection word limit (SET-005 cascade)
     "max_selection_words",
+    # Input-context budgets (ADR-082 / C5)
+    "context_total_budget",
+    "series_history_budget",
+}
+
+#: Minimum sane values for integer budget keys (write boundary, ADR-082
+#: Decision 1 — "ge=1_024-style sanity bounds"). Guards against
+#: degenerate overrides (e.g. 1-token totals) without capping ambition.
+_INT_FIELD_MINIMA: dict[str, int] = {
+    "context_total_budget": 1_024,
+    "series_history_budget": 1_024,
 }
 
 
@@ -57,3 +68,15 @@ def validate_token_overrides(overrides: dict[str, object]) -> None:
                 f"Must be one of: {', '.join(sorted(VALID_PROFILES))}",
                 code="INVALID_TOKEN_PROFILE",
             )
+        minimum = _INT_FIELD_MINIMA.get(key)
+        if minimum is not None:
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ValidationError(
+                    f"Token limit override '{key}' must be an integer, got {type(value).__name__}",
+                    code="INVALID_BUDGET_BOUNDS",
+                )
+            if value < minimum:
+                raise ValidationError(
+                    f"Token limit override '{key}' must be >= {minimum}, got {value}",
+                    code="INVALID_BUDGET_BOUNDS",
+                )

@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
-    from narrare.settings.token_limits.contracts import TokenLimitsServiceProtocol
+    from narrare.settings.token_limits.protocols import TokenLimitsServiceProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
     from narrare_core.prompts import PromptComposer

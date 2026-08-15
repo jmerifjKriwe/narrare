@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from narrare.settings.token_limits.contracts import (
+from narrare.settings.token_limits.protocols import (
     TokenLimitsRepositoryProtocol,
     TokenLimitsServiceProtocol,
 )

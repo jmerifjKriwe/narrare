@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
-    from narrare.settings.token_limits.contracts import TokenLimitsServiceProtocol
+    from narrare.settings.token_limits.protocols import TokenLimitsServiceProtocol
     from narrare_core.agents.consistency_types import ConsistencyIssue
     from narrare_core.agents.fact_extractor_types import TimelineEventEnvelope
 
