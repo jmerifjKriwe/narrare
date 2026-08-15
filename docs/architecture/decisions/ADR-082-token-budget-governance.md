@@ -1,8 +1,6 @@
 # ADR-082 — Token-Budget Governance: Cascade Integration + Model-Boundary Capping
 
-> **Status:** ✅ Accepted (PO approved all four open decision points 2026-08-15 —
-> see *PO Decision Record* below. Implementation pending: the C5 implementation
-> plan follows this ADR.)
+> **Status:** ✅ Implemented (2026-08-15 — C5 slice Tasks 1a–3d; commits 4cf68e1d…ab03157c; all five Implementation Completeness Gate criteria review-verified)
 > **Date:** 2026-08-15
 > **Deciders:** Architecture Agent (draft), PO (approved all four open decision
 > points 2026-08-15)
@@ -291,14 +289,14 @@ F5; the design doc delegated exactly this decision to this ADR.
                    = effective_total                                   # standalone
    ```
 
-    Unknown window (unknown model / offline no cache): **no capping**, proceed
-    with configured value, log warning + `source="…:window_unknown"` tag —
-    RULE-11, mirroring `provider_max_unknown`. Same rule applies per consumer
-    (writing model window for writing; analysis model window for analysis).
+   Unknown window (unknown model / offline no cache): **no capping**, proceed
+   with configured value, log warning + `source="…:window_unknown"` tag —
+   RULE-11, mirroring `provider_max_unknown`. Same rule applies per consumer
+   (writing model window for writing; analysis model window for analysis).
 
-    > **Clarification (2026-08-15, C5 plan):** the window source is `get_model_limits` (`narrare_core.llm.cost_rates`) — the `ModelLimits | None` wrapper mirroring `DefaultRunLimitResolver`, as the Contract Sketch and resolver Protocol specify; the `get_model_limit_calibration` naming above is superseded.
+   > **Clarification (2026-08-15, C5 plan):** the window source is `get_model_limits` (`narrare_core.llm.cost_rates`) — the `ModelLimits | None` wrapper mirroring `DefaultRunLimitResolver`, as the Contract Sketch and resolver Protocol specify; the `get_model_limit_calibration` naming above is superseded.
 
- 4. **Reserve definition (derivation, F4):** the reserve covers
+4. **Reserve definition (derivation, F4):** the reserve covers
    (i) auto-injected meta + universal capabilities (≈ 500 + 250 tok),
    (ii) the feature system prompt (≈ 900 tok),
    (iii) unbudgeted pass-through variables (voice blocks, relationships,
