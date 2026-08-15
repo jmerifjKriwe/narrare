@@ -13,6 +13,10 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 from narrare.settings.token_limits.contracts import DEFAULT_TIER_PERCENTAGES
+from narrare_core.context.budget import (
+    DEFAULT_SERIES_HISTORY_BUDGET,
+    DEFAULT_TOTAL_BUDGET,
+)
 from narrare_core.llm.token_profiles import (
     PROFILE_OUTPUT_LIMITS,
     TOKEN_OUTPUT_ABSOLUTE_MAX,
@@ -131,6 +135,8 @@ class TokenLimitOverridesResponse(BaseModel):
         default_factory=lambda: dict(DEFAULT_TIER_PERCENTAGES)
     )
     ws_timeout: int = 1800
+    context_total_budget: int = DEFAULT_TOTAL_BUDGET
+    series_history_budget: int = DEFAULT_SERIES_HISTORY_BUDGET
     metadata: TokenLimitsCatalog
     calibration: CalibrationSourceMetadata | None = None
     suitability: SuitabilityMetadata | None = None
@@ -153,6 +159,8 @@ class UpdateTokenLimitsRequest(BaseModel):
     token_profile: str | None = Field(default=None, pattern=_TOKEN_PROFILE_PATTERN)
     tier_percentages: dict[str, float] | None = None
     ws_timeout: int | None = Field(default=None, ge=60, le=86400)
+    context_total_budget: int | None = Field(default=None, ge=1_024)
+    series_history_budget: int | None = Field(default=None, ge=1_024)
 
 
 def build_catalog() -> TokenLimitsCatalog:

@@ -11,15 +11,23 @@ See:
 
 from __future__ import annotations
 
+import uuid  # noqa: TC003 — needed at runtime for FastAPI DI
 from typing import TYPE_CHECKING
 
-from narrare._app.dependencies import SessionDep  # noqa: TC001 — needed at runtime for FastAPI DI
+from narrare._app.dependencies import (  # noqa: TC001 — needed at runtime for FastAPI DI
+    CurrentUserIdDep,
+    SessionDep,
+)
 
 if TYPE_CHECKING:
     from narrare.analysis.beta_reader_service import BetaReaderService
 
 
-def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
+async def get_beta_reader_service(
+    session: SessionDep,
+    user_id: CurrentUserIdDep,
+    novel_id: uuid.UUID,
+) -> BetaReaderService:
     """Create a BetaReaderService with injected dependencies.
 
     Production wiring:
@@ -30,7 +38,15 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
       rendered through the ADR-050 envelope with provenance (FIND-017).
     - InMemorySessionCache for result caching (30min TTL)
     - InvocationPipeline for invocation evidence (ADR-040)
+    - AnalysisContextAssembler at the resolved, model-capped
+      context_total_budget (ADR-082 Decision 5 — analysis joins
+      context_total_budget, capped by the analysis model's window).
+
+    FastAPI resolves ``novel_id`` from the endpoints' declared
+    ``novel_id`` parameter (query) and ``user_id`` via
+    ``CurrentUserIdDep`` (both beta-reader endpoints declare them).
     """
+    from narrare._app.config import get_settings
     from narrare._app.dependencies import (
         get_composer,
         get_invocation_pipeline,
@@ -48,6 +64,13 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
+    from narrare.settings.token_limits.context_budgets import resolve_context_budgets
+    from narrare.settings.token_limits.repository import (
+        ProjectTokenLimitsRepository,
+        UserTokenLimitsRepository,
+    )
+    from narrare.settings.token_limits.service import TokenLimitsService
+    from narrare_core.analysis.assembler import AnalysisContextAssembler
     from narrare_core.cache import InMemorySessionCache
 
     registry = get_model_registry()
@@ -75,6 +98,24 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
         novel_repo=novel_repo,
     )
 
+    # ADR-082: resolve the analysis input-context total through the cascade
+    # and against the analysis model's window. Analysis has no series-history
+    # tier -> series_in_scope=False (full total; Decision 5).
+    token_limits_service = TokenLimitsService(
+        user_repo=UserTokenLimitsRepository(session),
+        project_repo=ProjectTokenLimitsRepository(session),
+        config=get_settings(),
+    )
+    limits = await token_limits_service.get_resolved_limits(
+        user_id=user_id,
+        project_id=str(novel_id),
+    )
+    budgets = resolve_context_budgets(
+        limits=limits,
+        config=config,
+        series_in_scope=False,
+    )
+
     # In-memory cache with 30min TTL (ADR-080)
     cache = InMemorySessionCache()
     beta_cache = BetaReaderCache(cache)
@@ -85,5 +126,6 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
         registry=registry,
         config=config,
         composer=composer,
+        budget_assembler=AnalysisContextAssembler(total_budget=budgets.context_total),
         invocation_pipeline=invocation_pipeline,
     )

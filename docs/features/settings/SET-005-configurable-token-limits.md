@@ -90,6 +90,38 @@ Code default (hardcoded in core/)
 
 **Model Data Source:** Model-limit suggestions use [models.dev](https://models.dev) data where available. See [Model Data Reference](../../reference/model-data.md) for details on how model specifications are fetched, cached, and refreshed. CR-AUFG-08-07/11 are implemented with calibration metadata and suitability-warning/block evidence.
 
+### Context Budget Keys (ADR-082 / C5, 2026-08-15)
+
+Input-context token budgets joined the cascade (previously hardcoded
+constants bypassing it — CR-08 P0):
+
+| Key | Default | Bounds | Meaning |
+|---|---|---|---|
+| `context_total_budget` | 32,000 | ≥ 1,024 | Total input-context ceiling for writing **and** analysis (one knob) |
+| `series_history_budget` | 16,000 | ≥ 1,024 | Series-history block ceiling **within** the total (guarded carve-out: effective = `min(configured, 50% × effective_total)`) |
+
+Operator env: `NARRARE_CONTEXT_TOTAL_BUDGET` / `NARRARE_SERIES_HISTORY_BUDGET`
+(`apps/api/narrare/_app/settings_model.py`). Defaults single-sourced from
+`narrare_core.context.budget` (no backend/Core drift possible).
+
+Model-boundary capping (ADR-082 Decision 3/4): `DefaultContextBudgetResolver`
+(`packages/core/narrare_core/context/budget_resolver.py`) caps every input
+budget against the configured model's context window:
+`effective = min(configured, window − reserve)` with
+`reserve = min(4,000 + effective_output_limit, window // 4)`. Unknown window
+(offline, no cache) → uncapped passthrough, tagged
+`cascade:window_unknown` (RULE-11 — never blocks generation). The resolver
+only ever caps **down** (min() principle — scaling up requires explicit user
+configuration).
+
+**CR-08 P0 closure note (2026-08-15):** this closes the remaining P0 item
+"model-boundary/tier-budget adoption" — all four previously hardcoded
+constants (writing 6,000→32,000; analysis 6,000→32,000; series-history
+512→16,000 ×2) now flow through the cascade and adopt the model boundary,
+completing what `run_limits.py` did for the output side (input-side
+capping). No UI in C5 (expert-invisible; the existing token-limits PATCH
+API is the configuration surface).
+
 ### Core Changes
 
 Core owns the runtime token contracts and model-boundary enforcement used by P0/P1.
@@ -235,3 +267,4 @@ lifecycle blocker for SET-005 stability.
 | 2026-06-08 | Historical consistency integration implemented as legacy SET-005 work; not current CR-AUFG-08-02 closure | In Progress |
 | 2026-06-18 | CR-08 reclassified runtime-effect adoption gaps; status remains in-progress until false controls are closed | In Progress |
 | 2026-06-20 | CR-08 P0-P4 implementation/enforcement evidence recorded for token limit enforcement, tier percentages, profile parity/FIND-013, model calibration, suitability warnings/blocks, operator/default governance, long-tail governed defaults, and audit-template matrix hardening; ADR-051 accepted same date (RULE-18b elevated to CONSTRAINTS.md); CR-08 AUFG set resolved; SET-005 promoted to `stable` (cascade + runtime adoption + UI/API/Core parity + tests verified in the Configuration Adoption Matrix) | Stable |
+| 2026-08-15 | CR-08 P0 closed (ADR-082/C5): `context_total_budget` (32k) + `series_history_budget` (16k) cascade keys, model-boundary input capping via `DefaultContextBudgetResolver`, all four hardcoded input budgets lifted | Stable |

@@ -284,3 +284,53 @@ class TestUpdateTokenLimitsRequestSchema:
         """Unknown profiles must be rejected by the schema."""
         with pytest.raises(ValidationError):
             UpdateTokenLimitsRequest(token_profile="ultra_fast")
+
+
+# ======================================================================
+# Tests: ADR-082 context-budget keys on the HTTP surface
+# ======================================================================
+
+
+class TestContextBudgetKeySurface:
+    """ADR-082 Decision 1: the token-limits API is the user-configuration
+    surface for both context-budget keys — writable via PUT, readable
+    back via GET (Deviations item 9).
+    """
+
+    async def test_budget_keys_round_trip_put_then_get(self, service) -> None:
+        """PUT persists both keys; GET reads the resolved values back."""
+        await update_user_limits(
+            request=UpdateTokenLimitsRequest(
+                context_total_budget=48_000, series_history_budget=9_000
+            ),
+            user_id="user_budget_round_trip",
+            service=service,
+        )
+
+        result = await get_resolved_limits(
+            user_id="user_budget_round_trip",
+            project_id=None,
+            service=service,
+        )
+
+        assert result.context_total_budget == 48_000
+        assert result.series_history_budget == 9_000
+
+    async def test_get_budget_keys_default_to_core_constants(self, service) -> None:
+        """No overrides -> the response reports the Core-sourced defaults."""
+        result = await get_resolved_limits(
+            user_id="user_budget_defaults",
+            project_id=None,
+            service=service,
+        )
+
+        assert result.context_total_budget == DEFAULT_TOTAL_BUDGET
+        assert result.series_history_budget == DEFAULT_SERIES_HISTORY_BUDGET
+
+    def test_budget_keys_reject_below_1024(self) -> None:
+        """The HTTP write boundary mirrors _INT_FIELD_MINIMA (ge=1_024)."""
+        with pytest.raises(ValidationError):
+            UpdateTokenLimitsRequest(context_total_budget=512)
+
+        with pytest.raises(ValidationError):
+            UpdateTokenLimitsRequest(series_history_budget=512)

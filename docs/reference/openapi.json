@@ -21379,6 +21379,16 @@
             "title": "Ws Timeout",
             "default": 1800
           },
+          "context_total_budget": {
+            "type": "integer",
+            "title": "Context Total Budget",
+            "default": 32000
+          },
+          "series_history_budget": {
+            "type": "integer",
+            "title": "Series History Budget",
+            "default": 16000
+          },
           "metadata": {
             "$ref": "#/components/schemas/TokenLimitsCatalog"
           },
@@ -21928,6 +21938,30 @@
               }
             ],
             "title": "Ws Timeout"
+          },
+          "context_total_budget": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1024.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Total Budget"
+          },
+          "series_history_budget": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1024.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series History Budget"
           }
         },
         "type": "object",
