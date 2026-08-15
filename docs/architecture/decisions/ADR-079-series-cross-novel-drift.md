@@ -27,8 +27,9 @@
 > **Scope of this ADR:** the **Series Cross-Novel Drift** vertical — (a) canon-contradiction
 > detection (a novel's chapter text vs the series **Canon KB**) and (b) series-scope voice
 > drift (the current band's narrator metrics vs the `SeriesSettings.author_voice` baseline),
-> with the **current-band-vs-series** read-scope. Series **Export** (Spec 5) is **downstream
-> program work**, flagged here but not designed here.
+> with the **current-band-vs-series** read-scope. Series **Export** (Spec 5) was **retired
+> 2026-08-14 as YAGNI** (PO decision; see
+> `docs/superpowers/specs/2026-08-14-post-export-followups-design.md` §2).
 
 ---
 
@@ -214,9 +215,9 @@ unchanged — the only difference is the *source* of the reference profile
 
 ### Sustainability check
 
-1. **Correct in 3 months?** Yes — Spec 5 (Export) does not touch the drift surface; the
-   current-band read-scope + stateless v1 are additive. A future full-series scan or
-   persistence layer extends without undoing this work.
+1. **Correct in 3 months?** Yes — Spec 5 (Export) was retired (2026-08-14, YAGNI) and does
+   not touch the drift surface; the current-band read-scope + stateless v1 are additive. A
+   future full-series scan or persistence layer extends without undoing this work.
 2. **Hard-to-undo coupling?** Minimal — one new agent + governed template + two new
    services/routers, all reading existing shared data through repository contracts. No
    schema change in v1 (no persistence).
@@ -455,8 +456,10 @@ No decision required a user call beyond approving the design spec.
 - [x] **Frontend (Task 4) implemented** — Bände-Tab integration + results panel + hooks
       (commit `ede62081`).
 - [x] **i18n (Task 5) implemented** — `series.drift.*` (en/de/fr) (commit `ede62081`).
-- [ ] When **Spec 5 (Series Export)** is implemented — verify the drift/consistency results
-      (once persisted) can feed an export-quality report if desired.
+- [x] ~~When **Spec 5 (Series Export)** is implemented — verify the drift/consistency results
+      (once persisted) can feed an export-quality report if desired.~~
+      **N/A — Spec 5 retired 2026-08-14 as YAGNI** (PO decision; see
+      `docs/superpowers/specs/2026-08-14-post-export-followups-design.md` §2).
 - [ ] If **progressive streaming** is wanted on the series drift/consistency checks — add
       SSE variants (the underlying agent + pipeline are stream-capable).
 - [ ] If **full-series batch scan** becomes a use-case — add a batch endpoint that iterates
