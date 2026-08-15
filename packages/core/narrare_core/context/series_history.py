@@ -36,6 +36,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from narrare_core.context.budget import DEFAULT_SERIES_HISTORY_BUDGET
+
 __all__ = ["BandSummaryData", "SeriesHistoryTier"]
 
 # ---------------------------------------------------------------------------
@@ -162,7 +164,7 @@ class SeriesHistoryTier:
         self,
         bands: list[BandSummaryData],
         window_size: int = 3,
-        token_budget: int = 512,
+        token_budget: int = DEFAULT_SERIES_HISTORY_BUDGET,
     ) -> str:
         """Assemble the series-history context string.
 
@@ -174,6 +176,8 @@ class SeriesHistoryTier:
                 Negative values are treated as ``0``.
             token_budget: Maximum (estimated) tokens for the whole block,
                 header included. ``<= 0`` yields an empty string.
+                Default 16,000 (ADR-082 D1; the API passes the resolved
+                cascade value — the parameter stays explicit).
 
         Returns:
             The formatted ``Previously in this series:`` block, or an empty

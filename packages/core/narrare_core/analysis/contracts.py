@@ -130,7 +130,7 @@ class AnalysisAssemblerProtocol(Protocol):
     Simpler than writing's 5-tier system -- analysis features need
     content + KB context + preferences, but no outline/frontmatter.
 
-    Tier allocation (default 6000-token budget):
+    Tier allocation (default 32,000-token budget, ADR-082 Decision 5):
         content:      50% -- chapter text / content to analyze
         kb_context:   30% -- KB entities (characters, locations, factions, relationships)
         preferences:  20% -- user preferences, avoidance patterns

@@ -37,7 +37,7 @@ class AnalysisContextAssembler(ContextAssembler[dict[str, str]]):
     Simpler than ``WritingContextAssembler`` — analysis features need
     content + KB context + preferences, but no outline/frontmatter.
 
-    Tier allocation (default 6000-token budget):
+    Tier allocation (default 32,000-token budget, ADR-082 Decision 5):
         content:      50%  — chapter text / content to analyze
         kb_context:   30%  — KB entities (characters, locations, factions, relationships)
         preferences:  20%  — user preferences, avoidance patterns
@@ -46,7 +46,7 @@ class AnalysisContextAssembler(ContextAssembler[dict[str, str]]):
 
     Usage::
 
-        assembler = AnalysisContextAssembler(total_budget=6000)
+        assembler = AnalysisContextAssembler(total_budget=32_000)
         result = await assembler.assemble(
             content="Chapter text...",
             kb_characters="Alice: A brave warrior\\nBob: A wise mage",

@@ -12,11 +12,12 @@ from __future__ import annotations
 import pytest
 
 from narrare_core.analysis.budget import AnalysisBudgetManager
+from narrare_core.context.budget import DEFAULT_TOTAL_BUDGET
 from narrare_core.context.types import TierBudget
 
 
 class TestDefaultAllocation:
-    """Default 6000-token budget with 50/30/20 split."""
+    """Default 32,000-token budget (ADR-082) with 50/30/20 split."""
 
     def test_returns_three_tiers(self) -> None:
         manager = AnalysisBudgetManager()
@@ -117,7 +118,7 @@ class TestTotalBudgetProperty:
 
     def test_default_total_budget(self) -> None:
         manager = AnalysisBudgetManager()
-        assert manager.total_budget == 6000
+        assert manager.total_budget == DEFAULT_TOTAL_BUDGET  # ADR-082: 32,000
 
     def test_custom_total_budget(self) -> None:
         manager = AnalysisBudgetManager(total_budget=8000)

@@ -7,7 +7,8 @@ with no mode-specific overrides or wiki optimization.
 Per ADR-025 Decision 3 (Phase 5): ``core/analysis/`` owns its own
 budget manager with analysis-specific tier names and percentages.
 
-Tier allocation (default 6000-token budget):
+Tier allocation (default 32,000-token budget, ADR-082 Decision 5 —
+shares context_total_budget with writing):
     content:      50%  — chapter text / content to analyze
     kb_context:   30%  — KB entities (characters, locations, factions, relationships)
     preferences:  20%  — user preferences, avoidance patterns
@@ -17,6 +18,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from narrare_core.context.budget import DEFAULT_TOTAL_BUDGET
 from narrare_core.context.types import TierBudget
 
 
@@ -25,12 +27,14 @@ class AnalysisBudgetManager:
 
     Usage::
 
-        manager = AnalysisBudgetManager(total_budget=6000)
+        manager = AnalysisBudgetManager(total_budget=32_000)
         budgets = manager.allocate()
         content_limit = budgets["content"].token_limit
     """
 
-    DEFAULT_TOTAL_BUDGET: int = 6000
+    # ADR-082 Decision 5: analysis joins context_total_budget — same Core
+    # constant as the writing manager, never a third literal.
+    DEFAULT_TOTAL_BUDGET: int = DEFAULT_TOTAL_BUDGET
 
     TIER_ORDER: ClassVar[tuple[str, ...]] = (
         "content",

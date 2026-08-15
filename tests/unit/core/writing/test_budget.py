@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import pytest
 
+from narrare_core.context.budget import DEFAULT_TOTAL_BUDGET
 from narrare_core.writing.budget import TokenBudgetManager, cap_to_budget
 
 
@@ -231,3 +232,10 @@ class TestCapToBudget:
         char_counter = lambda t: len(t)  # noqa: E731
         text = "abc"  # 3 chars = 3 tokens, within budget of 10
         assert cap_to_budget(text, max_tokens=10, token_counter=char_counter) == text
+
+
+class TestDefaultTotalBudget:
+    def test_default_total_budget_is_core_constant(self) -> None:
+        """ADR-082 D2: writing manager default re-defaulted 6,000 -> 32,000."""
+        assert TokenBudgetManager.DEFAULT_TOTAL_BUDGET == DEFAULT_TOTAL_BUDGET
+        assert TokenBudgetManager().total_budget == DEFAULT_TOTAL_BUDGET
