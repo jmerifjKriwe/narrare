@@ -163,6 +163,7 @@ def _factory_patch_context(module_path: str, tier_percentages: dict[str, float] 
     """
     from narrare._app.config import Settings
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
+    from narrare.settings.token_limits.context_budgets import resolve_context_budgets
     from narrare.settings.token_limits.contracts import TokenLimitOverrides
     from narrare.settings.token_limits.service import TokenLimitsService
     from narrare.writing.deps_pipeline import create_pipeline
@@ -185,17 +186,48 @@ def _factory_patch_context(module_path: str, tier_percentages: dict[str, float] 
     # assert on the recorded kwargs (the wiring under test).
     pipeline_spy = MagicMock(spec=create_pipeline, name="create_pipeline_spy")
 
+    from narrare_core.context.contracts import EffectiveContextBudgets
+
+    canned_budgets = EffectiveContextBudgets(
+        context_total=32_000,
+        series_history=0,
+        writing_tier_base=32_000,
+        reserve_tokens=8_096,
+        context_window=128_000,
+        source="cascade:uncapped",
+    )
+    # spec= the real adapter function (RULE-TEST-01): keeps the stub's
+    # call recording while validating the factories' call signature.
+    budget_adapter = MagicMock(
+        spec=resolve_context_budgets,
+        name="resolve_context_budgets_stub",
+        return_value=canned_budgets,
+    )
+
+    # deps_writing resolves series scope via a real NovelRepository lookup;
+    # a standalone novel (get -> None) keeps that lookup hermetic (the
+    # spec'd AsyncSession mock cannot serve execute/scalar_one_or_none).
+    from narrare.novels.repository import NovelRepository
+
+    fake_novel_repo = MagicMock(spec=NovelRepository, name="novel_repository")
+    fake_novel_repo.get = AsyncMock(return_value=None)
+
     ctx = (
         patch(f"{module_path}.get_model_routing_resolver", return_value=fake_resolver),
         patch(
             "narrare.settings.token_limits.service.TokenLimitsService",
             return_value=fake_token_service,
         ),
+        patch(
+            "narrare.settings.token_limits.context_budgets.resolve_context_budgets",
+            budget_adapter,
+        ),
         patch("narrare.writing.deps_pipeline.create_pipeline", pipeline_spy),
         patch(
             "narrare._app.config.get_settings",
             return_value=MagicMock(spec=Settings, name="settings"),
         ),
+        patch("narrare.novels.repository.NovelRepository", return_value=fake_novel_repo),
     )
     return ctx, pipeline_spy
 
@@ -212,7 +244,7 @@ class TestFactoriesWireTierOverrides:
         factory = getattr(module, factory_name)
 
         ctx, pipeline_spy = _factory_patch_context(module_path, CUSTOM_TIERS)
-        with ctx[0], ctx[1], ctx[2], ctx[3]:
+        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5]:
             await factory(
                 session=_fake_session(),
                 user_id=str(uuid4()),
@@ -236,7 +268,7 @@ class TestFactoriesWireTierOverrides:
         factory = getattr(module, factory_name)
 
         ctx, pipeline_spy = _factory_patch_context(module_path, None)
-        with ctx[0], ctx[1], ctx[2], ctx[3]:
+        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5]:
             await factory(
                 session=_fake_session(),
                 user_id=str(uuid4()),
@@ -257,7 +289,7 @@ class TestFactoriesWireTierOverrides:
         factory = getattr(module, factory_name)
 
         ctx, pipeline_spy = _factory_patch_context(module_path, ALT_TIERS)
-        with ctx[0], ctx[1], ctx[2], ctx[3]:
+        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5]:
             await factory(
                 session=_fake_session(),
                 user_id=str(uuid4()),

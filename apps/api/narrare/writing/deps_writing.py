@@ -53,6 +53,7 @@ async def get_writing_service(
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.settings.repository import UserSettingsRepository
+    from narrare.settings.token_limits.context_budgets import resolve_context_budgets
     from narrare.settings.token_limits.repository import (
         ProjectTokenLimitsRepository,
         UserTokenLimitsRepository,
@@ -79,6 +80,22 @@ async def get_writing_service(
         user_id=user_id,
         project_id=str(project_id) if project_id else None,
     )
+    # ADR-082: resolve input-context budgets against the writing model's
+    # window. Series membership decides the guarded carve-out (Decision 6):
+    # series novels allocate tiers over total - series_history; standalones
+    # over the full total.
+    from narrare.novels.repository import NovelRepository
+
+    series_in_scope = False
+    if project_id is not None:
+        novel = await NovelRepository(session).get(project_id)
+        series_in_scope = novel is not None and novel.series_id is not None
+
+    budgets = resolve_context_budgets(
+        limits=limits,
+        config=resolved.config,
+        series_in_scope=series_in_scope,
+    )
     config = replace(
         resolved.config,
         temperature=0.7,
@@ -90,7 +107,11 @@ async def get_writing_service(
         config = replace(config, temperature=0.3, max_tokens=SUGGEST_MAX_TOKENS)
 
     draft_processor = DraftProcessor()
-    pipeline = create_pipeline(draft_processor, tier_overrides=limits.tier_percentages)
+    pipeline = create_pipeline(
+        draft_processor,
+        tier_overrides=limits.tier_percentages,
+        total_budget=budgets.writing_tier_base,
+    )
     repo = GenerationRepository(session)
     relationship_repo = RelationshipRepository(session)
     tone_service = CustomToneService(repo=UserSettingsRepository(session))
@@ -100,7 +121,6 @@ async def get_writing_service(
     # bands' BandSummary data and assembles ``{{series_history}}``. Returns ""
     # for standalone novels (RULE-11 graceful), so wiring it here is safe for
     # non-series writing.
-    from narrare.novels.repository import NovelRepository
     from narrare.series.band_summary_repository import BandSummaryRepository
     from narrare.series.repository import SeriesRepository
     from narrare.series.series_history_provider import SeriesHistoryProvider
@@ -122,4 +142,5 @@ async def get_writing_service(
         relationship_repo=relationship_repo,
         session_memory=session_memory,
         series_history_provider=series_history_provider,
+        series_history_budget=budgets.series_history,
     )
