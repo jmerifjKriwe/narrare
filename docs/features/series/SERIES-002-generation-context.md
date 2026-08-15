@@ -67,8 +67,9 @@ generation-time consumer of Spec 1's foundation: it closes the
 state-at-(N−1) gap so a series reads as one continuous story.
 
 This is Spec 2 of 5 in the Series program. Spec 1 (Foundation) is implemented;
-Spec 3 (Voice Hierarchy), Spec 4 (Cross-Novel Drift), and Spec 5 (Export)
-remain downstream.
+Spec 3 (Voice Hierarchy) and Spec 4 (Cross-Novel Drift) are implemented.
+Spec 5 (Export) was retired 2026-08-14 as YAGNI (PO decision); the Series
+program is complete with Specs 1–4.
 
 ## How it works (User perspective)
 

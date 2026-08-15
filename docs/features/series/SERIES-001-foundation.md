@@ -69,8 +69,9 @@ KB model: **Series-Canon** (shared, stable facts) + **Novel-Overlay** (per-book
 state), so each fact lives at the scope where it is actually stable.
 
 This is the foundation spec (Spec 1 of 5) for the Series program. Later specs add
-Series Generation Context (Spec 2), Series Voice Hierarchy (Spec 3), Cross-Novel
-Drift (Spec 4), and Series Export (Spec 5).
+Series Generation Context (Spec 2), Series Voice Hierarchy (Spec 3), and Cross-Novel
+Drift (Spec 4). Spec 5 (Series Export) was retired 2026-08-14 as YAGNI (PO decision);
+the Series program is complete with Specs 1–4.
 
 ## How it works (User perspective)
 

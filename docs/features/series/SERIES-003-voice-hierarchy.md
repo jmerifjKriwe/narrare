@@ -75,8 +75,9 @@ Voice-Teil of ADR-074's Review Trigger (storage was closed by ADR-075 in Spec 1;
 the resolution model — Delta + opt-out — is closed here).
 
 This is Spec 3 of 5 in the Series program. Spec 1 (Foundation) and Spec 2
-(Generation Context) are implemented; Spec 4 (Cross-Novel Drift) and Spec 5
-(Export) remain downstream.
+(Generation Context) are implemented; Spec 4 (Cross-Novel Drift) is implemented.
+Spec 5 (Export) was retired 2026-08-14 as YAGNI (PO decision); the Series
+program is complete with Specs 1–4.
 
 ## How it works (User perspective)
 
