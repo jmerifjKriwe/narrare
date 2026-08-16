@@ -56,6 +56,15 @@ vi.mock("@/lib/hooks/useSeries", () => ({
     isPending: false,
     isError: false,
   }),
+  // SeriesContextWindowField's preview query (C1) — stubbed so the field
+  // renders cleanly without preview data; preview behaviour is covered by
+  // SeriesContextWindowField.test.tsx / SeriesContextPreview.test.tsx.
+  useSeriesHistoryPreview: () => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
 }));
 
 import { SeriesSettings } from "@/components/series/SeriesSettings";
