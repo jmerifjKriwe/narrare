@@ -23,6 +23,10 @@ import type {
   SeriesSummary,
   SeriesUpdate,
 } from "../series";
+import type {
+  SeriesHistoryPreviewEntry,
+  SeriesHistoryPreviewResponse,
+} from "../seriesContextPreview";
 
 function fieldNames<T extends object>(sample: T): string[] {
   return Object.keys(sample).sort();
@@ -179,6 +183,57 @@ describe("Series types mirror Pydantic (RULE-17)", () => {
       "novel_id",
       "position",
       "promoted_to_canon",
+      "series_id",
+    ]);
+  });
+
+  it("SeriesHistoryPreviewEntry → 10 fields mirroring the Core preview", () => {
+    const sample: SeriesHistoryPreviewEntry = {
+      window_size: 3,
+      token_budget: 8192,
+      estimated_tokens: 4200,
+      bands_total: 4,
+      bands_full: 3,
+      bands_short: 0,
+      bands_truncated: 1,
+      bands_dropped: 0,
+      bands_missing: 0,
+      budget_clipped: false,
+    };
+    expect(fieldNames(sample)).toEqual([
+      "bands_dropped",
+      "bands_full",
+      "bands_missing",
+      "bands_short",
+      "bands_total",
+      "bands_truncated",
+      "budget_clipped",
+      "estimated_tokens",
+      "token_budget",
+      "window_size",
+    ]);
+  });
+
+  it("SeriesHistoryPreviewResponse → 8 fields, model_context_window nullable (RULE-11)", () => {
+    const sample: SeriesHistoryPreviewResponse = {
+      series_id: "series-1",
+      current_window_size: 3,
+      effective_series_history_budget: 8192,
+      effective_context_total: 32768,
+      effective_tier_base: 24576,
+      // null = model window unknown → uncapped (RULE-11).
+      model_context_window: null,
+      budget_source: "fallback",
+      previews: [],
+    };
+    expect(fieldNames(sample)).toEqual([
+      "budget_source",
+      "current_window_size",
+      "effective_context_total",
+      "effective_series_history_budget",
+      "effective_tier_base",
+      "model_context_window",
+      "previews",
       "series_id",
     ]);
   });

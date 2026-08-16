@@ -150,6 +150,10 @@ export type {
   SeriesVoiceState,
 } from "./series";
 export type {
+  SeriesHistoryPreviewEntry,
+  SeriesHistoryPreviewResponse,
+} from "./seriesContextPreview";
+export type {
   CalibrationMetadata,
   CalibrationStatus,
   ContextTier,

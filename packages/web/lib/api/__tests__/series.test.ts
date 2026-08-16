@@ -290,6 +290,69 @@ describe("seriesApi", () => {
     expect(result.author_voice).toEqual({ tone: "warm" });
   });
 
+  // --- Settings: context preview (C1 — Context-Window Slider) ---------------
+  // Mirrors apps/api/narrare/series/series_history_preview_schemas.py
+  // (SeriesHistoryPreviewResponse). model_context_window exercised as a
+  // concrete number here; the nullable RULE-11 case lives in the type-parity
+  // sample (types/__tests__/series.test.ts).
+
+  it("getSettingsContextPreview → GET /series/{id}/settings/context-preview", async () => {
+    const mockContextPreview = {
+      series_id: "series-1",
+      current_window_size: 3,
+      effective_series_history_budget: 8192,
+      effective_context_total: 32768,
+      effective_tier_base: 24576,
+      model_context_window: 32768,
+      budget_source: "model_registry",
+      previews: [
+        {
+          window_size: 1,
+          token_budget: 8192,
+          estimated_tokens: 4200,
+          bands_total: 4,
+          bands_full: 1,
+          bands_short: 0,
+          bands_truncated: 0,
+          bands_dropped: 3,
+          bands_missing: 0,
+          budget_clipped: false,
+        },
+        {
+          window_size: 3,
+          token_budget: 8192,
+          estimated_tokens: 8192,
+          bands_total: 4,
+          bands_full: 3,
+          bands_short: 0,
+          bands_truncated: 1,
+          bands_dropped: 0,
+          bands_missing: 0,
+          budget_clipped: true,
+        },
+      ],
+    };
+    let capturedUrl = "";
+    let capturedMethod = "";
+    server.use(
+      http.get("*/api/v1/series/series-1/settings/context-preview", ({ request }) => {
+        capturedUrl = request.url;
+        capturedMethod = request.method;
+        return HttpResponse.json(mockContextPreview);
+      }),
+    );
+
+    const result = await seriesApi.getSettingsContextPreview("series-1");
+
+    expect(capturedUrl).toContain("/api/v1/series/series-1/settings/context-preview");
+    expect(capturedMethod).toBe("GET");
+    expect(result.series_id).toBe("series-1");
+    expect(result.current_window_size).toBe(3);
+    expect(result.model_context_window).toBe(32768);
+    expect(result.previews).toHaveLength(2);
+    expect(result.previews[1]).toEqual(mockContextPreview.previews[1]);
+  });
+
   // --- KB scope toggle -----------------------------------------------------
   // Mirrors apps/api/narrare/kb/router_scope.py. The demote body carries ONLY
   // series_id — the target novel comes from the request PATH (the path novel_id

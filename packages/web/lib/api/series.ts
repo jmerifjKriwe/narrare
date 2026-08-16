@@ -21,6 +21,7 @@ import type {
   Series,
   SeriesConsistencyResult,
   SeriesCreate,
+  SeriesHistoryPreviewResponse,
   SeriesKBEntry,
   SeriesSettings,
   SeriesSettingsUpdate,
@@ -82,6 +83,10 @@ export const seriesApi = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+
+  /** GET /series/{id}/settings/context-preview — live slider preview (C1). */
+  getSettingsContextPreview: (seriesId: string) =>
+    fetchApi<SeriesHistoryPreviewResponse>(`/series/${seriesId}/settings/context-preview`),
 
   // --- Series-Canon KB CRUD (Slice 5) ---
   // Mirrors apps/api/narrare/kb/router_canon.py. Targets /series/{id}/kb.

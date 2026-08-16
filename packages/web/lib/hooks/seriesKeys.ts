@@ -7,6 +7,7 @@
  *   ["series", seriesId]                — single series detail (prefix)
  *   ["series", seriesId, "novels"]      — novels-in-series list
  *   ["series", seriesId, "settings"]    — series settings
+ *   ["series", seriesId, "settingsPreview"] — context-window preview (C1)
  *   ["series", seriesId, "kb"]          — Series-Canon KB list (Slice 5)
  *   ["series", seriesId, "kb", entryId] — single Series-Canon KB entry
  *   ["series", seriesId, "novels", novelId, "bandSummary"] — band summary (Spec 2)
@@ -19,6 +20,9 @@ export const seriesKeys = {
   detail: (seriesId: string) => ["series", seriesId] as const,
   novels: (seriesId: string) => [...seriesKeys.detail(seriesId), "novels"] as const,
   settings: (seriesId: string) => [...seriesKeys.detail(seriesId), "settings"] as const,
+  /** Context-window slider preview (C1) — invalidated on settings PATCH. */
+  settingsPreview: (seriesId: string) =>
+    [...seriesKeys.detail(seriesId), "settingsPreview"] as const,
   /** Series-Canon KB list (mirrors the `["kb", novelId, "entries"]` novel key). */
   canonList: (seriesId: string) => [...seriesKeys.detail(seriesId), "kb"] as const,
   /** Single Series-Canon KB entry detail. */
