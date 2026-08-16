@@ -2227,6 +2227,10 @@
         "no_stored_profile": "Noch keine Serien-Stimme profiliert — zuerst einen Band profilieren.",
         "no_profile_metrics": "Das Serien-Stimmprofil enthält keine für die Drift-Analyse nötigen Metriken.",
         "no_chapters_with_prose": "Keine Kapitel mit Text zum Analysieren gefunden."
+      },
+      "snapshot": {
+        "restored": "Gespeichertes Ergebnis vom {generatedAt, date, medium}",
+        "stale": "Die Kapiteltexte haben sich seit dieser Prüfung geändert — für aktuelle Ergebnisse erneut prüfen."
       }
     }
   },

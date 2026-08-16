@@ -2227,6 +2227,10 @@
         "no_stored_profile": "Aucune voix de série profilée pour l'instant — profilez d'abord un volume.",
         "no_profile_metrics": "Le profil de voix de la série manque des métriques nécessaires à l'analyse de dérive.",
         "no_chapters_with_prose": "Aucun chapitre avec du texte à analyser."
+      },
+      "snapshot": {
+        "restored": "Résultat enregistré du {generatedAt, date, medium}",
+        "stale": "Les textes des chapitres ont changé depuis cette vérification — relancez-la pour des résultats à jour."
       }
     }
   },

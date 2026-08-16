@@ -2227,6 +2227,10 @@
         "no_stored_profile": "No series voice profiled yet — profile a band first.",
         "no_profile_metrics": "The series voice profile lacks the metrics needed for drift analysis.",
         "no_chapters_with_prose": "No chapters with prose found to analyse."
+      },
+      "snapshot": {
+        "restored": "Saved result from {generatedAt, date, medium}",
+        "stale": "Chapter texts changed since this check — run it again for current results."
       }
     }
   },
