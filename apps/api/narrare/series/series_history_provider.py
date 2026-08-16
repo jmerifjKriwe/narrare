@@ -126,6 +126,20 @@ class SeriesHistoryProvider:
             token_budget=token_budget,
         )
 
+    async def collect_series_band_data(self, series_id: uuid.UUID) -> list[BandSummaryData]:
+        """Fetch band data for EVERY positioned member of a series (C1).
+
+        Next-band semantics: unlike :meth:`assemble_series_history` (which
+        keeps only positions below the current novel), this returns all
+        positioned members — the Series-Workspace preview describes the
+        generation of the NEXT band, for which every existing band is a
+        prior band. Pure data fetch; no windowing or budgeting here (the
+        caller runs the Core tier's ``preview`` over the result).
+        """
+        members = await self._series_repo.list_novels(series_id)
+        positioned = [m for m in members if m.series_position is not None]
+        return await self._collect_band_data(positioned)
+
     async def resolve_kb_fetch_mode(self, novel_id: uuid.UUID) -> str:
         """Return the KB fetch strategy for a novel (Spec 2 §3.1 KB-Redirect).
 

@@ -63,7 +63,7 @@ def _novel(
 def _novel_row(
     *,
     series_id: uuid.UUID,
-    position: int,
+    position: int | None,
     title: str = "Untitled",
     novel_id: uuid.UUID | None = None,
 ) -> NovelRow:
@@ -338,3 +338,56 @@ class TestDefaultTokenBudget:
         from narrare_core.context.budget import DEFAULT_SERIES_HISTORY_BUDGET
 
         assert _DEFAULT_TOKEN_BUDGET == DEFAULT_SERIES_HISTORY_BUDGET
+
+
+class TestCollectSeriesBandData:
+    """C1: series-keyed band-data fetch with next-band semantics (ALL
+    positioned members are prior bands — no position filtering, unlike
+    assemble_series_history which filters below the current novel)."""
+
+    @pytest.mark.asyncio
+    async def test_returns_all_positioned_members_with_summaries(self) -> None:
+        series_id = uuid.uuid4()
+        series_repo = FakeSeriesRepository()
+        novel_row = _novel_row(series_id=series_id, position=1, title="Band 1")
+        unpositioned = _novel_row(series_id=series_id, position=None, title="Draft")
+        series_repo.seed(_series(series_id), novels=[novel_row, unpositioned])
+        band_repo = FakeBandSummaryRepository()
+        band_repo.seed(
+            BandSummary(
+                novel_id=novel_row.id,
+                full_summary="Full summary.",
+                short_summary="Short.",
+            )
+        )
+        provider = SeriesHistoryProvider(
+            novel_repo=FakeNovelRepository(),
+            series_repo=series_repo,
+            band_summary_repo=band_repo,
+        )
+
+        result = await provider.collect_series_band_data(series_id)
+
+        assert len(result) == 1  # unpositioned member excluded
+        assert result[0].position == 1
+        assert result[0].title == "Band 1"
+        assert result[0].full_summary == "Full summary."
+        assert result[0].short_summary == "Short."
+
+    @pytest.mark.asyncio
+    async def test_member_without_summary_row_yields_none_texts(self) -> None:
+        series_id = uuid.uuid4()
+        series_repo = FakeSeriesRepository()
+        member = _novel_row(series_id=series_id, position=2)
+        series_repo.seed(_series(series_id), novels=[member])
+        provider = SeriesHistoryProvider(
+            novel_repo=FakeNovelRepository(),
+            series_repo=series_repo,
+            band_summary_repo=FakeBandSummaryRepository(),
+        )
+
+        result = await provider.collect_series_band_data(series_id)
+
+        assert result[0].full_summary is None
+        assert result[0].short_summary is None
+        assert result[0].override is None
