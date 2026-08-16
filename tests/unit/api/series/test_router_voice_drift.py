@@ -1,7 +1,7 @@
 """Unit tests for the series voice-drift router endpoint (Spec 4 Task 3).
 
 Exercises the HTTP contract: status code, request parsing, response shaping,
-delegation to ``SeriesVoiceDriftService``, and error mapping. Ownership is
+delegation to ``SeriesDriftPersistenceService``, and error mapping. Ownership is
 verified INSIDE the service, so the router test overrides the service
 dependency with an ``AsyncMock`` (ADR-030: non-domain infrastructure mock at the
 thin delegation boundary).
@@ -18,7 +18,9 @@ from uuid import uuid4
 from fastapi import status
 
 from narrare.analysis.schemas_author_voice_drift import AuthorVoiceDriftResponse
-from narrare.series.dependencies_voice_drift import get_series_voice_drift_service
+from narrare.series.dependencies_drift_persistence import (
+    get_series_drift_persistence_service,
+)
 from narrare_core.shared.errors import ForbiddenError
 
 if TYPE_CHECKING:
@@ -32,8 +34,8 @@ def _make_response(novel_id) -> AuthorVoiceDriftResponse:  # type: ignore[no-unt
 
 
 def _use_service(app: FastAPI, mock: AsyncMock) -> None:
-    """Override the voice-drift-service dependency with ``mock``."""
-    app.dependency_overrides[get_series_voice_drift_service] = lambda: mock
+    """Override the drift-persistence dependency with ``mock``."""
+    app.dependency_overrides[get_series_drift_persistence_service] = lambda: mock
 
 
 class TestCheckSeriesVoiceDrift:
@@ -42,7 +44,7 @@ class TestCheckSeriesVoiceDrift:
     async def test_post_returns_200_and_delegates(self, app: FastAPI, client: AsyncClient) -> None:
         novel_id = uuid4()
         mock = AsyncMock()
-        mock.check.return_value = _make_response(novel_id)
+        mock.check_and_store_voice_drift.return_value = _make_response(novel_id)
         _use_service(app, mock)
 
         response = await client.post(
@@ -52,13 +54,15 @@ class TestCheckSeriesVoiceDrift:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["novel_id"] == str(novel_id)
-        mock.check.assert_awaited_once()
-        _args, kwargs = mock.check.call_args
+        mock.check_and_store_voice_drift.assert_awaited_once()
+        _args, kwargs = mock.check_and_store_voice_drift.call_args
         assert kwargs["novel_id"] == novel_id
 
     async def test_post_forbidden_maps_to_403(self, app: FastAPI, client: AsyncClient) -> None:
         mock = AsyncMock()
-        mock.check.side_effect = ForbiddenError("You do not have access to this series")
+        mock.check_and_store_voice_drift.side_effect = ForbiddenError(
+            "You do not have access to this series"
+        )
         _use_service(app, mock)
 
         response = await client.post(
@@ -88,7 +92,7 @@ class TestCheckSeriesVoiceDrift:
         novel_id = uuid4()
         ch1, ch2 = uuid4(), uuid4()
         mock = AsyncMock()
-        mock.check.return_value = _make_response(novel_id)
+        mock.check_and_store_voice_drift.return_value = _make_response(novel_id)
         _use_service(app, mock)
 
         response = await client.post(
@@ -97,5 +101,5 @@ class TestCheckSeriesVoiceDrift:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        _args, kwargs = mock.check.call_args
+        _args, kwargs = mock.check_and_store_voice_drift.call_args
         assert kwargs["request"].chapter_ids == [str(ch1), str(ch2)]

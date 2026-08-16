@@ -1568,7 +1568,7 @@
           "series"
         ],
         "summary": "Check Series Consistency",
-        "description": "Check a band's chapter prose against the series Canon KB.\n\nRuns the governed ``series_consistency`` agent (1 LLM call) over the\nnovel's chapter texts + the series Canon entries and returns the detected\ncontradictions (possibly empty — no contradictions found is a valid\nresult). Read-only — nothing is persisted.\n\nOwnership + novel-membership are verified inside the service\n(anti-enumeration: a missing/not-owned series and a non-member novel both\nsurface as ``403``).",
+        "description": "Check a band's chapter prose against the series Canon KB.\n\nRuns the governed ``series_consistency`` agent (1 LLM call) over the\nnovel's chapter texts + the series Canon entries and returns the detected\ncontradictions (possibly empty — no contradictions found is a valid\nresult). The result is persisted as the band's latest drift snapshot (C2)\nbefore it is returned.\n\nOwnership + novel-membership are verified inside the service\n(anti-enumeration: a missing/not-owned series and a non-member novel both\nsurface as ``403``).",
         "operationId": "check_series_consistency_api_v1_series__series_id__consistency_check_post",
         "security": [
           {
@@ -1621,13 +1621,72 @@
         }
       }
     },
+    "/api/v1/series/{series_id}/consistency/{novel_id}": {
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Get Series Drift Snapshot",
+        "description": "Fetch the persisted drift snapshot for one band (SERIES-004 Slice 6).\n\nReturns the latest-wins composite snapshot (canon contradictions +\nvoice drift as stored by the check runs) plus the staleness verdict:\n``stale=true`` when the band's chapter texts changed since the last\ncompleted write. Nothing persisted yet → an all-null snapshot with\n``stale=false`` (never an error).\n\nNote: a GET to ``…/consistency/check`` (the POST-only run path) matches\nthis route with a non-UUID ``novel_id`` and surfaces as 422 — there is no\nGET route on ``check`` by design.\n\nOwnership + novel-membership are verified inside the service\n(anti-enumeration: a missing/not-owned series and a non-member novel both\nsurface as ``403``).",
+        "operationId": "get_series_drift_snapshot_api_v1_series__series_id__consistency__novel_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesDriftSnapshotResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/series/{series_id}/voice-drift/check": {
       "post": {
         "tags": [
           "series"
         ],
         "summary": "Check Series Voice Drift",
-        "description": "Check a band's narrator drift against the series voice baseline.\n\nLoads the series voice profile (``SeriesSettings.author_voice``), computes\nthe per-chapter narrator trend + jumps against the SERIES metric group,\nruns the governed ``author_voice_drift`` agent (1 LLM call), and returns\nthe aggregate drift result (or a graceful ``no_profile`` when the series\nvoice cannot be analysed). Read-only — nothing is persisted.\n\nOwnership + novel-membership are verified inside the service\n(anti-enumeration: a missing/not-owned series and a non-member novel both\nsurface as ``403``).",
+        "description": "Check a band's narrator drift against the series voice baseline.\n\nLoads the series voice profile (``SeriesSettings.author_voice``), computes\nthe per-chapter narrator trend + jumps against the SERIES metric group,\nruns the governed ``author_voice_drift`` agent (1 LLM call), and returns\nthe aggregate drift result (or a graceful ``no_profile`` when the series\nvoice cannot be analysed). The result is persisted as the band's latest\ndrift snapshot (C2) before it is returned.\n\nOwnership + novel-membership are verified inside the service\n(anti-enumeration: a missing/not-owned series and a non-member novel both\nsurface as ``403``).",
         "operationId": "check_series_voice_drift_api_v1_series__series_id__voice_drift_check_post",
         "security": [
           {
@@ -19466,6 +19525,67 @@
         ],
         "title": "SeriesCreateRequest",
         "description": "POST /api/v1/series body."
+      },
+      "SeriesDriftSnapshotResponse": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "stale": {
+            "type": "boolean",
+            "title": "Stale"
+          },
+          "consistency": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeriesConsistencyCheckResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "voice_drift": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorVoiceDriftResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "novel_id",
+          "generated_at",
+          "stale",
+          "consistency",
+          "voice_drift"
+        ],
+        "title": "SeriesDriftSnapshotResponse",
+        "description": "GET /api/v1/series/{series_id}/consistency/{novel_id} response.\n\nThe persisted latest-wins snapshot for one band, fetched as ONE document\nwith the staleness verdict.\n\nAttributes:\n    series_id: The series whose checks produced the snapshot.\n    novel_id: The novel (band) the snapshot belongs to.\n    generated_at: Record-level timestamp of the LAST completed write of\n        either check (refreshed on every section upsert — the design's\n        singular ``generated_at``). ``None`` when nothing is persisted.\n    stale: ``True`` when the band's current chapter-texts fingerprint\n        differs from the fingerprint stored at save time — the results\n        predate text edits. Always ``False`` when nothing is persisted.\n    consistency: The persisted canon-contradiction result (``None`` when\n        that check never completed a run for this band).\n    voice_drift: The persisted series-voice-drift result (``None`` when\n        that check never completed a run for this band)."
       },
       "SeriesHistoryPreviewEntry": {
         "properties": {
