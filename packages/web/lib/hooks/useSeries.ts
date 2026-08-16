@@ -83,6 +83,20 @@ export function useUpdateSeriesSettings(seriesId: string) {
     mutationFn: (body: SeriesSettingsUpdate) => seriesApi.updateSettings(seriesId, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: seriesKeys.settings(seriesId) });
+      // C1: the saved window change may extend the preview's computed
+      // range (1..max(10, saved)) — refetch alongside the settings.
+      void queryClient.invalidateQueries({ queryKey: seriesKeys.settingsPreview(seriesId) });
     },
+  });
+}
+
+// --- Series-history context preview (C1 — Context-Window Slider) ---
+
+/** GET /api/v1/series/{id}/settings/context-preview — live slider preview. */
+export function useSeriesHistoryPreview(seriesId: string) {
+  return useQuery({
+    queryKey: seriesKeys.settingsPreview(seriesId),
+    queryFn: () => seriesApi.getSettingsContextPreview(seriesId),
+    enabled: !!seriesId,
   });
 }
