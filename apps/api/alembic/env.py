@@ -22,6 +22,7 @@ import narrare.planning.models
 import narrare.prompts.models
 import narrare.series.band_summary_models  # register BandSummary metadata for autogenerate (Spec 2)
 import narrare.series.models  # register Series/SeriesSettings metadata for autogenerate (Spec 1)
+import narrare.series.series_drift_models  # register SeriesDriftResult for autogenerate (C2)
 import narrare.settings.models
 import narrare.settings.token_limits.models
 import narrare.templates.models
