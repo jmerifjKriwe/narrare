@@ -38,7 +38,7 @@ from dataclasses import dataclass
 
 from narrare_core.context.budget import DEFAULT_SERIES_HISTORY_BUDGET
 
-__all__ = ["BandSummaryData", "SeriesHistoryTier"]
+__all__ = ["BandSummaryData", "SeriesHistoryPreview", "SeriesHistoryTier"]
 
 # ---------------------------------------------------------------------------
 # Token-estimation constants
@@ -100,6 +100,44 @@ class BandSummaryData:
     override: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class SeriesHistoryPreview:
+    """Outcome prediction for :meth:`SeriesHistoryTier.assemble` (C1 slider).
+
+    Classifies every prior band for one candidate ``window_size`` /
+    ``token_budget`` pair. Derived from the SAME greedy fit
+    (``_fit_to_budget``) the real assembly runs — never a second algorithm.
+    Consumed by the Backend preview service (C1) for the Settings-tab
+    honesty preview; pure data, no I/O.
+
+    Invariant:
+        ``bands_full + bands_short + bands_truncated + bands_dropped +
+        bands_missing == bands_total`` and ``estimated_tokens`` is the
+        chars/4 estimate of exactly the string ``assemble`` would render.
+    """
+
+    window_size: int
+    """Effective window (negatives clamped to 0, mirroring assemble)."""
+    token_budget: int
+    """Budget the prediction was computed against (as passed)."""
+    estimated_tokens: int
+    """Estimated tokens of the block assemble would render (header incl.)."""
+    bands_total: int
+    """Prior bands considered (len of the input list)."""
+    bands_full: int
+    """In-window bands rendered with their full/override summary."""
+    bands_short: int
+    """Out-of-window bands rendered with their one-sentence summary."""
+    bands_truncated: int
+    """Boundary band truncated to the remaining headroom (0 or 1)."""
+    bands_dropped: int
+    """Bands dropped entirely by budget exhaustion (oldest first)."""
+    bands_missing: int
+    """Bands skipped because their selected text is empty/None (per window)."""
+    budget_clipped: bool
+    """True when truncation or drops occurred (window exceeds the budget)."""
+
+
 # ---------------------------------------------------------------------------
 # Token helpers (module-private)
 # ---------------------------------------------------------------------------
@@ -127,6 +165,16 @@ def _truncate_to_tokens(text: str, max_tokens: int) -> str:
     if last_space > 0:
         cut = cut[:last_space]
     return cut.rstrip(" ,.;:-—") + _ELLIPSIS
+
+
+def _render_entry(band: BandSummaryData, text: str) -> str:
+    """Format one band's contribution line (shared by assemble + preview).
+
+    Formatting helper placed among the token helpers on purpose: the module
+    has no separate formatting section, and it belongs with
+    ``_truncate_to_tokens`` as a seam shared by assemble and preview.
+    """
+    return f"Band {band.position} — {band.title}: {text}"
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +247,7 @@ class SeriesHistoryTier:
             text = self._select_text(band, in_window=band.position in window_positions)
             if not text:
                 continue  # RULE-11: missing summary → skip, don't crash
-            entries.append(f"Band {band.position} — {band.title}: {text}")
+            entries.append(_render_entry(band, text))
 
         if not entries:
             return ""
@@ -208,6 +256,84 @@ class SeriesHistoryTier:
         if not fitted:
             return ""  # nothing fit — don't emit a lone header
         return _HEADER + "\n\n".join(fitted)
+
+    async def preview(
+        self,
+        bands: list[BandSummaryData],
+        window_size: int = 3,
+        token_budget: int = DEFAULT_SERIES_HISTORY_BUDGET,
+    ) -> SeriesHistoryPreview:
+        """Predict what :meth:`assemble` would render (C1 slider preview).
+
+        Reuses the exact assembly path — ``_select_text`` for text choice,
+        ``_render_entry`` for formatting, ``_fit_to_budget`` for the greedy
+        fit — and classifies the result instead of joining it:
+
+        * an input entry appearing unchanged in the fitted output was
+          rendered in full (``bands_full`` in window / ``bands_short``
+          outside);
+        * the single fitted entry that differs from its input entry is the
+          truncated boundary band (``bands_truncated``);
+        * input entries after the fitted output ends were dropped
+          (``bands_dropped``); entries never built have no usable text
+          (``bands_missing``).
+
+        Args:
+            bands: Prior bands (current novel excluded by the caller), any
+                order — sorted newest-first here, as in ``assemble``.
+            window_size: Candidate recency window (slider position).
+            token_budget: Effective series-history ceiling (ADR-082 —
+                pass the resolved ``EffectiveContextBudgets.series_history``).
+
+        Returns:
+            Frozen per-window prediction (see :class:`SeriesHistoryPreview`).
+        """
+        ordered = sorted(bands, key=lambda b: b.position, reverse=True)
+        effective_window = max(window_size, 0)
+        positions_desc = sorted({b.position for b in ordered}, reverse=True)
+        window_positions = set(positions_desc[:effective_window])
+
+        entries: list[str] = []
+        in_window_flags: list[bool] = []
+        missing = 0
+        for band in ordered:
+            text = self._select_text(band, in_window=band.position in window_positions)
+            if not text:
+                missing += 1  # RULE-11 mirror: skipped, not crashed
+                continue
+            entries.append(_render_entry(band, text))
+            in_window_flags.append(band.position in window_positions)
+
+        fitted = self._fit_to_budget(entries, token_budget)
+
+        full = short = truncated = 0
+        fitted_index = 0
+        for entry, in_window in zip(entries, in_window_flags, strict=True):
+            if fitted_index >= len(fitted):
+                continue  # budget exhausted — dropped
+            if fitted[fitted_index] == entry:
+                if in_window:
+                    full += 1
+                else:
+                    short += 1
+            else:
+                truncated += 1  # boundary band, truncated to headroom
+            fitted_index += 1
+        dropped = len(entries) - full - short - truncated
+
+        estimated = _estimate_tokens(_HEADER + "\n\n".join(fitted)) if fitted else 0
+        return SeriesHistoryPreview(
+            window_size=effective_window,
+            token_budget=token_budget,
+            estimated_tokens=estimated,
+            bands_total=len(bands),
+            bands_full=full,
+            bands_short=short,
+            bands_truncated=truncated,
+            bands_dropped=dropped,
+            bands_missing=missing,
+            budget_clipped=truncated > 0 or dropped > 0,
+        )
 
     # ------------------------------------------------------------------
     # Internal helpers
