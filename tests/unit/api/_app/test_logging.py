@@ -14,6 +14,7 @@ from logging.handlers import RotatingFileHandler
 from typing import Any
 
 import pytest
+import structlog
 
 import narrare._app.logging as logging_mod
 from narrare._app.logging import (
@@ -56,15 +57,25 @@ class _FakeSettings:
 
 @pytest.fixture(autouse=True)
 def _restore_root_logger() -> Any:  # pyright: ignore[reportUnusedFunction]
-    """Save and restore root logger handlers between tests."""
+    """Save and restore root logger handlers and structlog config between tests."""
     root = logging.getLogger()
     saved_handlers = root.handlers[:]
     saved_level = root.level
+    # Snapshot structlog's global config. The processors list MUST be a copy,
+    # not a reference: ``configure_logging()`` replaces the configured list
+    # (leaking ``cache_logger_on_first_use=True`` and a stale list identity
+    # into other test files otherwise), and structlog's ``capture_logs``
+    # mutates the configured list in place — either way a snapshot held by
+    # reference would be corrupted. Processor instances stay shared by
+    # identity; only the list object is copied.
+    saved_structlog = structlog.get_config()
+    saved_structlog["processors"] = list(saved_structlog["processors"])
     yield
     for handler in root.handlers[:]:
         handler.close()
     root.handlers[:] = saved_handlers
     root.level = saved_level
+    structlog.configure(**saved_structlog)
 
 
 def _patch_settings(
