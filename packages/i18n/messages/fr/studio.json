@@ -2106,6 +2106,19 @@
         "label": "Combien de tomes précédents inclure ?",
         "description": "Contrôle le nombre de tomes précédents qui contribuent leur résumé complet au contexte d'historique de la série lors de la génération d'un nouveau roman.",
         "help": "Seuls les tomes les plus récents dans cette fenêtre obtiennent leur résumé complet ; les tomes plus anciens ne contribuent qu'une phrase. Des valeurs plus basses économisent des tokens ; des valeurs plus élevées donnent à l'IA plus de mémoire de la série."
+      },
+      "contextPreview": {
+        "bandsLine": "{full, plural, =0 {Aucun tome complet} one {# tome complet} other {# tomes complets}} · {short, plural, =0 {aucun résumé court} one {# résumé court} other {# résumés courts}}",
+        "tokenLine": "env. {tokens, number} / {budget, number} tokens",
+        "truncatedNote": "{count, plural, one {# tome est tronqué} other {# tomes sont tronqués}}",
+        "droppedNote": "{count, plural, one {# tome plus ancien est omis} other {# tomes plus anciens sont omis}}",
+        "missingNote": "{count, plural, one {# tome n'a pas encore de résumé} other {# tomes n'ont pas encore de résumé}}",
+        "clippedWarning": "Une fenêtre plus grande serait tronquée par le budget de tokens.",
+        "budgetLine": "L'historique de la série peut utiliser jusqu'à {seriesBudget, number} des {totalBudget, number} tokens de contexte ; les {tierBase, number} restants sont réservés au contexte du tome actuel.",
+        "windowUnknown": "Fenêtre de contexte du modèle inconnue — le budget est affiché sans plafonnement.",
+        "savedOutOfRange": "La valeur enregistrée {value, number} est hors de la plage du curseur (1–{max, number}). Déplacer le curseur la remplace.",
+        "loading": "Calcul de l'aperçu…",
+        "error": "Aperçu indisponible."
       }
     },
     "join": {

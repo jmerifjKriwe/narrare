@@ -2106,6 +2106,19 @@
         "label": "How many previous bands to include?",
         "description": "Controls how many prior bands contribute their full summary to the series-history context when generating a new novel.",
         "help": "Only the most recent bands within this window get their full summary; older bands contribute only a one-sentence summary. Lower values save tokens; higher values give the AI more series memory."
+      },
+      "contextPreview": {
+        "bandsLine": "{full, plural, =0 {No bands in full} one {# band in full} other {# bands in full}} · {short, plural, =0 {no short summaries} one {# short summary} other {# short summaries}}",
+        "tokenLine": "approx. {tokens, number} / {budget, number} tokens",
+        "truncatedNote": "{count, plural, one {# band is truncated} other {# bands are truncated}}",
+        "droppedNote": "{count, plural, one {# older band is dropped} other {# older bands are dropped}}",
+        "missingNote": "{count, plural, one {# band has no summary yet} other {# bands have no summary yet}}",
+        "clippedWarning": "A larger window would be clipped by the token budget.",
+        "budgetLine": "Series history may use up to {seriesBudget, number} of {totalBudget, number} context tokens; the remaining {tierBase, number} are reserved for the current band's context.",
+        "windowUnknown": "Model context window unknown — the budget is shown uncapped.",
+        "savedOutOfRange": "Saved value {value, number} is outside the slider range (1–{max, number}). Moving the slider replaces it.",
+        "loading": "Computing preview…",
+        "error": "Preview unavailable."
       }
     },
     "join": {
