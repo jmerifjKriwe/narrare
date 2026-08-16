@@ -165,23 +165,22 @@ program is complete with Specs 1–4.
   can generate on demand.
 - **Override is window-scoped** — it curates the *full* record, so it is
   ignored for bands outside the recency window (which use the short summary).
-- **`context_window_size` tunability** — the column exists and the provider
-  reads it (default 3), but the settings PATCH/GET API surface and the
-  user-facing slider to change it are **open work** (tracked below). The
-  feature is correct at the default until then.
+- **`context_window_size` tunability — CLOSED (C1, 2026-08-16)** — the
+  settings PATCH/GET API surface had already landed with the field
+  (`SeriesSettingsUpdateRequest` / `SeriesSettingsResponse`, bounded
+  [1, 50]); the C1 slider (1–10, Series-Workspace → Settings tab) with the
+  live token preview (`GET /api/v1/series/{id}/settings/context-preview`)
+  completes the user-facing surface. The slider clamps to 1–10 while the
+  API bound stays [1, 50] (MCP/CLI-settable); a saved value above 10 is
+  shown honestly via a notice and the extended preview range.
 - **Token estimate** — the tier uses a conservative chars/4 heuristic (no
   `tiktoken` in Core); the writing pipeline's assembler-level budget is
   authoritative.
 
 ## Open Work (not blocking stability)
 
-- **Context Window slider** — expose `context_window_size` on
-  `SeriesSettingsUpdateRequest` / `SeriesSettingsResponse` (backend, ~2 lines
-  each), add the `context_window_size` field to the frontend
-  `SeriesSettings` / `SeriesSettingsUpdate` types, add a
-  `useUpdateSeriesSettings` hook, and render a 1–10 slider in the Series
-  Settings form. i18n keys (`series.settings.contextWindow.*`) already exist
-  in en/de/fr. See ADR-077 Review Trigger.
+- None currently — the C1 slider + preview (2026-08-16) closed the last
+  item.
 
 ## Related Features
 
@@ -200,3 +199,15 @@ program is complete with Specs 1–4.
   Triple-Trigger generation all landed. The context-window *slider* (UI to
   tune `context_window_size`) remains open work — the setting works at its
   default of 3.
+- **2026-08-16:** C1 (Post-Export Follow-ups program, design §4) closed the
+  slider remainder: `SeriesHistoryTier.preview` (Core — same
+  `_select_text` / `_render_entry` / `_fit_to_budget` code path as real
+  assembly, no second fitting algorithm), `SeriesHistoryPreviewService` +
+  `collect_series_band_data` (next-band semantics: every positioned member
+  is a prior band), `GET /series/{id}/settings/context-preview`
+  (budgets consumed verbatim via `resolve_context_budgets`,
+  `series_in_scope=True`, user-level routing — a project-level routing
+  override for a specific novel may differ at that novel's generation
+  time), and the 1–10 slider + preview UI (`SeriesContextWindowField` +
+  `SeriesContextPreview`, i18n en/de/fr). PATCH stays on the existing
+  settings endpoint.
