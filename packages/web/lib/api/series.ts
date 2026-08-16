@@ -21,6 +21,7 @@ import type {
   Series,
   SeriesConsistencyResult,
   SeriesCreate,
+  SeriesDriftSnapshot,
   SeriesHistoryPreviewResponse,
   SeriesKBEntry,
   SeriesSettings,
@@ -213,4 +214,13 @@ export const seriesApi = {
       method: "POST",
       body: JSON.stringify({ novel_id: novelId }),
     }),
+
+  /**
+   * GET /series/{id}/consistency/{novelId} — the persisted drift snapshot
+   * (SERIES-004 Slice 6 / C2): both check results as one document plus the
+   * server-computed stale flag. `generated_at` is null when nothing was
+   * persisted yet (200 with an all-null body — never an error).
+   */
+  getDriftSnapshot: (seriesId: string, novelId: string) =>
+    fetchApi<SeriesDriftSnapshot>(`/series/${seriesId}/consistency/${novelId}`),
 };

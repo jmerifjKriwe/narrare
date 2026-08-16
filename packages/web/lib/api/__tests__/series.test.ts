@@ -405,6 +405,68 @@ describe("seriesApi", () => {
     expect(result.novel_id).toBe("novel-1");
   });
 
+  // --- Drift snapshot (C2 — drift persistence) ------------------------------
+  // Mirrors apps/api/narrare/series/series_drift_schemas.py
+  // (SeriesDriftSnapshotResponse): GET returns ONE document with both
+  // persisted check results + the server-computed stale flag. When nothing
+  // is persisted the endpoint returns 200 with an all-null body — never an
+  // error — so consumers need no 404 special-casing.
+
+  it("getDriftSnapshot → GET /series/{id}/consistency/{novelId}", async () => {
+    const mockSnapshot = {
+      series_id: "series-1",
+      novel_id: "novel-1",
+      generated_at: "2026-08-16T10:00:00Z",
+      stale: true,
+      consistency: null,
+      voice_drift: {
+        novel_id: "novel-1",
+        result: null,
+        no_profile: { reason: "no_series_voice" },
+      },
+    };
+    let capturedUrl = "";
+    let capturedMethod = "";
+    server.use(
+      http.get("*/api/v1/series/series-1/consistency/novel-1", ({ request }) => {
+        capturedUrl = request.url;
+        capturedMethod = request.method;
+        return HttpResponse.json(mockSnapshot);
+      }),
+    );
+
+    const result = await seriesApi.getDriftSnapshot("series-1", "novel-1");
+
+    expect(capturedUrl).toContain("/api/v1/series/series-1/consistency/novel-1");
+    expect(capturedMethod).toBe("GET");
+    expect(result.series_id).toBe("series-1");
+    expect(result.stale).toBe(true);
+    expect(result.consistency).toBeNull();
+    expect(result.voice_drift).toEqual(mockSnapshot.voice_drift);
+  });
+
+  it("getDriftSnapshot → all-null body when nothing persisted (200, not an error)", async () => {
+    server.use(
+      http.get("*/api/v1/series/series-1/consistency/novel-1", () =>
+        HttpResponse.json({
+          series_id: "series-1",
+          novel_id: "novel-1",
+          generated_at: null,
+          stale: false,
+          consistency: null,
+          voice_drift: null,
+        }),
+      ),
+    );
+
+    const result = await seriesApi.getDriftSnapshot("series-1", "novel-1");
+
+    expect(result.generated_at).toBeNull();
+    expect(result.stale).toBe(false);
+    expect(result.consistency).toBeNull();
+    expect(result.voice_drift).toBeNull();
+  });
+
   // --- Error propagation ---------------------------------------------------
 
   it("throws on a non-2xx error response", async () => {

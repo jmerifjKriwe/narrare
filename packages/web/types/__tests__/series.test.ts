@@ -27,6 +27,7 @@ import type {
   SeriesHistoryPreviewEntry,
   SeriesHistoryPreviewResponse,
 } from "../seriesContextPreview";
+import type { SeriesDriftSnapshot } from "../seriesDrift";
 
 function fieldNames<T extends object>(sample: T): string[] {
   return Object.keys(sample).sort();
@@ -236,6 +237,50 @@ describe("Series types mirror Pydantic (RULE-17)", () => {
       "previews",
       "series_id",
     ]);
+  });
+
+  it("SeriesDriftSnapshot → 6 fields mirroring SeriesDriftSnapshotResponse (C2)", () => {
+    const sample: SeriesDriftSnapshot = {
+      series_id: "series-1",
+      novel_id: "novel-1",
+      generated_at: "2026-08-16T10:00:00Z",
+      stale: true,
+      consistency: {
+        series_id: "series-1",
+        novel_id: "novel-1",
+        conflicts: [],
+        summary: "No contradictions.",
+        canon_entry_count: 12,
+        chapter_count: 30,
+      },
+      voice_drift: {
+        novel_id: "novel-1",
+        result: null,
+        no_profile: { reason: "no_series_voice" },
+      },
+    };
+    expect(fieldNames(sample)).toEqual([
+      "consistency",
+      "generated_at",
+      "novel_id",
+      "series_id",
+      "stale",
+      "voice_drift",
+    ]);
+
+    // The never-run wire body is a 200 with an all-null payload (never an
+    // error) — encoded here so the nullability cannot drift silently.
+    const nothingPersisted: SeriesDriftSnapshot = {
+      series_id: "series-1",
+      novel_id: "novel-1",
+      generated_at: null,
+      stale: false,
+      consistency: null,
+      voice_drift: null,
+    };
+    expect(nothingPersisted.generated_at).toBeNull();
+    expect(nothingPersisted.consistency).toBeNull();
+    expect(nothingPersisted.voice_drift).toBeNull();
   });
 });
 

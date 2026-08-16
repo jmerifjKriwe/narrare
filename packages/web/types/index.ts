@@ -153,6 +153,7 @@ export type {
   SeriesHistoryPreviewEntry,
   SeriesHistoryPreviewResponse,
 } from "./seriesContextPreview";
+export type { SeriesDriftSnapshot } from "./seriesDrift";
 export type {
   CalibrationMetadata,
   CalibrationStatus,
