@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from narrare_core.ai_invocation.budgets import OutputBudgetDecision
     from narrare_core.ai_invocation.models import PromptInvocationContext
     from narrare_core.llm.run_limits import ResolvedRunLimits
@@ -156,6 +158,24 @@ def build_model_call_marker(
         ),
         streaming=streaming,
         status=status,
+    )
+
+
+def fingerprint_chapter_texts(chapter_texts: Sequence[str]) -> str:
+    """Privacy-safe staleness fingerprint over a band's ordered chapter texts.
+
+    C2 drift persistence (SERIES-004 Slice 6): reuses the ADR-045 fingerprint
+    scheme (:func:`_hash_payload` — SHA-256 over canonical JSON with the
+    ``narrare:adr045:v1`` domain separator) — **no new hash scheme**. The
+    ``kind`` discriminator keeps drift-staleness digests distinct from
+    invocation-correlation digests. Determinism requires callers to pass the
+    texts in a stable order with a stable filter: backend callers use
+    ``ChapterRepository.list_by_novel`` (position order) filtered to non-empty
+    prose — the exact inputs ``SeriesConsistencyService`` analyses. Only the
+    digest is persisted; raw prose never is.
+    """
+    return _hash_payload(
+        {"kind": "series_drift_chapter_texts", "chapter_texts": list(chapter_texts)}
     )
 
 
