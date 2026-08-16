@@ -55,6 +55,7 @@ def validate_token_overrides(overrides: dict[str, object]) -> None:
 
     Raises:
         ValidationError: If a field name is unknown or value is invalid.
+        ValidationError: Code INVALID_BUDGET_BOUNDS if a budget key is a bool or below its minimum.
     """
     for key, value in overrides.items():
         if key not in VALID_OVERRIDE_FIELDS:

@@ -287,7 +287,7 @@ class TestRemainingWritingFactoriesWiring:
         import importlib
 
         budgets = _canned_budgets(tier_base=24_000, series_history=0)
-        ctx, pipeline_spy, _adapter = _budget_patch_context(
+        ctx, pipeline_spy, adapter_spy = _budget_patch_context(
             "narrare.writing.deps_coauthor", budgets
         )
         module = importlib.import_module("narrare.writing.deps_coauthor")
@@ -299,13 +299,14 @@ class TestRemainingWritingFactoriesWiring:
                 project_id=uuid.uuid4(),
             )
 
+        assert adapter_spy.call_args.kwargs["series_in_scope"] is False
         assert pipeline_spy.call_args.kwargs["total_budget"] == 24_000
 
     async def test_deps_style_variants_passes_resolved_tier_base(self) -> None:
         import importlib
 
         budgets = _canned_budgets(tier_base=28_000, series_history=0)
-        ctx, pipeline_spy, _adapter = _budget_patch_context(
+        ctx, pipeline_spy, adapter_spy = _budget_patch_context(
             "narrare.writing.deps_style_variants", budgets
         )
         module = importlib.import_module("narrare.writing.deps_style_variants")
@@ -317,4 +318,5 @@ class TestRemainingWritingFactoriesWiring:
                 project_id=uuid.uuid4(),
             )
 
+        assert adapter_spy.call_args.kwargs["series_in_scope"] is False
         assert pipeline_spy.call_args.kwargs["total_budget"] == 28_000
