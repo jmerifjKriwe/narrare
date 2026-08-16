@@ -760,6 +760,55 @@
         }
       }
     },
+    "/api/v1/series/{series_id}/settings/context-preview": {
+      "get": {
+        "tags": [
+          "series"
+        ],
+        "summary": "Get Settings Context Preview",
+        "description": "Live preview: series-history context per candidate window size (C1).\n\nRead-only derived view (design §4.1) — computed from the series' actual\nband summaries against the effective ADR-082 budgets. Saving stays on\nPATCH /{series_id}/settings.",
+        "operationId": "get_settings_context_preview_api_v1_series__series_id__settings_context_preview_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Series Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesHistoryPreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/series/{series_id}/novels": {
       "get": {
         "tags": [
@@ -19417,6 +19466,125 @@
         ],
         "title": "SeriesCreateRequest",
         "description": "POST /api/v1/series body."
+      },
+      "SeriesHistoryPreviewEntry": {
+        "properties": {
+          "window_size": {
+            "type": "integer",
+            "title": "Window Size"
+          },
+          "token_budget": {
+            "type": "integer",
+            "title": "Token Budget"
+          },
+          "estimated_tokens": {
+            "type": "integer",
+            "title": "Estimated Tokens"
+          },
+          "bands_total": {
+            "type": "integer",
+            "title": "Bands Total"
+          },
+          "bands_full": {
+            "type": "integer",
+            "title": "Bands Full"
+          },
+          "bands_short": {
+            "type": "integer",
+            "title": "Bands Short"
+          },
+          "bands_truncated": {
+            "type": "integer",
+            "title": "Bands Truncated"
+          },
+          "bands_dropped": {
+            "type": "integer",
+            "title": "Bands Dropped"
+          },
+          "bands_missing": {
+            "type": "integer",
+            "title": "Bands Missing"
+          },
+          "budget_clipped": {
+            "type": "boolean",
+            "title": "Budget Clipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "window_size",
+          "token_budget",
+          "estimated_tokens",
+          "bands_total",
+          "bands_full",
+          "bands_short",
+          "bands_truncated",
+          "bands_dropped",
+          "bands_missing",
+          "budget_clipped"
+        ],
+        "title": "SeriesHistoryPreviewEntry",
+        "description": "Prediction for one candidate window size (mirrors Core)."
+      },
+      "SeriesHistoryPreviewResponse": {
+        "properties": {
+          "series_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Series Id"
+          },
+          "current_window_size": {
+            "type": "integer",
+            "title": "Current Window Size"
+          },
+          "effective_series_history_budget": {
+            "type": "integer",
+            "title": "Effective Series History Budget"
+          },
+          "effective_context_total": {
+            "type": "integer",
+            "title": "Effective Context Total"
+          },
+          "effective_tier_base": {
+            "type": "integer",
+            "title": "Effective Tier Base"
+          },
+          "model_context_window": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Context Window"
+          },
+          "budget_source": {
+            "type": "string",
+            "title": "Budget Source"
+          },
+          "previews": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesHistoryPreviewEntry"
+            },
+            "type": "array",
+            "title": "Previews"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_id",
+          "current_window_size",
+          "effective_series_history_budget",
+          "effective_context_total",
+          "effective_tier_base",
+          "model_context_window",
+          "budget_source",
+          "previews"
+        ],
+        "title": "SeriesHistoryPreviewResponse",
+        "description": "GET /api/v1/series/{id}/settings/context-preview response.\n\nBudget metadata is ``EffectiveContextBudgets`` verbatim (ADR-082 — the\nsame resolver output the writing pipeline consumes; no second\ncomputation path): series novels carve the series-history ceiling out\nof the context total, and the remaining tier base serves the current\nband's own context — the preview copy states this asymmetry."
       },
       "SeriesKBEntry": {
         "properties": {

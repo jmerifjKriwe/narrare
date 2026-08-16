@@ -17,6 +17,9 @@ from fastapi import APIRouter, Depends, status
 
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare.series.dependencies import get_series_service
+from narrare.series.dependencies_context_preview import (
+    get_series_history_preview_service,
+)
 from narrare.series.schemas import (
     SeriesCreateRequest,
     SeriesResponse,
@@ -25,6 +28,8 @@ from narrare.series.schemas import (
     SeriesSummary,
     SeriesUpdateRequest,
 )
+from narrare.series.series_history_preview_schemas import SeriesHistoryPreviewResponse
+from narrare.series.series_history_preview_service import SeriesHistoryPreviewService
 from narrare.series.service import SeriesService
 
 router = APIRouter(prefix="/series", tags=["series"])
@@ -99,3 +104,21 @@ async def update_settings(
 ) -> SeriesSettingsResponse:
     """Update series settings."""
     return await service.update_settings(series_id, uuid.UUID(user_id), request)
+
+
+@router.get(
+    "/{series_id}/settings/context-preview",
+    response_model=SeriesHistoryPreviewResponse,
+)
+async def get_settings_context_preview(
+    series_id: uuid.UUID,
+    user_id: CurrentUserIdDep,
+    service: SeriesHistoryPreviewService = Depends(get_series_history_preview_service),
+) -> SeriesHistoryPreviewResponse:
+    """Live preview: series-history context per candidate window size (C1).
+
+    Read-only derived view (design §4.1) — computed from the series' actual
+    band summaries against the effective ADR-082 budgets. Saving stays on
+    PATCH /{series_id}/settings.
+    """
+    return await service.get_preview(series_id, uuid.UUID(user_id))
