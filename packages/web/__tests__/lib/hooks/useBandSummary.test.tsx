@@ -3,7 +3,8 @@
  *
  * Verifies the four TanStack Query hooks wrap the correct `seriesApi` methods
  * and that the three mutations invalidate the band-summary query cache on
- * success (so the card re-fetches after regenerate / override / clear).
+ * success (so the card re-fetches after regenerate / override / clear) plus
+ * the C1 settings-preview query (which derives from summaries).
  *
  * Pattern mirrors `useSummary.test.tsx`: `seriesApi` is mocked per-module, a
  * QueryClientProvider wrapper isolates cache state, and `invalidateQueries`
@@ -116,6 +117,9 @@ describe("useGenerateBandSummary", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: seriesKeys.bandSummary(SERIES_ID, NOVEL_ID),
     });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: seriesKeys.settingsPreview(SERIES_ID),
+    });
   });
 });
 
@@ -142,6 +146,9 @@ describe("useUpdateBandSummaryOverride", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: seriesKeys.bandSummary(SERIES_ID, NOVEL_ID),
     });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: seriesKeys.settingsPreview(SERIES_ID),
+    });
   });
 });
 
@@ -166,6 +173,9 @@ describe("useClearBandSummaryOverride", () => {
     expect(mockClearOverride).toHaveBeenCalledWith(SERIES_ID, NOVEL_ID);
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: seriesKeys.bandSummary(SERIES_ID, NOVEL_ID),
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: seriesKeys.settingsPreview(SERIES_ID),
     });
   });
 });

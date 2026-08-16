@@ -11,9 +11,11 @@
  * - ``useClearBandSummaryOverride``          — DELETE clear the override.
  *
  * The three mutations invalidate the per-novel band-summary query on success so
- * the ``BandSummaryCard`` re-fetches immediately. Mirrors the established
- * Narrare pattern (``useSeriesNovels``): reads use ``useQuery`` (disabled when
- * ``seriesId`` is empty); mutations use ``useMutation`` + ``seriesKeys``.
+ * the ``BandSummaryCard`` re-fetches immediately, plus the C1 settings-preview
+ * query (which derives its preview from summaries, so it goes stale on edit).
+ * Mirrors the established Narrare pattern (``useSeriesNovels``): reads use
+ * ``useQuery`` (disabled when ``seriesId`` is empty); mutations use
+ * ``useMutation`` + ``seriesKeys``.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { seriesApi } from "@/lib/api/series";
@@ -38,6 +40,7 @@ export function useGenerateBandSummary(seriesId: string, novelId: string) {
     mutationFn: () => seriesApi.generateBandSummary(seriesId, novelId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: seriesKeys.bandSummary(seriesId, novelId) });
+      void queryClient.invalidateQueries({ queryKey: seriesKeys.settingsPreview(seriesId) });
     },
   });
 }
@@ -50,6 +53,7 @@ export function useUpdateBandSummaryOverride(seriesId: string, novelId: string) 
       seriesApi.updateBandSummaryOverride(seriesId, novelId, override),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: seriesKeys.bandSummary(seriesId, novelId) });
+      void queryClient.invalidateQueries({ queryKey: seriesKeys.settingsPreview(seriesId) });
     },
   });
 }
@@ -61,6 +65,7 @@ export function useClearBandSummaryOverride(seriesId: string, novelId: string) {
     mutationFn: () => seriesApi.clearBandSummaryOverride(seriesId, novelId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: seriesKeys.bandSummary(seriesId, novelId) });
+      void queryClient.invalidateQueries({ queryKey: seriesKeys.settingsPreview(seriesId) });
     },
   });
 }
