@@ -11,6 +11,8 @@
     "pdfDescription": "Druckfertiges PDF mit Libertinus Serif.",
     "epubDescription": "EPUB-E-Book mit eingebetteter Schrift.",
     "markdownDescription": "Klartext-Markdown-Datei.",
+    "docx": "Word (DOCX)",
+    "docxDescription": "Manuskript-Format für Lektoren — Times 12 pt, 1,5-zeilig.",
     "unavailable": "Nicht verfügbar — Render-Werkzeug nicht installiert."
   },
   "scope": {

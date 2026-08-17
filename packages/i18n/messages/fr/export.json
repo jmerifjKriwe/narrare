@@ -11,6 +11,8 @@
     "pdfDescription": "PDF prêt à imprimer avec Libertinus Serif.",
     "epubDescription": "E-book EPUB avec police intégrée.",
     "markdownDescription": "Fichier texte Markdown brut.",
+    "docx": "Word (DOCX)",
+    "docxDescription": "Format manuscrit pour les éditeurs — Times 12 pt, interligne 1,5.",
     "unavailable": "Indisponible — outil de rendu non installé."
   },
   "scope": {

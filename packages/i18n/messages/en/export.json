@@ -11,6 +11,8 @@
     "pdfDescription": "Print-ready PDF with Libertinus Serif.",
     "epubDescription": "EPUB e-book with embedded font.",
     "markdownDescription": "Plain Markdown text file.",
+    "docx": "Word (DOCX)",
+    "docxDescription": "Manuscript format for editors — Times 12 pt, 1.5 line spacing.",
     "unavailable": "Unavailable — render tool not installed."
   },
   "scope": {
