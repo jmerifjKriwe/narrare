@@ -24,6 +24,7 @@ class ExportFormat(StrEnum):
     PDF = "pdf"
     EPUB = "epub"
     MARKDOWN = "md"
+    DOCX = "docx"
 
 
 class PaperSize(StrEnum):

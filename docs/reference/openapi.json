@@ -14932,7 +14932,8 @@
         "enum": [
           "pdf",
           "epub",
-          "md"
+          "md",
+          "docx"
         ],
         "title": "ExportFormat",
         "description": "Output format produced by a renderer."

@@ -302,6 +302,7 @@ export_binary_allowed_modules = [
   "apps/api/narrare/export/renderers/pandoc_base.py",
   "apps/api/narrare/export/renderers/pandoc_md.py",
   "apps/api/narrare/export/renderers/pandoc_epub.py",
+  "apps/api/narrare/export/renderers/pandoc_docx.py",
 ]
 forbidden_llm_imports = ["openai", "anthropic", "pydantic_ai"]
 forbidden_llm_urls = [
