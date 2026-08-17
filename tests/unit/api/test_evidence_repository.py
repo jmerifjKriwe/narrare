@@ -8,8 +8,11 @@ and correctly converts results back to domain models.
 See ADR-042 § Repository for the contract design.
 
 This file covers: save(), count_by_feature(), get_distinct_modes().
-Query tests (get_by_feature_and_mode, get_latest_audit_state) and
-sink tests are in separate files.
+Query tests (get_by_feature_and_mode, get_latest_audit_state), sink
+tests and the ADR-070 adaptive-snapshot tests (update_adaptive_snapshot,
+get_adaptive_snapshots) are in separate files — the latter in
+test_evidence_repository_adaptive_snapshots.py, which imports the
+shared session-mock helpers from here.
 """
 
 from __future__ import annotations

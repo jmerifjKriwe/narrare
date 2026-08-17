@@ -152,6 +152,56 @@ class TestPreferenceServiceSuccess:
 
 
 # ---------------------------------------------------------------------------
+# Preference service — E2E stub path (dependencies_prompts.py:111)
+# ---------------------------------------------------------------------------
+
+
+class TestPreferenceServiceE2EStub:
+    def test_e2e_mode_keeps_null_client_wrapped_in_service(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """E2E mode: NullMemoryClient stays active inside a PreferenceService.
+
+        With ``e2e_test=True`` the null client is an intentional stub — the
+        service is still created (logging ``preference_service_e2e_stub_active``)
+        so the preference path runs its normal code path instead of being
+        skipped.
+        """
+        from structlog.testing import capture_logs
+
+        class _E2ECoreSettings:
+            e2e_test = True
+
+        monkeypatch.setattr(
+            "narrare._app.dependencies_prompts.is_mem0_available",
+            lambda: True,
+        )
+        monkeypatch.setattr(
+            "narrare._app.dependencies_prompts.detect_provider_from_env",
+            _provider_config,
+        )
+        monkeypatch.setattr(
+            "narrare_core.memory.mem0_client.create_memory_client_sync",
+            lambda **_kw: NullMemoryClient(),
+        )
+        monkeypatch.setattr(
+            "narrare._app.dependencies_prompts.get_core_settings",
+            lambda: _E2ECoreSettings(),
+        )
+        monkeypatch.setattr(
+            "narrare_core.memory.preference_service.PreferenceService",
+            lambda mem0_client: _FakePreferenceService(),
+        )
+
+        with capture_logs() as logs:
+            result = prompts_mod._get_preference_service_instance()
+
+        assert result is not None
+        assert isinstance(result, _FakePreferenceService)
+        assert any(log.get("event") == "preference_service_e2e_stub_active" for log in logs)
+
+
+# ---------------------------------------------------------------------------
 # Prompt Registry singleton
 # ---------------------------------------------------------------------------
 
