@@ -10,7 +10,9 @@ import uuid
 from typing import TYPE_CHECKING
 
 import pytest
+from structlog.testing import capture_logs
 
+from narrare.events.publisher import EventPublisher
 from narrare.prompts.history_service import PromptHistoryApiService
 from narrare.prompts.schemas import SaveOverrideRequest
 from narrare_core.shared.errors import NotFoundError
@@ -22,7 +24,9 @@ from tests.unit.api.prompts.history_service_fakes import (
 )
 
 if TYPE_CHECKING:
-    from narrare_core.events.types import DomainEvent
+    from typing import Any
+
+    from narrare_core.events.types import DomainEvent, EventType
 
 PROMPT_ID = "writing/en/new_chapter"
 WIKI_PROMPT_ID = "wiki/en/entity_summary"
@@ -55,8 +59,6 @@ def _service_with_publisher(
     Mirrors the helper in ``test_prompt_history_service.py`` (Q-016) so the
     restore path is exercised against the same in-process publish contract.
     """
-    from narrare.events.publisher import EventPublisher
-
     publisher = EventPublisher()
     received: list[object] = []
 
@@ -71,6 +73,25 @@ def _service_with_publisher(
         event_publisher=publisher,
     )
     return service, received
+
+
+class _FailingPublisher(EventPublisher):
+    """``EventPublisher`` stand-in whose ``publish`` always raises.
+
+    Simulates an event-bus outage so the ``wiki.prompt.changed`` helper's
+    swallow-and-log branch (RULE-11) can be exercised deterministically —
+    real handler failures are already swallowed inside ``_dispatch``, so
+    only a failing ``publish`` itself reaches the helper's except branch.
+    """
+
+    async def publish(
+        self,
+        event_type: EventType,
+        *,
+        aggregate_id: uuid.UUID,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        raise RuntimeError("event bus unavailable")
 
 
 class TestCompareRevisions:
@@ -114,6 +135,33 @@ class TestCompareRevisions:
     async def test_compare_unknown_revision_raises(self, service: PromptHistoryApiService) -> None:
         with pytest.raises(NotFoundError):
             await service.compare_revisions(PROMPT_ID, from_id=str(uuid.uuid4()), to_id="active")
+
+    @pytest.mark.parametrize(
+        ("side", "resource", "identifier"),
+        [
+            pytest.param("active", "Active override", PROMPT_ID, id="active-without-override"),
+            pytest.param("not-a-uuid", "Prompt revision", "not-a-uuid", id="non-uuid-revision"),
+        ],
+    )
+    async def test_compare_side_edge_value_raises_not_found(
+        self,
+        service: PromptHistoryApiService,
+        side: str,
+        resource: str,
+        identifier: str,
+    ) -> None:
+        """Unresolvable compare sides raise ``NotFoundError``, not ``ValueError``.
+
+        A compare side is either the literal ``"active"`` or a revision UUID.
+        A missing active override and a non-UUID side string must both surface
+        as ``NotFoundError`` (404 semantics) — a raw ``ValueError`` from UUID
+        parsing would leak as an unhandled 500 instead.
+        """
+        with pytest.raises(NotFoundError) as exc_info:
+            await service.compare_revisions(PROMPT_ID, from_id=side, to_id="active")
+
+        assert exc_info.value.resource == resource
+        assert exc_info.value.identifier == identifier
 
 
 class TestRestoreRevision:
@@ -254,6 +302,43 @@ class TestRestoreRevisionWikiPublishing:
         result = await service.restore_revision(WIKI_PROMPT_ID, v1_row.id, actor_id=uuid.uuid4())
 
         assert result.restored_revision.is_active is True
+
+
+class TestWikiPromptEventPublishFailure:
+    """``wiki.prompt.changed`` publish failures never block (RULE-11)."""
+
+    async def test_restore_publish_failure_is_logged_and_does_not_block_restore(
+        self, fake_core: FakeCore, fake_repo: FakeRepo
+    ) -> None:
+        """A failing publisher logs one warning; the restore still completes."""
+        # Seed the active file + one older revision directly (no service
+        # saves here — they would publish too and muddy the log count).
+        await fake_core.save_override(WIKI_PROMPT_ID, "v2")
+        row = await fake_repo.insert_revision(
+            WIKI_PROMPT_ID,
+            "project",
+            content="v1",
+            content_hash=hash_text("v1"),
+            actor_id=uuid.uuid4(),
+            source="save",
+        )
+        service = PromptHistoryApiService(
+            core=fake_core,
+            repo=fake_repo,
+            retention_limit=100,
+            event_publisher=_FailingPublisher(),
+        )
+
+        with capture_logs() as logs:
+            result = await service.restore_revision(WIKI_PROMPT_ID, row.id, actor_id=uuid.uuid4())
+
+        matching = [log for log in logs if log.get("event") == "wiki_prompt_changed_publish_failed"]
+        assert len(matching) == 1
+        assert matching[0]["prompt_id"] == WIKI_PROMPT_ID
+        # Non-blocking: the file write and append-only record both completed.
+        assert fake_core.files[WIKI_PROMPT_ID].startswith("v1")
+        assert result.restored_revision.source == "restore"
+        assert fake_repo.rows[-1].restored_from_id == row.id
 
 
 class TestClearHistory:
