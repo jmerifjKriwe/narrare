@@ -189,14 +189,14 @@ export const seriesApi = {
 
   // --- Series Cross-Novel Drift (Spec 4 Tasks 2–3) ---
   // Mirrors apps/api/narrare/series/router_consistency.py +
-  // router_voice_drift.py. Both checks are read-only analyses (HTTP 200); the
+  // router_voice_drift.py. Both checks persist their result as the band's latest drift snapshot (C2) and return it (HTTP 200); the
   // series id is the URL anchor, the band (novel) id rides in the request body
   // (the path-based verify_novel_in_owned_series dependency does not apply).
 
   /**
    * POST /series/{id}/consistency/check — check a band's chapter prose against
    * the series Canon KB. Returns the canon contradictions found (possibly empty
-   * — no contradictions is a valid result). Read-only; nothing is persisted.
+   * — no contradictions is a valid result). The result is persisted as the band's latest drift snapshot before it is returned.
    */
   checkSeriesConsistency: (seriesId: string, novelId: string) =>
     fetchApi<SeriesConsistencyResult>(`/series/${seriesId}/consistency/check`, {
@@ -207,7 +207,7 @@ export const seriesApi = {
   /**
    * POST /series/{id}/voice-drift/check — analyse a band's narrator drift
    * against the series voice baseline. Reuses the novel-level response shape
-   * (AuthorVoiceDriftResponse). Read-only; nothing is persisted.
+   * (AuthorVoiceDriftResponse). The result is persisted as the band's latest drift snapshot before it is returned.
    */
   checkSeriesVoiceDrift: (seriesId: string, novelId: string) =>
     fetchApi<SeriesVoiceDriftResult>(`/series/${seriesId}/voice-drift/check`, {
