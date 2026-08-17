@@ -9,6 +9,9 @@
  *   contradict the series Canon? Renders via `SeriesConflictList`.
  * - **Voice drift** (POST …/voice-drift/check) — how far has a band's narrator
  *   drifted from the series voice baseline? Renders via `SeriesDriftSummary`.
+ * - ``useSeriesDriftSnapshot`` — GET the persisted latest-wins snapshot (C2);
+ *   the panel hydrates from it instead of an empty state and badges it stale
+ *   when the band's texts changed.
  *
  * The author picks a band (novel) from the dropdown and clicks **Check
  * consistency**, which fires BOTH checks in parallel (each is an independent
@@ -18,15 +21,21 @@
  * list/reorder (RULE-06).
  *
  * RULE-04: the two result renderers are extracted into `SeriesConflictList` +
- * `SeriesDriftSummary`. All copy via ``useTranslations("studio")`` under
+ * `SeriesDriftSummary`, and the shared loading/error section shell into
+ * `SeriesDriftResultSection`. All copy via ``useTranslations("studio")`` under
  * ``series.drift.*``.
  */
 import { Loader2, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { SeriesConflictList } from "@/components/series/SeriesConflictList";
+import { SeriesDriftResultSection } from "@/components/series/SeriesDriftResultSection";
 import { SeriesDriftSummary } from "@/components/series/SeriesDriftSummary";
-import { useSeriesConsistency, useSeriesVoiceDrift } from "@/lib/hooks/useSeriesDrift";
+import {
+  useSeriesConsistency,
+  useSeriesDriftSnapshot,
+  useSeriesVoiceDrift,
+} from "@/lib/hooks/useSeriesDrift";
 import { useSeriesNovels } from "@/lib/hooks/useSeriesNovels";
 
 interface SeriesDriftPanelProps {
@@ -40,18 +49,42 @@ export function SeriesDriftPanel({ seriesId }: SeriesDriftPanelProps) {
   const drift = useSeriesVoiceDrift(seriesId);
 
   const [selectedNovelId, setSelectedNovelId] = useState("");
+  // C2: the persisted snapshot for the selected band (all-null when nothing
+  // was saved yet). Fresh run data takes precedence over it below.
+  const snapshot = useSeriesDriftSnapshot(seriesId, selectedNovelId);
+
+  const consistencyView = consistency.data ?? snapshot.data?.consistency ?? null;
+  const driftView = drift.data ?? snapshot.data?.voice_drift ?? null;
+
   const isChecking = consistency.isPending || drift.isPending;
   const hasAnyActivity =
     consistency.isPending ||
     drift.isPending ||
-    Boolean(consistency.data) ||
-    Boolean(drift.data) ||
+    Boolean(consistencyView) ||
+    Boolean(driftView) ||
     consistency.isError ||
     drift.isError;
 
+  // The snapshot hint shows only while the persisted snapshot is the visible
+  // source (no fresh run data this session). Invariant: sections non-null
+  // implies generated_at non-null (a persisted record always carries it).
+  const snapshotVisible =
+    !consistency.data &&
+    !drift.data &&
+    !isChecking &&
+    (snapshot.data?.consistency != null || snapshot.data?.voice_drift != null);
+
+  function handleSelect(novelId: string): void {
+    setSelectedNovelId(novelId);
+    // Clear the previous band's fresh results so the panel never mixes
+    // bands; the snapshot query re-keys automatically.
+    consistency.reset();
+    drift.reset();
+  }
+
   function handleCheck(): void {
     if (!selectedNovelId || isChecking) return;
-    // Reset so stale results from a previous band clear while the new checks run.
+    // Reset so the (now stale) persisted display clears while the checks run.
     consistency.reset();
     drift.reset();
     void consistency.mutate(selectedNovelId);
@@ -72,7 +105,7 @@ export function SeriesDriftPanel({ seriesId }: SeriesDriftPanelProps) {
             id="series-drift-band-select"
             data-testid="series-drift-band-select"
             value={selectedNovelId}
-            onChange={(e) => setSelectedNovelId(e.target.value)}
+            onChange={(e) => handleSelect(e.target.value)}
             disabled={novelsLoading}
             className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
@@ -107,11 +140,23 @@ export function SeriesDriftPanel({ seriesId }: SeriesDriftPanelProps) {
             {t("series.drift.description")}
           </p>
         ) : null}
+        {snapshotVisible && snapshot.data ? (
+          <p
+            data-testid="series-drift-snapshot-hint"
+            className="pt-1 text-xs text-muted-foreground"
+          >
+            {snapshot.data.stale
+              ? t("series.drift.snapshot.stale")
+              : t("series.drift.snapshot.restored", {
+                  generatedAt: new Date(snapshot.data.generated_at ?? 0),
+                })}
+          </p>
+        ) : null}
       </div>
 
       {/* Consistency section */}
       {hasAnyActivity ? (
-        <ResultSection
+        <SeriesDriftResultSection
           testId="series-drift-consistency-section"
           title={t("series.drift.conflicts")}
           isPending={consistency.isPending}
@@ -119,18 +164,18 @@ export function SeriesDriftPanel({ seriesId }: SeriesDriftPanelProps) {
           loadingKey="series.drift.loading"
           errorKey="series.drift.error"
         >
-          {consistency.data ? (
+          {consistencyView ? (
             <SeriesConflictList
-              conflicts={consistency.data.conflicts}
-              summary={consistency.data.summary}
+              conflicts={consistencyView.conflicts}
+              summary={consistencyView.summary}
             />
           ) : null}
-        </ResultSection>
+        </SeriesDriftResultSection>
       ) : null}
 
       {/* Voice drift section */}
       {hasAnyActivity ? (
-        <ResultSection
+        <SeriesDriftResultSection
           testId="series-drift-voice-section"
           title={t("series.drift.checkVoiceDrift")}
           isPending={drift.isPending}
@@ -138,53 +183,9 @@ export function SeriesDriftPanel({ seriesId }: SeriesDriftPanelProps) {
           loadingKey="series.drift.loading"
           errorKey="series.drift.error"
         >
-          {drift.data ? <SeriesDriftSummary response={drift.data} /> : null}
-        </ResultSection>
+          {driftView ? <SeriesDriftSummary response={driftView} /> : null}
+        </SeriesDriftResultSection>
       ) : null}
     </section>
-  );
-}
-
-// --- Shared section shell (loading / error / content) -----------------------
-
-interface ResultSectionProps {
-  readonly testId: string;
-  readonly title: string;
-  readonly isPending: boolean;
-  readonly isError: boolean;
-  readonly loadingKey: string;
-  readonly errorKey: string;
-  readonly children: React.ReactNode;
-}
-
-function ResultSection({
-  testId,
-  title,
-  isPending,
-  isError,
-  loadingKey,
-  errorKey,
-  children,
-}: ResultSectionProps) {
-  const t = useTranslations("studio");
-  return (
-    <div data-testid={testId} className="space-y-2">
-      <h3 className="text-sm font-medium text-foreground">{title}</h3>
-      {isPending ? (
-        <p
-          data-testid={`${testId}-loading`}
-          className="flex items-center gap-2 py-2 text-sm text-muted-foreground"
-        >
-          <Loader2 className="h-4 w-4 animate-spin" />
-          {t(loadingKey)}
-        </p>
-      ) : isError ? (
-        <p data-testid={`${testId}-error`} className="py-2 text-sm text-destructive">
-          {t(errorKey)}
-        </p>
-      ) : (
-        children
-      )}
-    </div>
   );
 }

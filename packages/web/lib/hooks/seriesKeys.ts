@@ -31,6 +31,9 @@ export const seriesKeys = {
   /** Band summary for one novel in the series (Spec 2). */
   bandSummary: (seriesId: string, novelId: string) =>
     [...seriesKeys.novels(seriesId), novelId, "bandSummary"] as const,
+  /** Persisted drift snapshot for one band (SERIES-004 Slice 6 / C2). */
+  driftSnapshot: (seriesId: string, novelId: string) =>
+    [...seriesKeys.novels(seriesId), novelId, "driftSnapshot"] as const,
   /** Series voice profile — the Delta-model foundation (Spec 3). */
   voice: (seriesId: string) => [...seriesKeys.detail(seriesId), "voice"] as const,
   novelSeries: (novelId: string) => ["novel-series", novelId] as const,
