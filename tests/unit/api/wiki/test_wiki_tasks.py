@@ -2,6 +2,11 @@
 
 Tests the standalone run_wiki_* functions using a mock APIWikiService.
 Verifies retry behavior, idempotency checks, and graceful failure handling.
+
+Also covers the Q-016 global staleness path end-to-end at unit level:
+the run_wiki_mark_all_stale_global wrapper (mock service) plus the
+unscoped WikiRepository.mark_all_stale_global UPDATE it drives (mock
+AsyncSession — SQL semantics are proven in tests/integration/api/wiki).
 """
 
 from __future__ import annotations
@@ -10,13 +15,17 @@ import uuid
 from collections.abc import Callable
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from narrare.wiki.models import WikiSummary
+from narrare.wiki.repository import WikiRepository
 from narrare.wiki.service import APIWikiService
 from narrare.wiki.tasks import (
     SYSTEM_USER_ID,
     run_wiki_generate_chapter,
     run_wiki_generate_entity,
     run_wiki_mark_all_stale,
+    run_wiki_mark_all_stale_global,
     run_wiki_refresh_summary,
 )
 
@@ -43,6 +52,21 @@ def _make_factory(service: MagicMock) -> MagicMock:
     """Return a zero-arg factory that produces the given service."""
     factory = MagicMock(spec=Callable, return_value=service)
     return factory
+
+
+def _make_update_session(rowcount: int = 0) -> AsyncMock:
+    """Mocked AsyncSession whose execute() result carries ``rowcount``.
+
+    Same pattern as ``tests/unit/api/test_evidence_repository.py``:
+    UPDATE-only repository methods have no result mapping, so the
+    compiled statement and the rowcount passthrough are the observable
+    outputs.
+    """
+    session = AsyncMock(spec=AsyncSession)
+    result = MagicMock(spec=["rowcount"])
+    result.rowcount = rowcount
+    session.execute = AsyncMock(return_value=result)
+    return session
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +194,71 @@ class TestRunWikiMarkAllStale:
         )
 
         assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# Tests: run_wiki_mark_all_stale_global (Q-016)
+# ---------------------------------------------------------------------------
+
+
+class TestRunWikiMarkAllStaleGlobal:
+    """run_wiki_mark_all_stale_global — happy path, error handling (Q-016)."""
+
+    async def test_marks_all_stale_and_returns_count(self) -> None:
+        """Returns the count from mark_all_stale_global."""
+        svc = _make_mock_service(mark_all_stale_global=AsyncMock(return_value=7))
+
+        count = await run_wiki_mark_all_stale_global(
+            "2.0.0", wiki_service_factory=_make_factory(svc)
+        )
+
+        assert count == 7
+        svc.mark_all_stale_global.assert_awaited_once_with()
+
+    async def test_returns_zero_on_exception(self) -> None:
+        """Returns 0 when mark_all_stale_global raises (graceful failure)."""
+        svc = _make_mock_service(
+            mark_all_stale_global=AsyncMock(side_effect=RuntimeError("DB error"))
+        )
+
+        count = await run_wiki_mark_all_stale_global(
+            "1.0.0", wiki_service_factory=_make_factory(svc)
+        )
+
+        assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# Tests: WikiRepository.mark_all_stale_global (Q-016)
+# ---------------------------------------------------------------------------
+
+
+class TestWikiRepositoryMarkAllStaleGlobal:
+    """WikiRepository.mark_all_stale_global — the global UPDATE behind Q-016.
+
+    The unscoped breadth is the contract: the UPDATE must carry NO
+    novel/version filter — that is what distinguishes the global
+    prompt-override path (Q-016) from the per-novel, version-gated
+    ``mark_all_stale``. With the session faked, the compiled statement
+    is the only observable output.
+    """
+
+    async def test_executes_unscoped_update_and_returns_rowcount(self) -> None:
+        """Global UPDATE sets status='stale' with no WHERE; rowcount passes through."""
+        session = _make_update_session(rowcount=41)
+        repo = WikiRepository(session=session)
+
+        count = await repo.mark_all_stale_global()
+
+        assert count == 41
+        session.execute.assert_awaited_once()
+        stmt = session.execute.call_args[0][0]
+        assert stmt.__visit_name__ == "update"
+        compiled = stmt.compile()
+        assert "UPDATE wiki_summaries" in str(compiled)
+        assert compiled.params["status"] == "stale"
+        assert "WHERE" not in str(compiled)  # Q-016: global, no novel scoping
+        session.flush.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------

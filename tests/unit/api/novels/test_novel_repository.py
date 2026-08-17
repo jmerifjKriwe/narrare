@@ -9,7 +9,10 @@ Mirrors the fake-session pattern in ``tests/unit/api/settings``.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
+from unittest.mock import AsyncMock
 from uuid import uuid4
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from narrare.novels.repository import NovelRepository
 from narrare.novels.schemas import CreateNovelRequest, UpdateNovelRequest
@@ -118,3 +121,52 @@ class TestNovelRepositoryDelete:
 
         assert session.deleted == [novel]
         assert session.flush_count == 1
+
+
+class TestNovelRepositorySeriesMembership:
+    """update_series_membership()/clear_series_membership() — UPDATE wiring.
+
+    FakeDbSession (used above) does not record executed statements, so
+    these statement-only UPDATE methods are exercised against a recording
+    mock AsyncSession (pattern: tests/unit/api/test_evidence_repository.py).
+    The compiled statement — table, bound values, novel scoping — is the
+    only observable output; SQL semantics are proven at integration level.
+    Both methods must stay transaction-neutral: no implicit flush/commit
+    (the join/leave service owns the transaction).
+    """
+
+    async def test_update_series_membership_executes_scoped_update(self) -> None:
+        """update_series_membership() binds series columns scoped to the novel."""
+        session = AsyncMock(spec=AsyncSession)
+        repo = NovelRepository(session=session)
+        novel_id, series_id = uuid4(), uuid4()
+
+        await repo.update_series_membership(novel_id, series_id=series_id, series_position=2)
+
+        session.execute.assert_awaited_once()
+        stmt = session.execute.call_args[0][0]
+        assert stmt.__visit_name__ == "update"
+        compiled = stmt.compile()
+        assert "UPDATE novels" in str(compiled)
+        assert compiled.params["series_id"] == series_id
+        assert compiled.params["series_position"] == 2
+        assert compiled.params["id_1"] == novel_id
+        session.flush.assert_not_awaited()
+
+    async def test_clear_series_membership_nulls_both_columns(self) -> None:
+        """clear_series_membership() NULLs series_id and series_position."""
+        session = AsyncMock(spec=AsyncSession)
+        repo = NovelRepository(session=session)
+        novel_id = uuid4()
+
+        await repo.clear_series_membership(novel_id)
+
+        session.execute.assert_awaited_once()
+        stmt = session.execute.call_args[0][0]
+        assert stmt.__visit_name__ == "update"
+        compiled = stmt.compile()
+        assert "UPDATE novels" in str(compiled)
+        assert compiled.params["series_id"] is None
+        assert compiled.params["series_position"] is None
+        assert compiled.params["id_1"] == novel_id
+        session.flush.assert_not_awaited()

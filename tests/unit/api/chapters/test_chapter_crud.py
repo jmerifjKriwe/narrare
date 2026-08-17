@@ -3,21 +3,25 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
+from structlog.testing import capture_logs
 
 from narrare.chapters.schemas import (
     CreateChapterRequest,
     UpdateChapterMetaRequest,
 )
 from narrare.chapters.service import ChapterService
+from narrare.events.publisher import EventPublisher
 from narrare_core.shared.errors import NotFoundError
 from tests.factories import make_chapter, make_novel
 from tests.fakes import FakeChapterRepository, FakeNovelService
 
 if TYPE_CHECKING:
-    from narrare_core.events.types import DomainEvent
+    from uuid import UUID
+
+    from narrare_core.events.types import DomainEvent, EventType
 
 
 @pytest.fixture
@@ -119,6 +123,27 @@ class TestChapterServiceUpdateMeta:
 # ---------------------------------------------------------------------------
 # update_meta → chapter.finalized event (Q-016 — wiki staleness gap)
 # ---------------------------------------------------------------------------
+
+
+class _PublishFailingPublisher(EventPublisher):
+    """Real EventPublisher whose publish() raises.
+
+    The service's failure branch (RULE-11: non-blocking + logged) wraps
+    the publish() call itself. EventPublisher._dispatch already swallows
+    handler exceptions, so a failing subscriber can never reach that
+    branch — only a publish() that raises exercises it.
+    """
+
+    async def publish(
+        self,
+        event_type: EventType,
+        *,
+        aggregate_id: UUID,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        """Raise instead of dispatching."""
+        msg = "simulated publisher failure"
+        raise RuntimeError(msg)
 
 
 class TestChapterServiceEventPublishing:
@@ -224,6 +249,32 @@ class TestChapterServiceEventPublishing:
         await service.update_meta(
             chapter.id, novel_id, user_id, UpdateChapterMetaRequest(status="final")
         )
+
+    async def test_publish_failure_is_logged_and_does_not_block_update(
+        self,
+        fake_repo: FakeChapterRepository,
+        fake_novel_service: FakeNovelService,
+    ) -> None:
+        """A raising publisher is logged (RULE-11) and never aborts update_meta."""
+        service = ChapterService(
+            repo=fake_repo,
+            novel_service=fake_novel_service,
+            event_publisher=_PublishFailingPublisher(),
+        )
+        novel_id, user_id = _seed_ownership(fake_novel_service)
+        chapter = make_chapter(novel_id=novel_id, status="draft")
+        fake_repo.seed(chapter)
+
+        with capture_logs() as logs:
+            result = await service.update_meta(
+                chapter.id, novel_id, user_id, UpdateChapterMetaRequest(status="final")
+            )
+
+        assert result.status == "final"
+        matching = [log for log in logs if log.get("event") == "chapter_finalized_publish_failed"]
+        assert len(matching) == 1
+        assert matching[0]["chapter_id"] == str(chapter.id)
+        assert matching[0]["novel_id"] == str(novel_id)
 
 
 # ---------------------------------------------------------------------------
