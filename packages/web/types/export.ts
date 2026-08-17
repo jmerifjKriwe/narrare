@@ -15,7 +15,7 @@
 // enforced by lib/api/__tests__/types-parity.test.ts.
 
 /** Output format produced by a renderer. Mirrors `ExportFormat` StrEnum. */
-export type ExportFormat = "pdf" | "epub" | "md";
+export type ExportFormat = "pdf" | "epub" | "md" | "docx";
 
 /** Export job lifecycle states. Mirrors `ExportJobStatus` StrEnum. */
 export type ExportJobStatus = "pending" | "running" | "completed" | "failed";

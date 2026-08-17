@@ -59,6 +59,7 @@ const panelReturn = {
     { format: "pdf" as const, available: true },
     { format: "epub" as const, available: true },
     { format: "md" as const, available: false },
+    { format: "docx" as const, available: true },
   ],
   formatsLoading: false,
   formatsFailed: false,
@@ -109,6 +110,7 @@ describe("ExportPanel", () => {
     expect(screen.getByTestId("format-pdf")).toBeInTheDocument();
     expect(screen.getByTestId("format-epub")).toBeInTheDocument();
     expect(screen.getByTestId("format-md")).toBeInTheDocument();
+    expect(screen.getByTestId("format-docx")).toBeInTheDocument();
   });
 
   it("disables the unavailable format and shows the unavailable label", () => {
@@ -123,6 +125,14 @@ describe("ExportPanel", () => {
     fireEvent.click(screen.getByTestId("format-epub"));
     expect(panelReturn.setOptions).toHaveBeenCalledWith(
       expect.objectContaining({ format: "epub" }),
+    );
+  });
+
+  it("calls setOptions with docx when the DOCX card is clicked (C3)", () => {
+    renderPanel();
+    fireEvent.click(screen.getByTestId("format-docx"));
+    expect(panelReturn.setOptions).toHaveBeenCalledWith(
+      expect.objectContaining({ format: "docx" }),
     );
   });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, FileText, FileType2 } from "lucide-react";
+import { BookOpen, FileText, FileType, FileType2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ExportFormat, ExportOptions } from "@/types";
 
@@ -23,6 +23,7 @@ const FORMAT_CARDS: { value: ExportFormat; icon: LucideIcon; labelKey: string; d
       labelKey: "format.markdown",
       descKey: "format.markdownDescription",
     },
+    { value: "docx", icon: FileType, labelKey: "format.docx", descKey: "format.docxDescription" },
   ];
 
 interface ExportFormatSelectorProps {

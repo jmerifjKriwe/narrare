@@ -200,8 +200,8 @@ describe("export types mirror Pydantic (RULE-17 — IO-001 / ADR-081)", () => {
   // OpenAPI spec (docs/reference/openapi.json). snake_case preserved.
 
   it("ExportFormat / ExportJobStatus / PaperSize enum values match the StrEnums", () => {
-    const formats: ExportFormat[] = ["pdf", "epub", "md"];
-    expect(formats).toEqual(["pdf", "epub", "md"]);
+    const formats: ExportFormat[] = ["pdf", "epub", "md", "docx"];
+    expect(formats).toEqual(["pdf", "epub", "md", "docx"]);
 
     const statuses: ExportJobStatus[] = ["pending", "running", "completed", "failed"];
     expect(statuses).toEqual(["pending", "running", "completed", "failed"]);
