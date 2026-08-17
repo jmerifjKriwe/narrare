@@ -58,12 +58,13 @@ class TestExportRouterShape:
 
 
 class TestDependencyFactories:
-    def test_get_export_renderers_returns_three_renderers(self) -> None:
+    def test_get_export_renderers_returns_four_renderers(self) -> None:
         renderers = get_export_renderers()
         assert set(renderers.keys()) == {
             ExportFormat.PDF,
             ExportFormat.EPUB,
             ExportFormat.MARKDOWN,
+            ExportFormat.DOCX,
         }
         # Each renderer advertises its own format.
         for fmt, renderer in renderers.items():
@@ -76,6 +77,7 @@ class TestDependencyFactories:
             ExportFormat.PDF,
             ExportFormat.EPUB,
             ExportFormat.MARKDOWN,
+            ExportFormat.DOCX,
         }
         # The production enqueuer is wired (not a recording fake).
         assert service._enqueue is enqueue_export

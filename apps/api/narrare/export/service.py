@@ -21,26 +21,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from narrare.export import registry
-from narrare.export.contracts import (
-    Artifact,
-    ExportFormat,
-    ExportJob,
-    ExportOptions,
-    ManuscriptRenderer,
-)
 from narrare.export.errors import ExportFormatUnavailableError
 from narrare.export.tasks import ExportEnqueuer, enqueue_export
 
 if TYPE_CHECKING:
     from uuid import UUID
 
-#: Stable display order for ``list_formats`` (UI determinism). Independent of
-#: dict insertion order so the availability list never reorders across runs.
-_FORMAT_ORDER: tuple[ExportFormat, ...] = (
-    ExportFormat.PDF,
-    ExportFormat.EPUB,
-    ExportFormat.MARKDOWN,
-)
+    from narrare.export.contracts import (
+        Artifact,
+        ExportFormat,
+        ExportJob,
+        ExportOptions,
+        ManuscriptRenderer,
+    )
 
 
 class ExportServiceImpl:
@@ -57,10 +50,13 @@ class ExportServiceImpl:
     async def list_formats(self) -> list[tuple[ExportFormat, bool]]:
         """Each format + its renderer's ``is_available()`` (RULE-11).
 
-        Stable order (:data:`_FORMAT_ORDER`). Lets the UI disable unavailable
-        formats before the user clicks Export.
+        Iterates the injected renderer map in insertion order — a single
+        registration surface: whatever the DI factory registers is exactly
+        what the UI sees (deterministic in production because the factory
+        builds the dict from a fixed literal). Lets the UI disable
+        unavailable formats before the user clicks Export.
         """
-        return [(fmt, self._renderer_for(fmt).is_available()) for fmt in _FORMAT_ORDER]
+        return [(fmt, renderer.is_available()) for fmt, renderer in self._renderers.items()]
 
     async def export(
         self,

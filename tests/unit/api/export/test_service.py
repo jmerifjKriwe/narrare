@@ -59,7 +59,8 @@ class TestListFormats:
     async def test_returns_stable_order(self) -> None:
         service = _service()
         result = await service.list_formats()
-        # _FORMAT_ORDER is (PDF, EPUB, MARKDOWN) — independent of dict order.
+        # list_formats iterates the injected dict in insertion order;
+        # _service() builds it in exactly this literal order.
         assert [fmt for fmt, _ok in result] == [
             ExportFormat.PDF,
             ExportFormat.EPUB,

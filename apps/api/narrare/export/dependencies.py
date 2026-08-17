@@ -2,7 +2,7 @@
 
 Two factories:
 
-- :func:`get_export_renderers` — instantiates the three renderer adapters
+- :func:`get_export_renderers` — instantiates the four renderer adapters
   (stateless; each caches a ``shutil.which`` availability probe).
 - :func:`get_export_service` — wires those renderers + the production
   :func:`enqueue_export` into an :class:`ExportServiceImpl`.
@@ -24,6 +24,7 @@ fake renderers + a recording enqueuer (RULE-07).
 from __future__ import annotations
 
 from narrare.export.contracts import ExportFormat, ManuscriptRenderer
+from narrare.export.renderers.pandoc_docx import PandocDocxRenderer
 from narrare.export.renderers.pandoc_epub import PandocEpubRenderer
 from narrare.export.renderers.pandoc_md import PandocMarkdownRenderer
 from narrare.export.renderers.typst import TypstPdfRenderer
@@ -32,11 +33,12 @@ from narrare.export.tasks import enqueue_export
 
 
 def get_export_renderers() -> dict[ExportFormat, ManuscriptRenderer]:
-    """Instantiate the three renderer adapters (PDF / EPUB / Markdown)."""
+    """Instantiate the four renderer adapters (PDF / EPUB / Markdown / DOCX)."""
     return {
         ExportFormat.PDF: TypstPdfRenderer(),
         ExportFormat.MARKDOWN: PandocMarkdownRenderer(),
         ExportFormat.EPUB: PandocEpubRenderer(),
+        ExportFormat.DOCX: PandocDocxRenderer(),
     }
 
 

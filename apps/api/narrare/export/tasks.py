@@ -97,7 +97,7 @@ _renderers: dict[ExportFormat, ManuscriptRenderer] | None = None
 
 
 def _resolve_runner_deps() -> tuple[ManuscriptNormalizer, dict[ExportFormat, ManuscriptRenderer]]:
-    """Lazily build the normalizer + the three renderer adapters.
+    """Lazily build the normalizer + the four renderer adapters.
 
     Renderers are stateless (each only caches a ``shutil.which`` probe), so
     module-level singletons are safe. Tests inject fakes by assigning
@@ -109,6 +109,7 @@ def _resolve_runner_deps() -> tuple[ManuscriptNormalizer, dict[ExportFormat, Man
 
         _normalizer = NarrareNormalizer()
     if _renderers is None:
+        from narrare.export.renderers.pandoc_docx import PandocDocxRenderer
         from narrare.export.renderers.pandoc_epub import PandocEpubRenderer
         from narrare.export.renderers.pandoc_md import PandocMarkdownRenderer
         from narrare.export.renderers.typst import TypstPdfRenderer
@@ -117,6 +118,7 @@ def _resolve_runner_deps() -> tuple[ManuscriptNormalizer, dict[ExportFormat, Man
             ExportFormat.PDF: TypstPdfRenderer(),
             ExportFormat.MARKDOWN: PandocMarkdownRenderer(),
             ExportFormat.EPUB: PandocEpubRenderer(),
+            ExportFormat.DOCX: PandocDocxRenderer(),
         }
     return _normalizer, _renderers
 
