@@ -588,5 +588,8 @@ absence degradation, and the TECH_STACK update landed.
 - [ ] When multi-user/multi-worker deployment returns (ADR-080 re-introduction) →
       move export jobs off the in-process boundary via a new ADR superseding the
       relevant ADR-080 seam.
-- [ ] When DOCX or other formats are needed → add a renderer (pandoc-backed);
-      feature-spec change, not an engine decision.
+- [x] ~~When DOCX or other formats are needed → add a renderer (pandoc-backed);
+      feature-spec change, not an engine decision.~~ **Done 2026-08-17 (C3):**
+      `PandocDocxRenderer` + the committed manuscript-format `reference.docx`
+      (`--reference-doc`), golden `document.xml` test. Engine decision
+      unchanged — closed per this ADR's own out-of-scope note (no re-open).

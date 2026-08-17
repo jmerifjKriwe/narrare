@@ -45,7 +45,7 @@ requires: [WRITE-011]
 
 # IO-001 — Manuscript Export
 
-> **Status:** ✅ Implemented / Stable — [ADR-081](../../architecture/decisions/ADR-081-export-pipeline-typst.md) fully implemented across Slices 0–8 + follow-ups; PR #163 CI green (Golden-Pages 26 passed, EPUBCheck passed). Shipped formats: **PDF** (Typst + `narrare-roman`, drop cap optional default off), **EPUB** (pandoc EPUB3, isbn/description metadata), **Markdown** (pandoc). Deferred: DOCX only.
+> **Status:** ✅ Implemented / Stable — [ADR-081](../../architecture/decisions/ADR-081-export-pipeline-typst.md) fully implemented across Slices 0–8 + follow-ups; PR #163 CI green (Golden-Pages 26 passed, EPUBCheck passed). Shipped formats: **PDF** (Typst + `narrare-roman`, drop cap optional default off), **EPUB** (pandoc EPUB3, isbn/description metadata), **Markdown** (pandoc), **DOCX** (pandoc `--reference-doc` manuscript format, C3). No formats remain deferred.
 
 ## What it does
 
@@ -100,8 +100,14 @@ one click gets your manuscript out.
 - **Execution:** in-process `asyncio.create_task` job (post-[ADR-080](../../architecture/decisions/ADR-080-remove-redis-taskiq-in-process-execution.md));
   `ProcessPoolExecutor` escalation is the documented contingency for 500-page
   manuscripts.
-- **DOCX is the only remaining deferred format** (out of scope for ADR-081).
-  pandoc can add it trivially later — a feature-spec change, not an engine decision.
+- **DOCX shipped 2026-08-17 (C3)** — `PandocDocxRenderer` passes the committed
+  `apps/api/narrare/export/pandoc/reference.docx` via `--reference-doc`:
+  the classic publishing manuscript format (Times 12 pt, 1.5 line spacing,
+  0.5″ first-line indent, centred chapter headings). Verified by a golden test
+  on the unzipped `word/document.xml` (byte-deterministic under a fixed
+  reference — only `docProps/core.xml` timestamps vary). No new ADR: ADR-081's
+  engine decision applies unchanged (its own out-of-scope note classified this
+  as a feature-spec change).
 - **Contracts (RULE-03):** `ManuscriptNormalizer`, `ExportService` (the RULE-12
   public API), `ManuscriptRenderer` (one RULE-08 adapter per external tool:
   Typst / pandoc), and `NarrareRomanConfig` (the stable Typst-package config keys)
@@ -115,7 +121,8 @@ one click gets your manuscript out.
 4. Configure format-specific options:
    - **PDF:** font family, font size, margins, page size, header/footer text
    - **ePub:** cover image, metadata (author, ISBN, language), stylesheet
-   - **DOCX:** heading styles, page breaks between chapters
+   - **DOCX:** none — one maintained manuscript format (Times 12 pt, 1.5
+     line spacing, first-line indent, centred chapter headings)
    - **Markdown:** heading level for chapters, include/exclude front matter
 5. Optionally include: chapter summaries, character list, location glossary
    as appendix sections
@@ -146,13 +153,16 @@ implementation kickoff — RULE-03)
    matter from novel metadata.
 2. **Conversion** (pandoc, with baked-in seam-fixes) — HTML → target AST:
    `--to=typst --shift-heading-level-by=-1` for PDF; EPUB3 for ePub; Markdown
-   for `.md`. (DOCX deferred — pandoc can add it trivially later.)
+   for `.md`; `--to=docx --reference-doc=<vendored reference.docx>` for DOCX
+   (manuscript format, C3 — no `--toc`: submission manuscripts carry none).
 3. **Rendering** (RULE-08 adapter per external tool — `apps/api/narrare/export/renderers/`):
    - **PDF** → `TypstPdfRenderer`: thin Narrare wrapper imports the bespoke
      `narrare-roman` Typst package + feeds the pandoc body; Typst compiles PDF.
      Bundled Libertinus Serif (OFL). Drop caps optional (default off, `@preview/droplet`).
    - **ePub** → `PandocEpubRenderer`: pandoc EPUB3, EPUBCheck-validated.
-   - **Markdown** → `PandocMarkdownRenderer`: pandoc.
+    - **Markdown** → `PandocMarkdownRenderer`: pandoc.
+    - **DOCX** → `PandocDocxRenderer`: pandoc with the committed
+      manuscript-format `reference.docx` (golden `document.xml` test — C3).
 4. **Delivery** — Artifact written to a temp directory, served via a signed
    download URL, cleaned up after delivery. Export is non-destructive.
 
@@ -162,6 +172,7 @@ class ExportFormat(StrEnum):
     PDF = "pdf"
     EPUB = "epub"
     MARKDOWN = "md"
+    DOCX = "docx"
 
 class ExportOptions(BaseModel):
     format: ExportFormat
@@ -199,8 +210,10 @@ URL when ready.
   `--epub-embed-font`, consistent with PDF; the reader may still override
   via its own font settings, but there is no silent fallback to a different
   font at export time
-- DOCX is **deferred** (out of scope for ADR-081); pandoc can add it trivially
-  later. The normalizer strips Narrare-specific markup (AIAnnotation, GhostText)
+- DOCX renders via the committed manuscript-format `reference.docx` — one
+  maintained format, no user-selectable template (YAGNI, program design §11);
+  a missing asset fast-fails (no silent fallback to pandoc's default styles).
+  The normalizer strips Narrare-specific markup (AIAnnotation, GhostText)
   from all formats
 - Export of a very large manuscript (500k+ words) may take 30+ seconds;
   background processing (in-process job, post-ADR-080) with progress indication
@@ -258,3 +271,15 @@ URL when ready.
    **Deferred:** DOCX only (pandoc can add trivially — feature-spec change, not
    engine decision). Drop cap 5g and isbn/description EPUB metadata shipped as
    follow-ups on branch `feat/io-001-followups`.
+- `2026-08-17` — **DOCX shipped (C3 — Post-Export Follow-ups §6)**:
+  `PandocDocxRenderer` (RULE-08 adapter, same seam as PDF/EPUB/MD) renders
+  via `--reference-doc` with the committed
+  `apps/api/narrare/export/pandoc/reference.docx` (deterministic generator
+  `scripts/generate_reference_docx.py`, pure stdlib). Manuscript format:
+  Times 12 pt, 1.5 line spacing, 0.5″ first-line indent (every paragraph),
+  centred chapter headings, Times 14 pt title page. Golden verification on
+  the unzipped `word/document.xml` (byte-deterministic; sha256 baseline +
+  `--golden-update` regeneration path) + manuscript-format style assertions
+  on the output `styles.xml`. Frontend: fourth format card + i18n en/de/fr.
+  No DocxOptions model (zero v1 options), no migration, no ADR change —
+  ADR-081's Review-Trigger DOCX item closed.
