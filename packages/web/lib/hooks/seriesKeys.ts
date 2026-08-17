@@ -11,6 +11,7 @@
  *   ["series", seriesId, "kb"]          — Series-Canon KB list (Slice 5)
  *   ["series", seriesId, "kb", entryId] — single Series-Canon KB entry
  *   ["series", seriesId, "novels", novelId, "bandSummary"] — band summary (Spec 2)
+ *   ["series", seriesId, "novels", novelId, "driftSnapshot"] — drift snapshot (C2 / Slice 6)
  *   ["series", seriesId, "voice"]                     — series voice (Spec 3)
  *   ["novel-series", novelId]           — resolved Series for a novel (useNovelSeries)
  */

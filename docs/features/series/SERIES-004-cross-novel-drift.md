@@ -40,8 +40,9 @@ ui_help_long: |
     (body: `{novel_id}`; returns a list of conflicts)
   - `POST /api/v1/series/{id}/voice-drift/check` — series-scope voice drift
     (body: `{novel_id}`; returns the aggregate drift result)
-  - `GET /api/v1/series/{id}/consistency/{novel_id}` — *(deferred)* results
-    retrieval (persistence is a follow-up)
+  - `GET /api/v1/series/{id}/consistency/{novel_id}` — the persisted latest-wins
+    drift snapshot (both check results as one document) + a `stale` flag that
+    flips when the band's chapter texts changed since the check (C2 / Slice 6)
 
   **UI Location:** `/series/[id]` workspace → **Bände-Tab** → per-band
   "Check Series Consistency" affordance + results panel
@@ -124,9 +125,11 @@ program is complete with Specs 1–4.
   ADR-078's Review Trigger.
 - **Read-scope — current-band-vs-series.** Each check evaluates the current
   band against the series references. Full-series batch scan is deferred (YAGNI).
-- **Persistence — stateless (v1).** The v1 check runs the agent and returns the
-  result; it persists nothing. A results repository + the
-  `GET …/consistency/{novel_id}` retrieval endpoint are deferred.
+- **Persistence — latest-wins (C2).** Each check runs the agent and persists
+  its result per band (`series_drift_results`, migration 0040). The panel
+  restores the saved snapshot with a stale badge when the band's texts changed
+  since the check. Re-running a check is still explicit (the check button
+  re-pays the LLM cost on demand).
 
 ### Core (implemented)
 
@@ -180,8 +183,10 @@ program is complete with Specs 1–4.
   is actionable.
 - **Read-only.** The check reports; it does not rewrite. Voice drift may be
   intentional; canon contradictions are errors you should fix.
-- **Stateless v1.** Each check re-runs the agent (no persistence). A results
-  repository + retrieval endpoint are a follow-up.
+- **Persistent (C2).** Each check run persists its result per band
+  (`series_drift_results`, migration 0040). The panel shows a stale badge when
+  the band's chapter texts changed since the last persisted check. Re-running
+  a check is explicit (the check button re-pays the LLM cost on demand).
 - **JSON, not SSE.** Both endpoints return JSON (matching the design doc's
   `POST …/check` shape). An SSE variant is possible later.
 - **Metrics never reach generation.** The series-voice drift reuses
@@ -208,9 +213,13 @@ program is complete with Specs 1–4.
   Frontend Task 4: `SeriesDriftPanel` → `SeriesConflictList` +
   `SeriesDriftSummary`; i18n Task 5: the `series.drift.*` namespace, en/de/fr).
   Frontend Task 4 + i18n Task 5 landed in commit `ede62081`; merged to `main`
-  via PR #145 (squash `c007b559`). **Stateless v1** — Slice 6 (persistence:
-  results repository + `GET …/consistency/{novel_id}` retrieval) is deferred
-  out-of-v1. Closes ADR-078's Spec-4 Review-Trigger item (series voice read as
+  via PR #145 (squash `c007b559`). **C2 — Slice 6 (persistence:
+  results repository + `GET …/consistency/{novel_id}` retrieval) landed
+  2026-08-16** — checks now persist their latest result per band
+  (`series_drift_results`, migration 0040), the panel restores the saved
+  snapshot with a stale badge when the band's texts changed, and re-running
+  a check is still explicit (the check button re-pays the LLM cost on demand).
+  Closes ADR-078's Spec-4 Review-Trigger item (series voice read as
   one signal via the repository contract). Status → `stable`. The Series
   program Spec 1–4 is complete; Spec 5 (Export) was retired 2026-08-14 as
   YAGNI (PO decision).

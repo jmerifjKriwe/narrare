@@ -3,8 +3,8 @@
 > **Status:** ✅ Implemented (decision in effect; all five slices shipped). Core (Task 1) +
 > Backend (Tasks 2–3) landed; Frontend (Task 4) + i18n (Task 5) landed in commit `ede62081`
 > (before the doc gate). See *Retrofit-Plan* for the per-slice state. Slice 6 (persistence —
-> `GET …/consistency/{novel_id}` + results repository) is a deferred out-of-v1 follow-up, not
-> part of this ADR's decision.
+> `GET …/consistency/{novel_id}` + results repository) landed 2026-08-16 as a
+> post-implementation amendment (C2) — see *Amendment* below.
 > **Date:** 2026-08-06
 > **Deciders:** Architecture Specialist; User (approved the design spec
 > `docs/superpowers/specs/2026-08-02-series-cross-novel-drift-design.md`)
@@ -181,9 +181,9 @@ Bände-Tab · Separate `SeriesVoiceDriftService` (pipeline reused).**
 - **Presentation — integrated in Bände-Tab.** A per-band "Check Series Consistency"
   affordance + a results panel (conflicts + drift warnings) reusing existing analysis-panel
   patterns. (Frontend — Task 4 — landed in `ede62081`.)
-- **Persistence — stateless (v1).** The v1 check runs the agent and returns the result; it
-  persists nothing. A results repository + the `GET …/consistency/{novel_id}` retrieval
-  endpoint from the plan are deferred to a follow-up slice.
+- **Persistence — stateless (v1), amended 2026-08-16.** The v1 check ran the agent and
+  returned the result without persisting. Slice 6 (C2) added the results repository +
+  the `GET …/consistency/{novel_id}` retrieval endpoint — see the *Amendment* section.
 
 ---
 
@@ -372,8 +372,8 @@ bypass the SSOT.
 4. **Slice 4 — Frontend (Task 4):** Bände-Tab integration + results panel + hooks + types.
    ✅ Landed (commit `ede62081`).
 5. **Slice 5 — i18n (Task 5):** `series.drift.*` (en/de/fr). ✅ Landed (commit `ede62081`).
-6. **Slice 6 (deferred follow-up):** results repository + `GET …/consistency/{novel_id}`
-   retrieval endpoint (persistence). ⏳ Out of v1 scope.
+6. **Slice 6 — Drift Persistence (C2):** results repository + `GET …/consistency/{novel_id}`
+   retrieval endpoint. ✅ Landed 2026-08-16 — see the *Amendment* section.
 
 ### 3. Breaking-change assessment
 
@@ -464,10 +464,51 @@ No decision required a user call beyond approving the design spec.
       SSE variants (the underlying agent + pipeline are stream-capable).
 - [ ] If **full-series batch scan** becomes a use-case — add a batch endpoint that iterates
       the current-band check over all bands (the per-band check is the building block).
-- [ ] If **persistence** is needed — add the results repository + the
-      `GET …/consistency/{novel_id}` retrieval endpoint (deferred from v1).
+- [x] ~~If **persistence** is needed — add the results repository + the
+      `GET …/consistency/{novel_id}` retrieval endpoint (deferred from v1).~~
+      **Landed 2026-08-16 (C2 / Slice 6)** — see the *Amendment* section.
 
 ---
+
+## Amendment (2026-08-16) — Slice 6: Drift Persistence (C2)
+
+Post-implementation amendment per the Post-Export Follow-ups program design §5
+(`docs/superpowers/specs/2026-08-14-post-export-followups-design.md`). The v1
+decision's stateless persistence bullet is superseded as follows; every other
+decision of this ADR stands unchanged.
+
+- **Storage — `series_drift_results` (migration 0040).** ONE record per novel
+  (`novel_id` PK + UNIQUE + FK `novels.id` CASCADE — the `band_summaries` 1:1
+  pattern). Latest-wins: a new run overwrites its section; no history rows
+  (trajectory comparison is YAGNI, design §5.1). The single JSONB column holds
+  the composite document `{consistency, voice_drift}` — the **existing run-result
+  models serialized verbatim** (`SeriesConsistencyCheckResponse` +
+  `AuthorVoiceDriftResponse`, RULE-22 reuse — never re-shaped).
+- **Wrapper service, not service edits.** `SeriesDriftPersistenceService` wraps the
+  two UNCHANGED run services (both at their RULE-04 file-size ceilings; zero
+  regression surface — the Decision-4 pattern applied to persistence). Each check
+  POST runs its check, persists its section via an ATOMIC per-section JSONB-merge
+  upsert (`ON CONFLICT (novel_id) DO UPDATE`, `result || excluded.result` — the
+  panel fires both POSTs in parallel; a load-or-create would PK-collide), and
+  returns the result verbatim. A store failure degrades gracefully (RULE-11:
+  the LLM cost is paid; `series_drift_persist_failed` warning; result returned).
+- **Staleness — input fingerprint (ADR-045 scheme reuse).** On save, the band's
+  position-ordered non-empty chapter texts (`list_by_novel`, the consistency
+  check's read path) are hashed with `fingerprint_chapter_texts` — built on the
+  ADR-045 `_hash_payload` (SHA-256 + canonical JSON + `narrare:adr045:v1`
+  domain separator); no new hash scheme, raw prose never stored. `GET` recomputes
+  and returns `stale: true/false`. Record-level `generated_at` stamps the last
+  completed write of either check. Known residual of the single record-level
+  fingerprint: if the band's texts are edited between two check runs, the later
+  write's fingerprint masks the older sibling section — `stale: false` while one
+  section predates the edit (accepted; faithful to the design's
+  single-fingerprint model).
+- **Retrieval — `GET /api/v1/series/{series_id}/consistency/{novel_id}`** (the
+  plan's originally sketched shape): one fetch returns the composite snapshot +
+  staleness; nothing persisted → a 200 all-null snapshot (never an error).
+- **Frontend.** The Bände-Tab `SeriesDriftPanel` hydrates from the persisted
+  snapshot instead of an empty state (fresh run data takes precedence) and shows
+  a stale badge when the band's texts changed since the persisted check.
 
 ## Cross-References
 
