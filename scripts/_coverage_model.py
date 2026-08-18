@@ -21,61 +21,16 @@ BASELINES_FILE = REPO_ROOT / "scripts" / "coverage_baselines.json"
 _CORE_ROOT = REPO_ROOT / "packages" / "core" / "narrare_core"
 _API_ROOT = REPO_ROOT / "apps" / "api" / "narrare"
 
-# RULE-10 module coverage targets (from CONSTRAINTS.md).
-# These are *aspirational targets* — warnings only until met.
-RULE10_TARGETS: dict[str, int] = {
-    # Core-only → 90% (llm/prompts → 95%)
-    "agents": 90,
-    "ai_invocation": 90,
-    "ai_invocation.budgets": 90,
-    "ai_invocation.enrichers": 90,
-    "ai_invocation.evidence": 90,
-    "ai_invocation.validators": 90,
-    "cache": 90,
-    "context": 90,
-    "llm": 95,
-    "llm._providers": 95,
-    "nlp": 90,
-    "nlp.languages": 90,
-    "nlp.languages.emotions": 90,
-    "nlp.languages.pronouns_de": 90,
-    "nlp.languages.pronouns_en": 90,
-    "nlp.languages.pronouns_fr": 90,
-    "profiles": 90,
-    "project": 90,
-    "schemas": 90,
-    "shared": 90,
-    "prompts": 95,
-    # API-only → 80%
-    "_app": 80,
-    "auth": 80,
-    "chapters": 80,
-    "consistency": 80,
-    "evidence": 80,
-    "generation": 80,
-    "metrics": 80,
-    "novels": 80,
-    "setup": 80,
-    "settings": 80,
-    "settings.token_limits": 80,
-    "tasks": 80,
-    "volumes": 80,
-    # Shared (both core and API) → 80%
-    "analysis": 80,
-    "analysis.services": 80,
-    "chat": 80,
-    "embeddings": 80,
-    "events": 80,
-    "kb": 80,
-    "kb.schemas": 80,
-    "memory": 80,
-    "planning": 80,
-    "planning.adapters": 80,
-    "templates": 80,
-    "templates.defaults": 80,
-    "wiki": 80,
-    "writing": 80,
-}
+# Stricter tier for the core/llm/ and core/prompts/ trees (tests/AGENTS.md
+# coverage table: 95% minimum) — the only core subtrees above the RULE-10
+# core floor of 90%.
+_TIER95_CORE_TOPS = frozenset({"llm", "prompts"})
+
+# RULE-10 target overrides: entries that GENUINELY differ from the derived
+# default (see ``rule10_target``). Must stay minimal — a test asserts every
+# entry differs from its derived value. Targets are aspirational (warnings
+# only until met); see ``STATUS_BELOW_TARGET``.
+RULE10_OVERRIDES: dict[str, int] = {}
 
 # Packages to skip (non-module noise in coverage XML).
 _SKIP_PACKAGES: set[str] = {".", "__pycache__"}
@@ -108,6 +63,29 @@ def classify_package(package_name: str) -> str:
     if in_api:
         return "api"
     return "unknown"
+
+
+def rule10_target(package_name: str) -> int:
+    """Derive the RULE-10 coverage target for *package_name*.
+
+    Policy (docs/_shared/CONSTRAINTS.md §RULE-10 + tests/AGENTS.md):
+
+    - ``core/llm/`` and ``core/prompts/`` trees  → 95
+    - other ``core/`` packages                   → 90
+    - ``apps/api/``, shared, unknown packages    → 80
+
+    A top-level package named ``llm``/``prompts`` gets the 95 tier whenever
+    its tree exists under the core root — even if a same-named api package
+    merges into the flattened coverage entry (e.g. ``prompts``), because the
+    merged entry still contains the 95%-tier core code. ``RULE10_OVERRIDES``
+    entries, if any, take precedence over this derivation.
+    """
+    top = package_name.split(".")[0]
+    if top in _TIER95_CORE_TOPS and _is_dir_in(_CORE_ROOT, top):
+        return 95
+    if classify_package(package_name) == "core":
+        return 90
+    return 80
 
 
 def display_path(package_name: str) -> str:
@@ -265,7 +243,7 @@ def parse_coverage_xml(xml_path: Path, baselines: dict[str, float]) -> CoverageR
             continue
         line_rate = float(pkg.attrib.get("line-rate", "0"))
         baseline = baselines.get(name, 0.0)
-        target = RULE10_TARGETS.get(name, 80)
+        target = RULE10_OVERRIDES.get(name, rule10_target(name))
         report.modules.append(
             ModuleCoverage(
                 package=name,
