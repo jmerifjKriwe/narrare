@@ -6,21 +6,22 @@ On top of that, the project holds the ``core/llm/`` and ``core/prompts/``
 trees to a stricter 95% minimum (tests/AGENTS.md coverage table).
 
 Targets are DERIVED from the package's source-root classification via
-``rule10_target``; ``RULE10_OVERRIDES`` only holds entries that genuinely
-differ from the derived default. Regression background (C4 investigation
-2026-08-17): the former static ``RULE10_TARGETS`` dict silently held
-unmapped core packages (``llm.intents``, ``context.integration_contracts``,
-``agents.capabilities``) to the api floor of 80.
+``rule10_target``; ``RULE10_OVERRIDES`` may only hold entries that
+STRICTLY TIGHTEN the derived default — an entry equal to the derived
+value is redundant, and an entry below it would silently relax a RULE-10
+floor (C4 final review Minor 2, 2026-08-18). Regression background (C4
+investigation 2026-08-17): the former static ``RULE10_TARGETS`` dict
+silently held unmapped core packages (``llm.intents``,
+``context.integration_contracts``, ``agents.capabilities``) to the api
+floor of 80.
 """
 
 from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import pytest
+import pytest
 
 # Ensure scripts/ is on sys.path for the ``_coverage_model`` import.
 _SCRIPTS = str(Path(__file__).resolve().parent.parent.parent.parent / "scripts")
@@ -141,14 +142,36 @@ class TestParseCoverageXmlUsesDerivation:
 
 
 class TestOverrideTableHygiene:
-    """The override table must stay minimal — genuine exceptions only."""
+    """The override table must stay minimal and may only TIGHTEN targets.
 
-    def test_every_override_differs_from_derived_default(self) -> None:
+    An entry equal to the derived default is redundant (derivation wins),
+    and an entry BELOW the derived default would silently relax a RULE-10
+    floor — both are rejected: every override must strictly exceed the
+    derived target for its package.
+    """
+
+    def test_every_override_strictly_tightens_derived_default(self) -> None:
         for name, target in _coverage_model.RULE10_OVERRIDES.items():
-            assert target != rule10_target(name), (
-                f"RULE10_OVERRIDES entry {name!r}: {target} equals the derived "
-                "default — redundant overrides must be removed (derivation wins)."
+            derived = rule10_target(name)
+            assert target > derived, (
+                f"RULE10_OVERRIDES entry {name!r}: {target} does not strictly "
+                f"tighten the derived default {derived} — overrides may only "
+                "raise a target above its derived RULE-10 floor, never equal "
+                "or relax it."
             )
+
+    def test_hygiene_check_fails_on_injected_weakening_override(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Teeth check: inject a known-bad (weakening) override table and
+        assert the hygiene test above FAILS on it — otherwise a weakening
+        override like ``{"agents": 70}`` would pass hygiene and every gate,
+        silently relaxing the derived core floor of 90 (C4 final review
+        Minor 2)."""
+        _map_roots(monkeypatch, tmp_path, core_tops=("agents",))
+        monkeypatch.setattr(_coverage_model, "RULE10_OVERRIDES", {"agents": 70})
+        with pytest.raises(AssertionError, match="agents"):
+            TestOverrideTableHygiene().test_every_override_strictly_tightens_derived_default()
 
 
 class TestKnownMisclassifiedPackages:
