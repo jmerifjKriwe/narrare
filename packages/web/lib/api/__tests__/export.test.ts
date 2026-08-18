@@ -76,6 +76,18 @@ describe("exportApi", () => {
       expect(result).toHaveLength(3);
       expect(result[2]).toEqual({ format: "md", available: false });
     });
+
+    it("is served by the DEFAULT handler (no server.use override)", async () => {
+      // Regression (2026-08-18): useExportPanel fires this query on mount, so
+      // any test rendering EditorView/ExportPanel without an override relies
+      // on the default handler in mocks/handlers/export.ts. Without it the
+      // request bypasses MSW and attempts a real connection to the happy-dom
+      // origin http://localhost:3000 → ECONNREFUSED noise in the suite log.
+      const result = await exportApi.listFormats();
+      expect(result).toHaveLength(4);
+      expect(result.every((f) => f.available)).toBe(true);
+      expect(new Set(result.map((f) => f.format))).toEqual(new Set(["pdf", "epub", "md", "docx"]));
+    });
   });
 
   describe("createExport", () => {
