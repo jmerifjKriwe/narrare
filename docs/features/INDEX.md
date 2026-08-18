@@ -321,7 +321,7 @@
 ### Internationalization & UI Copy
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [I-Copy-001](i18n/I-Copy-001-formality-register.md) | User-Selectable UI Formality (du / Sie) | 📋 | ❌ |
+| [I-Copy-001](i18n/I-Copy-001-formality-register.md) | User-Selectable UI Formality (du / Sie) | ✅ | ❌ |
 
 > **I-Copy-001 (2026-08-08):** Spec created (Overlay-Merge architecture). User-selectable formality
 > register for UI copy — familiar (*duzen*/*tutoyer*) vs. neutral (*Siezen*/*vouvoiement*), `de`/`fr`
@@ -331,7 +331,10 @@
 > `next-intl` untouched. Setting name is `formality` (NOT `tone` — collides with `StoryTone`).
 > RULE-02 boundary verified (UI-copy-only; cannot reach `core/prompts/`). Cookie-only persistence
 > (no backend/migration for v1). Source: Q-015 (✅). The one real cost is editorial
-> (~150–300 formal DE/FR variants to author/review). Status → `planned`.
+> (~150–300 formal DE/FR variants to author/review). Spec 2026-08-08, shipped 2026-08-09 (`17ad629d` +
+`da5c73d2`): 159/159 DE/FR tone-sensitive variants (FR = forward-correct no-op — base
+already vouvoiement); switcher beside the auth-screen language switcher; loader behavior
+tests 2026-08-18 (B closure). Status → `implemented`.
 
 ### Settings & Configuration
 | ID | Feature | Status | MVP |

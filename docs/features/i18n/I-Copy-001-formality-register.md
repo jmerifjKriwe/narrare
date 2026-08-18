@@ -1,7 +1,7 @@
 ---
 id: I-Copy-001
 title: "User-Selectable UI Formality (du / Sie)"
-status: planned
+status: implemented
 area: i18n
 mvp: false
 
@@ -69,8 +69,11 @@ zero call-site churn. This spec specifies that approach.
 
 ## How it works (User perspective)
 
-1. Open **Settings → Appearance** (or the existing language/locale area).
-2. Pick **Anrede** (Address): *Vertraut (du)* [default] or *Neutral (Sie)*.
+1. Open the language/locale area on the auth screens (bottom-right corner, beside the
+   language switcher — this spec's "existing language/locale area" option; the studio
+   Settings language control is API-backed, while formality is cookie-only in v1).
+2. Pick **Anrede** (Address): *Du* [default] or *Sie* (FR: *tu* / *vous*). The control is
+   hidden for `en`.
 3. The ton-sensitive UI copy (full sentences, dialogs, success/error messages) swaps to the chosen
    register. Tone-neutral labels stay the same.
 4. The choice persists across reloads (a cookie, analogous to the language cookie) and applies to
@@ -284,15 +287,15 @@ architecture — it is the same under any option (Overlay, ICU, or suffix-keys a
 
 ## Acceptance criteria / Definition of Done
 
-- [ ] `NEXT_FORMALITY` cookie read in `request.ts`; default `"informal"`.
-- [ ] Deep-merge of `overlays/formality/{locale}.json` over base when `locale !== "en" && formality === "formal"`.
-- [ ] `mergeOverlay.ts` helper with unit tests covering flat, nested, and leaf-only-override cases.
-- [ ] `overlays/formality/de.json` + `overlays/formality/fr.json` populated with the formal variants (~150–300/lang).
-- [ ] Settings toggle mirrors the locale-switcher; choice persists across reloads.
-- [ ] Extended AST test: orphan-override check + de/fr key parity + no `overlays/formality/en.json`.
-- [ ] `en` message catalog byte-identical in both registers (asserted).
-- [ ] Zero changes to `core/prompts/` (RULE-02 boundary verified); zero call-site migration.
-- [ ] Frontend tests green; `just check` green.
+- [x] `NEXT_FORMALITY` cookie read in `request.ts`; default `"informal"`.
+- [x] Deep-merge of `overlays/formality/{locale}.json` over base when `locale !== "en" && formality === "formal"`.
+- [x] `mergeOverlay.ts` helper with unit tests covering flat, nested, and leaf-only-override cases.
+- [x] `overlays/formality/de.json` + `overlays/formality/fr.json` populated with the formal variants (~150–300/lang).
+- [x] Settings toggle mirrors the locale-switcher; choice persists across reloads.
+- [x] Extended AST test: orphan-override check + de/fr key parity + no `overlays/formality/en.json`.
+- [x] `en` message catalog byte-identical in both registers (asserted).
+- [x] Zero changes to `core/prompts/` (RULE-02 boundary verified); zero call-site migration.
+- [x] Frontend tests green; `just check` green.
 
 ## Related
 
@@ -306,3 +309,14 @@ architecture — it is the same under any option (Overlay, ICU, or suffix-keys a
 - `2026-08-08` — Feature Spec created (I-Copy-001). Overlay-Merge architecture chosen after
   external-AI consultation (2/3 recommended it) confirmed the infrastructure is low-effort and
   duplication-free. PO re-approved. Source question Q-015 flipped to ✅. Status: `planned`.
+- `2026-08-18` — **B closure — implemented & verified** (program item B of the Post-Export
+  Follow-ups). Spec `2026-08-08`, shipped `2026-08-09` in commits `17ad629d`
+  (loader + `mergeOverlay` + `FormalitySwitcher` + governance tests) and `da5c73d2`
+  (159 DE formal variants + FR parity overlay) — before the program design doc existed;
+  the B slice therefore verifies the DoD and closes the one test gap: loader-level
+  behavior tests (`__tests__/i18n-request-formality.test.ts`, 7 tests incl. the executed
+  `en`-byte-identical assertion). Toggle shipped in the language/locale area on the auth
+  screens (this spec's parenthetical option; the Settings language control is API-backed
+  while formality is cookie-only v1). FR overlay values are byte-equal to the FR base
+  (already vouvoiement) — documented forward-correct no-op for a future tutoiement base.
+  Status → `implemented`.
