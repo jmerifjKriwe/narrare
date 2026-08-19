@@ -13,6 +13,15 @@ import pytest
 
 from tests._schema_guard import scan_for_schema_mutation
 
+# Class-root structlog isolation (autouse, every test): re-exported here so
+# pytest registers the fixture for the whole tests/ tree — unit, integration
+# and e2e alike. Import-based registration (instead of pytest_plugins, which
+# pytest >= 8 forbids in non-top-level conftests) mirrors the
+# tests/integration/_fixtures/network_guards.py precedent.
+from tests._structlog_isolation import (  # noqa: F401 — re-exported for pytest fixture registration
+    _isolate_structlog_config,
+)
+
 if TYPE_CHECKING:
     from types import ModuleType
 
