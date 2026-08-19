@@ -464,9 +464,30 @@ lint-file +files:
 typecheck:
     uv run pyright
 
-# Fast scoped pyright for specific files. Whole-project gate is `just typecheck`.
+# Fast scoped pyright for specific files. Whole-project gates are `just
+# typecheck` (strict) and `just typecheck-tests` (basic).
+# Path-aware config selection: files under tests/ are checked against
+# tests/pyrightconfig.json (basic mode — same gate as `just typecheck-tests`);
+# all other paths use the strict root config. The main config's `tests/`
+# exclusion only affects directory discovery, so passing a test file explicitly
+# would otherwise apply strict reportUnknown* rules no enforced gate cares about.
 typecheck-file +files:
-    uv run pyright {{files}}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    prod=()
+    tests=()
+    for f in {{files}}; do
+        case "$f" in
+            tests|tests/*|./tests|./tests/*|"$PWD"/tests|"$PWD"/tests/*) tests+=("$f") ;;
+            *) prod+=("$f") ;;
+        esac
+    done
+    if [ "${#prod[@]}" -gt 0 ]; then
+        uv run pyright "${prod[@]}"
+    fi
+    if [ "${#tests[@]}" -gt 0 ]; then
+        uv run pyright --project tests/pyrightconfig.json "${tests[@]}"
+    fi
 
 # Run pyright on test files (basic mode, tests/pyrightconfig.json). Closes the
 # gate gap: the main pyright config excludes tests/ for performance, so test-
