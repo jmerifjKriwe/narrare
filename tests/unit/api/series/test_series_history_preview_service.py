@@ -64,6 +64,44 @@ def _make_service(
     )
 
 
+def _seed_three_banded_series(
+    owner: uuid.UUID,
+) -> tuple[FakeSeriesRepository, FakeBandSummaryRepository, Series]:
+    """Seed a series with three positioned bands for clipping tests.
+
+    Each full summary renders to a ~224-token entry (chars/4 heuristic,
+    ``Band {p} — Band {p}: `` prefix + ``"Full text. " * 80``); short
+    summaries render to ~6 tokens. Against a 300-token budget (header 7
+    + one full band 224 → 69 headroom ≥ 20) the boundary band truncates
+    and the oldest is dropped.
+    """
+    series_repo = FakeSeriesRepository()
+    band_repo = FakeBandSummaryRepository()
+    series = _series(owner)
+
+    novels = []
+    summaries = []
+    for position in (1, 2, 3):
+        novel_id = uuid.uuid4()
+        novels.append(
+            type(
+                "NovelRow",
+                (),
+                {
+                    "id": novel_id,
+                    # user_id is REQUIRED on NovelRow (no default).
+                    "user_id": uuid.uuid4(),
+                    "title": f"Band {position}",
+                    "series_position": position,
+                },
+            )()
+        )
+        summaries.append(_summary(novel_id, full="Full text. " * 80, short=f"Short {position}."))
+    series_repo.seed(series, novels=novels)
+    band_repo.seed(*summaries)
+    return series_repo, band_repo, series
+
+
 class TestOwnership:
     async def test_unknown_series_raises_forbidden(self) -> None:
         service = _make_service(series_repo=FakeSeriesRepository())
@@ -206,3 +244,55 @@ class TestComputation:
     def test_service_satisfies_protocol(self) -> None:
         service = _make_service(series_repo=FakeSeriesRepository())
         assert isinstance(service, SeriesHistoryPreviewServiceProtocol)
+
+
+class TestBudgetClipping:
+    """C1 Task-3 review follow-up: ``budget_clipped`` propagation.
+
+    Large summaries vs a small injected series-history budget: the greedy
+    fit truncates the boundary band and drops older ones, so response
+    entries must carry ``budget_clipped=True`` while ``bands_full`` stays
+    below the requested window (the UI clipping-warning prerequisite).
+    """
+
+    async def test_large_summaries_small_budget_entries_clipped(self) -> None:
+        owner = uuid.uuid4()
+        series_repo, band_repo, series = _seed_three_banded_series(owner)
+        # 300-token budget: header (7) + newest full band (224) fit, the
+        # boundary band truncates into the 69-token headroom, the oldest
+        # is dropped — for every window that asks for ≥ 2 full bands.
+        service = _make_service(series_repo=series_repo, band_repo=band_repo, series_history=300)
+
+        result = await service.get_preview(series.id, owner)
+
+        assert result.effective_series_history_budget == 300
+        by_window = {p.window_size: p for p in result.previews}
+
+        for window_size in (2, 3):
+            entry = by_window[window_size]
+            assert entry.token_budget == 300
+            assert entry.budget_clipped is True
+            # Clipping-warning prerequisite: the requested window overruns
+            # the budget — not all in-window bands render fully.
+            assert entry.bands_full < window_size
+            assert entry.bands_truncated == 1
+            assert entry.bands_dropped == 1
+            assert entry.bands_missing == 0
+            assert entry.bands_total == 3
+            # Honesty: the rendered block never exceeds the budget.
+            assert 0 < entry.estimated_tokens <= 300
+
+    async def test_window_within_small_budget_not_clipped(self) -> None:
+        """Honest contrast: window 1 fits inside the same tight budget."""
+        owner = uuid.uuid4()
+        series_repo, band_repo, series = _seed_three_banded_series(owner)
+        service = _make_service(series_repo=series_repo, band_repo=band_repo, series_history=300)
+
+        result = await service.get_preview(series.id, owner)
+
+        entry = next(p for p in result.previews if p.window_size == 1)
+        assert entry.budget_clipped is False
+        assert entry.bands_full == 1
+        assert entry.bands_short == 2
+        assert entry.bands_truncated == 0
+        assert entry.bands_dropped == 0
