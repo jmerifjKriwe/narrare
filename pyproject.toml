@@ -70,8 +70,13 @@ reportMissingTypeStubs = true
 venvPath = "."
 venv = ".venv"
 
-# Module resolution roots (mirrors pytest `pythonpath` for reliable imports)
-extraPaths = ["apps/api", "packages/core", "packages/i18n"]
+# Module resolution roots (mirrors pytest `pythonpath` for reliable imports).
+# "scripts" mirrors the RUNTIME sys.path truth: tests sys.path-insert scripts/
+# for top-level imports (`_coverage_model`, `check_module_coverage`), and the
+# scripts run with sys.path[0]=scripts/ (`python3 scripts/<x>.py`). Without it
+# pyright cannot resolve those imports and every consumer pays with
+# reportUnknown* errors from an Unknown-typed module.
+extraPaths = ["apps/api", "packages/core", "packages/i18n", "scripts"]
 
 # PERFORMANCE: Kein Tiefen-Parsen von externen Bibliotheken
 useLibraryCodeForTypes = false

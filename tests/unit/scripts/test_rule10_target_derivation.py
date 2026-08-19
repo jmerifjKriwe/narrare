@@ -28,8 +28,8 @@ _SCRIPTS = str(Path(__file__).resolve().parent.parent.parent.parent / "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 
-import _coverage_model  # noqa: E402  # type: ignore[import-untyped]
-from _coverage_model import (  # noqa: E402  # type: ignore[import-untyped]
+import _coverage_model  # noqa: E402
+from _coverage_model import (  # noqa: E402
     parse_coverage_xml,
     rule10_target,
 )

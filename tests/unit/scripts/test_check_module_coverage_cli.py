@@ -18,9 +18,9 @@ _SCRIPTS = str(Path(__file__).resolve().parent.parent.parent.parent / "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 
-import _coverage_model  # noqa: E402  # type: ignore[import-untyped]
-import check_module_coverage  # noqa: E402  # type: ignore[import-untyped]
-from _coverage_model import save_baselines  # noqa: E402  # type: ignore[import-untyped]
+import _coverage_model  # noqa: E402
+import check_module_coverage  # noqa: E402
+from _coverage_model import save_baselines  # noqa: E402
 
 
 def _write_coverage_xml(path: Path, packages: dict[str, float]) -> None:

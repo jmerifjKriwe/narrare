@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET  # nosec B405  # CI-generated coverage XML is
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from collections.abc import Collection
@@ -114,8 +114,14 @@ def load_baselines() -> dict[str, float]:
     if not BASELINES_FILE.exists():
         return {}
     try:
-        data = json.loads(BASELINES_FILE.read_text(encoding="utf-8"))
-        return dict(data.get("packages", {}))
+        # ``json.loads`` is typed ``Any``; declaring ``raw: object`` stops the
+        # Any-flow. The casts state the structural contract — the file is
+        # machine-written by ``save_baselines`` as ``{"packages": {name:
+        # float, ...}}`` — without changing runtime behavior (``cast`` is a
+        # runtime no-op, so malformed shapes fail exactly as before).
+        raw: object = json.loads(BASELINES_FILE.read_text(encoding="utf-8"))
+        packages = cast("dict[str, float]", cast("dict[str, object]", raw).get("packages", {}))
+        return dict(packages)
     except json.JSONDecodeError, KeyError:
         return {}
 

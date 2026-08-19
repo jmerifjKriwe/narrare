@@ -30,7 +30,7 @@ import sys
 import xml.etree.ElementTree as ET  # nosec B405  # CI-generated coverage XML is trusted
 from pathlib import Path
 
-from _coverage_model import (  # type: ignore[import-untyped]
+from _coverage_model import (
     BASELINES_FILE,
     DEFAULT_COVERAGE_XML,
     STATUS_BELOW_TARGET,
@@ -213,7 +213,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # ── Load baselines and re-parse with them ──────────────
-    from _coverage_model import load_baselines  # type: ignore[import-untyped]
+    from _coverage_model import load_baselines
 
     baselines = load_baselines()
     try:
