@@ -4,6 +4,7 @@ import type { ReactElement, ReactNode } from "react";
 import { expect, vi } from "vitest";
 import * as axeMatchers from "vitest-axe/matchers";
 import { server } from "./mocks/server";
+import { installUnhandledRequestGuard } from "./mocks/unhandledGuard";
 
 // axe-core a11y matchers (ADR-069 §28; Task 12). Registered globally so every
 // test file can `expect(await axe(container)).toHaveNoViolations()` without
@@ -161,14 +162,24 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
-// Establish API mocking before all tests
-// Start MSW before any test files are imported (must be top-level, not in beforeAll,
-// because some modules make fetch calls during import which would bypass MSW).
-// Using "bypass" for unhandled requests — MSW handlers exist for all API endpoints now.
-server.listen({ onUnhandledRequest: "bypass" });
+// ---------------------------------------------------------------------------
+// MSW — establish API mocking + mechanical unhandled-request guard
+// ---------------------------------------------------------------------------
+// Interception must start at top level (not in beforeAll) because some modules
+// fetch during import, which would bypass MSW. The "all endpoints handled"
+// invariant (PO directive after the ECONNREFUSED incident, commit 0006ec86)
+// is enforced by two layers: layer 1 is the `"error"` strategy below (the
+// fetch itself rejects); layer 2 — the mechanical guard that FAILS whichever
+// test issued an unhandled request even when the consumer swallows the
+// rejection — lives in `mocks/unhandledGuard.ts` (see its module docs for the
+// full rationale and probe evidence).
+server.listen({ onUnhandledRequest: "error" });
+installUnhandledRequestGuard(server);
 
-// Reset any request handlers that are declared during the tests
-afterEach(() => server.resetHandlers());
+// Reset any request handlers that were declared during the tests.
+afterEach(() => {
+  server.resetHandlers();
+});
 
 // Clean up after the tests are finished
 afterAll(() => server.close());

@@ -9,11 +9,11 @@ import type { FormatAvailability } from "@/types";
 // MOUNT by useExportPanel (composed into every EditorView render via
 // EditorOverlays → ExportPanel), so ANY test rendering the editor without a
 // per-test `server.use` override hits this endpoint. Without a default handler
-// the request falls through MSW (`onUnhandledRequest: "bypass"`, setupTests.ts)
-// and attempts a real network connection against the happy-dom origin
-// `http://localhost:3000` → `ECONNREFUSED` noise in every gate log (the
-// defect fixed 2026-08-18; suite-wide diagnostic showed this is the ONLY
-// unhandled endpoint).
+// the request is unhandled (`onUnhandledRequest: "error"`, setupTests.ts) and
+// the running test FAILS via the mechanical request:unhandled guard — the
+// defect class fixed 2026-08-18 (ECONNREFUSED noise, commit 0006ec86); the
+// error-policy hardening then proved this is the ONLY default-handler gap the
+// suite had.
 //
 // The interactive endpoints (POST /export, GET /export/jobs/:id, artifact
 // download) are only fired on explicit user action and are covered per-test
