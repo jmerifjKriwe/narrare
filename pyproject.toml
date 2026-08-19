@@ -291,7 +291,7 @@ llm_allowed_modules = [
   "packages/core/narrare_core/agents/",
   "tests/",  # Test files can import pydantic_ai for TestModel/FunctionModel testing tools
   "scripts/probes/",  # Eval/adoption probes use TestModel (no real LLM) for ADR-056 runtime evidence
-  "evals/",  # Offline eval harnesses: smoke tasks import pydantic_ai TestModel (no real LLM) — same class as tests/ and scripts/probes/
+  "evals/",  # Smoke tasks import TestModel; runtime tasks call real LLMs strictly via ModelRegistry (no direct SDK imports) — directory exemption per tests/ precedent
 ]
 agent_allowed_modules = [
   "packages/core/narrare_core/agents/",

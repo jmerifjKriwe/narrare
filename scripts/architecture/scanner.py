@@ -23,8 +23,8 @@ from scripts.architecture.types import CheckResult
 
 # RULE-18: named constant, not a literal at the call site.
 # Gate-roots parity (2026-08-19): must stay equal to the python-size gate's
-# scan roots (``scripts/check_python_file_size.py``::_iter_python_sources) —
-# pinned by ``tests/unit/scripts/test_check_python_file_size.py::
+# scan roots (``scripts/check_python_file_size.py``::PYTHON_SIZE_SCAN_ROOTS) —
+# pinned by ``tests/unit/scripts/test_gate_scan_root_parity.py::
 # TestScanRootParity``. ``evals/`` is included per 2c6a3b3d (evals code is
 # real production code under limits); unifying both RULE-04 gates on
 # identical roots also subjects evals/ to the full AST checker set.

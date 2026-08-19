@@ -31,8 +31,9 @@ copy would silently stale on the next value change):
 * dependency, script — python-size categories adopted.
 * config_schema — python-size predicate (``config.py`` / ``schemas.py`` /
   ``settings.py`` / ``*_schemas.py``).
-* models — CONSTRAINTS.md RULE-04 has no models row, so the pyproject
-  table entry is the authority over the python-size gate's former 500.
+* models — CONSTRAINTS.md RULE-04 had no models row until the 2026-08-19
+  table completion, so the pyproject table entry is the authority over
+  the python-size gate's former 500.
 * repository, contracts, gateway, composer — architecture-only categories
   retained (their stricter limits live in the pyproject table).
 """

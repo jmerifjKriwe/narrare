@@ -17,7 +17,7 @@ name: CI
 # | G4   | test_fake_conformance.py               | ✅ Blocking  | test-unit Job (via pytest)         |
 # | G5   | Cross-layer contract tests             | ✅ Blocking  | test-unit Job (via pytest)         |
 # | G6   | pyright                                | ✅ Blocking  | typecheck Job                      |
-# | G6   | pyright (mypy nicht erforderlich)      | ✅ Blocking | pyright strict ausreichend; mypy nicht benötigt |
+# | G6   | pyright (mypy not required)            | ✅ Blocking | pyright strict suffices; mypy not needed |
 # | G7   | ruff check + ruff format --check       | ✅ Blocking  | lint Job                           |
 # | G8   | check_adoption.py                      | ✅ Blocking  | architecture Job                   |
 # | G9   | check_prompt_structure.py              | ✅ Blocking  | architecture Job                   |

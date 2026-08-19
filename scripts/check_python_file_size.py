@@ -73,6 +73,18 @@ _SKIP_PATH_FRAGMENTS: frozenset[str] = frozenset(
     }
 )
 
+# Top-level directory names walked by this gate (RULE-18: named constant,
+# not a literal at the call site). Gate-roots parity (2026-08-19): must
+# stay equal to the architecture scanner's ``DEFAULT_SCAN_ROOTS`` —
+# pinned by ``tests/unit/scripts/test_gate_scan_root_parity.py::
+# TestScanRootParity``. Hoisted to module level (fix-round 2026-08-19)
+# so the parity test can catch unilateral ADDS by direct constant
+# comparison: the behavioral walk skips nonexistent directories, so a
+# candidate list buried inside ``_iter_python_sources`` is invisible to
+# behavioral tests whenever the added directory does not exist in the
+# synthetic tree.
+PYTHON_SIZE_SCAN_ROOTS: tuple[str, ...] = ("apps", "packages", "scripts", "tests", "evals")
+
 
 def _display_path(path: Path, base: Path = ROOT) -> Path:
     """Return a stable display path, tolerating synthetic test paths."""
@@ -140,15 +152,9 @@ def _iter_python_sources(root: Path = ROOT) -> list[Path]:
     files: list[Path] = []
     scan_dirs: list[Path] = []
 
-    # Scan these top-level directories if they exist
-    candidates = [
-        root / "apps",
-        root / "packages",
-        root / "scripts",
-        root / "tests",
-        root / "evals",
-    ]
-    for candidate in candidates:
+    # Scan the gate scan roots (module-level constant: the parity surface).
+    for name in PYTHON_SIZE_SCAN_ROOTS:
+        candidate = root / name
         if candidate.is_dir():
             scan_dirs.append(candidate)
 
