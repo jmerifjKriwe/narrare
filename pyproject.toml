@@ -312,20 +312,26 @@ forbidden_llm_urls = [
 ]
 
 [tool.narrare.architecture.file_size_limits]
-# Classification priority: test files first (test_*.py), then the
-# per-suffix categories below — must stay in sync with
-# scripts/check_python_file_size.py::_limit_for.
+# RULE-04 values SSOT — consumed via scripts/architecture/file_size_limits.py
+# by BOTH gates (check_architecture.py and check_python_file_size.py), which
+# therefore classify identically by construction. The keys are exactly the
+# canonical category vocabulary; the table is validated for completeness
+# (missing or stale keys fail loudly — no per-key fallbacks).
+# Classification priority: test_*.py first, then scripts/ (path rule), then
+# the name-based categories below, then general.
 test = 400
+script = 600
 router = 150
+dependency = 200
 service = 300
+agent = 200
+config_schema = 200
+models = 200
 repository = 250
 contracts = 200
-models = 200
-schemas = 200
-agent = 200
 gateway = 300
 composer = 250
-default = 400
+general = 400
 
 [tool.narrare.architecture.configurable_defaults]
 max_allowed_constant = 5

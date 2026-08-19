@@ -113,10 +113,12 @@ class TestLimitFor:
         assert kind == "config_schema"
         assert limit == 200
 
-    def test_models_py_gets_500(self, tmp_path: Path) -> None:
+    def test_models_py_gets_200(self, tmp_path: Path) -> None:
+        """2026-08-19 gate unification: models limit reconciled to the
+        pyproject per-path SSOT value (200), previously 500 here."""
         kind, limit = _limit_for(tmp_path / "models.py", tmp_path)
         assert kind == "models"
-        assert limit == 500
+        assert limit == 200
 
     def test_test_file_gets_400(self, tmp_path: Path) -> None:
         kind, limit = _limit_for(tmp_path / "test_service.py", tmp_path)
@@ -133,6 +135,59 @@ class TestLimitFor:
         kind, limit = _limit_for(tmp_path / "settings.py", tmp_path)
         assert kind == "config_schema"
         assert limit == 200
+
+
+class TestUnifiedCategoryVocabulary:
+    """2026-08-19 gate unification: the python-size gate consumes the shared
+    SSOT classifier (scripts/architecture/file_size_limits.py) and thereby
+    gains the architecture checker's categories (repository, contracts,
+    gateway, composer) and its precise router predicate."""
+
+    def test_routers_py_is_general_not_router(self, tmp_path: Path) -> None:
+        """Router predicate reconciled to the precise form: routers.py /
+        routering.py are NOT router files (previously router/150 only in
+        the architecture checker via an overbroad prefix match)."""
+        kind, limit = _limit_for(tmp_path / "routers.py", tmp_path)
+        assert kind == "general"
+        assert limit == 400
+
+    def test_repo_suffix_gets_250(self, tmp_path: Path) -> None:
+        kind, limit = _limit_for(tmp_path / "draft_repo.py", tmp_path)
+        assert kind == "repository"
+        assert limit == 250
+
+    def test_repository_exact_gets_250(self, tmp_path: Path) -> None:
+        kind, limit = _limit_for(tmp_path / "repository.py", tmp_path)
+        assert kind == "repository"
+        assert limit == 250
+
+    def test_contracts_py_gets_200(self, tmp_path: Path) -> None:
+        kind, limit = _limit_for(tmp_path / "contracts.py", tmp_path)
+        assert kind == "contracts"
+        assert limit == 200
+
+    def test_gateway_py_gets_300(self, tmp_path: Path) -> None:
+        kind, limit = _limit_for(tmp_path / "gateway.py", tmp_path)
+        assert kind == "gateway"
+        assert limit == 300
+
+    def test_composer_py_gets_250(self, tmp_path: Path) -> None:
+        kind, limit = _limit_for(tmp_path / "composer.py", tmp_path)
+        assert kind == "composer"
+        assert limit == 250
+
+    def test_scripts_models_py_is_script_not_models(self, tmp_path: Path) -> None:
+        """Path-based script rule (600) has priority over name rules."""
+        kind, limit = _limit_for(tmp_path / "scripts" / "models.py", tmp_path)
+        assert kind == "script"
+        assert limit == 600
+
+    def test_repo_file_over_limit_detected(self, tmp_path: Path) -> None:
+        _make_py_file(tmp_path, "apps/draft_repo.py", _lines_content(251))
+        violations = collect_violations(tmp_path)
+        assert len(violations) == 1
+        assert violations[0].kind == "repository"
+        assert violations[0].limit == 250
 
 
 # ---------------------------------------------------------------------------
@@ -282,17 +337,17 @@ class TestCollectViolations:
         assert violations[0].kind == "dependency"
         assert violations[0].limit == 200
 
-    def test_models_higher_limit(self, tmp_path: Path) -> None:
-        _make_py_file(tmp_path, "apps/models.py", _lines_content(450))
+    def test_models_at_reconciled_limit(self, tmp_path: Path) -> None:
+        _make_py_file(tmp_path, "apps/models.py", _lines_content(200))
         violations = collect_violations(tmp_path)
         assert len(violations) == 0
 
-    def test_models_over_higher_limit(self, tmp_path: Path) -> None:
-        _make_py_file(tmp_path, "apps/models.py", _lines_content(550))
+    def test_models_over_reconciled_limit(self, tmp_path: Path) -> None:
+        _make_py_file(tmp_path, "apps/models.py", _lines_content(201))
         violations = collect_violations(tmp_path)
         assert len(violations) == 1
         assert violations[0].kind == "models"
-        assert violations[0].limit == 500
+        assert violations[0].limit == 200
 
 
 # ---------------------------------------------------------------------------

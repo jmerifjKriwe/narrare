@@ -130,6 +130,28 @@ class TestUpdateBaseline:
         assert len(fps) == 1
         assert "new.py" in fps[0]
 
+    def test_preserves_non_ascii_in_other_sections_byte_identically(self, tmp_path: Path) -> None:
+        """2026-08-19 fix (found during gate unification): the shared
+        ai-gate-baseline.json carries non-ASCII text (em-dashes) in other
+        sections; update_baseline must not escape it — that churned every
+        unrelated line on each baseline update."""
+        baseline_path = tmp_path / "baseline.json"
+        baseline_path.write_text(
+            json.dumps(
+                {"approved_exceptions": ["pyproject | RULE-01b | x.py — reason"]},
+                indent=2,
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        update_baseline([], baseline_path)
+
+        content = baseline_path.read_text(encoding="utf-8")
+        assert "\\u2014" not in content, "non-ASCII must stay literal, not \\u-escaped"
+        assert "x.py — reason" in content
+
 
 # ---------------------------------------------------------------------------
 # Tests: _display_path

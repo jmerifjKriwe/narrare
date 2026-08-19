@@ -5,16 +5,26 @@ Enforces hard line-count limits per file category as defined in
 CONSTRAINTS.md §1 RULE-04. Existing violations are ratcheted by baseline;
 new oversized files fail the gate and must be modularized.
 
-Categories and limits (from CONSTRAINTS.md):
-    - General Python module:  400 lines hard limit
-    - Router (router*.py):    150 lines
+Categories, predicates, and limits come from the shared RULE-04 SSOT —
+``scripts/architecture/file_size_limits.py`` (classification) and
+``pyproject.toml [tool.narrare.architecture.file_size_limits]`` (values) —
+the same source the architecture-constraints gate consumes, so both gates
+classify identically by construction. Current values:
+
+    - Test (test_*.py):                                400 lines
+    - Script (scripts/**):                              600 lines
+    - Router (router.py, router_*.py):                  150 lines
     - Dependency (deps.py, dependencies.py, deps_*.py): 200 lines
-    - Service (service.py, *_service.py): 300 lines
-    - Agent (*_agent.py, agent.py): 200 lines
-    - Config/schema (config.py, schemas.py, *_schemas.py): 200 lines
-    - Test (test_*.py): 400 lines
-    - Scripts (scripts/): 600 lines
-    - Models (models.py): 500 lines (data declarations are inherently long)
+    - Service (service.py, *_service.py):               300 lines
+    - Agent (agent.py, *_agent.py):                     200 lines
+    - Config/schema (config.py, schemas.py,
+      settings.py, *_schemas.py):                       200 lines
+    - Models (models.py):                               200 lines
+    - Repository (repository.py, *_repo.py):            250 lines
+    - Contracts (contracts.py):                         200 lines
+    - Gateway (gateway.py):                             300 lines
+    - Composer (composer.py):                           250 lines
+    - General Python module:                            400 lines
 
 Usage:
     python scripts/check_python_file_size.py              # ratcheted baseline check
@@ -40,6 +50,7 @@ from scripts.architecture.baselines import (  # noqa: E402
     format_comparison,
     stable_fingerprint,
 )
+from scripts.architecture.file_size_limits import classify  # noqa: E402
 
 PYTHON_FILE_SIZE_BASELINE_SECTION = "python_file_size_violations"
 
@@ -99,55 +110,15 @@ class FileSizeViolation:
 def _limit_for(path: Path, root: Path = ROOT) -> tuple[str, int]:
     """Determine the file category and hard line-count limit.
 
-    Priority order (first match wins):
-    1. Test files
-    2. Scripts
-    3. Router files
-    4. Dependency files
-    5. Service files
-    6. Agent files
-    7. Config/schema files
-    8. Models
-    9. General Python
+    Delegates to the shared RULE-04 SSOT classifier
+    (``scripts/architecture/file_size_limits.py``), which both this gate
+    and the architecture-constraints gate consume — identical
+    classification by construction. Priority: test files first, then the
+    path-based ``scripts/`` rule, then the name-based categories, then
+    general Python.
     """
-    name = path.name
     rel = _display_path(path, root)
-    rel_str = rel.as_posix()
-
-    # Test files: test_*.py
-    if name.startswith("test_") and name.endswith(".py"):
-        return "test", 400
-
-    # Scripts directory gets higher limit (tooling is inherently longer)
-    if rel_str.startswith("scripts/"):
-        return "script", 600
-
-    # Router files: router.py, router_*.py
-    if name == "router.py" or name.startswith("router_"):
-        return "router", 150
-
-    # Dependency files: dependencies.py, deps.py, deps_*.py
-    if name in ("dependencies.py", "deps.py") or name.startswith("deps_"):
-        return "dependency", 200
-
-    # Service files: service.py, *_service.py
-    if name == "service.py" or name.endswith("_service.py"):
-        return "service", 300
-
-    # Agent files: agent.py, *_agent.py
-    if name == "agent.py" or name.endswith("_agent.py"):
-        return "agent", 200
-
-    # Config/schema files: config.py, schemas.py, *_schemas.py, settings.py
-    if name in ("config.py", "schemas.py", "settings.py") or name.endswith("_schemas.py"):
-        return "config_schema", 200
-
-    # Models: models.py (data declarations are inherently verbose)
-    if name == "models.py":
-        return "models", 500
-
-    # General Python module
-    return "general", 400
+    return classify(rel.as_posix())
 
 
 def _count_lines(path: Path) -> int:
@@ -272,7 +243,10 @@ def update_baseline(
     baseline[PYTHON_FILE_SIZE_BASELINE_SECTION] = fingerprints
 
     with baseline_path.open("w", encoding="utf-8") as fh:
-        json.dump(baseline, fh, indent=2, sort_keys=False)
+        # ensure_ascii=False: the shared ai-gate-baseline.json carries
+        # non-ASCII text in other sections (em-dashes in reasons); escaping
+        # them would churn every unrelated line on each baseline update.
+        json.dump(baseline, fh, indent=2, sort_keys=False, ensure_ascii=False)
         fh.write("\n")
 
     print(f"Updated baseline: {len(fingerprints)} violations recorded in {baseline_path}")
