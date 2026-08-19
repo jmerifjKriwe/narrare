@@ -235,12 +235,9 @@ class SeriesHistoryTier:
         if token_budget <= 0 or not bands:
             return ""
 
-        # Newest-first ordering, regardless of how the caller supplied them.
-        ordered = sorted(bands, key=lambda b: b.position, reverse=True)
-
-        # Distinct positions, descending; the top `window_size` are "in window".
-        positions_desc = sorted({b.position for b in ordered}, reverse=True)
-        window_positions = set(positions_desc[: max(window_size, 0)])
+        # Newest-first ordering + recency-window set — shared seam with
+        # ``preview`` so the windowing can never drift between the paths.
+        ordered, window_positions = self._window_positions(bands, window_size)
 
         entries: list[str] = []
         for band in ordered:
@@ -288,10 +285,8 @@ class SeriesHistoryTier:
         Returns:
             Frozen per-window prediction (see :class:`SeriesHistoryPreview`).
         """
-        ordered = sorted(bands, key=lambda b: b.position, reverse=True)
-        effective_window = max(window_size, 0)
-        positions_desc = sorted({b.position for b in ordered}, reverse=True)
-        window_positions = set(positions_desc[:effective_window])
+        ordered, window_positions = self._window_positions(bands, window_size)
+        effective_window = max(window_size, 0)  # reported value (same clamp)
 
         entries: list[str] = []
         in_window_flags: list[bool] = []
@@ -338,6 +333,29 @@ class SeriesHistoryTier:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _window_positions(
+        bands: list[BandSummaryData], window_size: int
+    ) -> tuple[list[BandSummaryData], set[int]]:
+        """Newest-first band ordering + recency-window position set.
+
+        Single source of truth for the windowing preamble shared by BOTH
+        ``assemble`` and ``preview`` — previously duplicated line-for-line,
+        so a change to one path could silently drift from the other (C1
+        Task-1 review finding; only tests pinned the equivalence).
+
+        Returns:
+            ordered: bands sorted by position, descending, regardless of
+                the order the caller supplied them in.
+            window_positions: set of the top ``max(window_size, 0)``
+                DISTINCT positions — a band at one of these positions is
+                "in window".
+        """
+        ordered = sorted(bands, key=lambda b: b.position, reverse=True)
+        positions_desc = sorted({b.position for b in ordered}, reverse=True)
+        window_positions = set(positions_desc[: max(window_size, 0)])
+        return ordered, window_positions
 
     @staticmethod
     def _select_text(band: BandSummaryData, *, in_window: bool) -> str | None:
