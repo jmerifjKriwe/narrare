@@ -25,9 +25,7 @@
   ],
   "frontend_file_size_violations": [],
   "streaming_compliance_gaps": [],
-  "python_file_size_violations": [
-    "evals/models.py | models | 200"
-  ],
+  "python_file_size_violations": [],
   "empty_kb_vars": [
     "apps/api/narrare/analysis/character_voice_prompt.py | kb_characters",
     "apps/api/narrare/analysis/character_voice_prompt.py | kb_factions",
