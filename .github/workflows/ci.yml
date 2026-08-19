@@ -1,14 +1,14 @@
 name: CI
 
 # ---------------------------------------------------------------------------
-# Gate-Konformitäts-Audit (Stand: 2026-06-03)
+# Gate Compliance Audit (as of: 2026-06-03)
 # ---------------------------------------------------------------------------
 # Referenz: .opencode/context/narrare-dev/processes/quality-gates.md
 #
 # | Gate | Tool / Check                          | CI Status   | Notes                              |
 # |------|----------------------------------------|-------------|------------------------------------|
-# | G1   | pytest unit + integration + e2e        | ✅ Blocking  | Unit/Integration in separaten Jobs |
-# | G2   | --cov-fail-under (Coverage)            | ✅ Blocking (≥80%) | Target 80% erreicht (global 82.51%) |
+# | G1   | pytest unit + integration + e2e        | ✅ Blocking  | Unit/Integration in separate jobs  |
+# | G2   | --cov-fail-under (Coverage)            | ✅ Blocking (≥80%) | Target 80% reached (global 82.51%) |
 # | G3   | check_architecture.py                  | ✅ Blocking  | architecture Job                   |
 # | G3e  | check_type_ignores (RULE-23)           | ✅ Blocking  | architecture Job (ratchet — additions fail) |
 # | G3b  | check_exception_baseline.py            | ✅ Blocking  | architecture Job                   |
@@ -16,8 +16,7 @@ name: CI
 # | G3c  | export_openapi.py --check              | ✅ Blocking  | architecture Job                   |
 # | G4   | test_fake_conformance.py               | ✅ Blocking  | test-unit Job (via pytest)         |
 # | G5   | Cross-layer contract tests             | ✅ Blocking  | test-unit Job (via pytest)         |
-# | G6   | pyright                                | ✅ Blocking  | typecheck Job                      |
-# | G6   | pyright (mypy not required)            | ✅ Blocking | pyright strict suffices; mypy not needed |
+# | G6   | pyright (strict; mypy not required)    | ✅ Blocking  | typecheck Job                      |
 # | G7   | ruff check + ruff format --check       | ✅ Blocking  | lint Job                           |
 # | G8   | check_adoption.py                      | ✅ Blocking  | architecture Job                   |
 # | G9   | check_prompt_structure.py              | ✅ Blocking  | architecture Job                   |
@@ -41,7 +40,7 @@ name: CI
 # | --   | check_pytest_collection_performance.py  | ⚠️ Warning   | test-unit Job (WARNING-only)       |
 # | --   | check_current_state_facts.py (SSOT)    | ✅ Blocking  | architecture Job                   |
 # | --   | check_adr_naming.py (review-04 AUFG-04-10) | ✅ Blocking | architecture Job (ADR-XXX-*.md convention) |
-# | MutMut Mutation Score       | mutation-testing-monthly.yml    | 📅 Monthly  | Nicht-blockierend, Issue-Report |
+# | MutMut Mutation Score       | mutation-testing-monthly.yml    | 📅 Monthly  | Non-blocking, issue report        |
 # ---------------------------------------------------------------------------
 
 on:

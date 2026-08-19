@@ -43,6 +43,15 @@ from scripts.architecture.types import CheckResult, Violation
 #  once per file from scan_file).
 _validated_keys: set[tuple[str, str]] = set()
 
+# Path SEGMENTS (whole directory names) excluded from AST scanning:
+# virtualenvs, vendored JS trees, and real alembic-style ``migrations/``
+# directories. Matched as exact segments — never substrings — so files like
+# ``tests/integration/adaptive/test_migrations.py`` or directories like
+# ``my_migrations_dir/`` are still scanned. Mirrors the segment semantics
+# of the python-size gate's ``_IGNORED_PARTS``
+# (scripts/check_python_file_size.py).
+_SKIP_SEGMENTS: frozenset[str] = frozenset({".venv", "migrations", "node_modules"})
+
 __all__ = [
     "check_app_layer_prompt_loader",
     "check_bare_async_session",
@@ -126,7 +135,14 @@ def scan_file(
     """Run all rule checks on a single Python file."""
     rel_path = relative_to_root(py_file)
 
-    if any(part in rel_path for part in [".venv", "migrations", "node_modules"]):
+    # Skip by whole path segment, not substring: the previous substring
+    # check (``"migrations" in rel_path``) silently excluded files whose
+    # NAMES contain "migrations" (e.g. tests/integration/adaptive/
+    # test_migrations.py) from every AST checker (fixed 2026-08-19).
+    # Backslash normalization keeps the segment split correct if
+    # relative_to_root ever yields Windows separators.
+    segments = rel_path.replace("\\", "/").split("/")
+    if any(segment in _SKIP_SEGMENTS for segment in segments):
         return
 
     try:

@@ -49,6 +49,16 @@ from scripts.architecture.types import CheckResult  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# Path SEGMENTS (whole directory names) excluded from the A5 inline
+# feature-prompt scan: virtualenvs, bytecode caches, and real alembic-style
+# ``migrations/`` directories. Matched as exact segments — never substrings —
+# so files like ``apps/api/**/test_migrations.py`` or directories like
+# ``my_migrations_dir/`` are still scanned. Mirrors the segment semantics of
+# ``_SKIP_SEGMENTS`` in scripts/architecture/_checkers/__init__.py (kept
+# local because this scan's scope differs: apps/api only, ``__pycache__``
+# instead of ``node_modules``).
+_SKIP_SEGMENTS: frozenset[str] = frozenset({".venv", "__pycache__", "migrations"})
+
 
 def _run_inline_feature_prompt_scan(result: CheckResult) -> None:
     """Scan apps/api Python files for A5 inline feature-prompt violations."""
@@ -57,7 +67,12 @@ def _run_inline_feature_prompt_scan(result: CheckResult) -> None:
         return
 
     for py_file in api_dir.rglob("*.py"):
-        if any(part in str(py_file) for part in [".venv", "__pycache__", "migrations"]):
+        # Skip by whole path segment, not substring: the previous substring
+        # check (``"migrations" in str(py_file)``) silently excluded files
+        # whose NAMES contain "migrations" (e.g. apps/api/**/
+        # test_migrations.py) from the A5 gate (fixed 2026-08-19).
+        # ``Path.parts`` yields exact segments on both POSIX and Windows.
+        if any(part in _SKIP_SEGMENTS for part in py_file.parts):
             continue
         try:
             source = py_file.read_text(encoding="utf-8")
