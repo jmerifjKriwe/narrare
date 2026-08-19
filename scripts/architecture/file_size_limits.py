@@ -21,18 +21,20 @@ Values SSOT: ``pyproject.toml [tool.narrare.architecture.file_size_limits]``
 (validated; missing or stale keys fail loudly instead of silently falling
 back to hardcoded defaults).
 
-Classification authority (reconciliation, 2026-08-19):
+Classification authority (reconciliation, 2026-08-19). Reconciliation
+records which side's predicate won — current values are read from the
+pyproject SSOT table and deliberately not repeated here (an enumerated
+copy would silently stale on the next value change):
 
 * router — precise python-size predicate (``router.py`` / ``router_*.py``);
   ``routers.py`` / ``routering.py`` are general modules.
-* dependency (200), script (600) — python-size categories adopted.
+* dependency, script — python-size categories adopted.
 * config_schema — python-size predicate (``config.py`` / ``schemas.py`` /
-  ``settings.py`` / ``*_schemas.py``), all at 200.
-* models (200) — CONSTRAINTS.md RULE-04 has no models row, so the
-  pyproject per-path entry (200) is the authority over the python-size
-  gate's former 500.
-* repository (250), contracts (200), gateway (300), composer (250) —
-  architecture-only categories retained at their stricter limits.
+  ``settings.py`` / ``*_schemas.py``).
+* models — CONSTRAINTS.md RULE-04 has no models row, so the pyproject
+  table entry is the authority over the python-size gate's former 500.
+* repository, contracts, gateway, composer — architecture-only categories
+  retained (their stricter limits live in the pyproject table).
 """
 
 from __future__ import annotations

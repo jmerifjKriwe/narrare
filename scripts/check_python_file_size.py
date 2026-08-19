@@ -9,22 +9,11 @@ Categories, predicates, and limits come from the shared RULE-04 SSOT —
 ``scripts/architecture/file_size_limits.py`` (classification) and
 ``pyproject.toml [tool.narrare.architecture.file_size_limits]`` (values) —
 the same source the architecture-constraints gate consumes, so both gates
-classify identically by construction. Current values:
-
-    - Test (test_*.py):                                400 lines
-    - Script (scripts/**):                              600 lines
-    - Router (router.py, router_*.py):                  150 lines
-    - Dependency (deps.py, dependencies.py, deps_*.py): 200 lines
-    - Service (service.py, *_service.py):               300 lines
-    - Agent (agent.py, *_agent.py):                     200 lines
-    - Config/schema (config.py, schemas.py,
-      settings.py, *_schemas.py):                       200 lines
-    - Models (models.py):                               200 lines
-    - Repository (repository.py, *_repo.py):            250 lines
-    - Contracts (contracts.py):                         200 lines
-    - Gateway (gateway.py):                             300 lines
-    - Composer (composer.py):                           250 lines
-    - General Python module:                            400 lines
+classify identically by construction. Limit values are read from the
+pyproject category table and are deliberately not enumerated here (an
+enumerated copy would silently stale on the next value change — the exact
+drift class the SSOT unification eliminated); the table is validated
+complete at load time, so missing or stale keys fail loudly.
 
 Usage:
     python scripts/check_python_file_size.py              # ratcheted baseline check
