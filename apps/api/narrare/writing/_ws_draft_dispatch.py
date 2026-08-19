@@ -82,8 +82,8 @@ async def dispatch_interview_draft(
         registry=registry,
         composer=composer,
         config=config,
-        invocation_pipeline=invocation_pipeline,  # type: ignore[call-arg]
-        run_limit_resolver=run_limit_resolver,  # type: ignore[call-arg]
+        invocation_pipeline=invocation_pipeline,
+        run_limit_resolver=run_limit_resolver,
         api_key=api_key,
         base_url=base_url,
     )
@@ -91,7 +91,7 @@ async def dispatch_interview_draft(
     try:
         result = await send_stream_chunks(
             websocket,
-            generator.stream_draft(  # type: ignore[attr-defined]
+            generator.stream_draft(
                 session_id=session_id,
                 user_id=user_id,
                 project_id=project_id,

@@ -76,6 +76,9 @@ from pydantic_ai import RunContext  # noqa: TC002
 from narrare_core.agents.author_voice_types import (
     AuthorVoiceDeps,
     AuthorVoiceOutput,
+    EmotionalRange,
+    SentenceProfile,
+    VocabularyLevel,
 )
 from narrare_core.agents.base import NarrareAgent
 
@@ -147,9 +150,9 @@ class AuthorVoiceAgent(NarrareAgent[AuthorVoiceDeps, AuthorVoiceOutput]):
         self,
         ctx: RunContext[AuthorVoiceDeps],
         formality: float = 0.5,
-        vocabulary_level: str = "moderate",
-        sentence_profile: str = "medium",
-        emotional_range: str = "moderate",
+        vocabulary_level: VocabularyLevel = "moderate",
+        sentence_profile: SentenceProfile = "medium",
+        emotional_range: EmotionalRange = "moderate",
         cultural_regional_markers: str | None = None,
         author_examples: list[str] | None = None,
     ) -> AuthorVoiceOutput:
@@ -163,9 +166,9 @@ class AuthorVoiceAgent(NarrareAgent[AuthorVoiceDeps, AuthorVoiceOutput]):
 
         return AuthorVoiceOutput(
             formality=formality,
-            vocabulary_level=vocabulary_level,  # type: ignore[arg-type]
-            sentence_profile=sentence_profile,  # type: ignore[arg-type]
-            emotional_range=emotional_range,  # type: ignore[arg-type]
+            vocabulary_level=vocabulary_level,
+            sentence_profile=sentence_profile,
+            emotional_range=emotional_range,
             cultural_regional_markers=cultural_regional_markers,
             author_examples=author_examples or [],
         )

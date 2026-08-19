@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import io
 import re
+import tokenize
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -47,6 +49,29 @@ _NAKED_CHECK_RE = re.compile(
     r"(?:\s*(?:#|$))",  # only whitespace / EOL / another comment
 )
 _CODE_EXTRACT_RE = re.compile(r"#\s+type:\s*ignore\s*\[([^\]]+)\]")
+
+
+def comment_marker_lines(text: str) -> set[int] | None:
+    """Line numbers whose COMMENT token contains a ``# type: ignore`` marker.
+
+    Prose mentions of ``# type: ignore`` (docstrings, string literals —
+    e.g. ``implement this without ``# type: ignore`` (RULE-23)``) live in
+    STRING tokens and are never suppressions. Only actual comments count.
+
+    Returns ``None`` when the source cannot be tokenized (degenerate or
+    mid-edit files): the caller then falls back to the legacy line-regex
+    scan, preserving the pre-tokenize behavior for such files.
+    """
+    try:
+        tokens = tokenize.generate_tokens(io.StringIO(text).readline)
+        marker_lines = {
+            tok.start[0]
+            for tok in tokens
+            if tok.type == tokenize.COMMENT and _TYPE_IGNORE_RE.search(tok.string)
+        }
+    except tokenize.TokenError, IndentationError, SyntaxError, ValueError:
+        return None
+    return marker_lines
 
 
 # ── Data classes ─────────────────────────────────────────────────────────────
@@ -155,9 +180,18 @@ def _scan_single_file(file: Path, result: ScanResult) -> None:
     file_rel = relative(file)
     file_count = 0
 
+    # Tokenize once: only lines whose ``# type: ignore`` sits in an actual
+    # COMMENT token count as suppressions (docstring prose does not).
+    marker_lines = comment_marker_lines(text)
+
     for lineno, line in enumerate(text.splitlines(), 1):
         # Does this line contain any type: ignore at all?
         if not _TYPE_IGNORE_RE.search(line):
+            continue
+
+        # STRING-token occurrences (docstrings, literals) are prose, not
+        # suppressions — skip them when tokenization succeeded.
+        if marker_lines is not None and lineno not in marker_lines:
             continue
 
         is_naked = bool(_NAKED_CHECK_RE.search(line))

@@ -178,11 +178,20 @@ class SeriesHistoryProvider:
     ) -> list[BandSummaryData]:
         """Build BandSummaryData for each prior band (skip empty)."""
         bands: list[BandSummaryData] = []
-        for member in prior_novels:
+        # Mechanical narrowing: both callers pass position-filtered members,
+        # but the ``int | None`` attribute type survives the list boundary.
+        # The comprehension's ``if`` clause narrows ``series_position`` for
+        # the tuple body, so ``position`` is a plain ``int`` below.
+        positioned = [
+            (member, member.series_position)
+            for member in prior_novels
+            if member.series_position is not None
+        ]
+        for member, position in positioned:
             summary = await self._band_summary_repo.get(member.id)
             bands.append(
                 BandSummaryData(
-                    position=member.series_position,  # type: ignore[arg-type]
+                    position=position,
                     title=member.title,
                     full_summary=summary.full_summary if summary else None,
                     short_summary=summary.short_summary if summary else None,

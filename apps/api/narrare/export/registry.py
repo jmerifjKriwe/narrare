@@ -54,6 +54,8 @@ from narrare.export.errors import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
+    from uuid import UUID
 
 logger = structlog.get_logger(__name__)
 
@@ -102,11 +104,11 @@ def _artifact_url(job_id: str, token: str) -> str:
     return f"/api/v1/export/jobs/{job_id}/artifact?token={quote(token, safe='')}"
 
 
-def create(novel_id: object, fmt: ExportFormat) -> ExportJob:
+def create(novel_id: UUID, fmt: ExportFormat) -> ExportJob:
     """Register a PENDING job and return its public view."""
     job = ExportJob(
         job_id=secrets.token_urlsafe(16),
-        novel_id=novel_id,  # type: ignore[arg-type]
+        novel_id=novel_id,
         format=fmt,
         status=ExportJobStatus.PENDING,
         created_at=_now(),
@@ -236,11 +238,9 @@ def sweep_expired(now: Callable[[], datetime] = _now) -> int:
     return dropped
 
 
-def _safe_unlink(path: object) -> None:
+def _safe_unlink(path: Path) -> None:
     """Best-effort unlink (the file may already be gone)."""
-    from pathlib import Path
-
     try:
-        Path(path).unlink(missing_ok=True)  # type: ignore[arg-type]
+        path.unlink(missing_ok=True)
     except OSError as exc:
         logger.warning("export_artifact_unlink_failed", path=str(path), error=str(exc))

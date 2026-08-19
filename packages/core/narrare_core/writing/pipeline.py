@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable
     from uuid import UUID
 
+    from narrare_core.agents.registry import AgentRegistry
     from narrare_core.ai_invocation.models import PromptInvocationContext
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
@@ -84,7 +85,7 @@ class WritingPipeline:
         composer: PromptComposer,
         context_assembler: WritingContextAssembler,
         draft_processor: DraftProcessor,
-        agent_registry: object | None = None,
+        agent_registry: AgentRegistry | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
         voice_profile_consumer_factory: Callable[[list[KBEntity]], VoiceProfileConsumer]
         | None = None,

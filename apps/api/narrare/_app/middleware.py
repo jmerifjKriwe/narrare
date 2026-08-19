@@ -19,6 +19,9 @@ from narrare._app.observability import get_current_trace_context
 
 if TYPE_CHECKING:
     from fastapi import Request, Response
+    from starlette.types import ASGIApp
+
+    from narrare._app.settings_model import Settings
 
 logger = structlog.get_logger(__name__)
 
@@ -30,14 +33,14 @@ SAFE_METHODS: frozenset[str] = frozenset({"GET", "HEAD", "OPTIONS"})
 """HTTP methods that are exempt from origin validation."""
 
 
-def get_trusted_origins(settings: object) -> list[str]:
+def get_trusted_origins(settings: Settings) -> list[str]:
     """Return the list of trusted origins from application settings.
 
     In production the operator is responsible for populating
     ``NARRARE_CSRF_TRUSTED_ORIGINS``.  In dev/test the default
     ``["http://localhost:3000"]`` is used.
     """
-    return settings.csrf_trusted_origins  # type: ignore[union-attr]  # duck-typed
+    return settings.csrf_trusted_origins
 
 
 class OriginValidationMiddleware(BaseHTTPMiddleware):
@@ -59,7 +62,7 @@ class OriginValidationMiddleware(BaseHTTPMiddleware):
     """
 
     def __init__(
-        self, app: object, trusted_origins: list[str], *, _test_mode: bool = False
+        self, app: ASGIApp, trusted_origins: list[str], *, _test_mode: bool = False
     ) -> None:
         """Initialise with a list of origin strings (no trailing slash).
 
@@ -69,7 +72,7 @@ class OriginValidationMiddleware(BaseHTTPMiddleware):
             _test_mode: If ``True``, bypass origin validation (for integration
                 tests where httpx sends no Origin/Referer header).
         """
-        super().__init__(app)  # type: ignore[arg-type]
+        super().__init__(app)
         self.trusted_origins = trusted_origins
         self._test_mode = _test_mode
 

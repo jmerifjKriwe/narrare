@@ -13,6 +13,9 @@ from typing import TYPE_CHECKING, Any, cast
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import JSONB
 
+if TYPE_CHECKING:
+    from sqlalchemy.engine import CursorResult
+
 from narrare._app.base_repository import BaseRepository
 from narrare.evidence._mappers import domain_to_orm, orm_to_domain
 from narrare.evidence.models import InvocationEvidenceModel
@@ -189,8 +192,8 @@ class EvidenceRepositoryImpl(BaseRepository):
                 adaptive_weights=weights,
             )
         )
-        result = await self._session.execute(stmt)
-        if result.rowcount == 0:  # type: ignore[union-attr]
+        result = cast("CursorResult[Any]", await self._session.execute(stmt))
+        if result.rowcount == 0:
             import structlog
 
             structlog.get_logger(__name__).info(

@@ -90,6 +90,7 @@ from narrare_core.agents.base import NarrareAgent
 # shape" mandate; ADR-073 D3 locked shape, applied to ADR-074 author voice).
 from narrare_core.agents.character_voice_drift_types import (
     ChapterNote,
+    DriftType,
     VoiceDriftResult,
 )
 
@@ -158,7 +159,7 @@ class AuthorVoiceDriftAgent(NarrareAgent[AuthorVoiceDriftDeps, VoiceDriftResult]
     async def _process_output(
         self,
         ctx: RunContext[AuthorVoiceDriftDeps],
-        drift_type: str = "evolution",
+        drift_type: DriftType = "evolution",
         confidence: float = 0.0,
         longitudinal_reasons: list[str] | None = None,
         per_chapter_notes: list[dict[str, Any]] | None = None,
@@ -172,7 +173,7 @@ class AuthorVoiceDriftAgent(NarrareAgent[AuthorVoiceDriftDeps, VoiceDriftResult]
             return VoiceDriftResult()
 
         return VoiceDriftResult(
-            drift_type=drift_type,  # type: ignore[arg-type]
+            drift_type=drift_type,
             confidence=confidence,
             longitudinal_reasons=longitudinal_reasons or [],
             per_chapter_notes=[ChapterNote(**note) for note in (per_chapter_notes or [])],

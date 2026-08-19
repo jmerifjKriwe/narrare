@@ -11,6 +11,7 @@ import hashlib
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+from uuid import UUID
 
 import pytest
 
@@ -23,7 +24,7 @@ from narrare.export.errors import (
 from narrare.export.options import ExportFormat
 from tests.unit.api.export.conftest import make_options
 
-NOVEL_ID = "00000000-0000-0000-0000-000000000001"
+NOVEL_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 
 def _token_from_url(artifact_url: str) -> str:

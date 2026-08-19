@@ -22,13 +22,16 @@ See:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 from sqlalchemy import delete, select, update
 
 from narrare.settings.models import ProjectSettings
 from narrare_core.profiles.author_voice import AuthorVoiceProfile
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import CursorResult
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -115,8 +118,8 @@ class AuthorVoiceRepository:
             .where(ProjectSettings.novel_id == novel_id)
             .values(author_voice=json_payload)
         )
-        result = await self._session.execute(stmt)
-        if result.rowcount == 0:  # type: ignore[union-attr]
+        result = cast("CursorResult[Any]", await self._session.execute(stmt))
+        if result.rowcount == 0:
             model = ProjectSettings(novel_id=novel_id, author_voice=json_payload)
             self._session.add(model)
         await self._session.flush()

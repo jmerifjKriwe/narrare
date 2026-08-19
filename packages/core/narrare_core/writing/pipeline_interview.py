@@ -15,7 +15,7 @@ The prompt is still composed upstream via ``_build_and_validate_prompt``
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 
@@ -53,10 +53,16 @@ async def _get_or_create_interview_agent(
     """
     registry = pipeline._agent_registry  # pyright: ignore[reportPrivateUsage]
     if registry is not None:
-        return await registry.get_or_create(  # type: ignore[no-any-return]
-            InterviewQuestionAgent,
-            model,
-            system_prompt=system_prompt,
+        # AgentRegistry.get_or_create is typed NarrareAgent[Any, Any] (it
+        # serves every agent class); the requested agent_type parameterizes
+        # the actual runtime type, so the cast narrows to the caller's view.
+        return cast(
+            "InterviewQuestionAgent",
+            await registry.get_or_create(
+                InterviewQuestionAgent,
+                model,
+                system_prompt=system_prompt,
+            ),
         )
     return InterviewQuestionAgent(model=model, system_prompt=system_prompt)
 

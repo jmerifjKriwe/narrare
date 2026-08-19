@@ -73,7 +73,7 @@ def normalise_score(raw: Any) -> float:
     ``DismissalMatch.similarity`` 0..1 contract.
     """
     try:
-        score = float(raw)  # type: ignore[arg-type]
+        score = float(raw)
     except TypeError, ValueError:
         return 0.0
     if score < 0.0:

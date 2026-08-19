@@ -282,7 +282,7 @@ class AuthorVoiceService:
     def _make_voice_metrics_analyzer(self, language: str) -> VoiceMetricsAnalyzer:
         from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
 
-        return VoiceMetricsAnalyzer(language=language)  # type: ignore[arg-type]
+        return VoiceMetricsAnalyzer(language=language)
 
     def _make_author_metrics_analyzer(self) -> AuthorMetricsAnalyzer:
         from narrare_core.analysis.author_metrics import AuthorMetricsAnalyzer

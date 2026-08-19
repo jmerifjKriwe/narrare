@@ -157,7 +157,10 @@ class AdaptiveContextProviderImpl:
         if self._settings_repo is None:
             return AdaptiveSettings()
         try:
-            loaded = await self._settings_repo.load(project_id)  # type: ignore[arg-type]
+            # Protocol accepts `object` (see get_context note) — the settings
+            # repo contract types project_id as UUID. Cast bridges without
+            # runtime cost (same pattern as get_context above).
+            loaded = await self._settings_repo.load(cast("UUID", project_id))
         except Exception:
             logger.warning(
                 "adaptive_provider_settings_load_failed",
@@ -208,7 +211,7 @@ class AdaptiveContextProviderImpl:
             return
         try:
             await evidence_repo.update_adaptive_snapshot(
-                invocation_id=invocation_id,  # type: ignore[arg-type]
+                invocation_id=cast("UUID", invocation_id),
                 source_summary=source_summary_dict,
                 weights=weights_dict,
             )

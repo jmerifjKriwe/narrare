@@ -201,7 +201,7 @@ def _make_voice_metrics_analyzer(language: str) -> VoiceMetricsAnalyzer:
     """Construct the voice-generic analyzer (overridable seam for tests)."""
     from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
 
-    return VoiceMetricsAnalyzer(language=language)  # type: ignore[arg-type]
+    return VoiceMetricsAnalyzer(language=language)
 
 
 def _make_author_metrics_analyzer() -> AuthorMetricsAnalyzer:

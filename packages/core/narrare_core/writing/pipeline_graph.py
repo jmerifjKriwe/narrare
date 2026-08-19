@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from narrare_core.agents.graph_store import GraphStateStore
+    from narrare_core.agents.registry import AgentRegistry
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.prompts.composer import PromptComposer
@@ -36,7 +37,7 @@ async def stream_via_writing_graph(
     registry: object,
     composer: PromptComposer,
     context_assembler: object,
-    agent_registry: object | None = None,
+    agent_registry: AgentRegistry | None = None,
     invocation_pipeline: InvocationPipeline | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
@@ -92,7 +93,7 @@ async def run_with_persistence(
     registry: object,
     composer: PromptComposer,
     context_assembler: object,
-    agent_registry: object | None = None,
+    agent_registry: AgentRegistry | None = None,
     invocation_pipeline: InvocationPipeline | None = None,
     store: GraphStateStore | None = None,
     run_id: str | None = None,

@@ -295,4 +295,4 @@ class CharacterVoiceDriftService:
     def _make_voice_metrics_analyzer(self, language: str) -> VoiceMetricsAnalyzer:
         from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
 
-        return VoiceMetricsAnalyzer(language=language)  # type: ignore[arg-type]
+        return VoiceMetricsAnalyzer(language=language)

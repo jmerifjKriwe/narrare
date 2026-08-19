@@ -20,6 +20,9 @@ from typing import TYPE_CHECKING, Any, cast
 from sqlalchemy import select, update
 
 from narrare.settings.models import ProjectSettings
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import CursorResult
 from narrare_core.ai_invocation.adaptive_context import (
     AdaptiveSettings,
     AdaptiveWeights,
@@ -114,8 +117,8 @@ class AdaptiveSettingsRepository:
             .where(ProjectSettings.novel_id == project_id)
             .values(adaptive_settings=json_payload)
         )
-        result = await self._session.execute(stmt)
-        if result.rowcount == 0:  # type: ignore[union-attr]
+        result = cast("CursorResult[Any]", await self._session.execute(stmt))
+        if result.rowcount == 0:
             model = ProjectSettings(
                 novel_id=project_id,
                 adaptive_settings=json_payload,

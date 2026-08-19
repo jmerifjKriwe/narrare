@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from typing import cast
 from uuid import UUID
 
 from narrare_core.writing._enums import ConnectionState, StreamStatus
@@ -87,8 +88,13 @@ def _dict_to_state(data: dict[str, object]) -> SessionState:
     """
     raw_invocation = data.get("active_invocation_id")
     raw_history = data.get("conversation_history")
+    # Round-trip contract: ``_state_to_dict`` serializes
+    # ``conversation_history: list[dict[str, str]]`` verbatim
+    # (``list(state.conversation_history)``), so a well-formed payload is a
+    # ``list[dict[str, str]]``. The ``isinstance`` guard keeps the legacy
+    # payload fallback; the cast re-states the writer's type for the reader.
     history: list[dict[str, str]] = (
-        [dict(item) for item in raw_history]  # type: ignore[arg-type]
+        [dict(item) for item in cast("list[dict[str, str]]", raw_history)]
         if isinstance(raw_history, list)
         else []
     )

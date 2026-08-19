@@ -24,7 +24,7 @@ See:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from narrare.analysis.schemas_voice_drift import (
     VoiceDriftCharacterResult,
@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from narrare_core.analysis.voice_drift_scoring_types import (
         PerChapterMetrics,
     )
+    from narrare_core.kb.schemas.character import VoiceMetrics
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.profiles.models import CharacterVoiceProfile
@@ -169,7 +170,12 @@ async def analyse_character_drift(
         trend + jumps + the derived overall score/band + the agent
         classification.
     """
-    trend = trend_against_profile(per_chapter, profile.voice_metrics)  # type: ignore[arg-type]
+    # Precondition: the service narrows ``profile.voice_metrics is None``
+    # into a graceful ``no_voice_metrics`` event before calling this
+    # function, so the profile passed in always carries metrics. The cast
+    # bridges the caller's narrowing, which is lost when the whole profile
+    # object crosses the function boundary.
+    trend = trend_against_profile(per_chapter, cast("VoiceMetrics", profile.voice_metrics))
     jumps = detect_adjacent_jumps(per_chapter)
     chapter_meta = [
         ChapterMeta(

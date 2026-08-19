@@ -14,6 +14,7 @@ from narrare.events.publisher import (
 )
 
 if TYPE_CHECKING:
+    from pydantic_ai.models import Model
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from narrare.prompts.history_service import PromptHistoryApiService
@@ -66,8 +67,8 @@ async def get_live_test_service(session: AsyncSession) -> PromptLiveTestApiServi
     resolver = get_model_routing_resolver(session)
     preview = PromptPreviewService(composer=composer, registry=prompt_registry)
 
-    def agent_factory(*, model: object) -> PromptLiveTestAgent:
-        return PromptLiveTestAgent(model=model)  # type: ignore[arg-type]
+    def agent_factory(*, model: Model) -> PromptLiveTestAgent:
+        return PromptLiveTestAgent(model=model)
 
     return PromptLiveTestApiService(
         resolver=resolver,

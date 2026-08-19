@@ -241,7 +241,7 @@ class CharacterVoiceService:
             novel_id=novel_id,
             language=language,
             model_registry=self._registry,
-            model_config=self._config,  # type: ignore[arg-type]
+            model_config=self._config,
             composed_prompt=composed_prompt,
         )
 
@@ -287,4 +287,4 @@ class CharacterVoiceService:
     def _make_voice_metrics_analyzer(self, language: str) -> VoiceMetricsAnalyzer:
         from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
 
-        return VoiceMetricsAnalyzer(language=language)  # type: ignore[arg-type]
+        return VoiceMetricsAnalyzer(language=language)

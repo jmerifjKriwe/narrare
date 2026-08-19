@@ -181,7 +181,7 @@ class SeriesVoiceService:
 
         chapter_prose_list = [(c.content or "") for c in chapters]
         combined_prose = "\n\n".join(chapter_prose_list)
-        voice_metrics = VoiceMetricsAnalyzer(language=language).analyze_text(chapter_prose_list)  # type: ignore[arg-type]
+        voice_metrics = VoiceMetricsAnalyzer(language=language).analyze_text(chapter_prose_list)
         author_metrics = AuthorMetricsAnalyzer().analyze(chapter_prose_list)
 
         # 6. Resolve the governed author_voice system prompt (RULE-02 / ADR-054

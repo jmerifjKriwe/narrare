@@ -81,6 +81,7 @@ from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.character_voice_drift_types import (
     ChapterNote,
     CharacterVoiceDriftDeps,
+    DriftType,
     VoiceDriftResult,
 )
 
@@ -151,7 +152,7 @@ class CharacterVoiceDriftAgent(NarrareAgent[CharacterVoiceDriftDeps, VoiceDriftR
     async def _process_output(
         self,
         ctx: RunContext[CharacterVoiceDriftDeps],
-        drift_type: str = "evolution",
+        drift_type: DriftType = "evolution",
         confidence: float = 0.0,
         longitudinal_reasons: list[str] | None = None,
         per_chapter_notes: list[dict[str, Any]] | None = None,
@@ -165,7 +166,7 @@ class CharacterVoiceDriftAgent(NarrareAgent[CharacterVoiceDriftDeps, VoiceDriftR
             return VoiceDriftResult()
 
         return VoiceDriftResult(
-            drift_type=drift_type,  # type: ignore[arg-type]
+            drift_type=drift_type,
             confidence=confidence,
             longitudinal_reasons=longitudinal_reasons or [],
             per_chapter_notes=[ChapterNote(**note) for note in (per_chapter_notes or [])],
