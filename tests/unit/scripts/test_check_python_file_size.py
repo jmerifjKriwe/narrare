@@ -2,6 +2,8 @@
 
 Covers file category detection (_limit_for), exclusion rules (_should_skip),
 line counting (_count_lines), and violation collection (collect_violations).
+Scan-roots parity with the architecture gate lives in
+test_gate_scan_root_parity.py (RULE-04 split, 2026-08-19).
 """
 
 from __future__ import annotations

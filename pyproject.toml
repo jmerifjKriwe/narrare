@@ -291,11 +291,13 @@ llm_allowed_modules = [
   "packages/core/narrare_core/agents/",
   "tests/",  # Test files can import pydantic_ai for TestModel/FunctionModel testing tools
   "scripts/probes/",  # Eval/adoption probes use TestModel (no real LLM) for ADR-056 runtime evidence
+  "evals/",  # Offline eval harnesses: smoke tasks import pydantic_ai TestModel (no real LLM) — same class as tests/ and scripts/probes/
 ]
 agent_allowed_modules = [
   "packages/core/narrare_core/agents/",
   "tests/",
   "scripts/probes/",  # Probes construct fake agents (TestModel) for runtime evidence
+  "evals/",  # Eval task runtime drives Narrare agents built in core/agents/ (harness code; no Agent construction outside core/agents/)
 ]
 prompt_allowed_modules = ["packages/core/narrare_core/prompts/"]
 # RULE-08 (ADR-081): the ONLY files allowed to spawn the production render
@@ -356,6 +358,12 @@ ignored_modules = [
   # Doc-drift validator — _JUST_LIST_TIMEOUT (10s subprocess timeout for
   # `just --list`) is a tooling constant, not runtime config:
   "scripts/doc_drift/just_command_checks.py",
+  # Eval rubric files — scoring thresholds are fixed evaluation criteria by
+  # design (comparable, versioned rubrics); runtime configurability would
+  # undermine eval comparability. Not runtime configuration:
+  "evals/tasks/analysis_metrics_smoke.py",
+  "evals/evaluators/analysis_metrics.py",
+  "evals/evaluators/planning_structure.py",
 ]
 
 [tool.narrare.architecture.exceptions]

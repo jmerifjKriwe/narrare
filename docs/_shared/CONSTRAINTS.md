@@ -313,12 +313,27 @@ client-switching (MCP, A2A, CLI) require rewriting calling code.
 
 | File type | Hard limit | Soft target |
 |-----------|-----------|-------------|
-| Any Python module | 400 lines | 250 lines |
-| Router file | 150 lines | 80 lines |
-| Service file | 300 lines | 200 lines |
-| Agent definition | 200 lines | 150 lines |
-| Test file | 400 lines | 300 lines |
-| Config / schema file | 200 lines | 150 lines |
+| Test file (`test_*.py`) | 400 lines | 300 lines |
+| Script (`scripts/`) | 600 lines | 400 lines |
+| Router file (`router.py`, `router_*.py`) | 150 lines | 80 lines |
+| Dependency file (`dependencies.py`, `deps.py`, `deps_*.py`) | 200 lines | 150 lines |
+| Service file (`service.py`, `*_service.py`) | 300 lines | 200 lines |
+| Agent definition (`agent.py`, `*_agent.py`) | 200 lines | 150 lines |
+| Config / schema file (`config.py`, `schemas.py`, `settings.py`, `*_schemas.py`) | 200 lines | 150 lines |
+| Models file (`models.py`) | 200 lines | 150 lines |
+| Repository file (`repository.py`, `*_repo.py`) | 250 lines | 150 lines |
+| Contracts file (`contracts.py`) | 200 lines | 150 lines |
+| Gateway file (`gateway.py`) | 300 lines | 200 lines |
+| Composer file (`composer.py`) | 250 lines | 150 lines |
+| Any other Python module | 400 lines | 250 lines |
+
+> **Values SSOT:** `pyproject.toml [tool.narrare.architecture.file_size_limits]` is the
+> machine-readable source consumed by both RULE-04 gates
+> (`scripts/check_architecture.py` and `scripts/check_python_file_size.py`, via
+> `scripts/architecture/file_size_limits.py`). This table is the human-readable mirror;
+> when adding or modifying limits, update BOTH files. On divergence the pyproject table
+> wins. Hard limits are SSOT-validated; soft targets are advisory editorial guidance
+> (a split signal, never machine-enforced).
 
 A file approaching its soft target is a signal to **split**.
 A file at its hard limit is a build failure.
@@ -1183,7 +1198,7 @@ the same registry/service.
 | RULE-02b Prompt-Resolution-Path Compliance | `check_architecture.py` — AST scan (direct registry access, app-layer loaders, user-channel injection, inline fallbacks, off-scope MetaPromptLoader) + PR review |
 | RULE-04 File size | `check_architecture.py` — line count |
 | RULE-06 Router purity | `check_architecture.py` — complexity heuristic |
-| RULE-09 Type signatures | `mypy --strict` in CI |
+| RULE-09 Type signatures | `just typecheck` — pyright strict (`uv run pyright`) + CI job "Type Check (pyright)" |
 | RULE-10 Test coverage | `pytest --cov` with minimum thresholds |
 | RULE-11 Silent failures | `check_architecture.py` — bare except scan |
 | RULE-13 Streaming/non-streaming interface | PR review + signature-shape regression test (ADR-065 Phase D) |

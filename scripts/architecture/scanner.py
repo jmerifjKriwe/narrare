@@ -22,7 +22,13 @@ from scripts.architecture import helpers
 from scripts.architecture.types import CheckResult
 
 # RULE-18: named constant, not a literal at the call site.
-DEFAULT_SCAN_ROOTS: tuple[str, ...] = ("apps", "packages", "scripts", "tests")
+# Gate-roots parity (2026-08-19): must stay equal to the python-size gate's
+# scan roots (``scripts/check_python_file_size.py``::_iter_python_sources) —
+# pinned by ``tests/unit/scripts/test_check_python_file_size.py::
+# TestScanRootParity``. ``evals/`` is included per 2c6a3b3d (evals code is
+# real production code under limits); unifying both RULE-04 gates on
+# identical roots also subjects evals/ to the full AST checker set.
+DEFAULT_SCAN_ROOTS: tuple[str, ...] = ("apps", "packages", "scripts", "tests", "evals")
 
 
 @runtime_checkable
@@ -163,7 +169,7 @@ class ArchitectureScanner:
             if not resolved.exists():
                 continue  # deleted file
             if not any(resolved.is_relative_to(root) for root in resolved_roots):
-                continue  # outside scan_roots (e.g. evals/)
+                continue  # outside scan_roots (e.g. root-level or docs/ files)
             selected.append(resolved)
         return selected
 
