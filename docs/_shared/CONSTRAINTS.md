@@ -1080,24 +1080,37 @@ All other error codes require an architecture review exception.
 
 **6. CI enforcement (Ratchet principle).**
 
-`scripts/check_architecture.py` scans for `# type: ignore` comments and:
-- Counts total suppressions
-- FAILS the build if the count INCREASES compared to the last stable baseline
-- Reports each naked suppression (without error code) as a hard failure
-- Reports each suppression without an inline reason as a warning
+`python -m scripts.check_type_ignores` (package `scripts/check_type_ignores/`)
+is the dedicated RULE-23 gate. It tokenizes Python sources — only real
+COMMENT tokens count, docstring prose does not — and:
 
-The baseline is defined in `pyproject.toml [tool.narrare.architecture.type_ignore_baseline]`.
-A PR that reduces the suppression count is approved. A PR that increases it
-without explicit Architecture Agent approval is blocked.
+- FAILS (exit 2) on every naked suppression (no error code)
+- FAILS (exit 2) on every production suppression without an inline reason
+- FAILS (exit 2) when the production total rises above the baseline
+  (production delta must stay ≤ 0)
+- FAILS (exit 1 — blocking in CI, warning locally) when the suppression
+  budget grows beyond the frozen baseline (test/total ratchet-down:
+  reductions are free, additions need a deliberate baseline update)
 
-**Why:** There are currently 887 `# type: ignore` suppressions in the codebase
-(see `docs/development/type-ignore-audit.md`). Many are naked suppressions that
-hide real type errors. Without discipline, `# type: ignore` becomes "just make
-it compile" — which defeats the purpose of `mypy --strict` type checking. The
-ratchet principle ensures the count only goes down, not up.
+The baseline is `scripts/architecture/type-ignore-baseline.json`
+(production + test totals and per-file counts). It is regenerated
+deliberately via `--update-baseline`; `files` keys that disappear
+(suppressions fully removed from a file) must be named one-for-one via
+`--allow-removed <file,...>` so every ratchet drop is auditable.
+`check_architecture.py` does NOT enforce RULE-23.
 
-**Enforcement:** `check_architecture.py` — regex scan for `# type: ignore` patterns.
-Baseline tracked in `pyproject.toml`. Architecture Agent enforces during PR review.
+**Why:** The June 2026 audit counted 887 `# type: ignore` suppressions
+(see `docs/development/type-ignore-audit.md`); the sanctioned remediation
+phases reduced production to a small, fully commented residue (third-party
+packages without type stubs). The authoritative current count is the
+baseline JSON, not this document. Without the ratchet, `# type: ignore`
+becomes "just make it compile" — which defeats the purpose of pyright
+strict type checking. The ratchet principle ensures the count only goes
+down, not up.
+
+**Enforcement:** pre-commit hook `type-ignore-discipline` (staged-files
+scope against per-file baseline counts) + CI `architecture` job step
+(full scan against the baseline, blocking — any non-zero exit fails).
 
 ---
 

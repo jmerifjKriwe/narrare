@@ -176,6 +176,16 @@ def _scan_single_file(file: Path, result: ScanResult) -> None:
     except OSError, UnicodeDecodeError:
         return
 
+    scan_text(text, file, result)
+
+
+def scan_text(text: str, file: Path, result: ScanResult) -> None:
+    """Scan one Python source text (file content) into *result* in place.
+
+    *file* is only used for categorization (production/test/other) and
+    reporting — the text is scanned as given, which lets the staged-files
+    mode feed git-index blobs through the exact same logic.
+    """
     category = _get_category(file)
     file_rel = relative(file)
     file_count = 0

@@ -2,7 +2,7 @@
 
 > **Status:** ✅ Completed (revalidated 2026-06-29; ADR-080-Nachbehandlung 2026-08-08)
 > **Audit-Datum:** 2026-06-10
-> **Letzte Aktualisierung:** 2026-08-08 (ADR-080 — `tasks/broker.py` entfernt, `wiki/tasks.py`-Dependency korrigiert)
+> **Letzte Aktualisierung:** 2026-08-19 (RULE-23 Phase 2 — Baseline auf Ist-Stand re-baselined [13 Production / 1010 Tests], CI-Gate + Pre-commit-Hook tatsächlich verdrahtet, P5-B-Dokumentationsfehler korrigiert)
 > **Scope:** Python `# type: ignore` und TypeScript `@ts-ignore` / `@ts-expect-error`
 > **Ziel:** Systematische Reduktion auf 0 in Production-Code, strengere Agent-Vorgaben
 
@@ -170,8 +170,10 @@ konkrete Typen statt Protocols als Parameter erwarten.
 - [x] **P1-B: AI Agent Guideline verschärft** — RULE-23 ist fester Bestandteil aller
   Narrare-Specialist-Delegation-Prompts
 
-- [x] **P1-C: CI-Gate implementiert** — `python -m scripts.check_type_ignores` prüft:
-  Baseline-Vergleich, naked ignores, uncommented production, Reason-Kommentar-Konformität
+- [x] **P1-C: Checker implementiert** — `python -m scripts.check_type_ignores` prüft:
+  Baseline-Vergleich, naked ignores, uncommented production, Reason-Kommentar-Konformität.
+  *(Die eigentliche CI/Pre-commit-Verdrahtung erfolgte allerdings erst am 2026-08-19 —
+  siehe P5-B-Korrektur.)*
 
 ### Phase 2: Production-Code sanieren (Hochprioritär)
 
@@ -214,7 +216,16 @@ konkrete Typen statt Protocols als Parameter erwarten.
 ### Phase 5: Monitoring ✅
 
 - [x] **P5-A:** Baseline via `python -m scripts.check_type_ignores --update` erzeugt (203 Suppressions, Stand 2026-06-11)
-- [x] **P5-B:** CI-Gate integriert — schlägt fehl bei nackten `type:ignore` oder unkommentierten Production-Einträgen
+- [x] **P5-B:** CI-Gate integriert — **Korrektur 2026-08-19:** der ursprüngliche
+  Haken (2026-06) war eine Falschbehauptung; der Checker existierte, war aber in
+  keiner CI und keinem Hook verdrahtet. Seit RULE-23 Phase 2 (2026-08-19) tatsächlich
+  integriert: (a) blockierender Step im CI-`architecture`-Job
+  (`uv run --no-sync python -m scripts.check_type_ignores` — Vollscan gegen die
+  JSON-Baseline; Production-Verstöße Exit 2, Budget-Wachstum Exit 1, beides schlägt
+  fehl), (b) Pre-commit-Hook `type-ignore-discipline` (`--staged` — schnelle
+  Per-Datei-Prüfung der gestageten Dateien). Baseline-Stand seit Phase 2: 1036
+  Total (13 Production / 1010 Tests), Re-Baseline nur noch via `--update-baseline`
+  mit `--allow-removed` für verschwindende Datei-Keys.
 - [x] **P5-C:** RULE-23 verlangt Reason-Kommentar-Pflicht; Budget 0 für neue Module
 
 ---
@@ -260,7 +271,11 @@ Vor dem Setzen einer Suppression MÜSSEN mindestens 2 dieser Alternativen versuc
 - Error: Anstieg über Baseline (ratchet — nur Reduktion erlaubt)
 - Error: Neues `# type: ignore` in production code ohne Reason-Kommentar
 - Fail: `# type: ignore` ohne Error-Code (naked ignore)
-- Baseline aktualisieren: `uv run python -m scripts.check_type_ignores --update`
+- Gate-Verdrahtung (seit 2026-08-19): Pre-commit-Hook `type-ignore-discipline`
+  (`--staged`, Per-Datei-Ratchet) + blockierender Step im CI-`architecture`-Job
+  (Vollscan gegen die Baseline; jeder Exit ≠ 0 schlägt fehl)
+- Baseline aktualisieren: `uv run python -m scripts.check_type_ignores --update-baseline`
+  (verschwindende Datei-Keys müssen über `--allow-removed <file,...>` exakt benannt werden)
 ```
 
 ---
@@ -276,7 +291,7 @@ Vor dem Setzen einer Suppression MÜSSEN mindestens 2 dieser Alternativen versuc
 > 1 Eintrag, aber post-ADR-080 wegen pyright-TYPE_CHECKING-Narrowing
 > (`attr-defined`), **nicht** mehr wegen taskiq. Autoritativ für CI ist die
 > JSON-Baseline (`scripts/architecture/type-ignore-baseline.json`,
-> regenerierbar via `uv run python -m scripts.check_type_ignores --update`),
+> regenerierbar via `uv run python -m scripts.check_type_ignores --update-baseline`),
 > nicht diese manuelle Markdown-Snapshot-Tabelle.
 
 | Datei | Ignore Count | Dependency |

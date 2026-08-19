@@ -69,6 +69,21 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Type-Ignore Discipline — RULE-23 staged-files ratchet. Fast scope:
+      # scans only staged .py files against the per-file baseline counts
+      # (git-index content, via --staged). The full-scan baseline compare
+      # is the CI architecture job's step; both fail on any growth
+      # (production violations exit 2, budget growth exit 1). Baseline
+      # updates are deliberate: --update-baseline (disappearing keys must
+      # be named via --allow-removed).
+      - id: type-ignore-discipline
+        name: Type-Ignore Discipline (RULE-23, staged)
+        entry: uv run --no-sync python -m scripts.check_type_ignores --staged
+        language: system
+        pass_filenames: false
+        types: [python]
+        stages: [pre-commit]
+
       # Python File Size — RULE-04 enforcement
       - id: python-file-size
         name: Python File Size (RULE-04)

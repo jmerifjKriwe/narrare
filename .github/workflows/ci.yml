@@ -10,6 +10,7 @@ name: CI
 # | G1   | pytest unit + integration + e2e        | ✅ Blocking  | Unit/Integration in separaten Jobs |
 # | G2   | --cov-fail-under (Coverage)            | ✅ Blocking (≥80%) | Target 80% erreicht (global 82.51%) |
 # | G3   | check_architecture.py                  | ✅ Blocking  | architecture Job                   |
+# | G3e  | check_type_ignores (RULE-23)           | ✅ Blocking  | architecture Job (ratchet — additions fail) |
 # | G3b  | check_exception_baseline.py            | ✅ Blocking  | architecture Job                   |
 # | G3d  | check_prompt_surface_contract.py       | ✅ Blocking  | architecture Job (ADR-037 + ADR-049 Phase D) |
 # | G3c  | export_openapi.py --check              | ✅ Blocking  | architecture Job                   |
@@ -168,6 +169,16 @@ jobs:
       # ─────────────────────────────────────────────────────────────────
       - name: Check architecture constraints
         run: uv run --no-sync python scripts/check_architecture.py
+
+      # RULE-23 type-ignore discipline — blocking ratchet (wired 2026-08-19,
+      # RULE-23 Phase 2). Full scan against the JSON baseline: production
+      # violations (naked / uncommented / production growth) exit 2, any
+      # suppression-budget growth (test/other/total over the frozen
+      # baseline) exits 1 — both fail this step. Baseline updates are
+      # deliberate, guarded commits (--update-baseline; disappearing keys
+      # must be named via --allow-removed).
+      - name: Check type-ignore discipline (RULE-23 ratchet)
+        run: uv run --no-sync python -m scripts.check_type_ignores
 
       - name: Check prompt surface contract (ADR-037 + ADR-049 Phase D)
         run: uv run --no-sync python scripts/check_prompt_surface_contract.py

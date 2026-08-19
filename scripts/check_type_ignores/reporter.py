@@ -77,6 +77,11 @@ def print_report(result: ScanResult, comparison: ComparisonResult | None) -> Non
             f"(baseline: {baseline_production(comparison, result)}, "
             f"delta: {comparison.production_delta:+d})"
         )
+        print(
+            f"    Test:            {result.test_total:5d}  "
+            f"(baseline: {baseline_test(comparison, result)}, "
+            f"delta: {comparison.test_delta:+d})"
+        )
         print(f"    Naked ignores:   {comparison.naked_count:5d}")
         print(f"    Uncommented:     {comparison.uncommented_count:5d}")
         if comparison.new_files:
@@ -102,6 +107,11 @@ def baseline_total(comparison: ComparisonResult, result: ScanResult) -> int:
 def baseline_production(comparison: ComparisonResult, result: ScanResult) -> int:
     """Derive the baseline production count."""
     return result.production_total - comparison.production_delta
+
+
+def baseline_test(comparison: ComparisonResult, result: ScanResult) -> int:
+    """Derive the baseline test count."""
+    return result.test_total - comparison.test_delta
 
 
 def build_json_output(result: ScanResult, comparison: ComparisonResult | None) -> dict[str, Any]:

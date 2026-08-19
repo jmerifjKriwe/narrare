@@ -8,6 +8,7 @@ must be ignored.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -159,6 +160,13 @@ class TestScanCodebaseInvariants:
         assert result.uncommented_ignores == []
 
     def test_repo_scan_production_within_baseline(self) -> None:
-        # Baseline production count is 16 (baseline JSON).
+        # The live baseline JSON is authoritative — read it instead of
+        # hardcoding a number that rots on every guarded baseline update.
+        baseline = json.loads(
+            (_ROOT / "scripts" / "architecture" / "type-ignore-baseline.json").read_text(
+                encoding="utf-8"
+            )
+        )
         result = scan_codebase()
-        assert result.production_total <= 16
+        assert result.production_total <= baseline["production_total"]
+        assert result.test_total <= baseline["test_total"]
