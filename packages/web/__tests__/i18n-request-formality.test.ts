@@ -7,7 +7,9 @@
  *   - `i18n-namespace-registry.test.ts` — overlay governance (orphan/parity/no-en)
  *   - `formality-switcher.test.tsx`     — the UI control (cookie write + refresh)
  * This file pins the LOADER: NEXT_FORMALITY cookie → conditional deep-merge →
- * the message object next-intl receives.
+ * the message object next-intl receives. A second describe block pins the
+ * locale-resolution fallback chain (requestLocale → default) that engages
+ * whenever the NEXT_LOCALE cookie is absent or invalid.
  *
  * Test mechanics (empirically probed 2026-08-18): `next/headers` is mocked
  * with an in-memory cookie store; `next-intl/server`'s `getRequestConfig` is
@@ -114,5 +116,55 @@ describe("request.ts formality overlay seam (I-Copy-001)", () => {
     // overlay's values are byte-equal to the base (forward-correct for a
     // future tutoiement base). The merge must be a clean no-op, never a crash.
     expect(ns(messages, "auth").displayNamePlaceholder).toBe("Comment devons-nous vous appeler ?");
+  });
+});
+
+describe("request.ts locale resolution fallback (requestLocale path)", () => {
+  // These tests never set NEXT_LOCALE, so the loader's step 2 (requestLocale
+  // from URL routing / middleware) and step 3 (default locale) actually run —
+  // the first describe block always short-circuits via the cookie.
+  beforeEach(() => {
+    cookieStore.clear();
+  });
+
+  it("no cookie + valid requestLocale=de resolves de and serves the de base", async () => {
+    const { locale, messages } = await loadMessages("de");
+    expect(locale).toBe("de");
+    expect(ns(messages, "auth").displayNamePlaceholder).toBe("Wie sollen wir dich nennen?");
+  });
+
+  it("no cookie + valid requestLocale=de + formal still applies the overlay", async () => {
+    cookieStore.set("NEXT_FORMALITY", "formal");
+    const { locale, messages } = await loadMessages("de");
+    expect(locale).toBe("de");
+    expect(ns(messages, "auth").displayNamePlaceholder).toBe("Wie sollen wir Sie nennen?");
+  });
+
+  it("no cookie + invalid requestLocale falls back to the default locale (en)", async () => {
+    const { locale, messages } = await loadMessages("xx"); // not in routing.locales
+    expect(locale).toBe("en");
+    expect(ns(messages, "common").save).toBe("Save");
+    expect(ns(messages, "auth").displayNamePlaceholder).toBe("How should we call you?");
+  });
+
+  it("no cookie + empty requestLocale falls back to the default locale (en)", async () => {
+    const { locale, messages } = await loadMessages("");
+    expect(locale).toBe("en");
+    expect(ns(messages, "common").save).toBe("Save");
+  });
+
+  it("default-locale fallback (en) + formal never applies an overlay", async () => {
+    cookieStore.set("NEXT_FORMALITY", "formal");
+    const { locale, messages } = await loadMessages("xx");
+    expect(locale).toBe("en");
+    const baseAuth = (await import("../../i18n/messages/en/auth.json")).default;
+    expect(messages.auth).toEqual(baseAuth);
+  });
+
+  it("an invalid NEXT_LOCALE cookie value falls through to requestLocale", async () => {
+    cookieStore.set("NEXT_LOCALE", "es"); // not in routing.locales → ignored
+    const { locale, messages } = await loadMessages("de");
+    expect(locale).toBe("de");
+    expect(ns(messages, "auth").displayNamePlaceholder).toBe("Wie sollen wir dich nennen?");
   });
 });

@@ -137,6 +137,10 @@ describe("i18n namespace registry completeness", () => {
 //      overrides — e.g. a typo, or a key removed from the base).
 //   3. The de and fr override key-path sets match (parity — the same strings
 //      need a formal variant in both languages).
+//   4. Every FR overlay value byte-equals its base value: the FR overlay is a
+//      documented no-op pin (the base already uses vouvoiement). This makes
+//      the pin self-maintaining — a base edit that diverges from a stale pin
+//      would otherwise be silently shadowed by the overlay at merge time.
 
 /** Parse a JSON file as a generic message object. */
 function readJson(filePath: string): Record<string, unknown> {
@@ -164,19 +168,24 @@ function collectLeafPaths(obj: unknown, prefix = ""): string[] {
   return paths;
 }
 
-/** Walk `obj` along `segments`; return true iff the full path exists. */
-function pathExists(obj: unknown, segments: string[]): boolean {
+/** Walk `obj` along `segments`; return the value, or undefined when missing. */
+function getPath(obj: unknown, segments: string[]): unknown {
   let current: unknown = obj;
   for (const segment of segments) {
     if (current === null || typeof current !== "object" || Array.isArray(current)) {
-      return false;
+      return undefined;
     }
     current = (current as Record<string, unknown>)[segment];
     if (current === undefined) {
-      return false;
+      return undefined;
     }
   }
-  return true;
+  return current;
+}
+
+/** Walk `obj` along `segments`; return true iff the full path exists. */
+function pathExists(obj: unknown, segments: string[]): boolean {
+  return getPath(obj, segments) !== undefined;
 }
 
 /**
@@ -232,5 +241,37 @@ describe("formality overlay governance", () => {
           .filter((p) => !frPaths.includes(p))
           .join(", ")}. Only in fr: ${frPaths.filter((p) => !dePaths.includes(p)).join(", ")}.`,
     ).toEqual(dePaths);
+  });
+
+  it("every fr overlay value byte-equals its base value (self-maintaining no-op pin)", () => {
+    const overlay = readJson(join(FORMALITY_DIR, "fr.json"));
+    const overlayPaths = collectLeafPaths(overlay);
+    // Sanity guard: an emptied overlay would make this test vacuously green.
+    expect(overlayPaths.length).toBeGreaterThan(0);
+
+    const diverged: string[] = [];
+    for (const dotted of overlayPaths) {
+      const [namespace, ...rest] = dotted.split(".");
+      const baseFile = join(I18N_MESSAGES, "fr", `${namespace}.json`);
+      // Orphaned paths (missing base file/key) are reported by the orphan
+      // tests above; here a missing base counts as divergence, not a crash.
+      const baseValue = existsSync(baseFile) ? getPath(readJson(baseFile), rest) : undefined;
+      const overlayValue = getPath(overlay, dotted.split("."));
+      if (overlayValue !== baseValue) {
+        diverged.push(
+          `${dotted} (overlay=${JSON.stringify(overlayValue)}, base=${JSON.stringify(baseValue)})`,
+        );
+      }
+    }
+
+    expect(
+      diverged,
+      "fr formality overlay is a documented no-op: the fr base catalog already " +
+        "uses vouvoiement, so every overlay pin MUST byte-equal its base value. " +
+        "A diverged pin silently shadows the edited base value at merge time — " +
+        "update the overlay pin to match the new base value (or deliberately " +
+        "diverge only if the FR overlay stops being a no-op, and update this " +
+        `test's rationale). Diverged pins: ${diverged.join(" | ")}.`,
+    ).toEqual([]);
   });
 });
