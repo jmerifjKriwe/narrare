@@ -9,6 +9,7 @@ non-blocking regression warning. See docs/_shared/CONSTRAINTS.md (RULE-10).
 from __future__ import annotations
 
 import sys
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -122,7 +123,7 @@ class TestSaveBaselinesSubsetGuard:
         # A reduced-scope run that only sees one of the three must be rejected.
         with pytest.raises(BaselineShrinkError) as exc:
             save_baselines({"a": 92.0})
-        assert "strict subset" in str(exc.value)
+        assert "Refusing to shrink" in str(exc.value)
         # Original baselines must remain untouched on disk.
         assert _coverage_model.load_baselines() == {"a": 90.0, "b": 80.0, "c": 70.0}
 
@@ -158,3 +159,144 @@ class TestSaveBaselinesSubsetGuard:
         # No prior baseline file → any package set is acceptable.
         save_baselines({"only": 50.0})
         assert _coverage_model.load_baselines() == {"only": 50.0}
+
+
+class _FrozenDate(date):
+    """``date`` subclass pinning ``today()`` — proves no-op saves never redate."""
+
+    @classmethod
+    def today(cls) -> date:
+        return date(2020, 1, 1)
+
+
+class TestSaveBaselinesStrictRemovalGuard:
+    """Any key removal — not just net shrinkage — must be explicitly named.
+
+    The original guard compared ``new_keys < existing_keys`` (strict
+    subset), so dropping one key while adding another (package rename, or
+    dead-key cleanup alongside a new capture) passed silently and shed the
+    ratchet protection for the dropped key. C4 batch-E finding.
+
+    The escape hatch: removals are only permitted when they match the
+    ``allow_removed`` argument exactly (named one-for-one on the command
+    line via ``--allow-removed``), keeping every removal deliberate and
+    auditable.
+    """
+
+    def _patch_baseline_file(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+        baseline_file = tmp_path / "coverage_baselines.json"
+        monkeypatch.setattr(_coverage_model, "BASELINES_FILE", baseline_file)
+        return baseline_file
+
+    def test_save_with_dropped_key_plus_new_key_raises_shrink_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The exact blind spot: drop ``c`` + add ``new`` is NOT a subset.
+
+        Old guard: ``{a, b, new} < {a, b, c}`` is False → silent pass.
+        Strict guard: one key disappeared → refuse.
+        """
+        self._patch_baseline_file(tmp_path, monkeypatch)
+
+        save_baselines({"a": 90.0, "b": 80.0, "c": 70.0})
+
+        with pytest.raises(BaselineShrinkError) as exc:
+            save_baselines({"a": 91.0, "b": 81.0, "new": 60.0})
+        assert "Refusing to shrink" in str(exc.value)
+        # Refused write must leave the persisted baselines untouched —
+        # in particular ``c`` keeps its ratchet.
+        assert _coverage_model.load_baselines() == {
+            "a": 90.0,
+            "b": 80.0,
+            "c": 70.0,
+        }
+
+    def test_save_with_exact_allow_removed_permits_removal(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Documented removal (C4-E dead ``tasks`` key) stays expressible."""
+        self._patch_baseline_file(tmp_path, monkeypatch)
+
+        save_baselines({"a": 90.0, "b": 80.0, "tasks": 50.0})
+
+        save_baselines({"a": 91.0, "b": 81.0}, allow_removed={"tasks"})
+
+        assert _coverage_model.load_baselines() == {"a": 91.0, "b": 81.0}
+
+    def test_save_with_partial_allowance_raises_shrink_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Allowing one of two removed keys still refuses the other."""
+        self._patch_baseline_file(tmp_path, monkeypatch)
+
+        save_baselines({"a": 90.0, "b": 80.0, "c": 70.0})
+
+        with pytest.raises(BaselineShrinkError):
+            save_baselines({"a": 91.0}, allow_removed={"b"})
+        assert _coverage_model.load_baselines() == {
+            "a": 90.0,
+            "b": 80.0,
+            "c": 70.0,
+        }
+
+    def test_save_with_allowance_for_wrong_key_raises_shrink_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Naming a key that is not the one removed must not unlock the save."""
+        self._patch_baseline_file(tmp_path, monkeypatch)
+
+        save_baselines({"a": 90.0, "b": 80.0, "c": 70.0})
+
+        with pytest.raises(BaselineShrinkError):
+            save_baselines({"a": 91.0}, allow_removed={"wrong"})
+        assert _coverage_model.load_baselines() == {
+            "a": 90.0,
+            "b": 80.0,
+            "c": 70.0,
+        }
+
+    def test_save_with_stale_allowance_and_pure_addition_raises_shrink_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Pure addition stays allowed — but a stale allowance flag must fail.
+
+        The allowance is an assertion about reality ("these keys are being
+        removed"); naming keys that are not removed must abort, otherwise
+        copy-pasted flags decay into permanent noise.
+        """
+        self._patch_baseline_file(tmp_path, monkeypatch)
+
+        save_baselines({"a": 90.0, "b": 80.0})
+
+        with pytest.raises(BaselineShrinkError):
+            save_baselines({"a": 90.0, "b": 80.0, "new": 60.0}, allow_removed={"tasks"})
+        assert _coverage_model.load_baselines() == {"a": 90.0, "b": 80.0}
+
+    def test_save_on_first_run_with_allowance_raises_shrink_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No prior baselines → any set is fine, but an allowance is still a
+        false claim (nothing can be removed from an empty baseline)."""
+        self._patch_baseline_file(tmp_path, monkeypatch)
+
+        with pytest.raises(BaselineShrinkError):
+            save_baselines({"only": 50.0}, allow_removed={"ghost"})
+
+    def test_save_with_identical_values_is_byte_level_noop(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Re-saving the same values must not rewrite the file.
+
+        A blind rewrite would flip the ``updated`` date and create commit
+        noise (drift) for a semantically unchanged baseline. The frozen
+        date proves the no-op: any write would redate the file to 2020-01-01.
+        """
+        baseline_file = self._patch_baseline_file(tmp_path, monkeypatch)
+
+        save_baselines({"a": 90.0, "b": 80.0})
+        before = baseline_file.read_bytes()
+
+        monkeypatch.setattr(_coverage_model, "date", _FrozenDate)
+        save_baselines({"a": 90.0, "b": 80.0})
+
+        assert baseline_file.read_bytes() == before

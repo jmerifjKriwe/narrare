@@ -10,6 +10,10 @@ import xml.etree.ElementTree as ET  # nosec B405  # CI-generated coverage XML is
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Collection
 
 # ── Constants ──────────────────────────────────────────────────
 
@@ -117,36 +121,71 @@ def load_baselines() -> dict[str, float]:
 
 
 class BaselineShrinkError(RuntimeError):
-    """Raised when updating baselines would shrink the tracked package set.
+    """Raised when updating baselines would remove tracked package keys.
 
-    Triggered when the new package keys form a strict subset of the previously
-    persisted ones — almost always a sign that ``--update-baselines`` was run
-    against a reduced-scope coverage.xml (e.g. only one test directory) and
-    would silently drop the ratchet protection for the omitted modules.
+    Triggered when any previously persisted key disappears from the new
+    package set — whether by net shrinkage (reduced-scope coverage.xml,
+    e.g. only one test directory) or by a drop-plus-addition mix (package
+    rename, dead-key cleanup alongside a new capture) that older
+    subset-only guards missed. Also raised when ``allow_removed`` names
+    keys that are not actually being removed: the allowance is an
+    assertion about reality and must match it exactly.
+
+    Deliberate, documented removals opt in via ``allow_removed`` /
+    ``--allow-removed <key,...>`` so every ratchet drop is named on the
+    command line and auditable.
     """
 
 
-def save_baselines(packages: dict[str, float]) -> None:
+def save_baselines(
+    packages: dict[str, float],
+    *,
+    allow_removed: Collection[str] = (),
+) -> None:
     """Save per-package coverage baselines to JSON file.
 
-    Aborts with :class:`BaselineShrinkError` if *packages* is a strict subset
-    of the currently persisted package set — see the class docstring for why.
+    Refuses any key removal unless the removed key set matches
+    ``allow_removed`` exactly — see :class:`BaselineShrinkError` for why.
+    A value-identical update is a byte-level no-op (the file, including
+    its ``updated`` date, is left untouched) so re-running
+    ``--update-baselines`` against unchanged coverage cannot drift.
     """
     existing = load_baselines()
     new_keys = set(packages)
     existing_keys = set(existing)
-    if existing_keys and new_keys < existing_keys:
-        missing = sorted(existing_keys - new_keys)
+    removed = existing_keys - new_keys
+    allowed = set(allow_removed)
+
+    if removed != allowed:
+        details: list[str] = []
+        unapproved = sorted(removed - allowed)
+        overstated = sorted(allowed - removed)
+        if unapproved:
+            details.append(
+                "removed without approval: "
+                + ", ".join(unapproved[:10])
+                + (f" (+{len(unapproved) - 10} more)" if len(unapproved) > 10 else "")
+            )
+        if overstated:
+            details.append(
+                "named in allow_removed but not actually removed: "
+                + ", ".join(overstated[:10])
+                + (f" (+{len(overstated) - 10} more)" if len(overstated) > 10 else "")
+            )
         raise BaselineShrinkError(
-            "Refusing to shrink coverage baselines: the new package set "
-            f"({len(new_keys)} packages) is a strict subset of the existing "
-            f"{len(existing_keys)} packages. This usually means "
-            "--update-baselines was run against a reduced-scope coverage.xml "
-            "(e.g. only one test directory). Omitted packages: "
-            + ", ".join(missing[:10])
-            + (f" (+{len(missing) - 10} more)" if len(missing) > 10 else "")
-            + ". Run pytest over the full tests/unit/ tree before updating."
+            "Refusing to shrink coverage baselines ("
+            + "; ".join(details)
+            + "). A disappearing key usually means --update-baselines was "
+            "run against a reduced-scope coverage.xml (e.g. only one test "
+            "directory); run pytest over the full tests/unit/ tree before "
+            "updating. If the removal is deliberate (dead or renamed "
+            "package), name the keys exactly via --allow-removed <key,...>."
         )
+
+    if packages == existing:
+        # Nothing changed — do not rewrite (keeps `updated` date stable
+        # and avoids commit noise for a semantically unchanged baseline).
+        return
 
     data = {
         "_comment": (

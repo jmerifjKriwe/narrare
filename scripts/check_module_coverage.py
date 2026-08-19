@@ -11,6 +11,7 @@ Usage:
     python scripts/check_module_coverage.py --fail         (strict: below target = exit 1)
     python scripts/check_module_coverage.py --warning-only (all warnings, never fails)
     python scripts/check_module_coverage.py --update-baselines
+    python scripts/check_module_coverage.py --update-baselines --allow-removed dead_pkg
     python scripts/check_module_coverage.py --json         (machine-readable)
 
 Exit codes:
@@ -121,6 +122,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "  apps/api/*                   80%\n"
             "\n"
             "Use --update-baselines after intentionally raising coverage.\n"
+            "Baseline keys only ever disappear when named via\n"
+            "  --allow-removed key1,key2  (deliberate, auditable removals).\n"
         ),
     )
     parser.add_argument(
@@ -143,6 +146,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--update-baselines",
         action="store_true",
         help="Capture current coverage as new baselines and exit",
+    )
+    parser.add_argument(
+        "--allow-removed",
+        dest="allow_removed",
+        default="",
+        metavar="KEYS",
+        help=(
+            "With --update-baselines: comma-separated baseline keys that are "
+            "deliberately removed in this run (e.g. a deleted dead package). "
+            "Must name the disappearing keys exactly, one-for-one — a "
+            "mismatch (missing or overstated) aborts the update."
+        ),
     )
     parser.add_argument(
         "--json",
@@ -182,11 +197,18 @@ def main(argv: list[str] | None = None) -> int:
     # ── Update baselines mode ──────────────────────────────
     if args.update_baselines:
         packages = {m.package: m.coverage_pct for m in raw_report.modules}
+        allow_removed = {key.strip() for key in args.allow_removed.split(",") if key.strip()}
         try:
-            save_baselines(packages)
+            save_baselines(packages, allow_removed=allow_removed)
         except BaselineShrinkError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 1
+        if allow_removed:
+            # After a successful save, allow_removed is guaranteed (by the
+            # guard) to equal the actually-removed keys — the audit line.
+            print(
+                f"Removed {len(allow_removed)} baseline key(s): " + ", ".join(sorted(allow_removed))
+            )
         print(f"Updated {len(packages)} package baselines in {BASELINES_FILE}")
         return 0
 
