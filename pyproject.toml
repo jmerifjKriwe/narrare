@@ -312,6 +312,10 @@ forbidden_llm_urls = [
 ]
 
 [tool.narrare.architecture.file_size_limits]
+# Classification priority: test files first (test_*.py), then the
+# per-suffix categories below — must stay in sync with
+# scripts/check_python_file_size.py::_limit_for.
+test = 400
 router = 150
 service = 300
 repository = 250

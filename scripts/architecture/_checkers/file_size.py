@@ -12,12 +12,21 @@ def check_file_size(
     source_lines: list[str],
     limits: dict[str, int],
 ) -> list[Violation]:
-    """Hard file size limits by file type."""
+    """Hard file size limits by file type.
+
+    Classification order matches ``scripts/check_python_file_size.py``
+    (``_limit_for``): the test-file rule (``test_*.py``) is evaluated FIRST,
+    so ``test_*_service.py`` files hit the test limit instead of the tighter
+    service limit — both RULE-04 gates must agree on classification.
+    Non-test files fall through to the per-suffix classification below.
+    """
     line_count = len(source_lines)
     file_name = Path(rel_path).name
 
     limit = limits.get("default", 400)
-    if file_name.startswith("router"):
+    if file_name.startswith("test_") and file_name.endswith(".py"):
+        limit = limits.get("test", 400)
+    elif file_name.startswith("router"):
         limit = limits.get("router", 150)
     elif file_name.endswith("_service.py") or file_name == "service.py":
         limit = limits.get("service", 300)
