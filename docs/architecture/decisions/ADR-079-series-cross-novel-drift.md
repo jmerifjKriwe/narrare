@@ -377,7 +377,7 @@ bypass the SSOT.
 
 ### 3. Breaking-change assessment
 
-- **No schema change in v1** (stateless — no persistence). → fully backward compatible.
+- **No schema change in v1** (stateless — no persistence) (superseded by the 2026-08-16 Slice 6 Amendment — migration 0040). → fully backward compatible.
 - **Both new endpoints are additive** (`POST /series/{id}/consistency/check` +
   `POST /series/{id}/voice-drift/check`). → no existing endpoint changes.
 - **Standalone novels see no change.** The canon check is series-scoped (skips for

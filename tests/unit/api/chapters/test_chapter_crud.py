@@ -153,8 +153,6 @@ class TestChapterServiceEventPublishing:
     def _service_with_publisher(
         fake_repo: FakeChapterRepository, fake_novel_service: FakeNovelService
     ) -> tuple[ChapterService, list[object]]:
-        from narrare.events.publisher import EventPublisher
-
         publisher = EventPublisher()
         received: list[object] = []
 
