@@ -2105,7 +2105,8 @@
       "contextWindow": {
         "label": "Combien de tomes précédents inclure ?",
         "description": "Contrôle le nombre de tomes précédents qui contribuent leur résumé complet au contexte d'historique de la série lors de la génération d'un nouveau roman.",
-        "help": "Seuls les tomes les plus récents dans cette fenêtre obtiennent leur résumé complet ; les tomes plus anciens ne contribuent qu'une phrase. Des valeurs plus basses économisent des tokens ; des valeurs plus élevées donnent à l'IA plus de mémoire de la série."
+        "help": "Seuls les tomes les plus récents dans cette fenêtre obtiennent leur résumé complet ; les tomes plus anciens ne contribuent qu'une phrase. Des valeurs plus basses économisent des tokens ; des valeurs plus élevées donnent à l'IA plus de mémoire de la série.",
+        "saveError": "Échec de l'enregistrement du paramètre. Veuillez réessayer."
       },
       "contextPreview": {
         "bandsLine": "{full, plural, =0 {Aucun tome complet} one {# tome complet} other {# tomes complets}} · {short, plural, =0 {aucun résumé court} one {# résumé court} other {# résumés courts}}",

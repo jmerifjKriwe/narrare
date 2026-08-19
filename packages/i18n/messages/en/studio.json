@@ -2105,7 +2105,8 @@
       "contextWindow": {
         "label": "How many previous bands to include?",
         "description": "Controls how many prior bands contribute their full summary to the series-history context when generating a new novel.",
-        "help": "Only the most recent bands within this window get their full summary; older bands contribute only a one-sentence summary. Lower values save tokens; higher values give the AI more series memory."
+        "help": "Only the most recent bands within this window get their full summary; older bands contribute only a one-sentence summary. Lower values save tokens; higher values give the AI more series memory.",
+        "saveError": "Failed to save the setting. Please try again."
       },
       "contextPreview": {
         "bandsLine": "{full, plural, =0 {No bands in full} one {# band in full} other {# bands in full}} · {short, plural, =0 {no short summaries} one {# short summary} other {# short summaries}}",

@@ -8,14 +8,19 @@
  * verbatim, so assertions check for keys; hooks mocked per-file.
  *
  * Beyond the brief's 10 behaviour tests, this file carries forward the two
- * Task 7a review findings (binding):
- *  - ICU arg-name contract: the savedOutOfRange key is rendered through REAL
- *    next-intl (vi.importActual + createTranslator) with the component's
- *    exact call shape — the key-mock cannot detect arg drift (a missing or
- *    renamed arg makes next-intl emit FORMATTING_ERROR and fall back to the
- *    bare key, which contains no formatted numbers).
+ * Task 7a review findings (binding) and the C1 hardening extension:
+ *  - ICU arg-name contract: every arg-bearing key rendered by the composite
+ *    field (window field + preview) — savedOutOfRange, bandsLine, tokenLine,
+ *    budgetLine — is formatted through REAL next-intl
+ *    (vi.importActual + createTranslator) with the components' exact call
+ *    shapes — the key-mock cannot detect arg drift (a missing or renamed
+ *    arg makes next-intl emit FORMATTING_ERROR and fall back to the bare
+ *    key, which contains no formatted numbers).
  *  - axe pass on the composite component (runAxe from @/lib/test/axe; the
  *    toHaveNoViolations matcher is registered globally in setupTests).
+ *  - C1 hardening: a PATCH failure must surface a save-error line (with the
+ *    Save button still enabled for retry) — previously update.isError was
+ *    silently ignored.
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -208,6 +213,29 @@ describe("SeriesContextWindowField", () => {
     );
   });
 
+  it("surfaces a save error when the PATCH fails (Save stays enabled for retry)", async () => {
+    mock.updateError = true;
+    const user = userEvent.setup();
+    render(<SeriesContextWindowField seriesId="series-1" />);
+
+    fireEvent.change(screen.getByTestId("series-context-window-slider"), {
+      target: { value: "7" },
+    });
+    await user.click(screen.getByTestId("series-context-window-save"));
+
+    expect(mock.update).toHaveBeenCalledWith({ context_window_size: 7 });
+    // Key-mock convention: the centralized i18n mock returns keys verbatim,
+    // so the rendered text IS the key under test.
+    expect(screen.getByTestId("series-context-window-save-error").textContent).toBe(
+      "series.settings.contextWindow.saveError",
+    );
+    // The failure must not lock the retry path: dirty is retained, the
+    // button stays clickable.
+    expect((screen.getByTestId("series-context-window-save") as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+
   it("renders the help text describing what the window controls", () => {
     render(<SeriesContextWindowField seriesId="series-1" />);
     expect(screen.getByText("series.settings.contextWindow.help")).toBeDefined();
@@ -268,35 +296,82 @@ describe("SeriesContextWindowField — axe (carry-forward from Task 7a review)",
     expect(screen.getByTestId("series-context-window-out-of-range")).toBeDefined();
     expect(await runAxe(container)).toHaveNoViolations();
   });
+
+  it("has no axe violations with the save error rendered (C1 hardening)", async () => {
+    mock.updateError = true;
+    const { container } = render(<SeriesContextWindowField seriesId="series-1" />);
+
+    fireEvent.change(screen.getByTestId("series-context-window-slider"), {
+      target: { value: "7" },
+    });
+
+    expect(screen.getByTestId("series-context-window-save-error")).toBeDefined();
+    expect(await runAxe(container)).toHaveNoViolations();
+  });
 });
 
-describe("savedOutOfRange — ICU arg-name contract via real next-intl (carry-forward)", () => {
+describe("ICU arg-name contracts via real next-intl (carry-forward)", () => {
   // The centralized setupTests mock returns the KEY verbatim, so it cannot
-  // detect arg drift between the component's t() call and the catalogs.
-  // Here the component's EXACT call shape ({ value, max } on
-  // series.settings.contextPreview.savedOutOfRange, namespace "studio") runs
-  // through REAL next-intl (vi.importActual bypasses the global mock):
-  //  - a catalog using a different arg name, or the component drifting,
+  // detect arg drift between the components' t() calls and the catalogs.
+  // Here the EXACT call shapes of every arg-bearing key rendered by the
+  // composite field (SeriesContextWindowField for savedOutOfRange;
+  // SeriesContextPreview for bandsLine/tokenLine/budgetLine; namespace
+  // "studio") run through REAL next-intl (vi.importActual bypasses the
+  // global mock):
+  //  - a catalog using a different arg name, or a component drifting,
   //    produces FORMATTING_ERROR → next-intl returns the bare key, which
-  //    contains neither "12" nor "10" → the assertion fails;
+  //    contains none of the formatted numbers → the assertion fails;
   //  - a literal "{value, number}" leak or an unresolved number arg
   //    ("NaN") also fails the negative assertions.
+  // Arg values stay < 1000 so locale thousands-separators (en "1,600",
+  // de "1.600", fr narrow-NBSP "1 600") can't blur the substring match.
   it.each([
     ["en", enStudio],
     ["de", deStudio],
     ["fr", frStudio],
-  ])("%s catalog formats {value}/{max} with the component's exact args", async (locale, studio) => {
+  ])("%s catalog formats every arg-bearing key with the components' exact args", async (locale, studio) => {
     const { createTranslator } = await vi.importActual<typeof import("next-intl")>("next-intl");
     const t = createTranslator({ locale, messages: { studio }, namespace: "studio" });
 
-    // Exact call the component makes for saved=12, MAX_WINDOW=10 (see the
-    // out-of-range notice in SeriesContextWindowField).
-    const out = t("series.settings.contextPreview.savedOutOfRange", { value: 12, max: 10 });
+    const cases: ReadonlyArray<{ key: string; out: string; expects: readonly string[] }> = [
+      {
+        // Exact call the window field makes for saved=12, MAX_WINDOW=10
+        // (out-of-range notice).
+        key: "series.settings.contextPreview.savedOutOfRange",
+        out: t("series.settings.contextPreview.savedOutOfRange", { value: 12, max: 10 }),
+        expects: ["12", "10"],
+      },
+      {
+        // Exact call SeriesContextPreview makes for its classification line.
+        key: "series.settings.contextPreview.bandsLine",
+        out: t("series.settings.contextPreview.bandsLine", { full: 3, short: 2 }),
+        expects: ["3", "2"],
+      },
+      {
+        // Exact call SeriesContextPreview makes for its token estimate line.
+        key: "series.settings.contextPreview.tokenLine",
+        out: t("series.settings.contextPreview.tokenLine", { tokens: 300, budget: 700 }),
+        expects: ["300", "700"],
+      },
+      {
+        // Exact call SeriesContextPreview makes for its budget breakdown.
+        key: "series.settings.contextPreview.budgetLine",
+        out: t("series.settings.contextPreview.budgetLine", {
+          seriesBudget: 300,
+          totalBudget: 800,
+          tierBase: 500,
+        }),
+        expects: ["300", "800", "500"],
+      },
+    ];
 
-    expect(out).toContain("12");
-    expect(out).toContain("10");
-    expect(out).not.toContain("{"); // no literal "{value, number}" in the output
-    expect(out).not.toContain("NaN"); // no unresolved ICU number arg
-    expect(out).not.toBe("series.settings.contextPreview.savedOutOfRange"); // no FORMATTING_ERROR fallback
+    for (const { key, out, expects } of cases) {
+      for (const expected of expects) {
+        expect(out, `${locale}:${key} must contain "${expected}"`).toContain(expected);
+      }
+      expect(out, `${locale}:${key} leaked raw ICU syntax`).not.toContain("{");
+      expect(out, `${locale}:${key} unresolved number arg`).not.toContain("NaN");
+      expect(out, `${locale}:${key} FORMATTING_ERROR fallback`).not.toBe(key);
+    }
   });
 });

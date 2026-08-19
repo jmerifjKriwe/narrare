@@ -2105,7 +2105,8 @@
       "contextWindow": {
         "label": "Wie viele vorherige Bände einbeziehen?",
         "description": "Steuert, wie viele vorherige Bände ihre vollständige Zusammenfassung zum Reihen-Historien-Kontext beitragen, wenn ein neuer Roman generiert wird.",
-        "help": "Nur die jüngsten Bände in diesem Fenster erhalten ihre vollständige Zusammenfassung; ältere Bände tragen nur einen Satz bei. Niedrigere Werte sparen Tokens; höhere Werte geben der KI mehr Reihen-Gedächtnis."
+        "help": "Nur die jüngsten Bände in diesem Fenster erhalten ihre vollständige Zusammenfassung; ältere Bände tragen nur einen Satz bei. Niedrigere Werte sparen Tokens; höhere Werte geben der KI mehr Reihen-Gedächtnis.",
+        "saveError": "Fehler beim Speichern der Einstellung. Bitte erneut versuchen."
       },
       "contextPreview": {
         "bandsLine": "{full, plural, =0 {Keine Bände voll} one {# Band voll} other {# Bände voll}} · {short, plural, =0 {keine Kurzzusammenfassungen} one {# Kurzzusammenfassung} other {# Kurzzusammenfassungen}}",
@@ -2113,9 +2114,9 @@
         "truncatedNote": "{count, plural, one {# Band wird gekürzt} other {# Bänder werden gekürzt}}",
         "droppedNote": "{count, plural, one {# älteres Band fällt weg} other {# ältere Bände fallen weg}}",
         "missingNote": "{count, plural, one {# Band hat noch keine Zusammenfassung} other {# Bänder haben noch keine Zusammenfassung}}",
-        "clippedWarning": "Ein größeres Window wird vom Token-Budget gekürzt.",
+        "clippedWarning": "Ein größeres Fenster wird vom Token-Budget gekürzt.",
         "budgetLine": "Die Reihen-Historie darf bis zu {seriesBudget, number} von {totalBudget, number} Kontext-Tokens nutzen; die übrigen {tierBase, number} bleiben für den Kontext des aktuellen Bands reserviert.",
-        "windowUnknown": "Modell-Kontextfenster unbekannt — das Budget wird ungekappt angezeigt.",
+        "windowUnknown": "Modell-Kontextfenster unbekannt — das Budget wird ohne Obergrenze angezeigt.",
         "savedOutOfRange": "Gespeicherter Wert {value, number} liegt außerhalb des Slider-Bereichs (1–{max, number}). Das Bewegen des Sliders ersetzt ihn.",
         "loading": "Vorschau wird berechnet…",
         "error": "Vorschau nicht verfügbar."

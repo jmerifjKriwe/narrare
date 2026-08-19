@@ -17,6 +17,9 @@
  * Persists via PATCH /series/{id}/settings (existing endpoint, design
  * §4.1). Owns its local state, dirty-gated Save, and loading/error
  * states, mirroring the NovelDetailsTab / SeriesMetadataForm pattern.
+ * A failed PATCH surfaces a role="alert" error line next to the Save
+ * button (C1 hardening) — dirty is retained, so the retry stays enabled
+ * instead of failing silently.
  */
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -162,7 +165,16 @@ export function SeriesContextWindowField({ seriesId }: SeriesContextWindowFieldP
       </div>
 
       {dirty ? (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-3">
+          {update.isError ? (
+            <p
+              role="alert"
+              data-testid="series-context-window-save-error"
+              className="text-xs text-destructive"
+            >
+              {t("series.settings.contextWindow.saveError")}
+            </p>
+          ) : null}
           <button
             type="button"
             data-testid="series-context-window-save"
