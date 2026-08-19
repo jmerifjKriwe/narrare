@@ -161,6 +161,7 @@ class TestGetSeriesDriftSnapshot:
         response = await client.get(f"/api/v1/series/{uuid4()}/consistency/{uuid4()}")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json()["code"] == "FORBIDDEN"  # same body as the POST 403 sibling
 
     async def test_get_rejects_non_uuid_novel_id(self, app: FastAPI, client: AsyncClient) -> None:
         mock = AsyncMock()
@@ -169,4 +170,9 @@ class TestGetSeriesDriftSnapshot:
         response = await client.get(f"/api/v1/series/{uuid4()}/consistency/not-a-uuid")
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        mock.get_snapshot.assert_not_awaited()
+        # Route-ordering pin (router docstring): a GET on the literal
+        # POST-only ``check`` path matches {novel_id} with a non-UUID → 422.
+        literal = await client.get(f"/api/v1/series/{uuid4()}/consistency/check")
+        assert literal.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         mock.get_snapshot.assert_not_awaited()

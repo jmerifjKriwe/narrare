@@ -12,6 +12,7 @@ import uuid
 from unittest.mock import AsyncMock
 
 import pytest
+from structlog.testing import capture_logs
 
 from narrare.analysis.schemas_author_voice_drift import (
     AuthorVoiceDriftRequest,
@@ -117,7 +118,9 @@ class TestCheckAndStoreConsistency:
         self,
     ) -> None:
         """RULE-11 ruling: the LLM cost is paid; a store failure must not
-        destroy the check result — log + return."""
+        destroy the check result — log + return. The degradation must also
+        BE logged: exactly one ``series_drift_persist_failed`` warning with
+        the section context (not a silent swallow)."""
         owner = uuid.uuid4()
         series_repo, novel_repo, chapter_repo, drift_repo, series, novel = seeded_drift_fakes(owner)
         chapter_repo.seed(make_chapter(novel.id, "Prose one.", 1))
@@ -131,9 +134,15 @@ class TestCheckAndStoreConsistency:
             consistency_return=response,
         )
 
-        result = await service.check_and_store_consistency(series.id, novel.id, owner)
+        with capture_logs() as logs:
+            result = await service.check_and_store_consistency(series.id, novel.id, owner)
 
         assert result is response
+        warnings = [r for r in logs if r.get("event") == "series_drift_persist_failed"]
+        assert len(warnings) == 1, f"expected one series_drift_persist_failed warning, got {logs}"
+        assert warnings[0]["log_level"] == "warning"
+        assert warnings[0]["section"] == "consistency"
+        assert "db down" in warnings[0]["error"]
 
 
 class TestCheckAndStoreVoiceDrift:

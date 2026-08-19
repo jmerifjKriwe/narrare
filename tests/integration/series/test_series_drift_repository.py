@@ -39,7 +39,18 @@ async def _seed_user_and_novel(db_session: AsyncSession) -> Novel:
 
 
 async def _fetch_row(db_session: AsyncSession) -> SeriesDriftResult:
-    return (await db_session.execute(select(SeriesDriftResult))).scalar_one()
+    """Fetch the single drift row, bypassing the identity map.
+
+    ``populate_existing`` refreshes attributes of already-loaded instances:
+    without it, a strong reference to a previously fetched row could serve
+    stale attributes from the identity map and mask a store that didn't
+    actually write the latest values.
+    """
+    return (
+        await db_session.execute(
+            select(SeriesDriftResult).execution_options(populate_existing=True)
+        )
+    ).scalar_one()
 
 
 class TestStoreSection:
