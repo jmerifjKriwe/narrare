@@ -352,10 +352,13 @@ jobs:
       - name: Secret scanning (Gitleaks) — AUFG-05-09
         run: uv run python scripts/check_secrets.py
 
+      # Bandit — the -r target set MUST stay set-equal to the pre-push bandit
+      # hook and `just security` (production + scripts + evals); parity is
+      # machine-pinned by tests/unit/scripts/test_bandit_scope_parity.py.
       - name: Bandit
         run: |
           uv run bandit -c pyproject.toml \
-            -r apps/api/narrare packages/core/narrare_core
+            -r apps/api/narrare packages/core/narrare_core scripts evals
 
       - name: pip-audit
         # No vulnerability ignores are currently active (re-evaluated 2026-08).

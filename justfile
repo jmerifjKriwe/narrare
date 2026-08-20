@@ -504,7 +504,7 @@ check-secrets:
 
 # Run security checks
 security: check-secrets
-    uv run bandit -c pyproject.toml -r apps/api/narrare packages/core/narrare_core
+    uv run bandit -c pyproject.toml -r apps/api/narrare packages/core/narrare_core scripts evals
     uv run pip-audit
 
 # Run non-mutating frontend lint and format checks

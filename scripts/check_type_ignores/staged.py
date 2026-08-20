@@ -18,7 +18,9 @@ Baseline updates are separate, auditable commits.
 from __future__ import annotations
 
 import shutil
-import subprocess
+
+# Dev tooling whose purpose is shelling out to git — not production attack surface.
+import subprocess  # nosec B404
 import sys
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, cast

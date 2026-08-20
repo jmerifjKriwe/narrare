@@ -36,7 +36,9 @@ from __future__ import annotations
 import argparse
 import io
 import sys
-import xml.etree.ElementTree as ET
+
+# Parses the locally generated pandoc reference.docx — trusted input, not user-supplied XML.
+import xml.etree.ElementTree as ET  # nosec B405
 import zipfile
 from typing import TYPE_CHECKING
 

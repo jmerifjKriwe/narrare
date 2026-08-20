@@ -246,11 +246,16 @@ repos:
         files: ^tests/
         stages: [pre-push]
 
-      # Security
+      # Security — pass_filenames: false + a fixed -r target set makes the
+      # push gate scope-identical to `just security` and the CI security job
+      # by construction (production + scripts + evals; no history-dependent
+      # outgoing-range scan sets). Parity is machine-pinned by
+      # tests/unit/scripts/test_bandit_scope_parity.py.
       - id: bandit
         name: Security (Bandit)
-        entry: uv run bandit -c pyproject.toml
+        entry: uv run bandit -c pyproject.toml -r apps/api/narrare packages/core/narrare_core scripts evals
         language: system
+        pass_filenames: false
         types: [python]
         require_serial: false
         stages: [pre-push]
