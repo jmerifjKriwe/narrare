@@ -170,6 +170,6 @@ describe("streamVoiceDrift", () => {
 
     expect(onError).toHaveBeenCalledOnce();
     expect(onError.mock.calls[0]?.[0]).toBeInstanceOf(Error);
-    expect((onError.mock.calls[0]?.[0] as Error).message).toBe("Voice-drift analysis failed.");
+    expect((onError.mock.calls[0]?.[0] as Error)?.message).toBe("Voice-drift analysis failed.");
   });
 });

@@ -305,20 +305,23 @@ describe("series.drift.snapshot.restored — ICU arg contract via real next-intl
     ["en", enStudio],
     ["de", deStudio],
     ["fr", frStudio],
-  ])("%s catalog formats {generatedAt, date, medium} with the component's exact args", async (locale, studio) => {
-    const { createTranslator } = await vi.importActual<typeof import("next-intl")>("next-intl");
-    const t = createTranslator({ locale, messages: { studio }, namespace: "studio" });
+  ])(
+    "%s catalog formats {generatedAt, date, medium} with the component's exact args",
+    async (locale, studio) => {
+      const { createTranslator } = await vi.importActual<typeof import("next-intl")>("next-intl");
+      const t = createTranslator({ locale, messages: { studio }, namespace: "studio" });
 
-    // Exact call the panel makes for the snapshot hint (see
-    // SeriesDriftPanel's restored branch; the 12:00Z instant keeps the date
-    // year stable in any realistic test timezone).
-    const out = t("series.drift.snapshot.restored", {
-      generatedAt: new Date("2026-08-16T12:00:00.000Z"),
-    });
+      // Exact call the panel makes for the snapshot hint (see
+      // SeriesDriftPanel's restored branch; the 12:00Z instant keeps the date
+      // year stable in any realistic test timezone).
+      const out = t("series.drift.snapshot.restored", {
+        generatedAt: new Date("2026-08-16T12:00:00.000Z"),
+      });
 
-    expect(out).toContain("2026"); // the date was formatted, not dropped
-    expect(out).not.toContain("{"); // no literal "{generatedAt, date, medium}" in the output
-    expect(out).not.toContain("Invalid Date"); // no failed Date coercion
-    expect(out).not.toBe("series.drift.snapshot.restored"); // no FORMATTING_ERROR fallback
-  });
+      expect(out).toContain("2026"); // the date was formatted, not dropped
+      expect(out).not.toContain("{"); // no literal "{generatedAt, date, medium}" in the output
+      expect(out).not.toContain("Invalid Date"); // no failed Date coercion
+      expect(out).not.toBe("series.drift.snapshot.restored"); // no FORMATTING_ERROR fallback
+    },
+  );
 });

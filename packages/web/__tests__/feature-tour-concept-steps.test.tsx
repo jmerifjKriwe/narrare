@@ -39,17 +39,16 @@ it.each([
     index: 8,
     titleKey: "tour.step9.title",
   },
-] as const)("step at index $index uses centered tooltip and references $titleKey / $descriptionKey", ({
-  descriptionKey,
-  index,
-  titleKey,
-}) => {
-  const step = FEATURE_TOUR_STEPS[index];
+] as const)(
+  "step at index $index uses centered tooltip and references $titleKey / $descriptionKey",
+  ({ descriptionKey, index, titleKey }) => {
+    const step = FEATURE_TOUR_STEPS[index];
 
-  expect(step.target).toBeUndefined();
-  expect(step.titleKey).toBe(titleKey);
-  expect(step.descriptionKey).toBe(descriptionKey);
-});
+    expect(step.target).toBeUndefined();
+    expect(step.titleKey).toBe(titleKey);
+    expect(step.descriptionKey).toBe(descriptionKey);
+  },
+);
 
 it("FeatureTour renders nine step indicator dots", () => {
   render(<FeatureTour steps={FEATURE_TOUR_STEPS} />);

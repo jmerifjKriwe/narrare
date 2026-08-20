@@ -156,6 +156,6 @@ describe("streamAuthorVoice", () => {
 
     expect(onError).toHaveBeenCalledOnce();
     expect(onError.mock.calls[0]?.[0]).toBeInstanceOf(Error);
-    expect((onError.mock.calls[0]?.[0] as Error).message).toBe("Author-voice analysis failed.");
+    expect((onError.mock.calls[0]?.[0] as Error)?.message).toBe("Author-voice analysis failed.");
   });
 });

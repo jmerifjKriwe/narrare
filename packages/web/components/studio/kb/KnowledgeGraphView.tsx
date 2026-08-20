@@ -18,7 +18,6 @@
 "use client";
 
 import cytoscape from "cytoscape";
-// @ts-expect-error — cytoscape-dagre has no type declarations
 import dagre from "cytoscape-dagre";
 import { useTranslations } from "next-intl";
 import { useMemo, useRef } from "react";

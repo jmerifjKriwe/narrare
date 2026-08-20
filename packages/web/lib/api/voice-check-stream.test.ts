@@ -124,7 +124,7 @@ describe("streamVoiceCheck", () => {
 
     expect(onError).toHaveBeenCalledOnce();
     expect(onError.mock.calls[0]?.[0]).toBeInstanceOf(Error);
-    expect((onError.mock.calls[0]?.[0] as Error).message).toBe("Voice-check analysis failed.");
+    expect((onError.mock.calls[0]?.[0] as Error)?.message).toBe("Voice-check analysis failed.");
   });
 
   it("does not fire onComplete after an error event", async () => {
