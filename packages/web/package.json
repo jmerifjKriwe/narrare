@@ -46,6 +46,7 @@
     "@tiptap/pm": "^3.30.1",
     "@tiptap/react": "^3.30.1",
     "@tiptap/starter-kit": "^3.30.1",
+    "@tiptap/y-tiptap": "^3.0.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cytoscape": "^3.34.1",
