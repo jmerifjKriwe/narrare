@@ -15,6 +15,13 @@ updates:
       - "dependencies"
       - "python"
     groups:
+      # pydantic-evals pins pydantic-ai-slim to the exact same version —
+      # both must move in lockstep (see PR #176). Keep them out of the
+      # generic groups so they land in a dedicated, clearly-labelled PR.
+      pydantic:
+        patterns:
+          - "pydantic-ai-slim"
+          - "pydantic-evals"
       minor-patch:
         update-types:
           - "minor"
@@ -63,6 +70,13 @@ updates:
       - "python"
       - "core"
     groups:
+      # pydantic-ai-slim must move in lockstep with pydantic-evals (root dev
+      # group) — pydantic-evals pins pydantic-ai-slim exactly (see PR #176).
+      # Keep it out of the generic groups so it lands in a dedicated PR.
+      pydantic:
+        patterns:
+          - "pydantic-ai-slim"
+          - "pydantic-evals"
       minor-patch:
         update-types:
           - "minor"
