@@ -28,7 +28,7 @@ updates:
           - "patch"
       major-updates:
         update-types:
-          - "version-update:semver-major"
+          - "major"
 
   # =============================================================================
   # Python — API package (~30 deps)
@@ -52,7 +52,7 @@ updates:
           - "patch"
       major-updates:
         update-types:
-          - "version-update:semver-major"
+          - "major"
 
   # =============================================================================
   # Python — core package (shared domain logic, no HTTP/DB)
@@ -83,7 +83,7 @@ updates:
           - "patch"
       major-updates:
         update-types:
-          - "version-update:semver-major"
+          - "major"
 
   # =============================================================================
   # Python — i18n package
@@ -107,7 +107,7 @@ updates:
           - "patch"
       major-updates:
         update-types:
-          - "version-update:semver-major"
+          - "major"
 
   # =============================================================================
   # npm — root workspace (dev scripts: ts-morph, tsx)
@@ -130,7 +130,7 @@ updates:
           - "patch"
       major-updates:
         update-types:
-          - "version-update:semver-major"
+          - "major"
 
   # =============================================================================
   # npm — Frontend (Next.js 16, React 19, TipTap 3, ~50 deps)
@@ -154,7 +154,7 @@ updates:
           - "patch"
       major-updates:
         update-types:
-          - "version-update:semver-major"
+          - "major"
 
   # =============================================================================
   # Docker — production image
