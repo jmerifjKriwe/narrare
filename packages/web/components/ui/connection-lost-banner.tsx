@@ -27,7 +27,7 @@ export function ConnectionLostBanner({ onRetry, message }: ConnectionLostBannerP
       state="error"
       message={message ?? t("connectionLost")}
       action={
-        <button type="button" onClick={onRetry}>
+        <button type="button" data-testid="connection-lost-banner-retry" onClick={onRetry}>
           {t("connectionLostRetry")}
         </button>
       }
