@@ -42,6 +42,7 @@ Each inventory entry records:
 | Direction | **in** (text → KB: extraction, endorse/reject, merge) · **out** (KB → use: search, graph view, wiki, context injection) · **check** (KB ↔ text: consistency, contradiction detection, timeline checks, series drift) |
 | API path(s) | The exact route(s) the UI drives, incl. auth requirements |
 | Output artifact | What the operation produces (KB entry, report, SSE stream, …) |
+| LLM-backed? | Whether the capability executes server-side LLM calls (determines the LLM-config dependency, §6) |
 | Benchmarkable? | Is the output mechanically scorable against the reference? |
 
 Findings rule: capabilities that exist only as frontend orchestration (no direct API path) are a **documented finding** — verdict "not benchmarkable as-is" or "backend must expose this", never a silent decision.
@@ -75,7 +76,7 @@ Per run, against the identical corpus and reference:
 - **Run artifacts (the comparability):** every run — baseline or candidate — produces the same artifact shape:
   - `results` (structured JSON: per-capability, per-error-class scores),
   - a rendered Markdown overview (the human-readable "aussagekräftige Übersicht": which errors were found, KB quality, expected-content coverage, per-function success rates),
-  - a run manifest (git commit, Narrare version, corpus variant + version, ingest mode, config, timestamps; for candidate runs additionally tool/version and the result mapping, §7).
+  - a run manifest (git commit, Narrare version, corpus variant + version, ingest mode, config incl. an LLM-config fingerprint — provider/model/config hash, never the secret itself, §6; timestamps; for candidate runs additionally tool/version and the result mapping, §7).
 
 ## 6. Runner
 
@@ -84,6 +85,14 @@ A **deterministic Python HTTP/SSE client** that drives exactly the production en
 The AI agent is deliberately **not in the measurement path**: the measured capabilities (extraction, consistency, …) do their LLM work server-side inside Narrare; the runner only orchestrates HTTP calls and scores. An agent in the loop would add non-determinism and cost without measurement quality. The agent's roles are authorship (corpus, reference, error variants, candidate test adaptations) and candidate ops (§7).
 
 Mode flags: corpus variant × ingest mode. Location: `benchmark/` top-level program area (concrete layout is a planning decision).
+
+### Runner Configuration & LLM Backend Config
+
+Several benchmarked capabilities are LLM-backed server-side; the backend needs a valid LLM provider configuration before any run. Consequences:
+
+- The benchmark keeps its own **local config file inside `benchmark/`, gitignored**, holding real credentials: target API base URL, benchmark-user auth token, LLM provider settings (provider, API key, model(s)). A committed template with placeholders documents the format; secrets never enter git (also guarded by the Gitleaks hook).
+- **How this config lands in the backend is verified in the runner slice.** Expected candidate (consistent with the production-surface principle, and consistent with the code survey: `apps/api/narrare/setup/provider_schemas.py` — Setup Wizard Steps 4–5): provisioning through the **normal user configuration path** (Setup Wizard → setup/settings endpoints), so the benchmarked instance is configured exactly like a real user's instance. The operator env-var plane (`CoreSettings`, ADR-071) is acceptable only if it proves to be the (only) production path for these values.
+- Provisioning is an idempotent runner setup step executed before runs; the run manifest records the LLM-config fingerprint (§5), never the secret.
 
 ## 7. Candidate Probes (after baseline analysis; demand-driven)
 
@@ -128,3 +137,4 @@ Mode flags: corpus variant × ingest mode. Location: `benchmark/` top-level prog
 - Which candidates are probed, and when — user decision after baseline analysis.
 - Exact corpus size, chapter count, and reference-format details — corpus slice (§8.3).
 - Concrete `benchmark/` directory layout — planning decision of the runner slice.
+- Exact mechanism and endpoints for provisioning the benchmark's LLM config into the backend (expected: normal setup/settings path, §6) and the concrete gitignored config file format — runner slice.
