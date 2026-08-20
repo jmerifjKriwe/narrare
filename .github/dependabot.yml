@@ -15,13 +15,20 @@ updates:
       - "dependencies"
       - "python"
     groups:
+      # pydantic-evals pins pydantic-ai-slim to the exact same version —
+      # both must move in lockstep (see PR #176). Keep them out of the
+      # generic groups so they land in a dedicated, clearly-labelled PR.
+      pydantic:
+        patterns:
+          - "pydantic-ai-slim"
+          - "pydantic-evals"
       minor-patch:
         update-types:
           - "minor"
           - "patch"
       major-updates:
         update-types:
-          - "version-update:semver-major"
+          - "major"
 
   # =============================================================================
   # Python — API package (~30 deps)
@@ -45,7 +52,7 @@ updates:
           - "patch"
       major-updates:
         update-types:
-          - "version-update:semver-major"
+          - "major"
 
   # =============================================================================
   # Python — core package (shared domain logic, no HTTP/DB)
@@ -63,13 +70,20 @@ updates:
       - "python"
       - "core"
     groups:
+      # pydantic-ai-slim must move in lockstep with pydantic-evals (root dev
+      # group) — pydantic-evals pins pydantic-ai-slim exactly (see PR #176).
+      # Keep it out of the generic groups so it lands in a dedicated PR.
+      pydantic:
+        patterns:
+          - "pydantic-ai-slim"
+          - "pydantic-evals"
       minor-patch:
         update-types:
           - "minor"
           - "patch"
       major-updates:
         update-types:
-          - "version-update:semver-major"
+          - "major"
 
   # =============================================================================
   # Python — i18n package
@@ -93,7 +107,7 @@ updates:
           - "patch"
       major-updates:
         update-types:
-          - "version-update:semver-major"
+          - "major"
 
   # =============================================================================
   # npm — root workspace (dev scripts: ts-morph, tsx)
@@ -116,7 +130,7 @@ updates:
           - "patch"
       major-updates:
         update-types:
-          - "version-update:semver-major"
+          - "major"
 
   # =============================================================================
   # npm — Frontend (Next.js 16, React 19, TipTap 3, ~50 deps)
@@ -140,7 +154,7 @@ updates:
           - "patch"
       major-updates:
         update-types:
-          - "version-update:semver-major"
+          - "major"
 
   # =============================================================================
   # Docker — production image
