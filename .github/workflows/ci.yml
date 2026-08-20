@@ -36,6 +36,7 @@ name: CI
 # | --   | bandit + pip-audit                     | ✅ Blocking  | security Job                       |
 # | --   | biome check (frontend lint/format)     | ✅ Blocking  | frontend Job                       |
 # | --   | pnpm test (frontend tests)             | ✅ Blocking  | frontend Job                       |
+# | --   | Standalone boot smoke (frontend)       | ✅ Blocking  | frontend-standalone Job (PR-only)  |
 # | --   | check_test_performance.py              | ⚠️ Warning   | frontend Job (WARNING-only)        |
 # | --   | check_pytest_collection_performance.py  | ⚠️ Warning   | test-unit Job (WARNING-only)       |
 # | --   | check_current_state_facts.py (SSOT)    | ✅ Blocking  | architecture Job                   |
@@ -783,6 +784,73 @@ jobs:
           path: /tmp/warnings/
           if-no-files-found: ignore
           retention-days: 7
+
+  # -------------------------------------------------------------------------
+  # Frontend standalone smoke (PR-only blind-spot guard)
+  # -------------------------------------------------------------------------
+  # test-e2e boots the standalone Next server but runs on main pushes only —
+  # the next@16.3.1/@swc/helpers standalone crash (fixed in 5e014943) was
+  # invisible on PR CI. This job builds the standalone tree and verifies it
+  # boots on PRs, cheaply: no Playwright, no screenshots → ubuntu-latest
+  # (no font-rendering sensitivity).
+  frontend-standalone:
+    name: Frontend Standalone Smoke
+    runs-on: ubuntu-latest
+    needs: [changes]
+    # PR-only (main pushes are covered by test-e2e). workflows==true keeps
+    # the job self-exercising on PRs that modify ci.yml itself.
+    if: >-
+      github.event_name == 'pull_request' &&
+      (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.workflows == 'true')
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.5.2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build standalone frontend
+        run: cd packages/web && pnpm build
+
+      - name: Copy static + public into standalone tree
+        run: |
+          cp -r packages/web/.next/static packages/web/.next/standalone/packages/web/.next/static
+          cp -r packages/web/public packages/web/.next/standalone/packages/web/public
+
+      - name: Boot standalone server (smoke check)
+        run: |
+          # Use the standalone server instead of 'pnpm start' because Next.js
+          # standalone mode is not compatible with 'next start' (mirrors test-e2e).
+          AUTH_JWT_SECRET=test-secret-key-not-for-production \
+          PORT=3000 node packages/web/.next/standalone/packages/web/server.js > /tmp/standalone-server.log 2>&1 &
+          server_pid=$!
+          # Always stop the server once the smoke check is done (success or fail).
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          echo "Waiting for standalone server..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000 > /dev/null; then
+              echo "Standalone server is ready"
+              break
+            fi
+            sleep 1
+          done
+          # Verify the server actually started
+          if ! curl -sf http://localhost:3000 > /dev/null; then
+            echo "ERROR: Standalone server failed to start. Logs:"
+            cat /tmp/standalone-server.log || true
+            exit 1
+          fi
 
   # -------------------------------------------------------------------------
   # E2E tests (main branch only, full stack)
