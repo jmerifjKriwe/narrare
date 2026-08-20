@@ -329,49 +329,52 @@ describe("ICU arg-name contracts via real next-intl (carry-forward)", () => {
     ["en", enStudio],
     ["de", deStudio],
     ["fr", frStudio],
-  ])("%s catalog formats every arg-bearing key with the components' exact args", async (locale, studio) => {
-    const { createTranslator } = await vi.importActual<typeof import("next-intl")>("next-intl");
-    const t = createTranslator({ locale, messages: { studio }, namespace: "studio" });
+  ])(
+    "%s catalog formats every arg-bearing key with the components' exact args",
+    async (locale, studio) => {
+      const { createTranslator } = await vi.importActual<typeof import("next-intl")>("next-intl");
+      const t = createTranslator({ locale, messages: { studio }, namespace: "studio" });
 
-    const cases: ReadonlyArray<{ key: string; out: string; expects: readonly string[] }> = [
-      {
-        // Exact call the window field makes for saved=12, MAX_WINDOW=10
-        // (out-of-range notice).
-        key: "series.settings.contextPreview.savedOutOfRange",
-        out: t("series.settings.contextPreview.savedOutOfRange", { value: 12, max: 10 }),
-        expects: ["12", "10"],
-      },
-      {
-        // Exact call SeriesContextPreview makes for its classification line.
-        key: "series.settings.contextPreview.bandsLine",
-        out: t("series.settings.contextPreview.bandsLine", { full: 3, short: 2 }),
-        expects: ["3", "2"],
-      },
-      {
-        // Exact call SeriesContextPreview makes for its token estimate line.
-        key: "series.settings.contextPreview.tokenLine",
-        out: t("series.settings.contextPreview.tokenLine", { tokens: 300, budget: 700 }),
-        expects: ["300", "700"],
-      },
-      {
-        // Exact call SeriesContextPreview makes for its budget breakdown.
-        key: "series.settings.contextPreview.budgetLine",
-        out: t("series.settings.contextPreview.budgetLine", {
-          seriesBudget: 300,
-          totalBudget: 800,
-          tierBase: 500,
-        }),
-        expects: ["300", "800", "500"],
-      },
-    ];
+      const cases: ReadonlyArray<{ key: string; out: string; expects: readonly string[] }> = [
+        {
+          // Exact call the window field makes for saved=12, MAX_WINDOW=10
+          // (out-of-range notice).
+          key: "series.settings.contextPreview.savedOutOfRange",
+          out: t("series.settings.contextPreview.savedOutOfRange", { value: 12, max: 10 }),
+          expects: ["12", "10"],
+        },
+        {
+          // Exact call SeriesContextPreview makes for its classification line.
+          key: "series.settings.contextPreview.bandsLine",
+          out: t("series.settings.contextPreview.bandsLine", { full: 3, short: 2 }),
+          expects: ["3", "2"],
+        },
+        {
+          // Exact call SeriesContextPreview makes for its token estimate line.
+          key: "series.settings.contextPreview.tokenLine",
+          out: t("series.settings.contextPreview.tokenLine", { tokens: 300, budget: 700 }),
+          expects: ["300", "700"],
+        },
+        {
+          // Exact call SeriesContextPreview makes for its budget breakdown.
+          key: "series.settings.contextPreview.budgetLine",
+          out: t("series.settings.contextPreview.budgetLine", {
+            seriesBudget: 300,
+            totalBudget: 800,
+            tierBase: 500,
+          }),
+          expects: ["300", "800", "500"],
+        },
+      ];
 
-    for (const { key, out, expects } of cases) {
-      for (const expected of expects) {
-        expect(out, `${locale}:${key} must contain "${expected}"`).toContain(expected);
+      for (const { key, out, expects } of cases) {
+        for (const expected of expects) {
+          expect(out, `${locale}:${key} must contain "${expected}"`).toContain(expected);
+        }
+        expect(out, `${locale}:${key} leaked raw ICU syntax`).not.toContain("{");
+        expect(out, `${locale}:${key} unresolved number arg`).not.toContain("NaN");
+        expect(out, `${locale}:${key} FORMATTING_ERROR fallback`).not.toBe(key);
       }
-      expect(out, `${locale}:${key} leaked raw ICU syntax`).not.toContain("{");
-      expect(out, `${locale}:${key} unresolved number arg`).not.toContain("NaN");
-      expect(out, `${locale}:${key} FORMATTING_ERROR fallback`).not.toBe(key);
-    }
-  });
+    },
+  );
 });

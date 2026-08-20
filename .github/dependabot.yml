@@ -133,30 +133,6 @@ updates:
           - "major"
 
   # =============================================================================
-  # npm — Frontend (Next.js 16, React 19, TipTap 3, ~50 deps)
-  # =============================================================================
-  - package-ecosystem: "npm"
-    directory: "/packages/web"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Berlin"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "npm"
-      - "frontend"
-    groups:
-      minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
-      major-updates:
-        update-types:
-          - "major"
-
-  # =============================================================================
   # Docker — production image
   # =============================================================================
   - package-ecosystem: "docker"

@@ -117,7 +117,7 @@ describe("streamCoreference", () => {
     capture().onChunk({ event: "error", error: "model unavailable", is_final: true });
 
     expect(onError).toHaveBeenCalledTimes(1);
-    expect((onError.mock.calls[0]?.[0] as Error).message).toBe("model unavailable");
+    expect((onError.mock.calls[0]?.[0] as Error)?.message).toBe("model unavailable");
     expect(onComplete).not.toHaveBeenCalled();
   });
 
@@ -128,7 +128,7 @@ describe("streamCoreference", () => {
     capture().onChunk({ event: "done", error: "late failure", is_final: true });
 
     expect(onError).toHaveBeenCalledTimes(1);
-    expect((onError.mock.calls[0]?.[0] as Error).message).toBe("late failure");
+    expect((onError.mock.calls[0]?.[0] as Error)?.message).toBe("late failure");
   });
 
   it("uses a generic message when an error event omits the message", async () => {
@@ -138,7 +138,7 @@ describe("streamCoreference", () => {
     capture().onChunk({ event: "error" });
 
     expect(onError).toHaveBeenCalledTimes(1);
-    expect((onError.mock.calls[0]?.[0] as Error).message).toBe("Coreference analysis failed");
+    expect((onError.mock.calls[0]?.[0] as Error)?.message).toBe("Coreference analysis failed");
   });
 
   it("completes once when both the done event and the transport [DONE] sentinel arrive", async () => {

@@ -124,7 +124,7 @@ describe("streamStorySuggestions", () => {
     capture().onChunk({ event: "error", error: "model unavailable", is_final: true });
 
     expect(onError).toHaveBeenCalledTimes(1);
-    expect((onError.mock.calls[0]?.[0] as Error).message).toBe("model unavailable");
+    expect((onError.mock.calls[0]?.[0] as Error)?.message).toBe("model unavailable");
     expect(onComplete).not.toHaveBeenCalled();
   });
 
@@ -135,7 +135,7 @@ describe("streamStorySuggestions", () => {
     capture().onChunk({ event: "error" });
 
     expect(onError).toHaveBeenCalledTimes(1);
-    expect((onError.mock.calls[0]?.[0] as Error).message).toBe("Story suggestion failed");
+    expect((onError.mock.calls[0]?.[0] as Error)?.message).toBe("Story suggestion failed");
   });
 
   it("surfaces an error when event.error is set without the error discriminator", async () => {
@@ -145,7 +145,7 @@ describe("streamStorySuggestions", () => {
     capture().onChunk({ event: "done", error: "late failure", is_final: true });
 
     expect(onError).toHaveBeenCalledTimes(1);
-    expect((onError.mock.calls[0]?.[0] as Error).message).toBe("late failure");
+    expect((onError.mock.calls[0]?.[0] as Error)?.message).toBe("late failure");
   });
 
   it("does not complete after a terminal error event", async () => {
