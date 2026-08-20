@@ -2,7 +2,7 @@
 name: NarrareBackendSpecialist
 description: "Backend layer — FastAPI, SQLAlchemy, async Python, service layer"
 mode: subagent
-model: zai-coding-plan/glm-5.2
+model: zai-coding-plan/glm-5.3
 temperature: 0
 permission:
   skill:

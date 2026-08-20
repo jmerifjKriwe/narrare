@@ -2,7 +2,7 @@
 name: NarrareDevCoordinator
 description: "Layer-specialist orchestrator — routes to architecture, core, backend, frontend, platform, docs, reviewer. Graph-first exploration, delegation-first execution."
 mode: primary
-model: zai-coding-plan/glm-5.2
+model: zai-coding-plan/glm-5.3
 temperature: 0.2
 permission:
   skill:

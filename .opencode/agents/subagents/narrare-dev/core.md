@@ -2,7 +2,7 @@
 name: NarrareCoreSpecialist
 description: "Core layer — LLM gateway, prompts, embeddings, memory, KB domain logic"
 mode: subagent
-model: zai-coding-plan/glm-5.2
+model: zai-coding-plan/glm-5.3
 temperature: 0
 permission:
   skill:

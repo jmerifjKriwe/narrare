@@ -2,7 +2,7 @@
 name: NarrareArchitectureSpecialist
 description: "Architecture layer — ADRs, specs, contracts, module boundaries, architecture validation, pre-implementation gate"
 mode: subagent
-model: zai-coding-plan/glm-5.2
+model: zai-coding-plan/glm-5.3
 temperature: 0
 permission:
   skill:

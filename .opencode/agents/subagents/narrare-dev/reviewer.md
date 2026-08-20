@@ -2,7 +2,7 @@
 name: NarrareReviewerSpecialist
 description: "Independent reviewer — diffs, correctness, architecture, security, RULE compliance. Read-only, cannot edit."
 mode: subagent
-model: zai-coding-plan/glm-5.2
+model: zai-coding-plan/glm-5.3
 temperature: 0
 permission:
   skill:
