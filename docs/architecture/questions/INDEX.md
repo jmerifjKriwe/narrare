@@ -25,6 +25,7 @@
 | [Q-001](Q-001-to-Q-002.md#q-001--how-does-mcp-authenticate-against-the-api) | How does MCP authenticate against the API? | 🟡 | `apps/mcp/` (post-MVP) | init |
 | [Q-002](Q-001-to-Q-002.md#q-002--does-a2a-require-streaming-support) | Does A2A protocol require streaming support? | 🟡 | `apps/a2a/` (post-MVP) | init |
 | [Q-011](Q-011-distribution-strategy.md) | Wie wird Narrare für nicht-technische Nutzer zugänglich? | 🟡 | Zielgruppen-Positionierung, Post-MVP Distribution | 2026-06-03 |
+| [Q-020](Q-020-swc-helpers-standalone-tracing.md) | When can the temporary @swc/helpers standalone-tracing workaround (`outputFileTracingIncludes`) be removed? | 🟡 | Workaround removal in `packages/web/next.config.ts` (re-evaluate per Next bump) | 2026-08-20 |
 
 ---
 

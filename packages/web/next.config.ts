@@ -10,7 +10,8 @@ const nextConfig: NextConfig = {
   // resolves with classic require conditions, so only the cjs variants are
   // traced into .next/standalone and the server crashes on boot with
   // MODULE_NOT_FOUND for @swc/helpers/esm/*.js. Force-trace the esm tree until
-  // a stable Next release fixes tracing; then DELETE this block.
+  // a stable Next release fixes tracing; then DELETE this block and close
+  // Q-020 (docs/architecture/questions/Q-020-swc-helpers-standalone-tracing.md).
   outputFileTracingIncludes: {
     "/**": ["../../node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers/esm/**"],
   },
