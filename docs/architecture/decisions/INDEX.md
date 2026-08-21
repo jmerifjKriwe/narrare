@@ -109,6 +109,8 @@
 
 | [ADR-082](ADR-082-token-budget-governance.md) | Token-Budget Governance: Cascade Integration + Model-Boundary Capping | ✅ | 2026-08-15 | `packages/core/narrare_core/context/` (budget.py, budget_resolver.py, contracts.py, series_history.py), `apps/api/narrare/settings/token_limits/`, `apps/api/narrare/writing/` (deps_pipeline, _helpers), `apps/api/narrare/analysis/beta_reader_service.py`, SET-005, CR-08 P0, RULE-03/07/11/18b/20 |
 
+| [ADR-083](ADR-083-kb-infrastructure-benchmark-program.md) | KB Infrastructure Benchmark Program | ✅ | 2026-08-20 | `benchmark/`, KB capabilities, evaluation governance |
+
 ---
 
 ## How to Create a New ADR
