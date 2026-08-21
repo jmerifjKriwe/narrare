@@ -301,39 +301,6 @@ Ilse promises Juna the silver wristwatch (2026-09), the drafting table and both 
 - F064 — Asked directly about the letters, Ilse deflects — p_ilse_meyer, o_briefe — anchor: October 2019
 - F065 — A second bundle of letters remains unmentioned — o_briefe — anchor: October 2019
 
-## Temporal Design Notes
-
-Deliberate clean-corpus patterns: every item below looks like a contradiction but is fully resolved by the
-Master Timeline and the Cast. Benchmark texts built on this corpus must treat all of them as consistent.
-
-- **Age progression across chapters.** Anna is twenty-four in Ch. 1 (2015-05), twenty-seven at the wedding
-  (2018-05-26, Ch. 4), thirty at the move (2021-08, Ch. 8), thirty-one at the reconciliation (2022-09, Ch. 10)
-  and thirty-five at the watch promise (2026-09, Ch. 12) — every value follows from b. 1991-04-17 (p_anna_meyer);
-  likewise Juna is two at the move (2021-08) and six at school start (2025-09), per b. 2019-06-08.
-- **Retrospective "damals".** Ch. 9 (2021-09) introduces Maria Sommer with a "damals" looking back to 2015-03:
-  that timeline row is mapped to Ch. 9 precisely as retrospect, so narration date and event date differ by design.
-- **Flashback before 2015.** The letters (o_briefe) span 1982–1984 and the revealed son was born 1983; this
-  material surfaces only in Ch. 6 (2019-10) and Ch. 10 (2022-03) — pre-2015 content is always quoted or
-  remembered, never narrated in the present tense.
-- **Restatement in other words.** The 2015-05 meeting is "a reading in the 'Buchhandlung Meyer'" in Ch. 1 and
-  "the evening in her brother's bookshop" in Ch. 12; the drafting table (o_zeichentisch) is "Margarete's
-  Zeichentisch" in Ch. 5 and "the inherited drafting table" in Ch. 8 — one fact, two formulations, no conflict.
-- **Event narrated before its date reveal.** The letters enter the story with the estate settlement (Ch. 5,
-  2018-10), but their span — 1982–1984 — is revealed only when the first bundle is read (Ch. 6, 2019-10): the
-  object is narrated before its dates are.
-- **Loose interval boundaries.** In Ch. 9 (autumn 2021) Anna says she has been married "seit drei Jahren" —
-  precisely it is three and a half years (2018-05-26 to 2021-11). In Ch. 12 Thomas and Lisa count as a couple
-  of "fast zehn Jahre" — they met 2016-08, so 2026-07-11 falls nine months short of ten. Rounding, not contradiction.
-- **One intentional ambiguity.** When Ilse found the second bundle (o_briefe) is never stated on-page; the
-  timeline fixes only the handover (2022-03). The gap stays explainable: anywhere between the estate settlement
-  (2018-10) and the handover.
-- **Distractor names, not date errors.** The neighbor Anna Meier (p_anna_meier, from 2021-11) versus Anna Meyer;
-  the two Projektarchitekten p_marco_weise and p_martin_wiese (same practice since 2017-03); "Alex" versus
-  "Sascha" for the single p_alexander_wolf — name variants across chapters resolve exactly as the Cast fixes them.
-- **Three correct exit ages.** Gert retires 2020-07 at sixty-four (b. 1955-11-30), Ilse 2021-07 at sixty-three
-  (b. 1958-05-09), Margarete leaves the office in 1993 at sixty-three (b. 1930-02-11) — different ages in close
-  textual proximity, each individually correct.
-
 ### Chapter 7 Facts
 
 - F066 — Lisa gives Thomas the dog Frida as a gift — p_lisa_brandt, p_thomas_meyer, o_frida — anchor: April 2020
@@ -360,9 +327,8 @@ Master Timeline and the Cast. Benchmark texts built on this corpus must treat al
 - F084 — Anna's age at the move is 30 — p_anna_meyer — anchor: August 2021
 - F085 — Juna's age at the move is 2 — p_juna_meyer — anchor: August 2021
 - F086 — The sold piano stays behind in Hamburg as a memory — p_peter_meyer, o_klavier — anchor: August 2021
-- F048 — The inherited drafting table travels along to the Munich apartment — p_anna_meyer, o_zeichentisch, pl_tuerkenstrasse — anchor: August 2021 — restated in prose form 2
+- F135 — The inherited drafting table travels along to the Munich apartment — p_anna_meyer, o_zeichentisch, pl_tuerkenstrasse — anchor: August 2021
 - F087 — From here on, Hamburg exists only in visits, the bookshop, and the parents' house — pl_hamburg — anchor: August 2021
-- F088 — The family secret implied by the first bundle of letters remains unconfirmed after the move — p_ilse_meyer, o_briefe — anchor: August 2021
 
 ### Chapter 9 Facts
 
@@ -409,6 +375,7 @@ Master Timeline and the Cast. Benchmark texts built on this corpus must treat al
 - F122 — Maria Sommer is present at the practice opening — p_maria_sommer, p_anna_meyer, pl_lenz_meyer_buero — anchor: January 2024
 - F123 — A congratulation card from the neighbor Anna Meier arrives for the opening — p_anna_meier, p_anna_meyer — anchor: January 2024
 - F124 — The congratulation card is addressed to the wrong Anna — p_anna_meier, p_anna_meyer — anchor: January 2024
+- F137 — Property manager of the Lenz & Meyer practice introduced at the opening; colleagues split between calling him "Alex" and "Sascha" — p_alexander_wolf, pl_lenz_meyer_buero — anchor: January 2024
 
 ### Chapter 12 Facts
 
@@ -421,7 +388,46 @@ Master Timeline and the Cast. Benchmark texts built on this corpus must treat al
 - F130 — Ilse promises Juna the silver wristwatch — p_ilse_meyer, p_juna_meyer, o_armbanduhr — anchor: September 2026
 - F131 — Juna is the promised future owner of the wristwatch — p_juna_meyer, o_armbanduhr — anchor: September 2026
 - F132 — Anna's age at the watch promise is 35 — p_anna_meyer — anchor: September 2026
-- F051 — The drafting table and both bundles of letters rest at the Munich apartment "Türkenstraße 41" — o_zeichentisch, o_briefe, pl_tuerkenstrasse — anchor: September 2026 — restated in prose form 2
+- F136 — The drafting table and both bundles of letters rest at the Munich apartment "Türkenstraße 41" — o_zeichentisch, o_briefe, pl_tuerkenstrasse — anchor: September 2026
 - F133 — The "L&M 2024" fountain pen is in daily use — p_anna_meyer, o_fuellfederhalter — anchor: September 2026
 - F086 — Only the sold piano remains a Hamburg memory — p_peter_meyer, o_klavier — anchor: September 2026 — restated in prose form 2
 - F134 — Ben Schulz, teenager at "Türkenstraße 41", has been Juna's babysitter since 2022 — p_ben_schulz, p_juna_meyer, pl_tuerkenstrasse — anchor: September 2026
+
+## Temporal Design Notes
+
+Deliberate clean-corpus patterns: every item below looks like a contradiction but is fully resolved by the
+Master Timeline and the Cast. Benchmark texts built on this corpus must treat all of them as consistent.
+
+- **Age progression across chapters.** Anna is twenty-four in Ch. 1 (2015-05), twenty-seven at the wedding
+  (2018-05-26, Ch. 4), thirty at the move (2021-08, Ch. 8), thirty-one at the reconciliation (2022-09, Ch. 10)
+  and thirty-five at the watch promise (2026-09, Ch. 12) — every value follows from b. 1991-04-17 (p_anna_meyer);
+  likewise Juna is two at the move (2021-08) and six at school start (2025-09), per b. 2019-06-08.
+- **Retrospective "damals".** Ch. 9 (2021-09) introduces Maria Sommer with a "damals" looking back to 2015-03:
+  that timeline row is mapped to Ch. 9 precisely as retrospect, so narration date and event date differ by design.
+- **Flashback before 2015.** The letters (o_briefe) span 1982–1984 and the revealed son was born 1983; this
+  material surfaces only in Ch. 6 (2019-10) and Ch. 10 (2022-03) — pre-2015 content is always quoted or
+  remembered, never narrated in the present tense.
+- **Restatement in other words.** The 2015-05 meeting is "a reading in the 'Buchhandlung Meyer'" in Ch. 1 and
+  "the evening in her brother's bookshop" in Ch. 12; the drafting table (o_zeichentisch) is "Margarete's
+  Zeichentisch" in Ch. 5 and "the inherited drafting table" in Ch. 8 — one fact, two formulations, no conflict.
+- **Event narrated before its date reveal.** The letters enter the story with the estate settlement (Ch. 5,
+  2018-10), but their span — 1982–1984 — is revealed only when the first bundle is read (Ch. 6, 2019-10): the
+  object is narrated before its dates are.
+- **Loose interval boundaries.** In Ch. 9 (autumn 2021) Anna says she has been married "seit drei Jahren" —
+  precisely it is three and a half years (2018-05-26 to 2021-11). In Ch. 12 Thomas and Lisa count as a couple
+  of "fast zehn Jahre" — they met 2016-08, so 2026-07-11 falls nine months short of ten. Rounding, not contradiction.
+- **One intentional ambiguity.** When Ilse found the second bundle (o_briefe) is never stated on-page; the
+  timeline fixes only the handover (2022-03). The gap stays explainable: anywhere between the estate settlement
+  (2018-10) and the handover.
+- **Distractor names, not date errors.** The neighbor Anna Meier (p_anna_meier, from 2021-11) versus Anna Meyer;
+  the two Projektarchitekten p_marco_weise and p_martin_wiese (same practice since 2017-03); "Alex" versus
+  "Sascha" for the single p_alexander_wolf — name variants across chapters resolve exactly as the Cast fixes them.
+- **Three correct exit ages.** Gert retires 2020-07 at sixty-four (b. 1955-11-30), Ilse 2021-07 at sixty-three
+  (b. 1958-05-09), Margarete leaves the office in 1993 at sixty-three (b. 1930-02-11) — different ages in close
+  textual proximity, each individually correct.
+- **Inherit versus discover.** Two predicates, not one: the drafting table and the letters legally pass to
+  Anna by inheritance in the estate settlement on 2018-10 (Ch. 5), while the first letter bundle is physically
+  discovered in the drawer only on 2019-10 (Ch. 6) — both statements are consistent; the predicates differ.
+- **Anchor convention.** Retrospective facts anchor to the event date (e.g. F093: event 2015-03, narrated in
+  Ch. 9), while state facts anchor to the narration scene (e.g. F038, F134) — differing narration and anchor
+  dates are by design, never contradictions.
