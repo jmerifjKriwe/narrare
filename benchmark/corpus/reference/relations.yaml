@@ -31,3 +31,8 @@
   object: p_thomas_meyer
   valid_to: {year: 2016}
   source_chapters: [2]  # negative relation per prose "no relation to the Meyer family before 2016"
+- id: R007
+  subject: p_marco_weise
+  predicate: sits_within_earshot_of
+  object: p_martin_wiese
+  source_chapters: [3]

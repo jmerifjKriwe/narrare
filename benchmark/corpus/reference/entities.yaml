@@ -13,7 +13,7 @@ persons:
         predicate: student_at
         value: "HCU Hamburg"
         valid_to: {year: 2017, month: 2}   # study ends Feb 2017 (stated ch-2)
-        source_chapters: [1]
+        source_chapters: [1, 2]
       - id: F006
         predicate: residence
         value: "Eppendorfer Baum 14"
@@ -25,7 +25,7 @@ persons:
         source_chapters: [2]
       - id: F022
         predicate: profession
-        value: "Projektarchitektin"
+        value: "Projektarchitektin bei Pfeiffer & Partner Architekten"
         valid_from: {year: 2017, month: 3}
         source_chapters: [3]
       - id: F031
@@ -38,7 +38,7 @@ persons:
     facts:
       - id: F009
         predicate: profession
-        value: "Bauingenieur"
+        value: "Bauingenieur bei einem Hamburger Ingenieurbüro für Hafenbau"
         source_chapters: [1]
       - id: F010
         predicate: age_stated
@@ -83,7 +83,7 @@ persons:
         predicate: profession
         value: "Grafikdesignerin"
         valid_to: {year: 2017, month: 5}   # agency phase ends at the May 2017 freelance switch (stated ch-3)
-        source_chapters: [2]
+        source_chapters: [2, 3]
       - id: F016
         predicate: age_stated
         value: "27"
@@ -99,7 +99,7 @@ persons:
     facts:
       - id: F023
         predicate: profession
-        value: "Projektarchitekt und Wettbewerbsleiter"
+        value: "Projektarchitekt und Wettbewerbsleiter bei Pfeiffer & Partner Architekten"
         source_chapters: [3]
   - id: p_martin_wiese
     name: Martin Wiese
@@ -107,7 +107,7 @@ persons:
     facts:
       - id: F024
         predicate: profession
-        value: "Projektarchitekt"
+        value: "Projektarchitekt bei Pfeiffer & Partner Architekten"
         source_chapters: [3]
   - id: p_hajo_pfeiffer
     name: Hajo Pfeiffer
@@ -137,4 +137,9 @@ places:
         predicate: district
         value: "HafenCity"
         source_chapters: [3]            # F022 prose locates the practice in the HafenCity
+      - id: PF003
+        predicate: workplace_of
+        value: "p_anna_meyer"
+        valid_from: {year: 2017, month: 3}  # mirrors PF001 residence_of pattern (F022 prose)
+        source_chapters: [3]
 objects: []

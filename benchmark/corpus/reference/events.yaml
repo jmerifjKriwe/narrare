@@ -4,13 +4,13 @@
   date: {year: 2015, month: 5}
   participants: [p_anna_meyer, p_peter_meyer, p_thomas_meyer]
   location: pl_hamburg
-  source_chapters: [1]
+  source_chapters: [1, 3]
 - id: E002
   name: Erstes Namens-Chaos bei der Vorstellung
   date: {year: 2015, month: 5}
   participants: [p_thomas_meyer, p_anna_meyer, p_peter_meyer]
   location: pl_hamburg
-  source_chapters: [1]
+  source_chapters: [1, 3]
 - id: E003
   name: Thomas lernt Lisa auf einer Hochzeit kennen
   date: {year: 2016, month: 8}
