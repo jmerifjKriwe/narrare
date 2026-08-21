@@ -55,10 +55,12 @@ out of a file (with a one-line reason), so Tasks 3–5 inherit an explicit ledge
   - `README.md` — this file (format + method).
   - `01-in.md` — direction `in` (text → KB): **8 entries, 25 mechanically verified
     API paths, 4 findings** (surveyed 2026-08-21).
-  - `02-out.md` — direction `out` (KB → use): pending (Task 3).
-  - `03-check.md` — direction `check` (KB ↔ text): pending (Task 4).
+  - `02-out.md` — direction `out` (KB → use): surveyed 2026-08-21 — 10 entries, 21 verified API paths.
+  - `03-check.md` — direction `check` (KB ↔ text): surveyed 2026-08-21 — 7 entries, 8 verified API paths.
+  - `04-findings.md` — synthesis: findings register + counts (20 findings), 2026-08-21.
 - **Coverage counts** (entries / verified paths / findings): in = 8 / 25 / 4;
-  out = — ; check = — . Synthesis across directions happens in Task 5.
+  out = 10 / 21 / 8; check = 7 / 8 / 8. Synthesis across directions:
+  `04-findings.md` (20 findings).
 - Direction `in` survey scope: `apps/api/narrare/kb/`, `apps/api/narrare/series/`,
   `apps/api/narrare/planning/`, `apps/api/narrare/wiki/` routers mounted in
   `_app/main.py`, cross-read against `packages/web/lib/api/`.
