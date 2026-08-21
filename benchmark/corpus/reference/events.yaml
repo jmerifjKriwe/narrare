@@ -1,0 +1,49 @@
+# Ground truth for chapters 1-3 (events).
+- id: E001
+  name: Anna und Peter lernen sich bei einer Lesung kennen
+  date: {year: 2015, month: 5}
+  participants: [p_anna_meyer, p_peter_meyer, p_thomas_meyer]
+  location: pl_hamburg
+  source_chapters: [1]
+- id: E002
+  name: Erstes Namens-Chaos bei der Vorstellung
+  date: {year: 2015, month: 5}
+  participants: [p_thomas_meyer, p_anna_meyer, p_peter_meyer]
+  location: pl_hamburg
+  source_chapters: [1]
+- id: E003
+  name: Thomas lernt Lisa auf einer Hochzeit kennen
+  date: {year: 2016, month: 8}
+  participants: [p_thomas_meyer, p_lisa_brandt]
+  location: pl_hamburg
+  source_chapters: [2]
+- id: E004
+  name: Peter zieht in die Wohnung am Eppendorfer Baum
+  date: {year: 2016, month: 10}
+  participants: [p_peter_meyer, p_anna_meyer]
+  location: pl_eppendorf_wohnung
+  source_chapters: [2]
+- id: E005
+  name: Anna schließt das Architekturstudium an der HCU ab
+  date: {year: 2017, month: 2}
+  participants: [p_anna_meyer]
+  location: pl_hamburg
+  source_chapters: [2]
+- id: E006
+  name: Stille Feier des Abschlusses zu Hause
+  date: {year: 2017, month: 2}
+  participants: [p_anna_meyer, p_peter_meyer]
+  location: pl_eppendorf_wohnung
+  source_chapters: [2]
+- id: E007
+  name: Lisa wird freiberufliche Grafikdesignerin
+  date: {year: 2017, month: 5}
+  participants: [p_lisa_brandt]
+  location: pl_hamburg
+  source_chapters: [3]
+- id: E008
+  name: Verlobung am Elbstrand
+  date: {year: 2017, month: 12}
+  participants: [p_peter_meyer, p_anna_meyer]
+  location: pl_hamburg
+  source_chapters: [3]

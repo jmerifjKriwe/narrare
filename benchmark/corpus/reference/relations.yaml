@@ -1,0 +1,33 @@
+# Ground truth for chapters 1-3 (relations).
+- id: R001
+  subject: p_anna_meyer
+  predicate: sibling_of
+  object: p_thomas_meyer
+  source_chapters: [1]
+- id: R002
+  subject: p_anna_meyer
+  predicate: engaged_to
+  object: p_peter_meyer
+  valid_from: {year: 2017, month: 12}
+  source_chapters: [3]
+- id: R003
+  subject: p_marco_weise
+  predicate: colleague_of
+  object: p_anna_meyer
+  source_chapters: [3]
+- id: R004
+  subject: p_martin_wiese
+  predicate: colleague_of
+  object: p_anna_meyer
+  source_chapters: [3]
+- id: R005
+  subject: p_marco_weise
+  predicate: confused_in_mail_with
+  object: p_martin_wiese
+  source_chapters: [3]
+- id: R006
+  subject: p_lisa_brandt
+  predicate: unrelated_to_family_of
+  object: p_thomas_meyer
+  valid_to: {year: 2016}
+  source_chapters: [2]  # negative relation per prose "no relation to the Meyer family before 2016"

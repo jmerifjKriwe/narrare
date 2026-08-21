@@ -1,0 +1,140 @@
+# Ground truth for chapters 1-3 (persons, places; objects: none planted yet).
+
+persons:
+  - id: p_anna_meyer
+    name: Anna Meyer
+    aliases: []
+    facts:
+      - id: F004
+        predicate: age_stated
+        value: "24"
+        source_chapters: [1]
+      - id: F005
+        predicate: student_at
+        value: "HCU Hamburg"
+        valid_to: {year: 2017, month: 2}   # study ends Feb 2017 (stated ch-2)
+        source_chapters: [1]
+      - id: F006
+        predicate: residence
+        value: "Eppendorfer Baum 14"
+        valid_from: {year: 2015}           # "Seit dem Frühjahr" (2015)
+        source_chapters: [1]
+      - id: F021
+        predicate: age_stated
+        value: "25"
+        source_chapters: [2]
+      - id: F022
+        predicate: profession
+        value: "Projektarchitektin"
+        valid_from: {year: 2017, month: 3}
+        source_chapters: [3]
+      - id: F031
+        predicate: age_stated
+        value: "26"
+        source_chapters: [3]
+  - id: p_peter_meyer
+    name: Peter Meyer
+    aliases: []
+    facts:
+      - id: F009
+        predicate: profession
+        value: "Bauingenieur"
+        source_chapters: [1]
+      - id: F010
+        predicate: age_stated
+        value: "26"
+        source_chapters: [1]
+      - id: F018
+        predicate: residence
+        value: "Eppendorfer Baum 14"
+        valid_from: {year: 2016, month: 10}
+        source_chapters: [2]
+      - id: F032
+        predicate: age_stated
+        value: "29"
+        source_chapters: [3]
+  - id: p_thomas_meyer
+    name: Thomas Meyer
+    aliases: []
+    facts:
+      - id: F008
+        predicate: owner_of
+        value: "Buchhandlung Meyer"
+        valid_from: {year: 2013}
+        source_chapters: [1]
+      - id: F011
+        predicate: age_stated
+        value: "28"
+        source_chapters: [1]
+      - id: F017
+        predicate: age_stated
+        value: "29"
+        source_chapters: [2]
+  - id: p_lisa_brandt
+    name: Lisa Brandt
+    aliases: []
+    facts:
+      - id: F013
+        predicate: residence
+        value: "Hamburg"
+        valid_from: {year: 2011}
+        source_chapters: [2]
+      - id: F014
+        predicate: profession
+        value: "Grafikdesignerin"
+        valid_to: {year: 2017, month: 5}   # agency phase ends at the May 2017 freelance switch (stated ch-3)
+        source_chapters: [2]
+      - id: F016
+        predicate: age_stated
+        value: "27"
+        source_chapters: [2]
+      - id: F027
+        predicate: profession
+        value: "freiberufliche Grafikdesignerin"
+        valid_from: {year: 2017, month: 5} # "seit Mitte Mai"
+        source_chapters: [3]
+  - id: p_marco_weise
+    name: Marco Weise
+    aliases: []
+    facts:
+      - id: F023
+        predicate: profession
+        value: "Projektarchitekt und Wettbewerbsleiter"
+        source_chapters: [3]
+  - id: p_martin_wiese
+    name: Martin Wiese
+    aliases: []
+    facts:
+      - id: F024
+        predicate: profession
+        value: "Projektarchitekt"
+        source_chapters: [3]
+  - id: p_hajo_pfeiffer
+    name: Hajo Pfeiffer
+    aliases: []
+    facts:
+      - id: F026
+        predicate: profession
+        value: "Seniorpartner"
+        source_chapters: [3]
+
+places:
+  - id: pl_hamburg
+    name: Hamburg
+    facts: []                           # city container; no standalone place facts stated in ch. 1-3
+  - id: pl_eppendorf_wohnung
+    name: Eppendorfer Baum 14
+    facts:
+      - id: PF001
+        predicate: residence_of
+        value: "p_anna_meyer"
+        valid_from: {year: 2015}        # F006 prose: Anna lives there since spring 2015
+        source_chapters: [1]
+  - id: pl_pfeiffer_buero
+    name: Pfeiffer & Partner Architekten
+    facts:
+      - id: PF002
+        predicate: district
+        value: "HafenCity"
+        source_chapters: [3]            # F022 prose locates the practice in the HafenCity
+objects: []
