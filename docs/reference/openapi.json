@@ -432,6 +432,400 @@
         }
       }
     },
+    "/api/v1/notes/tags": {
+      "get": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "List Tags",
+        "description": "Distinct existing tags (autocomplete; optional prefix ``q``).",
+        "operationId": "list_tags_api_v1_notes_tags_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteTagsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notes": {
+      "get": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "List Notes",
+        "description": "List notes, default sort ``updated_at DESC`` (spec §5).",
+        "operationId": "list_notes_api_v1_notes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Note Type"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "series_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NoteResponse"
+                  },
+                  "title": "Response List Notes Api V1 Notes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "Create Note",
+        "description": "Create a note (quick capture and full editor both use this).",
+        "operationId": "create_note_api_v1_notes_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notes/{note_id}": {
+      "get": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "Get Note",
+        "operationId": "get_note_api_v1_notes__note_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Note Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "Update Note",
+        "operationId": "update_note_api_v1_notes__note_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Note Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "Delete Note",
+        "operationId": "delete_note_api_v1_notes__note_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Note Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/series": {
       "get": {
         "tags": [
@@ -17207,6 +17601,256 @@
         "type": "object",
         "title": "NarrativeArc",
         "description": "Detected narrative arc from sentiment progression.\n\nAttributes:\n    arc_type: The detected narrative arc type.\n    confidence: How well the text matches this arc (0.0 to 1.0).\n    segments: List of arc segments (e.g. ``\"exposition\"``,\n        ``\"rising_action\"``, ``\"climax\"``, ``\"falling_action\"``,\n        ``\"resolution\"``) with VAD per segment.\n    explanation: Human-readable description of why this arc was detected."
+      },
+      "NoteCreateRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 50000,
+            "title": "Content",
+            "default": ""
+          },
+          "note_type": {
+            "$ref": "#/components/schemas/NoteType",
+            "default": "idea"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Tags"
+          },
+          "novel_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Novel Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          }
+        },
+        "type": "object",
+        "title": "NoteCreateRequest",
+        "description": "Create a note — used by BOTH quick capture and the full editor (spec §5)."
+      },
+      "NoteResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "note_type": {
+            "type": "string",
+            "title": "Note Type"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "novel_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Novel Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "content",
+          "note_type",
+          "tags",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "NoteResponse",
+        "description": "API representation of a note.\n\n``title`` is the stored (possibly None) title — display fallback lives\nwith the client (``noteDisplayTitle``) per spec §4."
+      },
+      "NoteTagsResponse": {
+        "properties": {
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tags"
+        ],
+        "title": "NoteTagsResponse",
+        "description": "Distinct existing tags for autocomplete (spec §5 GET /notes/tags)."
+      },
+      "NoteType": {
+        "type": "string",
+        "enum": [
+          "idea",
+          "concept",
+          "question",
+          "other"
+        ],
+        "title": "NoteType",
+        "description": "Language-neutral note type keys — displayed via i18n ``notes.type.*``."
+      },
+      "NoteUpdateRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "note_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NoteType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "novel_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Novel Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          }
+        },
+        "type": "object",
+        "title": "NoteUpdateRequest",
+        "description": "Partial update. Explicit ``null`` clears a field (exclude_unset semantics)."
       },
       "NovelKBEntry": {
         "properties": {
