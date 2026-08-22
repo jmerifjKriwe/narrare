@@ -95,7 +95,10 @@ def test_note_model_scope_invariant_constraint() -> None:
         if isinstance(c, CheckConstraint) and c.name == "ck_notes_scope_invariant"
     ]
     assert len(scope) == 1
-    assert "novel_id IS NOT NULL AND series_id IS NOT NULL" in str(scope[0].sqltext)
+    # Full literal incl. the leading NOT ( — the uninverted substring alone
+    # would also match inverted/stricter scope semantics (e.g. a CHECK that
+    # requires a link on every row), silently blessing the wrong invariant.
+    assert "NOT (novel_id IS NOT NULL AND series_id IS NOT NULL)" in str(scope[0].sqltext)
 
 
 def test_note_model_note_type_constraint() -> None:
@@ -187,6 +190,10 @@ class TestMigration0041Upgrade:
         assert 'op.create_table(\n        "notes"' in source
         assert "ck_notes_scope_invariant" in source
         assert "ck_notes_note_type" in source
+        # Full literal incl. the leading NOT ( — the uninverted substring alone
+        # cannot distinguish notes semantics (both NULL = global, allowed)
+        # from KB-style semantics (0037: both NULL forbidden).
+        assert "NOT (novel_id IS NOT NULL AND series_id IS NOT NULL)" in source
 
     def test_fk_links_use_on_delete_set_null(self) -> None:
         source = inspect.getsource(_load_migration_0041().upgrade)
@@ -197,7 +204,12 @@ class TestMigration0041Upgrade:
         source = inspect.getsource(_load_migration_0041().upgrade)
         for name in _ALL_NOTES_INDEXES:
             assert f'op.create_index("{name}", "notes"' in source
-        assert 'postgresql_using="gin"' in source
+        # gin is bound to the tags index line itself — a bare
+        # postgresql_using="gin" check could pass with gin attached to any
+        # other create_index call.
+        assert (
+            'op.create_index("ix_notes_tags", "notes", ["tags"], postgresql_using="gin")' in source
+        )
 
 
 @pytest.mark.mutation_inert
