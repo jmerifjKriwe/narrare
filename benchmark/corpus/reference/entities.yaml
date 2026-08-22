@@ -223,7 +223,7 @@ places:
         source_chapters: [4]
       - id: PF005
         predicate: residence_of
-        value: p_gert_meyer
+        value: "p_gert_meyer"
         valid_from: {year: 1984}
         source_chapters: [4]
 objects:
@@ -233,7 +233,7 @@ objects:
       - id: OF001
         predicate: owner
         value: "p_anna_meyer"
-        valid_from: {year: 2018, month: 10}  # F048 inheritance; prior Margarete ownership implied pre-2018 — transfer date unstated, not encoded
+        valid_from: {year: 2018, month: 10}  # Anna's transfer stated 2018-10; Margarete's acquisition date unstated
         source_chapters: [5]
       - id: OF002
         predicate: located_at
