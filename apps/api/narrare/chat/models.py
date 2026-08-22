@@ -17,9 +17,10 @@ from narrare._app.database import Base
 
 
 class ChatConversation(Base):
-    """A chat conversation scoped to a project (novel).
+    """A chat conversation, optionally scoped to a project (novel).
 
-    Each conversation belongs to one project and one user.
+    Each conversation belongs to one user and may be project-less
+    (NOTES-001 §6b — the column is nullable since migration 0042).
     Conversations contain zero or more ChatMessage entries.
     """
 

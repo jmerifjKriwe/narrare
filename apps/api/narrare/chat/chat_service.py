@@ -20,13 +20,8 @@ if TYPE_CHECKING:
     from uuid import UUID
 
 from narrare_core.agents.process_history import ProcessHistory
-from narrare_core.chat.chat_service_core import (
-    build_chat_context,
-    format_history,
-    new_conversation_id,
-)
+from narrare_core.chat.chat_service_core import new_conversation_id
 from narrare_core.chat.contracts import ChatMessage, ChatRequest, ChatServiceProtocol
-from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
@@ -96,7 +91,11 @@ class ChatService(ChatServiceProtocol):
         ``ProcessHistory`` for conversational continuity across turns.
 
         Args:
-            request: The chat request (project_id, message, conversation_id).
+            request: The chat request — ``project_id`` is optional since
+                NOTES-001 §6b (project-less chat skips KB/project context
+                tiers); ``note_id`` is transported for note-anchored chat
+                and consumed by the note-injection flow in a follow-up
+                slice (NOTES-001).
             user_id: The authenticated user's UUID.
 
         Returns:
@@ -119,18 +118,10 @@ class ChatService(ChatServiceProtocol):
             history = await self._store.get_history(conv_id)
 
         # 2. Build context + compose prompt
-        context = build_chat_context(
-            project_title="",
-            genre="",
-            language="en",
-        )
-        context.extra["conversation_history"] = format_history(history)
+        from narrare.chat._context import assemble_chat_context, compose_chat_prompt
 
-        composed = await self._composer.build(
-            LLMIntent.CHAT,
-            context,
-            user_prompt=request.message,
-        )
+        context = assemble_chat_context(history)
+        composed = await compose_chat_prompt(self._composer, context, request.message)
 
         # 3. Return the async generator that streams events via ChatAgent
         return self._stream_agent_response(
@@ -156,7 +147,8 @@ class ChatService(ChatServiceProtocol):
 
         Composes the ADR-048 Mode 2 invocation first for evidence + enrichment
         (flows to ``ChatDeps``); a no-op when ``invocation_pipeline`` is
-        ``None`` (backward compatible). See ``chat._invocation`` for details.
+        ``None`` (backward compatible). See ``chat._context`` and
+        ``chat._invocation`` for details.
 
         Args:
             conv_id: The conversation UUID.
@@ -164,12 +156,15 @@ class ChatService(ChatServiceProtocol):
             context: The prompt context with project metadata.
             user_prompt: The raw user message text.
             user_id: The authenticated user's UUID (ADR-045 Decision 6).
-            project_id: The project UUID, or ``None`` for project-less chat (NOTES-001 §6b).
+            project_id: The project UUID, or ``None`` for project-less
+                conversations — invocation enrichment is skipped then
+                (NOTES-001 §6b).
 
         Yields:
             Dict-based SSE events for the streaming response.
         """
-        from narrare.chat._invocation import compose_chat_invocation, resolve_chat_run_limits
+        from narrare.chat._context import prepare_effective_context
+        from narrare.chat._invocation import resolve_chat_run_limits
         from narrare.chat._response_helpers import save_assistant_response
         from narrare_core.chat.chat_agent import ChatAgent
         from narrare_core.chat.chat_deps import ChatDeps
@@ -178,8 +173,10 @@ class ChatService(ChatServiceProtocol):
         model = await self._registry.get_model(self._config)
 
         # Compose the invocation (Mode 2) → enriched context for ChatDeps.
+        # NOTES-001 §6b: project-less conversations skip project-correlated
+        # enrichment inside prepare_effective_context (graceful, logged).
         invocation_id = uuid4()
-        effective_context = await compose_chat_invocation(
+        effective_context = await prepare_effective_context(
             invocation_pipeline=self._invocation_pipeline,
             prompt_ctx=context,
             user_id=user_id,

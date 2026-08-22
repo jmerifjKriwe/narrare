@@ -94,7 +94,7 @@ class SQLAlchemyConversationStore(ConversationStore):
         """Create a new conversation and add the first message.
 
         ``project_id`` may be ``None`` for project-less conversations
-        (NOTES-001 §6b) — the DB column is nullable.
+        (NOTES-001 §6b — the column is nullable since migration 0042).
         """
         from narrare.chat.models import ChatConversation as ChatConversationModel
 
