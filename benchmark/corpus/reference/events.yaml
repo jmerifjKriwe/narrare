@@ -1,4 +1,4 @@
-# Ground truth for chapters 1-9.
+# Ground truth for chapters 1-12.
 - id: E001
   name: Anna und Peter lernen sich bei einer Lesung kennen
   date: {year: 2015, month: 5}
@@ -143,3 +143,63 @@
   participants: [p_anna_meyer, p_anna_meier]
   location: pl_tuerkenstrasse
   source_chapters: [9]
+- id: E025
+  name: Ilse übergibt den zweiten Briefbund
+  date: {year: 2022, month: 3}
+  participants: [p_ilse_meyer, p_anna_meyer, p_thomas_meyer]
+  location: pl_tuerkenstrasse
+  source_chapters: [10]
+- id: E026
+  name: Streit zwischen Anna und Ilse eskaliert in der Barmbeker Küche
+  date: {year: 2022, month: 9}
+  participants: [p_anna_meyer, p_ilse_meyer]
+  location: pl_barmbek_haus
+  source_chapters: [10]
+- id: E027
+  name: Aussprache und Versöhnung
+  date: {year: 2022, month: 9}
+  participants: [p_anna_meyer, p_ilse_meyer]
+  location: pl_barmbek_haus
+  source_chapters: [10]
+- id: E028
+  name: Anna und Sofia beschließen die Gründung einer eigenen Praxis
+  date: {year: 2023, month: 4}
+  participants: [p_anna_meyer, p_sofia_lenz]
+  location: pl_munich
+  source_chapters: [10]
+- id: E029
+  name: Gert übersteht eine Herz-OP
+  date: {year: 2023, month: 11}
+  participants: [p_gert_meyer, p_ilse_meyer, p_anna_meyer, p_thomas_meyer]
+  location: pl_hamburg
+  source_chapters: [11]
+- id: E030
+  name: Eröffnung von Lenz & Meyer Architekten im Glockenbachviertel
+  date: {year: 2024, month: 1}
+  participants: [p_anna_meyer, p_sofia_lenz, p_peter_meyer, p_maria_sommer, p_alexander_wolf]
+  location: pl_lenz_meyer_buero
+  source_chapters: [11]
+- id: E031
+  name: Zehnter Jahrestag des Buchhandlungs-Abends
+  date: {year: 2025, month: 5}
+  participants: [p_anna_meyer, p_peter_meyer, p_thomas_meyer]
+  location: pl_hamburg
+  source_chapters: [12]
+- id: E032
+  name: Juna startet in München die Schule
+  date: {year: 2025, month: 9}
+  participants: [p_juna_meyer]
+  location: pl_munich
+  source_chapters: [12]
+- id: E033
+  name: Hochzeit von Thomas und Lisa im Kleingarten
+  date: {year: 2026, month: 7, day: 11}
+  participants: [p_thomas_meyer, p_lisa_brandt, p_anna_meyer, p_peter_meyer, p_juna_meyer]
+  location: pl_gartenlaube
+  source_chapters: [12]
+- id: E034
+  name: Ilse verspricht Juna die silberne Armbanduhr
+  date: {year: 2026, month: 9}
+  participants: [p_ilse_meyer, p_juna_meyer, p_anna_meyer]
+  location: pl_tuerkenstrasse
+  source_chapters: [12]

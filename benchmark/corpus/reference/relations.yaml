@@ -1,4 +1,4 @@
-# Ground truth for chapters 1-9.
+# Ground truth for chapters 1-12.
 - id: R001
   subject: p_anna_meyer
   predicate: sibling_of
@@ -98,3 +98,48 @@
   predicate: not_related_to
   object: p_anna_meyer
   source_chapters: [9]
+- id: R020
+  subject: p_thomas_meyer
+  predicate: spouse_of
+  object: p_lisa_brandt
+  valid_from: {year: 2026, month: 7, day: 11}
+  source_chapters: [12]  # F128
+- id: R021
+  subject: p_ben_schulz
+  predicate: babysitter_of
+  object: p_juna_meyer
+  valid_from: {year: 2022}
+  source_chapters: [12]  # F134 — dual with residence fact
+- id: R022
+  subject: p_ilse_meyer
+  predicate: keeper_of
+  object: o_briefe
+  valid_to: {year: 2022, month: 3}
+  source_chapters: [10]  # F101/F108 — she held it back until the handover
+- id: R023
+  subject: p_sofia_lenz
+  predicate: business_partner_of
+  object: p_anna_meyer
+  valid_from: {year: 2024, month: 1}
+  source_chapters: [10, 11]  # F112 decision narrated ch-10, founding ch-11 — valid_from = founding per convention
+- id: R024
+  subject: p_alexander_wolf
+  predicate: property_manager_of
+  object: pl_lenz_meyer_buero
+  valid_from: {year: 2024, month: 1}
+  source_chapters: [11]  # F137
+- id: R025
+  subject: p_ilse_son
+  predicate: half_sibling_of
+  object: p_anna_meyer
+  source_chapters: [10]  # F106
+- id: R026
+  subject: p_ilse_son
+  predicate: half_sibling_of
+  object: p_thomas_meyer
+  source_chapters: [10]  # F106 — both siblings; bible lists anna AND thomas
+- id: R027
+  subject: p_ilse_meyer
+  predicate: mother_of
+  object: p_ilse_son
+  source_chapters: [10]  # F103's relation side; F103 fact carries the value side

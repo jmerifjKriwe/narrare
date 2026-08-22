@@ -1,4 +1,4 @@
-# Ground truth for chapters 1-9 (persons, places, objects).
+# Ground truth for chapters 1-12 (persons, places, objects).
 
 persons:
   - id: p_anna_meyer
@@ -51,6 +51,19 @@ persons:
         valid_from: {year: 2021, month: 9}  # F089/F090 dual-map: senior architect until 2024
         valid_to: {year: 2024}
         source_chapters: [9]
+      - id: F111
+        predicate: age_stated
+        value: "31"
+        source_chapters: [10]
+      - id: F119
+        predicate: profession
+        value: "Mitgründerin von Lenz & Meyer Architekten"
+        valid_from: {year: 2024, month: 1}  # F118/F119 dual-map: co-founder role folds into this profession fact
+        source_chapters: [11]
+      - id: F132
+        predicate: age_stated
+        value: "35"
+        source_chapters: [12]
   - id: p_peter_meyer
     name: Peter Meyer
     aliases: []
@@ -230,6 +243,10 @@ persons:
         predicate: age_stated
         value: "2"
         source_chapters: [8]
+      - id: F127
+        predicate: age_stated
+        value: "6"
+        source_chapters: [12]
   - id: p_sofia_lenz
     name: Sofia Lenz
     aliases: []
@@ -252,6 +269,37 @@ persons:
         value: "Türkenstraße 41 (eine Etage höher)"
         valid_from: {year: 2021}
         source_chapters: [9]
+  - id: p_ilse_son
+    name: Ilses Sohn (namenlos, geboren 1983)
+    aliases: []                    # DESIGN: shell entity so half-sibling relations (F106) are encodable;
+                                  # NO name, NO further facts — prose states none (bible discipline)
+    facts:
+      - id: F103
+        predicate: relation_to_ilse
+        value: "Sohn"
+        source_chapters: [10]
+      - id: F104
+        predicate: birth_year
+        value: "1983"
+        source_chapters: [10]
+      - id: F105
+        predicate: given_up_for_adoption
+        value: "yes"
+        valid_from: {year: 1983}
+        source_chapters: [10]
+  - id: p_ben_schulz
+    name: Ben Schulz
+    aliases: []
+    facts:
+      - id: F134
+        predicate: residence
+        value: "Türkenstraße 41 (dritter Stock)"
+        source_chapters: [12]      # residence prose-stated ("vom dritten Stock herunter", "aus demselben Haus");
+                                   # no valid_from: "seit 2022" dates the babysitting, not the move-in (relation, next batch)
+  - id: p_alexander_wolf
+    name: "Alexander Wolf"
+    aliases: ["Alex", "Sascha"]
+    facts: []                           # alias split per F137: "Alex" by colleagues, "Sascha" by family, never resolved on-page; represented by R024 + E030
 
 places:
   - id: pl_hamburg
@@ -320,6 +368,14 @@ places:
         value: "p_gert_meyer"
         valid_from: {year: 2020, month: 7}  # F070
         source_chapters: [7]
+  - id: pl_lenz_meyer_buero
+    name: Lenz & Meyer Architekten (Glockenbachviertel, München)
+    facts:
+      - id: PF010
+        predicate: exists_from
+        value: "2024-01"
+        valid_from: {year: 2024, month: 1}  # F117
+        source_chapters: [11]
 objects:
   - id: o_zeichentisch
     name: Zeichentisch (Margaretes Zeichentisch)
@@ -341,7 +397,7 @@ objects:
         valid_from: {year: 2021, month: 8}  # F135: table moves with Anna
         source_chapters: [8]
   - id: o_briefe
-    name: Briefe (erster Bund 1982–1984)
+    name: Briefe (beide Bündel 1982–1984)
     facts:
       - id: OF003
         predicate: owner
@@ -357,6 +413,11 @@ objects:
         value: "o_zeichentisch"
         valid_from: {year: 2019, month: 10}  # F061
         source_chapters: [6]
+      - id: OF015
+        predicate: second_bundle_revealed
+        value: "yes"
+        valid_from: {year: 2022, month: 3}  # F100/F102: handover + complete reveal
+        source_chapters: [10]
 
   - id: o_frida
     name: Frida (Hund)
@@ -388,3 +449,28 @@ objects:
         value: "p_anna_meyer"
         valid_from: {year: 2015}            # F098: unbroken since 2015
         source_chapters: [9]
+  - id: o_fuellfederhalter
+    name: Füllfederhalter "L&M 2024"
+    facts:
+      - id: OF011
+        predicate: owner
+        value: "p_anna_meyer"
+        valid_from: {year: 2024, month: 1}  # F121; F120 gifting carried by the event
+        source_chapters: [11]
+      - id: OF012
+        predicate: in_daily_use
+        value: "yes"
+        valid_from: {year: 2026, month: 9}  # F133
+        source_chapters: [12]
+  - id: o_armbanduhr
+    name: Silberne Armbanduhr (Ilses Uhr)
+    facts:
+      - id: OF013
+        predicate: owner
+        value: "p_ilse_meyer"               # current owner: the watch stays Ilse's (F130/F131 promise = OF014 + event, no owner change)
+        source_chapters: [12]
+      - id: OF014
+        predicate: promised_to
+        value: "p_juna_meyer"
+        valid_from: {year: 2026, month: 9}  # F130/F131
+        source_chapters: [12]

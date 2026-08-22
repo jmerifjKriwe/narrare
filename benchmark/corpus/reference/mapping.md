@@ -141,6 +141,56 @@ Convention: profession facts anchor to the dated decision/acceptance where that 
 
 Note: F022 closed 2021-08 and F009 closed 2021-03 by predecessor-closure convention (cast intervals 2017–2021 / 2013–2021).
 
+## Chapters 10-12 (F100-F137 incl. restatements)
+
+| F-id | Representation(s) |
+|------|-------------------|
+| F100 | OF015 + E025 |
+| F101 | R022 (dual) |
+| F102 | OF015 (dual) |
+| F103 | ilse_son fact + R027 |
+| F104 | ilse_son fact |
+| F105 | ilse_son fact |
+| F106 | R025 + R026 |
+| F107 | NO-REP (meta: confirmation of implication) |
+| F108 | R022 |
+| F109 | E026 |
+| F110 | E027 |
+| F111 | anna age fact |
+| F112 | E028 + R023 |
+| F113 | E029 |
+| F114 | E029 (dual) |
+| F115 | E029 (dual) |
+| F116 | E030 + PF010 |
+| F117 | PF010 |
+| F118 | F119 fact (dual) |
+| F119 | anna profession fact |
+| F120 | E030 (dual) |
+| F121 | OF011 |
+| F122 | E030 (dual) |
+| F123 | E030 (dual) |
+| F124 | E030 (dual) |
+| F137 | R024 + E030 |
+| F125 | E031 |
+| F001-form3 | E031 (restatement; canonical row already in ch1-3 table) |
+| F126 | E032 |
+| F127 | juna age fact |
+| F128 | R020 + E033 |
+| F129 | E033 (dual) |
+| F130 | OF014 + E034 |
+| F131 | OF014 (dual) |
+| F132 | anna age fact |
+| F136 | OF010 (dual restatement; canonical ch-05 row F051 + OF002/OF010) |
+| F133 | OF012 |
+| F086-form2 | OF008 (restatement; canonical row ch-08) |
+| F134 | ben fact + R021 |
+| F051-form | OF002 (restatement; canonical row ch-05) |
+
+Note: F135 is not restated here — its canonical row is in the Chapters 7-9
+table; F088 remains RETIRED. Restatement rows (F001-form3, F086-form2, F136,
+F051-form) carry form-suffixed keys; their canonical rows exist in earlier
+tables.
+
 ---
 
 This file is extended per reference batch (chapters 7+ append a new section;
