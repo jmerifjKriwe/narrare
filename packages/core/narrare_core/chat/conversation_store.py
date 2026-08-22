@@ -41,10 +41,15 @@ class ConversationStore(ABC):
     @abstractmethod
     async def create_conversation(
         self,
-        project_id: UUID,
+        project_id: UUID | None,
         user_id: UUID,
         first_message: str,
-    ) -> UUID: ...
+    ) -> UUID:
+        """Create a new conversation and store its first message.
+
+        ``project_id`` may be ``None`` for project-less conversations (NOTES-001 §6b).
+        """
+        ...
 
     @abstractmethod
     async def get_conversation_project_id(
@@ -113,7 +118,7 @@ class InMemoryConversationStore(ConversationStore):
 
     async def create_conversation(
         self,
-        project_id: UUID,
+        project_id: UUID | None,
         user_id: UUID,
         first_message: str,
     ) -> UUID:

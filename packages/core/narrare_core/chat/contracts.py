@@ -26,11 +26,17 @@ class ChatMessage:
 
 @dataclass
 class ChatRequest:
-    """Request to send a chat message."""
+    """Request to send a chat message.
 
-    project_id: UUID
-    message: str
+    ``project_id`` is optional since NOTES-001: chatting about a global note
+    has no project (KB/project context tiers are skipped then). ``note_id``
+    attaches a scratchpad note as runtime context (spec §6b).
+    """
+
+    project_id: UUID | None = None
+    message: str = ""
     conversation_id: UUID | None = None
+    note_id: UUID | None = None
 
 
 @dataclass
