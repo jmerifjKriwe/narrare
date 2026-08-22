@@ -23,6 +23,8 @@ E002/E006/E014/E015. NO-REP is a coverage class, not a gap.
 
 RETIRED class = F088 (retired in bible fix round, never planted).
 
+Convention: profession facts anchor to the dated decision/acceptance where that is what the prose dates (F074: acceptance 2021-03; the work start autumn 2021 is scene texture), and to the actual start otherwise (F089: 2021-09).
+
 ## Chapters 1-3 (F001-F032)
 
 | F-id | Representation(s) |
@@ -136,6 +138,8 @@ RETIRED class = F088 (retired in bible fix round, never planted).
 | F097 | NO-REP (texture) |
 | F098 | OF009 |
 | F099 | NO-REP (negative: unconfirmed) |
+
+Note: F022 closed 2021-08 and F009 closed 2021-03 by predecessor-closure convention (cast intervals 2017–2021 / 2013–2021).
 
 ---
 

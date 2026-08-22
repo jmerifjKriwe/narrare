@@ -27,7 +27,8 @@ persons:
         predicate: profession
         value: "Projektarchitektin bei Pfeiffer & Partner Architekten"
         valid_from: {year: 2017, month: 3}
-        source_chapters: [3]
+        valid_to: {year: 2021, month: 8}    # job ends with the Aug 2021 move; cast interval 2017–2021
+        source_chapters: [3, 8]
       - id: F031
         predicate: age_stated
         value: "26"
@@ -57,7 +58,9 @@ persons:
       - id: F009
         predicate: profession
         value: "Bauingenieur bei einem Hamburger Ingenieurbüro für Hafenbau"
-        source_chapters: [1]
+        valid_from: {year: 2013}            # cast interval 2013–2021; cast is the fact source per README ruling
+        valid_to: {year: 2021, month: 3}    # ends at the 2021-03 acceptance (predecessor closure)
+        source_chapters: [1, 8]
       - id: F010
         predicate: age_stated
         value: "26"
@@ -180,7 +183,8 @@ persons:
         source_chapters: [4]
       - id: F077
         predicate: profession
-        value: "Lehrerin"
+        value: "Grundschullehrerin"
+        valid_from: {year: 1980}            # "Seit 1980" (F077 prose); interval 1980–2021-07 symmetric with Gert F068
         valid_to: {year: 2021, month: 7}    # F077 prose: retires end of July 2021
         source_chapters: [8]
       - id: F078
@@ -197,7 +201,7 @@ persons:
         source_chapters: [4]
       - id: F068
         predicate: profession
-        value: "Werftarbeiter"
+        value: "Werftingenieur"
         valid_from: {year: 1980}            # forty years at the Werft (F068 prose)
         valid_to: {year: 2020, month: 7}    # F067 retirement = valid_to
         source_chapters: [7]
@@ -368,7 +372,8 @@ objects:
       - id: OF007
         predicate: owner
         value: "p_peter_meyer"
-        valid_to: {year: 2021, month: 6}    # F076: only the end is stated; acquisition unstated
+        valid_from: {year: 2016, month: 10}
+        valid_to: {year: 2021, month: 6}    # acquisition stated in ch-08 prose (Oct 2016), sale June 2021
         source_chapters: [8]
       - id: OF008
         predicate: located_at
