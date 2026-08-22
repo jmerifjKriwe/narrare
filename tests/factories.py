@@ -139,3 +139,25 @@ def make_chapter_outline(**overrides: Any) -> Any:
         },
     )
     return outline
+
+
+def make_note(**overrides: Any) -> Any:
+    """Create a Note instance with sensible defaults (NOTES-001 scratchpad)."""
+    from narrare.notes.models import Note
+
+    note = Note()
+    _set_attrs(
+        note,
+        {
+            "id": overrides.pop("id", uuid.uuid4()),
+            "user_id": overrides.pop("user_id", uuid.uuid4()),
+            "title": overrides.pop("title", None),
+            "content": overrides.pop("content", "note body"),
+            "note_type": overrides.pop("note_type", "idea"),
+            "tags": overrides.pop("tags", []),
+            "novel_id": overrides.pop("novel_id", None),
+            "series_id": overrides.pop("series_id", None),
+            **overrides,
+        },
+    )
+    return note
