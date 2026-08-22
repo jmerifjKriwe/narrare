@@ -4,8 +4,8 @@
 > Scope: user-reachable capabilities that read or apply KB content (worldbuilding
 > browser, search, entity detail/graph, series canon, wiki, timeline, proactive
 > context). Every API path below has a mechanically verified method-pinned
-> router-decorator match AND a mounted-path confirmation (rg; verification output
-> in `.superpowers/sdd/2026-08-20-kb-benchmark-package1-adr083-inventory/task-3-report.md`).
+> router-decorator match AND a mounted-path confirmation (rg; those verification
+> logs are session-local and not committed — re-run the checks per README Method).
 
 ### CAP-OUT-01: Browse novel KB entries in the worldbuilding 3-column view
 
