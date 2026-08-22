@@ -87,7 +87,7 @@
   name: "Ilse weicht Annas direkter Frage nach den Briefen aus"
   date: {year: 2019, month: 10}
   participants: [p_anna_meyer, p_ilse_meyer]
-  location: pl_eppendorf_wohnung
+  location: pl_barmbek_haus   # deflection scene is the Sunday visit to the Flemmingstraße 3 kitchen (ch-06), not the Eppendorf apartment
   source_chapters: [6]
 - id: E016
   name: Lisa schenkt Thomas den Hund Frida

@@ -9,7 +9,8 @@
   predicate: engaged_to
   object: p_peter_meyer
   valid_from: {year: 2017, month: 12}
-  source_chapters: [3]
+  valid_to: {year: 2018, month: 5, day: 26}  # engagement ends at the wedding (E009/F033; premise "m. 2018-05-26")
+  source_chapters: [3, 4]
 - id: R003
   subject: p_marco_weise
   predicate: colleague_of

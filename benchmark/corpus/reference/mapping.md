@@ -134,6 +134,7 @@ Participant rule: event participants = bible involved-ids (authoritative), plus 
 | F091 | R018 |
 | F092 | R018 (dual) |
 | F093 | maria profession fact |
+| F001-form2 | E001 (restatement; canonical row already in ch1-3 table) |
 | F094 | E024 |
 | F095 | R019 |
 | F096 | anna_meier residence fact |
@@ -141,7 +142,7 @@ Participant rule: event participants = bible involved-ids (authoritative), plus 
 | F098 | OF009 |
 | F099 | NO-REP (negative: unconfirmed) |
 
-Note: F022 closed 2021-08 and F009 closed 2021-03 by predecessor-closure convention (cast intervals 2017–2021 / 2013–2021).
+Note: F022 closed 2021-08 and F009 closed 2021-03 by predecessor-closure convention (cast intervals 2017–2021 / 2013–2021). Task-11 completed the convention file-wide: F018/F059 Eppendorf residences closed 2021-08 (successor PF007/PF008) and R002 engagement closed 2018-05-26 at the wedding (E009). Closures with no dedicated row of their own are carried by a designated dual: Anna's Eppendorf residence end (F083) by PF001-valid_to; Anna's Pfeiffer workplace end by F022.
 
 ## Chapters 10-12 (F100-F137 incl. restatements)
 
@@ -189,9 +190,10 @@ Note: F022 closed 2021-08 and F009 closed 2021-03 by predecessor-closure convent
 | F051-form | OF002 (restatement; canonical row ch-05) |
 
 Note: F135 is not restated here — its canonical row is in the Chapters 7-9
-table; F088 remains RETIRED. Restatement rows (F001-form3, F086-form2, F136,
-F051-form) carry form-suffixed keys; their canonical rows exist in earlier
-tables.
+table; F088 remains RETIRED. Restatement rows (F001-form2, F001-form3,
+F086-form2, F051-form) carry form-suffixed keys; their canonical rows exist in
+earlier tables. F136 is a canonical ch-12 fact (not form-suffixed) whose
+content restates the F051/F135 location; it maps to OF010 as dual.
 
 ---
 
