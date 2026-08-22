@@ -5,8 +5,8 @@
 > comparing text against KB content (or, where honestly classified, against a
 > stated non-KB comparison base). Every API path below has a mechanically
 > verified method-pinned router-decorator match AND a mounted-path
-> confirmation (rg; verification output in
-> `.superpowers/sdd/2026-08-20-kb-benchmark-package1-adr083-inventory/task-4-report.md`).
+> confirmation (rg; those verification logs are session-local and not
+> committed — re-run the checks per README Method).
 
 ### CAP-CHK-01: Run a consistency check on the project's KB and manage its findings (KB-004)
 
@@ -83,7 +83,7 @@
 | Output artifact | SSE stream — narrator drift result (trend + jumps + agent verdict) and graceful `no_profile` |
 | LLM-backed | partial (deterministic narrator metrics + trend/jumps; `AuthorVoiceDriftAgent`, 1 call per run — `author_voice_drift_agent_runner.py`) |
 | Benchmarkable | partially — the comparison base is `ProjectSettings.author_voice`, NOT KB content; the deterministic signals are scorable, the agent verdict needs an LLM judge |
-| Notes | Novel-level twin of CAP-CHK-03, listed for symmetry with the seeded SERIES-004 variant — Task 5 may reclassify. Display-only, never persisted. Discovered beyond the seed list. |
+| Notes | Novel-level twin of CAP-CHK-03, listed for symmetry with the seeded SERIES-004 variant — resolved: Task 5 kept the classification (the check-direction totals and the LLM-config table of 04-findings.md include it; no findings-register row reclassifies it). Display-only, never persisted. Discovered beyond the seed list. |
 
 ## Findings
 
