@@ -31,6 +31,9 @@ def get_chat_service(session: SessionDep) -> ChatService:
       Mode 2 — agent-internal composition via ChatAgent).
     - DefaultRunLimitResolver for output-budget enforcement (ADR-045
       Decision 4).
+    - NoteService as NoteLookupProtocol for note context injection
+      (NOTES-001 §6b — wiring-level import, precedented by
+      ``narrare.novels.router`` importing ``narrare.volumes.repository``).
 
     Args:
         session: SQLAlchemy async session for DB access.
@@ -44,6 +47,7 @@ def get_chat_service(session: SessionDep) -> ChatService:
     )
     from narrare.chat.chat_service import ChatService
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
+    from narrare.notes.dependencies import get_note_service
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
     registry = get_model_registry()
@@ -60,4 +64,5 @@ def get_chat_service(session: SessionDep) -> ChatService:
         config=config,
         invocation_pipeline=invocation_pipeline,
         run_limit_resolver=run_limit_resolver,
+        note_lookup=get_note_service(session),
     )

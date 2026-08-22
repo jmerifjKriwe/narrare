@@ -11,28 +11,22 @@ Follows ChatServiceProtocol from core contracts.py.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import uuid4
-
-import structlog
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
-from narrare_core.agents.process_history import ProcessHistory
 from narrare_core.chat.chat_service_core import new_conversation_id
 from narrare_core.chat.contracts import ChatMessage, ChatRequest, ChatServiceProtocol
 
 if TYPE_CHECKING:
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
+    from narrare_core.agents.process_history import ProcessHistory
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
+    from narrare_core.notes.contracts import NoteLookupProtocol
     from narrare_core.prompts import PromptComposer
-    from narrare_core.prompts.composer import ComposedPrompt
-    from narrare_core.prompts.context import PromptContext
-
-logger = structlog.get_logger(__name__)
 
 
 class ChatService(ChatServiceProtocol):
@@ -40,10 +34,13 @@ class ChatService(ChatServiceProtocol):
 
     Handles the full chat lifecycle:
     1. Conversation creation or history loading
-    2. Context assembly and prompt composition
-    3. Agent-based LLM streaming via ChatAgent (ADR-024)
-    4. ProcessHistory tracking for conversational continuity (ADR-034)
-    5. Message persistence via SQLAlchemyConversationStore
+    2. Note context injection into the user message (NOTES-001 §6b —
+       runtime-input channel, RULE-02)
+    3. Context assembly and prompt composition
+    4. Agent-based LLM streaming via ChatAgent (ADR-024; delegated to
+       ``chat._streaming``)
+    5. ProcessHistory tracking for conversational continuity (ADR-034)
+    6. Message persistence via SQLAlchemyConversationStore
     """
 
     def __init__(
@@ -54,6 +51,7 @@ class ChatService(ChatServiceProtocol):
         config: ResolvedModelConfig,
         invocation_pipeline: InvocationPipeline | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
+        note_lookup: NoteLookupProtocol | None = None,
     ) -> None:
         """Initialize the chat service with injected dependencies.
 
@@ -66,6 +64,10 @@ class ChatService(ChatServiceProtocol):
                 and enrichment (ADR-045/ADR-048); ``None`` (default) is a no-op.
             run_limit_resolver: Optional run-limit resolver (ADR-045 Decision 4);
                 ``None`` (default) applies no limits to the stream.
+            note_lookup: Optional ``NoteLookupProtocol`` (NOTES-001 §6b) —
+                resolves ``note_id`` requests into a note whose context
+                block is prepended to the user message (runtime input,
+                RULE-02). ``None`` (default) disables note injection.
         """
         self._composer = prompt_composer
         self._registry = model_registry
@@ -73,6 +75,7 @@ class ChatService(ChatServiceProtocol):
         self._config = config
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver
+        self._note_lookup = note_lookup
         self._histories: dict[UUID, ProcessHistory] = {}
 
     async def ask(
@@ -93,9 +96,8 @@ class ChatService(ChatServiceProtocol):
         Args:
             request: The chat request — ``project_id`` is optional since
                 NOTES-001 §6b (project-less chat skips KB/project context
-                tiers); ``note_id`` is transported for note-anchored chat
-                and consumed by the note-injection flow in a follow-up
-                slice (NOTES-001).
+                tiers); ``note_id`` attaches a scratchpad note as a
+                runtime context block in the user message (NOTES-001 §6b).
             user_id: The authenticated user's UUID.
 
         Returns:
@@ -104,154 +106,57 @@ class ChatService(ChatServiceProtocol):
         conv_id = request.conversation_id or new_conversation_id()
         is_new = request.conversation_id is None
 
+        from narrare.chat._context import (
+            assemble_chat_context,
+            compose_chat_prompt,
+            resolve_effective_message,
+        )
+        from narrare.chat._streaming import stream_chat_response
+
+        # 0. NOTES-001 §6b: attach a requested note as RUNTIME INPUT — its
+        # context block is prepended to the user message, never baked into
+        # a prompt template (RULE-02). Missing/unowned notes degrade
+        # gracefully inside the resolver (warn + proceed, RULE-11).
+        message = await resolve_effective_message(
+            note_lookup=self._note_lookup,
+            note_id=request.note_id,
+            message=request.message,
+            user_id=user_id,
+        )
+
         # 1. Create conversation or add message to existing
         if is_new:
             conv_id = await self._store.create_conversation(
                 request.project_id,
                 user_id,
-                request.message,
+                message,
             )
             history: list[ChatMessage] = []
         else:
             assert conv_id is not None
-            await self._store.add_message(conv_id, "user", request.message)
+            await self._store.add_message(conv_id, "user", message)
             history = await self._store.get_history(conv_id)
 
         # 2. Build context + compose prompt
-        from narrare.chat._context import assemble_chat_context, compose_chat_prompt
-
         context = assemble_chat_context(history)
-        composed = await compose_chat_prompt(self._composer, context, request.message)
+        composed = await compose_chat_prompt(self._composer, context, message)
 
         # 3. Return the async generator that streams events via ChatAgent
-        return self._stream_agent_response(
-            conv_id,
-            composed,
-            context,
-            request.message,
+        return stream_chat_response(
+            registry=self._registry,
+            config=self._config,
+            composer=self._composer,
+            store=self._store,
+            histories=self._histories,
+            invocation_pipeline=self._invocation_pipeline,
+            run_limit_resolver=self._run_limit_resolver,
+            conv_id=conv_id,
+            composed=composed,
+            context=context,
+            user_prompt=message,
             user_id=user_id,
             project_id=request.project_id,
         )
-
-    async def _stream_agent_response(
-        self,
-        conv_id: UUID,
-        composed: ComposedPrompt,
-        context: PromptContext,
-        user_prompt: str,
-        *,
-        user_id: UUID,
-        project_id: UUID | None,
-    ) -> AsyncIterator[dict[str, object]]:
-        """Stream the chat response via ``ChatAgent.run_stream()`` (ADR-024).
-
-        Composes the ADR-048 Mode 2 invocation first for evidence + enrichment
-        (flows to ``ChatDeps``); a no-op when ``invocation_pipeline`` is
-        ``None`` (backward compatible). See ``chat._context`` and
-        ``chat._invocation`` for details.
-
-        Args:
-            conv_id: The conversation UUID.
-            composed: The composed prompt (system + user prompts).
-            context: The prompt context with project metadata.
-            user_prompt: The raw user message text.
-            user_id: The authenticated user's UUID (ADR-045 Decision 6).
-            project_id: The project UUID, or ``None`` for project-less
-                conversations — invocation enrichment is skipped then
-                (NOTES-001 §6b).
-
-        Yields:
-            Dict-based SSE events for the streaming response.
-        """
-        from narrare.chat._context import prepare_effective_context
-        from narrare.chat._invocation import resolve_chat_run_limits
-        from narrare.chat._response_helpers import save_assistant_response
-        from narrare_core.chat.chat_agent import ChatAgent
-        from narrare_core.chat.chat_deps import ChatDeps
-
-        # Get model from registry
-        model = await self._registry.get_model(self._config)
-
-        # Compose the invocation (Mode 2) → enriched context for ChatDeps.
-        # NOTES-001 §6b: project-less conversations skip project-correlated
-        # enrichment inside prepare_effective_context (graceful, logged).
-        invocation_id = uuid4()
-        effective_context = await prepare_effective_context(
-            invocation_pipeline=self._invocation_pipeline,
-            prompt_ctx=context,
-            user_id=user_id,
-            project_id=project_id,
-            conv_id=conv_id,
-            invocation_id=invocation_id,
-        )
-
-        # Create ChatAgent (HistoryPolicy.CONVERSATIONAL). ADR-046: inject the
-        # feature system prompt into the SYSTEM channel via the constructor,
-        # never concatenated into the user prompt.
-        agent = ChatAgent(model=model, system_prompt=composed.system or None)
-
-        # ChatDeps carries the enriched context to the agent (ADR-048 Mode 2).
-        deps = ChatDeps(
-            prompt_composer=self._composer,
-            context=effective_context,
-            user_prompt=user_prompt,
-        )
-
-        # Get or create ProcessHistory for this conversation
-        history = self._histories.get(conv_id, ProcessHistory())
-
-        # Resolve run limits when a resolver is wired (ADR-045 Decision 4).
-        message_history = history.messages if not history.is_empty else None
-        stream_kwargs = resolve_chat_run_limits(
-            resolver=self._run_limit_resolver,
-            config=self._config,
-            invocation_id=invocation_id,
-        )
-
-        # Yield meta event with conversation ID
-        yield {
-            "type": "meta",
-            "conversation_id": str(conv_id),
-            "request_id": str(uuid4()),
-        }
-
-        # Stream agent response. ADR-046: only composed.user (user channel) is
-        # passed as prompt; the system prompt is injected via the constructor.
-        full_response = ""
-        try:
-            async for event in agent.run_stream(
-                prompt=composed.user,
-                deps=deps,
-                message_history=message_history,
-                **stream_kwargs,
-            ):
-                if event.type == "token":
-                    yield {"type": "token", "text": event.text}
-                    full_response += event.text
-                elif event.type == "done":
-                    # Update ProcessHistory with new messages from this turn
-                    if event.new_messages:
-                        history.add(event.new_messages)
-                        self._histories[conv_id] = history
-
-                    yield {
-                        "type": "done",
-                        "usage": event.usage or {},
-                    }
-                    # Use the complete text from the done event
-                    if event.text:
-                        full_response = event.text
-        except Exception as exc:
-            logger.error(
-                "chat_stream_failed",
-                conversation_id=str(conv_id),
-                error=str(exc),
-                exc_info=True,
-            )
-            await save_assistant_response(self._store, conv_id, full_response)
-            raise
-
-        await save_assistant_response(self._store, conv_id, full_response)
 
     async def get_history(
         self,

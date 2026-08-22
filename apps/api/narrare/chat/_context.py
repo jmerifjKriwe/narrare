@@ -10,13 +10,17 @@ Owns the context steps of the chat flow:
   project-correlated enrichment for project-less conversations (NOTES-001
   §6b: without a project there is nothing to correlate; graceful skip with
   a log, no error — RULE-11).
+- :func:`resolve_effective_message` resolves the effective user message,
+  prepending a requested scratchpad note as a runtime context block
+  (NOTES-001 §6b — user-message channel, never a prompt template,
+  RULE-02; graceful degradation on missing/unowned notes, RULE-11).
 
 Extracted from ``chat_service.py`` for RULE-04 (300-line service limit),
 following the ``_invocation.py`` / ``_response_helpers.py`` split pattern.
 One responsibility (RULE-06): prepare the effective chat context.
 
 See: ADR-024, ADR-045, ADR-048, NOTES-001 §6b,
-CONSTRAINTS.md RULE-04/RULE-06/RULE-11.
+CONSTRAINTS.md RULE-02/RULE-04/RULE-06/RULE-11.
 """
 
 from __future__ import annotations
@@ -26,12 +30,14 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare_core.chat.chat_service_core import build_chat_context, format_history
+from narrare_core.notes.contracts import format_note_context_block
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.chat.contracts import ChatMessage
+    from narrare_core.notes.contracts import NoteLookupProtocol, NoteSnapshot
     from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
     from narrare_core.prompts.context import PromptContext
 
@@ -122,3 +128,50 @@ async def prepare_effective_context(
         conv_id=conv_id,
         invocation_id=invocation_id,
     )
+
+
+async def resolve_effective_message(
+    *,
+    note_lookup: NoteLookupProtocol | None,
+    note_id: UUID | None,
+    message: str,
+    user_id: UUID,
+) -> str:
+    """Resolve the effective user message with an optional note attached.
+
+    NOTES-001 §6b: when the request carries a ``note_id``, the note snapshot
+    is serialized via ``format_note_context_block`` (core contract) and
+    prepended to the user message — RUNTIME INPUT in the user-message
+    channel, never baked into a system/task template (RULE-02; same
+    category as ``format_history``). A missing/unowned note (snapshot is
+    ``None``) or an unwired lookup degrades gracefully: warn and proceed
+    without the note (RULE-11 — no error mid-conversation).
+
+    Args:
+        note_lookup: ``NoteLookupProtocol`` implementation (the notes
+            service, injected by wiring), or ``None`` when note injection
+            is not wired.
+        note_id: The note to attach, or ``None`` for plain chat (no
+            lookup is performed then).
+        message: The raw user message text.
+        user_id: The authenticated user's UUID (ownership check).
+
+    Returns:
+        The effective message — ``"<note block>\\n\\n<message>"`` when a
+        note was found, otherwise the original message unchanged.
+    """
+    if note_id is None:
+        return message
+
+    snapshot: NoteSnapshot | None = None
+    if note_lookup is not None:
+        snapshot = await note_lookup.get_note_snapshot(note_id, user_id)
+
+    if snapshot is None:
+        logger.warning(
+            "chat_note_unavailable",
+            note_id=str(note_id),
+        )
+        return message
+
+    return f"{format_note_context_block(snapshot)}\n\n{message}"
