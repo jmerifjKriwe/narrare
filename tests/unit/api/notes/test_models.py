@@ -166,6 +166,20 @@ def test_note_model_single_column_indexes_present() -> None:
     assert {"ix_notes_user_id", "ix_notes_novel_id", "ix_notes_series_id"} <= names
 
 
+def test_model_registry_imports_note() -> None:
+    """T6 review fix: the central model registry must import Note.
+
+    Without the registry import, ``Base.metadata`` misses the notes table
+    whenever only ``narrare._app.models`` is imported — breaking alembic
+    autogenerate completeness and cross-module FK resolution.
+    """
+    from narrare._app import models as model_registry
+
+    # ``getattr`` (not attribute access) so a missing import fails the
+    # assertion instead of erroring with AttributeError.
+    assert getattr(model_registry, "Note", None) is Note
+
+
 @pytest.mark.mutation_inert
 class TestMigration0041Metadata:
     """Revision metadata pins the chain head and the RULE-14 pairing."""
