@@ -1,0 +1,59 @@
+variant: complex
+base: clean
+errors:
+  - id: X01
+    class: implicit_temporal
+    description: "Maria's March-2015 retrospect in ch-09 is extended to claim Anna advised her on the 2015 job move, implying an acquaintance from shared student days (i.e. existing by March 2015 at the latest). Truth: the two first met when Anna joined the office in September 2021 and were strangers before (R018 colleague_of valid_from 2021-09; clean prose 'Aus der Kollegin, die Anna seit diesem September hatte'). No explicit date for the claimed acquaintance is stated - only the temporal implication contradicts."
+    chapter: ch-09
+    anchor: "Damals, sagte sie, im März 2015, habe sie in diesem Büro angefangen, als Senior-Architektin"
+    replacement: "Damals, sagte sie, im März 2015, habe sie in diesem Büro angefangen, als Senior-Architektin — auf Rat von Anna übrigens, die sie aus gemeinsamen Studententagen kannte"
+    ground_truth_ref: R018
+  - id: X02
+    class: near_duplicate_name
+    description: "The ch-09 stairwell encounter is reframed as a family-internal mix-up: the neighbor Anna Meier is presented as 'die andere Anna aus der Familie' and the identical name sound as family inheritance, not as coincidence. Truth: the two Annas are not related at all, not even distantly (R019 not_related_to; clean prose 'überhaupt nicht verwandt, nicht einmal entfernt')."
+    chapter: ch-09
+    anchor: "überhaupt nicht verwandt, nicht einmal entfernt, sondern schlicht eine zweite Frau mit einem Namen, der denselben Klang trug"
+    replacement: "sehr wohl verwandt, die andere Anna aus der Familie, eine zweite Frau mit einem Namen, der denselben Klang trug, weil er in der Familie lag"
+    ground_truth_ref: R019
+  - id: X03
+    class: alias_confusion
+    description: "The ch-11 opening-day passage is rewritten to split the property manager into two people: 'Sascha, der andere Hausverwalter, der das Haus mitverwaltete' becomes a distinct second man beside Alexander. Truth: Alex and Sascha are aliases of the single property manager Alexander Wolf (aliases ['Alex', 'Sascha']; R024 property_manager_of; F137 'zwei Namen, ein Mann, keine Verluste')."
+    chapter: ch-11
+    anchor: "Die einen im Haus nannten ihn Alex, die anderen Sascha; riefen die einen, kam er, riefen die anderen, kam er ebenso. Niemand erklärte es, niemand wurde eines Besseren belehrt, der Tag verging, und mit ihm die Eröffnung, und keiner der beiden Namen erwies sich als der falsche. Anna, die aus einer Familie kam, in der Namen verdoppelt, verwechselt und falsch zugestellt wurden, fand das bemerkenswert ordentlich: zwei Namen, ein Mann, keine Verluste."
+    replacement: "Die einen im Haus nannten ihn Alex; die anderen riefen nicht ihn, sondern Sascha, den anderen Hausverwalter, der das Haus mitverwaltete; riefen die einen, kam Alexander, riefen die anderen, kam Sascha. Niemand erklärte es, niemand wurde eines Besseren belehrt, der Tag verging, und mit ihm die Eröffnung, und keiner der beiden Namen erwies sich als der falsche. Anna, die aus einer Familie kam, in der Namen verdoppelt, verwechselt und falsch zugestellt wurden, fand das bemerkenswert ordentlich: zwei Namen, zwei Männer, keine Verluste."
+    ground_truth_ref: R024
+  - id: X04
+    class: negation
+    description: "The ch-05 inheritance destination is negated: the drawing table goes to the grandson (Thomas) instead of the granddaughter Anna. Truth: Anna is the owner from October 2018 (OF001 owner p_anna_meyer valid_from 2018-10; clean prose 'Der Zeichentisch ging an die Enkelin' and Margarete's promise 'wenn Anna so weit ist, gehört er ihr')."
+    chapter: ch-05
+    anchor: "Der Zeichentisch ging an die Enkelin"
+    replacement: "Der Zeichentisch ging an den Enkel"
+    ground_truth_ref: OF001
+  - id: X05
+    class: belief_uncertainty
+    description: "The ch-04 wedding passage converts the narrator's knowable fact about Margarete's age into unattributed belief with hedged value drift ('um die achtzig' instead of the stated 88). Truth: the clean corpus states the age as fact (F036 age_stated 88, source ch-04; clean prose 'Sie war achtundachtzig Jahre alt und die älteste der Gäste'). The system must NOT treat hedged belief as the fact."
+    chapter: ch-04
+    anchor: "Sie war achtundachtzig Jahre alt und die älteste der Gäste"
+    replacement: "Wie alt sie genau war, wusste nachher niemand mehr zu sagen; manche meinten, sie müsse wohl um die achtzig sein, andere, älter noch — die älteste der Gäste allemal"
+    ground_truth_ref: F036
+  - id: X06
+    class: rumor
+    description: "The ch-08 piano sale is restated as unattributed hearsay with a smuggled wrong date: 'angeblich ... schon im Frühjahr' instead of the week after June 8, 2021 (June 2021). Truth: E020 sale date 2021-06; OF008 piano located in Hamburg from 2021-06 (sold to an anonymous buyer); clean prose 'in der Woche darauf wurde das Klavier verkauft, zwei Monate vor dem Umzug'."
+    chapter: ch-08
+    anchor: "in der Woche darauf wurde das Klavier verkauft, zwei Monate vor dem Umzug"
+    replacement: "angeblich hatte Peter das Klavier schon im Frühjahr verkauft"
+    ground_truth_ref: E020
+  - id: X07
+    class: retcon
+    description: "The ch-12 F136 restatement passage is retconned: the drawing table 'war nie nach München gekommen', sondern stands in Thomas's bookshop since 2021 — contradicting the established fact without acknowledgment. Truth: OF010 table located at pl_tuerkenstrasse valid_from 2021-08 (moved with Anna at the Aug 2021 relocation, E022); clean prose 'Der Zeichentisch stand am Fenster, wo er seit fünf Jahren stand ... hier, in der Türkenstraße 41', and ch-12 names the piano as the only old piece that stayed in Hamburg. Anchor is a disjoint fragment of the same passage L06 anchors ('hier, in der Türkenstraße 41'), so the two registries do not collide."
+    chapter: ch-12
+    anchor: "Der Zeichentisch stand am Fenster, wo er seit fünf Jahren stand"
+    replacement: "Der Zeichentisch war nie nach München gekommen, sondern stand seit 2021 bei Thomas in der Buchhandlung"
+    ground_truth_ref: OF010
+  - id: X08
+    class: foreshadowing_incomplete
+    description: "The ch-11 pen-gift sentence (F120) gains a foreshadowing clause: a second engraved line on the pen's back that Peter 'für später aufsparte'. The announcement is never confirmed or resolved anywhere later — ch-12 restates the pen with only 'die Gravur mit den wenigen Buchstaben, L&M 2024'; no back side or second line appears anywhere in the corpus. Truth: OF011 owner p_anna_meyer from 2024-01; the announcement attaches a phantom attribute to the object that no reference fact supports — the error class tests whether the system flags unresolved announcements."
+    chapter: ch-11
+    anchor: "mit einer Gravur, die mit wenigen Buchstaben auskam: L&M 2024"
+    replacement: "mit einer Gravur, die mit wenigen Buchstaben auskam: L&M 2024; auf die Rückseite hatte Peter eine zweite Zeile gravieren lassen, die er für später aufsparte"
+    ground_truth_ref: OF011
