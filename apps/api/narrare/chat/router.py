@@ -57,6 +57,7 @@ async def chat(
         project_id=request.project_id,
         message=request.message,
         conversation_id=request.conversation_id,
+        note_id=request.note_id,
     )
 
     def _serialize_for_json(event: dict[str, object]) -> str:
@@ -98,7 +99,7 @@ async def get_history(
 
     return ChatHistoryResponse(
         conversation_id=conversation_id,
-        project_id=project_id if project_id is not None else UUID(int=0),
+        project_id=project_id,
         messages=[
             ChatMessageSchema(
                 message_id=m.conversation_id,

@@ -87,11 +87,15 @@ class SQLAlchemyConversationStore(ConversationStore):
 
     async def create_conversation(
         self,
-        project_id: UUID,
+        project_id: UUID | None,
         user_id: UUID,
         first_message: str,
     ) -> UUID:
-        """Create a new conversation and add the first message."""
+        """Create a new conversation and add the first message.
+
+        ``project_id`` may be ``None`` for project-less conversations
+        (NOTES-001 §6b) — the DB column is nullable.
+        """
         from narrare.chat.models import ChatConversation as ChatConversationModel
 
         conv = ChatConversationModel(

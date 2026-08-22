@@ -49,10 +49,14 @@ class ChatResponse:
 
 @dataclass
 class ChatConversation:
-    """A chat conversation scoped to a project."""
+    """A chat conversation, optionally scoped to a project.
+
+    ``project_id`` is ``None`` for project-less conversations (NOTES-001
+    §6b, e.g. chatting about a global note).
+    """
 
     id: UUID
-    project_id: UUID
+    project_id: UUID | None
     user_id: UUID
     title: str = field(default="")
     created_at: str = field(default="")
@@ -91,7 +95,9 @@ class ChatServiceProtocol(Protocol):
     ) -> UUID | None:
         """Get the project_id associated with a conversation.
 
-        Returns the project UUID, or None if the conversation does not exist.
+        Returns the project UUID, or ``None`` — either for a project-less
+        conversation (NOTES-001 §6b) or when the conversation does not
+        exist.
         """
         ...
 

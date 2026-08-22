@@ -233,8 +233,8 @@ class TestGetHistoryEndpoint:
         assert result.messages[0].role == "user"
         assert result.messages[1].role == "assistant"
 
-    async def test_falls_back_to_zero_uuid_when_project_not_found(self) -> None:
-        """When project_id is None, the response uses UUID(int=0)."""
+    async def test_project_id_is_none_when_project_not_found(self) -> None:
+        """When project_id resolves to None, the response exposes None honestly (NOTES-001 §8)."""
         from narrare.chat.chat_service import ChatService
 
         conv_id = uuid4()
@@ -248,7 +248,7 @@ class TestGetHistoryEndpoint:
             service=cast("ChatService", fake),
         )
 
-        assert result.project_id == UUID(int=0)
+        assert result.project_id is None
 
 
 # ---------------------------------------------------------------------------

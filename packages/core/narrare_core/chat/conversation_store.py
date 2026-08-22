@@ -56,14 +56,17 @@ class ConversationStore(ABC):
         self,
         conversation_id: UUID,
     ) -> UUID | None:
-        """Return the project_id for a conversation, or None if not found.
+        """Return the project_id for a conversation, or None.
+
+        ``None`` covers two cases: the conversation is project-less
+        (NOTES-001 §6b) or the conversation does not exist.
 
         Args:
             conversation_id: The conversation to look up.
 
         Returns:
-            The project UUID associated with the conversation, or None
-            if the conversation does not exist.
+            The project UUID associated with the conversation, or ``None``
+            for project-less / unknown conversations.
         """
         ...
 
@@ -134,7 +137,7 @@ class InMemoryConversationStore(ConversationStore):
         self,
         conversation_id: UUID,
     ) -> UUID | None:
-        """Return the project_id for a conversation, or None if not found."""
+        """Return the project_id — None for project-less or unknown conversations."""
         conv = self._conversations.get(conversation_id)
         if conv is None:
             return None

@@ -14244,8 +14244,15 @@
             "title": "Conversation Id"
           },
           "project_id": {
-            "type": "string",
-            "format": "uuid",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Project Id"
           },
           "messages": {
@@ -14269,7 +14276,6 @@
         "type": "object",
         "required": [
           "conversation_id",
-          "project_id",
           "messages"
         ],
         "title": "ChatHistoryResponse",
@@ -14309,9 +14315,17 @@
       "ChatRequest": {
         "properties": {
           "project_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Project Id"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id",
+            "description": "Project (novel) scope. Omit for project-less chat (e.g. global notes)."
           },
           "message": {
             "type": "string",
@@ -14332,15 +14346,27 @@
             ],
             "title": "Conversation Id",
             "description": "Existing conversation ID. Omit to start a new conversation."
+          },
+          "note_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Id",
+            "description": "Scratchpad note attached as runtime context (NOTES-001 §6b)."
           }
         },
         "type": "object",
         "required": [
-          "project_id",
           "message"
         ],
         "title": "ChatRequest",
-        "description": "Request to send a chat message.\n\nExtends the core ``ChatRequestSchema`` with FastAPI-specific validation."
+        "description": "Request to send a chat message.\n\nExtends the core ``ChatRequestSchema`` with FastAPI-specific validation.\n``project_id`` is optional since NOTES-001 (global notes have no\nproject); ``note_id`` attaches a scratchpad note as runtime context."
       },
       "CoAuthorFeedbackRequest": {
         "properties": {

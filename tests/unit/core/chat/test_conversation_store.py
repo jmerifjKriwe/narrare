@@ -86,6 +86,26 @@ class TestGetConversationProjectId:
 
 
 # ---------------------------------------------------------------------------
+# Project-less conversations (NOTES-001 §6b)
+# ---------------------------------------------------------------------------
+
+
+class TestProjectlessConversations:
+    """create_conversation(None, ...) — behavioral contract for project-less chat."""
+
+    async def test_create_conversation_without_project_works(self) -> None:
+        """A project-less conversation is created, stored, and resolves project_id None."""
+        store = InMemoryConversationStore()
+        user_id = uuid4()
+
+        conv_id = await store.create_conversation(None, user_id, "Global note chat")
+
+        history = await store.get_history(conv_id)
+        assert [m.content for m in history] == ["Global note chat"]
+        assert await store.get_conversation_project_id(conv_id) is None
+
+
+# ---------------------------------------------------------------------------
 # clear_history
 # ---------------------------------------------------------------------------
 

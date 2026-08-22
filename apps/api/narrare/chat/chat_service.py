@@ -150,7 +150,7 @@ class ChatService(ChatServiceProtocol):
         user_prompt: str,
         *,
         user_id: UUID,
-        project_id: UUID,
+        project_id: UUID | None,
     ) -> AsyncIterator[dict[str, object]]:
         """Stream the chat response via ``ChatAgent.run_stream()`` (ADR-024).
 
@@ -164,7 +164,7 @@ class ChatService(ChatServiceProtocol):
             context: The prompt context with project metadata.
             user_prompt: The raw user message text.
             user_id: The authenticated user's UUID (ADR-045 Decision 6).
-            project_id: The project UUID for enrichment correlation.
+            project_id: The project UUID, or ``None`` for project-less chat (NOTES-001 §6b).
 
         Yields:
             Dict-based SSE events for the streaming response.
@@ -283,7 +283,7 @@ class ChatService(ChatServiceProtocol):
             conversation_id: The conversation to look up.
 
         Returns:
-            The project UUID, or None if the conversation does not exist.
+            The project UUID, or ``None`` (project-less, NOTES-001 §6b, or not found).
         """
         return await self._store.get_conversation_project_id(conversation_id)
 
