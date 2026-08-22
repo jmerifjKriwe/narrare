@@ -25,6 +25,8 @@ RETIRED class = F088 (retired in bible fix round, never planted).
 
 Convention: profession facts anchor to the dated decision/acceptance where that is what the prose dates (F074: acceptance 2021-03; the work start autumn 2021 is scene texture), and to the actual start otherwise (F089: 2021-09).
 
+Participant rule: event participants = bible involved-ids (authoritative), plus prose principals whose presence carries scene load (e.g. Peter as wedding witness E033, Anna as E034 household viewpoint); prose-present named bystanders without scene load stay omitted (e.g. Gert's giving-away at E033) — curation, not exhaustiveness.
+
 ## Chapters 1-3 (F001-F032)
 
 | F-id | Representation(s) |

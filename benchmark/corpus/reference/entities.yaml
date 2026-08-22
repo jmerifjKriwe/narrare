@@ -295,9 +295,9 @@ persons:
         predicate: residence
         value: "Türkenstraße 41 (dritter Stock)"
         source_chapters: [12]      # residence prose-stated ("vom dritten Stock herunter", "aus demselben Haus");
-                                   # no valid_from: "seit 2022" dates the babysitting, not the move-in (relation, next batch)
+                                   # no valid_from: "seit 2022" scopes the babysitting (R021), not the move-in; residence undated — prose states no move-in date
   - id: p_alexander_wolf
-    name: "Alexander Wolf"
+    name: Alexander Wolf
     aliases: ["Alex", "Sascha"]
     facts: []                           # alias split per F137: "Alex" by colleagues, "Sascha" by family, never resolved on-page; represented by R024 + E030
 
