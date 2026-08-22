@@ -36,3 +36,43 @@
   predicate: sits_within_earshot_of
   object: p_martin_wiese
   source_chapters: [3]
+- id: R008
+  subject: p_margarete_meyer
+  predicate: grandmother_of
+  object: p_anna_meyer
+  source_chapters: [4]
+- id: R009
+  subject: p_ilse_meyer
+  predicate: mother_of
+  object: p_anna_meyer
+  source_chapters: [4]
+- id: R010
+  subject: p_gert_meyer
+  predicate: father_of
+  object: p_anna_meyer
+  source_chapters: [4]
+- id: R011
+  subject: p_gert_meyer
+  predicate: son_of
+  object: p_margarete_meyer
+  source_chapters: [5]
+- id: R012
+  subject: p_elke_richter
+  predicate: neighbor_of
+  object: pl_barmbek_haus
+  source_chapters: [4]
+- id: R013
+  subject: p_anna_meyer
+  predicate: mother_of
+  object: p_juna_meyer
+  source_chapters: [6]
+- id: R014
+  subject: p_peter_meyer
+  predicate: father_of
+  object: p_juna_meyer
+  source_chapters: [6]
+- id: R015
+  subject: p_juna_meyer
+  predicate: first_grandchild_of
+  object: p_ilse_meyer
+  source_chapters: [6]

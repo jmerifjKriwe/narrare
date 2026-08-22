@@ -47,3 +47,33 @@
   participants: [p_peter_meyer, p_anna_meyer]
   location: pl_hamburg
   source_chapters: [3]
+- id: E009
+  name: Hochzeit von Anna und Peter im Garten des Hauses Flemmingstraße 3
+  date: {year: 2018, month: 5, day: 26}
+  participants: [p_anna_meyer, p_peter_meyer, p_thomas_meyer, p_ilse_meyer, p_gert_meyer, p_margarete_meyer, p_elke_richter]
+  location: pl_barmbek_haus
+  source_chapters: [4]
+- id: E010
+  name: Margarete Meyer stirbt in Altona
+  date: {year: 2018, month: 9, day: 14}
+  participants: [p_margarete_meyer, p_gert_meyer]
+  location: pl_hamburg
+  source_chapters: [5]
+- id: E011
+  name: Erbauseinandersetzung — Anna erbt den Zeichentisch
+  date: {year: 2018, month: 10}
+  participants: [p_anna_meyer]
+  location: pl_hamburg
+  source_chapters: [5]
+- id: E012
+  name: Juna wird geboren
+  date: {year: 2019, month: 6, day: 8}
+  participants: [p_anna_meyer, p_peter_meyer, p_juna_meyer]
+  location: pl_hamburg
+  source_chapters: [6]
+- id: E013
+  name: Anna und Thomas entdecken den ersten Briefbund (1982–1984)
+  date: {year: 2019, month: 10}
+  participants: [p_anna_meyer, p_thomas_meyer]
+  location: pl_eppendorf_wohnung
+  source_chapters: [6]

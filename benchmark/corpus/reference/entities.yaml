@@ -1,4 +1,4 @@
-# Ground truth for chapters 1-3 (persons, places; objects: none planted yet).
+# Ground truth for chapters 1-6 (persons, places, objects).
 
 persons:
   - id: p_anna_meyer
@@ -32,6 +32,14 @@ persons:
         predicate: age_stated
         value: "26"
         source_chapters: [3]
+      - id: F034
+        predicate: age_stated
+        value: "27"
+        source_chapters: [4]
+      - id: F057
+        predicate: age_stated
+        value: "28"
+        source_chapters: [6]
   - id: p_peter_meyer
     name: Peter Meyer
     aliases: []
@@ -53,6 +61,14 @@ persons:
         predicate: age_stated
         value: "29"
         source_chapters: [3]
+      - id: F035
+        predicate: age_stated
+        value: "29"
+        source_chapters: [4]
+      - id: F058
+        predicate: age_stated
+        value: "30"
+        source_chapters: [6]
   - id: p_thomas_meyer
     name: Thomas Meyer
     aliases: []
@@ -117,6 +133,61 @@ persons:
         predicate: profession
         value: "Seniorpartner"
         source_chapters: [3]
+  - id: p_margarete_meyer
+    name: Margarete Meyer
+    aliases: []
+    facts:
+      - id: F036
+        predicate: age_stated
+        value: "88"
+        source_chapters: [4]
+      - id: F046
+        predicate: age_at_death
+        value: "88"
+        source_chapters: [5]
+      - id: F050
+        predicate: profession
+        value: "Zeichnerin in einem Hamburger Architekturbüro"
+        valid_from: {year: 1948}
+        valid_to: {year: 1993}
+        source_chapters: [5]
+      - id: F053
+        predicate: widowed_since
+        value: "1999"
+        source_chapters: [5]
+  - id: p_ilse_meyer
+    name: Ilse Meyer
+    aliases: []
+    facts:
+      - id: F043
+        predicate: age_stated
+        value: "60"
+        source_chapters: [4]
+  - id: p_gert_meyer
+    name: Gert Meyer
+    aliases: []
+    facts:
+      - id: F044
+        predicate: age_stated
+        value: "62"
+        source_chapters: [4]
+  - id: p_elke_richter
+    name: Elke Richter
+    aliases: []
+    facts: []                           # ch-04 presence is relational (neighbor/observes); handled in relations
+  - id: p_juna_meyer
+    name: Juna Meyer
+    aliases: []
+    facts:
+      - id: F054
+        predicate: birth_date
+        value: "2019-06-08"
+        source_chapters: [6]
+      - id: F059
+        predicate: residence
+        value: "Eppendorfer Baum 14"
+        valid_from: {year: 2019, month: 6}
+        source_chapters: [6]
 
 places:
   - id: pl_hamburg
@@ -142,4 +213,47 @@ places:
         value: "p_anna_meyer"
         valid_from: {year: 2017, month: 3}  # mirrors PF001 residence_of pattern (F022 prose)
         source_chapters: [3]
-objects: []
+  - id: pl_barmbek_haus
+    name: Haus Flemmingstraße 3
+    facts:
+      - id: PF004
+        predicate: residence_of
+        value: "p_ilse_meyer"
+        valid_from: {year: 1984}        # F038 prose: Ilse's and Gert's home since 1984
+        source_chapters: [4]
+      - id: PF005
+        predicate: residence_of
+        value: p_gert_meyer
+        valid_from: {year: 1984}
+        source_chapters: [4]
+objects:
+  - id: o_zeichentisch
+    name: Zeichentisch (Margaretes Zeichentisch)
+    facts:
+      - id: OF001
+        predicate: owner
+        value: "p_anna_meyer"
+        valid_from: {year: 2018, month: 10}  # F048 inheritance; prior Margarete ownership implied pre-2018 — transfer date unstated, not encoded
+        source_chapters: [5]
+      - id: OF002
+        predicate: located_at
+        value: "pl_eppendorf_wohnung"
+        valid_from: {year: 2018, month: 10}
+        source_chapters: [5]
+  - id: o_briefe
+    name: Briefe (erster Bund 1982–1984)
+    facts:
+      - id: OF003
+        predicate: owner
+        value: "p_anna_meyer"
+        valid_from: {year: 2018, month: 10}  # F049 legal inheritance
+        source_chapters: [5]
+      - id: OF004
+        predicate: covers_period
+        value: "1982–1984"
+        source_chapters: [6]            # F062
+      - id: OF005
+        predicate: discovered_in_drawer_of
+        value: "o_zeichentisch"
+        valid_from: {year: 2019, month: 10}  # F061
+        source_chapters: [6]
