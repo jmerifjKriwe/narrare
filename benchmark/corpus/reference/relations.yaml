@@ -1,4 +1,4 @@
-# Ground truth for chapters 1-6 (relations).
+# Ground truth for chapters 1-9.
 - id: R001
   subject: p_anna_meyer
   predicate: sibling_of
@@ -81,3 +81,20 @@
   predicate: first_grandchild_of
   object: p_gert_meyer
   source_chapters: [6]
+- id: R017
+  subject: p_anna_meyer
+  predicate: met_on_jury_with
+  object: p_sofia_lenz
+  valid_from: {year: 2020, month: 12}
+  source_chapters: [7]
+- id: R018
+  subject: p_maria_sommer
+  predicate: colleague_of
+  object: p_anna_meyer
+  valid_from: {year: 2021, month: 9}
+  source_chapters: [9]
+- id: R019
+  subject: p_anna_meier
+  predicate: not_related_to
+  object: p_anna_meyer
+  source_chapters: [9]

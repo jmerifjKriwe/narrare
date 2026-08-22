@@ -21,6 +21,8 @@ meta-narrative evaluation, or an in-world absence with no assertable triple —
 NOT merely because it is a scene beat. Dateable scene beats ARE events, cf.
 E002/E006/E014/E015. NO-REP is a coverage class, not a gap.
 
+RETIRED class = F088 (retired in bible fix round, never planted).
+
 ## Chapters 1-3 (F001-F032)
 
 | F-id | Representation(s) |
@@ -95,6 +97,45 @@ E002/E006/E014/E015. NO-REP is a coverage class, not a gap.
 | F063 | NO-REP (partial-reveal texture) |
 | F064 | E015 |
 | F065 | NO-REP (in-world absence: no second letter bundle) |
+
+## Chapters 7-9 (F066-F099 + F135)
+
+| F-id | Representation(s) |
+|------|-------------------|
+| F066 | OF006 + E016 |
+| F067 | gert-profession-to + E017 |
+| F068 | gert profession fact |
+| F069 | gert age fact |
+| F070 | PF009 |
+| F071 | R017 + E018 |
+| F072 | NO-REP (meta-narrative foreword) |
+| F073 | NO-REP (negative: unconfirmed) |
+| F074 | peter profession + E019 |
+| F075 | OF008 + E020 |
+| F076 | OF007 |
+| F077 | ilse-profession-to + E021 |
+| F078 | ilse age fact |
+| F079 | E022 + PF006 |
+| F080 | PF006 |
+| F081 | PF007 |
+| F082 | PF008 |
+| F083 | PF001-valid_to + E022 |
+| F084 | anna age fact |
+| F085 | juna age fact |
+| F086 | OF008 |
+| F135 | OF002-valid_to + OF010 |
+| F087 | NO-REP (residence summarizing, covered by intervals) |
+| F089 | anna profession fact |
+| F090 | anna profession valid_to (dual) |
+| F091 | R018 |
+| F092 | R018 (dual) |
+| F093 | maria profession fact |
+| F094 | E024 |
+| F095 | R019 |
+| F096 | anna_meier residence fact |
+| F097 | NO-REP (texture) |
+| F098 | OF009 |
+| F099 | NO-REP (negative: unconfirmed) |
 
 ---
 

@@ -1,4 +1,4 @@
-# Ground truth for chapters 1-6 (events).
+# Ground truth for chapters 1-9.
 - id: E001
   name: Anna und Peter lernen sich bei einer Lesung kennen
   date: {year: 2015, month: 5}
@@ -89,3 +89,57 @@
   participants: [p_anna_meyer, p_ilse_meyer]
   location: pl_eppendorf_wohnung
   source_chapters: [6]
+- id: E016
+  name: Lisa schenkt Thomas den Hund Frida
+  date: {year: 2020, month: 4}
+  participants: [p_lisa_brandt, p_thomas_meyer]
+  location: pl_hamburg
+  source_chapters: [7]
+- id: E017
+  name: Gert geht nach vierzig Jahren von der Werft
+  date: {year: 2020, month: 7}
+  participants: [p_gert_meyer]
+  location: pl_hamburg
+  source_chapters: [7]
+- id: E018
+  name: Anna lernt Sofia Lenz in einem Münchner Preisgericht kennen
+  date: {year: 2020, month: 12}
+  participants: [p_anna_meyer, p_sofia_lenz]
+  location: pl_munich
+  source_chapters: [7]
+- id: E019
+  name: Peter nimmt die Münchner Stelle an
+  date: {year: 2021, month: 3}
+  participants: [p_peter_meyer]
+  location: pl_hamburg
+  source_chapters: [8]
+- id: E020
+  name: Das Klavier wird verkauft
+  date: {year: 2021, month: 6}
+  participants: [p_peter_meyer]
+  location: pl_hamburg
+  source_chapters: [8]
+- id: E021
+  name: Ilse hört auf zu unterrichten
+  date: {year: 2021, month: 7}
+  participants: [p_ilse_meyer]
+  location: pl_hamburg
+  source_chapters: [8]
+- id: E022
+  name: Der Umzug zur Türkenstraße 41
+  date: {year: 2021, month: 8}
+  participants: [p_anna_meyer, p_peter_meyer, p_juna_meyer]
+  location: pl_tuerkenstrasse
+  source_chapters: [8]
+- id: E023
+  name: Anna beginnt als Senior-Architektin in München
+  date: {year: 2021, month: 9}
+  participants: [p_anna_meyer, p_maria_sommer]
+  location: pl_munich
+  source_chapters: [9]
+- id: E024
+  name: Erste Post-Verwechslung mit Anna Meier im Treppenhaus
+  date: {year: 2021, month: 11}
+  participants: [p_anna_meyer, p_anna_meier]
+  location: pl_tuerkenstrasse
+  source_chapters: [9]
