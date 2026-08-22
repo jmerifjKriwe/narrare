@@ -79,6 +79,11 @@ class NoteSearchService:
             source_type="note",
             source_ids={n.id for n in candidates},
             limit=request.limit,
+            # Same model as the query embedding — the upsert conflict key is
+            # (source_type, source_id, model), so unfiltered search could
+            # return the same note twice with cross-model scores. Mirrors
+            # EmbeddingService.search (embeddings/service.py).
+            model=self._model,
         )
         by_id = {n.id: n for n in candidates}
         hits: list[NoteSearchHit] = []
