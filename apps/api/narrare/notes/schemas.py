@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import uuid  # noqa: TC003 — needed at runtime for Pydantic model resolution
 from datetime import datetime  # noqa: TC003 — needed at runtime for Pydantic model resolution
+from typing import Literal
 
 from pydantic import (
     BaseModel,
@@ -96,3 +97,28 @@ class NoteTagsResponse(BaseModel):
     """Distinct existing tags for autocomplete (spec §5 GET /notes/tags)."""
 
     tags: list[str]
+
+
+class NoteSearchRequest(BaseModel):
+    """Semantic search body — same optional filters as the list endpoint (§6a)."""
+
+    query: str = Field(min_length=1, max_length=500)
+    note_type: NoteType | None = None
+    tag: str | None = Field(default=None, max_length=32)
+    novel_id: uuid.UUID | None = None
+    series_id: uuid.UUID | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class NoteSearchHit(NoteResponse):
+    """A note plus its similarity score (None in lexical mode)."""
+
+    similarity: float | None = None
+
+
+class NoteSearchResponse(BaseModel):
+    """Search result with an honest mode badge (RULE-11 spirit, §6a)."""
+
+    mode: Literal["lexical", "semantic"]
+    query: str
+    results: list[NoteSearchHit]
