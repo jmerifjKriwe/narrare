@@ -38,10 +38,10 @@ errors:
     ground_truth_ref: E012
   - id: L06
     class: place_mismatch
-    description: "Resting place of the letter bundles in the table drawer shifted to near the Munich Hauptbahnhof (truth: Türkenstraße 41; OF010 dual restatement of F136, pl_tuerkenstrasse)."
+    description: "Resting place of the letter bundles in the table drawer shifted to near the Munich Ostbahnhof (truth: Türkenstraße 41; OF010 dual restatement of F136, pl_tuerkenstrasse)."
     chapter: ch-12
     anchor: "hier, in der Türkenstraße 41"
-    replacement: "in der Nähe des Hauptbahnhofs"
+    replacement: "in der Nähe des Ostbahnhofs"
     ground_truth_ref: OF010
   - id: L07
     class: relation_mismatch
