@@ -150,3 +150,51 @@ class TestDetailUpdateDelete:
             headers=auth_headers,
         )
         assert response.status_code == 422
+
+
+class TestSearch:
+    async def test_search_without_provider_returns_lexical_mode(
+        self, client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """RULE-11 regression: no embedding provider → lexical, no 500."""
+        await client.post(
+            "/api/v1/notes", json={"content": "The aunt is the culprit"}, headers=auth_headers
+        )
+        response = await client.post(
+            "/api/v1/notes/search", json={"query": "aunt"}, headers=auth_headers
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["mode"] == "lexical"
+        assert [r["content"] for r in body["results"]] == ["The aunt is the culprit"]
+        assert body["results"][0]["similarity"] is None
+
+    async def test_search_respects_type_filter(
+        self, client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        await client.post(
+            "/api/v1/notes",
+            json={"content": "alpha", "note_type": "question"},
+            headers=auth_headers,
+        )
+        await client.post(
+            "/api/v1/notes", json={"content": "beta", "note_type": "idea"}, headers=auth_headers
+        )
+        response = await client.post(
+            "/api/v1/notes/search",
+            json={"query": "a", "note_type": "idea"},
+            headers=auth_headers,
+        )
+        assert [r["content"] for r in response.json()["results"]] == ["beta"]
+
+    async def test_search_empty_query_returns_422(
+        self, client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        response = await client.post(
+            "/api/v1/notes/search", json={"query": ""}, headers=auth_headers
+        )
+        assert response.status_code == 422
+
+    async def test_search_without_auth_returns_401(self, client: AsyncClient) -> None:
+        response = await client.post("/api/v1/notes/search", json={"query": "x"})
+        assert response.status_code == 401

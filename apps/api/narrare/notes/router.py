@@ -1,8 +1,8 @@
 # apps/api/narrare/notes/router.py
 """Notes routes — thin delegation (RULE-06: no business logic here).
 
-Route order: the literal ``/tags`` path is declared BEFORE the ``/{note_id}``
-path-parameter routes.
+Route order: the literal ``/tags`` and ``/search`` paths are declared BEFORE
+the ``/{note_id}`` path-parameter routes.
 """
 
 from __future__ import annotations
@@ -13,15 +13,18 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Query, status
 
 from narrare._app.dependencies import CurrentUserIdDep
-from narrare.notes.dependencies import get_note_service
+from narrare.notes.dependencies import get_note_search_service, get_note_service
 from narrare.notes.schemas import (
     NoteCreateRequest,
     NoteResponse,
+    NoteSearchRequest,
+    NoteSearchResponse,
     NoteTagsResponse,
     NoteUpdateRequest,
 )
 
 if TYPE_CHECKING:
+    from narrare.notes.search_service import NoteSearchService
     from narrare.notes.service import NoteService
 
 router = APIRouter(prefix="/notes", tags=["notes"])
@@ -73,6 +76,16 @@ async def create_note(
     """Create a note (quick capture and full editor both use this)."""
     note = await service.create(uuid.UUID(user_id), request)
     return NoteResponse.model_validate(note)
+
+
+@router.post("/search", response_model=NoteSearchResponse)
+async def search_notes(
+    request: NoteSearchRequest,
+    user_id: CurrentUserIdDep,
+    service: NoteSearchService = Depends(get_note_search_service),
+) -> NoteSearchResponse:
+    """Semantic search with honest lexical fallback (spec §6a)."""
+    return await service.search(uuid.UUID(user_id), request)
 
 
 @router.get("/{note_id}", response_model=NoteResponse)

@@ -10,6 +10,7 @@ from narrare._app.dependencies import SessionDep  # noqa: TC001 - needed at runt
 if TYPE_CHECKING:
     import uuid
 
+    from narrare.notes.search_service import NoteSearchService
     from narrare.notes.service import NoteService
     from narrare.novels.repository import NovelRepository
     from narrare.series.repository import SeriesRepository
@@ -57,3 +58,12 @@ def get_note_service(session: SessionDep) -> NoteService:
         embedding_dispatch=InProcessNoteEmbeddingDispatch(),
         embedding_cleanup=EmbeddingService(EmbeddingRepository(session)),
     )
+
+
+def get_note_search_service(session: SessionDep) -> NoteSearchService:
+    """Production wiring for the search service (notes + embeddings repos)."""
+    from narrare.embeddings.repository import EmbeddingRepository
+    from narrare.notes.repository import NoteRepository
+    from narrare.notes.search_service import NoteSearchService
+
+    return NoteSearchService(NoteRepository(session), EmbeddingRepository(session))
