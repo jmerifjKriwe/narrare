@@ -20,6 +20,17 @@ if TYPE_CHECKING:
     import uuid
 
 
+def _escape_like(value: str) -> str:
+    r"""Escape ILIKE wildcards (and the escape char itself) in user input.
+
+    Applied wherever a LIKE/ILIKE pattern is composed from user-provided text
+    so ``%``/``_`` match literally (paired with ``escape="\\"`` on the
+    ``ilike`` call). Backslash is escaped first so injected escape chars
+    cannot re-open a wildcard.
+    """
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 class NoteRepository(BaseRepository):
     """Persistence operations for scratchpad notes (NOTES-001)."""
 
@@ -64,8 +75,13 @@ class NoteRepository(BaseRepository):
         if series_id is not None:
             stmt = stmt.where(Note.series_id == series_id)
         if q:
-            pattern = f"%{q}%"
-            stmt = stmt.where(or_(Note.title.ilike(pattern), Note.content.ilike(pattern)))
+            pattern = f"%{_escape_like(q)}%"
+            stmt = stmt.where(
+                or_(
+                    Note.title.ilike(pattern, escape="\\"),
+                    Note.content.ilike(pattern, escape="\\"),
+                )
+            )
         stmt = stmt.order_by(Note.updated_at.desc()).limit(limit).offset(offset)
         result = await self._session.execute(stmt)
         return list(result.scalars())
@@ -118,6 +134,6 @@ class NoteRepository(BaseRepository):
         )
         stmt = select(unnested.c.tag.distinct()).order_by(unnested.c.tag)
         if q:
-            stmt = stmt.where(unnested.c.tag.ilike(f"{q}%"))
+            stmt = stmt.where(unnested.c.tag.ilike(f"{_escape_like(q)}%", escape="\\"))
         result = await self._session.execute(stmt)
         return list(result.scalars())

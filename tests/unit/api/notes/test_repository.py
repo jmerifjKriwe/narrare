@@ -78,6 +78,16 @@ class TestNoteRepositoryListNotes:
 
         assert result == notes
 
+    async def test_list_notes_escapes_like_wildcards_in_q(self) -> None:
+        """User input in q must match literally: % and _ are escaped (T6 review)."""
+        session = FakeDbSession()
+        repo = _make_repo(session)
+
+        await repo.list_notes(uuid4(), q="100%_done")
+
+        params = session.statements[0].compile().params
+        assert any("100\\%\\_done" in str(value) for value in params.values())
+
 
 class TestNoteRepositoryDistinctTags:
     async def test_distinct_tags_returns_string_list(self) -> None:
@@ -95,6 +105,16 @@ class TestNoteRepositoryDistinctTags:
         result = await repo.distinct_tags(uuid4(), q="pl")
 
         assert result == ["plot"]
+
+    async def test_distinct_tags_escapes_like_wildcards_in_q(self) -> None:
+        """Prefix filter input must match literally: % and _ are escaped (T6 review)."""
+        session = FakeDbSession([FakeResult(scalars=[])])
+        repo = _make_repo(session)
+
+        await repo.distinct_tags(uuid4(), q="a%b_c")
+
+        params = session.statements[0].compile().params
+        assert any("a\\%b\\_c" in str(value) for value in params.values())
 
 
 class TestNoteRepositoryCreate:
