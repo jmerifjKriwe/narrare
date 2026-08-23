@@ -17,7 +17,12 @@ import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation.types";
 import type { ChatDoneEvent, ChatMetaEvent } from "@/types";
 import { type ChatMessage, createMessageId, type UseChatReturn } from "@/types/chat";
 
-export function useChat(projectId: string): UseChatReturn {
+/**
+ * @param projectId - Project (novel) scope, or null for project-less chat
+ *   (NOTES-001 global notes).
+ * @param noteId - Optional scratchpad note attached as runtime context.
+ */
+export function useChat(projectId: string | null, noteId?: string | null): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<AIErrorResponse | null>(null);
@@ -40,7 +45,12 @@ export function useChat(projectId: string): UseChatReturn {
       let content = "";
       accumulatedRef.current = "";
       await chatApi.streamChat(
-        { project_id: projectId, message: msg, conversation_id: conversationIdRef.current },
+        {
+          project_id: projectId,
+          message: msg,
+          conversation_id: conversationIdRef.current,
+          note_id: noteId ?? null,
+        },
         {
           onMeta: (meta: ChatMetaEvent) => {
             setConversationId(meta.conversation_id);
