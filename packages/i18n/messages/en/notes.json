@@ -1,0 +1,64 @@
+{
+  "nav": { "label": "Scratchpad" },
+  "page": {
+    "title": "Scratchpad",
+    "subtitle": "Capture thoughts before they escape — ideas, concepts, questions."
+  },
+  "empty": {
+    "title": "Nothing captured yet",
+    "description": "Save your first thought — a plot twist, a worldbuilding idea, a craft question.",
+    "cta": "Capture a thought"
+  },
+  "list": {
+    "searchPlaceholder": "Search notes…",
+    "typeFilterLabel": "Type",
+    "allTypes": "All types",
+    "tagFilterLabel": "Tag",
+    "allTags": "All tags",
+    "noResults": "No notes match these filters.",
+    "untitled": "Untitled",
+    "updated": "Updated {date}"
+  },
+  "type": { "idea": "Idea", "concept": "Concept", "question": "Question", "other": "Other" },
+  "editor": {
+    "newNote": "New note",
+    "titlePlaceholder": "Title (optional — first line is used otherwise)",
+    "contentLabel": "Note",
+    "contentPlaceholder": "Write it down… (Markdown supported)",
+    "preview": "Preview",
+    "edit": "Edit",
+    "typeLabel": "Type",
+    "tagsLabel": "Tags",
+    "tagPlaceholder": "Add a tag…",
+    "addTag": "Add",
+    "tagSuggestions": "Suggestions",
+    "linkLabel": "Link (optional)",
+    "noLink": "Not linked",
+    "novelLink": "Linked novel",
+    "seriesLink": "Linked series",
+    "discuss": "Discuss in chat",
+    "delete": "Delete note",
+    "deleteTitle": "Delete this note?",
+    "deleteDescription": "This permanently removes the note. It cannot be undone.",
+    "save": "Save",
+    "saveFailed": "Could not save the note.",
+    "deleted": "Note deleted."
+  },
+  "search": {
+    "semanticToggle": "Semantic",
+    "semanticBadge": "semantic",
+    "lexicalBadge": "lexical"
+  },
+  "quickCapture": {
+    "open": "Quick capture",
+    "title": "Capture a thought",
+    "titlePlaceholder": "Title (optional)",
+    "textPlaceholder": "What's on your mind?",
+    "tagPlaceholder": "Tag (optional)",
+    "save": "Save note",
+    "saved": "Thought captured.",
+    "openInScratchpad": "Open in scratchpad",
+    "shortcutHint": "Ctrl/⌘+Shift+U"
+  },
+  "chat": { "attachedNote": "Discussing note: {title}" }
+}
