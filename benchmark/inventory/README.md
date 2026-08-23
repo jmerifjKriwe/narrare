@@ -61,10 +61,10 @@ out of a file (with a one-line reason), so Tasks 3–5 inherit an explicit ledge
   - `02-out.md` — direction `out` (KB → use): surveyed 2026-08-21 — 10 entries, 21 verified API paths.
   - `03-check.md` — direction `check` (KB ↔ text): surveyed 2026-08-21 — 7 entries, 8 verified API paths.
   - `04-findings.md` — synthesis: findings register + counts (20 raw findings →
-    11 register entries), 2026-08-21.
+    13 register entries), 2026-08-21.
 - **Coverage counts** (entries / verified paths / findings; revised 2026-08-23):
   in = 9 / 26 / 6; out = 10 / 21 / 8; check = 7 / 8 / 8. Synthesis across
-  directions: `04-findings.md` (11 register entries; 20 raw findings at
+  directions: `04-findings.md` (13 register entries; 20 raw findings at
   synthesis time — the 2026-08-22 in-F5/F6 riders postdate it).
 - Direction `in` survey scope: `apps/api/narrare/kb/`, `apps/api/narrare/series/`,
   `apps/api/narrare/planning/`, `apps/api/narrare/wiki/` routers mounted in

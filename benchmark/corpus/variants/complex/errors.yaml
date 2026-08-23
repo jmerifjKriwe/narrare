@@ -1,6 +1,7 @@
 variant: complex
 base: clean
 errors:
+  # NOTE: X01's anchor span contains light-registry L10's anchor ("im März 2015", same sentence in ch-09) — disjoint anchors are a per-variant convention, not a cross-registry invariant; combined light+complex materialization is out of design scope (cf. X07/L06 disjointness note).
   - id: X01
     class: implicit_temporal
     description: "Maria's March-2015 retrospect in ch-09 is extended to claim Anna advised her on the 2015 job move, implying an acquaintance from shared student days (i.e. existing by March 2015 at the latest). Truth: the two first met when Anna joined the office in September 2021 and were strangers before (R018 colleague_of valid_from 2021-09; clean prose 'Aus der Kollegin, die Anna seit diesem September hatte'). No explicit date for the claimed acquaintance is stated - only the temporal implication contradicts."

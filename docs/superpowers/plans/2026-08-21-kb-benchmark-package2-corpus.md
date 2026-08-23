@@ -54,7 +54,8 @@ git add benchmark/corpus/story-bible.md
 git commit -m "docs(corpus): add story bible — authoring backbone for the benchmark test novel"
 ```
 
-- [ ] **Step 4: PO GATE (hard stop)** — Coordinator presents bible digest (premise, cast, arc, timeline skeleton) to the PO and WAITS for approval/adjustment. No prose task starts before PO sign-off. PO adjustments are applied as a bible amendment commit before Task 3.
+- [x] **Step 4: PO GATE (hard stop)** — Coordinator presents bible digest (premise, cast, arc, timeline skeleton) to the PO and WAITS for approval/adjustment. No prose task starts before PO sign-off. PO adjustments are applied as a bible amendment commit before Task 3.
+  - Executed 2026-08-21: bible digest presented in session (premise/cast/arc/timeline skeleton + the two ack points); PO approved ("ja") — mid-arc profession-change reading and future-promise watch design acked with the digest.
 
 ---
 
