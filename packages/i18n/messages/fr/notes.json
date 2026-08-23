@@ -7,7 +7,8 @@
   "empty": {
     "title": "Rien de capturé pour l'instant",
     "description": "Sauvegardez votre première pensée — un rebondissement, une idée d'univers, une question d'écriture.",
-    "cta": "Capter une pensée"
+    "cta": "Capter une pensée",
+    "selectPrompt": "Sélectionnez une note pour la lire ou la modifier."
   },
   "list": {
     "searchPlaceholder": "Rechercher des notes…",
@@ -48,7 +49,8 @@
     "deleteDescription": "La note sera définitivement supprimée. Cette action est irréversible.",
     "save": "Enregistrer",
     "saveFailed": "Impossible d'enregistrer la note.",
-    "deleted": "Note supprimée."
+    "deleted": "Note supprimée.",
+    "deleteFailed": "Impossible de supprimer la note."
   },
   "search": {
     "semanticToggle": "Sémantique",

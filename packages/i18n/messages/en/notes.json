@@ -7,7 +7,8 @@
   "empty": {
     "title": "Nothing captured yet",
     "description": "Save your first thought — a plot twist, a worldbuilding idea, a craft question.",
-    "cta": "Capture a thought"
+    "cta": "Capture a thought",
+    "selectPrompt": "Select a note to read or edit it."
   },
   "list": {
     "searchPlaceholder": "Search notes…",
@@ -48,7 +49,8 @@
     "deleteDescription": "This permanently removes the note. It cannot be undone.",
     "save": "Save",
     "saveFailed": "Could not save the note.",
-    "deleted": "Note deleted."
+    "deleted": "Note deleted.",
+    "deleteFailed": "Could not delete the note."
   },
   "search": {
     "semanticToggle": "Semantic",

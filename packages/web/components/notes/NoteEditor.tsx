@@ -64,7 +64,12 @@ export function NoteEditor({
   const [preview, setPreview] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // A different note identity → fresh draft (the pane switched notes).
+  // A different note identity → fresh draft (the pane switched notes). The
+  // effect is intentionally keyed by note.id, NOT the note object: background
+  // refetches hand the editor a NEW object for the SAME note and must never
+  // clobber the in-progress draft (binding T23→T26 review constraint). The
+  // workspace additionally keys the editor by note.id for hard remounts.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: draft lifecycle is keyed by note identity — object-identity deps would reset drafts on background refetch (T23/T26 binding constraint).
   useEffect(() => {
     setTitle(note.title ?? "");
     setContent(note.content);
@@ -73,7 +78,7 @@ export function NoteEditor({
     setLinks({ novelId: note.novel_id ?? "", seriesId: note.series_id ?? "" });
     setPreview(false);
     setConfirmOpen(false);
-  }, [note]);
+  }, [note.id]);
 
   const updateNote = useUpdateNote();
   const deleteNote = useDeleteNote();
@@ -106,6 +111,10 @@ export function NoteEditor({
         toast.success(t("editor.deleted"));
         setConfirmOpen(false);
         onDeleted();
+      },
+      onError: () => {
+        toast.error(t("editor.deleteFailed"));
+        setConfirmOpen(false);
       },
     });
   }

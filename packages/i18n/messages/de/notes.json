@@ -7,7 +7,8 @@
   "empty": {
     "title": "Noch nichts festgehalten",
     "description": "Speichere deinen ersten Gedanken — einen Plot-Twist, eine Weltbau-Idee, eine Handwerksfrage.",
-    "cta": "Gedanken festhalten"
+    "cta": "Gedanken festhalten",
+    "selectPrompt": "Wähle eine Notiz zum Lesen oder Bearbeiten aus."
   },
   "list": {
     "searchPlaceholder": "Notizen durchsuchen…",
@@ -48,7 +49,8 @@
     "deleteDescription": "Die Notiz wird endgültig entfernt. Das kann nicht rückgängig gemacht werden.",
     "save": "Speichern",
     "saveFailed": "Notiz konnte nicht gespeichert werden.",
-    "deleted": "Notiz gelöscht."
+    "deleted": "Notiz gelöscht.",
+    "deleteFailed": "Notiz konnte nicht gelöscht werden."
   },
   "search": {
     "semanticToggle": "Semantisch",
