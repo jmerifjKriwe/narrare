@@ -58,14 +58,14 @@ storage. The Scratchpad removes the "where do I put this?" friction.
 ## How it works (Technical)
 
 **Entry point:** `apps/api/narrare/notes/router.py` → `/api/v1/notes` (CRUD, `/tags`, `/search`)
-**Service:** `NoteService` in `apps/api/narrare/notes/service.py`; `NoteSearchService` in `search_service.py`
+**Service:** `NoteService` in `apps/api/narrare/notes/service.py`; `NoteSearchService` in `apps/api/narrare/notes/search_service.py`
 **Contract:** `NoteServiceProtocol` in `apps/api/narrare/notes/contracts.py`; `NoteLookupProtocol` + `NoteSnapshot` in `packages/core/narrare_core/notes/contracts.py`
 **Data:** `notes` table (migration `0041_notes`): scope CHECK (`NOT (novel_id IS NOT NULL AND series_id IS NOT NULL)`), GIN index on `tags TEXT[]`, FKs `ON DELETE SET NULL`
 **Embeddings:** `source_type="note"` through the generic in-process pipeline (`run_embed_source_inprocess`, ADR-080); delete cleans embeddings (`EmbeddingService.delete`)
 **Chat:** `ChatRequest.note_id` + optional `project_id` (migration `0042`); note text injected as runtime context via `format_note_context_block` (RULE-02-safe)
-**Frontend:** `packages/web/components/notes/*`, TanStack hooks in `lib/hooks/useNotes.ts`, `notes.*` i18n namespace (en/de/fr)
+**Frontend:** `packages/web/components/notes/*`, TanStack hooks in `packages/web/lib/hooks/useNotes.ts`, `notes.*` i18n namespace (en/de/fr)
 
-## Constraints & Notes
+## Constraints & Edge Cases
 
 - Notes are always searchable (RULE-11): semantic search degrades to ILIKE
   with an honest `mode` badge.
