@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Ruler } from "lucide-react";
+import { ArrowLeft, Ruler, StickyNote } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,6 +21,7 @@ interface SidebarProps {
 
 export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
   const t = useTranslations("studio");
+  const tNotes = useTranslations("notes");
   const params = useParams();
   const logout = useAuthStore((s) => s.logout);
 
@@ -76,6 +77,19 @@ export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
         >
           <ArrowLeft className="w-4 h-4" />
           <span>{t("sidebar.allNovels")}</span>
+        </Link>
+      </div>
+
+      {/* Scratchpad — global, always available (NOTES-001) */}
+      <div className="px-3 pt-1">
+        <Link
+          href="/scratchpad"
+          data-testid="sidebar-scratchpad-link"
+          className="w-full flex items-center gap-2 px-4 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors"
+          onClick={handleNavigate}
+        >
+          <StickyNote className="w-4 h-4" />
+          <span>{tNotes("nav.label")}</span>
         </Link>
       </div>
 
