@@ -15,6 +15,12 @@
     "allTypes": "All types",
     "tagFilterLabel": "Tag",
     "allTags": "All tags",
+    "tagFilterPlaceholder": "Filter by tag…",
+    "clearTagFilter": "Clear tag filter",
+    "scopeFilterLabel": "Linked to",
+    "allScopes": "All",
+    "scopeNovelsGroup": "Novels",
+    "scopeSeriesGroup": "Series",
     "noResults": "No notes match these filters.",
     "untitled": "Untitled",
     "updated": "Updated {date}"

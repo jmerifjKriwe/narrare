@@ -15,6 +15,12 @@
     "allTypes": "Alle Typen",
     "tagFilterLabel": "Tag",
     "allTags": "Alle Tags",
+    "tagFilterPlaceholder": "Nach Tag filtern…",
+    "clearTagFilter": "Tag-Filter entfernen",
+    "scopeFilterLabel": "Verknüpft mit",
+    "allScopes": "Alle",
+    "scopeNovelsGroup": "Romane",
+    "scopeSeriesGroup": "Reihen",
     "noResults": "Keine Notizen passen zu diesen Filtern.",
     "untitled": "Ohne Titel",
     "updated": "Aktualisiert {date}"

@@ -7,22 +7,45 @@
  * and decides whether the list shows query results or semantic search
  * results. The semantic toggle is honest (RULE-11 spirit): the result badge
  * comes from the API response, not from this toggle.
+ *
+ * Composition (RULE-04): each filter control is its own module —
+ * - TagFilterCombobox: single-tag autocomplete filter (§7 "autocomplete
+ *   chips"), NOT the multi-chip editor; commit semantics documented there.
+ * - NoteScopeSelect: the grouped novel/series select (§7 "only if linked
+ *   notes exist"). The bar owns only the WHEN: it mounts the select while
+ *   `hasLinks` is true AND at least one of `novels`/`series` is non-empty —
+ *   `hasLinks` is the parent's "at least one loaded note is linked" signal
+ *   (spec gate), the list check keeps the select from degrading to a lone
+ *   "All" option. All filter changes flow through the single
+ *   `onFiltersChange(NoteFilters)` callback (scope as a typed object).
  */
 
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { NOTE_TYPE_KEYS, type NoteTypeKey } from "@/types";
+import { type NoteScopeFilter, NoteScopeSelect, type ScopeOption } from "./NoteScopeSelect";
+import { TagFilterCombobox } from "./TagFilterCombobox";
+
+// Contract re-exports: consumers (T26 ScratchpadWorkspace, tests) import the
+// filter contract from the bar; the scope sub-types live canonically in
+// NoteScopeSelect.
+export type { NoteScopeFilter, ScopeOption } from "./NoteScopeSelect";
 
 export interface NoteFilters {
   q: string;
   note_type: NoteTypeKey | "";
   tag: string;
+  scope: NoteScopeFilter | null;
 }
 
 export interface NoteFilterBarProps {
   readonly filters: NoteFilters;
   readonly onFiltersChange: (filters: NoteFilters) => void;
   readonly availableTags: readonly string[];
+  readonly novels: readonly ScopeOption[];
+  readonly series: readonly ScopeOption[];
+  /** True when at least one loaded note is linked — gates the scope select. */
+  readonly hasLinks: boolean;
   readonly semanticMode: boolean;
   readonly onSemanticModeChange: (enabled: boolean) => void;
   readonly onSearchSubmit: () => void;
@@ -32,11 +55,16 @@ export function NoteFilterBar({
   filters,
   onFiltersChange,
   availableTags,
+  novels,
+  series,
+  hasLinks,
   semanticMode,
   onSemanticModeChange,
   onSearchSubmit,
 }: NoteFilterBarProps) {
   const t = useTranslations("notes");
+
+  const showScope = hasLinks && (novels.length > 0 || series.length > 0);
 
   return (
     <div
@@ -82,23 +110,20 @@ export function NoteFilterBar({
         </select>
       </label>
 
-      <label className="flex items-center gap-1.5 text-sm font-normal text-muted-foreground">
-        <span className="sr-only sm:not-sr-only">{t("list.tagFilterLabel")}</span>
-        <select
-          value={filters.tag}
-          data-testid="note-tag-filter"
-          aria-label={t("list.tagFilterLabel")}
-          className="cursor-pointer rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          onChange={(event) => onFiltersChange({ ...filters, tag: event.target.value })}
-        >
-          <option value="">{t("list.allTags")}</option>
-          {availableTags.map((tag) => (
-            <option key={tag} value={tag}>
-              {tag}
-            </option>
-          ))}
-        </select>
-      </label>
+      <TagFilterCombobox
+        value={filters.tag}
+        onChange={(tag) => onFiltersChange({ ...filters, tag })}
+        availableTags={availableTags}
+      />
+
+      {showScope && (
+        <NoteScopeSelect
+          value={filters.scope}
+          onChange={(scope) => onFiltersChange({ ...filters, scope })}
+          novels={novels}
+          series={series}
+        />
+      )}
 
       <label className="flex cursor-pointer items-center gap-1.5 text-sm font-normal text-muted-foreground">
         <input

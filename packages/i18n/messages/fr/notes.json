@@ -15,6 +15,12 @@
     "allTypes": "Tous les types",
     "tagFilterLabel": "Étiquette",
     "allTags": "Toutes les étiquettes",
+    "tagFilterPlaceholder": "Filtrer par étiquette…",
+    "clearTagFilter": "Effacer le filtre d'étiquette",
+    "scopeFilterLabel": "Lié à",
+    "allScopes": "Tout",
+    "scopeNovelsGroup": "Romans",
+    "scopeSeriesGroup": "Séries",
     "noResults": "Aucune note ne correspond à ces filtres.",
     "untitled": "Sans titre",
     "updated": "Mis à jour {date}"

@@ -27,6 +27,12 @@ export interface TagSuggestionsProps {
   readonly listboxId: string;
   readonly onHighlight: (index: number) => void;
   readonly onPick: (tag: string) => void;
+  /**
+   * data-testid prefix for the option pills. Defaults to the editor's
+   * "tag-suggestion"; consumers embedding the pills in another surface
+   * (e.g. the filter bar) pass their own prefix to keep testids unique.
+   */
+  readonly testIdPrefix?: string;
 }
 
 export function TagSuggestions({
@@ -35,6 +41,7 @@ export function TagSuggestions({
   listboxId,
   onHighlight,
   onPick,
+  testIdPrefix = "tag-suggestion",
 }: TagSuggestionsProps) {
   const t = useTranslations("notes");
 
@@ -54,7 +61,7 @@ export function TagSuggestions({
             role="option"
             aria-selected={isSelected}
             id={tagOptionId(listboxId, index)}
-            data-testid={`tag-suggestion-${tag}`}
+            data-testid={`${testIdPrefix}-${tag}`}
             onMouseDown={(event) => event.preventDefault()}
             onMouseEnter={() => onHighlight(index)}
             onClick={() => onPick(tag)}
