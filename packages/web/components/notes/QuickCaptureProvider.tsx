@@ -3,8 +3,9 @@
 /**
  * QuickCaptureProvider — global quick-capture surface (NOTES-001 §7).
  *
- * Mounts once in the studio shell (T29). Owns: open/close state, the
- * Ctrl/⌘+Shift+U shortcut (collision audit: K = palette, S = save,
+ * Mounts once in the (studio) layout, inside AuthGate (T29b) — a single
+ * mount covers shell and non-shell studio pages alike. Owns: open/close
+ * state, the Ctrl/⌘+Shift+U shortcut (collision audit: K = palette, S = save,
  * Enter = AI submit; Shift+N rejected — Chrome incognito), and the
  * slide-over panel itself. Any component can open it via `useQuickCapture()`.
  *
