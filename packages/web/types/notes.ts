@@ -75,7 +75,7 @@ export interface NoteSearchResponse {
 
 /** Display title: the stored title, or the first non-empty content line. */
 export function noteDisplayTitle(note: Pick<Note, "title" | "content">): string {
-  if (note.title?.trim()) return note.title;
+  if (note.title?.trim()) return note.title.trim();
   const firstLine = note.content.split("\n").find((line) => line.trim());
   return firstLine ? firstLine.trim().slice(0, 200) : "";
 }

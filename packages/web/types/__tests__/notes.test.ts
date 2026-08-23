@@ -196,6 +196,12 @@ describe("noteDisplayTitle (spec §4: empty title → first content line)", () =
     );
   });
 
+  it("trims a whitespace-padded stored title (mirrors core effective_title)", () => {
+    expect(noteDisplayTitle({ title: "  Lighthouse motif  ", content: "body" })).toBe(
+      "Lighthouse motif",
+    );
+  });
+
   it("falls back to the first non-empty content line when title is null", () => {
     expect(
       noteDisplayTitle({
