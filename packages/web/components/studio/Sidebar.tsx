@@ -1,12 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Ruler, StickyNote } from "lucide-react";
+import { ArrowLeft, Ruler, StickyNote, Zap } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useQuickCapture } from "@/components/notes/QuickCaptureProvider";
+import { IconButton } from "@/components/ui/icon-button";
 import { authApi } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { SidebarChapterList } from "./SidebarChapterList";
@@ -24,6 +26,7 @@ export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
   const tNotes = useTranslations("notes");
   const params = useParams();
   const logout = useAuthStore((s) => s.logout);
+  const quickCapture = useQuickCapture();
 
   const novelId = params.id as string | undefined;
 
@@ -81,7 +84,7 @@ export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
       </div>
 
       {/* Scratchpad — global, always available (NOTES-001) */}
-      <div className="px-3 pt-1">
+      <div className="flex items-center gap-1 px-3 pt-1">
         <Link
           href="/scratchpad"
           data-testid="sidebar-scratchpad-link"
@@ -91,6 +94,12 @@ export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
           <StickyNote className="w-4 h-4" />
           <span>{tNotes("nav.label")}</span>
         </Link>
+        <IconButton
+          icon={Zap}
+          label={tNotes("quickCapture.open")}
+          data-testid="sidebar-quick-capture-button"
+          onClick={() => quickCapture.open()}
+        />
       </div>
 
       {/* Navigation */}
