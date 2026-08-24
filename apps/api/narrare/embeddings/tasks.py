@@ -25,6 +25,7 @@ import structlog
 
 from narrare_core.embeddings.hash import compute_content_hash
 from narrare_core.llm.embeddings import embed_texts
+from narrare_core.settings import get_core_settings
 from narrare_core.shared.errors import EmbeddingError
 
 if TYPE_CHECKING:
@@ -69,7 +70,11 @@ async def run_embed_source(
     Returns:
         True if embedding was generated, False if skipped (unchanged).
     """
-    effective_model = model or "text-embedding-3-small"
+    # DEFAULT_EMBEDDING_MODEL is owned by CoreSettings (ADR-071 §3) — the
+    # write path must resolve through the same source as the search path
+    # (EmbeddingService / NoteSearchService), or rows land under a model the
+    # search never queries (upsert key: source_type, source_id, model).
+    effective_model = model or get_core_settings().default_embedding_model
     effective_dimension = dimension or 1536
     delays = retry_delays or _DEFAULT_RETRY_DELAYS
     max_retries = len(delays)
