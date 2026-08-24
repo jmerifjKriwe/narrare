@@ -160,3 +160,8 @@ Phantom `just` recipe → report, don't workaround: if a documented
 fall back to raw commands or invent a recipe.
 `BLOCKED: Need to run "<cmd>" but permission denied.` Do not retry/workaround.
 No `task` spawns. (Docker/destructive git ops trigger `ask` = user approval.)
+
+## Tool usage boundaries
+
+- MCP resources exist only on server `graphify` (URIs like `graphify://stats`). There is no MCP server named `local`.
+- Local files → Read tool. Never pass `file://` URIs to `read_mcp_resource`; valid URIs come from `list_mcp_resources`.

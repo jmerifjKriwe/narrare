@@ -128,3 +128,8 @@ for existing ADRs/blockers.
 
 Command blocked? DO NOT retry/workaround. Report to the coordinator:
 `BLOCKED: Need to run "<cmd>" but permission denied.` No subagent spawns (`task`).
+
+## Tool usage boundaries
+
+- MCP resources exist only on server `graphify` (URIs like `graphify://stats`). There is no MCP server named `local`.
+- Local files → Read tool. Never pass `file://` URIs to `read_mcp_resource`; valid URIs come from `list_mcp_resources`.
