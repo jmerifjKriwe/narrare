@@ -59,6 +59,7 @@
   },
   "quickCapture": {
     "open": "Quick capture",
+    "close": "Close note capture",
     "title": "Capture a thought",
     "titlePlaceholder": "Title (optional)",
     "textPlaceholder": "What's on your mind?",
@@ -68,5 +69,5 @@
     "openInScratchpad": "Open in scratchpad",
     "shortcutHint": "Ctrl/⌘+Shift+U"
   },
-  "chat": { "attachedNote": "Discussing note: {title}" }
+  "chat": { "attachedNote": "Discussing note: {title}", "close": "Close chat" }
 }

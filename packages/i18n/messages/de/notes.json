@@ -59,6 +59,7 @@
   },
   "quickCapture": {
     "open": "Schnellerfassung",
+    "close": "Schnellerfassung schließen",
     "title": "Gedanken erfassen",
     "titlePlaceholder": "Titel (optional)",
     "textPlaceholder": "Was liegt dir im Kopf?",
@@ -68,5 +69,5 @@
     "openInScratchpad": "Im Notizblock öffnen",
     "shortcutHint": "Strg/⌘+Shift+U"
   },
-  "chat": { "attachedNote": "Zur Notiz: {title}" }
+  "chat": { "attachedNote": "Zur Notiz: {title}", "close": "Chat schließen" }
 }

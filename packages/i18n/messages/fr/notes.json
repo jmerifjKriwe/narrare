@@ -59,6 +59,7 @@
   },
   "quickCapture": {
     "open": "Capture rapide",
+    "close": "Fermer la capture rapide",
     "title": "Capter une pensée",
     "titlePlaceholder": "Titre (facultatif)",
     "textPlaceholder": "À quoi pensez-vous ?",
@@ -68,5 +69,5 @@
     "openInScratchpad": "Ouvrir dans le bloc-notes",
     "shortcutHint": "Ctrl/⌘+Maj+U"
   },
-  "chat": { "attachedNote": "À propos de la note : {title}" }
+  "chat": { "attachedNote": "À propos de la note : {title}", "close": "Fermer le chat" }
 }

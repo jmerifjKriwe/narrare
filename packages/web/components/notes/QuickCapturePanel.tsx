@@ -144,7 +144,7 @@ export function QuickCapturePanel({ onClose }: QuickCapturePanelProps) {
         <button
           type="button"
           data-testid="qc-close"
-          aria-label={t("quickCapture.open")}
+          aria-label={t("quickCapture.close")}
           className="shrink-0 cursor-pointer rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onClose}
         >

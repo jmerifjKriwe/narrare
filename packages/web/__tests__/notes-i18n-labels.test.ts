@@ -69,6 +69,7 @@ const EXPECTED_KEYS = [
   "search.semanticBadge",
   "search.lexicalBadge",
   "quickCapture.open",
+  "quickCapture.close",
   "quickCapture.title",
   "quickCapture.titlePlaceholder",
   "quickCapture.textPlaceholder",
@@ -78,6 +79,7 @@ const EXPECTED_KEYS = [
   "quickCapture.openInScratchpad",
   "quickCapture.shortcutHint",
   "chat.attachedNote",
+  "chat.close",
 ] as const;
 
 function flatten(obj: Record<string, unknown>, prefix = ""): string[] {

@@ -15,6 +15,9 @@
  * scope-filter feed (novels/series/hasLinks + stale-scope clearing), the
  * honest "notes exist, none selected" right pane (no false "empty" copy),
  * and the T23 memoized-by-id editor stability across background refetches.
+ * Final-review additions: filtered-zero must NOT show the capture card
+ * (existence comes from the unfiltered probe), and a capture whose POST
+ * races a filter change must still visibly select the new note.
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -187,6 +190,58 @@ describe("ScratchpadWorkspace", () => {
     await screen.findByTestId("note-list-item-n1");
     expect(screen.queryByTestId("scratchpad-empty")).not.toBeInTheDocument();
     expect(screen.getByText("empty.selectPrompt")).toBeInTheDocument();
+  });
+
+  it("keeps the capture card hidden when notes exist but the filter matches none (final review)", async () => {
+    // The handler honors note_type so probe (unfiltered) and filtered list
+    // diverge: one "concept" note exists, the "question" filter matches none.
+    server.use(
+      emptyTags,
+      emptyNovels,
+      emptySeries,
+      http.get("*/api/v1/notes", ({ request }) => {
+        const type = new URL(request.url).searchParams.get("note_type");
+        const all = [note("n1", { note_type: "concept" })];
+        return HttpResponse.json(type ? all.filter((n) => n.note_type === type) : all);
+      }),
+    );
+    renderWorkspace();
+    await screen.findByTestId("note-list-item-n1");
+    fireEvent.change(screen.getByTestId("note-type-filter"), { target: { value: "question" } });
+    // The rail honestly reports no match; the pane stays quiet — never the
+    // "Nothing captured yet" card while notes exist.
+    expect(await screen.findByTestId("note-list-empty")).toHaveTextContent("list.noResults");
+    expect(screen.getByTestId("scratchpad-select-prompt")).toBeInTheDocument();
+    expect(screen.queryByTestId("scratchpad-empty")).not.toBeInTheDocument();
+  });
+
+  it("still selects visibly when a filter is set while the capture POST is in flight (final review)", async () => {
+    let notes: Note[] = [];
+    server.use(
+      emptyTags,
+      emptyNovels,
+      emptySeries,
+      http.get("*/api/v1/notes", ({ request }) => {
+        const type = new URL(request.url).searchParams.get("note_type");
+        return HttpResponse.json(type ? notes.filter((n) => n.note_type === type) : notes);
+      }),
+      http.post("*/api/v1/notes", async () => {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        notes = [note("n1", { content: "captured thought", note_type: "idea" })];
+        return HttpResponse.json(notes[0], { status: 201 });
+      }),
+    );
+    renderWorkspace();
+    fireEvent.change(await screen.findByTestId("empty-capture-text"), {
+      target: { value: "captured thought" },
+    });
+    fireEvent.click(screen.getByTestId("empty-capture-save"));
+    // Mid-flight the user narrows the type filter to one the new "idea"
+    // note does not match — the capture must still land on a selected,
+    // editable note (filters reset), not silently no-op.
+    fireEvent.change(screen.getByTestId("note-type-filter"), { target: { value: "question" } });
+    expect(await screen.findByTestId("note-content-input")).toHaveValue("captured thought");
+    expect(screen.getByTestId("note-list-item-n1")).toBeInTheDocument();
   });
 
   it("feeds the scope filter from linked notes and clears it when its target vanishes (T21b)", async () => {

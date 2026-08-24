@@ -20,6 +20,7 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, params?: Record<string, unknown>) => {
     const translations: Record<string, string> = {
       "chat.attachedNote": "Discussing note: {title}",
+      "chat.close": "Close chat",
       "list.untitled": "Untitled",
       "editor.discuss": "Discuss in chat",
     };
@@ -68,6 +69,9 @@ describe("NotesChatDrawer", () => {
   it("calls onClose from the drawer close button", () => {
     const onClose = vi.fn();
     render(<NotesChatDrawer open onClose={onClose} note={note} />);
+    // a11y: the X closes the drawer — its label must say so, not repeat the
+    // dialog's "discuss" title (final review).
+    expect(screen.getByTestId("note-chat-close")).toHaveAccessibleName("Close chat");
     fireEvent.click(screen.getByTestId("note-chat-close"));
     expect(onClose).toHaveBeenCalled();
   });

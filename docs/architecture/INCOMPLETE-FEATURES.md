@@ -80,6 +80,9 @@ last_updated: 2026-08-08
   fallback to `UUID(int=0)` when conversation has no project. 4 tests.
 - **Files:** `core/chat/conversation_store.py`, `core/chat/contracts.py`,
   `chat/conversation_store.py`, `chat/chat_service.py`, `chat/router.py`
+- **Note (2026-08-21):** The `UUID(int=0)` fallback described above is itself superseded
+  by NOTES-001 -- `project_id` is now honestly nullable/null (migration `0042`), see
+  `docs/features/notes/NOTES-001-scratchpad.md`.
 
 ### ~~IF-12: Name Generator -- KB Save Not Implemented (Frontend)~~ (RESOLVED 2026-06-10)
 

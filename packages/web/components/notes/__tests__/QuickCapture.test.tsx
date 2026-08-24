@@ -109,6 +109,12 @@ describe("QuickCapture", () => {
     expect(screen.queryByTestId("quick-capture-panel")).not.toBeInTheDocument();
   });
 
+  it("labels the close button as closing the capture, not opening it (a11y)", () => {
+    renderProvider();
+    fireEvent.click(screen.getByTestId("qc-open"));
+    expect(screen.getByTestId("qc-close")).toHaveAccessibleName("quickCapture.close");
+  });
+
   it("captures a note and toasts success", async () => {
     let captured: Record<string, unknown> | undefined;
     server.use(

@@ -4,10 +4,8 @@
  * ScratchpadWorkspace — the /scratchpad page body (NOTES-001 §7).
  *
  * Orchestrator: owns filters, selection, and search state; composes the
- * ScratchpadListRail (header + filter bar + honest badge + list), the right
- * pane (editor for the selected note, first-capture card when no note
- * exists, quiet select prompt when notes exist but none is selected — no
- * false "empty" copy), and the NotesChatDrawer.
+ * ScratchpadListRail, the right pane (editor / capture card / quiet prompt,
+ * decided by ScratchpadPaneMode), and the NotesChatDrawer.
  *
  * Binding review constraints implemented here:
  * - T21: Enter-on-empty-search guard (no request, no badge) + availableTags
@@ -35,6 +33,7 @@ import type { NoteFilters } from "./NoteFilterBar";
 import { NotesChatDrawer } from "./NotesChatDrawer";
 import { ScratchpadEmptyState } from "./ScratchpadEmptyState";
 import { ScratchpadListRail } from "./ScratchpadListRail";
+import { resolveScratchpadPaneMode, ScratchpadSelectPrompt } from "./ScratchpadPaneMode";
 
 const INITIAL_FILTERS: NoteFilters = { q: "", note_type: "", tag: "", scope: null };
 
@@ -60,6 +59,9 @@ export function ScratchpadWorkspace() {
     [filters],
   );
   const notesQuery = useNotes(listParams);
+  // Final-review fix: EXISTENCE probe (unfiltered, own stable key) feeding
+  // ScratchpadPaneMode — never the filtered list.
+  const existenceProbe = useNotes({ limit: 1 });
   const tagsQuery = useNoteTags();
   const novelsQuery = useNovels();
   const seriesQuery = useSeriesList();
@@ -69,7 +71,7 @@ export function ScratchpadWorkspace() {
   const notes = searchResults ? searchResults.results : (notesQuery.data ?? []);
   const selectedNote = notes.find((note) => note.id === selectedId) ?? null;
   const chatNote = notes.find((note) => note.id === chatNoteId) ?? null;
-  const hasAnyNotes = (notesQuery.data?.length ?? 0) > 0;
+  const paneMode = resolveScratchpadPaneMode(existenceProbe, filters);
 
   // T21: the tags endpoint returns distinct tags, but the editor's tag drafts
   // can drift — dedupe once so filter suggestions never show duplicates.
@@ -135,7 +137,12 @@ export function ScratchpadWorkspace() {
     createNote.mutate(
       { content: text, note_type: noteType },
       {
-        onSuccess: (note) => setSelectedId(note.id),
+        // Honest selection: a fresh note may not match filters set while
+        // the POST was in flight — reset so capture visibly selects.
+        onSuccess: (note) => {
+          handleFiltersChange(INITIAL_FILTERS);
+          setSelectedId(note.id);
+        },
         onError: () => toast.error(t("editor.saveFailed")),
       },
     );
@@ -175,16 +182,12 @@ export function ScratchpadWorkspace() {
             }}
             onDiscuss={(noteId) => setChatNoteId(noteId)}
           />
-        ) : hasAnyNotes ? (
-          <p
-            data-testid="scratchpad-select-prompt"
-            className="flex h-full items-center justify-center p-6 text-sm italic text-muted-foreground"
-          >
-            {t("empty.selectPrompt")}
-          </p>
-        ) : (
+        ) : paneMode === "capture-card" && selectedId === null ? (
+          // A resolving capture (selectedId set, note not yet reloaded) shows neither pane.
           <ScratchpadEmptyState onCapture={handleCapture} pending={createNote.isPending} />
-        )}
+        ) : paneMode === "select-prompt" ? (
+          <ScratchpadSelectPrompt />
+        ) : null}
       </div>
 
       <NotesChatDrawer

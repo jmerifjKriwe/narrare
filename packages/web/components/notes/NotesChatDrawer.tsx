@@ -60,7 +60,7 @@ export function NotesChatDrawer({ open, onClose, note }: NotesChatDrawerProps) {
               <button
                 type="button"
                 data-testid="note-chat-close"
-                aria-label={t("editor.discuss")}
+                aria-label={t("chat.close")}
                 className="shrink-0 cursor-pointer rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                 onClick={onClose}
               >
