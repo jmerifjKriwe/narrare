@@ -114,6 +114,32 @@ describe("TagInput", () => {
     expect(onChange).toHaveBeenCalledWith(["pl"]);
   });
 
+  it("clears the hover highlight when the pointer leaves the suggestions (P-FE2)", () => {
+    // Regression: a hovered pill used to keep the highlight after the pointer
+    // left the pill row, so Enter picked a stale pill instead of the draft.
+    const onChange = vi.fn();
+    render(<TagInput value={[]} onChange={onChange} suggestions={["plot"]} />);
+    const input = screen.getByTestId("tag-input");
+    fireEvent.change(input, { target: { value: "pl" } });
+    fireEvent.mouseEnter(screen.getByTestId("tag-suggestion-plot"));
+    expect(screen.getByTestId("tag-suggestion-plot")).toHaveAttribute("aria-selected", "true");
+    fireEvent.mouseLeave(screen.getByRole("listbox"));
+    expect(screen.getByTestId("tag-suggestion-plot")).toHaveAttribute("aria-selected", "false");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onChange).toHaveBeenCalledWith(["pl"]);
+  });
+
+  it("renders suggestion pills as non-tabbable options (APG activedescendant pattern)", () => {
+    // The combobox input owns focus; pills are pointed at via
+    // aria-activedescendant and must not join the tab order.
+    const onChange = vi.fn();
+    render(<TagInput value={[]} onChange={onChange} suggestions={["plot"]} />);
+    expect(screen.getByTestId("tag-suggestion-plot")).toHaveAttribute("tabindex", "-1");
+    // Pointer picking keeps working on the non-focusable pill.
+    fireEvent.click(screen.getByTestId("tag-suggestion-plot"));
+    expect(onChange).toHaveBeenCalledWith(["plot"]);
+  });
+
   it("Backspace on an empty draft removes the last chip", () => {
     const onChange = vi.fn();
     render(<TagInput value={["plot", "world"]} onChange={onChange} suggestions={[]} />);

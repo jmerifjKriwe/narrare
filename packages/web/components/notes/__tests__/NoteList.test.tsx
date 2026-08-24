@@ -4,12 +4,35 @@
  * Conventions (mirrors series/__tests__): the centralized setupTests mock
  * returns i18n KEY STRINGS verbatim — assertions check keys; motion/react is
  * neutralized globally so list items mount immediately.
+ *
+ * Local next-intl override (sanctioned by setupTests' "individual test mocks
+ * can still override"): the global mock returns keys verbatim, which DROPS
+ * t() params — but the updated-date test must see the useFormatter output to
+ * prove the date is locale-formatted (P-FE1). A minimal message table keeps
+ * every other assertion key-verbatim.
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { Note } from "@/types";
 import { NoteList } from "../NoteList";
+
+vi.mock("next-intl", () => ({
+  useFormatter: () => ({
+    dateTime: (value: Date) => value.toISOString().slice(0, 10),
+  }),
+  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
+    const messages: Record<string, string> = {
+      "list.updated": "Updated {date}",
+    };
+    const template = messages[key] ?? key;
+    if (!params) return template;
+    return Object.entries(params).reduce(
+      (str, [k, v]) => str.replaceAll(`{${k}}`, String(v)),
+      template,
+    );
+  },
+}));
 
 function makeNote(overrides: Partial<Note> = {}): Note {
   return {
@@ -57,5 +80,15 @@ describe("NoteList", () => {
     );
     expect(screen.getByText("world")).toBeInTheDocument();
     expect(screen.getByText("list.untitled")).toBeInTheDocument();
+  });
+
+  it("formats the updated date via next-intl useFormatter, not the browser locale", () => {
+    // Regression (P-FE1): the list must not use toLocaleDateString() (whose
+    // output varies with the browser locale); the date comes from
+    // useFormatter (app locale, medium date style — SeriesDriftPanel's ICU
+    // convention). The mocked formatter renders the ISO date, which no
+    // toLocaleDateString() locale produces for this instant.
+    render(<NoteList notes={[makeNote()]} selectedId={null} onSelect={vi.fn()} />);
+    expect(screen.getByText("Updated 2026-08-21")).toBeInTheDocument();
   });
 });

@@ -53,15 +53,13 @@ function OpenButton() {
   );
 }
 
-function renderProvider() {
+function renderProvider(children: React.ReactElement = <OpenButton />) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <QuickCaptureProvider>
-        <OpenButton />
-      </QuickCaptureProvider>
+      <QuickCaptureProvider>{children}</QuickCaptureProvider>
     </QueryClientProvider>,
   );
 }
@@ -99,6 +97,25 @@ describe("QuickCapture", () => {
     expect(screen.getByTestId("quick-capture-panel")).toBeInTheDocument();
     fireEvent.keyDown(window, { metaKey: true, shiftKey: true, key: "U" });
     expect(screen.queryByTestId("quick-capture-panel")).not.toBeInTheDocument();
+  });
+
+  it("keeps the context value referentially stable across provider re-renders", () => {
+    // Regression (P-FE1): the inline `{ open }` value re-created the context
+    // object on every provider render, so isOpen transitions re-rendered ALL
+    // useQuickCapture consumers needlessly. With the memoized value, a
+    // consumer must render exactly once and keep the same object identity.
+    const seen: ReturnType<typeof useQuickCapture>[] = [];
+    let renders = 0;
+    function Probe() {
+      renders += 1;
+      seen.push(useQuickCapture());
+      return null;
+    }
+    renderProvider(<Probe />);
+    fireEvent.keyDown(window, { metaKey: true, shiftKey: true, key: "U" });
+    expect(screen.getByTestId("quick-capture-panel")).toBeInTheDocument();
+    expect(renders).toBe(1);
+    expect(seen[seen.length - 1]).toBe(seen[0]);
   });
 
   it("closes on Escape and autofocuses the text field on open", () => {

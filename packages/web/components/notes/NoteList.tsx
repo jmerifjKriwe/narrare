@@ -8,7 +8,7 @@
  */
 
 import { motion } from "motion/react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { listContainerVariants, listItemVariants } from "@/lib/motion-variants";
 import { type Note, noteDisplayTitle } from "@/types";
 
@@ -20,6 +20,9 @@ export interface NoteListProps {
 
 export function NoteList({ notes, selectedId, onSelect }: NoteListProps) {
   const t = useTranslations("notes");
+  // Locale-aware date via next-intl (app locale, medium date style — same ICU
+  // style as the series drift snapshot hint), never the browser locale.
+  const format = useFormatter();
 
   if (notes.length === 0) {
     return (
@@ -71,7 +74,7 @@ export function NoteList({ notes, selectedId, onSelect }: NoteListProps) {
               )}
               <span className="mt-1 block text-xs font-normal text-muted-foreground">
                 {t("list.updated", {
-                  date: new Date(note.updated_at).toLocaleDateString(),
+                  date: format.dateTime(new Date(note.updated_at), { dateStyle: "medium" }),
                 })}
               </span>
             </button>

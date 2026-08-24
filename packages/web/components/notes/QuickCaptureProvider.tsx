@@ -24,6 +24,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -57,6 +58,11 @@ export function QuickCaptureProvider({ children }: { children: ReactNode }) {
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
 
+  // Stable context value: `open` is referentially stable (useCallback), so
+  // memoizing the wrapper keeps consumers (Sidebar etc.) from re-rendering on
+  // the provider's own isOpen transitions.
+  const contextValue = useMemo(() => ({ open }), [open]);
+
   useDialogFocus({ open: isOpen, dialogRef, onClose: close });
 
   useEffect(() => {
@@ -71,7 +77,7 @@ export function QuickCaptureProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <QuickCaptureContext.Provider value={{ open }}>
+    <QuickCaptureContext.Provider value={contextValue}>
       {children}
       <AnimatePresence>
         {isOpen && (

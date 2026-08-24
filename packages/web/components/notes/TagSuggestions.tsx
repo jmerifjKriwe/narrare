@@ -6,9 +6,13 @@
  * Presentational pill row wired as an ARIA listbox (repo convention:
  * MentionAutocomplete): each option carries aria-selected, while the parent
  * combobox input owns focus and points at the highlighted option via
- * aria-activedescendant. mousedown default is prevented so the input keeps
- * focus — its blur-add of the half-typed draft must not race this pick in
- * real browsers. Hover mirrors the keyboard highlight (single shared state).
+ * aria-activedescendant. Per the APG combobox/activedescendant pattern the
+ * options are NOT tab stops (tabIndex -1) — focus stays in the input, and
+ * picking happens via keyboard (Enter) or pointer (click; mousedown default
+ * is prevented so the input keeps focus — its blur-add of the half-typed
+ * draft must not race this pick in real browsers). Hover mirrors the keyboard
+ * highlight (single shared state); leaving the pill row clears it again so
+ * Enter cannot pick a stale hovered pill after the pointer moved away.
  */
 
 import { useTranslations } from "next-intl";
@@ -51,6 +55,7 @@ export function TagSuggestions({
       role="listbox"
       aria-label={t("editor.tagSuggestions")}
       className="flex flex-wrap gap-1"
+      onMouseLeave={() => onHighlight(-1)}
     >
       {suggestions.map((tag, index) => {
         const isSelected = index === highlightedIndex;
@@ -62,6 +67,7 @@ export function TagSuggestions({
             aria-selected={isSelected}
             id={tagOptionId(listboxId, index)}
             data-testid={`${testIdPrefix}-${tag}`}
+            tabIndex={-1}
             onMouseDown={(event) => event.preventDefault()}
             onMouseEnter={() => onHighlight(index)}
             onClick={() => onPick(tag)}
