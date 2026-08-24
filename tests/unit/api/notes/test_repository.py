@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
+from narrare.notes.contracts import NoteRepositoryProtocol
 from narrare.notes.repository import NoteRepository
 from tests.factories import make_note
 from tests.fakes.fake_db_session import FakeDbSession, FakeResult
@@ -28,6 +29,18 @@ def _make_repo(session: FakeDbSession) -> NoteRepository:
     seam for passing a fake where an ``AsyncSession`` is declared.
     """
     return NoteRepository(cast("AsyncSession", session))
+
+
+def _filter_binds(session: FakeDbSession) -> dict[str, object]:
+    """Filter-related bound params of the first executed statement.
+
+    Excludes non-filter binds (user_id scope, limit/offset paging) so each
+    per-filter test asserts exactly its own bind(s) — a dropped or mis-wired
+    condition changes the dict and fails the test.
+    """
+    prefixes = ("note_type", "tags", "novel_id", "series_id", "title", "content")
+    params = session.statements[0].compile().params
+    return {key: value for key, value in params.items() if key.startswith(prefixes)}
 
 
 class TestNoteRepositoryGetById:
@@ -87,6 +100,70 @@ class TestNoteRepositoryListNotes:
 
         params = session.statements[0].compile().params
         assert any("100\\%\\_done" in str(value) for value in params.values())
+
+
+class TestNoteRepositoryListNotesFilters:
+    """Per-filter bind-param assertions (test-depth batch, final review).
+
+    Filter SQL semantics (ILIKE, tag containment) are proven at integration
+    level; these tests pin the WIRING — each filter binds its value under
+    its column's param, so a dropped or mis-wired condition fails here
+    instead of surfacing at e2e time.
+    """
+
+    async def test_note_type_filter_binds_value(self) -> None:
+        session = FakeDbSession()
+        repo = _make_repo(session)
+
+        await repo.list_notes(uuid4(), note_type="idea")
+
+        assert _filter_binds(session) == {"note_type_1": "idea"}
+
+    async def test_tag_filter_binds_containment_array(self) -> None:
+        """The tag filter binds an ARRAY containment param, not a scalar."""
+        session = FakeDbSession()
+        repo = _make_repo(session)
+
+        await repo.list_notes(uuid4(), tag="plot")
+
+        assert _filter_binds(session) == {"tags_1": ["plot"]}
+
+    async def test_novel_id_filter_binds_value(self) -> None:
+        session = FakeDbSession()
+        repo = _make_repo(session)
+        novel_id = uuid4()
+
+        await repo.list_notes(uuid4(), novel_id=novel_id)
+
+        assert _filter_binds(session) == {"novel_id_1": novel_id}
+
+    async def test_series_id_filter_binds_value(self) -> None:
+        session = FakeDbSession()
+        repo = _make_repo(session)
+        series_id = uuid4()
+
+        await repo.list_notes(uuid4(), series_id=series_id)
+
+        assert _filter_binds(session) == {"series_id_1": series_id}
+
+    async def test_q_filter_binds_ilike_pattern_on_title_and_content(self) -> None:
+        """q wraps the input in %...% and binds it for BOTH title and content."""
+        session = FakeDbSession()
+        repo = _make_repo(session)
+
+        await repo.list_notes(uuid4(), q="needle")
+
+        assert _filter_binds(session) == {"title_1": "%needle%", "content_1": "%needle%"}
+
+
+class TestNoteRepositoryProtocolConformance:
+    def test_repository_satisfies_protocol(self) -> None:
+        """Structural guard: NoteRepository carries the Protocol's surface.
+
+        ``runtime_checkable`` ``issubclass`` checks method presence only —
+        cheap rename protection (mirrors test_series_drift_repository.py).
+        """
+        assert issubclass(NoteRepository, NoteRepositoryProtocol)
 
 
 class TestNoteRepositoryDistinctTags:

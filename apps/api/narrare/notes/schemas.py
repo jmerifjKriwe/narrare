@@ -109,6 +109,20 @@ class NoteSearchRequest(BaseModel):
     series_id: uuid.UUID | None = None
     limit: int = Field(default=20, ge=1, le=100)
 
+    @field_validator("query")
+    @classmethod
+    def _query_not_whitespace_only(cls, value: str) -> str:
+        """Reject whitespace-only queries and strip surrounding whitespace.
+
+        ``min_length=1`` alone lets ``" "`` through, which the embedding
+        provider would turn into zero-vector semantic garbage (final review).
+        """
+        stripped = value.strip()
+        if not stripped:
+            msg = "Query must contain at least one non-whitespace character"
+            raise ValueError(msg)
+        return stripped
+
 
 class NoteSearchHit(NoteResponse):
     """A note plus its similarity score (None in lexical mode)."""

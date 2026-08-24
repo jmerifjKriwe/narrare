@@ -97,6 +97,12 @@ class NoteSearchService:
                     similarity=row.similarity,
                 )
             )
+        # Design note (v1 decision, final review 2026-08-21): a SUCCESSFUL
+        # semantic search that returns zero hits stays mode="semantic" — no
+        # lexical retry. An empty result is not a provider failure (that case
+        # degrades via the try/except above), so retrying lexically would mask
+        # the embedding space and double query cost. Deliberate; revisit if
+        # users report missed matches.
         return NoteSearchResponse(mode="semantic", query=request.query, results=hits)
 
     async def _lexical(self, user_id: UUID, request: NoteSearchRequest) -> NoteSearchResponse:

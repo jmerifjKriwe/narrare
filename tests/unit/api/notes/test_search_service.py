@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 import pytest
 
 import narrare.notes.search_service as search_module
+from narrare.embeddings.contracts import DEFAULT_EMBEDDING_SEARCH_THRESHOLD
 from narrare.notes.schemas import NoteSearchRequest
 from narrare.notes.search_service import NoteSearchService
 from narrare_core.notes.types import NoteType
@@ -34,7 +35,7 @@ class FakeEmbeddingRepo:
         *,
         source_type: str | None = None,
         source_ids: set[UUID] | None = None,
-        threshold: float = 0.7,
+        threshold: float = DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
         limit: int = 20,
         model: str | None = None,
     ) -> list[SearchRow]:
@@ -42,6 +43,7 @@ class FakeEmbeddingRepo:
             {
                 "source_type": source_type,
                 "source_ids": source_ids,
+                "threshold": threshold,
                 "limit": limit,
                 "model": model,
                 "vector": query_embedding,
@@ -147,6 +149,22 @@ class TestSemanticSearch:
         await service.search(user_id, NoteSearchRequest(query="magic", limit=5))
 
         assert embedding_repo.calls[0]["limit"] == 5
+
+    async def test_vector_search_runs_at_governed_default_threshold(
+        self, patched_embed: None
+    ) -> None:
+        # v1: note search does not override the repository threshold — the
+        # annotated governed default (0.7, EmbeddingRepositoryProtocol) applies.
+        # Pinned so any future custom threshold is a conscious, reviewed change.
+        user_id = uuid4()
+        note = make_note(user_id=user_id, content="alpha")
+        repo = FakeNotesRepository([note])
+        embedding_repo = FakeEmbeddingRepo({})
+        service = NoteSearchService(repo, cast("EmbeddingRepositoryProtocol", embedding_repo))
+
+        await service.search(user_id, NoteSearchRequest(query="magic"))
+
+        assert embedding_repo.calls[0]["threshold"] == DEFAULT_EMBEDDING_SEARCH_THRESHOLD
 
 
 class TestLexicalFallback:

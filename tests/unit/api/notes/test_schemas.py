@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from narrare.notes.schemas import (
     NoteCreateRequest,
     NoteResponse,
+    NoteSearchRequest,
     NoteTagsResponse,
     NoteUpdateRequest,
 )
@@ -72,6 +73,24 @@ class TestNoteResponse:
         resp = NoteResponse.model_validate(_Row())
         assert resp.note_type == "idea"
         assert resp.tags == ["plot"]
+
+
+class TestNoteSearchRequest:
+    def test_whitespace_only_query_rejected(self) -> None:
+        # Regression (final review): " " passed min_length=1 and reached the
+        # embedding provider, producing zero-vector semantic garbage.
+        with pytest.raises(ValidationError, match="non-whitespace"):
+            NoteSearchRequest(query="   ")
+
+    def test_query_is_stripped(self) -> None:
+        assert NoteSearchRequest(query="  magic  ").query == "magic"
+
+    def test_single_char_query_accepted(self) -> None:
+        assert NoteSearchRequest(query="x").query == "x"
+
+    def test_tabs_and_newlines_are_whitespace_too(self) -> None:
+        with pytest.raises(ValidationError, match="non-whitespace"):
+            NoteSearchRequest(query=" \t\n ")
 
 
 class TestNoteTagsResponse:

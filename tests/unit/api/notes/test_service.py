@@ -163,6 +163,23 @@ class TestUpdate:
         await service.update(note.id, note.user_id, NoteUpdateRequest(tags=[]))
         assert dispatch.calls == []
 
+    async def test_patch_with_identical_content_does_not_dispatch(self) -> None:
+        """Content PROVIDED with the SAME value must not re-embed.
+
+        Guards the ``patch["content"] != note.content`` branch: an identical
+        value still produces a patch entry (the field was explicitly set)
+        but no embedding dispatch (test-depth batch, final review).
+        """
+        service, repo, dispatch, _ = _service()
+        note = make_note(content="stable")
+        repo.seed(note)
+
+        await service.update(note.id, note.user_id, NoteUpdateRequest(content="stable"))
+
+        assert dispatch.calls == []
+        # The patch itself still ran — only the dispatch is conditional.
+        assert repo.update_calls[-1] == (note.id, {"content": "stable"})
+
     async def test_explicit_null_clears_link(self) -> None:
         service, repo, _, _ = _service()
         note = make_note(novel_id=uuid4())
