@@ -118,6 +118,7 @@ async def prepare_effective_context(
     if project_id is None:
         logger.info(
             "chat_project_context_skipped",
+            user_id=str(user_id),
             conversation_id=str(conv_id),
         )
     return await compose_chat_invocation(

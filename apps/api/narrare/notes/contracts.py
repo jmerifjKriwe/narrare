@@ -16,8 +16,6 @@ if TYPE_CHECKING:
 class NoteRepositoryProtocol(Protocol):
     async def get_by_id(self, note_id: uuid.UUID, user_id: uuid.UUID) -> Note | None: ...
 
-    async def get_many_by_ids(self, note_ids: set[uuid.UUID], user_id: uuid.UUID) -> list[Note]: ...
-
     async def list_notes(
         self,
         user_id: uuid.UUID,

@@ -141,22 +141,47 @@ class TestMigration0041RoundTrip:
                 assert await _constraint_exists(conn, "ck_notes_scope_invariant")
                 assert await _constraint_exists(conn, "ck_notes_note_type")
 
-                # 3. The scope invariant is enforced by the DB, not just the ORM:
-                #    both links set → IntegrityError.
+                # 3. The scope invariant is enforced by the DB, not just the
+                #    ORM: both links set → IntegrityError. The probe runs
+                #    inside a SAVEPOINT (begin_nested) so ONLY the failing
+                #    INSERT rolls back. Without it, the caught error would
+                #    deactivate the outer transaction and the block-exit
+                #    commit would silently persist nothing — leaving the
+                #    post-round-trip count==0 assertion below vacuous
+                #    (verified empirically: seeds do not survive a caught
+                #    IntegrityError without the savepoint).
                 with pytest.raises(IntegrityError):
+                    async with conn.begin_nested():
+                        await conn.execute(
+                            sqlalchemy.text(
+                                "INSERT INTO notes (id, user_id, content, note_type, tags, "
+                                "novel_id, series_id) "
+                                "VALUES (:id, :uid, 'both', 'idea', '{}', :nid, :sid)"
+                            ),
+                            {
+                                "id": _uuid.uuid4(),
+                                "uid": user_id,
+                                "nid": novel_id,
+                                "sid": series_id,
+                            },
+                        )
+        finally:
+            await eng.dispose()
+
+        # 3.5 Non-vacuousness guard: the seed COMMITTED (the savepoint kept
+        # the outer transaction viable), so the row provably exists before
+        # the downgrade — otherwise the count==0 assertion after the
+        # upgrade would pass even if the round trip wrongly kept rows.
+        eng = _create_async_engine(db_url, poolclass=_NullPool)
+        try:
+            async with eng.connect() as conn:
+                seeded = (
                     await conn.execute(
-                        sqlalchemy.text(
-                            "INSERT INTO notes (id, user_id, content, note_type, tags, "
-                            "novel_id, series_id) "
-                            "VALUES (:id, :uid, 'both', 'idea', '{}', :nid, :sid)"
-                        ),
-                        {
-                            "id": _uuid.uuid4(),
-                            "uid": user_id,
-                            "nid": novel_id,
-                            "sid": series_id,
-                        },
+                        sqlalchemy.text("SELECT COUNT(*) FROM notes WHERE id = :nid"),
+                        {"nid": note_id},
                     )
+                ).scalar()
+                assert seeded == 1, "seeded note must persist before the downgrade"
         finally:
             await eng.dispose()
 
@@ -170,7 +195,10 @@ class TestMigration0041RoundTrip:
             finally:
                 await eng.dispose()
 
-            # 5. Upgrade back to head — table + constraints rebuilt, rows gone.
+            # 5. Upgrade back to head — table + constraints rebuilt. The
+            # count==0 assertion is meaningful because step 3.5 proved the
+            # seed existed before the downgrade: upgrade must NOT resurrect
+            # dropped rows.
             _run_alembic("upgrade", "head")
             eng = _create_async_engine(db_url, poolclass=_NullPool)
             try:

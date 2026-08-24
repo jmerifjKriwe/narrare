@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
+from structlog.testing import capture_logs
 from tests.unit.api.chat.conftest import _async_gen
 
 from narrare_core.chat.contracts import ChatRequest
@@ -94,6 +95,37 @@ class TestProjectlessAsk:
             "InMemoryConversationStore", (in_memory_store)
         ).get_conversation_project_id(conv_id, user_id)
         assert stored_project == project_id
+
+
+class TestProjectlessSkipLog:
+    """The §6b skip is logged with identifying context (RULE-11 + log fields)."""
+
+    async def test_projectless_skip_log_carries_user_id(
+        self,
+        service: object,
+    ) -> None:
+        """``chat_project_context_skipped`` names the user, not just the chat.
+
+        Without ``user_id`` the skip log cannot be correlated to an account
+        when debugging enrichment gaps.
+        """
+        user_id = uuid4()
+        request = ChatRequest(message="Craft question without a project")
+
+        with (
+            patch(
+                "narrare_core.chat.chat_agent.ChatAgent",
+                return_value=_mock_chat_agent(),
+            ),
+            capture_logs() as logs,
+        ):
+            async for _ in await cast("ChatService", service).ask(request, user_id):
+                pass
+
+        skips = [e for e in logs if e.get("event") == "chat_project_context_skipped"]
+        assert skips, "expected a chat_project_context_skipped info log"
+        assert skips[0].get("user_id") == str(user_id)
+        assert skips[0].get("conversation_id")
 
 
 class _SpyEnricher:

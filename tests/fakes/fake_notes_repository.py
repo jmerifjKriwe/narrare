@@ -30,9 +30,6 @@ class FakeNotesRepository:
             return note
         return None
 
-    async def get_many_by_ids(self, note_ids: set[uuid.UUID], user_id: uuid.UUID) -> list[Note]:
-        return [n for i, n in self._notes.items() if i in note_ids and n.user_id == user_id]
-
     async def list_notes(
         self,
         user_id: uuid.UUID,

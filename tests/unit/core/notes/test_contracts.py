@@ -59,6 +59,11 @@ class TestFormatNoteContextBlock:
         assert "Twist idea" in block
         assert "The aunt is the culprit." in block
 
+    def test_joins_multiple_tags_with_comma_space(self) -> None:
+        """2+ tags render comma-space-joined inside one bracket pair."""
+        block = format_note_context_block(_make_note(tags=["plot", "twist"]))
+        assert block.startswith("[Note — idea [plot, twist]]")
+
     def test_omits_empty_tag_bracket(self) -> None:
         assert format_note_context_block(_make_note(tags=[])).startswith("[Note — idea]")
 

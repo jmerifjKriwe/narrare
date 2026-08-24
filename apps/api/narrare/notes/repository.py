@@ -40,14 +40,6 @@ class NoteRepository(BaseRepository):
         )
         return result.scalar_one_or_none()
 
-    async def get_many_by_ids(self, note_ids: set[uuid.UUID], user_id: uuid.UUID) -> list[Note]:
-        if not note_ids:
-            return []
-        result = await self._session.execute(
-            select(Note).where(Note.id.in_(note_ids), Note.user_id == user_id)
-        )
-        return list(result.scalars())
-
     async def list_notes(
         self,
         user_id: uuid.UUID,

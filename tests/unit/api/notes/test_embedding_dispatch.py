@@ -6,6 +6,8 @@ import asyncio
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from structlog.testing import capture_logs
+
 from narrare.notes import embedding_dispatch as dispatch_module
 from narrare.notes.embedding_dispatch import InProcessNoteEmbeddingDispatch
 
@@ -61,6 +63,7 @@ class TestInProcessNoteEmbeddingDispatch:
         retrieves the exception (``filterwarnings = ["error", ...]`` turns an
         un-retrieved task exception into a test error), so reaching the final
         assertion with an empty GC-guard set proves containment + logging.
+        The failure log must identify WHICH note failed (``note_id``).
         """
 
         async def _failing_run(source_type: str, source_id: str, content: str) -> None:
@@ -69,8 +72,15 @@ class TestInProcessNoteEmbeddingDispatch:
 
         monkeypatch.setattr(dispatch_module, "run_embed_source_inprocess", _failing_run)
         dispatch = InProcessNoteEmbeddingDispatch()
+        note_id = uuid4()
 
-        await dispatch.dispatch(uuid4(), "text")  # must not raise, now or later
-        await _drain()
+        with capture_logs() as logs:
+            await dispatch.dispatch(note_id, "text")  # must not raise, now or later
+            await _drain()
 
         assert not dispatch_module._INFLIGHT_TASKS  # pyright: ignore[reportPrivateUsage]
+
+        failures = [e for e in logs if e.get("event") == "note_background_task_failed"]
+        assert failures, "expected a note_background_task_failed error log"
+        assert failures[0].get("note_id") == str(note_id)
+        assert failures[0].get("error") == "embedding boom"

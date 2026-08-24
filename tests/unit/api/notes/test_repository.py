@@ -62,25 +62,6 @@ class TestNoteRepositoryGetById:
         assert result is None
 
 
-class TestNoteRepositoryGetManyByIds:
-    async def test_get_many_by_ids_returns_scalar_list(self) -> None:
-        """get_many_by_ids() returns the scalars() result as a list."""
-        notes = [make_note(), make_note()]
-        repo = _make_repo(FakeDbSession([FakeResult(scalars=notes)]))
-
-        result = await repo.get_many_by_ids({note.id for note in notes}, notes[0].user_id)
-
-        assert result == notes
-
-    async def test_get_many_by_ids_with_empty_set_returns_empty(self) -> None:
-        """An empty id set short-circuits to [] without a query."""
-        repo = _make_repo(FakeDbSession())
-
-        result = await repo.get_many_by_ids(set(), uuid4())
-
-        assert result == []
-
-
 class TestNoteRepositoryListNotes:
     async def test_list_notes_returns_scalar_list(self) -> None:
         """list_notes() returns the scalars() result as a list."""

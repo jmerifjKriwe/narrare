@@ -13,9 +13,10 @@ the mock registry model (see test_chat_service_projectless.py).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
+from structlog.testing import capture_logs
 from tests.unit.api.chat.conftest import _async_gen
 
 from narrare_core.chat.contracts import ChatRequest
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
     from narrare_core.chat.conversation_store import InMemoryConversationStore
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
+    from narrare_core.notes.contracts import NoteLookupProtocol
     from narrare_core.prompts import PromptComposer
 
 
@@ -39,6 +41,50 @@ def _mock_chat_agent() -> MagicMock:
         StreamEvent(type="token", text="Answer"),
         StreamEvent(type="done", text="Answer", usage={}, new_messages=[]),
     )
+    return mock_agent
+
+
+def _echo_mock_composer() -> AsyncMock:
+    """Mock PromptComposer echoing ``user_prompt`` into ``ComposedPrompt.user``.
+
+    The conftest composer returns a FIXED user string ("Hello!"), which
+    hides whether the effective message actually flows downstream. This
+    variant closes the loop: message → composer ``user_prompt`` kwarg →
+    ``composed.user`` → agent ``run_stream(prompt=...)``.
+    """
+    from narrare_core.prompts.composer import ComposedPrompt
+
+    composer = AsyncMock()
+
+    async def _build(*_args: object, **kwargs: object) -> ComposedPrompt:
+        return ComposedPrompt(
+            system="You are a helpful writing assistant.",
+            user=str(kwargs.get("user_prompt", "")),
+        )
+
+    composer.build = AsyncMock(side_effect=_build)
+    return composer
+
+
+def _recording_chat_agent(prompts: list[str]) -> MagicMock:
+    """ChatAgent mock that records ``run_stream``'s ``prompt`` kwarg.
+
+    Streams one token + done like the conftest pattern, while appending
+    each call's ``prompt`` to ``prompts`` for agent-side assertions.
+    """
+    from narrare_core.agents.base import StreamEvent
+    from narrare_core.chat.chat_agent import ChatAgent
+
+    mock_agent = MagicMock(name="recording_agent", spec=ChatAgent)
+
+    def _record_and_stream(*_args: object, **kwargs: object) -> object:
+        prompts.append(str(kwargs.get("prompt")))
+        return _async_gen(
+            StreamEvent(type="token", text="Answer"),
+            StreamEvent(type="done", text="Answer", usage={}, new_messages=[]),
+        )
+
+    mock_agent.run_stream = _record_and_stream
     return mock_agent
 
 
@@ -69,7 +115,7 @@ def _make_service(
     mock_registry: object,
     in_memory_store: object,
     mock_config: object,
-    lookup: FakeNoteLookup,
+    lookup: FakeNoteLookup | NoteLookupProtocol | None,
 ) -> ChatService:
     from narrare.chat.chat_service import ChatService
 
@@ -150,6 +196,90 @@ class TestNoteInjection:
         composer.build.assert_called()
         kwargs = composer.build.call_args.kwargs
         assert kwargs["user_prompt"].startswith("[Note — idea [plot]]")
+
+    async def test_note_block_reaches_agent_run_stream_prompt(
+        self,
+        mock_registry: object,
+        in_memory_store: object,
+        mock_config: object,
+    ) -> None:
+        """The effective message reaches the AGENT side (loop closure).
+
+        With an echo composer (``ComposedPrompt.user`` mirrors the
+        ``user_prompt`` kwarg) and a recording agent mock, the prompt
+        passed to ``ChatAgent.run_stream`` must carry the note block
+        prefix and end with the raw message — proving the injection
+        travels the full message → composer → ``composed.user`` → agent
+        chain, not just into persistence.
+        """
+        composer = _echo_mock_composer()
+        prompts: list[str] = []
+        note_id = uuid4()
+        service = _make_service(
+            composer,
+            mock_registry,
+            in_memory_store,
+            mock_config,
+            FakeNoteLookup(_make_snapshot(note_id)),
+        )
+        request = ChatRequest(message="Discuss", note_id=note_id)
+
+        with patch(
+            "narrare_core.chat.chat_agent.ChatAgent",
+            return_value=_recording_chat_agent(prompts),
+        ):
+            stream = await service.ask(request, uuid4())
+            async for _event in stream:
+                pass
+
+        assert prompts, "agent run_stream must have been called"
+        assert prompts[0].startswith("[Note — idea [plot]]")
+        assert prompts[0].endswith("Discuss")
+
+    async def test_unwired_lookup_logs_note_unavailable_and_proceeds_with_raw_message(
+        self,
+        mock_registry: object,
+        in_memory_store: object,
+        mock_config: object,
+    ) -> None:
+        """note_lookup=None + note_id set → chat_note_unavailable + raw message.
+
+        RULE-11 graceful degradation: an unwired lookup (snapshot stays
+        ``None``) must not fail the conversation — the warning
+        ``chat_note_unavailable`` is emitted and the persisted user
+        message is exactly the raw request message.
+        """
+        from tests.unit.api.chat.conftest import _make_mock_composer
+
+        composer = _make_mock_composer()
+        service = _make_service(composer, mock_registry, in_memory_store, mock_config, None)
+        note_id = uuid4()
+        user_id = uuid4()
+        request = ChatRequest(message="Discuss", note_id=note_id)
+
+        events = []
+        with (
+            patch(
+                "narrare_core.chat.chat_agent.ChatAgent",
+                return_value=_mock_chat_agent(),
+            ),
+            capture_logs() as logs,
+        ):
+            stream = await service.ask(request, user_id)
+            async for event in stream:
+                events.append(event)
+
+        unavailable = [e for e in logs if e.get("event") == "chat_note_unavailable"]
+        assert unavailable, "expected a chat_note_unavailable warning"
+        assert unavailable[0].get("note_id") == str(note_id)
+
+        history = await cast("InMemoryConversationStore", in_memory_store).get_history(
+            UUID(str(events[0]["conversation_id"])),
+            user_id,
+        )
+        user_messages = [m for m in history if m.role == "user"]
+        assert len(user_messages) == 1
+        assert user_messages[0].content == "Discuss"
 
     async def test_missing_note_degrades_gracefully(
         self,
