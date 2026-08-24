@@ -6981,8 +6981,51 @@ Gaps: none. Deliberate exclusions are the spec's own non-goals (§1).
 
 **Plan complete and saved to `docs/superpowers/plans/2026-08-21-scratchpad.md`. Two execution options:**
 
-**1. Subagent-Driven (recommended)** — dispatch a fresh subagent per task, review between tasks, fast iteration.
+**1. Subagent-Driven (recommended)** — dispatch a fresh subagent per task, fast iteration.
 
 **2. Inline Execution** — execute tasks in this session using executing-plans, batch execution with checkpoints.
 
-**Which approach?**
+**Chosen: 1 — Subagent-Driven.** Executed 2026-08-21 → 2026-08-24 (T1–T31 + coordinator-inserted T21b
+and T29b; 33 per-task reviews + final whole-branch review + one fix wave, all clean).
+
+---
+
+## Deferred Follow-up Backlog (post-merge)
+
+> Triaged by the final whole-branch review (2026-08-24). None block the merge; grouped for
+> future slices. DoD evidence, gates, and per-task review trails live in the branch history
+> (37+ commits, `0a12b2da..0e954dad`).
+
+**a11y / polish batch**
+- Quick-capture provider context value not memoized (consumer re-renders)
+- `toLocaleDateString` → next-intl `useFormatter` for locale-aware dates (NoteList)
+- TagInput: no `onMouseLeave` highlight clear; tabbable suggestion pills (APG activedescendant would use `tabIndex={-1}`)
+- Sidebar scratchpad entry: no active-state styling (outside `SidebarNav` pathname matching)
+
+**Scratchpad interaction batch**
+- Stale-scope reset should also clear semantic `searchResults` (partially fixed via `handleFiltersChange`; direct `setFilters` path remains)
+- `scope → params` mapping duplicated in `ScratchpadWorkspace` (extract helper)
+- `q` commits per keystroke → list loading pulse (add `placeholderData: keepPreviousData` to `useNotes`)
+- `useChat` `noteId` not stabilized per-render; note context re-sent on every turn of a drawer
+  conversation (per-message semantics deliberate for v1 — revisit if token growth matters)
+- `NotesChatDrawer`: own Escape handler + focus trap + exit animation on note deletion
+
+**Test-depth batch**
+- Repository: per-filter SQL assertions; `issubclass(NoteRepository, NoteRepositoryProtocol)` guard
+- Service: same-value content patch no-dispatch branch
+- Search: whitespace-only query (zero-vector) validation; empty-semantic-no-lexical-retry decision;
+  threshold assertion in fake
+- Chat: unwired-lookup branch; agent-side prompt assertion; cross-user ownership test
+- Core: multi-tag header join test; behavioral `create_conversation(None)` on the SQLAlchemy store
+  (InMemory covered); scope-invariant IntegrityError probe on a separate connection/savepoint (T4)
+
+**Dead surface / docs batch**
+- `get_many_by_ids` production-orphaned (superseded by `list_notes` candidates + `by_id` map) — remove or document as reserved
+- Unused i18n keys: `editor.newNote`, `editor.addTag`; `notesKeys.search` (kept by design)
+- Embedding write model hardcoded (`text-embedding-3-small` in `tasks.py`) vs search model from
+  `CoreSettings` — diverges under env override; route write side through CoreSettings or document
+- Log fields: `note_background_task_failed` lacks `note_id`; chat skip log lacks `user_id`
+
+**Security follow-up (pre-existing, NOT this branch)**
+- `chat/router.py` GET/DELETE `/chat/history/{id}` lack conversation-ownership checks (predate
+  NOTES-001; note content does not leak via this feature — snapshot lookup is ownership-checked)
