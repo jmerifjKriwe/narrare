@@ -2,6 +2,11 @@
 
 Implements the abstract ``ConversationStore`` from core using
 SQLAlchemy async ORM for PostgreSQL persistence.
+
+Ownership contract (IDOR hardening): history read/clear/project lookup
+filter by ``user_id``. Foreign and unknown conversations raise
+``NotFoundError`` (→ HTTP 404 via the global handler) — callers cannot
+probe for other users' conversations.
 """
 
 from __future__ import annotations
@@ -14,8 +19,9 @@ if TYPE_CHECKING:
 
 from sqlalchemy import delete, select
 
-from narrare_core.chat.contracts import ChatMessage
+from narrare_core.chat.contracts import ChatConversation, ChatMessage
 from narrare_core.chat.conversation_store import ConversationStore
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +36,38 @@ class SQLAlchemyConversationStore(ConversationStore):
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def get_conversation(
+        self,
+        conversation_id: UUID,
+        user_id: UUID,
+    ) -> ChatConversation:
+        """Return owned conversation metadata; NotFoundError otherwise.
+
+        Single ownership primitive for this store (pre-write gate for
+        ``ChatService.ask()`` and read/clear gate for the history API):
+        the row lookup filters by ``id + user_id`` so foreign and unknown
+        conversations are indistinguishable.
+        """
+        from narrare.chat.models import ChatConversation as ChatConversationModel
+
+        result = await self._session.execute(
+            select(ChatConversationModel).where(
+                ChatConversationModel.id == conversation_id,
+                ChatConversationModel.user_id == user_id,
+            )
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            raise NotFoundError("ChatConversation", identifier=str(conversation_id))
+        return ChatConversation(
+            id=row.id,
+            project_id=row.project_id,
+            user_id=row.user_id,
+            title=row.title or "",
+            created_at=row.created_at.isoformat() if row.created_at else "",
+            updated_at=row.updated_at.isoformat() if row.updated_at else "",
+        )
 
     async def add_message(
         self,
@@ -61,11 +99,14 @@ class SQLAlchemyConversationStore(ConversationStore):
     async def get_history(
         self,
         conversation_id: UUID,
+        user_id: UUID,
         *,
         limit: int = 50,
     ) -> list[ChatMessage]:
-        """Get the message history for a conversation."""
+        """Get the message history for a conversation owned by ``user_id``."""
         from narrare.chat.models import ChatMessage as ChatMessageModel
+
+        await self.get_conversation(conversation_id, user_id)
 
         result = await self._session.execute(
             select(ChatMessageModel)
@@ -111,24 +152,37 @@ class SQLAlchemyConversationStore(ConversationStore):
     async def get_conversation_project_id(
         self,
         conversation_id: UUID,
+        user_id: UUID,
     ) -> UUID | None:
-        """Return the project_id for a conversation, or None if not found."""
+        """Return the project_id for an owned conversation, or None.
+
+        ``None`` strictly means project-less (NOTES-001 §6b) — unknown or
+        foreign conversations raise ``NotFoundError`` instead. Selecting
+        ``(id, project_id)`` keeps a project-less row distinguishable from
+        no row at all.
+        """
         from narrare.chat.models import ChatConversation as ChatConversationModel
 
         result = await self._session.execute(
-            select(ChatConversationModel.project_id).where(
-                ChatConversationModel.id == conversation_id
+            select(ChatConversationModel.id, ChatConversationModel.project_id).where(
+                ChatConversationModel.id == conversation_id,
+                ChatConversationModel.user_id == user_id,
             )
         )
-        row = result.scalar_one_or_none()
-        return row
+        row = result.one_or_none()
+        if row is None:
+            raise NotFoundError("ChatConversation", identifier=str(conversation_id))
+        return row.project_id
 
     async def clear_history(
         self,
         conversation_id: UUID,
+        user_id: UUID,
     ) -> None:
-        """Delete all messages in a conversation."""
+        """Delete all messages in a conversation owned by ``user_id``."""
         from narrare.chat.models import ChatMessage as ChatMessageModel
+
+        await self.get_conversation(conversation_id, user_id)
 
         await self._session.execute(
             delete(ChatMessageModel).where(ChatMessageModel.conversation_id == conversation_id)

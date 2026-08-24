@@ -64,8 +64,14 @@ async def chat(
         """Convert all non-string values to strings for SSE JSON."""
         return json.dumps({k: str(v) if not isinstance(v, str) else v for k, v in event.items()})
 
+    # Resolve eagerly (IDOR): ask() runs the ownership gate and persists
+    # the user message BEFORE the response starts. A NotFoundError raised
+    # inside the body iterator would fire after the 200 headers (broken
+    # stream) — here it reaches the global NarrareError handler → 404,
+    # consistent with the GET/DELETE history endpoints.
+    stream = await service.ask(core_request, UUID(user_id))
+
     async def event_stream():
-        stream = await service.ask(core_request, UUID(user_id))
         async for event in stream:
             event_type = event.get("type", "")
             if event_type == "meta":
@@ -86,16 +92,20 @@ async def get_history(
 ) -> ChatHistoryResponse:
     """Get the full message history for a conversation.
 
+    Ownership-scoped (IDOR hardening): unknown and foreign conversations
+    both raise NotFoundError → HTTP 404 via the global handler.
+
     Args:
         conversation_id: UUID of the conversation to retrieve.
-        user_id: Authenticated user extracted from JWT.
+        user_id: Authenticated user extracted from JWT — must own the
+            conversation.
         service: Injected ChatService instance.
 
     Returns:
         ChatHistoryResponse with messages, timestamps, and project info.
     """
-    messages = await service.get_history(conversation_id)
-    project_id = await service.get_project_id_for_conversation(conversation_id)
+    messages = await service.get_history(conversation_id, UUID(user_id))
+    project_id = await service.get_project_id_for_conversation(conversation_id, UUID(user_id))
 
     return ChatHistoryResponse(
         conversation_id=conversation_id,
@@ -120,13 +130,17 @@ async def clear_history(
 ) -> ChatDeleteResponse:
     """Clear all messages in a conversation.
 
+    Ownership-scoped (IDOR hardening): unknown and foreign conversations
+    both raise NotFoundError → HTTP 404 via the global handler.
+
     Args:
         conversation_id: UUID of the conversation to clear.
-        user_id: Authenticated user extracted from JWT.
+        user_id: Authenticated user extracted from JWT — must own the
+            conversation.
         service: Injected ChatService instance.
 
     Returns:
         ChatDeleteResponse confirming deletion.
     """
-    await service.clear_history(conversation_id)
+    await service.clear_history(conversation_id, UUID(user_id))
     return ChatDeleteResponse(conversation_id=conversation_id)

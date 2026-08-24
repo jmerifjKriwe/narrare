@@ -137,10 +137,10 @@ class TestProcessHistory:
         conv_id = UUID(events1[0]["conversation_id"])
 
         # Clear history
-        await service.clear_history(conv_id)
+        await service.clear_history(conv_id, user_id)
 
         # Verify the store was cleared
-        history = await in_memory_store.get_history(conv_id)
+        history = await in_memory_store.get_history(conv_id, user_id)
         assert len(history) == 0
 
 
@@ -165,7 +165,7 @@ class TestHistoryManagement:
         user_id = uuid4()
         conv_id = await in_memory_store.create_conversation(project_id, user_id, "Test msg")
 
-        result = await service.get_history(conv_id)
+        result = await service.get_history(conv_id, user_id)
 
         assert len(result) == 1
         assert result[0].role == "user"
@@ -186,7 +186,7 @@ class TestHistoryManagement:
         await in_memory_store.add_message(conv_id, "assistant", "Resp 1")
         await in_memory_store.add_message(conv_id, "user", "Msg 3")
 
-        result = await service.get_history(conv_id, limit=2)
+        result = await service.get_history(conv_id, user_id, limit=2)
 
         assert len(result) == 2
         assert result[0].content == "Resp 1"
@@ -205,7 +205,51 @@ class TestHistoryManagement:
         conv_id = await in_memory_store.create_conversation(project_id, user_id, "To be deleted")
         await in_memory_store.add_message(conv_id, "assistant", "Gone soon")
 
-        await service.clear_history(conv_id)
+        await service.clear_history(conv_id, user_id)
 
-        history = await in_memory_store.get_history(conv_id)
+        history = await in_memory_store.get_history(conv_id, user_id)
         assert len(history) == 0
+
+
+class TestHistoryOwnership:
+    """ChatService forwards user_id so the store can enforce ownership (IDOR)."""
+
+    async def test_get_history_with_foreign_user_raises_not_found(
+        self,
+        service: ChatService,
+        in_memory_store: InMemoryConversationStore,
+    ) -> None:
+        """Reading another user's conversation raises NotFoundError (HTTP 404)."""
+        from uuid import uuid4
+
+        import pytest
+
+        from narrare_core.shared.errors import NotFoundError
+
+        owner_id, attacker_id = uuid4(), uuid4()
+        conv_id = await in_memory_store.create_conversation(None, owner_id, "Private")
+
+        with pytest.raises(NotFoundError):
+            await service.get_history(conv_id, attacker_id)
+
+    async def test_clear_history_with_foreign_user_raises_not_found(
+        self,
+        service: ChatService,
+        in_memory_store: InMemoryConversationStore,
+    ) -> None:
+        """Clearing another user's conversation raises NotFoundError (HTTP 404)."""
+        from uuid import uuid4
+
+        import pytest
+
+        from narrare_core.shared.errors import NotFoundError
+
+        owner_id, attacker_id = uuid4(), uuid4()
+        conv_id = await in_memory_store.create_conversation(None, owner_id, "Private")
+
+        with pytest.raises(NotFoundError):
+            await service.clear_history(conv_id, attacker_id)
+
+        # The owner's messages survive the rejected clear.
+        history = await in_memory_store.get_history(conv_id, owner_id)
+        assert [m.content for m in history] == ["Private"]

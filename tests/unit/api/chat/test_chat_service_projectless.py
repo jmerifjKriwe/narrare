@@ -67,7 +67,7 @@ class TestProjectlessAsk:
         # The conversation persists with a NULL project.
         stored_project = await cast(
             "InMemoryConversationStore", (in_memory_store)
-        ).get_conversation_project_id(conv_id)
+        ).get_conversation_project_id(conv_id, user_id)
         assert stored_project is None
 
     async def test_ask_with_project_still_enriches(
@@ -92,7 +92,7 @@ class TestProjectlessAsk:
         conv_id = UUID(str(events[0]["conversation_id"]))
         stored_project = await cast(
             "InMemoryConversationStore", (in_memory_store)
-        ).get_conversation_project_id(conv_id)
+        ).get_conversation_project_id(conv_id, user_id)
         assert stored_project == project_id
 
 

@@ -12090,7 +12090,7 @@
           "chat"
         ],
         "summary": "Get History",
-        "description": "Get the full message history for a conversation.\n\nArgs:\n    conversation_id: UUID of the conversation to retrieve.\n    user_id: Authenticated user extracted from JWT.\n    service: Injected ChatService instance.\n\nReturns:\n    ChatHistoryResponse with messages, timestamps, and project info.",
+        "description": "Get the full message history for a conversation.\n\nOwnership-scoped (IDOR hardening): unknown and foreign conversations\nboth raise NotFoundError → HTTP 404 via the global handler.\n\nArgs:\n    conversation_id: UUID of the conversation to retrieve.\n    user_id: Authenticated user extracted from JWT — must own the\n        conversation.\n    service: Injected ChatService instance.\n\nReturns:\n    ChatHistoryResponse with messages, timestamps, and project info.",
         "operationId": "get_history_api_v1_chat_history__conversation_id__get",
         "security": [
           {
@@ -12137,7 +12137,7 @@
           "chat"
         ],
         "summary": "Clear History",
-        "description": "Clear all messages in a conversation.\n\nArgs:\n    conversation_id: UUID of the conversation to clear.\n    user_id: Authenticated user extracted from JWT.\n    service: Injected ChatService instance.\n\nReturns:\n    ChatDeleteResponse confirming deletion.",
+        "description": "Clear all messages in a conversation.\n\nOwnership-scoped (IDOR hardening): unknown and foreign conversations\nboth raise NotFoundError → HTTP 404 via the global handler.\n\nArgs:\n    conversation_id: UUID of the conversation to clear.\n    user_id: Authenticated user extracted from JWT — must own the\n        conversation.\n    service: Injected ChatService instance.\n\nReturns:\n    ChatDeleteResponse confirming deletion.",
         "operationId": "clear_history_api_v1_chat_history__conversation_id__delete",
         "security": [
           {

@@ -2,8 +2,8 @@
 
 Tests that the service correctly resolves a conversation's project_id,
 returning an honest ``None`` for project-less conversations (NOTES-001
-§6b) and for unknown conversations — the router passes the value through
-unchanged, no sentinel.
+§6b). Unknown or foreign conversations raise ``NotFoundError`` (HTTP 404
+via the global handler) — ownership scoping (IDOR hardening).
 
 See conftest.py for shared fixtures.
 """
@@ -12,6 +12,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 from uuid import uuid4
+
+import pytest
+
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from narrare.chat.chat_service import ChatService
@@ -33,28 +37,46 @@ class TestGetProjectIdForConversation:
             project_id, user_id, "Hello"
         )
 
-        result = await cast("ChatService", service).get_project_id_for_conversation(conv_id)
+        result = await cast("ChatService", service).get_project_id_for_conversation(
+            conv_id, user_id
+        )
 
         assert result == project_id
 
-    async def test_returns_none_when_conversation_not_found(
+    async def test_raises_not_found_when_conversation_unknown(
         self,
         service: object,
     ) -> None:
-        """Response falls back to None when conversation does not exist."""
+        """Unknown conversations 404 — they must not resolve to project_id None."""
         unknown_conv_id = uuid4()
 
-        result = await cast("ChatService", service).get_project_id_for_conversation(unknown_conv_id)
+        with pytest.raises(NotFoundError):
+            await cast("ChatService", service).get_project_id_for_conversation(
+                unknown_conv_id, uuid4()
+            )
 
-        assert result is None
+    async def test_raises_not_found_when_conversation_foreign(
+        self,
+        service: object,
+        in_memory_store: object,
+    ) -> None:
+        """Another user's conversation 404s — no existence oracle (IDOR)."""
+        owner_id, attacker_id = uuid4(), uuid4()
+        conv_id = await cast("InMemoryConversationStore", in_memory_store).create_conversation(
+            None, owner_id, "Private"
+        )
+
+        with pytest.raises(NotFoundError):
+            await cast("ChatService", service).get_project_id_for_conversation(conv_id, attacker_id)
 
 
 class TestGetHistoryProjectIdPassthrough:
     """The history response pattern: honest None passthrough (no sentinel).
 
     The router forwards ``get_project_id_for_conversation()`` directly into
-    ``ChatHistoryResponse`` — ``None`` means project-less (NOTES-001 §6b)
-    or unknown conversation.
+    ``ChatHistoryResponse`` — for an owned conversation, ``None`` means
+    project-less (NOTES-001 §6b). Unknown/foreign conversations never
+    reach this point (they 404 in ``get_history``).
     """
 
     async def test_project_id_passed_through_when_conversation_exists(
@@ -70,22 +92,28 @@ class TestGetHistoryProjectIdPassthrough:
         )
 
         # Simulate the router: direct passthrough, no sentinel fallback.
-        resolved = await cast("ChatService", service).get_project_id_for_conversation(conv_id)
+        resolved = await cast("ChatService", service).get_project_id_for_conversation(
+            conv_id, user_id
+        )
         response_project_id = resolved
 
         assert response_project_id == project_id
         assert response_project_id is not None
 
-    async def test_none_passed_through_when_conversation_not_found(
+    async def test_none_passed_through_for_projectless_conversation(
         self,
         service: object,
+        in_memory_store: object,
     ) -> None:
-        """Router pattern: ``None`` flows through for unknown conversations."""
-        unknown_conv_id = uuid4()
+        """Router pattern: ``None`` flows through for project-less conversations."""
+        user_id = uuid4()
+        conv_id = await cast("InMemoryConversationStore", in_memory_store).create_conversation(
+            None, user_id, "Global note chat"
+        )
 
         # Simulate the router: direct passthrough, no sentinel fallback.
         resolved = await cast("ChatService", service).get_project_id_for_conversation(
-            unknown_conv_id
+            conv_id, user_id
         )
         response_project_id = resolved
 

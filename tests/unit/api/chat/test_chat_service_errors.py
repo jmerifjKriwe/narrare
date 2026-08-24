@@ -74,14 +74,17 @@ class TestErrorHandling:
 
         # Simulate a failure after streaming
         conv_id: UUID = uuid4()  # fallback — overwritten inside loop
+        user_id = uuid4()
         with patch("narrare_core.chat.chat_agent.ChatAgent", return_value=mock_agent):
-            gen = await cast("ChatService", service).ask(request, uuid4())
+            gen = await cast("ChatService", service).ask(request, user_id)
             async for event in gen:
                 if event.get("type") == "meta":
                     conv_id = UUID(str(event["conversation_id"]))
 
         # The user message should still be persisted
-        history = await cast("InMemoryConversationStore", in_memory_store).get_history(conv_id)
+        history = await cast("InMemoryConversationStore", in_memory_store).get_history(
+            conv_id, user_id
+        )
         user_messages = [m for m in history if m.role == "user"]
         assert any("Save this even on failure" in m.content for m in user_messages)
 

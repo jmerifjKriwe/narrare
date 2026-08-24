@@ -67,6 +67,10 @@ class ChatServiceProtocol(Protocol):
     """Service protocol for free-form chat.
 
     Follows RULE-03 (Contract first) and RULE-13 (streaming interface).
+
+    History access is ownership-scoped: unknown and foreign conversations
+    both raise ``NotFoundError`` (→ HTTP 404 via the global handler) so
+    callers cannot probe for other users' conversations.
     """
 
     async def ask(
@@ -83,27 +87,43 @@ class ChatServiceProtocol(Protocol):
     async def get_history(
         self,
         conversation_id: UUID,
+        user_id: UUID,
         *,
         limit: int = 50,
     ) -> list[ChatMessage]:
-        """Get conversation history."""
+        """Get conversation history for its owner.
+
+        Raises:
+            NotFoundError: The conversation does not exist or is owned by
+                another user.
+        """
         ...
 
     async def get_project_id_for_conversation(
         self,
         conversation_id: UUID,
+        user_id: UUID,
     ) -> UUID | None:
         """Get the project_id associated with a conversation.
 
-        Returns the project UUID, or ``None`` — either for a project-less
-        conversation (NOTES-001 §6b) or when the conversation does not
-        exist.
+        Returns the project UUID, or ``None`` for a project-less
+        conversation (NOTES-001 §6b).
+
+        Raises:
+            NotFoundError: The conversation does not exist or is owned by
+                another user.
         """
         ...
 
     async def clear_history(
         self,
         conversation_id: UUID,
+        user_id: UUID,
     ) -> None:
-        """Clear conversation history."""
+        """Clear conversation history.
+
+        Raises:
+            NotFoundError: The conversation does not exist or is owned by
+                another user.
+        """
         ...

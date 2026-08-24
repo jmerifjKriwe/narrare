@@ -18,9 +18,11 @@ if TYPE_CHECKING:
 
 from narrare_core.chat.chat_service_core import new_conversation_id
 from narrare_core.chat.contracts import ChatMessage, ChatRequest, ChatServiceProtocol
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
+    from narrare.notes.contracts import OwnedLinkLookupProtocol
     from narrare_core.agents.process_history import ProcessHistory
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
@@ -52,6 +54,7 @@ class ChatService(ChatServiceProtocol):
         invocation_pipeline: InvocationPipeline | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
         note_lookup: NoteLookupProtocol | None = None,
+        novel_lookup: OwnedLinkLookupProtocol | None = None,
     ) -> None:
         """Initialize the chat service with injected dependencies.
 
@@ -68,6 +71,12 @@ class ChatService(ChatServiceProtocol):
                 resolves ``note_id`` requests into a note whose context
                 block is prepended to the user message (runtime input,
                 RULE-02). ``None`` (default) disables note injection.
+            novel_lookup: Optional ``OwnedLinkLookupProtocol`` (notes
+                pattern) — validates that a non-null ``project_id``
+                belongs to the caller BEFORE any write or enrichment
+                correlation (IDOR hardening). ``None`` (default) skips the
+                check; production wiring (``chat.dependencies``) always
+                provides it, mirroring the notes T7-review invariant.
         """
         self._composer = prompt_composer
         self._registry = model_registry
@@ -76,6 +85,7 @@ class ChatService(ChatServiceProtocol):
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver
         self._note_lookup = note_lookup
+        self._novel_lookup = novel_lookup
         self._histories: dict[UUID, ProcessHistory] = {}
 
     async def ask(
@@ -124,6 +134,13 @@ class ChatService(ChatServiceProtocol):
             user_id=user_id,
         )
 
+        # 0.5 Project link ownership (IDOR hardening, notes ``_validate_link``
+        # pattern): a non-null ``project_id`` must belong to the caller —
+        # BEFORE the conversation is created/referenced and before the id
+        # feeds invocation enrichment correlation. Foreign and unknown
+        # novels are indistinguishable (NotFoundError → HTTP 404).
+        await self._validate_project_link(request.project_id, user_id)
+
         # 1. Create conversation or add message to existing
         if is_new:
             conv_id = await self._store.create_conversation(
@@ -134,8 +151,13 @@ class ChatService(ChatServiceProtocol):
             history: list[ChatMessage] = []
         else:
             assert conv_id is not None
+            # Ownership gate BEFORE the write (IDOR hardening): a foreign
+            # or unknown conversation raises NotFoundError before any
+            # message row is appended — no write pollution, and (against
+            # PostgreSQL) no FK-violation 500 for unknown ids.
+            await self._store.get_conversation(conv_id, user_id)
             await self._store.add_message(conv_id, "user", message)
-            history = await self._store.get_history(conv_id)
+            history = await self._store.get_history(conv_id, user_id)
 
         # 2. Build context + compose prompt
         context = assemble_chat_context(history)
@@ -161,41 +183,79 @@ class ChatService(ChatServiceProtocol):
     async def get_history(
         self,
         conversation_id: UUID,
+        user_id: UUID,
         *,
         limit: int = 50,
     ) -> list[ChatMessage]:
-        """Get conversation history.
+        """Get conversation history for its owner.
 
         Args:
             conversation_id: The conversation to retrieve.
+            user_id: The authenticated user — must own the conversation.
             limit: Maximum number of messages (newest first). Defaults to 50.
 
         Returns:
             List of ChatMessage dataclasses ordered by creation time.
+
+        Raises:
+            NotFoundError: The conversation does not exist or is owned by
+                another user (mapped to HTTP 404).
         """
-        return await self._store.get_history(conversation_id, limit=limit)
+        return await self._store.get_history(conversation_id, user_id, limit=limit)
 
     async def get_project_id_for_conversation(
         self,
         conversation_id: UUID,
+        user_id: UUID,
     ) -> UUID | None:
         """Get the project_id associated with a conversation.
 
         Args:
             conversation_id: The conversation to look up.
+            user_id: The authenticated user — must own the conversation.
 
         Returns:
-            The project UUID, or ``None`` (project-less, NOTES-001 §6b, or not found).
+            The project UUID, or ``None`` for a project-less conversation
+            (NOTES-001 §6b).
+
+        Raises:
+            NotFoundError: The conversation does not exist or is owned by
+                another user (mapped to HTTP 404).
         """
-        return await self._store.get_conversation_project_id(conversation_id)
+        return await self._store.get_conversation_project_id(conversation_id, user_id)
 
     async def clear_history(
         self,
         conversation_id: UUID,
+        user_id: UUID,
     ) -> None:
         """Clear conversation history (deletes all messages).
 
         Args:
             conversation_id: The conversation to clear.
+            user_id: The authenticated user — must own the conversation.
+
+        Raises:
+            NotFoundError: The conversation does not exist or is owned by
+                another user (mapped to HTTP 404).
         """
-        await self._store.clear_history(conversation_id)
+        await self._store.clear_history(conversation_id, user_id)
+
+    async def _validate_project_link(
+        self,
+        project_id: UUID | None,
+        user_id: UUID,
+    ) -> None:
+        """A non-null project link must exist AND belong to the caller.
+
+        Notes ``_validate_link`` semantics (NOTES-001 ownership pattern):
+        ``get_owned`` returns the entity only for its owner, so foreign and
+        unknown novels are indistinguishable — both raise NotFoundError
+        (→ HTTP 404, no enumeration oracle). ``lookup is None`` (test
+        contexts only; production wiring always provides it) skips the
+        check.
+        """
+        if project_id is None or self._novel_lookup is None:
+            return
+        if await self._novel_lookup.get_owned(project_id, user_id) is None:
+            raise NotFoundError("Novel", identifier=str(project_id))

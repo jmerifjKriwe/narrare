@@ -111,7 +111,8 @@ class TestNoteInjection:
                 events.append(event)
 
         history = await cast("InMemoryConversationStore", in_memory_store).get_history(
-            UUID(str(events[0]["conversation_id"]))
+            UUID(str(events[0]["conversation_id"])),
+            user_id,
         )
         user_messages = [m for m in history if m.role == "user"]
         assert len(user_messages) == 1
