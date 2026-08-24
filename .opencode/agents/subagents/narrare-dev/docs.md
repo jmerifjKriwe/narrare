@@ -2,7 +2,7 @@
 name: NarrareDocsSpecialist
 description: "Documentation layer — feature docs, i18n, help texts, CHANGELOG, documentation gate"
 mode: subagent
-model: zai-coding-plan/glm-5-turbo
+model: zai-coding-plan/glm-5.3
 temperature: 0.3
 permission:
   skill:
