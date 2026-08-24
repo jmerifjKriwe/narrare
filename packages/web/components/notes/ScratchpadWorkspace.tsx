@@ -4,21 +4,19 @@
  * ScratchpadWorkspace — the /scratchpad page body (NOTES-001 §7).
  *
  * Orchestrator: owns filters, selection, and search state; composes the
- * ScratchpadListRail, the right pane (editor / capture card / quiet prompt,
- * decided by ScratchpadPaneMode), and the NotesChatDrawer.
+ * ScratchpadListRail, the right pane, and the NotesChatDrawer.
  *
  * Binding review constraints implemented here:
  * - T21: Enter-on-empty-search guard (no request, no badge) + availableTags
  *   deduped once before feeding the filter bar AND the editor.
  * - T21b: feeds novels/series/hasLinks into the filter bar and CLEARS a
- *   stale scope when its target vanishes from both lists (parent duty per
- *   NoteScopeSelect JSDoc).
+ *   stale scope when its target vanishes (parent duty per NoteScopeSelect
+ *   JSDoc) — clearing search results like any other filter change.
  * - T23: the editor is keyed by note id, so background refetches (new note
  *   OBJECT, same id) never remount the pane or clobber the in-progress draft.
  *
- * Composition (RULE-04): the rail lives in ScratchpadListRail, the capture
- * card in ScratchpadEmptyState; list/editor/filter/drawer are the T21–T25
- * modules. This file owns state and data orchestration only.
+ * Composition (RULE-04): rail, capture card, pane mode, editor, and drawer
+ * live in their own modules; this file owns state orchestration only.
  */
 
 import { useTranslations } from "next-intl";
@@ -30,6 +28,7 @@ import { useSeriesList } from "@/lib/hooks/useSeries";
 import type { NoteListParams, NoteSearchResponse, NoteTypeKey } from "@/types";
 import { NoteEditor } from "./NoteEditor";
 import type { NoteFilters } from "./NoteFilterBar";
+import { scopeToParams } from "./NoteScopeSelect";
 import { NotesChatDrawer } from "./NotesChatDrawer";
 import { ScratchpadEmptyState } from "./ScratchpadEmptyState";
 import { ScratchpadListRail } from "./ScratchpadListRail";
@@ -53,8 +52,7 @@ export function ScratchpadWorkspace() {
       q: filters.q || undefined,
       note_type: (filters.note_type || undefined) as NoteTypeKey | undefined,
       tag: filters.tag || undefined,
-      novel_id: filters.scope?.kind === "novel" ? filters.scope.id : undefined,
-      series_id: filters.scope?.kind === "series" ? filters.scope.id : undefined,
+      ...scopeToParams(filters.scope),
     }),
     [filters],
   );
@@ -98,7 +96,9 @@ export function ScratchpadWorkspace() {
       (filters.scope.kind === "series" && seriesOptions.some((s) => s.id === filters.scope?.id))
     );
   useEffect(() => {
-    if (scopeStale) setFilters((prev) => (prev.scope ? { ...prev, scope: null } : prev));
+    if (!scopeStale) return;
+    setFilters((prev) => (prev.scope ? { ...prev, scope: null } : prev));
+    setSearchResults(null);
   }, [scopeStale]);
 
   function handleFiltersChange(next: NoteFilters) {
@@ -122,8 +122,7 @@ export function ScratchpadWorkspace() {
         query: filters.q.trim(),
         note_type: (filters.note_type || undefined) as NoteTypeKey | undefined,
         tag: filters.tag || undefined,
-        novel_id: filters.scope?.kind === "novel" ? filters.scope.id : undefined,
-        series_id: filters.scope?.kind === "series" ? filters.scope.id : undefined,
+        ...scopeToParams(filters.scope),
       },
       {
         onSuccess: setSearchResults,

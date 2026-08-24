@@ -28,7 +28,6 @@
   },
   "type": { "idea": "Idee", "concept": "Konzept", "question": "Frage", "other": "Sonstiges" },
   "editor": {
-    "newNote": "Neue Notiz",
     "titlePlaceholder": "Titel (optional — sonst wird die erste Zeile verwendet)",
     "contentLabel": "Notiz",
     "contentPlaceholder": "Schreib es auf… (Markdown möglich)",
@@ -37,7 +36,6 @@
     "typeLabel": "Typ",
     "tagsLabel": "Tags",
     "tagPlaceholder": "Tag hinzufügen…",
-    "addTag": "Hinzufügen",
     "tagSuggestions": "Vorschläge",
     "linkLabel": "Verknüpfung (optional)",
     "noLink": "Nicht verknüpft",

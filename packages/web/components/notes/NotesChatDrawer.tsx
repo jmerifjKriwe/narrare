@@ -4,11 +4,26 @@
  * NotesChatDrawer — right-side slide-over hosting ChatPanel for a note
  * (NOTES-001 §7 "discuss in chat"). Works for global notes (projectId null)
  * and linked notes (projectId = note.novel_id) alike.
+ *
+ * Drawer-owned lifecycle (follow-up P-FE4 — dismissal no longer relies on
+ * ChatPanel's window listener):
+ * - Escape closes the drawer via this component's OWN window listener.
+ * - When the discussed note vanishes while the drawer is open (deleted,
+ *   filtered out), the last known note is kept in state so the drawer stays
+ *   renderable through the AnimatePresence exit animation (no blank flash);
+ *   the drawer then closes itself via onClose.
+ *
+ * Note-context v1 decision (final-review record, NOTES-001 §6b): `note_id`
+ * is sent on EVERY turn of a drawer conversation — the note block is
+ * re-embedded per message and persists in the stored history. The per-turn
+ * token growth is accepted for v1; revisit if drawer conversations grow
+ * long enough for context bloat to matter.
  */
 
 import { StickyNote, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { ChatPanel } from "@/components/studio/editor/ChatPanel";
 import { overlayVariants, panelSlideRightVariants } from "@/lib/motion-variants";
 import { type Note, noteDisplayTitle } from "@/types";
@@ -22,19 +37,44 @@ export interface NotesChatDrawerProps {
 export function NotesChatDrawer({ open, onClose, note }: NotesChatDrawerProps) {
   const t = useTranslations("notes");
 
-  if (!note) return null;
+  // Last known non-null note: keeps the banner (and ChatPanel context)
+  // renderable during the exit phase after the note vanished.
+  const [lastNote, setLastNote] = useState<Note | null>(note);
+  useEffect(() => {
+    if (note) setLastNote(note);
+  }, [note]);
+  const shownNote = note ?? lastNote;
 
-  const bannerTitle = noteDisplayTitle(note) || t("list.untitled");
+  // A vanished discussed note closes the drawer via onClose; lastNote keeps
+  // the exit animation alive through the unmount transition.
+  useEffect(() => {
+    if (open && note === null) onClose();
+  }, [open, note, onClose]);
+
+  // Drawer-owned Escape dismissal, independent of ChatPanel's listener.
+  // (Both are window-level: while a response streams, ChatPanel's handler
+  // still cancels the stream first — registered earlier on mount.)
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
+  const bannerTitle = shownNote ? noteDisplayTitle(shownNote) || t("list.untitled") : "";
 
   return (
     <AnimatePresence>
-      {open && (
+      {open && shownNote && (
         <>
           <motion.div
             variants={overlayVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
+            data-testid="note-chat-overlay"
             className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
             onClick={onClose}
             aria-hidden="true"
@@ -69,8 +109,8 @@ export function NotesChatDrawer({ open, onClose, note }: NotesChatDrawerProps) {
             </header>
             <div className="min-h-0 flex-1">
               <ChatPanel
-                projectId={note.novel_id}
-                noteId={note.id}
+                projectId={shownNote.novel_id}
+                noteId={shownNote.id}
                 onClose={onClose}
                 className="w-full border-l-0"
               />

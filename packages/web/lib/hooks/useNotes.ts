@@ -13,7 +13,7 @@
  * useQuery; mutations use useMutation + notesKeys.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notesApi } from "@/lib/api/notes";
 import type { NoteCreate, NoteListParams, NoteSearchRequest, NoteUpdate } from "@/types";
 import { notesKeys } from "./notesKeys";
@@ -23,6 +23,9 @@ export function useNotes(params?: NoteListParams) {
   return useQuery({
     queryKey: notesKeys.list(params),
     queryFn: () => notesApi.list(params),
+    // TanStack v5 pattern: keep the previous list visible while a changed
+    // key refetches — no loading-pulse flash on every keystroke/filter change.
+    placeholderData: keepPreviousData,
   });
 }
 

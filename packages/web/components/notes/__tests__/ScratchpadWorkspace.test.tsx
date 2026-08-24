@@ -270,6 +270,40 @@ describe("ScratchpadWorkspace", () => {
     await waitFor(() => expect(screen.queryByTestId("note-scope-filter")).not.toBeInTheDocument());
   });
 
+  it("clears search results when a stale scope is auto-reset (follow-up P-FE3)", async () => {
+    server.use(
+      http.get("*/api/v1/notes", () => HttpResponse.json([note("n1", { novel_id: "nv1" })])),
+      http.get("*/api/v1/notes/tags", () => HttpResponse.json({ tags: [] })),
+      http.get("*/api/v1/novels", () =>
+        HttpResponse.json([{ id: "nv1", title: "The Lighthouse" }]),
+      ),
+      http.get("*/api/v1/series", () => HttpResponse.json([])),
+      http.post("*/api/v1/notes/search", () =>
+        HttpResponse.json({
+          mode: "lexical",
+          query: "aunt",
+          results: [{ ...note("n1", { novel_id: "nv1" }), similarity: null }],
+        }),
+      ),
+    );
+    const { queryClient } = renderWorkspace();
+    const scope = await screen.findByTestId("note-scope-filter");
+    fireEvent.change(scope, { target: { value: "novel:nv1" } });
+    // Scoped semantic search succeeds → the honest mode badge shows.
+    const search = screen.getByTestId("note-search-input");
+    fireEvent.change(search, { target: { value: "aunt" } });
+    fireEvent.click(screen.getByTestId("note-semantic-toggle"));
+    fireEvent.keyDown(search, { key: "Enter" });
+    expect(await screen.findByTestId("note-search-mode-badge")).toBeInTheDocument();
+    // The scoped novel vanishes → the auto-reset must ALSO invalidate the
+    // search results produced under that scope (same path as user changes).
+    server.use(http.get("*/api/v1/novels", () => HttpResponse.json([])));
+    await queryClient.invalidateQueries({ queryKey: novelsKeys.all });
+    await waitFor(() =>
+      expect(screen.queryByTestId("note-search-mode-badge")).not.toBeInTheDocument(),
+    );
+  });
+
   it("keeps the editor and its draft across a background refetch of the same note (T23)", async () => {
     let listFetches = 0;
     // One counting handler whose body flips between fetches (a second

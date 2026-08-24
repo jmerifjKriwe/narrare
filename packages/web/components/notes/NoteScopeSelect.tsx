@@ -22,6 +22,7 @@
  */
 
 import { useTranslations } from "next-intl";
+import type { NoteListParams } from "@/types";
 
 /** Novel/series option for the grouped scope select. */
 export interface ScopeOption {
@@ -58,6 +59,19 @@ function decodeScopeValue(value: string): NoteScopeFilter | null {
   const kind = value.slice(0, separator);
   const id = value.slice(separator + 1);
   return (kind === "novel" || kind === "series") && id ? { kind, id } : null;
+}
+
+/**
+ * Maps an active scope filter onto the novel_id/series_id request params —
+ * the ONE mapping shared by the filtered list AND the semantic-search body
+ * (follow-up P-FE3), so the two callers can never drift apart.
+ */
+export function scopeToParams(
+  scope: NoteScopeFilter | null,
+): Pick<NoteListParams, "novel_id" | "series_id"> {
+  if (scope?.kind === "novel") return { novel_id: scope.id };
+  if (scope?.kind === "series") return { series_id: scope.id };
+  return {};
 }
 
 export function NoteScopeSelect({ value, onChange, novels, series }: NoteScopeSelectProps) {

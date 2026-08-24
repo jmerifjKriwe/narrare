@@ -331,6 +331,28 @@ describe("useChat — project-less & note context (NOTES-001 §6b)", () => {
     });
     expect(result.current.messages.at(-1)?.content).toBe("answer");
   });
+
+  it("reads note_id from the committed ref, not the execute closure (follow-up P-FE4)", async () => {
+    const { result, rerender } = renderHook(({ id }) => useChat(null, id), {
+      initialProps: { id: "note-1" as string | null },
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.sendMessage("hi"); // stages messageRef
+    });
+    // Capture the FIRST render's execute, then change the noteId prop —
+    // the effect commits it into the ref.
+    const firstRenderExecute = capturedOptions.execute;
+    rerender({ id: "note-2" });
+    streamChat.mockImplementationOnce(async () => {});
+
+    // Even an execute closure captured on an earlier render must send the
+    // last committed noteId — no silent re-scoping through stale closures.
+    await firstRenderExecute(new AbortController().signal);
+
+    expect(streamChat.mock.calls[0][0]).toMatchObject({ note_id: "note-2" });
+  });
 });
 
 describe("useChat — clearConversation & cancelStream", () => {

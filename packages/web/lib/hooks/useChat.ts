@@ -20,7 +20,8 @@ import { type ChatMessage, createMessageId, type UseChatReturn } from "@/types/c
 /**
  * @param projectId - Project (novel) scope, or null for project-less chat
  *   (NOTES-001 global notes).
- * @param noteId - Optional scratchpad note attached as runtime context.
+ * @param noteId - Optional note context, read via an effect-synced ref so a
+ *   stale execute closure can never silently re-scope a turn.
  */
 export function useChat(projectId: string | null, noteId?: string | null): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -33,6 +34,12 @@ export function useChat(projectId: string | null, noteId?: string | null): UseCh
 
   const conversationIdRef = useRef(conversationId);
   conversationIdRef.current = conversationId;
+
+  // P-FE4: effect-synced ref read in execute — always the last committed noteId.
+  const noteIdRef = useRef(noteId ?? null);
+  useEffect(() => {
+    noteIdRef.current = noteId ?? null;
+  }, [noteId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -49,7 +56,7 @@ export function useChat(projectId: string | null, noteId?: string | null): UseCh
           project_id: projectId,
           message: msg,
           conversation_id: conversationIdRef.current,
-          note_id: noteId ?? null,
+          note_id: noteIdRef.current,
         },
         {
           onMeta: (meta: ChatMetaEvent) => {

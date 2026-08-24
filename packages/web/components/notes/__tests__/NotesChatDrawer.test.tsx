@@ -1,20 +1,26 @@
 /**
  * NotesChatDrawer tests (NOTES-001 §6b/§7): renders the chat surface for a
  * (possibly global) note, with the attached-note banner and close handling.
- * ChatPanel internals are out of scope here — they are covered by the
- * existing editor chat tests; this test asserts composition + banner.
+ * ChatPanel is mocked to a stub — its internals are covered by the existing
+ * editor chat tests; this file asserts drawer composition (banner, close,
+ * overlay click, Escape, vanished-note exit behavior), including the
+ * drawer's OWN Escape handler in isolation (follow-up P-FE4: dismissal no
+ * longer relies on ChatPanel's window listener).
  *
  * next-intl is mocked LOCALLY (overriding the centralized setupTests mock,
  * which returns i18n keys verbatim): the banner assertions require real
  * message templates with {title} interpolation. Same pattern as
- * ChatPanel.error.test.tsx. Unknown keys (ChatPanel's "studio" namespace)
- * fall back to the key string — those internals are covered elsewhere.
+ * ChatPanel.error.test.tsx.
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { Note } from "@/types";
 import { NotesChatDrawer } from "../NotesChatDrawer";
+
+vi.mock("@/components/studio/editor/ChatPanel", () => ({
+  ChatPanel: () => <div data-testid="chat-panel-stub" />,
+}));
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, params?: Record<string, unknown>) => {
@@ -74,5 +80,37 @@ describe("NotesChatDrawer", () => {
     expect(screen.getByTestId("note-chat-close")).toHaveAccessibleName("Close chat");
     fireEvent.click(screen.getByTestId("note-chat-close"));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("closes via its own Escape handler, not ChatPanel's (follow-up P-FE4)", () => {
+    const onClose = vi.fn();
+    render(<NotesChatDrawer open onClose={onClose} note={note} />);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not listen for Escape while closed", () => {
+    const onClose = vi.fn();
+    render(<NotesChatDrawer open={false} onClose={onClose} note={note} />);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("closes when the overlay is clicked", () => {
+    const onClose = vi.fn();
+    render(<NotesChatDrawer open onClose={onClose} note={note} />);
+    fireEvent.click(screen.getByTestId("note-chat-overlay"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes itself and keeps the last note visible when the discussed note vanishes", () => {
+    const onClose = vi.fn();
+    const { rerender } = render(<NotesChatDrawer open onClose={onClose} note={note} />);
+    rerender(<NotesChatDrawer open onClose={onClose} note={null} />);
+    // The drawer reports its own dismissal…
+    expect(onClose).toHaveBeenCalledTimes(1);
+    // …and the banner still renders the LAST known note, so the exit
+    // animation never shows a blank drawer mid-transition.
+    expect(screen.getByTestId("note-chat-banner")).toHaveTextContent("Twist");
   });
 });

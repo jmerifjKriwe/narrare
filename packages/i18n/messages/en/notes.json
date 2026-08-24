@@ -28,7 +28,6 @@
   },
   "type": { "idea": "Idea", "concept": "Concept", "question": "Question", "other": "Other" },
   "editor": {
-    "newNote": "New note",
     "titlePlaceholder": "Title (optional — first line is used otherwise)",
     "contentLabel": "Note",
     "contentPlaceholder": "Write it down… (Markdown supported)",
@@ -37,7 +36,6 @@
     "typeLabel": "Type",
     "tagsLabel": "Tags",
     "tagPlaceholder": "Add a tag…",
-    "addTag": "Add",
     "tagSuggestions": "Suggestions",
     "linkLabel": "Link (optional)",
     "noLink": "Not linked",

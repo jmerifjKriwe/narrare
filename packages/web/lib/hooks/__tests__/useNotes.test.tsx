@@ -51,6 +51,58 @@ describe("useNotes", () => {
     await waitFor(() => expect(result.current.data).toBeDefined());
     expect(result.current.data?.[0]?.note_type).toBe("idea");
   });
+
+  it("keeps the previous list visible while a changed filter refetches (follow-up P-FE3)", async () => {
+    server.use(
+      http.get("*/api/v1/notes", ({ request }) => {
+        const type = new URL(request.url).searchParams.get("note_type");
+        return HttpResponse.json(
+          type === "question"
+            ? [
+                {
+                  id: "n2",
+                  title: null,
+                  content: "question note",
+                  note_type: "question",
+                  tags: [],
+                  novel_id: null,
+                  series_id: null,
+                  created_at: "2026-08-21T00:00:00Z",
+                  updated_at: "2026-08-21T00:00:00Z",
+                },
+              ]
+            : [
+                {
+                  id: "n1",
+                  title: null,
+                  content: "idea note",
+                  note_type: "idea",
+                  tags: [],
+                  novel_id: null,
+                  series_id: null,
+                  created_at: "2026-08-21T00:00:00Z",
+                  updated_at: "2026-08-21T00:00:00Z",
+                },
+              ],
+        );
+      }),
+    );
+
+    const { result, rerender } = renderHook(({ type }) => useNotes({ note_type: type }), {
+      initialProps: { type: "idea" as "idea" | "question" },
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.data?.[0]?.id).toBe("n1"));
+
+    rerender({ type: "question" });
+
+    // Synchronously after the key change the OLD list stays visible as
+    // placeholder data — no loading pulse between filter refetches.
+    expect(result.current.isPlaceholderData).toBe(true);
+    expect(result.current.data?.[0]?.id).toBe("n1");
+    await waitFor(() => expect(result.current.data?.[0]?.id).toBe("n2"));
+    expect(result.current.isPlaceholderData).toBe(false);
+  });
 });
 
 describe("useNoteTags", () => {
