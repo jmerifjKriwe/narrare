@@ -6992,40 +6992,53 @@ and T29b; 33 per-task reviews + final whole-branch review + one fix wave, all cl
 
 ## Deferred Follow-up Backlog (post-merge)
 
+> **2026-08-25 update: executed in PR #190** (commits `b2947a91..25167539`, batch-reviewed clean).
+> Completed: the **pre-existing chat-history ownership gap** (P-SEC — closed 3 IDOR vectors:
+> history GET/DELETE user-scoping, ask() pre-write ownership gate with eager 404, foreign
+> project_id rejection via always-wired owned-lookup), embedding write-model alignment with
+> CoreSettings (P-EMB), the full test-depth batches (P-BT1/BT2/BT3), dead-surface removal
+> (`get_many_by_ids`, unused i18n keys — P-DS/P-DOC), log-field enrichment (P-LOG), and the
+> frontend polish batches (P-FE1–FE4: provider memo, locale dates via `useFormatter`, tag-list
+> a11y per APG, sidebar active state, `scopeToParams` dedup, stale-searchResults clear,
+> `keepPreviousData`, `noteIdRef` stabilization + documented per-turn decision, drawer own
+> Escape/exit-animation). Remaining open items below are marked **[open]**.
+
 > Triaged by the final whole-branch review (2026-08-24). None block the merge; grouped for
 > future slices. DoD evidence, gates, and per-task review trails live in the branch history
 > (37+ commits, `0a12b2da..0e954dad`).
 
 **a11y / polish batch**
-- Quick-capture provider context value not memoized (consumer re-renders)
-- `toLocaleDateString` → next-intl `useFormatter` for locale-aware dates (NoteList)
-- TagInput: no `onMouseLeave` highlight clear; tabbable suggestion pills (APG activedescendant would use `tabIndex={-1}`)
-- Sidebar scratchpad entry: no active-state styling (outside `SidebarNav` pathname matching)
+- ~~Quick-capture provider context value not memoized~~ (done, P-FE1)
+- ~~`toLocaleDateString` → next-intl `useFormatter`~~ (done, P-FE1)
+- ~~TagInput: no `onMouseLeave` highlight clear; tabbable pills~~ (done, P-FE2)
+- ~~Sidebar scratchpad entry: no active-state styling~~ (done, P-FE2)
+- **[open]** Quick-capture tooltip; focus management after AI output (ux-review checklist items)
 
 **Scratchpad interaction batch**
-- Stale-scope reset should also clear semantic `searchResults` (partially fixed via `handleFiltersChange`; direct `setFilters` path remains)
-- `scope → params` mapping duplicated in `ScratchpadWorkspace` (extract helper)
-- `q` commits per keystroke → list loading pulse (add `placeholderData: keepPreviousData` to `useNotes`)
-- `useChat` `noteId` not stabilized per-render; note context re-sent on every turn of a drawer
-  conversation (per-message semantics deliberate for v1 — revisit if token growth matters)
-- `NotesChatDrawer`: own Escape handler + focus trap + exit animation on note deletion
+- ~~Stale-scope reset should also clear semantic `searchResults`~~ (done, P-FE3)
+- ~~`scope → params` mapping duplicated~~ (done, P-FE3 — `scopeToParams`)
+- ~~`q` per-keystroke loading pulse~~ (done, P-FE3 — `keepPreviousData`)
+- ~~`useChat` `noteId` not stabilized; per-turn decision undocumented~~ (done, P-FE4)
+- ~~`NotesChatDrawer`: own Escape handler + exit animation~~ (done, P-FE4)
+- **[open]** NotesChatDrawer double-onClose when not streaming (Escape hits ChatPanel else-branch + drawer handler — idempotent today, dedupe on next touch); focus trap in drawer
+- **[open]** `useChat`/`ScratchpadWorkspace` at RULE-04 ceilings (149/150, 199/200) — next touch must extract
 
 **Test-depth batch**
-- Repository: per-filter SQL assertions; `issubclass(NoteRepository, NoteRepositoryProtocol)` guard
-- Service: same-value content patch no-dispatch branch
-- Search: whitespace-only query (zero-vector) validation; empty-semantic-no-lexical-retry decision;
-  threshold assertion in fake
-- Chat: unwired-lookup branch; agent-side prompt assertion; cross-user ownership test
-- Core: multi-tag header join test; behavioral `create_conversation(None)` on the SQLAlchemy store
-  (InMemory covered); scope-invariant IntegrityError probe on a separate connection/savepoint (T4)
+- ~~Repository per-filter SQL assertions + issubclass guard~~ (done, P-BT1)
+- ~~Service same-value no-dispatch branch~~ (done, P-BT1)
+- ~~Search whitespace-only query; threshold assertion; zero-hit design note~~ (done, P-BT2)
+- ~~Chat unwired-lookup + agent-side prompt assertion~~ (done, P-BT3)
+- ~~Core multi-tag header join test; savepoint-based 0041 probe~~ (done, P-BT3)
+- **[open]** Cross-user ownership test at router level (path identical to 404; store-level covered)
 
 **Dead surface / docs batch**
-- `get_many_by_ids` production-orphaned (superseded by `list_notes` candidates + `by_id` map) — remove or document as reserved
-- Unused i18n keys: `editor.newNote`, `editor.addTag`; `notesKeys.search` (kept by design)
-- Embedding write model hardcoded (`text-embedding-3-small` in `tasks.py`) vs search model from
-  `CoreSettings` — diverges under env override; route write side through CoreSettings or document
-- Log fields: `note_background_task_failed` lacks `note_id`; chat skip log lacks `user_id`
+- ~~`get_many_by_ids` removed~~ (done, P-DS)
+- ~~Unused i18n keys `editor.newNote`, `editor.addTag`~~ (done, P-DOC)
+- ~~Embedding write model hardcoded vs CoreSettings search model~~ (done, P-EMB — `effective_model = model or core default`)
+- ~~Log fields: `note_background_task_failed` note_id; chat skip log user_id~~ (done, P-LOG)
+- **[open]** `dimension or 1536` literal has no CoreSettings counterpart; `memory/embedding_cascade.py` literals (RULE-18b candidates)
 
-**Security follow-up (pre-existing, NOT this branch)**
-- `chat/router.py` GET/DELETE `/chat/history/{id}` lack conversation-ownership checks (predate
-  NOTES-001; note content does not leak via this feature — snapshot lookup is ownership-checked)
+**Security follow-up (pre-existing)**
+- ~~`chat/router.py` history ownership~~ (done, P-SEC — 3 IDOR vectors closed, adversarially reviewed)
+- **[open]** `chat/router.py` message_id reports conversation id (cosmetic logging)
+- **[open]** IDOR sweep for OTHER modules accepting `novel_id`/`project_id` links (dedicated task; unauthorized probes consume an AI-limiter token — documented interaction)
