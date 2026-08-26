@@ -75,7 +75,7 @@ async def run_embed_source(
     # (EmbeddingService / NoteSearchService), or rows land under a model the
     # search never queries (upsert key: source_type, source_id, model).
     effective_model = model or get_core_settings().default_embedding_model
-    effective_dimension = dimension or 1536
+    effective_dimension = dimension or get_core_settings().default_embedding_dimension
     delays = retry_delays or _DEFAULT_RETRY_DELAYS
     max_retries = len(delays)
 
