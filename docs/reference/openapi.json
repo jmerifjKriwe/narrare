@@ -11612,7 +11612,7 @@
           "summary"
         ],
         "summary": "Summarize Chapter",
-        "description": "Generate a summary for the given chapter.\n\nArgs:\n    chapter_id: UUID of the chapter to summarize.\n    request: Optional request body with max_sentences and language.\n    service: Injected ChapterSummaryService instance.\n\nReturns:\n    SummaryResult with summary text, word count, and key points.\n\nRaises:\n    404: If the chapter does not exist.\n    500: If the LLM call fails.",
+        "description": "Generate a summary for the given chapter.\n\nArgs:\n    chapter_id: UUID of the chapter to summarize.\n    user_id: Authenticated user identifier (ownership check).\n    request: Optional request body with max_sentences and language.\n    service: Injected ChapterSummaryService instance.\n\nReturns:\n    SummaryResult with summary text, word count, and key points.\n\nRaises:\n    404: If the chapter does not exist or belongs to another user.\n    500: If the LLM call fails.",
         "operationId": "summarize_chapter_api_v1_summary_chapters__chapter_id__post",
         "security": [
           {

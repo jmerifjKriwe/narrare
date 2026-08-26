@@ -15,6 +15,9 @@ from narrare_core.llm import ResolvedModelConfig
 from narrare_core.prompts.composer import ComposedPrompt
 from narrare_core.shared.errors import NotFoundError, WritingError
 
+TEST_USER_ID = "00000000-0000-0000-0000-0000000000aa"  # novel owner in these tests
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -68,6 +71,16 @@ def mock_chapter_repo() -> AsyncMock:
 
 
 @pytest.fixture
+def mock_novel_repo() -> AsyncMock:
+    """Mock NovelRepository — every novel belongs to TEST_USER_ID (gate passes)."""
+    from tests.factories import make_novel
+
+    repo = AsyncMock()
+    repo.get_by_id = AsyncMock(return_value=make_novel())
+    return repo
+
+
+@pytest.fixture
 def config() -> ResolvedModelConfig:
     return _make_config()
 
@@ -82,12 +95,14 @@ def service(
     mock_registry: AsyncMock,
     config: ResolvedModelConfig,
     mock_chapter_repo: AsyncMock,
+    mock_novel_repo: AsyncMock,
     mock_composer: AsyncMock,
 ) -> ChapterSummaryService:
     return ChapterSummaryService(
         registry=mock_registry,
         config=config,
         chapter_repo=mock_chapter_repo,
+        novel_repo=mock_novel_repo,
         composer=mock_composer,
     )
 
@@ -129,6 +144,7 @@ class TestSummarize:
                 chapter_id=chapter.id,
                 max_sentences=3,
                 language="en",
+                user_id=TEST_USER_ID,
             )
 
         assert result.summary == "A hero begins their journey."
@@ -151,7 +167,7 @@ class TestSummarize:
         chapter = make_chapter(content="", title="Empty Chapter")
         mock_chapter_repo.get = AsyncMock(return_value=chapter)
 
-        result = await service.summarize(chapter_id=chapter.id)
+        result = await service.summarize(chapter_id=chapter.id, user_id=TEST_USER_ID)
 
         assert result.summary == ""
         assert result.word_count == 0
@@ -169,6 +185,7 @@ class TestSummarize:
         with pytest.raises(NotFoundError, match="Chapter"):
             await service.summarize(
                 chapter_id="00000000-0000-0000-0000-000000000001",  # type: ignore[arg-type]
+                user_id=TEST_USER_ID,
             )
 
     async def test_summarize_when_llm_fails_raises_writing_error(
@@ -194,7 +211,7 @@ class TestSummarize:
             ),
             pytest.raises(WritingError, match="Chapter summarization failed"),
         ):
-            await service.summarize(chapter_id=chapter.id)
+            await service.summarize(chapter_id=chapter.id, user_id=TEST_USER_ID)
 
         mock_chapter_repo.update_summary.assert_not_called()
 
@@ -222,7 +239,7 @@ class TestSummarize:
             ),
             pytest.raises(NotFoundError, match="Chapter"),
         ):
-            await service.summarize(chapter_id=chapter.id)
+            await service.summarize(chapter_id=chapter.id, user_id=TEST_USER_ID)
 
     async def test_summarize_uses_composer_for_prompt(
         self,
@@ -254,6 +271,7 @@ class TestSummarize:
                 chapter_id=chapter.id,
                 max_sentences=5,
                 language="de",
+                user_id=TEST_USER_ID,
             )
 
         # Verify the composer was called with the correct intent
