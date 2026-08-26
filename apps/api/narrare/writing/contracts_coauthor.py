@@ -108,7 +108,10 @@ class CoAuthorServiceProtocol(Protocol):
             Updated ``Chapter`` ORM model with reconstructed content.
 
         Raises:
-            NotFoundError: If the chapter does not exist.
+            NotFoundError: If the generation request does not exist or
+                belongs to another user, if the request row does not
+                reference the addressed chapter and novel, or if the
+                chapter does not exist.
         """
         ...
 
@@ -116,18 +119,24 @@ class CoAuthorServiceProtocol(Protocol):
         self,
         request_id: UUID,
         feedback: list[ChangeFeedback],
+        user_id: str,
     ) -> None:
         """Record batch per-change feedback for co-author (LEARN-001).
 
         Creates individual ``FeedbackEvent`` entries for each change
         feedback item.  Silently no-ops when no ``FeedbackCollector``
-        is configured.
+        is configured.  Events are always stamped with the request
+        row's user — the ownership gate guarantees that row belongs to
+        the caller, so feedback can never pollute another user's
+        preference learning.
 
         Args:
             request_id: The generation request ID these changes belong to.
             feedback: Per-change feedback items with action and metadata.
+            user_id: Authenticated user identifier (access check).
 
         Raises:
-            NotFoundError: If the generation request does not exist.
+            NotFoundError: If the generation request does not exist or
+                belongs to another user.
         """
         ...

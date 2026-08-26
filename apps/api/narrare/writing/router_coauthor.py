@@ -107,4 +107,4 @@ async def record_coauthor_feedback(
     the ``FeedbackCollector`` for preference learning.
     """
     service = await get_coauthor_apply_service(session)
-    await service.record_feedback(request.request_id, request.feedback)
+    await service.record_feedback(request.request_id, request.feedback, user_id=user_id)
