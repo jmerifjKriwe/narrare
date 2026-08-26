@@ -5190,7 +5190,7 @@
           "export"
         ],
         "summary": "Create Export",
-        "description": "Create + dispatch an export job (201). 503 if the format is unavailable.",
+        "description": "Create + dispatch an export job (201). 404 if the novel is not owned by\nthe caller (foreign ≡ unknown); 503 if the format is unavailable.",
         "operationId": "create_export_api_v1_export_post",
         "requestBody": {
           "content": {
@@ -5223,7 +5223,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/export/jobs/{job_id}": {
@@ -5232,8 +5237,13 @@
           "export"
         ],
         "summary": "Get Export Job",
-        "description": "Poll an export job's status (404 if unknown — lost on restart, D1).",
+        "description": "Poll an export job's status (owner-only; 404 if unknown or foreign —\nincluding lost on restart, D1).",
         "operationId": "get_export_job_api_v1_export_jobs__job_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "job_id",
@@ -5275,8 +5285,13 @@
           "export"
         ],
         "summary": "Download Export Artifact",
-        "description": "Download the artifact once (200 stream, 404 unknown, 410 gone/expired).\n\nProxies the file as an attachment (per the IO-001 decision: a proxied\nstream, NOT a 302 redirect). The temp file is unlinked after the response\nstream completes via the ``BackgroundTask``.",
+        "description": "Download the artifact once (200 stream, 404 unknown/foreign, 410 gone).\n\nProxies the file as an attachment (per the IO-001 decision: a proxied\nstream, NOT a 302 redirect). The temp file is unlinked after the response\nstream completes via the ``BackgroundTask``.",
         "operationId": "download_export_artifact_api_v1_export_jobs__job_id__artifact_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "job_id",

@@ -17,7 +17,7 @@ from narrare.export.dependencies import get_export_renderers
 from narrare.export.options import ExportFormat
 from narrare.export.renderers.pandoc_docx import PandocDocxRenderer
 from narrare.export.service import ExportServiceImpl
-from tests.unit.api.export.conftest import RecordingEnqueuer
+from tests.unit.api.export.conftest import FakeNovelLookup, RecordingEnqueuer
 
 if TYPE_CHECKING:
     import pytest
@@ -53,9 +53,12 @@ class TestServiceAvailabilitySurface:
     """RULE-11 graceful degradation: DOCX availability tracks pandoc."""
 
     def _service(self) -> ExportServiceImpl:
+        # Empty lookup is fine: these tests only exercise ``list_formats``,
+        # which never consults the ownership gate.
         return ExportServiceImpl(
             renderers=get_export_renderers(),
             enqueue=RecordingEnqueuer(),
+            novel_lookup=FakeNovelLookup(),
         )
 
     def test_docx_reported_unavailable_when_pandoc_missing(

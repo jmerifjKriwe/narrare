@@ -27,11 +27,13 @@ from __future__ import annotations
 
 import os
 from contextlib import suppress
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
+from narrare._app.dependencies_auth import CurrentUserIdDep
 from narrare.export.contracts import ExportJob
 from narrare.export.dependencies import get_export_service
 from narrare.export.schemas import ExportRequest, FormatAvailability
@@ -52,34 +54,39 @@ async def list_formats(
 @router.post("", response_model=ExportJob, status_code=status.HTTP_201_CREATED)
 async def create_export(
     request: ExportRequest,
+    user_id: CurrentUserIdDep,
     service: ExportServiceImpl = Depends(get_export_service),
 ) -> ExportJob:
-    """Create + dispatch an export job (201). 503 if the format is unavailable."""
-    return await service.export(request.novel_id, request.options)
+    """Create + dispatch an export job (201). 404 if the novel is not owned by
+    the caller (foreign ≡ unknown); 503 if the format is unavailable."""
+    return await service.export(request.novel_id, request.options, UUID(user_id))
 
 
 @router.get("/jobs/{job_id}", response_model=ExportJob)
 async def get_export_job(
     job_id: str,
+    user_id: CurrentUserIdDep,
     service: ExportServiceImpl = Depends(get_export_service),
 ) -> ExportJob:
-    """Poll an export job's status (404 if unknown — lost on restart, D1)."""
-    return await service.get_job(job_id)
+    """Poll an export job's status (owner-only; 404 if unknown or foreign —
+    including lost on restart, D1)."""
+    return await service.get_job(job_id, UUID(user_id))
 
 
 @router.get("/jobs/{job_id}/artifact")
 async def download_export_artifact(
     job_id: str,
+    user_id: CurrentUserIdDep,
     token: str = Query(..., description="Single-use artifact token from the job's artifact_url."),
     service: ExportServiceImpl = Depends(get_export_service),
 ) -> FileResponse:
-    """Download the artifact once (200 stream, 404 unknown, 410 gone/expired).
+    """Download the artifact once (200 stream, 404 unknown/foreign, 410 gone).
 
     Proxies the file as an attachment (per the IO-001 decision: a proxied
     stream, NOT a 302 redirect). The temp file is unlinked after the response
     stream completes via the ``BackgroundTask``.
     """
-    artifact = await service.consume_artifact(job_id, token)
+    artifact = await service.consume_artifact(job_id, token, UUID(user_id))
     return FileResponse(
         path=str(artifact.path),
         media_type=artifact.media_type,

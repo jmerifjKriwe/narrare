@@ -16,6 +16,7 @@ from narrare.export.errors import (
 from narrare.export.options import ExportFormat
 from narrare.export.service import ExportServiceImpl
 from tests.unit.api.export.conftest import (
+    FakeNovelLookup,
     FakeRenderer,
     RecordingEnqueuer,
     make_options,
@@ -26,17 +27,31 @@ def _service(
     *,
     renderers: dict[ExportFormat, FakeRenderer] | None = None,
     enqueue: RecordingEnqueuer | None = None,
+    lookup: FakeNovelLookup | None = None,
 ) -> ExportServiceImpl:
-    """Build a service with all three renderers available by default."""
+    """Build a service with all three renderers available by default.
+
+    The default lookup owns ``NOVEL_ID`` for ``USER_ID`` (the happy-path
+    caller); ownership tests build their own scoped lookup.
+    """
     renderers = renderers or {
         ExportFormat.PDF: FakeRenderer(ExportFormat.PDF, available=True),
         ExportFormat.EPUB: FakeRenderer(ExportFormat.EPUB, available=True),
         ExportFormat.MARKDOWN: FakeRenderer(ExportFormat.MARKDOWN, available=True),
     }
-    return ExportServiceImpl(renderers=renderers, enqueue=enqueue or RecordingEnqueuer())
+    owned_lookup = lookup
+    if owned_lookup is None:
+        owned_lookup = FakeNovelLookup()
+        owned_lookup.seed_owned(NOVEL_ID, USER_ID)
+    return ExportServiceImpl(
+        renderers=renderers,
+        enqueue=enqueue or RecordingEnqueuer(),
+        novel_lookup=owned_lookup,
+    )
 
 
 NOVEL_ID = uuid4()
+USER_ID = uuid4()
 
 
 class TestListFormats:
@@ -73,10 +88,10 @@ class TestExportFastFail:
     async def test_unavailable_format_raises_before_creating_job(self) -> None:
         enqueue = RecordingEnqueuer()
         renderers = {ExportFormat.MARKDOWN: FakeRenderer(ExportFormat.MARKDOWN, available=False)}
-        service = ExportServiceImpl(renderers=renderers, enqueue=enqueue)
+        service = _service(renderers=renderers, enqueue=enqueue)
 
         with pytest.raises(ExportFormatUnavailableError):
-            await service.export(NOVEL_ID, make_options(ExportFormat.MARKDOWN))
+            await service.export(NOVEL_ID, make_options(ExportFormat.MARKDOWN), USER_ID)
 
         # No job was registered and nothing was dispatched (RULE-11 fast-fail).
         assert enqueue.calls == []
@@ -84,12 +99,9 @@ class TestExportFastFail:
 
     @pytest.mark.asyncio
     async def test_unregistered_format_raises(self) -> None:
-        service = ExportServiceImpl(
-            renderers={ExportFormat.PDF: FakeRenderer(ExportFormat.PDF)},
-            enqueue=RecordingEnqueuer(),
-        )
+        service = _service(renderers={ExportFormat.PDF: FakeRenderer(ExportFormat.PDF)})
         with pytest.raises(ExportFormatUnavailableError):
-            await service.export(NOVEL_ID, make_options(ExportFormat.MARKDOWN))
+            await service.export(NOVEL_ID, make_options(ExportFormat.MARKDOWN), USER_ID)
 
 
 class TestExportHappyPath:
@@ -98,7 +110,7 @@ class TestExportHappyPath:
         enqueue = RecordingEnqueuer()
         service = _service(enqueue=enqueue)
 
-        job = await service.export(NOVEL_ID, make_options(ExportFormat.MARKDOWN))
+        job = await service.export(NOVEL_ID, make_options(ExportFormat.MARKDOWN), USER_ID)
 
         assert job.status is ExportJobStatus.PENDING
         assert job.format is ExportFormat.MARKDOWN
@@ -109,7 +121,7 @@ class TestExportHappyPath:
         assert dispatched_novel == NOVEL_ID
         assert dispatched_opts.format is ExportFormat.MARKDOWN
         # The job is in the registry.
-        assert registry.get(job.job_id).job_id == job.job_id
+        assert registry.get(job.job_id, USER_ID).job_id == job.job_id
 
 
 class TestGetJobAndConsume:
@@ -117,13 +129,13 @@ class TestGetJobAndConsume:
     async def test_get_unknown_raises(self) -> None:
         service = _service()
         with pytest.raises(ExportJobNotFoundError):
-            await service.get_job("nope")
+            await service.get_job("nope", USER_ID)
 
     @pytest.mark.asyncio
     async def test_consume_unknown_raises(self) -> None:
         service = _service()
         with pytest.raises(ExportJobNotFoundError):
-            await service.consume_artifact("nope", "token")
+            await service.consume_artifact("nope", "token", USER_ID)
 
     @pytest.mark.asyncio
     async def test_consume_delegates_to_registry(self, tmp_path: object) -> None:
@@ -132,7 +144,7 @@ class TestGetJobAndConsume:
 
         from narrare.export.contracts import Artifact
 
-        job = registry.create(NOVEL_ID, ExportFormat.MARKDOWN)
+        job = registry.create(NOVEL_ID, USER_ID, ExportFormat.MARKDOWN)
         artifact = Artifact(
             format=ExportFormat.MARKDOWN,
             path=Path("/tmp/something.md"),
@@ -143,13 +155,13 @@ class TestGetJobAndConsume:
         from urllib.parse import parse_qs, urlparse
 
         token = str(
-            parse_qs(urlparse(registry.get(job.job_id).artifact_url).query)["token"][0]  # type: ignore[arg-type]
+            parse_qs(urlparse(registry.get(job.job_id, USER_ID).artifact_url).query)["token"][0]  # type: ignore[arg-type]
         )
 
         service = _service()
-        consumed = await service.consume_artifact(job.job_id, token)
+        consumed = await service.consume_artifact(job.job_id, token, USER_ID)
         assert consumed.path == artifact.path
 
         # Single-use honoured through the service layer.
         with pytest.raises(ExportArtifactExpiredError):
-            await service.consume_artifact(job.job_id, token)
+            await service.consume_artifact(job.job_id, token, USER_ID)
