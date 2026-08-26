@@ -3,9 +3,11 @@
  * (possibly global) note, with the attached-note banner and close handling.
  * ChatPanel is mocked to a stub — its internals are covered by the existing
  * editor chat tests; this file asserts drawer composition (banner, close,
- * overlay click, Escape, vanished-note exit behavior), including the
- * drawer's OWN Escape handler in isolation (follow-up P-FE4: dismissal no
- * longer relies on ChatPanel's window listener).
+ * overlay click, vanished-note exit behavior). Escape dismissal is DELEGATED
+ * to the real ChatPanel (single owner, follow-up P-DRAWER): the positive
+ * path (Escape closes, exactly once) is proven with the REAL ChatPanel in
+ * NotesChatDrawer.composition.test.tsx; here the stub isolates the inverse —
+ * the drawer itself adds no Escape listener.
  *
  * next-intl is mocked LOCALLY (overriding the centralized setupTests mock,
  * which returns i18n keys verbatim): the banner assertions require real
@@ -82,11 +84,15 @@ describe("NotesChatDrawer", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("closes via its own Escape handler, not ChatPanel's (follow-up P-FE4)", () => {
+  it("adds no own Escape listener — dismissal is delegated to ChatPanel (follow-up P-DRAWER)", () => {
     const onClose = vi.fn();
     render(<NotesChatDrawer open onClose={onClose} note={note} />);
+    // With ChatPanel stubbed (no listener of its own), Escape must be a
+    // no-op: the drawer must not add a SECOND close path on top of the real
+    // ChatPanel's. The positive single-fire path is covered by
+    // NotesChatDrawer.composition.test.tsx with the REAL ChatPanel.
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("does not listen for Escape while closed", () => {

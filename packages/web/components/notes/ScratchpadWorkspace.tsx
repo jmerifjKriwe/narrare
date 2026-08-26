@@ -3,8 +3,9 @@
 /**
  * ScratchpadWorkspace — the /scratchpad page body (NOTES-001 §7).
  *
- * Orchestrator: owns filters, selection, and search state; composes the
- * ScratchpadListRail, the right pane, and the NotesChatDrawer.
+ * Orchestrator: owns filters and selection; the semantic-search state block
+ * lives in useScratchpadSearch. Composes the ScratchpadListRail, the right
+ * pane, and the NotesChatDrawer.
  *
  * Binding review constraints implemented here:
  * - T21: Enter-on-empty-search guard (no request, no badge) + availableTags
@@ -15,17 +16,18 @@
  * - T23: the editor is keyed by note id, so background refetches (new note
  *   OBJECT, same id) never remount the pane or clobber the in-progress draft.
  *
- * Composition (RULE-04): rail, capture card, pane mode, editor, and drawer
- * live in their own modules; this file owns state orchestration only.
+ * Composition (RULE-04): rail, capture card, pane mode, editor, drawer, and
+ * the semantic-search state block (useScratchpadSearch) live in their own
+ * modules; this file owns state orchestration only.
  */
 
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useCreateNote, useNotes, useNoteTags, useSemanticNoteSearch } from "@/lib/hooks/useNotes";
+import { useCreateNote, useNotes, useNoteTags } from "@/lib/hooks/useNotes";
 import { useNovels } from "@/lib/hooks/useNovels";
 import { useSeriesList } from "@/lib/hooks/useSeries";
-import type { NoteListParams, NoteSearchResponse, NoteTypeKey } from "@/types";
+import type { NoteListParams, NoteTypeKey } from "@/types";
 import { NoteEditor } from "./NoteEditor";
 import type { NoteFilters } from "./NoteFilterBar";
 import { scopeToParams } from "./NoteScopeSelect";
@@ -33,17 +35,18 @@ import { NotesChatDrawer } from "./NotesChatDrawer";
 import { ScratchpadEmptyState } from "./ScratchpadEmptyState";
 import { ScratchpadListRail } from "./ScratchpadListRail";
 import { resolveScratchpadPaneMode, ScratchpadSelectPrompt } from "./ScratchpadPaneMode";
+import { useScratchpadSearch } from "./useScratchpadSearch";
 
 const INITIAL_FILTERS: NoteFilters = { q: "", note_type: "", tag: "", scope: null };
 
 export function ScratchpadWorkspace() {
   const t = useTranslations("notes");
-  const tCommon = useTranslations("common");
   const [filters, setFilters] = useState<NoteFilters>(INITIAL_FILTERS);
-  const [semanticMode, setSemanticMode] = useState(false);
-  const [searchResults, setSearchResults] = useState<NoteSearchResponse | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [chatNoteId, setChatNoteId] = useState<string | null>(null);
+
+  const { semanticMode, searchResults, handleSemanticModeChange, submitSearch, clearResults } =
+    useScratchpadSearch(filters);
 
   // Stable params object per filter value (notesKeys.list hashes it into the
   // query key; a stable identity avoids needless observer churn).
@@ -64,7 +67,6 @@ export function ScratchpadWorkspace() {
   const novelsQuery = useNovels();
   const seriesQuery = useSeriesList();
   const createNote = useCreateNote();
-  const search = useSemanticNoteSearch();
 
   const notes = searchResults ? searchResults.results : (notesQuery.data ?? []);
   const selectedNote = notes.find((note) => note.id === selectedId) ?? null;
@@ -98,37 +100,12 @@ export function ScratchpadWorkspace() {
   useEffect(() => {
     if (!scopeStale) return;
     setFilters((prev) => (prev.scope ? { ...prev, scope: null } : prev));
-    setSearchResults(null);
-  }, [scopeStale]);
+    clearResults();
+  }, [scopeStale, clearResults]);
 
   function handleFiltersChange(next: NoteFilters) {
     setFilters(next);
-    setSearchResults(null); // Any filter change invalidates search results.
-  }
-
-  function handleSemanticModeChange(enabled: boolean) {
-    setSemanticMode(enabled);
-    if (!enabled) setSearchResults(null);
-  }
-
-  function submitSearch() {
-    // T21 guard: Enter on an empty query must not fire a search request.
-    if (!semanticMode || !filters.q.trim()) {
-      setSearchResults(null);
-      return;
-    }
-    search.mutate(
-      {
-        query: filters.q.trim(),
-        note_type: (filters.note_type || undefined) as NoteTypeKey | undefined,
-        tag: filters.tag || undefined,
-        ...scopeToParams(filters.scope),
-      },
-      {
-        onSuccess: setSearchResults,
-        onError: () => toast.error(tCommon("error")),
-      },
-    );
+    clearResults(); // Any filter change invalidates search results.
   }
 
   function handleCapture(text: string, noteType: NoteTypeKey) {
@@ -174,10 +151,10 @@ export function ScratchpadWorkspace() {
             key={selectedNote.id}
             note={selectedNote}
             availableTags={availableTags}
-            onSaved={() => setSearchResults(null)}
+            onSaved={clearResults}
             onDeleted={() => {
               setSelectedId(null);
-              setSearchResults(null);
+              clearResults();
             }}
             onDiscuss={(noteId) => setChatNoteId(noteId)}
           />

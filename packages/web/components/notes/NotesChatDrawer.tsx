@@ -5,9 +5,15 @@
  * (NOTES-001 §7 "discuss in chat"). Works for global notes (projectId null)
  * and linked notes (projectId = note.novel_id) alike.
  *
- * Drawer-owned lifecycle (follow-up P-FE4 — dismissal no longer relies on
- * ChatPanel's window listener):
- * - Escape closes the drawer via this component's OWN window listener.
+ * Drawer-owned lifecycle:
+ * - Escape dismissal is DELEGATED to ChatPanel's window listener (single
+ *   owner — see the comment above the ChatPanel mount). P-FE4 originally
+ *   added a drawer-owned listener for dismissal independence; follow-up
+ *   P-DRAWER removed it again because ChatPanel is mounted in EVERY frame
+ *   where the drawer renders visible content, making the drawer listener
+ *   only ever a SECOND one: Escape while idle fired onClose twice, and
+ *   Escape while streaming closed the drawer on top of ChatPanel's
+ *   deliberate cancel-first semantics.
  * - When the discussed note vanishes while the drawer is open (deleted,
  *   filtered out), the last known note is kept in state so the drawer stays
  *   renderable through the AnimatePresence exit animation (no blank flash);
@@ -50,18 +56,6 @@ export function NotesChatDrawer({ open, onClose, note }: NotesChatDrawerProps) {
   useEffect(() => {
     if (open && note === null) onClose();
   }, [open, note, onClose]);
-
-  // Drawer-owned Escape dismissal, independent of ChatPanel's listener.
-  // (Both are window-level: while a response streams, ChatPanel's handler
-  // still cancels the stream first — registered earlier on mount.)
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
 
   const bannerTitle = shownNote ? noteDisplayTitle(shownNote) || t("list.untitled") : "";
 
@@ -108,6 +102,19 @@ export function NotesChatDrawer({ open, onClose, note }: NotesChatDrawerProps) {
               </button>
             </header>
             <div className="min-h-0 flex-1">
+              {/* Escape ownership (follow-up P-DRAWER): ChatPanel is mounted
+                  in every frame where this drawer renders visible content
+                  (the whole aside is gated on `open && shownNote`), and its
+                  window-level Escape listener covers both states deliberately
+                  (cancel-while-streaming, close-otherwise, wired to this
+                  drawer's onClose below). The drawer therefore adds NO second
+                  listener — one Escape owner per surface, like
+                  CoAuthorReviewPhase delegating to CoAuthorPanel. The only
+                  open-but-invisible state (note AND lastNote null) renders
+                  nothing and is auto-closed by the vanished-note effect
+                  above, so no visible frame lacks Escape coverage. The
+                  exactly-once close is pinned by NotesChatDrawer
+                  .composition.test.tsx with the REAL ChatPanel. */}
               <ChatPanel
                 projectId={shownNote.novel_id}
                 noteId={shownNote.id}
