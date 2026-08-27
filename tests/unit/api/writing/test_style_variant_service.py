@@ -8,7 +8,7 @@ to ``pipeline.generate()`` and uses the correct rewrite mode/count.
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -53,12 +53,26 @@ def _dummy_pipeline() -> Any:
     return MagicMock(spec=["generate"])
 
 
+def _gate_open_repos() -> tuple[Any, Any]:
+    """S6 gate-open repos (chapter binds to ANY novel, every novel owned)."""
+    from tests.factories import make_chapter, make_novel
+
+    chapter_repo = MagicMock(spec=["get"])
+    chapter_repo.get = AsyncMock(return_value=make_chapter(novel_id=ANY))
+    novel_repo = MagicMock(spec=["get_by_id"])
+    novel_repo.get_by_id = AsyncMock(return_value=make_novel())
+    return chapter_repo, novel_repo
+
+
 def _make_service(pipeline: Any, repo: Any) -> StyleVariantService:
+    chapter_repo, novel_repo = _gate_open_repos()
     return StyleVariantService(
         repo=repo,
         pipeline=pipeline,
         draft_processor=_make_draft_processor(),
         config=CONFIG,
+        chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
     )
 
 
@@ -93,21 +107,29 @@ class TestStyleVariantServiceValidate:
         req = _make_request()
         req.source_text = "      "  # whitespace only
         with pytest.raises(ValidationError):
-            await svc.validate_variant(uuid4(), uuid4(), req)
+            await svc.validate_variant(uuid4(), uuid4(), req, user_id=str(uuid4()))
 
     @pytest.mark.asyncio
     async def test_validate_raises_when_chapter_missing(self, mock_repo: Any) -> None:
-        mock_repo.chapter_exists = AsyncMock(return_value=False)
-        svc = _make_service(_dummy_pipeline(), mock_repo)
+        chapter_repo, novel_repo = _gate_open_repos()
+        chapter_repo.get = AsyncMock(return_value=None)  # unknown chapter
+        svc = StyleVariantService(
+            repo=mock_repo,
+            pipeline=_dummy_pipeline(),
+            draft_processor=_make_draft_processor(),
+            config=CONFIG,
+            chapter_repo=chapter_repo,
+            novel_repo=novel_repo,
+        )
         with pytest.raises(NotFoundError):
-            await svc.validate_variant(uuid4(), uuid4(), _make_request())
+            await svc.validate_variant(uuid4(), uuid4(), _make_request(), user_id=str(uuid4()))
 
     @pytest.mark.asyncio
     async def test_validate_raises_on_active_generation(self, mock_repo: Any) -> None:
         mock_repo.get_active_for_chapter = AsyncMock(return_value=uuid4())
         svc = _make_service(_dummy_pipeline(), mock_repo)
         with pytest.raises(ConflictError):
-            await svc.validate_variant(uuid4(), uuid4(), _make_request())
+            await svc.validate_variant(uuid4(), uuid4(), _make_request(), user_id=str(uuid4()))
 
 
 class TestStyleVariantServiceStream:
@@ -151,7 +173,7 @@ class TestStyleVariantServiceStream:
             pass
 
         # Default source_mode is "rewrite" -> request row + pipeline REWRITE mode.
-        assert mock_repo.create_if_no_active.call_args.kwargs["mode"] == "rewrite"
+        assert mock_repo.create_if_no_active.call_args.args[3] == "rewrite"
         pipeline_request = pipeline.generate.call_args.args[0]
         assert pipeline_request.mode == GenerationMode.REWRITE
 
@@ -182,7 +204,7 @@ class TestStyleVariantServiceStream:
             pass
 
         # Request row created with the co_author mode string.
-        assert mock_repo.create_if_no_active.call_args.kwargs["mode"] == "co_author"
+        assert mock_repo.create_if_no_active.call_args.args[3] == "co_author"
 
         # Pipeline request mode is CO_AUTHOR.
         pipeline_request = pipeline.generate.call_args.args[0]

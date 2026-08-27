@@ -50,6 +50,7 @@ async def get_writing_service(
         Configured WritingService ready for use.
     """
     from narrare._app.config import get_settings
+    from narrare.chapters.repository import ChapterRepository
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.settings.repository import UserSettingsRepository
@@ -86,9 +87,13 @@ async def get_writing_service(
     # over the full total.
     from narrare.novels.repository import NovelRepository
 
+    # IDOR S6: novel repo backs the verify_chapter_access ownership gate
+    # inside start_generation (via _helpers.start_generation_request) and
+    # the series-in-scope resolution below.
+    novel_repo = NovelRepository(session)
     series_in_scope = False
     if project_id is not None:
-        novel = await NovelRepository(session).get(project_id)
+        novel = await novel_repo.get(project_id)
         series_in_scope = novel is not None and novel.series_id is not None
 
     budgets = resolve_context_budgets(
@@ -126,7 +131,7 @@ async def get_writing_service(
     from narrare.series.series_history_provider import SeriesHistoryProvider
 
     series_history_provider = SeriesHistoryProvider(
-        novel_repo=NovelRepository(session),
+        novel_repo=novel_repo,
         series_repo=SeriesRepository(session),
         band_summary_repo=BandSummaryRepository(session),
     )
@@ -136,6 +141,8 @@ async def get_writing_service(
         pipeline=pipeline,
         draft_processor=draft_processor,
         config=config,
+        chapter_repo=ChapterRepository(session),
+        novel_repo=novel_repo,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         tone_service=tone_service,

@@ -24,6 +24,7 @@ async def get_suggest_service(
 ) -> InlineSuggestService:
     """Factory for InlineSuggestService — resolves model config for SUGGEST."""
     from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.writing.suggest_service import InlineSuggestService
 
@@ -39,12 +40,15 @@ async def get_suggest_service(
     registry = get_model_registry()
     composer = get_composer()
     chapter_repo = ChapterRepository(session)
+    # IDOR S6: novel repo backs the chapter-ownership gate.
+    novel_repo = NovelRepository(session)
 
     return InlineSuggestService(
         registry=registry,
         composer=composer,
         config=config,
         chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
     )

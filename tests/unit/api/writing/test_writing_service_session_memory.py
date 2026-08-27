@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 
@@ -27,6 +27,28 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _gate_open_chapter_repo() -> AsyncMock:
+    """Chapter repo whose chapter binds to ANY novel (S6 gate open).
+
+    These tests exercise session-memory wiring, not ownership — the
+    access matrix lives in ``test_generation_access_matrix.py``.
+    """
+    from tests.factories import make_chapter
+
+    repo = AsyncMock(spec=["get"])
+    repo.get = AsyncMock(return_value=make_chapter(novel_id=ANY))
+    return repo
+
+
+def _gate_open_novel_repo() -> AsyncMock:
+    """Novel repo where every novel belongs to the caller (S6 gate open)."""
+    from tests.factories import make_novel
+
+    repo = AsyncMock(spec=["get_by_id"])
+    repo.get_by_id = AsyncMock(return_value=make_novel())
+    return repo
 
 
 def _make_request_model(user_id: uuid.UUID) -> SimpleNamespace:
@@ -102,6 +124,8 @@ class TestWritingServiceSessionMemoryConstructor:
             pipeline=MagicMock(spec=WritingPipeline),
             draft_processor=MagicMock(spec=DraftProcessor),
             config=config,
+            chapter_repo=_gate_open_chapter_repo(),
+            novel_repo=_gate_open_novel_repo(),
             session_memory=memory,
         )
         assert service._session_memory is memory
@@ -117,6 +141,8 @@ class TestWritingServiceSessionMemoryConstructor:
             pipeline=MagicMock(spec=WritingPipeline),
             draft_processor=MagicMock(spec=DraftProcessor),
             config=config,
+            chapter_repo=_gate_open_chapter_repo(),
+            novel_repo=_gate_open_novel_repo(),
         )
         assert service._session_memory is None
 
@@ -148,6 +174,8 @@ class TestStreamGenerationSessionMemory:
             pipeline=pipeline,
             draft_processor=_make_draft_processor(),
             config=config,
+            chapter_repo=_gate_open_chapter_repo(),
+            novel_repo=_gate_open_novel_repo(),
             session_memory=mock_session_memory,
         )
 
@@ -186,6 +214,8 @@ class TestStreamGenerationSessionMemory:
             pipeline=pipeline,
             draft_processor=_make_draft_processor(),
             config=config,
+            chapter_repo=_gate_open_chapter_repo(),
+            novel_repo=_gate_open_novel_repo(),
             session_memory=mock_session_memory,
         )
 
@@ -223,6 +253,8 @@ class TestStreamGenerationSessionMemory:
             pipeline=pipeline,
             draft_processor=_make_draft_processor(),
             config=config,
+            chapter_repo=_gate_open_chapter_repo(),
+            novel_repo=_gate_open_novel_repo(),
             # session_memory not provided — defaults to None
         )
 

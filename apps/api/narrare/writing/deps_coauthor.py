@@ -33,6 +33,8 @@ async def get_coauthor_service(
         Configured CoAuthorService ready for use.
     """
     from narrare._app.config import get_settings
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.settings.token_limits.context_budgets import resolve_context_budgets
     from narrare.settings.token_limits.repository import (
@@ -83,12 +85,17 @@ async def get_coauthor_service(
     )
     repo = GenerationRepository(session)
     relationship_repo = RelationshipRepository(session)
+    # IDOR S6: chapter/novel repos back the verify_chapter_access gate.
+    chapter_repo = ChapterRepository(session)
+    novel_repo = NovelRepository(session)
 
     return CoAuthorService(
         repo=repo,
         pipeline=pipeline,
         draft_processor=draft_processor,
         config=config,
+        chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         relationship_repo=relationship_repo,

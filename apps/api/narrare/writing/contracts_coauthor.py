@@ -38,19 +38,27 @@ class CoAuthorServiceProtocol(Protocol):
         chapter_id: UUID,
         novel_id: UUID,
         request: CoAuthorRequest,
+        *,
+        user_id: str,
     ) -> None:
         """Pre-validate co-author request before starting SSE response.
 
+        Ownership gate (IDOR remediation S6): ``verify_chapter_access``
+        runs FIRST — foreign and unknown chapter ids are indistinguishable
+        404s raised before any input validation, active-generation check,
+        or request-row creation.
+
         Checks:
-        1. ``selection_text`` is not empty.
-        2. ``focus`` list is not empty.
-        3. Chapter exists in the database.
+        1. Caller owns the chapter within the addressed novel.
+        2. ``selection_text`` is not empty.
+        3. ``focus`` list is not empty.
         4. No other generation is active for this chapter (conflict prevention).
 
         Raises:
+            NotFoundError: Chapter unknown, not in the addressed novel,
+                or novel owned by another user.
             ValidationError: If selection_text is empty or focus is empty.
             ConflictError: If another generation is active for the chapter.
-            NotFoundError: If the chapter or novel does not exist.
         """
         ...
 

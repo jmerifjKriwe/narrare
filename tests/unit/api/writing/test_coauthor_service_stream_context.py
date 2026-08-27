@@ -6,8 +6,8 @@ All dependencies are mocked (DI pattern, RULE-07).
 
 from __future__ import annotations
 
-from typing import Any, cast
-from unittest.mock import AsyncMock, MagicMock
+from typing import TYPE_CHECKING, Any, cast
+from unittest.mock import ANY, AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -19,6 +19,10 @@ from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.writing.draft_processor import DraftProcessor
 from narrare_core.writing.pipeline import WritingPipeline
+
+if TYPE_CHECKING:
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -67,6 +71,17 @@ async def _fake_stream(*chunks: StreamChunk) -> Any:
 # ---------------------------------------------------------------------------
 
 
+def _gate_open_repos() -> tuple[AsyncMock, AsyncMock]:
+    """S6 gate-open repos (chapter binds to ANY novel, every novel owned)."""
+    from tests.factories import make_chapter, make_novel
+
+    chapter_repo = AsyncMock(spec=["get"])
+    chapter_repo.get = AsyncMock(return_value=make_chapter(novel_id=ANY))
+    novel_repo = AsyncMock(spec=["get_by_id"])
+    novel_repo.get_by_id = AsyncMock(return_value=make_novel())
+    return chapter_repo, novel_repo
+
+
 class TestStreamCoauthorContext:
     """Tests for chapter_content construction with context markers."""
 
@@ -95,11 +110,14 @@ class TestStreamCoauthorContext:
             side_effect=lambda text, **kw: text,
         )
 
+        cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
             pipeline=cast("WritingPipeline", pipeline),
             draft_processor=cast("DraftProcessor", proc),
             config=CONFIG,
+            chapter_repo=cast("ChapterRepository", cr),
+            novel_repo=cast("NovelRepository", nr),
         )
 
         req = _request(
@@ -144,11 +162,14 @@ class TestStreamCoauthorContext:
             side_effect=lambda text, **kw: text,
         )
 
+        cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
             pipeline=cast("WritingPipeline", pipeline),
             draft_processor=cast("DraftProcessor", proc),
             config=CONFIG,
+            chapter_repo=cast("ChapterRepository", cr),
+            novel_repo=cast("NovelRepository", nr),
         )
 
         req = _request()

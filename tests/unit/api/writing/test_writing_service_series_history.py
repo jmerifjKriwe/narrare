@@ -14,7 +14,7 @@ from __future__ import annotations
 import uuid
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 from narrare.writing.service import WritingService
 from narrare_core.llm.result import StreamChunk, TokenUsage
@@ -23,6 +23,28 @@ from narrare_core.writing.pipeline import WritingPipeline
 
 if TYPE_CHECKING:
     from narrare_core.llm import ResolvedModelConfig
+
+
+def _gate_open_chapter_repo() -> AsyncMock:
+    """Chapter repo whose chapter binds to ANY novel (S6 gate open).
+
+    These tests exercise series-history wiring, not ownership — the
+    access matrix lives in ``test_generation_access_matrix.py``.
+    """
+    from tests.factories import make_chapter
+
+    repo = AsyncMock(spec=["get"])
+    repo.get = AsyncMock(return_value=make_chapter(novel_id=ANY))
+    return repo
+
+
+def _gate_open_novel_repo() -> AsyncMock:
+    """Novel repo where every novel belongs to the caller (S6 gate open)."""
+    from tests.factories import make_novel
+
+    repo = AsyncMock(spec=["get_by_id"])
+    repo.get_by_id = AsyncMock(return_value=make_novel())
+    return repo
 
 
 def _make_request_model(user_id: uuid.UUID) -> SimpleNamespace:
@@ -74,6 +96,8 @@ class TestWritingServiceSeriesHistoryConstructor:
             pipeline=MagicMock(spec=WritingPipeline),
             draft_processor=MagicMock(spec=DraftProcessor),
             config=config,
+            chapter_repo=_gate_open_chapter_repo(),
+            novel_repo=_gate_open_novel_repo(),
             series_history_provider=provider,
         )
         assert service._series_history_provider is provider
@@ -88,6 +112,8 @@ class TestWritingServiceSeriesHistoryConstructor:
             pipeline=MagicMock(spec=WritingPipeline),
             draft_processor=MagicMock(spec=DraftProcessor),
             config=config,
+            chapter_repo=_gate_open_chapter_repo(),
+            novel_repo=_gate_open_novel_repo(),
         )
         assert service._series_history_provider is None
 
@@ -114,6 +140,8 @@ class TestStreamGenerationSeriesHistory:
             pipeline=pipeline,
             draft_processor=_make_draft_processor(),
             config=config,
+            chapter_repo=_gate_open_chapter_repo(),
+            novel_repo=_gate_open_novel_repo(),
             series_history_provider=provider,
         )
 
@@ -140,6 +168,8 @@ class TestStreamGenerationSeriesHistory:
             pipeline=pipeline,
             draft_processor=_make_draft_processor(),
             config=config,
+            chapter_repo=_gate_open_chapter_repo(),
+            novel_repo=_gate_open_novel_repo(),
         )
 
         _ = [chunk async for chunk in service.stream_generation(request_model.id, str(user_id))]
@@ -168,6 +198,8 @@ class TestStreamGenerationSeriesHistoryBudget:
             pipeline=pipeline,
             draft_processor=_make_draft_processor(),
             config=config,
+            chapter_repo=_gate_open_chapter_repo(),
+            novel_repo=_gate_open_novel_repo(),
             series_history_provider=provider,
             series_history_budget=12_000,
         )

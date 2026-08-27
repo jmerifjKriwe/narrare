@@ -16,10 +16,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
-from uuid import UUID
 
 import structlog
-from sqlalchemy.exc import IntegrityError
 
 from narrare.writing._helpers import (
     build_pipeline_request,
@@ -27,7 +25,7 @@ from narrare.writing._helpers import (
     prepare_generation_context,
     record_feedback,
     record_session_memory,
-    validate_generation_input,
+    start_generation_request,
 )
 from narrare.writing.schemas import (
     AcceptResponse,
@@ -38,12 +36,14 @@ from narrare.writing.schemas import (
     SceneNextResponse,
     StopResponse,
 )
-from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+    from uuid import UUID
 
+    from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.novels.repository import NovelRepository
     from narrare.series.series_history_provider import SeriesHistoryProvider
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.writing.repository import GenerationRepository
@@ -67,6 +67,8 @@ class WritingService:
         pipeline: WritingPipeline,
         draft_processor: DraftProcessor,
         config: ResolvedModelConfig,
+        chapter_repo: ChapterRepository,
+        novel_repo: NovelRepository,
         api_key: str | None = None,
         base_url: str | None = None,
         feedback_service: FeedbackCollector | None = None,
@@ -82,6 +84,8 @@ class WritingService:
         self._pipeline = pipeline
         self._draft_processor = draft_processor
         self._config = config
+        self._chapter_repo = chapter_repo
+        self._novel_repo = novel_repo
         self._api_key = api_key
         self._base_url = base_url
         self._feedback = feedback_service
@@ -102,18 +106,17 @@ class WritingService:
         user_id: str,
         request: GenerateRequest,
     ) -> GenerateResponse:
-        """Start a generation request. Raises ValidationError or ConflictError."""
-        validate_generation_input(request)
-        try:
-            request_id = await self._repo.create_if_no_active(
-                chapter_id=chapter_id,
-                novel_id=novel_id,
-                user_id=UUID(user_id),
-                mode=request.mode.value,
-                tone=request.tone,
-            )
-        except IntegrityError as exc:
-            raise NotFoundError("Chapter or Novel", identifier=str(chapter_id)) from exc
+        """Start a generation request. Raises NotFoundError (IDOR gate
+        precedes row creation), ValidationError or ConflictError."""
+        request_id = await start_generation_request(
+            self._repo,
+            self._chapter_repo,
+            self._novel_repo,
+            chapter_id,
+            novel_id,
+            user_id,
+            request,
+        )
         logger.info(
             "generation_started",
             request_id=str(request_id),

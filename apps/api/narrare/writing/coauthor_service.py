@@ -23,13 +23,15 @@ from uuid import UUID
 import structlog
 from sqlalchemy.exc import IntegrityError
 
-from narrare.writing._helpers import record_feedback
+from narrare.writing._helpers import record_feedback, verify_chapter_access
 from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.novels.repository import NovelRepository
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.schemas_coauthor import CoAuthorRequest
     from narrare_core.llm import ResolvedModelConfig
@@ -57,6 +59,8 @@ class CoAuthorService:
         pipeline: WritingPipeline,
         draft_processor: DraftProcessor,
         config: ResolvedModelConfig,
+        chapter_repo: ChapterRepository,
+        novel_repo: NovelRepository,
         feedback_service: FeedbackCollector | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
@@ -67,6 +71,8 @@ class CoAuthorService:
         self._pipeline = pipeline
         self._draft_processor = draft_processor
         self._config = config
+        self._chapter_repo = chapter_repo
+        self._novel_repo = novel_repo
         self._feedback = feedback_service
         self._api_key = api_key
         self._base_url = base_url
@@ -80,19 +86,25 @@ class CoAuthorService:
         chapter_id: UUID,
         novel_id: UUID,
         request: CoAuthorRequest,
+        *,
+        user_id: str,
     ) -> None:
         """Pre-validate co-author request before starting SSE response.
 
-        Called by the router BEFORE creating the StreamingResponse to
-        ensure validation errors (422, 409, 404) are returned with proper
-        HTTP status codes instead of causing RuntimeError after headers
-        are sent.
+        Ownership gate (IDOR S6): ``verify_chapter_access`` runs FIRST —
+        foreign ≡ unknown 404s precede input validation, the conflict
+        check, and any request-row creation.
 
         Raises:
+            NotFoundError: Chapter unknown, not in the addressed novel,
+                or novel owned by another user.
             ValidationError: If selection_text is empty or focus is empty.
             ConflictError: If another generation is active for the chapter.
-            NotFoundError: If the chapter or novel does not exist.
         """
+        await verify_chapter_access(
+            self._chapter_repo, self._novel_repo, chapter_id, novel_id, user_id
+        )
+
         if not request.selection_text.strip():
             raise ValidationError(
                 "selection_text must not be empty",
@@ -104,9 +116,6 @@ class CoAuthorService:
                 "focus must contain at least one area",
                 code="MISSING_INPUT",
             )
-
-        if not await self._repo.chapter_exists(chapter_id):
-            raise NotFoundError("Chapter", identifier=str(chapter_id))
 
         active = await self._repo.get_active_for_chapter(chapter_id)
         if active is not None:
@@ -153,8 +162,8 @@ class CoAuthorService:
             GenerationRequest as CoreGenerationRequest,
         )
 
-        # Step 1: Validate and create the request row.
-        await self.validate_coauthor(chapter_id, novel_id, request)
+        # Step 1: Validate (ownership gate first) and create the request row.
+        await self.validate_coauthor(chapter_id, novel_id, request, user_id=user_id)
         try:
             request_id = await self._repo.create(
                 chapter_id=chapter_id,

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 
@@ -100,11 +100,22 @@ def service(
     mock_draft_processor: MagicMock,
 ) -> RewriteService:
     """RewriteService with mocked dependencies (no tone/relationship services)."""
+    from tests.factories import make_chapter, make_novel
+
+    # S6 gate-open repos (chapter binds to ANY novel, every novel owned):
+    # these tests exercise streaming behavior, not ownership — the access
+    # matrix lives in test_generation_access_matrix.py.
+    chapter_repo = AsyncMock(spec=["get"])
+    chapter_repo.get = AsyncMock(return_value=make_chapter(novel_id=ANY))
+    novel_repo = AsyncMock(spec=["get_by_id"])
+    novel_repo.get_by_id = AsyncMock(return_value=make_novel())
     return RewriteService(
         repo=mock_repo,
         pipeline=mock_pipeline,
         draft_processor=mock_draft_processor,
         config=CONFIG,
+        chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
     )
 
 
