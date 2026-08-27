@@ -40,6 +40,7 @@ def get_kb_session_service(
     from narrare.kb.repository import KBRepository
     from narrare.kb.session_service import KBSessionService
     from narrare.kb.session_store import KBCreationSessionStore
+    from narrare.novels.repository import NovelRepository
     from narrare_core.cache import InMemorySessionCache
 
     # Session storage: in-memory cache with 30min TTL (ADR-080).
@@ -69,5 +70,6 @@ def get_kb_session_service(
     return KBSessionService(
         session_store=session_store,
         assist_service=assist_service,
+        novel_repo=NovelRepository(session),
         kb_service=kb_service,
     )

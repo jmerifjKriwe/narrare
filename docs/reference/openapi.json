@@ -7221,7 +7221,7 @@
           "kb-sessions"
         ],
         "summary": "Get Session",
-        "description": "Get a KB creation session by ID.",
+        "description": "Get a KB creation session by ID (ownership-scoped, IDOR S7).",
         "operationId": "get_session_api_v1_novels__novel_id__kb_sessions__session_id__get",
         "security": [
           {
@@ -7280,7 +7280,7 @@
           "kb-sessions"
         ],
         "summary": "Abandon Session",
-        "description": "Abandon and delete a session.",
+        "description": "Abandon and delete a session (unknown/foreign → 404 via global handler).",
         "operationId": "abandon_session_api_v1_novels__novel_id__kb_sessions__session_id__delete",
         "security": [
           {
