@@ -138,6 +138,11 @@ class TestConsistencyInvocationWiring:
         mock_analyzer = MagicMock(spec=["analyze_entries"])
         mock_analyzer.analyze_entries = AsyncMock(return_value=([], 0))
 
+        # Permissive ownership gate (IDOR fix S9) — the gate is the caller's
+        # novel; ownership behavior is covered by the kb ownership matrix.
+        mock_novel_repo = MagicMock(spec=["get_by_id"])
+        mock_novel_repo.get_by_id = AsyncMock(return_value=object())
+
         service = KBConsistencyService(
             analyzer=mock_analyzer,
             asymmetry_checker=MagicMock(spec=["check"]),
@@ -145,6 +150,7 @@ class TestConsistencyInvocationWiring:
             kb_repo=MagicMock(spec=["list_entries"]),
             rel_repo=MagicMock(spec=["get_by_id"]),
             cache=MagicMock(spec=["get", "set", "hash_entity_types"]),
+            novel_repo=mock_novel_repo,
             invocation_pipeline=pipeline,
         )
 
@@ -165,7 +171,11 @@ class TestConsistencyInvocationWiring:
                 include_entry_internal=True,
                 include_cross_entity=False,
             )
-            _result = await service.check(novel_id=novel_id, request=request)
+            _result = await service.check(
+                novel_id=novel_id,
+                request=request,
+                user_id=str(uuid4()),
+            )
 
         assert len(sink.records) >= 1
 

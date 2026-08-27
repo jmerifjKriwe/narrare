@@ -29,5 +29,6 @@ async def get_suggestions(
     return await service.get_suggestions(
         chapter_id=chapter_id,
         novel_id=novel_id,
+        user_id=uuid.UUID(user_id),
         max_results=max_results,
     )

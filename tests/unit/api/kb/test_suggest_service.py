@@ -10,16 +10,21 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 import pytest
 
 from narrare.kb.schemas import KBSuggestionResponse
 from narrare.kb.suggest_service import KBSuggestService
 from narrare_core.context.suggestion import EntityMetadata, Suggestion
+from narrare_core.shared.errors import NotFoundError
+
+from ._test_fakes import FakeNovelRepo
 
 if TYPE_CHECKING:
     from uuid import UUID
+
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -140,12 +145,17 @@ def _make_service(
 
     By default, a FakeChapter is provided so the service finds a chapter.
     Pass chapter=None explicitly to test the "not found" path.
+
+    The novel-ownership gate (IDOR fix S9) is permissive by default —
+    ownership behavior is covered by
+    ``test_graph_suggest_consistency_ownership.py``.
     """
     resolved_chapter = FakeChapter() if chapter is _SENTINEL else chapter
     return KBSuggestService(
         proactive_context=proactive or FakeProactiveContext(),
         chapter_repo=FakeChapterRepo(resolved_chapter),  # type: ignore[arg-type]
         kb_repo=FakeKBRepo(entries),  # type: ignore[arg-type]
+        novel_repo=cast("NovelRepositoryProtocol", FakeNovelRepo()),
     )
 
 
@@ -182,6 +192,7 @@ class TestGetSuggestionsSuccess:
         result = await service.get_suggestions(
             chapter_id=uuid.uuid4(),
             novel_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
         )
 
         assert len(result) == 1
@@ -193,19 +204,24 @@ class TestGetSuggestionsSuccess:
 
 
 class TestGetSuggestionsChapterNotFound:
-    """Chapter None → raises ValueError."""
+    """Chapter None → raises NotFoundError (IDOR fix S9, foreign ≡ unknown)."""
 
-    async def test_raises_value_error(self) -> None:
-        """Service raises ValueError when chapter is not found."""
+    async def test_raises_not_found_error(self) -> None:
+        """Service raises NotFoundError when the chapter is not in the novel.
+
+        Formerly a ``ValueError`` (500-shaped); the S9 compound gate
+        makes chapter∉novel indistinguishable from an unknown chapter
+        (404) — same shape as the writing-module suggest gate (S6).
+        """
         service = _make_service(chapter=None)  # chapter not found
 
         chapter_id = uuid.uuid4()
-        novel_id = uuid.uuid4()
 
-        with pytest.raises(ValueError, match=r"Chapter .* not found"):
+        with pytest.raises(NotFoundError, match="Chapter"):
             await service.get_suggestions(
                 chapter_id=chapter_id,
-                novel_id=novel_id,
+                novel_id=uuid.uuid4(),
+                user_id=uuid.uuid4(),
             )
 
 
@@ -223,6 +239,7 @@ class TestGetSuggestionsEmptyKB:
         result = await service.get_suggestions(
             chapter_id=uuid.uuid4(),
             novel_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
         )
 
         assert result == []
@@ -240,6 +257,7 @@ class TestGetSuggestionsMaxResultsPassedThrough:
         await service.get_suggestions(
             chapter_id=uuid.uuid4(),
             novel_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
             max_results=5,
         )
 
@@ -260,6 +278,7 @@ class TestGetSuggestionsMapsToResponse:
         result = await service.get_suggestions(
             chapter_id=uuid.uuid4(),
             novel_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
         )
 
         assert result[0].relevance_score == 0.8512
@@ -278,6 +297,7 @@ class TestGetSuggestionsMapsToResponse:
         result = await service.get_suggestions(
             chapter_id=uuid.uuid4(),
             novel_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
         )
 
         assert len(result) == 3

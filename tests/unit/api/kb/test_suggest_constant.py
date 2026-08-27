@@ -12,6 +12,8 @@ from typing import Any
 
 from narrare.kb.suggest_service import DEFAULT_KB_SUGGEST_MAX_RESULTS, KBSuggestService
 
+from ._test_fakes import FakeNovelRepo
+
 
 class FakeProactiveContext:
     """Minimal fake for ProactiveContextProtocol.suggest()."""
@@ -63,6 +65,9 @@ def _make_service(**overrides: object) -> KBSuggestService:
         "proactive_context": FakeProactiveContext(),
         "chapter_repo": FakeChapter(),
         "kb_repo": FakeKBRepo(),
+        # Permissive gate (IDOR fix S9) — ownership is covered by
+        # test_graph_suggest_consistency_ownership.py.
+        "novel_repo": FakeNovelRepo(),
     }
     defaults.update(overrides)
     return KBSuggestService(**defaults)  # type: ignore[arg-type]
@@ -85,6 +90,7 @@ class TestDefaultMaxResultsConstant:
         await service.get_suggestions(
             chapter_id=uuid.uuid4(),
             novel_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
         )
 
         assert fake_proactive.last_max_results == DEFAULT_KB_SUGGEST_MAX_RESULTS

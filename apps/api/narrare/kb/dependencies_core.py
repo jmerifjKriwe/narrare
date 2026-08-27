@@ -122,6 +122,7 @@ def get_kb_suggest_service(session: SessionDep) -> KBSuggestService:
     from narrare.embeddings.service import EmbeddingService
     from narrare.kb.repository import KBRepository
     from narrare.kb.suggest_service import KBSuggestService
+    from narrare.novels.repository import NovelRepository
     from narrare_core.context.proactive_service import ProactiveContextService
 
     # EmbeddingService implements EmbeddingStoreProtocol (takes text, not vectors).
@@ -135,6 +136,7 @@ def get_kb_suggest_service(session: SessionDep) -> KBSuggestService:
         proactive_context=proactive,
         chapter_repo=ChapterRepository(session),
         kb_repo=KBRepository(session),
+        novel_repo=NovelRepository(session),
     )
 
 
@@ -143,12 +145,15 @@ def get_graph_service(session: SessionDep) -> GraphService:
 
     Production wiring: uses KBRepository and RelationshipRepository
     for data access. No LLM calls — pure data transformation.
+    NovelRepository backs the read-ownership gate (IDOR fix S9).
     """
     from narrare.kb.graph_service import GraphService
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
+    from narrare.novels.repository import NovelRepository
 
     return GraphService(
         kb_repo=KBRepository(session),
         rel_repo=RelationshipRepository(session),
+        novel_repo=NovelRepository(session),
     )
