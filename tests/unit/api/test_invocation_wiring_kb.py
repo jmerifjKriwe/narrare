@@ -8,10 +8,11 @@ invocation evidence when an ``InvocationPipeline`` (with a
 Services covered:
 1. ExtractionService — ExtractionAgent
 2. KBConsistencyService — LLM phases
-3. KBImproveService — KBImproveAnalyzer
-4. WorldbuildingService — WorldbuildingAnalyzer
-5. KBAssistService — KBAssistAgent
-6. KBMergeService — KBMergeAgent
+3. KBAssistService — KBAssistAgent
+4. KBMergeService — KBMergeAgent
+
+KBImproveService/WorldbuildingService wiring lives in
+``test_invocation_wiring_kb_improve_worldbuilding.py`` (RULE-04 split).
 
 See:
     ADR-040, INFRA-013, CONSTRAINTS.md RULE-10/RULE-11.
@@ -170,66 +171,7 @@ class TestConsistencyInvocationWiring:
 
 
 # ===========================================================================
-# 3. KBImproveService invocation wiring
-# ===========================================================================
-
-
-class TestImproveInvocationWiring:
-    """KBImproveService delegates to analyzer (evidence recorded there)."""
-
-    @pytest.mark.asyncio
-    async def test_analyze_delegates_to_analyzer(self) -> None:
-        from narrare.kb.improve_service import KBImproveService
-
-        mock_analyzer = MagicMock(spec=["analyze"])
-        mock_analyzer.analyze = AsyncMock(return_value=MagicMock(spec=["suggestions"]))
-
-        service = KBImproveService(
-            analyzer=mock_analyzer,
-            kb_repo=MagicMock(spec=["get_by_id"]),
-            kb_service=MagicMock(spec=["get"]),
-            rel_repo=MagicMock(spec=["get_by_id"]),
-        )
-
-        await service.analyze(novel_id=uuid4(), entry_id=uuid4())
-
-        # Evidence recording has moved to the analyzer (ADR-048 Mode 1).
-        # The service is now a thin delegation layer.
-        mock_analyzer.analyze.assert_awaited_once()
-
-
-# ===========================================================================
-# 4. WorldbuildingService invocation wiring
-# ===========================================================================
-
-
-class TestWorldbuildingInvocationWiring:
-    """WorldbuildingService delegates to analyzer (evidence recorded there)."""
-
-    @pytest.mark.asyncio
-    async def test_analyze_delegates_to_analyzer(self) -> None:
-        from narrare.kb.worldbuilding_contracts import WorldbuildingAnalysisRequest
-        from narrare.kb.worldbuilding_service import WorldbuildingService
-
-        mock_analyzer = MagicMock(spec=["analyze"])
-        mock_analyzer.analyze = AsyncMock(return_value=MagicMock(spec=["connections"]))
-
-        service = WorldbuildingService(
-            analyzer=mock_analyzer,
-            rel_repo=MagicMock(spec=["get_by_id"]),
-            cache=MagicMock(spec=["get", "set"]),
-        )
-
-        request = WorldbuildingAnalysisRequest()
-        await service.analyze(novel_id=uuid4(), request=request)
-
-        # Evidence recording has moved to the analyzer (ADR-048 Mode 1).
-        # The service is now a thin delegation layer.
-        mock_analyzer.analyze.assert_awaited_once()
-
-
-# ===========================================================================
-# 5. KBAssistService invocation wiring
+# 3. KBAssistService invocation wiring
 # ===========================================================================
 
 
@@ -281,7 +223,7 @@ class TestAssistInvocationWiring:
 
 
 # ===========================================================================
-# 6. KBMergeService invocation wiring
+# 4. KBMergeService invocation wiring
 # ===========================================================================
 
 
@@ -342,50 +284,3 @@ class TestMergeInvocationWiring:
             )
 
         assert len(sink.records) >= 1
-
-
-# ===========================================================================
-# Backward compatibility — no pipeline = no crash
-# ===========================================================================
-
-
-class TestBackwardCompatibility:
-    """KB services work correctly when invocation_pipeline is None."""
-
-    @pytest.mark.asyncio
-    async def test_improve_service_without_pipeline(self) -> None:
-        """KBImproveService works without invocation_pipeline."""
-        from narrare.kb.improve_service import KBImproveService
-
-        mock_analyzer = MagicMock(spec=["analyze"])
-        mock_analyzer.analyze = AsyncMock(return_value=MagicMock(spec=["suggestions"]))
-
-        service = KBImproveService(
-            analyzer=mock_analyzer,
-            kb_repo=MagicMock(spec=["get_by_id"]),
-            kb_service=MagicMock(spec=["get"]),
-            rel_repo=MagicMock(spec=["get_by_id"]),
-            invocation_pipeline=None,
-        )
-
-        result = await service.analyze(novel_id=uuid4(), entry_id=uuid4())
-        assert result is not None
-
-    @pytest.mark.asyncio
-    async def test_worldbuilding_service_without_pipeline(self) -> None:
-        """WorldbuildingService works without invocation_pipeline."""
-        from narrare.kb.worldbuilding_contracts import WorldbuildingAnalysisRequest
-        from narrare.kb.worldbuilding_service import WorldbuildingService
-
-        mock_analyzer = MagicMock(spec=["analyze"])
-        mock_analyzer.analyze = AsyncMock(return_value=MagicMock(spec=["connections"]))
-
-        service = WorldbuildingService(
-            analyzer=mock_analyzer,
-            rel_repo=MagicMock(spec=["get_by_id"]),
-            cache=MagicMock(spec=["get", "set"]),
-            invocation_pipeline=None,
-        )
-
-        result = await service.analyze(novel_id=uuid4(), request=WorldbuildingAnalysisRequest())
-        assert result is not None

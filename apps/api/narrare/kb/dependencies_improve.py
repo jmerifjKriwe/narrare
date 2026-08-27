@@ -42,6 +42,7 @@ def get_kb_improve_service(
     from narrare.kb.improve_service import KBImproveService
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
+    from narrare.novels.repository import NovelRepository
     from narrare_core.cache import InMemorySessionCache
 
     registry = get_model_registry()
@@ -50,6 +51,7 @@ def get_kb_improve_service(
 
     kb_repo = KBRepository(session)
     rel_repo = RelationshipRepository(session)
+    novel_repo = NovelRepository(session)
     # Single source for KB world context (ADR-067): the analyzer draws its
     # curated world context from the KBContextProvider, not an inline
     # ProactiveContext call.
@@ -78,5 +80,6 @@ def get_kb_improve_service(
         kb_repo=kb_repo,
         kb_service=kb_service,
         rel_repo=rel_repo,
+        novel_repo=novel_repo,
         invocation_pipeline=get_invocation_pipeline(),
     )

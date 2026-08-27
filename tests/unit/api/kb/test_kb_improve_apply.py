@@ -6,17 +6,20 @@ Uses factory helpers defined here to keep tests self-contained.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
 from narrare.kb.improve_contracts import KBImproveApplyResponse
 from narrare_core.shared.errors import NotFoundError
 
+from ._test_fakes import FakeNovelRepo
+
 if TYPE_CHECKING:
     from narrare.kb.improve_service import KBImproveService
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 # ---------------------------------------------------------------------------
 # Factory helpers
@@ -28,15 +31,17 @@ def _make_entry(
     name: str = "John Smith",
     entity_type: str = "character",
     body: str = "A brave hero.",
+    novel_id: UUID | None = None,
 ) -> MagicMock:
     """Create a minimal mock KB entry with required attributes."""
-    entry = MagicMock(spec=["name", "entity_type", "metadata_", "body", "tags", "id"])
+    entry = MagicMock(spec=["name", "entity_type", "metadata_", "body", "tags", "id", "novel_id"])
     entry.name = name
     entry.entity_type = entity_type
     entry.metadata_ = {"age": 30, "role": "protagonist"}
     entry.body = body
     entry.tags = ["hero", "protagonist"]
     entry.id = uuid4()
+    entry.novel_id = novel_id if novel_id is not None else uuid4()
     return entry
 
 
@@ -159,8 +164,10 @@ def _make_service(
         kb_repo=kb_repo,
         kb_service=kb_service,
         rel_repo=rel_repo,
+        novel_repo=cast("NovelRepositoryProtocol", FakeNovelRepo()),  # permissive: owner flow
     )
 
+    entry_mock = kb_repo.get_by_id.return_value
     mocks = {
         "kb_repo": kb_repo,
         "rel_repo": rel_repo,
@@ -169,6 +176,7 @@ def _make_service(
         "registry": registry,
         "kb_service": kb_service,
         "agent_output": agent_output,
+        "novel_id": entry_mock.novel_id if entry_mock is not None else uuid4(),
     }
 
     return service, mocks
@@ -185,7 +193,7 @@ class TestApply:
     async def test_apply_happy_path_applies_suggestions(self) -> None:
         """apply with valid suggestion_ids applies changes and returns success."""
         service, mocks = _make_service()
-        novel_id = uuid4()
+        novel_id = mocks["novel_id"]  # entry's novel (owner flow)
         entry_id = uuid4()
 
         with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
@@ -196,6 +204,7 @@ class TestApply:
                 novel_id=novel_id,
                 entry_id=entry_id,
                 suggestion_ids=[0, 1],
+                user_id=uuid4(),
             )
 
         assert isinstance(result, KBImproveApplyResponse)
@@ -206,7 +215,7 @@ class TestApply:
     async def test_apply_no_valid_suggestions_returns_failure(self) -> None:
         """apply with no matching suggestion_ids returns success=False."""
         service, mocks = _make_service()
-        novel_id = uuid4()
+        novel_id = mocks["novel_id"]  # entry's novel (owner flow)
         entry_id = uuid4()
 
         with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
@@ -218,6 +227,7 @@ class TestApply:
                 novel_id=novel_id,
                 entry_id=entry_id,
                 suggestion_ids=[999],
+                user_id=uuid4(),
             )
 
         assert result.success is False
@@ -235,12 +245,13 @@ class TestApply:
                 novel_id=novel_id,
                 entry_id=entry_id,
                 suggestion_ids=[0],
+                user_id=uuid4(),
             )
 
     async def test_apply_empty_suggestion_ids_returns_empty(self) -> None:
         """apply with empty suggestion_ids list returns success=False."""
         service, mocks = _make_service()
-        novel_id = uuid4()
+        novel_id = mocks["novel_id"]  # entry's novel (owner flow)
         entry_id = uuid4()
 
         with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
@@ -251,6 +262,7 @@ class TestApply:
                 novel_id=novel_id,
                 entry_id=entry_id,
                 suggestion_ids=[],
+                user_id=uuid4(),
             )
 
         assert result.success is False

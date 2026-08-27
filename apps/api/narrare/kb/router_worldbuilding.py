@@ -61,6 +61,7 @@ async def analyze_worldbuilding(
     return await service.analyze(
         novel_id=novel_id,
         request=request,
+        user_id=uuid.UUID(user_id),
     )
 
 

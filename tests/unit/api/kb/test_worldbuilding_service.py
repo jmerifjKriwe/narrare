@@ -6,6 +6,7 @@ Uses AsyncMock(spec=...) patterns consistent with existing KB service tests.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -16,6 +17,11 @@ from narrare.kb.worldbuilding_contracts import (
     WorldbuildingApplyRequest,
 )
 from narrare.kb.worldbuilding_service import WorldbuildingService
+
+from ._test_fakes import FakeNovelRepo
+
+if TYPE_CHECKING:
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 # ---------------------------------------------------------------------------
 # Factory helpers
@@ -102,6 +108,7 @@ def _make_service(
         analyzer=analyzer,
         rel_repo=rel_repo,
         cache=cache,
+        novel_repo=cast("NovelRepositoryProtocol", FakeNovelRepo()),  # permissive: owner flow
     )
 
     mocks = {
@@ -129,7 +136,7 @@ class TestAnalyze:
         expected = _make_analysis_response()
         mocks["analyzer"].analyze = AsyncMock(return_value=expected)
 
-        result = await service.analyze(novel_id=novel_id, request=request)
+        result = await service.analyze(novel_id=novel_id, request=request, user_id=uuid4())
 
         assert result is expected
         mocks["analyzer"].analyze.assert_awaited_once_with(novel_id, request)

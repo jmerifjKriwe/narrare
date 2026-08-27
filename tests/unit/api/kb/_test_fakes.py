@@ -1,7 +1,8 @@
 """Shared fakes and helpers for KB session service tests.
 
 Provides in-memory fakes for KBCreationSessionStore, KBAssistProtocol,
-and KBServiceProtocol, plus factory helpers.
+and KBServiceProtocol, plus factory helpers. The KB improve/worldbuilding
+fakes live in ``_test_fakes_improve_worldbuilding.py`` (RULE-04 split).
 """
 
 from __future__ import annotations

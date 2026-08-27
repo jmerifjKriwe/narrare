@@ -3,6 +3,10 @@
 Orchestrates analysis (delegates to WorldbuildingAnalyzer) and
 applies connection suggestions (creates KBRelationship entries).
 
+Both public operations gate on novel ownership at service entry (IDOR
+fix S8): the caller must own ``novel_id`` BEFORE any analysis or
+relationship write.
+
 See:
     :class:`narrare.kb.worldbuilding_contracts.WorldbuildingProtocol`
 """
@@ -22,11 +26,13 @@ from narrare.kb.worldbuilding_contracts import (
     WorldbuildingApplyRequest,
     WorldbuildingApplyResponse,
 )
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from narrare.kb.contracts import RelationshipRepositoryProtocol
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
     from narrare.kb.worldbuilding_cache import WorldbuildingCache
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 logger = structlog.get_logger(__name__)
@@ -38,6 +44,13 @@ class WorldbuildingService:
     Delegates LLM orchestration to :class:`WorldbuildingAnalyzer`.
     Handles ``apply_connections`` by creating ``KBRelationship`` entries
     for selected connection suggestions.
+
+    Args:
+        analyzer: LLM analysis orchestration (runs post-gate only).
+        rel_repo: Relationship repository.
+        cache: Worldbuilding analysis cache.
+        novel_repo: Novel repository — novel ownership gate (IDOR fix S8).
+        invocation_pipeline: Optional invocation evidence pipeline.
     """
 
     def __init__(
@@ -45,31 +58,48 @@ class WorldbuildingService:
         analyzer: WorldbuildingAnalyzer,
         rel_repo: RelationshipRepositoryProtocol,
         cache: WorldbuildingCache,
+        novel_repo: NovelRepositoryProtocol,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._analyzer = analyzer
         self._rel_repo = rel_repo
         self._cache = cache
+        self._novel_repo = novel_repo
         self._invocation_pipeline = invocation_pipeline
+
+    async def _verify_novel_ownership(self, novel_id: UUID, user_id: UUID) -> None:
+        """Raise NotFoundError if the novel is not owned by the caller.
+
+        Foreign and unknown novels are indistinguishable (anti-enumeration);
+        a missing novel is a 404, never a 403 (which stays reserved for the
+        series module).
+        """
+        novel = await self._novel_repo.get_by_id(novel_id, user_id)
+        if novel is None:
+            raise NotFoundError("Novel", identifier=str(novel_id))
 
     async def analyze(
         self,
         *,
         novel_id: UUID,
         request: WorldbuildingAnalysisRequest,
+        user_id: UUID,
     ) -> WorldbuildingAnalysisResponse:
         """Analyze the project's worldbuilding health.
 
-        Delegates to :class:`WorldbuildingAnalyzer` which handles
-        caching, deps assembly, and LLM orchestration.
+        Ownership gate runs FIRST: the caller must own ``novel_id`` before
+        any analyzer/LLM work or cache read.
 
         Args:
             novel_id: The project to analyze.
             request: Analysis options and filters.
+            user_id: The caller — must own the novel (ownership gate).
 
         Returns:
             Complete analysis with all requested finding types.
         """
+        await self._verify_novel_ownership(novel_id, user_id)
+
         logger.info("worldbuilding_analyze_start", novel_id=str(novel_id))
 
         # Evidence recording has moved to WorldbuildingAnalyzer (ADR-048 Mode 1).
@@ -86,19 +116,24 @@ class WorldbuildingService:
     ) -> WorldbuildingApplyResponse:
         """Apply selected connection suggestions as KB relationships.
 
+        Ownership gate runs FIRST: the caller must own ``novel_id`` before
+        any duplicate check or relationship write.
+
         Looks up each ``finding_index`` in the analysis connection
         suggestions, checks for duplicates, and creates a
         ``KBRelationship`` entry.
 
         Args:
             novel_id: The project containing the entities.
-            user_id: The user performing the action.
+            user_id: The caller — must own the novel (ownership gate).
             request: Which connection indices to apply.
             analysis: The analysis response containing the suggestions.
 
         Returns:
             Result with counts of created/failed relationships.
         """
+        await self._verify_novel_ownership(novel_id, user_id)
+
         created = 0
         failed = 0
         errors: list[str] = []
