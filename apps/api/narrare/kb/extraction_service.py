@@ -1,11 +1,12 @@
 """Extraction Service — orchestrates ExtractionAgent for chapter → KB extraction.
 
 Manages the full extraction flow:
-1. Fetch chapter content from the chapter repository
-2. Fetch existing KB entity names for dedup
-3. Build system prompt via PromptComposer
-4. Run ExtractionAgent over the chapter text
-5. Return structured ExtractionOutput
+1. Verify the caller owns the novel (IDOR fix S10) — BEFORE any load
+2. Fetch chapter content from the chapter repository
+3. Fetch existing KB entity names for dedup
+4. Build system prompt via PromptComposer
+5. Run ExtractionAgent over the chapter text
+6. Return structured ExtractionOutput
 
 Also provides ``apply_extraction()`` that delegates to
 ExtractionApplyService for the apply step (KB-007).
@@ -19,6 +20,8 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.kb._extraction_entries import list_existing_entries_graceful
+from narrare.kb._novel_gate import verify_novel_owned
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
 
 if TYPE_CHECKING:
@@ -26,10 +29,10 @@ if TYPE_CHECKING:
 
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.kb.contracts import KBRepositoryProtocol
-    from narrare.kb.models import KBEntry
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.schemas_extraction import ApplyExtractionItem, ApplyExtractionResponse
     from narrare.kb.service import KBService
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.agents.extraction_types import ExtractionOutput
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
@@ -49,6 +52,9 @@ class ExtractionService:
         chapter_repo: Chapter repository for reading chapter content.
         kb_repo: KB repository for fetching existing entity names (dedup).
         composer: PromptComposer for bundled system prompts (RULE-02).
+        novel_repo: Novel repository — the novel ownership gate (IDOR
+            fix S10); extraction verifies the caller owns the novel
+            before the chapter content load.
         kb_service: KBService for the apply step (optional, needed for apply).
         rel_repo: RelationshipRepository for the apply step (optional).
         invocation_pipeline: Optional pipeline for invocation evidence.
@@ -61,6 +67,7 @@ class ExtractionService:
         chapter_repo: ChapterRepositoryProtocol,
         kb_repo: KBRepositoryProtocol,
         composer: PromptComposer,
+        novel_repo: NovelRepositoryProtocol,
         kb_service: KBService | None = None,
         rel_repo: RelationshipRepository | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
@@ -70,6 +77,7 @@ class ExtractionService:
         self._chapter_repo = chapter_repo
         self._kb_repo = kb_repo
         self._composer = composer
+        self._novel_repo = novel_repo
         self._kb_service = kb_service
         self._rel_repo = rel_repo
         self._invocation_pipeline = invocation_pipeline
@@ -82,18 +90,27 @@ class ExtractionService:
     ) -> ExtractionOutput:
         """Extract entities, facts, and relationships from a chapter.
 
+        Ownership gate first (IDOR fix S10): the caller must own
+        ``novel_id`` — BEFORE the chapter content load, the KB dedup
+        read, prompt composition, or any LLM call. A ``novel_id`` path
+        segment is addressing, not authorization.
+
         Args:
             novel_id: Novel identifier (scopes the chapter + KB lookup).
             chapter_id: Chapter to analyze.
-            user_id: Requesting user (forwarded for ownership checks).
+            user_id: Requesting user — the novel ownership gate input.
 
         Returns:
             Structured ExtractionOutput with results and analysis notes.
 
         Raises:
-            ValueError: Chapter not found or has no content.
+            NotFoundError: Novel unknown or owned by another user.
+            ValueError: Chapter not found in the novel or has no content.
         """
-        # 1. Get chapter content — scoped by novel_id for ownership.
+        await verify_novel_owned(self._novel_repo, novel_id, user_id)
+
+        # 1. Get chapter content — chapter∈novel linkage (data integrity);
+        #    the user scope was enforced by the ownership gate above.
         chapter = await self._chapter_repo.get_by_id(chapter_id, novel_id)
         if chapter is None:
             raise ValueError(f"Chapter {chapter_id} not found")
@@ -107,7 +124,7 @@ class ExtractionService:
         #    from the same result set. Single fetch keeps this O(1) repo reads.
         from narrare.kb._world_context import format_world_context
 
-        existing_entries = await self._get_existing_entries_graceful(novel_id, user_id)
+        existing_entries = await list_existing_entries_graceful(self._kb_repo, novel_id, user_id)
         existing_names = [e.name for e in existing_entries if e.name]
         # Curated project world context aids entity disambiguation. Mirrors
         # the kb merge/assist/improve world-context mechanism and degrades
@@ -215,60 +232,6 @@ class ExtractionService:
             user_id=user_id,
             items=items,
         )
-
-    async def _get_existing_entries(
-        self,
-        novel_id: UUID,
-        user_id: UUID,
-    ) -> list[KBEntry]:
-        """Fetch existing KB entries for the novel (dedup + world context).
-
-        Repository errors propagate — error-tolerant callers should use
-        ``_get_existing_entries_graceful``.
-        """
-        entries, _ = await self._kb_repo.list_entries(
-            novel_id=novel_id,
-            entity_type=None,
-            tags=None,
-            page=1,
-            page_size=1000,
-        )
-        return list(entries)
-
-    async def _get_existing_entries_graceful(
-        self,
-        novel_id: UUID,
-        user_id: UUID,
-    ) -> list[KBEntry]:
-        """Fetch existing KB entries with graceful degradation (RULE-11).
-
-        If the KB repo is unavailable (DB connection lost, timeout, etc.),
-        returns an empty list so extraction can proceed without dedup data
-        or world context. Logs a warning so the failure is visible.
-        """
-        try:
-            return await self._get_existing_entries(novel_id, user_id)
-        except Exception as exc:
-            logger.warning(
-                "kb_repo_unavailable_using_empty_dedup",
-                novel_id=str(novel_id),
-                error=str(exc),
-            )
-            return []
-
-    async def _get_existing_entity_names(
-        self,
-        novel_id: UUID,
-        user_id: UUID,
-    ) -> list[str]:
-        """Fetch existing KB entry names for dedup.
-
-        Thin wrapper over ``_get_existing_entries`` retained as the dedup
-        names accessor. Repository errors propagate — error-tolerant callers
-        should use ``_get_existing_entries_graceful``.
-        """
-        entries = await self._get_existing_entries(novel_id, user_id)
-        return [entry.name for entry in entries if entry.name]
 
     def _build_prompt_context(
         self,

@@ -232,11 +232,15 @@ class TestUndismissEndpoint:
         )
 
         assert resp.status_code == 200
-        # Verify the service received the decoded fingerprint
-        mock_dismissed_service.undismiss_finding.assert_called_once_with(
-            novel_id=UUID(novel_id),
-            fingerprint=raw_fingerprint,
-        )
+        # Verify the service received the decoded fingerprint — and the
+        # authenticated identity threaded for the ownership gate (IDOR S10).
+        # The user id is random per test run, so inspect kwargs instead of
+        # exact-matching the call.
+        call = mock_dismissed_service.undismiss_finding.call_args
+        assert call is not None
+        assert call.kwargs["novel_id"] == UUID(novel_id)
+        assert call.kwargs["fingerprint"] == raw_fingerprint
+        assert UUID(call.kwargs["user_id"])
 
     async def test_undismiss_returns_401_without_auth(
         self,

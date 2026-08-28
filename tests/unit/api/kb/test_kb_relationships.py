@@ -7,13 +7,16 @@ Repositories are faked — no DB.
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
 from narrare.kb.models import KBEntry, KBRelationship
 from narrare.kb.schemas import KBRelationshipCreate
 from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
+
+if TYPE_CHECKING:
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 # ---------------------------------------------------------------------------
 # Fake repositories
@@ -100,9 +103,13 @@ def rel_repo() -> FakeRelRepo:
 def service(entry_repo: FakeEntryRepo, rel_repo: FakeRelRepo) -> Any:
     from narrare.kb.relationship_service import RelationshipService
 
+    from ._test_fakes import FakeNovelRepo
+
     return RelationshipService(
         rel_repo=rel_repo,  # type: ignore[arg-type]
         entry_repo=entry_repo,  # type: ignore[arg-type]
+        # permissive novel gate (IDOR S10) — every caller owns the novel
+        novel_repo=cast("NovelRepositoryProtocol", FakeNovelRepo()),
     )
 
 

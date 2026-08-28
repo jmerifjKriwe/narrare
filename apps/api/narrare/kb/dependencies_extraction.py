@@ -17,7 +17,8 @@ def get_extraction_service(session: SessionDep) -> ExtractionService:
     for system prompts, and ChapterRepository + KBRepository for data.
 
     Also injects KBService and RelationshipRepository for the apply
-    extraction step (KB-007).
+    extraction step (KB-007). NovelRepository backs the novel ownership
+    gate (IDOR fix S10).
 
     Includes InvocationPipeline for invocation evidence (ADR-040).
     """
@@ -35,6 +36,7 @@ def get_extraction_service(session: SessionDep) -> ExtractionService:
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.kb.service import KBService
+    from narrare.novels.repository import NovelRepository
 
     registry = get_model_registry()
     composer = get_composer()
@@ -46,6 +48,7 @@ def get_extraction_service(session: SessionDep) -> ExtractionService:
         chapter_repo=ChapterRepository(session),
         kb_repo=KBRepository(session),
         composer=composer,
+        novel_repo=NovelRepository(session),
         kb_service=KBService(
             repo=KBRepository(session),
             novel_repo=None,

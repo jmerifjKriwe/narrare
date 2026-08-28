@@ -11,7 +11,8 @@ DB-persistence CRUD) — split out to keep both files focused (RULE-04).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import inspect
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
@@ -27,8 +28,16 @@ from narrare.kb.dismissed_service import (
     _parse_fingerprint,
 )
 
+from ._test_fakes import FakeNovelRepo
+
 if TYPE_CHECKING:
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.memory.consistency_models import ConsistencyDismissalRecord
+
+
+def _permissive_gate() -> NovelRepositoryProtocol:
+    """Novel repo fake that owns everything (non-ownership tests, IDOR S10)."""
+    return cast("NovelRepositoryProtocol", FakeNovelRepo())
 
 
 # ---------------------------------------------------------------------------
@@ -168,7 +177,7 @@ class TestDismissStoreHook:
         """A successful DB dismiss triggers record_dismissal on the collector."""
         repo = _FakeRepo()
         feedback_memory = AsyncMock()
-        service = DismissedFindingService(repo, feedback_memory=feedback_memory)
+        service = DismissedFindingService(repo, _permissive_gate(), feedback_memory=feedback_memory)
         novel_id = uuid4()
         user_id = uuid4()
         request = DismissFindingRequest(
@@ -201,7 +210,7 @@ class TestDismissStoreHook:
         feedback_memory.record_dismissal = AsyncMock(
             side_effect=RuntimeError("mem0 down"),
         )
-        service = DismissedFindingService(repo, feedback_memory=feedback_memory)
+        service = DismissedFindingService(repo, _permissive_gate(), feedback_memory=feedback_memory)
         novel_id = uuid4()
         request = DismissFindingRequest(fingerprint="fp-1::Alice")
 
@@ -217,7 +226,7 @@ class TestDismissStoreHook:
     async def test_dismiss_with_feedback_memory_none_skips_mem0(self) -> None:
         """feedback_memory=None → no mem0 call, DB dismiss still works."""
         repo = _FakeRepo()
-        service = DismissedFindingService(repo, feedback_memory=None)
+        service = DismissedFindingService(repo, _permissive_gate(), feedback_memory=None)
         novel_id = uuid4()
 
         result = await service.dismiss_finding(
@@ -228,37 +237,44 @@ class TestDismissStoreHook:
 
         assert "fp-1::Alice" in result.fingerprints
 
-    async def test_dismiss_with_user_id_none_skips_mem0_forward(self) -> None:
-        """user_id=None → no mem0 call (no identity to scope by)."""
-        repo = _FakeRepo()
-        feedback_memory = AsyncMock()
-        service = DismissedFindingService(repo, feedback_memory=feedback_memory)
+    async def test_dismiss_user_id_is_a_required_parameter(self) -> None:
+        """user_id is required (IDOR S10): an anonymous dismiss must be
+        unrepresentable — the parameter has no default, so every caller
+        (and the type checker) must supply an identity.
 
-        await service.dismiss_finding(
-            novel_id=uuid4(),
-            request=DismissFindingRequest(fingerprint="fp-1::Alice"),
-            user_id=None,
-        )
+        Before S10 the service silently skipped the mem0 forward for a
+        missing identity and still persisted the dismiss — an anonymous
+        dismiss. The ownership gate makes the caller's identity a
+        mandatory input.
+        """
+        params = inspect.signature(DismissedFindingService.dismiss_finding).parameters
 
-        feedback_memory.record_dismissal.assert_not_awaited()
+        assert "user_id" in params
+        assert params["user_id"].default is inspect.Parameter.empty
 
-    async def test_dismiss_with_invalid_user_id_still_persists_to_db(
+    async def test_dismiss_with_invalid_user_id_fails_closed_before_db(
         self,
     ) -> None:
-        """A non-UUID user_id is caught (RULE-11); DB dismiss still succeeds."""
+        """A non-UUID user_id is rejected by the gate BEFORE the DB dismiss.
+
+        Before S10 an unparseable identity failed OPEN: the DB dismiss
+        succeeded and only the mem0 forward was skipped. With the S10
+        gate the identity is parsed up front — an invalid one fails
+        CLOSED: nothing is persisted, nothing is forwarded.
+        """
         repo = _FakeRepo()
         feedback_memory = AsyncMock()
-        service = DismissedFindingService(repo, feedback_memory=feedback_memory)
+        service = DismissedFindingService(repo, _permissive_gate(), feedback_memory)
         novel_id = uuid4()
 
-        result = await service.dismiss_finding(
-            novel_id=novel_id,
-            request=DismissFindingRequest(fingerprint="fp-1::Alice"),
-            user_id="not-a-uuid",
-        )
+        with pytest.raises(ValueError):
+            await service.dismiss_finding(
+                novel_id=novel_id,
+                request=DismissFindingRequest(fingerprint="fp-1::Alice"),
+                user_id="not-a-uuid",
+            )
 
-        # DB dismiss succeeded; mem0 forward was attempted but swallowed.
-        assert "fp-1::Alice" in result.fingerprints
+        assert await repo.list_dismissed(novel_id) == []
         feedback_memory.record_dismissal.assert_not_awaited()
 
 

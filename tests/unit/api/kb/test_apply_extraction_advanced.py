@@ -39,6 +39,8 @@ from tests.unit.api.kb.test_apply_extraction import (
     _FakeRelationshipRepo,
 )
 
+from ._extraction_helpers import permissive_novel_gate
+
 
 def _item(
     item_type: Literal["new_entity", "update_entity", "relationship", "conflict"] = "new_entity",
@@ -216,6 +218,7 @@ async def test_extraction_service_delegates_to_apply_service() -> None:
         chapter_repo=cast("ChapterRepositoryProtocol", chapter_repo),
         kb_repo=cast("KBRepositoryProtocol", kb_repo),
         composer=cast("PromptComposer", composer),
+        novel_repo=permissive_novel_gate(),
         kb_service=cast("KBService", kb_service),
         rel_repo=cast("RelationshipRepository", rel_repo),
     )
@@ -256,6 +259,7 @@ async def test_extraction_service_apply_without_deps_raises() -> None:
         chapter_repo=cast("ChapterRepositoryProtocol", chapter_repo),
         kb_repo=cast("KBRepositoryProtocol", kb_repo),
         composer=cast("PromptComposer", composer),
+        novel_repo=permissive_novel_gate(),
     )
 
     with pytest.raises(ValueError, match="KBService and RelationshipRepository"):

@@ -104,14 +104,19 @@ def get_rel_repository(
 
 
 def get_rel_service(session: SessionDep) -> RelationshipService:
-    """Create a RelationshipService with injected dependencies."""
+    """Create a RelationshipService with injected dependencies.
+
+    NovelRepository backs the read/write ownership gate (IDOR fix S10).
+    """
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.relationship_service import RelationshipService
     from narrare.kb.repository import KBRepository
+    from narrare.novels.repository import NovelRepository
 
     return RelationshipService(
         rel_repo=RelationshipRepository(session),
         entry_repo=KBRepository(session),
+        novel_repo=NovelRepository(session),
     )
 
 

@@ -27,6 +27,7 @@ from uuid import uuid4
 import pytest
 
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
+from tests.unit.api.kb._extraction_helpers import permissive_novel_gate
 
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.models import FeatureInvocationEvidence
@@ -93,6 +94,7 @@ class TestExtractionInvocationWiring:
             chapter_repo=mock_chapter_repo,
             kb_repo=mock_kb_repo,
             composer=mock_composer,
+            novel_repo=permissive_novel_gate(),  # ownership gate (IDOR S10)
             invocation_pipeline=pipeline,
         )
 
@@ -102,7 +104,10 @@ class TestExtractionInvocationWiring:
 
         with (
             patch("narrare.kb.extraction_service.ExtractionAgent") as mock_agent_cls,
-            patch.object(service, "_get_existing_entity_names", AsyncMock(return_value=[])),
+            patch(
+                "narrare.kb.extraction_service.list_existing_entries_graceful",
+                AsyncMock(return_value=[]),
+            ),
         ):
             mock_agent = AsyncMock()
             mock_agent.run = AsyncMock(return_value=mock_output)

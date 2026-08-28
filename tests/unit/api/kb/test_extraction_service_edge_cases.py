@@ -98,12 +98,15 @@ def make_service(
     kb_repo: Any,
     composer: Any,
 ) -> ExtractionService:
+    from ._extraction_helpers import permissive_novel_gate
+
     return ExtractionService(
         registry=registry,
         config=config,
         chapter_repo=chapter_repo,
         kb_repo=kb_repo,
         composer=composer,
+        novel_repo=permissive_novel_gate(),
     )
 
 

@@ -201,6 +201,11 @@ class DismissedFindingProtocol(Protocol):
     Persisted per-novel so that findings a user has consciously reviewed and
     accepted can be hidden from future consistency checks.  The frontend
     fetches the dismissed fingerprint list and filters issues client-side.
+
+    Every method gates on novel ownership at entry (IDOR fix S10): the
+    caller must own ``novel_id`` — dismissal state is user-scoped data,
+    and a foreign dismiss/undismiss is a foreign WRITE into the victim's
+    consistency results.
     """
 
     async def dismiss_finding(
@@ -208,15 +213,20 @@ class DismissedFindingProtocol(Protocol):
         *,
         novel_id: UUID,
         request: DismissFindingRequest,
+        user_id: str,
     ) -> DismissedFindingsResponse:
         """Dismiss a finding by its stable fingerprint (idempotent upsert).
 
         Args:
             novel_id: The project the finding belongs to.
             request: The finding fingerprint and optional reason.
+            user_id: Authenticated caller — the novel ownership gate input.
 
         Returns:
             Updated list of all dismissed fingerprints for the novel.
+
+        Raises:
+            NotFoundError: The novel is unknown or owned by another user.
         """
         ...
 
@@ -224,14 +234,19 @@ class DismissedFindingProtocol(Protocol):
         self,
         *,
         novel_id: UUID,
+        user_id: str,
     ) -> DismissedFindingsResponse:
         """List all dismissed finding fingerprints for a novel.
 
         Args:
             novel_id: The project to list dismissed findings for.
+            user_id: Authenticated caller — the novel ownership gate input.
 
         Returns:
             All currently-dismissed fingerprints for the novel.
+
+        Raises:
+            NotFoundError: The novel is unknown or owned by another user.
         """
         ...
 
@@ -240,14 +255,19 @@ class DismissedFindingProtocol(Protocol):
         *,
         novel_id: UUID,
         fingerprint: str,
+        user_id: str,
     ) -> DismissedFindingsResponse:
         """Re-enable a previously dismissed finding.
 
         Args:
             novel_id: The project the finding belongs to.
             fingerprint: The stable fingerprint to un-dismiss.
+            user_id: Authenticated caller — the novel ownership gate input.
 
         Returns:
             Updated list of all dismissed fingerprints for the novel.
+
+        Raises:
+            NotFoundError: The novel is unknown or owned by another user.
         """
         ...

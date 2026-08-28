@@ -5,7 +5,7 @@ Extracted from test_extraction_service.py per RULE-04 (file size limits).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
@@ -13,8 +13,21 @@ from narrare.kb.extraction_service import ExtractionService
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
 from narrare_core.prompts.composer import ComposedPrompt
 
+from ._test_fakes import FakeNovelRepo
+
 if TYPE_CHECKING:
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.llm import ResolvedModelConfig
+
+
+def permissive_novel_gate() -> NovelRepositoryProtocol:
+    """Novel repo whose ownership gate always passes (IDOR S10).
+
+    Non-ownership extraction tests act as the novel's owner; the
+    ownership matrix lives in
+    ``test_relationship_dismissed_extraction_ownership.py``.
+    """
+    return cast("NovelRepositoryProtocol", FakeNovelRepo())
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +84,7 @@ def make_service(
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
         kb_repo=kb_repo,  # type: ignore[arg-type]
         composer=composer,  # type: ignore[arg-type]
+        novel_repo=permissive_novel_gate(),
     )
 
 
