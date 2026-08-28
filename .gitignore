@@ -115,3 +115,4 @@ benchmark/config.local.yaml
 test-results/
 
 graphify-out/
+.agent-of-empires/

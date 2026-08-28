@@ -12,6 +12,7 @@ email format is validated server-side (``EmailStr``) and not duplicated.
 from __future__ import annotations
 
 import re
+from collections.abc import Sized
 from typing import TYPE_CHECKING, cast
 
 from benchmark.config_schemas import (
@@ -43,6 +44,22 @@ def _str_field(section: Mapping[str, object], path: str) -> str:
     value = section.get(path.rsplit(".", 1)[-1])
     if not isinstance(value, str) or not value:
         raise ConfigError(f"config.{path} must be a non-empty string, got {value!r}")
+    return value
+
+
+def _secret_value_shape(value: object) -> str:
+    """Describe a rejected secret's type + length — never the value itself."""
+    if isinstance(value, Sized):
+        return f"{type(value).__name__} (len {len(value)})"
+    return type(value).__name__
+
+
+def _secret_str_field(section: Mapping[str, object], path: str) -> str:
+    """Like ``_str_field`` for secret fields — errors carry type/length only."""
+    value = section.get(path.rsplit(".", 1)[-1])
+    if not isinstance(value, str) or not value:
+        shape = _secret_value_shape(value)
+        raise ConfigError(f"config.{path} must be a non-empty string, got {shape}")
     return value
 
 
@@ -128,7 +145,7 @@ def _parse_api(raw: Mapping[str, object]) -> ApiConfig:
 
 def _parse_auth(raw: Mapping[str, object]) -> AuthConfig:
     section = _section(raw, "auth", ("email", "password"))
-    password = _str_field(section, "auth.password")
+    password = _secret_str_field(section, "auth.password")
     if not 8 <= len(password) <= 72:
         raise ConfigError(
             f"config.auth.password length {len(password)} violates RegisterRequest bounds 8..72"
@@ -144,9 +161,16 @@ def _parse_llm(raw: Mapping[str, object]) -> LlmConfig:
             f"config.llm.provider {provider!r} is not one of {sorted(_VALID_PROVIDERS)}"
         )
     api_key = section.get("api_key")
-    if not isinstance(api_key, str) or len(api_key) > 200:
+    if not isinstance(api_key, str):
+        # Never render the value (secret) — report the type name only.
         raise ConfigError(
-            f"config.llm.api_key must be a string of at most 200 chars, got {api_key!r}"
+            "config.llm.api_key must be a string of at most 200 chars, "
+            f"got {type(api_key).__name__}"
+        )
+    if len(api_key) > 200:
+        raise ConfigError(
+            "config.llm.api_key must be a string of at most 200 chars, "
+            f"got {len(api_key)}-char string"
         )
     model = _str_field(section, "llm.model")
     if len(model) > 200:
@@ -156,7 +180,10 @@ def _parse_llm(raw: Mapping[str, object]) -> LlmConfig:
         raise ConfigError(
             f"config.llm.zai_endpoint {zai_endpoint!r} is not one of {sorted(_VALID_ZAI_ENDPOINTS)}"
         )
-    return LlmConfig(provider, api_key, model, _str_field(section, "llm.ollama_url"), zai_endpoint)
+    ollama_url = _str_field(section, "llm.ollama_url")
+    if len(ollama_url) > 200:
+        raise ConfigError("config.llm.ollama_url exceeds Step4ProviderRequest max_length=200")
+    return LlmConfig(provider, api_key, model, ollama_url, zai_endpoint)
 
 
 def _parse_run(raw: Mapping[str, object]) -> RunConfig:

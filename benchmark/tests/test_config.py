@@ -138,6 +138,22 @@ class TestValidation:
         with pytest.raises(ConfigError, match=r"zai_endpoint"):
             load_config(write_config(tmp_path, text))
 
+    def test_oversized_api_key_error_reports_length_not_value(self, tmp_path: Path) -> None:
+        secret = "sk-super-secret-value-123" + "x" * 200
+        text = mutated("  api_key: sk-test-dummy", f'  api_key: "{secret}"')
+        with pytest.raises(ConfigError, match=r"got \d+-char string") as exc_info:
+            load_config(write_config(tmp_path, text))
+        message = str(exc_info.value)
+        assert secret not in message
+        assert "super-secret" not in message  # no partial key substring either
+        assert f"got {len(secret)}-char string" in message
+
+    def test_ollama_url_above_step4_maximum_rejected(self, tmp_path: Path) -> None:
+        long_url = "http://localhost:11434/" + "a" * 200
+        text = mutated("  ollama_url: http://localhost:11434", f'  ollama_url: "{long_url}"')
+        with pytest.raises(ConfigError, match=r"config\.llm\.ollama_url.*max_length=200"):
+            load_config(write_config(tmp_path, text))
+
     def test_password_below_register_minimum_rejected(self, tmp_path: Path) -> None:
         text = mutated("  password: change-me-benchmark-password", "  password: short")
         with pytest.raises(ConfigError, match=r"8\.\.72"):
