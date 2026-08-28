@@ -1,0 +1,61 @@
+# KB benchmark runner — local configuration template.
+#
+# Copy to benchmark/config.local.yaml (gitignored) and fill in real values:
+#   cp benchmark/config.template.yaml benchmark/config.local.yaml
+#
+# Real credentials (llm.api_key, auth.password) NEVER enter git — this
+# template uses change-me placeholders; benchmark/config.local.yaml is
+# gitignored and guarded by the secrets gate.
+# Field semantics mirror the verified API surface
+# (benchmark/docs/api-surface.md): llm mirrors Step4ProviderRequest
+# (setup wizard step 4); auth.password mirrors RegisterRequest bounds.
+
+stack:
+  # Compose project prefix; must match ^[a-z0-9][a-z0-9_-]*$ (docker
+  # compose project-name rules). Every container/volume/network of the
+  # benchmark stack carries this prefix; teardown verification fails if
+  # prefixed resources survive.
+  project_name: narrare-benchmark
+  # Host-port scan range (inclusive) for the dynamically selected API
+  # port. Ignored when api.base_url is set.
+  port_range_low: 18080
+  port_range_high: 18180
+
+api:
+  # API base URL override (http(s)://host:port). null = derive from the
+  # stack's dynamically selected port (http://127.0.0.1:<port>).
+  base_url: null
+  # Per-request HTTP timeout in seconds (API client, Task 3).
+  timeout_seconds: 60
+
+auth:
+  # Benchmark user credentials — created once per stack via
+  # POST /api/v1/auth/register.
+  email: benchmark@example.com
+  # 8..72 chars (RegisterRequest min_length/max_length).
+  password: change-me-benchmark-password
+
+llm:
+  # One of: anthropic, openai, google, groq, ollama, openrouter, zai
+  # (AIProvider enum, api-surface.md §3).
+  provider: anthropic
+  # Provider API key — SECRET. Empty string is valid only for
+  # provider=ollama. Sent via the normal setup path (step 4 / complete).
+  api_key: change-me-paste-your-provider-key
+  # Model id, 1..200 chars (Step4ProviderRequest.model).
+  model: claude-sonnet-4-5
+  # Only relevant for provider=ollama (Step4ProviderRequest.ollama_url).
+  ollama_url: http://localhost:11434
+  # provider=zai endpoint selection: general | coding.
+  zai_endpoint: general
+
+run:
+  # Corpus variants to execute (see benchmark/corpus/ registries).
+  variants: [clean]
+  # Ingest modes: incremental | import.
+  modes: [incremental]
+  # Skip teardown after the run (debugging only — Global Constraints
+  # require teardown unless explicitly kept).
+  keep_stack: false
+  # Capability filter (CAP ids from benchmark/inventory/); empty = all 26.
+  capabilities: []

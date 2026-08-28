@@ -1,0 +1,222 @@
+"""Unit tests for ``benchmark.config`` — loader, validation, redaction.
+
+All tests operate on temporary YAML files; the committed template is
+additionally exercised end-to-end (it must stay loader-compatible).
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+
+from benchmark.config import (
+    TEMPLATE_PATH,
+    ApiConfig,
+    AuthConfig,
+    BenchmarkConfig,
+    ConfigError,
+    LlmConfig,
+    RunConfig,
+    StackConfig,
+    load_config,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+VALID_YAML = """\
+stack:
+  project_name: narrare-benchmark
+  port_range_low: 18080
+  port_range_high: 18180
+api:
+  base_url: null
+  timeout_seconds: 60
+auth:
+  email: benchmark@example.com
+  password: change-me-benchmark-password
+llm:
+  provider: anthropic
+  api_key: sk-test-dummy
+  model: claude-sonnet-4-5
+  ollama_url: http://localhost:11434
+  zai_endpoint: general
+run:
+  variants: [clean]
+  modes: [incremental]
+  keep_stack: false
+  capabilities: []
+"""
+
+
+def write_config(tmp_path: Path, yaml_text: str = VALID_YAML) -> Path:
+    path = tmp_path / "config.local.yaml"
+    path.write_text(yaml_text, encoding="utf-8")
+    return path
+
+
+def mutated(old: str, new: str) -> str:
+    assert old in VALID_YAML, f"mutation anchor absent: {old!r}"
+    return VALID_YAML.replace(old, new)
+
+
+class TestLoading:
+    def test_missing_file_error_points_at_template(self, tmp_path: Path) -> None:
+        with pytest.raises(ConfigError, match=r"config\.template\.yaml"):
+            load_config(tmp_path / "absent.yaml")
+
+    def test_template_itself_loads(self) -> None:
+        config = load_config(TEMPLATE_PATH)
+        assert isinstance(config, BenchmarkConfig)
+
+    def test_valid_yaml_parses_every_section(self, tmp_path: Path) -> None:
+        config = load_config(write_config(tmp_path))
+        assert config.stack == StackConfig("narrare-benchmark", 18080, 18180)
+        assert config.api == ApiConfig(None, 60.0)
+        assert config.auth == AuthConfig("benchmark@example.com", "change-me-benchmark-password")
+        assert config.llm == LlmConfig(
+            "anthropic",
+            "sk-test-dummy",
+            "claude-sonnet-4-5",
+            "http://localhost:11434",
+            "general",
+        )
+        assert config.run == RunConfig(["clean"], ["incremental"], False, [])
+
+    def test_base_url_override_is_parsed(self, tmp_path: Path) -> None:
+        text = mutated("base_url: null", 'base_url: "http://localhost:9999"')
+        config = load_config(write_config(tmp_path, text))
+        assert config.api.base_url == "http://localhost:9999"
+
+    def test_non_mapping_top_level_rejected(self, tmp_path: Path) -> None:
+        with pytest.raises(ConfigError, match="top level must be a YAML mapping"):
+            load_config(write_config(tmp_path, "just-a-string\n"))
+
+    def test_unknown_top_level_section_rejected(self, tmp_path: Path) -> None:
+        text = VALID_YAML + "bogus:\n  x: 1\n"
+        with pytest.raises(ConfigError, match=r"unknown top-level section.*bogus"):
+            load_config(write_config(tmp_path, text))
+
+    def test_section_with_no_fields_rejected(self, tmp_path: Path) -> None:
+        text = mutated(
+            "  email: benchmark@example.com\n  password: change-me-benchmark-password\n",
+            "",
+        )
+        with pytest.raises(ConfigError, match=r"config\.auth"):
+            load_config(write_config(tmp_path, text))
+
+
+class TestValidation:
+    def test_missing_field_rejected(self, tmp_path: Path) -> None:
+        text = mutated("  model: claude-sonnet-4-5\n", "")
+        with pytest.raises(ConfigError, match=r"config\.llm.*missing key.*\['model'\]"):
+            load_config(write_config(tmp_path, text))
+
+    def test_unknown_field_rejected(self, tmp_path: Path) -> None:
+        text = mutated("  zai_endpoint: general\n", "  zai_endpoint: general\n  surprise: 1\n")
+        with pytest.raises(ConfigError, match=r"unknown key.*surprise"):
+            load_config(write_config(tmp_path, text))
+
+    def test_wrong_field_type_rejected(self, tmp_path: Path) -> None:
+        text = mutated("  timeout_seconds: 60", "  timeout_seconds: fast")
+        with pytest.raises(ConfigError, match=r"config\.api\.timeout_seconds"):
+            load_config(write_config(tmp_path, text))
+
+    def test_empty_string_field_rejected(self, tmp_path: Path) -> None:
+        text = mutated("  model: claude-sonnet-4-5", '  model: ""')
+        with pytest.raises(ConfigError, match="non-empty string"):
+            load_config(write_config(tmp_path, text))
+
+    def test_invalid_provider_lists_valid_ids(self, tmp_path: Path) -> None:
+        text = mutated("  provider: anthropic", "  provider: claude")
+        with pytest.raises(ConfigError, match="anthropic"):
+            load_config(write_config(tmp_path, text))
+
+    def test_invalid_zai_endpoint_rejected(self, tmp_path: Path) -> None:
+        text = mutated("  zai_endpoint: general", "  zai_endpoint: turbo")
+        with pytest.raises(ConfigError, match=r"zai_endpoint"):
+            load_config(write_config(tmp_path, text))
+
+    def test_password_below_register_minimum_rejected(self, tmp_path: Path) -> None:
+        text = mutated("  password: change-me-benchmark-password", "  password: short")
+        with pytest.raises(ConfigError, match=r"8\.\.72"):
+            load_config(write_config(tmp_path, text))
+
+    def test_password_above_register_maximum_rejected(self, tmp_path: Path) -> None:
+        text = VALID_YAML.replace("change-me-benchmark-password", "a" * 73)
+        with pytest.raises(ConfigError, match=r"8\.\.72"):
+            load_config(write_config(tmp_path, text))
+
+    def test_invalid_mode_lists_valid_modes(self, tmp_path: Path) -> None:
+        text = mutated("  modes: [incremental]", "  modes: [fast]")
+        with pytest.raises(ConfigError, match="incremental"):
+            load_config(write_config(tmp_path, text))
+
+    def test_empty_variants_rejected(self, tmp_path: Path) -> None:
+        text = mutated("  variants: [clean]", "  variants: []")
+        with pytest.raises(ConfigError, match=r"config\.run\.variants"):
+            load_config(write_config(tmp_path, text))
+
+    def test_project_name_must_match_compose_rules(self, tmp_path: Path) -> None:
+        text = mutated("  project_name: narrare-benchmark", "  project_name: Narrare Benchmark")
+        with pytest.raises(ConfigError, match=r"config\.stack\.project_name"):
+            load_config(write_config(tmp_path, text))
+
+    def test_port_range_must_be_ordered(self, tmp_path: Path) -> None:
+        text = mutated("  port_range_low: 18080", "  port_range_low: 18180").replace(
+            "  port_range_high: 18180", "  port_range_high: 18080"
+        )
+        with pytest.raises(ConfigError, match=r"1 <= low <= high <= 65535"):
+            load_config(write_config(tmp_path, text))
+
+    def test_base_url_must_be_http(self, tmp_path: Path) -> None:
+        text = mutated("base_url: null", "base_url: localhost:8000")
+        with pytest.raises(ConfigError, match=r"config\.api\.base_url"):
+            load_config(write_config(tmp_path, text))
+
+    def test_non_positive_timeout_rejected(self, tmp_path: Path) -> None:
+        text = mutated("  timeout_seconds: 60", "  timeout_seconds: 0")
+        with pytest.raises(ConfigError, match=r"config\.api\.timeout_seconds"):
+            load_config(write_config(tmp_path, text))
+
+
+class TestRedaction:
+    @pytest.fixture()
+    def config(self, tmp_path: Path) -> BenchmarkConfig:
+        return load_config(write_config(tmp_path))
+
+    def test_repr_masks_password_and_api_key(self, config: BenchmarkConfig) -> None:
+        text = repr(config)
+        assert "change-me-benchmark-password" not in text
+        assert "sk-test-dummy" not in text
+        assert "REDACTED" in text
+
+    def test_str_equals_redacted_repr(self, config: BenchmarkConfig) -> None:
+        assert str(config) == repr(config)
+
+    def test_section_reprs_mask_only_secrets(self, config: BenchmarkConfig) -> None:
+        assert "REDACTED" in repr(config.auth)
+        assert "benchmark@example.com" in repr(config.auth)
+        assert "sk-test-dummy" not in repr(config.llm)
+        assert "claude-sonnet-4-5" in repr(config.llm)
+
+    def test_redacted_dict_masks_secrets_keeps_rest(self, config: BenchmarkConfig) -> None:
+        redacted = config.redacted_dict()
+        assert redacted["llm"] == {
+            "provider": "anthropic",
+            "api_key": "***REDACTED***",
+            "model": "claude-sonnet-4-5",
+            "ollama_url": "http://localhost:11434",
+            "zai_endpoint": "general",
+        }
+        assert redacted["auth"] == {
+            "email": "benchmark@example.com",
+            "password": "***REDACTED***",
+        }
+        assert redacted["run"] == {
+            "variants": ["clean"],
+            "modes": ["incremental"],
+            "keep_stack": False,
+            "capabilities": [],
+        }
