@@ -144,7 +144,7 @@ exclude = [
 [tool.ruff]
 target-version = "py314"
 line-length = 100
-src = ["apps/api", "packages/core", "packages/i18n", "evals"]
+src = ["apps/api", "packages/core", "packages/i18n", "evals", "benchmark"]
 
 [tool.ruff.lint]
 select = [
