@@ -7,6 +7,7 @@ and update_project_limits endpoints. Uses Fake dependencies.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
@@ -147,7 +148,7 @@ class TestGetResolvedLimitsEndpoint:
         """When project_id is provided, the response includes resolved limits."""
         result = await get_resolved_limits(
             user_id="test_user",
-            project_id="test_project",
+            project_id=uuid4(),
             service=service,
         )
 
@@ -230,7 +231,7 @@ class TestUpdateProjectLimitsEndpoint:
     async def test_update_project_limits_with_valid_data(self, service) -> None:
         """Valid update_project_limits call should succeed (204)."""
         result = await update_project_limits(
-            project_id="project_1",
+            project_id=uuid4(),
             request=UpdateTokenLimitsRequest(ws_timeout=3600),
             user_id="user_1",
             service=service,
@@ -242,7 +243,7 @@ class TestUpdateProjectLimitsEndpoint:
         """Empty request (all None fields) should raise HTTP 422."""
         with pytest.raises(HTTPException) as exc_info:
             await update_project_limits(
-                project_id="project_bad",
+                project_id=uuid4(),
                 request=UpdateTokenLimitsRequest(),
                 user_id="user_1",
                 service=service,

@@ -59,6 +59,7 @@ async def _get_ai_settings_service(
 async def _get_project_ai_service(
     session: SessionDep,
 ) -> ProjectAiSettingsService:
+    from narrare.novels.repository import NovelRepository
     from narrare.settings.project_ai_settings_repository import ProjectAiSettingsRepository
     from narrare.settings.project_ai_settings_service import ProjectAiSettingsService
     from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
@@ -66,6 +67,7 @@ async def _get_project_ai_service(
     return ProjectAiSettingsService(
         project_ai_repo=ProjectAiSettingsRepository(session),
         user_ai_repo=UserAiSettingsRepository(session),
+        novel_repo=NovelRepository(session),
     )
 
 

@@ -15,6 +15,9 @@ from narrare_core.ai_invocation._enums import (
     PreferenceStatus,
 )
 from narrare_core.ai_invocation.evidence_models import FeatureInvocationEvidence
+from tests.unit.api.adaptive.conftest import (  # noqa: TC001 - fixture type, keeps conftest import local
+    _PermissiveNovelRepo,
+)
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -64,6 +67,7 @@ def _snapshot(*, weights: dict[str, float] | None) -> FeatureInvocationEvidence:
 def service(
     fake_provider: AdaptiveContextProvider,
     fake_settings_repo: AdaptiveSettingsRepositoryProtocol,
+    fake_novel_repo: _PermissiveNovelRepo,
 ) -> tuple[AdaptiveContextService, _FakeEvidenceRepo]:
     repo = _FakeEvidenceRepo(snapshots=[_snapshot(weights={"preference": 0.7})])
     return (
@@ -71,6 +75,7 @@ def service(
             provider=fake_provider,
             settings_repo=fake_settings_repo,
             evidence_repo=repo,
+            novel_repo=fake_novel_repo,
         ),
         repo,
     )
@@ -97,12 +102,14 @@ class TestGetAdaptiveSnapshots:
         self,
         fake_provider: AdaptiveContextProvider,
         fake_settings_repo: AdaptiveSettingsRepositoryProtocol,
+        fake_novel_repo: _PermissiveNovelRepo,
     ) -> None:
         repo = _FakeEvidenceRepo(snapshots=[])
         svc = AdaptiveContextService(
             provider=fake_provider,
             settings_repo=fake_settings_repo,
             evidence_repo=repo,
+            novel_repo=fake_novel_repo,
         )
         response = await svc.get_adaptive_snapshots(project_id=uuid4(), user_id=uuid4())
         assert response.items == []

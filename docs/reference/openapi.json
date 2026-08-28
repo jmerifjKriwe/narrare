@@ -8586,15 +8586,15 @@
         }
       }
     },
-    "/api/v1/settings/settings/token-limits/": {
+    "/api/v1/settings/token-limits/": {
       "get": {
         "tags": [
           "settings",
           "token-limits"
         ],
         "summary": "Get Resolved Limits",
-        "description": "Get resolved token limits (merged across all layers).\n\nOptional query parameters:\n- ``project_id``: Include project-level overrides.\n- ``provider`` + ``model_id``: Attach model calibration metadata.\n- ``intent`` (with provider/model): Attach suitability metadata.",
-        "operationId": "get_resolved_limits_api_v1_settings_settings_token_limits__get",
+        "description": "Get resolved token limits (merged across all layers).\n\nOptional query parameters:\n- ``project_id``: Include project-level overrides (caller must own\n  the project — IDOR remediation S11b; the dependency gates before\n  the auto-creating project repository read runs).\n- ``provider`` + ``model_id``: Attach model calibration metadata.\n- ``intent`` (with provider/model): Attach suitability metadata.",
+        "operationId": "get_resolved_limits_api_v1_settings_token_limits__get",
         "security": [
           {
             "HTTPBearer": []
@@ -8608,7 +8608,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "format": "uuid"
                 },
                 {
                   "type": "null"
@@ -8690,7 +8691,7 @@
         }
       }
     },
-    "/api/v1/settings/settings/token-limits/user": {
+    "/api/v1/settings/token-limits/user": {
       "put": {
         "tags": [
           "settings",
@@ -8698,7 +8699,7 @@
         ],
         "summary": "Update User Limits",
         "description": "Update user-level token limit overrides.",
-        "operationId": "update_user_limits_api_v1_settings_settings_token_limits_user_put",
+        "operationId": "update_user_limits_api_v1_settings_token_limits_user_put",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8731,15 +8732,15 @@
         ]
       }
     },
-    "/api/v1/settings/settings/token-limits/project/{project_id}": {
+    "/api/v1/settings/token-limits/project/{project_id}": {
       "put": {
         "tags": [
           "settings",
           "token-limits"
         ],
         "summary": "Update Project Limits",
-        "description": "Update project-level token limit overrides.",
-        "operationId": "update_project_limits_api_v1_settings_settings_token_limits_project__project_id__put",
+        "description": "Update project-level token limit overrides.\n\n``project_id`` must be the caller's novel UUID (project ≡ novel) —\nthe ownership dependency gates BEFORE the auto-creating project\nrepository read runs (IDOR remediation S11b).",
+        "operationId": "update_project_limits_api_v1_settings_token_limits_project__project_id__put",
         "security": [
           {
             "HTTPBearer": []
@@ -8752,6 +8753,7 @@
             "required": true,
             "schema": {
               "type": "string",
+              "format": "uuid",
               "title": "Project Id"
             }
           }

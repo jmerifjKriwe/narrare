@@ -10,6 +10,13 @@ The service delegates to the Core ``AdaptiveContextProvider`` Protocol
 path and to ``AdaptiveSettingsRepository`` for persistence. It never
 touches SQL or mem0 directly (RULE-07 / RULE-08).
 
+IDOR remediation (plan S11c): the mutating operations and the snapshot
+read gate on novel ownership via an injected ``NovelRepository`` —
+``NotFoundError`` (404, foreign ≡ unknown) BEFORE any settings load/save
+or evidence read. ``get_context`` delegates to the provider, whose
+preference path is user-scoped (plan scopes S11 to toggle/weights/
+snapshots-read only).
+
 RULE-11 graceful degradation: if the provider returns no signals, the
 response carries empty source text + ``has_any_signal=False`` (the
 dashboard shows the "no signals yet" state). If persistence fails, the
@@ -39,11 +46,13 @@ from narrare_core.ai_invocation.adaptive_context import (
     AdaptiveSettings,
     AdaptiveWeights,
 )
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.adaptive.contracts import AdaptiveSettingsRepositoryProtocol
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.ai_invocation.adaptive_contracts import (
         AdaptiveContextProvider,
     )
@@ -121,6 +130,11 @@ class AdaptiveContextService:
             service uses it directly for writes (toggle / weights).
         evidence_repo: EvidenceSnapshotReader — read-port for adaptive
             snapshot evidence (ADR-070); used by ``get_adaptive_snapshots``.
+        novel_repo: NovelRepositoryProtocol — the ownership gate (IDOR
+            remediation S11c). The write operations persist into
+            ``ProjectSettings.adaptive_settings`` keyed by novel_id only,
+            so the service itself must verify the caller owns the
+            project BEFORE any load/save or evidence read.
     """
 
     def __init__(
@@ -128,10 +142,23 @@ class AdaptiveContextService:
         provider: AdaptiveContextProvider,
         settings_repo: AdaptiveSettingsRepositoryProtocol,
         evidence_repo: EvidenceSnapshotReader,
+        novel_repo: NovelRepositoryProtocol,
     ) -> None:
         self._provider = provider
         self._settings_repo = settings_repo
         self._evidence_repo = evidence_repo
+        self._novel_repo = novel_repo
+
+    async def _verify_project_owned(self, project_id: UUID, user_id: UUID) -> None:
+        """Raise ``NotFoundError`` unless ``user_id`` owns ``project_id``.
+
+        project_id is the novel UUID (project ≡ novel). Foreign ≡ unknown
+        (anti-enumeration): both surface as 404, never 403 — 403 stays
+        reserved for the series-module semantics (plan constraint).
+        """
+        novel = await self._novel_repo.get_by_id(project_id, user_id)
+        if novel is None:
+            raise NotFoundError("Novel", identifier=str(project_id))
 
     async def get_context(
         self,
@@ -165,7 +192,13 @@ class AdaptiveContextService:
         user_id: UUID,
         enabled: bool,
     ) -> AdaptiveSettingsResponse:
-        """Toggle adaptivity on/off for the project; persist + return new state."""
+        """Toggle adaptivity on/off for the project; persist + return new state.
+
+        Ownership-gated (IDOR remediation S11c): a caller who does not own
+        ``project_id`` gets a 404 BEFORE any settings load/save — the
+        adaptive column lives on the victim's ``ProjectSettings`` row.
+        """
+        await self._verify_project_owned(project_id, user_id)
         current = await self._settings_repo.load(project_id)
         if current is None:
             current = AdaptiveSettings(enabled=enabled, weights=AdaptiveWeights())
@@ -180,7 +213,11 @@ class AdaptiveContextService:
         user_id: UUID,
         weights: AdaptiveWeightsInput,
     ) -> AdaptiveSettingsResponse:
-        """Update adaptive weights (clamped); persist + return new state."""
+        """Update adaptive weights (clamped); persist + return new state.
+
+        Ownership-gated (IDOR remediation S11c): see ``set_enabled``.
+        """
+        await self._verify_project_owned(project_id, user_id)
         clamped = weights.validated()
         current = await self._settings_repo.load(project_id)
         enabled = current.enabled if current is not None else True
@@ -205,11 +242,12 @@ class AdaptiveContextService:
         """List recent adaptive snapshots for the dashboard (ADR-070).
 
         project_id is the novel UUID (novel ≡ project); it is passed to the
-        evidence repository as novel_id. Ownership is gated at the REST
-        boundary (auth + novel ownership), mirroring the other adaptive
-        endpoints.
+        evidence repository as novel_id. Ownership is gated HERE, in the
+        service (IDOR remediation S11c) — the evidence read is novel-keyed
+        only, and the REST layer merely threads identity through, so this
+        gate is what actually scopes the read to the owner.
         """
-        del user_id  # ownership handled at router; read scoped by novel_id.
+        await self._verify_project_owned(project_id, user_id)
         records = await self._evidence_repo.get_adaptive_snapshots(project_id, limit=limit)
         items = [_snapshot_item(r) for r in records]
         return AdaptiveSnapshotsResponse(

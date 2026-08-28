@@ -57,6 +57,7 @@ def get_user_ai_settings_service(session: SessionDep) -> UserAiSettingsService:
 
 def get_project_ai_settings_service(session: SessionDep) -> ProjectAiSettingsService:
     """Factory for ProjectAiSettingsService."""
+    from narrare.novels.repository import NovelRepository
     from narrare.settings.project_ai_settings_repository import ProjectAiSettingsRepository
     from narrare.settings.project_ai_settings_service import ProjectAiSettingsService
     from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
@@ -64,6 +65,7 @@ def get_project_ai_settings_service(session: SessionDep) -> ProjectAiSettingsSer
     return ProjectAiSettingsService(
         project_ai_repo=ProjectAiSettingsRepository(session),
         user_ai_repo=UserAiSettingsRepository(session),
+        novel_repo=NovelRepository(session),
     )
 
 
