@@ -74,14 +74,14 @@ the graph does not have the answer. `sed -n` is allowed to read specific lines.
 
 | Role | subagent_type | Model |
 |------|---------------|-------|
-| Coordinator (primary) | `NarrareDevCoordinator` | zai-coding-plan/glm-5.2 |
-| Architecture | `NarrareArchitectureSpecialist` | zai-coding-plan/glm-5.2 |
-| Core | `NarrareCoreSpecialist` | zai-coding-plan/glm-5.2 |
-| Backend | `NarrareBackendSpecialist` | zai-coding-plan/glm-5.2 |
-| Frontend | `NarrareFrontendSpecialist` | zai-coding-plan/glm-5.2 |
-| Platform (Git/CI) | `NarrarePlatformSpecialist` | zai-coding-plan/glm-5.2 |
-| Docs | `NarrareDocsSpecialist` | zai-coding-plan/glm-5.3 |
-| Reviewer (edit: deny) | `NarrareReviewerSpecialist` | zai-coding-plan/glm-5.2 |
+| Coordinator (primary) | `NarrareDevCoordinator` | zai-coding-plan/glm-5.3 |
+| Architecture | `NarrareArchitectureSpecialist` | zai-coding-plan/glm-5.3 |
+| Core | `NarrareCoreSpecialist` | zai-coding-plan/glm-5.3 |
+| Backend | `NarrareBackendSpecialist` | zai-coding-plan/glm-5.3-flash |
+| Frontend | `NarrareFrontendSpecialist` | zai-coding-plan/glm-5.3-flash |
+| Platform (Git/CI) | `NarrarePlatformSpecialist` | zai-coding-plan/glm-5.3-flash |
+| Docs | `NarrareDocsSpecialist` | zai-coding-plan/glm-5.3-flash |
+| Reviewer (edit: deny) | `NarrareReviewerSpecialist` | zai-coding-plan/glm-5.3 |
 
 Layer order: Architecture → Core → Backend → Frontend → Platform (Tests/CI) → Docs.
 Each subagent loads its layer standards via the delegation prompt.
