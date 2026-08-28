@@ -1,8 +1,14 @@
 """Beta reader analysis service — business logic orchestration.
 
-Orchestrates: validation → cache → context assembly → agent → cache → response.
-No DB queries — delegated to repositories via context_assembler.
-Response mapping delegated to beta_reader_mapper.py (RULE-04).
+Orchestrates: ownership gate → validation → cache → context assembly → agent →
+cache → response. No DB queries — delegated to repositories via
+context_assembler. Response mapping delegated to beta_reader_mapper.py
+(RULE-04).
+
+Ownership (IDOR remediation S12a): context assembly gates novel ownership in
+Step 0 (see :mod:`narrare.analysis.context_assembler`). The resulting
+``NotFoundError`` (foreign ≡ unknown → 404) is re-raised UNWRAPPED — it must
+never be masked by the generic ``AnalysisError`` wrap (RULE-11).
 
 Follows the same pattern as worldbuilding_service.py and improve_service.py.
 """
@@ -34,6 +40,7 @@ from narrare.analysis.validation import validate_word_count
 from narrare_core.agents.beta_reader_agent import BetaReaderAgent
 from narrare_core.analysis.assembler import AnalysisContextAssembler
 from narrare_core.llm import LLMIntent, ResolvedModelConfig
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from narrare.analysis.context_assembler import ContextAssembler
@@ -98,6 +105,8 @@ class BetaReaderService:
             Complete beta reader feedback with overall assessment.
 
         Raises:
+            NotFoundError: The novel is unknown or owned by another user
+                (ownership gate, IDOR S12a — foreign ≡ unknown → 404).
             InsufficientWordCountError: If total word count < 1000.
             ExcessiveWordCountError: If total word count > 10000.
             AnalysisError: If context assembly or agent execution fails.
@@ -187,6 +196,8 @@ class BetaReaderService:
             Detailed category-specific feedback with revision suggestions.
 
         Raises:
+            NotFoundError: The novel is unknown or owned by another user
+                (ownership gate, IDOR S12a — foreign ≡ unknown → 404).
             CacheRetrievalError: If Phase 1 cache is missing.
             AnalysisError: If context assembly or agent execution fails.
         """
@@ -252,6 +263,9 @@ class BetaReaderService:
         """Assemble BetaReaderDeps from database.
 
         Raises:
+            NotFoundError: Ownership gate failure — propagated UNWRAPPED so
+                the global handler maps it to 404 (IDOR S12a; RULE-11: the
+                generic wrap must never mask an authorization decision).
             AnalysisError: If context assembly fails.
         """
         try:
@@ -260,6 +274,8 @@ class BetaReaderService:
                 chapter_ids=[UUID(cid) for cid in chapter_ids],
                 user_id=user_id,
             )
+        except NotFoundError:
+            raise
         except Exception as exc:
             logger.error(
                 "context_assembly_failed",

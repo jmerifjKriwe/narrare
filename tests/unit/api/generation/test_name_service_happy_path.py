@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from narrare.generation.name_service import NameGeneratorService
 from narrare.generation.schemas import GenderEnum, NameType
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
 
     from narrare_core.llm import ResolvedModelConfig
 
+from ._ownership_fakes import permissive_novel_repo
 from .conftest import (
     SAMPLE_ARRAY_RESPONSE,
     _default_request,
@@ -36,7 +38,7 @@ class TestGenerateNamesHappyPath:
         fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
         request = _default_request()
-        result = await service.generate_names(request)
+        result = await service.generate_names(request, user_id=uuid4())
 
         assert result.count == 3
         assert len(result.names) == 3
@@ -50,7 +52,7 @@ class TestGenerateNamesHappyPath:
     ) -> None:
         fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         first = result.names[0]
 
         assert first.name == "Aelindra"
@@ -72,7 +74,7 @@ class TestGenerateNamesHappyPath:
             )
         )
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert result.names[0].pronunciation is None
 
     async def test_names_without_meaning_get_none(
@@ -88,7 +90,7 @@ class TestGenerateNamesHappyPath:
             )
         )
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert result.names[0].meaning is None
 
     async def test_passes_api_key_and_base_url_to_registry(
@@ -104,11 +106,12 @@ class TestGenerateNamesHappyPath:
             registry=fake_reg,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             api_key="sk-test-key",
             base_url="https://custom.llm.api/v1",
         )
 
-        await svc.generate_names(_default_request())
+        await svc.generate_names(_default_request(), user_id=uuid4())
 
         call = fake_reg.last_call()
         assert call.api_key == "sk-test-key"
@@ -132,7 +135,9 @@ class TestGenerateNamesParameters:
             _json_names_response([{"name": "Thornhaven", "meaning": "fortress of thorns"}])
         )
 
-        result = await service.generate_names(_default_request(name_type=NameType.PLACE))
+        result = await service.generate_names(
+            _default_request(name_type=NameType.PLACE), user_id=uuid4()
+        )
 
         assert result.name_type == "place"
         assert result.names[0].type == "place"
@@ -146,7 +151,9 @@ class TestGenerateNamesParameters:
             _json_names_response([{"name": "The Silver Covenant", "meaning": "order of mages"}])
         )
 
-        result = await service.generate_names(_default_request(name_type=NameType.ORGANIZATION))
+        result = await service.generate_names(
+            _default_request(name_type=NameType.ORGANIZATION), user_id=uuid4()
+        )
 
         assert result.name_type == "organization"
 
@@ -159,7 +166,9 @@ class TestGenerateNamesParameters:
             _json_names_response([{"name": "Dawnbreaker", "meaning": "sword of light"}])
         )
 
-        result = await service.generate_names(_default_request(name_type=NameType.ITEM))
+        result = await service.generate_names(
+            _default_request(name_type=NameType.ITEM), user_id=uuid4()
+        )
 
         assert result.name_type == "item"
         assert result.names[0].type == "item"
@@ -173,7 +182,9 @@ class TestGenerateNamesParameters:
             _json_names_response([{"name": "Sakura", "meaning": "cherry blossom"}])
         )
 
-        result = await service.generate_names(_default_request(name_style="japanese"))
+        result = await service.generate_names(
+            _default_request(name_style="japanese"), user_id=uuid4()
+        )
 
         assert result.name_style == "japanese"
         assert result.names[0].name_style == "japanese"
@@ -185,7 +196,9 @@ class TestGenerateNamesParameters:
     ) -> None:
         fake_registry.returns(_json_names_response([{"name": "Thorin", "meaning": "brave one"}]))
 
-        result = await service.generate_names(_default_request(gender=GenderEnum.MALE))
+        result = await service.generate_names(
+            _default_request(gender=GenderEnum.MALE), user_id=uuid4()
+        )
 
         assert len(result.names) == 1
 
@@ -196,7 +209,9 @@ class TestGenerateNamesParameters:
     ) -> None:
         fake_registry.returns(_json_names_response([{"name": "Elara", "meaning": "shining one"}]))
 
-        result = await service.generate_names(_default_request(gender=GenderEnum.FEMALE))
+        result = await service.generate_names(
+            _default_request(gender=GenderEnum.FEMALE), user_id=uuid4()
+        )
 
         assert len(result.names) == 1
 
@@ -207,7 +222,9 @@ class TestGenerateNamesParameters:
     ) -> None:
         fake_registry.returns(_json_names_response([{"name": "River", "meaning": "flowing water"}]))
 
-        result = await service.generate_names(_default_request(gender=GenderEnum.NEUTRAL))
+        result = await service.generate_names(
+            _default_request(gender=GenderEnum.NEUTRAL), user_id=uuid4()
+        )
 
         assert len(result.names) == 1
 
@@ -220,7 +237,7 @@ class TestGenerateNamesParameters:
         fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
         request = _default_request(count=20)
-        await service.generate_names(request)
+        await service.generate_names(request, user_id=uuid4())
 
         call_kwargs = mock_composer.build.call_args
         user_prompt = call_kwargs.kwargs.get("user_prompt", call_kwargs[1].get("user_prompt", ""))
@@ -235,6 +252,8 @@ class TestGenerateNamesParameters:
             _json_names_response([{"name": "Falkenstein", "meaning": "falcon stone"}])
         )
 
-        result = await service.generate_names(_default_request(explanation_language="de"))
+        result = await service.generate_names(
+            _default_request(explanation_language="de"), user_id=uuid4()
+        )
 
         assert len(result.names) == 1

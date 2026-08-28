@@ -30,6 +30,8 @@ from tests.unit.api.generation._dedup_fakes import (
     kb_repo,
 )
 
+from ._ownership_fakes import permissive_novel_repo
+
 
 def _default_request(**overrides: Any) -> NameGenerateRequest:
     defaults: dict[str, Any] = {
@@ -57,8 +59,9 @@ class TestNoKBRepo:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
         )
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         assert len(result.names) == 1
         assert result.names[0].is_duplicate is False
@@ -77,9 +80,10 @@ class TestNoDuplicates:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo([_FakeKBEntry("Anna", "character")]),
         )
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         assert len(result.names) == 1
         assert result.names[0].is_duplicate is False
@@ -103,6 +107,7 @@ class TestNoDuplicates:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo(
                 [
                     _FakeKBEntry("Anna", "character"),
@@ -110,7 +115,7 @@ class TestNoDuplicates:
                 ]
             ),
         )
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         assert all(not n.is_duplicate for n in result.names)
 
@@ -135,9 +140,10 @@ class TestExactDuplicates:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo([_FakeKBEntry("Anna", "character")]),
         )
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         anna = next(n for n in result.names if n.name == "Anna")
         elsa = next(n for n in result.names if n.name == "Elsa")
@@ -158,9 +164,10 @@ class TestCaseInsensitiveMatching:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo([_FakeKBEntry("Anna", "character")]),
         )
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         assert result.names[0].is_duplicate is True
 
@@ -176,9 +183,10 @@ class TestCaseInsensitiveMatching:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo([_FakeKBEntry("anna", "character")]),
         )
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         assert result.names[0].is_duplicate is True
 
@@ -194,9 +202,10 @@ class TestCaseInsensitiveMatching:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo([_FakeKBEntry("  Anna  ", "character")]),
         )
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         assert result.names[0].is_duplicate is True
 
@@ -221,8 +230,9 @@ class TestEmptyKB:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo([]),
         )
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         assert all(not n.is_duplicate for n in result.names)

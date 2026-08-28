@@ -34,13 +34,26 @@ async def _get_service(
 ) -> NameGeneratorService:
     """Factory for NameGeneratorService — resolves user's configured model.
 
+    Ownership first (IDOR remediation S12b): the project is gated on the
+    caller BEFORE the model-routing resolver reads the project's AI settings
+    — foreign and unknown projects are indistinguishable (``NotFoundError``
+    → 404). The service re-checks the same gate at entry (Pattern B), so
+    the gate holds regardless of wiring.
+
     Uses ModelRoutingResolverImpl to look up the user's provider and model
     for the NAME_GENERATE intent instead of hardcoding them.
     """
     from narrare.generation.name_service import NameGeneratorService
     from narrare.kb.repository import KBRepository
+    from narrare.novels.repository import NovelRepository
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare_core.llm.intents import LLMIntent
+    from narrare_core.shared.errors import NotFoundError
+
+    novel_repo = NovelRepository(session)
+    novel = await novel_repo.get_by_id(project_id, UUID(user_id))
+    if novel is None:
+        raise NotFoundError("Novel", identifier=str(project_id))
 
     resolver = get_model_routing_resolver(session)
     assert isinstance(resolver, ModelRoutingResolverImpl)
@@ -56,6 +69,7 @@ async def _get_service(
         registry=registry,
         composer=composer,
         config=config,
+        novel_repo=novel_repo,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         kb_repo=kb_repo,
@@ -73,4 +87,4 @@ async def generate_names(
 ) -> NameGenerateResponse:
     """Generate names based on type, name_style, and preferences."""
     service = await _get_service(session=session, user_id=user_id, project_id=request.project_id)
-    return await service.generate_names(request)
+    return await service.generate_names(request, UUID(user_id))

@@ -26,6 +26,13 @@ _MOCK_NAMES_JSON = (
 )
 
 
+class _PermissiveNovelRepo:
+    """Owns everything — random test project ids pass the S12b gate."""
+
+    async def get_by_id(self, novel_id: object, user_id: object) -> object:
+        return object()
+
+
 @pytest.fixture
 def mock_registry() -> FakeModelRegistry:
     """Fake ModelRegistry that returns structured name data."""
@@ -51,10 +58,14 @@ class TestGenerateNames:
 
         # Use FakeModelRegistry — its run() signature matches the
         # positional-arg call in NameGeneratorService.generate_names().
+        # _get_service is patched away, so the factory-level S12b gate is
+        # bypassed here — the permissive novel repo keeps the service-level
+        # gate satisfied for the random test project id.
         mock_service = NameGeneratorService(
             registry=mock_registry,
             composer=_get_composer_instance(),
             config=mock_config,
+            novel_repo=_PermissiveNovelRepo(),
         )
 
         # _get_service is called directly in the route handler (not via

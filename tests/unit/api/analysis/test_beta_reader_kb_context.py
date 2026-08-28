@@ -38,6 +38,10 @@ if TYPE_CHECKING:
     from narrare.kb.context_contracts import KBContextBundle, KBContextProviderProtocol
     from narrare.kb.models import KBEntry
 
+# Caller identity for the Step 0 ownership gate (IDOR S12a) — the mocked
+# novel repo owns everything, so any caller passes the gate.
+USER_ID = uuid4()
+
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -176,7 +180,9 @@ class TestCanonicalProviderPath:
         ch = _make_chapter()
         assembler = _make_assembler(chapters=[ch], kb_provider=provider)
 
-        deps = await assembler.build_context(novel_id=ch.novel_id, chapter_ids=[ch.id])
+        deps = await assembler.build_context(
+            novel_id=ch.novel_id, chapter_ids=[ch.id], user_id=USER_ID
+        )
 
         assert len(provider.fetch_context_calls) == 1
         called_novel_id, called_types, called_kwargs = provider.fetch_context_calls[0]
@@ -207,7 +213,9 @@ class TestCanonicalProviderPath:
         ch = _make_chapter()
         assembler = _make_assembler(chapters=[ch], kb_provider=provider)
 
-        deps = await assembler.build_context(novel_id=ch.novel_id, chapter_ids=[ch.id])
+        deps = await assembler.build_context(
+            novel_id=ch.novel_id, chapter_ids=[ch.id], user_id=USER_ID
+        )
 
         assert "[unverified]" in deps.kb_characters, (
             "Provenance bracket from annotate_provenance=True must reach the Deps text."
@@ -231,7 +239,9 @@ class TestGracefulDegradation:
         ch = _make_chapter()
         assembler = _make_assembler(chapters=[ch], kb_provider=provider)
 
-        deps = await assembler.build_context(novel_id=ch.novel_id, chapter_ids=[ch.id])
+        deps = await assembler.build_context(
+            novel_id=ch.novel_id, chapter_ids=[ch.id], user_id=USER_ID
+        )
 
         assert deps.kb_characters == ""
         assert deps.kb_locations == ""
@@ -242,7 +252,9 @@ class TestGracefulDegradation:
         ch = _make_chapter()
         assembler = _make_assembler(chapters=[ch], kb_provider=None)
 
-        deps = await assembler.build_context(novel_id=ch.novel_id, chapter_ids=[ch.id])
+        deps = await assembler.build_context(
+            novel_id=ch.novel_id, chapter_ids=[ch.id], user_id=USER_ID
+        )
 
         assert deps.kb_characters == ""
         assert deps.kb_locations == ""
@@ -271,7 +283,9 @@ class TestBehaviorPreserved:
         ch = _make_chapter()
         assembler = _make_assembler(chapters=[ch], kb_provider=provider)
 
-        deps = await assembler.build_context(novel_id=ch.novel_id, chapter_ids=[ch.id])
+        deps = await assembler.build_context(
+            novel_id=ch.novel_id, chapter_ids=[ch.id], user_id=USER_ID
+        )
 
         prompt = await build_budgeted_prompt(deps, AnalysisContextAssembler())
 

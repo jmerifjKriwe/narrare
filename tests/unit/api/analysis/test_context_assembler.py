@@ -15,6 +15,10 @@ import pytest
 from narrare.analysis.context_assembler import ContextAssembler
 from narrare.analysis.errors import ChapterNotFoundError
 
+# Caller identity for the Step 0 ownership gate (IDOR S12a) — the mocked
+# novel repo owns everything, so any caller passes the gate.
+USER_ID = uuid4()
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -71,7 +75,7 @@ def _make_kb_entry(
 
 def _make_novel(genre: str = "Fantasy") -> SimpleNamespace:
     """Create a simple novel-like object for testing."""
-    return SimpleNamespace(id=uuid4(), genre=genre)
+    return SimpleNamespace(id=uuid4(), genre=genre, writing_language="en")
 
 
 def _make_assembler(
@@ -123,7 +127,9 @@ class TestChapterTextJoining:
         ch = _make_chapter(content="Hello world")
         assembler = _make_assembler(chapters=[ch])
 
-        deps = await assembler.build_context(novel_id=ch.novel_id, chapter_ids=[ch.id])
+        deps = await assembler.build_context(
+            novel_id=ch.novel_id, chapter_ids=[ch.id], user_id=USER_ID
+        )
 
         assert deps.chapter_text == "Hello world"
 
@@ -133,7 +139,9 @@ class TestChapterTextJoining:
         ch2 = _make_chapter(content="Chapter two", position=1)
         assembler = _make_assembler(chapters=[ch1, ch2])
 
-        deps = await assembler.build_context(novel_id=ch1.novel_id, chapter_ids=[ch1.id, ch2.id])
+        deps = await assembler.build_context(
+            novel_id=ch1.novel_id, chapter_ids=[ch1.id, ch2.id], user_id=USER_ID
+        )
 
         assert deps.chapter_text == "Chapter one\n\n---\n\nChapter two"
 
@@ -152,7 +160,9 @@ class TestWordCountCalculation:
         ch2 = _make_chapter(word_count=1500, position=1)
         assembler = _make_assembler(chapters=[ch1, ch2])
 
-        deps = await assembler.build_context(novel_id=ch1.novel_id, chapter_ids=[ch1.id, ch2.id])
+        deps = await assembler.build_context(
+            novel_id=ch1.novel_id, chapter_ids=[ch1.id, ch2.id], user_id=USER_ID
+        )
 
         assert deps.word_count == 3500
 
@@ -171,7 +181,9 @@ class TestPreviousChapterSummaries:
         target = _make_chapter(position=1)
         assembler = _make_assembler(chapters=[prev, target])
 
-        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+        deps = await assembler.build_context(
+            novel_id=target.novel_id, chapter_ids=[target.id], user_id=USER_ID
+        )
 
         assert "Previous summary" in deps.previous_chapter_summaries
 
@@ -181,7 +193,9 @@ class TestPreviousChapterSummaries:
         after = _make_chapter(summary="After summary", position=1)
         assembler = _make_assembler(chapters=[target, after])
 
-        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+        deps = await assembler.build_context(
+            novel_id=target.novel_id, chapter_ids=[target.id], user_id=USER_ID
+        )
 
         assert "After summary" not in deps.previous_chapter_summaries
 
@@ -192,7 +206,9 @@ class TestPreviousChapterSummaries:
         chapters.append(target)
         assembler = _make_assembler(chapters=chapters)
 
-        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+        deps = await assembler.build_context(
+            novel_id=target.novel_id, chapter_ids=[target.id], user_id=USER_ID
+        )
 
         assert len(deps.previous_chapter_summaries) == 3
 
@@ -208,7 +224,9 @@ class TestPreviousChapterSummaries:
         target = _make_chapter(position=1)
         assembler = _make_assembler(chapters=[prev, target])
 
-        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+        deps = await assembler.build_context(
+            novel_id=target.novel_id, chapter_ids=[target.id], user_id=USER_ID
+        )
 
         assert len(deps.previous_chapter_summaries) == 1
         assert deps.previous_chapter_summaries[0] == "B" * 200
@@ -228,7 +246,9 @@ class TestKBEntryExtraction:
         target = _make_chapter()
         assembler = _make_assembler(chapters=[target], kb_entries=[char])
 
-        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+        deps = await assembler.build_context(
+            novel_id=target.novel_id, chapter_ids=[target.id], user_id=USER_ID
+        )
 
         assert "Alice" in deps.kb_characters
         assert "### Character: Alice" in deps.kb_characters
@@ -239,7 +259,9 @@ class TestKBEntryExtraction:
         target = _make_chapter()
         assembler = _make_assembler(chapters=[target], kb_entries=[loc])
 
-        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+        deps = await assembler.build_context(
+            novel_id=target.novel_id, chapter_ids=[target.id], user_id=USER_ID
+        )
 
         assert "Castle" in deps.kb_locations
         assert "### Location: Castle" in deps.kb_locations
@@ -250,7 +272,9 @@ class TestKBEntryExtraction:
         target = _make_chapter()
         assembler = _make_assembler(chapters=[target], kb_entries=[concept])
 
-        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+        deps = await assembler.build_context(
+            novel_id=target.novel_id, chapter_ids=[target.id], user_id=USER_ID
+        )
 
         assert deps.kb_characters == ""
         assert deps.kb_locations == ""
@@ -277,7 +301,9 @@ class TestKBBodyPassThrough:
         target = _make_chapter()
         assembler = _make_assembler(chapters=[target], kb_entries=[char])
 
-        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+        deps = await assembler.build_context(
+            novel_id=target.novel_id, chapter_ids=[target.id], user_id=USER_ID
+        )
 
         assert long_body in deps.kb_characters
 
@@ -288,7 +314,9 @@ class TestKBBodyPassThrough:
         target = _make_chapter()
         assembler = _make_assembler(chapters=[target], kb_entries=[char])
 
-        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+        deps = await assembler.build_context(
+            novel_id=target.novel_id, chapter_ids=[target.id], user_id=USER_ID
+        )
 
         assert short_body in deps.kb_characters
 
@@ -306,7 +334,9 @@ class TestGenreResolution:
         target = _make_chapter()
         assembler = _make_assembler(chapters=[target], novel_genre="Sci-Fi")
 
-        deps = await assembler.build_context(novel_id=target.novel_id, chapter_ids=[target.id])
+        deps = await assembler.build_context(
+            novel_id=target.novel_id, chapter_ids=[target.id], user_id=USER_ID
+        )
 
         assert deps.genre == "Sci-Fi"
 
@@ -324,4 +354,4 @@ class TestChapterNotFound:
         assembler = _make_assembler(chapters=[])
 
         with pytest.raises(ChapterNotFoundError):
-            await assembler.build_context(novel_id=uuid4(), chapter_ids=[uuid4()])
+            await assembler.build_context(novel_id=uuid4(), chapter_ids=[uuid4()], user_id=USER_ID)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 from narrare.generation.name_service import NameGeneratorService
 from narrare.generation.schemas import GenderEnum, NameType
@@ -14,6 +15,7 @@ from narrare_core.prompts.composer import PromptComposer
 if TYPE_CHECKING:
     from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
+from ._ownership_fakes import permissive_novel_repo
 from .conftest import (
     SAMPLE_ARRAY_RESPONSE,
     _default_request,
@@ -35,6 +37,7 @@ class TestBuildUserPrompt:
             registry=MagicMock(spec=ModelRegistry),
             composer=MagicMock(spec=PromptComposer),
             config=_make_config(),
+            novel_repo=permissive_novel_repo(),
         )
 
     def test_includes_count(self) -> None:
@@ -93,7 +96,7 @@ class TestRegistryAndComposerIntegration:
     ) -> None:
         fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
-        await service.generate_names(_default_request())
+        await service.generate_names(_default_request(), user_id=uuid4())
 
         mock_composer.build.assert_awaited_once()
         call_kwargs = mock_composer.build.call_args
@@ -108,7 +111,7 @@ class TestRegistryAndComposerIntegration:
         fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
         request = _default_request(name_style="celtic", count=3)
-        await service.generate_names(request)
+        await service.generate_names(request, user_id=uuid4())
 
         call_kwargs = mock_composer.build.call_args
         user_prompt = call_kwargs.kwargs.get("user_prompt", call_kwargs[1].get("user_prompt", ""))
@@ -122,7 +125,7 @@ class TestRegistryAndComposerIntegration:
     ) -> None:
         fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
-        await service.generate_names(_default_request())
+        await service.generate_names(_default_request(), user_id=uuid4())
 
         fake_registry.assert_called_with_intent(LLMIntent.NAME_GENERATE)
 
@@ -133,7 +136,7 @@ class TestRegistryAndComposerIntegration:
     ) -> None:
         fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
-        await service.generate_names(_default_request())
+        await service.generate_names(_default_request(), user_id=uuid4())
 
         fake_registry.assert_called_once()
 
@@ -145,7 +148,7 @@ class TestRegistryAndComposerIntegration:
     ) -> None:
         fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
-        await service.generate_names(_default_request())
+        await service.generate_names(_default_request(), user_id=uuid4())
 
         call = fake_registry.last_call()
         assert call.config == config
@@ -166,7 +169,7 @@ class TestRegistryAndComposerIntegration:
             gender=GenderEnum.MALE,
             explanation_language="ja",
         )
-        await service.generate_names(request)
+        await service.generate_names(request, user_id=uuid4())
 
         # Inspect the PromptContext passed to composer.build()
         call_args = mock_composer.build.call_args

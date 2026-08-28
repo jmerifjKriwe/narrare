@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from narrare.generation.schemas import GeneratedName
 
@@ -34,7 +35,7 @@ class TestParseNames:
         """Standard case: LLM returns a JSON array."""
         fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert len(result.names) == 3
 
     async def test_parses_json_object_with_names_key(
@@ -45,7 +46,7 @@ class TestParseNames:
         """LLM wraps the array in {"names": [...]}."""
         fake_registry.returns(SAMPLE_OBJECT_RESPONSE)
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert len(result.names) == 2
         assert result.names[0].name == "Kaelen"
 
@@ -56,7 +57,7 @@ class TestParseNames:
     ) -> None:
         fake_registry.returns(json.dumps({"name": "Solara", "meaning": "sun goddess"}))
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert result.names == []
         assert result.count == 0
 
@@ -67,7 +68,7 @@ class TestParseNames:
     ) -> None:
         fake_registry.returns(SAMPLE_FENCED_RESPONSE)
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert len(result.names) == 2
         assert result.names[0].name == "Zara"
 
@@ -78,7 +79,7 @@ class TestParseNames:
     ) -> None:
         fake_registry.returns("This is not JSON at all!")
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert result.names == []
         assert result.count == 0
 
@@ -89,7 +90,7 @@ class TestParseNames:
     ) -> None:
         fake_registry.returns("")
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert result.names == []
 
     async def test_skips_non_dict_items_in_array(
@@ -101,7 +102,7 @@ class TestParseNames:
             json.dumps(["string_item", {"name": "ValidName", "meaning": "test"}, 42, None])
         )
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert len(result.names) == 1
         assert result.names[0].name == "ValidName"
 
@@ -112,7 +113,7 @@ class TestParseNames:
     ) -> None:
         fake_registry.returns(json.dumps([{"name": None, "meaning": "no name"}]))
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert len(result.names) == 1
         assert result.names[0].name == ""
 
@@ -125,7 +126,7 @@ class TestParseNames:
             json.dumps([{"name": "Lira", "pronunciation": None, "meaning": "song"}])
         )
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert result.names[0].pronunciation is None
 
     async def test_names_key_is_not_a_list_treats_as_single(
@@ -135,7 +136,7 @@ class TestParseNames:
     ) -> None:
         fake_registry.returns(json.dumps({"names": "not a list"}))
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert len(result.names) == 1
         assert result.names[0].name == ""
 
@@ -146,7 +147,7 @@ class TestParseNames:
     ) -> None:
         fake_registry.returns(json.dumps("just a string"))
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert result.names == []
 
     async def test_empty_array_returns_empty_list(
@@ -156,7 +157,7 @@ class TestParseNames:
     ) -> None:
         fake_registry.returns("[]")
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert result.names == []
         assert result.count == 0
 
