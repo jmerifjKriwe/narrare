@@ -1,8 +1,10 @@
 """Basic entry-path unit tests for the writing-session WebSocket route.
 
-Tests the guard clauses (missing params, origin validation, rate limiting)
-and the full success path. Does NOT duplicate recovery-scenario tests from
-``test_router_sessions_recovery.py``.
+Tests the success paths (default + explicit ``session_id``) through the
+ADR-084 ticket flow: identity is minted via the registry and the route
+derives it from the consumed ticket. Guard-clause coverage (ticket gate,
+origin, rate limiting) lives in ``test_router_sessions_auth.py`` and
+``test_router_sessions_validation.py``.
 
 Coverage target: **≥ 80%** on ``narrare.writing.router_sessions``.
 """
@@ -16,6 +18,7 @@ import pytest
 
 from narrare._app.config import Settings as AppSettings
 from narrare.writing.router_sessions import interactive_session
+from tests.unit.api.writing.ws_test_helpers import mint_ws_ticket
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -28,9 +31,6 @@ def mock_websocket() -> AsyncMock:
     ws = AsyncMock()
     ws.app = MagicMock(spec=["state"])
     ws.headers = {"origin": "http://localhost:3000"}
-    ws.send_json = AsyncMock()
-    ws.close = AsyncMock()
-    ws.accept = AsyncMock()
     return ws
 
 
@@ -59,6 +59,7 @@ async def test_success_path_calls_handler_handle(
     """The full success path wires dependencies and calls handler.handle().
 
     Validates the entire dependency chain is correctly assembled:
+    - Ticket consumed → identity DERIVED from the registry record
     - Origin check passes
     - Rate limit check passes
     - All app.state services are resolved
@@ -167,13 +168,14 @@ async def test_success_path_calls_handler_handle(
         # Wire the RunLimitResolver constructor
         mock_run_limit_cls.return_value = MagicMock(spec=[])
 
-        # Execute the route — user_id must be a valid UUID hex string because
-        # the success path calls UUID(user_id) for model routing (line 127).
+        # Mint the ticket for the identity the DB mocks are wired for —
+        # the route must DERIVE this id from the ticket (ADR-084).
         user_id = "00000000-0000-0000-0000-000000000001"
+        token = mint_ws_ticket(user_id)
         await interactive_session(
             mock_websocket,
             chapter_id,
-            user_id=user_id,
+            token=token,
             project_id=project_id,
         )
 
@@ -183,7 +185,7 @@ async def test_success_path_calls_handler_handle(
     assert _call_kwargs["mode"] == "interactive_session"
     assert _call_kwargs["ws_idle_timeout"] == 900
 
-    # Assert handler.handle() was invoked with the correct connection params
+    # Assert handler.handle() was invoked with the DERIVED identity
     mock_handler.handle.assert_awaited_once_with(
         mock_websocket,
         chapter_id,
@@ -207,7 +209,8 @@ async def test_success_path_with_explicit_session_id(
 ) -> None:
     """When session_id is provided, it is forwarded to handler.handle().
 
-    Covers the reconnect path (ADR-052).
+    Covers the reconnect path (ADR-052): the reconnect presents a FRESH
+    single-use ticket (the old one died with the previous connection).
     """
     from narrare.settings.token_limits.contracts import TokenLimitOverrides
     from narrare_core.llm.model_config import ResolvedModelConfig
@@ -273,7 +276,7 @@ async def test_success_path_with_explicit_session_id(
         await interactive_session(
             mock_websocket,
             chapter_id,
-            user_id=user_id,
+            token=mint_ws_ticket(user_id),
             project_id=project_id,
             session_id=session_id,
         )

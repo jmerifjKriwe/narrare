@@ -111,6 +111,8 @@
 
 | [ADR-083](ADR-083-kb-infrastructure-benchmark-program.md) | KB Infrastructure Benchmark Program | ✅ | 2026-08-20 | `benchmark/`, KB capabilities, evaluation governance |
 
+| [ADR-084](ADR-084-ws-ticket-authentication.md) | WebSocket Ticket Authentication for Writing Sessions (PO D1:a, last open GAP-CRITICAL) — REST-issued short-lived single-use ticket (`POST /api/v1/auth/ws-ticket`, TTL 60 s, SHA-256-hash-keyed in-memory registry mirroring the ADR-081 export-token pattern) passed as `token` query param; WS handshake validates + derives identity; spoofable `user_id` query param removed (sanctioned break); close-code policy 4401/1008/4001/4003 | 🔄 | 2026-08-29 | `apps/api/narrare/auth/` (ws_tickets, router, service, contracts, schemas), `apps/api/narrare/writing/router_sessions.py`, `apps/api/narrare/_app/lifespan.py`, `packages/web/` (lib/api/auth.ts, lib/api/writing-session-socket.ts, components/studio/editor/useSessionSocket.ts, types/auth.ts), ADR-081/052/080, RULE-03/04/06/11/14/20 |
+
 ---
 
 ## How to Create a New ADR

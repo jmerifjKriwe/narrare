@@ -6,7 +6,13 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from narrare.auth.schemas import (
+    LoginRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserResponse,
+    WsTicketResponse,
+)
 from narrare.auth.security import (
     create_access_token,
     create_refresh_token,
@@ -15,6 +21,8 @@ from narrare.auth.security import (
     verify_password,
     verify_refresh_token,
 )
+from narrare.auth.ws_tickets import WS_TICKET_TTL
+from narrare.auth.ws_tickets import issue as issue_ws_ticket_token
 from narrare_core.shared.errors import AuthenticationError, ConflictError
 
 if TYPE_CHECKING:
@@ -165,6 +173,24 @@ class AuthService:
         resp = UserResponse.model_validate(user)
         resp.has_providers = has_providers
         return resp
+
+    def issue_ws_ticket(self, user_id: uuid.UUID) -> WsTicketResponse:
+        """Mint a single-use WebSocket handshake ticket bound to ``user_id``.
+
+        Backs ``POST /api/v1/auth/ws-ticket`` (ADR-084): the raw token is
+        returned exactly once and never stored; the WS handshake derives
+        the session identity by consuming it.
+
+        Args:
+            user_id: The JWT-authenticated user (``CurrentUserIdDep``).
+
+        Returns:
+            WsTicketResponse with the opaque token and its TTL in seconds.
+        """
+        return WsTicketResponse(
+            token=issue_ws_ticket_token(user_id),
+            expires_in=int(WS_TICKET_TTL.total_seconds()),
+        )
 
     def _create_tokens(self, user_id: str) -> TokenResponse:
         """Create access + refresh token pair."""

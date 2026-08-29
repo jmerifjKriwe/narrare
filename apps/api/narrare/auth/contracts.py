@@ -8,7 +8,13 @@ if TYPE_CHECKING:
     import uuid
 
     from narrare.auth.models import User
-    from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+    from narrare.auth.schemas import (
+        LoginRequest,
+        RegisterRequest,
+        TokenResponse,
+        UserResponse,
+        WsTicketResponse,
+    )
 
 
 @runtime_checkable
@@ -34,3 +40,4 @@ class AuthServiceProtocol(Protocol):
     async def refresh(self, refresh_token: str) -> TokenResponse: ...
     async def logout(self) -> None: ...
     async def get_current_user_profile(self, user_id: uuid.UUID) -> UserResponse: ...
+    def issue_ws_ticket(self, user_id: uuid.UUID) -> WsTicketResponse: ...

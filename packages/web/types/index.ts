@@ -15,6 +15,7 @@ export type {
   ApiError,
   TokenResponse,
   User,
+  WsTicket,
 } from "./auth";
 export type {
   ChatDoneEvent,

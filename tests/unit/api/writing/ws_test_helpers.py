@@ -11,9 +11,11 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import Mock
+from uuid import UUID
 
 from fastapi import WebSocketDisconnect
 
+from narrare.auth import ws_tickets
 from narrare.writing._ws_cache import InMemorySessionCache
 from narrare.writing.ws_active_turn_registry import ActiveTurnRegistry
 from narrare.writing.ws_factory import build_writing_session_handler
@@ -41,6 +43,16 @@ async def wait_for_gateway_calls(gateway: Mock, expected: int) -> None:
             return
         await asyncio.sleep(0.02)
     assert gateway.stream.call_count >= expected
+
+
+def mint_ws_ticket(user_id: UUID | str) -> str:
+    """Mint a single-use WS handshake ticket bound to ``user_id`` (ADR-084).
+
+    Registry-direct mint for tests: every connect/reconnect needs a FRESH
+    ticket (single-use — a replayed one is rejected with 4401).
+    """
+    bound = user_id if isinstance(user_id, UUID) else UUID(user_id)
+    return ws_tickets.issue(bound)
 
 
 def stream_kwargs_for_intent(gateway: Mock, intent_value: str) -> dict[str, Any]:

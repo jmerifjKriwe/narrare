@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { authApi } from "@/lib/api/client";
 import { WritingSessionSocket } from "@/lib/api/generation";
 import type { Message } from "../editor/ChatMessage";
 import { createSessionMessageHandler, type RecoveryState } from "./createSessionMessageHandler";
@@ -78,7 +79,10 @@ export function useSessionSocket({
         setIsConnected(false);
         if (sessionIdRef.current) setRecoveryState("reconnecting");
       },
-      userId,
+      // ADR-084: the socket fetches a fresh single-use ticket per connection
+      // attempt; identity is derived server-side. `userId` above is only the
+      // auth-readiness gate and is never transmitted.
+      () => authApi.wsTicket().then((ticket) => ticket.token),
       novelId,
       mode,
     );
