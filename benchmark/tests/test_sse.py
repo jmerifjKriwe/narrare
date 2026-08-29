@@ -24,6 +24,7 @@ from benchmark.sse import (
     SseProgress,
     SseResult,
     SseSentinel,
+    SseStreamResult,
     collect_events,
     decode_frame,
     parse_frames,
@@ -222,6 +223,12 @@ def test_stream_without_terminal_reports_protocol_violation() -> None:
 
     assert len(result.events) == 1
     assert result.terminal is None  # caller must treat as protocol violation
+
+
+def test_empty_stream_yields_zero_events_and_no_terminal() -> None:
+    result = collect_events([])
+
+    assert result == SseStreamResult(events=(), terminal=None)
 
 
 # --- Malformed input -------------------------------------------------------

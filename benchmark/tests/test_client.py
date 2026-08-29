@@ -155,6 +155,19 @@ def test_non_json_error_body_falls_back_to_text() -> None:
     assert excinfo.value.code is None
 
 
+def test_empty_error_body_falls_back_to_placeholder() -> None:
+    api = ScriptedApi()
+    api.respond_with(lambda _i, _c: httpx.Response(502, content=b""))
+    client = make_client(api)
+
+    with pytest.raises(ApiError) as excinfo:
+        client.request("GET", ME_PATH)
+
+    assert excinfo.value.status == 502
+    assert excinfo.value.detail == "<empty body>"
+    assert excinfo.value.code is None
+
+
 # --- auth header injection ----------------------------------------------------
 
 

@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, cast
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -152,7 +152,7 @@ def decode_frame(frame: SseFrame) -> SseEvent:
         raise SseParseError(frame.data) from exc
     if not isinstance(payload, dict):
         raise SseParseError(frame.data)
-    typed: dict[str, object] = payload
+    typed = cast("dict[str, object]", payload)
     error = typed.get("error")
     code = typed.get("code")
     if isinstance(error, str) and isinstance(code, str):

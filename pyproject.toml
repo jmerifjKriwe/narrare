@@ -98,6 +98,7 @@ reportDeprecated = false
 # Was geprüft wird
 include = [
   "apps/api",
+  "benchmark",
   "packages/core",
   "packages/i18n",
   "scripts",
