@@ -165,3 +165,26 @@ class KBRepository(KBScopeRepository):
             select(func.count()).select_from(KBEntry).where(KBEntry.novel_id == novel_id)
         )
         return result.scalar_one()
+
+    async def filter_ids_in_novel(
+        self,
+        novel_id: uuid.UUID,
+        entry_ids: set[uuid.UUID],
+    ) -> set[uuid.UUID]:
+        """Return the subset of ``entry_ids`` that belong to ``novel_id``.
+
+        Batch entry∈novel ownership probe (W2): one query instead of N+1
+        ``get_by_id`` round-trips when a write path must validate every
+        client-referenced entry id against the gated novel. Series-canon
+        entries (``novel_id IS NULL``) never match — canon ids are not
+        novel-owned by definition.
+        """
+        if not entry_ids:
+            return set()
+        result = await self._session.execute(
+            select(KBEntry.id).where(
+                KBEntry.novel_id == novel_id,
+                KBEntry.id.in_(entry_ids),
+            )
+        )
+        return set(result.scalars())

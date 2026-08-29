@@ -15,7 +15,9 @@ owned novel is indistinguishable from an unknown one). Foreign ≡ unknown
 (anti-enumeration): both raise ``NotFoundError`` → 404.
 
 The HTTP-level matrix (all 4 endpoints) lives in
-``test_improve_worldbuilding_ownership_api.py`` (RULE-04 split).
+``test_improve_worldbuilding_ownership_api.py`` (RULE-04 split); the
+entry∈novel matrix for worldbuilding apply (W2) lives in
+``test_worldbuilding_apply_entry_ownership.py``.
 """
 
 from __future__ import annotations
@@ -246,7 +248,7 @@ class TestWorldbuildingOwnership:
 
     async def test_owner_analyze_runs_analyzer(self) -> None:
         """Matrix case (1): the rightful owner's analyze flow is unchanged."""
-        service, analyzer, _, _, novel_repo = make_worldbuilding_ownership_service(_OWNERSHIP)
+        service, analyzer, _, _, _, novel_repo = make_worldbuilding_ownership_service(_OWNERSHIP)
 
         result = await service.analyze(
             novel_id=NOVEL_ID,
@@ -260,7 +262,7 @@ class TestWorldbuildingOwnership:
 
     async def test_owner_apply_creates_relationships(self) -> None:
         """Matrix case (1): owner's apply creates relationships + invalidates."""
-        service, _, rel_repo, cache, _ = make_worldbuilding_ownership_service(_OWNERSHIP)
+        service, _, rel_repo, cache, _, _ = make_worldbuilding_ownership_service(_OWNERSHIP)
         analysis = make_worldbuilding_analysis(NOVEL_ID)
 
         result = await service.apply_connections(
@@ -277,7 +279,7 @@ class TestWorldbuildingOwnership:
 
     async def test_foreign_novel_denied_before_analyzer(self) -> None:
         """Matrix case (2): foreign novel on analyze → 404, zero LLM calls."""
-        service, analyzer, _, _, _ = make_worldbuilding_ownership_service(_OWNERSHIP)
+        service, analyzer, _, _, _, _ = make_worldbuilding_ownership_service(_OWNERSHIP)
 
         with pytest.raises(NotFoundError, match="Novel"):
             await service.analyze(
@@ -291,7 +293,7 @@ class TestWorldbuildingOwnership:
     async def test_foreign_novel_denied_on_apply_zero_effects(self) -> None:
         """Matrix case (2)+(4): foreign novel on apply → 404, zero writes —
         the previously unused ``user_id`` param is now the gate input."""
-        service, _, rel_repo, cache, _ = make_worldbuilding_ownership_service(_OWNERSHIP)
+        service, _, rel_repo, cache, _, _ = make_worldbuilding_ownership_service(_OWNERSHIP)
         analysis = make_worldbuilding_analysis(NOVEL_ID)
 
         with pytest.raises(NotFoundError, match="Novel"):
@@ -308,7 +310,7 @@ class TestWorldbuildingOwnership:
 
     async def test_unknown_novel_indistinguishable_from_foreign(self) -> None:
         """Matrix case (3): unknown ≡ foreign on both verbs."""
-        service, analyzer, _, _, _ = make_worldbuilding_ownership_service(_OWNERSHIP)
+        service, analyzer, _, _, _, _ = make_worldbuilding_ownership_service(_OWNERSHIP)
         unknown_novel_id = uuid4()
 
         with pytest.raises(NotFoundError) as foreign_exc:

@@ -78,6 +78,7 @@ class TestWorldbuildingInvocationWiring:
         service = WorldbuildingService(
             analyzer=mock_analyzer,
             rel_repo=MagicMock(spec=["get_by_id"]),
+            entry_repo=MagicMock(spec=["filter_ids_in_novel"]),
             cache=MagicMock(spec=["get", "set"]),
             novel_repo=novel_repo,
         )
@@ -140,6 +141,7 @@ class TestBackwardCompatibility:
         service = WorldbuildingService(
             analyzer=mock_analyzer,
             rel_repo=MagicMock(spec=["get_by_id"]),
+            entry_repo=MagicMock(spec=["filter_ids_in_novel"]),
             cache=MagicMock(spec=["get", "set"]),
             novel_repo=novel_repo,
             invocation_pipeline=None,

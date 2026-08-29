@@ -29,6 +29,7 @@ from narrare._app.dependencies import get_current_user_id
 from narrare._app.main import create_app
 from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.kb.dependencies import get_kb_improve_service, get_worldbuilding_service
+from narrare.kb.worldbuilding_contracts import ConnectionSuggestion
 
 from ._test_fakes_improve_worldbuilding import (
     FakeKBEntry,
@@ -109,14 +110,15 @@ class _ImproveBundle:
 class _WorldbuildingBundle:
     """All worldbuilding fakes + service, installed on the app."""
 
-    def __init__(self, app: FastAPI) -> None:
+    def __init__(self, app: FastAPI, entries: dict[UUID, FakeKBEntry] | None = None) -> None:
         (
             service,
             self.analyzer,
             self.rel_repo,
             self.cache,
+            self.kb_repo,
             self.novel_repo,
-        ) = make_worldbuilding_ownership_service(_OWNERSHIP)
+        ) = make_worldbuilding_ownership_service(_OWNERSHIP, entries)
         app.dependency_overrides[get_worldbuilding_service] = lambda: service
 
 
@@ -279,3 +281,44 @@ class TestWorldbuildingRouterOwnership:
             "detail": f"Novel ({unknown_novel}) not found",
             "code": "NOT_FOUND",
         }
+
+    async def test_owner_apply_with_foreign_entry_404_no_writes(self, app, client) -> None:
+        """W2: an OWNER posting an analysis whose suggestion references a
+        foreign-novel entry gets 404 (foreign ≡ unknown) with zero writes —
+        the client-roundtripped entity ids are never trusted."""
+        entries = {
+            ENTRY_ID: FakeKBEntry(id=ENTRY_ID, novel_id=NOVEL_ID),
+            FOREIGN_ENTRY_ID: FakeKBEntry(id=FOREIGN_ENTRY_ID, novel_id=FOREIGN_NOVEL_ID),
+        }
+        bundle = _WorldbuildingBundle(app, entries)
+        analysis = make_worldbuilding_analysis(
+            NOVEL_ID,
+            [
+                ConnectionSuggestion(
+                    finding_index=0,
+                    source_entity_id=str(ENTRY_ID),
+                    source_entity_name="Aria",
+                    source_entity_type="character",
+                    target_entity_id=str(FOREIGN_ENTRY_ID),
+                    target_entity_name="Foreign",
+                    target_entity_type="character",
+                    suggested_rel_type="ally",
+                    reasoning="Attacker-crafted payload",
+                    confidence=0.9,
+                )
+            ],
+        )
+        url = _WB_URL.format(novel_id=NOVEL_ID, verb="apply")
+
+        response = await client.post(
+            url, json={"finding_indices": [0], "analysis": analysis.model_dump()}
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json() == {
+            "detail": f"KBEntry ({FOREIGN_ENTRY_ID}) not found",
+            "code": "NOT_FOUND",
+        }
+        assert bundle.rel_repo.exists_calls == []
+        assert bundle.rel_repo.created == []
+        assert bundle.cache.delete_all_calls == []

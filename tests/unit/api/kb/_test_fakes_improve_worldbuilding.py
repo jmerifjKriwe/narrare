@@ -26,7 +26,7 @@ from narrare.kb.worldbuilding_contracts import (
 from ._test_fakes import FakeNovelRepo
 
 if TYPE_CHECKING:
-    from narrare.kb.contracts import RelationshipRepositoryProtocol
+    from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
     from narrare.kb.improve_analyzer import KBImproveAnalyzer
     from narrare.kb.improve_service import KBImproveService
     from narrare.kb.models import KBRelationship
@@ -53,12 +53,24 @@ class FakeKBEntry:
 
 
 class RecordingKBRepo:
-    """In-memory fake KBRepository — records reads and entry updates."""
+    """In-memory fake KBRepository — records reads and entry updates.
 
-    def __init__(self, entries: dict[UUID, FakeKBEntry] | None = None) -> None:
+    ``own_all_entries=True`` keeps the batch entry∈novel probe permissive
+    (every referenced id counts as in-novel) so non-entry tests stay green;
+    the default strict mode answers from the seeded entry map.
+    """
+
+    def __init__(
+        self,
+        entries: dict[UUID, FakeKBEntry] | None = None,
+        *,
+        own_all_entries: bool = False,
+    ) -> None:
         self._entries = dict(entries or {})
+        self._own_all = own_all_entries
         self.get_by_id_calls: list[UUID] = []
         self.update_calls: list[tuple[UUID, dict[str, object]]] = []
+        self.filter_ids_in_novel_calls: list[tuple[UUID, frozenset[UUID]]] = []
 
     async def get_by_id(self, entry_id: UUID) -> FakeKBEntry | None:
         self.get_by_id_calls.append(entry_id)
@@ -67,6 +79,17 @@ class RecordingKBRepo:
     async def update(self, entry: FakeKBEntry, data: dict[str, object]) -> FakeKBEntry:
         self.update_calls.append((entry.id, dict(data)))
         return entry
+
+    async def filter_ids_in_novel(self, novel_id: UUID, entry_ids: set[UUID]) -> set[UUID]:
+        """Batch entry∈novel ownership probe (W2) — records every call."""
+        self.filter_ids_in_novel_calls.append((novel_id, frozenset(entry_ids)))
+        if self._own_all:
+            return set(entry_ids)
+        return {
+            entry_id
+            for entry_id in entry_ids
+            if (entry := self._entries.get(entry_id)) is not None and entry.novel_id == novel_id
+        }
 
 
 class RecordingRelationshipRepo:
@@ -158,13 +181,21 @@ def make_improve_analysis() -> KBImproveAnalysisResponse:
     )
 
 
-def make_worldbuilding_analysis(novel_id: UUID) -> WorldbuildingAnalysisResponse:
-    """A canned worldbuilding analysis with one connection suggestion."""
+def make_worldbuilding_analysis(
+    novel_id: UUID,
+    suggestions: list[ConnectionSuggestion] | None = None,
+) -> WorldbuildingAnalysisResponse:
+    """A canned worldbuilding analysis with one connection suggestion.
+
+    Pass explicit ``suggestions`` to control the entity ids (W2 matrix).
+    """
     return WorldbuildingAnalysisResponse(
         novel_id=str(novel_id),
         entity_count=2,
         gap_findings=[],
-        connection_suggestions=[
+        connection_suggestions=suggestions
+        if suggestions is not None
+        else [
             ConnectionSuggestion(
                 finding_index=0,
                 source_entity_id=str(uuid4()),
@@ -222,24 +253,33 @@ def make_improve_ownership_service(
 
 def make_worldbuilding_ownership_service(
     ownership: dict[UUID, UUID],
+    entries: dict[UUID, FakeKBEntry] | None = None,
 ) -> tuple[
     WorldbuildingService,
     CountingWorldbuildingAnalyzer,
     RecordingRelationshipRepo,
     RecordingWorldbuildingCache,
+    RecordingKBRepo,
     FakeNovelRepo,
 ]:
-    """Build a WorldbuildingService over recording fakes + a novel ownership map."""
+    """Build a WorldbuildingService over recording fakes + a novel ownership map.
+
+    ``entries=None`` keeps the entry repo permissive for the batch
+    entry∈novel probe (every referenced id counts as in-novel); pass an
+    explicit map to model the W2 entry∈novel matrix.
+    """
     from narrare.kb.worldbuilding_service import WorldbuildingService
 
     novel_repo = FakeNovelRepo(ownership)
     rel_repo = RecordingRelationshipRepo()
+    kb_repo = RecordingKBRepo(entries, own_all_entries=entries is None)
     analyzer = CountingWorldbuildingAnalyzer()
     cache = RecordingWorldbuildingCache()
     service = WorldbuildingService(
         analyzer=cast("WorldbuildingAnalyzer", analyzer),
         rel_repo=cast("RelationshipRepositoryProtocol", rel_repo),
+        entry_repo=cast("KBRepositoryProtocol", kb_repo),
         cache=cast("WorldbuildingCache", cache),
         novel_repo=cast("NovelRepositoryProtocol", novel_repo),
     )
-    return service, analyzer, rel_repo, cache, novel_repo
+    return service, analyzer, rel_repo, cache, kb_repo, novel_repo

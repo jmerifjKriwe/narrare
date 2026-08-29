@@ -198,6 +198,10 @@ class WorldbuildingProtocol(Protocol):
 
         Creates KBRelationship entries for the selected suggestions.
         Requires the original analysis response for context (entity IDs, rel types).
+        Every referenced entry id must belong to the gated novel (W2):
+        one batch ownership query runs before any write, and a single
+        foreign/unknown entry id rejects the whole batch — no partial
+        writes.
 
         Args:
             novel_id: The project containing the entities.

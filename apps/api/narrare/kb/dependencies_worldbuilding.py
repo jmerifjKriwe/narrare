@@ -62,6 +62,7 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
     return WorldbuildingService(
         analyzer=analyzer,
         rel_repo=rel_repo,
+        entry_repo=kb_repo,
         cache=worldbuilding_cache,
         novel_repo=novel_repo,
         invocation_pipeline=get_invocation_pipeline(),
