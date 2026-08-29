@@ -127,10 +127,17 @@ class BenchmarkClient:
         base_url: str,
         timeout_seconds: float,
         *,
+        tokens: TokenPair | None = None,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
+        """``tokens`` seeds an already-authenticated session (DI seam).
+
+        Production wires no tokens (provisioning logs in through this
+        client); callers that hold tokens from an earlier step — and tests
+        that pin post-authentication call sequences — inject them here.
+        """
         self._http = httpx.Client(base_url=base_url, timeout=timeout_seconds, transport=transport)
-        self._tokens: TokenPair | None = None
+        self._tokens = tokens
 
     # -- lifecycle ------------------------------------------------------------
 

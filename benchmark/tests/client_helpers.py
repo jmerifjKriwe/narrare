@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from benchmark.client import BenchmarkClient
+from benchmark.client import BenchmarkClient, TokenPair
 
 BASE_URL = "http://api.test"
 ME_PATH = "/api/v1/auth/me"
@@ -94,9 +94,32 @@ def token_response(access: str, refresh: str, status: int = 200) -> httpx.Respon
     )
 
 
-def make_client(api: ScriptedApi, timeout_seconds: float = 5.0) -> BenchmarkClient:
+def make_client(
+    api: ScriptedApi,
+    timeout_seconds: float = 5.0,
+    *,
+    access_token: str | None = None,
+) -> BenchmarkClient:
+    """Build a client on the scripted backend.
+
+    ``access_token`` seeds held tokens via the client's ``tokens``
+    constructor DI — a scripted login would pollute the recorded call
+    sequences and the ingest event sink (ingest tests pin post-auth
+    sequences; provisioning owns the real login upstream).
+    """
+    tokens = (
+        TokenPair(
+            access_token=access_token,
+            refresh_token="ref-seeded",
+            token_type="bearer",
+            expires_in=3600,
+        )
+        if access_token is not None
+        else None
+    )
     return BenchmarkClient(
         BASE_URL,
         timeout_seconds,
+        tokens=tokens,
         transport=httpx.MockTransport(api.handler),
     )
