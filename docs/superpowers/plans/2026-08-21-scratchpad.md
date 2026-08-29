@@ -7040,5 +7040,5 @@ and T29b; 33 per-task reviews + final whole-branch review + one fix wave, all cl
 
 **Security follow-up (pre-existing)**
 - ~~`chat/router.py` history ownership~~ (done, P-SEC — 3 IDOR vectors closed, adversarially reviewed)
+- ~~IDOR sweep for OTHER modules accepting `novel_id`/`project_id` links~~ (done 2026-08-29 — audit found 21 GAP-CRITICALs in 12 clusters; S1–S13 remediated in PR #190 commits `f08e5d0b..b6376f07`, batch-reviewed clean; see [2026-08-26-idor-remediation.md](2026-08-26-idor-remediation.md) execution record + residual OPEN list incl. the S3/WS ticket follow-up per D1:a/D4:b)
 - **[open]** `chat/router.py` message_id reports conversation id (cosmetic logging)
-- **[open]** IDOR sweep for OTHER modules accepting `novel_id`/`project_id` links (dedicated task; unauthorized probes consume an AI-limiter token — documented interaction)

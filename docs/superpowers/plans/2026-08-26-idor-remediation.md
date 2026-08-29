@@ -1,5 +1,18 @@
 # IDOR Remediation Plan — P-SEC Follow-up Sweep (21 GAP-CRITICALs)
 
+> **EXECUTION RECORD (2026-08-29):** S1–S13 executed on `worktree/green-harbor-c1a3`
+> (PR #190, commits `f08e5d0b..b6376f07`, 13 slice commits + batch-review fix wave).
+> Batch security review verdict: all 21 GAP-CRITICAL clusters CLOSED except S3/WS
+> (deferred per D4:b into the tracked follow-up below); both review findings (N1
+> factory pre-gate resolution, N2 decision records) addressed and re-reviewed clean.
+> Gates at close: `just verify` 10/10 (incl. Typecheck-Tests after S12b fake-cast fix),
+> backend 12 476 passed, frontend 3 567 passed, architecture 2 673 files clean.
+> Residual OPEN (tracked): S3/WS ticket follow-up (D1:a/D4:b records below),
+> worldbuilding `apply_connections` entries∈novel validation, 16 inert
+> `chapter_exists` mocks across 10 test files, `verify_novel_owned` gate
+> consolidation, ADR-070 protocol gap (`get_adaptive_snapshots`), KB-002 doc
+> staleness, consistency-cache owner dimension.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans or
 > superpowers:subagent-driven-development, slice by slice. Each slice is one
 > independently landable unit: regression tests RED → gate → tests GREEN.
