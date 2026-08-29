@@ -7,10 +7,12 @@ independent of the gate (they generate random project ids).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from uuid import UUID
+
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 
 class RecordingNovelRepo:
@@ -31,6 +33,11 @@ class RecordingNovelRepo:
         return None
 
 
-def permissive_novel_repo() -> RecordingNovelRepo:
-    """Novel repo that owns everything (keeps non-ownership tests green)."""
-    return RecordingNovelRepo()
+def permissive_novel_repo() -> NovelRepositoryProtocol:
+    """Novel repo that owns everything (keeps non-ownership tests green).
+
+    The fake is a minimal recorder (only ``get_by_id``); the cast at this
+    construction seam asserts it stands in for the full protocol — the
+    established repo pattern for minimal test doubles.
+    """
+    return cast("NovelRepositoryProtocol", RecordingNovelRepo())

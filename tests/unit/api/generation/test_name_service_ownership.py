@@ -39,6 +39,9 @@ from ._ownership_fakes import RecordingNovelRepo
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from narrare.kb.contracts import KBRepositoryProtocol
+    from narrare.novels.contracts import NovelRepositoryProtocol
+
 USER_A = uuid4()  # rightful owner of PROJECT_ID (the victim)
 USER_B = uuid4()  # foreign caller
 
@@ -101,8 +104,10 @@ def _make_service(
         config=ResolvedModelConfig(
             provider_name="test", model_id="test", temperature=0.8, max_tokens=2000
         ),
-        novel_repo=novel_repo,
-        kb_repo=kb_repo,
+        # Minimal recording fakes — cast at the construction seam asserts
+        # they stand in for the full repository protocols (house pattern).
+        novel_repo=cast("NovelRepositoryProtocol", novel_repo),
+        kb_repo=cast("KBRepositoryProtocol", kb_repo),
     )
     return service, registry, kb_repo, novel_repo
 

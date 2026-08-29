@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -15,6 +15,8 @@ from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
+
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 # Shared mock data for LLM name generation response
 _MOCK_NAMES_JSON = (
@@ -65,7 +67,8 @@ class TestGenerateNames:
             registry=mock_registry,
             composer=_get_composer_instance(),
             config=mock_config,
-            novel_repo=_PermissiveNovelRepo(),
+            # Minimal fake — cast at the construction seam (house pattern).
+            novel_repo=cast("NovelRepositoryProtocol", _PermissiveNovelRepo()),
         )
 
         # _get_service is called directly in the route handler (not via
