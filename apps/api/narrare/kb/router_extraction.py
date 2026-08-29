@@ -1,6 +1,11 @@
 """KB extraction routes — entity extraction from chapter text.
 
 Thin delegation to ExtractionService (RULE-06). No business logic here.
+
+``NotFoundError`` from the services' ownership gates (IDOR S10/S13) is
+re-raised past the broad ``except Exception`` so the global
+NarrareError handler maps it to the sanctioned 404 shape — a foreign
+novel id must never surface as a 500.
 """
 
 from __future__ import annotations
@@ -15,6 +20,7 @@ from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.kb.dependencies import get_extraction_service
 from narrare.kb.extraction_service import ExtractionService
 from narrare.kb.schemas_extraction import ApplyExtractionRequest, ApplyExtractionResponse
+from narrare_core.shared.errors import NotFoundError
 
 logger = structlog.get_logger(__name__)
 
@@ -40,6 +46,9 @@ async def apply_extraction(
             items=body.items,
         )
         return result
+    except NotFoundError:
+        # Ownership gate (IDOR S13): foreign ≡ unknown → global 404 handler.
+        raise
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -73,6 +82,9 @@ async def extract_chapter(
             chapter_id=chapter_id,
             user_id=UUID(user_id),
         )
+    except NotFoundError:
+        # Ownership gate (IDOR S10): foreign ≡ unknown → global 404 handler.
+        raise
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:

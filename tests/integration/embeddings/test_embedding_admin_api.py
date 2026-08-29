@@ -4,6 +4,11 @@ Tests all three admin endpoints:
 - GET /api/v1/admin/embeddings/status/{novel_id}
 - POST /api/v1/admin/embeddings/reprocess/{novel_id}
 - GET /api/v1/admin/embeddings/model
+
+Since the IDOR remediation (plan §S13, PO decision D3:a) the two
+novel-scoped admin routes are ownership-gated: the happy-path tests
+must address a novel the caller actually owns (created via the API);
+an unknown or foreign novel id surfaces as 404.
 """
 
 from __future__ import annotations
@@ -15,6 +20,20 @@ if TYPE_CHECKING:
     from httpx import AsyncClient
 
 
+async def _create_owned_novel(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> str:
+    """Create a novel owned by the authenticated caller (IDOR S13)."""
+    novel_resp = await client.post(
+        "/api/v1/novels",
+        json={"title": "Embedding Admin Novel", "language": "en"},
+        headers=auth_headers,
+    )
+    assert novel_resp.status_code == 201
+    return novel_resp.json()["id"]
+
+
 class TestEmbeddingStatusEndpoint:
     """GET /api/v1/admin/embeddings/status/{novel_id}"""
 
@@ -24,7 +43,7 @@ class TestEmbeddingStatusEndpoint:
         auth_headers: dict[str, str],
     ) -> None:
         """Status endpoint should return zeros for a novel with no embeddings."""
-        novel_id = uuid.uuid4()
+        novel_id = await _create_owned_novel(client, auth_headers)
         response = await client.get(
             f"/api/v1/admin/embeddings/status/{novel_id}",
             headers=auth_headers,
@@ -37,6 +56,19 @@ class TestEmbeddingStatusEndpoint:
         assert data["pending"] == 0
         assert data["failed"] == 0
         assert data["coverage_percentage"] == 0.0
+
+    async def test_status_for_unknown_novel_returns_404(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Ownership gate (IDOR S13): unknown ≡ foreign novel → 404."""
+        response = await client.get(
+            f"/api/v1/admin/embeddings/status/{uuid.uuid4()}",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 404
 
     async def test_status_requires_auth(
         self,
@@ -60,7 +92,7 @@ class TestEmbeddingReprocessEndpoint:
         auth_headers: dict[str, str],
     ) -> None:
         """Reprocess should return queued=0 for a novel with no entries."""
-        novel_id = uuid.uuid4()
+        novel_id = await _create_owned_novel(client, auth_headers)
         response = await client.post(
             f"/api/v1/admin/embeddings/reprocess/{novel_id}",
             headers=auth_headers,
@@ -78,7 +110,7 @@ class TestEmbeddingReprocessEndpoint:
         auth_headers: dict[str, str],
     ) -> None:
         """Reprocess should accept a model parameter."""
-        novel_id = uuid.uuid4()
+        novel_id = await _create_owned_novel(client, auth_headers)
         response = await client.post(
             f"/api/v1/admin/embeddings/reprocess/{novel_id}",
             headers=auth_headers,
@@ -86,6 +118,20 @@ class TestEmbeddingReprocessEndpoint:
         )
 
         assert response.status_code == 200
+
+    async def test_reprocess_for_unknown_novel_returns_404(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Ownership gate (IDOR S13): unknown ≡ foreign novel → 404."""
+        response = await client.post(
+            f"/api/v1/admin/embeddings/reprocess/{uuid.uuid4()}",
+            headers=auth_headers,
+            json={},
+        )
+
+        assert response.status_code == 404
 
     async def test_reprocess_requires_auth(
         self,

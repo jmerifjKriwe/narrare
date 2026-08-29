@@ -165,7 +165,15 @@ class AdaptiveContextService:
         project_id: UUID,
         user_id: UUID,
     ) -> AdaptiveContextResponse:
-        """Read the current adaptive state for the dashboard."""
+        """Read the current adaptive state for the dashboard.
+
+        Ownership-gated (IDOR remediation S13, GAP-MINOR carried from
+        S11c): a caller who does not own ``project_id`` gets a 404
+        BEFORE any provider read — the context summary exposes the
+        owner's preference text, voice profiles, style constraints and
+        avoidance patterns.
+        """
+        await self._verify_project_owned(project_id, user_id)
         ctx = await self._provider.get_context(user_id=user_id, project_id=project_id)
         settings = await self._provider.get_settings(user_id=user_id, project_id=project_id)
         return AdaptiveContextResponse(

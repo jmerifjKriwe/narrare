@@ -332,5 +332,14 @@ background/system caller exists it must pass a system identity explicitly
    to an admin flag, or delete the dead surface (`reprocess` is inert from the
    router). Pick one.
 
+**Decisions (resolved by PO before S13):**
+- **D2 → (a)** prompts global overrides stay GLOBAL under a documented
+  single-user-trust assumption (local-first product stance) — documented on
+  the override surface (`prompts/router.py` docstrings); no code change.
+- **D3 → (a)** embeddings admin endpoints get the same ownership gating as
+  everything else: `status/{novel_id}` + `reprocess/{novel_id}` are
+  novel-scoped → S11a-style `verify_novel_owned` route gate; `model` is
+  global-inert → minimal authenticated-user gate, documented.
+
 **Totals: 12 critical slices (+S13 minors) · every slice independently landable ·
 S3 partially blocked on D1 · S13 depends on D2/D3.**

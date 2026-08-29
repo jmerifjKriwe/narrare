@@ -4621,7 +4621,7 @@
           "embeddings"
         ],
         "summary": "Get Embedding Status",
-        "description": "Return embedding statistics for a novel.",
+        "description": "Return embedding statistics for a novel (owner-only, IDOR S13).",
         "operationId": "get_embedding_status_api_v1_admin_embeddings_status__novel_id__get",
         "security": [
           {
@@ -4670,7 +4670,7 @@
           "embeddings"
         ],
         "summary": "Reprocess Embeddings",
-        "description": "Trigger re-embedding for all content in a novel.",
+        "description": "Trigger re-embedding for all content in a novel (owner-only, IDOR S13).",
         "operationId": "reprocess_embeddings_api_v1_admin_embeddings_reprocess__novel_id__post",
         "security": [
           {
@@ -4736,7 +4736,7 @@
           "embeddings"
         ],
         "summary": "Get Model Info",
-        "description": "Return the currently active embedding model and dimension.",
+        "description": "Return the currently active embedding model and dimension.\n\nGlobal-inert resource (D3:a): the minimal gate is authenticated-user\nexistence — no per-novel ownership applies.",
         "operationId": "get_model_info_api_v1_admin_embeddings_model_get",
         "responses": {
           "200": {
@@ -9644,7 +9644,7 @@
           "prompts"
         ],
         "summary": "Save Override",
-        "description": "Save a prompt override and record a history revision (CR-AUFG-07-19).\n\nDelegates to ``PromptHistoryApiService.save_override_recorded``: the\nactive override FILE is written via the core service (authoritative),\nthen a revision row is recorded (best-effort, deduplicated).\n\n``event_publisher`` is the in-process wiki EventPublisher (Q-016): a\nwiki-category override publishes ``wiki.prompt.changed`` so wiki\nsummaries are marked stale for regeneration.",
+        "description": "Save a prompt override and record a history revision (CR-AUFG-07-19).\n\nDelegates to ``PromptHistoryApiService.save_override_recorded``: the\nactive override FILE is written via the core service (authoritative),\nthen a revision row is recorded (best-effort, deduplicated).\n\n``event_publisher`` is the in-process wiki EventPublisher (Q-016): a\nwiki-category override publishes ``wiki.prompt.changed`` so wiki\nsummaries are marked stale for regeneration.\n\nTrust stance: see module docstring (D2:a — GLOBAL file; user_id is the audit actor only).",
         "operationId": "save_override_api_v1_prompts__prompt_id__put",
         "security": [
           {
@@ -9695,7 +9695,7 @@
           "prompts"
         ],
         "summary": "Reset Override",
-        "description": "Reset a prompt override, restoring bundled default.",
+        "description": "Reset a prompt override, restoring bundled default.\n\nTrust stance: see the module docstring (D2:a — GLOBAL override file).",
         "operationId": "reset_override_api_v1_prompts__prompt_id__override_delete",
         "security": [
           {
@@ -11253,7 +11253,7 @@
           "writing"
         ],
         "summary": "Get Stats",
-        "description": "Get aggregated generation statistics for a novel.",
+        "description": "Get aggregated generation statistics for a novel.\n\nOwnership is enforced by the verify_novel_owned dependency BEFORE\nthe service is constructed (IDOR remediation S13) — foreign ≡\nunknown novel ids surface as 404.",
         "operationId": "get_stats_api_v1_writing_novels__novel_id__stats_get",
         "security": [
           {

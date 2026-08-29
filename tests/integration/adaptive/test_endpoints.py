@@ -220,7 +220,6 @@ class TestVoiceProfilesTextPopulated:
     async def test_voice_profiles_text_non_empty_when_kb_has_voice_analysis(
         self,
         client: AsyncClient,
-        auth_headers: dict[str, str],
     ) -> None:
         from sqlalchemy import text
 
@@ -266,12 +265,22 @@ class TestVoiceProfilesTextPopulated:
             await session.commit()
 
         try:
-            # auth_headers is JWT-based (no DB user lookup), so it works even
-            # though the request user differs from the seeded novel owner —
-            # the endpoint does not check novel ownership.
+            # IDOR S11c/S13: the context read is ownership-gated, so the
+            # request must come from the seeded novel's owner — mint the
+            # JWT for that user (the auth_headers user's row lives in the
+            # test transaction, invisible to the provider's own connection).
+            from narrare._app.config import get_settings
+            from narrare.auth.security import create_access_token
+
+            settings = get_settings()
+            owner_token = create_access_token(
+                subject=str(user_id),
+                secret_key=settings.secret_key,
+                expires_minutes=settings.access_token_expire_minutes,
+            )
             response = await client.get(
                 f"/api/v1/adaptive/{novel_id}/context",
-                headers=auth_headers,
+                headers={"Authorization": f"Bearer {owner_token}"},
             )
             assert response.status_code == 200
             body = response.json()

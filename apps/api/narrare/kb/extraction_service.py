@@ -202,6 +202,13 @@ class ExtractionService:
     ) -> ApplyExtractionResponse:
         """Apply endorsed extraction items to the Knowledge Base.
 
+        Ownership gate first (IDOR remediation S13, carried from S10):
+        the caller must own ``novel_id`` BEFORE the apply service is
+        constructed or any KB write happens. Without the gate a foreign
+        caller could create/update entries in the victim's KB — and the
+        per-item error swallowing in ``ExtractionApplyService`` would
+        have logged (not surfaced) the downstream denials.
+
         Delegates to ExtractionApplyService for per-item handling.
 
         Args:
@@ -213,8 +220,11 @@ class ExtractionService:
             ApplyExtractionResponse with created and updated entries.
 
         Raises:
+            NotFoundError: Novel unknown or owned by another user.
             ValueError: If required dependencies not configured.
         """
+        await verify_novel_owned(self._novel_repo, novel_id, user_id)
+
         if self._kb_service is None or self._rel_repo is None:
             raise ValueError(
                 "KBService and RelationshipRepository must be configured for apply_extraction"
