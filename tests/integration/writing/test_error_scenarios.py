@@ -11,8 +11,13 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
+from sqlalchemy import select
+
+from narrare.settings.models import ProjectSettings
+
 if TYPE_CHECKING:
     from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +200,7 @@ class TestNonExistentResources:
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """Generation for non-existent chapter returns 404 or 500."""
+        """Generation for non-existent chapter returns 404."""
         fake_chapter_id = uuid.uuid4()
         fake_novel_id = uuid.uuid4()
 
@@ -209,8 +214,43 @@ class TestNonExistentResources:
             },
             headers=auth_headers,
         )
-        # Will be 404 (chapter not found) or 500 (FK violation)
-        assert resp.status_code in (404, 500)
+        # Foreign ≡ unknown (anti-enumeration): 404, never a 500 oracle.
+        assert resp.status_code == 404
+
+    async def test_coauthor_for_unknown_novel_returns_404_without_settings_row(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+        db_session: AsyncSession,
+    ) -> None:
+        """Unknown novel on a real factory → 404, no settings row materialized.
+
+        The co-author route is the one writing surface whose factory is
+        NOT replaced by the integration conftest, so this exercises the
+        real ``get_coauthor_service`` resolution chain. Before the
+        fix-wave N1 gate, the model-routing resolver's project-settings
+        read auto-created + flushed a ``project_settings`` row for the
+        unknown novel → FK IntegrityError → HTTP 500 — a novel-existence
+        oracle (foreign ≢ unknown). The factory-entry gate must reject
+        with 404 BEFORE the resolver runs, so no row is ever written.
+        """
+        fake_novel_id = uuid.uuid4()
+        fake_chapter_id = uuid.uuid4()
+
+        resp = await client.post(
+            f"/api/v1/writing/chapters/{fake_chapter_id}/co-author",
+            params={"novel_id": str(fake_novel_id)},
+            json={"selection_text": "s" * 60, "focus": ["word_choice"]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 404
+
+        # The auto-creating project-settings read must never have run —
+        # no project_settings row may exist for the unknown novel.
+        result = await db_session.execute(
+            select(ProjectSettings).where(ProjectSettings.novel_id == fake_novel_id)
+        )
+        assert result.scalar_one_or_none() is None
 
     async def test_accept_nonexistent_request_returns_404(
         self,

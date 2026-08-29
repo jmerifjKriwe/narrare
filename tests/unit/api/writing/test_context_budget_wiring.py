@@ -134,12 +134,14 @@ def _canned_budgets(tier_base: int, series_history: int) -> EffectiveContextBudg
 
 def _budget_patch_context(module_path: str, budgets: EffectiveContextBudgets):
     """Run a writing factory hermetically: routing resolver, token
-    limits, the context-budget adapter, and create_pipeline are patched.
-    Returns (ctx-managers, create_pipeline spy, adapter spy)."""
+    limits, the context-budget adapter, create_pipeline, and the N1
+    ownership-gate novel lookup are patched. Returns (ctx-managers,
+    create_pipeline spy, adapter spy)."""
     from types import SimpleNamespace
     from unittest.mock import patch
 
     from narrare._app.config import Settings
+    from narrare.novels.repository import NovelRepository
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.settings.token_limits.context_budgets import resolve_context_budgets
     from narrare.settings.token_limits.contracts import TokenLimitOverrides
@@ -166,6 +168,12 @@ def _budget_patch_context(module_path: str, budgets: EffectiveContextBudgets):
     )
     pipeline_spy = MagicMock(spec=create_pipeline, name="create_pipeline_spy")
 
+    # Fix-wave N1: factories gate the project scope at entry via the
+    # (call-time imported) NovelRepository — stub an owned novel so the
+    # hermetic wiring runs stay on the happy path.
+    fake_novel_repo = MagicMock(spec=NovelRepository, name="novel_repository")
+    fake_novel_repo.get_by_id = AsyncMock(return_value=SimpleNamespace(series_id=None))
+
     ctx = (
         patch(f"{module_path}.get_model_routing_resolver", return_value=fake_routing),
         patch(
@@ -181,6 +189,7 @@ def _budget_patch_context(module_path: str, budgets: EffectiveContextBudgets):
             "narrare._app.config.get_settings",
             return_value=MagicMock(spec=Settings, name="settings"),
         ),
+        patch("narrare.novels.repository.NovelRepository", return_value=fake_novel_repo),
     )
     return ctx, pipeline_spy, adapter_spy
 
@@ -229,6 +238,8 @@ class TestDepsWritingFactoryWiring:
             _patch("narrare.novels.repository.NovelRepository") as novel_repo_cls,
         ):
             novel_repo_cls.return_value.get = AsyncMock(return_value=series_novel)
+            # N1 gate: entry lookup must report the novel as owned.
+            novel_repo_cls.return_value.get_by_id = AsyncMock(return_value=series_novel)
             await module.get_writing_service(
                 session=_fake_session(),
                 user_id=str(uuid.uuid4()),
@@ -248,7 +259,7 @@ class TestDepsExtendFactoryWiring:
         )
         module = importlib.import_module("narrare.writing.deps_extend")
 
-        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4]:
+        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5]:
             await module.get_extend_service(
                 session=_fake_session(),
                 user_id=str(uuid.uuid4()),
@@ -273,7 +284,7 @@ class TestRemainingWritingFactoriesWiring:
         )
         module = importlib.import_module("narrare.writing.deps_rewrite")
 
-        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4]:
+        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5]:
             await module.get_rewrite_service(
                 session=_fake_session(),
                 user_id=str(uuid.uuid4()),
@@ -292,7 +303,7 @@ class TestRemainingWritingFactoriesWiring:
         )
         module = importlib.import_module("narrare.writing.deps_coauthor")
 
-        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4]:
+        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5]:
             await module.get_coauthor_service(
                 session=_fake_session(),
                 user_id=str(uuid.uuid4()),
@@ -311,7 +322,7 @@ class TestRemainingWritingFactoriesWiring:
         )
         module = importlib.import_module("narrare.writing.deps_style_variants")
 
-        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4]:
+        with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5]:
             await module.get_style_variant_service(
                 session=_fake_session(),
                 user_id=str(uuid.uuid4()),

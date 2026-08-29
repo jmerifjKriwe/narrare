@@ -322,8 +322,9 @@ background/system caller exists it must pass a system identity explicitly
    fetched via authenticated REST, sent as `token` query param on WS connect
    (recommended — standard, revocable); (b) first-message auth frame after
    connect (reject-all-until-authed); (c) mTLS/subprotocol hacks (rejected —
-   non-standard). Requires an ADR + `packages/web` change. Until decided, S3
-   stays open and the WS endpoint remains the one unauthenticated surface.
+   non-standard). Requires an ADR + `packages/web` change. ~~Until decided, S3
+   stays open and the WS endpoint remains the one unauthenticated surface.~~
+   RESOLVED 2026-08-27 → **D1:a** (see Decision Records below).
 2. **D2 — Prompts global overrides (MINOR):** overrides are global files — any
    authenticated user rewrites them for ALL users. Either scope override
    storage per user (real multi-user stance) or keep global under a documented
@@ -343,3 +344,55 @@ background/system caller exists it must pass a system identity explicitly
 
 **Totals: 12 critical slices (+S13 minors) · every slice independently landable ·
 S3 partially blocked on D1 · S13 depends on D2/D3.**
+
+---
+
+## Decision Records (post-batch review, 2026-08-29)
+
+Decisions taken after the batch review of PR #190 — recorded here so the
+plan's "decisions needed" section no longer reads as open where it is not.
+
+### D1:a — WS authentication via REST-issued short-lived ticket (RESOLVED)
+
+**Decision (PO, 2026-08-27):** option (a). The browser fetches a
+short-lived signed ticket from an authenticated REST endpoint and passes
+it as the `token` query parameter on the WebSocket connect. Standard
+pattern, revocable, avoids first-message-auth race windows.
+
+**Still required (not part of PR #190):** an ADR documenting the ticket
+format/lifetime/revocation semantics and the `packages/web` change that
+fetches and forwards the ticket.
+
+### D4:b — S3 executes as a separate follow-up task outside PR #190 (RESOLVED)
+
+**Decision (PO, 2026-08-27):** with D1 resolved to (a), the WS slice is
+no longer blocked, but it lands as a SEPARATE follow-up task rather
+than inside PR #190 — the PR is the IDOR remediation batch and stays
+reviewable; the WS surface needs its own ADR-gated cycle.
+
+**Follow-up slice scope (S3 + D1:a combined):**
+
+1. **Ticket issuance endpoint** — authenticated REST route issuing a
+   short-lived signed ticket (define TTL + revocation in the ADR).
+2. **WS handshake validation** — `router_sessions.py` accepts the
+   `token` query param, validates the ticket, derives the identity
+   (replacing `get_current_user_id`'s HTTPBearer-only path for WS).
+3. **Spoofable `user_id` query param removal** — delete the
+   `user_id: str = ""` query param from the WS route; identity comes
+   exclusively from the validated ticket. Rate-limit key (`ws_key`)
+   switches from the spoofable param to the derived identity.
+4. **Ownership gate at handshake** — run the S5 `verify_chapter_access`
+   helper before `handler.handle(...)`; failure → close 4001 (existing
+   close-on-reject pattern).
+5. **ADR** — WS auth strategy (D1:a) with ticket semantics; referenced
+   from the code sites it governs.
+6. **`packages/web` change** — client fetches the ticket and appends it
+   to the WS URL.
+
+**Tests (from S3, unchanged):** `tests/unit/api/writing/test_ws_session_ownership.py`
+— foreign/unknown chapter or project → connection closed 4001, zero session
+rows, zero mem0 writes; spoofed `user_id` param ignored/rejected.
+
+**Status until the follow-up lands:** the WS endpoint remains the one
+unauthenticated surface — tracked by the follow-up task, NOT by this plan
+batch.
