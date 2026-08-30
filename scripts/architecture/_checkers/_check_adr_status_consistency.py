@@ -56,6 +56,18 @@ _ADR_STATUS_RE = re.compile(
 # Rule identifier.
 _RULE = "ADR-STATUS"
 
+# Keyword stems for Status fields without a leading symbol (e.g.
+# ``Status: Accepted (…)``).  Matched against the FIRST word only.
+_STATUS_KEYWORD_STEMS: tuple[tuple[str, str], ...] = (
+    ("accept", "Accepted"),
+    ("propos", "Proposed"),
+    ("supers", "Superseded"),
+    ("deprecat", "Deprecated"),
+)
+
+# First alphabetic run of a Status field (the leading status word).
+_LEADING_WORD_RE = re.compile(r"[A-Za-z]+")
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -108,25 +120,30 @@ def _parse_adr_file_status(content: str) -> str:
     - ``> **Status:** ✅ Accepted``
     - ``> **Status:** 🔄 Proposed``
     - ``Status: Accepted``
+
+    Classification is anchored to the Status field's LEADING marker
+    (``<symbol> <word>``): a leading status symbol (✅ 🔄 ⛔ 🗄️) declares
+    the status; otherwise the leading word is matched against the keyword
+    stems.  Symbols or stems that only appear LATER in the line are
+    informational prose (e.g. ``🔄 Proposed (flips to ✅ Implemented …)``
+    stays Proposed) and never override the leading marker.
     """
     match = _ADR_STATUS_RE.search(content)
     if match is None:
         return ""
     raw = match.group(1).strip()
-    # Extract the keyword from the raw status text
+    # Leading symbol declares the status (✅/🔄/⛔/🗄️ first in the field).
     for symbol, keyword in _INDEX_STATUS_SYMBOLS.items():
-        if symbol in raw:
+        if raw.startswith(symbol):
             return keyword
-    # Check for keyword without symbol
-    lower = raw.lower()
-    if "accept" in lower:
-        return "Accepted"
-    if "propos" in lower:
-        return "Proposed"
-    if "supers" in lower:
-        return "Superseded"
-    if "deprecated" in lower:
-        return "Deprecated"
+    # No leading symbol: classify by the leading word (e.g. "Accepted (…)").
+    first_word = _LEADING_WORD_RE.search(raw)
+    if first_word is None:
+        return ""
+    stem = first_word.group(0).lower()
+    for keyword_stem, keyword in _STATUS_KEYWORD_STEMS:
+        if stem.startswith(keyword_stem):
+            return keyword
     return ""
 
 
