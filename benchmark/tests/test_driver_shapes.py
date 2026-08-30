@@ -6,8 +6,9 @@ positivity, frozen ``CapabilityContext``, the event-cursor slicing of
 one invocation's raw-event refs, the SSE total-deadline guard against a
 keep-alive-forever stream (T3 rider: never hang the runner) plus the
 well-formed happy path, REST event recording into the sanitized
-ingest-event sink, poll pacing/timeout via an injected sleeper, and the
-``PlaceholderDriver`` loud-failure contract (Tasks 8-10 replace entries).
+ingest-event sink, poll pacing/timeout via an injected sleeper. The
+``PlaceholderDriver`` loud-failure contract was removed with Task 10
+(completion): every registry entry maps to a real driver class.
 """
 
 from __future__ import annotations
@@ -18,9 +19,7 @@ from typing import TYPE_CHECKING, cast
 import httpx
 import pytest
 
-from benchmark.capabilities import CAPABILITIES
 from benchmark.corpus_loader import Corpus, Reference
-from benchmark.drivers import PlaceholderDriver
 from benchmark.drivers.base import (
     CapabilityContext,
     CapabilityResult,
@@ -147,14 +146,6 @@ def test_capability_timings_reject_non_positive_values() -> None:
         _timings(sse_deadline_seconds=0.0)
     with pytest.raises(ValueError, match="poll_interval_seconds"):
         _timings(poll_interval_seconds=-1.0)
-
-
-def test_every_registry_id_is_covered_by_the_placeholder_contract() -> None:
-    ctx = _context(make_client(ScriptedApi()))
-
-    for _spec in CAPABILITIES:
-        with pytest.raises(NotImplementedError, match="Tasks 8-10"):
-            PlaceholderDriver().invoke(ctx)
 
 
 def test_event_cursor_slices_only_the_events_of_one_invocation() -> None:

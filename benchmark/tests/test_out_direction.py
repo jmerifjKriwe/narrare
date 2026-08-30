@@ -7,8 +7,8 @@ tests live in ``test_out_kb_detail.py``, the CAP-OUT-05..10 tests in
 ``test_out_direction_surfaces.py``; shared fixtures in
 ``out_direction_helpers.py``. The boundary pin: all ten OUT ``DRIVERS``
 entries are real classes whose names match the registry ``driver_name``
-with zero placeholders — IN-9 + OUT-10 are done, the 7 CHK entries
-remain placeholders until Task 10.
+(IN-9 + OUT-10 + CHK-7 complete the 26-entry registry — see
+``test_capabilities.py`` for the completion pin).
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import httpx
 import pytest
 
 from benchmark.capabilities import CAPABILITIES, capability
-from benchmark.drivers import DRIVERS, PlaceholderDriver
+from benchmark.drivers import DRIVERS
 from benchmark.drivers.base import CapabilityStatus
 from benchmark.drivers.out_direction import (
     AUTOCOMPLETE_LIMIT,
@@ -75,13 +75,14 @@ def test_t9_carry_forward_all_ten_replaced_and_names_pinned() -> None:
         assert spec.shape == "rest", f"{cap_id}: OUT is all-REST per the registry"
         assert DRIVERS[cap_id] is driver
         assert driver.__name__ == spec.driver_name
-        assert driver is not PlaceholderDriver
 
 
-def test_t9_carry_forward_check_entries_still_placeholder() -> None:
-    remaining = [spec.cap_id for spec in CAPABILITIES if DRIVERS[spec.cap_id] is PlaceholderDriver]
-    assert remaining == [spec.cap_id for spec in CAPABILITIES if spec.direction == "check"]
-    assert len(remaining) == 7
+def test_t9_carry_forward_check_entries_completed_by_task_10() -> None:
+    """Task 10 completed the boundary: the remaining set is empty."""
+    remaining = [
+        spec.cap_id for spec in CAPABILITIES if DRIVERS[spec.cap_id].__name__ != spec.driver_name
+    ]
+    assert remaining == []
 
 
 # ---------------------------------------------------------------------------

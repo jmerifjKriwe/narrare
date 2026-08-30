@@ -10,8 +10,9 @@ are inventory *findings* without CAP ids — the tests assert they are
 present as ``UNAVAILABLE_SURFACES`` (with their 404 reasons) and absent
 from the 26-entry table, so ``SKIPPED(unavailable)`` semantics live
 outside the inventory table without breaking set-equality. Driver
-mapping tests pin the placeholder contract and the T7 baseline (all 26
-placeholders, registration complete; Tasks 8-10 replace entries).
+mapping tests pin the Task-10 completion contract: all 26 entries map
+to real driver classes whose names match the registry ``driver_name``
+(placeholder stand-ins are gone).
 """
 
 from __future__ import annotations
@@ -27,9 +28,7 @@ from benchmark.capabilities import (
     UnknownCapabilityError,
     capability,
 )
-from benchmark.drivers import DRIVERS, DriverNotRegisteredError, PlaceholderDriver, driver_for
-from benchmark.drivers.in_direction import IN_DIRECTION_DRIVERS
-from benchmark.drivers.out_direction import OUT_DIRECTION_DRIVERS
+from benchmark.drivers import DRIVERS, DriverNotRegisteredError, driver_for
 
 INVENTORY_DIR = Path(__file__).resolve().parents[1] / "inventory"
 DIRECTION_FILES: tuple[tuple[str, str], ...] = (
@@ -156,7 +155,7 @@ def test_unavailable_endpoint_paths_are_absent_from_the_registry_table() -> None
 
 
 # ---------------------------------------------------------------------------
-# Driver mapping — placeholder contract until Tasks 8-10 replace entries
+# Driver mapping — the Task-10 completion pin (all 26 real, zero placeholders)
 # ---------------------------------------------------------------------------
 
 
@@ -170,15 +169,19 @@ def test_unknown_driver_id_raises_driver_not_registered() -> None:
         driver_for("CAP-NOPE-99")
 
 
-def test_t9_baseline_in_and_out_replaced_and_registration_is_complete() -> None:
-    """T7 baseline, advanced by Tasks 8-9: the 19 in/out entries are real.
-
-    The check entries stay placeholders until Task 10 replaces them;
-    registration remains complete (every registry id mapped).
-    """
+def test_t10_completion_all_26_entries_real_and_names_pinned() -> None:
+    """Completion pin (plan Task 10 acceptance): every entry maps to the
+    registry driver class; no direction map is missing."""
     assert set(DRIVERS) == {spec.cap_id for spec in CAPABILITIES}
-    assert all(
-        DRIVERS[spec.cap_id] is PlaceholderDriver
-        for spec in CAPABILITIES
-        if spec.cap_id not in IN_DIRECTION_DRIVERS and spec.cap_id not in OUT_DIRECTION_DRIVERS
-    )
+    assert len(DRIVERS) == 26
+    for spec in CAPABILITIES:
+        driver = DRIVERS[spec.cap_id]
+        assert driver.__name__ == spec.driver_name
+        assert driver.__module__.startswith("benchmark.drivers.")
+
+
+def test_placeholder_driver_is_gone_from_the_driver_package() -> None:
+    """The completion pin is literal: no placeholder remains anywhere."""
+    import benchmark.drivers as drivers_package
+
+    assert not hasattr(drivers_package, "PlaceholderDriver")

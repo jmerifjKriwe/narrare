@@ -6,8 +6,8 @@ SKIP, plus the HTTP-500→ERROR matrix over ALL nine drivers). The
 CAP-IN-05..09 tests live in ``test_in_direction_surfaces.py``; shared
 fixtures in ``in_direction_helpers.py``. The T7 carry-forward acceptance
 is pinned here: all nine ``DRIVERS`` entries are real classes whose
-names match the registry ``driver_name`` with zero placeholders among
-them (since Task 9 only the 7 CHK entries remain placeholders).
+names match the registry ``driver_name`` (Task 10 completed the registry
+— see ``test_capabilities.py`` for the 26-entry completion pin).
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import httpx
 import pytest
 
 from benchmark.capabilities import CAPABILITIES, capability
-from benchmark.drivers import DRIVERS, PlaceholderDriver
+from benchmark.drivers import DRIVERS
 from benchmark.drivers.base import CapabilityStatus
 from benchmark.drivers.in_direction import (
     ASSIST_FIELD_KEY,
@@ -74,16 +74,13 @@ def test_t8_carry_forward_all_nine_replaced_and_names_pinned() -> None:
         assert spec.direction == "in"
         assert DRIVERS[cap_id] is driver
         assert driver.__name__ == spec.driver_name
-        assert driver is not PlaceholderDriver
 
 
-def test_t8_carry_forward_check_entries_still_placeholder() -> None:
-    """Task 9 advanced the boundary: only the 7 CHK entries still wait."""
+def test_t8_carry_forward_check_entries_completed_by_task_10() -> None:
+    """Task 10 completed the boundary: no entry waits for a driver."""
     for spec in CAPABILITIES:
         if spec.direction == "check":
-            assert DRIVERS[spec.cap_id] is PlaceholderDriver
-        else:
-            assert DRIVERS[spec.cap_id] is not PlaceholderDriver
+            assert DRIVERS[spec.cap_id].__name__ == spec.driver_name
 
 
 def test_capability_context_targets_defaults_to_empty_map() -> None:

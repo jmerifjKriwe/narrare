@@ -1,12 +1,15 @@
 """Capability driver mapping — the cap_id -> driver class registry.
 
 ``benchmark.capabilities`` holds the 26-entry inventory table; THIS
-module owns which driver CLASS serves each entry (plan Task 7). Entries
-start mapped to :class:`PlaceholderDriver`, whose ``invoke`` raises
-``NotImplementedError``; plan Tasks 8-10 replace entries direction by
-direction (Task 8 wired the whole ``in`` direction, Task 9 the whole
-``out`` direction), so an un-replaced capability fails loudly and
-honestly at invocation time, never silently no-ops.
+module owns which driver CLASS serves each entry (plan Task 7). Plan
+Tasks 8-10 implemented the drivers direction by direction (Task 8 the
+whole ``in`` direction, Task 9 the whole ``out`` direction, Task 10 the
+whole ``check`` direction) — the registry is COMPLETE: every entry maps
+to a real driver class (completion pin in ``test_capabilities.py``;
+the ``PlaceholderDriver`` stand-in was removed with Task 10). An id
+missing from the map (a future registry addition without a driver)
+surfaces as a ``KeyError``/``DriverNotRegisteredError`` — loud, never a
+silent no-op.
 """
 
 from __future__ import annotations
@@ -14,18 +17,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Final
 
 from benchmark.capabilities import CAPABILITIES
+from benchmark.drivers.check_direction import CHECK_DIRECTION_DRIVERS
 from benchmark.drivers.in_direction import IN_DIRECTION_DRIVERS
 from benchmark.drivers.out_direction import OUT_DIRECTION_DRIVERS
 
 if TYPE_CHECKING:
-    from benchmark.drivers.base import CapabilityContext, CapabilityDriver, CapabilityResult
+    from benchmark.drivers.base import CapabilityDriver
 
 __all__ = [
+    "CHECK_DIRECTION_DRIVERS",
     "DRIVERS",
     "IN_DIRECTION_DRIVERS",
     "OUT_DIRECTION_DRIVERS",
     "DriverNotRegisteredError",
-    "PlaceholderDriver",
     "driver_for",
 ]
 
@@ -34,22 +38,12 @@ class DriverNotRegisteredError(LookupError):
     """No driver class is mapped for a capability id."""
 
 
-class PlaceholderDriver:
-    """Stand-in for capabilities whose drivers land in plan Tasks 8-10."""
-
-    def invoke(self, ctx: CapabilityContext) -> CapabilityResult:
-        raise NotImplementedError(
-            "capability drivers are implemented in plan Tasks 8-10; "
-            "this registry entry is still the placeholder"
-        )
-
-
 DRIVERS: Final[dict[str, type[CapabilityDriver]]] = {
-    **{spec.cap_id: PlaceholderDriver for spec in CAPABILITIES},
     **IN_DIRECTION_DRIVERS,
     **OUT_DIRECTION_DRIVERS,
+    **CHECK_DIRECTION_DRIVERS,
 }
-"""cap_id -> driver class; Task 10 replaces the remaining placeholders."""
+"""cap_id → driver class — ALL 26 registry entries (Task 10 completion)."""
 
 
 def driver_for(cap_id: str) -> type[CapabilityDriver]:
