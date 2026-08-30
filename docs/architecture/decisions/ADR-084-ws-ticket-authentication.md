@@ -418,7 +418,9 @@ affected.
 | T5 | `packages/web` socket tests (`writing-session-socket` / `useSessionSocket`) | URL contains `token`, never `user_id`; `ticketProvider` awaited per `connect()`; reconnect path fetches a fresh ticket |
 
 **Acceptance gate (RULE-20):** T1+T2 green, all T3/T4 migrations green, web
-build + tests green, `scripts/check_architecture.py` green — in the same slice.
+build + tests green, `scripts/check_architecture.py` green — in the same slice
+(**met 2026-08-30, commit `6f51129e`**), **plus a browser E2E exercise of the
+ticket flow (connect → session → recovery) before the status flips.**
 Then this ADR flips to ✅ Implemented.
 
 ---

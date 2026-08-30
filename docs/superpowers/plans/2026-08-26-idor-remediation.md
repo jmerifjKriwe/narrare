@@ -7,11 +7,21 @@
 > factory pre-gate resolution, N2 decision records) addressed and re-reviewed clean.
 > Gates at close: `just verify` 10/10 (incl. Typecheck-Tests after S12b fake-cast fix),
 > backend 12 476 passed, frontend 3 567 passed, architecture 2 673 files clean.
-> Residual OPEN (tracked): S3/WS ticket follow-up (D1:a/D4:b records below),
-> worldbuilding `apply_connections` entries∈novel validation, 16 inert
-> `chapter_exists` mocks across 10 test files, `verify_novel_owned` gate
-> consolidation, ADR-070 protocol gap (`get_adaptive_snapshots`), KB-002 doc
-> staleness, consistency-cache owner dimension.
+>
+> **EXECUTION RECORD ADDENDUM (2026-08-30 — W-wave closes S3):** S3/WS executed per
+> D1:a/D4:b on the same branch: [ADR-084](../../architecture/decisions/ADR-084-ws-ticket-authentication.md)
+> (REST-issued single-use 60 s ticket, SHA-256-keyed registry mirroring export tokens,
+> anti-enumeration unknown≡expired≡consumed; commit `6f51129e`, backend+frontend one
+> slice per RULE-20; spoofable `user_id` query param REMOVED, close codes
+> 4401/4001/1008/4003). W2: worldbuilding `apply_connections` entries∈novel batch
+> validation (`391ce76d`). W3: `verify_novel_owned` consolidated into canonical
+> `novels/ownership.py` (`972feee2`, zero behavior change). W4: hygiene (dead mocks,
+> ADR-070 protocol gap, chat message_id contract, KB-002 doc, cache invariant)
+> (`2254cf3f`). W-wave batch review: APPROVED — **all 21 GAP-CRITICALs now closed.**
+> Dependabot #134 verified stale (aiosmtplib already 5.1.2 everywhere).
+> Residual OPEN (shrunk): ADR-084 Implemented-flip after browser E2E (gate amended
+> to name E2E), ADR-status parser robustness (symbol-order), W2 DB-level apply
+> integration test, ADR-070-era minor doc/protocol follow-ups as they arise.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans or
 > superpowers:subagent-driven-development, slice by slice. Each slice is one
