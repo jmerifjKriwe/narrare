@@ -33,12 +33,17 @@ FLAVOR_A_BYTES = (
 
 @dataclass
 class RecordedCall:
-    """One request seen by the mock backend."""
+    """One request seen by the mock backend.
+
+    ``params`` (Task 9) records the query string so GET drivers can have
+    their query payloads pinned (pagination, search q, max_results, …).
+    """
 
     method: str
     path: str
     authorization: str | None
     body: object
+    params: dict[str, str] | None = None
 
 
 Responder = Callable[[int, RecordedCall], httpx.Response]
@@ -74,6 +79,7 @@ class ScriptedApi:
             path=request.url.path,
             authorization=request.headers.get("authorization"),
             body=raw_body,
+            params=dict(request.url.params),
         )
         self.calls.append(call)
         return self._responder(len(self.calls) - 1, call)

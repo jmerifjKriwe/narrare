@@ -41,7 +41,10 @@ __all__ = [
     "as_float",
     "as_int",
     "as_list",
+    "as_opt_float",
+    "as_opt_int",
     "as_opt_object",
+    "as_opt_str_list",
     "as_opt_text",
     "as_str_tuple",
     "as_text",
@@ -113,6 +116,29 @@ def as_opt_object(value: object) -> dict[str, object] | None:
     raise StreamProtocolError(
         f"response shape drift: expected object|null, got {type(value).__name__}"
     )
+
+
+def as_opt_int(value: object) -> int | None:
+    if value is None or (isinstance(value, int) and not isinstance(value, bool)):
+        return value
+    raise StreamProtocolError(
+        f"response shape drift: expected integer|null, got {type(value).__name__}"
+    )
+
+
+def as_opt_float(value: object) -> float | None:
+    if value is None or isinstance(value, float):
+        return value
+    raise StreamProtocolError(
+        f"response shape drift: expected number|null, got {type(value).__name__}"
+    )
+
+
+def as_opt_str_list(value: object) -> tuple[str, ...] | None:
+    """Optional string list → tuple (record immutability), None passes through."""
+    if value is None:
+        return None
+    return as_str_tuple(value)
 
 
 def as_str_tuple(value: object) -> tuple[str, ...]:

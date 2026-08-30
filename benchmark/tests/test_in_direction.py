@@ -7,7 +7,7 @@ CAP-IN-05..09 tests live in ``test_in_direction_surfaces.py``; shared
 fixtures in ``in_direction_helpers.py``. The T7 carry-forward acceptance
 is pinned here: all nine ``DRIVERS`` entries are real classes whose
 names match the registry ``driver_name`` with zero placeholders among
-them (the other 17 stay placeholders until Tasks 9-10).
+them (since Task 9 only the 7 CHK entries remain placeholders).
 """
 
 from __future__ import annotations
@@ -77,10 +77,13 @@ def test_t8_carry_forward_all_nine_replaced_and_names_pinned() -> None:
         assert driver is not PlaceholderDriver
 
 
-def test_t8_carry_forward_out_and_check_entries_still_placeholder() -> None:
+def test_t8_carry_forward_check_entries_still_placeholder() -> None:
+    """Task 9 advanced the boundary: only the 7 CHK entries still wait."""
     for spec in CAPABILITIES:
-        if spec.direction != "in":
+        if spec.direction == "check":
             assert DRIVERS[spec.cap_id] is PlaceholderDriver
+        else:
+            assert DRIVERS[spec.cap_id] is not PlaceholderDriver
 
 
 def test_capability_context_targets_defaults_to_empty_map() -> None:
