@@ -10,7 +10,8 @@ are inventory *findings* without CAP ids — the tests assert they are
 present as ``UNAVAILABLE_SURFACES`` (with their 404 reasons) and absent
 from the 26-entry table, so ``SKIPPED(unavailable)`` semantics live
 outside the inventory table without breaking set-equality. Driver
-mapping tests pin the placeholder contract (Tasks 8-10 replace entries).
+mapping tests pin the placeholder contract and the T7 baseline (all 26
+placeholders, registration complete; Tasks 8-10 replace entries).
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ from benchmark.capabilities import (
     UnknownCapabilityError,
     capability,
 )
-from benchmark.drivers import DRIVERS, DriverNotRegisteredError, driver_for
+from benchmark.drivers import DRIVERS, DriverNotRegisteredError, PlaceholderDriver, driver_for
 
 INVENTORY_DIR = Path(__file__).resolve().parents[1] / "inventory"
 DIRECTION_FILES: tuple[tuple[str, str], ...] = (
@@ -102,6 +103,13 @@ def test_every_registry_entry_carries_method_pinned_endpoints() -> None:
             assert endpoint.path == endpoint.path.lower()
 
 
+def test_every_registry_entry_carries_a_nonempty_output_schema_pointer() -> None:
+    for spec in CAPABILITIES:
+        assert spec.output_schema, f"{spec.cap_id}: output_schema must be non-empty"
+        assert spec.cap_id in spec.output_schema, f"{spec.cap_id}: pointer must cite its id"
+        assert len(spec.output_schema) <= 80, f"{spec.cap_id}: pointer exceeds 80 chars"
+
+
 def test_mounted_registry_entries_carry_no_unavailable_reason() -> None:
     assert all(spec.unavailable_reason is None for spec in CAPABILITIES)
 
@@ -158,3 +166,8 @@ def test_every_registry_id_resolves_through_driver_for() -> None:
 def test_unknown_driver_id_raises_driver_not_registered() -> None:
     with pytest.raises(DriverNotRegisteredError, match="CAP-NOPE-99"):
         driver_for("CAP-NOPE-99")
+
+
+def test_t7_baseline_all_drivers_are_placeholders_and_registration_is_complete() -> None:
+    assert all(d is PlaceholderDriver for d in DRIVERS.values())
+    assert set(DRIVERS) == {spec.cap_id for spec in CAPABILITIES}
