@@ -149,6 +149,7 @@ class InMemoryConversationStore(ConversationStore):
             conversation_id=conversation_id,
             role=role,
             content=content,
+            message_id=uuid4(),
             created_at=datetime.now(timezone.utc).isoformat(),  # noqa: UP017 — datetime is the class, not module
         )
         self._messages.setdefault(conversation_id, []).append(msg)

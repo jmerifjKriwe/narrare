@@ -15,6 +15,7 @@ from narrare.adaptive.contracts import AdaptiveContextServiceProtocol
 from narrare.adaptive.schemas import (
     AdaptiveContextResponse,
     AdaptiveSettingsResponse,
+    AdaptiveSnapshotsResponse,
     AdaptiveSourceSummary,
     AdaptiveToggleInput,
     AdaptiveWeightsInput,
@@ -63,6 +64,14 @@ class FakeAdaptiveService:
             ),
         )
 
+    async def get_adaptive_snapshots(
+        self,
+        project_id: object,
+        user_id: object,
+        limit: int = 20,
+    ) -> AdaptiveSnapshotsResponse:
+        return AdaptiveSnapshotsResponse(project_id=str(project_id))
+
 
 class TestAdaptiveContextServiceProtocol:
     """Protocol conformance."""
@@ -78,6 +87,24 @@ class TestAdaptiveContextServiceProtocol:
             ) -> AdaptiveContextResponse: ...
 
         assert not isinstance(OnlyGetContext(), AdaptiveContextServiceProtocol)
+
+    def test_missing_snapshots_method_does_not_satisfy(self) -> None:
+        """ADR-070: the snapshots read path is part of the service contract."""
+
+        class NoSnapshots:
+            async def get_context(
+                self, project_id: object, user_id: object
+            ) -> AdaptiveContextResponse: ...
+
+            async def set_enabled(
+                self, project_id: object, user_id: object, enabled: bool
+            ) -> AdaptiveSettingsResponse: ...
+
+            async def set_weights(
+                self, project_id: object, user_id: object, weights: AdaptiveWeightsInput
+            ) -> AdaptiveSettingsResponse: ...
+
+        assert not isinstance(NoSnapshots(), AdaptiveContextServiceProtocol)
 
 
 class TestAdaptiveWeightsInput:

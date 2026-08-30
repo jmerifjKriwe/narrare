@@ -157,6 +157,7 @@ class TestGetHistoryEndpoint:
 
         conv_id = uuid4()
         project_id = uuid4()
+        msg_ids = (uuid4(), uuid4())
 
         fake = FakeChatService()
         fake.set_history(
@@ -165,12 +166,14 @@ class TestGetHistoryEndpoint:
                 role="user",
                 content="Question?",
                 created_at="2026-01-01T00:00:00Z",
+                message_id=msg_ids[0],
             ),
             ChatMessage(
                 conversation_id=conv_id,
                 role="assistant",
                 content="Answer!",
                 created_at="2026-01-02T00:00:00Z",
+                message_id=msg_ids[1],
             ),
         )
         fake.set_project_id(project_id)
@@ -186,6 +189,9 @@ class TestGetHistoryEndpoint:
         assert len(result.messages) == 2
         assert result.messages[0].role == "user"
         assert result.messages[1].role == "assistant"
+        # Regression (W4): each message must report its OWN id — previously
+        # every row reported the conversation id as message_id.
+        assert [m.message_id for m in result.messages] == list(msg_ids)
 
     async def test_project_id_is_none_when_project_not_found(self) -> None:
         """When project_id resolves to None, the response exposes None honestly (NOTES-001 §8)."""
@@ -218,6 +224,7 @@ class TestGetHistoryEndpoint:
                 role="user",
                 content="Owner question",
                 created_at="2026-01-01T00:00:00Z",
+                message_id=uuid4(),
             )
         )
         fake.set_project_id(uuid4())

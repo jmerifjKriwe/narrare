@@ -94,11 +94,21 @@ or could be expanded.
 
 ## How it works (Technical)
 
-**Entry point:** `apps/api/narrare/kb/router.py` → `POST /api/v1/kb/sessions`
+**Entry point:** `apps/api/narrare/kb/router_sessions.py` → `POST /api/v1/novels/{novel_id}/kb/sessions`
 **Service:** `KBSessionService` in `apps/api/narrare/kb/session_service.py`
-**Contract:** `KBSessionProtocol` in `apps/api/narrare/kb/contracts.py`
+**Contract:** `KBAssistProtocol` in `apps/api/narrare/kb/assist_contracts.py`
 **LLM Intent:** `LLMIntent.KB_CREATE`, `LLMIntent.KB_IMPROVE`
-**Streaming:** Yes — questions stream in real-time
+**Streaming:** No — turn-based REST; each AI action returns synchronously
+
+**Ownership & 404 semantics (IDOR S7):**
+- Every session endpoint is novel-scoped (`/novels/{novel_id}/kb/sessions/...`)
+  and user-scoped: the service only accepts a session when it belongs to
+  both the path's novel and the authenticated user.
+- Unknown and foreign (novel, session) combinations are indistinguishable —
+  both raise `NotFoundError` → HTTP 404, so callers cannot probe for other
+  users' sessions.
+- Session creation gates novel ownership FIRST: a foreign/unknown novel
+  yields 404 and no session row is created.
 
 **Session flow:**
 1. User starts session with entity_type and optional existing_entry
@@ -117,16 +127,11 @@ or could be expanded.
 - Prioritizes: Identity → Details → Relationships → Arc
 - 5-15 questions per entity depending on complexity
 
-**State management:**
-```python
-class KBSession:
-    id: UUID
-    entity_type: EntityType
-    questions_asked: list[str]
-    answers: dict[str, str]  # question → answer
-    draft_entry: KBEntry | None
-    status: "active" | "complete" | "abandoned"
-```
+**State management:** `KBCreationSession` in `apps/api/narrare/kb/session_models.py`
+(one `KBCreationField` per template field; status `active → review →
+complete/abandoned`; each field tracks question_asked, user_value,
+ai_suggested_value, ai_reasoning, source, final_value — see Architecture
+Decisions below).
 
 ## Constraints & Edge Cases
 
@@ -172,12 +177,12 @@ One agent with mode-aware prompts. The mode (interview/suggest/enhance/extract)
 is set via system prompt, not via different agents. Shared tools:
 KBQueryService (search_kb, get_entity, get_related).
 
-### API: REST + SSE (not WebSocket)
+### API: REST (not WebSocket)
 
 REST endpoints for data operations (create session, answer field, accept suggestion).
-Progressive AI responses are handled by action-specific operations where the UX
-needs streaming output; there is no generic session-state stream. Not a real-time
-chat — turn-based Q&A with optional streaming output.
+No SSE/streaming endpoints are currently shipped — AI actions return
+synchronously in the JSON response; per-action streaming can be added later if
+the UX needs it. Not a real-time chat — turn-based Q&A.
 
 ### World context: ProactiveContextService
 
@@ -185,13 +190,16 @@ AI suggestions are grounded in the project's existing KB via
 ProactiveContextService (merged KB-005/INFRA-009). Advanced mode lets users
 choose which KB entries and chapters to include as context.
 
-### Session storage: Redis cache (30min TTL)
+### Session storage: Ephemeral in-memory cache, 30min TTL (ADR-080)
 
-Sessions are ephemeral creation flows, not persistent data. Redis with TTL
-is sufficient. Final entries are saved via KB-001.
+Sessions are ephemeral creation flows, not persistent data. The
+`KBCreationSessionStore` keeps them in the ADR-080 in-memory cache
+(`SessionCacheProtocol`, TTL 1800s; the Redis abstraction was removed per
+ADR-080). Final entries are saved via KB-001.
 
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-24` — Redesigned. Renamed from "Interactive KB Session" to "Assisted KB Creation". Template-guided spectrum (manual ↔ interview ↔ auto). Single KBAgent. REST+SSE. ProactiveContext for world context.
 - `2026-05-25` — Status updated to implemented. Backend + Frontend complete. Backend: session_service, session_store, session_models, session_schemas, assist_service, assist_contracts, router_sessions, router_sessions_complete. Frontend: KBAssistedCreationPanel, KBAssistedCreationFooter, KBSessionFieldList, KBFieldSuggestion, KBInterviewView, KBEnhanceReview. Integration in WorldBuilding and KBEntryList ("New with AI Interview"). 99 backend tests. i18n complete.
+- `2026-08-30` — IDOR S7: all session endpoints became (novel_id, user_id)-scoped with indistinguishable 404s for unknown/foreign access; creation gates novel ownership before any row is written. Technical section aligned with reality (novel-scoped routes via router_sessions.py, KBAssistProtocol, no streaming endpoints, KBCreationSession model, ADR-080 in-memory session storage).

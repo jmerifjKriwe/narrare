@@ -16,11 +16,17 @@ if TYPE_CHECKING:
 
 @dataclass
 class ChatMessage:
-    """A single chat message in a conversation."""
+    """A single chat message in a conversation.
+
+    ``message_id`` is the persisted message row id (``chat_messages.id``)
+    — distinct from ``conversation_id``; the REST history endpoint
+    reports it per message.
+    """
 
     conversation_id: UUID
     role: str  # "user" or "assistant"
     content: str
+    message_id: UUID
     created_at: str = field(default="")
 
 

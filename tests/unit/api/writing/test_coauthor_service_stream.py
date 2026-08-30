@@ -99,7 +99,6 @@ class TestStreamCoauthorHappyPath:
         """Successful stream: creates request, updates statuses, yields chunks."""
         request_id = uuid4()
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.get_by_id = AsyncMock(return_value=None)
@@ -159,7 +158,6 @@ class TestStreamCoauthorHappyPath:
         """Multiple intermediate chunks are yielded before the final chunk."""
         request_id = uuid4()
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.get_by_id = AsyncMock(return_value=None)
@@ -204,7 +202,6 @@ class TestStreamCoauthorHappyPath:
         """Final chunk with context_meta gets request_id injected."""
         request_id = uuid4()
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.get_by_id = AsyncMock(return_value=None)
@@ -260,7 +257,6 @@ class TestStreamCoauthorHappyPath:
         gen_request = _make_generation_request(id=request_id)
 
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.get_by_id = AsyncMock(return_value=gen_request)
@@ -317,7 +313,6 @@ class TestStreamCoauthorErrors:
         """Pipeline error updates status to failed with error message."""
         request_id = uuid4()
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.update_status = AsyncMock()

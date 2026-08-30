@@ -78,10 +78,7 @@ def _make_service(pipeline: Any, repo: Any) -> StyleVariantService:
 
 @pytest.fixture()
 def mock_repo() -> Any:
-    repo = MagicMock(
-        spec=["chapter_exists", "get_active_for_chapter", "create_if_no_active", "update_status"]
-    )
-    repo.chapter_exists = AsyncMock(return_value=True)
+    repo = MagicMock(spec=["get_active_for_chapter", "create_if_no_active", "update_status"])
     repo.get_active_for_chapter = AsyncMock(return_value=None)
     repo.create_if_no_active = AsyncMock(return_value=uuid4())
     repo.update_status = AsyncMock()

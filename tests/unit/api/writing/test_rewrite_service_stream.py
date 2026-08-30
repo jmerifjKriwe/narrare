@@ -74,7 +74,6 @@ async def _fake_stream(*texts: str) -> Any:
 @pytest.fixture()
 def mock_repo() -> AsyncMock:
     repo = AsyncMock()
-    repo.chapter_exists = AsyncMock(return_value=True)
     repo.get_active_for_chapter = AsyncMock(return_value=None)
     repo.create_if_no_active = AsyncMock(return_value=uuid.uuid4())
     repo.update_status = AsyncMock()

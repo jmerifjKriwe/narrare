@@ -112,7 +112,7 @@ async def get_history(
         project_id=project_id,
         messages=[
             ChatMessageSchema(
-                message_id=m.conversation_id,
+                message_id=m.message_id,
                 role=m.role,
                 content=m.content,
                 created_at=m.created_at,

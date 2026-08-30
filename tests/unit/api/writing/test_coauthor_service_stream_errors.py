@@ -79,7 +79,6 @@ class TestStreamCoauthorErrors:
         """Pipeline error updates status to failed with error message."""
         request_id = uuid4()
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.update_status = AsyncMock()
@@ -133,7 +132,6 @@ class TestStreamCoauthorContext:
         """When context_before/context_after provided, content includes markers."""
         request_id = uuid4()
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.get_by_id = AsyncMock(return_value=None)
@@ -184,7 +182,6 @@ class TestStreamCoauthorContext:
         """Without context_before/context_after, just selection_text used."""
         request_id = uuid4()
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.get_by_id = AsyncMock(return_value=None)

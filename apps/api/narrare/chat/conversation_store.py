@@ -93,6 +93,7 @@ class SQLAlchemyConversationStore(ConversationStore):
             conversation_id=conversation_id,
             role=role,
             content=content,
+            message_id=msg.id,
             created_at=datetime.now(UTC).isoformat(),
         )
 
@@ -121,6 +122,7 @@ class SQLAlchemyConversationStore(ConversationStore):
                 conversation_id=m.conversation_id,
                 role=m.role,
                 content=m.content,
+                message_id=m.id,
                 created_at=m.created_at.isoformat() if m.created_at else "",
             )
             for m in messages
