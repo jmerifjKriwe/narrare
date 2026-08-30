@@ -34,6 +34,12 @@ describe("IconButton", () => {
     expect(container.querySelector("[aria-hidden='true']")).not.toBeNull();
   });
 
+  it("exposes an optional advisory title without changing the accessible name", () => {
+    render(<IconButton label="Quick capture" icon={Menu} title="Quick capture (Ctrl/⌘+Shift+U)" />);
+    const btn = screen.getByRole("button", { name: "Quick capture" });
+    expect(btn).toHaveAttribute("title", "Quick capture (Ctrl/⌘+Shift+U)");
+  });
+
   it("applies the destructive variant class", () => {
     render(<IconButton label="Delete" icon={Menu} onClick={() => {}} variant="destructive" />);
     const btn = screen.getByRole("button", { name: "Delete" });

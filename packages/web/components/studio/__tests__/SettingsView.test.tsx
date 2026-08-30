@@ -126,6 +126,8 @@ describe("SettingsView", () => {
     // Should render shortcut items
     expect(screen.getByText("settings.shortcutsSection.save")).toBeDefined();
     expect(screen.getByText("settings.shortcutsSection.newChapter")).toBeDefined();
+    // Follow-up b3: the global quick-capture shortcut is documented here too.
+    expect(screen.getByText("settings.shortcutsSection.quickCapture")).toBeDefined();
   });
 
   it("switches to about tab and renders about content", () => {

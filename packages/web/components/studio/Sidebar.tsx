@@ -106,6 +106,10 @@ export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
         <IconButton
           icon={Zap}
           label={tNotes("quickCapture.open")}
+          // Follow-up b3: hover tooltip names the action AND its shortcut —
+          // both keys already exist (quickCapture.open / shortcutHint), so
+          // no new i18n keys are introduced.
+          title={`${tNotes("quickCapture.open")} (${tNotes("quickCapture.shortcutHint")})`}
           data-testid="sidebar-quick-capture-button"
           onClick={() => quickCapture.open()}
         />

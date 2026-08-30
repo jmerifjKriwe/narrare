@@ -7,6 +7,12 @@ type IconButtonSize = "sm" | "md";
 interface IconButtonProps {
   /** Required accessible name (resolved i18n string). Becomes aria-label. */
   readonly label: string;
+  /**
+   * Optional advisory tooltip (resolved i18n string) — native title attribute,
+   * the house minimum (see ChatPanel's status dot). Supplementary to the
+   * accessible name, never a replacement.
+   */
+  readonly title?: string;
   /** Lucide icon component to render. */
   readonly icon: LucideIcon;
   /** Click handler. */
@@ -44,6 +50,7 @@ const SIZE_CLASSES: Record<IconButtonSize, string> = {
  */
 export function IconButton({
   label,
+  title,
   icon: Icon,
   onClick,
   disabled = false,
@@ -58,6 +65,7 @@ export function IconButton({
     <button
       type="button"
       aria-label={label}
+      title={title}
       aria-disabled={isDisabled || undefined}
       aria-busy={loading || undefined}
       disabled={isDisabled}

@@ -95,6 +95,15 @@ describe("NotesChatDrawer", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("moves focus into the dialog when it opens (follow-up b3 — SR announcement)", () => {
+    render(<NotesChatDrawer open onClose={vi.fn()} note={note} />);
+    // Container-focus variant of the WAI-ARIA dialog pattern: focus lands on
+    // the dialog itself (tabIndex -1) so screen readers announce it and Tab
+    // starts inside the overlay — without useDialogFocus, whose Escape/focus
+    // trap would collide with ChatPanel's single-owner Escape listener.
+    expect(screen.getByRole("dialog")).toHaveFocus();
+  });
+
   it("does not listen for Escape while closed", () => {
     const onClose = vi.fn();
     render(<NotesChatDrawer open={false} onClose={onClose} note={note} />);

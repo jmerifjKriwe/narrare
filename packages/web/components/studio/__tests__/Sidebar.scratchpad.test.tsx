@@ -75,6 +75,14 @@ describe("Sidebar quick-capture button", () => {
     fireEvent.click(screen.getByTestId("sidebar-quick-capture-button"));
     expect(screen.getByTestId("quick-capture-panel")).toBeInTheDocument();
   });
+
+  it("explains the shortcut in a hover tooltip (follow-up b3)", () => {
+    renderWithProviders(<Sidebar />);
+    const button = screen.getByTestId("sidebar-quick-capture-button");
+    // The global next-intl mock returns keys verbatim — this pins the
+    // composition: accessible label + shortcut hint in parentheses.
+    expect(button).toHaveAttribute("title", "quickCapture.open (quickCapture.shortcutHint)");
+  });
 });
 
 describe("Sidebar scratchpad active state (P-FE2)", () => {

@@ -29,7 +29,7 @@
 import { StickyNote, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChatPanel } from "@/components/studio/editor/ChatPanel";
 import { overlayVariants, panelSlideRightVariants } from "@/lib/motion-variants";
 import { type Note, noteDisplayTitle } from "@/types";
@@ -57,6 +57,19 @@ export function NotesChatDrawer({ open, onClose, note }: NotesChatDrawerProps) {
     if (open && note === null) onClose();
   }, [open, note, onClose]);
 
+  // Initial dialog focus (follow-up b3): move focus INTO the dialog when it
+  // opens so screen readers announce it and Tab starts inside the overlay —
+  // the container-focus variant of the WAI-ARIA dialog pattern. Deliberately
+  // NOT useDialogFocus: it owns Escape and the focus trap, which would
+  // collide with ChatPanel's window Escape listener (single-owner rule,
+  // follow-up P-DRAWER). This adds no listener. Refocusing the chat INPUT
+  // after a stream completes is NOT reachable from here — ChatPanel keeps
+  // isStreaming and its input ref internal (see follow-up b3 report).
+  const asideRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (open) asideRef.current?.focus();
+  }, [open]);
+
   const bannerTitle = shownNote ? noteDisplayTitle(shownNote) || t("list.untitled") : "";
 
   return (
@@ -74,6 +87,7 @@ export function NotesChatDrawer({ open, onClose, note }: NotesChatDrawerProps) {
             aria-hidden="true"
           />
           <motion.aside
+            ref={asideRef}
             variants={panelSlideRightVariants}
             initial="hidden"
             animate="visible"
@@ -81,6 +95,7 @@ export function NotesChatDrawer({ open, onClose, note }: NotesChatDrawerProps) {
             role="dialog"
             aria-modal="true"
             aria-label={t("editor.discuss")}
+            tabIndex={-1}
             className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col overflow-hidden border-l border-border bg-card shadow-2xl"
           >
             <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
