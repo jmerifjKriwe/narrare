@@ -28,6 +28,7 @@ from benchmark.capabilities import (
     capability,
 )
 from benchmark.drivers import DRIVERS, DriverNotRegisteredError, PlaceholderDriver, driver_for
+from benchmark.drivers.in_direction import IN_DIRECTION_DRIVERS
 
 INVENTORY_DIR = Path(__file__).resolve().parents[1] / "inventory"
 DIRECTION_FILES: tuple[tuple[str, str], ...] = (
@@ -168,6 +169,15 @@ def test_unknown_driver_id_raises_driver_not_registered() -> None:
         driver_for("CAP-NOPE-99")
 
 
-def test_t7_baseline_all_drivers_are_placeholders_and_registration_is_complete() -> None:
-    assert all(d is PlaceholderDriver for d in DRIVERS.values())
+def test_t8_baseline_in_drivers_replaced_and_registration_is_complete() -> None:
+    """T7 baseline, advanced by Task 8: the 9 IN entries are real now.
+
+    The out/check entries stay placeholders until Tasks 9-10 replace
+    them; registration remains complete (every registry id mapped).
+    """
     assert set(DRIVERS) == {spec.cap_id for spec in CAPABILITIES}
+    assert all(
+        DRIVERS[spec.cap_id] is PlaceholderDriver
+        for spec in CAPABILITIES
+        if spec.cap_id not in IN_DIRECTION_DRIVERS
+    )

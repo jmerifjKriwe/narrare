@@ -20,7 +20,7 @@ and capability drivers, consumed by the Task 14 artifacts.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING, Final, Protocol
 
@@ -62,14 +62,25 @@ class CapabilityTimings:
     poll_interval_seconds: float
 
     def __post_init__(self) -> None:
-        for field in ("sse_deadline_seconds", "poll_timeout_seconds", "poll_interval_seconds"):
-            if getattr(self, field) <= 0:
-                raise ValueError(f"{field} must be > 0, got {getattr(self, field)!r}")
+        for name in ("sse_deadline_seconds", "poll_timeout_seconds", "poll_interval_seconds"):
+            if getattr(self, name) <= 0:
+                raise ValueError(f"{name} must be > 0, got {getattr(self, name)!r}")
 
 
 @dataclass(frozen=True)
 class CapabilityContext:
-    """Everything a capability driver may touch during one invocation."""
+    """Everything a capability driver may touch during one invocation.
+
+    ``targets`` (plan Task 8) is the per-run map of entity/chapter ids
+    discovered during the build path. Population order — ingest fills,
+    drivers consume: the runner builds it AFTER ingest and BEFORE driving
+    capabilities — ``chapter_id`` (first ingested chapter, from
+    ``IngestResult.chapters``), ``entry_id`` (an entity discovered during
+    ingest — first created entry of the recorded apply responses),
+    ``series_id`` (series provisioning; CAP-IN-06 prerequisite, map §7).
+    Drivers consume it read-only; a missing required target surfaces as
+    ``SKIPPED(structural)`` — never a fabricated id.
+    """
 
     client: BenchmarkClient
     corpus: Corpus
@@ -77,6 +88,7 @@ class CapabilityContext:
     chapter_ids: Mapping[str, str]
     config: CapabilityTimings
     events: list[IngestEvent]
+    targets: Mapping[str, str] = field(default_factory=lambda: {})
 
 
 @dataclass(frozen=True)
