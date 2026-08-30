@@ -2,7 +2,9 @@
 
 Where facts live in the OUT-03 record (``KbEntryDetail``): the KB entry
 is semi-structured prose + metadata, so the scorer reads TWO evidence
-planes, in strict precedence —
+planes, in strict precedence — entry ``tags`` are explicitly excluded
+from both planes (tags carry no predicate binding: neither fact
+evidence nor spurious-fact material):
 
 1. **Metadata rule** (structured): a metadata key whose
    ``normalize_predicate`` equals the fact's normalized predicate is
@@ -11,12 +13,14 @@ planes, in strict precedence —
    AND the interval check passes. A differing value or a contradicted
    interval = ``found_wrong`` (precision hit; evidence stays
    ``"metadata"`` — structured beats prose when both exist).
-2. **Body rule** (prose): otherwise the fact is FOUND iff
-   ``normalize_text(fact.value)`` is a substring of the normalized
-   body. Correctness adds only the interval check: a substring match
-   cannot carry a conflicting value by construction — the value IS the
-   match. Body prose is deliberately NOT date-scanned (v1 tolerance:
-   unparseable prose is no evidence and no contradiction).
+2. **Body rule** (prose): otherwise the fact is FOUND iff the
+   normalized value occurs as a whole token run in the normalized body
+   (boundary-aware membership — ``"24"`` never matches inside
+   ``"2024"``). Correctness adds only the interval check: a
+   boundary-aware token-run match cannot carry a conflicting value by
+   construction — the value IS the match. Body prose is deliberately
+   NOT date-scanned (v1 tolerance: unparseable prose is no evidence and
+   no contradiction).
 
 Interval check (both rules): actual interval bounds are read from the
 metadata companion keys ``{predicate}_from`` / ``{predicate}_to``,
@@ -27,8 +31,11 @@ bounds NEVER fail; a present-but-mismatched bound fails correctness.
 
 Spurious facts: metadata keys of a matched entry whose normalized
 predicate matches NO expected fact predicate of that entity — actual
-structure the reference does not license. Sorted by entry + normalized
-key for canonical determinism. Body prose never yields spurious facts.
+structure the reference does not license. Companion interval keys
+consumed as interval evidence (``{predicate}_from`` / ``{predicate}_to``
+plus the generic ``valid_from`` / ``valid_to``) are licensed by
+construction and exempt. Sorted by entry + normalized key for canonical
+determinism. Body prose never yields spurious facts.
 """
 
 from __future__ import annotations
@@ -78,7 +85,7 @@ def score_facts(entity: Entity, actual: ActualFacts) -> tuple[FactOutcome, ...]:
                 actual, fact
             )
             outcomes.append(_outcome(entity, fact, correct, "metadata"))
-        elif normalize_text(fact.value) in actual.body:
+        elif _body_contains(actual.body, fact.value):
             outcomes.append(_outcome(entity, fact, _interval_ok(actual, fact), "body"))
         else:
             outcomes.append(
@@ -97,12 +104,18 @@ def score_facts(entity: Entity, actual: ActualFacts) -> tuple[FactOutcome, ...]:
 def spurious_facts(
     entity: Entity, actual: ActualFacts, entry_id: str, entry_name: str
 ) -> tuple[SpuriousFact, ...]:
-    """Metadata keys the entity's expected fact predicates do not license."""
+    """Metadata keys the entity's expected fact predicates do not license.
+
+    Companion interval keys consumed as interval evidence
+    (``{predicate}_from``/``{predicate}_to`` plus the generic
+    ``valid_from``/``valid_to``) are licensed by construction.
+    """
     expected = {normalize_predicate(fact.predicate) for fact in entity.facts}
+    licensed = expected | _interval_companion_keys(expected)
     rows = [
         SpuriousFact(entry_id=entry_id, entry_name=entry_name, key=key, value=str(value))
         for key, value in actual.metadata.items()
-        if normalize_predicate(key) not in expected
+        if normalize_predicate(key) not in licensed
     ]
     return tuple(sorted(rows, key=lambda row: (row.entry_id, normalize_predicate(row.key))))
 
@@ -124,6 +137,26 @@ def _metadata_key(metadata: Mapping[str, object], predicate: str) -> str | None:
         if normalize_predicate(key) == predicate:
             return key
     return None
+
+
+def _body_contains(body: str, value: str) -> bool:
+    """Whole-token-run membership, never character-level.
+
+    ``normalize_text`` has already collapsed every non-alphanumeric run
+    to a single space on both sides, so padding each side with one space
+    makes the containment token-boundary exact: ``"24"`` cannot match
+    inside ``"2024"``, while multi-word values (``"hcu hamburg"``) still
+    match ``"HCU-Hamburg"``.
+    """
+    return f" {normalize_text(value)} " in f" {body} "
+
+
+def _interval_companion_keys(expected: set[str]) -> set[str]:
+    """Interval keys ``_companion_bound`` may consume for ``expected`` predicates."""
+    keys = {"valid_from", "valid_to"}
+    for predicate in expected:
+        keys.update(f"{predicate}_{side}" for side in ("from", "to"))
+    return keys
 
 
 def _value_equal(actual: str, expected: str) -> bool:

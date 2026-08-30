@@ -103,7 +103,7 @@ def _entity_outcome(
     if matched is not None and detail is not None:
         actual = actual_facts_from(detail.entry)
         facts = score_facts(ref, actual)
-        spurious_fact_rows.extend(spurious_facts(ref, actual, entry_id or "", ref.name))
+        spurious_fact_rows.extend(spurious_facts(ref, actual, matched.entry.id, ref.name))
     else:
         facts = tuple(
             FactOutcome(

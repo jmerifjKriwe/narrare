@@ -3,7 +3,8 @@
 Synthetic reference (``benchmark.corpus_views`` shapes) vs synthetic KB
 records (``benchmark.drivers.out_records`` shapes) — plain helpers, no
 fixtures, no network. Split from the test module per RULE-04
-(predecessor pattern: ``out_direction_helpers.py``).
+(predecessor pattern: ``out_direction_helpers.py``). Also hosts the
+shared single-fact scoring helper used by both scorer test modules.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from benchmark.drivers.out_records import (
     KbEntryDetail,
     RelationshipDetail,
 )
+from benchmark.scoring import FactOutcome, score_build_quality
 
 NOVEL_ID = "novel-1"
 
@@ -165,3 +167,34 @@ def edge(
         target_name=target_name,
         metadata=None,
     )
+
+
+def score_single_fact(
+    metadata: dict[str, object] | None,
+    body: str | None,
+    *,
+    valid_from: PartialDate | None = None,
+    valid_to: PartialDate | None = None,
+    value: str = "24",
+) -> FactOutcome:
+    """Score one single-fact entity against one single-entry KB detail."""
+    reference = make_reference(
+        persons=(
+            ref_entity(
+                "p1",
+                "Anna Meyer",
+                facts=(
+                    ref_fact(
+                        "F001",
+                        "age_stated",
+                        value,
+                        valid_from=valid_from,
+                        valid_to=valid_to,
+                    ),
+                ),
+            ),
+        ),
+    )
+    entries = (summary("e1", "Anna Meyer"),)
+    details = (detail("e1", name="Anna Meyer", metadata=metadata, body=body),)
+    return score_build_quality(reference, entries, details).facts[0]
