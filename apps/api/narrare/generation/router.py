@@ -18,6 +18,7 @@ from narrare._app.dependencies import (
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare._app.rate_limits import AI_LIGHT_LIMITER
 from narrare.generation.schemas import NameGenerateRequest, NameGenerateResponse
+from narrare.novels.ownership import verify_novel_owned
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,12 +49,9 @@ async def _get_service(
     from narrare.novels.repository import NovelRepository
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare_core.llm.intents import LLMIntent
-    from narrare_core.shared.errors import NotFoundError
 
     novel_repo = NovelRepository(session)
-    novel = await novel_repo.get_by_id(project_id, UUID(user_id))
-    if novel is None:
-        raise NotFoundError("Novel", identifier=str(project_id))
+    await verify_novel_owned(novel_repo, project_id, UUID(user_id))
 
     resolver = get_model_routing_resolver(session)
     assert isinstance(resolver, ModelRoutingResolverImpl)

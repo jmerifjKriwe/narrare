@@ -16,10 +16,13 @@ Precedent: ``series/dependencies.py::verify_novel_in_owned_series``
 (same dependency shape; that one keeps the series module's 403 stance,
 these use the plan's 404 stance for novel-scoped resources).
 
-FastAPI resolves path parameters into dependency parameters BY NAME,
-which is why there are two required-path variants (``{novel_id}`` vs
-``{project_id}`` routes) plus one optional-query variant for the
-resolved-limits read that only carries a project scope when requested.
+Since batch-review follow-up W3 the ownership lookup itself is
+canonical in ``narrare.novels.ownership`` (shared across domains);
+these wrappers keep their FastAPI signatures — path parameters are
+resolved into dependency parameters BY NAME, which is why there are
+two required-path variants (``{novel_id}`` vs ``{project_id}``
+routes) plus one optional-query variant for the resolved-limits read
+that only carries a project scope when requested.
 
 Because these are dependencies, they run BEFORE the route handler —
 i.e. before the auto-creating ``ProjectSettingsRepository.get`` /
@@ -28,28 +31,13 @@ i.e. before the auto-creating ``ProjectSettingsRepository.get`` /
 
 from __future__ import annotations
 
-import uuid
+import uuid  # noqa: TC003 — needed at runtime for FastAPI DI resolution
 
 from narrare._app.dependencies import (  # noqa: TC001 - needed at runtime for FastAPI DI
     CurrentUserIdDep,
     SessionDep,
 )
-from narrare.novels.repository import NovelRepository
-from narrare_core.shared.errors import NotFoundError
-
-
-async def _require_owned_novel(
-    session: SessionDep,
-    user_id: str,
-    novel_id: uuid.UUID,
-) -> None:
-    """Raise ``NotFoundError`` unless ``user_id`` owns ``novel_id``.
-
-    Shared core of the route gates below — the ownership lookup itself.
-    """
-    novel = await NovelRepository(session).get_by_id(novel_id, uuid.UUID(user_id))
-    if novel is None:
-        raise NotFoundError("Novel", identifier=str(novel_id))
+from narrare.novels.ownership import ensure_novel_owned, require_owned_novel
 
 
 async def verify_novel_owned(
@@ -62,7 +50,7 @@ async def verify_novel_owned(
     Applies to GET/PATCH ``/settings/novels/{novel_id}`` — the project
     settings repository stays novel-keyed; THIS dependency is the gate.
     """
-    await _require_owned_novel(session, user_id, novel_id)
+    await require_owned_novel(session, user_id, novel_id)
 
 
 async def verify_project_owned(
@@ -74,7 +62,7 @@ async def verify_project_owned(
 
     ``project_id`` IS the novel UUID on this surface (project ≡ novel).
     """
-    await _require_owned_novel(session, user_id, project_id)
+    await require_owned_novel(session, user_id, project_id)
 
 
 async def verify_owned_project_scope(
@@ -89,6 +77,4 @@ async def verify_owned_project_scope(
     project scope IS requested, the caller must own it (the project
     read would otherwise leak — and auto-create — the victim's row).
     """
-    if project_id is None:
-        return
-    await _require_owned_novel(session, user_id, project_id)
+    await ensure_novel_owned(session, user_id, project_id)

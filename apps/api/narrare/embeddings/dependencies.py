@@ -5,7 +5,7 @@ RULE-19: Uses SessionDep, not bare AsyncSession.
 
 from __future__ import annotations
 
-import uuid
+import uuid  # noqa: TC003 — needed at runtime for FastAPI DI resolution
 
 from narrare._app.dependencies import (  # noqa: TC001 - needed at runtime for FastAPI DI
     CurrentUserIdDep,
@@ -13,8 +13,7 @@ from narrare._app.dependencies import (  # noqa: TC001 - needed at runtime for F
 )
 from narrare.embeddings.repository import EmbeddingRepository
 from narrare.embeddings.service import EmbeddingService
-from narrare.novels.repository import NovelRepository
-from narrare_core.shared.errors import NotFoundError
+from narrare.novels.ownership import require_owned_novel
 
 
 def get_embedding_repository(session: SessionDep) -> EmbeddingRepository:
@@ -45,8 +44,7 @@ async def verify_novel_owned(
     (anti-enumeration): both raise ``NotFoundError`` → HTTP 404. A 403
     is never used here — it stays reserved for the series-module
     semantics (plan constraint). Precedent:
-    ``settings/dependencies.py::verify_novel_owned`` (plan S11a).
+    ``settings/dependencies.py::verify_novel_owned`` (plan S11a); the
+    canonical lookup lives in ``narrare.novels.ownership`` (W3).
     """
-    novel = await NovelRepository(session).get_by_id(novel_id, uuid.UUID(user_id))
-    if novel is None:
-        raise NotFoundError("Novel", identifier=str(novel_id))
+    await require_owned_novel(session, user_id, novel_id)
