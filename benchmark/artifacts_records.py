@@ -85,7 +85,13 @@ class StackFacts:
 
 @dataclass(frozen=True)
 class RunInputs:
-    """Everything one run's artifact tree is rendered from (all required)."""
+    """Everything one run's artifact tree is rendered from (all required).
+
+    ``fp_baseline`` records whether a clean-run FP baseline was applied
+    during detection scoring (plan Task 15 v1: ``False`` — the clean run
+    is a separate full run and its reports are not supplied; the overview
+    must state the case so FP counts are never misread as subtracted).
+    """
 
     variant: str
     mode: str
@@ -99,6 +105,7 @@ class RunInputs:
     answers: tuple[CapabilityAnswer, ...]
     events: tuple[IngestEvent, ...]
     stack: StackFacts
+    fp_baseline: bool
 
 
 @dataclass(frozen=True)

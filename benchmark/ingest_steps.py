@@ -265,12 +265,14 @@ def endorse_all(
     candidates: list[dict[str, object]],
     *,
     events: list[IngestEvent],
-) -> tuple[int, int]:
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
     """``POST .../kb/extract/apply`` with EVERY candidate endorsed (map §4.3.2).
 
     v1 strategy: endorse all, deterministically — the strategy is part of
     the measured pipeline (plan Task 6). The candidate→apply mapping drops
     the ExtractionItem-only fields; rejection = omission has no role here.
+    Returns the apply responses' entry ids (created, updated) — the T8
+    rider's run-target source (``runner_targets``).
     """
     items = [
         {field: candidate[field] for field in _APPLY_FIELDS if field in candidate}
@@ -286,30 +288,48 @@ def endorse_all(
         path=f"/api/v1/novels/{novel_id}/kb/extract/apply",
         request_body={"items": items},
     )
-    return _entry_counts(body, chapter_id)
+    return _entry_ids(body, chapter_id)
 
 
-def _entry_counts(body: object, chapter_id: str) -> tuple[int, int]:
-    """Read ``created_entries``/``updated_entries`` lengths (map §4.3.2)."""
+def _entry_ids(body: object, chapter_id: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Read the ``created_entries``/``updated_entries`` entry ids (map §4.3.2)."""
     if not isinstance(body, dict):
         raise IngestError(
             step="endorse", chapter_id=chapter_id, summary="apply: response is not a JSON object"
         )
     entry = cast("dict[str, object]", body)
     return (
-        _list_len(entry.get("created_entries"), "created_entries", chapter_id),
-        _list_len(entry.get("updated_entries"), "updated_entries", chapter_id),
+        _ids_of(entry.get("created_entries"), "created_entries", chapter_id),
+        _ids_of(entry.get("updated_entries"), "updated_entries", chapter_id),
     )
 
 
-def _list_len(value: object, label: str, chapter_id: str) -> int:
+def _ids_of(value: object, label: str, chapter_id: str) -> tuple[str, ...]:
+    """Entry-id list of one apply bucket (``ApplyExtractionEntryResult``)."""
     if not isinstance(value, list):
         raise IngestError(
             step="endorse",
             chapter_id=chapter_id,
             summary=f"apply: {label!r} must be a list, got {type(value).__name__}",
         )
-    return len(cast("list[object]", value))
+    ids: list[str] = []
+    for item in cast("list[object]", value):
+        if not isinstance(item, dict):
+            raise IngestError(
+                step="endorse",
+                chapter_id=chapter_id,
+                summary=f"apply: {label} entry is not a JSON object",
+            )
+        entry = cast("dict[str, object]", item)
+        identifier = entry.get("id")
+        if not isinstance(identifier, str) or not identifier:
+            raise IngestError(
+                step="endorse",
+                chapter_id=chapter_id,
+                summary=f"apply: {label} entry missing non-empty string 'id'",
+            )
+        ids.append(identifier)
+    return tuple(ids)
 
 
 def _require_id(body: object, *, step: str, chapter_id: str | None, label: str) -> str:

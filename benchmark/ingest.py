@@ -80,7 +80,14 @@ _MODES: Final[frozenset[str]] = frozenset({"incremental", "import"})
 
 @dataclass(frozen=True)
 class ChapterIngest:
-    """Per-chapter outcome: candidate/endorse counts + apply entry counts."""
+    """Per-chapter outcome: candidate/endorse counts + apply entry ids.
+
+    ``created_entry_ids``/``updated_entry_ids`` are the apply responses'
+    entry ids (map §4.3.2 ``ApplyExtractionEntryResult``) — the runner's
+    run-target source (plan Task 15, T8 rider: the FIRST created entry
+    across chapters becomes ``targets['entry_id']``). The counts remain
+    for quick per-chapter comparisons in the raw results.
+    """
 
     stem: str
     chapter_id: str
@@ -88,6 +95,8 @@ class ChapterIngest:
     endorsed: int
     created_entries: int
     updated_entries: int
+    created_entry_ids: tuple[str, ...]
+    updated_entry_ids: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -139,7 +148,7 @@ def _ingest_chapter(
     chapter_id = create_chapter(client, novel_id, chapter, events=events)
     set_content(client, novel_id, chapter_id, chapter, events=events)
     candidates = extract(client, novel_id, chapter_id, chapter.stem, events=events)
-    created, updated = endorse_all(
+    created_ids, updated_ids = endorse_all(
         client, novel_id, chapter_id, chapter.stem, candidates, events=events
     )
     return ChapterIngest(
@@ -147,6 +156,8 @@ def _ingest_chapter(
         chapter_id=chapter_id,
         candidates=len(candidates),
         endorsed=len(candidates),
-        created_entries=created,
-        updated_entries=updated,
+        created_entries=len(created_ids),
+        updated_entries=len(updated_ids),
+        created_entry_ids=created_ids,
+        updated_entry_ids=updated_ids,
     )

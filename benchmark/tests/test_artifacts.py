@@ -240,6 +240,19 @@ def test_overview_detection_matrix_and_fp_baseline_note_per_capability(tmp_path:
     assert "fingerprint" in overview and "clean run" in overview
 
 
+def test_overview_notes_whether_clean_run_fp_baseline_was_applied(tmp_path: Path) -> None:
+    """The runner's FP-baseline input is optional (Task 15 v1: absent) —
+    the overview must say WHICH case produced the numbers, or a reader
+    cannot tell whether unmatched findings were baseline-subtracted."""
+    absent = write(tmp_path).overview.read_text(encoding="utf-8")
+    assert "Clean-run FP baseline: ABSENT" in absent
+    assert "WITHOUT baseline subtraction" in absent
+    applied = write(tmp_path, replace(make_inputs(), fp_baseline=True)).overview.read_text(
+        encoding="utf-8"
+    )
+    assert "Clean-run FP baseline: APPLIED" in applied
+
+
 def test_overview_fp_only_capability_and_empty_evidence_cells_fallback(tmp_path: Path) -> None:
     """Regression: a capability with FPs but zero matrix rows still gets
     its FP-baseline row (the matrix is capability x injected class — FPs

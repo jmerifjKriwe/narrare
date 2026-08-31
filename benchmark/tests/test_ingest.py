@@ -155,6 +155,8 @@ def test_result_reports_novel_and_per_chapter_counts() -> None:
                 endorsed=3,
                 created_entries=1,
                 updated_entries=0,
+                created_entry_ids=("entry-1",),
+                updated_entry_ids=(),
             ),
             ChapterIngest(
                 stem="ch-02",
@@ -163,9 +165,20 @@ def test_result_reports_novel_and_per_chapter_counts() -> None:
                 endorsed=3,
                 created_entries=1,
                 updated_entries=0,
+                created_entry_ids=("entry-1",),
+                updated_entry_ids=(),
             ),
         ),
     )
+
+
+def test_result_carries_apply_entry_ids_for_run_targets() -> None:
+    """T8 rider: the apply responses' entry ids ride on the result."""
+    _api, _events, result = run_ingest("incremental")
+
+    assert result.chapters[0].created_entry_ids == ("entry-1",)
+    assert result.chapters[0].updated_entry_ids == ()
+    assert result.chapters[1].created_entry_ids == ("entry-1",)
 
 
 def test_incremental_paces_only_between_chapters() -> None:

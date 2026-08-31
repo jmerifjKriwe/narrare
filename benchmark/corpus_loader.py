@@ -106,12 +106,19 @@ class Corpus:
         variants: tuple[_Variant, ...],
         reference: Reference,
         warnings: tuple[CorpusWarning, ...],
+        version: int = 1,
     ) -> None:
         self._stems = stems
         self._clean = clean
         self._variants = variants
         self._reference = reference
         self.warnings = warnings
+        self._version = version
+
+    @property
+    def version(self) -> int:
+        """``corpus.yaml`` ``version`` (run-manifest corpus_version)."""
+        return self._version
 
     @property
     def stems(self) -> tuple[str, ...]:
@@ -159,7 +166,16 @@ def load_corpus(root: Path) -> Corpus:
         variants=variants,
         reference=_load_reference(root, config),
         warnings=_corridor_warnings(clean),
+        version=_version(config),
     )
+
+
+def _version(config: dict[str, object]) -> int:
+    """``corpus.yaml`` ``version`` — a positive int (run-manifest fact)."""
+    value = config.get("version")
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise CorpusError(f"corpus.yaml: 'version' must be an int >= 1, got {value!r}")
+    return value
 
 
 def _load_yaml(path: Path, label: str) -> object:

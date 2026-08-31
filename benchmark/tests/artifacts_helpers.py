@@ -246,6 +246,7 @@ def make_inputs() -> RunInputs:
         answers=make_answers(),
         events=make_events(),
         stack=make_stack(),
+        fp_baseline=False,
     )
 
 

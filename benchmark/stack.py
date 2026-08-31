@@ -27,13 +27,15 @@ All subprocess I/O and health probing go through injectable seams
 
 from __future__ import annotations
 
+import hashlib
+import json
 import socket
 import subprocess  # nosec B404 — controlled compose CLI invocation, no shell
 import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Protocol
+from typing import TYPE_CHECKING, Final, Protocol, cast
 
 import httpx
 
@@ -170,6 +172,32 @@ def select_free_port(low: int, high: int) -> int:
     raise StackError(f"no free port in [{low}, {high}]")
 
 
+def parse_image_digests(json_text: str) -> tuple[tuple[str, str], ...]:
+    """``docker compose images --format json`` → sorted (service, digest) pairs.
+
+    Row key: ``Service`` when present, else ``Repository``. Row value:
+    ``Digest``, falling back to ``ID`` for locally built images; rows
+    carrying neither a key nor a value are skipped — nothing is
+    fabricated. Duplicate pairs (several containers per image) collapse.
+    """
+    try:
+        loaded: object = json.loads(json_text) if json_text.strip() else []
+    except json.JSONDecodeError as exc:
+        raise StackError(f"compose images: output is not JSON ({exc})") from exc
+    if not isinstance(loaded, list):
+        raise StackError(f"compose images: expected a JSON list, got {type(loaded).__name__}")
+    pairs: set[tuple[str, str]] = set()
+    for row in cast("list[object]", loaded):
+        if not isinstance(row, dict):
+            continue
+        entry = cast("dict[str, object]", row)
+        key = entry.get("Service") or entry.get("Repository")
+        value = entry.get("Digest") or entry.get("ID")
+        if isinstance(key, str) and key and isinstance(value, str) and value:
+            pairs.add((key, value))
+    return tuple(sorted(pairs))
+
+
 class StackManager:
     """Bring up, health-check, and tear down the benchmark compose stack."""
 
@@ -246,6 +274,24 @@ class StackManager:
         """Whether any service of the project currently runs."""
         result = self._runner(self._compose("ps", "--status", "running", "--format", "{{.Name}}"))
         return result.returncode == 0 and bool(result.stdout.strip())
+
+    def facts(self) -> tuple[str, tuple[tuple[str, str], ...]]:
+        """Stack identity facts for the run manifest (Task 14/15 wiring).
+
+        Returns ``(compose_sha256, image_digests)``: the SHA-256 of the
+        release compose file, and per-service repository digests from
+        ``docker compose images --format json`` (the runner assembles the
+        ``StackFacts`` record; the API version payload comes from the
+        client, not the stack).
+        """
+        digest = hashlib.sha256(RELEASE_COMPOSE_FILE.read_bytes()).hexdigest()
+        result = self._runner(self._compose("images", "--format", "json"))
+        if result.returncode != 0:
+            raise StackError(
+                f"compose images failed (rc={result.returncode}):\n"
+                f"{' '.join(result.args)}\n{result.stdout}\n{result.stderr}"
+            )
+        return digest, parse_image_digests(result.stdout)
 
     def _write_override(self, port: int | None) -> Path:
         """Write the generated compose override (port mapping + DATABASE_URL).

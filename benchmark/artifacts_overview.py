@@ -143,6 +143,14 @@ def _detection(inputs: RunInputs, lines: list[str]) -> None:
         "",
         "### FP baseline per capability",
         "",
+        (
+            "Clean-run FP baseline: APPLIED — fingerprints also occurring in the clean "
+            "run's report are subtracted before TP/FP assignment."
+            if inputs.fp_baseline
+            else "Clean-run FP baseline: ABSENT — detection scored WITHOUT baseline "
+            "subtraction; every unmatched variant finding counts as FP."
+        ),
+        "",
         "| Capability | FP (new-to-variant) | Mechanism |",
         "|---|---|---|",
     ]
