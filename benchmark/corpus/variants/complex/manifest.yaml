@@ -1,0 +1,4 @@
+variant: complex
+base: clean
+registry: errors.yaml
+chapters_touched: [ch-04, ch-05, ch-08, ch-09, ch-11, ch-12]

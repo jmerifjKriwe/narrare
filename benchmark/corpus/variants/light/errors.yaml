@@ -1,0 +1,73 @@
+variant: light
+base: clean
+errors:
+  - id: L01
+    class: attribute_value
+    description: "Anna's age in the September 2026 retrospective overstated as 36 (truth: 35; born 1991-04-17, stated 35 in ch-12)."
+    chapter: ch-12
+    anchor: "Anna war fünfunddreißig in diesem September"
+    replacement: "Anna war sechsunddreißig in diesem September"
+    ground_truth_ref: F132
+  - id: L02
+    class: attribute_value
+    description: "Gert's age at the heart surgery overstated as 68 (truth: 67; E029 is 2023-11 and he turns 68 only on 2023-11-30)."
+    chapter: ch-11
+    anchor: "Siebenundsechzig war er, als man ihn ins Dock nahm"
+    replacement: "Achtundsechzig war er, als man ihn ins Dock nahm"
+    ground_truth_ref: E029
+  - id: L03
+    class: date_mismatch
+    description: "Move-to-Munich residence start shifted to July (truth: August 2021; E022/PF006 date 2021-08)."
+    chapter: ch-08
+    anchor: "Von diesem August an wohnten sie in München"
+    replacement: "Von diesem Juli an wohnten sie in München"
+    ground_truth_ref: E022
+  - id: L04
+    class: date_mismatch
+    description: "Wedding date shifted by one week — 'vorletzter Sonnabend im Mai' resolves to 2018-05-19 (truth: 2018-05-26; E009)."
+    chapter: ch-04
+    anchor: "Der letzte Sonnabend im Mai"
+    replacement: "Der vorletzte Sonnabend im Mai"
+    ground_truth_ref: E009
+  - id: L05
+    class: place_mismatch
+    description: "Juna's birthplace changed to Bremen in the birth sentence (truth: Hamburg; E012 location pl_hamburg)."
+    chapter: ch-06
+    anchor: "des Jahres zweitausendneunzehn, in Hamburg"
+    replacement: "des Jahres zweitausendneunzehn, in Bremen"
+    ground_truth_ref: E012
+  - id: L06
+    class: place_mismatch
+    description: "Resting place of the letter bundles in the table drawer shifted to near the Munich Ostbahnhof (truth: Türkenstraße 41; OF010 dual restatement of F136, pl_tuerkenstrasse)."
+    chapter: ch-12
+    anchor: "hier, in der Türkenstraße 41"
+    replacement: "in der Nähe des Ostbahnhofs"
+    ground_truth_ref: OF010
+  - id: L07
+    class: relation_mismatch
+    description: "Thomas introduced as Anna's cousin instead of her brother in the establishing sentence (truth: sibling_of; R001)."
+    chapter: ch-01
+    anchor: "Ihr Bruder Thomas war achtundzwanzig"
+    replacement: "Ihr Cousin Thomas war achtundzwanzig"
+    ground_truth_ref: R001
+  - id: L08
+    class: relation_mismatch
+    description: "Lisa's non-acquaintance with the Meyer family negated into knowing them well (truth: no relation to the Meyers before 2016; R006 negative relation, valid_to 2016)."
+    chapter: ch-02
+    anchor: "Meyers kannte sie keine"
+    replacement: "Die Meyers kannte sie gut"
+    ground_truth_ref: R006
+  - id: L09
+    class: attribute_value
+    description: "Ilse's teaching career length overstated as 44 years (truth: 41; 1980 through retirement end of July 2021; F077)."
+    chapter: ch-08
+    anchor: "einundvierzig Jahre"
+    replacement: "vierundvierzig Jahre"
+    ground_truth_ref: F077
+  - id: L10
+    class: date_mismatch
+    description: "Maria's office-start retrospect shifted to March 2016 (truth: March 2015; F093 valid_from 2015-03)."
+    chapter: ch-09
+    anchor: "im März 2015"
+    replacement: "im März 2016"
+    ground_truth_ref: F093

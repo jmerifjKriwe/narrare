@@ -152,3 +152,8 @@ fall back to raw commands or invent a recipe.
 `BLOCKED: Need to run "<cmd>" but permission denied.` Do not retry. No `task` spawns.
 `PACKAGE_TOO_LARGE: <files/LOC>` → same protocol as BLOCKED: report, do not retry,
 do not expand scope — the coordinator re-slices the package.
+
+## Tool usage boundaries
+
+- MCP resources exist only on server `graphify` (URIs like `graphify://stats`). There is no MCP server named `local`.
+- Local files → Read tool. Never pass `file://` URIs to `read_mcp_resource`; valid URIs come from `list_mcp_resources`.

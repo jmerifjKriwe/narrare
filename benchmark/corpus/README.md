@@ -130,3 +130,4 @@ chapters_touched: [ch-05, ch-07]    # derived; must match registry contents
 - The reference files describe the CLEAN corpus only.
 - Variant registries violate that truth via `ground_truth_ref`; the reference stays clean-canonical.
 - Ingest-mode material (incremental vs full import) consumes the same files; modes are a runner-slice concern.
+- The YAML blocks under Reference Schemas are SHAPE examples: field names and structure are binding; example values (dates, ages, id slugs) are illustrative only — the story bible is the single fact source for reference and registry content.

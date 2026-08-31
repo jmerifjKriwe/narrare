@@ -18,8 +18,10 @@ ui_help_long: |
   CR-08 (resolved under ADR-051, accepted 2026-06-20) proved the main runtime
   paths, profile vocabulary, UI/API/Core parity, model-limit calibration, model
   suitability warnings, governed defaults, and future audit-template enforcement.
-  Every user/project-facing setting now has a source → resolver → runtime consumer
-  → enforcement test chain recorded in the Configuration Adoption Matrix.
+  Every user/project-facing setting has a source → resolver → runtime consumer →
+  enforcement test chain backed by per-value regression tests and ADR-045 runtime
+  adoption evidence (the Configuration Adoption Matrix was removed with ADR-051's
+  deprecation, commit f8abb42c).
 
   The Settings tab shows three groups:
   - **Output Limits** — Stored per-call generation limit profiles and values
@@ -89,6 +91,16 @@ Code default (hardcoded in core/)
 ```
 
 **Model Data Source:** Model-limit suggestions use [models.dev](https://models.dev) data where available. See [Model Data Reference](../../reference/model-data.md) for details on how model specifications are fetched, cached, and refreshed. CR-AUFG-08-07/11 are implemented with calibration metadata and suitability-warning/block evidence.
+
+**Suitability enforcement scope (PO decision 2026-08-21):** calibration and
+suitability findings are a **display contract** — computed for and rendered in
+the Settings surface (D5/D6 metadata on the token-limits endpoints).
+`hard_block` is intentionally NOT enforced at the model boundary at runtime:
+local-first single-user tooling, the D6 warning already appears at the
+configuration site where the condition is caused, and known-unserviceable
+configurations are a rare edge case. Runtime behavior stays RULE-11 graceful
+(never blocks generation); runtime hard-block enforcement was evaluated and
+retired as YAGNI (cf. the SERIES-005 retirement).
 
 ### Context Budget Keys (ADR-082 / C5, 2026-08-15)
 
@@ -224,7 +236,7 @@ CR-08 P1 delivered (2026-06-20):
 - `custom` uses raw `output_limit`; known provider ceilings still cap at runtime
 - Backend metadata exposes profile/cap/calibration/suitability information
 - Frontend supports custom limits above 16k and renders calibration/suitability warnings
-- Platform cross-layer contract tests and configuration matrix evidence gate protect parity
+- Platform cross-layer contract tests protect parity
 
 CR-08 P2/P3/P4 delivered (2026-06-20):
 - P2 operator/default governance covers inline suggest cap, consistency caps,
@@ -268,3 +280,4 @@ lifecycle blocker for SET-005 stability.
 | 2026-06-18 | CR-08 reclassified runtime-effect adoption gaps; status remains in-progress until false controls are closed | In Progress |
 | 2026-06-20 | CR-08 P0-P4 implementation/enforcement evidence recorded for token limit enforcement, tier percentages, profile parity/FIND-013, model calibration, suitability warnings/blocks, operator/default governance, long-tail governed defaults, and audit-template matrix hardening; ADR-051 accepted same date (RULE-18b elevated to CONSTRAINTS.md); CR-08 AUFG set resolved; SET-005 promoted to `stable` (cascade + runtime adoption + UI/API/Core parity + tests verified in the Configuration Adoption Matrix) | Stable |
 | 2026-08-15 | CR-08 P0 closed (ADR-082/C5): `context_total_budget` (32k) + `series_history_budget` (16k) cascade keys, model-boundary input capping via `DefaultContextBudgetResolver`, all four hardcoded input budgets lifted | Stable |
+| 2026-08-21 | P1–P4 status truth-verified on main (all implemented + tested; the matrix removal changed evidence mechanics, not implementation); suitability `hard_block` declared display-only by design — runtime enforcement retired as YAGNI (PO decision) | Stable |

@@ -80,7 +80,7 @@ the graph does not have the answer. `sed -n` is allowed to read specific lines.
 | Backend | `NarrareBackendSpecialist` | zai-coding-plan/glm-5.2 |
 | Frontend | `NarrareFrontendSpecialist` | zai-coding-plan/glm-5.2 |
 | Platform (Git/CI) | `NarrarePlatformSpecialist` | zai-coding-plan/glm-5.2 |
-| Docs | `NarrareDocsSpecialist` | zai-coding-plan/glm-5-turbo |
+| Docs | `NarrareDocsSpecialist` | zai-coding-plan/glm-5.3 |
 | Reviewer (edit: deny) | `NarrareReviewerSpecialist` | zai-coding-plan/glm-5.2 |
 
 Layer order: Architecture → Core → Backend → Frontend → Platform (Tests/CI) → Docs.

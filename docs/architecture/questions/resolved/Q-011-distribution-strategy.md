@@ -1,6 +1,6 @@
 # Q-011 — Wie wird Narrare für nicht-technische Nutzer zugänglich?
 
-> **Status:** 🟡 Open
+> **Status:** ✅ Resolved (2026-08-21 — Option A bindend, PO decision; siehe Resolution)
 > **Blocks:** Zielgruppen-Positionierung, Setup-UX-Vereinfachung, Post-MVP-Distribution
 > **Raised:** 2026-06-03 (Technical Audit Review 05 — Deployment Usability)
 
@@ -225,6 +225,19 @@ Dieser Pfad setzt voraus dass die Docker-only-Phase (Option A) die earliest adop
 
 ---
 
+## Resolution (2026-08-21 — PO decision)
+
+**Option A (Docker-only, positioniert als „Tech-Savvy Self-Host") ist bindend.**
+
+- Docker-only Self-Host bleibt die einzige unterstützte Bereitstellungsmethode für die aktuelle Phase. Der Review-05-Score ⭐⭐ wird als akzeptierter Trade-off dieser Positionierung ehrlich benannt, nicht wegoptimiert.
+- **D→B2→C-Leiter → unkommittierter Optionskatalog:** One-Click-Deploy (D), Tauri-Desktop (B2) und Cloud/SaaS (C) bleiben als dokumentierte Optionen mit ihren Trade-offs erhalten — ohne Zeitplan, ohne Commit. Kontext-Korrektur seit Raise: ADR-080 hat Redis/TaskIQ entfernt (In-Process-asyncio); der operative Deployment-Footprint ist heute kleiner, als Option C damals annahm — das ändert nichts an der Entscheidung.
+- **Revisit-Trigger (bindend):** Wiederaufnahme nur, wenn ≥1 realer, nicht-technischer Nutzer nachweislich an der Docker-Barriere scheitert (abgebrochenes Setup, Support-Anfrage o.ä.). Nachfrage-getrieben; keine Instrumentierung.
+- **Committed Follow-up: Interaktives Bootstrap-Skript** (`scripts/setup.sh` nach dem Paperless-ngx-Muster): Docker-Detect + Install-Hinweis, Secrets auto-generiert, `.env` aus Template, einzige echte Nutzerfrage = AI-API-Key, `compose up`, Health-Wait, Übergabe an den In-App-Setup-Wizard; Gegenstück `update.sh` (Backup → Pull → Migrate → Up). Wird als eigener kleiner Platform-Slice mit Plan angegangen, wenn es aufgenommen wird — nicht Teil dieser Resolution.
+
+Der historische Options- und Empfehlungstext bleibt unverändert (ehrliche Geschichte).
+
+---
+
 ## Related
 
 - `docs/reference/project-vision.md` — Zielgruppen-Definition und Local-first-Prinzip
@@ -235,4 +248,4 @@ Dieser Pfad setzt voraus dass die Docker-only-Phase (Option A) die earliest adop
 
 ---
 
-> **Status:** 🟡 Open — wartet auf strategische Entscheidungsfindung durch den Projekt-Owner
+> **Status:** ✅ Resolved — Option A bindend (PO 2026-08-21); siehe Resolution-Abschnitt.

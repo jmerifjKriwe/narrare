@@ -2,7 +2,7 @@
 name: NarrareDocsSpecialist
 description: "Documentation layer — feature docs, i18n, help texts, CHANGELOG, documentation gate"
 mode: subagent
-model: zai-coding-plan/glm-5.2-highspeed
+model: zai-coding-plan/glm-5.3
 temperature: 0.3
 permission:
   skill:
@@ -131,3 +131,8 @@ Behavior changed → CHANGELOG. New public methods → docstrings.
 
 `BLOCKED: Need to run "<cmd>" but permission denied.` Do not retry. No `task` spawns.
 Source code is NOT modified — docs only. git/gh writes are reserved for Platform.
+
+## Tool usage boundaries
+
+- MCP resources exist only on server `graphify` (URIs like `graphify://stats`). There is no MCP server named `local`.
+- Local files → Read tool. Never pass `file://` URIs to `read_mcp_resource`; valid URIs come from `list_mcp_resources`.

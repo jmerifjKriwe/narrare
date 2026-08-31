@@ -24,7 +24,6 @@
 |----|---------|--------|--------|--------|
 | [Q-001](Q-001-to-Q-002.md#q-001--how-does-mcp-authenticate-against-the-api) | How does MCP authenticate against the API? | 🟡 | `apps/mcp/` (post-MVP) | init |
 | [Q-002](Q-001-to-Q-002.md#q-002--does-a2a-require-streaming-support) | Does A2A protocol require streaming support? | 🟡 | `apps/a2a/` (post-MVP) | init |
-| [Q-011](Q-011-distribution-strategy.md) | Wie wird Narrare für nicht-technische Nutzer zugänglich? | 🟡 | Zielgruppen-Positionierung, Post-MVP Distribution | 2026-06-03 |
 | [Q-020](Q-020-swc-helpers-standalone-tracing.md) | When can the temporary @swc/helpers standalone-tracing workaround (`outputFileTracingIncludes`) be removed? | 🟡 | Workaround removal in `packages/web/next.config.ts` (re-evaluate per Next bump) | 2026-08-20 |
 
 ---
@@ -43,6 +42,7 @@
 | [Q-008](resolved/Q-008-auth-store-hydration.md) | Auth Store wird nach Page Reload nicht rehydriert | → Resolved via `AuthProvider.tsx` in Root Layout | — |
 | [Q-009](resolved/Q-009-to-Q-010.md#q-009--should-chat-conversations-be-project-scoped-or-user-scoped) | Should Chat Conversations Be Project-Scoped or User-Scoped? | → Project-scoped (Option A) | ADR-024 |
 | [Q-010](resolved/Q-009-to-Q-010.md#q-010--should-the-chat-prompt-support-defr-from-day-one-or-english-only-v1) | Should the Chat Prompt Support DE/FR from Day One or English-Only v1? | → English-only v1 (Option A) | ADR-024 |
+| [Q-011](resolved/Q-011-distribution-strategy.md) | Wie wird Narrare für nicht-technische Nutzer zugänglich? | → **Option A bindend (Docker-only Self-Host, ehrliche Tech-Savvy-Positionierung; Review-05 ⭐⭐ als akzeptierter Trade-off)**. D→B2→C-Leiter demoted zu unkommittiertem Optionskatalog (ADR-080-Kontext: Footprint seit Raise geschrumpft). Revisit nur bei nachweislichem Scheitern ≥1 realen nicht-technischen Nutzers an der Docker-Barriere. Committed Follow-up: interaktives Bootstrap-Skript (`setup.sh`/`update.sh`, Paperless-ngx-Muster) als eigener künftiger Platform-Slice. PO decision. | — |
 | [Q-012](resolved/Q-012-prompt-variable-ux.md) | Wie erklären wir dem Nutzer Prompt-Variablen und ermöglichen Reset-to-Default? | → Option A (Manifest) via PROMPT-003 (Post-MVP) | — |
 | [Q-013](resolved/Q-013-i18n-tone-drift.md) | i18n Tone Drift in Bundled Universal/Meta Prompts (DE/FR) | → universal/{de,fr} aligned to Du/tu (matching meta prompts); §8 Formality Register added to prompt-content-standards.md | — |
 | [Q-014](resolved/Q-014-cascade-policy-location.md) | Sollte die Model-Routing-Cascade-Logik in Core oder API leben? | → Cascade bleibt in API (Protocol in core, DB-Impl in API ist korrekt per RULE-07) | — |

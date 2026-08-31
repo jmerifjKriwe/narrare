@@ -1,0 +1,478 @@
+# Ground truth for chapters 1-12 (persons, places, objects).
+
+persons:
+  - id: p_anna_meyer
+    name: Anna Meyer
+    aliases: []
+    facts:
+      - id: F004
+        predicate: age_stated
+        value: "24"
+        source_chapters: [1]
+      - id: F005
+        predicate: student_at
+        value: "HCU Hamburg"
+        valid_to: {year: 2017, month: 2}   # study ends Feb 2017 (stated ch-2)
+        source_chapters: [1, 2]
+      - id: F006
+        predicate: residence
+        value: "Eppendorfer Baum 14"
+        valid_from: {year: 2015}           # "Seit dem Frühjahr" (2015)
+        source_chapters: [1]
+      - id: F021
+        predicate: age_stated
+        value: "25"
+        source_chapters: [2]
+      - id: F022
+        predicate: profession
+        value: "Projektarchitektin bei Pfeiffer & Partner Architekten"
+        valid_from: {year: 2017, month: 3}
+        valid_to: {year: 2021, month: 8}    # job ends with the Aug 2021 move; cast interval 2017–2021
+        source_chapters: [3, 8]
+      - id: F031
+        predicate: age_stated
+        value: "26"
+        source_chapters: [3]
+      - id: F034
+        predicate: age_stated
+        value: "27"
+        source_chapters: [4]
+      - id: F057
+        predicate: age_stated
+        value: "28"
+        source_chapters: [6]
+      - id: F084
+        predicate: age_stated
+        value: "30"
+        source_chapters: [8]
+      - id: F089
+        predicate: profession
+        value: "Senior-Architektin in einem Münchner Büro"
+        valid_from: {year: 2021, month: 9}  # F089/F090 dual-map: senior architect until 2024
+        valid_to: {year: 2024}
+        source_chapters: [9]
+      - id: F111
+        predicate: age_stated
+        value: "31"
+        source_chapters: [10]
+      - id: F119
+        predicate: profession
+        value: "Mitgründerin von Lenz & Meyer Architekten"
+        valid_from: {year: 2024, month: 1}  # F118/F119 dual-map: co-founder role folds into this profession fact
+        source_chapters: [11]
+      - id: F132
+        predicate: age_stated
+        value: "35"
+        source_chapters: [12]
+  - id: p_peter_meyer
+    name: Peter Meyer
+    aliases: []
+    facts:
+      - id: F009
+        predicate: profession
+        value: "Bauingenieur bei einem Hamburger Ingenieurbüro für Hafenbau"
+        valid_from: {year: 2013}            # cast interval 2013–2021; cast is the fact source per README ruling
+        valid_to: {year: 2021, month: 3}    # ends at the 2021-03 acceptance (predecessor closure)
+        source_chapters: [1, 8]
+      - id: F010
+        predicate: age_stated
+        value: "26"
+        source_chapters: [1]
+      - id: F018
+        predicate: residence
+        value: "Eppendorfer Baum 14"
+        valid_from: {year: 2016, month: 10}
+        valid_to: {year: 2021, month: 8}    # ends at the 2021-08 move; ch-08 prose states Peter lived there "seit dem Herbst 2016" until the apartment was given up (successor PF007)
+        source_chapters: [2, 8]
+      - id: F032
+        predicate: age_stated
+        value: "29"
+        source_chapters: [3]
+      - id: F035
+        predicate: age_stated
+        value: "29"
+        source_chapters: [4]
+      - id: F058
+        predicate: age_stated
+        value: "30"
+        source_chapters: [6]
+      - id: F074
+        predicate: profession
+        value: "Senior-Ingenieur in einem Münchner Ingenieurbüro"
+        valid_from: {year: 2021, month: 3}  # post accepted March 2021 (F074 prose)
+        source_chapters: [8]
+  - id: p_thomas_meyer
+    name: Thomas Meyer
+    aliases: []
+    facts:
+      - id: F008
+        predicate: owner_of
+        value: "Buchhandlung Meyer"
+        valid_from: {year: 2013}
+        source_chapters: [1]
+      - id: F011
+        predicate: age_stated
+        value: "28"
+        source_chapters: [1]
+      - id: F017
+        predicate: age_stated
+        value: "29"
+        source_chapters: [2]
+  - id: p_lisa_brandt
+    name: Lisa Brandt
+    aliases: []
+    facts:
+      - id: F013
+        predicate: residence
+        value: "Hamburg"
+        valid_from: {year: 2011}
+        source_chapters: [2]
+      - id: F014
+        predicate: profession
+        value: "Grafikdesignerin"
+        valid_to: {year: 2017, month: 5}   # agency phase ends at the May 2017 freelance switch (stated ch-3)
+        source_chapters: [2, 3]
+      - id: F016
+        predicate: age_stated
+        value: "27"
+        source_chapters: [2]
+      - id: F027
+        predicate: profession
+        value: "freiberufliche Grafikdesignerin"
+        valid_from: {year: 2017, month: 5} # "seit Mitte Mai"
+        source_chapters: [3]
+  - id: p_marco_weise
+    name: Marco Weise
+    aliases: []
+    facts:
+      - id: F023
+        predicate: profession
+        value: "Projektarchitekt und Wettbewerbsleiter bei Pfeiffer & Partner Architekten"
+        source_chapters: [3]
+  - id: p_martin_wiese
+    name: Martin Wiese
+    aliases: []
+    facts:
+      - id: F024
+        predicate: profession
+        value: "Projektarchitekt bei Pfeiffer & Partner Architekten"
+        source_chapters: [3]
+  - id: p_hajo_pfeiffer
+    name: Hajo Pfeiffer
+    aliases: []
+    facts:
+      - id: F026
+        predicate: profession
+        value: "Seniorpartner"
+        source_chapters: [3]
+  - id: p_margarete_meyer
+    name: Margarete Meyer
+    aliases: []
+    facts:
+      - id: F036
+        predicate: age_stated
+        value: "88"
+        source_chapters: [4]
+      - id: F046
+        predicate: age_at_death
+        value: "88"
+        source_chapters: [5]
+      - id: F050
+        predicate: profession
+        value: "Zeichnerin in einem Hamburger Architekturbüro"
+        valid_from: {year: 1948}
+        valid_to: {year: 1993}
+        source_chapters: [5]
+      - id: F053
+        predicate: widowed_since
+        value: "1999"
+        source_chapters: [5]
+  - id: p_ilse_meyer
+    name: Ilse Meyer
+    aliases: []
+    facts:
+      - id: F043
+        predicate: age_stated
+        value: "60"
+        source_chapters: [4]
+      - id: F077
+        predicate: profession
+        value: "Grundschullehrerin"
+        valid_from: {year: 1980}            # "Seit 1980" (F077 prose); interval 1980–2021-07 symmetric with Gert F068
+        valid_to: {year: 2021, month: 7}    # F077 prose: retires end of July 2021
+        source_chapters: [8]
+      - id: F078
+        predicate: age_stated
+        value: "63"
+        source_chapters: [8]
+  - id: p_gert_meyer
+    name: Gert Meyer
+    aliases: []
+    facts:
+      - id: F044
+        predicate: age_stated
+        value: "62"
+        source_chapters: [4]
+      - id: F068
+        predicate: profession
+        value: "Werftingenieur"
+        valid_from: {year: 1980}            # forty years at the Werft (F068 prose)
+        valid_to: {year: 2020, month: 7}    # F067 retirement = valid_to
+        source_chapters: [7]
+      - id: F069
+        predicate: age_stated
+        value: "64"
+        source_chapters: [7]
+  - id: p_elke_richter
+    name: Elke Richter
+    aliases: []
+    facts: []                           # ch-04 presence is relational (neighbor/observes); handled in relations
+  - id: p_juna_meyer
+    name: Juna Meyer
+    aliases: []
+    facts:
+      - id: F054
+        predicate: birth_date
+        value: "2019-06-08"
+        source_chapters: [6]
+      - id: F059
+        predicate: residence
+        value: "Eppendorfer Baum 14"
+        valid_from: {year: 2019, month: 6}
+        valid_to: {year: 2021, month: 8}    # cast interval Hamburg 2019–2021-08; ends at the move (successor PF008)
+        source_chapters: [6, 8]
+      - id: F085
+        predicate: age_stated
+        value: "2"
+        source_chapters: [8]
+      - id: F127
+        predicate: age_stated
+        value: "6"
+        source_chapters: [12]
+  - id: p_sofia_lenz
+    name: Sofia Lenz
+    aliases: []
+    facts: []                           # ch-07 states only the jury encounter (relational); handled as relation/event
+  - id: p_maria_sommer
+    name: Maria Sommer
+    aliases: []
+    facts:
+      - id: F093
+        predicate: profession
+        value: "Senior-Architektin in dem Münchner Büro"
+        valid_from: {year: 2015, month: 3}  # "damals" retrospect
+        source_chapters: [9]
+  - id: p_anna_meier
+    name: Anna Meier
+    aliases: []
+    facts:
+      - id: F096
+        predicate: residence
+        value: "Türkenstraße 41 (eine Etage höher)"
+        valid_from: {year: 2021}
+        source_chapters: [9]
+  - id: p_ilse_son
+    name: Ilses Sohn (namenlos, geboren 1983)
+    aliases: []                    # DESIGN: shell entity so half-sibling relations (F106) are encodable;
+                                  # NO name, NO further facts — prose states none (bible discipline)
+    facts:
+      - id: F103
+        predicate: relation_to_ilse
+        value: "Sohn"
+        source_chapters: [10]
+      - id: F104
+        predicate: birth_year
+        value: "1983"
+        source_chapters: [10]
+      - id: F105
+        predicate: given_up_for_adoption
+        value: "yes"
+        valid_from: {year: 1983}
+        source_chapters: [10]
+  - id: p_ben_schulz
+    name: Ben Schulz
+    aliases: []
+    facts:
+      - id: F134
+        predicate: residence
+        value: "Türkenstraße 41 (dritter Stock)"
+        source_chapters: [12]      # residence prose-stated ("vom dritten Stock herunter", "aus demselben Haus");
+                                   # no valid_from: "seit 2022" scopes the babysitting (R021), not the move-in; residence undated — prose states no move-in date
+  - id: p_alexander_wolf
+    name: Alexander Wolf
+    aliases: ["Alex", "Sascha"]
+    facts: []                           # alias split per F137: "Alex" by colleagues, "Sascha" by family, never resolved on-page; represented by R024 + E030
+
+places:
+  - id: pl_hamburg
+    name: Hamburg
+    facts: []                           # city container; no standalone place facts stated in ch. 1-3
+  - id: pl_eppendorf_wohnung
+    name: Eppendorfer Baum 14
+    facts:
+      - id: PF001
+        predicate: residence_of
+        value: "p_anna_meyer"
+        valid_from: {year: 2015}        # F006 prose: Anna lives there since spring 2015
+        valid_to: {year: 2021, month: 8}  # F083: apartment given up at the Aug 2021 move
+        source_chapters: [1, 8]
+  - id: pl_pfeiffer_buero
+    name: Pfeiffer & Partner Architekten
+    facts:
+      - id: PF002
+        predicate: district
+        value: "HafenCity"
+        source_chapters: [3]            # F022 prose locates the practice in the HafenCity
+      - id: PF003
+        predicate: workplace_of
+        value: "p_anna_meyer"
+        valid_from: {year: 2017, month: 3}  # mirrors PF001 residence_of pattern (F022 prose)
+        source_chapters: [3]
+  - id: pl_barmbek_haus
+    name: Haus Flemmingstraße 3
+    facts:
+      - id: PF004
+        predicate: residence_of
+        value: "p_ilse_meyer"
+        valid_from: {year: 1984}        # F038 prose: Ilse's and Gert's home since 1984
+        source_chapters: [4]
+      - id: PF005
+        predicate: residence_of
+        value: "p_gert_meyer"
+        valid_from: {year: 1984}
+        source_chapters: [4]
+  - id: pl_munich
+    name: München
+    facts: []                           # city container; no standalone place facts stated
+  - id: pl_tuerkenstrasse
+    name: Türkenstraße 41
+    facts:
+      - id: PF006
+        predicate: residence_of
+        value: "p_anna_meyer"
+        valid_from: {year: 2021, month: 8}  # F079/F080/F081/F082: family move-in Aug 2021
+        source_chapters: [8]
+      - id: PF007
+        predicate: residence_of
+        value: "p_peter_meyer"
+        valid_from: {year: 2021, month: 8}
+        source_chapters: [8]
+      - id: PF008
+        predicate: residence_of
+        value: "p_juna_meyer"
+        valid_from: {year: 2021, month: 8}
+        source_chapters: [8]
+  - id: pl_gartenlaube
+    name: Kleingarten in Hamburg-Wandsbek
+    facts:
+      - id: PF009
+        predicate: allotment_of
+        value: "p_gert_meyer"
+        valid_from: {year: 2020, month: 7}  # F070
+        source_chapters: [7]
+  - id: pl_lenz_meyer_buero
+    name: Lenz & Meyer Architekten (Glockenbachviertel, München)
+    facts:
+      - id: PF010
+        predicate: exists_from
+        value: "2024-01"
+        valid_from: {year: 2024, month: 1}  # F117
+        source_chapters: [11]
+objects:
+  - id: o_zeichentisch
+    name: Zeichentisch (Margaretes Zeichentisch)
+    facts:
+      - id: OF001
+        predicate: owner
+        value: "p_anna_meyer"
+        valid_from: {year: 2018, month: 10}  # Anna's transfer stated 2018-10; Margarete's acquisition date unstated
+        source_chapters: [5]
+      - id: OF002
+        predicate: located_at
+        value: "pl_eppendorf_wohnung"
+        valid_from: {year: 2018, month: 10}
+        valid_to: {year: 2021, month: 8}    # F135: table travels to Munich at the Aug 2021 move
+        source_chapters: [5, 8]
+      - id: OF010
+        predicate: located_at
+        value: "pl_tuerkenstrasse"
+        valid_from: {year: 2021, month: 8}  # F135: table moves with Anna
+        source_chapters: [8]
+  - id: o_briefe
+    name: Briefe (beide Bündel 1982–1984)
+    facts:
+      - id: OF003
+        predicate: owner
+        value: "p_anna_meyer"
+        valid_from: {year: 2018, month: 10}  # F049 legal inheritance
+        source_chapters: [5]
+      - id: OF004
+        predicate: covers_period
+        value: "1982–1984"
+        source_chapters: [6]            # F062
+      - id: OF005
+        predicate: discovered_in_drawer_of
+        value: "o_zeichentisch"
+        valid_from: {year: 2019, month: 10}  # F061
+        source_chapters: [6]
+      - id: OF015
+        predicate: second_bundle_revealed
+        value: "yes"
+        valid_from: {year: 2022, month: 3}  # F100/F102: handover + complete reveal
+        source_chapters: [10]
+
+  - id: o_frida
+    name: Frida (Hund)
+    facts:
+      - id: OF006
+        predicate: owner
+        value: "p_thomas_meyer"
+        valid_from: {year: 2020, month: 4}  # F066: gift; gifter carried by the event
+        source_chapters: [7]
+  - id: o_klavier
+    name: Klavier (hochbeinig)
+    facts:
+      - id: OF007
+        predicate: owner
+        value: "p_peter_meyer"
+        valid_from: {year: 2016, month: 10}
+        valid_to: {year: 2021, month: 6}    # acquisition stated in ch-08 prose (Oct 2016), sale June 2021
+        source_chapters: [8]
+      - id: OF008
+        predicate: located_at
+        value: "pl_hamburg"
+        valid_from: {year: 2021, month: 6}  # F075/F086: sold to an anonymous Hamburg buyer; stays in Hamburg
+        source_chapters: [8]
+  - id: o_skizzenbuecher
+    name: Reise-Skizzenbücher
+    facts:
+      - id: OF009
+        predicate: owner
+        value: "p_anna_meyer"
+        valid_from: {year: 2015}            # F098: unbroken since 2015
+        source_chapters: [9]
+  - id: o_fuellfederhalter
+    name: Füllfederhalter "L&M 2024"
+    facts:
+      - id: OF011
+        predicate: owner
+        value: "p_anna_meyer"
+        valid_from: {year: 2024, month: 1}  # F121; F120 gifting carried by the event
+        source_chapters: [11]
+      - id: OF012
+        predicate: in_daily_use
+        value: "yes"
+        valid_from: {year: 2026, month: 9}  # F133
+        source_chapters: [12]
+  - id: o_armbanduhr
+    name: Silberne Armbanduhr (Ilses Uhr)
+    facts:
+      - id: OF013
+        predicate: owner
+        value: "p_ilse_meyer"               # current owner: the watch stays Ilse's (F130/F131 promise = OF014 + event, no owner change)
+        source_chapters: [12]
+      - id: OF014
+        predicate: promised_to
+        value: "p_juna_meyer"
+        valid_from: {year: 2026, month: 9}  # F130/F131
+        source_chapters: [12]
