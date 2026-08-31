@@ -19,9 +19,15 @@
 > ADR-070 protocol gap, chat message_id contract, KB-002 doc, cache invariant)
 > (`2254cf3f`). W-wave batch review: APPROVED — **all 21 GAP-CRITICALs now closed.**
 > Dependabot #134 verified stale (aiosmtplib already 5.1.2 everywhere).
-> Residual OPEN (shrunk): ADR-084 Implemented-flip after browser E2E (gate amended
-> to name E2E), ADR-status parser robustness (symbol-order), W2 DB-level apply
-> integration test, ADR-070-era minor doc/protocol follow-ups as they arise.
+> Residual OPEN (shrunk): ~~ADR-084 Implemented-flip after browser E2E~~ (**flipped
+> 2026-08-30** — browser E2E `tests/e2e/test_ws_ticket_session.py` green incl. recovery
+> with fresh ticket; WS-upgrade proxying through the Next.js rewrite verified; en route
+> the E2E caught + fixed a real product bug: `useEditorUrlPanelSync` URL-param echo
+> clobbered fresh sessions, commit `82dcf464`), ~~ADR-status parser robustness~~
+> (fixed, `bfe8a5c5` — anchored to leading symbol, dogfooded by the flip),
+> ~~W2 DB-level apply integration test~~ (added, `157e8072`). Remaining: cosmetic
+> hardening only (stale `?panel=` param after the echo race, greeting-frame
+> first-frame assumption in the E2E, pre-registered minor follow-ups as they arise).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans or
 > superpowers:subagent-driven-development, slice by slice. Each slice is one
