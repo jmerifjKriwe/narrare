@@ -69,6 +69,8 @@ model, and a SHA-256 fingerprint over the redacted config.
 
 ## 3. Commands
 
+> **Run all commands from the repository root** (`~/projects/narrare`), not from inside `benchmark/` — Python module resolution requires the repo root on the path.
+
 Full run (all 26 registered capabilities, artifact tree under
 `benchmark/runs/`, stack torn down afterwards):
 
