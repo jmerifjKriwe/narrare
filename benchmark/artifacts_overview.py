@@ -1,8 +1,8 @@
 """Markdown overview rendering for one benchmark run (plan Task 14).
 
-The human "aussagekräftige Übersicht" — deterministic text given the
-same ``RunInputs`` (no clocks here: the header echoes the caller's
-timestamps). Sections:
+The plan's "aussagekräftige Übersicht" (meaningful overview) —
+deterministic text given the same ``RunInputs`` (no clocks here: the
+header echoes the caller's timestamps). Sections:
 
 - run header (id, variant, mode, commit, LLM fingerprint, counts);
 - build-quality aggregates + itemized outcome counts;
@@ -146,15 +146,24 @@ def _detection(inputs: RunInputs, lines: list[str]) -> None:
         "| Capability | FP (new-to-variant) | Mechanism |",
         "|---|---|---|",
     ]
-    for capability in sorted({row.capability for row in detection.matrix}):
+    # The matrix is capability x injected error class; FPs are recorded
+    # independently of it — a capability with unmatched findings but zero
+    # matrix rows still owes its FP-baseline row (never omitted).
+    for capability in sorted(
+        {row.capability for row in detection.matrix}
+        | {row.capability for row in detection.false_positives}
+    ):
         fp = sum(1 for row in detection.false_positives if row.capability == capability)
         lines.append(f"| {capability} | {fp} | {_FP_MECHANISM} |")
     lines += ["", "### Detection evidence", "", "| Evidence | Traceable ids |", "|---|---|"]
     lines.append(
         "| True positives | "
-        + "; ".join(
-            f"{row.error_id} ← {row.capability}[{row.item_index}]"
-            for row in detection.true_positives
+        + (
+            "; ".join(
+                f"{row.error_id} ← {row.capability}[{row.item_index}]"
+                for row in detection.true_positives
+            )
+            or "none"
         )
         + " |"
     )
@@ -165,8 +174,11 @@ def _detection(inputs: RunInputs, lines: list[str]) -> None:
     )
     lines.append(
         "| False positives | "
-        + "; ".join(f"{row.capability}[{row.item_index}]" for row in detection.false_positives)
-        + " |",
+        + (
+            "; ".join(f"{row.capability}[{row.item_index}]" for row in detection.false_positives)
+            or "none"
+        )
+        + " |"
     )
     lines.append("")
 

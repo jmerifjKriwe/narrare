@@ -23,6 +23,7 @@ from benchmark.artifacts import write_run_artifacts
 from benchmark.artifacts_records import ArtifactError, ArtifactPaths, CapabilityAnswer, RunInputs
 from benchmark.capabilities import UNAVAILABLE_SURFACES
 from benchmark.drivers.base import CapabilityStatus
+from benchmark.scoring.detection_records import DetectionReport, FalsePositive
 from benchmark.tests.artifacts_helpers import (
     FINISHED_AT,
     GIT_COMMIT,
@@ -237,6 +238,33 @@ def test_overview_detection_matrix_and_fp_baseline_note_per_capability(tmp_path:
     assert "| CAP-CHK-01 | L | 2 | 1 | 1 | 1 | 0.500 | 0.500 | 0.500 |" in overview
     assert "CAP-CHK-01 | 1 |" in overview  # FP-baseline row with the capability's fp
     assert "fingerprint" in overview and "clean run" in overview
+
+
+def test_overview_fp_only_capability_and_empty_evidence_cells_fallback(tmp_path: Path) -> None:
+    """Regression: a capability with FPs but zero matrix rows still gets
+    its FP-baseline row (the matrix is capability x injected class — FPs
+    are recorded independently of it). Also pins the empty-cell "none"
+    fallback for ALL evidence rows, not just false negatives."""
+    fp_only = DetectionReport(
+        matrix=(),
+        true_positives=(),
+        false_negatives=(),
+        false_positives=(FalsePositive("CAP-STR-01", "issues[0]", "hafen liegt im sueden"),),
+    )
+    overview = write(tmp_path, replace(make_inputs(), detection=fp_only)).overview.read_text(
+        encoding="utf-8"
+    )
+    assert "| CAP-STR-01 | 1 |" in overview
+    assert "| True positives | none |" in overview
+    assert "| False negatives | none |" in overview
+    assert "| False positives | CAP-STR-01[issues[0]] |" in overview
+    empty = DetectionReport(matrix=(), true_positives=(), false_negatives=(), false_positives=())
+    overview = write(tmp_path, replace(make_inputs(), detection=empty)).overview.read_text(
+        encoding="utf-8"
+    )
+    assert "| True positives | none |" in overview
+    assert "| False negatives | none |" in overview
+    assert "| False positives | none |" in overview
 
 
 def test_overview_retrieval_and_skipped_tables_with_reasons(tmp_path: Path) -> None:
