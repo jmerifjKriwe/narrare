@@ -250,7 +250,9 @@ def test_partial_surface_table_documents_inventory_verdicts() -> None:
     assert "recorded-not-scored" in rows["CAP-OUT-06"].reason
     assert rows["CAP-OUT-05"].surface == "skipped"
     assert "no series" in rows["CAP-OUT-05"].reason
-    assert rows["CAP-OUT-10"].surface == "skipped"
+    assert rows["CAP-OUT-10"].surface == "recorded"
+    assert "template reads driven" in rows["CAP-OUT-10"].reason
+    assert "v1 query set samples entity facts/relations only" in rows["CAP-OUT-02"].reason
     assert rows["CAP-OUT-07"].surface == "recorded"
 
 

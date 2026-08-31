@@ -37,7 +37,9 @@ _SURFACE_ROWS: Final[tuple[CapabilityCoverage, ...]] = (
         surface="recorded",
         driven=False,
         reason=(
-            "lexical probe search recorded-not-scored (INFRA-004: no semantic free-text surface)"
+            "lexical probe search is mechanically comparable (inventory: yes) but the v1 "
+            "query set samples entity facts/relations only; the record establishes "
+            "drivenness; free-text scoring deferred"
         ),
     ),
     CapabilityCoverage(
@@ -103,12 +105,9 @@ _SURFACE_ROWS: Final[tuple[CapabilityCoverage, ...]] = (
     ),
     CapabilityCoverage(
         capability="CAP-OUT-10",
-        surface="skipped",
+        surface="recorded",
         driven=False,
-        reason=(
-            "templates skipped: static prompt-system schema, "
-            "no KB content answering retrieval queries"
-        ),
+        reason=("template reads driven; static schema, no KB content answering retrieval queries"),
     ),
 )
 
