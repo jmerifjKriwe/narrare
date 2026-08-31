@@ -123,4 +123,3 @@ def _ok_parsed[T: object](
                 return answer.parsed
             return None
     return None
-    return None

@@ -7,8 +7,9 @@ Two subcommands:
   orchestration itself lives in ``benchmark.runner`` — this module only
   parses arguments, loads the config, and renders the outcome/errors;
 - ``stack up|down|status`` — debug convenience to operate the compose
-  stack WITHOUT a run (each command tears down/verifies like a run
-  would; ``status`` reports whether the project's services run).
+  stack WITHOUT a run (``down`` tears down and verifies residue-free;
+  ``up`` leaves the stack up by design; ``status`` is read-only and
+  reports whether the project's services run).
 
 Exit codes: 0 success, 1 failure (message on stderr — the failure
 artifacts of a failed run carry the details), 2 argparse usage errors.
