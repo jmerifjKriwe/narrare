@@ -1,6 +1,7 @@
 # ADR-084 — WebSocket Ticket Authentication for Writing Sessions
 
-> **Status:** 🔄 Proposed (flips to Implemented by the implementing slice)
+> **Status:** ✅ Implemented (flipped from 🔄 Proposed on 2026-08-30 after the
+> browser E2E acceptance gate — see the gate note below)
 > **Date:** 2026-08-29
 > **Deciders:** PO (decision D1:a, 2026-08-27 — execution ordered), Architecture Agent (this ADR)
 > **Implements:** PO decision **D1:a** — writing WebSocket sessions authenticate via a
@@ -422,6 +423,25 @@ build + tests green, `scripts/check_architecture.py` green — in the same slice
 (**met 2026-08-30, commit `6f51129e`**), **plus a browser E2E exercise of the
 ticket flow (connect → session → recovery) before the status flips.**
 Then this ADR flips to ✅ Implemented.
+
+**Acceptance gate — browser E2E (met 2026-08-30):**
+`tests/e2e/test_ws_ticket_session.py::TestWsTicketSession::test_ws_ticket_session_connect_active_and_recovery`
+drives the real UI (wizard → editor → Generate → Interactive → Start Session)
+against the full stack (`ENVIRONMENT=test`, `NARRARE_E2E_TEST=1` → TestModel)
+and asserts: `POST /api/v1/auth/ws-ticket` observed (200); WS URL carries
+`token=` and never `user_id=`; greeting frame with `session_id` (session
+active; SessionHeader status dot "Connected"); forced raw-socket close →
+second ticket mint (200, token ≠ first) → reconnect URL carries the previous
+`session_id` → client `recover_session` frame → server `session_recovered`
+frame with the SAME session id → "Connected" again. Also verified en route:
+the Next.js 16.3.1 rewrite on :3000 proxies the WebSocket upgrade to the API
+(probe evidence in the worktree session log; no `websocket: true` config
+change needed). Suite evidence: full `pytest tests/e2e/ -m e2e` 29/29 green.
+The E2E additionally surfaced (and this slice fixed) a latent frontend race
+in `useEditorUrlPanelSync` where the URL→store direction re-applied a stale
+`?panel=generation` param and unmounted the freshly connected SessionPanel —
+fixed with echo suppression (regression test:
+`packages/web/components/studio/editor-view/__tests__/useEditorUrlPanelSync.test.tsx`).
 
 ---
 
