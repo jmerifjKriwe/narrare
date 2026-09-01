@@ -18,7 +18,7 @@ import pytest
 
 from narrare._app.config import Settings as AppSettings
 from narrare.writing.router_sessions import interactive_session
-from tests.unit.api.writing.ws_test_helpers import mint_ws_ticket
+from tests.unit.api.writing.ws_test_helpers import mint_ws_ticket, owned_project_repos
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -106,6 +106,9 @@ async def test_success_path_calls_handler_handle(
         return_value=mock_token_limits,
     )
 
+    # IDOR S3 ownership gate: seed repositories that admit the caller.
+    novel_cls, chapter_cls = owned_project_repos(project_id)
+
     with (
         patch("narrare._app.config.get_settings") as mock_get_settings,
         patch("narrare.writing.deps_ws.get_session_manager") as mock_get_session_manager,
@@ -133,6 +136,8 @@ async def test_success_path_calls_handler_handle(
             "narrare._app.rate_limits.AI_WS_LIMITER.try_acquire",
             return_value=True,
         ),
+        patch("narrare.novels.repository.NovelRepository", novel_cls),
+        patch("narrare.chapters.repository.ChapterRepository", chapter_cls),
     ):
         # Configure the settings mock with all needed attributes
         mock_settings = MagicMock(spec=AppSettings)
@@ -235,6 +240,9 @@ async def test_success_path_with_explicit_session_id(
         return_value=TokenLimitOverrides(),
     )
 
+    # IDOR S3 ownership gate: seed repositories that admit the caller.
+    novel_cls, chapter_cls = owned_project_repos(project_id)
+
     with (
         patch("narrare._app.config.get_settings") as mock_get_settings,
         patch("narrare.writing.deps_ws.get_session_manager"),
@@ -262,6 +270,8 @@ async def test_success_path_with_explicit_session_id(
             "narrare._app.rate_limits.AI_WS_LIMITER.try_acquire",
             return_value=True,
         ),
+        patch("narrare.novels.repository.NovelRepository", novel_cls),
+        patch("narrare.chapters.repository.ChapterRepository", chapter_cls),
     ):
         mock_settings = MagicMock(spec=AppSettings)
         mock_settings.csrf_trusted_origins = ["http://localhost:3000"]

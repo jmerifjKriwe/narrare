@@ -4,6 +4,8 @@ Extracted from ``router.py`` for RULE-04 compliance (max 150 lines).
 Identity is server-derived (ADR-084): the handshake consumes a single-use
 ticket from ``POST /api/v1/auth/ws-ticket`` — the client-asserted
 ``user_id`` query param is removed (sanctioned backward break).
+Handshake order: ticket → ``project_id`` → origin → rate limit →
+ownership gate + runtime resolution (IDOR S3, ``ws_session_config``).
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from fastapi import APIRouter, WebSocket
 
 from narrare._app.dependencies import get_composer, get_model_registry
 from narrare._app.rate_limits import AI_WS_LIMITER
+from narrare_core.shared.errors import NotFoundError
 
 router = APIRouter(tags=["writing"])
 
@@ -92,48 +95,22 @@ async def interactive_session(
     model_registry = get_model_registry()
     composer = get_composer()
 
-    # Resolve token limits from DB — replaces hardcoded defaults
-    from narrare._app.database import get_async_session
+    # 5. Ownership gate + runtime resolution (IDOR remediation S3): the
+    #    ticket-derived identity must own the project AND the chapter must
+    #    belong to it — BEFORE any project-keyed settings/routing read
+    #    (foreign project → transient settings row; unknown → FK
+    #    IntegrityError 500-oracle). ``NotFoundError`` → close 4001;
+    #    foreign ≡ unknown by construction (anti-enumeration).
     from narrare._app.dependencies_pipeline import get_invocation_pipeline
-    from narrare.settings.token_limits.repository import (
-        ProjectTokenLimitsRepository,
-        UserTokenLimitsRepository,
-    )
-    from narrare.settings.token_limits.service import TokenLimitsService
+    from narrare.writing.ws_session_config import resolve_ws_session_config
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
-    _session_gen = get_async_session()
-    session = await _session_gen.__anext__()
     try:
-        token_limits_service = TokenLimitsService(
-            user_repo=UserTokenLimitsRepository(session),
-            project_repo=ProjectTokenLimitsRepository(session),
-            config=get_settings(),
-        )
-        limits = await token_limits_service.get_resolved_limits(
-            user_id=user_id,
-            project_id=str(project_id) if project_id else None,
-        )
+        config, limits = await resolve_ws_session_config(user_id, chapter_id, project_id)
+    except NotFoundError as exc:
+        await _close_with_error(websocket, code=4001, reason=str(exc))
+        return
 
-        # Resolve model config per-user via routing resolver (RULE-18)
-        from dataclasses import replace as dataclass_replace
-
-        from narrare._app.dependencies_services import get_model_routing_resolver
-        from narrare_core.llm.intents import LLMIntent
-        from narrare_core.llm.run_limits import DefaultRunLimitResolver
-
-        resolver = get_model_routing_resolver(session)
-        resolved = await resolver.resolve(
-            LLMIntent.WRITE,
-            UUID(user_id),
-            project_id,
-        )
-        config = dataclass_replace(
-            resolved.config,
-            temperature=0.7,
-            max_tokens=limits.output_limit,
-        )
-    finally:
-        await _session_gen.aclose()
     handler = build_writing_session_handler(
         session_manager=session_manager,
         registry=active_turn_registry,

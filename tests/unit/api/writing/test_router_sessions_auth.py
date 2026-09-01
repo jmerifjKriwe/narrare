@@ -61,15 +61,18 @@ def _expired_ticket(user_id: UUID) -> str:
 
 
 @contextmanager
-def _success_path_env() -> Iterator[tuple[AsyncMock, MagicMock]]:
+def _success_path_env(project_id: UUID) -> Iterator[tuple[AsyncMock, MagicMock]]:
     """Patch the full success-path dependency stack; yield (handler, limiter).
 
     Mirrors ``test_router_sessions_basic.py``'s wiring so the derived
-    identity can be asserted end-to-end through handler.handle().
+    identity can be asserted end-to-end through handler.handle(). The
+    ownership-seeded repositories (IDOR S3 gate) admit the caller for
+    ``project_id``.
     """
     from narrare.settings.token_limits.contracts import TokenLimitOverrides
     from narrare_core.llm.model_config import ResolvedModelConfig
     from narrare_core.llm.model_routing import ResolvedModel
+    from tests.unit.api.writing.ws_test_helpers import owned_project_repos
 
     resolved_model = ResolvedModel(config=ResolvedModelConfig(provider_name="t", model_id="m"))
     mock_handler = AsyncMock()
@@ -81,6 +84,7 @@ def _success_path_env() -> Iterator[tuple[AsyncMock, MagicMock]]:
     mock_resolver.resolve = AsyncMock(return_value=resolved_model)
     token_instance = AsyncMock()
     token_instance.get_resolved_limits = AsyncMock(return_value=TokenLimitOverrides())
+    novel_cls, chapter_cls = owned_project_repos(project_id)
 
     with (
         patch("narrare._app.config.get_settings") as mock_get_settings,
@@ -106,6 +110,8 @@ def _success_path_env() -> Iterator[tuple[AsyncMock, MagicMock]]:
         ),
         patch("narrare_core.llm.run_limits.DefaultRunLimitResolver"),
         patch("narrare._app.rate_limits.AI_WS_LIMITER.try_acquire") as mock_try_acquire,
+        patch("narrare.novels.repository.NovelRepository", novel_cls),
+        patch("narrare.chapters.repository.ChapterRepository", chapter_cls),
     ):
         mock_settings = MagicMock(spec=AppSettings)
         mock_settings.csrf_trusted_origins = ["http://localhost:3000"]
@@ -241,7 +247,7 @@ class TestDerivedIdentity:
         self, mock_websocket: AsyncMock, chapter_id: UUID, project_id: UUID
     ) -> None:
         token = ws_tickets.issue(USER)  # server-side mint; client sends only token
-        with _success_path_env() as (mock_handler, mock_try_acquire):
+        with _success_path_env(project_id) as (mock_handler, mock_try_acquire):
             await interactive_session(
                 mock_websocket, chapter_id, token=token, project_id=project_id
             )

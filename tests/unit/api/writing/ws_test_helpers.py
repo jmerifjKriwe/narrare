@@ -9,8 +9,9 @@ modules under the RULE-04 size limit and avoids duplicating fixtures.
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, MagicMock, Mock
 from uuid import UUID
 
 from fastapi import WebSocketDisconnect
@@ -53,6 +54,27 @@ def mint_ws_ticket(user_id: UUID | str) -> str:
     """
     bound = user_id if isinstance(user_id, UUID) else UUID(user_id)
     return ws_tickets.issue(bound)
+
+
+def owned_project_repos(project_id: UUID) -> tuple[MagicMock, MagicMock]:
+    """Class mocks for the IDOR-S3 handshake gate that admit the caller.
+
+    Success-path handshake tests must pass the ownership gate in
+    ``ws_session_config.resolve_ws_session_config``: ``NovelRepository``
+    yields an owned novel and ``ChapterRepository`` yields a chapter bound
+    to ``project_id``. Returns ``(novel_cls, chapter_cls)`` patch targets
+    (the established class-level patch points).
+    """
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
+
+    novel_cls = MagicMock(spec=NovelRepository, name="NovelRepository")
+    # Pure existence sentinel: both gate lookups only test non-None (no
+    # novel attribute is read), so a value container beats a mock here.
+    novel_cls.return_value.get_by_id = AsyncMock(return_value=SimpleNamespace(id=project_id))
+    chapter_cls = MagicMock(spec=ChapterRepository, name="ChapterRepository")
+    chapter_cls.return_value.get = AsyncMock(return_value=SimpleNamespace(novel_id=project_id))
+    return novel_cls, chapter_cls
 
 
 def stream_kwargs_for_intent(gateway: Mock, intent_value: str) -> dict[str, Any]:
