@@ -16,6 +16,7 @@ import pytest
 
 from benchmark.client import ApiError, BenchmarkClient, TokenPair
 from benchmark.tests.client_helpers import (
+    BASE_URL,
     LOGIN_PATH,
     ME_PATH,
     REFRESH_PATH,
@@ -300,6 +301,50 @@ def test_manual_refresh_rotates_tokens() -> None:
     assert tokens.refresh_token == "ref-2"
     assert api.calls[0].path == LOGIN_PATH  # login seeded the tokens
     assert api.calls[1].body == {"refresh_token": "ref-1"}
+
+
+# --- CSRF Origin header (map §1 / OPEN-3 resolution) --------------------------
+
+
+def test_register_login_and_requests_carry_default_origin_header() -> None:
+    api = ScriptedApi()
+    api.respond_with(lambda _i, _c: token_response("acc-1", "ref-1"))
+    client = make_client(api)  # no origin passed — the constructor default applies
+
+    client.register("benchmark@example.com", "secret-password")
+    client.login("benchmark@example.com", "secret-password")
+    client.request("GET", ME_PATH)
+
+    assert all(call.origin == "http://localhost:3000" for call in api.calls)
+
+
+def test_custom_constructor_origin_flows_to_requests() -> None:
+    seen: list[str | None] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers.get("origin"))
+        return httpx.Response(200, json={"id": "user-1"})
+
+    client = BenchmarkClient(
+        BASE_URL,
+        5.0,
+        origin="https://benchmark.example",
+        transport=httpx.MockTransport(handler),
+    )
+
+    client.request("GET", ME_PATH)
+
+    assert seen == ["https://benchmark.example"]
+
+
+def test_explicit_origin_header_wins_over_constructor_default() -> None:
+    api = ScriptedApi()
+    api.respond_with(lambda _i, _c: httpx.Response(200, json={"id": "user-1"}))
+    client = make_client(api)
+
+    client.request("GET", ME_PATH, headers={"Origin": "https://override.example"})
+
+    assert api.calls[0].origin == "https://override.example"
 
 
 # --- timeout -------------------------------------------------------------------

@@ -73,7 +73,8 @@ artifacts, never silently omitted or fabricated.
   `--keep-stack`) control a run; the config's `run:` block is validated but
   not read by the CLI today. `api.base_url` must stay `null` in hybrid mode
   (the runner spawns the API itself and derives the URL from the selected
-  port).
+  port). `api.origin` (OPTIONAL, default `http://localhost:3000`) is the
+  `Origin` header sent on every request — see the CSRF bullet in §6.
 
 **Where your API key travels:** `llm.api_key` is sent in the request body of
 exactly two calls — the pre-flight provider validation
@@ -209,7 +210,7 @@ not mark it done until it has executed against a real stack. Exact procedure:
 6. **Report back:** the run id, a short excerpt of `overview.md`, the manifest's
    `stack` block (confirms image-digest parsing against the real compose
    engine), and any failures — including whether the server-side requests
-   succeeded **without** an `Origin` header (the OPEN-3 checkpoint, §6).
+   succeeded **with** the configured `Origin` header (the OPEN-3 fix, §6).
    Record results (redacted) here in the README and correct anything this
    document promises that the real stack contradicts.
 
@@ -242,15 +243,17 @@ time; the two-capability smoke above is considerably faster).
   (`llm.model`), key has quota; `ollama` needs a reachable `ollama_url` and
   accepts an empty key. Server-side schema details:
   `benchmark/docs/api-surface.md` §3 (mirrors `Step4ProviderRequest`).
-- **CSRF / Origin (OPEN-3 checkpoint)** — outside test mode the API runs
-  `OriginValidationMiddleware`; the runner deliberately speaks
-  server-to-server without an `Origin`/`Referer` header. It was not
-  line-by-line verified that absent headers are skipped (api-surface.md
-  OPEN-3, marked "rehearsal checkpoint"). **If the rehearsal hits 403 Origin
-  errors, that IS the checkpoint outcome: report it — do not patch the client
-  or the middleware in this task.** (The map's noted fallback, sending
-  `Origin: http://localhost:3000`, would be a code change and is out of scope
-  for the runbook.)
+- **CSRF / Origin (OPEN-3 — resolved)** — outside test mode the API runs
+  `OriginValidationMiddleware`: state-changing requests need either a
+  trusted `Origin`/`Referer` header or a valid Bearer token. Register/login
+  carry neither, so the first rehearsal hit 403 `CSRF_ORIGIN_MISMATCH`
+  (exactly the OPEN-3 checkpoint outcome in api-surface.md §8). Fix: the
+  client sends `Origin: <api.origin>` on **every** request; the default
+  `http://localhost:3000` equals the API's default trusted origin. If your
+  server overrides its trusted list — env var `NARRARE_CSRF_TRUSTED_ORIGINS`
+  (JSON list, e.g. `'["https://narrare.example.com"]'`) — set `api.origin`
+  in `config.local.yaml` to one of its entries (a bare origin:
+  `scheme://host[:port]`, no path or trailing slash).
 - **Config errors before anything starts** — a missing or invalid
   `config.local.yaml` fails with a precise `ConfigError` and exit 1 before the
   stack is created; unknown/duplicate `--capabilities` ids fail the same way,

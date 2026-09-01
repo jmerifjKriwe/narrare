@@ -100,18 +100,21 @@ class FakeClock:
 # ---------------------------------------------------------------------------
 
 
-def make_client_factory(log: RunLog) -> Callable[[str, float], BenchmarkClient]:
+def make_client_factory(log: RunLog) -> Callable[[str, float, str], BenchmarkClient]:
     """Client seam: a REAL client whose transport answers /openapi.json only."""
 
-    def factory(base_url: str, timeout_seconds: float) -> BenchmarkClient:
+    def factory(base_url: str, timeout_seconds: float, origin: str) -> BenchmarkClient:
         log.push("client")
+        assert origin, "runner must pass the configured CSRF origin through the factory"
 
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.path == "/openapi.json":
                 return httpx.Response(200, json={"info": {"title": "narrare", "version": "0.1.0"}})
             return httpx.Response(500, json={"detail": f"unscripted {request.url.path}"})
 
-        return BenchmarkClient(base_url, timeout_seconds, transport=httpx.MockTransport(handler))
+        return BenchmarkClient(
+            base_url, timeout_seconds, origin=origin, transport=httpx.MockTransport(handler)
+        )
 
     return factory
 

@@ -34,6 +34,7 @@ def test_stream_collects_sse_lines_from_mock_transport() -> None:
         if index == 0:
             return token_response("acc-1", "ref-1")
         assert call.path == STREAM_PATH
+        assert call.origin == "http://localhost:3000"  # CSRF Origin on streams too (OPEN-3)
         return httpx.Response(200, headers=SSE_RESPONSE_HEADERS, content=FLAVOR_A_BYTES)
 
     api.respond_with(responder)

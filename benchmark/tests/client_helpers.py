@@ -37,12 +37,15 @@ class RecordedCall:
 
     ``params`` (Task 9) records the query string so GET drivers can have
     their query payloads pinned (pagination, search q, max_results, …).
+    ``origin`` records the CSRF ``Origin`` header (api-surface.md §1,
+    OPEN-3 resolution — every request must carry a trusted origin).
     """
 
     method: str
     path: str
     authorization: str | None
     body: object
+    origin: str | None = None
     params: dict[str, str] | None = None
 
 
@@ -79,6 +82,7 @@ class ScriptedApi:
             path=request.url.path,
             authorization=request.headers.get("authorization"),
             body=raw_body,
+            origin=request.headers.get("origin"),
             params=dict(request.url.params),
         )
         self.calls.append(call)

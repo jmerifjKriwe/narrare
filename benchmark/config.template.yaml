@@ -49,6 +49,15 @@ api:
   base_url: null
   # Per-request HTTP timeout in seconds (API client, Task 3).
   timeout_seconds: 60
+  # Origin header the runner sends on EVERY request — outside test mode
+  # the API's CSRF middleware rejects state-changing requests carrying
+  # neither a trusted Origin/Referer nor a valid Bearer token (register/
+  # login carry neither; api-surface.md OPEN-3, resolved).
+  # OPTIONAL — absent = http://localhost:3000 (the API's default trusted
+  # origin). Must be a bare origin (scheme://host[:port], no path or
+  # trailing slash). If your server overrides NARRARE_CSRF_TRUSTED_ORIGINS
+  # (env var, JSON list), set this to one of its entries.
+  origin: http://localhost:3000
 
 auth:
   # Benchmark user credentials — created once per stack via

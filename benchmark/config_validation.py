@@ -16,6 +16,7 @@ from collections.abc import Sized
 from typing import TYPE_CHECKING, cast
 
 from benchmark.config_schemas import (
+    DEFAULT_API_ORIGIN,
     DEFAULT_BUILD_IMAGE,
     DEFAULT_STACK_MODE,
     TEMPLATE_PATH,
@@ -41,6 +42,10 @@ _VALID_MODES = frozenset({"incremental", "import"})
 _VALID_BUILD_IMAGE_MODES = frozenset({"auto", "never"})
 _VALID_STACK_MODES = frozenset({"hybrid", "containers"})
 _PROJECT_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+_ORIGIN_RE = re.compile(r"^https?://[a-zA-Z0-9._-]+(?::[0-9]{1,5})?$")
+"""Bare origin ``scheme://host[:port]`` — no path, no trailing slash, no
+userinfo/query/fragment. The CSRF middleware exact-matches this string
+against its trusted list (``middleware.py``), so anything else would 403."""
 _SECTIONS = ("stack", "api", "auth", "llm", "run")
 
 
@@ -161,7 +166,12 @@ def _parse_stack(raw: Mapping[str, object]) -> StackConfig:
 
 
 def _parse_api(raw: Mapping[str, object]) -> ApiConfig:
-    section = _section(raw, "api", ("base_url", "timeout_seconds"))
+    section = _section(
+        raw,
+        "api",
+        ("base_url", "timeout_seconds", "origin"),
+        optional=("origin",),
+    )
     base_url = section.get("base_url")
     if base_url is not None and (
         not isinstance(base_url, str) or not base_url.startswith(("http://", "https://"))
@@ -172,7 +182,13 @@ def _parse_api(raw: Mapping[str, object]) -> ApiConfig:
     timeout = _number_field(section, "api.timeout_seconds")
     if timeout <= 0:
         raise ConfigError(f"config.api.timeout_seconds must be > 0, got {timeout}")
-    return ApiConfig(base_url, timeout)
+    origin = _str_field(section, "api.origin") if "origin" in section else DEFAULT_API_ORIGIN
+    if not _ORIGIN_RE.fullmatch(origin):
+        raise ConfigError(
+            f"config.api.origin {origin!r} must be a bare origin "
+            "(scheme://host[:port], no path or trailing slash)"
+        )
+    return ApiConfig(base_url, timeout, origin)
 
 
 def _parse_auth(raw: Mapping[str, object]) -> AuthConfig:

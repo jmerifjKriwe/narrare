@@ -33,6 +33,12 @@ DEFAULT_STACK_MODE: Final[str] = "hybrid"
 DEFAULT_BUILD_IMAGE: Final[str] = "auto"
 """Default for the OPTIONAL ``stack.build_image`` key — auto-build when missing."""
 
+DEFAULT_API_ORIGIN: Final[str] = "http://localhost:3000"
+"""Default for the OPTIONAL ``api.origin`` key — the ``Origin`` header the
+client sends on every request. Equals the API's default trusted CSRF origin
+(``Settings.csrf_trusted_origins`` default in ``apps/api``; env override
+``NARRARE_CSRF_TRUSTED_ORIGINS``). See api-surface.md §1 / OPEN-3."""
+
 
 @dataclass(frozen=True)
 class StackConfig:
@@ -61,10 +67,20 @@ class StackConfig:
 
 @dataclass(frozen=True)
 class ApiConfig:
-    """API endpoint settings; ``base_url=None`` derives from the stack port."""
+    """API endpoint settings; ``base_url=None`` derives from the stack port.
+
+    ``origin`` is the ``Origin`` header the client sends on every request:
+    outside test mode the API's ``OriginValidationMiddleware`` rejects
+    state-changing requests that carry neither a trusted ``Origin``/
+    ``Referer`` nor a valid Bearer token (api-surface.md §1, OPEN-3
+    resolution) — register/login carry neither, so the runner must present
+    a trusted origin. The default mirrors the server's default trusted
+    origin; override it when the server sets ``NARRARE_CSRF_TRUSTED_ORIGINS``.
+    """
 
     base_url: str | None
     timeout_seconds: float
+    origin: str = DEFAULT_API_ORIGIN
 
 
 @dataclass(frozen=True, repr=False)

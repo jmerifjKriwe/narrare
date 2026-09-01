@@ -29,6 +29,8 @@ from typing import TYPE_CHECKING, Final, cast
 
 import httpx
 
+from benchmark.config_schemas import DEFAULT_API_ORIGIN
+
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
     from contextlib import AbstractContextManager
@@ -127,6 +129,7 @@ class BenchmarkClient:
         base_url: str,
         timeout_seconds: float,
         *,
+        origin: str = DEFAULT_API_ORIGIN,
         tokens: TokenPair | None = None,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
@@ -135,9 +138,18 @@ class BenchmarkClient:
         Production wires no tokens (provisioning logs in through this
         client); callers that hold tokens from an earlier step — and tests
         that pin post-authentication call sequences — inject them here.
+
+        ``origin`` is the ``Origin`` header sent on EVERY request (map §1,
+        OPEN-3 resolution): outside test mode the API's CSRF middleware
+        rejects state-changing requests that carry neither a trusted
+        ``Origin``/``Referer`` nor a valid Bearer token — register/login
+        carry neither. The default equals the API's default trusted origin;
+        production wires ``config.api.origin`` (override when the server's
+        ``NARRARE_CSRF_TRUSTED_ORIGINS`` differs).
         """
         self._http = httpx.Client(base_url=base_url, timeout=timeout_seconds, transport=transport)
         self._tokens = tokens
+        self._origin = origin
 
     # -- lifecycle ------------------------------------------------------------
 
@@ -262,14 +274,23 @@ class BenchmarkClient:
             path,
             json=args.json,
             params=args.params,
-            headers=self._auth_headers(args.headers, self._bearer()),
+            headers=self._default_headers(args.headers, self._bearer()),
         )
 
     def _bearer(self) -> str | None:
         return self._tokens.access_token if self._tokens is not None else None
 
-    def _auth_headers(self, extra: Mapping[str, str] | None, bearer: str | None) -> dict[str, str]:
+    def _default_headers(
+        self, extra: Mapping[str, str] | None, bearer: str | None
+    ) -> dict[str, str]:
+        """Merge caller headers with the session defaults for every call.
+
+        ``Origin`` defaults to the constructor origin (CSRF middleware,
+        map §1 / OPEN-3); an explicit caller ``Origin`` wins. ``bearer``
+        adds ``Authorization`` — auth endpoints pass ``None`` (map §2).
+        """
         merged = dict(extra) if extra else {}
+        merged.setdefault("Origin", self._origin)
         if bearer is not None:
             merged["Authorization"] = f"Bearer {bearer}"
         return merged
@@ -288,7 +309,7 @@ class BenchmarkClient:
             path,
             json=args.json,
             params=args.params,
-            headers=self._auth_headers(args.headers, bearer),
+            headers=self._default_headers(args.headers, bearer),
         )
         if raise_on_error:
             return self._checked(response)

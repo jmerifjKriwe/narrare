@@ -96,6 +96,24 @@ class TestLoading:
         config = load_config(write_config(tmp_path, text))
         assert config.stack == StackConfig("narrare-benchmark", 18080, 18180)
 
+    def test_absent_api_origin_defaults_to_trusted_origin(self, tmp_path: Path) -> None:
+        config = load_config(write_config(tmp_path))
+        assert config.api.origin == "http://localhost:3000"
+
+    def test_template_api_origin_is_the_trusted_default(self) -> None:
+        config = load_config(TEMPLATE_PATH)
+        assert config.api.origin == "http://localhost:3000"
+
+    def test_api_config_field_default_is_trusted_origin(self) -> None:
+        assert ApiConfig(None, 60.0).origin == "http://localhost:3000"
+
+    def test_custom_api_origin_is_parsed(self, tmp_path: Path) -> None:
+        text = mutated(
+            "  timeout_seconds: 60", '  timeout_seconds: 60\n  origin: "http://127.0.0.1:9999"'
+        )
+        config = load_config(write_config(tmp_path, text))
+        assert config.api.origin == "http://127.0.0.1:9999"
+
     def test_valid_yaml_parses_every_section(self, tmp_path: Path) -> None:
         config = load_config(write_config(tmp_path))
         assert config.stack == StackConfig(
@@ -246,6 +264,30 @@ class TestValidation:
     def test_base_url_must_be_http(self, tmp_path: Path) -> None:
         text = mutated("base_url: null", "base_url: localhost:8000")
         with pytest.raises(ConfigError, match=r"config\.api\.base_url"):
+            load_config(write_config(tmp_path, text))
+
+    def test_api_origin_with_path_rejected(self, tmp_path: Path) -> None:
+        text = mutated(
+            "  timeout_seconds: 60",
+            '  timeout_seconds: 60\n  origin: "http://localhost:3000/web"',
+        )
+        with pytest.raises(ConfigError, match=r"config\.api\.origin.*bare origin"):
+            load_config(write_config(tmp_path, text))
+
+    def test_api_origin_with_trailing_slash_rejected(self, tmp_path: Path) -> None:
+        text = mutated(
+            "  timeout_seconds: 60",
+            '  timeout_seconds: 60\n  origin: "http://localhost:3000/"',
+        )
+        with pytest.raises(ConfigError, match=r"config\.api\.origin.*bare origin"):
+            load_config(write_config(tmp_path, text))
+
+    def test_api_origin_with_non_http_scheme_rejected(self, tmp_path: Path) -> None:
+        text = mutated(
+            "  timeout_seconds: 60",
+            '  timeout_seconds: 60\n  origin: "ftp://localhost:3000"',
+        )
+        with pytest.raises(ConfigError, match=r"config\.api\.origin.*bare origin"):
             load_config(write_config(tmp_path, text))
 
     def test_non_positive_timeout_rejected(self, tmp_path: Path) -> None:

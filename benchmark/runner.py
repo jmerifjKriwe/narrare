@@ -145,8 +145,8 @@ def _default_stack_factory(config: BenchmarkConfig) -> RunStack:
     return StackManager(config)
 
 
-def _default_client_factory(base_url: str, timeout_seconds: float) -> BenchmarkClient:
-    return BenchmarkClient(base_url, timeout_seconds)
+def _default_client_factory(base_url: str, timeout_seconds: float, origin: str) -> BenchmarkClient:
+    return BenchmarkClient(base_url, timeout_seconds, origin=origin)
 
 
 def default_driver_for(cap_id: str) -> CapabilityDriver:
@@ -180,7 +180,7 @@ class RunnerDeps:
     """Every collaborator as an injectable seam (production defaults)."""
 
     stack_factory: Callable[[BenchmarkConfig], RunStack] = _default_stack_factory
-    client_factory: Callable[[str, float], BenchmarkClient] = _default_client_factory
+    client_factory: Callable[[str, float, str], BenchmarkClient] = _default_client_factory
     provision_fn: ProvisionFn = provision
     load_corpus_fn: Callable[[Path], Corpus] = load_corpus
     ingest_fn: IngestFn = ingest
@@ -209,7 +209,9 @@ def run(request: RunRequest, deps: RunnerDeps | None = None) -> ArtifactPaths:
     try:
         base_url = stack.up()
         stage = "client"
-        client = deps.client_factory(base_url, request.config.api.timeout_seconds)
+        client = deps.client_factory(
+            base_url, request.config.api.timeout_seconds, request.config.api.origin
+        )
         try:
             stage = "provision"
             deps.provision_fn(client, request.config)
