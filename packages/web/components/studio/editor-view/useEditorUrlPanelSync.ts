@@ -67,9 +67,19 @@ export function useEditorUrlPanelSync({
     }
   }, [activeRightPanel, openRightPanel, parsedUrlPanel]);
 
-  // store → URL: write the active panel back to the URL
+  // store → URL: write the active panel back to the URL. A URL ≠ store
+  // mismatch means an inbound URL change is pending — EXCEPT when the URL
+  // still shows our own last write: that is the echo we suppressed above,
+  // and it must be corrected (rewritten or stripped) here, otherwise the
+  // stale param would survive in the address bar until reload.
   useEffect(() => {
-    if (parsedUrlPanel !== null && activeRightPanel !== parsedUrlPanel) return;
+    if (
+      parsedUrlPanel !== null &&
+      activeRightPanel !== parsedUrlPanel &&
+      parsedUrlPanel !== lastWrittenPanelRef.current
+    ) {
+      return;
+    }
     const currentParams = new URLSearchParams(searchParamsSnapshot);
     const serializedPanel = serializeEditorRightPanelParam(activeRightPanel);
     if (currentParams.get("panel") === serializedPanel) return;

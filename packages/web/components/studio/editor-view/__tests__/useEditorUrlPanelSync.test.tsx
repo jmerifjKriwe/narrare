@@ -108,4 +108,64 @@ describe("useEditorUrlPanelSync", () => {
     });
     expect(openRightPanel).toHaveBeenCalledWith("metadata", "url");
   });
+
+  it("corrects the URL param after a store-driven switch away from its own landed write", () => {
+    // Regression: once our own ``?panel=`` write has landed, the store→URL
+    // effect mistook the mismatch (URL "generation" ≠ store "metadata") for
+    // a pending inbound URL change and early-returned forever — the address
+    // bar kept the stale panel and reload/bookmark restored the wrong one.
+    search.value = "";
+    const { openRightPanel, rerender } = renderSync("generation");
+    expect(mockReplace).toHaveBeenCalledWith("/novel/novel-1?panel=generation", {
+      scroll: false,
+    });
+
+    // Our own write lands — steady state, nothing further to do.
+    act(() => {
+      search.value = "?panel=generation";
+      rerender({ active: "generation" });
+    });
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+
+    // Store-driven switch (toolbar) → the URL must be corrected.
+    act(() => rerender({ active: "metadata" }));
+    expect(mockReplace).toHaveBeenCalledWith("/novel/novel-1?panel=metadata", {
+      scroll: false,
+    });
+    expect(mockReplace).toHaveBeenCalledTimes(2);
+
+    // The correction lands — no oscillation, no store clobber.
+    act(() => {
+      search.value = "?panel=metadata";
+      rerender({ active: "metadata" });
+    });
+    expect(mockReplace).toHaveBeenCalledTimes(2);
+    expect(openRightPanel).not.toHaveBeenCalled();
+  });
+
+  it("strips the stale panel param when the store moves to a panel that serializes to null", () => {
+    // Same defect via the null-serialization path: "session" is unsafe to
+    // deep-link, so switching to it must strip the stale ``?panel=`` param.
+    search.value = "";
+    const { openRightPanel, rerender } = renderSync("generation");
+    expect(mockReplace).toHaveBeenCalledTimes(1); // ?panel=generation
+
+    act(() => {
+      search.value = "?panel=generation"; // our write lands
+      rerender({ active: "generation" });
+    });
+
+    // Store-driven switch to "session" → the stale param gets stripped.
+    act(() => rerender({ active: "session" }));
+    expect(mockReplace).toHaveBeenCalledWith("/novel/novel-1", { scroll: false });
+    expect(mockReplace).toHaveBeenCalledTimes(2);
+
+    // The strip lands — no oscillation, no store clobber.
+    act(() => {
+      search.value = "";
+      rerender({ active: "session" });
+    });
+    expect(mockReplace).toHaveBeenCalledTimes(2);
+    expect(openRightPanel).not.toHaveBeenCalled();
+  });
 });
