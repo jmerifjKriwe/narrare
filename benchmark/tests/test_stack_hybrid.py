@@ -3,8 +3,9 @@
 Hybrid = dev-compose ``postgres`` container + the API as a LOCAL uvicorn
 subprocess from the working tree. Verifies the up sequence (compose
 postgres with port override → postgres TCP wait → uvicorn spawn with
-argv/cwd/env incl. the dynamic-port ``DATABASE_URL`` and the pinned-off
-``NARRARE_E2E_TEST`` → API health poll → E2E-test-mode log guard),
+argv/cwd/env incl. the dynamic-port ``DATABASE_URL``, the pinned-off
+``NARRARE_E2E_TEST``, and the operator-plane model/key pins
+(finding #7) → API health poll → E2E-test-mode log guard),
 teardown ordering (uvicorn killed BEFORE compose down, both verified),
 and mode-scoped ``is_up``/``facts`` — including that the containers-only
 image acquisition never runs in hybrid mode. The TCP-poll and
@@ -42,6 +43,7 @@ from benchmark.tests.stack_hybrid_helpers import (
     RecordingProber,
     ScriptedProbe,
     StubbornTerminator,
+    make_config,
     make_manager,
 )
 
@@ -311,6 +313,66 @@ class TestHybridIsUpFacts:
         manager = make_manager(tmp_path, FakeRunner(), FakeProcess(4242))
         with pytest.raises(StackError, match="before up"):
             manager.facts()
+
+
+class TestHybridOperatorPins:
+    """Rehearsal finding #7: the system-default path gets the wizard config."""
+
+    def test_spawns_uvicorn_with_operator_model_and_key_pins(self, tmp_path: Path) -> None:
+        spawner = FakeSpawner(FakeProcess(4242))
+        manager = make_manager(tmp_path, FakeRunner(), FakeProcess(4242), spawner=spawner)
+        manager.up()
+        (env,) = spawner.envs
+        llm = make_config().llm  # fake provider = anthropic
+        assert env["DEFAULT_ANALYSIS_MODEL"] == llm.model
+        assert env["DEFAULT_WRITING_MODEL"] == llm.model
+        assert env["ANTHROPIC_API_KEY"] == llm.api_key
+
+    def test_stack_failure_paths_never_contain_the_provider_key(self, tmp_path: Path) -> None:
+        """Secret discipline: the key flows ONLY config.local.yaml → env.
+
+        The failure surfaces interpolate compose output and uvicorn log
+        text — never the spawn env. Each scenario raises with captured
+        diagnostics; none may carry the configured key value.
+        """
+        key = make_config().llm.api_key
+
+        runner = FakeRunner({("up", "-d", "postgres"): (1, "up-out", "up-err")})
+        manager = make_manager(tmp_path, runner, FakeProcess(4242))
+        with pytest.raises(StackError) as excinfo:
+            manager.up()
+        assert key not in str(excinfo.value)
+
+        waiter = HealthWaiter(
+            ScriptedProbe([False]).healthy,
+            timeout_s=0.0,
+            interval_s=1.0,
+            sleep=lambda _s: None,
+            clock=FakeClockAtDeadline(),
+        )
+        manager = make_manager(tmp_path, FakeRunner(), FakeProcess(4242), waiter=waiter)
+        with pytest.raises(StackError, match="uvicorn log tail") as excinfo:
+            manager.up()
+        assert key not in str(excinfo.value)
+
+        spawner = FakeSpawner(
+            FakeProcess(4242),
+            log_line=b"INFO: e2e_test_mode_active: TestModel active\n",
+        )
+        manager = make_manager(tmp_path, FakeRunner(), FakeProcess(4242), spawner=spawner)
+        with pytest.raises(StackError, match="E2E test mode") as excinfo:
+            manager.up()
+        assert key not in str(excinfo.value)
+
+    def test_facts_and_uvicorn_log_never_contain_the_provider_key(self, tmp_path: Path) -> None:
+        key = make_config().llm.api_key
+        spawner = FakeSpawner(FakeProcess(4242))
+        manager = make_manager(tmp_path, FakeRunner(), FakeProcess(4242), spawner=spawner)
+        manager.up()
+        _, pairs = manager.facts()
+        assert all(key not in value for _, value in pairs)
+        log_file = tmp_path / "uvicorn-logs" / "uvicorn.log"
+        assert key not in log_file.read_text(encoding="utf-8")
 
 
 class FakeClockAtDeadline:

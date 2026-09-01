@@ -25,8 +25,9 @@ Up sequence (``HybridStack.up()``):
    with ``DATABASE_URL`` pointing at the prefixed postgres via its
     mapped host port (``postgresql+asyncpg://…`` — the exact scheme
     ``Settings.database_url`` and the lifespan's Alembic migration step
-    read from the environment). All other environment variables are
-    inherited — except ``NARRARE_E2E_TEST``, which is pinned to
+    read from the environment). All other variables are inherited plus
+    the operator-plane pins (finding #7 — ``stack_operator_env``),
+    except ``NARRARE_E2E_TEST``, which is pinned to
     ``false``: a real env var beats any ``.env`` file in
     pydantic-settings precedence, so a repo-root ``.env`` with
     ``NARRARE_E2E_TEST=1`` cannot silently switch the API to TestModel
@@ -78,6 +79,7 @@ from benchmark.stack_common import (
     prefixed_leftovers,
 )
 from benchmark.stack_e2e_guard import ensure_not_e2e_test_mode
+from benchmark.stack_operator_env import operator_env_pins
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -351,6 +353,7 @@ class HybridStack:
             # otherwise CoreSettings (ADR-071, lru-cached at startup)
             # silently switches ALL LLM providers to TestModel.
             "NARRARE_E2E_TEST": "false",
+            **operator_env_pins(self._config.llm),
         }
         argv = [
             _UVICORN_RUNNER,
