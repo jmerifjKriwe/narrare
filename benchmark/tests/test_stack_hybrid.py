@@ -151,6 +151,22 @@ class TestHybridUp:
         manager = make_manager(tmp_path, FakeRunner(), FakeProcess(4242), spawner=spawner)
         assert manager.up() == API_URL
 
+    def test_up_truncates_stale_log_with_old_e2e_marker(self, tmp_path: Path) -> None:
+        """Regression (finding #6b): the log is run-scoped — up() truncates it.
+
+        The guard scans the WHOLE uvicorn log, so a stale
+        ``e2e_test_mode_active`` marker left over from an EARLIER run
+        (append-mode log) false-triggered the refusal. up() must start
+        from a FRESH log: the pre-existing marker must be gone.
+        """
+        log_file = tmp_path / "uvicorn-logs" / "uvicorn.log"
+        log_file.parent.mkdir(parents=True)
+        log_file.write_bytes(b"INFO: e2e_test_mode_active: TestModel active\n")
+        spawner = FakeSpawner(FakeProcess(4242))
+        manager = make_manager(tmp_path, FakeRunner(), FakeProcess(4242), spawner=spawner)
+        assert manager.up() == API_URL
+        assert log_file.read_bytes() == b"uvicorn-boom\n"
+
     def test_health_wait_failure_wins_over_the_e2e_guard(self, tmp_path: Path) -> None:
         """Ordering: the guard runs only AFTER the health-wait succeeded."""
         waiter = HealthWaiter(

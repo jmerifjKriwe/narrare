@@ -362,7 +362,10 @@ class HybridStack:
             "--port",
             str(api_port),
         ]
-        with self._log_path.open("ab") as log:
+        # "wb" (truncate), not "ab": the log is run-scoped by design and
+        # the E2E guard scans the WHOLE file — stale markers from earlier
+        # runs must not false-trigger the refusal (finding #6b).
+        with self._log_path.open("wb") as log:
             process = self._spawn(argv, cwd=_APPS_API_DIR, env=env, stdout=log, stderr=log)
         self._process = process
         self._api_port = api_port
