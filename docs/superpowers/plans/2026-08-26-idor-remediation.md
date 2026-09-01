@@ -18,6 +18,9 @@
 > `novels/ownership.py` (`972feee2`, zero behavior change). W4: hygiene (dead mocks,
 > ADR-070 protocol gap, chat message_id contract, KB-002 doc, cache invariant)
 > (`2254cf3f`). W-wave batch review: APPROVED — **all 21 GAP-CRITICALs now closed.**
+> *(Corrected 2026-09-01: "closed" was premature — the ownership half of S3,
+> follow-up-slice item 4, was still missing at that date; see EXECUTION RECORD
+> CORRECTION below. Closed by `beb352b8`.)*
 > Dependabot #134 verified stale (aiosmtplib already 5.1.2 everywhere).
 > Residual OPEN (shrunk): ~~ADR-084 Implemented-flip after browser E2E~~ (**flipped
 > 2026-08-30** — browser E2E `tests/e2e/test_ws_ticket_session.py` green incl. recovery
@@ -28,6 +31,21 @@
 > ~~W2 DB-level apply integration test~~ (added, `157e8072`). Remaining: cosmetic
 > hardening only (stale `?panel=` param after the echo race, greeting-frame
 > first-frame assumption in the E2E, pre-registered minor follow-ups as they arise).
+
+> **EXECUTION RECORD CORRECTION (2026-09-01 — final pre-merge content review of
+> PR #190):** the 2026-08-30 addendum above overstated S3/WS closure. Implemented
+> and E2E-verified at that date was the ticket-authentication half only (W1,
+> [ADR-084](../../architecture/decisions/ADR-084-ws-ticket-authentication.md),
+> commit `6f51129e`): ticket mint/validation, spoofable `user_id` removal, close
+> codes, browser E2E incl. recovery with a fresh ticket. The ownership half —
+> follow-up slice scope item 4: run the S5 `verify_chapter_access` helper before
+> `handler.handle(...)` (failure → close 4001) — was NOT implemented when the
+> record claimed full closure. It is closed as of 2026-09-01 by commit
+> `beb352b8` on this branch (gate before limit resolution, close 4001,
+> foreign≡unknown, 14-test matrix in
+> `tests/unit/api/writing/test_ws_session_ownership.py`), found by the final
+> content review. "All 21 GAP-CRITICALs closed" is therefore true as of
+> `beb352b8` (2026-09-01), not as of the 2026-08-30 addendum.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans or
 > superpowers:subagent-driven-development, slice by slice. Each slice is one
