@@ -4,10 +4,10 @@
 Flow: resolve filtered candidate note ids (lexical repository filters) →
 embed the query → vector search restricted to ``source_type="note"`` and the
 candidate ids → map hits back to notes with similarity scores. When no
-embedding provider is configured or embedding fails, transparently fall
-back to ILIKE search and report ``mode="lexical"`` — notes are ALWAYS
-searchable (RULE-11). The lexical ``GET /notes?q=`` filter remains
-independent (spec §6a).
+embedding provider is configured, or the embedding or the vector search
+itself fails, transparently fall back to ILIKE search and report
+``mode="lexical"`` — notes are ALWAYS searchable (RULE-11). The lexical
+``GET /notes?q=`` filter remains independent (spec §6a).
 """
 
 from __future__ import annotations
@@ -71,20 +71,35 @@ class NoteSearchService:
         try:
             vectors = await embed_texts([request.query], model=self._model)
         except Exception as exc:
-            logger.warning("note_semantic_search_fallback", error=str(exc))
+            logger.warning(
+                "note_semantic_search_fallback", reason="embedding_failed", error=str(exc)
+            )
             return await self._lexical(user_id, request)
 
-        rows = await self._embedding_repo.search(
-            vectors[0],
-            source_type="note",
-            source_ids={n.id for n in candidates},
-            limit=request.limit,
-            # Same model as the query embedding — the upsert conflict key is
-            # (source_type, source_id, model), so unfiltered search could
-            # return the same note twice with cross-model scores. Mirrors
-            # EmbeddingService.search (embeddings/service.py).
-            model=self._model,
-        )
+        try:
+            rows = await self._embedding_repo.search(
+                vectors[0],
+                source_type="note",
+                source_ids={n.id for n in candidates},
+                limit=request.limit,
+                # Same model as the query embedding — the upsert conflict key is
+                # (source_type, source_id, model), so unfiltered search could
+                # return the same note twice with cross-model scores. Mirrors
+                # EmbeddingService.search (embeddings/service.py).
+                model=self._model,
+            )
+        except Exception as exc:
+            # Same RULE-11 degradation as above, one step later: the vector
+            # search is a DB round-trip that fails independently of the
+            # embedding call (realistic class: default_embedding_model or
+            # default_embedding_dimension changed in settings → stored vectors
+            # mismatch the query vector → pgvector CAST/<=> error). Lexical
+            # ILIKE search (different table) still works — notes are ALWAYS
+            # searchable (spec §6a).
+            logger.warning(
+                "note_semantic_search_fallback", reason="vector_search_failed", error=str(exc)
+            )
+            return await self._lexical(user_id, request)
         by_id = {n.id: n for n in candidates}
         hits: list[NoteSearchHit] = []
         for row in rows:
@@ -99,8 +114,8 @@ class NoteSearchService:
             )
         # Design note (v1 decision, final review 2026-08-21): a SUCCESSFUL
         # semantic search that returns zero hits stays mode="semantic" — no
-        # lexical retry. An empty result is not a provider failure (that case
-        # degrades via the try/except above), so retrying lexically would mask
+        # lexical retry. An empty result is not a provider failure (those
+        # cases degrade via the guarded steps above), so retrying lexically would mask
         # the embedding space and double query cost. Deliberate; revisit if
         # users report missed matches.
         return NoteSearchResponse(mode="semantic", query=request.query, results=hits)

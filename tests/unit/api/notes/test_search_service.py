@@ -72,6 +72,33 @@ class FakeEmbeddingRepo:
         ]
 
 
+class ExplodingEmbeddingRepo:
+    """EmbeddingRepositoryProtocol.search double that always raises.
+
+    Simulates the realistic DB-level failure class: the query embedding and
+    the stored vectors have different dimensions (``default_embedding_model``
+    changed in settings) → pgvector ``<=>``/``CAST`` error on the embeddings
+    table raised by the repository's session execute.
+    """
+
+    def __init__(self, error: Exception) -> None:
+        self._error = error
+        self.calls: int = 0
+
+    async def search(
+        self,
+        query_embedding: list[float],
+        *,
+        source_type: str | None = None,
+        source_ids: set[UUID] | None = None,
+        threshold: float = DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
+        limit: int = 20,
+        model: str | None = None,
+    ) -> list[SearchRow]:
+        self.calls += 1
+        raise self._error
+
+
 async def _fake_embed(texts: list[str], *, model: str | None = None) -> list[list[float]]:
     # Marker 1.0 identifies the "magic" query; anything else maps to 0.0.
     marker = 1.0 if texts[0] == "magic" else 0.0
@@ -180,6 +207,30 @@ class TestLexicalFallback:
 
         response = await service.search(note.user_id, NoteSearchRequest(query="aunt"))
 
+        assert response.mode == "lexical"
+        assert [r.id for r in response.results] == [note.id]
+        assert response.results[0].similarity is None
+
+    async def test_vector_search_failure_falls_back_to_lexical(self, patched_embed: None) -> None:
+        # Regression (fix round 2, RULE-11): the guard covered ONLY the query
+        # embedding. A DB-level vector-search failure — realistic class:
+        # default_embedding_model/dimension changed in settings → stored
+        # vectors mismatch the query vector → pgvector CAST/<=> error —
+        # escaped as a 500 on every semantic note search, although lexical
+        # ILIKE search (different table) still works. Spec §6a: notes are
+        # ALWAYS searchable, degradation reports honest mode="lexical".
+        note = make_note(content="the aunt did it")
+        repo = FakeNotesRepository([note])
+        embedding_repo = ExplodingEmbeddingRepo(
+            RuntimeError("expected same dimensions, 1536 vs 3072")
+        )
+        service = NoteSearchService(repo, cast("EmbeddingRepositoryProtocol", embedding_repo))
+
+        response = await service.search(note.user_id, NoteSearchRequest(query="aunt"))
+
+        # The vector search was actually reached (failure origin: search, not
+        # embed_texts) and still degraded instead of crashing.
+        assert embedding_repo.calls == 1
         assert response.mode == "lexical"
         assert [r.id for r in response.results] == [note.id]
         assert response.results[0].similarity is None
