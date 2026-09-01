@@ -215,37 +215,35 @@ class ProviderService:
         ollama_url: str,
         zai_endpoint: str = "general",
     ) -> None:
-        """Make a minimal API call to verify the connection."""
-        import os
+        """
+        Make a minimal API call to verify the connection.
 
-        from narrare_core.llm._providers.registry import get as get_provider
-
-        # Temporarily set the API key for this call
-        env_map = {
-            AIProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
-            AIProvider.OPENAI: "OPENAI_API_KEY",
-            AIProvider.GOOGLE: "GOOGLE_API_KEY",
-            AIProvider.GROQ: "GROQ_API_KEY",
-            AIProvider.OPENROUTER: "OPENROUTER_API_KEY",
-            AIProvider.ZAI: "ZAI_API_KEY",
-        }
-
-        if provider == AIProvider.OLLAMA:
-            os.environ["OLLAMA_BASE_URL"] = ollama_url
-        elif provider in env_map:
-            os.environ[env_map[provider]] = api_key
-
+        Credentials are passed per-request to the provider factory
+        (``factory(model, api_key=...)``) — environment variables are
+        never mutated. This is required because ``get_core_settings()``
+        is lru-cached (ADR-071) and instantiated at startup: env writes
+        after startup are invisible to it, so per-user keys from the
+        setup wizard must travel through the factory's documented
+        pass-through parameters.
+        """
         # narrare: allow-agent reason="Setup-phase provider validation (ADR-015)"
         from pydantic_ai import Agent
+
+        from narrare_core.llm._providers.registry import get as get_provider
 
         if provider == AIProvider.ZAI and zai_endpoint == "coding":
             from narrare_core.llm._providers.zai import make_zai_coding
 
-            pydantic_model = make_zai_coding(model)
+            pydantic_model = make_zai_coding(model, api_key=api_key)
+        elif provider == AIProvider.OLLAMA:
+            provider_name = provider.value
+            factory = get_provider(provider_name)
+            # Ollama takes its endpoint via base_url (api_key is ignored there).
+            pydantic_model = factory(model, base_url=ollama_url)
         else:
             provider_name = provider.value
             factory = get_provider(provider_name)
-            pydantic_model = factory(model)
+            pydantic_model = factory(model, api_key=api_key)
 
         agent = Agent(  # narrare: allow-agent reason="Setup-phase validation (ADR-015)"
             pydantic_model, output_type=str
