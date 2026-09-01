@@ -215,7 +215,10 @@ async def test_success_path_with_explicit_session_id(
     """When session_id is provided, it is forwarded to handler.handle().
 
     Covers the reconnect path (ADR-052): the reconnect presents a FRESH
-    single-use ticket (the old one died with the previous connection).
+    single-use ticket (the old one died with the previous connection)
+    and passes the pre-gate reattach admission probe (control service
+    returns ``recovered``), so the handshake proceeds to the ownership
+    gate and the handler.
     """
     from narrare.settings.token_limits.contracts import TokenLimitOverrides
     from narrare_core.llm.model_config import ResolvedModelConfig
@@ -248,7 +251,7 @@ async def test_success_path_with_explicit_session_id(
         patch("narrare.writing.deps_ws.get_session_manager"),
         patch("narrare.writing.deps_ws.get_active_turn_registry"),
         patch("narrare.writing.deps_ws.get_turn_state"),
-        patch("narrare.writing.deps_ws.get_session_control_service"),
+        patch("narrare.writing.deps_ws.get_session_control_service") as mock_get_control,
         patch("narrare._app.dependencies.get_model_registry"),
         patch("narrare._app.dependencies.get_composer"),
         patch("narrare._app.database.get_async_session", return_value=mock_async_gen),
@@ -281,6 +284,12 @@ async def test_success_path_with_explicit_session_id(
         mock_settings.consistency_max_kb_entries = 100
         mock_settings.default_max_selection_words = 2000
         mock_get_settings.return_value = mock_settings
+
+        # Reattach admission probe: the control service validates the
+        # session ownership (here: recovered) before the ownership gate.
+        mock_get_control.return_value.reattach_session = AsyncMock(
+            return_value={"kind": "recovered", "session_id": str(session_id)},
+        )
 
         user_id = str(uuid4())
         await interactive_session(

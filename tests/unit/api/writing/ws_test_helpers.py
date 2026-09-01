@@ -9,15 +9,19 @@ modules under the RULE-04 size limit and avoids duplicating fixtures.
 from __future__ import annotations
 
 import asyncio
+from contextlib import contextmanager
+from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
-from unittest.mock import AsyncMock, MagicMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from uuid import UUID
 
 from fastapi import WebSocketDisconnect
 
+from narrare._app.config import Settings as AppSettings
 from narrare.auth import ws_tickets
 from narrare.writing._ws_cache import InMemorySessionCache
+from narrare.writing.router_sessions import interactive_session
 from narrare.writing.ws_active_turn_registry import ActiveTurnRegistry
 from narrare.writing.ws_factory import build_writing_session_handler
 from narrare.writing.ws_session_control_service import WritingSessionControlService
@@ -30,7 +34,7 @@ from narrare_core.writing.session_manager import SessionManager
 from narrare_core.writing.session_turn_state import SessionTurnStateStore
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Iterator
 
     from narrare.writing.ws_handler import WritingSessionHandler
     from narrare_core.prompts.composer import PromptComposer
@@ -200,3 +204,170 @@ def _make_handler(
         mode=mode,
     )
     return handler, session_manager, model_registry, composer
+
+
+# ---------------------------------------------------------------------------
+# Ownership-gate handshake harness (IDOR S3 matrix)
+# ---------------------------------------------------------------------------
+
+#: Ticket-bound caller vs. the foreign resource owner (IDOR S3 matrix).
+TICKET_USER = UUID("00000000-0000-0000-0000-0000000000aa")
+FOREIGN_OWNER = UUID("00000000-0000-0000-0000-0000000000bb")
+
+
+def seeded_novel_repo(novel_owners: dict[UUID, UUID]) -> MagicMock:
+    """Class mock honoring ``NovelRepository``'s user-scoped contract.
+
+    ``get_by_id(novel_id, user_id)`` returns a row only for its owner:
+    foreign (row exists, other owner) and unknown (no row) both yield
+    ``None`` — the seam where the two scenarios actually differ.
+    """
+    from narrare.novels.repository import NovelRepository
+
+    cls = MagicMock(spec=NovelRepository, name="NovelRepository")
+
+    async def get_by_id(novel_id: UUID, user_id: UUID) -> object:
+        if novel_owners.get(novel_id) == user_id:
+            return SimpleNamespace(id=novel_id)
+        return None
+
+    cls.return_value.get_by_id = AsyncMock(side_effect=get_by_id)
+    return cls
+
+
+def seeded_chapter_repo(chapter_novels: dict[UUID, UUID]) -> MagicMock:
+    """Class mock honoring ``ChapterRepository.get``'s existence contract.
+
+    ``chapter_novels`` maps chapter_id → the novel it belongs to; a
+    missing entry is an unknown chapter.
+    """
+    from narrare.chapters.repository import ChapterRepository
+
+    cls = MagicMock(spec=ChapterRepository, name="ChapterRepository")
+
+    async def get(chapter_id: UUID) -> object:
+        novel_id = chapter_novels.get(chapter_id)
+        if novel_id is None:
+            return None
+        return SimpleNamespace(id=chapter_id, novel_id=novel_id)
+
+    cls.return_value.get = AsyncMock(side_effect=get)
+    return cls
+
+
+@dataclass(slots=True)
+class HandshakeRun:
+    """One handshake run: the socket plus the seams assertions inspect."""
+
+    websocket: AsyncMock
+    build: MagicMock
+    handler: AsyncMock
+    token_limits_cls: MagicMock
+    resolver: MagicMock
+    db_gen: AsyncMock
+    control_service: MagicMock
+
+
+@contextmanager
+def handshake_env(
+    novel_owners: dict[UUID, UUID],
+    chapter_novels: dict[UUID, UUID],
+    reattach_outcome: dict[str, str] | None = None,
+) -> Iterator[tuple[MagicMock, AsyncMock, MagicMock, MagicMock, AsyncMock, MagicMock]]:
+    """Patch the full handshake stack over ownership-seeded repositories.
+
+    Mirrors ``test_router_sessions_auth._success_path_env`` so runs reach
+    the DB block; yields ``(build, handler, token_limits_cls, resolver,
+    db_gen, control_service)``.
+    """
+    from narrare.settings.token_limits.contracts import TokenLimitOverrides
+    from narrare_core.llm.model_config import ResolvedModelConfig
+    from narrare_core.llm.model_routing import ResolvedModel
+
+    resolved_model = ResolvedModel(config=ResolvedModelConfig(provider_name="t", model_id="m"))
+    mock_handler = AsyncMock()
+    mock_db_session = AsyncMock()
+    mock_db_gen = AsyncMock()
+    mock_db_gen.__anext__ = AsyncMock(return_value=mock_db_session)
+    mock_db_gen.aclose = AsyncMock()
+    mock_resolver = MagicMock(spec=["resolve"])
+    mock_resolver.resolve = AsyncMock(return_value=resolved_model)
+    token_instance = AsyncMock()
+    token_instance.get_resolved_limits = AsyncMock(return_value=TokenLimitOverrides())
+
+    with (
+        patch("narrare._app.config.get_settings") as mock_get_settings,
+        patch("narrare.writing.deps_ws.get_session_manager"),
+        patch("narrare.writing.deps_ws.get_active_turn_registry"),
+        patch("narrare.writing.deps_ws.get_turn_state"),
+        patch("narrare.writing.deps_ws.get_session_control_service") as mock_css,
+        patch("narrare._app.dependencies.get_model_registry"),
+        patch("narrare._app.dependencies.get_composer"),
+        patch("narrare._app.database.get_async_session", return_value=mock_db_gen),
+        patch("narrare._app.dependencies_pipeline.get_invocation_pipeline"),
+        patch(
+            "narrare.settings.token_limits.service.TokenLimitsService",
+            return_value=token_instance,
+        ) as mock_token_cls,
+        patch(
+            "narrare._app.dependencies_services.get_model_routing_resolver",
+            return_value=mock_resolver,
+        ),
+        patch(
+            "narrare.writing.ws_factory.build_writing_session_handler",
+        ) as mock_build,
+        patch("narrare_core.llm.run_limits.DefaultRunLimitResolver"),
+        patch("narrare._app.rate_limits.AI_WS_LIMITER.try_acquire", return_value=True),
+        patch("narrare.novels.repository.NovelRepository", seeded_novel_repo(novel_owners)),
+        patch(
+            "narrare.chapters.repository.ChapterRepository",
+            seeded_chapter_repo(chapter_novels),
+        ),
+    ):
+        mock_build.return_value = mock_handler
+        mock_settings = MagicMock(spec=AppSettings)
+        mock_settings.csrf_trusted_origins = ["http://localhost:3000"]
+        mock_get_settings.return_value = mock_settings
+        if reattach_outcome is not None:
+            mock_css.return_value.reattach_session = AsyncMock(return_value=reattach_outcome)
+        yield mock_build, mock_handler, mock_token_cls, mock_resolver, mock_db_gen, mock_css
+
+
+async def run_handshake(
+    chapter_id: UUID,
+    project_id: UUID,
+    *,
+    novel_owners: dict[UUID, UUID],
+    chapter_novels: dict[UUID, UUID],
+    session_id: UUID | None = None,
+    reattach_outcome: dict[str, str] | None = None,
+) -> HandshakeRun:
+    """Run one handshake against ownership-seeded stores (fresh ticket)."""
+    ws = AsyncMock()
+    ws.app = MagicMock(spec=["state"])
+    ws.headers = {"origin": "http://localhost:3000"}
+    token = ws_tickets.issue(TICKET_USER)
+    with handshake_env(novel_owners, chapter_novels, reattach_outcome) as (
+        build,
+        handler,
+        token_limits_cls,
+        resolver,
+        db_gen,
+        css,
+    ):
+        await interactive_session(
+            ws,
+            chapter_id,
+            token=token,
+            project_id=project_id,
+            session_id=session_id,
+        )
+    return HandshakeRun(
+        websocket=ws,
+        build=build,
+        handler=handler,
+        token_limits_cls=token_limits_cls,
+        resolver=resolver,
+        db_gen=db_gen,
+        control_service=css,
+    )

@@ -5,7 +5,14 @@ S3 ownership gate joined the handshake's DB block (the router sits at the
 150-line hard limit — the block must not grow in place). The resolution
 order below is SECURITY-PINNED — do not reorder:
 
-1. **Ownership gate** (plan ``2026-08-26-idor-remediation.md``, S3
+1. **Reattach admission (reconnects only)** — when the client presents
+   a ``session_id``, the pure-data session-ownership validation runs
+   FIRST and answers with the typed ``recovery_failed`` reason
+   (:class:`ReattachRejectedError` → router frame + close 4404): the
+   client drops stale session state only on that typed frame, whereas
+   the gate's generic 4001 close would blind-loop the frontend socket
+   reconnect on the same stale tuple (ADR-052). Fresh sessions skip it.
+2. **Ownership gate** (plan ``2026-08-26-idor-remediation.md``, S3
    follow-up item 4): ``ensure_novel_owned`` scopes the client-supplied
    ``project_id`` to the ticket-derived identity, then the S5 helper
    ``verify_chapter_access`` proves the chapter exists AND belongs to
@@ -16,8 +23,8 @@ order below is SECURITY-PINNED — do not reorder:
    (cross-tenant exfiltration). ``NotFoundError`` propagates to the
    router → close 4001; foreign ≡ unknown by construction
    (anti-enumeration).
-2. **Token limits** — project → user → config cascade.
-3. **Model routing** — WRITE-intent resolution (RULE-18).
+3. **Token limits** — project → user → config cascade.
+4. **Model routing** — WRITE-intent resolution (RULE-18).
 
 The deliberate double novel lookup (``ensure_novel_owned`` plus the S5
 helper's internal check) mirrors the factory N1 pattern: the project
@@ -37,13 +44,33 @@ from uuid import UUID
 
 if TYPE_CHECKING:
     from narrare.settings.token_limits.contracts import TokenLimitOverrides
+    from narrare.writing.contracts import WritingSessionControlProtocol
+    from narrare.writing.session_control_contracts import ReattachSessionResult
     from narrare_core.llm.model_config import ResolvedModelConfig
+
+
+class ReattachRejectedError(Exception):
+    """A reconnect's reattach validation failed — carry the typed DTO.
+
+    Raised by :func:`resolve_ws_session_config` when the pre-gate
+    reattach probe rejects (not-found / expired / ownership mismatch).
+    The router converts ``payload`` (control-service DTO) into the
+    public ``recovery_failed`` frame + close 4404 — the handler's
+    reject convention (ADR-052).
+    """
+
+    def __init__(self, payload: ReattachSessionResult) -> None:
+        super().__init__(payload.get("kind", "unknown"))
+        self.payload = payload
 
 
 async def resolve_ws_session_config(
     user_id: str,
     chapter_id: UUID,
     project_id: UUID,
+    *,
+    session_id: UUID | None = None,
+    control_service: WritingSessionControlProtocol | None = None,
 ) -> tuple[ResolvedModelConfig, TokenLimitOverrides]:
     """Gate access, then resolve handler config + limits for one WS session.
 
@@ -53,8 +80,16 @@ async def resolve_ws_session_config(
         chapter_id: The chapter the session is opened on (path param).
         project_id: The caller-supplied project scope — presence-checked
             by the router before this call.
+        session_id: Reconnect-only — the session to reattach to. When
+            present (with ``control_service``), the reattach admission
+            probe runs before the ownership gate.
+        control_service: Session-control service used for the reattach
+            probe (validated via ``WritingSessionControlProtocol``).
 
     Raises:
+        ReattachRejectedError: The reattach probe rejected the reconnect —
+            the caller must answer with the typed ``recovery_failed``
+            frame instead of proceeding to the gate.
         NotFoundError: The project or chapter is unknown or owned by
             another user — indistinguishable by design (anti-enumeration).
 
@@ -77,7 +112,24 @@ async def resolve_ws_session_config(
     from narrare.settings.token_limits.service import TokenLimitsService
     from narrare.writing._helpers import verify_chapter_access
     from narrare.writing.deps_ownership import ensure_novel_owned
+    from narrare.writing.session_control_contracts import ReattachOutcomeKind
     from narrare_core.llm.intents import LLMIntent
+
+    # 1. Reattach admission (reconnects only, ADR-052): the typed
+    #    recovery answer must preempt the ownership gate — a mismatched
+    #    owner tuple would otherwise surface as the gate's generic 4001
+    #    (chapter ∉ claimed project), leaving the client's stale
+    #    session state blind-looping its reconnect. Pure-data (cache)
+    #    validation via the control service; the handler re-runs the
+    #    full reattach with the transport sink once the gate has passed.
+    if session_id is not None and control_service is not None:
+        outcome = await control_service.reattach_session(
+            session_id,
+            UUID(user_id),
+            project_id,
+        )
+        if outcome.get("kind") != ReattachOutcomeKind.RECOVERED:
+            raise ReattachRejectedError(outcome)
 
     _session_gen = get_async_session()
     session = await _session_gen.__anext__()

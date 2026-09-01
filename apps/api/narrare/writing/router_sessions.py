@@ -5,17 +5,20 @@ Identity is server-derived (ADR-084): the handshake consumes a single-use
 ticket from ``POST /api/v1/auth/ws-ticket`` — the client-asserted
 ``user_id`` query param is removed (sanctioned backward break).
 Handshake order: ticket → ``project_id`` → origin → rate limit →
-ownership gate + runtime resolution (IDOR S3, ``ws_session_config``).
+reattach admission (reconnects) → ownership gate + runtime resolution
+(IDOR S3, ``ws_session_config``).
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from uuid import UUID
 
 from fastapi import APIRouter, WebSocket
 
 from narrare._app.dependencies import get_composer, get_model_registry
 from narrare._app.rate_limits import AI_WS_LIMITER
+from narrare.writing.ws_payloads import build_recovery_failed_payload
 from narrare_core.shared.errors import NotFoundError
 
 router = APIRouter(tags=["writing"])
@@ -26,6 +29,16 @@ async def _close_with_error(websocket: WebSocket, *, code: int, reason: str) -> 
     await websocket.accept()
     await websocket.send_json({"type": "error", "message": reason})
     await websocket.close(code=code, reason=reason)
+
+
+async def _close_with_recovery_failed(
+    websocket: WebSocket,
+    rejection: Mapping[str, object],
+) -> None:
+    """Accept → typed recovery_failed frame → close 4404 (handler reject convention)."""
+    await websocket.accept()
+    await websocket.send_json(build_recovery_failed_payload(rejection))
+    await websocket.close(code=4404)
 
 
 @router.websocket("/writing/sessions/{chapter_id}")
@@ -95,18 +108,26 @@ async def interactive_session(
     model_registry = get_model_registry()
     composer = get_composer()
 
-    # 5. Ownership gate + runtime resolution (IDOR remediation S3): the
-    #    ticket-derived identity must own the project AND the chapter must
-    #    belong to it — BEFORE any project-keyed settings/routing read
-    #    (foreign project → transient settings row; unknown → FK
-    #    IntegrityError 500-oracle). ``NotFoundError`` → close 4001;
-    #    foreign ≡ unknown by construction (anti-enumeration).
+    # 5. Reattach admission (reconnects, ADR-052) + ownership gate +
+    #    runtime resolution (IDOR S3) — security-pinned order and full
+    #    rationale: ``ws_session_config``. Rejections: typed
+    #    ``recovery_failed`` frame + close 4404 for reconnects, close
+    #    4001 for gate misses (foreign ≡ unknown, anti-enumeration).
     from narrare._app.dependencies_pipeline import get_invocation_pipeline
-    from narrare.writing.ws_session_config import resolve_ws_session_config
+    from narrare.writing.ws_session_config import ReattachRejectedError, resolve_ws_session_config
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
     try:
-        config, limits = await resolve_ws_session_config(user_id, chapter_id, project_id)
+        config, limits = await resolve_ws_session_config(
+            user_id,
+            chapter_id,
+            project_id,
+            session_id=session_id,
+            control_service=control_service,
+        )
+    except ReattachRejectedError as rejection:
+        await _close_with_recovery_failed(websocket, rejection.payload)
+        return
     except NotFoundError as exc:
         await _close_with_error(websocket, code=4001, reason=str(exc))
         return
