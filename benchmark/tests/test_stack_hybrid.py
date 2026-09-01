@@ -3,7 +3,8 @@
 Hybrid = dev-compose ``postgres`` container + the API as a LOCAL uvicorn
 subprocess from the working tree. Verifies the up sequence (compose
 postgres with port override → postgres TCP wait → uvicorn spawn with
-argv/cwd/env incl. the dynamic-port ``DATABASE_URL`` → API health poll),
+argv/cwd/env incl. the dynamic-port ``DATABASE_URL`` and the pinned-off
+``NARRARE_E2E_TEST`` → API health poll → E2E-test-mode log guard),
 teardown ordering (uvicorn killed BEFORE compose down, both verified),
 and mode-scoped ``is_up``/``facts`` — including that the containers-only
 image acquisition never runs in hybrid mode. The TCP-poll and
@@ -119,6 +120,56 @@ class TestHybridUp:
         manager.up()
         log_file = tmp_path / "uvicorn-logs" / "uvicorn.log"
         assert log_file.read_bytes() == b"uvicorn-boom\n"
+
+    def test_spawns_uvicorn_with_e2e_test_mode_pinned_false(self, tmp_path: Path) -> None:
+        """Rehearsal finding #6: the spawn env pins the E2E flag off."""
+        spawner = FakeSpawner(FakeProcess(4242))
+        manager = make_manager(tmp_path, FakeRunner(), FakeProcess(4242), spawner=spawner)
+        manager.up()
+        (env,) = spawner.envs
+        assert env["NARRARE_E2E_TEST"] == "false"
+
+    def test_e2e_test_mode_marker_in_log_refuses_up(self, tmp_path: Path) -> None:
+        """Rehearsal finding #6: TestModel startup in the log → refuse."""
+        spawner = FakeSpawner(
+            FakeProcess(4242),
+            log_line=(
+                b"INFO: e2e_test_mode_active: "
+                b"ALL LLM providers returning TestModel - no real API calls.\n"
+            ),
+        )
+        manager = make_manager(tmp_path, FakeRunner(), FakeProcess(4242), spawner=spawner)
+        with pytest.raises(StackError, match="E2E test mode"):
+            manager.up()
+
+    def test_e2e_guard_passes_on_clean_log(self, tmp_path: Path) -> None:
+        """Near-miss line (``inactive`` ≠ ``active``) must NOT trip the guard."""
+        spawner = FakeSpawner(
+            FakeProcess(4242),
+            log_line=b"INFO: e2e_test_mode_inactive is not the marker\n",
+        )
+        manager = make_manager(tmp_path, FakeRunner(), FakeProcess(4242), spawner=spawner)
+        assert manager.up() == API_URL
+
+    def test_health_wait_failure_wins_over_the_e2e_guard(self, tmp_path: Path) -> None:
+        """Ordering: the guard runs only AFTER the health-wait succeeded."""
+        waiter = HealthWaiter(
+            ScriptedProbe([False]).healthy,
+            timeout_s=0.0,
+            interval_s=1.0,
+            sleep=lambda _s: None,
+            clock=FakeClockAtDeadline(),
+        )
+        spawner = FakeSpawner(
+            FakeProcess(4242),
+            log_line=b"INFO: e2e_test_mode_active: TestModel active\n",
+        )
+        manager = make_manager(
+            tmp_path, FakeRunner(), FakeProcess(4242), spawner=spawner, waiter=waiter
+        )
+        with pytest.raises(StackError, match="uvicorn log tail") as excinfo:
+            manager.up()
+        assert "E2E test mode" not in str(excinfo.value)
 
     def test_compose_up_failure_raises_with_captured_output(self, tmp_path: Path) -> None:
         runner = FakeRunner({("up", "-d", "postgres"): (1, "up-out", "up-err")})

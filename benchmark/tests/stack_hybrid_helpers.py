@@ -81,10 +81,19 @@ class FakeProcess:
 
 
 class FakeSpawner:
-    """Records the spawn call; writes one line to the log handle (child output)."""
+    """Records the spawn call; writes scripted bytes to the log handle.
 
-    def __init__(self, process: FakeProcess) -> None:
+    The default ``log_line`` mimics benign child output; tests pass a
+    marker-bearing line to exercise the E2E-test-mode honesty gate.
+    """
+
+    def __init__(
+        self,
+        process: FakeProcess,
+        log_line: bytes = b"uvicorn-boom\n",
+    ) -> None:
         self.process = process
+        self.log_line = log_line
         self.calls: list[list[str]] = []
         self.cwds: list[Path] = []
         self.envs: list[dict[str, str]] = []
@@ -99,7 +108,7 @@ class FakeSpawner:
         stdout: IO[bytes],
         stderr: IO[bytes],
     ) -> ManagedProcess:
-        stdout.write(b"uvicorn-boom\n")
+        stdout.write(self.log_line)
         self.calls.append(list(argv))
         self.cwds.append(cwd)
         self.envs.append(env)

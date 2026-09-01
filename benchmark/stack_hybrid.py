@@ -23,16 +23,25 @@ Up sequence (``HybridStack.up()``):
 4. Spawn ``uv run uvicorn narrare._app.main:app --host 127.0.0.1 --port
    <api_port>`` (cwd ``apps/api``, per the ``just dev-api`` precedent)
    with ``DATABASE_URL`` pointing at the prefixed postgres via its
-   mapped host port (``postgresql+asyncpg://…`` — the exact scheme
-   ``Settings.database_url`` and the lifespan's Alembic migration step
-   read from the environment). All other environment variables are
-   inherited. stdout/stderr go to a run-scoped log file
-   (``<tmpdir>/<prefix>-uvicorn/uvicorn.log``) for failure diagnosis;
-   a health-wait failure attaches the log tail to the error.
+    mapped host port (``postgresql+asyncpg://…`` — the exact scheme
+    ``Settings.database_url`` and the lifespan's Alembic migration step
+    read from the environment). All other environment variables are
+    inherited — except ``NARRARE_E2E_TEST``, which is pinned to
+    ``false``: a real env var beats any ``.env`` file in
+    pydantic-settings precedence, so a repo-root ``.env`` with
+    ``NARRARE_E2E_TEST=1`` cannot silently switch the API to TestModel
+    (rehearsal finding #6). stdout/stderr go to a run-scoped log file
+    (``<tmpdir>/<prefix>-uvicorn/uvicorn.log``) for failure diagnosis;
+    a health-wait failure attaches the log tail to the error.
 5. Poll ``/health`` + ``/ready`` on the API port (the shared
    ``HealthWaiter``); readiness includes the DB ``SELECT 1``, and the
    app's lifespan runs pending Alembic migrations before serving — so a
    green poll means migrations applied.
+6. Honesty gate (``ensure_not_e2e_test_mode``): after the health-wait,
+   the captured log is scanned for the lifespan's
+   ``e2e_test_mode_active`` marker — if the API still came up in E2E
+   test mode (TestModel), ``up()`` refuses before any LLM work runs;
+   measuring canned output is invalid (rehearsal finding #6).
 
 Teardown (``HybridStack.teardown()``): terminate the uvicorn process
 GROUP first (spawned with ``start_new_session=True``; SIGTERM, grace
@@ -68,6 +77,7 @@ from benchmark.stack_common import (
     postgres_url,
     prefixed_leftovers,
 )
+from benchmark.stack_e2e_guard import ensure_not_e2e_test_mode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -279,6 +289,7 @@ class HybridStack:
             raise StackError(
                 f"{exc}\n--- uvicorn log tail ({self._log_path}) ---\n{_log_tail(self._log_path)}"
             ) from exc
+        ensure_not_e2e_test_mode(self._log_path)
         return base_url
 
     def teardown(self, *, verify: bool = True) -> None:
@@ -331,7 +342,16 @@ class HybridStack:
     def _start_uvicorn(self, pg_port: int, api_port: int) -> None:
         """Spawn the API subprocess from the working tree (PO ruling)."""
         self._uvicorn_log_dir.mkdir(parents=True, exist_ok=True)
-        env = {**os.environ, "DATABASE_URL": postgres_url(_API_HOST, pg_port, _HYBRID_DB_NAME)}
+        env = {
+            **os.environ,
+            "DATABASE_URL": postgres_url(_API_HOST, pg_port, _HYBRID_DB_NAME),
+            # Rehearsal finding #6: a real env var beats any ``.env`` file
+            # in pydantic-settings precedence, so pinning ``false`` here
+            # overrides a repo-root ``.env`` with ``NARRARE_E2E_TEST=1`` —
+            # otherwise CoreSettings (ADR-071, lru-cached at startup)
+            # silently switches ALL LLM providers to TestModel.
+            "NARRARE_E2E_TEST": "false",
+        }
         argv = [
             _UVICORN_RUNNER,
             "run",
