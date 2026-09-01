@@ -137,6 +137,75 @@ class TestNoteRepositoryListNotesFilters:
         assert _filter_binds(session) == {"title_1": "%needle%", "content_1": "%needle%"}
 
 
+def _user_id_bind(session: FakeDbSession, index: int = 0) -> object:
+    """Value of the single ``user_id`` bind of the executed statement.
+
+    Companion to :func:`_filter_binds`, which deliberately EXCLUDES the
+    user_id scope bind so per-filter tests stay exact. This helper pins the
+    opposite direction (B1 review): every read path binds the CALLER's user
+    id, so a refactor dropping the user_id WHERE clause fails here instead
+    of passing the whole suite.
+    """
+    params = session.statements[index].compile().params
+    matches = {key: value for key, value in params.items() if key.startswith("user_id")}
+    assert len(matches) == 1, f"expected exactly one user_id bind, got: {matches}"
+    return next(iter(matches.values()))
+
+
+class TestNoteRepositoryUserScopeBinds:
+    """The user_id scoping bind is present on every read path (B1 review).
+
+    The service-level fakes self-scope and integration tests use honest
+    users — without these bind assertions, nothing in the suite fails when
+    the ``Note.user_id == user_id`` condition is dropped from a query.
+    """
+
+    async def test_get_by_id_binds_caller_user_id(self) -> None:
+        session = FakeDbSession([FakeResult(value=None)])
+        repo = _make_repo(session)
+        user_id = uuid4()
+
+        await repo.get_by_id(uuid4(), user_id)
+
+        assert _user_id_bind(session) == user_id
+
+    async def test_list_notes_binds_caller_user_id(self) -> None:
+        session = FakeDbSession([FakeResult(scalars=[])])
+        repo = _make_repo(session)
+        user_id = uuid4()
+
+        await repo.list_notes(user_id)
+
+        assert _user_id_bind(session) == user_id
+
+    async def test_list_notes_novel_scoped_still_binds_caller_user_id(self) -> None:
+        session = FakeDbSession([FakeResult(scalars=[])])
+        repo = _make_repo(session)
+        user_id = uuid4()
+
+        await repo.list_notes(user_id, novel_id=uuid4())
+
+        assert _user_id_bind(session) == user_id
+
+    async def test_list_notes_series_scoped_still_binds_caller_user_id(self) -> None:
+        session = FakeDbSession([FakeResult(scalars=[])])
+        repo = _make_repo(session)
+        user_id = uuid4()
+
+        await repo.list_notes(user_id, series_id=uuid4())
+
+        assert _user_id_bind(session) == user_id
+
+    async def test_distinct_tags_binds_caller_user_id(self) -> None:
+        session = FakeDbSession([FakeResult(scalars=[])])
+        repo = _make_repo(session)
+        user_id = uuid4()
+
+        await repo.distinct_tags(user_id)
+
+        assert _user_id_bind(session) == user_id
+
+
 class TestNoteRepositoryProtocolConformance:
     def test_repository_satisfies_protocol(self) -> None:
         """Structural guard: NoteRepository carries the Protocol's surface.
