@@ -33,8 +33,13 @@ def _write_adr_project(
     *,
     index_status: str = "✅",
     adr_status: str = "✅ Accepted",
+    adr_content: str | None = None,
 ) -> None:
-    """Create a minimal ADR decisions directory with INDEX + one ADR file."""
+    """Create a minimal ADR decisions directory with INDEX + one ADR file.
+
+    ``adr_content`` fully overrides the default ADR file body (used for
+    P6 title-shadowing and missing-status-field regressions).
+    """
     decisions = root / "docs" / "architecture" / "decisions"
     decisions.mkdir(parents=True)
 
@@ -49,13 +54,14 @@ def _write_adr_project(
         encoding="utf-8",
     )
 
-    (decisions / "ADR-001-test.md").write_text(
-        "# ADR-001 — Test\n\n"
-        f"> **Status:** {adr_status}\n"
-        "> **Date:** 2026-01-01\n\n"
-        "## Context\n\nTest.\n",
-        encoding="utf-8",
-    )
+    if adr_content is None:
+        adr_content = (
+            "# ADR-001 — Test\n\n"
+            f"> **Status:** {adr_status}\n"
+            "> **Date:** 2026-01-01\n\n"
+            "## Context\n\nTest.\n"
+        )
+    (decisions / "ADR-001-test.md").write_text(adr_content, encoding="utf-8")
 
 
 def _run_checker(root: Path) -> CheckResult:
@@ -158,6 +164,104 @@ def test_adr_status_proposed_with_accepted_mention_in_prose_passes(
     )
     result = _run_checker(tmp_path)
     assert result.violations == []
+
+
+# ---------------------------------------------------------------------------
+# P6 — H1 title shadowing + no-silent-skip (corpus-derived shapes)
+# ---------------------------------------------------------------------------
+
+# Verbatim-shaped header of the real ADR-062 (title trimmed): its H1 contains
+# the word "Status", which used to shadow the real Status field below it.
+_ADR_062_SHAPED_CONTENT = (
+    "# ADR-062 — Governance Drift Automation Phase 2: Status SSOT Consistency "
+    "& Review→Registry Linking (P3 + P5)\n"
+    "\n"
+    "> **Status:** 🗄️ Deprecated (governance toolchain withdrawn via FIND-014)\n"
+    "> **Date:** 2026-07-01\n"
+    "\n"
+    "## Context\n\nTest.\n"
+)
+
+
+def test_parse_adr_file_status_ignores_status_mention_in_h1_title() -> None:
+    """P6: an H1 title mentioning 'Status' must not shadow the real field.
+
+    ADR-062's H1 says '… Status SSOT Consistency …'. The FIRST Status-ish
+    line must be the labeled field (``> **Status:** 🗄️ Deprecated …``), so
+    the file classifies as Deprecated — not as unparseable.
+    """
+    assert _parse_adr_file_status(_ADR_062_SHAPED_CONTENT) == "Deprecated"
+
+
+def test_adr_status_h1_title_shadowing_classifies_by_true_field(tmp_path: Path) -> None:
+    """P6: an ADR-062-shaped file must participate in mismatch checking.
+
+    INDEX says ✅ (Accepted) but the file's real field says 🗄️ Deprecated.
+    The mismatch must be FLAGGED — proving the file is no longer silently
+    skipped via its title.
+    """
+    _write_adr_project(tmp_path, index_status="✅", adr_content=_ADR_062_SHAPED_CONTENT)
+    result = _run_checker(tmp_path)
+    assert _has_violation(result, "Status mismatch")
+    assert _has_violation(result, "Deprecated")
+
+
+def test_adr_status_h1_title_shadowing_consistent_stays_clean(tmp_path: Path) -> None:
+    """P6: an ADR-062-shaped file whose INDEX matches stays clean."""
+    _write_adr_project(tmp_path, index_status="🗄️", adr_content=_ADR_062_SHAPED_CONTENT)
+    result = _run_checker(tmp_path)
+    assert result.violations == []
+
+
+def test_adr_status_index_listed_file_without_status_field_is_violation(
+    tmp_path: Path,
+) -> None:
+    """P6: an INDEX-listed ADR with NO parseable Status field is a violation.
+
+    The old checker silently skipped unparseable files ("informational, not
+    blocking") — hiding exactly the ADR-062 title-shadowing defect. Skipping
+    is only allowed for missing files (other gates own that case).
+    """
+    _write_adr_project(
+        tmp_path,
+        adr_content="# ADR-001 — Title mentions Status SSOT\n\n## Context\n\nNo field.\n",
+    )
+    result = _run_checker(tmp_path)
+    assert _has_violation(result, "no parseable Status field")
+
+
+def test_parse_adr_file_status_supports_status_heading_shape() -> None:
+    """Corpus shape (ADR-017): ``## Status`` heading, value on the next line."""
+    content = (
+        "# ADR-017: Embedding Cascade for mem0\n\n"
+        "## Status\n\n"
+        "⛔ Superseded by ADR-033\n\n"
+        "## Context\n"
+    )
+    assert _parse_adr_file_status(content) == "Superseded"
+
+
+# Prose-ish "Status" mentions that are NOT status declarations (derived from
+# the real corpus: ADR-040, ADR-049, ADR-043, ADR-015). Alone in a file they
+# must NOT parse as a status.
+_PROSE_ONLY_MENTIONS: list[str] = [
+    "> **Status of this extension:** Informational. It does not change the contract.",
+    "> **Status note (updated 2026-06-25):** When this ADR was written "
+    "(2026-06-18), the wiki was fresh.",
+    "**Status (2026-06-12 Review-03 refresh):** Production AI-flow imports/usages remain.",
+    "### Option A — Gateway bleibt dünne Model-Abstraktion (Status Quo)",
+    "## Status vocabulary",
+    "    status: registered",
+]
+
+
+@pytest.mark.parametrize("prose_line", _PROSE_ONLY_MENTIONS)
+def test_parse_adr_file_status_prose_mention_alone_is_unparseable(
+    prose_line: str,
+) -> None:
+    """A prose 'Status' mention is not a Status field → unparseable."""
+    content = f"# ADR-001 — Test\n\n{prose_line}\n\n## Context\n"
+    assert _parse_adr_file_status(content) == ""
 
 
 def test_adr_status_real_repo_passes() -> None:
