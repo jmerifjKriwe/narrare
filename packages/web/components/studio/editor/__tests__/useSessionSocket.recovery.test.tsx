@@ -275,3 +275,104 @@ describe("useSessionSocket ticket wiring (ADR-084)", () => {
     expect(ticketRequests).toBe(2);
   });
 });
+
+describe("useSessionSocket ticket-mint failure dead-end (P5 regression)", () => {
+  let instances: MockWebSocketInstance[];
+  let ticketRequests: number;
+
+  beforeEach(() => {
+    instances = [];
+    ticketRequests = 0;
+    vi.stubGlobal(
+      "WebSocket",
+      class MockWebSocket implements MockWebSocketInstance {
+        readonly sent: string[] = [];
+        onclose: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        onmessage: ((event: { data: string }) => void) | null = null;
+        onopen: (() => void) | null = null;
+
+        constructor(readonly url: string) {
+          instances.push(this);
+        }
+
+        close(): void {}
+
+        send(message: string): void {
+          this.sent.push(message);
+        }
+      },
+    );
+    // Mint sequence: request 1 = initial connect (ok), request 2 = the
+    // reconnect after the drop (fails 500 — the laptop-wake network blip),
+    // request 3+ = user-driven retries (ok again, with FRESH tickets).
+    server.use(
+      http.post("*/api/v1/auth/ws-ticket", () => {
+        ticketRequests += 1;
+        if (ticketRequests === 2) {
+          return HttpResponse.json({ detail: "mint unavailable" }, { status: 500 });
+        }
+        return HttpResponse.json({ token: `ws-ticket-${ticketRequests}`, expires_in: 60 });
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("surfaces a failed reconnect-mint as failed (not reconnecting) and the retry reconnects with a fresh mint", async () => {
+    const { result } = renderHook(() => useSessionSocket(hookOptions()));
+
+    // Initial connect succeeds with ticket 1.
+    await waitFor(() => expect(instances).toHaveLength(1));
+    expect(instances[0]?.url).toContain("token=ws-ticket-1");
+
+    // Bind the session, then drop the connection (laptop sleep).
+    act(() => {
+      const first = latestInstance(instances);
+      first.onmessage?.({
+        data: JSON.stringify({ type: "greeting", session_id: "session-1", message: "Ready" }),
+      });
+      first.onerror?.();
+      first.onclose?.();
+    });
+
+    // The scheduled reconnect mints ticket 2, which FAILS. The socket
+    // schedules no reconnect after a failed mint (single-shot per connect(),
+    // ADR-084) — so the UI must land in "failed" (the banner branch with a
+    // retry affordance), not promise "reconnecting" forever.
+    await waitFor(
+      () => {
+        expect(result.current.recoveryState).toBe("failed");
+      },
+      { timeout: 5_000 },
+    );
+
+    // Security stance preserved: no automatic second connection, no retry
+    // of the failed mint without user action.
+    expect(instances).toHaveLength(1);
+    expect(ticketRequests).toBe(2);
+
+    // Retry — the path the banner's retry button takes
+    // (handleRecoverSession -> sendMessage("recover_session")). It must
+    // re-attempt connect(): a FRESH mint, the bound session_id in the URL,
+    // and recover_session replayed once the socket opens.
+    act(() => {
+      result.current.sendMessage("recover_session", undefined, { session_id: "session-1" });
+    });
+
+    await waitFor(() => expect(instances).toHaveLength(2), { timeout: 5_000 });
+    expect(instances[1]?.url).toContain("token=ws-ticket-3");
+    expect(instances[1]?.url).not.toContain("token=ws-ticket-1");
+    expect(instances[1]?.url).toContain("session_id=session-1");
+
+    act(() => {
+      latestInstance(instances).onopen?.();
+    });
+
+    expect(latestInstance(instances).sent[0]).toBe(
+      JSON.stringify({ type: "recover_session", session_id: "session-1" }),
+    );
+  });
+});

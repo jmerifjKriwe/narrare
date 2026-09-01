@@ -76,6 +76,18 @@ export interface WritingSessionSocketOptions {
 export const DEFAULT_MAX_RECONNECT_ATTEMPTS = 5;
 export const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
 
+/**
+ * Origin of an error reported through the `onError` callback.
+ *
+ * - `"ticket_mint"` — the single-use ticket could not be fetched; the
+ *   attempt was aborted and NO reconnect is scheduled (single-shot per
+ *   `connect()`, ADR-084). Terminal from the socket's perspective, so
+ *   consumers must not promise reconnection for it.
+ * - `"socket"` — the WebSocket itself errored; the usual `onclose`
+ *   reconnect machinery applies.
+ */
+export type SessionSocketErrorKind = "ticket_mint" | "socket";
+
 // ---------------------------------------------------------------------------
 // WritingSessionSocket
 // ---------------------------------------------------------------------------
@@ -105,7 +117,7 @@ export class WritingSessionSocket {
   constructor(
     private readonly chapterId: string,
     private readonly onMessage: (msg: SessionResponse) => void,
-    private readonly onError: () => void,
+    private readonly onError: (kind: SessionSocketErrorKind) => void,
     private readonly ticketProvider: () => Promise<string>,
     private readonly novelId?: string,
     private readonly mode?: string,
@@ -130,15 +142,16 @@ export class WritingSessionSocket {
    *
    * The ticket is minted per attempt — every (re)connect re-enters here, so
    * a consumed ticket is never replayed. A ticket-fetch failure surfaces
-   * through `onError` (RULE-11 honest — there is no unauthenticated
-   * fallback) and aborts the attempt without scheduling a reconnect.
+   * through `onError("ticket_mint")` (RULE-11 honest — there is no
+   * unauthenticated fallback) and aborts the attempt without scheduling a
+   * reconnect.
    */
   private async connectWithFreshTicket(): Promise<void> {
     let token: string;
     try {
       token = await this.ticketProvider();
     } catch {
-      this.onError();
+      this.onError("ticket_mint");
       return;
     }
     // close() may have run while the ticket request was in flight.
@@ -178,7 +191,7 @@ export class WritingSessionSocket {
       };
 
       this.ws.onerror = () => {
-        this.onError();
+        this.onError("socket");
       };
 
       this.ws.onclose = () => {
