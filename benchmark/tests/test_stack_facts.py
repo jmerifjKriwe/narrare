@@ -68,7 +68,9 @@ class AlwaysHealthy:
 
 def make_manager(runner: CannedRunner, override_dir: Path) -> StackManager:
     config = BenchmarkConfig(
-        stack=StackConfig(_PREFIX, 18080, 18180),
+        # mode="containers": image-digest facts are the containers-mode
+        # facts (hybrid facts are runtime identity — test_stack_hybrid).
+        stack=StackConfig(_PREFIX, 18080, 18180, "containers"),
         api=ApiConfig(None, 60.0),
         auth=AuthConfig("benchmark@example.com", "change-me-benchmark-password"),
         llm=LlmConfig("anthropic", "sk-test-dummy", "m", "http://localhost:11434", "general"),

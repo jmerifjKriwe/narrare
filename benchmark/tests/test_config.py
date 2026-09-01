@@ -30,6 +30,8 @@ stack:
   project_name: narrare-benchmark
   port_range_low: 18080
   port_range_high: 18180
+  mode: containers
+  build_image: auto
 api:
   base_url: null
   timeout_seconds: 60
@@ -70,9 +72,35 @@ class TestLoading:
         config = load_config(TEMPLATE_PATH)
         assert isinstance(config, BenchmarkConfig)
 
+    def test_template_default_stack_mode_is_hybrid(self) -> None:
+        config = load_config(TEMPLATE_PATH)
+        assert config.stack.mode == "hybrid"
+
+    def test_stack_mode_field_defaults_to_hybrid(self) -> None:
+        assert StackConfig("p", 1, 2).mode == "hybrid"
+
+    def test_build_image_field_default_is_auto_containers_only(self) -> None:
+        assert StackConfig("p", 1, 2).build_image == "auto"
+
+    def test_absent_stack_mode_defaults_to_hybrid(self, tmp_path: Path) -> None:
+        config = load_config(write_config(tmp_path, mutated("  mode: containers\n", "")))
+        assert config.stack.mode == "hybrid"
+
+    def test_absent_build_image_defaults_to_auto(self, tmp_path: Path) -> None:
+        config = load_config(write_config(tmp_path, mutated("  build_image: auto\n", "")))
+        assert config.stack.build_image == "auto"
+
+    def test_old_style_config_without_optional_stack_keys_loads(self, tmp_path: Path) -> None:
+        """Configs predating ``mode``/``build_image`` must still load."""
+        text = mutated("  mode: containers\n  build_image: auto\n", "")
+        config = load_config(write_config(tmp_path, text))
+        assert config.stack == StackConfig("narrare-benchmark", 18080, 18180)
+
     def test_valid_yaml_parses_every_section(self, tmp_path: Path) -> None:
         config = load_config(write_config(tmp_path))
-        assert config.stack == StackConfig("narrare-benchmark", 18080, 18180)
+        assert config.stack == StackConfig(
+            "narrare-benchmark", 18080, 18180, "containers", build_image="auto"
+        )
         assert config.api == ApiConfig(None, 60.0)
         assert config.auth == AuthConfig("benchmark@example.com", "change-me-benchmark-password")
         assert config.llm == LlmConfig(
@@ -184,6 +212,35 @@ class TestValidation:
             "  port_range_high: 18180", "  port_range_high: 18080"
         )
         with pytest.raises(ConfigError, match=r"1 <= low <= high <= 65535"):
+            load_config(write_config(tmp_path, text))
+
+    def test_build_image_never_is_parsed(self, tmp_path: Path) -> None:
+        text = mutated("  build_image: auto", "  build_image: never")
+        config = load_config(write_config(tmp_path, text))
+        assert config.stack.build_image == "never"
+
+    def test_invalid_build_image_lists_valid_modes(self, tmp_path: Path) -> None:
+        text = mutated("  build_image: auto", "  build_image: always")
+        with pytest.raises(ConfigError, match=r"config\.stack\.build_image.*\['auto', 'never'\]"):
+            load_config(write_config(tmp_path, text))
+
+    def test_invalid_stack_mode_lists_valid_modes(self, tmp_path: Path) -> None:
+        text = mutated("  mode: containers", "  mode: both")
+        with pytest.raises(ConfigError, match=r"config\.stack\.mode.*\['containers', 'hybrid'\]"):
+            load_config(write_config(tmp_path, text))
+
+    def test_absent_mode_uses_hybrid_default_for_base_url_rule(self, tmp_path: Path) -> None:
+        text = mutated("  mode: containers\n", "").replace(
+            "base_url: null", 'base_url: "http://localhost:9999"'
+        )
+        with pytest.raises(ConfigError, match=r"config\.api\.base_url.*hybrid"):
+            load_config(write_config(tmp_path, text))
+
+    def test_base_url_rejected_in_hybrid_mode(self, tmp_path: Path) -> None:
+        text = mutated("  mode: containers", "  mode: hybrid").replace(
+            "base_url: null", 'base_url: "http://localhost:9999"'
+        )
+        with pytest.raises(ConfigError, match=r"config\.api\.base_url.*hybrid"):
             load_config(write_config(tmp_path, text))
 
     def test_base_url_must_be_http(self, tmp_path: Path) -> None:

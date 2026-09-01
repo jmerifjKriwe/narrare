@@ -16,6 +16,8 @@ from collections.abc import Sized
 from typing import TYPE_CHECKING, cast
 
 from benchmark.config_schemas import (
+    DEFAULT_BUILD_IMAGE,
+    DEFAULT_STACK_MODE,
     TEMPLATE_PATH,
     ApiConfig,
     AuthConfig,
@@ -36,6 +38,8 @@ _VALID_PROVIDERS = frozenset(
 
 _VALID_ZAI_ENDPOINTS = frozenset({"general", "coding"})
 _VALID_MODES = frozenset({"incremental", "import"})
+_VALID_BUILD_IMAGE_MODES = frozenset({"auto", "never"})
+_VALID_STACK_MODES = frozenset({"hybrid", "containers"})
 _PROJECT_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 _SECTIONS = ("stack", "api", "auth", "llm", "run")
 
@@ -94,15 +98,25 @@ def _str_list_field(section: Mapping[str, object], path: str) -> list[str]:
     return [item for item in items if isinstance(item, str)]
 
 
-def _section(raw: Mapping[str, object], name: str, keys: tuple[str, ...]) -> Mapping[str, object]:
-    """Fetch a top-level section and enforce exact template key parity."""
+def _section(
+    raw: Mapping[str, object],
+    name: str,
+    keys: tuple[str, ...],
+    optional: tuple[str, ...] = (),
+) -> Mapping[str, object]:
+    """Fetch a top-level section and enforce exact template key parity.
+
+    Keys listed in ``optional`` may be absent (their documented default
+    applies); when present they are still known keys and validated as
+    usual. Unknown keys are always rejected.
+    """
     value = raw.get(name)
     if not isinstance(value, dict):
         raise ConfigError(
             f"config.{name}: missing section or not a mapping — copy it from {TEMPLATE_PATH.name}"
         )
     section = cast("dict[str, object]", value)
-    missing = [key for key in keys if key not in section]
+    missing = [key for key in keys if key not in section and key not in optional]
     unknown = sorted(str(key) for key in section if key not in keys)
     if missing:
         raise ConfigError(f"config.{name}: missing key(s) {missing} — see {TEMPLATE_PATH.name}")
@@ -112,7 +126,12 @@ def _section(raw: Mapping[str, object], name: str, keys: tuple[str, ...]) -> Map
 
 
 def _parse_stack(raw: Mapping[str, object]) -> StackConfig:
-    section = _section(raw, "stack", ("project_name", "port_range_low", "port_range_high"))
+    section = _section(
+        raw,
+        "stack",
+        ("project_name", "port_range_low", "port_range_high", "mode", "build_image"),
+        optional=("mode", "build_image"),
+    )
     project_name = _str_field(section, "stack.project_name")
     if not _PROJECT_NAME_RE.fullmatch(project_name):
         raise ConfigError(
@@ -125,7 +144,20 @@ def _parse_stack(raw: Mapping[str, object]) -> StackConfig:
         raise ConfigError(
             f"config.stack port range must satisfy 1 <= low <= high <= 65535, got [{low}, {high}]"
         )
-    return StackConfig(project_name, low, high)
+    mode = _str_field(section, "stack.mode") if "mode" in section else DEFAULT_STACK_MODE
+    if mode not in _VALID_STACK_MODES:
+        raise ConfigError(f"config.stack.mode {mode!r} is not one of {sorted(_VALID_STACK_MODES)}")
+    build_image = (
+        _str_field(section, "stack.build_image")
+        if "build_image" in section
+        else DEFAULT_BUILD_IMAGE
+    )
+    if build_image not in _VALID_BUILD_IMAGE_MODES:
+        raise ConfigError(
+            f"config.stack.build_image {build_image!r} is not one of "
+            f"{sorted(_VALID_BUILD_IMAGE_MODES)}"
+        )
+    return StackConfig(project_name, low, high, mode, build_image)
 
 
 def _parse_api(raw: Mapping[str, object]) -> ApiConfig:
@@ -215,9 +247,19 @@ def parse_sections(raw: Mapping[str, object]) -> BenchmarkConfig:
             f"unknown top-level section(s) {unknown}, missing section(s) "
             f"{missing} — expected {list(_SECTIONS)}, see {TEMPLATE_PATH.name}"
         )
+    stack = _parse_stack(raw)
+    api = _parse_api(raw)
+    # Hybrid spawns the API itself on a stack-selected port — a pinned
+    # base_url would point the client somewhere the runner does not control.
+    if stack.mode == "hybrid" and api.base_url is not None:
+        raise ConfigError(
+            "config.api.base_url must be null when stack.mode is hybrid — "
+            "the runner spawns the API itself and derives the URL from the "
+            "selected port"
+        )
     return BenchmarkConfig(
-        stack=_parse_stack(raw),
-        api=_parse_api(raw),
+        stack=stack,
+        api=api,
         auth=_parse_auth(raw),
         llm=_parse_llm(raw),
         run=_parse_run(raw),

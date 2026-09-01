@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Final
 
 CONFIG_PATH = Path(__file__).resolve().parent / "config.local.yaml"
 """Default local config path (gitignored)."""
@@ -26,13 +27,36 @@ class ConfigError(ValueError):
     """Raised when the benchmark config is missing or invalid."""
 
 
+DEFAULT_STACK_MODE: Final[str] = "hybrid"
+"""Default for the OPTIONAL ``stack.mode`` key — hybrid (PO ruling)."""
+
+DEFAULT_BUILD_IMAGE: Final[str] = "auto"
+"""Default for the OPTIONAL ``stack.build_image`` key — auto-build when missing."""
+
+
 @dataclass(frozen=True)
 class StackConfig:
-    """Compose stack identity and the host-port scan range."""
+    """Stack identity, stack mode, host-port scan range, image acquisition.
+
+    ``mode`` (PO ruling): ``hybrid`` — the default — brings up only the
+    ``postgres`` service from ``docker-compose.dev.yml`` and runs the API
+    as a LOCAL uvicorn subprocess from the working tree (the benchmark
+    measures current code; no image build); ``containers`` brings up the
+    full app stack from ``docker-compose.release.yml`` (non-default
+    option).
+
+    ``build_image`` is containers-mode-only: ``auto`` builds the app
+    image from the repo Dockerfile when it is missing locally (no GHCR
+    release image yet); ``never`` leaves image acquisition to compose
+    (pull-only — usable once release images exist). Ignored in hybrid
+    mode.
+    """
 
     project_name: str
     port_range_low: int
     port_range_high: int
+    mode: str = DEFAULT_STACK_MODE
+    build_image: str = DEFAULT_BUILD_IMAGE
 
 
 @dataclass(frozen=True)

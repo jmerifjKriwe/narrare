@@ -73,9 +73,12 @@ class CapabilityAnswer:
 class StackFacts:
     """Stack identity facts for the manifest (gathered by the runner).
 
-    ``image_digests`` is key-sorted tuple pairs (service → repository
-    digest) for deterministic equality; ``api_version`` is the JSON-safe
-    payload of the API's version endpoint.
+    ``image_digests`` is key-sorted tuple pairs for deterministic
+    equality; ``api_version`` is the JSON-safe payload of the API's
+    version endpoint. The pairs slot is mode-dependent (PO ruling):
+    containers mode records per-service repository digests; hybrid mode
+    has NO app image and records runtime identity instead — ``mode``,
+    ``uvicorn_pid``, ``api_port`` (see ``benchmark.stack_hybrid``).
     """
 
     compose_sha256: str

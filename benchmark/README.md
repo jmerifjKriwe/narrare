@@ -29,12 +29,26 @@ artifacts, never silently omitted or fabricated.
 
 ## 2. Prerequisites
 
-- **Docker** with **Docker Compose v2.24+**. The runner selects a free host
-  port and injects it through a generated compose override file using the
-  `ports: !override` tag (replaces the release file's fixed `3000:3000`
-  mapping instead of merging with it) — a Compose v2.24+ feature
-  (`benchmark/stack.py`, `StackManager._write_override`). Check yours:
-  `docker compose version`.
+- **Docker** with **Docker Compose v2.24+** (both stack modes inject the
+  selected host port through a generated compose override file using the
+  `ports: !override` tag — replaces the file's fixed port mapping instead of
+  merging with it; a Compose v2.24+ feature). Check yours:
+  `docker compose version`. **Stack mode** (`stack.mode`):
+  - `hybrid` (DEFAULT): only the `postgres` service runs in docker (from
+    `docker-compose.dev.yml`, prefixed compose project); the API is a
+    **local uvicorn subprocess from the working tree**
+    (`uv run uvicorn` from `apps/api`, DATABASE_URL pointed at the
+    stack's own postgres) — the benchmark measures current code, with
+    no image build. Uvicorn stdout/stderr go to
+    `<tmpdir>/<project_name>-uvicorn/uvicorn.log` for failure diagnosis.
+  - `containers` (non-default): the full app stack from
+    `docker-compose.release.yml`. **Image acquisition** (containers mode
+    only): no release image exists on GHCR yet — with
+    `stack.build_image: auto` the runner builds the API image locally
+    from the repo `Dockerfile` on first use (takes minutes, one-time per
+    code state); `never` leaves acquisition to compose (pull of
+    `ghcr.io/jmerifjkriwe/narrare:latest`) — usable once release images
+    exist.
 - **Python environment via uv** (repo toolchain). All commands below use
   `uv run` from the repo root.
 - **Local config** — the runner refuses to start without it:
@@ -57,7 +71,9 @@ artifacts, never silently omitted or fabricated.
   The remaining fields (`api.*`, `stack.port_range_*`, `run.*`) have working
   defaults. Note: the CLI flags (`--variant`, `--mode`, `--capabilities`,
   `--keep-stack`) control a run; the config's `run:` block is validated but
-  not read by the CLI today.
+  not read by the CLI today. `api.base_url` must stay `null` in hybrid mode
+  (the runner spawns the API itself and derives the URL from the selected
+  port).
 
 **Where your API key travels:** `llm.api_key` is sent in the request body of
 exactly two calls — the pre-flight provider validation
@@ -170,14 +186,16 @@ not mark it done until it has executed against a real stack. Exact procedure:
      --capabilities CAP-IN-01,CAP-OUT-03
    ```
 
-   Expected, in order: compose pulls/starts the release stack with project
-   prefix `narrare-benchmark`; health wait passes (`GET /health` then
-   `GET /ready`); provisioning registers the user and validates the provider
-   config (a **real** provider API call happens at step-4 validation);
-   per-chapter ingest (novel "KB Benchmark [clean/incremental]", extraction +
-   endorse-all per chapter); the two capabilities are driven and scored;
-   artifacts appear under `benchmark/runs/<run-id>/`; teardown runs and
-   verifies residue-free.
+   Expected, in order: compose starts the `postgres` service with project
+   prefix `narrare-benchmark` and the runner waits for it to accept
+   connections; the API comes up as a local uvicorn subprocess (working
+   tree) and applies pending migrations; health wait passes (`GET /health`
+   then `GET /ready`); provisioning registers the user and validates the
+   provider config (a **real** provider API call happens at step-4
+   validation); per-chapter ingest (novel "KB Benchmark [clean/incremental]",
+   extraction + endorse-all per chapter); the two capabilities are driven
+   and scored; artifacts appear under `benchmark/runs/<run-id>/`; teardown
+   kills uvicorn, runs compose down, and verifies residue-free.
 5. **Teardown residue check:**
 
    ```sh

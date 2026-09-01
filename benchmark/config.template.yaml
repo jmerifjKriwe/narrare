@@ -16,14 +16,36 @@ stack:
   # benchmark stack carries this prefix; teardown verification fails if
   # prefixed resources survive.
   project_name: narrare-benchmark
-  # Host-port scan range (inclusive) for the dynamically selected API
-  # port. Ignored when api.base_url is set.
+  # Host-port scan range (inclusive) for the dynamically selected ports
+  # (hybrid: postgres host port + API port; containers: API port).
+  # Ignored when api.base_url is set (containers mode only).
   port_range_low: 18080
   port_range_high: 18180
+  # Stack mode (PO ruling) — OPTIONAL, absent = hybrid (the default):
+  #   hybrid     = DEFAULT. Only the `postgres` service runs in compose
+  #                (from docker-compose.dev.yml, prefixed project); the
+  #                API is a LOCAL uvicorn subprocess from the working
+  #                tree — the benchmark measures current code, no image
+  #                build.
+  #   containers = full app stack from docker-compose.release.yml (the
+  #                API runs from the app image).
+  mode: hybrid
+  # App-image acquisition before compose up — containers mode ONLY
+  # (ignored in hybrid mode, which never builds an image).
+  # OPTIONAL — absent = auto (the default):
+  #   auto  = build the image from the repo Dockerfile when it is not
+  #           present locally (first run in a fresh clone; minutes,
+  #           one-time per code state — no GHCR release image exists yet)
+  #   never = never build; compose pulls the release image
+  #           (ghcr.io/jmerifjkriwe/narrare:latest) — usable once
+  #           release images exist
+  build_image: auto
 
 api:
   # API base URL override (http(s)://host:port). null = derive from the
-  # stack's dynamically selected port (http://127.0.0.1:<port>).
+  # stack's dynamically selected port (http://127.0.0.1:<port>). MUST
+  # stay null in hybrid mode — the runner spawns the API itself and
+  # derives the URL from the selected port.
   base_url: null
   # Per-request HTTP timeout in seconds (API client, Task 3).
   timeout_seconds: 60

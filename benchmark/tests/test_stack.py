@@ -85,7 +85,10 @@ class FakeClock:
 
 def make_config(base_url: str | None = None) -> BenchmarkConfig:
     return BenchmarkConfig(
-        stack=StackConfig(PREFIX, 18080, 18180),
+        # mode="containers": this file tests the image-based stack path,
+        # which is the NON-default option since the PO ruling (default:
+        # hybrid, tested in test_stack_hybrid.py).
+        stack=StackConfig(PREFIX, 18080, 18180, "containers"),
         api=ApiConfig(base_url, 60.0),
         auth=AuthConfig("benchmark@example.com", "change-me-benchmark-password"),
         llm=LlmConfig("anthropic", "sk-test-dummy", "m", "http://localhost:11434", "general"),
