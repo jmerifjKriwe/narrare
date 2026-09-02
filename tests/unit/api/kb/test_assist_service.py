@@ -91,12 +91,9 @@ async def test_run_agent_calls_compose_invocation_mode1(
 
 @pytest.mark.asyncio
 async def test_build_deps_sources_world_context_via_provider(
-    config: ResolvedModelConfig,
-    registry: FakeModelRegistry,
     kb_context_provider: FakeKBContextProvider,
-    composer: FakeComposer,
 ) -> None:
-    """_build_deps obtains world_context from KBContextProvider (ADR-067).
+    """build_assist_deps obtains world_context from KBContextProvider (ADR-067).
 
     Consolidates the former inline ``proactive_context.suggest`` + relevance
     formatting: assist now routes through the canonical KBContextProvider so
@@ -106,19 +103,16 @@ async def test_build_deps_sources_world_context_via_provider(
     """
     from uuid import uuid4
 
+    from narrare.kb._assist_context import build_assist_deps
+
     canonical_context = "- Alice (character): A brave hero"
 
-    service = KBAssistService(
-        registry=registry,  # type: ignore[arg-type]
-        config=config,
-        kb_context_provider=kb_context_provider,  # type: ignore[arg-type]
-        prompt_composer=composer,  # type: ignore[arg-type]
-    )
     # Configure the canonical wire format the provider renders.
     kb_context_provider.fetch_world_context = AsyncMock(return_value=canonical_context)
 
     novel_id = uuid4()
-    deps = await service._build_deps(
+    deps = await build_assist_deps(
+        kb_context_provider,  # type: ignore[arg-type]
         novel_id=novel_id,
         entity_type="character",
         existing_fields={"name": "Bob"},

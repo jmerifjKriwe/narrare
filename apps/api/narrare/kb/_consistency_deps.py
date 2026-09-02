@@ -1,17 +1,46 @@
-"""KB consistency service dependency factory."""
+"""KB consistency service dependency factory.
+
+Model acquisition follows the per-user model-routing cascade: the factory
+resolves TWO configs for the authenticated user (+ novel for project-level
+overrides) — ``LLMIntent.KB_CONSISTENCY`` for the entry-internal analyzer
+and ``LLMIntent.KB_WORLDBUILD`` for the reused cross-entity worldbuilding
+analyzer — and passes the resolved configs + credentials into them. No
+business logic lives here — only wiring.
+
+Note: the legacy wiring set no temperature override on either config
+(unlike ``consistency/deps.py``), so none is preserved here — the resolved
+cascade config is passed through as-is.
+"""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
-from narrare._app.dependencies import SessionDep  # noqa: TC001 — runtime DI
+from fastapi import Depends
+
+from narrare._app.dependencies import (
+    SessionDep,
+    get_current_user_id,
+)
+from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from narrare.kb.consistency_service import KBConsistencyService
 
 
-def get_consistency_service(session: SessionDep) -> KBConsistencyService:
-    """Create a KBConsistencyService with injected dependencies.
+async def get_consistency_service(
+    novel_id: UUID,
+    session: SessionDep,
+    user_id: str = Depends(get_current_user_id),
+) -> KBConsistencyService:
+    """Create a KBConsistencyService with per-user resolved model routing.
+
+    FastAPI dependency: novel_id comes from the route path, user_id and
+    session are resolved via Depends. The models are resolved through the
+    per-user cascade; ``ConfigurationError`` propagates when the user has
+    no provider configured (kb routers are auth-mandatory).
 
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
     for system prompts, PromptRegistry for prompt resolution, and
@@ -24,10 +53,6 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
         get_composer,
         get_invocation_pipeline,
         get_model_registry,
-    )
-    from narrare._app.dependencies_services import (
-        SystemModelCategory,
-        build_system_default_config,
     )
     from narrare.kb._feedback_memory_deps import (
         get_consistency_feedback_memory_instance,
@@ -43,9 +68,20 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
     from narrare.kb.worldbuilding_cache import WorldbuildingCache
     from narrare_core.cache import InMemorySessionCache
 
+    resolver = get_model_routing_resolver(session)
+    consistency_resolved = await resolver.resolve(
+        LLMIntent.KB_CONSISTENCY,
+        UUID(user_id),
+        novel_id,
+    )
+    worldbuild_resolved = await resolver.resolve(
+        LLMIntent.KB_WORLDBUILD,
+        UUID(user_id),
+        novel_id,
+    )
+
     registry = get_model_registry()
     composer = get_composer()
-    config = build_system_default_config(SystemModelCategory.ANALYSIS)
 
     kb_repo = KBRepository(session)
     rel_repo = RelationshipRepository(session)
@@ -59,8 +95,10 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
     consistency_analyzer = KBConsistencyAnalyzer(
         kb_repo=kb_repo,
         registry=registry,
-        config=config,
+        config=consistency_resolved.config,
         composer=composer,
+        api_key=consistency_resolved.api_key,
+        base_url=consistency_resolved.base_url,
     )
 
     # Relationship asymmetry checker (algorithmic, no LLM)
@@ -77,8 +115,10 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
         rel_repo=rel_repo,
         cache=worldbuilding_cache,
         registry=registry,
-        config=config,
+        config=worldbuild_resolved.config,
         composer=composer,
+        api_key=worldbuild_resolved.api_key,
+        base_url=worldbuild_resolved.base_url,
     )
 
     return KBConsistencyService(

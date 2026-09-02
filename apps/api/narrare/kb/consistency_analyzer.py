@@ -84,6 +84,9 @@ class KBConsistencyAnalyzer:
         max_body_tokens: Maximum tokens for entity body truncation in
             consistency prompts.  Default 1500 (~5000 chars).  Token-aware
             truncation replaces the previous hardcoded 5000-char limit.
+        api_key: Optional per-user provider API key (model-routing cascade),
+            injected into ``ModelRegistry.run``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -93,12 +96,16 @@ class KBConsistencyAnalyzer:
         config: ResolvedModelConfig,
         composer: PromptComposer,
         max_body_tokens: int = 1500,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._kb_repo = kb_repo
         self._registry = registry
         self._config = config
         self._composer = composer
         self._max_body_tokens = max_body_tokens
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def analyze_entries(
         self,
@@ -187,6 +194,8 @@ class KBConsistencyAnalyzer:
             config=self._config,
             system_prompt=composed.system,
             output_type=_EntryInternalOutput,
+            api_key=self._api_key,
+            base_url=self._base_url,
         )
         return result.issues
 

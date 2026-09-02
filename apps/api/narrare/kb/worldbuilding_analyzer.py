@@ -49,6 +49,8 @@ from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:
+    from pydantic_ai.models import Model
+
     from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
@@ -73,6 +75,9 @@ class WorldbuildingAnalyzer:
         config: Resolved model configuration.
         composer: Prompt composer for building prompts (both phases).
         max_phase2_pairs: Maximum number of entity pairs for Phase 2 consistency check.
+        api_key: Optional per-user provider API key (model-routing cascade),
+            injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -86,6 +91,8 @@ class WorldbuildingAnalyzer:
         *,
         max_phase2_pairs: int = 15,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._kb_repo = kb_repo
         self._rel_repo = rel_repo
@@ -95,6 +102,20 @@ class WorldbuildingAnalyzer:
         self._composer = composer
         self._max_phase2_pairs = max_phase2_pairs
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
+
+    async def _get_model(self) -> Model:
+        """Resolve the LLM model lazily from the registry.
+
+        Forwards the injected per-user provider credentials (model-routing
+        cascade) into ``ModelRegistry.get_model``.
+        """
+        return await self._registry.get_model(
+            self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
     async def analyze(
         self,
@@ -212,7 +233,7 @@ class WorldbuildingAnalyzer:
             composed = await self._composer.build(LLMIntent.KB_WORLDBUILD, ctx)
             system_prompt = composed.system
 
-        model = await self._registry.get_model(self._config)
+        model = await self._get_model()
         agent = WorldbuildingAgent(model=model, system_prompt=system_prompt)
         result = await agent.run_phase1(
             prompt=(
@@ -323,7 +344,7 @@ class WorldbuildingAnalyzer:
             composed = await self._composer.build(LLMIntent.KB_WORLDBUILD, ctx)
             system_prompt = composed.system
 
-        model = await self._registry.get_model(self._config)
+        model = await self._get_model()
         agent = WorldbuildingAgent(model=model)
         result = await agent.run_phase2(
             prompt=phase2_user_prompt,
