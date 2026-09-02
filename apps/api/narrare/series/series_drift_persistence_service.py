@@ -19,8 +19,9 @@ completed write.
 RULE-11 persistence degradation (documented ruling): the check's LLM cost is
 already paid when the store runs, so a store failure logs a
 ``series_drift_persist_failed`` warning and the computed result is still
-returned — mirroring ``SeriesVoiceDriftService._load_series_voice``'s
-malformed-JSONB degradation. The GET path propagates errors normally.
+returned — mirroring ``read_series_voice_profile``'s (in
+``series/series_voice_profile_reader.py``) malformed-JSONB degradation. The
+GET path propagates errors normally.
 
 Ownership (anti-enumeration, mirrors the run services): ``get_snapshot``
 verifies series ownership + novel membership itself; the ``check_and_store_*``
