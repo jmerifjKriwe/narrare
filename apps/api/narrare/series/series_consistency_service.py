@@ -104,6 +104,8 @@ class SeriesConsistencyService:
         composer: PromptComposer | None = None,
         agent_factory: Callable[..., SeriesConsistencyAgent] | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         """Initialise the service with all dependencies injected (RULE-07).
 
@@ -120,6 +122,9 @@ class SeriesConsistencyService:
             agent_factory: Callable ``(model, system_prompt) -> Agent``.
                 Defaults to the real constructor; tests inject a Fake.
             invocation_pipeline: Optional InvocationPipeline for evidence.
+            api_key: Optional per-user provider API key override (model-routing
+                cascade) — injected into ``ModelRegistry.get_model``.
+            base_url: Optional per-user provider base URL override.
         """
         self._series_repo = series_repo
         self._novel_repo = novel_repo
@@ -130,6 +135,8 @@ class SeriesConsistencyService:
         self._composer = composer
         self._agent_factory = agent_factory or _default_agent_factory
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def check_novel(
         self,
@@ -205,7 +212,13 @@ class SeriesConsistencyService:
             formatted_canon = format_canon_entries(canon_entries)
 
             # 7. Resolve model + instantiate agent (RULE-01b: agents-first).
-            model = await self._registry.get_model(self._config)
+            #    The per-user provider credentials (model-routing cascade)
+            #    are injected into the resolution call.
+            model = await self._registry.get_model(
+                self._config,
+                api_key=self._api_key,
+                base_url=self._base_url,
+            )
             agent = self._agent_factory(model, system_prompt)
 
             # 8. Run the agent. Canon entries + chapter texts flow as runtime
