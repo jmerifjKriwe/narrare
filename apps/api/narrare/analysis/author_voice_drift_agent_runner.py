@@ -62,6 +62,8 @@ async def run_author_voice_drift_agent(
     novel_id: object,
     model_registry: ModelRegistry,
     model_config: ResolvedModelConfig,
+    api_key: str | None = None,
+    base_url: str | None = None,
 ) -> VoiceDriftResult:
     """Run the author-voice-drift agent for the narrator (one LLM call).
 
@@ -84,6 +86,9 @@ async def run_author_voice_drift_agent(
         novel_id: Novel id (for error logging).
         model_registry: Model registry used to resolve the configured model.
         model_config: Resolved model configuration.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
 
     Returns:
         The agent's :class:`VoiceDriftResult` qualitative classification (the
@@ -106,7 +111,11 @@ async def run_author_voice_drift_agent(
         chapter_meta=chapter_meta,
     )
 
-    model = await model_registry.get_model(model_config)
+    model = await model_registry.get_model(
+        model_config,
+        api_key=api_key,
+        base_url=base_url,
+    )
     try:
         agent = AuthorVoiceDriftAgent(
             model=model,

@@ -114,6 +114,8 @@ async def run_author_voice_agent(
     model_registry: ModelRegistry,
     model_config: ResolvedModelConfig,
     composed_prompt: ComposedPrompt,
+    api_key: str | None = None,
+    base_url: str | None = None,
 ) -> AuthorVoiceOutput:
     """Format runtime content and run one :class:`AuthorVoiceAgent` call.
 
@@ -132,6 +134,9 @@ async def run_author_voice_agent(
         model_registry: Model registry used to resolve the configured model.
         model_config: Resolved model configuration.
         composed_prompt: The composed system + user prompt (Mode 1).
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
 
     Returns:
         The agent output (descriptive-only — binding boundary enforced at the
@@ -144,7 +149,11 @@ async def run_author_voice_agent(
         prose_excerpt, voice_metrics_summary, author_metrics_summary
     )
 
-    model = await model_registry.get_model(model_config)
+    model = await model_registry.get_model(
+        model_config,
+        api_key=api_key,
+        base_url=base_url,
+    )
 
     from narrare_core.agents.author_voice_agent import AuthorVoiceAgent
     from narrare_core.agents.author_voice_types import AuthorVoiceDeps

@@ -1,4 +1,4 @@
-"""User-routing migration tests — credentials reach the resolution point (Task 2a).
+"""User-routing migration tests — credentials reach the resolution point (Tasks 2a/2b).
 
 Companion of ``test_deps_user_routing.py`` (split off for the RULE-04
 test-file hard limit). Proves that the api_key/base_url resolved by the
@@ -10,6 +10,12 @@ per-user cascade reach the ACTUAL resolution calls inside the services
 - ``BetaReaderService.analyze`` (BETA_READ)
 - ``run_character_voice_agent`` (VOICE)
 - ``CoreferenceService.analyze`` (ANALYSE)
+
+Task 2b — the four voice agent runners (all VOICE):
+- ``run_voice_checker_agent``
+- ``run_voice_drift_agent``
+- ``run_author_voice_agent``
+- ``run_author_voice_drift_agent``
 
 Same conventions as the sibling files: fake resolver, cast-pattern
 registry fakes (mirrors ``test_deps_user_routing.py``, Task 1a).
@@ -24,6 +30,8 @@ from uuid import uuid4
 
 import pytest
 
+from narrare_core.analysis.author_metrics import AuthorMetrics
+from narrare_core.kb.schemas.character import VoiceMetrics
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.prompts.composer import ComposedPrompt
 
@@ -229,6 +237,129 @@ class TestCredentialsReachResolutionPoint:
         with pytest.raises(_StopResolution):
             async for _ in service.analyze(chapter_id=uuid4(), user_id=uuid4()):
                 pass
+
+        assert registry.calls == [
+            {"config": config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}
+        ]
+
+
+# ===========================================================================
+# Task 2b — voice agent runners (credentials reach get_model)
+# ===========================================================================
+
+
+class TestVoiceRunnerCredentialsReachResolutionPoint:
+    """The resolved key must flow into the runners' ACTUAL get_model call."""
+
+    async def test_voice_check_runner_threads_credentials_into_get_model(self) -> None:
+        from narrare.analysis.voice_check_agent_runner import run_voice_checker_agent
+
+        config = _user_config()
+        registry = _RecordingRegistry(stop_after_record=_StopResolution())
+        composer = MagicMock(spec=["build"], name="PromptComposer")
+        composer.build = AsyncMock(
+            return_value=ComposedPrompt(system="system prompt", user="user prompt")
+        )
+
+        with pytest.raises(_StopResolution):
+            await run_voice_checker_agent(
+                utterances=[],
+                current_metrics={},
+                profiles_by_name={},
+                checkable=[],
+                novel=SimpleNamespace(title="Test Novel", genre="fantasy"),
+                chapter=SimpleNamespace(id=uuid4(), title="Chapter 1"),
+                language="en",
+                novel_id=uuid4(),
+                user_id=uuid4(),
+                model_registry=cast("ModelRegistry", registry),
+                model_config=config,
+                composer=composer,
+                invocation_pipeline=None,
+                relationship_repo=None,
+                api_key=_USER_KEY,
+                base_url=_USER_BASE_URL,
+            )
+
+        assert registry.calls == [
+            {"config": config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}
+        ]
+
+    async def test_voice_drift_runner_threads_credentials_into_get_model(self) -> None:
+        from narrare.analysis.voice_drift_agent_runner import run_voice_drift_agent
+
+        config = _user_config()
+        registry = _RecordingRegistry(stop_after_record=_StopResolution())
+
+        with pytest.raises(_StopResolution):
+            await run_voice_drift_agent(
+                composed_prompt=ComposedPrompt(system="system prompt", user="user prompt"),
+                character_name="Alice",
+                descriptive_profile="speaks softly",
+                trend=[],
+                jumps=[],
+                chapter_meta=[],
+                novel=SimpleNamespace(title="Test Novel", genre="fantasy"),
+                language="en",
+                model_registry=cast("ModelRegistry", registry),
+                model_config=config,
+                api_key=_USER_KEY,
+                base_url=_USER_BASE_URL,
+            )
+
+        assert registry.calls == [
+            {"config": config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}
+        ]
+
+    async def test_author_voice_runner_threads_credentials_into_get_model(self) -> None:
+        from narrare.analysis.author_voice_agent_runner import run_author_voice_agent
+
+        config = _user_config()
+        registry = _RecordingRegistry(stop_after_record=_StopResolution())
+
+        with pytest.raises(_StopResolution):
+            await run_author_voice_agent(
+                chapter_prose="A quiet chapter of prose.",
+                voice_metrics=VoiceMetrics(),
+                author_metrics=AuthorMetrics(),
+                novel_title="Test Novel",
+                novel_genre="fantasy",
+                novel_id=uuid4(),
+                language="en",
+                model_registry=cast("ModelRegistry", registry),
+                model_config=config,
+                composed_prompt=ComposedPrompt(system="system prompt", user="user prompt"),
+                api_key=_USER_KEY,
+                base_url=_USER_BASE_URL,
+            )
+
+        assert registry.calls == [
+            {"config": config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}
+        ]
+
+    async def test_author_voice_drift_runner_threads_credentials_into_get_model(self) -> None:
+        from narrare.analysis.author_voice_drift_agent_runner import (
+            run_author_voice_drift_agent,
+        )
+
+        config = _user_config()
+        registry = _RecordingRegistry(stop_after_record=_StopResolution())
+
+        with pytest.raises(_StopResolution):
+            await run_author_voice_drift_agent(
+                composed_prompt=ComposedPrompt(system="system prompt", user="user prompt"),
+                descriptive_profile="The narrator favours long sentences.",
+                trend=[],
+                jumps=[],
+                chapter_meta=[],
+                novel=SimpleNamespace(title="Test Novel", genre="fantasy"),
+                language="en",
+                novel_id=uuid4(),
+                model_registry=cast("ModelRegistry", registry),
+                model_config=config,
+                api_key=_USER_KEY,
+                base_url=_USER_BASE_URL,
+            )
 
         assert registry.calls == [
             {"config": config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}

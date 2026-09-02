@@ -60,6 +60,9 @@ class CharacterVoiceCheckerService:
             evaluate dialogue-tone consistency). When ``None``, degrades
             gracefully to an empty string (RULE-11).
         invocation_pipeline: Optional invocation governance pipeline.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -73,6 +76,8 @@ class CharacterVoiceCheckerService:
         relationship_repo: RelationshipRepository | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
@@ -82,6 +87,8 @@ class CharacterVoiceCheckerService:
         self._composer = composer
         self._relationship_repo = relationship_repo
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def check(
         self,
@@ -171,6 +178,8 @@ class CharacterVoiceCheckerService:
                 composer=composer,
                 invocation_pipeline=self._invocation_pipeline,
                 relationship_repo=self._relationship_repo,
+                api_key=self._api_key,
+                base_url=self._base_url,
             )
 
         for name in speaking:

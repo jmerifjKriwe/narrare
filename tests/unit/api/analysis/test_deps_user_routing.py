@@ -1,4 +1,4 @@
-"""User-routing migration tests for analysis dependency factories (Task 2a).
+"""User-routing migration tests for analysis dependency factories (Tasks 2a/2b).
 
 Regression-first proof that the analysis factories (readability, pov) resolve
 the model via the per-user ``ModelRoutingResolver`` cascade (instead of the
@@ -7,10 +7,10 @@ novel_id, and that the resolved config + api_key/base_url reach the services.
 
 Split for the RULE-04 test-file hard limit:
 - ``test_deps_user_routing.py`` (this file) — structural + readability/pov.
-- ``test_deps_user_routing_factories.py`` — beta_reader/character_voice/
-  coreference factory execution.
+- ``test_deps_user_routing_factories.py`` — split-factory execution
+  (beta_reader/character_voice/coreference + the Task 2b voice factories).
 - ``test_deps_user_routing_credentials.py`` — credentials reach the actual
-  ``ModelRegistry.get_model`` resolution point inside the services.
+  ``ModelRegistry.get_model`` resolution point inside the services/runners.
 
 Sentiment is intentionally unmigrated: it is purely deterministic (ADR-021)
 with no LLM call — pinned by a guard test.
@@ -117,6 +117,45 @@ class TestFactoryStructure:
         assert "session" in params
         assert "novel_id" not in params
 
+    def test_get_voice_check_service_is_async_without_novel_id(self) -> None:
+        """Voice-check router is chapter-scoped (no novel_id) — user routing only."""
+        from narrare.analysis.dependencies_voice_check import get_voice_check_service
+
+        assert inspect.iscoroutinefunction(get_voice_check_service)
+        params = list(inspect.signature(get_voice_check_service).parameters)
+        assert "user_id" in params
+        assert "session" in params
+        assert "novel_id" not in params
+
+    def test_get_voice_drift_service_is_async_with_user_routing_params(self) -> None:
+        from narrare.analysis.dependencies_voice_drift import get_voice_drift_service
+
+        assert inspect.iscoroutinefunction(get_voice_drift_service)
+        params = list(inspect.signature(get_voice_drift_service).parameters)
+        assert "user_id" in params
+        assert "novel_id" in params
+        assert "session" in params
+
+    def test_get_author_voice_service_is_async_with_user_routing_params(self) -> None:
+        from narrare.analysis.dependencies_author_voice import get_author_voice_service
+
+        assert inspect.iscoroutinefunction(get_author_voice_service)
+        params = list(inspect.signature(get_author_voice_service).parameters)
+        assert "user_id" in params
+        assert "novel_id" in params
+        assert "session" in params
+
+    def test_get_author_voice_drift_service_is_async_with_user_routing_params(self) -> None:
+        from narrare.analysis.dependencies_author_voice_drift import (
+            get_author_voice_drift_service,
+        )
+
+        assert inspect.iscoroutinefunction(get_author_voice_drift_service)
+        params = list(inspect.signature(get_author_voice_drift_service).parameters)
+        assert "user_id" in params
+        assert "novel_id" in params
+        assert "session" in params
+
     @pytest.mark.parametrize(
         ("module_name", "attribute"),
         [
@@ -140,6 +179,10 @@ class TestFactoryStructure:
             "narrare.analysis.dependencies_beta_reader",
             "narrare.analysis.dependencies_character_voice",
             "narrare.analysis.dependencies_coreference",
+            "narrare.analysis.dependencies_voice_check",
+            "narrare.analysis.dependencies_voice_drift",
+            "narrare.analysis.dependencies_author_voice",
+            "narrare.analysis.dependencies_author_voice_drift",
         ],
     )
     def test_split_factories_do_not_use_system_default_config(self, module_name: str) -> None:

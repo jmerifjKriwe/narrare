@@ -44,7 +44,7 @@ async def analyze_voice_check(
     On failure, an ``"error"`` event (``is_final=True``) precedes the
     ``[DONE]`` sentinel.
     """
-    service = get_voice_check_service(session)
+    service = await get_voice_check_service(session=session, user_id=user_id)
 
     async def event_stream() -> AsyncIterator[str]:
         try:

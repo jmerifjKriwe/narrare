@@ -55,6 +55,8 @@ async def run_voice_checker_agent(
     composer: PromptComposer,
     invocation_pipeline: InvocationPipeline | None,
     relationship_repo: RelationshipRepository | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
 ) -> dict[str, CharacterVoiceCheckerEntry]:
     """Resolve the governed prompt and run one checker-agent call.
 
@@ -76,6 +78,9 @@ async def run_voice_checker_agent(
             ``kb_relationships`` (character relationships help the checker
             evaluate dialogue-tone consistency). When ``None``, degrades
             gracefully to an empty string (RULE-11).
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
 
     Returns:
         Mapping from character name to qualitative checker entry.
@@ -123,7 +128,11 @@ async def run_voice_checker_agent(
         chapter_title=str(getattr(chapter, "title", "") or ""),
     )
 
-    model = await model_registry.get_model(model_config)
+    model = await model_registry.get_model(
+        model_config,
+        api_key=api_key,
+        base_url=base_url,
+    )
     try:
         agent = CharacterVoiceCheckerAgent(model=model, system_prompt=composed_prompt.system)
         output = await agent.run(

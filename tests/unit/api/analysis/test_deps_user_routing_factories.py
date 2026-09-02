@@ -1,4 +1,4 @@
-"""User-routing migration tests — analysis factory execution (Task 2a).
+"""User-routing migration tests — analysis factory execution (Tasks 2a/2b).
 
 Companion of ``test_deps_user_routing.py`` (split off for the RULE-04
 test-file hard limit). Proves that the RULE-04 split factories resolve via
@@ -10,6 +10,10 @@ config + credentials reach the service:
 - ``get_character_voice_service`` (VOICE — novel-scoped path param)
 - ``get_coreference_service`` (ANALYSE — chapter-scoped, resolves WITHOUT
   the project tier, per the plan's novel_id threading rule)
+
+Task 2b's four voice factories live in
+``test_deps_user_routing_voice_factories.py`` (RULE-04 split when Task 2b
+pushed this file past its hard limit).
 
 Same conventions as the sibling files: fake resolver, cast-pattern
 registry fakes (mirrors ``test_deps_user_routing.py``, Task 1a).
