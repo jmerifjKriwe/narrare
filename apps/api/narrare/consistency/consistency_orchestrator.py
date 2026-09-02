@@ -44,6 +44,14 @@ class ConsistencyOrchestrator:
         consistency_config: ResolvedModelConfig for CONSISTENCY intent.
         composer: PromptComposer for prompt cascade resolution.
         invocation_pipeline: Optional InvocationPipeline for evidence recording.
+        fact_extractor_api_key: Optional per-user provider API key for the
+            FACT_EXTRACT stage (model-routing cascade).
+        fact_extractor_base_url: Optional per-user provider base URL for the
+            FACT_EXTRACT stage.
+        consistency_api_key: Optional per-user provider API key for the
+            CONSISTENCY stage (model-routing cascade).
+        consistency_base_url: Optional per-user provider base URL for the
+            CONSISTENCY stage.
     """
 
     def __init__(
@@ -53,12 +61,20 @@ class ConsistencyOrchestrator:
         consistency_config: ResolvedModelConfig,
         composer: PromptComposer,
         invocation_pipeline: InvocationPipeline | None = None,
+        fact_extractor_api_key: str | None = None,
+        fact_extractor_base_url: str | None = None,
+        consistency_api_key: str | None = None,
+        consistency_base_url: str | None = None,
     ) -> None:
         self._registry = registry
         self._fact_extractor_config = fact_extractor_config
         self._consistency_config = consistency_config
         self._composer = composer
         self._invocation_pipeline = invocation_pipeline
+        self._fact_extractor_api_key = fact_extractor_api_key
+        self._fact_extractor_base_url = fact_extractor_base_url
+        self._consistency_api_key = consistency_api_key
+        self._consistency_base_url = consistency_base_url
 
     async def run_staged_check(
         self,
@@ -106,6 +122,8 @@ class ConsistencyOrchestrator:
             max_chapter_tokens=max_chapter_tokens,
             fact_output=fact_output,
             invocation_pipeline=self._invocation_pipeline,
+            api_key=self._consistency_api_key,
+            base_url=self._consistency_base_url,
         )
 
     async def stream_staged_check(
@@ -169,6 +187,8 @@ class ConsistencyOrchestrator:
             max_chapter_tokens=max_chapter_tokens,
             fact_output=fact_output,
             invocation_pipeline=self._invocation_pipeline,
+            api_key=self._consistency_api_key,
+            base_url=self._consistency_base_url,
         )
         for index, issue in enumerate(response.issues, start=1):
             yield ConsistencyStageEvent(
@@ -265,6 +285,10 @@ class ConsistencyOrchestrator:
             system_prompt = composed.system
             user_prompt = composed.user
 
-        model = await self._registry.get_model(self._fact_extractor_config)
+        model = await self._registry.get_model(
+            self._fact_extractor_config,
+            api_key=self._fact_extractor_api_key,
+            base_url=self._fact_extractor_base_url,
+        )
         agent = FactExtractorAgent(model=model, system_prompt=system_prompt)
         return await agent.run(prompt=user_prompt, deps=extractor_deps)

@@ -40,6 +40,8 @@ async def run_legacy_check(
     novel_id: uuid.UUID,
     context: CheckContext,
     invocation_pipeline: InvocationPipeline | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
 ) -> ConsistencyResponse:
     """Run the legacy single-pass consistency check.
 
@@ -50,6 +52,9 @@ async def run_legacy_check(
         novel_id: The novel being checked.
         context: Collected check context (chapters, KB, rule issues).
         invocation_pipeline: Optional InvocationPipeline for evidence recording.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — reaches the ``registry.get_model`` resolution point.
+        base_url: Optional per-user provider base URL override.
 
     Returns:
         ConsistencyResponse with deduplicated issues from rules + LLM.
@@ -94,7 +99,7 @@ async def run_legacy_check(
         system_prompt = composed.system
         user_prompt = composed.user
 
-    model = await registry.get_model(config)
+    model = await registry.get_model(config, api_key=api_key, base_url=base_url)
     agent = ConsistencyAgent(model=model, system_prompt=system_prompt)
     result = await agent.run(prompt=user_prompt, deps=context.deps)
 

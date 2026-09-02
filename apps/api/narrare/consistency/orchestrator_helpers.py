@@ -69,6 +69,8 @@ async def run_consistency_stage(
     max_chapter_tokens: int,
     fact_output: FactExtractorOutput,
     invocation_pipeline: InvocationPipeline | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
 ) -> ConsistencyResponse:
     """Run Stage 2 and map output to ``ConsistencyResponse``.
 
@@ -84,6 +86,9 @@ async def run_consistency_stage(
         max_chapter_tokens: Token budget per chapter preview.
         fact_output: Structured Stage 1 output.
         invocation_pipeline: Optional InvocationPipeline for evidence recording.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — reaches the ``registry.get_model`` resolution point.
+        base_url: Optional per-user provider base URL override.
 
     Returns:
         Final consistency response.
@@ -128,7 +133,11 @@ async def run_consistency_stage(
         system_prompt = composed.system
         user_prompt = composed.user
 
-    model = await registry.get_model(consistency_config)
+    model = await registry.get_model(
+        consistency_config,
+        api_key=api_key,
+        base_url=base_url,
+    )
     agent = ConsistencyAgent(model=model, system_prompt=system_prompt)
     result = await agent.run(prompt=user_prompt, deps=enriched_deps)
     issues = deduplicate_issues(rule_based_check(kb_summaries) + result.issues)

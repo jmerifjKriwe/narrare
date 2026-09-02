@@ -98,7 +98,13 @@ class FakeComposer:
 class FakeRegistry:
     """Fake ModelRegistry returning a placeholder model."""
 
-    async def get_model(self, config: object) -> object:
+    async def get_model(
+        self,
+        config: object,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object:
         return object()
 
 
