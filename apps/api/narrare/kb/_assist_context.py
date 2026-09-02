@@ -25,11 +25,18 @@ if TYPE_CHECKING:
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare_core.prompts.context import PromptContext
 
-# Intent mapping for each assist mode.
-_INTENT_MAP = {
-    "interview": LLMIntent.KB_INTERVIEW,
-    "suggest": LLMIntent.KB_SUGGEST,
-    "enhance": LLMIntent.KB_ENHANCE,
+# Intent → governed kb prompt-template mode (route_table.py, kb category).
+# Keys MUST be the LLMIntent enum (the service passes enums, not strings)
+# and values MUST be the governed template modes ("interview", …) — the
+# enum values themselves ("kb_interview", …) are model-routing
+# identifiers, not template modes; using them collapses composition into
+# PromptNotFoundError (kb/en/kb_interview does not exist). Unmapped
+# intents fall back to mode="" so resolve_prompt_route defers to the
+# intent's own governed default_mode (single source of truth).
+_INTENT_MAP: dict[LLMIntent, str] = {
+    LLMIntent.KB_INTERVIEW: "interview",
+    LLMIntent.KB_SUGGEST: "suggest",
+    LLMIntent.KB_ENHANCE: "enhance",
 }
 
 
@@ -79,12 +86,12 @@ def build_prompt_context(
     """
     from narrare_core.prompts.context import PromptContext
 
-    intent_mode = _INTENT_MAP.get(intent, LLMIntent.KB_INTERVIEW)
+    mode = _INTENT_MAP.get(intent, "")
     return PromptContext(
         language="en",
         genre="",
         project_title="",
-        mode=intent_mode.value,
+        mode=mode,
         extra={
             "entity_type": entity_type,
             "existing_answers": str(existing_fields),

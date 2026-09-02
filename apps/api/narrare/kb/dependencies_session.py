@@ -43,7 +43,7 @@ async def get_kb_session_service(
     The assist service serves three modes (interview/suggest/enhance) via
     one injected config; the cascade resolves with ``KB_INTERVIEW`` — the
     assist service's canonical default intent (see
-    ``narrare.kb._assist_context._INTENT_MAP`` fallback).
+    ``narrare.kb._assist_context._INTENT_MAP``).
 
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
     for system prompts, and KBContextProvider for curated world context
