@@ -80,6 +80,12 @@ class DialogueCoachService:
         invocation_pipeline: Optional pipeline for evidence.
         adaptive_provider: AdaptiveContextProviderImpl — loads adaptive
             context + records snapshots (Phase 3 Task 4 capability).
+        api_key: Resolved per-user credential for the model registry call
+            (model-routing cascade). ``None`` only in the unit-test
+            harness; production wiring always supplies it via the DI
+            factory.
+        base_url: Resolved base-URL override for OpenAI-compatible
+            providers. ``None`` uses the provider default endpoint.
     """
 
     def __init__(
@@ -92,6 +98,8 @@ class DialogueCoachService:
         composer: PromptComposer,
         invocation_pipeline: InvocationPipeline | None,
         adaptive_provider: AdaptiveContextProviderImpl,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
@@ -100,6 +108,8 @@ class DialogueCoachService:
         self._composer = composer
         self._pipeline = invocation_pipeline
         self._adaptive_provider = adaptive_provider
+        self._api_key = api_key
+        self._base_url = base_url
 
     # ------------------------------------------------------------------
     # Shared pipeline — both run() and stream() call this.
@@ -183,6 +193,8 @@ class DialogueCoachService:
             chapter_id=chapter_id,
             model_registry=self._registry,
             model_config=self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
             composed_prompt=composed_prompt,
         )
 

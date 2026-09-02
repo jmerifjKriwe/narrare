@@ -19,12 +19,9 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+from narrare.chat._context import build_prompt_context
 from narrare_core.agents.process_history import ProcessHistory
-from narrare_core.chat.chat_service_core import (
-    build_chat_context,
-    format_history,
-    new_conversation_id,
-)
+from narrare_core.chat.chat_service_core import new_conversation_id
 from narrare_core.chat.contracts import ChatMessage, ChatRequest, ChatServiceProtocol
 from narrare_core.llm.intents import LLMIntent
 
@@ -59,6 +56,8 @@ class ChatService(ChatServiceProtocol):
         config: ResolvedModelConfig,
         invocation_pipeline: InvocationPipeline | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         """Initialize the chat service with injected dependencies.
 
@@ -71,6 +70,12 @@ class ChatService(ChatServiceProtocol):
                 and enrichment (ADR-045/ADR-048); ``None`` (default) is a no-op.
             run_limit_resolver: Optional run-limit resolver (ADR-045 Decision 4);
                 ``None`` (default) applies no limits to the stream.
+            api_key: Resolved per-user credential for the model registry call
+                (model-routing cascade). ``None`` only in the unit-test
+                harness; production wiring always supplies it via the DI
+                factory.
+            base_url: Resolved base-URL override for OpenAI-compatible
+                providers. ``None`` uses the provider default endpoint.
         """
         self._composer = prompt_composer
         self._registry = model_registry
@@ -78,6 +83,8 @@ class ChatService(ChatServiceProtocol):
         self._config = config
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver
+        self._api_key = api_key
+        self._base_url = base_url
         self._histories: dict[UUID, ProcessHistory] = {}
 
     async def ask(
@@ -119,12 +126,7 @@ class ChatService(ChatServiceProtocol):
             history = await self._store.get_history(conv_id)
 
         # 2. Build context + compose prompt
-        context = build_chat_context(
-            project_title="",
-            genre="",
-            language="en",
-        )
-        context.extra["conversation_history"] = format_history(history)
+        context = build_prompt_context(history)
 
         composed = await self._composer.build(
             LLMIntent.CHAT,
@@ -170,12 +172,16 @@ class ChatService(ChatServiceProtocol):
             Dict-based SSE events for the streaming response.
         """
         from narrare.chat._invocation import compose_chat_invocation, resolve_chat_run_limits
-        from narrare.chat._response_helpers import save_assistant_response
+        from narrare.chat._sse_stream import stream_agent_events
         from narrare_core.chat.chat_agent import ChatAgent
         from narrare_core.chat.chat_deps import ChatDeps
 
-        # Get model from registry
-        model = await self._registry.get_model(self._config)
+        # Get model from registry — api_key/base_url carry the resolved
+        # per-user credentials (model-routing cascade) into the actual
+        # resolution point.
+        model = await self._registry.get_model(
+            self._config, api_key=self._api_key, base_url=self._base_url
+        )
 
         # Compose the invocation (Mode 2) → enriched context for ChatDeps.
         invocation_id = uuid4()
@@ -211,50 +217,20 @@ class ChatService(ChatServiceProtocol):
             invocation_id=invocation_id,
         )
 
-        # Yield meta event with conversation ID
-        yield {
-            "type": "meta",
-            "conversation_id": str(conv_id),
-            "request_id": str(uuid4()),
-        }
-
-        # Stream agent response. ADR-046: only composed.user (user channel) is
-        # passed as prompt; the system prompt is injected via the constructor.
-        full_response = ""
-        try:
-            async for event in agent.run_stream(
-                prompt=composed.user,
-                deps=deps,
-                message_history=message_history,
-                **stream_kwargs,
-            ):
-                if event.type == "token":
-                    yield {"type": "token", "text": event.text}
-                    full_response += event.text
-                elif event.type == "done":
-                    # Update ProcessHistory with new messages from this turn
-                    if event.new_messages:
-                        history.add(event.new_messages)
-                        self._histories[conv_id] = history
-
-                    yield {
-                        "type": "done",
-                        "usage": event.usage or {},
-                    }
-                    # Use the complete text from the done event
-                    if event.text:
-                        full_response = event.text
-        except Exception as exc:
-            logger.error(
-                "chat_stream_failed",
-                conversation_id=str(conv_id),
-                error=str(exc),
-                exc_info=True,
-            )
-            await save_assistant_response(self._store, conv_id, full_response)
-            raise
-
-        await save_assistant_response(self._store, conv_id, full_response)
+        # Map the agent stream to chat SSE events (ADR-024/ADR-034) and
+        # persist the response — delegated to the RULE-04 bridge helper.
+        async for event in stream_agent_events(
+            agent=agent,
+            deps=deps,
+            prompt=composed.user,
+            message_history=message_history,
+            stream_kwargs=stream_kwargs,
+            conv_id=conv_id,
+            history=history,
+            histories=self._histories,
+            store=self._store,
+        ):
+            yield event
 
     async def get_history(
         self,

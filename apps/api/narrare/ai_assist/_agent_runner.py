@@ -52,6 +52,8 @@ async def run_dialogue_coach_agent(
     chapter_id: UUID,
     model_registry: ModelRegistry,
     model_config: ResolvedModelConfig | None,
+    api_key: str | None = None,
+    base_url: str | None = None,
     composed_prompt: ComposedPrompt,
 ) -> DialogueCoachOutput:
     """Build Deps + run one DialogueCoachAgent call.
@@ -70,6 +72,10 @@ async def run_dialogue_coach_agent(
         model_config: Resolved model config. ``None`` only in the unit-test
             harness (the fake registry ignores it); production always
             supplies a real config (see module docstring, Plan-Bug #21).
+        api_key: Resolved per-user credential — overrides the provider env
+            var when provided. ``None`` only in the unit-test harness.
+        base_url: Resolved base-URL override for OpenAI-compatible
+            providers. ``None`` uses the provider default endpoint.
         composed_prompt: The composed system + user prompt (Mode 1).
 
     Returns:
@@ -82,7 +88,13 @@ async def run_dialogue_coach_agent(
     # ignores it). Production wiring always supplies a real config via the DI
     # factory (Plan-Bug #21). cast() narrows without a type-ignore (RULE-23)
     # and is runtime-free; the fake registry's get_model accepts Any.
-    model = await model_registry.get_model(cast("ResolvedModelConfig", model_config))
+    # api_key/base_url carry the resolved per-user credentials (per-user
+    # model-routing cascade) into the actual resolution point.
+    model = await model_registry.get_model(
+        cast("ResolvedModelConfig", model_config),
+        api_key=api_key,
+        base_url=base_url,
+    )
     deps = DialogueCoachDeps(
         text_to_analyze=selection_text,
         mode=mode,
