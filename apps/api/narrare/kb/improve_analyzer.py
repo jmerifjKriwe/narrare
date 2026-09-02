@@ -61,6 +61,9 @@ class KBImproveAnalyzer:
         rel_repo: Relationship repository.
         improve_cache: Optional in-memory cache for 10min TTL (ADR-080).
         kb_agent: Optional KBAgent for cross-agent tool access.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -74,6 +77,8 @@ class KBImproveAnalyzer:
         improve_cache: KBImproveCache | None = None,
         kb_agent: object | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         from narrare_core.agents.kb_agent import KBAgent
 
@@ -86,6 +91,8 @@ class KBImproveAnalyzer:
         self._improve_cache = improve_cache
         self._kb_agent = kb_agent if isinstance(kb_agent, KBAgent) else None
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def _build_deps(
         self,
@@ -173,8 +180,16 @@ class KBImproveAnalyzer:
         )
 
     async def _get_model(self) -> Model:
-        """Resolve the LLM model lazily from the registry."""
-        return await self._registry.get_model(self._config)
+        """Resolve the LLM model lazily from the registry.
+
+        Per-user credentials are injected so the user's wizard-configured
+        provider is used (model-routing cascade), not the operator env.
+        """
+        return await self._registry.get_model(
+            self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
     async def has_cached_analysis(self, entry_id: UUID) -> bool:
         """Check whether a cached analysis exists for the given entry.

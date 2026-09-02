@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.kb.contracts import KBRepositoryProtocol
-    from narrare.kb.models import KBEntry
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.schemas_extraction import ApplyExtractionItem, ApplyExtractionResponse
     from narrare.kb.service import KBService
@@ -52,6 +51,9 @@ class ExtractionService:
         kb_service: KBService for the apply step (optional, needed for apply).
         rel_repo: RelationshipRepository for the apply step (optional).
         invocation_pipeline: Optional pipeline for invocation evidence.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -64,6 +66,8 @@ class ExtractionService:
         kb_service: KBService | None = None,
         rel_repo: RelationshipRepository | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._registry = registry
         self._config = config
@@ -73,6 +77,8 @@ class ExtractionService:
         self._kb_service = kb_service
         self._rel_repo = rel_repo
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def extract_from_chapter(
         self,
@@ -105,9 +111,10 @@ class ExtractionService:
         # 2. Fetch existing KB entries once (graceful on repo failure) and
         #    derive both the dedup name list and the curated world context
         #    from the same result set. Single fetch keeps this O(1) repo reads.
+        from narrare.kb._extraction_context import fetch_existing_entries_graceful
         from narrare.kb._world_context import format_world_context
 
-        existing_entries = await self._get_existing_entries_graceful(novel_id, user_id)
+        existing_entries = await fetch_existing_entries_graceful(self._kb_repo, novel_id, user_id)
         existing_names = [e.name for e in existing_entries if e.name]
         # Curated project world context aids entity disambiguation. Mirrors
         # the kb merge/assist/improve world-context mechanism and degrades
@@ -152,8 +159,13 @@ class ExtractionService:
             composed = await self._composer.build(LLMIntent.KB_EXTRACT, prompt_context)
             system_prompt = composed.system
 
-        # 4. Get model from registry.
-        model = await self._registry.get_model(self._config)
+        # 4. Get model from registry — per-user credentials injected so the
+        #    user's wizard-configured provider is used (model-routing cascade).
+        model = await self._registry.get_model(
+            self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
         # 5. Run ExtractionAgent over the chapter text.
         agent = ExtractionAgent(model=model, system_prompt=system_prompt)
@@ -216,46 +228,6 @@ class ExtractionService:
             items=items,
         )
 
-    async def _get_existing_entries(
-        self,
-        novel_id: UUID,
-        user_id: UUID,
-    ) -> list[KBEntry]:
-        """Fetch existing KB entries for the novel (dedup + world context).
-
-        Repository errors propagate — error-tolerant callers should use
-        ``_get_existing_entries_graceful``.
-        """
-        entries, _ = await self._kb_repo.list_entries(
-            novel_id=novel_id,
-            entity_type=None,
-            tags=None,
-            page=1,
-            page_size=1000,
-        )
-        return list(entries)
-
-    async def _get_existing_entries_graceful(
-        self,
-        novel_id: UUID,
-        user_id: UUID,
-    ) -> list[KBEntry]:
-        """Fetch existing KB entries with graceful degradation (RULE-11).
-
-        If the KB repo is unavailable (DB connection lost, timeout, etc.),
-        returns an empty list so extraction can proceed without dedup data
-        or world context. Logs a warning so the failure is visible.
-        """
-        try:
-            return await self._get_existing_entries(novel_id, user_id)
-        except Exception as exc:
-            logger.warning(
-                "kb_repo_unavailable_using_empty_dedup",
-                novel_id=str(novel_id),
-                error=str(exc),
-            )
-            return []
-
     async def _get_existing_entity_names(
         self,
         novel_id: UUID,
@@ -263,11 +235,13 @@ class ExtractionService:
     ) -> list[str]:
         """Fetch existing KB entry names for dedup.
 
-        Thin wrapper over ``_get_existing_entries`` retained as the dedup
+        Thin wrapper over ``fetch_existing_entries`` retained as the dedup
         names accessor. Repository errors propagate — error-tolerant callers
-        should use ``_get_existing_entries_graceful``.
+        should use ``fetch_existing_entries_graceful``.
         """
-        entries = await self._get_existing_entries(novel_id, user_id)
+        from narrare.kb._extraction_context import fetch_existing_entries
+
+        entries = await fetch_existing_entries(self._kb_repo, novel_id, user_id)
         return [entry.name for entry in entries if entry.name]
 
     def _build_prompt_context(

@@ -99,10 +99,7 @@ class TestExtractionInvocationWiring:
         mock_output.results = []
         mock_output.analysis_notes = ""
 
-        with (
-            patch("narrare.kb.extraction_service.ExtractionAgent") as mock_agent_cls,
-            patch.object(service, "_get_existing_entity_names", AsyncMock(return_value=[])),
-        ):
+        with patch("narrare.kb.extraction_service.ExtractionAgent") as mock_agent_cls:
             mock_agent = AsyncMock()
             mock_agent.run = AsyncMock(return_value=mock_output)
             mock_agent_cls.return_value = mock_agent

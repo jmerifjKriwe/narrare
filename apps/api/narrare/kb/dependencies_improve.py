@@ -1,23 +1,44 @@
-"""KB dependency injection — improve service factory."""
+"""KB dependency injection — improve service factory.
+
+Model acquisition follows the per-user model-routing cascade: the factory
+resolves ``LLMIntent.KB_IMPROVE`` for the authenticated user (+ novel for
+project-level overrides) and passes the resolved config + credentials into
+the analyzer. No business logic lives here — only wiring.
+"""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
-from narrare._app.dependencies import SessionDep  # noqa: TC001 - needed at runtime for FastAPI DI
+from fastapi import Depends
+
+from narrare._app.dependencies import (
+    SessionDep,
+    get_current_user_id,
+)
+from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.events.publisher import (
     WikiEventPublisherDep,  # noqa: TC001 - needed at runtime for FastAPI DI
 )
+from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from narrare.kb.improve_service import KBImproveService
 
 
-def get_kb_improve_service(
+async def get_kb_improve_service(
+    novel_id: UUID,
     session: SessionDep,
     event_publisher: WikiEventPublisherDep,
+    user_id: str = Depends(get_current_user_id),
 ) -> KBImproveService:
-    """Create a KBImproveService with injected dependencies.
+    """Create a KBImproveService with per-user resolved model routing.
+
+    FastAPI dependency: novel_id comes from the route path, user_id and
+    session are resolved via Depends. The model is resolved through the
+    per-user cascade; ``ConfigurationError`` propagates when the user has
+    no provider configured (kb routers are auth-mandatory).
 
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
     for system prompts, KBContextProvider for curated world context
@@ -31,10 +52,6 @@ def get_kb_improve_service(
         get_invocation_pipeline,
         get_model_registry,
     )
-    from narrare._app.dependencies_services import (
-        SystemModelCategory,
-        build_system_default_config,
-    )
     from narrare.kb._context_provider import KBContextProvider
     from narrare.kb.dependencies_core import get_kb_service
     from narrare.kb.improve_analyzer import KBImproveAnalyzer
@@ -44,9 +61,15 @@ def get_kb_improve_service(
     from narrare.kb.repository import KBRepository
     from narrare_core.cache import InMemorySessionCache
 
+    resolver = get_model_routing_resolver(session)
+    resolved = await resolver.resolve(
+        LLMIntent.KB_IMPROVE,
+        UUID(user_id),
+        novel_id,
+    )
+
     registry = get_model_registry()
     composer = get_composer()
-    config = build_system_default_config(SystemModelCategory.ANALYSIS)
 
     kb_repo = KBRepository(session)
     rel_repo = RelationshipRepository(session)
@@ -64,13 +87,15 @@ def get_kb_improve_service(
     # Analyzer handles all LLM interaction + caching
     analyzer = KBImproveAnalyzer(
         registry=registry,
-        config=config,
+        config=resolved.config,
         kb_context_provider=kb_context_provider,
         prompt_composer=composer,
         kb_repo=kb_repo,
         rel_repo=rel_repo,
         improve_cache=improve_cache,
         invocation_pipeline=get_invocation_pipeline(),
+        api_key=resolved.api_key,
+        base_url=resolved.base_url,
     )
 
     return KBImproveService(
