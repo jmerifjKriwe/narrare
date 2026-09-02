@@ -4,7 +4,12 @@ Takes feedback events from the DB, formats them for the core
 ``PreferenceAnalysisAgent``, runs the analysis, and persists the
 result to the ``preference_profiles`` table.
 
-All prompts come from PromptComposer (RULE-02).
+Model acquisition follows the per-user model-routing cascade: the DI
+factory (``router_analysis._get_analysis_service``) resolves
+``LLMIntent.EXTRACT`` for the authenticated user and passes the resolved
+config + credentials in; this service threads them to its ACTUAL
+``get_model`` resolution point. All prompts come from PromptComposer
+(RULE-02).
 """
 
 from __future__ import annotations
@@ -25,7 +30,8 @@ if TYPE_CHECKING:
     from narrare.memory.repository import FeedbackRepository, PreferenceProfileRepository
     from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ModelRegistry
+    from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -42,7 +48,11 @@ class PreferenceAnalysisService:
         feedback_repo: Repository for querying feedback events.
         profile_repo: Repository for persisting analysis results.
         composer: PromptComposer for building prompts (RULE-02).
+        config: Resolved model config from the per-user routing cascade
+            (resolved at the DI boundary in ``router_analysis``).
         invocation_pipeline: Optional InvocationPipeline for evidence recording.
+        api_key: Per-user provider API key (model-routing cascade).
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -51,13 +61,20 @@ class PreferenceAnalysisService:
         feedback_repo: FeedbackRepository,
         profile_repo: PreferenceProfileRepository,
         composer: PromptComposer,
+        config: ResolvedModelConfig,
         invocation_pipeline: InvocationPipeline | None = None,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._registry = registry
         self._feedback_repo = feedback_repo
         self._profile_repo = profile_repo
         self._composer = composer
+        self._config = config
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def analyze(self, user_id: UUID, project_id: UUID) -> AnalyzeResponse:
         """Run PreferenceAnalysisAgent on accumulated feedback.
@@ -207,13 +224,13 @@ class PreferenceAnalysisService:
         from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
 
         try:
-            from narrare._app.dependencies_services import (
-                SystemModelCategory,
-                build_system_default_config,
+            # Real resolution point: the config was resolved for THIS user
+            # by the DI factory (per-user model-routing cascade); the
+            # credentials must reach get_model so the provider actually
+            # authenticates as the user (the setup-wizard bug class).
+            model = await self._registry.get_model(
+                self._config, api_key=self._api_key, base_url=self._base_url
             )
-
-            config = build_system_default_config(SystemModelCategory.ANALYSIS)
-            model = await self._registry.get_model(config)
         except Exception:
             logger.warning("agent_model_unavailable", exc_info=True)
             return PreferenceAnalysisOutput(
