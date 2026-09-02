@@ -56,7 +56,10 @@ def _make_service(
 
 
 def _inject(svc: ReadabilityService, agent: FakeReadabilityAgent) -> None:
-    svc._get_agent = lambda system_prompt=None: agent  # type: ignore[method-assign]
+    async def _get_agent(system_prompt: str | None = None) -> FakeReadabilityAgent:
+        return agent
+
+    svc._get_agent = _get_agent  # type: ignore[method-assign]
 
 
 # ---------------------------------------------------------------------------
@@ -220,7 +223,7 @@ class TestMode1PromptComposition:
         novel, ch, svc = _make_service(composer=composer)
         captured: dict[str, object] = {}
 
-        def spy_get_agent(system_prompt: str | None = None) -> FakeReadabilityAgent:
+        async def spy_get_agent(system_prompt: str | None = None) -> FakeReadabilityAgent:
             captured["system_prompt"] = system_prompt
             return FakeReadabilityAgent()
 

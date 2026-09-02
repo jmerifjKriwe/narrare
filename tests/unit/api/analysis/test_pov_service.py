@@ -71,7 +71,10 @@ def _make_service(
 
 
 def _inject(svc: POVService, agent: FakePOVAgent) -> None:
-    svc._get_agent = lambda system_prompt=None: agent  # type: ignore[method-assign]
+    async def _get_agent(system_prompt: str | None = None) -> FakePOVAgent:
+        return agent
+
+    svc._get_agent = _get_agent  # type: ignore[method-assign]
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +265,7 @@ class TestMode1PromptComposition:
         novel, ch, svc = _make_service(composer=composer)
         captured: dict[str, object] = {}
 
-        def spy_get_agent(system_prompt: str | None = None) -> FakePOVAgent:
+        async def spy_get_agent(system_prompt: str | None = None) -> FakePOVAgent:
             captured["system_prompt"] = system_prompt
             return FakePOVAgent(output=_pov_output())
 

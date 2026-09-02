@@ -54,6 +54,9 @@ class ReadabilityService:
             system prompt from the bundled ``analysis/{lang}/readability``
             template.
         invocation_pipeline: Optional pipeline for invocation evidence.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -65,6 +68,8 @@ class ReadabilityService:
         model_config: ResolvedModelConfig,
         composer: PromptComposer,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
@@ -73,6 +78,8 @@ class ReadabilityService:
         self._composer = composer
         self._formula_analyzer = FormulaReadabilityAnalyzer()
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     # -------------------------------------------------------------------
     # Public API — matches ReadabilityServiceProtocol
@@ -191,7 +198,7 @@ class ReadabilityService:
                     mode="readability",
                 )
 
-                agent = self._get_agent(system_prompt=composed.system)
+                agent = await self._get_agent(system_prompt=composed.system)
                 agent_result = await agent.run(
                     prompt="Analyze readability of this text.",
                     deps=build_deps(content, language),
@@ -224,7 +231,7 @@ class ReadabilityService:
 
         return result
 
-    def _get_agent(self, system_prompt: str | None = None) -> ReadabilityAgent:
+    async def _get_agent(self, system_prompt: str | None = None) -> ReadabilityAgent:
         """Construct a ``ReadabilityAgent`` from the model registry.
 
         Args:
@@ -237,7 +244,11 @@ class ReadabilityService:
         """
         from narrare_core.agents.readability_agent import ReadabilityAgent
 
-        model = self._model_registry.get_model(self._model_config)
+        model = await self._model_registry.get_model(
+            self._model_config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
         return ReadabilityAgent(model=model, system_prompt=system_prompt)
 
     @staticmethod

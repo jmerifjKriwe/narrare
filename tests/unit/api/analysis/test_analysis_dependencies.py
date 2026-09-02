@@ -20,16 +20,45 @@ pattern), so tests mock at the module attribute level before calling.
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from narrare._app.dependencies_services import SystemModelCategory
 from narrare.analysis.dependencies import (
     get_pov_service,
     get_readability_service,
     get_sentiment_service,
 )
 from narrare.analysis.dependencies_beta_reader import get_beta_reader_service
+from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
+from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.model_routing import ResolvedModel
+
+# ---------------------------------------------------------------------------
+# Shared user-routing helpers (user-routing regressions: test_deps_user_routing.py)
+# ---------------------------------------------------------------------------
+
+_USER_KEY = "sk-user-key"
+_USER_BASE_URL = "https://user.example/v1"
+
+
+def _fake_resolver() -> tuple[MagicMock, ResolvedModel]:
+    """A spec'd fake resolver whose resolve() returns the user's model."""
+    resolved = ResolvedModel(
+        config=ResolvedModelConfig(
+            provider_name="zai",
+            model_id="glm-4.7",
+            temperature=0.7,
+            max_tokens=4096,
+        ),
+        api_key=_USER_KEY,
+        base_url=_USER_BASE_URL,
+    )
+    resolver = MagicMock(spec=ModelRoutingResolverImpl, name="ModelRoutingResolver")
+    resolver.resolve = AsyncMock(return_value=resolved)
+    return resolver, resolved
+
 
 # ---------------------------------------------------------------------------
 # get_beta_reader_service
@@ -41,7 +70,8 @@ class TestGetBetaReaderService:
 
     C5/ADR-082: resolves context_total_budget through the cascade and the
     model boundary, and injects it as the budget assembler's total
-    (RULE-18b runtime-consumer evidence for the analysis side).
+    (RULE-18b runtime-consumer evidence for the analysis side). Model
+    routing resolves via the per-user cascade (Task 2a).
     """
 
     async def test_returns_beta_reader_service_with_resolved_budget(self) -> None:
@@ -56,8 +86,8 @@ class TestGetBetaReaderService:
         session = AsyncMock(spec=AsyncSession)
         mock_registry = MagicMock(spec=["get_model", "register_model"])
         mock_composer = MagicMock(spec=["compose", "build"])
-        mock_config = MagicMock(spec=["model_id", "provider_name", "temperature", "max_tokens"])
         mock_pipeline = MagicMock(spec=["generate"])
+        resolver, resolved = _fake_resolver()
 
         fake_limits = TokenLimitOverrides(context_total_budget=24_000)
         fake_token_service = MagicMock(spec=TokenLimitsService)
@@ -76,8 +106,8 @@ class TestGetBetaReaderService:
             patch("narrare._app.dependencies.get_model_registry", return_value=mock_registry),
             patch("narrare._app.dependencies.get_composer", return_value=mock_composer),
             patch(
-                "narrare._app.dependencies_services.build_system_default_config",
-                return_value=mock_config,
+                "narrare.analysis.dependencies_beta_reader.get_model_routing_resolver",
+                return_value=resolver,
             ),
             patch("narrare._app.dependencies.get_invocation_pipeline", return_value=mock_pipeline),
             patch("narrare.chapters.repository.ChapterRepository"),
@@ -106,6 +136,9 @@ class TestGetBetaReaderService:
             )
 
         assert result._budget_assembler.total_budget == 24_000
+        assert result._config is resolved.config
+        assert result._api_key == _USER_KEY
+        assert result._base_url == _USER_BASE_URL
 
 
 # ---------------------------------------------------------------------------
@@ -182,53 +215,43 @@ class TestGetSentimentService:
 
 
 class TestGetReadabilityService:
-    """get_readability_service(session) — ReadabilityService factory."""
+    """get_readability_service(novel_id, session, user_id) — async factory.
 
-    def test_returns_readability_service_with_model_registry(self) -> None:
+    Model routing resolves via the per-user cascade (Task 2a); the resolved
+    config + credentials are wired into the service.
+    """
+
+    async def test_returns_readability_service_with_model_registry(self) -> None:
         """Returns ReadabilityService with ModelRegistry, config, composer, and pipeline."""
         session = AsyncMock(spec=AsyncSession)
         mock_registry = MagicMock(spec=["get_model", "register_model"])
         mock_composer = MagicMock(spec=["compose", "build"])
-        mock_config = MagicMock(spec=["model_id", "provider_name", "temperature", "max_tokens"])
         mock_pipeline = MagicMock(spec=["generate"])
+        resolver, resolved = _fake_resolver()
+        user_id = str(uuid4())
+        novel_id = uuid4()
 
         with (
             patch("narrare._app.dependencies.get_model_registry", return_value=mock_registry),
             patch("narrare._app.dependencies.get_composer", return_value=mock_composer),
             patch(
-                "narrare._app.dependencies_services.build_system_default_config",
-                return_value=mock_config,
-            ) as mock_build_config,
+                "narrare.analysis.dependencies.get_model_routing_resolver",
+                return_value=resolver,
+            ),
             patch("narrare._app.dependencies.get_invocation_pipeline", return_value=mock_pipeline),
-            patch("narrare.chapters.repository.ChapterRepository") as mock_chapter_repo_cls,
-            patch("narrare.novels.repository.NovelRepository") as mock_novel_repo_cls,
-            patch(
-                "narrare.analysis.services.readability_service.ReadabilityService",
-            ) as mock_svc_cls,
+            patch("narrare.chapters.repository.ChapterRepository"),
+            patch("narrare.novels.repository.NovelRepository"),
         ):
-            mock_svc = mock_svc_cls.return_value
-            result = get_readability_service(session)
-
-            # -- verify service instance
-            assert result is mock_svc
-            mock_svc_cls.assert_called_once()
-
-            # -- verify build_system_default_config called with ANALYSIS
-            mock_build_config.assert_called_once_with(SystemModelCategory.ANALYSIS)
-
-            # -- verify repositories created with session
-            mock_chapter_repo_cls.assert_called_once_with(session)
-            mock_novel_repo_cls.assert_called_once_with(session)
-
-            # -- verify ReadabilityService receives all deps (Mode 1: composer)
-            mock_svc_cls.assert_called_once_with(
-                chapter_repo=mock_chapter_repo_cls.return_value,
-                novel_repo=mock_novel_repo_cls.return_value,
-                model_registry=mock_registry,
-                model_config=mock_config,
-                composer=mock_composer,
-                invocation_pipeline=mock_pipeline,
+            result = await get_readability_service(
+                novel_id=novel_id, session=session, user_id=user_id
             )
+
+        resolver.resolve.assert_awaited_once_with(LLMIntent.ANALYSE, UUID(user_id), novel_id)
+        assert result._model_registry is mock_registry
+        assert result._model_config is resolved.config
+        assert result._composer is mock_composer
+        assert result._api_key == _USER_KEY
+        assert result._base_url == _USER_BASE_URL
 
 
 # ---------------------------------------------------------------------------
@@ -237,53 +260,39 @@ class TestGetReadabilityService:
 
 
 class TestGetPOVService:
-    """get_pov_service(session) — POVService factory."""
+    """get_pov_service(novel_id, session, user_id) — async factory.
 
-    def test_returns_pov_service_with_kb_repo(self) -> None:
+    Model routing resolves via the per-user cascade (Task 2a); the resolved
+    config + credentials are wired into the service.
+    """
+
+    async def test_returns_pov_service_with_kb_repo(self) -> None:
         """Returns POVService with KB repository for character name resolution."""
         session = AsyncMock(spec=AsyncSession)
         mock_registry = MagicMock(spec=["get_model", "register_model"])
         mock_composer = MagicMock(spec=["compose", "build"])
-        mock_config = MagicMock(spec=["model_id", "provider_name", "temperature", "max_tokens"])
         mock_pipeline = MagicMock(spec=["generate"])
+        resolver, resolved = _fake_resolver()
+        user_id = str(uuid4())
+        novel_id = uuid4()
 
         with (
             patch("narrare._app.dependencies.get_model_registry", return_value=mock_registry),
             patch("narrare._app.dependencies.get_composer", return_value=mock_composer),
             patch(
-                "narrare._app.dependencies_services.build_system_default_config",
-                return_value=mock_config,
-            ) as mock_build_config,
+                "narrare.analysis.dependencies.get_model_routing_resolver",
+                return_value=resolver,
+            ),
             patch("narrare._app.dependencies.get_invocation_pipeline", return_value=mock_pipeline),
-            patch("narrare.chapters.repository.ChapterRepository") as mock_chapter_repo_cls,
-            patch("narrare.novels.repository.NovelRepository") as mock_novel_repo_cls,
-            patch("narrare.kb.repository.KBRepository") as mock_kb_repo_cls,
-            patch(
-                "narrare.analysis.services.pov_service.POVService",
-            ) as mock_svc_cls,
+            patch("narrare.chapters.repository.ChapterRepository"),
+            patch("narrare.novels.repository.NovelRepository"),
+            patch("narrare.kb.repository.KBRepository"),
         ):
-            mock_svc = mock_svc_cls.return_value
-            result = get_pov_service(session)
+            result = await get_pov_service(novel_id=novel_id, session=session, user_id=user_id)
 
-            # -- verify service instance
-            assert result is mock_svc
-            mock_svc_cls.assert_called_once()
-
-            # -- verify build_system_default_config called with ANALYSIS
-            mock_build_config.assert_called_once_with(SystemModelCategory.ANALYSIS)
-
-            # -- verify repositories created with session
-            mock_chapter_repo_cls.assert_called_once_with(session)
-            mock_novel_repo_cls.assert_called_once_with(session)
-            mock_kb_repo_cls.assert_called_once_with(session)
-
-            # -- verify POVService receives all deps incl. kb_repo + composer (Mode 1)
-            mock_svc_cls.assert_called_once_with(
-                chapter_repo=mock_chapter_repo_cls.return_value,
-                novel_repo=mock_novel_repo_cls.return_value,
-                kb_repo=mock_kb_repo_cls.return_value,
-                model_registry=mock_registry,
-                model_config=mock_config,
-                composer=mock_composer,
-                invocation_pipeline=mock_pipeline,
-            )
+        resolver.resolve.assert_awaited_once_with(LLMIntent.ANALYSE, UUID(user_id), novel_id)
+        assert result._model_registry is mock_registry
+        assert result._model_config is resolved.config
+        assert result._composer is mock_composer
+        assert result._api_key == _USER_KEY
+        assert result._base_url == _USER_BASE_URL

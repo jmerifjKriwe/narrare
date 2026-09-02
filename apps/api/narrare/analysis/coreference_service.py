@@ -91,6 +91,9 @@ class CoreferenceService:
         invocation_pipeline: Optional pipeline for invocation evidence
             (Mode 1 prepare/finalize). Retained for DI-contract
             stability.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -103,6 +106,8 @@ class CoreferenceService:
         kb_context_provider: KBContextProviderProtocol | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
@@ -111,6 +116,8 @@ class CoreferenceService:
         self._composer = composer
         self._kb_context_provider = kb_context_provider
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def analyze(
         self,
@@ -200,7 +207,11 @@ class CoreferenceService:
             kb_vars=kb_vars,
         )
 
-        model = await self._registry.get_model(self._config)
+        model = await self._registry.get_model(
+            self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
         # 3. Build agent dependencies — structured project/chapter context.
         #    The chapter text additionally flows as the run prompt (runtime

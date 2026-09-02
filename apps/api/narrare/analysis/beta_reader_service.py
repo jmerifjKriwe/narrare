@@ -60,6 +60,9 @@ class BetaReaderService:
         composer: PromptComposer for system prompt assembly.
         invocation_pipeline: Optional pipeline for invocation evidence.
             When provided, evidence is recorded for every LLM call.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -71,6 +74,8 @@ class BetaReaderService:
         composer: PromptComposer,
         budget_assembler: AnalysisContextAssembler | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._assembler = context_assembler
         self._cache = cache
@@ -79,6 +84,8 @@ class BetaReaderService:
         self._composer = composer
         self._budget_assembler = budget_assembler or AnalysisContextAssembler()
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def analyze(
         self,
@@ -144,7 +151,11 @@ class BetaReaderService:
             language=deps.language,
             mode="beta_reader",
         )
-        model = await self._registry.get_model(self._config)
+        model = await self._registry.get_model(
+            self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
         agent = BetaReaderAgent(model=model, system_prompt=composed.system)
         user_prompt = await build_budgeted_prompt(deps, self._budget_assembler)
@@ -225,7 +236,11 @@ class BetaReaderService:
             language=deps.language,
             mode="beta_reader_deepdive",
         )
-        model = await self._registry.get_model(self._config)
+        model = await self._registry.get_model(
+            self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
         agent = BetaReaderAgent(model=model, system_prompt=composed.system)
         result = await run_phase2(agent, deps, model)

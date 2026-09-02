@@ -47,6 +47,8 @@ async def run_character_voice_agent(
     model_registry: ModelRegistry,
     model_config: ResolvedModelConfig,
     composed_prompt: ComposedPrompt,
+    api_key: str | None = None,
+    base_url: str | None = None,
 ) -> CharacterVoiceOutput:
     """Format runtime content and run one ``CharacterVoiceAgent`` call.
 
@@ -61,13 +63,20 @@ async def run_character_voice_agent(
         model_registry: Model registry used to resolve the configured model.
         model_config: Resolved model configuration.
         composed_prompt: The composed system + user prompt (Mode 1).
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
 
     Returns:
         The agent output with per-character voice profiles.
     """
     attributed_dialogue = format_attributed_dialogue(utterances)
     metrics_summary = format_metrics_summary(metrics)
-    model = await model_registry.get_model(model_config)
+    model = await model_registry.get_model(
+        model_config,
+        api_key=api_key,
+        base_url=base_url,
+    )
 
     from narrare_core.agents.character_voice_agent import CharacterVoiceAgent
     from narrare_core.agents.character_voice_types import CharacterVoiceDeps

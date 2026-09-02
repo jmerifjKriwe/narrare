@@ -54,6 +54,9 @@ class POVService:
             assembly (ADR-048). Builds the feature-specific POV system prompt
             from the bundled ``analysis/{lang}/pov`` template.
         invocation_pipeline: Optional pipeline for invocation evidence.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -66,6 +69,8 @@ class POVService:
         model_config: ResolvedModelConfig,
         composer: PromptComposer,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
@@ -74,6 +79,8 @@ class POVService:
         self._model_config = model_config
         self._composer = composer
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     # -------------------------------------------------------------------
     # Public API — matches POVServiceProtocol
@@ -165,7 +172,7 @@ class POVService:
 
         # 5. Run POVDetectionAgent with the composed feature-specific prompt
         try:
-            agent = self._get_agent(system_prompt=composed.system)
+            agent = await self._get_agent(system_prompt=composed.system)
             deps = build_deps(
                 text=combined_text,
                 language=effective_language,
@@ -220,7 +227,7 @@ class POVService:
         )
         return [e.name for e in entries]
 
-    def _get_agent(self, system_prompt: str | None = None) -> POVDetectionAgent:
+    async def _get_agent(self, system_prompt: str | None = None) -> POVDetectionAgent:
         """Construct a ``POVDetectionAgent`` from the model registry.
 
         Args:
@@ -233,5 +240,9 @@ class POVService:
         """
         from narrare_core.agents.pov_agent import POVDetectionAgent
 
-        model = self._model_registry.get_model(self._model_config)
+        model = await self._model_registry.get_model(
+            self._model_config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
         return POVDetectionAgent(model=model, system_prompt=system_prompt)
