@@ -8,8 +8,10 @@ Plan-Bug #21 resolution: the original plan raised ``NotFoundError`` when
 ``model_config is None``. That is the wrong layer for the check — the
 unit tests inject a ``FakeModelRegistry`` whose ``get_model()`` ignores
 the config (and the test harness passes ``model_config=None``), while
-production wiring (the Task 12 DI factory) always supplies a real
-``ResolvedModelConfig`` via ``build_system_default_config(ANALYSIS)``.
+production wiring (the DI factory) always supplies a real
+``ResolvedModelConfig`` resolved through the per-user model-routing
+cascade (user-scoped LLM credentials), with ``api_key``/``base_url``
+threaded into ``registry.get_model()`` at the actual resolution point.
 The check therefore blocked the tests without protecting production.
 Removed here (Option A): the registry is the right validation layer, and
 adding ``model_config`` null-checks inside the agent runner is

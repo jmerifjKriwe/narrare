@@ -37,7 +37,13 @@ if TYPE_CHECKING:
 
 
 class _ModelRegistryProto(Protocol):
-    async def get_model(self, config: object) -> object: ...
+    async def get_model(
+        self,
+        config: object,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object: ...
 
 
 class _ComposedPromptProto(Protocol):

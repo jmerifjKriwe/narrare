@@ -13,8 +13,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-import structlog
-
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
@@ -33,8 +31,6 @@ if TYPE_CHECKING:
     from narrare_core.prompts import PromptComposer
     from narrare_core.prompts.composer import ComposedPrompt
     from narrare_core.prompts.context import PromptContext
-
-logger = structlog.get_logger(__name__)
 
 
 class ChatService(ChatServiceProtocol):

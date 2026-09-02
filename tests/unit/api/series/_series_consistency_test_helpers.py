@@ -53,7 +53,16 @@ class FakeSeriesConsistencyRegistry:
     def __init__(self) -> None:
         self.get_model_calls: int = 0
 
-    async def get_model(self, config: Any, **kwargs: Any) -> Any:
+    async def get_model(
+        self,
+        config: Any,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> Any:
+        # api_key/base_url: per-user routing credentials — accepted for
+        # protocol fidelity with ModelRegistry.get_model; the fake ignores
+        # them.
         self.get_model_calls += 1
         return object()  # the agent factory ignores it in tests
 

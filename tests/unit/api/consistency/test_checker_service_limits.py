@@ -26,7 +26,13 @@ from tests.unit.api._test_helpers import make_chapter, make_novel, seed_repos
 
 
 class _RegistryProto(Protocol):
-    async def get_model(self, config: object) -> object: ...
+    async def get_model(
+        self,
+        config: object,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object: ...
 
 
 def _output(**kw) -> ConsistencyOutput:
