@@ -33,7 +33,8 @@ _ZAI_GENERAL_URL = "https://api.z.ai/api/paas/v4"
 _ZAI_CODING_URL = "https://api.z.ai/api/coding/paas/v4"
 
 _ZAI_MODEL_PROFILE: ModelProfile = OpenAIModelProfile(
-    openai_chat_supports_max_completion_tokens=False
+    openai_chat_supports_max_completion_tokens=False,
+    supports_thinking=True,
 )
 """Z.AI endpoints read ``max_tokens`` — not OpenAI's ``max_completion_tokens``.
 
@@ -41,6 +42,13 @@ By default ``OpenAIChatModel`` maps the ``max_tokens`` model setting to
 ``max_completion_tokens``; Z.AI silently ignores that field, which would drop
 runtime output caps (ADR-045) and let generation run unbounded. This profile
 opts every Z.AI model out so the cap travels as ``max_tokens``.
+
+``supports_thinking=True`` declares the GLM thinking capability: pydantic-ai
+only resolves the unified ``ModelSettings['thinking']`` setting (mapped to
+``reasoning_effort`` on the wire) when the model profile declares thinking
+support. The name-derived OpenAI profile knows no ``glm-*`` reasoning family
+and would otherwise silently drop the runtime thinking default injected by
+:func:`narrare_core.llm._model_settings.build_runtime_model_settings`.
 """
 
 
@@ -60,7 +68,8 @@ def _make_zai(
     SDK client's ``max_retries`` — uniformly for ``run()`` and ``stream()``.
 
     The model profile sets ``openai_chat_supports_max_completion_tokens=False``
-    so output caps reach Z.AI as ``max_tokens`` (see :data:`_ZAI_MODEL_PROFILE`).
+    so output caps reach Z.AI as ``max_tokens``, and ``supports_thinking=True``
+    so the runtime thinking default resolves (see :data:`_ZAI_MODEL_PROFILE`).
 
     Args:
         model_id: Z.AI model identifier (e.g. "glm-z1-32b").
@@ -100,7 +109,8 @@ def make_zai_coding(
 
     Transport retry is governed identically to the General endpoint
     (:func:`get_transport_max_retries`, ADR-060). The model profile is shared
-    with ``_make_zai`` (``openai_chat_supports_max_completion_tokens=False``).
+    with ``_make_zai`` (``openai_chat_supports_max_completion_tokens=False``,
+    ``supports_thinking=True``).
 
     Args:
         model_id: Z.AI model identifier.

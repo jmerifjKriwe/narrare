@@ -10,11 +10,16 @@ Exercises both ``_make_zai`` (General API) and ``make_zai_coding``
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
+
 import pytest
 from openai import OpenAIError
 from pydantic_ai.models.openai import OpenAIChatModel
 
 from narrare_core.llm._providers.zai import _make_zai, make_zai_coding
+
+if TYPE_CHECKING:
+    from pydantic_ai.settings import ModelSettings
 
 
 class TestMakeZai:
@@ -99,3 +104,42 @@ class TestZaiMaxTokensCompatibility:
     def test_make_zai_coding_profile_sends_max_tokens_not_max_completion_tokens(self) -> None:
         model = make_zai_coding("glm-5.3-flash", api_key="zai-key")
         assert model.profile.get("openai_chat_supports_max_completion_tokens") is False
+
+
+class TestZaiThinkingProfile:
+    """Z.AI models declare thinking support so the unified ``thinking`` setting resolves.
+
+    pydantic-ai's ``Model.prepare_request`` drops ``ModelSettings['thinking']``
+    unless the model profile declares ``supports_thinking``. The name-derived
+    OpenAI profile knows no ``glm-*`` reasoning family (unknown names fall back
+    to ``_NO_REASONING``), so without this flag a runtime thinking default would
+    be silently ignored. GLM models do support thinking — glm-5.3-flash thinks
+    extensively by default, which is exactly what the default caps.
+    """
+
+    def test_make_zai_profile_declares_supports_thinking(self) -> None:
+        model = _make_zai("glm-5.3-flash", api_key="zai-key")
+        assert model.profile.get("supports_thinking") is True
+
+    def test_make_zai_coding_profile_declares_supports_thinking(self) -> None:
+        model = make_zai_coding("glm-5.3-flash", api_key="zai-key")
+        assert model.profile.get("supports_thinking") is True
+
+    def test_runtime_thinking_setting_resolves_for_zai_model(self) -> None:
+        """End-to-end: ``settings['thinking']`` survives ``prepare_request``.
+
+        Dead-code guard: ``build_runtime_model_settings`` injects
+        ``thinking="low"`` for zai configs; this proves the zai model actually
+        resolves it into request parameters (``params.thinking``) instead of
+        silently dropping it, and strips it from the outgoing settings.
+        """
+        from pydantic_ai.models import ModelRequestParameters
+
+        model = _make_zai("glm-5.3-flash", api_key="zai-key")
+        settings, params = model.prepare_request(
+            cast("ModelSettings", {"thinking": "low"}), ModelRequestParameters()
+        )
+        assert params.thinking == "low"
+        # pydantic-ai strips the resolved ``thinking`` key from the outgoing
+        # settings (a single-key dict strips to ``None`` — nothing else to send).
+        assert settings is None or "thinking" not in settings
