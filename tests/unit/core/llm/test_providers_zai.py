@@ -80,3 +80,22 @@ class TestMakeZaiCoding:
         monkeypatch.delenv("ZAI_API_KEY", raising=False)
         with pytest.raises(OpenAIError):
             make_zai_coding("glm-4-flash")
+
+
+class TestZaiMaxTokensCompatibility:
+    """Z.AI endpoints read ``max_tokens`` — not OpenAI's ``max_completion_tokens``.
+
+    ``OpenAIChatModel`` maps the ``max_tokens`` model setting to
+    ``max_completion_tokens`` by default (``openai_chat_supports_max_completion_tokens``).
+    Z.AI silently ignores ``max_completion_tokens``, so both factories must inject a
+    profile that opts out — otherwise runtime output caps (ADR-045 ``max_tokens``)
+    never reach the endpoint and generation runs unbounded.
+    """
+
+    def test_make_zai_profile_sends_max_tokens_not_max_completion_tokens(self) -> None:
+        model = _make_zai("glm-5.3-flash", api_key="zai-key")
+        assert model.profile.get("openai_chat_supports_max_completion_tokens") is False
+
+    def test_make_zai_coding_profile_sends_max_tokens_not_max_completion_tokens(self) -> None:
+        model = make_zai_coding("glm-5.3-flash", api_key="zai-key")
+        assert model.profile.get("openai_chat_supports_max_completion_tokens") is False
