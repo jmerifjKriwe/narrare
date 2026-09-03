@@ -1,7 +1,7 @@
 """Tests for IntentOutputBudgetResolverImpl.
 
 Covers all mandatory test cases from P0.3b spec:
-1. Happy path — intent with known profile (BETA_READ → long_texts → 8000).
+1. Happy path — intent with known profile (BETA_READ → long_texts → 16000).
 2. Happy path — intent with known profile (NAME_GENERATE → quick → 500).
 3. Fallback — intent without profile mapping (EMBED) → default_max_tokens.
 4. Custom default_max_tokens in constructor.
@@ -62,12 +62,12 @@ class TestIntentOutputBudgetResolverHappyPath:
 
     @pytest.mark.asyncio
     async def test_beta_read_maps_to_long_texts(self) -> None:
-        """BETA_READ → profile 'long_texts' → 8000 tokens."""
+        """BETA_READ → profile 'long_texts' → 16000 tokens (raised from 8000)."""
         resolver = IntentOutputBudgetResolverImpl()
         ctx = _make_context(intent=LLMIntent.BETA_READ)
         decision = await resolver.resolve(ctx)
 
-        assert decision.budget.max_tokens == 8000
+        assert decision.budget.max_tokens == 16000
         assert decision.budget.profile == "long_texts"
 
     @pytest.mark.asyncio
@@ -295,10 +295,10 @@ class TestIntentOutputBudgetResolverConcurrency:
 
         decisions = await asyncio.gather(*(resolver.resolve(ctx) for ctx in contexts))
 
-        assert decisions[0].budget.max_tokens == 8000  # BETA_READ → long_texts
+        assert decisions[0].budget.max_tokens == 16000  # BETA_READ → long_texts
         assert decisions[1].budget.max_tokens == 500  # NAME_GENERATE → quick
         assert decisions[2].budget.max_tokens == 2000  # CHAT → balanced
-        assert decisions[3].budget.max_tokens == 8000  # WRITE → long_texts
+        assert decisions[3].budget.max_tokens == 16000  # WRITE → long_texts
 
 
 class TestIntentOutputBudgetResolverNeverRaises:

@@ -63,8 +63,12 @@ class TestProfileValues:
     def test_balanced_less_than_long_texts(self) -> None:
         assert PROFILE_OUTPUT_LIMITS["balanced"] < PROFILE_OUTPUT_LIMITS["long_texts"]
 
-    def test_long_texts_less_than_comprehensive(self) -> None:
-        assert PROFILE_OUTPUT_LIMITS["long_texts"] < PROFILE_OUTPUT_LIMITS["comprehensive"]
+    def test_long_texts_not_greater_than_comprehensive(self) -> None:
+        # Non-strict since the long_texts raise (8000 → 16000) collapsed the
+        # ladder: long_texts now equals comprehensive at the UX-recommended
+        # max. Strict separation would require raising comprehensive (policy
+        # decision, out of scope here).
+        assert PROFILE_OUTPUT_LIMITS["long_texts"] <= PROFILE_OUTPUT_LIMITS["comprehensive"]
 
     def test_comprehensive_profile_exists(self) -> None:
         assert "comprehensive" in PROFILE_OUTPUT_LIMITS

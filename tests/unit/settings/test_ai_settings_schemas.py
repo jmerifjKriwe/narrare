@@ -118,7 +118,9 @@ class TestTokenLimitProfiles:
     def test_long_texts_profile_has_defaults(self) -> None:
         profile = TOKEN_LIMIT_PROFILES["long_texts"]
         assert "default" in profile
-        assert profile["default"].max_tokens == 8000
+        # Raised 8000 → 16000 with the core preset (structured extraction on
+        # thinking models hit the old ceiling before generating output).
+        assert profile["default"].max_tokens == 16000
 
     def test_comprehensive_profile_has_defaults(self) -> None:
         profile = TOKEN_LIMIT_PROFILES["comprehensive"]

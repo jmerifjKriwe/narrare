@@ -48,7 +48,7 @@ TOKEN_PRESET_PROFILE_VALUES: tuple[str, ...] = (
 PROFILE_OUTPUT_LIMITS: dict[str, int] = {
     TokenLimitProfile.QUICK.value: 500,
     TokenLimitProfile.BALANCED.value: 2000,
-    TokenLimitProfile.LONG_TEXTS.value: 8000,
+    TokenLimitProfile.LONG_TEXTS.value: 16000,
     TokenLimitProfile.COMPREHENSIVE.value: 16000,
 }
 """Preset output-token limits for non-custom profiles."""

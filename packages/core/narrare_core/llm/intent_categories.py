@@ -96,7 +96,7 @@ _INTENT_PROFILE_DEFAULTS: dict[LLMIntent, str] = {
     LLMIntent.BETA_READ: "long_texts",
     LLMIntent.VOICE: "balanced",
     # ADR-069 Decision 5: Dialogue Coach output is a structured issues list
-    # + alternatives (improve mode). "long_texts" (8000 tokens) fits the
+    # + alternatives (improve mode). "long_texts" (16000 tokens) fits the
     # structured-output-with-rewrites shape. Tunable via Eval (Phase 6).
     LLMIntent.DIALOGUE_COACH: "long_texts",
     # Knowledge Base
@@ -134,7 +134,7 @@ Profile tiers (see ``PROFILE_OUTPUT_LIMITS`` in ``model_config.py``):
 
 - ``quick`` (500) — lightweight operations: names, sentiment, suggestions.
 - ``balanced`` (2000) — moderate output: chat, summaries, KB creation.
-- ``long_texts`` (8000) — prose and analysis: writing, extraction, planning.
+- ``long_texts`` (16000) — prose and analysis: writing, extraction, planning.
 - ``comprehensive`` (16000) — exhaustive output: cross-chapter consistency.
 """
 

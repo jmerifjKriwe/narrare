@@ -45,10 +45,12 @@ describe("frontend token-profile contract (CR-08 P1)", () => {
   });
 
   it("maps preset profiles to the policy output limits", () => {
+    // long_texts raised 8000 → 16000 with Core (structured extraction on
+    // thinking models hit the old ceiling before generating output).
     expect(PROFILE_OUTPUT_LIMITS).toEqual({
       quick: 500,
       balanced: 2000,
-      long_texts: 8000,
+      long_texts: 16000,
       comprehensive: 16000,
     });
     // custom is a raw mode and has NO preset entry
@@ -73,7 +75,7 @@ describe("frontend token-profile contract (CR-08 P1)", () => {
     it("returns the output limit for known preset profiles", () => {
       expect(getPresetOutputLimit("quick")).toBe(500);
       expect(getPresetOutputLimit("balanced")).toBe(2000);
-      expect(getPresetOutputLimit("long_texts")).toBe(8000);
+      expect(getPresetOutputLimit("long_texts")).toBe(16000);
       expect(getPresetOutputLimit("comprehensive")).toBe(16000);
     });
 

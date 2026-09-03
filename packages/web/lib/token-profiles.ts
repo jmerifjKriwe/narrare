@@ -59,7 +59,9 @@ export const TOKEN_PRESET_PROFILE_VALUES: readonly TokenLimitProfile[] = [
 export const PROFILE_OUTPUT_LIMITS: Readonly<Record<string, number>> = {
   quick: 500,
   balanced: 2000,
-  long_texts: 8000,
+  // Raised 8000 → 16000 with Core (structured extraction on thinking models
+  // hit the old ceiling before generating output).
+  long_texts: 16000,
   comprehensive: 16000,
 } as const;
 
