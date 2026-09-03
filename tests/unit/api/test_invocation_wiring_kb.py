@@ -88,7 +88,8 @@ class TestExtractionInvocationWiring:
 
         service = ExtractionService(
             registry=mock_registry,
-            config=MagicMock(spec=["model_id", "provider_name"]),
+            # "cache" needed: build_runtime_model_settings reads config.cache.
+            config=MagicMock(spec=["model_id", "provider_name", "cache"]),
             chapter_repo=mock_chapter_repo,
             kb_repo=mock_kb_repo,
             composer=mock_composer,

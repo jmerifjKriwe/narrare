@@ -43,7 +43,10 @@ async def get_extraction_service(
     Also injects KBService and RelationshipRepository for the apply
     extraction step (KB-007).
 
-    Includes InvocationPipeline for invocation evidence (ADR-040).
+    Includes InvocationPipeline for invocation evidence (ADR-040) and a
+    DefaultRunLimitResolver for ADR-045 output-budget enforcement at the
+    ``agent.run`` boundary (same wiring as ``chat/dependencies.py`` and
+    ``writing/deps_ws.py``).
     """
     from narrare._app.dependencies import (
         get_composer,
@@ -55,6 +58,7 @@ async def get_extraction_service(
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.kb.service import KBService
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
     resolver = get_model_routing_resolver(session)
     resolved = await resolver.resolve(
@@ -81,4 +85,5 @@ async def get_extraction_service(
         invocation_pipeline=get_invocation_pipeline(),
         api_key=resolved.api_key,
         base_url=resolved.base_url,
+        run_limit_resolver=DefaultRunLimitResolver(),
     )

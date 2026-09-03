@@ -16,6 +16,7 @@ Uses ModelRegistry + PromptComposer (RULE-01b, RULE-02).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver, ResolvedRunLimits
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.prompts.context import PromptContext
 
@@ -54,6 +56,12 @@ class ExtractionService:
         api_key: Optional per-user provider API key override (model-routing
             cascade) — injected into ``ModelRegistry.get_model``.
         base_url: Optional per-user provider base URL override.
+        run_limit_resolver: Optional run-limit resolver (ADR-045 Decision 4).
+            When wired (production DI), ``usage_limits`` and
+            ``model_settings["max_tokens"]`` are enforced at the
+            ``agent.run`` boundary so output generation is bounded even on
+            thinking models with ``tool_choice: required``. ``None``
+            (legacy/test default) applies no output caps.
     """
 
     def __init__(
@@ -68,6 +76,7 @@ class ExtractionService:
         invocation_pipeline: InvocationPipeline | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._registry = registry
         self._config = config
@@ -79,6 +88,7 @@ class ExtractionService:
         self._invocation_pipeline = invocation_pipeline
         self._api_key = api_key
         self._base_url = base_url
+        self._run_limit_resolver = run_limit_resolver
 
     async def extract_from_chapter(
         self,
@@ -167,7 +177,20 @@ class ExtractionService:
             base_url=self._base_url,
         )
 
-        # 5. Run ExtractionAgent over the chapter text.
+        # 5. Run ExtractionAgent over the chapter text — with ADR-045
+        #    output-budget enforcement: usage_limits (+ max_tokens mirrored
+        #    into model_settings) bound generation even on thinking models
+        #    with tool_choice: required. Mirrors the gateway pattern
+        #    (ModelRegistry.run) and the writing path
+        #    (InterviewDraftGenerator.stream_draft).
+        from narrare_core.llm._model_settings import build_runtime_model_settings
+
+        model = await self._registry.get_model(
+            self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
+
         agent = ExtractionAgent(model=model, system_prompt=system_prompt)
         deps = ExtractionDeps(
             language="en",
@@ -176,9 +199,21 @@ class ExtractionService:
             existing_entity_names=existing_names,
             chapter_title=chapter.title or "",
         )
+
+        resolved_limits: ResolvedRunLimits | None = None
+        if self._run_limit_resolver is not None:
+            resolved_limits = self._run_limit_resolver.resolve(
+                config=self._config,
+                budget=None,
+                invocation_id=uuid4(),
+            )
+        usage_limits = resolved_limits.usage_limits if resolved_limits is not None else None
+        model_settings = build_runtime_model_settings(self._config, usage_limits)
         result = await agent.run(
             prompt=chapter_content,
             deps=deps,
+            usage_limits=usage_limits,
+            model_settings=model_settings,
         )
 
         logger.info(
@@ -227,22 +262,6 @@ class ExtractionService:
             user_id=user_id,
             items=items,
         )
-
-    async def _get_existing_entity_names(
-        self,
-        novel_id: UUID,
-        user_id: UUID,
-    ) -> list[str]:
-        """Fetch existing KB entry names for dedup.
-
-        Thin wrapper over ``fetch_existing_entries`` retained as the dedup
-        names accessor. Repository errors propagate — error-tolerant callers
-        should use ``fetch_existing_entries_graceful``.
-        """
-        from narrare.kb._extraction_context import fetch_existing_entries
-
-        entries = await fetch_existing_entries(self._kb_repo, novel_id, user_id)
-        return [entry.name for entry in entries if entry.name]
 
     def _build_prompt_context(
         self,

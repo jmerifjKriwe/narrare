@@ -43,6 +43,21 @@ async def fetch_existing_entries(
     return list(entries)
 
 
+async def get_existing_entity_names(
+    kb_repo: KBRepositoryProtocol,
+    novel_id: UUID,
+    user_id: UUID,
+) -> list[str]:
+    """Fetch existing KB entry names for dedup.
+
+    Thin wrapper over :func:`fetch_existing_entries` retained as the dedup
+    names accessor. Repository errors propagate — error-tolerant callers
+    should use :func:`fetch_existing_entries_graceful`.
+    """
+    entries = await fetch_existing_entries(kb_repo, novel_id, user_id)
+    return [entry.name for entry in entries if entry.name]
+
+
 async def fetch_existing_entries_graceful(
     kb_repo: KBRepositoryProtocol,
     novel_id: UUID,
