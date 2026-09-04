@@ -12,7 +12,6 @@ from typing import Any, cast
 from pydantic_ai import (
     Agent as PydanticAgent,
 )  # narrare: allow-agent reason="WikiChapterGenerator wraps internal PydanticAgent (ADR-015)"
-from pydantic_ai import RunContext
 
 from narrare_core.wiki.types import WikiChapterOutput, WikiGenerationDeps
 
@@ -67,37 +66,9 @@ class WikiChapterGenerator:
             kwargs: dict[str, Any] = {
                 "model": self._model,
                 "deps_type": WikiGenerationDeps,
-                "output_type": [self._process_output, WikiChapterOutput],
+                "output_type": WikiChapterOutput,
             }
             if self._system_prompt is not None:
                 kwargs["system_prompt"] = self._system_prompt
             self._chapter_agent = PydanticAgent(**kwargs)
         return self._chapter_agent
-
-    async def _process_output(
-        self,
-        ctx: RunContext[WikiGenerationDeps],
-        narrative_summary: str = "",
-        key_events: list[str] | None = None,
-        entities_involved: list[dict[str, Any]] | None = None,
-        themes: list[str] | None = None,
-        emotional_arc: str | None = None,
-    ) -> WikiChapterOutput:
-        """Output Function for chapter summary generation.
-
-        Streaming (``ctx.partial_output``) returns an empty default instance.
-        """
-        if ctx.partial_output:
-            return WikiChapterOutput(
-                narrative_summary="",
-                key_events=[],
-                entities_involved=[],
-                themes=[],
-            )
-        return WikiChapterOutput(
-            narrative_summary=narrative_summary,
-            key_events=key_events or [],
-            entities_involved=entities_involved or [],
-            themes=themes or [],
-            emotional_arc=emotional_arc,
-        )

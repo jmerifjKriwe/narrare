@@ -5,17 +5,13 @@ Extends NarrareAgent with two run paths:
 - ``generate_chapter`` → WikiChapterOutput (delegates to WikiChapterGenerator)
 
 Streaming support (RULE-13): Both paths accept ``stream: bool = False``.
-When streaming, ``run_stream()`` is used and the output function returns
-default/empty instances for partial outputs (``ctx.partial_output``).
+When streaming, ``run_stream()`` is used and the strict model output
+(WikiEntityOutput / WikiChapterOutput) is streamed directly.
 """
 
 from __future__ import annotations
 
 from typing import Any, cast
-
-from pydantic_ai import (
-    RunContext,  # noqa: TC002
-)  # narrare: allow-agent reason="WikiGenerationAgent uses RunContext for pydantic_ai internals"
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.wiki.agent_chapter import WikiChapterGenerator
@@ -52,39 +48,12 @@ class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
         super().__init__(
             model=model,
             deps_type=WikiGenerationDeps,
-            output_type=[self._process_entity_output, WikiEntityOutput],
+            output_type=WikiEntityOutput,
             system_prompt=system_prompt,
         )
         self._model = model
         self._system_prompt = system_prompt
         self._chapter_generator = WikiChapterGenerator(model=model, system_prompt=system_prompt)
-
-    # ------------------------------------------------------------------
-    # Output function: entity
-    # ------------------------------------------------------------------
-
-    async def _process_entity_output(
-        self,
-        ctx: RunContext[WikiGenerationDeps],
-        narrative_summary: str = "",
-        role_in_story: str | None = None,
-        key_attributes: list[str] | None = None,
-        relationships: list[dict[str, Any]] | None = None,
-        character_arc: str | None = None,
-    ) -> WikiEntityOutput:
-        """Output Function for entity summary generation.
-
-        Streaming (``ctx.partial_output``) returns an empty default instance.
-        """
-        if ctx.partial_output:
-            return WikiEntityOutput(narrative_summary="", key_attributes=[], relationships=[])
-        return WikiEntityOutput(
-            narrative_summary=narrative_summary,
-            role_in_story=role_in_story,
-            key_attributes=key_attributes or [],
-            relationships=relationships or [],
-            character_arc=character_arc,
-        )
 
     # ------------------------------------------------------------------
     # Public API: generate_entity

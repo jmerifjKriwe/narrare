@@ -65,7 +65,7 @@ class PreferenceAnalysisAgent(NarrareAgent[PreferenceAnalysisDeps, PreferenceAna
         super().__init__(
             model=model,
             deps_type=PreferenceAnalysisDeps,
-            output_type=[self._process_analysis, PreferenceAnalysisOutput],
+            output_type=PreferenceAnalysisOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -115,30 +115,6 @@ class PreferenceAnalysisAgent(NarrareAgent[PreferenceAnalysisDeps, PreferenceAna
                 "content_patterns": content,
                 "avoidance_patterns": avoidance,
             }
-        )
-
-    async def _process_analysis(
-        self,
-        ctx: RunContext[PreferenceAnalysisDeps],
-        style_patterns: list[str] | None = None,
-        content_patterns: list[str] | None = None,
-        avoidance_patterns: list[str] | None = None,
-        confidence: float = 0.0,
-        summary: str = "",
-    ) -> PreferenceAnalysisOutput:
-        """Output Function — structures the LLM response into PreferenceAnalysisOutput.
-
-        During streaming (``ctx.partial_output``), returns a minimal result.
-        """
-        if ctx.partial_output:
-            return PreferenceAnalysisOutput()
-
-        return PreferenceAnalysisOutput(
-            style_patterns=style_patterns or [],
-            content_patterns=content_patterns or [],
-            avoidance_patterns=avoidance_patterns or [],
-            confidence=confidence,
-            summary=summary,
         )
 
     async def run(

@@ -1,8 +1,7 @@
-"""Tests for WikiGenerationAgent — instantiation, entity generation, entity output functions.
+"""Tests for WikiGenerationAgent — instantiation and entity generation.
 
 Test-Strategie:
 - TestModel für deterministische Agent-Tests
-- Output Functions werden direkt via ``_process_entity_output`` getestet
 - Keine echten LLM-Calls (RULE-01b)
 - Prompt loading tests in ``test_prompt_loader.py``
 - Chapter tests in ``test_agent_chapter.py``
@@ -11,7 +10,6 @@ Test-Strategie:
 from __future__ import annotations
 
 import pytest
-from pydantic_ai import RunContext, RunUsage
 from pydantic_ai.models.test import TestModel
 
 from narrare_core.wiki.agent import WikiGenerationAgent
@@ -60,12 +58,6 @@ def deps_location() -> WikiGenerationDeps:
     )
 
 
-@pytest.fixture()
-def run_context(deps: WikiGenerationDeps) -> RunContext[WikiGenerationDeps]:
-    """Basic RunContext for testing output functions."""
-    return RunContext[WikiGenerationDeps](deps=deps, model=TestModel(), usage=RunUsage())
-
-
 # ---------------------------------------------------------------------------
 # A. WikiGenerationAgent — Instantiation
 # ---------------------------------------------------------------------------
@@ -96,10 +88,10 @@ class TestGenerateEntity:
         agent = WikiGenerationAgent(model=TestModel())
         result = await agent.generate_entity(deps=deps)
         assert isinstance(result, WikiEntityOutput)
-        # TestModel with output function returns default values
-        assert result.narrative_summary == ""
-        assert result.key_attributes == []
-        assert result.relationships == []
+        # TestModel fills the strict output schema with type-based placeholders
+        assert isinstance(result.narrative_summary, str)
+        assert isinstance(result.key_attributes, list)
+        assert isinstance(result.relationships, list)
 
     @pytest.mark.asyncio
     async def test_generate_entity_with_character_deps_includes_arc(
@@ -119,66 +111,4 @@ class TestGenerateEntity:
         result = await agent.generate_entity(deps=deps_location)
         assert isinstance(result, WikiEntityOutput)
         # Location entity_type — character_arc should be None
-        assert result.character_arc is None
-
-
-# ---------------------------------------------------------------------------
-# C. Output Function: _process_entity_output
-# ---------------------------------------------------------------------------
-
-
-class TestProcessEntityOutput:
-    """Entity output function tests."""
-
-    @pytest.mark.asyncio
-    async def test_with_full_values(self, run_context: RunContext[WikiGenerationDeps]) -> None:
-        agent = WikiGenerationAgent(model=TestModel())
-        result = await agent._process_entity_output(
-            run_context,
-            narrative_summary="Eldrin is a wise wizard who guards the crystal.",
-            role_in_story="Mentor to the protagonist.",
-            key_attributes=["wise", "ancient", "powerful"],
-            relationships=[
-                {"target": "Lyra", "type": "apprentice"},
-            ],
-            character_arc="From isolation to mentorship.",
-        )
-        assert result.narrative_summary == "Eldrin is a wise wizard who guards the crystal."
-        assert result.role_in_story == "Mentor to the protagonist."
-        assert len(result.key_attributes) == 3
-        assert len(result.relationships) == 1
-        assert result.character_arc == "From isolation to mentorship."
-
-    @pytest.mark.asyncio
-    async def test_partial_streaming(self, run_context: RunContext[WikiGenerationDeps]) -> None:
-        run_context.partial_output = True
-        agent = WikiGenerationAgent(model=TestModel())
-        result = await agent._process_entity_output(
-            run_context,
-            narrative_summary="Partial...",
-            key_attributes=["wise"],
-        )
-        assert result.narrative_summary == ""
-        assert result.key_attributes == []
-        assert result.relationships == []
-
-    @pytest.mark.asyncio
-    async def test_empty_defaults(self, run_context: RunContext[WikiGenerationDeps]) -> None:
-        agent = WikiGenerationAgent(model=TestModel())
-        result = await agent._process_entity_output(run_context)
-        assert result.narrative_summary == ""
-        assert result.key_attributes == []
-        assert result.relationships == []
-        assert result.role_in_story is None
-        assert result.character_arc is None
-
-    @pytest.mark.asyncio
-    async def test_without_character_arc(self, run_context: RunContext[WikiGenerationDeps]) -> None:
-        """Non-character entities omit character_arc."""
-        agent = WikiGenerationAgent(model=TestModel())
-        result = await agent._process_entity_output(
-            run_context,
-            narrative_summary="A dark forest.",
-            key_attributes=["ancient", "magical"],
-        )
         assert result.character_arc is None
