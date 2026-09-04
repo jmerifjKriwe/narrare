@@ -172,11 +172,17 @@ class ChatService(ChatServiceProtocol):
         from narrare_core.chat.chat_agent import ChatAgent
         from narrare_core.chat.chat_deps import ChatDeps
 
-        # Get model from registry — api_key/base_url carry the resolved
-        # per-user credentials (model-routing cascade) into the actual
-        # resolution point.
-        model = await self._registry.get_model(
-            self._config, api_key=self._api_key, base_url=self._base_url
+        # Resolve the model via the single assembly point (Task 6d —
+        # Task 4/5 pattern): model + intent-aware runtime settings + usage
+        # limits as one coherent triple. api_key/base_url carry the resolved
+        # per-user credentials (model-routing cascade) into the resolution
+        # point. Usage limits stay owned by the ADR-045 run-limit resolver,
+        # so ``usage_limits`` here is ``None``.
+        prepared = await self._registry.prepare(
+            self._config,
+            intent=LLMIntent.CHAT,
+            api_key=self._api_key,
+            base_url=self._base_url,
         )
 
         # Compose the invocation (Mode 2) → enriched context for ChatDeps.
@@ -193,7 +199,7 @@ class ChatService(ChatServiceProtocol):
         # Create ChatAgent (HistoryPolicy.CONVERSATIONAL). ADR-046: inject the
         # feature system prompt into the SYSTEM channel via the constructor,
         # never concatenated into the user prompt.
-        agent = ChatAgent(model=model, system_prompt=composed.system or None)
+        agent = ChatAgent(model=prepared.model, system_prompt=composed.system or None)
 
         # ChatDeps carries the enriched context to the agent (ADR-048 Mode 2).
         deps = ChatDeps(
@@ -206,11 +212,14 @@ class ChatService(ChatServiceProtocol):
         history = self._histories.get(conv_id, ProcessHistory())
 
         # Resolve run limits when a resolver is wired (ADR-045 Decision 4).
+        # The assembly point's settings form the merge base; the resolver's
+        # per-turn output cap stays authoritative on conflicts (Task 6d-1).
         message_history = history.messages if not history.is_empty else None
         stream_kwargs = resolve_chat_run_limits(
             resolver=self._run_limit_resolver,
             config=self._config,
             invocation_id=invocation_id,
+            base_model_settings=prepared.model_settings,
         )
 
         # Map the agent stream to chat SSE events (ADR-024/ADR-034) and

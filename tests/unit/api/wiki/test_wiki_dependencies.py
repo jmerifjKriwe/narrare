@@ -28,6 +28,7 @@ from narrare.wiki.dependencies_core import build_core_wiki_service
 from narrare.wiki.repository import WikiRepository
 from narrare.wiki.service import APIWikiService
 from narrare_core.llm import ModelRegistry, ResolvedModelConfig
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.model_routing import ResolvedModel
 from tests.fakes.fake_core_wiki_service import FakeCoreWikiService
@@ -127,7 +128,9 @@ class TestBuildCoreWikiService:
         """
         mock_model = AsyncMock()
         mock_registry = MagicMock(spec=ModelRegistry)
-        mock_registry.get_model = AsyncMock(return_value=mock_model)
+        mock_registry.prepare = AsyncMock(
+            return_value=PreparedModelCall(model=mock_model, model_settings=None, usage_limits=None)
+        )
         mock_config = MagicMock(spec=ResolvedModelConfig)
 
         with (
@@ -146,8 +149,8 @@ class TestBuildCoreWikiService:
 
             result = await build_core_wiki_service()
 
-            # Verify config built with correct params
-            mock_registry.get_model.assert_awaited_once_with(mock_config)
+            # Verify model resolved via the single assembly point (Task 6d)
+            mock_registry.prepare.assert_awaited_once_with(mock_config, intent=LLMIntent.SUMMARIZE)
 
             # Verify agent created with model
             mock_agent_cls.assert_called_once_with(model=mock_model)
@@ -164,15 +167,18 @@ class TestBuildCoreWikiService:
             assert result is mock_svc
 
     async def test_user_plane_skips_system_default_and_threads_credentials(self) -> None:
-        """User plane: resolved config + credentials reach the real get_model.
+        """User plane: resolved config + credentials reach prepare().
 
         When a resolved config is provided, ``build_core_wiki_service``
         must NOT touch ``build_system_default_config`` (operator plane)
-        and must thread api_key/base_url into the registry call.
+        and must thread api_key/base_url + the site intent into the
+        single assembly point (Task 6d).
         """
         mock_model = AsyncMock()
         mock_registry = MagicMock(spec=ModelRegistry)
-        mock_registry.get_model = AsyncMock(return_value=mock_model)
+        mock_registry.prepare = AsyncMock(
+            return_value=PreparedModelCall(model=mock_model, model_settings=None, usage_limits=None)
+        )
         config = _user_config()
 
         with (
@@ -187,8 +193,11 @@ class TestBuildCoreWikiService:
                 config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL
             )
 
-        mock_registry.get_model.assert_awaited_once_with(
-            config, api_key=_USER_KEY, base_url=_USER_BASE_URL
+        mock_registry.prepare.assert_awaited_once_with(
+            config,
+            intent=LLMIntent.SUMMARIZE,
+            api_key=_USER_KEY,
+            base_url=_USER_BASE_URL,
         )
         mock_system_config.assert_not_called()
         assert result is not None

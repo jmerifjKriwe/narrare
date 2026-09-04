@@ -28,6 +28,7 @@ conventions: fake resolver, recording registry, cast-pattern fakes.
 from __future__ import annotations
 
 import inspect
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import UUID, uuid4
@@ -116,6 +117,27 @@ class _RecordingRegistry:
         if self._stop is not None:
             raise self._stop
         return object()
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: object = None,
+        usage_limits: object = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object:
+        """Task-6d bridge: resolution flows through prepare → get_model.
+
+        Delegates to the SAME recording ``get_model`` call so the
+        credential assertions (``registry.calls`` shape) hold for the
+        migrated (prepare) path under test.
+        """
+        return SimpleNamespace(
+            model=await self.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
 
 
 # ===========================================================================

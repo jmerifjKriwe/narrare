@@ -7,9 +7,9 @@ result to the ``preference_profiles`` table.
 Model acquisition follows the per-user model-routing cascade: the DI
 factory (``router_analysis._get_analysis_service``) resolves
 ``LLMIntent.EXTRACT`` for the authenticated user and passes the resolved
-config + credentials in; this service threads them to its ACTUAL
-``get_model`` resolution point. All prompts come from PromptComposer
-(RULE-02).
+config + credentials in; the agent runner threads them to its ACTUAL
+``registry.prepare()`` resolution point (the single assembly point).
+All prompts come from PromptComposer (RULE-02).
 """
 
 from __future__ import annotations
@@ -18,9 +18,8 @@ from typing import TYPE_CHECKING, cast
 
 import structlog
 
+from narrare.memory._agent_runner import run_preference_analysis_agent
 from narrare.memory.schemas import AnalyzeResponse
-from narrare_core.llm.intents import LLMIntent
-from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -206,91 +205,19 @@ class PreferenceAnalysisService:
     ) -> PreferenceAnalysisOutput:
         """Run the PreferenceAnalysisAgent with the given feedback.
 
-        Falls back to a basic analysis if the agent fails.
-
-        Args:
-            feedback_text: Formatted feedback text.
-            event_count: Number of events being analyzed.
-            user_id: The user whose feedback is being analyzed.
-            project_id: The project scope for the analysis.
-
-        Returns:
-            PreferenceAnalysisOutput with analysis results.
+        Delegated to :mod:`narrare.memory._agent_runner` (RULE-04 split —
+        agent invocation is a separate responsibility from the
+        analyze/persist flow).
         """
-        from narrare_core.agents.preference_analysis_agent import (
-            PreferenceAnalysisAgent,
-            PreferenceAnalysisDeps,
-        )
-        from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
-
-        try:
-            # Real resolution point: the config was resolved for THIS user
-            # by the DI factory (per-user model-routing cascade); the
-            # credentials must reach get_model so the provider actually
-            # authenticates as the user (the setup-wizard bug class).
-            model = await self._registry.get_model(
-                self._config, api_key=self._api_key, base_url=self._base_url
-            )
-        except Exception:
-            logger.warning("agent_model_unavailable", exc_info=True)
-            return PreferenceAnalysisOutput(
-                summary="Analysis unavailable — model could not be loaded.",
-                confidence=0.0,
-            )
-
-        # Compose prompt via compose_invocation (Mode 1 — composer-driven,
-        # ADR-048). Enrichment flows through the composer; feedback text is
-        # passed as the user prompt at agent.run.
-        from narrare._app.invocation_context import build_invocation_context
-        from narrare_core.ai_invocation import compose_invocation
-
-        context = PromptContext(
-            language="en",
-            genre="",
-            mode="preferences",
-            extra={"event_count": str(event_count)},
-        )
-        invocation_context = build_invocation_context(
-            feature_id="memory_preference_analysis",
-            intent=LLMIntent.EXTRACT,
+        return await run_preference_analysis_agent(
+            model_registry=self._registry,
+            model_config=self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+            composer=self._composer,
+            invocation_pipeline=self._invocation_pipeline,
+            feedback_text=feedback_text,
+            event_count=event_count,
             user_id=user_id,
             project_id=project_id,
         )
-        try:
-            invocation_result = await compose_invocation(
-                invocation_pipeline=self._invocation_pipeline,
-                invocation_context=invocation_context,
-                composer=self._composer,
-                prompt_context=context,
-                intent=LLMIntent.EXTRACT,
-            )
-            assert invocation_result.composed_prompt is not None  # Mode 1 always composes
-            system_prompt = invocation_result.composed_prompt.system
-        except Exception:
-            logger.warning(
-                "invocation_composition_failed",
-                feature_id="memory_preference_analysis",
-                exc_info=True,
-            )
-            composed = await self._composer.build(LLMIntent.EXTRACT, context)
-            system_prompt = composed.system
-
-        agent = PreferenceAnalysisAgent(model=model, system_prompt=system_prompt)
-        deps = PreferenceAnalysisDeps(
-            language="en",
-            genre="",
-            event_count=event_count,
-            feedback_text=feedback_text,
-        )
-
-        try:
-            return await agent.run(
-                prompt=feedback_text,
-                deps=deps,
-            )
-        except Exception:
-            logger.warning("agent_run_failed", exc_info=True)
-            return PreferenceAnalysisOutput(
-                summary="Analysis failed — could not process feedback.",
-                confidence=0.0,
-            )

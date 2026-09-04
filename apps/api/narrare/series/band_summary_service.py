@@ -24,11 +24,13 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
+from narrare.series.band_summary_prompt import (
+    compose_band_summary_system_prompt,
+    format_chapter_summaries,
+)
 from narrare_core.agents.band_summary_agent import BandSummaryAgent
 from narrare_core.agents.band_summary_types import BandSummaryDeps
-from narrare_core.ai_invocation import compose_invocation
 from narrare_core.llm.intents import LLMIntent
-from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import NotFoundError, ValidationError, WritingError
 
 if TYPE_CHECKING:
@@ -45,11 +47,6 @@ if TYPE_CHECKING:
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
-
-#: Intent + governed context_mode for band-summary prompts (registered in
-#: route_table by Spec 2 Task 2). The template lives at
-#: ``_bundled/analysis/{lang}/band_summary/system.md``.
-_BAND_SUMMARY_MODE = "band_summary"
 
 
 def _default_agent_factory(model: Any, system_prompt: str | None = None) -> BandSummaryAgent:
@@ -174,10 +171,17 @@ class BandSummaryService:
 
         try:
             # 4. Resolve model + instantiate agent (RULE-01b: agents-first).
-            model = await self._registry.get_model(
-                self._config, api_key=self._api_key, base_url=self._base_url
+            #    Single assembly point (Task 6d — Task 4/5 pattern): model +
+            #    intent-aware runtime settings + usage limits as one
+            #    coherent triple. No run-limit resolver is wired on this
+            #    path, so ``usage_limits`` is ``None``.
+            prepared = await self._registry.prepare(
+                self._config,
+                intent=LLMIntent.SUMMARIZE,
+                api_key=self._api_key,
+                base_url=self._base_url,
             )
-            agent = self._agent_factory(model, system_prompt)
+            agent = self._agent_factory(prepared.model, system_prompt)
 
             # 5. Run the agent. Chapter summaries flow as runtime content in
             #    the user-channel prompt (RULE-02a category 3); BandSummaryDeps
@@ -187,7 +191,12 @@ class BandSummaryService:
                 genre=novel.genre,
                 chapter_summaries=chapter_summaries,
             )
-            result = await agent.run(prompt=_format_chapter_summaries(chapter_summaries), deps=deps)
+            result = await agent.run(
+                prompt=_format_chapter_summaries(chapter_summaries),
+                deps=deps,
+                model_settings=prepared.model_settings,
+                usage_limits=prepared.usage_limits,
+            )
 
             # 6. Upsert generated summaries (override preserved by the repo).
             band_summary = await self._repo.upsert(
@@ -247,50 +256,20 @@ class BandSummaryService:
     ) -> str:
         """Resolve the governed ``band_summary`` system prompt (RULE-02b).
 
-        Uses ``compose_invocation`` (Mode 1, composer-driven) with the
-        InvocationPipeline when available, falling back to direct
-        ``composer.build`` on any failure — mirroring ``ChapterSummaryService``
-        so a pipeline hiccup never blocks generation.
+        Delegated to :mod:`narrare.series.band_summary_prompt` (RULE-04
+        split — prompt composition is a separate responsibility from the
+        generate/persist flow).
         """
-        from narrare._app.invocation_context import build_invocation_context
-
-        context = PromptContext(
-            language=language,
-            writing_language=language,
-            project_title=novel_title,
+        return await compose_band_summary_system_prompt(
+            composer=self._composer,
+            invocation_pipeline=self._invocation_pipeline,
+            novel_title=novel_title,
             genre=genre,
-            mode=_BAND_SUMMARY_MODE,
-        )
-        invocation_context = build_invocation_context(
-            feature_id="series_band_summary",
-            intent=LLMIntent.SUMMARIZE,
-            project_id=novel_id,
             language=language,
+            novel_id=novel_id,
         )
-        try:
-            invocation_result = await compose_invocation(
-                invocation_pipeline=self._invocation_pipeline,
-                invocation_context=invocation_context,
-                composer=self._composer,
-                prompt_context=context,
-                intent=LLMIntent.SUMMARIZE,
-            )
-            assert invocation_result.composed_prompt is not None  # Mode 1 always composes
-            return invocation_result.composed_prompt.system
-        except Exception:
-            logger.warning(
-                "band_summary_composition_failed",
-                feature_id="series_band_summary",
-                exc_info=True,
-            )
-            composed = await self._composer.build(LLMIntent.SUMMARIZE, context)
-            return composed.system
 
 
 def _format_chapter_summaries(chapter_summaries: list[str]) -> str:
-    """Format chapter summaries as the agent run prompt (user-channel runtime content).
-
-    Numbered, one per line — mirrors how analysis agents receive their passage.
-    Kept module-private (business-logic formatting detail, RULE-06).
-    """
-    return "\n".join(f"{i}. {s}" for i, s in enumerate(chapter_summaries, start=1))
+    """Delegate to the prompt module (RULE-04 split); kept for call-site brevity."""
+    return format_chapter_summaries(chapter_summaries)

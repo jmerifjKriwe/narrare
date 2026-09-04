@@ -50,6 +50,7 @@ from narrare.series.series_consistency_runtime_content import (
 from narrare.series.series_consistency_schemas import SeriesConsistencyCheckResponse
 from narrare_core.agents.series_consistency_agent import SeriesConsistencyAgent
 from narrare_core.agents.series_consistency_types import SeriesConsistencyDeps
+from narrare_core.llm.intents import LLMIntent
 from narrare_core.shared.errors import (
     ConfigurationError,
     ForbiddenError,
@@ -212,14 +213,19 @@ class SeriesConsistencyService:
             formatted_canon = format_canon_entries(canon_entries)
 
             # 7. Resolve model + instantiate agent (RULE-01b: agents-first).
-            #    The per-user provider credentials (model-routing cascade)
-            #    are injected into the resolution call.
-            model = await self._registry.get_model(
+            #    Single assembly point (Task 6d — Task 4/5 pattern): model +
+            #    intent-aware runtime settings + usage limits as one
+            #    coherent triple. The per-user provider credentials
+            #    (model-routing cascade) are injected into the resolution
+            #    call. No run-limit resolver is wired on this path, so
+            #    ``usage_limits`` is ``None``.
+            prepared = await self._registry.prepare(
                 self._config,
+                intent=LLMIntent.ANALYSE,
                 api_key=self._api_key,
                 base_url=self._base_url,
             )
-            agent = self._agent_factory(model, system_prompt)
+            agent = self._agent_factory(prepared.model, system_prompt)
 
             # 8. Run the agent. Canon entries + chapter texts flow as runtime
             #    content in the user-channel prompt (RULE-02a category 3);
@@ -232,6 +238,8 @@ class SeriesConsistencyService:
             result = await agent.run(
                 prompt=format_run_prompt(formatted_canon, chapter_texts),
                 deps=deps,
+                model_settings=prepared.model_settings,
+                usage_limits=prepared.usage_limits,
             )
             logger.info(
                 "series_consistency_complete",

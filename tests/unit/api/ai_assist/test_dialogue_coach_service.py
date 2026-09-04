@@ -12,6 +12,7 @@ arguments), NOT ``custom_output_text`` (a plain JSON string).
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
@@ -108,6 +109,28 @@ class FakeModelRegistry:
         # fake ignores them.
         _ = api_key, base_url
         return self._model
+
+    async def prepare(
+        self,
+        config: Any,
+        *,
+        intent: Any = None,
+        usage_limits: Any = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> Any:
+        """Task-6d bridge: resolution flows through prepare → get_model.
+
+        The agent runner (Task 6d-1) resolves via the single assembly
+        point; the bridge forwards the intent/credential pass-throughs so
+        TestModel-based behavior tests keep their get_model semantics.
+        """
+        _ = intent
+        return SimpleNamespace(
+            model=await self.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
 
 
 class FakeAdaptiveProvider:

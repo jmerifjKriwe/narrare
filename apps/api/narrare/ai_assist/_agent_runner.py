@@ -6,12 +6,12 @@ the resolved prompt.
 
 Plan-Bug #21 resolution: the original plan raised ``NotFoundError`` when
 ``model_config is None``. That is the wrong layer for the check — the
-unit tests inject a ``FakeModelRegistry`` whose ``get_model()`` ignores
+unit tests inject a ``FakeModelRegistry`` whose ``prepare()`` ignores
 the config (and the test harness passes ``model_config=None``), while
 production wiring (the DI factory) always supplies a real
 ``ResolvedModelConfig`` resolved through the per-user model-routing
 cascade (user-scoped LLM credentials), with ``api_key``/``base_url``
-threaded into ``registry.get_model()`` at the actual resolution point.
+threaded into ``registry.prepare()`` at the actual resolution point.
 The check therefore blocked the tests without protecting production.
 Removed here (Option A): the registry is the right validation layer, and
 adding ``model_config`` null-checks inside the agent runner is
@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, cast
 import structlog
 
 from narrare.ai_assist._runtime_content import build_run_prompt
+from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -89,11 +90,15 @@ async def run_dialogue_coach_agent(
     # model_config is None only in the unit-test harness (the fake registry
     # ignores it). Production wiring always supplies a real config via the DI
     # factory (Plan-Bug #21). cast() narrows without a type-ignore (RULE-23)
-    # and is runtime-free; the fake registry's get_model accepts Any.
+    # and is runtime-free; the fake registry's prepare accepts Any.
     # api_key/base_url carry the resolved per-user credentials (per-user
-    # model-routing cascade) into the actual resolution point.
-    model = await model_registry.get_model(
+    # model-routing cascade) into the single assembly point (Task 6d —
+    # Task 4/5 pattern): model + intent-aware runtime settings + usage
+    # limits as one coherent triple. No run-limit resolver is wired on
+    # this path, so ``usage_limits`` is ``None``.
+    prepared = await model_registry.prepare(
         cast("ResolvedModelConfig", model_config),
+        intent=LLMIntent.DIALOGUE_COACH,
         api_key=api_key,
         base_url=base_url,
     )
@@ -106,12 +111,14 @@ async def run_dialogue_coach_agent(
         writing_language=language,
         voice_profiles_text=voice_profiles_text,
     )
-    agent = DialogueCoachAgent(model=model, system_prompt=composed_prompt.system)
+    agent = DialogueCoachAgent(model=prepared.model, system_prompt=composed_prompt.system)
     try:
         output = await agent.run(
             prompt=composed_prompt.user
             or build_run_prompt(selection_text=selection_text, mode=mode, characters=characters),
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
     except Exception as exc:
         logger.error(

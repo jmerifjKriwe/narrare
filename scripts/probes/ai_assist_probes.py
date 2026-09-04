@@ -46,6 +46,7 @@ import argparse
 import asyncio
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID, uuid4
 
@@ -166,6 +167,28 @@ class _FakeModelRegistry:
         # ModelRegistry.get_model; the fake ignores them.
         del config, api_key, base_url
         return self._model
+
+    async def prepare(
+        self,
+        config: Any,
+        *,
+        intent: Any = None,
+        usage_limits: Any = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> Any:
+        """Task-6d bridge: resolution flows through prepare → get_model.
+
+        The agent runner (Task 6d-1) resolves via the single assembly
+        point; the bridge forwards the intent/credential pass-throughs so
+        the TestModel-based probe keeps its get_model semantics.
+        """
+        del intent
+        return SimpleNamespace(
+            model=await self.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
 
 
 class _FakeAdaptiveProvider:

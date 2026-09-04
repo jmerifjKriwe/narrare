@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -52,6 +53,30 @@ class FakeModelRegistry(ModelRegistry):
     ) -> TestModel:
         """Return the configured pydantic-ai TestModel without provider lookup."""
         return self.model
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: object = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> SimpleNamespace:
+        """Task-6d bridge: resolution flows through prepare → get_model.
+
+        The service (Task 6d-2) resolves via the single assembly point;
+        the bridge forwards the intent/credential pass-throughs so the
+        existing get_model-based tests keep their semantics.
+        """
+        _ = intent
+        return SimpleNamespace(
+            model=await self.get_model(
+                config, api_key=api_key, base_url=base_url, usage_limits=usage_limits
+            ),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
 
 
 class TestPreferenceAnalysisService:
