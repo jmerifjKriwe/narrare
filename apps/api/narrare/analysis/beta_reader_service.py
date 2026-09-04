@@ -61,7 +61,7 @@ class BetaReaderService:
         invocation_pipeline: Optional pipeline for invocation evidence.
             When provided, evidence is recorded for every LLM call.
         api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.get_model``.
+            cascade) — forwarded to ``ModelRegistry.prepare``.
         base_url: Optional per-user provider base URL override.
     """
 
@@ -151,15 +151,22 @@ class BetaReaderService:
             language=deps.language,
             mode="beta_reader",
         )
-        model = await self._registry.get_model(
+        prepared = await self._registry.prepare(
             self._config,
+            intent=LLMIntent.BETA_READ,
             api_key=self._api_key,
             base_url=self._base_url,
         )
 
-        agent = BetaReaderAgent(model=model, system_prompt=composed.system)
+        agent = BetaReaderAgent(model=prepared.model, system_prompt=composed.system)
         user_prompt = await build_budgeted_prompt(deps, self._budget_assembler)
-        result = await run_phase1(agent, user_prompt, deps)
+        result = await run_phase1(
+            agent,
+            user_prompt,
+            deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
+        )
 
         # 7. Map to response and cache
         response = map_phase1_response(result, novel_id, request.chapter_ids, deps.word_count)
@@ -236,14 +243,19 @@ class BetaReaderService:
             language=deps.language,
             mode="beta_reader_deepdive",
         )
-        model = await self._registry.get_model(
+        prepared = await self._registry.prepare(
             self._config,
+            intent=LLMIntent.BETA_READ,
             api_key=self._api_key,
             base_url=self._base_url,
         )
 
-        agent = BetaReaderAgent(model=model, system_prompt=composed.system)
-        result = await run_phase2(agent, deps, model)
+        agent = BetaReaderAgent(model=prepared.model, system_prompt=composed.system)
+        # Core boundary (RULE-01b): BetaReaderAgent.run_phase2 has no
+        # model_settings/usage_limits pass-through, so only prepared.model
+        # flows into the phase-2 agent (pinned by the skipped wiring test
+        # in test_beta_reader_prepare_wiring.py).
+        result = await run_phase2(agent, deps, prepared.model)
 
         # 4. Map to response
         response = map_phase2_response(result, novel_id, request.category)

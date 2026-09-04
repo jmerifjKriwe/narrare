@@ -28,6 +28,7 @@ from narrare.analysis.schemas import (
     BetaReaderResponse,
 )
 from narrare_core.agents.beta_reader_types import BetaReaderDeps, BetaReaderPhase2Output
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
@@ -41,6 +42,16 @@ class _ModelRegistryProto(Protocol):
         self,
         config: object,
         *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object: ...
+
+    async def prepare(
+        self,
+        config: object,
+        *,
+        intent: object = None,
+        usage_limits: object = None,
         api_key: str | None = None,
         base_url: str | None = None,
     ) -> object: ...
@@ -86,9 +97,18 @@ def _make_service(
     )
     assembler.build_context = AsyncMock(return_value=deps)
 
-    # Registry mock — spec'd (RULE-TEST-01)
+    # Registry mock — spec'd (RULE-TEST-01); prepare bridges to the same
+    # recording get_model so credential/call assertions hold (Task-6a
+    # bridge pattern).
     registry = MagicMock(spec=_ModelRegistryProto)
     registry.get_model = AsyncMock(return_value=object())
+    registry.prepare = AsyncMock(
+        return_value=PreparedModelCall(
+            model=registry.get_model.return_value,
+            model_settings={"max_tokens": 12_345},
+            usage_limits=None,
+        )
+    )
 
     # Composer mock — composed is spec'd (RULE-TEST-01)
     composed = MagicMock(spec=_ComposedPromptProto)

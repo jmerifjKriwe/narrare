@@ -29,7 +29,7 @@ class TestIntentDrivenThinking:
         config = ResolvedModelConfig(provider_name="zai", model_id="glm-5.3-flash")
         settings = build_runtime_model_settings(config, None, intent=LLMIntent.KB_EXTRACT)
         assert settings is not None
-        assert settings["thinking"] == "low"
+        assert settings.get("thinking") == "low"
 
     def test_openai_config_with_kb_extract_intent_gets_thinking_low(self) -> None:
         """Provider-universal: the key is set for every provider; pydantic-ai's
@@ -43,7 +43,7 @@ class TestIntentDrivenThinking:
         config = ResolvedModelConfig(provider_name="zai", model_id="glm-5.3-flash")
         settings = build_runtime_model_settings(config, None, intent=LLMIntent.ANALYSE)
         assert settings is not None
-        assert settings["thinking"] == "medium"
+        assert settings.get("thinking") == "medium"
 
     def test_write_intent_omits_thinking_key(self) -> None:
         config = ResolvedModelConfig(provider_name="zai", model_id="glm-5.3-flash")
