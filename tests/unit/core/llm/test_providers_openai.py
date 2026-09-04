@@ -13,6 +13,7 @@ from pydantic_ai.exceptions import UserError
 from pydantic_ai.models.openai import OpenAIChatModel
 
 from narrare_core.llm._providers.openai import _make_openai
+from narrare_core.llm._schema_transformer import NarrareOpenAICompatJsonSchemaTransformer
 
 
 class TestMakeOpenAI:
@@ -66,3 +67,27 @@ class TestMakeOpenAI:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(UserError):
             _make_openai("gpt-4o")
+
+
+class TestOpenAISchemaInlining:
+    """OpenAI models carry the universal inlining transformer.
+
+    OpenAI resolves ``$ref``/``$defs`` natively, so inlining is not a
+    correctness fix here — but it is beneficial for consistency (uniform
+    schema shape across all OpenAI-compatible providers and one shared
+    transformer behaviour to audit). Both model-returning construction paths
+    (explicit client, no-key with base URL) must inject it; the bare path
+    fails fast and never returns a model.
+    """
+
+    def test_with_api_key_profile_carries_inlining_transformer(self) -> None:
+        model = _make_openai("gpt-4o", api_key="sk-test")
+        assert model.profile.get("json_schema_transformer") is (
+            NarrareOpenAICompatJsonSchemaTransformer
+        )
+
+    def test_with_base_url_profile_carries_inlining_transformer(self) -> None:
+        model = _make_openai("gpt-4o", base_url="https://proxy.example.com/v1")
+        assert model.profile.get("json_schema_transformer") is (
+            NarrareOpenAICompatJsonSchemaTransformer
+        )

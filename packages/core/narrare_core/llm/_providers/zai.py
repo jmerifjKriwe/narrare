@@ -20,7 +20,7 @@ from openai import AsyncOpenAI
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.profiles import merge_profile
 from pydantic_ai.profiles.openai import OpenAIModelProfile
-from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.providers.zai import ZaiProvider
 
 from narrare_core.llm._providers.registry import register, register_model
 from narrare_core.llm._schema_transformer import narrare_openai_compat_profile
@@ -38,18 +38,21 @@ _ZAI_MODEL_PROFILE: ModelProfile = OpenAIModelProfile(
     openai_chat_supports_max_completion_tokens=False,
     supports_thinking=True,
 )
-"""Z.AI endpoints read ``max_tokens`` — not OpenAI's ``max_completion_tokens``.
+"""Narrare-declared Z.AI capability fragment (on top of ``ZaiProvider``).
 
 By default ``OpenAIChatModel`` maps the ``max_tokens`` model setting to
 ``max_completion_tokens``; Z.AI silently ignores that field, which would drop
-runtime output caps (ADR-045) and let generation run unbounded. This profile
-opts every Z.AI model out so the cap travels as ``max_tokens``.
+runtime output caps (ADR-045) and let generation run unbounded. Upstream's
+``ZaiProvider.model_profile`` does **not** set this flag (verified against
+pydantic-ai 2.31.0), so Narrare declares the delta here.
 
 ``supports_thinking=True`` declares the GLM thinking capability: pydantic-ai
 only resolves the unified ``ModelSettings['thinking']`` setting (mapped to
-``reasoning_effort`` on the wire) when the model profile declares thinking
-support. The name-derived OpenAI profile knows no ``glm-*`` reasoning family
-and would otherwise silently drop the runtime thinking default injected by
+``reasoning_content`` on the wire via the provider's own
+``openai_chat_thinking_field`` fact) when the model profile declares thinking
+support. Upstream marks only ``glm-5``/``glm-4.7``/``glm-4.6``/``glm-4.5``
+IDs as thinking-capable; Narrare's registered IDs (``glm-z1-32b``, ``glm-4-*``,
+``chatglm-4``) would silently lose the runtime thinking default injected by
 :func:`narrare_core.llm._model_settings.build_runtime_model_settings`.
 """
 
@@ -82,6 +85,11 @@ def _make_zai(
     layer via :func:`get_transport_max_retries` (ADR-060) and applied to the
     SDK client's ``max_retries`` — uniformly for ``run()`` and ``stream()``.
 
+    The model is built through pydantic-ai's native ``ZaiProvider`` (which
+    imports upstream capability facts: ``reasoning_content`` thinking field,
+    thinking-part send-back, JSON-object output) with a Narrare-declared
+    transport-retry client (``openai_client=``), so ADR-060 survives.
+
     The model profile (``_zai_profile``) composes the universal OpenAI-compat
     ``$ref``/``$defs`` inlining transformer, ``openai_chat_supports_max_completion_tokens=False``
     so output caps reach Z.AI as ``max_tokens``, and ``supports_thinking=True``
@@ -101,15 +109,12 @@ def _make_zai(
     if resolved_key:
         client = AsyncOpenAI(api_key=resolved_key, base_url=resolved_base, max_retries=max_retries)
         return OpenAIChatModel(
-            model_id, provider=OpenAIProvider(openai_client=client), profile=_zai_profile
+            model_id, provider=ZaiProvider(openai_client=client), profile=_zai_profile
         )
-    # No resolvable key (empty string would make the SDK raise at construction):
-    # defer to pydantic-ai, preserving the prior lazy behaviour.
-    return OpenAIChatModel(
-        model_id,
-        provider=OpenAIProvider(api_key=resolved_key, base_url=resolved_base),
-        profile=_zai_profile,
-    )
+    # No resolvable key: ``ZaiProvider()`` validates credential availability
+    # eagerly (reads ``ZAI_API_KEY`` itself) and raises ``UserError`` if
+    # nothing resolves — preserving the fail-fast behaviour.
+    return OpenAIChatModel(model_id, provider=ZaiProvider(), profile=_zai_profile)
 
 
 def make_zai_coding(
@@ -141,13 +146,9 @@ def make_zai_coding(
     if resolved_key:
         client = AsyncOpenAI(api_key=resolved_key, base_url=resolved_base, max_retries=max_retries)
         return OpenAIChatModel(
-            model_id, provider=OpenAIProvider(openai_client=client), profile=_zai_profile
+            model_id, provider=ZaiProvider(openai_client=client), profile=_zai_profile
         )
-    return OpenAIChatModel(
-        model_id,
-        provider=OpenAIProvider(api_key=resolved_key, base_url=resolved_base),
-        profile=_zai_profile,
-    )
+    return OpenAIChatModel(model_id, provider=ZaiProvider(), profile=_zai_profile)
 
 
 register("zai", _make_zai)

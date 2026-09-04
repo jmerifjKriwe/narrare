@@ -13,8 +13,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import pytest
-from openai import OpenAIError
+from pydantic_ai.exceptions import UserError
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.zai import ZaiProvider
 
 from narrare_core.llm._providers.zai import _make_zai, make_zai_coding
 from narrare_core.llm._schema_transformer import NarrareOpenAICompatJsonSchemaTransformer
@@ -46,15 +47,15 @@ class TestMakeZai:
         assert isinstance(model, OpenAIChatModel)
         assert model.model_name == "glm-z1-32b"
 
-    def test_no_credentials_raises_openai_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_no_credentials_raises_user_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """No key arg and no env var -> General-endpoint construction fails fast.
 
-        Z.AI passes the (empty) resolved key to ``OpenAIProvider``, which raises
-        an ``OpenAIError`` at construction. Correct fail-fast behaviour: an LLM
-        client cannot be built without a credential.
+        ``ZaiProvider`` validates credential availability eagerly and raises a
+        pydantic-ai ``UserError``. Correct fail-fast behaviour: an LLM client
+        cannot be built without a credential.
         """
         monkeypatch.delenv("ZAI_API_KEY", raising=False)
-        with pytest.raises(OpenAIError):
+        with pytest.raises(UserError):
             _make_zai("glm-4-flash")
 
 
@@ -81,11 +82,37 @@ class TestMakeZaiCoding:
         assert isinstance(model, OpenAIChatModel)
         assert model.model_name == "glm-z1-32b"
 
-    def test_no_credentials_raises_openai_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_no_credentials_raises_user_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """No key arg and no env var -> Coding-endpoint construction fails fast."""
         monkeypatch.delenv("ZAI_API_KEY", raising=False)
-        with pytest.raises(OpenAIError):
+        with pytest.raises(UserError):
             make_zai_coding("glm-4-flash")
+
+
+class TestZaiNativeProvider:
+    """Z.AI models route through pydantic-ai's native ``ZaiProvider``.
+
+    Routing through the native provider imports upstream-maintained capability
+    facts (``reasoning_content`` thinking field, thinking-part send-back,
+    JSON-object output support) instead of re-deriving them. The Narrare
+    capability fragment (:data:`_ZAI_MODEL_PROFILE`) stays on top because
+    upstream sets neither ``openai_chat_supports_max_completion_tokens=False``
+    nor unconditional ``supports_thinking`` for Narrare's registered model IDs.
+    """
+
+    def test_make_zai_provider_is_native_zai_provider(self) -> None:
+        model = _make_zai("glm-4-flash", api_key="zai-key")
+        assert isinstance(model.provider, ZaiProvider)
+
+    def test_make_zai_coding_provider_is_native_zai_provider(self) -> None:
+        model = make_zai_coding("glm-4-flash", api_key="zai-key")
+        assert isinstance(model.provider, ZaiProvider)
+
+    def test_upstream_thinking_field_facts_retained(self) -> None:
+        model = _make_zai("glm-4-flash", api_key="zai-key")
+        assert model.profile.get("openai_chat_thinking_field") == "reasoning_content"
+        assert model.profile.get("openai_chat_send_back_thinking_parts") == "field"
+        assert model.profile.get("supports_json_object_output") is True
 
 
 class TestZaiMaxTokensCompatibility:
