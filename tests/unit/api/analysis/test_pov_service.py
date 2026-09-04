@@ -6,6 +6,7 @@ Uses Fake classes for all dependencies (no MagicMock).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -13,6 +14,7 @@ import pytest
 from narrare.analysis.services.pov_service import POVService
 from narrare_core.agents.pov_types import POVDetectionOutput
 from narrare_core.analysis.types import POVResult
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.shared.errors import NotFoundError
 from tests.fakes import FakeChapterRepository, FakeModelRegistry, FakeNovelRepository
@@ -70,11 +72,24 @@ def _make_service(
     return novel, ch, svc
 
 
-def _inject(svc: POVService, agent: FakePOVAgent) -> None:
-    async def _get_agent(system_prompt: str | None = None) -> FakePOVAgent:
-        return agent
+def _prepared() -> PreparedModelCall:
+    """Canned coherent triple for injected-agent tests (Task 6a-2).
 
-    svc._get_agent = _get_agent  # type: ignore[method-assign]
+    The injected ``_prepare_agent`` replacement skips the real registry,
+    so the run-pass-through (``model_settings`` / ``usage_limits``) is
+    verified by the dedicated wiring suite
+    (``test_analysis_service_prepare_wiring.py``) instead.
+    """
+    return PreparedModelCall(model=MagicMock(spec=object), model_settings=None, usage_limits=None)
+
+
+def _inject(svc: POVService, agent: FakePOVAgent) -> None:
+    async def _prepare_agent(
+        system_prompt: str | None = None,
+    ) -> tuple[FakePOVAgent, PreparedModelCall]:
+        return agent, _prepared()
+
+    svc._prepare_agent = _prepare_agent  # type: ignore[method-assign]
 
 
 # ---------------------------------------------------------------------------
@@ -265,11 +280,13 @@ class TestMode1PromptComposition:
         novel, ch, svc = _make_service(composer=composer)
         captured: dict[str, object] = {}
 
-        async def spy_get_agent(system_prompt: str | None = None) -> FakePOVAgent:
+        async def spy_prepare_agent(
+            system_prompt: str | None = None,
+        ) -> tuple[FakePOVAgent, PreparedModelCall]:
             captured["system_prompt"] = system_prompt
-            return FakePOVAgent(output=_pov_output())
+            return FakePOVAgent(output=_pov_output()), _prepared()
 
-        svc._get_agent = spy_get_agent  # type: ignore[method-assign]
+        svc._prepare_agent = spy_prepare_agent  # type: ignore[method-assign]
         await svc.analyze(novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id)
 
         assert captured["system_prompt"] == "POV-SYSTEM-PROMPT"

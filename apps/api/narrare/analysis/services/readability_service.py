@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.analysis.types import ReadabilityResult
     from narrare_core.llm import ModelRegistry
+    from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.llm.model_config import ResolvedModelConfig
     from narrare_core.prompts import PromptComposer
 
@@ -55,7 +56,7 @@ class ReadabilityService:
             template.
         invocation_pipeline: Optional pipeline for invocation evidence.
         api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.get_model``.
+            cascade) — injected into ``ModelRegistry.prepare``.
         base_url: Optional per-user provider base URL override.
     """
 
@@ -198,10 +199,12 @@ class ReadabilityService:
                     mode="readability",
                 )
 
-                agent = await self._get_agent(system_prompt=composed.system)
+                agent, prepared = await self._prepare_agent(system_prompt=composed.system)
                 agent_result = await agent.run(
                     prompt="Analyze readability of this text.",
                     deps=build_deps(content, language),
+                    model_settings=prepared.model_settings,
+                    usage_limits=prepared.usage_limits,
                 )
 
                 # Merge AI results into the formula result
@@ -231,8 +234,11 @@ class ReadabilityService:
 
         return result
 
-    async def _get_agent(self, system_prompt: str | None = None) -> ReadabilityAgent:
-        """Construct a ``ReadabilityAgent`` from the model registry.
+    async def _prepare_agent(
+        self,
+        system_prompt: str | None = None,
+    ) -> tuple[ReadabilityAgent, PreparedModelCall]:
+        """Prepare the model call and construct a ``ReadabilityAgent``.
 
         Args:
             system_prompt: Composed feature-specific system prompt (Mode 1,
@@ -240,16 +246,20 @@ class ReadabilityService:
 
         Returns:
             A fresh agent per call — agents are lightweight wrappers
-            around the model.
+            around the model — plus the coherent ``PreparedModelCall``
+            triple (Task 6a-2 single assembly point): the agent's
+            ``run`` must receive ``prepared.model_settings`` and
+            ``prepared.usage_limits``.
         """
         from narrare_core.agents.readability_agent import ReadabilityAgent
 
-        model = await self._model_registry.get_model(
+        prepared = await self._model_registry.prepare(
             self._model_config,
+            intent=LLMIntent.ANALYSE,
             api_key=self._api_key,
             base_url=self._base_url,
         )
-        return ReadabilityAgent(model=model, system_prompt=system_prompt)
+        return ReadabilityAgent(model=prepared.model, system_prompt=system_prompt), prepared
 
     @staticmethod
     def _merge_agent_result(

@@ -21,6 +21,7 @@ from narrare.analysis.voice_check_runtime_content import (
 )
 from narrare_core.agents.character_voice_checker_agent import CharacterVoiceCheckerAgent
 from narrare_core.agents.character_voice_checker_types import CharacterVoiceCheckerDeps
+from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -79,7 +80,7 @@ async def run_voice_checker_agent(
             evaluate dialogue-tone consistency). When ``None``, degrades
             gracefully to an empty string (RULE-11).
         api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.get_model``.
+            cascade) — injected into ``ModelRegistry.prepare``.
         base_url: Optional per-user provider base URL override.
 
     Returns:
@@ -128,17 +129,26 @@ async def run_voice_checker_agent(
         chapter_title=str(getattr(chapter, "title", "") or ""),
     )
 
-    model = await model_registry.get_model(
+    # Single assembly point (Task 6a-2 — Task 4/5 pattern): model + intent-aware
+    # runtime settings + usage limits as one coherent triple, so the thinking
+    # policy actually reaches this call. No run-limit resolver is wired on
+    # this path, so ``usage_limits`` is ``None`` (no output caps).
+    prepared = await model_registry.prepare(
         model_config,
+        intent=LLMIntent.VOICE,
         api_key=api_key,
         base_url=base_url,
     )
     try:
-        agent = CharacterVoiceCheckerAgent(model=model, system_prompt=composed_prompt.system)
+        agent = CharacterVoiceCheckerAgent(
+            model=prepared.model, system_prompt=composed_prompt.system
+        )
         output = await agent.run(
             prompt=composed_prompt.user
             or build_run_prompt(attributed_dialogue, descriptive_profiles, metric_delta),
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
     except Exception as exc:
         logger.error(

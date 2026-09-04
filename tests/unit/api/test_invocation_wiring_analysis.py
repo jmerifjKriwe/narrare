@@ -24,6 +24,7 @@ from uuid import uuid4
 import pytest
 
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
@@ -47,6 +48,15 @@ class FakeEvidenceSink:
 def _pipeline_with_sink(sink: FakeEvidenceSink) -> InvocationPipeline:
     """Create an InvocationPipeline with only the evidence sink wired."""
     return InvocationPipeline(evidence_sink=sink)
+
+
+def _prepared_stub() -> PreparedModelCall:
+    """Canned coherent triple for patched ``_prepare_agent`` (Task 6a-2).
+
+    These tests stub the agent entirely, so the real prepare→run
+    pass-through is verified by the dedicated wiring suites instead.
+    """
+    return PreparedModelCall(model=MagicMock(spec=object), model_settings=None, usage_limits=None)
 
 
 # ===========================================================================
@@ -233,7 +243,7 @@ class TestReadabilityInvocationWiring:
         service = ReadabilityService(
             chapter_repo=mock_chapter_repo,
             novel_repo=mock_novel_repo,
-            model_registry=MagicMock(spec=["get_model"]),
+            model_registry=MagicMock(spec=["get_model", "prepare"]),
             model_config=MagicMock(spec=["model_id", "provider_name"]),
             composer=mock_composer,
             invocation_pipeline=pipeline,
@@ -247,7 +257,7 @@ class TestReadabilityInvocationWiring:
                 "_merge_agent_result",
                 return_value=MagicMock(spec=["metrics", "sentence_analyses"]),
             ),
-            patch.object(service, "_get_agent") as mock_get_agent,
+            patch.object(service, "_prepare_agent") as mock_prepare_agent,
         ):
             mock_result = MagicMock(
                 spec=["metrics", "sentence_analyses", "genre_benchmarks", "overall_assessment"],
@@ -262,7 +272,7 @@ class TestReadabilityInvocationWiring:
 
             mock_agent = AsyncMock()
             mock_agent.run = AsyncMock(return_value=MagicMock(spec=["output"]))
-            mock_get_agent.return_value = mock_agent
+            mock_prepare_agent.return_value = (mock_agent, _prepared_stub())
 
             await service.analyze(
                 novel_id=novel_id,
@@ -311,19 +321,19 @@ class TestPOVInvocationWiring:
             chapter_repo=mock_chapter_repo,
             novel_repo=mock_novel_repo,
             kb_repo=mock_kb_repo,
-            model_registry=MagicMock(spec=["get_model"]),
+            model_registry=MagicMock(spec=["get_model", "prepare"]),
             model_config=MagicMock(spec=["model_id", "provider_name"]),
             composer=mock_composer,
             invocation_pipeline=pipeline,
         )
 
         with (
-            patch.object(service, "_get_agent") as mock_get_agent,
+            patch.object(service, "_prepare_agent") as mock_prepare_agent,
             patch("narrare.analysis.services.pov_service.map_output_to_result") as mock_map,
         ):
             mock_agent = AsyncMock()
             mock_agent.run = AsyncMock(return_value=MagicMock(spec=["output"]))
-            mock_get_agent.return_value = mock_agent
+            mock_prepare_agent.return_value = (mock_agent, _prepared_stub())
 
             from narrare_core.analysis.types import POVResult
 

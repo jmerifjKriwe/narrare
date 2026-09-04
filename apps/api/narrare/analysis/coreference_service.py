@@ -38,6 +38,7 @@ from narrare.analysis.schemas_coreference import (
     CoreferenceStreamEvent,
     PronounResolutionResponse,
 )
+from narrare_core.llm.intents import LLMIntent
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -92,7 +93,7 @@ class CoreferenceService:
             (Mode 1 prepare/finalize). Retained for DI-contract
             stability.
         api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.get_model``.
+            cascade) — injected into ``ModelRegistry.prepare``.
         base_url: Optional per-user provider base URL override.
     """
 
@@ -207,8 +208,14 @@ class CoreferenceService:
             kb_vars=kb_vars,
         )
 
-        model = await self._registry.get_model(
+        # Single assembly point (Task 6a-2 — Task 4/5 pattern): model +
+        # intent-aware runtime settings + usage limits as one coherent
+        # triple, so the thinking policy actually reaches this call. No
+        # run-limit resolver is wired on this path, so ``usage_limits``
+        # is ``None`` (no output caps).
+        prepared = await self._registry.prepare(
             self._config,
+            intent=LLMIntent.ANALYSE,
             api_key=self._api_key,
             base_url=self._base_url,
         )
@@ -233,10 +240,12 @@ class CoreferenceService:
         # the run prompt (user channel) when the template has no
         # "## First Message".
         try:
-            agent = CoreferenceAgent(model=model, system_prompt=composed_prompt.system)
+            agent = CoreferenceAgent(model=prepared.model, system_prompt=composed_prompt.system)
             result = await agent.run(
                 prompt=composed_prompt.user or chapter_text,
                 deps=deps,
+                model_settings=prepared.model_settings,
+                usage_limits=prepared.usage_limits,
             )
         except Exception as exc:
             logger.error(

@@ -5,8 +5,8 @@ test-file hard limit). Proves that the api_key/base_url resolved by the
 per-user cascade reach the ACTUAL resolution calls inside the services
 (the setup-bug shape fixed like Task 1a):
 
-- ``ReadabilityService._get_agent`` (ANALYSE)
-- ``POVService._get_agent`` (ANALYSE)
+- ``ReadabilityService._prepare_agent`` (ANALYSE)
+- ``POVService._prepare_agent`` (ANALYSE)
 - ``BetaReaderService.analyze`` (BETA_READ)
 - ``run_character_voice_agent`` (VOICE)
 - ``CoreferenceService.analyze`` (ANALYSE)
@@ -127,7 +127,7 @@ class TestCredentialsReachResolutionPoint:
         )
 
         with pytest.raises(_StopResolution):
-            await service._get_agent(system_prompt="system prompt")
+            await service._prepare_agent(system_prompt="system prompt")
 
         assert registry.calls == [
             {"config": config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}
@@ -150,7 +150,7 @@ class TestCredentialsReachResolutionPoint:
         )
 
         with pytest.raises(_StopResolution):
-            await service._get_agent(system_prompt="system prompt")
+            await service._prepare_agent(system_prompt="system prompt")
 
         assert registry.calls == [
             {"config": config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}

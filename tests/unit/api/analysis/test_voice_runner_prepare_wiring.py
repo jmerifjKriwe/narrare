@@ -14,6 +14,9 @@ intent-aware thinking policy and the ADR-045 output cap never applied to
 voice analysis. The capability intent (``LLMIntent.VOICE``) is a static
 property of each capability-specific runner — the same value the
 user-routing factories (Tasks 2a/2b) resolve for these capabilities.
+
+Task 6a-2 extends the suite to the two remaining voice runners
+(``run_voice_checker_agent``, ``run_voice_drift_agent``).
 """
 
 from __future__ import annotations
@@ -46,6 +49,21 @@ from tests.unit.api.analysis._character_voice_test_helpers import (
 )
 from tests.unit.api.analysis._character_voice_test_helpers import (
     make_agent_output as make_character_voice_output,
+)
+from tests.unit.api.analysis._voice_check_test_helpers import (
+    FakeComposer as VoiceCheckFakeComposer,
+)
+from tests.unit.api.analysis._voice_check_test_helpers import (
+    FakeModelRegistry as VoiceCheckRegistry,
+)
+from tests.unit.api.analysis._voice_check_test_helpers import (
+    make_agent_output as make_voice_check_output,
+)
+from tests.unit.api.analysis._voice_drift_test_helpers import (
+    FakeModelRegistry as VoiceDriftRegistry,
+)
+from tests.unit.api.analysis._voice_drift_test_helpers import (
+    make_drift_result as make_voice_drift_result,
 )
 
 if TYPE_CHECKING:
@@ -185,6 +203,118 @@ class TestVoiceRunnerPrepareWiring:
                 novel=SimpleNamespace(title="Test Novel", genre="fantasy"),
                 language="en",
                 novel_id=uuid4(),
+                model_registry=cast("ModelRegistry", registry),
+                model_config=config,
+                api_key=_USER_KEY,
+                base_url=_USER_BASE_URL,
+            )
+
+        assert len(registry.prepare_calls) == 1
+        call = registry.prepare_calls[0]
+        assert call["config"] is config
+        assert call["intent"] is LLMIntent.VOICE
+        assert call["api_key"] == _USER_KEY
+        assert call["base_url"] == _USER_BASE_URL
+        assert registry.get_model.await_count == 1
+
+        prepared = call["prepared"]
+        assert isinstance(prepared, PreparedModelCall)
+        assert MockAgent.call_args.kwargs["model"] is prepared.model
+        run_kwargs = mock_agent.run.call_args.kwargs
+        assert run_kwargs["model_settings"] is prepared.model_settings
+        assert run_kwargs["usage_limits"] is prepared.usage_limits
+        assert output is sentinel_output
+
+    async def test_voice_check_runner_prepares_and_forwards_triple(self) -> None:
+        """Task 6a-2: the checker runner assembles via prepare() (VOICE)."""
+        from narrare.analysis.voice_check_agent_runner import run_voice_checker_agent
+
+        config = _user_config()
+        registry = VoiceCheckRegistry()
+        sentinel_output = make_voice_check_output()
+
+        with (
+            patch(
+                "narrare.analysis.voice_check_agent_runner.CharacterVoiceCheckerAgent"
+            ) as MockAgent,
+            patch(
+                "narrare.analysis.voice_check_agent_runner.resolve_voice_check_prompt",
+                new=AsyncMock(
+                    return_value=ComposedPrompt(system="system prompt", user="user prompt")
+                ),
+            ),
+            patch(
+                "narrare.writing._relationship_helpers.fetch_formatted_relationships",
+                new=AsyncMock(return_value=SimpleNamespace(text="")),
+            ),
+        ):
+            mock_agent = MagicMock(spec=["run"])
+            mock_agent.run = AsyncMock(return_value=sentinel_output)
+            MockAgent.return_value = mock_agent
+
+            result = await run_voice_checker_agent(
+                utterances=[],
+                current_metrics={},
+                profiles_by_name={},
+                checkable=[],
+                novel=SimpleNamespace(title="Test Novel", genre="fantasy"),
+                chapter=SimpleNamespace(id=uuid4(), title="Chapter 1"),
+                language="en",
+                novel_id=uuid4(),
+                user_id=uuid4(),
+                model_registry=cast("ModelRegistry", registry),
+                model_config=config,
+                composer=VoiceCheckFakeComposer(),
+                invocation_pipeline=None,
+                relationship_repo=None,
+                api_key=_USER_KEY,
+                base_url=_USER_BASE_URL,
+            )
+
+        # Single assembly point — exactly one prepare() call with the
+        # capability intent and the forwarded per-user credentials.
+        assert len(registry.prepare_calls) == 1
+        call = registry.prepare_calls[0]
+        assert call["config"] is config
+        assert call["intent"] is LLMIntent.VOICE
+        assert call["api_key"] == _USER_KEY
+        assert call["base_url"] == _USER_BASE_URL
+        # One prepare() → exactly one model resolution (no duplicate).
+        assert registry.get_model.await_count == 1
+
+        # The coherent triple reaches the agent boundary.
+        prepared = call["prepared"]
+        assert isinstance(prepared, PreparedModelCall)
+        assert MockAgent.call_args.kwargs["model"] is prepared.model
+        run_kwargs = mock_agent.run.call_args.kwargs
+        assert run_kwargs["model_settings"] is prepared.model_settings
+        assert run_kwargs["usage_limits"] is prepared.usage_limits
+        assert set(result) == {"Elena", "Marc"}
+
+    async def test_voice_drift_runner_prepares_and_forwards_triple(self) -> None:
+        """Task 6a-2: the drift runner assembles via prepare() (VOICE)."""
+        from narrare.analysis.voice_drift_agent_runner import run_voice_drift_agent
+
+        config = _user_config()
+        registry = VoiceDriftRegistry()
+        sentinel_output = make_voice_drift_result()
+
+        with patch(
+            "narrare.analysis.voice_drift_agent_runner.CharacterVoiceDriftAgent"
+        ) as MockAgent:
+            mock_agent = MagicMock(spec=["run"])
+            mock_agent.run = AsyncMock(return_value=sentinel_output)
+            MockAgent.return_value = mock_agent
+
+            output = await run_voice_drift_agent(
+                composed_prompt=ComposedPrompt(system="system prompt", user="user prompt"),
+                character_name="Alice",
+                descriptive_profile="speaks softly",
+                trend=[],
+                jumps=[],
+                chapter_meta=[],
+                novel=SimpleNamespace(title="Test Novel", genre="fantasy"),
+                language="en",
                 model_registry=cast("ModelRegistry", registry),
                 model_config=config,
                 api_key=_USER_KEY,
