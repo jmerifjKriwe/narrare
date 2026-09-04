@@ -20,13 +20,15 @@ from narrare.kb.extraction_service import ExtractionService
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.prompts.composer import ComposedPrompt
 
+from ._extraction_helpers import FakePrepareMixin
+
 # ---------------------------------------------------------------------------
 # Fake dependency classes (avoid bare MagicMock — RULE-TEST-01)
 # ---------------------------------------------------------------------------
 
 
-class _FakeModelRegistry:
-    """Fake ModelRegistry with configurable get_model."""
+class _FakeModelRegistry(FakePrepareMixin):
+    """Fake ModelRegistry with configurable get_model + prepare."""
 
     def __init__(self) -> None:
         self.get_model = AsyncMock(return_value=MagicMock(spec=object))

@@ -4,7 +4,9 @@ Regression-first proof that the kb extraction/improve factories resolve the
 model via the per-user ``ModelRoutingResolver`` cascade (instead of the legacy
 ``build_system_default_config``) with the correct intent + user_id + novel_id,
 and that the resolved config + api_key/base_url reach the ACTUAL resolution
-point (``ModelRegistry.get_model``) inside the services.
+point inside the services (``ModelRegistry.prepare`` for extraction,
+``ModelRegistry.get_model`` for the improve analyzer until its Task 6
+migration).
 
 Pattern reference: ``tests/unit/api/writing/test_deps_factories_summary.py``.
 """
@@ -22,10 +24,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
 from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.model_routing import ResolvedModel
 
 if TYPE_CHECKING:
+    from pydantic_ai.models import Model
+    from pydantic_ai.usage import UsageLimits
+
     from narrare_core.llm.gateway import ModelRegistry
 
 # ---------------------------------------------------------------------------
@@ -63,10 +69,11 @@ class _StopResolution(Exception):
 
 
 class _RecordingRegistry:
-    """Fake ModelRegistry — records ``get_model`` calls for assertions."""
+    """Fake ModelRegistry — records ``prepare``/``get_model`` calls for assertions."""
 
     def __init__(self, stop_after_record: BaseException | None = None) -> None:
         self.calls: list[dict[str, object]] = []
+        self.prepares: list[dict[str, object]] = []
         self._stop = stop_after_record
 
     async def get_model(
@@ -81,6 +88,23 @@ class _RecordingRegistry:
         if self._stop is not None:
             raise self._stop
         return SimpleNamespace(sentinel_model=True)
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: LLMIntent | None = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        self.prepares.append(
+            {"config": config, "intent": intent, "api_key": api_key, "base_url": base_url}
+        )
+        model = await self.get_model(config, api_key=api_key, base_url=base_url)
+        return PreparedModelCall(
+            model=cast("Model", model), model_settings=None, usage_limits=usage_limits
+        )
 
 
 # ===========================================================================
@@ -221,14 +245,14 @@ class TestImproveFactoryUserRouting:
 
 
 # ===========================================================================
-# Resolution point — credentials reach ModelRegistry.get_model
+# Resolution point — credentials reach ModelRegistry.prepare
 # ===========================================================================
 
 
 class TestCredentialsReachResolutionPoint:
-    """The resolved key must flow into the ACTUAL get_model call (setup bug)."""
+    """The resolved key must flow into the ACTUAL prepare() call (setup bug)."""
 
-    async def test_extraction_service_threads_credentials_into_get_model(self) -> None:
+    async def test_extraction_service_threads_credentials_into_prepare(self) -> None:
         from narrare.kb.extraction_service import ExtractionService
 
         config = _user_config()
@@ -257,6 +281,16 @@ class TestCredentialsReachResolutionPoint:
                 novel_id=uuid4(), chapter_id=uuid4(), user_id=uuid4()
             )
 
+        # Resolution goes through prepare() with the KB intent + credentials.
+        assert len(registry.prepares) == 1
+        prepared = registry.prepares[0]
+        assert prepared["config"] is config
+        assert prepared["intent"] is LLMIntent.KB_EXTRACT
+        assert prepared["api_key"] == _USER_KEY
+        assert prepared["base_url"] == _USER_BASE_URL
+
+        # Exactly ONE get_model resolution (via prepare) — the historical
+        # duplicate direct get_model call is dead.
         assert len(registry.calls) == 1
         call = registry.calls[0]
         assert call["config"] is config

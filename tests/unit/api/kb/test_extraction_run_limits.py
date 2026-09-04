@@ -6,10 +6,11 @@ Root cause (production defect): ``extract_from_chapter`` called
 ADR-045 — never reached the provider. On thinking models with
 ``tool_choice: required``, generation ran unbounded (~7 min/chapter).
 
-The fix mirrors the established patterns: the gateway
-(``ModelRegistry.run``) and the writing path (``InterviewDraftGenerator``)
-resolve limits via ``DefaultRunLimitResolver`` and pass ``usage_limits`` +
-``model_settings=build_runtime_model_settings(...)`` to the agent run.
+The fix routes model resolution through the single assembly point
+``ModelRegistry.prepare(config, intent, usage_limits)``: the resolved
+``usage_limits`` and the ``model_settings`` built from them (mirrored
+``max_tokens`` + intent-aware thinking policy) flow as one coherent
+``PreparedModelCall`` triple into the agent run.
 """
 
 from __future__ import annotations

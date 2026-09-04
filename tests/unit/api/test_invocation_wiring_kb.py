@@ -19,6 +19,7 @@ See:
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -78,8 +79,14 @@ class TestExtractionInvocationWiring:
         mock_kb_repo = MagicMock(spec=["list_entries"])
         mock_kb_repo.list_entries = AsyncMock(return_value=([], 0))
 
-        mock_registry = MagicMock(spec=["get_model"])
-        mock_registry.get_model = AsyncMock(return_value=MagicMock(spec=["run"]))
+        mock_registry = MagicMock(spec=["prepare"])
+        mock_registry.prepare = AsyncMock(
+            return_value=SimpleNamespace(
+                model=MagicMock(spec=["run"]),
+                model_settings=None,
+                usage_limits=None,
+            )
+        )
 
         from narrare_core.prompts.composer import ComposedPrompt
 
@@ -88,8 +95,7 @@ class TestExtractionInvocationWiring:
 
         service = ExtractionService(
             registry=mock_registry,
-            # "cache" needed: build_runtime_model_settings reads config.cache.
-            config=MagicMock(spec=["model_id", "provider_name", "cache"]),
+            config=MagicMock(spec=["model_id", "provider_name"]),
             chapter_repo=mock_chapter_repo,
             kb_repo=mock_kb_repo,
             composer=mock_composer,

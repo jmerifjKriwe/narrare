@@ -145,6 +145,47 @@ async def test_extract_from_chapter_passes_ids(
 
 
 # ---------------------------------------------------------------------------
+# Model resolution wiring — single prepare() resolution
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_extract_from_chapter_resolves_model_exactly_once_via_prepare(
+    mock_registry: FakeModelRegistry,
+    config: ResolvedModelConfig,
+    mock_chapter_repo: FakeChapterRepo,
+    mock_kb_repo: FakeKBRepo,
+    mock_composer: FakeComposer,
+) -> None:
+    """Regression: the historical duplicate ``get_model`` call is dead.
+
+    Before the ``ModelRegistry.prepare`` migration the service resolved the
+    model TWICE via two direct ``get_model`` calls and assembled
+    ``model_settings`` separately. Now one ``prepare()`` call composes
+    exactly one model resolution with the settings/limits triple, and the
+    agent receives the model from that single resolution.
+    """
+    chapter = make_chapter()
+    mock_chapter_repo.get_by_id.return_value = chapter
+
+    with patch("narrare.kb.extraction_service.ExtractionAgent") as MockAgent:
+        mock_agent = MagicMock(spec=["run"])
+        mock_agent.run = AsyncMock(return_value=make_extraction_output())
+        MockAgent.return_value = mock_agent
+        service = make_service(
+            mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer
+        )
+        await service.extract_from_chapter(
+            novel_id=uuid4(),
+            chapter_id=chapter.id,
+            user_id=uuid4(),
+        )
+
+    assert mock_registry.get_model.await_count == 1
+    assert MockAgent.call_args.kwargs["model"] is mock_registry.get_model.return_value
+
+
+# ---------------------------------------------------------------------------
 # Error: chapter not found
 # ---------------------------------------------------------------------------
 

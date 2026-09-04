@@ -54,7 +54,7 @@ class ExtractionService:
         rel_repo: RelationshipRepository for the apply step (optional).
         invocation_pipeline: Optional pipeline for invocation evidence.
         api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.get_model``.
+            cascade) — injected into ``ModelRegistry.prepare``.
         base_url: Optional per-user provider base URL override.
         run_limit_resolver: Optional run-limit resolver (ADR-045 Decision 4).
             When wired (production DI), ``usage_limits`` and
@@ -169,29 +169,35 @@ class ExtractionService:
             composed = await self._composer.build(LLMIntent.KB_EXTRACT, prompt_context)
             system_prompt = composed.system
 
-        # 4. Get model from registry — per-user credentials injected so the
-        #    user's wizard-configured provider is used (model-routing cascade).
-        model = await self._registry.get_model(
+        # 4. Resolve run limits first (ADR-045 Decision 4) so the prepared
+        #    call can carry them: usage_limits (+ max_tokens mirrored into
+        #    model_settings) bound generation even on thinking models with
+        #    tool_choice: required. None (legacy/test default) applies no
+        #    output caps.
+        resolved_limits: ResolvedRunLimits | None = None
+        if self._run_limit_resolver is not None:
+            resolved_limits = self._run_limit_resolver.resolve(
+                config=self._config,
+                budget=None,
+                invocation_id=uuid4(),
+            )
+
+        # 5. Single assembly point (ModelRegistry.prepare): resolves the
+        #    model with per-user credentials injected (model-routing
+        #    cascade — the user's wizard-configured provider is used) AND
+        #    builds the runtime model_settings (intent-aware thinking
+        #    policy + ADR-045 output cap) as one coherent triple. The
+        #    historical duplicate get_model call and the fragmented
+        #    settings assembly are impossible by construction now.
+        prepared = await self._registry.prepare(
             self._config,
+            intent=LLMIntent.KB_EXTRACT,
+            usage_limits=resolved_limits.usage_limits if resolved_limits else None,
             api_key=self._api_key,
             base_url=self._base_url,
         )
 
-        # 5. Run ExtractionAgent over the chapter text — with ADR-045
-        #    output-budget enforcement: usage_limits (+ max_tokens mirrored
-        #    into model_settings) bound generation even on thinking models
-        #    with tool_choice: required. Mirrors the gateway pattern
-        #    (ModelRegistry.run) and the writing path
-        #    (InterviewDraftGenerator.stream_draft).
-        from narrare_core.llm._model_settings import build_runtime_model_settings
-
-        model = await self._registry.get_model(
-            self._config,
-            api_key=self._api_key,
-            base_url=self._base_url,
-        )
-
-        agent = ExtractionAgent(model=model, system_prompt=system_prompt)
+        agent = ExtractionAgent(model=prepared.model, system_prompt=system_prompt)
         deps = ExtractionDeps(
             language="en",
             genre="",
@@ -200,22 +206,11 @@ class ExtractionService:
             chapter_title=chapter.title or "",
         )
 
-        resolved_limits: ResolvedRunLimits | None = None
-        if self._run_limit_resolver is not None:
-            resolved_limits = self._run_limit_resolver.resolve(
-                config=self._config,
-                budget=None,
-                invocation_id=uuid4(),
-            )
-        usage_limits = resolved_limits.usage_limits if resolved_limits is not None else None
-        model_settings = build_runtime_model_settings(
-            self._config, usage_limits, intent=LLMIntent.KB_EXTRACT
-        )
         result = await agent.run(
             prompt=chapter_content,
             deps=deps,
-            usage_limits=usage_limits,
-            model_settings=model_settings,
+            usage_limits=prepared.usage_limits,
+            model_settings=prepared.model_settings,
         )
 
         logger.info(
