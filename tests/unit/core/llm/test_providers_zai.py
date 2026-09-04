@@ -17,6 +17,7 @@ from openai import OpenAIError
 from pydantic_ai.models.openai import OpenAIChatModel
 
 from narrare_core.llm._providers.zai import _make_zai, make_zai_coding
+from narrare_core.llm._schema_transformer import NarrareOpenAICompatJsonSchemaTransformer
 
 if TYPE_CHECKING:
     from pydantic_ai.settings import ModelSettings
@@ -104,6 +105,84 @@ class TestZaiMaxTokensCompatibility:
     def test_make_zai_coding_profile_sends_max_tokens_not_max_completion_tokens(self) -> None:
         model = make_zai_coding("glm-5.3-flash", api_key="zai-key")
         assert model.profile.get("openai_chat_supports_max_completion_tokens") is False
+
+
+class TestZaiSchemaInlining:
+    """Z.AI does not resolve JSON Schema ``$ref``/``$defs`` — schemas must be inlined.
+
+    OpenAI proper resolves references natively, so pydantic-ai's OpenAI-family
+    transformer keeps ``$defs`` in place. OpenAI-*compatible* endpoints like Z.AI
+    do not: a ``results.items.$ref`` output schema reaches the model unresolved
+    and produces degenerate structures (observed: empty ``items`` in KB
+    extraction). Both factories must inject
+    ``NarrareOpenAICompatJsonSchemaTransformer`` via the shared profile hook while
+    retaining the Z.AI capability keys.
+    """
+
+    def test_make_zai_profile_carries_inlining_transformer(self) -> None:
+        model = _make_zai("glm-5.3-flash", api_key="zai-key")
+        assert model.profile.get("json_schema_transformer") is (
+            NarrareOpenAICompatJsonSchemaTransformer
+        )
+
+    def test_make_zai_coding_profile_carries_inlining_transformer(self) -> None:
+        model = make_zai_coding("glm-5.3-flash", api_key="zai-key")
+        assert model.profile.get("json_schema_transformer") is (
+            NarrareOpenAICompatJsonSchemaTransformer
+        )
+
+    def test_profile_retains_zai_capability_keys(self) -> None:
+        """The profile-callable composition must not drop the Z.AI fragment."""
+        model = _make_zai("glm-5.3-flash", api_key="zai-key")
+        assert model.profile.get("openai_chat_supports_max_completion_tokens") is False
+        assert model.profile.get("supports_thinking") is True
+
+    def test_prepare_request_inlines_output_object_refs(self) -> None:
+        """End-to-end: ``prepare_request`` inlines ``$ref``/``$defs`` output schemas.
+
+        This is the framework's actual consumption point —
+        ``Model.customize_request_parameters`` applies the profile transformer to
+        ``output_tools`` (the KB extraction ``results.items.$ref`` failure path).
+        ``OpenAIChatModel`` runs structured output in tool mode, which is how the
+        agent hands the output schema to the model.
+        """
+        from pydantic_ai.models import ModelRequestParameters
+        from pydantic_ai.tools import ToolDefinition
+
+        schema = {
+            "title": "ExtractionOutput",
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "array",
+                    "items": {"$ref": "#/$defs/ExtractionItem"},
+                }
+            },
+            "required": ["results"],
+            "$defs": {
+                "ExtractionItem": {
+                    "type": "object",
+                    "properties": {"name": {"type": "string"}},
+                    "required": ["name"],
+                }
+            },
+        }
+        model = _make_zai("glm-5.3-flash", api_key="zai-key")
+        params = ModelRequestParameters(
+            output_mode="tool",
+            output_tools=[
+                ToolDefinition(name="final_result", parameters_json_schema=schema, kind="output")
+            ],
+        )
+
+        _, prepared = model.prepare_request(None, params)
+
+        assert len(prepared.output_tools) == 1
+        out_schema = prepared.output_tools[0].parameters_json_schema
+        assert "$defs" not in out_schema
+        items = out_schema["properties"]["results"]["items"]
+        assert items["properties"] == {"name": {"type": "string"}}
+        assert items["required"] == ["name"]
 
 
 class TestZaiThinkingProfile:

@@ -18,10 +18,12 @@ from typing import TYPE_CHECKING
 
 from openai import AsyncOpenAI
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.profiles import merge_profile
 from pydantic_ai.profiles.openai import OpenAIModelProfile
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from narrare_core.llm._providers.registry import register, register_model
+from narrare_core.llm._schema_transformer import narrare_openai_compat_profile
 from narrare_core.llm._transport_retry import get_transport_max_retries
 from narrare_core.settings import get_core_settings
 
@@ -52,6 +54,19 @@ and would otherwise silently drop the runtime thinking default injected by
 """
 
 
+def _zai_profile(resolved: ModelProfile) -> ModelProfile:
+    """Resolved-profile hook applied to every Z.AI model (``profile=`` callable).
+
+    Composes the universal OpenAI-compat schema inlining
+    (:func:`narrare_openai_compat_profile` — ``$ref``/``$defs`` inlined because
+    Z.AI does not resolve JSON Schema references natively, unlike OpenAI proper)
+    with the Z.AI capability fragment (:data:`_ZAI_MODEL_PROFILE`). The callable
+    receives the fully provider-resolved profile, so all DEFAULT/provider keys
+    are retained.
+    """
+    return merge_profile(narrare_openai_compat_profile(resolved), _ZAI_MODEL_PROFILE)
+
+
 def _make_zai(
     model_id: str,
     *,
@@ -67,9 +82,10 @@ def _make_zai(
     layer via :func:`get_transport_max_retries` (ADR-060) and applied to the
     SDK client's ``max_retries`` — uniformly for ``run()`` and ``stream()``.
 
-    The model profile sets ``openai_chat_supports_max_completion_tokens=False``
+    The model profile (``_zai_profile``) composes the universal OpenAI-compat
+    ``$ref``/``$defs`` inlining transformer, ``openai_chat_supports_max_completion_tokens=False``
     so output caps reach Z.AI as ``max_tokens``, and ``supports_thinking=True``
-    so the runtime thinking default resolves (see :data:`_ZAI_MODEL_PROFILE`).
+    so the runtime thinking default resolves.
 
     Args:
         model_id: Z.AI model identifier (e.g. "glm-z1-32b").
@@ -85,14 +101,14 @@ def _make_zai(
     if resolved_key:
         client = AsyncOpenAI(api_key=resolved_key, base_url=resolved_base, max_retries=max_retries)
         return OpenAIChatModel(
-            model_id, provider=OpenAIProvider(openai_client=client), profile=_ZAI_MODEL_PROFILE
+            model_id, provider=OpenAIProvider(openai_client=client), profile=_zai_profile
         )
     # No resolvable key (empty string would make the SDK raise at construction):
     # defer to pydantic-ai, preserving the prior lazy behaviour.
     return OpenAIChatModel(
         model_id,
         provider=OpenAIProvider(api_key=resolved_key, base_url=resolved_base),
-        profile=_ZAI_MODEL_PROFILE,
+        profile=_zai_profile,
     )
 
 
@@ -109,8 +125,7 @@ def make_zai_coding(
 
     Transport retry is governed identically to the General endpoint
     (:func:`get_transport_max_retries`, ADR-060). The model profile is shared
-    with ``_make_zai`` (``openai_chat_supports_max_completion_tokens=False``,
-    ``supports_thinking=True``).
+    with ``_make_zai`` (see :func:`_zai_profile`).
 
     Args:
         model_id: Z.AI model identifier.
@@ -126,12 +141,12 @@ def make_zai_coding(
     if resolved_key:
         client = AsyncOpenAI(api_key=resolved_key, base_url=resolved_base, max_retries=max_retries)
         return OpenAIChatModel(
-            model_id, provider=OpenAIProvider(openai_client=client), profile=_ZAI_MODEL_PROFILE
+            model_id, provider=OpenAIProvider(openai_client=client), profile=_zai_profile
         )
     return OpenAIChatModel(
         model_id,
         provider=OpenAIProvider(api_key=resolved_key, base_url=resolved_base),
-        profile=_ZAI_MODEL_PROFILE,
+        profile=_zai_profile,
     )
 
 
