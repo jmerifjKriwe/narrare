@@ -84,7 +84,7 @@ class ExtractionAgent(NarrareAgent[ExtractionDeps, ExtractionOutput]):
         super().__init__(
             model=model,
             deps_type=ExtractionDeps,
-            output_type=[self._process_output, ExtractionOutput],
+            output_type=ExtractionOutput,
             capabilities=capabilities,
             system_prompt=system_prompt,
         )
@@ -155,30 +155,6 @@ class ExtractionAgent(NarrareAgent[ExtractionDeps, ExtractionOutput]):
             seen.add(key)
 
         return output.model_copy(update={"results": valid_items})
-
-    async def _process_output(
-        self,
-        ctx: RunContext[ExtractionDeps],
-        results: list[dict[str, Any]] | None = None,
-        analysis_notes: str = "",
-    ) -> ExtractionOutput:
-        """Output Function — structures the LLM response into ExtractionOutput.
-
-        During streaming (ctx.partial_output), returns minimal result.
-        """
-        if ctx.partial_output:
-            return ExtractionOutput()
-
-        from narrare_core.agents.extraction_types import ExtractionItem
-
-        items: list[ExtractionItem] = []
-        for r in results or []:
-            items.append(ExtractionItem.model_validate(r))
-
-        return ExtractionOutput(
-            results=items,
-            analysis_notes=analysis_notes,
-        )
 
     async def run(
         self,

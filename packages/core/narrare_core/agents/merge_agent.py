@@ -18,7 +18,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import (
     ModelRetry,
@@ -26,32 +26,10 @@ from pydantic_ai import (
 )
 
 from narrare_core.agents.base import NarrareAgent
-from narrare_core.agents.merge_types import (
-    MergeDecision,
-    MergeOutput,
-    MergeStrategy,
-)
+from narrare_core.agents.merge_types import MergeOutput
 
 if TYPE_CHECKING:
     from narrare_core.writing.context_assembler import WritingContextAssembler
-
-
-def _parse_merge_strategy(raw: dict[str, Any] | None) -> MergeStrategy | None:
-    """Parse a raw merge strategy dict into a MergeStrategy instance."""
-    if not raw:
-        return None
-
-    keep_name = raw.get("keep_name", "")
-    merge_fields = raw.get("merge_fields", {})
-    preserve_aliases = raw.get("preserve_aliases", [])
-    merge_relationships = raw.get("merge_relationships", True)
-
-    return MergeStrategy(
-        keep_name=str(keep_name) if keep_name is not None else "",
-        merge_fields=dict(merge_fields) if merge_fields is not None else {},
-        preserve_aliases=list(preserve_aliases) if preserve_aliases is not None else [],
-        merge_relationships=bool(merge_relationships) if merge_relationships is not None else True,
-    )
 
 
 class KBMergeDeps:
@@ -89,7 +67,7 @@ class KBMergeAgent(NarrareAgent[KBMergeDeps, MergeOutput]):
         super().__init__(
             model=model,
             deps_type=KBMergeDeps,
-            output_type=[self._process_output, MergeOutput],
+            output_type=MergeOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -138,46 +116,6 @@ class KBMergeAgent(NarrareAgent[KBMergeDeps, MergeOutput]):
                 )
 
         return output
-
-    async def _process_output(
-        self,
-        ctx: RunContext[KBMergeDeps],
-        merge_decisions: list[dict[str, Any]] | None = None,
-        overall_notes: str | None = None,
-    ) -> MergeOutput:
-        """Output Function — strukturiert die LLM-Response in MergeOutput.
-
-        Bei Streaming (``ctx.partial_output``) wird nur ein Minimalergebnis zurückgegeben.
-        """
-        if ctx.partial_output:
-            return MergeOutput()
-
-        decisions: list[MergeDecision] = []
-        for raw in merge_decisions or []:
-            pair_id = raw.get("pair_id", "")
-            decision_val = raw.get("decision", "")
-            confidence = raw.get("confidence", 0.0)
-            reasoning = raw.get("reasoning", "")
-
-            strategy_raw = raw.get("merge_strategy")
-            merge_strategy: MergeStrategy | None = None
-            if isinstance(strategy_raw, dict):
-                merge_strategy = _parse_merge_strategy(cast("dict[str, Any]", strategy_raw))
-
-            decisions.append(
-                MergeDecision(
-                    pair_id=str(pair_id) if pair_id is not None else "",
-                    decision=str(decision_val) if decision_val is not None else "",
-                    confidence=float(confidence) if confidence is not None else 0.0,
-                    reasoning=str(reasoning) if reasoning is not None else "",
-                    merge_strategy=merge_strategy,
-                )
-            )
-
-        return MergeOutput(
-            merge_decisions=decisions,
-            overall_notes=overall_notes or "",
-        )
 
     async def run(
         self,
