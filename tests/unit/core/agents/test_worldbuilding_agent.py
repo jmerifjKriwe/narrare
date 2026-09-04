@@ -1,8 +1,8 @@
-"""Tests for agents/worldbuilding_agent.py — Instantiation and Output Functions.
+"""Tests for agents/worldbuilding_agent.py — Instantiation and Deps.
 
 Test-Strategie:
 - TestModel for deterministic agent tests
-- Output Functions tested directly via _process_phase1 / _process_phase2
+- Validator tests live in ``test_worldbuilding_validation.py`` (ADR-035)
 - No real LLM calls (RULE-01b)
 """
 

@@ -46,7 +46,6 @@ from pydantic_ai import (
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.series_consistency_types import (
-    CanonConflict,
     SeriesConsistencyDeps,
     SeriesConsistencyOutput,
 )
@@ -67,7 +66,7 @@ class SeriesConsistencyAgent(NarrareAgent[SeriesConsistencyDeps, SeriesConsisten
         super().__init__(
             model=model,
             deps_type=SeriesConsistencyDeps,
-            output_type=[self._process_output, SeriesConsistencyOutput],
+            output_type=SeriesConsistencyOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -105,27 +104,6 @@ class SeriesConsistencyAgent(NarrareAgent[SeriesConsistencyDeps, SeriesConsisten
                 )
 
         return output.model_copy(update={"conflicts": valid_conflicts})
-
-    async def _process_output(
-        self,
-        ctx: RunContext[SeriesConsistencyDeps],
-        conflicts: list[dict[str, Any]] | None = None,
-        summary: str = "",
-    ) -> SeriesConsistencyOutput:
-        """Output Function — structures the LLM response into SeriesConsistencyOutput.
-
-        During streaming (``ctx.partial_output``), returns a minimal empty result.
-        Series-consistency checking is non-streaming by nature, but the output
-        function pattern is required for type-safe structured output with pydantic-ai.
-        """
-        if ctx.partial_output:
-            return SeriesConsistencyOutput()
-
-        items: list[CanonConflict] = []
-        for conflict in conflicts or []:
-            items.append(CanonConflict.model_validate(conflict))
-
-        return SeriesConsistencyOutput(conflicts=items, summary=summary)
 
     async def run(
         self,

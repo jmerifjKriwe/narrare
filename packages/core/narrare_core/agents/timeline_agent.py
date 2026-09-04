@@ -26,7 +26,6 @@ from pydantic_ai import (
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.timeline_types import (
-    TimelineEvent,
     TimelineOutput,
 )
 
@@ -65,7 +64,7 @@ class TimelineAgent(NarrareAgent[TimelineDeps, TimelineOutput]):
         super().__init__(
             model=model,
             deps_type=TimelineDeps,
-            output_type=[self._process_output, TimelineOutput],
+            output_type=TimelineOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -115,28 +114,6 @@ class TimelineAgent(NarrareAgent[TimelineDeps, TimelineOutput]):
             seen.add(key)
 
         return output.model_copy(update={"timeline_events": valid_events})
-
-    async def _process_output(
-        self,
-        ctx: RunContext[TimelineDeps],
-        timeline_events: list[dict[str, Any]] | None = None,
-        temporal_conflicts: list[str] | None = None,
-        coverage_gaps: list[str] | None = None,
-        overall_assessment: str | None = None,
-    ) -> TimelineOutput:
-        """Output Function — strukturiert die LLM-Response in TimelineOutput.
-
-        Bei Streaming (``ctx.partial_output``) wird nur ein Minimalergebnis zurückgegeben.
-        """
-        if ctx.partial_output:
-            return TimelineOutput()
-
-        return TimelineOutput(
-            timeline_events=[TimelineEvent(**e) for e in (timeline_events or [])],
-            temporal_conflicts=temporal_conflicts or [],
-            coverage_gaps=coverage_gaps or [],
-            overall_assessment=overall_assessment or "",
-        )
 
     async def run(
         self,

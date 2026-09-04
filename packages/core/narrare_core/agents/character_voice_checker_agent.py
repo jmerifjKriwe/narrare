@@ -75,7 +75,6 @@ from pydantic_ai import (
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.character_voice_checker_types import (
     CharacterVoiceCheckerDeps,
-    CharacterVoiceCheckerEntry,
     CharacterVoiceCheckerOutput,
 )
 
@@ -100,7 +99,7 @@ class CharacterVoiceCheckerAgent(
         super().__init__(
             model=model,
             deps_type=CharacterVoiceCheckerDeps,
-            output_type=[self._process_output, CharacterVoiceCheckerOutput],
+            output_type=CharacterVoiceCheckerOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -131,22 +130,6 @@ class CharacterVoiceCheckerAgent(
             )
 
         return output.model_copy(update={"characters": valid_entries})
-
-    async def _process_output(
-        self,
-        ctx: RunContext[CharacterVoiceCheckerDeps],
-        characters: list[dict[str, Any]] | None = None,
-    ) -> CharacterVoiceCheckerOutput:
-        """Output Function — structures the LLM response into the output type.
-
-        During streaming (``ctx.partial_output``) returns a minimal empty result.
-        """
-        if ctx.partial_output:
-            return CharacterVoiceCheckerOutput()
-
-        return CharacterVoiceCheckerOutput(
-            characters=[CharacterVoiceCheckerEntry(**c) for c in (characters or [])],
-        )
 
     async def run(
         self,

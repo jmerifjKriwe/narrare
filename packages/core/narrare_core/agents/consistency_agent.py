@@ -81,7 +81,7 @@ class ConsistencyAgent(NarrareAgent[ConsistencyDeps, ConsistencyOutput]):
         super().__init__(
             model=model,
             deps_type=ConsistencyDeps,
-            output_type=[self._process_output, ConsistencyOutput],
+            output_type=ConsistencyOutput,
             capabilities=capabilities,
             system_prompt=system_prompt,
         )
@@ -124,34 +124,6 @@ class ConsistencyAgent(NarrareAgent[ConsistencyDeps, ConsistencyOutput]):
                 )
 
         return output.model_copy(update={"issues": valid_issues})
-
-    async def _process_output(
-        self,
-        ctx: RunContext[ConsistencyDeps],
-        issues: list[dict[str, Any]] | None = None,
-        overall_assessment: str = "",
-        checked_types: list[str] | None = None,
-    ) -> ConsistencyOutput:
-        """Output Function — structures the LLM response into ConsistencyOutput.
-
-        During streaming (ctx.partial_output), returns a minimal empty result.
-        Consistency checking is non-streaming by nature, but the output function
-        pattern is required for type-safe structured output with pydantic-ai.
-        """
-        if ctx.partial_output:
-            return ConsistencyOutput()
-
-        from narrare_core.agents.consistency_types import ConsistencyCheckType, ConsistencyIssue
-
-        items: list[ConsistencyIssue] = []
-        for issue in issues or []:
-            items.append(ConsistencyIssue.model_validate(issue))
-
-        return ConsistencyOutput(
-            issues=items,
-            overall_assessment=overall_assessment,
-            checked_types=[ConsistencyCheckType(t) for t in (checked_types or [])],
-        )
 
     async def run(
         self,
