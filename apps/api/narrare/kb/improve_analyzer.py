@@ -28,14 +28,13 @@ from .template_fields import get_template_fields
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from pydantic_ai.models import Model
-
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.kb.improve_cache import KBImproveCache
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.prompts.context import PromptContext
@@ -62,7 +61,7 @@ class KBImproveAnalyzer:
         improve_cache: Optional in-memory cache for 10min TTL (ADR-080).
         kb_agent: Optional KBAgent for cross-agent tool access.
         api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.get_model``.
+            cascade) — injected into ``ModelRegistry.prepare``.
         base_url: Optional per-user provider base URL override.
     """
 
@@ -179,14 +178,19 @@ class KBImproveAnalyzer:
             },
         )
 
-    async def _get_model(self) -> Model:
-        """Resolve the LLM model lazily from the registry.
+    async def _prepare(self) -> PreparedModelCall:
+        """Resolve the coherent call triple lazily from the registry.
 
-        Per-user credentials are injected so the user's wizard-configured
-        provider is used (model-routing cascade), not the operator env.
+        Single assembly point (Task 6c — Task 4/5 pattern): model +
+        intent-aware runtime settings + usage limits as one result.
+        Per-user credentials are injected so the user's
+        wizard-configured provider is used (model-routing cascade), not
+        the operator env. No run-limit resolver is wired on this path,
+        so ``usage_limits`` is ``None`` (no output caps).
         """
-        return await self._registry.get_model(
+        return await self._registry.prepare(
             self._config,
+            intent=LLMIntent.KB_IMPROVE,
             api_key=self._api_key,
             base_url=self._base_url,
         )
@@ -273,9 +277,9 @@ class KBImproveAnalyzer:
             composed = await self._prompt_composer.build(LLMIntent.KB_IMPROVE, prompt_context)
             system_prompt = composed.system
 
-        model = await self._get_model()
+        prepared = await self._prepare()
         agent = KBImproveAgent(
-            model=model,
+            model=prepared.model,
             kb_agent=self._kb_agent,
             system_prompt=system_prompt,
         )
@@ -286,7 +290,12 @@ class KBImproveAnalyzer:
             "'" + str(entry_name) + "' "
             "and identify improvement opportunities."
         )
-        result: KBImproveOutput = await agent.run(prompt=user_prompt, deps=deps)
+        result: KBImproveOutput = await agent.run(
+            prompt=user_prompt,
+            deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
+        )
 
         suggestions = [
             ImproveSuggestionResponse(

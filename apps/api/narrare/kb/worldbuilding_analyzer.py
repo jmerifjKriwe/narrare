@@ -49,11 +49,10 @@ from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:
-    from pydantic_ai.models import Model
-
     from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
@@ -76,7 +75,7 @@ class WorldbuildingAnalyzer:
         composer: Prompt composer for building prompts (both phases).
         max_phase2_pairs: Maximum number of entity pairs for Phase 2 consistency check.
         api_key: Optional per-user provider API key (model-routing cascade),
-            injected into ``ModelRegistry.get_model``.
+            injected into ``ModelRegistry.prepare``.
         base_url: Optional per-user provider base URL override.
     """
 
@@ -105,14 +104,18 @@ class WorldbuildingAnalyzer:
         self._api_key = api_key
         self._base_url = base_url
 
-    async def _get_model(self) -> Model:
-        """Resolve the LLM model lazily from the registry.
+    async def _prepare(self) -> PreparedModelCall:
+        """Resolve the coherent call triple lazily from the registry.
 
-        Forwards the injected per-user provider credentials (model-routing
-        cascade) into ``ModelRegistry.get_model``.
+        Single assembly point (Task 6c — Task 4/5 pattern): model +
+        intent-aware runtime settings + usage limits as one result.
+        Forwards the injected per-user provider credentials
+        (model-routing cascade). No run-limit resolver is wired on this
+        path, so ``usage_limits`` is ``None`` (no output caps).
         """
-        return await self._registry.get_model(
+        return await self._registry.prepare(
             self._config,
+            intent=LLMIntent.KB_WORLDBUILD,
             api_key=self._api_key,
             base_url=self._base_url,
         )
@@ -233,14 +236,16 @@ class WorldbuildingAnalyzer:
             composed = await self._composer.build(LLMIntent.KB_WORLDBUILD, ctx)
             system_prompt = composed.system
 
-        model = await self._get_model()
-        agent = WorldbuildingAgent(model=model, system_prompt=system_prompt)
+        prepared = await self._prepare()
+        agent = WorldbuildingAgent(model=prepared.model, system_prompt=system_prompt)
         result = await agent.run_phase1(
             prompt=(
                 f"Analyze worldbuilding for {len(deps.entity_summaries)} entities. "
                 "Identify gaps, suggest connections, evaluate health."
             ),
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
 
         type_map = {s.entry_id: s.entity_type for s in deps.entity_summaries}
@@ -344,12 +349,18 @@ class WorldbuildingAnalyzer:
             composed = await self._composer.build(LLMIntent.KB_WORLDBUILD, ctx)
             system_prompt = composed.system
 
-        model = await self._get_model()
-        agent = WorldbuildingAgent(model=model)
+        prepared = await self._prepare()
+        agent = WorldbuildingAgent(model=prepared.model)
+        # Core boundary (Task 6c): WorldbuildingAgent.run_phase2 builds its
+        # own ephemeral agent internally and does not accept
+        # model_settings/usage_limits — only the prepared model (with user
+        # credentials) flows there. Full triple forwarding needs a kwargs
+        # pass-through in core (reported to the coordinator, not patched
+        # outside the Core layer).
         result = await agent.run_phase2(
             prompt=phase2_user_prompt,
             deps=phase2_deps,
-            model=model,
+            model=prepared.model,
             system_prompt=system_prompt,
         )
 

@@ -23,9 +23,12 @@ from uuid import uuid4
 import pytest
 
 from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
+    from pydantic_ai.models import Model
+
     from narrare.kb.models import KBEntry
     from narrare_core.llm.gateway import ModelRegistry
 
@@ -52,11 +55,12 @@ class _StopResolution(Exception):
 
 
 class _RecordingRegistry:
-    """Fake ModelRegistry — records ``get_model``/``run`` calls for asserts."""
+    """Fake ModelRegistry — records ``prepare``/``get_model``/``run`` calls."""
 
     def __init__(self, stop_after_record: BaseException | None = None) -> None:
         self.calls: list[dict[str, object]] = []
         self.run_calls: list[dict[str, object]] = []
+        self.prepares: list[dict[str, object]] = []
         self._stop = stop_after_record
 
     async def get_model(
@@ -71,6 +75,23 @@ class _RecordingRegistry:
         if self._stop is not None:
             raise self._stop
         return SimpleNamespace(sentinel_model=True)
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: LLMIntent | None = None,
+        usage_limits: object = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        self.prepares.append(
+            {"config": config, "intent": intent, "api_key": api_key, "base_url": base_url}
+        )
+        # Route through get_model so credential pass-through is recorded
+        # (mirrors the real gateway's prepare → get_model delegation).
+        model = await self.get_model(config, api_key=api_key, base_url=base_url)
+        return PreparedModelCall(model=cast("Model", model), model_settings=None, usage_limits=None)
 
     async def run(
         self,
@@ -101,7 +122,7 @@ class _RecordingRegistry:
 class TestCredentialsReachResolutionPoint:
     """The resolved key must flow into the ACTUAL resolution call (setup bug)."""
 
-    async def test_assist_service_threads_credentials_into_get_model(self) -> None:
+    async def test_assist_service_threads_credentials_into_prepare(self) -> None:
         from narrare.kb.assist_service import KBAssistService
 
         config = _user_config()
@@ -115,14 +136,24 @@ class TestCredentialsReachResolutionPoint:
             base_url=_USER_BASE_URL,
         )
 
-        model = await service._get_model()
+        prepared = await service._prepare(LLMIntent.KB_INTERVIEW)
 
+        # Credentials + intent reach the single assembly point (Task 6c
+        # resolution point), and the delegated get_model got the credentials.
+        assert registry.prepares == [
+            {
+                "config": config,
+                "intent": LLMIntent.KB_INTERVIEW,
+                "api_key": _USER_KEY,
+                "base_url": _USER_BASE_URL,
+            }
+        ]
         assert registry.calls == [
             {"config": config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}
         ]
-        assert getattr(model, "sentinel_model", False) is True
+        assert getattr(prepared.model, "sentinel_model", False) is True
 
-    async def test_worldbuilding_analyzer_threads_credentials_into_get_model(self) -> None:
+    async def test_worldbuilding_analyzer_threads_credentials_into_prepare(self) -> None:
         from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
 
         config = _user_config()
@@ -138,12 +169,22 @@ class TestCredentialsReachResolutionPoint:
             base_url=_USER_BASE_URL,
         )
 
-        model = await analyzer._get_model()
+        prepared = await analyzer._prepare()
 
+        # Credentials + intent reach the single assembly point (Task 6c
+        # resolution point), and the delegated get_model got the credentials.
+        assert registry.prepares == [
+            {
+                "config": config,
+                "intent": LLMIntent.KB_WORLDBUILD,
+                "api_key": _USER_KEY,
+                "base_url": _USER_BASE_URL,
+            }
+        ]
         assert registry.calls == [
             {"config": config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}
         ]
-        assert getattr(model, "sentinel_model", False) is True
+        assert getattr(prepared.model, "sentinel_model", False) is True
 
     async def test_consistency_analyzer_threads_credentials_into_run(self) -> None:
         from narrare.kb.consistency_analyzer import KBConsistencyAnalyzer

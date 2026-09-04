@@ -29,14 +29,11 @@ from .assist_contracts import (
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from pydantic_ai.models import (
-        Model,
-    )
-
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare_core.agents.kb_assist_types import KBAssistOutput
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
@@ -65,7 +62,7 @@ class KBAssistService:
         kb_agent: Optional KBAgent for toolset composition.
         invocation_pipeline: Optional invocation evidence pipeline (ADR-040).
         api_key: Optional per-user provider API key (model-routing cascade),
-            injected into ``ModelRegistry.get_model``.
+            injected into ``ModelRegistry.prepare``.
         base_url: Optional per-user provider base URL override.
     """
 
@@ -91,15 +88,21 @@ class KBAssistService:
         self._api_key = api_key
         self._base_url = base_url
 
-    async def _get_model(self) -> Model:
-        """Resolve the LLM model lazily from the registry.
+    async def _prepare(self, intent: LLMIntent) -> PreparedModelCall:
+        """Resolve the coherent call triple lazily from the registry.
 
-        Uses the injected ``ResolvedModelConfig`` to obtain a configured
-        ``Model`` instance.  This allows the service to be instantiated
-        before provider credentials are available (e.g. during app startup).
+        Single assembly point (Task 6c — Task 4/5 pattern): model +
+        intent-aware runtime settings + usage limits as one result. The
+        intent is dynamic — each public assist method passes its own
+        (KB_INTERVIEW / KB_SUGGEST / KB_ENHANCE). Per-user credentials
+        (model-routing cascade) are forwarded so the user's
+        wizard-configured provider is used, not the operator env.
+        No run-limit resolver is wired on this path, so
+        ``usage_limits`` is ``None`` (no output caps).
         """
-        return await self._registry.get_model(
+        return await self._registry.prepare(
             self._config,
+            intent=intent,
             api_key=self._api_key,
             base_url=self._base_url,
         )
@@ -153,13 +156,18 @@ class KBAssistService:
             composed = await self._prompt_composer.build(intent, prompt_context)
             system_prompt = composed.system
 
-        model = await self._get_model()
+        prepared = await self._prepare(intent)
         agent = KBAssistAgent(
-            model=model,
+            model=prepared.model,
             kb_agent=self._kb_agent,
             system_prompt=system_prompt,
         )
-        result = await agent.run(prompt=user_prompt, deps=deps)
+        result = await agent.run(
+            prompt=user_prompt,
+            deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
+        )
         return result
 
     async def get_interview_question(

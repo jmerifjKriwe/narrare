@@ -128,10 +128,19 @@ def _make_analyzer(
     composer_raise: Exception | None = None,
 ) -> tuple[WorldbuildingAnalyzer, SpyComposer]:
     """Build a WorldbuildingAnalyzer with fake deps and a SpyComposer."""
+    from types import SimpleNamespace
+
     kb_repo = FakeKBRepo(entries)
     spy = SpyComposer(raise_error=composer_raise)
     registry = MagicMock(spec=ModelRegistry)
-    registry.get_model = AsyncMock(return_value=MagicMock(spec=Model))
+    # Task 6c: the analyzer resolves via the prepare() assembly point.
+    registry.prepare = AsyncMock(
+        return_value=SimpleNamespace(
+            model=MagicMock(spec=Model),
+            model_settings=None,
+            usage_limits=None,
+        )
+    )
     config = MagicMock(spec=ResolvedModelConfig)
     analyzer = WorldbuildingAnalyzer(
         kb_repo=cast("KBRepository", kb_repo),

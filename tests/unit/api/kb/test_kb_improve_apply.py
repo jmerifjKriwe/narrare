@@ -6,6 +6,7 @@ Uses factory helpers defined here to keep tests self-contained.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -85,10 +86,13 @@ def _make_service(
     composed.system = "System prompt for KB improve"
     prompt_composer.build = AsyncMock(return_value=composed)
 
-    # --- Model Registry ---
-    registry = AsyncMock(spec=["get_model"])
-    model = MagicMock(spec=object)
-    registry.get_model = AsyncMock(return_value=model)
+    # --- Model Registry (Task 6c: prepare() assembly point) ---
+    registry = AsyncMock(spec=["prepare"])
+    registry.prepare = AsyncMock(
+        return_value=SimpleNamespace(
+            model=MagicMock(spec=object), model_settings=None, usage_limits=None
+        )
+    )
 
     # --- KB Service ---
     kb_service = AsyncMock(spec=["get", "create", "update"])

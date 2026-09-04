@@ -201,7 +201,17 @@ class KBMergeService:
                 code="COMPOSITION_EMPTY",
             )
 
-        model = await self._registry.get_model(self._config)
+        # Task 6c single assembly point: coherent (model, model_settings,
+        # usage_limits) triple. This also fixes the latent setup bug where
+        # the bare get_model call dropped the injected per-user credentials.
+        # No run-limit resolver is wired on this path, so ``usage_limits``
+        # is ``None`` (no output caps).
+        prepared = await self._registry.prepare(
+            self._config,
+            intent=LLMIntent.KB_CONSISTENCY,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
         # Build deps
         deps = KBMergeDeps(
@@ -214,10 +224,12 @@ class KBMergeService:
         # composed system prompt is supplied to the constructor (not to
         # ``run()``). All task framing + candidate data live in the governed
         # template; the run prompt carries no feature framing (RULE-02a).
-        agent = KBMergeAgent(model=model, system_prompt=composed_prompt.system)
+        agent = KBMergeAgent(model=prepared.model, system_prompt=composed_prompt.system)
         result = await agent.run(
             prompt=composed_prompt.user or "",
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
 
         # Map core output to API response

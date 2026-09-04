@@ -206,7 +206,10 @@ class StorySuggestService:
                 code="COMPOSITION_EMPTY",
             )
 
-        model = await self._registry.get_model(self._config)
+        # Task 6c single assembly point: coherent (model, model_settings,
+        # usage_limits) triple. No credential overrides exist on this
+        # service (defaults to None) and no run-limit resolver is wired.
+        prepared = await self._registry.prepare(self._config, intent=LLMIntent.SUGGEST)
 
         # Build agent dependencies — minimal runtime data per
         # StorySuggestDeps (project-level fields only).
@@ -221,7 +224,7 @@ class StorySuggestService:
         # (not to ``run()``).  The project data additionally flows as
         # the run prompt (runtime data, RULE-02a category 3) when the
         # template has no "## First Message".
-        agent = StorySuggestAgent(model=model, system_prompt=composed_prompt.system)
+        agent = StorySuggestAgent(model=prepared.model, system_prompt=composed_prompt.system)
         result = await agent.run(
             prompt=composed_prompt.user
             or (
@@ -231,6 +234,8 @@ class StorySuggestService:
                 f"Author instructions: {request.author_instructions or ''}"
             ),
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
 
         # Map core output to API response schemas.

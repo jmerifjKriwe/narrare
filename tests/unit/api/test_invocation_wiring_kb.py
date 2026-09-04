@@ -51,6 +51,15 @@ def _pipeline_with_sink(sink: FakeEvidenceSink) -> InvocationPipeline:
     return InvocationPipeline(evidence_sink=sink)
 
 
+def _prepared_stub() -> SimpleNamespace:
+    """Stub ``ModelRegistry.prepare`` return: the coherent triple (Task 6c)."""
+    return SimpleNamespace(
+        model=MagicMock(spec=["run"]),
+        model_settings=None,
+        usage_limits=None,
+    )
+
+
 # ===========================================================================
 # 1. ExtractionService invocation wiring
 # ===========================================================================
@@ -80,13 +89,7 @@ class TestExtractionInvocationWiring:
         mock_kb_repo.list_entries = AsyncMock(return_value=([], 0))
 
         mock_registry = MagicMock(spec=["prepare"])
-        mock_registry.prepare = AsyncMock(
-            return_value=SimpleNamespace(
-                model=MagicMock(spec=["run"]),
-                model_settings=None,
-                usage_limits=None,
-            )
-        )
+        mock_registry.prepare = AsyncMock(return_value=_prepared_stub())
 
         from narrare_core.prompts.composer import ComposedPrompt
 
@@ -257,7 +260,7 @@ class TestAssistInvocationWiring:
         mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="sys", user="usr"))
 
         service = KBAssistService(
-            registry=MagicMock(spec=["get_model"]),
+            registry=MagicMock(spec=["prepare"]),
             config=MagicMock(spec=["model_id", "provider_name"]),
             kb_context_provider=mock_provider,
             prompt_composer=mock_composer,
@@ -267,7 +270,7 @@ class TestAssistInvocationWiring:
         mock_output = MagicMock(spec=["text"])
         with (
             patch("narrare.kb.assist_service.KBAssistAgent") as mock_agent_cls,
-            patch.object(service, "_get_model", AsyncMock(return_value=MagicMock(spec=["run"]))),
+            patch.object(service, "_prepare", AsyncMock(return_value=_prepared_stub())),
         ):
             mock_agent = AsyncMock()
             mock_agent.run = AsyncMock(return_value=mock_output)
@@ -306,8 +309,8 @@ class TestMergeInvocationWiring:
         mock_novel_repo = MagicMock(spec=["get_by_id"])
         mock_novel_repo.get_by_id = AsyncMock(return_value=mock_novel)
 
-        mock_registry = MagicMock(spec=["get_model"])
-        mock_registry.get_model = AsyncMock(return_value=MagicMock(spec=["run"]))
+        mock_registry = MagicMock(spec=["prepare"])
+        mock_registry.prepare = AsyncMock(return_value=_prepared_stub())
 
         from narrare_core.prompts.composer import ComposedPrompt
 

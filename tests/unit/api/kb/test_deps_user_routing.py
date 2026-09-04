@@ -297,7 +297,7 @@ class TestCredentialsReachResolutionPoint:
         assert call["api_key"] == _USER_KEY
         assert call["base_url"] == _USER_BASE_URL
 
-    async def test_improve_analyzer_threads_credentials_into_get_model(self) -> None:
+    async def test_improve_analyzer_threads_credentials_into_prepare(self) -> None:
         from narrare.kb.improve_analyzer import KBImproveAnalyzer
 
         config = _user_config()
@@ -313,9 +313,19 @@ class TestCredentialsReachResolutionPoint:
             base_url=_USER_BASE_URL,
         )
 
-        model = await analyzer._get_model()
+        prepared = await analyzer._prepare()
 
+        # Credentials + intent reach the single assembly point (Task 6c
+        # resolution point), and the delegated get_model got the credentials.
+        assert registry.prepares == [
+            {
+                "config": config,
+                "intent": LLMIntent.KB_IMPROVE,
+                "api_key": _USER_KEY,
+                "base_url": _USER_BASE_URL,
+            }
+        ]
         assert registry.calls == [
             {"config": config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}
         ]
-        assert getattr(model, "sentinel_model", False) is True
+        assert getattr(prepared.model, "sentinel_model", False) is True

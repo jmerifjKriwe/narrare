@@ -145,13 +145,17 @@ class ChapterSummaryService:
                 composed = await self._composer.build(LLMIntent.SUMMARIZE, context)
                 system_prompt = composed.system
 
-            # 3. Run the summary agent
-            model = await self._registry.get_model(
+            # 3. Run the summary agent — single assembly point (Task 6c —
+            #    Task 4/5 pattern): model + intent-aware runtime settings +
+            #    usage limits as one coherent triple. No run-limit resolver is
+            #    wired on this path, so ``usage_limits`` is ``None``.
+            prepared = await self._registry.prepare(
                 self._config,
+                intent=LLMIntent.SUMMARIZE,
                 api_key=self._api_key,
                 base_url=self._base_url,
             )
-            agent = ChapterSummaryAgent(model=model, system_prompt=system_prompt)
+            agent = ChapterSummaryAgent(model=prepared.model, system_prompt=system_prompt)
 
             deps = SummaryDeps(
                 language=language,
@@ -160,7 +164,12 @@ class ChapterSummaryService:
                 max_sentences=max_sentences,
             )
 
-            result = await agent.run(prompt=content[:3000], deps=deps)
+            result = await agent.run(
+                prompt=content[:3000],
+                deps=deps,
+                model_settings=prepared.model_settings,
+                usage_limits=prepared.usage_limits,
+            )
 
             # 4. Persist summary to chapter
             await self._chapter_repo.update_summary(chapter, result.summary)
