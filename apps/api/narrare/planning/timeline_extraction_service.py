@@ -184,12 +184,15 @@ class TimelineExtractionService:
                 code="COMPOSITION_EMPTY",
             )
 
-        model = await self._registry.get_model(self._config)
+        # Task 6b single assembly point: coherent (model, model_settings, usage_limits) triple.
+        prepared = await self._registry.prepare(self._config, intent=LLMIntent.PLAN)
         deps = TemporalExtractionDeps(
             genre=novel.genre or "",
             language=language,
             existing_events=existing_event_names,
         )
+        # Same model + composed system prompt for every chapter — build the agent once.
+        agent = TemporalExtractionAgent(model=prepared.model, system_prompt=composed_prompt.system)
 
         for chapter in chapters:
             content = getattr(chapter, "summary", "") or ""
@@ -199,7 +202,6 @@ class TimelineExtractionService:
             try:
                 # Reuse the single composed system prompt for every chapter;
                 # only the per-chapter content varies (runtime data, user channel).
-                agent = TemporalExtractionAgent(model=model, system_prompt=composed_prompt.system)
                 chapter_run_prompt = (
                     f"Chapter {getattr(chapter, 'position', 0) + 1}: "
                     f"{getattr(chapter, 'title', '')}\n"
@@ -208,6 +210,8 @@ class TimelineExtractionService:
                 result = await agent.run(
                     prompt=composed_prompt.user or chapter_run_prompt,
                     deps=deps,
+                    model_settings=prepared.model_settings,
+                    usage_limits=prepared.usage_limits,
                 )
 
                 for expr in result.extracted:

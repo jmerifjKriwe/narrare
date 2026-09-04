@@ -176,7 +176,16 @@ class CharacterArcService:
                 code="COMPOSITION_EMPTY",
             )
 
-        model = await self._registry.get_model(self._config)
+        # Single assembly point (Task 6b — Task 4/5 pattern): model + intent-aware
+        # runtime settings + usage limits as one coherent triple, so the thinking
+        # policy actually reaches this call. No run-limit resolver is wired on
+        # this path, so ``usage_limits`` is ``None`` (no output caps).
+        prepared = await self._registry.prepare(
+            self._config,
+            intent=LLMIntent.PLAN,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
         # Build agent dependencies
         deps = CharacterArcDeps(
@@ -192,7 +201,7 @@ class CharacterArcService:
         # ``run()``). The character data additionally flows as the run prompt
         # (runtime data, RULE-02a category 3) when the template has no
         # "## First Message".
-        agent = CharacterArcAgent(model=model, system_prompt=composed_prompt.system)
+        agent = CharacterArcAgent(model=prepared.model, system_prompt=composed_prompt.system)
         result = await agent.run(
             prompt=composed_prompt.user
             or (
@@ -201,6 +210,8 @@ class CharacterArcService:
                 f"Goal state: {request.character_goal_state}"
             ),
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
 
         # Map core output to API response

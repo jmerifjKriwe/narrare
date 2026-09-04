@@ -74,7 +74,11 @@ async def run_llm_consistency_checks(
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext
 
-        model = await registry.get_model(config)
+        # Single assembly point (Task 6b — Task 4/5 pattern): model + intent-aware
+        # runtime settings + usage limits as one coherent triple, so the thinking
+        # policy actually reaches this call. No run-limit resolver is wired on
+        # this path, so ``usage_limits`` is ``None`` (no output caps).
+        prepared = await registry.prepare(config, intent=LLMIntent.PLAN)
 
         # Build a compact event context for the LLM (user prompt — dynamic data).
         # Per AC-2 (CR-AUFG-02-06): event data goes in the user channel,
@@ -133,11 +137,13 @@ async def run_llm_consistency_checks(
             language=language,
         )
 
-        agent = TimelineAgent(model=model)
+        agent = TimelineAgent(model=prepared.model)
         result = await agent.run(
             prompt=event_context,
             system_prompt=system_prompt_text,
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
 
         # Convert LLM-identified conflicts to TemporalIssueResponse

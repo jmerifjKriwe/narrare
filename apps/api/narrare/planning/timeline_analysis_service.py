@@ -217,10 +217,12 @@ class TimelineAnalysisService:
         )
         composed = await self._composer.build(LLMIntent.PLAN, ctx)
 
-        # Get model from registry
         from narrare_core.agents.timeline_agent import TimelineAgent, TimelineDeps
 
-        model = await self._registry.get_model(self._config)
+        # Task 6b single assembly point: coherent (model, model_settings, usage_limits) triple.
+        prepared = await self._registry.prepare(
+            self._config, intent=LLMIntent.PLAN, api_key=self._api_key, base_url=self._base_url
+        )
 
         # Build deps
         deps = TimelineDeps(
@@ -231,10 +233,12 @@ class TimelineAnalysisService:
         # pydantic-ai binds ``system_prompt`` at agent construction, so the
         # composed system prompt is supplied to the constructor (not to
         # ``run()``). Chapter data flows as the run prompt (user channel).
-        agent = TimelineAgent(model=model, system_prompt=composed.system)
+        agent = TimelineAgent(model=prepared.model, system_prompt=composed.system)
         result = await agent.run(
             prompt=composed.user or chapter_context,
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
 
         # Map core output to API response
