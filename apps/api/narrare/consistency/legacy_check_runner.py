@@ -53,7 +53,7 @@ async def run_legacy_check(
         context: Collected check context (chapters, KB, rule issues).
         invocation_pipeline: Optional InvocationPipeline for evidence recording.
         api_key: Optional per-user provider API key override (model-routing
-            cascade) — reaches the ``registry.get_model`` resolution point.
+            cascade) — reaches the ``registry.prepare`` resolution point.
         base_url: Optional per-user provider base URL override.
 
     Returns:
@@ -99,9 +99,23 @@ async def run_legacy_check(
         system_prompt = composed.system
         user_prompt = composed.user
 
-    model = await registry.get_model(config, api_key=api_key, base_url=base_url)
-    agent = ConsistencyAgent(model=model, system_prompt=system_prompt)
-    result = await agent.run(prompt=user_prompt, deps=context.deps)
+    # Single assembly point (Task 6b — Task 4/5 pattern): model + intent-aware
+    # runtime settings + usage limits as one coherent triple, so the thinking
+    # policy actually reaches this call. No run-limit resolver is wired on
+    # this path, so ``usage_limits`` is ``None`` (no output caps).
+    prepared = await registry.prepare(
+        config,
+        intent=LLMIntent.CONSISTENCY,
+        api_key=api_key,
+        base_url=base_url,
+    )
+    agent = ConsistencyAgent(model=prepared.model, system_prompt=system_prompt)
+    result = await agent.run(
+        prompt=user_prompt,
+        deps=context.deps,
+        model_settings=prepared.model_settings,
+        usage_limits=prepared.usage_limits,
+    )
 
     all_issues = context.rule_issues + result.issues
     deduped_issues = deduplicate_issues(all_issues)

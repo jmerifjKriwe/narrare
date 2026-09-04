@@ -6,6 +6,7 @@ ADR-044 Slice 3 validation.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
@@ -96,7 +97,11 @@ class FakeComposer:
 
 
 class FakeRegistry:
-    """Fake ModelRegistry returning a placeholder model."""
+    """Fake ModelRegistry returning a placeholder model.
+
+    Task-6b: ``prepare`` mirrors the single assembly point — same model
+    resolution, sentinel settings, ``usage_limits`` pass-through.
+    """
 
     async def get_model(
         self,
@@ -106,6 +111,21 @@ class FakeRegistry:
         base_url: str | None = None,
     ) -> object:
         return object()
+
+    async def prepare(
+        self,
+        config: object,
+        *,
+        intent: object = None,
+        usage_limits: object = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object:
+        return SimpleNamespace(
+            model=await self.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
 
 
 # ---------------------------------------------------------------------------

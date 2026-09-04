@@ -5,7 +5,8 @@ resolves BOTH staged-pipeline models via the per-user
 ``ModelRoutingResolver`` cascade (instead of the legacy
 ``build_system_default_config``) with the correct intents + user_id +
 novel_id, and that the resolved configs + credentials land on the
-orchestrator/service that own the actual ``get_model`` calls:
+orchestrator/service that own the actual ``ModelRegistry.prepare``
+resolution calls (Task-6b: resolution flows prepare → get_model):
 
 - FactExtractor model — ``LLMIntent.FACT_EXTRACT`` (ADR-044 stage 1,
   feature ``consistency_fact_extraction``)
@@ -25,6 +26,7 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import replace
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import UUID, uuid4
@@ -101,6 +103,28 @@ class _RecordingRegistry:
         if self._stop is not None:
             raise self._stop
         return object()
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: object = None,
+        usage_limits: object = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object:
+        """Task-6b bridge: resolution flows through prepare → get_model.
+
+        Delegates to the SAME recording ``get_model`` call so the
+        credential assertions (``registry.calls`` shape) hold for both
+        the migrated (prepare) and not-yet-migrated (direct get_model)
+        paths under test.
+        """
+        return SimpleNamespace(
+            model=await self.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
 
 
 # ===========================================================================
@@ -216,7 +240,7 @@ class TestConsistencyDepsUserRouting:
 
 
 # ===========================================================================
-# Resolution point — credentials reach ModelRegistry.get_model
+# Resolution point — credentials reach ModelRegistry.prepare → get_model
 # ===========================================================================
 
 

@@ -87,7 +87,7 @@ async def run_consistency_stage(
         fact_output: Structured Stage 1 output.
         invocation_pipeline: Optional InvocationPipeline for evidence recording.
         api_key: Optional per-user provider API key override (model-routing
-            cascade) — reaches the ``registry.get_model`` resolution point.
+            cascade) — reaches the ``registry.prepare`` resolution point.
         base_url: Optional per-user provider base URL override.
 
     Returns:
@@ -133,13 +133,23 @@ async def run_consistency_stage(
         system_prompt = composed.system
         user_prompt = composed.user
 
-    model = await registry.get_model(
+    # Single assembly point (Task 6b — Task 4/5 pattern): model + intent-aware
+    # runtime settings + usage limits as one coherent triple, so the thinking
+    # policy actually reaches this call. No run-limit resolver is wired on
+    # this path, so ``usage_limits`` is ``None`` (no output caps).
+    prepared = await registry.prepare(
         consistency_config,
+        intent=LLMIntent.CONSISTENCY,
         api_key=api_key,
         base_url=base_url,
     )
-    agent = ConsistencyAgent(model=model, system_prompt=system_prompt)
-    result = await agent.run(prompt=user_prompt, deps=enriched_deps)
+    agent = ConsistencyAgent(model=prepared.model, system_prompt=system_prompt)
+    result = await agent.run(
+        prompt=user_prompt,
+        deps=enriched_deps,
+        model_settings=prepared.model_settings,
+        usage_limits=prepared.usage_limits,
+    )
     issues = deduplicate_issues(rule_based_check(kb_summaries) + result.issues)
 
     return ConsistencyResponse(

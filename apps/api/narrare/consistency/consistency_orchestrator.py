@@ -285,10 +285,20 @@ class ConsistencyOrchestrator:
             system_prompt = composed.system
             user_prompt = composed.user
 
-        model = await self._registry.get_model(
+        # Single assembly point (Task 6b — Task 4/5 pattern): model + intent-aware
+        # runtime settings + usage limits as one coherent triple, so the thinking
+        # policy actually reaches this call. No run-limit resolver is wired on
+        # this path, so ``usage_limits`` is ``None`` (no output caps).
+        prepared = await self._registry.prepare(
             self._fact_extractor_config,
+            intent=LLMIntent.FACT_EXTRACT,
             api_key=self._fact_extractor_api_key,
             base_url=self._fact_extractor_base_url,
         )
-        agent = FactExtractorAgent(model=model, system_prompt=system_prompt)
-        return await agent.run(prompt=user_prompt, deps=extractor_deps)
+        agent = FactExtractorAgent(model=prepared.model, system_prompt=system_prompt)
+        return await agent.run(
+            prompt=user_prompt,
+            deps=extractor_deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
+        )
