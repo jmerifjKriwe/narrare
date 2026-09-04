@@ -3,13 +3,11 @@
 Uses fakes for all I/O dependencies. The TestModel exercises the real
 DialogueCoachAgent (Task 11) end-to-end through the service.
 
-Plan-Bug #22 fix: the DialogueCoachAgent uses tool-mode output
-(``output_type=[_process_output, DialogueCoachOutput]``). Per pydantic-ai 2.x
-(see ``tests/unit/core/agents/test_dialogue_coach_agent.py`` header note),
-tool-mode agents require ``custom_output_args`` (a dict of tool-call arguments),
-NOT ``custom_output_text`` (a plain JSON string). The original plan used
-``custom_output_text``; every test would fail because the model response never
-triggers the output function. Fixed here by using ``custom_output_args``.
+The DialogueCoachAgent's structured output is a tool call (``final_result``,
+single ``DialogueCoachOutput`` schema). Per pydantic-ai 2.x (see
+``tests/unit/core/agents/test_dialogue_coach_agent.py`` header note),
+tool-mode output requires ``custom_output_args`` (a dict of tool-call
+arguments), NOT ``custom_output_text`` (a plain JSON string).
 """
 
 from __future__ import annotations
@@ -26,11 +24,11 @@ from narrare_core.ai_invocation.adaptive_context import AdaptiveContext
 
 
 def _coach_output_args(*, adaptive_summary: str = "signals active") -> dict[str, Any]:
-    """Build ``custom_output_args`` matching DialogueCoachAgent._process_output.
+    """Build ``custom_output_args`` matching DialogueCoachOutput.
 
-    Tool-mode output (Plan-Bug #22): the agent's output function is invoked
-    as a tool, so TestModel must supply the call arguments as a dict, not a
-    JSON string via ``custom_output_text``.
+    Tool-mode output: the structured output is invoked as the ``final_result``
+    tool, so TestModel must supply the call arguments as a dict, not a JSON
+    string via ``custom_output_text``.
     """
     return {
         "issues": [

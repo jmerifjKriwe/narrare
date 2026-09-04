@@ -36,10 +36,6 @@ from __future__ import annotations
 from typing import Any
 
 from narrare_core.agents.base import NarrareAgent
-from narrare_core.agents.beta_reader_processors import (
-    process_beta_reader_phase1,
-    process_beta_reader_phase2,
-)
 from narrare_core.agents.beta_reader_types import (
     BetaReaderDeps,
     BetaReaderPhase1Output,
@@ -72,7 +68,7 @@ class BetaReaderAgent(NarrareAgent[BetaReaderDeps, BetaReaderPhase1Output]):
         super().__init__(
             model=model,
             deps_type=BetaReaderDeps,
-            output_type=[process_beta_reader_phase1, BetaReaderPhase1Output],
+            output_type=BetaReaderPhase1Output,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(validate_beta_reader_phase1)
@@ -101,7 +97,7 @@ class BetaReaderAgent(NarrareAgent[BetaReaderDeps, BetaReaderPhase1Output]):
         phase2_agent = NarrareAgent[BetaReaderDeps, BetaReaderPhase2Output](
             model=model,
             deps_type=BetaReaderDeps,
-            output_type=[process_beta_reader_phase2, BetaReaderPhase2Output],
+            output_type=BetaReaderPhase2Output,
             system_prompt=system_prompt,
         )
         phase2_agent._agent.output_validator(validate_beta_reader_phase2)

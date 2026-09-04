@@ -114,7 +114,8 @@ async def validate_beta_reader_phase2(
     # Filter empty revision suggestions
     valid_suggestions = [s for s in output.revision_suggestions if s.strip()]
 
-    # category_score already clamped in _process_phase2, but verify
+    # Clamp category_score to the 1-10 range (the output model does not
+    # enforce this itself — the validator is the single clamp point).
     score = max(1, min(10, output.category_score))
 
     return output.model_copy(

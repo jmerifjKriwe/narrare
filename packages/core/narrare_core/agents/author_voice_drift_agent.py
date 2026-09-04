@@ -77,9 +77,9 @@ from __future__ import annotations
 from typing import Any
 
 # RunContext is intentionally a RUNTIME import (not TYPE_CHECKING): pydantic-ai
-# evaluates the output function's type hints via typing.get_type_hints() at
-# agent-construction time, so the annotation ``ctx: RunContext[...]`` MUST
-# resolve at runtime. Mirrors CharacterVoiceDriftAgent. noqa: TC002.
+# introspects output-validator signatures at agent-construction time, so the
+# annotation ``ctx: RunContext[...]`` MUST resolve at runtime.
+# Mirrors CharacterVoiceDriftAgent. noqa: TC002.
 from pydantic_ai import RunContext  # noqa: TC002
 
 from narrare_core.agents.author_voice_drift_types import AuthorVoiceDriftDeps
@@ -88,11 +88,7 @@ from narrare_core.agents.base import NarrareAgent
 # OUTPUT shape is REUSED — the narrator trend is classified into the same
 # locked contract as the character trend (the task's "reuse VoiceDriftResult
 # shape" mandate; ADR-073 D3 locked shape, applied to ADR-074 author voice).
-from narrare_core.agents.character_voice_drift_types import (
-    ChapterNote,
-    DriftType,
-    VoiceDriftResult,
-)
+from narrare_core.agents.character_voice_drift_types import VoiceDriftResult
 
 
 class AuthorVoiceDriftAgent(NarrareAgent[AuthorVoiceDriftDeps, VoiceDriftResult]):
@@ -115,7 +111,7 @@ class AuthorVoiceDriftAgent(NarrareAgent[AuthorVoiceDriftDeps, VoiceDriftResult]
         super().__init__(
             model=model,
             deps_type=AuthorVoiceDriftDeps,
-            output_type=[self._process_output, VoiceDriftResult],
+            output_type=VoiceDriftResult,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -154,30 +150,6 @@ class AuthorVoiceDriftAgent(NarrareAgent[AuthorVoiceDriftDeps, VoiceDriftResult]
                 "longitudinal_reasons": valid_reasons,
                 "suggested_attention": valid_attention,
             }
-        )
-
-    async def _process_output(
-        self,
-        ctx: RunContext[AuthorVoiceDriftDeps],
-        drift_type: DriftType = "evolution",
-        confidence: float = 0.0,
-        longitudinal_reasons: list[str] | None = None,
-        per_chapter_notes: list[dict[str, Any]] | None = None,
-        suggested_attention: list[str] | None = None,
-    ) -> VoiceDriftResult:
-        """Output Function — structures the LLM response into VoiceDriftResult.
-
-        During streaming (``ctx.partial_output``) returns a minimal empty result.
-        """
-        if ctx.partial_output:
-            return VoiceDriftResult()
-
-        return VoiceDriftResult(
-            drift_type=drift_type,
-            confidence=confidence,
-            longitudinal_reasons=longitudinal_reasons or [],
-            per_chapter_notes=[ChapterNote(**note) for note in (per_chapter_notes or [])],
-            suggested_attention=suggested_attention or [],
         )
 
     async def run(

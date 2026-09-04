@@ -34,8 +34,6 @@ from pydantic_ai import (
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.pov_types import (
-    POVDetectedIssue,
-    POVDetectedScene,
     POVDetectionOutput,
 )
 
@@ -77,7 +75,7 @@ class POVDetectionAgent(NarrareAgent[POVDeps, POVDetectionOutput]):
         super().__init__(
             model=model,
             deps_type=POVDeps,
-            output_type=[self._process_output, POVDetectionOutput],
+            output_type=POVDetectionOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -141,32 +139,6 @@ class POVDetectionAgent(NarrareAgent[POVDeps, POVDetectionOutput]):
                 )
 
         return output
-
-    async def _process_output(
-        self,
-        ctx: RunContext[POVDeps],
-        scenes: list[dict[str, Any]] | None = None,
-        issues: list[dict[str, Any]] | None = None,
-        pov_distribution: dict[str, float] | None = None,
-        switch_count: int | None = None,
-        analysis_type: str | None = None,
-        overall_assessment: str | None = None,
-    ) -> POVDetectionOutput:
-        """Output Function — structures the LLM response into POVDetectionOutput.
-
-        During streaming (``ctx.partial_output``) returns a minimal empty result.
-        """
-        if ctx.partial_output:
-            return POVDetectionOutput()
-
-        return POVDetectionOutput(
-            scenes=[POVDetectedScene(**s) for s in (scenes or [])],
-            issues=[POVDetectedIssue(**i) for i in (issues or [])],
-            pov_distribution=pov_distribution or {},
-            switch_count=switch_count or 0,
-            analysis_type=analysis_type or "",
-            overall_assessment=overall_assessment or "",
-        )
 
     async def run(
         self,
