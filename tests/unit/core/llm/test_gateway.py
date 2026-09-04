@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 if TYPE_CHECKING:
+    from pydantic_ai.models.test import TestModel
+
     from narrare_core.llm.result import StreamChunk
 
 from narrare_core.llm import LLMIntent, ResolvedModelConfig
@@ -72,6 +74,93 @@ class TestModelRegistryRun:
 
         assert captured_kwargs[0]["api_key"] == "sk-test-key"
         assert captured_kwargs[0]["base_url"] == "https://custom.api/v1"
+
+
+class TestModelRegistryPrepare:
+    """ModelRegistry.prepare() — the single assembly point for a call."""
+
+    async def test_prepare_returns_coherent_triple(
+        self,
+        registry_with_test_model: ModelRegistry,
+        write_config: ResolvedModelConfig,
+        test_model: TestModel,
+    ) -> None:
+        """prepare() returns a PreparedModelCall bundling model + settings + limits."""
+        from narrare_core.llm._prepared_call import PreparedModelCall
+
+        prepared = await registry_with_test_model.prepare(write_config)
+
+        assert isinstance(prepared, PreparedModelCall)
+        assert prepared.model is test_model
+        # No intent, no cache, no usage_limits → settings and limits are None.
+        assert prepared.model_settings is None
+        assert prepared.usage_limits is None
+
+    async def test_prepare_intent_flows_to_thinking_policy(
+        self,
+        registry_with_test_model: ModelRegistry,
+        write_config: ResolvedModelConfig,
+    ) -> None:
+        """prepare(intent=...) resolves the thinking level via the intent policy."""
+        prepared = await registry_with_test_model.prepare(write_config, intent=LLMIntent.KB_EXTRACT)
+
+        # KB category → thinking "low" (intent-aware thinking policy).
+        assert prepared.model_settings == {"thinking": "low"}
+
+    async def test_prepare_write_intent_without_cache_returns_none_settings(
+        self,
+        registry_with_test_model: ModelRegistry,
+        write_config: ResolvedModelConfig,
+    ) -> None:
+        """WRITING intent omits thinking; without cache settings the triple has None."""
+        prepared = await registry_with_test_model.prepare(write_config, intent=LLMIntent.WRITE)
+
+        assert prepared.model_settings is None
+
+    async def test_prepare_passes_credentials_to_get_model(
+        self,
+        registry_with_test_model: ModelRegistry,
+        write_config: ResolvedModelConfig,
+    ) -> None:
+        """prepare() forwards api_key/base_url to get_model."""
+        captured_kwargs: list[dict[str, object]] = []
+
+        original_get_model = registry_with_test_model.get_model
+
+        async def capture_get_model(config, **kwargs):
+            captured_kwargs.append(kwargs)
+            return await original_get_model(config, **kwargs)
+
+        with patch.object(
+            registry_with_test_model,
+            "get_model",
+            side_effect=capture_get_model,
+        ):
+            prepared = await registry_with_test_model.prepare(
+                write_config,
+                api_key="sk-test-key",
+                base_url="https://custom.api/v1",
+            )
+
+        assert captured_kwargs[0]["api_key"] == "sk-test-key"
+        assert captured_kwargs[0]["base_url"] == "https://custom.api/v1"
+        assert prepared.model is not None
+
+    async def test_prepare_usage_limits_pass_through_to_triple(
+        self,
+        registry_with_test_model: ModelRegistry,
+        write_config: ResolvedModelConfig,
+    ) -> None:
+        """prepare(usage_limits=...) returns the limits and forwards the output cap."""
+        from pydantic_ai.usage import UsageLimits
+
+        limits = UsageLimits(output_tokens_limit=500)
+
+        prepared = await registry_with_test_model.prepare(write_config, usage_limits=limits)
+
+        assert prepared.usage_limits is limits
+        # ADR-045: the output cap is mirrored as model_settings["max_tokens"].
+        assert prepared.model_settings == {"max_tokens": 500}
 
 
 class TestModelRegistryStream:
