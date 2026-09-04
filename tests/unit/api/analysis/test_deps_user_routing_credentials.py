@@ -80,6 +80,28 @@ class _RecordingRegistry:
             raise self._stop
         return SimpleNamespace(sentinel_model=True)
 
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: object = None,
+        usage_limits: object = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object:
+        """Task-6a bridge: resolution flows through prepare → get_model.
+
+        Delegates to the SAME recording ``get_model`` call so the
+        credential assertions (``registry.calls`` shape) hold for both
+        the migrated (prepare) and not-yet-migrated (direct get_model)
+        paths under test.
+        """
+        return SimpleNamespace(
+            model=await self.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
+
 
 # ===========================================================================
 # Resolution point — credentials reach ModelRegistry.get_model

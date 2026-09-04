@@ -35,6 +35,7 @@ from narrare.analysis.author_voice_drift_runtime_content import (
 )
 from narrare_core.agents.author_voice_drift_agent import AuthorVoiceDriftAgent
 from narrare_core.agents.author_voice_drift_types import AuthorVoiceDriftDeps
+from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from narrare_core.agents.character_voice_drift_types import (
@@ -87,7 +88,7 @@ async def run_author_voice_drift_agent(
         model_registry: Model registry used to resolve the configured model.
         model_config: Resolved model configuration.
         api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.get_model``.
+            cascade) — injected into ``ModelRegistry.prepare``.
         base_url: Optional per-user provider base URL override.
 
     Returns:
@@ -111,19 +112,26 @@ async def run_author_voice_drift_agent(
         chapter_meta=chapter_meta,
     )
 
-    model = await model_registry.get_model(
+    # Single assembly point (Task 6a — Task 4/5 pattern): model + intent-aware
+    # runtime settings + usage limits as one coherent triple, so the thinking
+    # policy actually reaches this call. No run-limit resolver is wired on
+    # this path, so ``usage_limits`` is ``None`` (no output caps).
+    prepared = await model_registry.prepare(
         model_config,
+        intent=LLMIntent.VOICE,
         api_key=api_key,
         base_url=base_url,
     )
     try:
         agent = AuthorVoiceDriftAgent(
-            model=model,
+            model=prepared.model,
             system_prompt=composed_prompt.system,
         )
         output = await agent.run(
             prompt=composed_prompt.user or run_prompt,
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
     except Exception as exc:
         logger.error(

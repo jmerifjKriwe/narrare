@@ -21,6 +21,7 @@ from narrare.analysis.character_voice_kb_writer import (
     format_attributed_dialogue,
     format_metrics_summary,
 )
+from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -64,7 +65,7 @@ async def run_character_voice_agent(
         model_config: Resolved model configuration.
         composed_prompt: The composed system + user prompt (Mode 1).
         api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.get_model``.
+            cascade) — injected into ``ModelRegistry.prepare``.
         base_url: Optional per-user provider base URL override.
 
     Returns:
@@ -72,8 +73,13 @@ async def run_character_voice_agent(
     """
     attributed_dialogue = format_attributed_dialogue(utterances)
     metrics_summary = format_metrics_summary(metrics)
-    model = await model_registry.get_model(
+    # Single assembly point (Task 6a — Task 4/5 pattern): model + intent-aware
+    # runtime settings + usage limits as one coherent triple, so the thinking
+    # policy actually reaches this call. No run-limit resolver is wired on
+    # this path, so ``usage_limits`` is ``None`` (no output caps).
+    prepared = await model_registry.prepare(
         model_config,
+        intent=LLMIntent.VOICE,
         api_key=api_key,
         base_url=base_url,
     )
@@ -90,10 +96,12 @@ async def run_character_voice_agent(
         writing_language=language,
     )
     try:
-        agent = CharacterVoiceAgent(model=model, system_prompt=composed_prompt.system)
+        agent = CharacterVoiceAgent(model=prepared.model, system_prompt=composed_prompt.system)
         output = await agent.run(
             prompt=composed_prompt.user or build_run_prompt(attributed_dialogue, metrics_summary),
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
     except Exception as exc:
         logger.error(
