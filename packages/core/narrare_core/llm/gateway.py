@@ -153,7 +153,8 @@ class ModelRegistry:
         :mod:`~narrare_core.agents` instead.
 
         Args:
-            intent: The operation intent (used for logging).
+            intent: The operation intent (drives the thinking policy and
+                logging).
             prompt: The user message / prompt text.
             config: Fully resolved model configuration.
             system_prompt: Optional system prompt.  Defaults to empty string.
@@ -179,7 +180,7 @@ class ModelRegistry:
             output_type=output_type or str,
         )
         try:
-            model_settings = build_runtime_model_settings(config, usage_limits)
+            model_settings = build_runtime_model_settings(config, usage_limits, intent=intent)
             # narrare: allow-agent reason="ModelRegistry run() passes model_settings (ADR-016)"
             result = await agent.run(
                 prompt,
@@ -231,7 +232,8 @@ class ModelRegistry:
         example interactive writing sessions or draft generation.
 
         Args:
-            intent: The operation intent (used for logging).
+            intent: The operation intent (drives the thinking policy and
+                logging).
             system_prompt: System role message.
             user_prompt: User role message.
             config: Fully resolved model configuration.
@@ -253,7 +255,7 @@ class ModelRegistry:
         start = time.monotonic()
 
         # narrare: allow-agent reason="ModelRegistry convenience stream() (ADR-015)"
-        model_settings = build_runtime_model_settings(config, usage_limits)
+        model_settings = build_runtime_model_settings(config, usage_limits, intent=intent)
         async with agent.run_stream(
             user_prompt, model_settings=model_settings, usage_limits=usage_limits
         ) as stream_result:

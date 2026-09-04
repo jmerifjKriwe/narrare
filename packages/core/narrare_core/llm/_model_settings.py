@@ -14,24 +14,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 from narrare_core.llm._providers.cache_settings import build_model_settings
+from narrare_core.llm.thinking_policy import resolve_thinking_level
 
 if TYPE_CHECKING:
-    from pydantic_ai.settings import ModelSettings, ThinkingLevel
+    from pydantic_ai.settings import ModelSettings
     from pydantic_ai.usage import UsageLimits
 
+    from narrare_core.llm.intents import LLMIntent
     from narrare_core.llm.model_config import ResolvedModelConfig
-
-_ZAI_THINKING_LEVEL: ThinkingLevel = "low"
-"""Default thinking effort for Z.AI models.
-
-GLM models (notably glm-5.3-flash) think extensively by default — measured
-~50k reasoning tokens on a 6.3k-token extraction prompt (~7 min), while
-``reasoning_effort: "low"`` completes the same task in ~22s / 872 completion
-tokens (verified via direct API probe). pydantic-ai's unified ``thinking``
-setting maps to ``reasoning_effort`` for OpenAI-compatible endpoints; the
-Z.AI provider profile declares ``supports_thinking=True`` so the setting
-resolves (see :data:`narrare_core.llm._providers.zai._ZAI_MODEL_PROFILE`).
-"""
 
 
 def get_cache_settings(config: ResolvedModelConfig) -> ModelSettings:
@@ -45,8 +35,9 @@ def get_cache_settings(config: ResolvedModelConfig) -> ModelSettings:
 def build_runtime_model_settings(
     config: ResolvedModelConfig,
     usage_limits: UsageLimits | None,
+    intent: LLMIntent | None = None,
 ) -> ModelSettings | None:
-    """Build provider model_settings merged with the output-token limit.
+    """Build provider model_settings merged with runtime policy settings.
 
     Cache/provider settings come from :func:`get_cache_settings`. When
     ``usage_limits.output_tokens_limit`` is set, it is forwarded as
@@ -54,15 +45,20 @@ def build_runtime_model_settings(
     enforces the same ceiling applied via ``UsageLimits``. The explicit
     runtime limit takes precedence over any provider-derived value.
 
-    Z.AI configs additionally receive a ``thinking`` default
-    (:data:`_ZAI_THINKING_LEVEL`) — GLM models think extensively by default,
-    which stalls extraction-class runs; this single point covers every
-    ``run()``/``stream()`` path routed through the gateway.
+    When ``intent`` is provided, a thinking level is resolved via
+    :func:`narrare_core.llm.thinking_policy.resolve_thinking_level`
+    (universal, intent-aware — replaced the former zai-only thinking
+    default). ``intent=None`` omits the key entirely. Providers without
+    thinking support drop the key at request time (pydantic-ai
+    ``supports_thinking`` profile gate), making the policy
+    provider-universal.
     """
     base = get_cache_settings(config)
     settings: dict[str, object] = dict(base) if base else {}
     if usage_limits is not None and usage_limits.output_tokens_limit is not None:
         settings["max_tokens"] = usage_limits.output_tokens_limit
-    if config.provider_name == "zai":
-        settings["thinking"] = _ZAI_THINKING_LEVEL
+    if intent is not None:
+        thinking = resolve_thinking_level(intent)
+        if thinking is not None:
+            settings["thinking"] = thinking
     return cast("ModelSettings", settings) if settings else None

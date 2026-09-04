@@ -208,7 +208,9 @@ class ExtractionService:
                 invocation_id=uuid4(),
             )
         usage_limits = resolved_limits.usage_limits if resolved_limits is not None else None
-        model_settings = build_runtime_model_settings(self._config, usage_limits)
+        model_settings = build_runtime_model_settings(
+            self._config, usage_limits, intent=LLMIntent.KB_EXTRACT
+        )
         result = await agent.run(
             prompt=chapter_content,
             deps=deps,

@@ -130,7 +130,9 @@ async def test_extract_from_chapter_without_resolver_applies_no_output_caps() ->
     Backward-compat for existing wiring/tests that construct the service
     without a resolver: ``usage_limits`` stays ``None`` and
     ``model_settings`` carries no ``max_tokens`` (provider ``test`` has no
-    cache settings).
+    cache settings). The intent-aware thinking policy still applies — the
+    call site passes ``intent=LLMIntent.KB_EXTRACT``, whose category (KB)
+    resolves to ``thinking="low"`` universally.
     """
     config = _make_config()
     chapter_repo = FakeChapterRepo()
@@ -151,7 +153,7 @@ async def test_extract_from_chapter_without_resolver_applies_no_output_caps() ->
 
     kwargs = mock_agent.run.call_args.kwargs
     assert kwargs["usage_limits"] is None
-    assert kwargs["model_settings"] is None
+    assert kwargs["model_settings"] == {"thinking": "low"}
 
 
 # ---------------------------------------------------------------------------

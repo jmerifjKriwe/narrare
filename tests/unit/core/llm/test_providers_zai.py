@@ -234,10 +234,11 @@ class TestZaiThinkingProfile:
     def test_runtime_thinking_setting_resolves_for_zai_model(self) -> None:
         """End-to-end: ``settings['thinking']`` survives ``prepare_request``.
 
-        Dead-code guard: ``build_runtime_model_settings`` injects
-        ``thinking="low"`` for zai configs; this proves the zai model actually
-        resolves it into request parameters (``params.thinking``) instead of
-        silently dropping it, and strips it from the outgoing settings.
+        Dead-code guard: the intent-aware thinking policy injects
+        ``thinking`` levels (e.g. ``"low"`` for KB/extraction intents); this
+        proves the zai model actually resolves such a setting into request
+        parameters (``params.thinking``) instead of silently dropping it,
+        and strips it from the outgoing settings.
         """
         from pydantic_ai.models import ModelRequestParameters
 
