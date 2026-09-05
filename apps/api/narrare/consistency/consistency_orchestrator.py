@@ -11,6 +11,7 @@ internal collaborator injected into ``ConsistencyCheckerService``.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
@@ -20,6 +21,7 @@ from narrare_core.agents.fact_extractor_types import (
     FactExtractorDeps,
     TimelineEventEnvelope,
 )
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 if TYPE_CHECKING:
     import uuid
@@ -65,6 +67,7 @@ class ConsistencyOrchestrator:
         fact_extractor_base_url: str | None = None,
         consistency_api_key: str | None = None,
         consistency_base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._registry = registry
         self._fact_extractor_config = fact_extractor_config
@@ -75,6 +78,7 @@ class ConsistencyOrchestrator:
         self._fact_extractor_base_url = fact_extractor_base_url
         self._consistency_api_key = consistency_api_key
         self._consistency_base_url = consistency_base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def run_staged_check(
         self,
@@ -287,11 +291,14 @@ class ConsistencyOrchestrator:
 
         # Single assembly point (Task 6b — Task 4/5 pattern): model + intent-aware
         # runtime settings + usage limits as one coherent triple, so the thinking
-        # policy actually reaches this call. No run-limit resolver is wired on
-        # this path, so ``usage_limits`` is ``None`` (no output caps).
+        # policy actually reaches this call.
+        resolved = self._run_limit_resolver.resolve(
+            config=self._fact_extractor_config, budget=None, invocation_id=uuid4()
+        )
         prepared = await self._registry.prepare(
             self._fact_extractor_config,
             intent=LLMIntent.FACT_EXTRACT,
+            usage_limits=resolved.usage_limits,
             api_key=self._fact_extractor_api_key,
             base_url=self._fact_extractor_base_url,
         )

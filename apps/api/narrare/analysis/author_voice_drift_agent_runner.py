@@ -27,6 +27,7 @@ See:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
@@ -36,6 +37,7 @@ from narrare.analysis.author_voice_drift_runtime_content import (
 from narrare_core.agents.author_voice_drift_agent import AuthorVoiceDriftAgent
 from narrare_core.agents.author_voice_drift_types import AuthorVoiceDriftDeps
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 if TYPE_CHECKING:
     from narrare_core.agents.character_voice_drift_types import (
@@ -65,6 +67,7 @@ async def run_author_voice_drift_agent(
     model_config: ResolvedModelConfig,
     api_key: str | None = None,
     base_url: str | None = None,
+    run_limit_resolver: DefaultRunLimitResolver | None = None,
 ) -> VoiceDriftResult:
     """Run the author-voice-drift agent for the narrator (one LLM call).
 
@@ -114,11 +117,14 @@ async def run_author_voice_drift_agent(
 
     # Single assembly point (Task 6a — Task 4/5 pattern): model + intent-aware
     # runtime settings + usage limits as one coherent triple, so the thinking
-    # policy actually reaches this call. No run-limit resolver is wired on
-    # this path, so ``usage_limits`` is ``None`` (no output caps).
+    # policy actually reaches this call.
+    resolved = (run_limit_resolver or DefaultRunLimitResolver()).resolve(
+        config=model_config, budget=None, invocation_id=uuid4()
+    )
     prepared = await model_registry.prepare(
         model_config,
         intent=LLMIntent.VOICE,
+        usage_limits=resolved.usage_limits,
         api_key=api_key,
         base_url=base_url,
     )

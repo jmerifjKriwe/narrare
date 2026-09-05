@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -41,6 +42,7 @@ async def run_llm_consistency_checks(
     config: ResolvedModelConfig,
     composer: PromptComposer,
     invocation_pipeline: InvocationPipeline | None,
+    run_limit_resolver: DefaultRunLimitResolver | None = None,
 ) -> list[TemporalIssueResponse]:
     """Run LLM-based consistency checks via TimelineAgent.
 
@@ -70,15 +72,22 @@ async def run_llm_consistency_checks(
         :class:`TemporalIssueResponse` (empty on failure).
     """
     try:
+        from uuid import uuid4
+
         from narrare_core.agents.timeline_agent import TimelineAgent, TimelineDeps
         from narrare_core.llm.intents import LLMIntent
+        from narrare_core.llm.run_limits import DefaultRunLimitResolver
         from narrare_core.prompts.context import PromptContext
 
         # Single assembly point (Task 6b — Task 4/5 pattern): model + intent-aware
         # runtime settings + usage limits as one coherent triple, so the thinking
-        # policy actually reaches this call. No run-limit resolver is wired on
-        # this path, so ``usage_limits`` is ``None`` (no output caps).
-        prepared = await registry.prepare(config, intent=LLMIntent.PLAN)
+        # policy actually reaches this call.
+        resolved = (run_limit_resolver or DefaultRunLimitResolver()).resolve(
+            config=config, budget=None, invocation_id=uuid4()
+        )
+        prepared = await registry.prepare(
+            config, intent=LLMIntent.PLAN, usage_limits=resolved.usage_limits
+        )
 
         # Build a compact event context for the LLM (user prompt — dynamic data).
         # Per AC-2 (CR-AUFG-02-06): event data goes in the user channel,

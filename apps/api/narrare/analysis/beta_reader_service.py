@@ -11,19 +11,20 @@ from __future__ import annotations
 
 import hashlib
 from typing import TYPE_CHECKING
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import structlog
 
 from narrare.analysis._invocation_compose import compose_analysis_invocation_prompt
 from narrare.analysis.beta_reader_agent_run import run_phase1, run_phase2
 from narrare.analysis.beta_reader_cache import BetaReaderCache
+from narrare.analysis.beta_reader_context import assemble_context
 from narrare.analysis.beta_reader_mapper import (
     map_phase1_response,
     map_phase2_response,
 )
 from narrare.analysis.beta_reader_prompt import build_budgeted_prompt
-from narrare.analysis.errors import AnalysisError, CacheRetrievalError
+from narrare.analysis.errors import CacheRetrievalError
 from narrare.analysis.schemas import (
     BetaReaderDeepDiveRequest,
     BetaReaderDeepDiveResponse,
@@ -34,10 +35,10 @@ from narrare.analysis.validation import validate_word_count
 from narrare_core.agents.beta_reader_agent import BetaReaderAgent
 from narrare_core.analysis.assembler import AnalysisContextAssembler
 from narrare_core.llm import LLMIntent, ResolvedModelConfig
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 if TYPE_CHECKING:
     from narrare.analysis.context_assembler import ContextAssembler
-    from narrare_core.agents.beta_reader_types import BetaReaderDeps
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry
     from narrare_core.prompts import PromptComposer
@@ -76,6 +77,7 @@ class BetaReaderService:
         invocation_pipeline: InvocationPipeline | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._assembler = context_assembler
         self._cache = cache
@@ -86,6 +88,7 @@ class BetaReaderService:
         self._invocation_pipeline = invocation_pipeline
         self._api_key = api_key
         self._base_url = base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def analyze(
         self,
@@ -117,7 +120,7 @@ class BetaReaderService:
         )
 
         # 1. Assemble context (validates chapters exist)
-        deps = await self._assemble_context(novel_id, user_id, request.chapter_ids)
+        deps = await assemble_context(self._assembler, novel_id, user_id, request.chapter_ids)
 
         # 2. Compute content hash for cache-key discrimination (ADR-021)
         content_hash = hashlib.sha256(deps.chapter_text.encode()).hexdigest()[:12]
@@ -151,9 +154,13 @@ class BetaReaderService:
             language=deps.language,
             mode="beta_reader",
         )
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
         prepared = await self._registry.prepare(
             self._config,
             intent=LLMIntent.BETA_READ,
+            usage_limits=resolved.usage_limits,
             api_key=self._api_key,
             base_url=self._base_url,
         )
@@ -215,7 +222,7 @@ class BetaReaderService:
         )
 
         # 1. Assemble context first (needed to compute content_hash for Phase 1 lookup)
-        deps = await self._assemble_context(novel_id, user_id, request.chapter_ids)
+        deps = await assemble_context(self._assembler, novel_id, user_id, request.chapter_ids)
         content_hash = hashlib.sha256(deps.chapter_text.encode()).hexdigest()[:12]
 
         # 2. Retrieve Phase 1 from cache for context (using content-aware key)
@@ -243,9 +250,13 @@ class BetaReaderService:
             language=deps.language,
             mode="beta_reader_deepdive",
         )
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
         prepared = await self._registry.prepare(
             self._config,
             intent=LLMIntent.BETA_READ,
+            usage_limits=resolved.usage_limits,
             api_key=self._api_key,
             base_url=self._base_url,
         )
@@ -270,29 +281,3 @@ class BetaReaderService:
         )
 
         return response
-
-    # -----------------------------------------------------------------------
-    # Private helpers
-    # -----------------------------------------------------------------------
-
-    async def _assemble_context(
-        self, novel_id: UUID, user_id: UUID, chapter_ids: list[str]
-    ) -> BetaReaderDeps:
-        """Assemble BetaReaderDeps from database.
-
-        Raises:
-            AnalysisError: If context assembly fails.
-        """
-        try:
-            return await self._assembler.build_context(
-                novel_id=novel_id,
-                chapter_ids=[UUID(cid) for cid in chapter_ids],
-                user_id=user_id,
-            )
-        except Exception as exc:
-            logger.error(
-                "context_assembly_failed",
-                novel_id=str(novel_id),
-                error=str(exc),
-            )
-            raise AnalysisError("Failed to assemble analysis context") from exc

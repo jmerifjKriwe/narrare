@@ -21,6 +21,7 @@ boundary because that is the LLM surface here.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 import structlog
 
@@ -31,6 +32,7 @@ from narrare.series.band_summary_prompt import (
 from narrare_core.agents.band_summary_agent import BandSummaryAgent
 from narrare_core.agents.band_summary_types import BandSummaryDeps
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import NotFoundError, ValidationError, WritingError
 
 if TYPE_CHECKING:
@@ -85,6 +87,7 @@ class BandSummaryService:
         api_key: str | None = None,
         base_url: str | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         """Initialise the service with all dependencies.
 
@@ -100,6 +103,8 @@ class BandSummaryService:
             api_key: Optional per-user API key override.
             base_url: Optional per-user base URL override.
             invocation_pipeline: Optional InvocationPipeline for evidence.
+            run_limit_resolver: Optional ADR-045 run-limit resolver; defaults to
+                ``DefaultRunLimitResolver`` (Task 3 wiring).
         """
         self._repo = repo
         self._novel_repo = novel_repo
@@ -111,6 +116,7 @@ class BandSummaryService:
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def get(self, novel_id: uuid.UUID) -> BandSummary:
         """Return the existing band summary (no generation).
@@ -173,11 +179,14 @@ class BandSummaryService:
             # 4. Resolve model + instantiate agent (RULE-01b: agents-first).
             #    Single assembly point (Task 6d — Task 4/5 pattern): model +
             #    intent-aware runtime settings + usage limits as one
-            #    coherent triple. No run-limit resolver is wired on this
-            #    path, so ``usage_limits`` is ``None``.
+            #    coherent triple.
+            resolved = self._run_limit_resolver.resolve(
+                config=self._config, budget=None, invocation_id=uuid4()
+            )
             prepared = await self._registry.prepare(
                 self._config,
                 intent=LLMIntent.SUMMARIZE,
+                usage_limits=resolved.usage_limits,
                 api_key=self._api_key,
                 base_url=self._base_url,
             )

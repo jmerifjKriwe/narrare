@@ -23,19 +23,21 @@ from __future__ import annotations
 
 import asyncio
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
 import structlog
 
+from narrare.planning._timeline_extraction_helpers import load_chapters
 from narrare.planning.timeline_schemas import ExtractedEventResponse
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
     import uuid
 
-    from narrare.chapters.models import Chapter
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
@@ -65,6 +67,8 @@ class TimelineExtractionService:
             ``stream_extraction``.
         event_repo: Optional — for loading existing event names to avoid duplicates.
         invocation_pipeline: Optional pipeline for invocation evidence.
+        run_limit_resolver: Optional ADR-045 run-limit resolver; defaults to
+            ``DefaultRunLimitResolver`` (Task 3 wiring).
     """
 
     def __init__(
@@ -76,6 +80,7 @@ class TimelineExtractionService:
         composer: PromptComposer | None = None,
         event_repo: TimelineEventRepository | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
@@ -84,6 +89,7 @@ class TimelineExtractionService:
         self._composer = composer
         self._event_repo = event_repo
         self._invocation_pipeline = invocation_pipeline
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def stream_extraction(
         self,
@@ -132,7 +138,7 @@ class TimelineExtractionService:
                 code="NO_COMPOSER",
             )
 
-        chapters = await self._get_chapters(novel_id, chapter_ids)
+        chapters = await load_chapters(self._chapter_repo, novel_id, chapter_ids)
 
         # Get existing event names to avoid duplicates
         existing_event_names: list[str] = []
@@ -185,7 +191,12 @@ class TimelineExtractionService:
             )
 
         # Task 6b single assembly point: coherent (model, model_settings, usage_limits) triple.
-        prepared = await self._registry.prepare(self._config, intent=LLMIntent.PLAN)
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
+        prepared = await self._registry.prepare(
+            self._config, intent=LLMIntent.PLAN, usage_limits=resolved.usage_limits
+        )
         deps = TemporalExtractionDeps(
             genre=novel.genre or "",
             language=language,
@@ -277,24 +288,3 @@ class TimelineExtractionService:
             count=len(results),
         )
         return results
-
-    async def _get_chapters(
-        self,
-        novel_id: uuid.UUID,
-        chapter_ids: list[uuid.UUID] | None,
-    ) -> list[Chapter]:
-        """Load chapters by IDs or all chapters for a novel.
-
-        Args:
-            novel_id: UUID of the novel.
-            chapter_ids: Optional list of specific chapter IDs. If None,
-                returns all chapters.
-
-        Returns:
-            List of matching chapters.
-        """
-        chapters = await self._chapter_repo.list_by_novel(novel_id)
-        if chapter_ids is not None:
-            chapter_id_set = set(chapter_ids)
-            chapters = [ch for ch in chapters if ch.id in chapter_id_set]
-        return chapters

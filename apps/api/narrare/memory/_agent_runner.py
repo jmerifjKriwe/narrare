@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -47,6 +48,7 @@ async def run_preference_analysis_agent(
     model_config: ResolvedModelConfig,
     api_key: str | None = None,
     base_url: str | None = None,
+    run_limit_resolver: DefaultRunLimitResolver | None = None,
     composer: PromptComposer,
     invocation_pipeline: InvocationPipeline | None,
     feedback_text: str,
@@ -87,17 +89,24 @@ async def run_preference_analysis_agent(
     from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
 
     try:
+        from uuid import uuid4
+
+        from narrare_core.llm.run_limits import DefaultRunLimitResolver
+
         # Real resolution point: the config was resolved for THIS user
         # by the DI factory (per-user model-routing cascade); the
         # credentials must reach the resolution call so the provider
         # actually authenticates as the user (the setup-wizard bug
         # class). Single assembly point (Task 6d — Task 4/5 pattern):
         # model + intent-aware runtime settings + usage limits as one
-        # coherent triple. No run-limit resolver is wired on this
-        # path, so ``usage_limits`` is ``None``.
+        # coherent triple.
+        resolved = (run_limit_resolver or DefaultRunLimitResolver()).resolve(
+            config=model_config, budget=None, invocation_id=uuid4()
+        )
         prepared = await model_registry.prepare(
             model_config,
             intent=LLMIntent.EXTRACT,
+            usage_limits=resolved.usage_limits,
             api_key=api_key,
             base_url=base_url,
         )

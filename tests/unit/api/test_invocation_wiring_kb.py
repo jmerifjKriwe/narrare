@@ -2,8 +2,10 @@
 
 Verifies that each KB service that makes LLM calls produces
 invocation evidence when an ``InvocationPipeline`` (with a
-``FakeEvidenceSink``) is wired, and that behavior is unchanged when
-``invocation_pipeline=None`` (backward compatibility).
+``FakeEvidenceSink``) is wired.
+
+Backward-compatibility tests (``invocation_pipeline=None``) live in
+``test_invocation_wiring_kb_backward_compat.py``.
 
 Services covered:
 1. ExtractionService — ExtractionAgent
@@ -27,6 +29,7 @@ from uuid import uuid4
 import pytest
 
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
+from narrare_core.llm import ResolvedModelConfig
 
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.models import FeatureInvocationEvidence
@@ -320,7 +323,12 @@ class TestMergeInvocationWiring:
         service = KBMergeService(
             novel_repo=mock_novel_repo,
             model_registry=mock_registry,
-            model_config=MagicMock(spec=["model_id", "provider_name"]),
+            # Real config value object — the ADR-045 run-limit resolver
+            # (Task 3) reads resolve_output_limit()/token_limit_profile
+            # from it during the Task 6c prepare() assembly.
+            model_config=ResolvedModelConfig(
+                provider_name="default", model_id="default", temperature=0.7, max_tokens=4096
+            ),
             composer=mock_composer,
             invocation_pipeline=pipeline,
         )
@@ -349,50 +357,3 @@ class TestMergeInvocationWiring:
             )
 
         assert len(sink.records) >= 1
-
-
-# ===========================================================================
-# Backward compatibility — no pipeline = no crash
-# ===========================================================================
-
-
-class TestBackwardCompatibility:
-    """KB services work correctly when invocation_pipeline is None."""
-
-    @pytest.mark.asyncio
-    async def test_improve_service_without_pipeline(self) -> None:
-        """KBImproveService works without invocation_pipeline."""
-        from narrare.kb.improve_service import KBImproveService
-
-        mock_analyzer = MagicMock(spec=["analyze"])
-        mock_analyzer.analyze = AsyncMock(return_value=MagicMock(spec=["suggestions"]))
-
-        service = KBImproveService(
-            analyzer=mock_analyzer,
-            kb_repo=MagicMock(spec=["get_by_id"]),
-            kb_service=MagicMock(spec=["get"]),
-            rel_repo=MagicMock(spec=["get_by_id"]),
-            invocation_pipeline=None,
-        )
-
-        result = await service.analyze(novel_id=uuid4(), entry_id=uuid4())
-        assert result is not None
-
-    @pytest.mark.asyncio
-    async def test_worldbuilding_service_without_pipeline(self) -> None:
-        """WorldbuildingService works without invocation_pipeline."""
-        from narrare.kb.worldbuilding_contracts import WorldbuildingAnalysisRequest
-        from narrare.kb.worldbuilding_service import WorldbuildingService
-
-        mock_analyzer = MagicMock(spec=["analyze"])
-        mock_analyzer.analyze = AsyncMock(return_value=MagicMock(spec=["connections"]))
-
-        service = WorldbuildingService(
-            analyzer=mock_analyzer,
-            rel_repo=MagicMock(spec=["get_by_id"]),
-            cache=MagicMock(spec=["get", "set"]),
-            invocation_pipeline=None,
-        )
-
-        result = await service.analyze(novel_id=uuid4(), request=WorldbuildingAnalysisRequest())
-        assert result is not None

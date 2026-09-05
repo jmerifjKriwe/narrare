@@ -116,9 +116,10 @@ def _assert_prepare_wiring(
     assert agent.last_model is prepared.model
     assert agent.last_run_kwargs["model_settings"] is prepared.model_settings
     assert agent.last_run_kwargs["usage_limits"] is prepared.usage_limits
-    # No run-limit resolver is wired on these series paths (Task 6d
-    # concern, same as 6a/6b/6c): the pass-through value is None.
-    assert prepared.usage_limits is None
+    # Task 3 follow-up: the ADR-045 run-limit resolver is wired on these
+    # series paths — the pass-through value is a resolved, non-None
+    # UsageLimits (capped to the config's max_tokens).
+    assert prepared.usage_limits is not None
     assert agent.run_count == 1
 
 

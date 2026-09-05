@@ -167,8 +167,8 @@ class TestAssistPrepareWiring:
         run_kwargs = MockAgent.return_value.run.call_args.kwargs
         assert run_kwargs["model_settings"] is prepared.model_settings
         assert run_kwargs["usage_limits"] is prepared.usage_limits
-        # No run-limit resolver is wired on this path (Task 6c concern):
-        # the pass-through value is None (no output caps).
-        assert prepared.usage_limits is None
+        # Task 3 follow-up: the ADR-045 run-limit resolver is wired —
+        # the pass-through value is a resolved, non-None UsageLimits.
+        assert prepared.usage_limits is not None
         assert MockAgent.return_value.run.await_count == 1
         assert result.field_key == "backstory"

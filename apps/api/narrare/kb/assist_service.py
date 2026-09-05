@@ -8,11 +8,13 @@ PromptComposer for system prompts (RULE-02).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
 from narrare_core.agents.kb_assist_agent import KBAssistAgent, KBAssistDeps
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import (
     ConfigurationError,
     InvocationValidationError,
@@ -76,6 +78,7 @@ class KBAssistService:
         invocation_pipeline: InvocationPipeline | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         from narrare_core.agents.kb_agent import KBAgent
 
@@ -87,6 +90,7 @@ class KBAssistService:
         self._invocation_pipeline = invocation_pipeline
         self._api_key = api_key
         self._base_url = base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def _prepare(self, intent: LLMIntent) -> PreparedModelCall:
         """Resolve the coherent call triple lazily from the registry.
@@ -97,12 +101,14 @@ class KBAssistService:
         (KB_INTERVIEW / KB_SUGGEST / KB_ENHANCE). Per-user credentials
         (model-routing cascade) are forwarded so the user's
         wizard-configured provider is used, not the operator env.
-        No run-limit resolver is wired on this path, so
-        ``usage_limits`` is ``None`` (no output caps).
         """
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
         return await self._registry.prepare(
             self._config,
             intent=intent,
+            usage_limits=resolved.usage_limits,
             api_key=self._api_key,
             base_url=self._base_url,
         )

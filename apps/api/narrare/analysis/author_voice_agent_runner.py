@@ -21,10 +21,12 @@ See:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -118,6 +120,7 @@ async def run_author_voice_agent(
     composed_prompt: ComposedPrompt,
     api_key: str | None = None,
     base_url: str | None = None,
+    run_limit_resolver: DefaultRunLimitResolver | None = None,
 ) -> AuthorVoiceOutput:
     """Format runtime content and run one :class:`AuthorVoiceAgent` call.
 
@@ -153,11 +156,14 @@ async def run_author_voice_agent(
 
     # Single assembly point (Task 6a — Task 4/5 pattern): model + intent-aware
     # runtime settings + usage limits as one coherent triple, so the thinking
-    # policy actually reaches this call. No run-limit resolver is wired on
-    # this path, so ``usage_limits`` is ``None`` (no output caps).
+    # policy actually reaches this call.
+    resolved = (run_limit_resolver or DefaultRunLimitResolver()).resolve(
+        config=model_config, budget=None, invocation_id=uuid4()
+    )
     prepared = await model_registry.prepare(
         model_config,
         intent=LLMIntent.VOICE,
+        usage_limits=resolved.usage_limits,
         api_key=api_key,
         base_url=base_url,
     )

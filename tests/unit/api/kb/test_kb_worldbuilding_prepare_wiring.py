@@ -161,7 +161,9 @@ class TestWorldbuildingPrepareWiring:
         phase1_kwargs = agent.run_phase1.call_args.kwargs
         assert phase1_kwargs["model_settings"] is prepared.model_settings
         assert phase1_kwargs["usage_limits"] is prepared.usage_limits
-        assert prepared.usage_limits is None
+        # Task 3 follow-up: the ADR-045 run-limit resolver is wired —
+        # the pass-through value is a resolved, non-None UsageLimits.
+        assert prepared.usage_limits is not None
         agent.run_phase2.assert_not_called()
         assert result.worldbuilding_score == 0.75
 

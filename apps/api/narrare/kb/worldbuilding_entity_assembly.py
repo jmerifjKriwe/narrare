@@ -12,7 +12,7 @@ from uuid import UUID
 
 import structlog
 
-from narrare_core.agents.worldbuilding_types import Phase1EntitySummary
+from narrare_core.agents.worldbuilding_types import Phase1EntitySummary, WorldbuildingDeps
 from narrare_core.kb.relationships import suggested_for
 from narrare_core.kb.schemas.registry import get_schema
 
@@ -21,6 +21,37 @@ if TYPE_CHECKING:
     from narrare.kb.models import KBEntry
 
 logger = structlog.get_logger(__name__)
+
+
+async def build_deps(
+    kb_repo: KBRepositoryProtocol,
+    rel_repo: RelationshipRepositoryProtocol,
+    novel_id: UUID,
+    entity_types: list[str] | None,
+) -> tuple[WorldbuildingDeps, int]:
+    """Assemble entity data into WorldbuildingDeps.
+
+    Moved from ``worldbuilding_analyzer._build_deps`` (RULE-04): this module
+    owns entity assembly; the analyzer orchestrates phases.
+    """
+    entities = await list_entities(kb_repo, novel_id, entity_types)
+    total_count = len(entities)
+    if not entities:
+        return WorldbuildingDeps(language="en"), 0
+
+    adjacency = await get_adjacency_safe(rel_repo, novel_id, entities)
+    summaries = build_entity_summaries(entities, adjacency)
+    prioritized = prioritize_entities(summaries)
+    relationships = await get_relationships_for(prioritized, rel_repo)
+
+    type_set = {e.entity_type for e in entities}
+    return WorldbuildingDeps(
+        language="en",
+        entity_summaries=prioritized,
+        template_structures=build_template_structures(type_set),
+        existing_relationships=relationships,
+        available_rel_types=build_available_rel_types(type_set),
+    ), total_count
 
 
 async def list_entities(

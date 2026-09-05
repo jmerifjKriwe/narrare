@@ -124,6 +124,7 @@ class _AssertWiring:
         run_kwargs = mock_agent_cls.return_value.run.call_args.kwargs
         assert run_kwargs["model_settings"] is prepared.model_settings
         assert run_kwargs["usage_limits"] is prepared.usage_limits
-        # No run-limit resolver is wired on these KB paths (Task 6c
-        # concern): the pass-through value is None (no output caps).
-        assert prepared.usage_limits is None
+        # Task 3 follow-up: the ADR-045 run-limit resolver is wired on
+        # these KB paths — the pass-through value is a resolved, non-None
+        # UsageLimits (capped to the config's max_tokens).
+        assert prepared.usage_limits is not None

@@ -17,11 +17,13 @@ Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
 from narrare.planning._event_render import render_confirmed_events
 from narrare.planning.schemas import ArcPhaseResponse, CharacterArcRequest, CharacterArcResponse
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -77,6 +79,7 @@ class CharacterArcService:
         api_key: str | None = None,
         base_url: str | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._registry = model_registry
@@ -86,6 +89,7 @@ class CharacterArcService:
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def generate_character_arc(
         self,
@@ -178,11 +182,14 @@ class CharacterArcService:
 
         # Single assembly point (Task 6b — Task 4/5 pattern): model + intent-aware
         # runtime settings + usage limits as one coherent triple, so the thinking
-        # policy actually reaches this call. No run-limit resolver is wired on
-        # this path, so ``usage_limits`` is ``None`` (no output caps).
+        # policy actually reaches this call.
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
         prepared = await self._registry.prepare(
             self._config,
             intent=LLMIntent.PLAN,
+            usage_limits=resolved.usage_limits,
             api_key=self._api_key,
             base_url=self._base_url,
         )

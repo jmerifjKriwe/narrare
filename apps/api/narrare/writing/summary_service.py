@@ -8,6 +8,7 @@ All prompts come from PromptComposer (RULE-02).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
@@ -15,6 +16,7 @@ from narrare.writing.summary_contracts import SummaryResult
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
 from narrare_core.ai_invocation import compose_invocation
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import NotFoundError, WritingError
 
@@ -57,6 +59,7 @@ class ChapterSummaryService:
         api_key: str | None = None,
         base_url: str | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         """Initialize ChapterSummaryService with all dependencies.
 
@@ -68,6 +71,8 @@ class ChapterSummaryService:
             api_key: Optional per-user API key override.
             base_url: Optional per-user base URL override.
             invocation_pipeline: Optional InvocationPipeline for evidence recording.
+            run_limit_resolver: Optional ADR-045 run-limit resolver; defaults to
+                ``DefaultRunLimitResolver`` (Task 3 wiring).
         """
         self._registry = registry
         self._config = config
@@ -76,6 +81,7 @@ class ChapterSummaryService:
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def summarize(
         self,
@@ -147,11 +153,14 @@ class ChapterSummaryService:
 
             # 3. Run the summary agent — single assembly point (Task 6c —
             #    Task 4/5 pattern): model + intent-aware runtime settings +
-            #    usage limits as one coherent triple. No run-limit resolver is
-            #    wired on this path, so ``usage_limits`` is ``None``.
+            #    usage limits as one coherent triple.
+            resolved = self._run_limit_resolver.resolve(
+                config=self._config, budget=None, invocation_id=uuid4()
+            )
             prepared = await self._registry.prepare(
                 self._config,
                 intent=LLMIntent.SUMMARIZE,
+                usage_limits=resolved.usage_limits,
                 api_key=self._api_key,
                 base_url=self._base_url,
             )

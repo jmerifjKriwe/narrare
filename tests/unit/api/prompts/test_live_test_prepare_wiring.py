@@ -173,6 +173,6 @@ async def test_stream_live_test_resolves_via_prepare_and_forwards_triple() -> No
     # The settings half of the triple reaches the agent run boundary.
     assert factory.agent.run_stream_kwargs["model_settings"] is prepared.model_settings
     assert factory.agent.run_stream_kwargs["usage_limits"] is prepared.usage_limits
-    # No run-limit resolver is wired on this path (Task 7 concern, same
-    # as 6a/6b/6c/6d): the pass-through value is None.
-    assert prepared.usage_limits is None
+    # Task 3 follow-up: the ADR-045 run-limit resolver is wired — the
+    # pass-through value is a resolved, non-None UsageLimits.
+    assert prepared.usage_limits is not None

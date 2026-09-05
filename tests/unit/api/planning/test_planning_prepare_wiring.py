@@ -192,9 +192,8 @@ def _assert_prepare_wiring(
     run_kwargs = mock_agent_cls.return_value.run.call_args.kwargs
     assert run_kwargs["model_settings"] is prepared.model_settings
     assert run_kwargs["usage_limits"] is prepared.usage_limits
-    # No run-limit resolver is wired on these planning paths (Task 6b-2
-    # concern): the pass-through value is None (no output caps).
-    assert prepared.usage_limits is None
+    # Task 3 follow-up: the ADR-045 resolver is wired — non-None UsageLimits.
+    assert prepared.usage_limits is not None
     assert mock_agent_cls.return_value.run.await_count == 1
 
 

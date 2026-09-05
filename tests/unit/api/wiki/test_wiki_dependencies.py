@@ -13,10 +13,14 @@ the startup wiki listener in ``_app/lifespan.py``).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from pydantic_ai.usage import UsageLimits
 
 from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
 from narrare.wiki.dependencies import (
@@ -31,6 +35,7 @@ from narrare_core.llm import ModelRegistry, ResolvedModelConfig
 from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.model_routing import ResolvedModel
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from tests.fakes.fake_core_wiki_service import FakeCoreWikiService
 
 # ---------------------------------------------------------------------------
@@ -48,6 +53,20 @@ def _user_config() -> ResolvedModelConfig:
         model_id="glm-4.7",
         temperature=0.7,
         max_tokens=4096,
+    )
+
+
+def _expected_usage_limits(config: ResolvedModelConfig) -> UsageLimits | None:
+    """The ADR-045 limits the factory's DefaultRunLimitResolver produces.
+
+    The factory resolves limits from the config alone (budget=None), so
+    the expected ``usage_limits`` are deterministic per config and can be
+    mirrored exactly here.
+    """
+    return (
+        DefaultRunLimitResolver()
+        .resolve(config=config, budget=None, invocation_id=uuid4())
+        .usage_limits
     )
 
 
@@ -132,13 +151,17 @@ class TestBuildCoreWikiService:
         mock_registry.prepare = AsyncMock(
             return_value=PreparedModelCall(model=mock_model, model_settings=None, usage_limits=None)
         )
-        mock_config = MagicMock(spec=ResolvedModelConfig)
+        # Real config value object — the ADR-045 run-limit resolver (Task 3)
+        # reads resolve_output_limit()/token_limit_profile from it.
+        system_config = ResolvedModelConfig(
+            provider_name="default", model_id="default", temperature=0.7, max_tokens=4096
+        )
 
         with (
             patch("narrare._app.dependencies.get_model_registry", return_value=mock_registry),
             patch(
                 "narrare._app.dependencies_services.build_system_default_config",
-                return_value=mock_config,
+                return_value=system_config,
             ),
             patch("narrare_core.wiki.agent.WikiGenerationAgent") as mock_agent_cls,
             patch("narrare_core.wiki.service.WikiService") as mock_svc_cls,
@@ -150,8 +173,13 @@ class TestBuildCoreWikiService:
 
             result = await build_core_wiki_service()
 
-            # Verify model resolved via the single assembly point (Task 6d)
-            mock_registry.prepare.assert_awaited_once_with(mock_config, intent=LLMIntent.SUMMARIZE)
+            # Verify model resolved via the single assembly point (Task 6d),
+            # with the resolver-produced usage limits (Task 3).
+            mock_registry.prepare.assert_awaited_once_with(
+                system_config,
+                intent=LLMIntent.SUMMARIZE,
+                usage_limits=_expected_usage_limits(system_config),
+            )
 
             # Verify agent created with model
             mock_agent_cls.assert_called_once_with(model=mock_model)
@@ -211,6 +239,7 @@ class TestBuildCoreWikiService:
         mock_registry.prepare.assert_awaited_once_with(
             config,
             intent=LLMIntent.SUMMARIZE,
+            usage_limits=_expected_usage_limits(config),
             api_key=_USER_KEY,
             base_url=_USER_BASE_URL,
         )

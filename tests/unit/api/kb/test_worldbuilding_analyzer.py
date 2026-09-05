@@ -112,7 +112,9 @@ def _make_analyzer(
     kb_repo = FakeKBRepo()
     cache = FakeCache(data=cache_data)
     registry = MagicMock(spec=ModelRegistry)
-    config = MagicMock(spec=ResolvedModelConfig)
+    # Real config value object — the ADR-045 run-limit resolver (Task 3)
+    # reads resolve_output_limit()/token_limit_profile from it.
+    config = ResolvedModelConfig(provider_name="test", model_id="test-model")
     analyzer = WorldbuildingAnalyzer(
         kb_repo=cast("KBRepository", kb_repo),
         rel_repo=cast("RelationshipRepository", FakeRelRepo()),

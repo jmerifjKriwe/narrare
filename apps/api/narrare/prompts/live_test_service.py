@@ -35,6 +35,7 @@ from narrare.prompts._live_test_invocation import (
 from narrare.prompts._live_test_sse import live_test_event_stream
 from narrare.prompts.schemas_prompt_ux import LiveTestRequest, LiveTestStartedResponse
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import ValidationError
 
 if TYPE_CHECKING:
@@ -135,6 +136,7 @@ class PromptLiveTestApiService:
         agent_factory: _AgentFactory,
         intent: LLMIntent = LLMIntent.WRITE,
         rate_limit_budget: int = 5,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._resolver = resolver
         self._registry = registry
@@ -142,6 +144,7 @@ class PromptLiveTestApiService:
         self._agent_factory = agent_factory
         self._intent = intent
         self._rate_limit_budget = rate_limit_budget
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def validate_live_test(
         self,
@@ -206,13 +209,17 @@ class PromptLiveTestApiService:
         After the first frame is yielded, errors surface as SSE error
         events (see :func:`live_test_event_stream`).
         """
-        from uuid import UUID
+        from uuid import UUID, uuid4
 
         # Gate + model resolution — raises before SSE if no provider.
         resolved = await self._resolver.resolve(self._intent, UUID(user_id), None)
+        limits = self._run_limit_resolver.resolve(
+            config=resolved.config, budget=None, invocation_id=uuid4()
+        )
         prepared = await self._registry.prepare(
             resolved.config,
             intent=self._intent,
+            usage_limits=limits.usage_limits,
             api_key=resolved.api_key,
             base_url=resolved.base_url,
         )

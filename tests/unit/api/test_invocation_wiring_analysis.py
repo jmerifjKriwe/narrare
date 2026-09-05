@@ -24,6 +24,7 @@ from uuid import uuid4
 import pytest
 
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.prompts.composer import ComposedPrompt
 
@@ -59,6 +60,14 @@ def _prepared_stub() -> PreparedModelCall:
     return PreparedModelCall(model=MagicMock(spec=object), model_settings=None, usage_limits=None)
 
 
+def _resolver_ready_config() -> ResolvedModelConfig:
+    """Real config value object — the ADR-045 run-limit resolver (Task 3)
+    reads ``resolve_output_limit()``/``token_limit_profile`` from it."""
+    return ResolvedModelConfig(
+        provider_name="default", model_id="default", temperature=0.7, max_tokens=4096
+    )
+
+
 # ===========================================================================
 # 1. BetaReaderService invocation wiring
 # ===========================================================================
@@ -86,30 +95,51 @@ class TestBetaReaderInvocationWiring:
         mock_composed = ComposedPrompt(system="System prompt", user="")
         mock_composer.build = AsyncMock(return_value=mock_composed)
 
-        mock_registry = MagicMock(spec=["get_model"])
+        mock_registry = MagicMock(spec=["get_model", "prepare"])
         mock_registry.get_model = AsyncMock(return_value=MagicMock(spec=["run"]))
+        mock_registry.prepare = AsyncMock(return_value=_prepared_stub())
 
         service = BetaReaderService(
             context_assembler=mock_assembler,
             cache=mock_cache,
             registry=mock_registry,
-            config=MagicMock(spec=["model_id", "provider_name"]),
+            config=_resolver_ready_config(),
             composer=mock_composer,
             invocation_pipeline=pipeline,
         )
 
-        mock_deps = MagicMock(spec=["chapter_text", "word_count", "language", "focus_categories"])
+        mock_deps = MagicMock(
+            spec=[
+                "chapter_text",
+                "word_count",
+                "language",
+                "focus_categories",
+                "genre",
+                "chapter_titles",
+                "kb_characters",
+                "kb_locations",
+                "previous_chapter_summaries",
+            ]
+        )
         mock_deps.chapter_text = "Some text. " * 200
         mock_deps.word_count = 500
         mock_deps.language = "en"
         mock_deps.focus_categories = []
+        mock_deps.genre = None
+        mock_deps.chapter_titles = ["Ch 1"]
+        mock_deps.kb_characters = ""
+        mock_deps.kb_locations = ""
+        mock_deps.previous_chapter_summaries = []
 
-        # Patch the internal methods to avoid full agent execution.
-        # Must patch _assemble_context so the flow reaches _record_evidence.
-        # (_compose_prompt fallback is in the shared helper now; the pipeline
-        # path succeeds via the ComposedPrompt mock above, so no fallback patch.)
+        # Patch the internal boundaries to avoid full agent execution.
+        # Context assembly moved to the module-level ``assemble_context``
+        # boundary (RULE-04 split) — patch the service-module binding so
+        # the flow reaches the compose → resolve → prepare → run path.
         with (
-            patch.object(service, "_assemble_context", AsyncMock(return_value=mock_deps)),
+            patch(
+                "narrare.analysis.beta_reader_service.assemble_context",
+                new=AsyncMock(return_value=mock_deps),
+            ),
             patch("narrare.analysis.beta_reader_service.validate_word_count"),
             patch(
                 "narrare.analysis.beta_reader_service.run_phase1",
@@ -156,26 +186,43 @@ class TestBetaReaderInvocationWiring:
         mock_composer = AsyncMock(spec=["build"])
         mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="s", user=""))
 
+        mock_registry = MagicMock(spec=["get_model", "prepare"])
+        mock_registry.prepare = AsyncMock(return_value=_prepared_stub())
+
         service = BetaReaderService(
             context_assembler=AsyncMock(),
             cache=mock_cache,
-            registry=MagicMock(spec=["get_model"]),
-            config=MagicMock(spec=["model_id", "provider_name"]),
+            registry=mock_registry,
+            config=_resolver_ready_config(),
             composer=mock_composer,
             invocation_pipeline=None,
         )
 
         with (
-            patch.object(
-                service,
-                "_assemble_context",
-                AsyncMock(
+            patch(
+                "narrare.analysis.beta_reader_service.assemble_context",
+                new=AsyncMock(
                     return_value=MagicMock(
-                        spec=["chapter_text", "word_count", "language", "focus_categories"],
+                        spec=[
+                            "chapter_text",
+                            "word_count",
+                            "language",
+                            "focus_categories",
+                            "genre",
+                            "chapter_titles",
+                            "kb_characters",
+                            "kb_locations",
+                            "previous_chapter_summaries",
+                        ],
                         chapter_text="x" * 100,
                         word_count=50,
                         language="en",
                         focus_categories=[],
+                        genre=None,
+                        chapter_titles=["Ch 1"],
+                        kb_characters="",
+                        kb_locations="",
+                        previous_chapter_summaries=[],
                     )
                 ),
             ),

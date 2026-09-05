@@ -28,6 +28,7 @@ See:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
@@ -39,6 +40,7 @@ from narrare.analysis.schemas_coreference import (
     PronounResolutionResponse,
 )
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -109,6 +111,7 @@ class CoreferenceService:
         invocation_pipeline: InvocationPipeline | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
@@ -119,6 +122,7 @@ class CoreferenceService:
         self._invocation_pipeline = invocation_pipeline
         self._api_key = api_key
         self._base_url = base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def analyze(
         self,
@@ -210,12 +214,14 @@ class CoreferenceService:
 
         # Single assembly point (Task 6a-2 — Task 4/5 pattern): model +
         # intent-aware runtime settings + usage limits as one coherent
-        # triple, so the thinking policy actually reaches this call. No
-        # run-limit resolver is wired on this path, so ``usage_limits``
-        # is ``None`` (no output caps).
+        # triple, so the thinking policy actually reaches this call.
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
         prepared = await self._registry.prepare(
             self._config,
             intent=LLMIntent.ANALYSE,
+            usage_limits=resolved.usage_limits,
             api_key=self._api_key,
             base_url=self._base_url,
         )

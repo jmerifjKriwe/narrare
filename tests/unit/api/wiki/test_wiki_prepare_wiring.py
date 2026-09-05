@@ -123,13 +123,20 @@ class TestBuildCoreWikiServicePrepareWiring:
         """Operator plane (startup listener): system config + intent reach prepare()."""
         mock_model = AsyncMock()
         registry, calls = _recording_registry(mock_model)
-        mock_config = MagicMock(spec=ResolvedModelConfig)
+        # Real config value object — the ADR-045 run-limit resolver (Task 3)
+        # reads resolve_output_limit()/token_limit_profile from it.
+        system_config = ResolvedModelConfig(
+            provider_name="default",
+            model_id="default",
+            temperature=0.7,
+            max_tokens=4096,
+        )
 
         with (
             patch("narrare._app.dependencies.get_model_registry", return_value=registry),
             patch(
                 "narrare._app.dependencies_services.build_system_default_config",
-                return_value=mock_config,
+                return_value=system_config,
             ),
             patch("narrare_core.wiki.agent.WikiGenerationAgent") as mock_agent_cls,
             patch("narrare_core.wiki.service.WikiService"),
@@ -139,7 +146,7 @@ class TestBuildCoreWikiServicePrepareWiring:
             await build_core_wiki_service()
 
         assert len(calls) == 1
-        assert calls[0]["config"] is mock_config
+        assert calls[0]["config"] is system_config
         assert calls[0]["intent"] is LLMIntent.SUMMARIZE
         prepared = cast("PreparedModelCall", calls[0]["prepared"])
         mock_agent_cls.assert_called_once_with(model=prepared.model)

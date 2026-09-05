@@ -23,6 +23,7 @@ from narrare_core.agents.kb_improve_types import (
     KBImproveOutput,
     SuggestionType,
 )
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import NotFoundError
 
 # ---------------------------------------------------------------------------
@@ -141,11 +142,11 @@ def _make_service(
             completeness_score=0.9,
         )
 
-    config = MagicMock(spec=["provider_name", "model_id", "temperature", "max_tokens"])
-    config.provider_name = "default"
-    config.model_id = "default"
-    config.temperature = 0.7
-    config.max_tokens = 4096
+    # Real config value object — the ADR-045 run-limit resolver (Task 3)
+    # reads resolve_output_limit()/token_limit_profile from it.
+    config = ResolvedModelConfig(
+        provider_name="default", model_id="default", temperature=0.7, max_tokens=4096
+    )
 
     analyzer = KBImproveAnalyzer(
         registry=registry,

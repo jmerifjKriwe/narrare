@@ -226,9 +226,10 @@ class TestBetaReaderPrepareWiring:
         run_kwargs: dict[str, Any] = agent.run_phase1.call_args.kwargs
         assert run_kwargs["model_settings"] is prepared.model_settings
         assert run_kwargs["usage_limits"] is prepared.usage_limits
-        # No run-limit resolver is wired on this path (Task 7 concern,
-        # same as 6a/6b/6c/6d): the pass-through value is None.
-        assert prepared.usage_limits is None
+        # Task 3 follow-up: the ADR-045 run-limit resolver is wired —
+        # the pass-through value is a resolved, non-None UsageLimits
+        # (capped to the config's max_tokens).
+        assert prepared.usage_limits is not None
         agent.run_phase1.assert_awaited_once()
 
     async def test_deep_dive_resolves_via_prepare_and_forwards_full_triple(self) -> None:

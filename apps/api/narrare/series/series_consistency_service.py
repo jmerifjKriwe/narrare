@@ -39,6 +39,7 @@ See:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 import structlog
 
@@ -51,6 +52,7 @@ from narrare.series.series_consistency_schemas import SeriesConsistencyCheckResp
 from narrare_core.agents.series_consistency_agent import SeriesConsistencyAgent
 from narrare_core.agents.series_consistency_types import SeriesConsistencyDeps
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import (
     ConfigurationError,
     ForbiddenError,
@@ -107,6 +109,7 @@ class SeriesConsistencyService:
         invocation_pipeline: InvocationPipeline | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         """Initialise the service with all dependencies injected (RULE-07).
 
@@ -126,6 +129,8 @@ class SeriesConsistencyService:
             api_key: Optional per-user provider API key override (model-routing
                 cascade) — injected into ``ModelRegistry.get_model``.
             base_url: Optional per-user provider base URL override.
+            run_limit_resolver: Optional ADR-045 run-limit resolver; defaults to
+                ``DefaultRunLimitResolver`` (Task 3 wiring).
         """
         self._series_repo = series_repo
         self._novel_repo = novel_repo
@@ -138,6 +143,7 @@ class SeriesConsistencyService:
         self._invocation_pipeline = invocation_pipeline
         self._api_key = api_key
         self._base_url = base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def check_novel(
         self,
@@ -217,11 +223,14 @@ class SeriesConsistencyService:
             #    intent-aware runtime settings + usage limits as one
             #    coherent triple. The per-user provider credentials
             #    (model-routing cascade) are injected into the resolution
-            #    call. No run-limit resolver is wired on this path, so
-            #    ``usage_limits`` is ``None``.
+            #    call.
+            resolved = self._run_limit_resolver.resolve(
+                config=self._config, budget=None, invocation_id=uuid4()
+            )
             prepared = await self._registry.prepare(
                 self._config,
                 intent=LLMIntent.ANALYSE,
+                usage_limits=resolved.usage_limits,
                 api_key=self._api_key,
                 base_url=self._base_url,
             )

@@ -44,6 +44,7 @@ from narrare.ai_assist.schemas import (
     DialogueCoachResponse,
     DialogueCoachStreamEvent,
 )
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -100,6 +101,7 @@ class DialogueCoachService:
         adaptive_provider: AdaptiveContextProviderImpl,
         api_key: str | None = None,
         base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
@@ -110,6 +112,7 @@ class DialogueCoachService:
         self._adaptive_provider = adaptive_provider
         self._api_key = api_key
         self._base_url = base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     # ------------------------------------------------------------------
     # Shared pipeline — both run() and stream() call this.
@@ -195,6 +198,7 @@ class DialogueCoachService:
             model_config=self._config,
             api_key=self._api_key,
             base_url=self._base_url,
+            run_limit_resolver=self._run_limit_resolver,
             composed_prompt=composed_prompt,
         )
 

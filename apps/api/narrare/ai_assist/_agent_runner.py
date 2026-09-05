@@ -26,11 +26,13 @@ See:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
+from uuid import uuid4
 
 import structlog
 
 from narrare.ai_assist._runtime_content import build_run_prompt
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -38,6 +40,7 @@ if TYPE_CHECKING:
     from narrare_core.agents.dialogue_coach_types import DialogueCoachOutput
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.run_limits import ResolvedRunLimits
     from narrare_core.prompts.composer import ComposedPrompt
 
 logger = structlog.get_logger(__name__)
@@ -57,6 +60,7 @@ async def run_dialogue_coach_agent(
     model_config: ResolvedModelConfig | None,
     api_key: str | None = None,
     base_url: str | None = None,
+    run_limit_resolver: DefaultRunLimitResolver | None = None,
     composed_prompt: ComposedPrompt,
 ) -> DialogueCoachOutput:
     """Build Deps + run one DialogueCoachAgent call.
@@ -94,11 +98,17 @@ async def run_dialogue_coach_agent(
     # api_key/base_url carry the resolved per-user credentials (per-user
     # model-routing cascade) into the single assembly point (Task 6d —
     # Task 4/5 pattern): model + intent-aware runtime settings + usage
-    # limits as one coherent triple. No run-limit resolver is wired on
-    # this path, so ``usage_limits`` is ``None``.
+    # limits as one coherent triple. The ADR-045 run-limit resolver applies
+    # the output cap; a None config (harness-only) skips resolution.
+    resolved: ResolvedRunLimits | None = None
+    if model_config is not None:
+        resolved = (run_limit_resolver or DefaultRunLimitResolver()).resolve(
+            config=model_config, budget=None, invocation_id=uuid4()
+        )
     prepared = await model_registry.prepare(
         cast("ResolvedModelConfig", model_config),
         intent=LLMIntent.DIALOGUE_COACH,
+        usage_limits=resolved.usage_limits if resolved else None,
         api_key=api_key,
         base_url=base_url,
     )

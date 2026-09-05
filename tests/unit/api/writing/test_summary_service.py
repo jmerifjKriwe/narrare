@@ -9,6 +9,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pydantic_ai.usage import UsageLimits
 
 from narrare.writing.summary_service import ChapterSummaryService
 from narrare_core.llm import ResolvedModelConfig
@@ -275,6 +276,9 @@ class TestSummarize:
         mock_registry.prepare.assert_awaited_once_with(
             service._config,
             intent=LLMIntent.SUMMARIZE,
+            # Task 3: the ADR-045 run-limit resolver applies the config's
+            # output cap (max_tokens=1000) at the agent boundary.
+            usage_limits=UsageLimits(output_tokens_limit=1000),
             api_key=None,
             base_url=None,
         )

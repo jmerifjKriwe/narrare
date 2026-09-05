@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from narrare.consistency.checker_context import CheckContext
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -42,6 +43,7 @@ async def run_legacy_check(
     invocation_pipeline: InvocationPipeline | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
+    run_limit_resolver: DefaultRunLimitResolver | None = None,
 ) -> ConsistencyResponse:
     """Run the legacy single-pass consistency check.
 
@@ -60,12 +62,14 @@ async def run_legacy_check(
         ConsistencyResponse with deduplicated issues from rules + LLM.
     """
     from datetime import UTC, datetime
+    from uuid import uuid4
 
     from narrare._app.invocation_context import build_invocation_context
     from narrare.consistency.prompt_builder import build_consistency_prompt_context
     from narrare.consistency.rule_helpers import deduplicate_issues
     from narrare_core.ai_invocation import compose_invocation
     from narrare_core.llm.intents import LLMIntent
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
     prompt_context = build_consistency_prompt_context(
         context.language,
@@ -101,11 +105,14 @@ async def run_legacy_check(
 
     # Single assembly point (Task 6b — Task 4/5 pattern): model + intent-aware
     # runtime settings + usage limits as one coherent triple, so the thinking
-    # policy actually reaches this call. No run-limit resolver is wired on
-    # this path, so ``usage_limits`` is ``None`` (no output caps).
+    # policy actually reaches this call.
+    resolved = (run_limit_resolver or DefaultRunLimitResolver()).resolve(
+        config=config, budget=None, invocation_id=uuid4()
+    )
     prepared = await registry.prepare(
         config,
         intent=LLMIntent.CONSISTENCY,
+        usage_limits=resolved.usage_limits,
         api_key=api_key,
         base_url=base_url,
     )

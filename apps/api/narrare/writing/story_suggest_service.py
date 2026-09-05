@@ -33,6 +33,7 @@ from narrare.writing.schemas_story_suggest import (
     StorySuggestionResponse,
     StorySuggestStreamEvent,
 )
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -91,6 +92,7 @@ class StorySuggestService:
         outline_repo: OutlineRepositoryProtocol | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._registry = model_registry
@@ -98,6 +100,7 @@ class StorySuggestService:
         self._composer = composer
         self._outline_repo = outline_repo
         self._invocation_pipeline = invocation_pipeline
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def suggest(
         self,
@@ -148,6 +151,8 @@ class StorySuggestService:
         # PromptComposer (RULE-02 / ADR-054 D1).  The template
         # ``_bundled/writing/{locale}/story_suggest/system.md`` carries
         # the task framing and project metadata variables.
+        from uuid import uuid4
+
         from narrare._app.invocation_context import build_invocation_context
         from narrare_core.agents.story_suggest_agent import StorySuggestAgent
         from narrare_core.agents.story_suggest_types import StorySuggestDeps
@@ -208,8 +213,13 @@ class StorySuggestService:
 
         # Task 6c single assembly point: coherent (model, model_settings,
         # usage_limits) triple. No credential overrides exist on this
-        # service (defaults to None) and no run-limit resolver is wired.
-        prepared = await self._registry.prepare(self._config, intent=LLMIntent.SUGGEST)
+        # service (defaults to None).
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
+        prepared = await self._registry.prepare(
+            self._config, intent=LLMIntent.SUGGEST, usage_limits=resolved.usage_limits
+        )
 
         # Build agent dependencies — minimal runtime data per
         # StorySuggestDeps (project-level fields only).

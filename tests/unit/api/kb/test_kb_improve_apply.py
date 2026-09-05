@@ -14,6 +14,7 @@ from uuid import uuid4
 import pytest
 
 from narrare.kb.improve_contracts import KBImproveApplyResponse
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
@@ -138,11 +139,11 @@ def _make_service(
             completeness_score=0.9,
         )
 
-    config = MagicMock(spec=["provider_name", "model_id", "temperature", "max_tokens"])
-    config.provider_name = "default"
-    config.model_id = "default"
-    config.temperature = 0.7
-    config.max_tokens = 4096
+    # Real config value object — the ADR-045 run-limit resolver (Task 3)
+    # reads resolve_output_limit()/token_limit_profile from it.
+    config = ResolvedModelConfig(
+        provider_name="default", model_id="default", temperature=0.7, max_tokens=4096
+    )
 
     from narrare.kb.improve_analyzer import KBImproveAnalyzer
     from narrare.kb.improve_service import KBImproveService

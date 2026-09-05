@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.wiki.contracts import WikiServiceProtocol
 
 
@@ -26,6 +27,7 @@ async def build_core_wiki_service(
     config: ResolvedModelConfig | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
+    run_limit_resolver: DefaultRunLimitResolver | None = None,
 ) -> WikiServiceProtocol:
     """Create the core WikiService with agent, event bus, and optional pipeline.
 
@@ -47,6 +49,8 @@ async def build_core_wiki_service(
     Returns:
         A configured WikiService instance.
     """
+    from uuid import uuid4
+
     from narrare._app.dependencies import get_model_registry
     from narrare._app.dependencies_services import (
         SystemModelCategory,
@@ -54,28 +58,36 @@ async def build_core_wiki_service(
     )
     from narrare_core.events.bus import NullEventBus
     from narrare_core.llm.intents import LLMIntent
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.wiki.agent import WikiGenerationAgent
     from narrare_core.wiki.service import WikiService
 
     registry = get_model_registry()
     # Single assembly point (Task 6d — Task 4/5 pattern): model +
     # intent-aware runtime settings + usage limits as one coherent
-    # triple, for BOTH planes. Task 2 (pydantic-ai follow-ups): the
-    # settings/limits halves are bound into the agent path via the
+    # triple, for BOTH planes. The ADR-045 run-limit resolver (Task 3)
+    # applies the config's output cap. Task 2 (pydantic-ai follow-ups):
+    # the settings/limits halves are bound into the agent path via the
     # API-side PreparedWikiAgent adapter — the core WikiService drives
     # the agent through WikiAgentProtocol (no settings/limits params),
     # so the binding happens here where the triple is in scope.
+    resolver = run_limit_resolver or DefaultRunLimitResolver()
     if config is None:
         # Operator plane — startup wiki listener only (plan-sanctioned
         # survivor): no user context exists at lifespan startup.
         config = build_system_default_config(
             SystemModelCategory.WRITING, temperature=0.7, max_tokens=4096
         )
-        prepared = await registry.prepare(config, intent=LLMIntent.SUMMARIZE)
+        resolved = resolver.resolve(config=config, budget=None, invocation_id=uuid4())
+        prepared = await registry.prepare(
+            config, intent=LLMIntent.SUMMARIZE, usage_limits=resolved.usage_limits
+        )
     else:
+        resolved = resolver.resolve(config=config, budget=None, invocation_id=uuid4())
         prepared = await registry.prepare(
             config,
             intent=LLMIntent.SUMMARIZE,
+            usage_limits=resolved.usage_limits,
             api_key=api_key,
             base_url=base_url,
         )

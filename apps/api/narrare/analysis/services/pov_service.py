@@ -11,6 +11,7 @@ LLM calls go through ``POVDetectionAgent`` via ``ModelRegistry`` (RULE-01b).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
@@ -18,6 +19,7 @@ from narrare.analysis._invocation_compose import compose_analysis_invocation_pro
 from narrare.analysis.services.pov_mapper import build_deps, map_output_to_result
 from narrare_core.analysis.types import POVResult
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
@@ -72,6 +74,7 @@ class POVService:
         invocation_pipeline: InvocationPipeline | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
@@ -82,6 +85,7 @@ class POVService:
         self._invocation_pipeline = invocation_pipeline
         self._api_key = api_key
         self._base_url = base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     # -------------------------------------------------------------------
     # Public API — matches POVServiceProtocol
@@ -249,9 +253,13 @@ class POVService:
         """
         from narrare_core.agents.pov_agent import POVDetectionAgent
 
+        resolved = self._run_limit_resolver.resolve(
+            config=self._model_config, budget=None, invocation_id=uuid4()
+        )
         prepared = await self._model_registry.prepare(
             self._model_config,
             intent=LLMIntent.ANALYSE,
+            usage_limits=resolved.usage_limits,
             api_key=self._api_key,
             base_url=self._base_url,
         )
