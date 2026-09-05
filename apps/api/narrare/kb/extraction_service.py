@@ -2,7 +2,7 @@
 
 Manages the full extraction flow:
 1. Fetch chapter content from the chapter repository
-2. Fetch existing KB entity names for dedup
+2. Fetch existing KB entries: dedup names, typed ID roster, world context
 3. Build system prompt via PromptComposer
 4. Run ExtractionAgent over the chapter text
 5. Return structured ExtractionOutput
@@ -36,7 +36,6 @@ if TYPE_CHECKING:
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.run_limits import DefaultRunLimitResolver, ResolvedRunLimits
     from narrare_core.prompts.composer import PromptComposer
-    from narrare_core.prompts.context import PromptContext
 
 logger = structlog.get_logger(__name__)
 
@@ -125,13 +124,22 @@ class ExtractionService:
             raise ValueError(f"Chapter {chapter_id} has no content")
 
         # 2. Fetch existing KB entries once (graceful on repo failure) and
-        #    derive both the dedup name list and the curated world context
-        #    from the same result set. Single fetch keeps this O(1) repo reads.
-        from narrare.kb._extraction_context import fetch_existing_entries_graceful
+        #    derive the dedup name list, the typed ID roster, and the
+        #    curated world context from the same result set. Single fetch
+        #    keeps this O(1) repo reads.
+        from narrare.kb._extraction_context import (
+            build_extraction_prompt_context,
+            fetch_existing_entries_graceful,
+            format_entity_roster,
+        )
         from narrare.kb._world_context import format_world_context
 
         existing_entries = await fetch_existing_entries_graceful(self._kb_repo, novel_id, user_id)
         existing_names = [e.name for e in existing_entries if e.name]
+        # Typed ID roster (`- name (type) [id=...]`) — lets the agent
+        # reference existing entities via target_entity_id (KB-007 entity
+        # resolution). Rendered from the COMPLETE entry list (uncapped).
+        entity_roster = format_entity_roster(existing_entries)
         # Curated project world context aids entity disambiguation. Mirrors
         # the kb merge/assist/improve world-context mechanism and degrades
         # to empty when the KB is empty/unavailable (RULE-11). Avoidance data
@@ -145,9 +153,9 @@ class ExtractionService:
         from narrare_core.ai_invocation import compose_invocation
         from narrare_core.llm.intents import LLMIntent
 
-        prompt_context = self._build_prompt_context(
+        prompt_context = build_extraction_prompt_context(
             chapter_title=chapter.title or "",
-            existing_entity_names=existing_names,
+            existing_entity_roster=entity_roster,
             world_context=world_context,
         )
         invocation_context = build_invocation_context(
@@ -268,29 +276,4 @@ class ExtractionService:
             novel_id=novel_id,
             user_id=user_id,
             items=items,
-        )
-
-    def _build_prompt_context(
-        self,
-        *,
-        chapter_title: str,
-        existing_entity_names: list[str],
-        world_context: str = "",
-    ) -> PromptContext:
-        """Build PromptContext for the extraction prompt (RULE-02).
-
-        Prompt construction is retained here; composition happens via
-        ``compose_invocation`` in the caller. The Narrare meta-prompt is
-        injected automatically by NarrareMeta Capability (ADR-026).
-        """
-        from narrare_core.prompts.context import PromptContext
-
-        return PromptContext(
-            language="en",
-            mode="extract",
-            chapter_title=chapter_title,
-            extra={
-                "existing_entity_names": "\n".join(existing_entity_names),
-                "world_context": world_context,
-            },
         )

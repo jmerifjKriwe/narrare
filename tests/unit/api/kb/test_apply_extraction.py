@@ -5,7 +5,9 @@ ExtractionService.apply_extraction() for correct delegation.
 
 Scenarios (RULE-20):
 1. new_entity items → creates KB entries
-2. update_entity items → updates existing entries
+2. update_entity items → updates existing entries (rename/resolution
+   scenarios: test_apply_extraction_resolution.py, pure resolution unit
+   tests: test_extraction_resolution.py)
 3. relationship items → creates relationships
 4. conflict items → skipped, no error
 5. Empty items → empty response
@@ -17,135 +19,23 @@ Scenarios (RULE-20):
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal, cast
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
 from narrare.kb.extraction_apply_service import ExtractionApplyService
 from narrare.kb.schemas_extraction import ApplyExtractionItem
 
+from ._apply_extraction_helpers import (
+    _FakeKBRepoForApply,
+    _FakeKBService,
+    _FakeRelationshipRepo,
+)
+
 if TYPE_CHECKING:
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.service import KBService
-
-# ---------------------------------------------------------------------------
-# Fakes
-# ---------------------------------------------------------------------------
-
-
-class _FakeEntry:
-    """Minimal fake KB entry returned by FakeKBService."""
-
-    def __init__(self, name: str, entity_type: str = "character") -> None:
-        self.id = uuid4()
-        self.name = name
-        self.entity_type = entity_type
-
-
-class _FakeKBService:
-    """Fake KBService that records creates and updates."""
-
-    def __init__(self) -> None:
-        self.created: list[dict[str, object]] = []
-        self.updated: list[dict[str, object]] = []
-        self.fail_next_create = False
-        self.fail_next_update = False
-        self._entry_index: dict[UUID, _FakeEntry] = {}
-
-    def seed(
-        self, name: str, entity_type: str = "character", entry_id: UUID | None = None
-    ) -> _FakeEntry:
-        """Pre-populate an entity for update lookups."""
-        entry = _FakeEntry(name=name, entity_type=entity_type)
-        if entry_id is not None:
-            entry.id = entry_id
-        self._entry_index[entry.id] = entry
-        return entry
-
-    async def create(
-        self,
-        novel_id: UUID,
-        user_id: UUID,
-        data: object,
-    ) -> _FakeEntry:
-        if self.fail_next_create:
-            self.fail_next_create = False
-            msg = "KB service create failed"
-            raise RuntimeError(msg)
-
-        entry_name = getattr(data, "name", "Unknown")
-        entry_type = getattr(data, "entity_type", "unknown")
-        entry = _FakeEntry(name=entry_name, entity_type=entry_type)
-        self.created.append(
-            {
-                "novel_id": novel_id,
-                "user_id": user_id,
-                "data": data,
-                "entry_id": entry.id,
-            },
-        )
-        return entry
-
-    async def update(
-        self,
-        novel_id: UUID,
-        entry_id: UUID,
-        user_id: UUID,
-        data: object,
-    ) -> _FakeEntry:
-        if self.fail_next_update:
-            self.fail_next_update = False
-            msg = "KB service update failed"
-            raise RuntimeError(msg)
-
-        existing = self._entry_index.get(entry_id)
-        entry_name = existing.name if existing else "Updated"
-        entry_type = existing.entity_type if existing else "character"
-        entry = _FakeEntry(name=entry_name, entity_type=entry_type)
-        self.updated.append(
-            {
-                "novel_id": novel_id,
-                "target_entry_id": entry_id,
-                "user_id": user_id,
-                "data": data,
-                "returned_entry_id": entry.id,
-            },
-        )
-        return entry
-
-
-class _FakeRelationshipRepo:
-    """Fake RelationshipRepository that records creates."""
-
-    def __init__(self) -> None:
-        self.created: list[object] = []
-
-    async def create(self, rel: object) -> object:
-        self.created.append(rel)
-        return rel
-
-
-class _FakeKBRepoForApply:
-    """Fake KBRepositoryProtocol — name-based entity lookup."""
-
-    def __init__(self) -> None:
-        self._entries: dict[str, _FakeEntry] = {}
-
-    def seed(self, name: str, entity_type: str = "character") -> _FakeEntry:
-        entry = _FakeEntry(name=name, entity_type=entity_type)
-        self._entries[name.lower()] = entry
-        return entry
-
-    async def get_by_name(self, novel_id: UUID, name: str) -> _FakeEntry | None:
-        return self._entries.get(name.lower())
-
-    # Stub to satisfy the KBRepositoryProtocol interface for extraction_service
-    async def list_entries(
-        self, *args: object, **kwargs: object
-    ) -> tuple[list[dict[str, Any]], int]:
-        return [], 0
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -268,10 +158,13 @@ async def test_apply_new_entity_passes_proposed_content_as_metadata(
 async def test_apply_update_entity_updates_entry(
     apply_service: ExtractionApplyService,
     fake_kb_service: _FakeKBService,
+    fake_kb_repo: _FakeKBRepoForApply,
 ) -> None:
     """An update_entity item updates an existing KB entry."""
+    novel_id = uuid4()
     entry_id = uuid4()
     fake_kb_service.seed("Existing Character", entry_id=entry_id)
+    fake_kb_repo.seed("Existing Character", entry_id=entry_id, novel_id=novel_id)
     items = [
         _item(
             item_type="update_entity",
@@ -281,7 +174,7 @@ async def test_apply_update_entity_updates_entry(
         ),
     ]
 
-    result = await apply_service.apply(novel_id=uuid4(), user_id=uuid4(), items=items)
+    result = await apply_service.apply(novel_id=novel_id, user_id=uuid4(), items=items)
 
     assert len(result.updated_entries) == 1
     assert result.updated_entries[0].name == "Existing Character"
@@ -294,7 +187,7 @@ async def test_apply_update_entity_missing_target_id_is_skipped(
     apply_service: ExtractionApplyService,
     fake_kb_service: _FakeKBService,
 ) -> None:
-    """An update_entity item without target_entity_id is skipped."""
+    """An update_entity item whose name matches no KB entry is skipped."""
     items = [
         _item(
             item_type="update_entity",

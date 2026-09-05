@@ -13,10 +13,10 @@ extraction pipeline).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 import structlog
 
+from narrare.kb._extraction_resolution import resolve_update_target
 from narrare.kb.schemas import (
     KBEntryCreate,
     KBEntryUpdate,
@@ -27,6 +27,8 @@ from narrare.kb.schemas_extraction import (
 )
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.schemas_extraction import ApplyExtractionItem
@@ -199,27 +201,27 @@ class ExtractionApplyService:
     ) -> None:
         """Update an existing KB entry from an ``update_entity`` item.
 
+        Target resolution and the downgrade-guarded rename decision live in
+        :mod:`narrare.kb._extraction_resolution`; unresolvable items are a
+        logged skip (RULE-11).
+
         Args:
             novel_id: Novel scope.
             user_id: Requesting user.
             item: The extraction item.
             updated_entries: Accumulator for results.
         """
-        if not item.target_entity_id:
-            logger.warning(
-                "update_entity_missing_target_id",
-                name=item.name,
-            )
+        decision = await resolve_update_target(item, self._kb_repo, novel_id)
+        if decision is None:
             return
-
-        target_id = UUID(item.target_entity_id)
 
         data = KBEntryUpdate(
             metadata=item.proposed_content,
+            name=decision.rename_to,
         )
         entry = await self._kb_service.update(
             novel_id=novel_id,
-            entry_id=target_id,
+            entry_id=decision.target_id,
             user_id=user_id,
             data=data,
         )
@@ -234,6 +236,7 @@ class ExtractionApplyService:
             "apply_update_entity_updated",
             entry_id=str(entry.id),
             name=item.name,
+            renamed_to=decision.rename_to,
         )
 
     async def _apply_relationship(

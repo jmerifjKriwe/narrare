@@ -32,8 +32,8 @@ if TYPE_CHECKING:
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
-# Reuse fakes from the main test module
-from tests.unit.api.kb.test_apply_extraction import (
+# Fakes live in the shared helpers module (RULE-04 extraction)
+from ._apply_extraction_helpers import (
     _FakeKBRepoForApply,
     _FakeKBService,
     _FakeRelationshipRepo,
@@ -118,10 +118,13 @@ async def test_apply_mixed_items_handles_all_types(
     fake_rel_repo: _FakeRelationshipRepo,
 ) -> None:
     """Mixed item types are all handled correctly."""
+    novel_id = uuid4()
+    existing_id = uuid4()
     fake_kb_service = _FakeKBService()
-    fake_kb_repo.seed("Anna", entity_type="character")
-    fake_kb_repo.seed("Dark Forest", entity_type="location")
-    fake_kb_service.seed("Existing One")
+    fake_kb_repo.seed("Anna", entity_type="character", novel_id=novel_id)
+    fake_kb_repo.seed("Dark Forest", entity_type="location", novel_id=novel_id)
+    fake_kb_repo.seed("Existing One", entry_id=existing_id, novel_id=novel_id)
+    fake_kb_service.seed("Existing One", entry_id=existing_id)
 
     service = ExtractionApplyService(
         kb_service=cast("KBService", fake_kb_service),
@@ -134,7 +137,7 @@ async def test_apply_mixed_items_handles_all_types(
         _item(
             item_type="update_entity",
             name="Existing One",
-            target_entity_id=str(uuid4()),
+            target_entity_id=str(existing_id),
             proposed_content={"age": 30},
         ),
         _item(
@@ -146,7 +149,7 @@ async def test_apply_mixed_items_handles_all_types(
         _item(item_type="conflict", name="Some Conflict"),
     ]
 
-    result = await service.apply(novel_id=uuid4(), user_id=uuid4(), items=items)
+    result = await service.apply(novel_id=novel_id, user_id=uuid4(), items=items)
 
     assert len(result.created_entries) == 1
     assert len(result.updated_entries) == 1

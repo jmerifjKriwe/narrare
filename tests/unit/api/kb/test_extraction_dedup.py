@@ -165,6 +165,56 @@ async def test_extract_passes_existing_entity_names_for_dedup(
         assert "The Tower" in deps.existing_entity_names
 
 
+@pytest.mark.asyncio
+async def test_extract_renders_entity_roster_with_ids(
+    mock_registry: MagicMock,
+    config: ResolvedModelConfig,
+    mock_chapter_repo: MagicMock,
+    mock_kb_repo: MagicMock,
+    mock_composer: MagicMock,
+) -> None:
+    """The prompt's existing-entities variable is a typed ID roster.
+
+    Each roster line has the format ``- name (entity_type) [id=<uuid>]`` so
+    the extraction agent can reference entities via ``target_entity_id``
+    (entity resolution, KB-007).
+    """
+    chapter = _make_chapter()
+    mock_chapter_repo.get_by_id.return_value = chapter
+
+    entry_id = uuid4()
+    mock_entry = MagicMock(spec=["name", "id", "entity_type"])
+    mock_entry.name = "Anna"
+    mock_entry.id = entry_id
+    mock_entry.entity_type = "character"
+    mock_kb_repo.list_entries.return_value = ([mock_entry], 1)
+
+    with patch("narrare.kb.extraction_service.ExtractionAgent") as MockAgent:
+        mock_agent = MagicMock(spec=["run"])
+        mock_agent.run = AsyncMock(return_value=_make_extraction_output())
+        MockAgent.return_value = mock_agent
+
+        service = _make_service(
+            mock_registry,
+            config,
+            mock_chapter_repo,
+            mock_kb_repo,
+            mock_composer,
+        )
+
+        await service.extract_from_chapter(
+            novel_id=uuid4(),
+            chapter_id=chapter.id,
+            user_id=uuid4(),
+        )
+
+        # The PromptContext reaches composer.build as second positional arg
+        # (both the compose_invocation path and the fallback path land here).
+        prompt_context = mock_composer.build.call_args.args[1]
+        roster = prompt_context.extra["existing_entity_names"]
+        assert f"- Anna (character) [id={entry_id}]" in roster
+
+
 # ---------------------------------------------------------------------------
 # Graceful degradation: KB repo failure
 # ---------------------------------------------------------------------------
