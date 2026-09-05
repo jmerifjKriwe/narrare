@@ -62,6 +62,10 @@ class ExtractionService:
             ``agent.run`` boundary so output generation is bounded even on
             thinking models with ``tool_choice: required``. ``None``
             (legacy/test default) applies no output caps.
+        retries: Retry budget forwarded to the ExtractionAgent (tool-call
+            and output validation failures). Defaults to 3 because
+            pydantic-ai's default of 1 gives the model too few chances at
+            schema-valid output for intermittently schema-invalid models.
     """
 
     def __init__(
@@ -77,6 +81,7 @@ class ExtractionService:
         api_key: str | None = None,
         base_url: str | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
+        retries: int = 3,
     ) -> None:
         self._registry = registry
         self._config = config
@@ -89,6 +94,7 @@ class ExtractionService:
         self._api_key = api_key
         self._base_url = base_url
         self._run_limit_resolver = run_limit_resolver
+        self._retries = retries
 
     async def extract_from_chapter(
         self,
@@ -197,7 +203,11 @@ class ExtractionService:
             base_url=self._base_url,
         )
 
-        agent = ExtractionAgent(model=prepared.model, system_prompt=system_prompt)
+        agent = ExtractionAgent(
+            model=prepared.model,
+            system_prompt=system_prompt,
+            retries=self._retries,
+        )
         deps = ExtractionDeps(
             language="en",
             genre="",

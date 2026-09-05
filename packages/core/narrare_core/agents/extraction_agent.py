@@ -74,6 +74,7 @@ class ExtractionAgent(NarrareAgent[ExtractionDeps, ExtractionOutput]):
         model: Any,
         kb_agent: KBAgent | None = None,
         system_prompt: str | None = None,
+        retries: int | None = None,
     ) -> None:
         # Build capabilities: ToolSearch + KBAgent tools when available
         capabilities: list[Any] = []
@@ -87,6 +88,7 @@ class ExtractionAgent(NarrareAgent[ExtractionDeps, ExtractionOutput]):
             output_type=ExtractionOutput,
             capabilities=capabilities,
             system_prompt=system_prompt,
+            retries=retries,
         )
         self._agent.output_validator(self._validate_output)
 

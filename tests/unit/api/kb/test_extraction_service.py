@@ -185,6 +185,68 @@ async def test_extract_from_chapter_resolves_model_exactly_once_via_prepare(
     assert MockAgent.call_args.kwargs["model"] is mock_registry.get_model.return_value
 
 
+@pytest.mark.asyncio
+async def test_extract_from_chapter_passes_default_retries_to_agent(
+    mock_registry: FakeModelRegistry,
+    config: ResolvedModelConfig,
+    mock_chapter_repo: FakeChapterRepo,
+    mock_kb_repo: FakeKBRepo,
+    mock_composer: FakeComposer,
+) -> None:
+    """ExtractionAgent receives the service default retry budget (3).
+
+    pydantic-ai's default output retry count is 1, giving the model only
+    2 chances at schema-valid output — too few for intermittently
+    schema-invalid models (benchmark rehearsal: "Exceeded maximum output
+    retries (1)").
+    """
+    chapter = make_chapter()
+    mock_chapter_repo.get_by_id.return_value = chapter
+
+    with patch("narrare.kb.extraction_service.ExtractionAgent") as MockAgent:
+        mock_agent = MagicMock(spec=["run"])
+        mock_agent.run = AsyncMock(return_value=make_extraction_output())
+        MockAgent.return_value = mock_agent
+        service = make_service(
+            mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer
+        )
+        await service.extract_from_chapter(
+            novel_id=uuid4(),
+            chapter_id=chapter.id,
+            user_id=uuid4(),
+        )
+
+    assert MockAgent.call_args.kwargs["retries"] == 3
+
+
+@pytest.mark.asyncio
+async def test_extract_from_chapter_passes_custom_retries_to_agent(
+    mock_registry: FakeModelRegistry,
+    config: ResolvedModelConfig,
+    mock_chapter_repo: FakeChapterRepo,
+    mock_kb_repo: FakeKBRepo,
+    mock_composer: FakeComposer,
+) -> None:
+    """A constructor-injected retries value overrides the default."""
+    chapter = make_chapter()
+    mock_chapter_repo.get_by_id.return_value = chapter
+
+    with patch("narrare.kb.extraction_service.ExtractionAgent") as MockAgent:
+        mock_agent = MagicMock(spec=["run"])
+        mock_agent.run = AsyncMock(return_value=make_extraction_output())
+        MockAgent.return_value = mock_agent
+        service = make_service(
+            mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer, retries=5
+        )
+        await service.extract_from_chapter(
+            novel_id=uuid4(),
+            chapter_id=chapter.id,
+            user_id=uuid4(),
+        )
+
+    assert MockAgent.call_args.kwargs["retries"] == 5
+
+
 # ---------------------------------------------------------------------------
 # Error: chapter not found
 # ---------------------------------------------------------------------------

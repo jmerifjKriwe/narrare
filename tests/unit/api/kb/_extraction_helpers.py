@@ -96,6 +96,7 @@ def make_service(
     chapter_repo: FakeChapterRepo | object,
     kb_repo: FakeKBRepo | object,
     composer: FakeComposer | object,
+    retries: int = 3,
 ) -> ExtractionService:
     """Build an ExtractionService with the given (mocked) dependencies."""
     return ExtractionService(
@@ -104,6 +105,7 @@ def make_service(
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
         kb_repo=kb_repo,  # type: ignore[arg-type]
         composer=composer,  # type: ignore[arg-type]
+        retries=retries,
     )
 
 

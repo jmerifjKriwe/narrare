@@ -8,6 +8,8 @@ Test strategy:
 
 from __future__ import annotations
 
+from typing import Any, ClassVar
+
 import pytest
 from pydantic_ai.models.test import TestModel
 
@@ -55,6 +57,29 @@ class TestInstantiation:
         agent = ExtractionAgent(model=test_model, kb_agent=kb_agent)
         assert isinstance(agent, ExtractionAgent)
         assert agent._agent is not None
+
+    def test_retries_forwarded_to_base_agent(
+        self, test_model: TestModel, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """ExtractionAgent forwards ``retries`` to the NarrareAgent base constructor."""
+        import narrare_core.agents.base as base_module
+
+        class CapturingAgent:
+            calls: ClassVar[list[dict[str, Any]]] = []
+
+            def __init__(self, **kwargs: Any) -> None:
+                self.calls.append(kwargs)
+
+            def output_validator(self, validator: Any) -> Any:
+                return validator
+
+        monkeypatch.setattr(base_module, "Agent", CapturingAgent)
+        before = len(CapturingAgent.calls)
+
+        ExtractionAgent(model=test_model, retries=4)
+
+        assert len(CapturingAgent.calls) == before + 1
+        assert CapturingAgent.calls[-1]["retries"] == 4
 
 
 # ---------------------------------------------------------------------------
