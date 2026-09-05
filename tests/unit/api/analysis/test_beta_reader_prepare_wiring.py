@@ -10,9 +10,10 @@ forwarded to the agent run:
   reaches ``agent.run_phase1`` through the ``run_phase1`` runner helper.
 - ``BetaReaderService.deep_dive`` (BETA_READ, phase 2) —
   ``prepared.model`` reaches the phase-2 agent; the settings/limits
-  pass-through into the core-built phase-2 agent is a documented
-  RULE-01b boundary gap (skipped pin below, same class as the 6c
-  WorldbuilderAgent and 6d WikiGenerationAgent gaps).
+  pass-through INTO the core-built phase-2 agent landed with the Task-1
+  core kwargs pass-through (unpinned test below). The service-side
+  wiring that feeds ``prepared.model_settings``/``prepared.usage_limits``
+  into ``run_phase2`` is the follow-up Task 2 (Backend).
 
 Root cause pinned here (structural audit): the sites resolved via bare
 ``get_model`` and ran the agent with NO model_settings and NO
@@ -30,7 +31,9 @@ from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-import pytest
+from pydantic_ai.models.test import TestModel
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.usage import UsageLimits
 
 from narrare.analysis.beta_reader_cache import BetaReaderCache
 from narrare.analysis.beta_reader_service import BetaReaderService
@@ -41,6 +44,8 @@ from narrare.analysis.schemas import (
     BetaReaderRequest,
     BetaReaderResponse,
 )
+from narrare_core.agents.base import NarrareAgent
+from narrare_core.agents.beta_reader_agent import BetaReaderAgent
 from narrare_core.agents.beta_reader_types import (
     AgentOverallAssessment,
     BetaReaderDeps,
@@ -52,8 +57,6 @@ from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
-    from pydantic_ai.usage import UsageLimits
-
     from narrare_core.llm.gateway import ModelRegistry
 
 _USER_KEY = "sk-user-key"
@@ -272,16 +275,38 @@ class TestBetaReaderPrepareWiring:
         # prepared.model flows into the phase-2 agent run.
         assert agent.run_phase2.call_args.kwargs["model"] is prepared.model
 
-    @pytest.mark.skip(
-        "CORE BOUNDARY (RULE-01b): BetaReaderAgent.run_phase2 builds the "
-        "phase-2 agent and runs it WITHOUT model_settings/usage_limits "
-        "kwargs — the settings half of the prepared triple cannot flow "
-        "from the API-side service. Small core pass-through in "
-        "packages/core/narrare_core/agents/beta_reader_agent.py; same "
-        "follow-up class as the Task-6c WorldbuilderAgent.run_phase2 and "
-        "Task-6d WikiGenerationAgent gaps. Unskip (and assert the "
-        "settings reach the inner run) when the core pass-through lands."
-    )
     async def test_prepared_settings_reach_the_phase2_agent_run_site(self) -> None:
-        """Placeholder pin: the settings triple must reach the phase-2 run."""
-        raise NotImplementedError
+        """Core pass-through landed (Task 1): ``run_phase2`` kwargs reach
+        the ephemeral phase-2 agent's inner run.
+
+        Former CORE BOUNDARY pin (RULE-01b): ``BetaReaderAgent.run_phase2``
+        ran the phase-2 agent without ``model_settings``/``usage_limits``.
+        The kwargs now flow through; the service-side wiring that passes
+        ``prepared.model_settings``/``prepared.usage_limits`` from
+        ``deep_dive`` is Task 2 (Backend).
+        """
+        agent = BetaReaderAgent(model=TestModel())
+        deps = BetaReaderDeps(chapter_text="Test chapter content.")
+        expected = BetaReaderPhase2Output(
+            detailed_feedback=[],
+            revision_suggestions=[],
+            category_score=5,
+        )
+        sentinel_settings: ModelSettings = ModelSettings(max_tokens=12_345)
+        sentinel_limits = UsageLimits(request_limit=7)
+
+        with patch.object(NarrareAgent, "run", new=AsyncMock(return_value=expected)) as mock_run:
+            result = await agent.run_phase2(
+                "Deep-dive on plot",
+                deps,
+                model=TestModel(),
+                system_prompt="Phase 2 system prompt.",
+                model_settings=sentinel_settings,
+                usage_limits=sentinel_limits,
+            )
+
+        assert result is expected
+        run_call = mock_run.call_args
+        assert run_call is not None
+        assert run_call.kwargs["model_settings"] is sentinel_settings
+        assert run_call.kwargs["usage_limits"] is sentinel_limits

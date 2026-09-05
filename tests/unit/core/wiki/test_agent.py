@@ -9,14 +9,34 @@ Test-Strategie:
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+from typing import Any, cast
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from pydantic_ai.models.test import TestModel
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.usage import UsageLimits
 
 from narrare_core.wiki.agent import WikiGenerationAgent
 from narrare_core.wiki.types import (
+    WikiChapterOutput,
     WikiEntityOutput,
     WikiGenerationDeps,
 )
+
+
+def _entity_output() -> WikiEntityOutput:
+    """Minimal valid entity output (real value object, ADR-030)."""
+    return WikiEntityOutput(narrative_summary="Summary.", key_attributes=[], relationships=[])
+
+
+def _chapter_output() -> WikiChapterOutput:
+    """Minimal valid chapter output (real value object, ADR-030)."""
+    return WikiChapterOutput(
+        narrative_summary="Summary.", key_events=[], entities_involved=[], themes=[]
+    )
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -112,3 +132,136 @@ class TestGenerateEntity:
         assert isinstance(result, WikiEntityOutput)
         # Location entity_type — character_arc should be None
         assert result.character_arc is None
+
+
+# ---------------------------------------------------------------------------
+# C. generate_entity — model_settings/usage_limits pass-through (Task 1)
+# ---------------------------------------------------------------------------
+
+
+class _StreamResultStub:
+    """Stub for the pydantic-ai run_stream result object."""
+
+    def __init__(self, output: object) -> None:
+        self._output = output
+
+    async def get_output(self) -> object:
+        return self._output
+
+
+class _StreamContextStub:
+    """Async context manager yielded by a stubbed run_stream call."""
+
+    def __init__(self, result: _StreamResultStub) -> None:
+        self._result = result
+
+    async def __aenter__(self) -> _StreamResultStub:
+        return self._result
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+
+class _RunStreamStub:
+    """Callable fake recording run_stream calls (ADR-030 fake style)."""
+
+    def __init__(self, output: object) -> None:
+        self._context = _StreamContextStub(_StreamResultStub(output))
+        self.calls: list[dict[str, object]] = []
+
+    def __call__(self, *args: object, **kwargs: object) -> _StreamContextStub:
+        self.calls.append({"args": args, "kwargs": kwargs})
+        return self._context
+
+
+class TestGenerateEntitySettings:
+    """generate_entity forwards the prepared-triple half to the inner run."""
+
+    @pytest.mark.asyncio
+    async def test_run_forwards_settings_and_limits(self, deps: WikiGenerationDeps) -> None:
+        agent = WikiGenerationAgent(model=TestModel())
+        expected = _entity_output()
+        stub_agent = AsyncMock(name="inner_agent")
+        stub_agent.run = AsyncMock(return_value=SimpleNamespace(output=expected))
+        cast("Any", agent)._agent = stub_agent
+        sentinel_settings = ModelSettings(max_tokens=12_345)
+        sentinel_limits = UsageLimits(request_limit=7)
+
+        result = await agent.generate_entity(
+            deps=deps,
+            model_settings=sentinel_settings,
+            usage_limits=sentinel_limits,
+        )
+
+        assert result is expected
+        kwargs = stub_agent.run.call_args.kwargs
+        assert kwargs["model_settings"] is sentinel_settings
+        assert kwargs["usage_limits"] is sentinel_limits
+
+    @pytest.mark.asyncio
+    async def test_stream_forwards_settings_and_limits(self, deps: WikiGenerationDeps) -> None:
+        agent = WikiGenerationAgent(model=TestModel())
+        expected = _entity_output()
+        run_stream_stub = _RunStreamStub(expected)
+        stub_agent = AsyncMock(name="inner_agent")
+        stub_agent.run_stream = run_stream_stub
+        cast("Any", agent)._agent = stub_agent
+        sentinel_settings = ModelSettings(max_tokens=12_345)
+        sentinel_limits = UsageLimits(request_limit=7)
+
+        result = await agent.generate_entity(
+            deps=deps,
+            stream=True,
+            model_settings=sentinel_settings,
+            usage_limits=sentinel_limits,
+        )
+
+        assert result is expected
+        assert len(run_stream_stub.calls) == 1
+        kwargs = cast("dict[str, object]", run_stream_stub.calls[0]["kwargs"])
+        assert kwargs["model_settings"] is sentinel_settings
+        assert kwargs["usage_limits"] is sentinel_limits
+
+    @pytest.mark.asyncio
+    async def test_run_defaults_to_none(self, deps: WikiGenerationDeps) -> None:
+        """Without kwargs the inner run receives None (backward compat)."""
+        agent = WikiGenerationAgent(model=TestModel())
+        stub_agent = AsyncMock(name="inner_agent")
+        stub_agent.run = AsyncMock(return_value=SimpleNamespace(output=_entity_output()))
+        cast("Any", agent)._agent = stub_agent
+
+        await agent.generate_entity(deps=deps)
+
+        kwargs = stub_agent.run.call_args.kwargs
+        assert kwargs["model_settings"] is None
+        assert kwargs["usage_limits"] is None
+
+
+# ---------------------------------------------------------------------------
+# D. generate_chapter — delegation kwargs pass-through (Task 1)
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateChapterSettings:
+    """generate_chapter forwards the kwargs to WikiChapterGenerator.generate."""
+
+    @pytest.mark.asyncio
+    async def test_forwards_settings_and_limits(self, deps: WikiGenerationDeps) -> None:
+        expected = _chapter_output()
+        sentinel_settings = ModelSettings(max_tokens=12_345)
+        sentinel_limits = UsageLimits(request_limit=7)
+
+        with patch("narrare_core.wiki.agent.WikiChapterGenerator") as MockGenerator:
+            agent = WikiGenerationAgent(model=TestModel())
+            MockGenerator.return_value.generate = AsyncMock(return_value=expected)
+
+            result = await agent.generate_chapter(
+                deps=deps,
+                model_settings=sentinel_settings,
+                usage_limits=sentinel_limits,
+            )
+
+        assert result is expected
+        kwargs = MockGenerator.return_value.generate.call_args.kwargs
+        assert kwargs["model_settings"] is sentinel_settings
+        assert kwargs["usage_limits"] is sentinel_limits

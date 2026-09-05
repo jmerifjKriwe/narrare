@@ -11,12 +11,16 @@ When streaming, ``run_stream()`` is used and the strict model output
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.wiki.agent_chapter import WikiChapterGenerator
 from narrare_core.wiki.prompt_loader import WikiPromptLoader
 from narrare_core.wiki.types import WikiChapterOutput, WikiEntityOutput, WikiGenerationDeps
+
+if TYPE_CHECKING:
+    from pydantic_ai.settings import ModelSettings
+    from pydantic_ai.usage import UsageLimits
 
 
 class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
@@ -64,6 +68,8 @@ class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
         deps: WikiGenerationDeps,
         *,
         stream: bool = False,
+        model_settings: ModelSettings | None = None,
+        usage_limits: UsageLimits | None = None,
     ) -> WikiEntityOutput:
         """Generate a wiki summary for a single KB entity.
 
@@ -73,15 +79,29 @@ class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
         Args:
             deps: Generation dependencies with entity context.
             stream: If True, use ``run_stream()`` for streaming output.
+            model_settings: Settings half of the ModelRegistry.prepare()
+                triple — forwarded to the pydantic-ai run.
+            usage_limits: Usage limits from the prepared triple —
+                forwarded to the pydantic-ai run.
 
         Returns:
             Structured entity wiki summary.
         """
         prompt_text = self._load_entity_prompt(deps)
         if stream:
-            async with self._agent.run_stream(prompt_text, deps=deps) as stream_result:
+            async with self._agent.run_stream(
+                prompt_text,
+                deps=deps,
+                model_settings=model_settings,
+                usage_limits=usage_limits,
+            ) as stream_result:
                 return cast("WikiEntityOutput", await stream_result.get_output())
-        result = await self._agent.run(prompt_text, deps=deps)
+        result = await self._agent.run(
+            prompt_text,
+            deps=deps,
+            model_settings=model_settings,
+            usage_limits=usage_limits,
+        )
         return cast("WikiEntityOutput", result.output)
 
     # ------------------------------------------------------------------
@@ -93,6 +113,8 @@ class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
         deps: WikiGenerationDeps,
         *,
         stream: bool = False,
+        model_settings: ModelSettings | None = None,
+        usage_limits: UsageLimits | None = None,
     ) -> WikiChapterOutput:
         """Generate a wiki summary for a single chapter.
 
@@ -102,12 +124,22 @@ class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
         Args:
             deps: Generation dependencies with chapter context.
             stream: If True, use ``run_stream()`` for streaming output.
+            model_settings: Settings half of the ModelRegistry.prepare()
+                triple — forwarded to the chapter agent run.
+            usage_limits: Usage limits from the prepared triple —
+                forwarded to the chapter agent run.
 
         Returns:
             Structured chapter wiki summary.
         """
         prompt_text = self._load_chapter_prompt(deps)
-        return await self._chapter_generator.generate(prompt_text, deps, stream=stream)
+        return await self._chapter_generator.generate(
+            prompt_text,
+            deps,
+            stream=stream,
+            model_settings=model_settings,
+            usage_limits=usage_limits,
+        )
 
     # ------------------------------------------------------------------
     # Prompt loading

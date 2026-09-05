@@ -7,13 +7,17 @@ has a different schema than WikiEntityOutput.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic_ai import (
     Agent as PydanticAgent,
 )  # narrare: allow-agent reason="WikiChapterGenerator wraps internal PydanticAgent (ADR-015)"
 
 from narrare_core.wiki.types import WikiChapterOutput, WikiGenerationDeps
+
+if TYPE_CHECKING:
+    from pydantic_ai.settings import ModelSettings
+    from pydantic_ai.usage import UsageLimits
 
 
 class WikiChapterGenerator:
@@ -40,6 +44,8 @@ class WikiChapterGenerator:
         deps: WikiGenerationDeps,
         *,
         stream: bool = False,
+        model_settings: ModelSettings | None = None,
+        usage_limits: UsageLimits | None = None,
     ) -> WikiChapterOutput:
         """Generate a wiki summary for a single chapter.
 
@@ -47,16 +53,28 @@ class WikiChapterGenerator:
             prompt_text: The rendered prompt text with substituted variables.
             deps: Generation dependencies with chapter context.
             stream: If True, use ``run_stream()`` for streaming output.
+            model_settings: Settings half of the ModelRegistry.prepare()
+                triple — forwarded to the pydantic-ai run.
+            usage_limits: Usage limits from the prepared triple —
+                forwarded to the pydantic-ai run.
 
         Returns:
             Structured chapter wiki summary.
         """
         agent = self._get_agent()
         if stream:
-            async with agent.run_stream(prompt_text, deps=deps) as stream_result:
+            async with agent.run_stream(
+                prompt_text,
+                deps=deps,
+                model_settings=model_settings,
+                usage_limits=usage_limits,
+            ) as stream_result:
                 return cast("WikiChapterOutput", await stream_result.get_output())
         result = await agent.run(  # narrare: allow-agent reason="internal PydanticAgent (ADR-015)"
-            prompt_text, deps=deps
+            prompt_text,
+            deps=deps,
+            model_settings=model_settings,
+            usage_limits=usage_limits,
         )
         return cast("WikiChapterOutput", result.output)
 

@@ -12,25 +12,19 @@ all"): the factory resolved the model via bare ``get_model`` on both
 the user plane and the operator plane, bypassing the intent-aware
 assembly point entirely.
 
-CORE BOUNDARY (known gap, NOT patched here — RULE-01b, mirrors the
-Task-6c ``WorldbuilderAgent.run_phase2`` finding): the
-``WikiGenerationAgent`` run paths (``generate_entity`` /
-``generate_chapter`` → ``WikiChapterGenerator``) invoke
-``agent.run(...)`` WITHOUT ``model_settings``/``usage_limits`` kwargs,
-so the settings half of the prepared triple cannot reach the LLM call
-from this API-side factory. Fixing it requires the ~2-line core kwargs
-pass-through in ``packages/core/narrare_core/wiki/agent.py`` (+ the
-chapter generator) — route to the Core specialist. The resolution point
-is migrated here; the run-site gap stays pinned by this boundary note
-and swept in Task 7.
+CORE BOUNDARY (landed with the Task-1 core kwargs pass-through,
+RULE-01b): ``WikiGenerationAgent.generate_entity`` / ``generate_chapter``
+(now via ``WikiChapterGenerator``) forward ``model_settings`` /
+``usage_limits`` to the internal agent runs (unpinned test below). The
+factory-side wiring that feeds ``prepared.model_settings`` /
+``prepared.usage_limits`` into the agent is the follow-up Task 2
+(Backend).
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
 
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm._prepared_call import PreparedModelCall
@@ -148,15 +142,73 @@ class TestBuildCoreWikiServicePrepareWiring:
         prepared = cast("PreparedModelCall", calls[0]["prepared"])
         mock_agent_cls.assert_called_once_with(model=prepared.model)
 
-    @pytest.mark.skip(
-        "CORE BOUNDARY (RULE-01b): WikiGenerationAgent.generate_entity/"
-        "generate_chapter run agent.run(...) without model_settings/"
-        "usage_limits kwargs — the settings half of the prepared triple "
-        "cannot flow from the API-side factory. 2-line core pass-through "
-        "in packages/core/narrare_core/wiki/agent.py + agent_chapter.py; "
-        "same follow-up class as the Task-6c WorldbuilderAgent.run_phase2 "
-        "gap. Unskip when the core kwargs pass-through lands."
-    )
     async def test_prepared_settings_reach_the_agent_run_site(self) -> None:
-        """Placeholder pin: the settings triple must reach the wiki run site."""
-        raise NotImplementedError
+        """Core pass-through landed (Task 1): the wiki run paths forward
+        ``model_settings``/``usage_limits`` to the internal agent runs.
+
+        Former CORE BOUNDARY pin: ``generate_entity`` /
+        ``generate_chapter`` ran the internal agents without the kwargs.
+        They now flow through; the factory-side wiring that passes the
+        ``prepared`` triple halves is Task 2 (Backend).
+        """
+        from types import SimpleNamespace
+
+        from pydantic_ai.models.test import TestModel
+        from pydantic_ai.usage import UsageLimits
+
+        from narrare_core.wiki.agent import WikiGenerationAgent
+        from narrare_core.wiki.types import (
+            WikiChapterOutput,
+            WikiEntityOutput,
+            WikiGenerationDeps,
+        )
+
+        deps = WikiGenerationDeps(
+            language="en",
+            genre="Fantasy",
+            entity_type="character",
+            entity_name="Eldrin the Wise",
+            entity_body="An ancient wizard.",
+        )
+        sentinel_limits = UsageLimits(request_limit=7)
+
+        # --- generate_entity: kwargs reach the internal NarrareAgent run ---
+        agent = WikiGenerationAgent(model=TestModel())
+        expected_entity = WikiEntityOutput(
+            narrative_summary="Summary.", key_attributes=[], relationships=[]
+        )
+        stub_inner = AsyncMock(name="inner_agent")
+        stub_inner.run = AsyncMock(return_value=SimpleNamespace(output=expected_entity))
+        cast("Any", agent)._agent = stub_inner
+
+        result = await agent.generate_entity(
+            deps=deps,
+            model_settings=_SENTINEL_SETTINGS,
+            usage_limits=sentinel_limits,
+        )
+
+        assert result is expected_entity
+        entity_call = stub_inner.run.call_args
+        assert entity_call is not None
+        assert entity_call.kwargs["model_settings"] is _SENTINEL_SETTINGS
+        assert entity_call.kwargs["usage_limits"] is sentinel_limits
+
+        # --- generate_chapter: kwargs reach WikiChapterGenerator.generate ---
+        expected_chapter = WikiChapterOutput(
+            narrative_summary="Summary.", key_events=[], entities_involved=[], themes=[]
+        )
+        with patch("narrare_core.wiki.agent.WikiChapterGenerator") as MockGenerator:
+            chapter_agent = WikiGenerationAgent(model=TestModel())
+            MockGenerator.return_value.generate = AsyncMock(return_value=expected_chapter)
+
+            chapter_result = await chapter_agent.generate_chapter(
+                deps=deps,
+                model_settings=_SENTINEL_SETTINGS,
+                usage_limits=sentinel_limits,
+            )
+
+        assert chapter_result is expected_chapter
+        chapter_call = MockGenerator.return_value.generate.call_args
+        assert chapter_call is not None
+        assert chapter_call.kwargs["model_settings"] is _SENTINEL_SETTINGS
+        assert chapter_call.kwargs["usage_limits"] is sentinel_limits

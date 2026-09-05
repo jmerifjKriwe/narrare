@@ -46,6 +46,9 @@ from narrare_core.agents.worldbuilding_validators import (
 )
 
 if TYPE_CHECKING:
+    from pydantic_ai.settings import ModelSettings
+    from pydantic_ai.usage import UsageLimits
+
     from narrare_core.agents.kb_agent import KBAgent
 
 
@@ -100,6 +103,9 @@ class WorldbuildingAgent(NarrareAgent[WorldbuildingDeps, WorldbuildingPhase1Outp
         deps: WorldbuildingDeps,
         model: Any,  # Phase 2 can use a different model
         system_prompt: str | None = None,
+        *,
+        model_settings: ModelSettings | None = None,
+        usage_limits: UsageLimits | None = None,
     ) -> WorldbuildingPhase2Output:
         """Execute Phase 2 consistency checking with separate agent instance.
 
@@ -111,6 +117,10 @@ class WorldbuildingAgent(NarrareAgent[WorldbuildingDeps, WorldbuildingPhase1Outp
             deps: WorldbuildingDeps with candidate_pairs and entity_details.
             model: LLM model from ModelRegistry (can differ from Phase 1).
             system_prompt: Optional override for the system prompt.
+            model_settings: Settings half of the ModelRegistry.prepare()
+                triple — forwarded to the phase-2 pydantic-ai run.
+            usage_limits: Usage limits from the prepared triple —
+                forwarded to the phase-2 pydantic-ai run.
 
         Returns:
             WorldbuildingPhase2Output with consistency issues and assessment.
@@ -122,7 +132,12 @@ class WorldbuildingAgent(NarrareAgent[WorldbuildingDeps, WorldbuildingPhase1Outp
             system_prompt=system_prompt,
         )
         phase2_agent._agent.output_validator(validate_worldbuilding_phase2)
-        result = await phase2_agent.run(prompt, deps=deps)
+        result = await phase2_agent.run(
+            prompt,
+            deps=deps,
+            model_settings=model_settings,
+            usage_limits=usage_limits,
+        )
         return result
 
     async def run(

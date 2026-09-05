@@ -33,7 +33,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.beta_reader_types import (
@@ -45,6 +45,10 @@ from narrare_core.agents.beta_reader_validators import (
     validate_beta_reader_phase1,
     validate_beta_reader_phase2,
 )
+
+if TYPE_CHECKING:
+    from pydantic_ai.settings import ModelSettings
+    from pydantic_ai.usage import UsageLimits
 
 
 class BetaReaderAgent(NarrareAgent[BetaReaderDeps, BetaReaderPhase1Output]):
@@ -88,11 +92,24 @@ class BetaReaderAgent(NarrareAgent[BetaReaderDeps, BetaReaderPhase1Output]):
         deps: BetaReaderDeps,
         model: Any,
         system_prompt: str | None = None,
+        *,
+        model_settings: ModelSettings | None = None,
+        usage_limits: UsageLimits | None = None,
     ) -> BetaReaderPhase2Output:
         """Execute Phase 2 deep-dive with separate agent instance.
 
         Phase 2 has its own agent instance with different output type
         and potentially different model/system prompt.
+
+        Args:
+            prompt: The user prompt for the category deep-dive.
+            deps: BetaReaderDeps with the deepdive category and chapter context.
+            model: LLM model for the phase-2 agent (can differ from Phase 1).
+            system_prompt: Optional override for the phase-2 system prompt.
+            model_settings: Settings half of the ModelRegistry.prepare()
+                triple — forwarded to the phase-2 pydantic-ai run.
+            usage_limits: Usage limits from the prepared triple —
+                forwarded to the phase-2 pydantic-ai run.
         """
         phase2_agent = NarrareAgent[BetaReaderDeps, BetaReaderPhase2Output](
             model=model,
@@ -101,7 +118,12 @@ class BetaReaderAgent(NarrareAgent[BetaReaderDeps, BetaReaderPhase1Output]):
             system_prompt=system_prompt,
         )
         phase2_agent._agent.output_validator(validate_beta_reader_phase2)
-        result = await phase2_agent.run(prompt, deps=deps)
+        result = await phase2_agent.run(
+            prompt,
+            deps=deps,
+            model_settings=model_settings,
+            usage_limits=usage_limits,
+        )
         return result
 
     async def run(
