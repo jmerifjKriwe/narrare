@@ -5,11 +5,11 @@ phases (intent KB_WORLDBUILD, features ``kb_worldbuilding_phase1`` /
 ``kb_worldbuilding_phase2``): the model resolves via the SINGLE
 assembly point (``ModelRegistry.prepare``, Task 4).
 
-Phase-2 boundary note: ``WorldbuildingAgent.run_phase2`` (core) builds
-its own ephemeral agent and does not accept
-``model_settings``/``usage_limits`` — only ``prepared.model`` can flow
-there until the core agent gains a kwargs pass-through (Core-scope
-change, reported to the coordinator; not silently patched here).
+Phase-2 note: the core ``WorldbuildingAgent.run_phase2`` kwargs
+pass-through landed in Task 1 of the pydantic-ai follow-ups plan; the
+service-side wiring that forwards the full prepared triple into
+``run_phase2`` landed in Task 2 (pinned in
+``test_phase2_receives_prepared_triple`` below).
 
 Shared fakes live in ``_kb_prepare_wiring_helpers.py`` (RULE-04 split
 sibling of ``test_kb_prepare_wiring.py``).
@@ -165,9 +165,10 @@ class TestWorldbuildingPrepareWiring:
         agent.run_phase2.assert_not_called()
         assert result.worldbuilding_score == 0.75
 
-    async def test_phase2_receives_prepared_model(self) -> None:
-        """Phase 2 gets ``prepared.model`` — the settings/limits flow is
-        Core-boundary-blocked (run_phase2 lacks a kwargs pass-through)."""
+    async def test_phase2_receives_prepared_triple(self) -> None:
+        """Phase 2 gets the full prepared triple (Task 2 wiring): the
+        core ``run_phase2`` kwargs pass-through (Task 1) carries the
+        settings/limits halves into the ephemeral phase-2 agent."""
         from narrare.kb.worldbuilding_contracts import WorldbuildingAnalysisRequest
 
         config = _user_config()
@@ -194,5 +195,9 @@ class TestWorldbuildingPrepareWiring:
         assert second["intent"] is LLMIntent.KB_WORLDBUILD
         prepared = second["prepared"]
         assert isinstance(prepared, PreparedModelCall)
-        # The prepared model (with user credentials) reaches phase 2.
-        assert agent.run_phase2.call_args.kwargs["model"] is prepared.model
+        # The full prepared triple (model + settings + limits) reaches
+        # phase 2 (Task 2 service-side wiring).
+        run_kwargs = agent.run_phase2.call_args.kwargs
+        assert run_kwargs["model"] is prepared.model
+        assert run_kwargs["model_settings"] is prepared.model_settings
+        assert run_kwargs["usage_limits"] is prepared.usage_limits

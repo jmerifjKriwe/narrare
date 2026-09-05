@@ -124,7 +124,8 @@ class TestBuildCoreWikiService:
         """build_core_wiki_service creates WikiService with agent and NullEventBus.
 
         Tests the full assembly chain: model_registry → config → model →
-        WikiGenerationAgent → WikiService.
+        WikiGenerationAgent → PreparedWikiAgent (Task 2 binding adapter)
+        → WikiService.
         """
         mock_model = AsyncMock()
         mock_registry = MagicMock(spec=ModelRegistry)
@@ -158,10 +159,24 @@ class TestBuildCoreWikiService:
             # Verify event bus created
             mock_bus_cls.assert_called_once_with()
 
-            # Verify service created with agent + event bus + optional pipeline
-            mock_svc_cls.assert_called_once_with(
-                agent=mock_agent, event_bus=mock_bus, invocation_pipeline=None
-            )
+            # Verify service created with the bound agent (Task 2: the
+            # factory wraps the concrete agent in the PreparedWikiAgent
+            # binding adapter so the prepared halves reach the runs)
+            # + event bus + optional pipeline
+            from typing import Any, cast
+
+            from narrare.wiki.prepared_wiki_agent import PreparedWikiAgent
+
+            mock_svc_cls.assert_called_once()
+            svc_kwargs = mock_svc_cls.call_args.kwargs
+            assert svc_kwargs["event_bus"] is mock_bus
+            assert svc_kwargs["invocation_pipeline"] is None
+            # Task 2: the factory wraps the concrete agent in the
+            # PreparedWikiAgent binding adapter so the prepared halves
+            # reach the agent runs.
+            bound_agent = svc_kwargs["agent"]
+            assert isinstance(bound_agent, PreparedWikiAgent)
+            assert cast("Any", bound_agent)._agent is mock_agent
 
             # Verify return value
             assert result is mock_svc

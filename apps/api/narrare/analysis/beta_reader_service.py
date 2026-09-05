@@ -251,11 +251,13 @@ class BetaReaderService:
         )
 
         agent = BetaReaderAgent(model=prepared.model, system_prompt=composed.system)
-        # Core boundary (RULE-01b): BetaReaderAgent.run_phase2 has no
-        # model_settings/usage_limits pass-through, so only prepared.model
-        # flows into the phase-2 agent (pinned by the skipped wiring test
-        # in test_beta_reader_prepare_wiring.py).
-        result = await run_phase2(agent, deps, prepared.model)
+        result = await run_phase2(
+            agent,
+            deps,
+            prepared.model,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
+        )
 
         # 4. Map to response
         response = map_phase2_response(result, novel_id, request.category)

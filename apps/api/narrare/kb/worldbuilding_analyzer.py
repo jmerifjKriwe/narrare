@@ -351,17 +351,13 @@ class WorldbuildingAnalyzer:
 
         prepared = await self._prepare()
         agent = WorldbuildingAgent(model=prepared.model)
-        # Core boundary (Task 6c): WorldbuildingAgent.run_phase2 builds its
-        # own ephemeral agent internally and does not accept
-        # model_settings/usage_limits — only the prepared model (with user
-        # credentials) flows there. Full triple forwarding needs a kwargs
-        # pass-through in core (reported to the coordinator, not patched
-        # outside the Core layer).
         result = await agent.run_phase2(
             prompt=phase2_user_prompt,
             deps=phase2_deps,
             model=prepared.model,
             system_prompt=system_prompt,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
 
         return [

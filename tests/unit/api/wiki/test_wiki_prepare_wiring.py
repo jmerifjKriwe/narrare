@@ -12,13 +12,15 @@ all"): the factory resolved the model via bare ``get_model`` on both
 the user plane and the operator plane, bypassing the intent-aware
 assembly point entirely.
 
-CORE BOUNDARY (landed with the Task-1 core kwargs pass-through,
-RULE-01b): ``WikiGenerationAgent.generate_entity`` / ``generate_chapter``
-(now via ``WikiChapterGenerator``) forward ``model_settings`` /
-``usage_limits`` to the internal agent runs (unpinned test below). The
-factory-side wiring that feeds ``prepared.model_settings`` /
-``prepared.usage_limits`` into the agent is the follow-up Task 2
-(Backend).
+CORE BOUNDARY RESOLUTION (Task 1 core kwargs pass-through + Task 2
+factory-side wiring, RULE-01b): ``WikiGenerationAgent.generate_entity``
+/ ``generate_chapter`` (via ``WikiChapterGenerator``) forward
+``model_settings``/``usage_limits`` to the internal agent runs, and the
+factory binds the prepared halves into the agent path via the API-side
+``PreparedWikiAgent`` adapter (the core ``WikiAgentProtocol`` surface
+has no settings/limits parameters — the binding happens where the
+triple is resolved, pinned in
+``test_factory_binds_prepared_settings_into_the_agent_path`` below).
 """
 
 from __future__ import annotations
@@ -141,6 +143,59 @@ class TestBuildCoreWikiServicePrepareWiring:
         assert calls[0]["intent"] is LLMIntent.SUMMARIZE
         prepared = cast("PreparedModelCall", calls[0]["prepared"])
         mock_agent_cls.assert_called_once_with(model=prepared.model)
+
+    async def test_factory_binds_prepared_settings_into_the_agent_path(self) -> None:
+        """Task 2 wiring: the prepared settings/limits halves reach the
+        agent run path. The factory wraps the concrete agent in the
+        API-side ``PreparedWikiAgent`` binding adapter, so every
+        ``generate_entity``/``generate_chapter`` call (driven by the core
+        ``WikiService`` through ``WikiAgentProtocol``) forwards the
+        prepared halves into the concrete agent calls."""
+        mock_model = AsyncMock()
+        registry, calls = _recording_registry(mock_model)
+        config = _user_config()
+
+        with (
+            patch("narrare._app.dependencies.get_model_registry", return_value=registry),
+            patch("narrare_core.wiki.agent.WikiGenerationAgent") as mock_agent_cls,
+            patch("narrare_core.wiki.service.WikiService") as mock_svc_cls,
+        ):
+            # The behavioral half awaits the concrete agent's generate
+            # methods through the adapter — make them awaitable.
+            mock_agent_cls.return_value.generate_entity = AsyncMock()
+            mock_agent_cls.return_value.generate_chapter = AsyncMock()
+
+            from narrare.wiki.dependencies_core import build_core_wiki_service
+            from narrare.wiki.prepared_wiki_agent import PreparedWikiAgent
+
+            await build_core_wiki_service(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+
+        prepared = cast("PreparedModelCall", calls[0]["prepared"])
+        # The factory hands the core service the binding adapter...
+        bound_agent = mock_svc_cls.call_args.kwargs["agent"]
+        assert isinstance(bound_agent, PreparedWikiAgent)
+        # ...which wraps the concrete agent constructed with prepared.model.
+        mock_agent_cls.assert_called_once_with(model=prepared.model)
+
+        # Behavioral: generate calls through the adapter forward the
+        # prepared halves into the concrete agent.
+        from narrare_core.wiki.types import WikiGenerationDeps
+
+        deps = WikiGenerationDeps(
+            language="en",
+            genre="Fantasy",
+            entity_type="character",
+            entity_name="Eldrin the Wise",
+            entity_body="An ancient wizard.",
+        )
+        await bound_agent.generate_entity(deps)
+        entity_call = mock_agent_cls.return_value.generate_entity.call_args
+        assert entity_call.kwargs["model_settings"] is _SENTINEL_SETTINGS
+        assert entity_call.kwargs["usage_limits"] is prepared.usage_limits
+        await bound_agent.generate_chapter(deps)
+        chapter_call = mock_agent_cls.return_value.generate_chapter.call_args
+        assert chapter_call.kwargs["model_settings"] is _SENTINEL_SETTINGS
+        assert chapter_call.kwargs["usage_limits"] is prepared.usage_limits
 
     async def test_prepared_settings_reach_the_agent_run_site(self) -> None:
         """Core pass-through landed (Task 1): the wiki run paths forward

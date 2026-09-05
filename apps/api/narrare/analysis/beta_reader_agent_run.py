@@ -59,10 +59,24 @@ async def run_phase2(
     agent: BetaReaderAgent,
     deps: BetaReaderDeps,
     model: object,
+    *,
+    model_settings: ModelSettings | None = None,
+    usage_limits: UsageLimits | None = None,
 ) -> BetaReaderPhase2Output:
-    """Run Phase 2 agent with error handling."""
+    """Run Phase 2 agent with error handling.
+
+    ``model_settings``/``usage_limits`` come from the coherent
+    ``ModelRegistry.prepare()`` triple and are forwarded to the
+    phase-2 agent run (core kwargs pass-through, Task 1).
+    """
     try:
-        return await agent.run_phase2(build_deepdive_prompt(deps), deps=deps, model=model)
+        return await agent.run_phase2(
+            build_deepdive_prompt(deps),
+            deps=deps,
+            model=model,
+            model_settings=model_settings,
+            usage_limits=usage_limits,
+        )
     except AnalysisError:
         raise
     except Exception as exc:

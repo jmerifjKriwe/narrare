@@ -60,12 +60,11 @@ async def build_core_wiki_service(
     registry = get_model_registry()
     # Single assembly point (Task 6d — Task 4/5 pattern): model +
     # intent-aware runtime settings + usage limits as one coherent
-    # triple, for BOTH planes. CORE BOUNDARY (Task-6c precedent): the
-    # WikiGenerationAgent run paths invoke ``agent.run(...)`` without
-    # model_settings/usage_limits kwargs, so only ``prepared.model``
-    # flows from here — the ~2-line core kwargs pass-through
-    # (packages/core/narrare_core/wiki/agent.py + agent_chapter.py) is a
-    # Core follow-up; pinned by test_wiki_prepare_wiring.py.
+    # triple, for BOTH planes. Task 2 (pydantic-ai follow-ups): the
+    # settings/limits halves are bound into the agent path via the
+    # API-side PreparedWikiAgent adapter — the core WikiService drives
+    # the agent through WikiAgentProtocol (no settings/limits params),
+    # so the binding happens here where the triple is in scope.
     if config is None:
         # Operator plane — startup wiki listener only (plan-sanctioned
         # survivor): no user context exists at lifespan startup.
@@ -80,7 +79,13 @@ async def build_core_wiki_service(
             api_key=api_key,
             base_url=base_url,
         )
-    agent = WikiGenerationAgent(model=prepared.model)
+    from narrare.wiki.prepared_wiki_agent import PreparedWikiAgent
+
+    agent = PreparedWikiAgent(
+        WikiGenerationAgent(model=prepared.model),
+        model_settings=prepared.model_settings,
+        usage_limits=prepared.usage_limits,
+    )
     return WikiService(
         agent=agent,
         event_bus=NullEventBus(),

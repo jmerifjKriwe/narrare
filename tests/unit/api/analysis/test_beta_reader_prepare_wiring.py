@@ -8,12 +8,10 @@ forwarded to the agent run:
 
 - ``BetaReaderService.analyze`` (BETA_READ, phase 1) — the full triple
   reaches ``agent.run_phase1`` through the ``run_phase1`` runner helper.
-- ``BetaReaderService.deep_dive`` (BETA_READ, phase 2) —
-  ``prepared.model`` reaches the phase-2 agent; the settings/limits
-  pass-through INTO the core-built phase-2 agent landed with the Task-1
-  core kwargs pass-through (unpinned test below). The service-side
-  wiring that feeds ``prepared.model_settings``/``prepared.usage_limits``
-  into ``run_phase2`` is the follow-up Task 2 (Backend).
+- ``BetaReaderService.deep_dive`` (BETA_READ, phase 2) — the full triple
+  reaches ``agent.run_phase2`` through the ``run_phase2`` runner helper
+  (core kwargs pass-through landed in Task 1; service-side wiring into
+  ``run_phase2`` landed in Task 2 of the follow-ups plan).
 
 Root cause pinned here (structural audit): the sites resolved via bare
 ``get_model`` and ran the agent with NO model_settings and NO
@@ -233,7 +231,7 @@ class TestBetaReaderPrepareWiring:
         assert prepared.usage_limits is None
         agent.run_phase1.assert_awaited_once()
 
-    async def test_deep_dive_resolves_via_prepare_and_passes_prepared_model(self) -> None:
+    async def test_deep_dive_resolves_via_prepare_and_forwards_full_triple(self) -> None:
         config = _user_config()
         registry = _RecordingPrepareRegistry()
         phase1 = _cached_phase1_response()
@@ -272,8 +270,12 @@ class TestBetaReaderPrepareWiring:
         assert call["base_url"] == _USER_BASE_URL
         registry.get_model.assert_awaited_once()
         prepared = cast("PreparedModelCall", call["prepared"])
-        # prepared.model flows into the phase-2 agent run.
-        assert agent.run_phase2.call_args.kwargs["model"] is prepared.model
+        # The full prepared triple flows into the phase-2 agent run
+        # (Task 2 service-side wiring through the run_phase2 helper).
+        run_kwargs: dict[str, Any] = agent.run_phase2.call_args.kwargs
+        assert run_kwargs["model"] is prepared.model
+        assert run_kwargs["model_settings"] is prepared.model_settings
+        assert run_kwargs["usage_limits"] is prepared.usage_limits
 
     async def test_prepared_settings_reach_the_phase2_agent_run_site(self) -> None:
         """Core pass-through landed (Task 1): ``run_phase2`` kwargs reach
@@ -283,7 +285,8 @@ class TestBetaReaderPrepareWiring:
         ran the phase-2 agent without ``model_settings``/``usage_limits``.
         The kwargs now flow through; the service-side wiring that passes
         ``prepared.model_settings``/``prepared.usage_limits`` from
-        ``deep_dive`` is Task 2 (Backend).
+        ``deep_dive`` landed as Task 2 (pinned in the deep-dive wiring
+        test above).
         """
         agent = BetaReaderAgent(model=TestModel())
         deps = BetaReaderDeps(chapter_text="Test chapter content.")
