@@ -37,7 +37,7 @@ misreport every honest finding as FP (the matrix contract documents
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from benchmark.capabilities import capability
@@ -47,6 +47,7 @@ from benchmark.drivers.out_direction import entry_detail, paginated_entries, rel
 from benchmark.drivers.out_records import (
     EntityDetailRecord,
     EntrySummary,
+    RelationshipDetail,
     TimelineReadRecord,
 )
 from benchmark.drivers.shapes import invoke_rest
@@ -122,15 +123,23 @@ def fetch_scored_kb(
         path=f"/api/v1/novels/{novel_id}/kb/entries",
         params={},
     )
-    return ScoredKb(entries=entries, details=tuple(_scored_detail(ctx, e.id) for e in entries))
+    id_to_name = {entry.id: entry.name for entry in entries}
+    return ScoredKb(
+        entries=entries, details=tuple(_scored_detail(ctx, e.id, id_to_name) for e in entries)
+    )
 
 
-def _scored_detail(ctx: CapabilityContext, entry_id: str) -> EntityDetailRecord:
+def _scored_detail(
+    ctx: CapabilityContext, entry_id: str, id_to_name: Mapping[str, str]
+) -> EntityDetailRecord:
     """One entry's detail + relationships (the CAP-OUT-03 endpoint shapes).
 
     The inverse-suggestion probe is a CAP-OUT-03 capability probe, not
     KB state — neither scorer consumes it, so it is NOT fetched here and
-    both inverse fields stay ``None`` (absence, never fabrication).
+    both inverse fields stay ``None`` (absence, never fabrication). The
+    API serializes edges as IDs only (``source_name``/``target_name``
+    are always ``None``), so every edge is enriched from the listing's
+    id→name map — the relation matcher resolves edges by display name.
     """
     base = f"/api/v1/novels/{ctx.novel_id}/kb/entries/{entry_id}"
     body = invoke_rest(ctx, step=f"scoring:entry:{entry_id}", method="GET", path=base)
@@ -140,11 +149,19 @@ def _scored_detail(ctx: CapabilityContext, entry_id: str) -> EntityDetailRecord:
     return EntityDetailRecord(
         entry=entry_detail(body),
         relationships=tuple(
-            relationship_detail(rel) for rel in as_list(listed, "relationship list")
+            _named_edge(relationship_detail(rel), id_to_name)
+            for rel in as_list(listed, "relationship list")
         ),
         inverse_of=None,
         inverse_rel_type=None,
     )
+
+
+def _named_edge(edge: RelationshipDetail, id_to_name: Mapping[str, str]) -> RelationshipDetail:
+    """Fill the API's unset display names from the listing — never overwrite."""
+    source = edge.source_name if edge.source_name is not None else id_to_name.get(edge.source_id)
+    target = edge.target_name if edge.target_name is not None else id_to_name.get(edge.target_id)
+    return replace(edge, source_name=source, target_name=target)
 
 
 def score_run(

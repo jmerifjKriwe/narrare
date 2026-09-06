@@ -30,6 +30,7 @@ from benchmark.tests.out_direction_helpers import (
     LIST_PAGE_TWO,
     LIST_SINGLE_PAGE,
     NOVEL_ID,
+    REL_BODY,
     RELATIONSHIPS_BODY,
     corpus_with,
     router,
@@ -43,6 +44,19 @@ DETAIL_9 = f"{KB}/entries/entry-9"
 RELATIONSHIPS_9 = f"{KB}/entries/entry-9/relationships"
 DETAIL_2 = f"{KB}/entries/entry-2"
 RELATIONSHIPS_2 = f"{KB}/entries/entry-2/relationships"
+
+# The API returns relationship edges as IDs only — source_name/target_name
+# are always None; the fetch enriches them from the paginated entry listing.
+UNNAMED_RELATIONSHIPS_BODY: list[dict[str, object]] = [
+    {**REL_BODY, "source_name": None, "target_name": None, "target_id": "entry-2"},
+    {
+        **REL_BODY,
+        "id": "rel-2",
+        "rel_type": "related_to",
+        "source_name": None,
+        "target_name": None,
+    },  # target_id "entry-1" is NOT in the listing
+]
 
 
 def _fetch(api: ScriptedApi, events: list[IngestEvent] | None = None) -> ScoredKb:
@@ -102,6 +116,10 @@ def test_fetch_collects_all_entries_with_details_and_relationships() -> None:
     anna = kb.details[0]
     assert isinstance(anna, EntityDetailRecord)
     assert [edge.rel_type for edge in anna.relationships] == ["lives_in"]
+    # names the API already provides pass through untouched (never overwritten)
+    edge = anna.relationships[0]
+    assert edge.source_name == "Anna Meyer"
+    assert edge.target_name == "HafenCity"
     # the inverse-suggestion probe is a CAP-OUT-03 capability probe, not KB
     # state — never fetched here, never fabricated
     assert anna.inverse_of is None
@@ -112,6 +130,28 @@ def test_fetch_collects_all_entries_with_details_and_relationships() -> None:
         "scoring:relationships:entry-9",
         "scoring:entry:entry-2",
         "scoring:relationships:entry-2",
+    ]
+
+
+def test_relationship_names_enriched_from_the_entry_listing() -> None:
+    routes = {
+        f"GET {KB_ENTRIES}": LIST_SINGLE_PAGE,
+        f"GET {DETAIL_9}": ENTRY_A,
+        f"GET {RELATIONSHIPS_9}": UNNAMED_RELATIONSHIPS_BODY,
+        f"GET {DETAIL_2}": ENTRY_B,
+        f"GET {RELATIONSHIPS_2}": [],
+    }
+    api = ScriptedApi()
+    api.respond_with(router(routes))
+
+    kb = _fetch(api)
+
+    edges = kb.details[0].relationships
+    # names resolved against the listing's id→name map …
+    assert [(edge.source_name, edge.target_name) for edge in edges] == [
+        ("Benchmark Figur", "HafenCity"),
+        # … an ID outside the listing stays None (absence, never fabrication)
+        ("Benchmark Figur", None),
     ]
 
 
