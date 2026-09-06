@@ -210,7 +210,7 @@ class TestReference:
         assert f005.valid_to == PartialDate(2017, month=2)
 
         wolf = next(e for e in reference.persons if e.id == "p_alexander_wolf")
-        assert wolf.aliases == ("Alex", "Sascha")
+        assert wolf.aliases == ("Alex", "Sascha", "Alexander")
 
         r001 = next(r for r in reference.relations if r.id == "R001")
         assert (r001.subject, r001.predicate, r001.object) == (
