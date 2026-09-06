@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.3.0"
+prompt_version: "1.4.0"
 ---
 
 ## System Prompt
@@ -83,11 +83,12 @@ Return a JSON object matching the ExtractionOutput schema:
     },
     {
       "item_type": "relationship",
-      "name": "Relationship label",
+      "name": "engaged_to",
       "confidence": 0.75,
       "source_text": "Quote establishing the relationship...",
-      "relationship_type": "ally",
-      "related_entity_name": "Other Entity"
+      "relationship_type": "engaged_to",
+      "source_entity_name": "Anna Meyer",
+      "target_entity_name": "Peter Meyer"
     },
     {
       "item_type": "conflict",
@@ -105,7 +106,7 @@ Return a JSON object matching the ExtractionOutput schema:
 - Each item in `results` must include `item_type`, `name`, `confidence`, and `source_text`.
 - Use `entity_type` for new_entity and update_entity items (character, location, faction, object, concept, setting, timeline, system).
 - Use `target_entity_id` (the `[id=...]` from the Existing KB Entities list) when referencing a specific existing entity.
-- Use `relationship_type` and `related_entity_name` for relationship items.
+- For relationship items: `name` and `relationship_type` carry the PREDICATE (e.g. `engaged_to`, `sibling_of`, `mother_of`, `located_at`), and `source_entity_name` plus `target_entity_name` identify both participating entities by their entity names (the same names used in existing KB entries or new_entity items). Both endpoint names are REQUIRED — a relationship without both endpoints is invalid.
 - Use `conflict_description` for conflict items to explain the discrepancy.
 - Never include items with confidence below 0.3.
 
@@ -124,7 +125,7 @@ Return a JSON object matching the ExtractionOutput schema:
 - Do NOT return items with confidence below 0.3 — filter these out entirely.
 - Do NOT fabricate source text — always quote the exact passage from the chapter.
 - Do NOT create new entity types outside the standard set (character, location, faction, object, concept, setting, timeline, system).
-- Do NOT extract relationships without identifying both participating entities.
+- Do NOT extract relationships without identifying both participating entities — always fill `source_entity_name` and `target_entity_name` with entity names, never a description of the relationship.
 - Do NOT confuse narrative uncertainty (a character lying) with extraction uncertainty — extract what the text says, not what is true in the story world.
 
 ### User Preferences

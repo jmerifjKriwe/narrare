@@ -38,6 +38,8 @@ _APPLY_FIELDS: Final[tuple[str, ...]] = (
     "target_entity_id",
     "relationship_type",
     "related_entity_name",
+    "source_entity_name",
+    "target_entity_name",
     "source_text",
 )
 """``ApplyExtractionItem`` fields copied from candidates (map §4.3.2); the

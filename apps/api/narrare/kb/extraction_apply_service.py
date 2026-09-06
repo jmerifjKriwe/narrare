@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.kb._extraction_apply_relationship import apply_relationship_item
 from narrare.kb._extraction_resolution import resolve_update_target
 from narrare.kb.schemas import (
     KBEntryCreate,
@@ -24,6 +25,7 @@ from narrare.kb.schemas import (
 from narrare.kb.schemas_extraction import (
     ApplyExtractionEntryResult,
     ApplyExtractionResponse,
+    SkippedItem,
 )
 
 if TYPE_CHECKING:
@@ -47,7 +49,9 @@ class ExtractionApplyService:
     - ``conflict`` → Logged and skipped (user acknowledged)
 
     Errors are handled per-item — a single failing item does not
-    block the remaining items.
+    block the remaining items. Every unapplied item (resolution
+    failure or exception) is reported in the response's ``skipped``
+    list with a machine-readable reason — nothing vanishes silently.
     """
 
     def __init__(
@@ -66,7 +70,7 @@ class ExtractionApplyService:
         user_id: UUID,
         items: list[ApplyExtractionItem],
     ) -> ApplyExtractionResponse:
-        """Apply all endorsed items, collecting results.
+        """Apply all endorsed items, collecting results and skips.
 
         Args:
             novel_id: Novel to apply items to.
@@ -74,14 +78,16 @@ class ExtractionApplyService:
             items: Endorsed extraction items to apply.
 
         Returns:
-            ApplyExtractionResponse with created_entries and updated_entries.
+            ApplyExtractionResponse with created_entries, updated_entries,
+            and every unapplied item in skipped (with reason).
         """
         created_entries: list[ApplyExtractionEntryResult] = []
         updated_entries: list[ApplyExtractionEntryResult] = []
+        skipped: list[SkippedItem] = []
 
         for item in items:
             try:
-                await self._apply_single_item(
+                reason = await self._apply_single_item(
                     novel_id=novel_id,
                     user_id=user_id,
                     item=item,
@@ -96,11 +102,20 @@ class ExtractionApplyService:
                     error=str(exc),
                     exc_info=True,
                 )
-                continue
+                reason = f"exception: {exc}"
+            if reason is not None:
+                skipped.append(
+                    SkippedItem(
+                        name=item.name,
+                        item_type=item.item_type,
+                        reason=reason,
+                    ),
+                )
 
         return ApplyExtractionResponse(
             created_entries=created_entries,
             updated_entries=updated_entries,
+            skipped=skipped,
         )
 
     async def _apply_single_item(
@@ -110,7 +125,7 @@ class ExtractionApplyService:
         item: ApplyExtractionItem,
         created_entries: list[ApplyExtractionEntryResult],
         updated_entries: list[ApplyExtractionEntryResult],
-    ) -> None:
+    ) -> str | None:
         """Apply a single endorsed extraction item.
 
         Args:
@@ -119,6 +134,10 @@ class ExtractionApplyService:
             item: The extraction item to apply.
             created_entries: Accumulator for newly created entries.
             updated_entries: Accumulator for updated entries.
+
+        Returns:
+            Machine-readable skip reason, or ``None`` when applied.
+            Conflict items return ``None`` (acknowledged by design).
         """
         if item.item_type == "new_entity":
             await self._apply_new_entity(
@@ -127,27 +146,29 @@ class ExtractionApplyService:
                 item,
                 created_entries,
             )
-        elif item.item_type == "update_entity":
-            await self._apply_update_entity(
+            return None
+        if item.item_type == "update_entity":
+            return await self._apply_update_entity(
                 novel_id,
                 user_id,
                 item,
                 updated_entries,
             )
-        elif item.item_type == "relationship":
-            await self._apply_relationship(novel_id, item)
-        elif item.item_type == "conflict":
+        if item.item_type == "relationship":
+            return await self._apply_relationship(novel_id, item)
+        if item.item_type == "conflict":
             logger.info(
                 "conflict_acknowledged",
                 name=item.name,
                 source_text=item.source_text,
             )
-        else:
-            logger.warning(
-                "unknown_item_type",
-                item_type=item.item_type,
-                name=item.name,
-            )
+            return None
+        logger.warning(
+            "unknown_item_type",
+            item_type=item.item_type,
+            name=item.name,
+        )
+        return "unknown_item_type"
 
     async def _apply_new_entity(
         self,
@@ -198,22 +219,27 @@ class ExtractionApplyService:
         user_id: UUID,
         item: ApplyExtractionItem,
         updated_entries: list[ApplyExtractionEntryResult],
-    ) -> None:
+    ) -> str | None:
         """Update an existing KB entry from an ``update_entity`` item.
 
         Target resolution and the downgrade-guarded rename decision live in
         :mod:`narrare.kb._extraction_resolution`; unresolvable items are a
-        logged skip (RULE-11).
+        reported skip (RULE-11).
 
         Args:
             novel_id: Novel scope.
             user_id: Requesting user.
             item: The extraction item.
             updated_entries: Accumulator for results.
+
+        Returns:
+            Skip reason, or ``None`` when the entry was updated. The precise
+            failure cause is in the logs; the response carries the stable
+            ``target_not_resolved`` identifier.
         """
         decision = await resolve_update_target(item, self._kb_repo, novel_id)
         if decision is None:
-            return
+            return "target_not_resolved"
 
         data = KBEntryUpdate(
             metadata=item.proposed_content,
@@ -238,62 +264,31 @@ class ExtractionApplyService:
             name=item.name,
             renamed_to=decision.rename_to,
         )
+        return None
 
     async def _apply_relationship(
         self,
         novel_id: UUID,
         item: ApplyExtractionItem,
-    ) -> None:
+    ) -> str | None:
         """Create a relationship from a ``relationship`` extraction item.
 
-        Looks up source and target entities by name within the novel.
+        Predicate validation, endpoint resolution (new-style
+        ``source_entity_name``/``target_entity_name`` with legacy
+        ``name``/``related_entity_name`` fallbacks), and edge creation
+        live in :mod:`narrare.kb._extraction_apply_relationship`;
+        unresolvable items are reported as skips — never silently dropped.
 
         Args:
             novel_id: Novel scope.
             item: The extraction item.
+
+        Returns:
+            Skip reason, or ``None`` when the relationship was created.
         """
-        if not item.related_entity_name or not item.relationship_type:
-            logger.warning(
-                "relationship_missing_fields",
-                name=item.name,
-                related_entity_name=item.related_entity_name,
-                relationship_type=item.relationship_type,
-            )
-            return
-
-        # Look up source and target entities by name in the novel
-        source_entry = await self._kb_repo.get_by_name(novel_id, item.name)
-        if source_entry is None:
-            logger.warning(
-                "relationship_source_not_found",
-                name=item.name,
-                novel_id=str(novel_id),
-            )
-            return
-
-        target_entry = await self._kb_repo.get_by_name(
-            novel_id,
-            item.related_entity_name,
-        )
-        if target_entry is None:
-            logger.warning(
-                "relationship_target_not_found",
-                name=item.related_entity_name,
-                novel_id=str(novel_id),
-            )
-            return
-
-        from narrare.kb.models import KBRelationship
-
-        rel = KBRelationship(
-            source_id=source_entry.id,
-            target_id=target_entry.id,
-            rel_type=item.relationship_type,
-        )
-        await self._rel_repo.create(rel)
-        logger.info(
-            "apply_relationship_created",
-            source=item.name,
-            target=item.related_entity_name,
-            rel_type=item.relationship_type,
+        return await apply_relationship_item(
+            novel_id=novel_id,
+            item=item,
+            kb_repo=self._kb_repo,
+            rel_repo=self._rel_repo,
         )

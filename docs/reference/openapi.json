@@ -12276,6 +12276,28 @@
             ],
             "title": "Related Entity Name"
           },
+          "source_entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Entity Name"
+          },
+          "target_entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Entity Name"
+          },
           "source_text": {
             "type": "string",
             "title": "Source Text",
@@ -12324,11 +12346,19 @@
             "type": "array",
             "title": "Updated Entries",
             "default": []
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedItem"
+            },
+            "type": "array",
+            "title": "Skipped",
+            "default": []
           }
         },
         "type": "object",
         "title": "ApplyExtractionResponse",
-        "description": "Response after applying endorsed extraction items.\n\nReports which entries were created vs updated so the frontend\ncan refresh only the affected parts of the KB display."
+        "description": "Response after applying endorsed extraction items.\n\nReports which entries were created vs updated so the frontend\ncan refresh only the affected parts of the KB display, plus every\nitem that could NOT be applied (with reason) — unapplied items are\nnever silently dropped."
       },
       "ArcPhaseResponse": {
         "properties": {
@@ -20333,6 +20363,30 @@
         ],
         "title": "ShortestPathResponse",
         "description": "Response for shortest path query."
+      },
+      "SkippedItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "item_type": {
+            "type": "string",
+            "title": "Item Type"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "item_type",
+          "reason"
+        ],
+        "title": "SkippedItem",
+        "description": "An endorsed extraction item that could not be applied.\n\nReported in :attr:`ApplyExtractionResponse.skipped` so unapplied\nitems stay visible instead of vanishing into log lines only."
       },
       "StarterContent": {
         "type": "string",
