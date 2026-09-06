@@ -11,6 +11,8 @@ Scenarios (RULE-20):
 4. No target ID + distractor/unknown name → skipped
 5. Entity-type mismatch (ID path) → skipped
 6. Hallucinated non-UUID target ID → logged skip, not a crash
+7. Metadata merge: proposed keys overwrite, unmentioned keys survive
+8. No proposed_content → metadata field untouched (no clobber)
 """
 
 from __future__ import annotations
@@ -145,6 +147,67 @@ async def test_apply_update_entity_downgrade_rename_blocked(
     assert len(result.updated_entries) == 1
     data = fake_kb_service.updated[0]["data"]
     assert cast("Any", data).name is None
+
+
+# ---------------------------------------------------------------------------
+# Merge-not-clobber metadata (scoring-fixes Task 3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_apply_update_entity_merges_metadata_preserving_existing_keys(
+    apply_service: ExtractionApplyService,
+    fake_kb_service: _FakeKBService,
+    fake_kb_repo: _FakeKBRepoForApply,
+) -> None:
+    """Proposed keys overwrite; metadata keys the item omits survive."""
+    novel_id = uuid4()
+    entry_id = uuid4()
+    fake_kb_service.seed("Anna", entry_id=entry_id)
+    fake_kb_repo.seed(
+        "Anna",
+        entry_id=entry_id,
+        novel_id=novel_id,
+        metadata={"age": "24", "profession": "student"},
+    )
+    items = [
+        _item(
+            name="Anna",
+            target_entity_id=str(entry_id),
+            proposed_content={"profession": "architect"},
+        ),
+    ]
+
+    result = await apply_service.apply(novel_id=novel_id, user_id=uuid4(), items=items)
+
+    assert len(result.updated_entries) == 1
+    data = fake_kb_service.updated[0]["data"]
+    assert cast("Any", data).metadata == {"age": "24", "profession": "architect"}
+
+
+@pytest.mark.asyncio
+async def test_apply_update_entity_without_proposal_leaves_metadata_untouched(
+    apply_service: ExtractionApplyService,
+    fake_kb_service: _FakeKBService,
+    fake_kb_repo: _FakeKBRepoForApply,
+) -> None:
+    """An item without proposed_content sends metadata=None (no overwrite)."""
+    novel_id = uuid4()
+    entry_id = uuid4()
+    fake_kb_service.seed("Anna", entry_id=entry_id)
+    fake_kb_repo.seed(
+        "Anna",
+        entry_id=entry_id,
+        novel_id=novel_id,
+        metadata={"age": "24"},
+    )
+    items = [_item(name="Anna", target_entity_id=str(entry_id), proposed_content=None)]
+
+    result = await apply_service.apply(novel_id=novel_id, user_id=uuid4(), items=items)
+
+    assert len(result.updated_entries) == 1
+    data = fake_kb_service.updated[0]["data"]
+    assert cast("Any", data).metadata is None
 
 
 # ---------------------------------------------------------------------------

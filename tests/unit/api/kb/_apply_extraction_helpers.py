@@ -19,11 +19,13 @@ class _FakeEntry:
         name: str,
         entity_type: str = "character",
         novel_id: UUID | None = None,
+        metadata_: dict[str, object] | None = None,
     ) -> None:
         self.id = uuid4()
         self.name = name
         self.entity_type = entity_type
         self.novel_id = novel_id
+        self.metadata_ = metadata_
 
 
 class _FakeKBService:
@@ -122,8 +124,14 @@ class _FakeKBRepoForApply:
         entity_type: str = "character",
         entry_id: UUID | None = None,
         novel_id: UUID | None = None,
+        metadata: dict[str, object] | None = None,
     ) -> _FakeEntry:
-        entry = _FakeEntry(name=name, entity_type=entity_type, novel_id=novel_id)
+        entry = _FakeEntry(
+            name=name,
+            entity_type=entity_type,
+            novel_id=novel_id,
+            metadata_=metadata,
+        )
         if entry_id is not None:
             entry.id = entry_id
         self._entries[name.lower()] = entry

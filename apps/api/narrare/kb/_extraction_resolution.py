@@ -6,6 +6,9 @@ Pure decision helpers used by ``ExtractionApplyService``:
   KB entry (validated ``target_entity_id`` → novel-scope check → exact-name
   fallback) and decide whether the item's ``name`` constitutes a rename
   worth persisting.
+- ``merge_metadata``: compose an ``update_entity`` item's
+  ``proposed_content`` over the entry's existing metadata (merge-not-clobber:
+  proposed keys overwrite, keys the item omits survive).
 - ``resolve_relationship_endpoints``: resolve both endpoints of a
   ``relationship`` item (``source_entity_name``/``target_entity_name``,
   with legacy ``name``/``related_entity_name`` fallbacks) to KB entries.
@@ -49,6 +52,11 @@ class ResolutionDecision:
     rename_to: str | None
     """New name to persist, or ``None`` when the item does not rename."""
 
+    merged_metadata: dict[str, object] | None
+    """Existing entry metadata composed with the item's ``proposed_content``
+    (merge-not-clobber), or ``None`` when the item proposes no metadata
+    (leave the stored metadata untouched)."""
+
 
 async def resolve_update_target(
     item: ApplyExtractionItem,
@@ -81,6 +89,7 @@ async def resolve_update_target(
     return ResolutionDecision(
         target_id=entry.id,
         rename_to=decide_rename(current_name=entry.name, proposed_name=item.name),
+        merged_metadata=merge_metadata(entry.metadata_, item.proposed_content),
     )
 
 
@@ -213,6 +222,39 @@ def decide_rename(current_name: str, proposed_name: str) -> str | None:
         )
         return None
     return proposed
+
+
+def merge_metadata(
+    existing: dict[str, object] | None,
+    proposed: dict[str, object] | None,
+) -> dict[str, object] | None:
+    """Compose ``proposed_content`` over existing metadata (no clobber).
+
+    Extraction updates are partial observations: a later chapter reports
+    only what it saw, so replacing the stored metadata would erase earlier
+    chapters' keys (the diagnosed clobber bug). Proposed keys overwrite;
+    keys the item does not mention survive. A ``None``/empty proposal
+    yields ``None`` so the caller leaves the stored metadata untouched
+    (PATCH semantics — an unset field is not an overwrite).
+
+    Mirrors the merge semantics already used by the KB improve path
+    (:mod:`narrare.kb.improve_service`). Validation of the merged dict
+    against the entity type stays with ``build_entry_updates`` (single
+    responsibility).
+
+    Args:
+        existing: The entry's stored metadata (may be ``None``).
+        proposed: The item's ``proposed_content`` (may be ``None``/empty).
+
+    Returns:
+        The merged metadata dict, or ``None`` when there is nothing to
+        persist.
+    """
+    if not proposed:
+        return None
+    merged: dict[str, object] = dict(existing or {})
+    merged.update(proposed)
+    return merged
 
 
 @dataclass(frozen=True)

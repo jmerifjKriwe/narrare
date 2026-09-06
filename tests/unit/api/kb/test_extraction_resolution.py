@@ -12,6 +12,8 @@ Scenarios (RULE-20):
   exact-name fallback path, and all blocking guards (invalid UUID,
   unknown ID, cross-novel target, type mismatch, ambiguous name,
   name not found)
+- merge_metadata (pure): proposed keys overwrite, unmentioned keys
+  survive; empty/None proposal → None; existing dict never mutated
 """
 
 from __future__ import annotations
@@ -22,7 +24,11 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy.exc import MultipleResultsFound
 
-from narrare.kb._extraction_resolution import decide_rename, resolve_update_target
+from narrare.kb._extraction_resolution import (
+    decide_rename,
+    merge_metadata,
+    resolve_update_target,
+)
 from narrare.kb.schemas_extraction import ApplyExtractionItem
 
 if TYPE_CHECKING:
@@ -43,11 +49,13 @@ class _FakeEntry:
         entity_type: str = "character",
         novel_id: UUID | None = None,
         entry_id: UUID | None = None,
+        metadata_: dict[str, object] | None = None,
     ) -> None:
         self.id = entry_id or uuid4()
         self.name = name
         self.entity_type = entity_type
         self.novel_id = novel_id
+        self.metadata_ = metadata_
 
 
 class _ResolutionKBRepo:
@@ -82,12 +90,14 @@ def _item(
     name: str = "Anna Meyer",
     entity_type: str | None = "character",
     target_entity_id: str | None = None,
+    proposed_content: dict[str, object] | None = None,
 ) -> ApplyExtractionItem:
     return ApplyExtractionItem(
         item_type="update_entity",
         name=name,
         entity_type=entity_type,
         target_entity_id=target_entity_id,
+        proposed_content=proposed_content,
         source_text="test source",
     )
 
@@ -296,3 +306,61 @@ async def test_resolve_fallback_lookup_failure_returns_none() -> None:
         novel_id,
     )
     assert decision is None
+
+
+# ---------------------------------------------------------------------------
+# merge_metadata — pure merge-not-clobber composition
+# ---------------------------------------------------------------------------
+
+
+def test_merge_metadata_overwrites_proposed_and_preserves_rest() -> None:
+    """Proposed keys overwrite; keys the item omits survive."""
+    existing: dict[str, object] = {"age": "24", "profession": "student"}
+    assert merge_metadata(existing, {"profession": "architect"}) == {
+        "age": "24",
+        "profession": "architect",
+    }
+
+
+def test_merge_metadata_without_proposal_returns_none() -> None:
+    """A None/empty proposal yields None (leave stored metadata untouched)."""
+    assert merge_metadata({"age": "24"}, None) is None
+    assert merge_metadata({"age": "24"}, {}) is None
+
+
+def test_merge_metadata_with_empty_existing_copies_proposal() -> None:
+    """An entry without stored metadata adopts the proposal as-is."""
+    assert merge_metadata(None, {"role": "protagonist"}) == {"role": "protagonist"}
+
+
+def test_merge_metadata_does_not_mutate_existing() -> None:
+    """The existing metadata dict is copied, never mutated in place."""
+    existing: dict[str, object] = {"age": "24"}
+    merged = merge_metadata(existing, {"profession": "architect"})
+    assert merged == {"age": "24", "profession": "architect"}
+    assert existing == {"age": "24"}
+
+
+@pytest.mark.asyncio
+async def test_resolve_decision_carries_merged_metadata() -> None:
+    """The decision composes proposed_content over the entry's metadata."""
+    novel_id = uuid4()
+    repo = _ResolutionKBRepo()
+    entry = repo.seed(
+        _FakeEntry(
+            name="Anna",
+            novel_id=novel_id,
+            metadata_={"age": "24", "profession": "student"},
+        )
+    )
+    decision = await resolve_update_target(
+        _item(
+            name="Anna",
+            target_entity_id=str(entry.id),
+            proposed_content={"profession": "architect"},
+        ),
+        cast("KBRepositoryProtocol", repo),
+        novel_id,
+    )
+    assert decision is not None
+    assert decision.merged_metadata == {"age": "24", "profession": "architect"}

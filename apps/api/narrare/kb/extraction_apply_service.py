@@ -222,7 +222,8 @@ class ExtractionApplyService:
     ) -> str | None:
         """Update an existing KB entry from an ``update_entity`` item.
 
-        Target resolution and the downgrade-guarded rename decision live in
+        Target resolution, the downgrade-guarded rename decision, and the
+        merge-not-clobber metadata composition live in
         :mod:`narrare.kb._extraction_resolution`; unresolvable items are a
         reported skip (RULE-11).
 
@@ -242,7 +243,7 @@ class ExtractionApplyService:
             return "target_not_resolved"
 
         data = KBEntryUpdate(
-            metadata=item.proposed_content,
+            metadata=decision.merged_metadata,
             name=decision.rename_to,
         )
         entry = await self._kb_service.update(
