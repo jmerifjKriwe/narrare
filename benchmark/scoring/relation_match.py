@@ -3,8 +3,13 @@
 An expected relation (R*) matches an actual edge iff BOTH endpoints
 resolve through the entity match map (reference entity id → actual
 entry id, built by ``entity_match``) onto the edge's ``source_id`` /
-``target_id`` AND the predicates are equal after
-``normalize_predicate`` (snake_case normalization).
+``target_id`` AND the predicates are equal after canonical
+normalization (``canonical_relation_predicate``: snake_case
+normalization plus folding of bare role/kinship surfaces onto their
+canonical ``_of``-suffixed registry predicate — "mother" →
+"mother_of"). Semantic synonyms are deliberately NOT folded
+("brother_of" ≠ "sibling_of"): vocabulary alignment happens in the
+extraction prompt, not in scorer leniency.
 
 Tolerance rules (documented v1 behavior):
 
@@ -24,7 +29,8 @@ Tolerance rules (documented v1 behavior):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Final
 
 from benchmark.scoring.normalize import normalize_predicate
 from benchmark.scoring.score_records import (
@@ -38,6 +44,43 @@ if TYPE_CHECKING:
 
     from benchmark.corpus_views import Relation
     from benchmark.drivers.out_records import RelationshipDetail
+
+RELATION_ALIASES: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "babysitter": "babysitter_of",
+        "business_partner": "business_partner_of",
+        "colleague": "colleague_of",
+        "father": "father_of",
+        "first_grandchild": "first_grandchild_of",
+        "grandmother": "grandmother_of",
+        "half_sibling": "half_sibling_of",
+        "keeper": "keeper_of",
+        "mother": "mother_of",
+        "neighbor": "neighbor_of",
+        "property_manager": "property_manager_of",
+        "sibling": "sibling_of",
+        "son": "son_of",
+        "spouse": "spouse_of",
+    }
+)
+"""Folding of bare role/kinship surfaces onto the canonical
+``_of``-suffixed registry predicate (the
+``benchmark/corpus/reference/relations.yaml`` forms). Canonical forms
+and unknown predicates pass through unchanged; there is deliberately no
+semantic synonym folding (``brother_of`` never becomes ``sibling_of``).
+Mirrors the canonical registry in ``narrare_core.kb.predicates`` (which
+the benchmark must not import — co-evolution boundary)."""
+
+
+def canonical_relation_predicate(value: str) -> str:
+    """Normalize a relationship predicate to the canonical registry form.
+
+    Snake_case normalization first, then folding of documented bare
+    surfaces onto their canonical ``_of`` form. Unknown predicates are
+    returned normalized but unfolded.
+    """
+    predicate = normalize_predicate(value)
+    return RELATION_ALIASES.get(predicate, predicate)
 
 
 @dataclass(frozen=True)
@@ -87,14 +130,14 @@ def _match(
     target = ref_to_entry.get(relation.object)
     if source is None or target is None:
         return None
-    predicate = normalize_predicate(relation.predicate)
+    predicate = canonical_relation_predicate(relation.predicate)
     for edge in edges:
         if edge.id in claimed:
             continue
         if (
             edge.source_id == source
             and edge.target_id == target
-            and normalize_predicate(edge.rel_type) == predicate
+            and canonical_relation_predicate(edge.rel_type) == predicate
         ):
             return edge.id
     return None

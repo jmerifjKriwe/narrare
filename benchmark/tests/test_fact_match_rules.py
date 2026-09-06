@@ -127,3 +127,80 @@ def test_spurious_facts_still_report_unlicensed_interval_keys() -> None:
     )
     score = score_build_quality(reference, (summary("e1", "Anna Meyer"),), details)
     assert [fact.key for fact in score.spurious_facts] == ["employment_from"]
+
+
+# ---------------------------------------------------------------------------
+# Metadata rule: fact-key alias folding (Task 2 — predicate vocabulary)
+# ---------------------------------------------------------------------------
+
+
+def test_metadata_rule_folds_bare_age_key_to_reference_predicate() -> None:
+    """Extraction key ``age`` must satisfy reference predicate ``age_stated``."""
+    outcome = score_single_fact({"age": "24"}, None)
+    assert outcome.status == "found"
+    assert outcome.evidence == "metadata"
+
+
+def test_metadata_rule_folds_occupation_to_profession() -> None:
+    """Extraction key ``occupation`` must satisfy reference predicate ``profession``."""
+    reference = make_reference(
+        persons=(
+            ref_entity("p1", "Lisa Brandt", facts=(ref_fact("F001", "profession", "Designerin"),)),
+        ),
+    )
+    details = (detail("e1", name="Lisa Brandt", metadata={"occupation": "Designerin"}),)
+    score = score_build_quality(reference, (summary("e1", "Lisa Brandt"),), details)
+    assert score.facts[0].status == "found"
+    assert score.facts[0].evidence == "metadata"
+
+
+def test_metadata_rule_wrong_value_under_alias_key_is_found_wrong() -> None:
+    """An alias-key hit with a differing value is a precision hit, not a miss."""
+    outcome = score_single_fact({"age": "25"}, None)
+    assert outcome.status == "found_wrong"
+    assert outcome.evidence == "metadata"
+
+
+def test_spurious_facts_licensed_through_alias_key() -> None:
+    """A key folded onto an expected predicate must not be reported spurious."""
+    reference = make_reference(
+        persons=(ref_entity("p1", "Anna Meyer", facts=(ref_fact("F001", "age_stated", "24"),)),)
+    )
+    details = (detail("e1", name="Anna Meyer", metadata={"age": "24"}),)
+    score = score_build_quality(reference, (summary("e1", "Anna Meyer"),), details)
+    assert score.facts[0].status == "found"
+    assert score.spurious_facts == ()
+
+
+def test_spurious_facts_licensed_alias_companion_interval_keys() -> None:
+    """Companion interval keys under the alias surface stay licensed too."""
+    reference = make_reference(
+        persons=(
+            ref_entity(
+                "p1",
+                "Anna Meyer",
+                facts=(ref_fact("F001", "age_stated", "24", valid_from=d(2015)),),
+            ),
+        ),
+    )
+    details = (detail("e1", name="Anna Meyer", metadata={"age": "24", "age_from": "2015-06"}),)
+    score = score_build_quality(reference, (summary("e1", "Anna Meyer"),), details)
+    assert score.facts[0].status == "found"
+    assert score.spurious_facts == ()
+
+
+def test_interval_check_reads_companion_under_alias_key() -> None:
+    """A contradicting interval bound under the alias surface fails correctness."""
+    reference = make_reference(
+        persons=(
+            ref_entity(
+                "p1",
+                "Anna Meyer",
+                facts=(ref_fact("F001", "age_stated", "24", valid_from=d(2015)),),
+            ),
+        ),
+    )
+    details = (detail("e1", name="Anna Meyer", metadata={"age": "24", "age_from": "2020-01"}),)
+    score = score_build_quality(reference, (summary("e1", "Anna Meyer"),), details)
+    assert score.facts[0].status == "found_wrong"
+    assert score.facts[0].evidence == "metadata"

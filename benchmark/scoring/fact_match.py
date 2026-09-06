@@ -6,9 +6,12 @@ planes, in strict precedence — entry ``tags`` are explicitly excluded
 from both planes (tags carry no predicate binding: neither fact
 evidence nor spurious-fact material):
 
-1. **Metadata rule** (structured): a metadata key whose
-   ``normalize_predicate`` equals the fact's normalized predicate is
-   predicate evidence; the fact is FOUND. It is CORRECT iff
+1. **Metadata rule** (structured): a metadata key whose canonical
+   predicate (``canonical_fact_predicate``: snake_case normalization
+   plus folding of known extraction variations — ``age`` →
+   ``age_stated``, ``occupation``/``job_title`` → ``profession``) equals
+   the fact's canonical predicate is predicate evidence; the fact is
+   FOUND. It is CORRECT iff
    ``normalize_text(str(metadata[key])) == normalize_text(fact.value)``
    AND the interval check passes. A differing value or a contradicted
    interval = ``found_wrong`` (precision hit; evidence stays
@@ -23,25 +26,28 @@ evidence nor spurious-fact material):
    no contradiction).
 
 Interval check (both rules): actual interval bounds are read from the
-metadata companion keys ``{predicate}_from`` / ``{predicate}_to``,
-falling back to ``valid_from`` / ``valid_to``; values parse via
+metadata companion keys ``{predicate}_from`` / ``{predicate}_to`` —
+probed under the matched key's surface form, the canonical predicate,
+and the generic ``valid_from`` / ``valid_to`` —; values parse via
 ``parse_date_value``. Comparison is month-precision with ±1 month
 boundary tolerance (``normalize.boundary_matches``). Absent actual
 bounds NEVER fail; a present-but-mismatched bound fails correctness.
 
-Spurious facts: metadata keys of a matched entry whose normalized
+Spurious facts: metadata keys of a matched entry whose canonical
 predicate matches NO expected fact predicate of that entity — actual
 structure the reference does not license. Companion interval keys
 consumed as interval evidence (``{predicate}_from`` / ``{predicate}_to``
-plus the generic ``valid_from`` / ``valid_to``) are licensed by
-construction and exempt. Sorted by entry + normalized key for canonical
-determinism. Body prose never yields spurious facts.
+under canonical AND alias surfaces, plus the generic ``valid_from`` /
+``valid_to``) are licensed by construction and exempt. Sorted by entry +
+normalized key for canonical determinism. Body prose never yields
+spurious facts.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Final
 
 from benchmark.scoring.normalize import (
     boundary_matches,
@@ -56,6 +62,34 @@ if TYPE_CHECKING:
 
     from benchmark.corpus_views import Entity, Fact, PartialDate
     from benchmark.drivers.out_records import KbEntryDetail
+
+FACT_KEY_ALIASES: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "age": "age_stated",
+        "age_at_this_point": "age_stated",
+        "age_in_chapter": "age_stated",
+        "occupation": "profession",
+        "job_title": "profession",
+        "residence": "residence",
+    }
+)
+"""Folding of observed extraction-key variations onto the canonical
+reference predicate (the ``benchmark/corpus/reference`` registry).
+Canonical keys map to themselves; unknown keys pass through unchanged.
+Mirrors the canonical registry in ``narrare_core.kb.predicates`` (which
+the benchmark must not import — co-evolution boundary)."""
+
+
+def canonical_fact_predicate(value: str) -> str:
+    """Normalize a fact predicate / metadata key to its canonical form.
+
+    Snake_case normalization first, then folding of known extraction
+    variations onto the reference predicate. Unknown keys are returned
+    normalized but unfolded — the matcher stays strict beyond the
+    documented aliases.
+    """
+    predicate = normalize_predicate(value)
+    return FACT_KEY_ALIASES.get(predicate, predicate)
 
 
 @dataclass(frozen=True)
@@ -78,15 +112,17 @@ def score_facts(entity: Entity, actual: ActualFacts) -> tuple[FactOutcome, ...]:
     """Score every expected fact of one entity against the evidence planes."""
     outcomes: list[FactOutcome] = []
     for fact in entity.facts:
-        predicate = normalize_predicate(fact.predicate)
+        predicate = canonical_fact_predicate(fact.predicate)
         key = _metadata_key(actual.metadata, predicate)
         if key is not None:
             correct = _value_equal(str(actual.metadata[key]), fact.value) and _interval_ok(
-                actual, fact
+                actual, fact, key
             )
             outcomes.append(_outcome(entity, fact, correct, "metadata"))
         elif _body_contains(actual.body, fact.value):
-            outcomes.append(_outcome(entity, fact, _interval_ok(actual, fact), "body"))
+            outcomes.append(
+                _outcome(entity, fact, _interval_ok(actual, fact, actual_key=""), "body")
+            )
         else:
             outcomes.append(
                 FactOutcome(
@@ -107,15 +143,16 @@ def spurious_facts(
     """Metadata keys the entity's expected fact predicates do not license.
 
     Companion interval keys consumed as interval evidence
-    (``{predicate}_from``/``{predicate}_to`` plus the generic
-    ``valid_from``/``valid_to``) are licensed by construction.
+    (``{predicate}_from``/``{predicate}_to`` under canonical and alias
+    surfaces plus the generic ``valid_from``/``valid_to``) are licensed
+    by construction.
     """
-    expected = {normalize_predicate(fact.predicate) for fact in entity.facts}
+    expected = {canonical_fact_predicate(fact.predicate) for fact in entity.facts}
     licensed = expected | _interval_companion_keys(expected)
     rows = [
         SpuriousFact(entry_id=entry_id, entry_name=entry_name, key=key, value=str(value))
         for key, value in actual.metadata.items()
-        if normalize_predicate(key) not in licensed
+        if canonical_fact_predicate(key) not in licensed
     ]
     return tuple(sorted(rows, key=lambda row: (row.entry_id, normalize_predicate(row.key))))
 
@@ -132,9 +169,9 @@ def _outcome(entity: Entity, fact: Fact, correct: bool, evidence: FactEvidence) 
 
 
 def _metadata_key(metadata: Mapping[str, object], predicate: str) -> str | None:
-    """First metadata key (insertion order) normalizing to the predicate."""
+    """First metadata key (insertion order) folding to the predicate."""
     for key in metadata:
-        if normalize_predicate(key) == predicate:
+        if canonical_fact_predicate(key) == predicate:
             return key
     return None
 
@@ -152,9 +189,14 @@ def _body_contains(body: str, value: str) -> bool:
 
 
 def _interval_companion_keys(expected: set[str]) -> set[str]:
-    """Interval keys ``_companion_bound`` may consume for ``expected`` predicates."""
+    """Interval keys ``_companion_bound`` may consume for ``expected`` predicates.
+
+    Companion keys are licensed under the canonical predicate AND under
+    every alias surface that folds onto an expected predicate.
+    """
+    alias_surfaces = {a for a, p in FACT_KEY_ALIASES.items() if p in expected}
     keys = {"valid_from", "valid_to"}
-    for predicate in expected:
+    for predicate in expected | alias_surfaces:
         keys.update(f"{predicate}_{side}" for side in ("from", "to"))
     return keys
 
@@ -164,9 +206,10 @@ def _value_equal(actual: str, expected: str) -> bool:
 
 
 def _companion_bound(
-    metadata: Mapping[str, object], predicate: str, side: str
+    metadata: Mapping[str, object], predicate: str, actual_key: str, side: str
 ) -> PartialDate | None:
-    for key in (f"{predicate}_{side}", f"valid_{side}"):
+    probes = (f"{actual_key}_{side}", f"{predicate}_{side}", f"valid_{side}")
+    for key in filter(None, probes):
         if key in metadata:
             parsed = parse_date_value(metadata[key])
             if parsed is not None:
@@ -174,13 +217,18 @@ def _companion_bound(
     return None
 
 
-def _interval_ok(actual: ActualFacts, fact: Fact) -> bool:
-    """Month-precision interval check; absent actual bounds never fail."""
-    predicate = normalize_predicate(fact.predicate)
+def _interval_ok(actual: ActualFacts, fact: Fact, actual_key: str) -> bool:
+    """Month-precision interval check; absent actual bounds never fail.
+
+    Bounds are probed under the matched metadata key's surface form
+    (so an alias key ``age`` can carry ``age_from``), the canonical
+    predicate, and the generic ``valid_*`` keys.
+    """
+    predicate = canonical_fact_predicate(fact.predicate)
     for ref_bound, side in ((fact.valid_from, "from"), (fact.valid_to, "to")):
         if ref_bound is None:
             continue
-        actual_bound = _companion_bound(actual.metadata, predicate, side)
+        actual_bound = _companion_bound(actual.metadata, predicate, actual_key, side)
         if actual_bound is not None and not boundary_matches(ref_bound, actual_bound):
             return False
     return True

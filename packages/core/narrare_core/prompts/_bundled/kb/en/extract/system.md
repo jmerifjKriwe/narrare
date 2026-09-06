@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.4.0"
+prompt_version: "1.5.0"
 ---
 
 ## System Prompt
@@ -110,12 +110,30 @@ Return a JSON object matching the ExtractionOutput schema:
 - Use `conflict_description` for conflict items to explain the discrepancy.
 - Never include items with confidence below 0.3.
 
+### Metadata Keys
+
+`proposed_content` carries facts as metadata keys. Use these canonical
+predicate names when possible: age_stated, age_at_death, birth_date,
+birth_year, death_date, profession, residence, district, student_at,
+located_at, owner, owner_of, residence_of, workplace_of, exists_from,
+widowed_since, given_up_for_adoption, promised_to, covers_period,
+in_daily_use, allotment_of, second_bundle_revealed,
+discovered_in_drawer_of, relation_to_ilse, description, status.
+For facts not covered, use snake_case English keys.
+
 ### Quality Rules
 
 - Only extract entities with meaningful information — not throwaway mentions with no detail.
 - A character mentioned once in dialogue with no description is probably not worth extracting.
 - A character who acts, speaks, or is described is worth extracting even briefly.
-- Relationships should use standard types: ally, rival, member_of, located_in, owns, created, family_of, mentor_of, etc.
+- Relationships should use canonical predicates. Kinship and roles:
+  spouse_of, engaged_to, mother_of, father_of, son_of, sibling_of,
+  half_sibling_of, grandmother_of, first_grandchild_of, colleague_of,
+  business_partner_of, neighbor_of, babysitter_of, keeper_of,
+  property_manager_of, met_on_jury_with, confused_in_mail_with,
+  not_related_to, unrelated_to_family_of, sits_within_earshot_of.
+  General: ally, rival, enemy_of, family_of, mentor_of, mentee_of,
+  member_of, leader_of, located_in, born_in, lives_in, owns, created.
 - When updating an entity, only include fields that have new information.
 - For conflicts, clearly describe what the chapter text says versus what the KB currently records.
 
