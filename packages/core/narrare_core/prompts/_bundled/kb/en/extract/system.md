@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.5.0"
+prompt_version: "1.6.0"
 ---
 
 ## System Prompt
@@ -136,6 +136,17 @@ For facts not covered, use snake_case English keys.
   member_of, leader_of, located_in, born_in, lives_in, owns, created.
 - When updating an entity, only include fields that have new information.
 - For conflicts, clearly describe what the chapter text says versus what the KB currently records.
+
+### Salience Rules
+
+The KB's backbone is the set of entities that carry the story across chapters. Apply these rules to keep the KB focused:
+
+- Extract entities that RECUR or ACT across chapters — characters who speak and act, locations that are visited multiple times, objects that change ownership. These are the KB's backbone.
+- Do NOT extract narrative framing devices — the author reading at an event, the narrator, the imagined reader — as entities. These are literary devices, not story-world entities.
+- Do NOT extract individual properties, habits, or possessions as separate entities — they belong as metadata on the character or object that owns them (e.g., 'Peter's habit of correcting names' → metadata on Peter, not a new entity).
+- Do NOT extract sub-locations within a known location unless they are functionally distinct settings (e.g., 'the kitchen of the Barmbek house' is part of the Barmbek house, not a new location).
+- Do NOT extract minor characters who appear only once and carry no meaningful information (a nameless guest, a person mentioned in passing).
+- Do NOT extract events, realizations, or plot developments as entities — record them as metadata on the participating characters.
 
 ### Do NOT
 
