@@ -51,9 +51,13 @@ PROFILE_OUTPUT_LIMITS: dict[str, int] = {
     # Raised 16000 → 32000 (benchmark finding): ch-11 KB extraction on the
     # reveal chapter — the densest in the corpus — exhausted the 16000
     # output-token ceiling before emitting its full structured payload.
-    # comprehensive follows to keep the preset ladder consistent.
-    TokenLimitProfile.LONG_TEXTS.value: 32000,
-    TokenLimitProfile.COMPREHENSIVE.value: 32000,
+    # Raised 32000 → 64000: extraction runs with retries=3, and pydantic-ai
+    # counts output_tokens_limit cumulatively across retry attempts, while
+    # the growing entity-ID roster inflates each structured payload —
+    # 32000 is structurally insufficient. comprehensive follows to keep the
+    # preset ladder consistent.
+    TokenLimitProfile.LONG_TEXTS.value: 64000,
+    TokenLimitProfile.COMPREHENSIVE.value: 64000,
 }
 """Preset output-token limits for non-custom profiles."""
 

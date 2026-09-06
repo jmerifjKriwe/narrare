@@ -48,13 +48,14 @@ describe("frontend token-profile contract (CR-08 P1)", () => {
     // long_texts raised 8000 → 16000 with Core (structured extraction on
     // thinking models hit the old ceiling before generating output), then
     // 16000 → 32000 with Core (benchmark: ch-11 KB extraction on the densest
-    // reveal chapter exhausted the 16000 ceiling; comprehensive follows for
-    // ladder consistency).
+    // reveal chapter exhausted the 16000 ceiling), then 32000 → 64000 with
+    // Core (extraction retries=3 count against the cumulative pydantic-ai
+    // output_tokens_limit; the growing entity-ID roster inflates payloads).
     expect(PROFILE_OUTPUT_LIMITS).toEqual({
       quick: 500,
       balanced: 2000,
-      long_texts: 32000,
-      comprehensive: 32000,
+      long_texts: 64000,
+      comprehensive: 64000,
     });
     // custom is a raw mode and has NO preset entry
     expect(PROFILE_OUTPUT_LIMITS).not.toHaveProperty("custom");
@@ -78,8 +79,8 @@ describe("frontend token-profile contract (CR-08 P1)", () => {
     it("returns the output limit for known preset profiles", () => {
       expect(getPresetOutputLimit("quick")).toBe(500);
       expect(getPresetOutputLimit("balanced")).toBe(2000);
-      expect(getPresetOutputLimit("long_texts")).toBe(32000);
-      expect(getPresetOutputLimit("comprehensive")).toBe(32000);
+      expect(getPresetOutputLimit("long_texts")).toBe(64000);
+      expect(getPresetOutputLimit("comprehensive")).toBe(64000);
     });
 
     it("returns null for custom or unknown profiles", () => {

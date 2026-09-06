@@ -62,9 +62,11 @@ export const PROFILE_OUTPUT_LIMITS: Readonly<Record<string, number>> = {
   // Raised 8000 → 16000 with Core (structured extraction on thinking models
   // hit the old ceiling before generating output), then 16000 → 32000 with
   // Core (benchmark: ch-11 KB extraction on the densest reveal chapter
-  // exhausted the 16000 ceiling; comprehensive follows for ladder consistency).
-  long_texts: 32000,
-  comprehensive: 32000,
+  // exhausted the 16000 ceiling), then 32000 → 64000 with Core (extraction
+  // retries=3 count against the cumulative pydantic-ai output_tokens_limit;
+  // the growing entity-ID roster inflates each structured payload).
+  long_texts: 64000,
+  comprehensive: 64000,
 } as const;
 
 /**

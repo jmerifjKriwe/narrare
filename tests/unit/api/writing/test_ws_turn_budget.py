@@ -67,8 +67,8 @@ class TestTurnBudgetEnforcement:
         """The usage_limits output budget should reflect the config token profile.
 
         With ``token_profile="comprehensive"``, ``resolve_output_limit()``
-        returns 32000 (from ``PROFILE_OUTPUT_LIMITS``), so the stream
-        receives ``usage_limits`` with ``output_tokens_limit=32000``.
+        returns 64000 (from ``PROFILE_OUTPUT_LIMITS``), so the stream
+        receives ``usage_limits`` with ``output_tokens_limit=64000``.
         """
         service, _, registry, _ = make_service(token_profile="comprehensive")
 
@@ -84,7 +84,7 @@ class TestTurnBudgetEnforcement:
 
         call_kwargs = registry.stream.call_args.kwargs
         limits: UsageLimits = call_kwargs["usage_limits"]
-        assert limits.output_tokens_limit == 32000
+        assert limits.output_tokens_limit == 64000
 
     async def test_turn_limits_apply_when_no_profile(self) -> None:
         """Limits are enforced even without a token profile (from max_tokens)."""

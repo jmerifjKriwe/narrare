@@ -33,12 +33,15 @@ def test_preset_output_limits_match_policy_and_exclude_custom() -> None:
     # detailed system prompt on thinking models) hit the 8000 ceiling before
     # generating any response. Raised 16000 → 32000: benchmark rehearsal
     # showed ch-11 KB extraction (densest reveal chapter) exhausting the
-    # 16000 output-token ceiling; comprehensive follows for ladder consistency.
+    # 16000 output-token ceiling. Raised 32000 → 64000: extraction runs
+    # with retries=3 and pydantic-ai counts output_tokens_limit cumulatively
+    # across retry attempts; the growing entity-ID roster inflates each
+    # structured payload. comprehensive follows for ladder consistency.
     assert PROFILE_OUTPUT_LIMITS == {
         "quick": 500,
         "balanced": 2000,
-        "long_texts": 32000,
-        "comprehensive": 32000,
+        "long_texts": 64000,
+        "comprehensive": 64000,
     }
     assert "custom" not in PROFILE_OUTPUT_LIMITS
 

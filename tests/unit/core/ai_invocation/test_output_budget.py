@@ -74,7 +74,7 @@ class TestOutputBudget:
 
     def test_known_profiles(self) -> None:
         """Known profiles from PROFILE_OUTPUT_LIMITS are valid values."""
-        for profile_name, tokens in [("quick", 500), ("balanced", 2000), ("long_texts", 32000)]:
+        for profile_name, tokens in [("quick", 500), ("balanced", 2000), ("long_texts", 64000)]:
             budget = OutputBudget(max_tokens=tokens, profile=profile_name)
             assert budget.profile == profile_name
             assert budget.max_tokens == tokens
