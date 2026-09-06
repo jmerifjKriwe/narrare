@@ -187,6 +187,7 @@ def test_default_deps_wire_production_collaborators() -> None:
     from benchmark.provision import provision
     from benchmark.runner import default_driver_for, utc_now
     from benchmark.runner_failure import write_failure_artifacts as failure_writer
+    from benchmark.runner_scoring import fetch_scored_kb
 
     deps = RunnerDeps()
 
@@ -198,5 +199,6 @@ def test_default_deps_wire_production_collaborators() -> None:
     assert deps.git_commit_fn is current_git_commit
     assert deps.clock is utc_now
     assert deps.driver_for_fn is default_driver_for
+    assert deps.fetch_scored_kb_fn is fetch_scored_kb
     assert deps.ingest_sleeper.__module__ == "time"
     assert deps.corpus_root.name == "corpus"

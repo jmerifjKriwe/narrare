@@ -16,11 +16,13 @@ from benchmark.drivers.base import CapabilityResult
 from benchmark.drivers.check_records import FlaggedLine, VoiceCheckFinding, VoiceCheckRecord
 from benchmark.drivers.out_records import EntryBrowseRecord, TimelineReadRecord
 from benchmark.runner import RunnerDeps, RunRequest
+from benchmark.runner_scoring import ScoredKb
 from benchmark.tests.artifacts_helpers import make_config
 from benchmark.tests.runner_helpers import (
     FILTER,
     FakeClock,
     FakeDrivers,
+    FakeScoreFetch,
     FakeStack,
     RecordingArtifacts,
     RecordingFailures,
@@ -45,6 +47,7 @@ __all__ = [
     "Wiring",
     "browse_record",
     "detail_result",
+    "scored_kb",
     "timeline_record",
     "voice_check_record",
     "write_corpus",
@@ -93,6 +96,16 @@ def voice_check_record(chapter_ref: str) -> VoiceCheckRecord:
 def timeline_record() -> TimelineReadRecord:
     return TimelineReadRecord(
         events=(), single=None, ages=(), characters_with_age=0, characters_without_age=0
+    )
+
+
+def scored_kb() -> ScoredKb:
+    """The scoring fetch's scripted KB state (Anna + her wohnt_in fact)."""
+    from benchmark.tests.scoring_helpers import detail, summary
+
+    return ScoredKb(
+        entries=(summary("entry-1", "Anna Meyer"),),
+        details=(detail("entry-1", name="Anna Meyer", metadata={"wohnt_in": "HafenCity"}),),
     )
 
 
@@ -203,6 +216,7 @@ class Wiring:
         self.drivers = FakeDrivers(
             self.log, {**DEFAULT_RESULTS, "CAP-OUT-03": detail_result(), **(results or {})}
         )
+        self.score_fetch = FakeScoreFetch(self.log, scored_kb())
         self.deps = RunnerDeps(
             stack_factory=lambda _config: FakeStack(self.log),
             client_factory=make_client_factory(self.log),
@@ -210,6 +224,7 @@ class Wiring:
             load_corpus_fn=load_corpus,
             ingest_fn=fake_ingest(self.log, error=ingest_error),
             driver_for_fn=self.drivers.driver_for,
+            fetch_scored_kb_fn=self.score_fetch,
             write_artifacts_fn=self.artifacts.write,
             write_failure_fn=self.failures.write,
             git_commit_fn=fake_git_commit(self.log),

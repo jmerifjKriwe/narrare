@@ -1,13 +1,15 @@
 """Runner wiring tests (plan Task 15) — orchestration with ALL collaborators faked.
 
 Pinned: the stage SEQUENCE (stack → client → provision → ingest →
-drive x N → facts → artifacts → teardown), teardown ALWAYS (success,
-failure, keep-stack), partial-failure artifacts + re-raise, capability
-filtering (incl. unknown and duplicate ids failing BEFORE the stack is
-created), T8-rider target population, chapter_map resolution in real
-detection scoring, clean-variant empty detection, the structural series
-skip via a REAL series driver, and scoring that consumes only OK parsed
-records. Individual seam units live in ``test_runner_units.py``.
+drive x N → scoring KB-state fetch → facts → artifacts → teardown),
+teardown ALWAYS (success, failure, keep-stack), partial-failure
+artifacts + re-raise, capability filtering (incl. unknown and duplicate
+ids failing BEFORE the stack is created), T8-rider target population,
+chapter_map resolution in real detection scoring, clean-variant empty
+detection, the structural series skip via a REAL series driver, scoring
+that consumes only OK parsed records, and the scoring-phase KB-state
+fetch that decouples build quality from capability selection. Individual
+seam units live in ``test_runner_units.py``.
 """
 
 from __future__ import annotations
@@ -58,6 +60,7 @@ def test_run_wires_all_stages_in_order(tmp_path: Path) -> None:
         "provision",
         "ingest",
         *(f"drive:{cap_id}" for cap_id in FILTER),
+        "score_fetch",
         "stack.facts",
         "artifacts",  # the writer call; the git provider fires inside it
         "git",
@@ -112,12 +115,41 @@ def test_run_writes_artifacts_with_scored_run_inputs(tmp_path: Path) -> None:
     assert [answer.cap_id for answer in inputs.answers] == list(FILTER)
     assert all(answer.status is CapabilityStatus.OK for answer in inputs.answers)
     assert inputs.events[0].step == "create_novel"
-    # real scoring over the scripted OUT records: entity found, fact found
+    # real scoring over the SCORING FETCH's KB state: entity found, fact found
     assert inputs.build_quality.entity_coverage == 1.0
     assert inputs.build_quality.fact_coverage == 1.0
     # real detection: the chapter-pinned flagged line resolved via chapter_map
     assert [tp.error_id for tp in inputs.detection.true_positives] == ["L01"]
     assert inputs.detection.false_negatives == ()
+
+
+def test_scoring_fetch_receives_the_runs_identity(tmp_path: Path) -> None:
+    wired = Wiring(tmp_path)
+
+    run(wired.request, wired.deps)
+
+    assert wired.score_fetch.calls == [
+        {
+            "novel_id": "novel-1",
+            "chapter_ids": {"ch-01": "chapter-1", "ch-02": "chapter-2"},
+            "targets": {"chapter_id": "chapter-1", "entry_id": "entry-1"},
+            "event_count": 1,
+        }
+    ]
+
+
+def test_build_quality_scores_even_without_out_capabilities_driven(tmp_path: Path) -> None:
+    """The bug this fixes: ``--capabilities`` without CAP-OUT-01/03 used to
+    leave build quality with NO evidence (every entity 'missing'). Scoring
+    now fetches the full KB state itself — independent of the selection."""
+    wired = Wiring(tmp_path, capabilities=("CAP-IN-01",))
+
+    run(wired.request, wired.deps)
+
+    _, inputs, _ = wired.artifacts.calls[0]
+    assert [answer.cap_id for answer in inputs.answers] == ["CAP-IN-01"]
+    assert inputs.build_quality.entity_coverage == 1.0
+    assert inputs.build_quality.fact_coverage == 1.0
 
 
 def test_teardown_verifies_after_success(tmp_path: Path) -> None:
@@ -210,7 +242,7 @@ def test_scoring_consumes_only_ok_parsed_records(tmp_path: Path) -> None:
     _, inputs, _ = wired.artifacts.calls[0]
     assert inputs.detection.matrix == ()  # no OK check report → no matrix rows
     assert [row.error_id for row in inputs.detection.false_negatives] == ["L01"]
-    assert inputs.build_quality.entity_coverage == 1.0  # OUT records still score
+    assert inputs.build_quality.entity_coverage == 1.0  # scoring fetch runs regardless
 
 
 def test_wrong_chapter_pin_yields_false_negative_not_false_match(tmp_path: Path) -> None:

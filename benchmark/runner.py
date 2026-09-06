@@ -1,12 +1,13 @@
 """The benchmark run orchestrator (plan Task 15).
 
 One run = stack up → client → provision (user + LLM) → corpus → ingest
-(build path, fills run targets) → drive capabilities → score →
-artifacts → teardown. ALL of it sits in try/finally so TEARDOWN ALWAYS
-RUNS (verified residue-free) unless ``keep_stack`` is set; a failure at
-any stage first writes the failure artifacts (``runner_failure``), then
-re-raises AFTER teardown — a partial run never leaves a stack behind and
-never leaves no evidence.
+(build path, fills run targets) → drive capabilities → score (with its
+own FULL KB-state fetch as the scoring prerequisite,
+``benchmark.runner_scoring``) → artifacts → teardown. ALL of it sits in
+try/finally so TEARDOWN ALWAYS RUNS (verified residue-free) unless
+``keep_stack`` is set; a failure at any stage first writes the failure
+artifacts (``runner_failure``), then re-raises AFTER teardown — a
+partial run never leaves a stack behind and never leaves no evidence.
 
 Binding v1 decisions (task brief riders):
 
@@ -56,18 +57,20 @@ from benchmark.ingest import IngestResult, ingest
 from benchmark.provision import ProvisionOutcome, provision
 from benchmark.runner_driving import drive_capabilities, selected_capabilities
 from benchmark.runner_failure import RunFailure, write_failure_artifacts
-from benchmark.runner_scoring import score_run
+from benchmark.runner_scoring import fetch_scored_kb, score_run
 from benchmark.runner_stackfacts import stack_facts
 from benchmark.runner_targets import build_targets
 from benchmark.stack import StackManager
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Mapping, Sequence
 
     from benchmark.config_schemas import BenchmarkConfig
+    from benchmark.corpus_loader import Corpus
     from benchmark.corpus_views import Chapter
     from benchmark.drivers.base import CapabilityDriver
     from benchmark.ingest_events import IngestEvent
+    from benchmark.runner_scoring import ScoredKb
 
 __all__ = [
     "CORPUS_ROOT",
@@ -79,6 +82,7 @@ __all__ = [
     "RunRequest",
     "RunStack",
     "RunnerDeps",
+    "ScoredKbFetcher",
     "default_driver_for",
     "run",
     "utc_now",
@@ -141,6 +145,21 @@ class FailureWriter(Protocol):
     ) -> Path: ...
 
 
+class ScoredKbFetcher(Protocol):
+    """The scoring-prerequisite seam (``benchmark.runner_scoring.fetch_scored_kb``)."""
+
+    def __call__(
+        self,
+        client: BenchmarkClient,
+        corpus: Corpus,
+        novel_id: str,
+        chapter_ids: Mapping[str, str],
+        config: BenchmarkConfig,
+        events: list[IngestEvent],
+        targets: Mapping[str, str],
+    ) -> ScoredKb: ...
+
+
 def _default_stack_factory(config: BenchmarkConfig) -> RunStack:
     return StackManager(config)
 
@@ -185,6 +204,7 @@ class RunnerDeps:
     load_corpus_fn: Callable[[Path], Corpus] = load_corpus
     ingest_fn: IngestFn = ingest
     driver_for_fn: Callable[[str], CapabilityDriver] = default_driver_for
+    fetch_scored_kb_fn: ScoredKbFetcher = fetch_scored_kb
     write_artifacts_fn: ArtifactWriter = write_run_artifacts
     write_failure_fn: FailureWriter = write_failure_artifacts
     git_commit_fn: Callable[[], str] = current_git_commit
@@ -240,7 +260,19 @@ def run(request: RunRequest, deps: RunnerDeps | None = None) -> ArtifactPaths:
                 run_targets.targets,
             )
             stage = "scoring"
-            scores = score_run(corpus, request.variant, answers, run_targets.chapter_map)
+            # Scoring prerequisite: the FULL KB state is fetched HERE, not
+            # taken from the driven answers — scoring has data no matter
+            # which capabilities the user selected (runner_scoring docstring).
+            scored_kb = deps.fetch_scored_kb_fn(
+                client,
+                corpus,
+                novel_id=ingest_result.novel_id,
+                chapter_ids=run_targets.chapter_ids,
+                config=request.config,
+                events=events,
+                targets=run_targets.targets,
+            )
+            scores = score_run(corpus, request.variant, answers, run_targets.chapter_map, scored_kb)
             stage = "artifacts"
             inputs = RunInputs(
                 variant=request.variant,

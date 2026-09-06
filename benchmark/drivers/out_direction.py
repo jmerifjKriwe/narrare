@@ -85,7 +85,8 @@ AUTOCOMPLETE_LIMIT: Final[int] = 10
 
 
 # ---------------------------------------------------------------------------
-# Shared: paginated KBEntryListResponse driving (CAP-OUT-01/02)
+# Shared: canonical KBEntryListResponse parsing (CAP-OUT-01/02 + scoring
+# fetch — the scoring phase reuses these endpoint parsers verbatim)
 # ---------------------------------------------------------------------------
 
 
@@ -101,7 +102,7 @@ def _entry_summary(body: object) -> EntrySummary:
     )
 
 
-def _paginated_entries(
+def paginated_entries(
     ctx: CapabilityContext,
     *,
     step: str,
@@ -112,7 +113,8 @@ def _paginated_entries(
 
     Stops on a short page (server exhausted) or once ``total`` entries
     are collected — every iteration either stops or adds a full page,
-    so the loop is finite even against a drifting server.
+    so the loop is finite even against a drifting server. Shared by the
+    CAP-OUT-01/02 drivers and the scoring phase's KB-state fetch.
     """
     entries: list[EntrySummary] = []
     total = 0
@@ -159,7 +161,7 @@ def _autocomplete(ctx: CapabilityContext) -> tuple[AutocompleteHit, ...]:
 
 
 def _drive_entry_browse(ctx: CapabilityContext) -> EntryBrowseRecord:
-    entries, total, pages = _paginated_entries(
+    entries, total, pages = paginated_entries(
         ctx,
         step="CAP-OUT-01:browse",
         path=f"/api/v1/novels/{ctx.novel_id}/kb/entries",
@@ -184,7 +186,7 @@ class EntryBrowseDriver:
 
 def _drive_entry_search(ctx: CapabilityContext) -> SearchRecord:
     query = probe_name(ctx)
-    entries, total, pages = _paginated_entries(
+    entries, total, pages = paginated_entries(
         ctx,
         step="CAP-OUT-02:search",
         path=f"/api/v1/novels/{ctx.novel_id}/kb/entries/search",
@@ -205,7 +207,7 @@ class EntrySearchDriver:
 # ---------------------------------------------------------------------------
 
 
-def _entry_detail(body: object) -> KbEntryDetail:
+def entry_detail(body: object) -> KbEntryDetail:
     """COMPLETE ``KBEntryResponse`` projection (Task-11 scorer surface)."""
     return KbEntryDetail(
         id=as_text(response_field(body, "id")),
@@ -224,7 +226,7 @@ def _entry_detail(body: object) -> KbEntryDetail:
     )
 
 
-def _relationship_detail(body: object) -> RelationshipDetail:
+def relationship_detail(body: object) -> RelationshipDetail:
     """COMPLETE ``KBRelationshipResponse`` projection (scorer surface)."""
     return RelationshipDetail(
         id=as_text(response_field(body, "id")),
@@ -246,7 +248,7 @@ def _drive_entity_detail(ctx: CapabilityContext) -> EntityDetailRecord:
     listed = invoke_rest(
         ctx, step="CAP-OUT-03:relationships", method="GET", path=f"{base}/relationships"
     )
-    relationships = tuple(_relationship_detail(rel) for rel in as_list(listed, "relationship list"))
+    relationships = tuple(relationship_detail(rel) for rel in as_list(listed, "relationship list"))
     inverse_of = relationships[0].rel_type if relationships else None
     inverse_rel_type: str | None = None
     if inverse_of is not None:
@@ -259,7 +261,7 @@ def _drive_entity_detail(ctx: CapabilityContext) -> EntityDetailRecord:
         )
         inverse_rel_type = as_opt_text(response_field(inverse, "inverse"))
     return EntityDetailRecord(
-        entry=_entry_detail(entry),
+        entry=entry_detail(entry),
         relationships=relationships,
         inverse_of=inverse_of,
         inverse_rel_type=inverse_rel_type,

@@ -25,12 +25,14 @@ from benchmark.ingest_events import IngestEvent
 from benchmark.provision import ProvisionOutcome
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Mapping, Sequence
     from pathlib import Path
 
     from benchmark.config_schemas import BenchmarkConfig
+    from benchmark.corpus_loader import Corpus
     from benchmark.runner import ProvisionFn
     from benchmark.runner_failure import RunFailure
+    from benchmark.runner_scoring import ScoredKb
 
 STARTED_AT: Final[datetime] = datetime(2026, 8, 31, 10, 0, 0, tzinfo=UTC)
 FINISHED_AT: Final[datetime] = datetime(2026, 8, 31, 10, 3, 0, tzinfo=UTC)
@@ -239,6 +241,42 @@ class FakeDrivers:
             if context_cap_id == cap_id:
                 return dict(ctx.targets)
         raise AssertionError(f"capability {cap_id} was never driven")
+
+
+# ---------------------------------------------------------------------------
+# Scoring-fetch fake (scripted ScoredKb; call args recorded)
+# ---------------------------------------------------------------------------
+
+
+class FakeScoreFetch:
+    """Scoring-fetch seam: records its call args, returns a scripted ScoredKb."""
+
+    def __init__(self, log: RunLog, kb: ScoredKb) -> None:
+        self._log = log
+        self._kb = kb
+        self.calls: list[dict[str, object]] = []
+
+    def __call__(
+        self,
+        client: BenchmarkClient,
+        corpus: Corpus,
+        novel_id: str,
+        chapter_ids: Mapping[str, str],
+        config: BenchmarkConfig,
+        events: list[IngestEvent],
+        targets: Mapping[str, str],
+    ) -> ScoredKb:
+        self._log.push("score_fetch")
+        assert client is not None and config is not None and corpus is not None
+        self.calls.append(
+            {
+                "novel_id": novel_id,
+                "chapter_ids": dict(chapter_ids),
+                "targets": dict(targets),
+                "event_count": len(events),
+            }
+        )
+        return self._kb
 
 
 # ---------------------------------------------------------------------------
