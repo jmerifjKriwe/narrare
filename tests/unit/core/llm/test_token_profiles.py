@@ -31,12 +31,14 @@ def test_public_profile_values_match_policy_order() -> None:
 def test_preset_output_limits_match_policy_and_exclude_custom() -> None:
     # long_texts raised 8000 → 16000: structured extraction (tool schema +
     # detailed system prompt on thinking models) hit the 8000 ceiling before
-    # generating any response; 16000 is API-probe verified sufficient.
+    # generating any response. Raised 16000 → 32000: benchmark rehearsal
+    # showed ch-11 KB extraction (densest reveal chapter) exhausting the
+    # 16000 output-token ceiling; comprehensive follows for ladder consistency.
     assert PROFILE_OUTPUT_LIMITS == {
         "quick": 500,
         "balanced": 2000,
-        "long_texts": 16000,
-        "comprehensive": 16000,
+        "long_texts": 32000,
+        "comprehensive": 32000,
     }
     assert "custom" not in PROFILE_OUTPUT_LIMITS
 

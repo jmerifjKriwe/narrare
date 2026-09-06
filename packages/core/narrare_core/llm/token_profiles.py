@@ -48,8 +48,12 @@ TOKEN_PRESET_PROFILE_VALUES: tuple[str, ...] = (
 PROFILE_OUTPUT_LIMITS: dict[str, int] = {
     TokenLimitProfile.QUICK.value: 500,
     TokenLimitProfile.BALANCED.value: 2000,
-    TokenLimitProfile.LONG_TEXTS.value: 16000,
-    TokenLimitProfile.COMPREHENSIVE.value: 16000,
+    # Raised 16000 → 32000 (benchmark finding): ch-11 KB extraction on the
+    # reveal chapter — the densest in the corpus — exhausted the 16000
+    # output-token ceiling before emitting its full structured payload.
+    # comprehensive follows to keep the preset ladder consistent.
+    TokenLimitProfile.LONG_TEXTS.value: 32000,
+    TokenLimitProfile.COMPREHENSIVE.value: 32000,
 }
 """Preset output-token limits for non-custom profiles."""
 

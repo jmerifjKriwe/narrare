@@ -60,9 +60,11 @@ export const PROFILE_OUTPUT_LIMITS: Readonly<Record<string, number>> = {
   quick: 500,
   balanced: 2000,
   // Raised 8000 → 16000 with Core (structured extraction on thinking models
-  // hit the old ceiling before generating output).
-  long_texts: 16000,
-  comprehensive: 16000,
+  // hit the old ceiling before generating output), then 16000 → 32000 with
+  // Core (benchmark: ch-11 KB extraction on the densest reveal chapter
+  // exhausted the 16000 ceiling; comprehensive follows for ladder consistency).
+  long_texts: 32000,
+  comprehensive: 32000,
 } as const;
 
 /**

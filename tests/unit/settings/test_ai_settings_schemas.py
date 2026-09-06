@@ -119,13 +119,15 @@ class TestTokenLimitProfiles:
         profile = TOKEN_LIMIT_PROFILES["long_texts"]
         assert "default" in profile
         # Raised 8000 → 16000 with the core preset (structured extraction on
-        # thinking models hit the old ceiling before generating output).
-        assert profile["default"].max_tokens == 16000
+        # thinking models hit the old ceiling before generating output), then
+        # 16000 → 32000 (benchmark: ch-11 KB extraction on the densest reveal
+        # chapter exhausted the 16000 ceiling).
+        assert profile["default"].max_tokens == 32000
 
     def test_comprehensive_profile_has_defaults(self) -> None:
         profile = TOKEN_LIMIT_PROFILES["comprehensive"]
         assert "default" in profile
-        assert profile["default"].max_tokens == 16000
+        assert profile["default"].max_tokens == 32000
 
     def test_custom_profile_starts_empty(self) -> None:
         profile = TOKEN_LIMIT_PROFILES["custom"]
