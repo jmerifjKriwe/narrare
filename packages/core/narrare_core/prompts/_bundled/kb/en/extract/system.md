@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.6.0"
+prompt_version: "1.7.0"
 ---
 
 ## System Prompt
@@ -83,10 +83,10 @@ Return a JSON object matching the ExtractionOutput schema:
     },
     {
       "item_type": "relationship",
-      "name": "engaged_to",
+      "name": "colleague_of",
       "confidence": 0.75,
       "source_text": "Quote establishing the relationship...",
-      "relationship_type": "engaged_to",
+      "relationship_type": "colleague_of",
       "source_entity_name": "Anna Meyer",
       "target_entity_name": "Peter Meyer"
     },
@@ -120,15 +120,21 @@ widowed_since, given_up_for_adoption, promised_to, covers_period,
 in_daily_use, allotment_of, second_bundle_revealed,
 discovered_in_drawer_of, relation_to_ilse, description, status.
 For facts not covered, use snake_case English keys.
+For time-varying attributes (age, residence, profession), record the
+temporal context as a key suffix: `age_2017: 25`, `age_2021: 30`,
+`residence_2015: Hamburg`, `residence_2021: Munich`. The plain key
+(age, residence) should hold the LATEST value. The year-suffixed keys
+preserve the historical progression.
 
 ### Quality Rules
 
 - Only extract entities with meaningful information — not throwaway mentions with no detail.
 - A character mentioned once in dialogue with no description is probably not worth extracting.
 - A character who acts, speaks, or is described is worth extracting even briefly.
-- Relationships should use canonical predicates. Kinship and roles:
-  spouse_of, engaged_to, mother_of, father_of, son_of, sibling_of,
-  half_sibling_of, grandmother_of, first_grandchild_of, colleague_of,
+- Relationships should use canonical predicates. You MUST use these canonical relationship types: sibling_of, spouse_of, engaged_to, parent_of, child_of, grandparent_of, grandchild_of, colleague_of, neighbor_of, friend_of, enemy_of, mentor_of, owner_of, member_of, located_in, works_at, confused_in_mail_with, sits_within_earshot_of, first_grandchild_of, unrelated_to_family_of. Do NOT invent synonyms.
+  Further specific kinship and role predicates: spouse_of, engaged_to,
+  mother_of, father_of, son_of, sibling_of, half_sibling_of,
+  grandmother_of, first_grandchild_of, colleague_of,
   business_partner_of, neighbor_of, babysitter_of, keeper_of,
   property_manager_of, met_on_jury_with, confused_in_mail_with,
   not_related_to, unrelated_to_family_of, sits_within_earshot_of.
@@ -142,8 +148,10 @@ For facts not covered, use snake_case English keys.
 The KB's backbone is the set of entities that carry the story across chapters. Apply these rules to keep the KB focused:
 
 - Extract entities that RECUR or ACT across chapters — characters who speak and act, locations that are visited multiple times, objects that change ownership. These are the KB's backbone.
+- Extract major CITIES and LOCATIONS as entities — Hamburg, Munich, specific neighborhoods, specific buildings. These are persistent story-world geography.
+- Extract significant OBJECTS that persist across chapters or drive plot — the drafting table, the letters, the piano, the sketchbooks. Their ownership changes and movements are key narrative facts.
 - Do NOT extract narrative framing devices — the author reading at an event, the narrator, the imagined reader — as entities. These are literary devices, not story-world entities.
-- Do NOT extract individual properties, habits, or possessions as separate entities — they belong as metadata on the character or object that owns them (e.g., 'Peter's habit of correcting names' → metadata on Peter, not a new entity).
+- Do NOT extract individual properties, habits, or behaviors as separate entities — "properties" means habits and behaviors, not physical objects. They belong as metadata on the character or object that owns them (e.g., 'Peter's habit of correcting names' → metadata on Peter, not a new entity). Significant physical objects are extracted per the object rule above.
 - Do NOT extract sub-locations within a known location unless they are functionally distinct settings (e.g., 'the kitchen of the Barmbek house' is part of the Barmbek house, not a new location).
 - Do NOT extract minor characters who appear only once and carry no meaningful information (a nameless guest, a person mentioned in passing).
 - Do NOT extract events, realizations, or plot developments as entities — record them as metadata on the participating characters.

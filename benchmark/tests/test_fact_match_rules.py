@@ -11,6 +11,11 @@ Pins the two Important review findings, each with its probe evidence:
   misreported as spurious facts. Regression tests pin their exemption
   from the spurious-fact predicate set, plus the negative control
   (unlicensed interval keys stay spurious).
+- Temporal snapshots (scoring-diagnosis fix 1): the KB keeps the LATEST
+  value under the plain key, so historical ``age_stated`` snapshots
+  were scored ``found_wrong`` against it. Year-suffixed keys
+  (``age_2017: 25``) now satisfy temporal facts (bounds or recurring
+  snapshot predicate); non-temporal predicates ignore year keys.
 """
 
 from __future__ import annotations
@@ -204,3 +209,136 @@ def test_interval_check_reads_companion_under_alias_key() -> None:
     score = score_build_quality(reference, (summary("e1", "Anna Meyer"),), details)
     assert score.facts[0].status == "found_wrong"
     assert score.facts[0].evidence == "metadata"
+
+
+# ---------------------------------------------------------------------------
+# Temporal metadata: year-suffixed keys (scoring-diagnosis fix 1)
+# ---------------------------------------------------------------------------
+
+
+def test_temporal_fact_found_via_year_suffixed_key() -> None:
+    """Plain key holds the latest value; the year key satisfies the old snapshot."""
+    reference = make_reference(
+        persons=(
+            ref_entity(
+                "p1",
+                "Anna Meyer",
+                facts=(
+                    ref_fact("F001", "age_stated", "24"),
+                    ref_fact("F021", "age_stated", "25"),
+                    ref_fact("F132", "age_stated", "35"),
+                ),
+            ),
+        ),
+    )
+    details = (
+        detail(
+            "e1",
+            name="Anna Meyer",
+            metadata={"age": "35", "age_2015": "24", "age_2017": "25"},
+        ),
+    )
+    score = score_build_quality(reference, (summary("e1", "Anna Meyer"),), details)
+    by_ref = {fact.ref_id: fact for fact in score.facts}
+    assert by_ref["F001"].status == "found"
+    assert by_ref["F021"].status == "found"
+    assert by_ref["F021"].evidence == "metadata"
+    assert by_ref["F132"].status == "found"
+    assert score.spurious_facts == ()
+
+
+def test_temporal_fact_found_via_year_key_without_plain_key() -> None:
+    """A year-suffixed key alone satisfies the snapshot (no plain key present)."""
+    reference = make_reference(
+        persons=(
+            ref_entity(
+                "p1",
+                "Anna Meyer",
+                facts=(
+                    ref_fact("F021", "age_stated", "25"),
+                    ref_fact("F132", "age_stated", "35"),
+                ),
+            ),
+        ),
+    )
+    details = (detail("e1", name="Anna Meyer", metadata={"age_2017": "25"}),)
+    score = score_build_quality(reference, (summary("e1", "Anna Meyer"),), details)
+    by_ref = {fact.ref_id: fact for fact in score.facts}
+    assert by_ref["F021"].status == "found"
+    assert by_ref["F021"].evidence == "metadata"
+    assert by_ref["F132"].status == "missing"
+
+
+def test_temporal_year_key_inside_fact_bounds_is_found() -> None:
+    """A bounded fact accepts the year key whose year lies in its interval."""
+    reference = make_reference(
+        persons=(
+            ref_entity(
+                "p1",
+                "Anna Meyer",
+                facts=(
+                    ref_fact(
+                        "F021",
+                        "age_stated",
+                        "25",
+                        valid_from=d(2017, 2),
+                        valid_to=d(2017, 12),
+                    ),
+                    ref_fact("F132", "age_stated", "35"),
+                ),
+            ),
+        ),
+    )
+    details = (detail("e1", name="Anna Meyer", metadata={"age": "35", "age_2017": "25"}),)
+    score = score_build_quality(reference, (summary("e1", "Anna Meyer"),), details)
+    by_ref = {fact.ref_id: fact for fact in score.facts}
+    assert by_ref["F021"].status == "found"
+    assert by_ref["F021"].evidence == "metadata"
+
+
+def test_temporal_year_key_outside_fact_bounds_is_found_wrong() -> None:
+    """A value-matching year key outside the fact's interval contradicts it."""
+    reference = make_reference(
+        persons=(
+            ref_entity(
+                "p1",
+                "Anna Meyer",
+                facts=(
+                    ref_fact(
+                        "F021",
+                        "age_stated",
+                        "25",
+                        valid_from=d(2017, 2),
+                        valid_to=d(2017, 12),
+                    ),
+                    ref_fact("F132", "age_stated", "35"),
+                ),
+            ),
+        ),
+    )
+    details = (detail("e1", name="Anna Meyer", metadata={"age_2019": "25"}),)
+    score = score_build_quality(reference, (summary("e1", "Anna Meyer"),), details)
+    by_ref = {fact.ref_id: fact for fact in score.facts}
+    assert by_ref["F021"].status == "found_wrong"
+    assert by_ref["F021"].evidence == "metadata"
+
+
+def test_non_temporal_year_key_stays_spurious_and_unmatched() -> None:
+    """Negative control: year keys are licensed only for time-varying predicates."""
+    reference = make_reference(
+        persons=(ref_entity("p1", "Anna Meyer", facts=(ref_fact("F001", "age_stated", "24"),)),)
+    )
+    details = (detail("e1", name="Anna Meyer", metadata={"age": "24", "age_2017": "25"}),)
+    score = score_build_quality(reference, (summary("e1", "Anna Meyer"),), details)
+    assert score.facts[0].status == "found"
+    assert [fact.key for fact in score.spurious_facts] == ["age_2017"]
+
+
+def test_year_key_does_not_satisfy_non_temporal_fact() -> None:
+    """A non-temporal fact is never satisfied by a year-suffixed key alone."""
+    reference = make_reference(
+        persons=(ref_entity("p1", "Anna Meyer", facts=(ref_fact("F001", "age_stated", "24"),)),)
+    )
+    details = (detail("e1", name="Anna Meyer", metadata={"age_2017": "24"}),)
+    score = score_build_quality(reference, (summary("e1", "Anna Meyer"),), details)
+    assert score.facts[0].status == "missing"

@@ -16,6 +16,17 @@ evidence nor spurious-fact material):
    AND the interval check passes. A differing value or a contradicted
    interval = ``found_wrong`` (precision hit; evidence stays
    ``"metadata"`` — structured beats prose when both exist).
+
+   **Temporal year keys**: time-varying facts (a bounded fact, or a
+   predicate recurring across the entity's snapshot facts) additionally
+   accept a year-suffixed metadata key (``age_2017: 25``) whose year
+   lies within the fact's reference interval — the KB deliberately
+   keeps the LATEST value under the plain key and the historical
+   progression under year-suffixed keys, so a snapshot fact is
+   satisfied by EITHER the plain key OR its year-suffixed variant. On
+   the year-key path the suffix year IS the temporal anchor: year
+   containment replaces the companion-bound interval check. A value
+   match under an out-of-bounds year is a ``found_wrong`` contradiction.
 2. **Body rule** (prose): otherwise the fact is FOUND iff the
    normalized value occurs as a whole token run in the normalized body
    (boundary-aware membership — ``"24"`` never matches inside
@@ -38,7 +49,9 @@ predicate matches NO expected fact predicate of that entity — actual
 structure the reference does not license. Companion interval keys
 consumed as interval evidence (``{predicate}_from`` / ``{predicate}_to``
 under canonical AND alias surfaces, plus the generic ``valid_from`` /
-``valid_to``) are licensed by construction and exempt. Sorted by entry +
+``valid_to``) are licensed by construction and exempt. Year-suffixed
+temporal keys (``age_2017``) are exempt when their stripped surface
+folds onto a time-varying expected predicate. Sorted by entry +
 normalized key for canonical determinism. Body prose never yields
 spurious facts.
 """
@@ -114,11 +127,21 @@ def score_facts(entity: Entity, actual: ActualFacts) -> tuple[FactOutcome, ...]:
     for fact in entity.facts:
         predicate = canonical_fact_predicate(fact.predicate)
         key = _metadata_key(actual.metadata, predicate)
-        if key is not None:
-            correct = _value_equal(str(actual.metadata[key]), fact.value) and _interval_ok(
-                actual, fact, key
-            )
+        if key is not None and _value_equal(str(actual.metadata[key]), fact.value):
+            correct = _interval_ok(actual, fact, key)
             outcomes.append(_outcome(entity, fact, correct, "metadata"))
+            continue
+        temporal_key = (
+            _temporal_year_key(actual.metadata, fact, predicate)
+            if _is_temporal_fact(fact, entity)
+            else None
+        )
+        if temporal_key is not None:
+            _, satisfied = temporal_key
+            outcomes.append(_outcome(entity, fact, satisfied, "metadata"))
+        elif key is not None:
+            # Plain key exists with a differing value and no year-key rescue.
+            outcomes.append(_outcome(entity, fact, False, "metadata"))
         elif _body_contains(actual.body, fact.value):
             outcomes.append(
                 _outcome(entity, fact, _interval_ok(actual, fact, actual_key=""), "body")
@@ -145,14 +168,20 @@ def spurious_facts(
     Companion interval keys consumed as interval evidence
     (``{predicate}_from``/``{predicate}_to`` under canonical and alias
     surfaces plus the generic ``valid_from``/``valid_to``) are licensed
-    by construction.
+    by construction, as are year-suffixed temporal keys for time-varying
+    expected predicates.
     """
     expected = {canonical_fact_predicate(fact.predicate) for fact in entity.facts}
     licensed = expected | _interval_companion_keys(expected)
+    temporal = {
+        canonical_fact_predicate(fact.predicate)
+        for fact in entity.facts
+        if _is_temporal_fact(fact, entity)
+    }
     rows = [
         SpuriousFact(entry_id=entry_id, entry_name=entry_name, key=key, value=str(value))
         for key, value in actual.metadata.items()
-        if canonical_fact_predicate(key) not in licensed
+        if not _licensed_key(key, licensed, temporal)
     ]
     return tuple(sorted(rows, key=lambda row: (row.entry_id, normalize_predicate(row.key))))
 
@@ -199,6 +228,71 @@ def _interval_companion_keys(expected: set[str]) -> set[str]:
     for predicate in expected | alias_surfaces:
         keys.update(f"{predicate}_{side}" for side in ("from", "to"))
     return keys
+
+
+def _is_temporal_fact(fact: Fact, entity: Entity) -> bool:
+    """A time-varying fact: bounded, or a predicate recurring as snapshots.
+
+    Only temporal facts accept year-suffixed metadata keys — the plain
+    rule stays strict for atemporal predicates.
+    """
+    if not fact.source_chapters:
+        return False
+    if fact.valid_from is not None or fact.valid_to is not None:
+        return True
+    predicate = canonical_fact_predicate(fact.predicate)
+    return (
+        sum(1 for other in entity.facts if canonical_fact_predicate(other.predicate) == predicate)
+        > 1
+    )
+
+
+def _temporal_year_key(
+    metadata: Mapping[str, object], fact: Fact, predicate: str
+) -> tuple[str, bool] | None:
+    """First value-matching year key as ``(key, satisfied)``, else ``None``.
+
+    An in-bounds year wins over any out-of-bounds match; ``satisfied``
+    marks whether the key's year lies within the fact's reference
+    interval (``True`` → found, ``False`` → found_wrong contradiction).
+    """
+    contradicted: tuple[str, bool] | None = None
+    for key in metadata:
+        year = _year_suffix(key)
+        if year is None or canonical_fact_predicate(key.removesuffix(f"_{year}")) != predicate:
+            continue
+        if not _value_equal(str(metadata[key]), fact.value):
+            continue
+        if _year_in_bounds(fact, year):
+            return key, True
+        contradicted = contradicted or (key, False)
+    return contradicted
+
+
+def _year_suffix(key: str) -> int | None:
+    """Trailing ``_<year>`` component (``age_2017`` → 2017), else ``None``."""
+    _, separator, year = key.rpartition("_")
+    if separator and len(year) == 4 and year.isdigit():
+        return int(year)
+    return None
+
+
+def _year_in_bounds(fact: Fact, year: int) -> bool:
+    """Year-precision containment of the key's year in the fact's interval."""
+    lower = fact.valid_from.year if fact.valid_from is not None else None
+    upper = fact.valid_to.year if fact.valid_to is not None else None
+    return (lower is None or year >= lower) and (upper is None or year <= upper)
+
+
+def _licensed_key(key: str, licensed: set[str], temporal: set[str]) -> bool:
+    """Plain, companion-interval, or year-suffixed temporal key licensing."""
+    if canonical_fact_predicate(key) in licensed:
+        return True
+    year = _year_suffix(key)
+    if year is None:
+        return False
+    surface = canonical_fact_predicate(key.removesuffix(f"_{year}"))
+    return surface in temporal
 
 
 def _value_equal(actual: str, expected: str) -> bool:
