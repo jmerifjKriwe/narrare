@@ -11,23 +11,53 @@ evidence nor spurious-fact material):
    plus folding of known extraction variations — ``age`` →
    ``age_stated``, ``occupation``/``job_title`` → ``profession``) equals
    the fact's canonical predicate is predicate evidence; the fact is
-   FOUND. It is CORRECT iff
-   ``normalize_text(str(metadata[key])) == normalize_text(fact.value)``
-   AND the interval check passes. A differing value or a contradicted
+   FOUND. It is CORRECT iff ``value_matches`` holds (see below) AND the
+   interval check passes. A differing value or a contradicted
    interval = ``found_wrong`` (precision hit; evidence stays
    ``"metadata"`` — structured beats prose when both exist).
 
-   **Temporal year keys**: time-varying facts (a bounded fact, or a
-   predicate recurring across the entity's snapshot facts) additionally
-   accept a year-suffixed metadata key (``age_2017: 25``) whose year
-   lies within the fact's reference interval — the KB deliberately
-   keeps the LATEST value under the plain key and the historical
-   progression under year-suffixed keys, so a snapshot fact is
-   satisfied by EITHER the plain key OR its year-suffixed variant. On
-   the year-key path the suffix year IS the temporal anchor: year
-   containment replaces the companion-bound interval check. A value
-   match under an out-of-bounds year is a ``found_wrong`` contradiction.
-2. **Body rule** (prose): otherwise the fact is FOUND iff the
+   **Value matching (round 2)**: numeric references (digits after
+   normalization) keep EXACT normalized equality — numbers are never
+   token-relaxed. String references verify the knowledge is
+   substantively present: every stopword-stripped reference core token
+   (``normalize.core_tokens``) must appear across the candidate value's
+   tokens PLUS the values of companion keys of the same predicate
+   family (``COMPANION_PREDICATES``: profession ↔ employer/workplace,
+   residence ↔ address/lives_at — the KB legitimately splits
+   "Projektarchitektin bei Pfeiffer & Partner Architekten" into
+   ``profession_2016_2021`` = "Projektarchitektin (HafenCity, Hamburg)"
+   + ``workplace``). NO partial credit: a missing reference token is no
+   match — this is verification, not fuzzy scoring. Companion value
+   keys consumed this way are licensed in the spurious plane.
+
+   **Temporal year keys (round 2 grammar)**: time-varying facts (a
+   bounded fact, or a predicate recurring across the entity's snapshot
+   facts) additionally accept temporal-suffixed metadata keys, parsed
+   by regex in ``_temporal_keys``: ``pred_YYYY`` (``age_2017``),
+   ``pred_YYYY_M`` (``age_2019_12``; the month does not tighten
+   coverage), and ``pred_YYYY1_YYYY2`` ranges
+   (``profession_2016_2021``). A key matches when its year set covers
+   the fact's temporal position (``covers_year``: key year within the
+   fact's reference interval; range keys cover the fact's anchor year).
+   The KB deliberately keeps the LATEST value under the plain key and
+   historical progression under suffixed keys, so a snapshot fact is
+   satisfied by EITHER the plain key OR a temporal variant. On the
+   temporal path the key's year IS the temporal anchor: year coverage
+   replaces the companion-bound interval check. A value match under an
+   out-of-coverage key is a ``found_wrong`` contradiction. Temporal
+   keys are licensed in the spurious plane exactly for time-varying
+   expected predicates, in all three grammar forms.
+2. **Inverse residence rule (round 3)**: reference ``residence_of``
+   facts live on PLACE entities with entity-id values, while the KB
+   states the binding on the PERSON entry's residence keys. When the
+   direct paths fail, the fact is FOUND iff the referenced person's
+   entry metadata carries a residence-family key (``residence`` /
+   ``lives_at``, plain or temporal-variant) whose value contains the
+   place's core tokens (``RESIDENCE_INVERSE_FAMILY``). Interval bounds
+   are not probed on this path (v1 tolerance: the person-side
+   ``residence`` fact carries the interval evidence and is scored
+   separately).
+3. **Body rule** (prose): otherwise the fact is FOUND iff the
    normalized value occurs as a whole token run in the normalized body
    (boundary-aware membership — ``"24"`` never matches inside
    ``"2024"``). Correctness adds only the interval check: a
@@ -49,21 +79,30 @@ predicate matches NO expected fact predicate of that entity — actual
 structure the reference does not license. Companion interval keys
 consumed as interval evidence (``{predicate}_from`` / ``{predicate}_to``
 under canonical AND alias surfaces, plus the generic ``valid_from`` /
-``valid_to``) are licensed by construction and exempt. Year-suffixed
-temporal keys (``age_2017``) are exempt when their stripped surface
-folds onto a time-varying expected predicate. Sorted by entry +
-normalized key for canonical determinism. Body prose never yields
-spurious facts.
+``valid_to``) are licensed by construction and exempt. Companion VALUE
+keys of an expected predicate's family (``COMPANION_PREDICATES``) are
+licensed — they are consumed as value evidence. Temporal-suffixed keys
+(all three grammar forms of ``_temporal_keys.parse_temporal_key``) are
+exempt when their stripped surface folds onto a time-varying expected
+predicate. Sorted by entry + normalized key for canonical determinism.
+Body prose never yields spurious facts.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
+from benchmark.scoring._predicates import (
+    FACT_KEY_ALIASES,
+    canonical_fact_predicate,
+    metadata_key,
+)
+from benchmark.scoring._temporal_keys import covers_year, parse_temporal_key
+from benchmark.scoring._value_match import value_companion_keys, value_matches
 from benchmark.scoring.normalize import (
     boundary_matches,
+    core_tokens,
     normalize_predicate,
     normalize_text,
     parse_date_value,
@@ -76,33 +115,9 @@ if TYPE_CHECKING:
     from benchmark.corpus_views import Entity, Fact, PartialDate
     from benchmark.drivers.out_records import KbEntryDetail
 
-FACT_KEY_ALIASES: Final[Mapping[str, str]] = MappingProxyType(
-    {
-        "age": "age_stated",
-        "age_at_this_point": "age_stated",
-        "age_in_chapter": "age_stated",
-        "occupation": "profession",
-        "job_title": "profession",
-        "residence": "residence",
-    }
-)
-"""Folding of observed extraction-key variations onto the canonical
-reference predicate (the ``benchmark/corpus/reference`` registry).
-Canonical keys map to themselves; unknown keys pass through unchanged.
-Mirrors the canonical registry in ``narrare_core.kb.predicates`` (which
-the benchmark must not import — co-evolution boundary)."""
-
-
-def canonical_fact_predicate(value: str) -> str:
-    """Normalize a fact predicate / metadata key to its canonical form.
-
-    Snake_case normalization first, then folding of known extraction
-    variations onto the reference predicate. Unknown keys are returned
-    normalized but unfolded — the matcher stays strict beyond the
-    documented aliases.
-    """
-    predicate = normalize_predicate(value)
-    return FACT_KEY_ALIASES.get(predicate, predicate)
+RESIDENCE_INVERSE_FAMILY: Final[frozenset[str]] = frozenset({"residence", "lives_at"})
+"""Canonical predicates accepted as inverse evidence for ``residence_of``
+place facts (fact-match round 3): the person entry's binding."""
 
 
 @dataclass(frozen=True)
@@ -121,13 +136,25 @@ def actual_facts_from(entry: KbEntryDetail) -> ActualFacts:
     )
 
 
-def score_facts(entity: Entity, actual: ActualFacts) -> tuple[FactOutcome, ...]:
-    """Score every expected fact of one entity against the evidence planes."""
+def score_facts(
+    entity: Entity,
+    actual: ActualFacts,
+    inverse_residences: Mapping[str, Mapping[str, object]] | None = None,
+) -> tuple[FactOutcome, ...]:
+    """Score every expected fact of one entity against the evidence planes.
+
+    ``inverse_residences`` (fact-match round 3) maps reference entity id
+    → that entity's matched entry metadata; it carries the cross-entity
+    evidence for the inverse residence rule and may be omitted when no
+    inverse evidence exists.
+    """
     outcomes: list[FactOutcome] = []
     for fact in entity.facts:
         predicate = canonical_fact_predicate(fact.predicate)
-        key = _metadata_key(actual.metadata, predicate)
-        if key is not None and _value_equal(str(actual.metadata[key]), fact.value):
+        key = metadata_key(actual.metadata, predicate)
+        if key is not None and value_matches(
+            str(actual.metadata[key]), fact, actual.metadata, predicate
+        ):
             correct = _interval_ok(actual, fact, key)
             outcomes.append(_outcome(entity, fact, correct, "metadata"))
             continue
@@ -139,6 +166,8 @@ def score_facts(entity: Entity, actual: ActualFacts) -> tuple[FactOutcome, ...]:
         if temporal_key is not None:
             _, satisfied = temporal_key
             outcomes.append(_outcome(entity, fact, satisfied, "metadata"))
+        elif _inverse_residence_found(fact, entity, inverse_residences):
+            outcomes.append(_outcome(entity, fact, True, "metadata"))
         elif key is not None:
             # Plain key exists with a differing value and no year-key rescue.
             outcomes.append(_outcome(entity, fact, False, "metadata"))
@@ -172,7 +201,7 @@ def spurious_facts(
     expected predicates.
     """
     expected = {canonical_fact_predicate(fact.predicate) for fact in entity.facts}
-    licensed = expected | _interval_companion_keys(expected)
+    licensed = expected | _interval_companion_keys(expected) | value_companion_keys(expected)
     temporal = {
         canonical_fact_predicate(fact.predicate)
         for fact in entity.facts
@@ -195,14 +224,6 @@ def _outcome(entity: Entity, fact: Fact, correct: bool, evidence: FactEvidence) 
         status="found" if correct else "found_wrong",
         evidence=evidence,
     )
-
-
-def _metadata_key(metadata: Mapping[str, object], predicate: str) -> str | None:
-    """First metadata key (insertion order) folding to the predicate."""
-    for key in metadata:
-        if canonical_fact_predicate(key) == predicate:
-            return key
-    return None
 
 
 def _body_contains(body: str, value: str) -> bool:
@@ -250,53 +271,84 @@ def _is_temporal_fact(fact: Fact, entity: Entity) -> bool:
 def _temporal_year_key(
     metadata: Mapping[str, object], fact: Fact, predicate: str
 ) -> tuple[str, bool] | None:
-    """First value-matching year key as ``(key, satisfied)``, else ``None``.
+    """First value-matching temporal key as ``(key, satisfied)``, else ``None``.
 
-    An in-bounds year wins over any out-of-bounds match; ``satisfied``
-    marks whether the key's year lies within the fact's reference
-    interval (``True`` → found, ``False`` → found_wrong contradiction).
+    Candidates are parsed by regex (all three grammar forms of
+    ``parse_temporal_key``). An in-coverage key wins over any
+    out-of-coverage match; ``satisfied`` marks whether the key's year
+    set covers the fact's temporal position (``True`` → found,
+    ``False`` → found_wrong contradiction). Candidates whose value does
+    not substantively match are skipped — a different snapshot year is
+    no contradiction.
     """
     contradicted: tuple[str, bool] | None = None
     for key in metadata:
-        year = _year_suffix(key)
-        if year is None or canonical_fact_predicate(key.removesuffix(f"_{year}")) != predicate:
+        parsed = parse_temporal_key(key)
+        if parsed is None or canonical_fact_predicate(parsed.predicate) != predicate:
             continue
-        if not _value_equal(str(metadata[key]), fact.value):
+        if not value_matches(str(metadata[key]), fact, metadata, predicate):
             continue
-        if _year_in_bounds(fact, year):
+        if covers_year(parsed, fact):
             return key, True
         contradicted = contradicted or (key, False)
     return contradicted
 
 
-def _year_suffix(key: str) -> int | None:
-    """Trailing ``_<year>`` component (``age_2017`` → 2017), else ``None``."""
-    _, separator, year = key.rpartition("_")
-    if separator and len(year) == 4 and year.isdigit():
-        return int(year)
-    return None
-
-
-def _year_in_bounds(fact: Fact, year: int) -> bool:
-    """Year-precision containment of the key's year in the fact's interval."""
-    lower = fact.valid_from.year if fact.valid_from is not None else None
-    upper = fact.valid_to.year if fact.valid_to is not None else None
-    return (lower is None or year >= lower) and (upper is None or year <= upper)
-
-
 def _licensed_key(key: str, licensed: set[str], temporal: set[str]) -> bool:
-    """Plain, companion-interval, or year-suffixed temporal key licensing."""
+    """Plain, companion, or temporal-suffixed key licensing.
+
+    Temporal keys (all grammar forms) are licensed when their stripped
+    surface folds onto a time-varying expected predicate.
+    """
     if canonical_fact_predicate(key) in licensed:
         return True
-    year = _year_suffix(key)
-    if year is None:
+    parsed = parse_temporal_key(key)
+    if parsed is None:
         return False
-    surface = canonical_fact_predicate(key.removesuffix(f"_{year}"))
-    return surface in temporal
+    return canonical_fact_predicate(parsed.predicate) in temporal
 
 
-def _value_equal(actual: str, expected: str) -> bool:
-    return normalize_text(actual) == normalize_text(expected)
+def _inverse_residence_found(
+    fact: Fact,
+    entity: Entity,
+    inverse_residences: Mapping[str, Mapping[str, object]] | None,
+) -> bool:
+    """Inverse residence evidence (round 3): the person entry states the binding.
+
+    For a ``residence_of`` fact on a place entity (value = reference
+    person id), the fact is satisfied when the person's entry metadata
+    carries a residence-family key (``residence``/``lives_at``, plain or
+    temporal-variant surface) whose value contains ALL of the place's
+    core tokens. Interval bounds are not probed here (v1 tolerance —
+    the person-side ``residence`` fact is scored separately).
+    """
+    if inverse_residences is None or canonical_fact_predicate(fact.predicate) != "residence_of":
+        return False
+    person_metadata = inverse_residences.get(fact.value)
+    if person_metadata is None:
+        return False
+    place_tokens = core_tokens(entity.name)
+    if not place_tokens:
+        return False
+    for key, value in person_metadata.items():
+        if _residence_family_surface(key) is None:
+            continue
+        if place_tokens <= core_tokens(str(value)):
+            return True
+    return False
+
+
+def _residence_family_surface(key: str) -> str | None:
+    """The key's canonical predicate when it belongs to the residence family.
+
+    Accepts plain keys (``residence``) and temporal-variant surfaces
+    (``residence_2019``) via the shared temporal grammar; unrelated
+    stripped surfaces (``residence_of_childhood``) never fold in.
+    """
+    parsed = parse_temporal_key(key)
+    surface = parsed.predicate if parsed is not None else key
+    canonical = canonical_fact_predicate(surface)
+    return canonical if canonical in RESIDENCE_INVERSE_FAMILY else None
 
 
 def _companion_bound(

@@ -19,6 +19,13 @@ relation matchers:
 - ``boundary_matches`` — month-precision interval boundary comparison
   with a ±1 month tolerance (prose ``"Ende Februar"`` materialized as
   ``2017-03`` still matches a ``{2017, 2}`` reference bound).
+- ``core_tokens`` — stopword-free normalized token set (fact-match
+  round 2): the subset-matching vocabulary for semantic text-value
+  verification. Stopwords are dropped from BOTH sides symmetrically,
+  so dropping can never manufacture a match.
+- ``is_numeric_text`` — True when every normalized token is digits;
+  numeric fact values stay in the exact-equality domain (no token
+  relaxation for numbers).
 
 Pure functions only — the scorer must stay deterministic (plan Global
 Constraints: no wall-clock, no randomness in scoring).
@@ -32,6 +39,36 @@ from benchmark.corpus_views import PartialDate
 
 MONTH_TOLERANCE: Final[int] = 1
 """Month-precision boundary tolerance (±1 month) for interval bounds."""
+
+STOPWORDS: Final[frozenset[str]] = frozenset(
+    {
+        "a",
+        "an",
+        "at",
+        "bei",
+        "das",
+        "dem",
+        "den",
+        "der",
+        "des",
+        "die",
+        "ein",
+        "eine",
+        "einem",
+        "einen",
+        "einer",
+        "eines",
+        "for",
+        "im",
+        "in",
+        "of",
+        "the",
+    }
+)
+"""Small German/English stopword set stripped from BOTH sides of the
+semantic token-subset check (fact-match round 2). Symmetric stripping:
+a stopword removed from the reference is removed from the candidate
+pool too, so stripping can never manufacture a match."""
 
 
 def normalize_text(value: str) -> str:
@@ -52,6 +89,20 @@ def normalize_text(value: str) -> str:
 def normalize_predicate(value: str) -> str:
     """Snake_case normalization: alnum runs joined by single underscores."""
     return "_".join(normalize_text(value).split())
+
+
+def core_tokens(value: str) -> frozenset[str]:
+    """Stopword-free normalized token set (semantic subset vocabulary)."""
+    return frozenset(normalize_text(value).split()) - STOPWORDS
+
+
+def is_numeric_text(normalized: str) -> bool:
+    """True when every whitespace-separated token is digits.
+
+    Callers pass the ALREADY normalized text (``normalize_text`` output);
+    purely numeric fact values keep exact-equality matching.
+    """
+    return bool(normalized) and all(part.isdigit() for part in normalized.split())
 
 
 def parse_date_value(raw: object) -> PartialDate | None:

@@ -35,6 +35,8 @@ from benchmark.scoring.score_records import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from benchmark.corpus_views import Entity, Reference
     from benchmark.drivers.out_records import (
         EntityDetailRecord,
@@ -59,9 +61,17 @@ def score_build_quality(
     entity_outcomes: list[EntityOutcome] = []
     fact_outcomes: list[FactOutcome] = []
     spurious_fact_rows: list[SpuriousFact] = []
+    residence_index = _residence_index(entity_result, details_by_entry)
     for ref in expected:
         entity_outcomes.append(
-            _entity_outcome(ref, entity_result, details_by_entry, fact_outcomes, spurious_fact_rows)
+            _entity_outcome(
+                ref,
+                entity_result,
+                details_by_entry,
+                residence_index,
+                fact_outcomes,
+                spurious_fact_rows,
+            )
         )
 
     relation_result = score_relations(reference.relations, _dedupe_edges(details), ref_to_entry)
@@ -89,10 +99,29 @@ def score_build_quality(
     )
 
 
+def _residence_index(
+    entity_result: EntityMatchResult,
+    details_by_entry: dict[str, EntityDetailRecord],
+) -> dict[str, Mapping[str, object]]:
+    """Reference entity id → matched entry metadata (inverse residence evidence).
+
+    Feeds the fact matcher's inverse residence rule (round 3): a place
+    fact ``residence_of: <person id>`` consults the person entry's
+    residence keys. Entries without a fetched detail contribute nothing
+    (absence is reported honestly, never fabricated).
+    """
+    return {
+        match.ref.id: actual_facts_from(details_by_entry[match.entry.id].entry).metadata
+        for match in entity_result.matches
+        if match.entry.id in details_by_entry
+    }
+
+
 def _entity_outcome(
     ref: Entity,
     entity_result: EntityMatchResult,
     details_by_entry: dict[str, EntityDetailRecord],
+    residence_index: dict[str, Mapping[str, object]],
     fact_outcomes: list[FactOutcome],
     spurious_fact_rows: list[SpuriousFact],
 ) -> EntityOutcome:
@@ -102,7 +131,7 @@ def _entity_outcome(
     detail = details_by_entry.get(entry_id) if entry_id is not None else None
     if matched is not None and detail is not None:
         actual = actual_facts_from(detail.entry)
-        facts = score_facts(ref, actual)
+        facts = score_facts(ref, actual, residence_index)
         spurious_fact_rows.extend(spurious_facts(ref, actual, matched.entry.id, ref.name))
     else:
         facts = tuple(
