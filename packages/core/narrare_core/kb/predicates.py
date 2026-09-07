@@ -12,16 +12,27 @@ Registry slices:
 - ``REFERENCE_RELATION_PREDICATES`` — the ``predicate:`` values of
   ``benchmark/corpus/reference/relations.yaml``: relationship types the
   relation matcher licenses.
-- ``COMMON_EXTRACTION_PREDICATES`` — frequent extraction patterns the
-  reference corpus does not use, aligned with the suggestions in
-  ``narrare_core.kb.relationships``. Chosen so no pattern differs from a
-  reference predicate only by the ``_of`` suffix (the offered vocabulary
-  stays unambiguous).
+- ``COMMON_EDGE_PREDICATES`` — interpersonal generic relationship
+  patterns the reference corpus does not use, aligned with the
+  suggestions in ``narrare_core.kb.relationships``. The extraction
+  prompt teaches these as relationship edges.
+- ``COMMON_METADATA_PREDICATES`` — spatial/ownership/workplace
+  patterns plus generic metadata keys. These are facts, never
+  relationship edges (interpersonal-only ruling, extraction prompt
+  v1.9.0+), so the extraction prompt does not teach them.
+- ``COMMON_EXTRACTION_PREDICATES`` — the union of the two common
+  slices. Chosen so no pattern differs from a reference predicate
+  only by the ``_of`` suffix (the offered vocabulary stays
+  unambiguous).
+- ``EDGE_PROMPT_PREDICATES`` — the predicates the extraction prompt
+  teaches as relationship edges: the reference relation slice plus
+  the interpersonal common edge slice.
 
-``CANONICAL_PREDICATES`` is the union of all three slices. The benchmark
-runner intentionally does NOT import this module (co-evolution boundary,
-see ``benchmark/__init__.py``); its matchers mirror the reference slices
-by folding surface variants onto these canonical forms.
+``CANONICAL_PREDICATES`` is the union of the reference and common
+slices. The benchmark runner intentionally does NOT import this module
+(co-evolution boundary, see ``benchmark/__init__.py``); its matchers
+mirror the reference slices by folding surface variants onto these
+canonical forms.
 """
 
 from __future__ import annotations
@@ -84,15 +95,23 @@ REFERENCE_RELATION_PREDICATES: frozenset[str] = frozenset(
     }
 )
 
-COMMON_EXTRACTION_PREDICATES: frozenset[str] = frozenset(
+COMMON_EDGE_PREDICATES: frozenset[str] = frozenset(
     {
-        # Generic relationship patterns (kb.relationships suggestions)
+        # Interpersonal generics (kb.relationships suggestions) —
+        # relationship edges per the interpersonal-only ruling.
         "ally",
         "rival",
         "enemy_of",
         "family_of",
         "mentor_of",
         "mentee_of",
+    }
+)
+"""Interpersonal generic relationship patterns, taught as edges."""
+
+COMMON_METADATA_PREDICATES: frozenset[str] = frozenset(
+    {
+        # Spatial / ownership / workplace patterns
         "member_of",
         "leader_of",
         "located_in",
@@ -106,6 +125,20 @@ COMMON_EXTRACTION_PREDICATES: frozenset[str] = frozenset(
         "death_date",
     }
 )
+"""Fact-style common patterns; never relationship edges."""
+
+COMMON_EXTRACTION_PREDICATES: frozenset[str] = COMMON_EDGE_PREDICATES | COMMON_METADATA_PREDICATES
+"""All common extraction patterns (edge + metadata slices)."""
+
+EDGE_PROMPT_PREDICATES: frozenset[str] = REFERENCE_RELATION_PREDICATES | COMMON_EDGE_PREDICATES
+"""Predicates the extraction prompt teaches as relationship edges.
+
+Scope of the interpersonal-only ruling (extraction prompt v1.9.0+,
+ADR-085-adjacent design decision): spatial location, ownership, and
+workplace affiliation predicates are metadata facts — they live in
+``COMMON_METADATA_PREDICATES`` and are absent from the prompt's edge
+lists.
+"""
 
 CANONICAL_PREDICATES: frozenset[str] = (
     REFERENCE_FACT_PREDICATES | REFERENCE_RELATION_PREDICATES | COMMON_EXTRACTION_PREDICATES
