@@ -111,6 +111,8 @@
 
 | [ADR-083](ADR-083-kb-infrastructure-benchmark-program.md) | KB Infrastructure Benchmark Program | ✅ | 2026-08-20 | `benchmark/`, KB capabilities, evaluation governance |
 
+| [ADR-085](ADR-085-kb-entity-resolution-layer.md) | KB Entity Resolution Layer — deterministic duplicate detection (pure Core engine: name tiers, temporal handoff vs co-existence, attribute continuity, neighborhood, embeddings — veto semantics + name-only ceiling defeat the "Anna Meier" distractor by construction) + suggestion/endorse flow in `kb/entity_resolution/` (analyze/list/endorse/reject; merges only on explicit endorsement, loser deactivated not deleted); provenance via reserved JSONB key (no migration, optional `ApplyExtractionRequest.chapter_id`); LLM only in the uncertain band via existing `KBMergeService` (Mode-1 governance unchanged); retires unmounted `router_merge.py` (KB-009 inventory finding superseded); benchmark CAP-IN-10 measures detection precision/recall vs reference alias groups + endorse-driven merge execution. Chosen over inline apply-time guard (reverses blocking-only invariant, no cross-entry context), LLM-only KB-009 mount (no detection; distractor defeats name-LLM judgment), benchmark-only union binding (measures around the defect). | 🔄 | 2026-09-07 | `packages/core/narrare_core/kb/resolution/`, `apps/api/narrare/kb/entity_resolution/`, `kb/{schemas_extraction,_extraction_apply_entity,_extraction_resolution}.py`, `kb/router_merge.py` (retired), `benchmark/{capabilities_registry,scoring/resolution_match,drivers}`, ADR-083 D9 inventory, KB-007 apply flow, RULE-03/04/08/11/14/20 |
+
 ---
 
 ## How to Create a New ADR
