@@ -3,29 +3,30 @@
 An expected relation (R*) matches an actual edge iff BOTH endpoints
 resolve through the entity match map (reference entity id → actual
 entry id, built by ``entity_match``) onto the edge's ``source_id`` /
-``target_id`` AND the predicates are equal after canonical
-normalization (``canonical_relation_predicate``: snake_case
-normalization plus folding of bare role/kinship surfaces onto their
-canonical ``_of``-suffixed registry predicate — "mother" →
-"mother_of"). Beyond exact equality, the enumerated gender-aware
-kinship equivalences (``GENDER_EQUIVALENCE``) fold a generic predicate
-onto its gendered counterpart — ``parent_of`` ≡ ``father_of`` for a
-male subject — iff the shared subject's corpus gender agrees with the
-gendered side; unknown gender stays strict. Other semantic synonyms are
-deliberately NOT folded ("colleague_of" ≠ "neighbor_of"): vocabulary
-alignment happens in the extraction prompt, not in scorer leniency.
+``target_id`` AND the predicates match per the enumerated algebra in
+``relation_predicates`` (canonical normalization plus the equivalence
+tables). The predicate-level rules and their rationale live there;
+this module owns the scoring loop over relations and edges.
 
-Tolerance rules (documented v1 behavior):
+Direction rules (relaxed from strict directedness for measurement
+validity — run 2026-09-07-clean-incremental-3 counted semantically
+correct edges missing/spurious purely for orientation):
 
-- Matching is DIRECTED. An edge with swapped endpoints counts as
-  missing — the KB's inverse rel types are not enumerable without the
-  per-type inverse lookup, and direction-swapped inverses would need a
-  lossless inverse table the KB does not expose globally.
+- Same-direction edges use ``predicates_match``: exact equality, or an
+  enumerated gender pair (``GENDER_EQUIVALENCE``) the shared
+  subject's corpus gender satisfies; unknown gender stays strict.
+- Swapped-endpoint edges (edge source = reference object, edge target
+  = reference subject) use ``swapped_predicates_match``: symmetric
+  predicates ("A colleague_of B" ≡ "B colleague_of A") and inverse
+  kinship pairs (``mother_of(A→B)`` ≡ ``daughter_of(B→A)`` iff A is
+  female AND B is female). ``first_grandchild_of`` stays strict —
+  birth order has no inverse.
 - A relation with ANY unresolved endpoint is ``missing`` immediately
   (no edge can match an unknown id).
 - Each edge is claimed at most once: expected relations are processed
   in reference order, edges in listing order; the first unclaimed edge
-  satisfying all three conditions claims it (deterministic).
+  satisfying the endpoint + predicate conditions claims it
+  (deterministic).
 - Unclaimed edges are spurious (itemized with edge id + display names
   for traceability).
 """
@@ -33,10 +34,13 @@ Tolerance rules (documented v1 behavior):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from types import MappingProxyType
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
-from benchmark.scoring.normalize import normalize_predicate
+from benchmark.scoring.relation_predicates import (
+    canonical_relation_predicate,
+    predicates_match,
+    swapped_predicates_match,
+)
 from benchmark.scoring.score_records import (
     RelationOutcome,
     RelationStatus,
@@ -48,68 +52,6 @@ if TYPE_CHECKING:
 
     from benchmark.corpus_views import Entity, Gender, Relation
     from benchmark.drivers.out_records import RelationshipDetail
-
-RELATION_ALIASES: Final[Mapping[str, str]] = MappingProxyType(
-    {
-        "babysitter": "babysitter_of",
-        "business_partner": "business_partner_of",
-        "colleague": "colleague_of",
-        "father": "father_of",
-        "first_grandchild": "first_grandchild_of",
-        "grandmother": "grandmother_of",
-        "half_sibling": "half_sibling_of",
-        "keeper": "keeper_of",
-        "mother": "mother_of",
-        "neighbor": "neighbor_of",
-        "property_manager": "property_manager_of",
-        "sibling": "sibling_of",
-        "son": "son_of",
-        "spouse": "spouse_of",
-    }
-)
-"""Folding of bare role/kinship surfaces onto the canonical
-``_of``-suffixed registry predicate (the
-``benchmark/corpus/reference/relations.yaml`` forms). Canonical forms
-and unknown predicates pass through unchanged; there is deliberately no
-semantic synonym folding in THIS table (``brother_of`` never becomes
-``sibling_of`` here). Mirrors the canonical registry in
-``narrare_core.kb.predicates`` (which the benchmark must not import —
-co-evolution boundary)."""
-
-GENDER_EQUIVALENCE: Final[Mapping[frozenset[str], Gender]] = MappingProxyType(
-    {
-        frozenset({"parent_of", "father_of"}): "male",
-        frozenset({"parent_of", "mother_of"}): "female",
-        frozenset({"child_of", "son_of"}): "male",
-        frozenset({"child_of", "daughter_of"}): "female",
-        frozenset({"grandparent_of", "grandfather_of"}): "male",
-        frozenset({"grandparent_of", "grandmother_of"}): "female",
-        frozenset({"sibling_of", "brother_of"}): "male",
-        frozenset({"sibling_of", "sister_of"}): "female",
-    }
-)
-"""Gender-aware kinship equivalence pairs (enumerated, closed set).
-
-Key = one canonical predicate pair (generic side + gendered side);
-value = the subject gender the pair's gendered predicate requires
-(``father_of`` ⇒ male, ``mother_of`` ⇒ female, …). A reference relation
-and an edge whose canonical predicates form such a pair match IFF the
-shared subject resolves to that corpus gender (either direction — the
-pair lookup is symmetric); an unknown/absent gender stays strict. Two
-gendered predicates are never equivalent (``father_of`` ≠
-``mother_of``), and ``grandchild_of`` vs ``first_grandchild_of`` is
-deliberately absent (different roles, not a gender pair)."""
-
-
-def canonical_relation_predicate(value: str) -> str:
-    """Normalize a relationship predicate to the canonical registry form.
-
-    Snake_case normalization first, then folding of documented bare
-    surfaces onto their canonical ``_of`` form. Unknown predicates are
-    returned normalized but unfolded.
-    """
-    predicate = normalize_predicate(value)
-    return RELATION_ALIASES.get(predicate, predicate)
 
 
 def person_genders(persons: tuple[Entity, ...]) -> Mapping[str, Gender]:
@@ -134,9 +76,12 @@ def score_relations(
     """Score reference relations against relationship edges via the map.
 
     ``person_gender`` (see ``person_genders``) adjudicates the
-    gender-aware kinship equivalences; persons without a known gender
-    match only exactly.
+    gender-aware equivalences on BOTH sides of a swapped-endpoint
+    match — the edge subject there is the reference object, so its
+    corpus gender is looked up through the inverse of the match map.
+    Persons without a known gender match only exactly.
     """
+    entry_gender = _entry_genders(ref_to_entry, person_gender)
     claimed: set[str] = set()
     outcomes: list[RelationOutcome] = []
     for relation in expected:
@@ -145,6 +90,7 @@ def score_relations(
             edges,
             ref_to_entry,
             person_gender.get(relation.subject),
+            entry_gender,
             claimed,
         )
         if matched is not None:
@@ -166,11 +112,30 @@ def score_relations(
     return RelationMatchResult(outcomes=tuple(outcomes), spurious=spurious)
 
 
+def _entry_genders(
+    ref_to_entry: Mapping[str, str],
+    person_gender: Mapping[str, Gender],
+) -> dict[str, Gender]:
+    """Entry id → corpus gender (inverse of the match map; first ref wins).
+
+    Feeds the swapped-endpoint predicate check: there the EDGE subject
+    is the reference object. Entries without a gendered reference
+    person contribute nothing (unknown gender stays strict).
+    """
+    entry_gender: dict[str, Gender] = {}
+    for ref_id, entry_id in ref_to_entry.items():
+        gender = person_gender.get(ref_id)
+        if gender is not None:
+            entry_gender.setdefault(entry_id, gender)
+    return entry_gender
+
+
 def _match(
     relation: Relation,
     edges: tuple[RelationshipDetail, ...],
     ref_to_entry: Mapping[str, str],
     subject_gender: Gender | None,
+    entry_gender: Mapping[str, Gender],
     claimed: set[str],
 ) -> str | None:
     source = ref_to_entry.get(relation.subject)
@@ -181,24 +146,19 @@ def _match(
     for edge in edges:
         if edge.id in claimed:
             continue
-        if edge.source_id != source or edge.target_id != target:
-            continue
         edge_predicate = canonical_relation_predicate(edge.rel_type)
-        if _predicates_match(predicate, edge_predicate, subject_gender):
+        same_direction = edge.source_id == source and edge.target_id == target
+        swapped = edge.source_id == target and edge.target_id == source
+        if same_direction and predicates_match(predicate, edge_predicate, subject_gender):
+            return edge.id
+        if swapped and swapped_predicates_match(
+            predicate,
+            edge_predicate,
+            subject_gender,
+            entry_gender.get(edge.source_id),
+        ):
             return edge.id
     return None
-
-
-def _predicates_match(
-    reference_predicate: str,
-    edge_predicate: str,
-    subject_gender: Gender | None,
-) -> bool:
-    """Exact equality, or an enumerated gender pair the subject satisfies."""
-    if reference_predicate == edge_predicate:
-        return True
-    required = GENDER_EQUIVALENCE.get(frozenset((reference_predicate, edge_predicate)))
-    return required is not None and subject_gender == required
 
 
 def _outcome(relation: Relation, status: RelationStatus, matched: str | None) -> RelationOutcome:
