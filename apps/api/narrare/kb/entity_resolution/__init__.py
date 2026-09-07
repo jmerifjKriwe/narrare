@@ -7,6 +7,10 @@ one-way (RULE-07) — routers → services → repository protocols; the pure
 scoring engine lives in ``narrare_core.kb.resolution`` and stays I/O-free.
 """
 
+from narrare.kb.entity_resolution.analysis_service import (
+    ResolutionAnalysisCache,
+    ResolutionAnalysisService,
+)
 from narrare.kb.entity_resolution.contracts import (
     MergeExecutorProtocol,
     ResolutionAnalyzerProtocol,
@@ -17,6 +21,8 @@ from narrare.kb.entity_resolution.snapshot_service import SnapshotBuilder
 
 __all__ = [
     "MergeExecutorProtocol",
+    "ResolutionAnalysisCache",
+    "ResolutionAnalysisService",
     "ResolutionAnalyzerProtocol",
     "SnapshotBuilder",
     "SnapshotBuilderProtocol",

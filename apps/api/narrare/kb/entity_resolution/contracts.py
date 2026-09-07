@@ -7,12 +7,14 @@ implemented by this slice (P3); ``ResolutionAnalyzerProtocol``,
 declared with spec §3 signatures verbatim so the Protocol surface is
 stable from day one — their implementations land in later slices.
 
-The result types the future protocols reference (``ResolutionAnalysis``,
-``MergePlan``, ``MergeExecutionResult``, ``PairCandidate``,
-``Adjudication``) are provisionally bound to ``object``: their concrete
-Pydantic shapes are designed together with the implementing slices and
-land in ``schemas_resolution.py`` (spec §2), at which point these
-aliases are replaced by real imports.
+The result types the future protocols reference (``MergePlan``,
+``MergeExecutionResult``, ``PairCandidate``, ``Adjudication``) remain
+provisionally bound to ``object``: their concrete Pydantic shapes are
+designed together with the implementing slices and land in later
+modules, at which point these aliases are replaced by real imports.
+``ResolutionAnalysis`` is already discharged — the analyzer protocol
+resolves to ``ResolutionAnalysisResponse`` from
+``schemas_resolution.py``.
 """
 
 from __future__ import annotations
@@ -23,11 +25,12 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from uuid import UUID
 
+    from narrare.kb.entity_resolution.schemas_resolution import ResolutionAnalysisResponse
     from narrare_core.kb.resolution.models import EntitySnapshot
 
-# --- Provisional result-type bindings (replaced by schemas_resolution.py) ---
+# --- Result-type bindings (discharged incrementally by implementing slices) ---
 
-type ResolutionAnalysis = object
+type ResolutionAnalysis = ResolutionAnalysisResponse
 type MergeExecutionResult = object
 type MergePlan = object
 type PairCandidate = object
