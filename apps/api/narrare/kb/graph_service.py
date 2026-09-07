@@ -68,11 +68,14 @@ class GraphService:
         """
         max_nodes = filter.max_nodes if filter else 500
 
-        # 1. Fetch all entries for the novel (up to max_nodes)
+        # 1. Fetch all entries for the novel (up to max_nodes). Deprecated
+        # entries are non-authoritative (ADR-085 §6.7/§9(c)) and stay
+        # hidden unless the filter explicitly requests them.
         entries, total_count = await self._kb_repo.list_entries(
             novel_id=novel_id,
             page=1,
             page_size=max_nodes,
+            include_deprecated=filter.include_deprecated if filter else False,
         )
 
         # 2. Apply entity_types filter if provided
@@ -214,7 +217,9 @@ class GraphService:
         if path is None:
             return ShortestPathResponse(path=None, length=None, entity_names=None)
 
-        # Build entity names — fetch all entries for the novel
+        # Build entity names — fetch all entries for the novel. Deprecated
+        # entries stay hidden (default visibility, ADR-085 §9(c)); a path
+        # touching a skipped-collision loser edge falls back to its raw id.
         entries, _ = await self._kb_repo.list_entries(
             novel_id=novel_id,
             page_size=1000,

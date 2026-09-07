@@ -61,6 +61,10 @@ class ResolutionAnalyzerProtocol(Protocol):
         refresh: bool = False,
     ) -> ResolutionAnalysis: ...
 
+    async def invalidate(self, novel_id: UUID) -> None:
+        """Drop the cached analysis for a novel (post-merge hook, §7)."""
+        ...
+
 
 @runtime_checkable
 class MergeExecutorProtocol(Protocol):
@@ -86,7 +90,22 @@ class UncertainBandAdjudicatorProtocol(Protocol):
     ) -> Sequence[Adjudication]: ...
 
 
+@runtime_checkable
+class DismissedSuggestionStoreProtocol(Protocol):
+    """Persistence seam for rejected resolution suggestions (spec §7).
+
+    Implemented over the EXISTING dismissed-findings fingerprint table
+    (the consistency-dismissal pattern); the concrete adapter owns the
+    reserved ``resolution:`` namespace so the two domains stay disjoint.
+    """
+
+    async def dismiss(self, novel_id: UUID, suggestion_id: str) -> None: ...
+
+    async def rejected_ids(self, novel_id: UUID) -> frozenset[str]: ...
+
+
 __all__ = [
+    "DismissedSuggestionStoreProtocol",
     "MergeExecutorProtocol",
     "ResolutionAnalyzerProtocol",
     "SnapshotBuilderProtocol",

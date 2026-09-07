@@ -8,23 +8,25 @@ surfaced. Suggestion identity is stateless (``sha256(min ‖ max)[:16]``
 over the entry-id strings) so endorsements can be re-validated later
 without a suggestion table.
 
+Rejection ledger (P4, spec §7): an optional injected
+``DismissedSuggestionStoreProtocol`` filters REJECTED suggestions from
+every SERVED analysis (``analyze`` and ``get_cached``) and recounts the
+review/auto-eligible stats. The cache payload stays unfiltered — the
+ledger applies at read time, so a rejection also covers results cached
+before it. A missing ledger (``dismissed=None``, e.g. in unit fakes) is
+a passthrough.
+
 Caching mirrors the ``kb/consistency_cache.py`` pattern — injected
 ``SessionCacheProtocol`` backend, 10-minute TTL, novel-scoped key,
-tolerant reads — with one deviation: the entries hash is stored in an
-envelope next to the payload instead of being appended to the key.
-Root cause: a fresh hash suffix per KB mutation would strand one TTL key
-per mutation and make an explicit ``invalidate`` impossible to enumerate
-(a hash-suffixed key for a *previous* entry set cannot be derived after
-the mutation). The envelope binds the cached payload to the entry set
-with the same staleness safety while ``delete_all`` remains a real
-single-key invalidation for the KB-mutation hooks wired in later tasks.
+tolerant reads; the cache lives in the sibling ``analysis_cache`` module
+(RULE-04 split when the dismissal filter landed).
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-from typing import TYPE_CHECKING, Final, cast
+from typing import TYPE_CHECKING
 
 import structlog
 
@@ -39,16 +41,16 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from uuid import UUID
 
-    from narrare.kb.entity_resolution.contracts import SnapshotBuilderProtocol
+    from narrare.kb.entity_resolution.analysis_cache import ResolutionAnalysisCache
+    from narrare.kb.entity_resolution.contracts import (
+        DismissedSuggestionStoreProtocol,
+        SnapshotBuilderProtocol,
+    )
     from narrare.kb.entity_resolution.schemas_resolution import SuggestionBand
     from narrare_core.kb.resolution.models import EntitySnapshot, PairScore
     from narrare_core.kb.resolution.scoring import ResolutionEngine
-    from narrare_core.writing.session_manager import SessionCacheProtocol
 
 logger = structlog.get_logger(__name__)
-
-_DEFAULT_TTL_SECONDS: Final[int] = 600
-_DEFAULT_KEY_PREFIX: Final[str] = "kb:resolution:"
 
 
 def _entries_hash(snapshots: Sequence[EntitySnapshot]) -> str:
@@ -85,76 +87,14 @@ def _entries_hash(snapshots: Sequence[EntitySnapshot]) -> str:
     return digest.hexdigest()[:8]
 
 
-class ResolutionAnalysisCache:
-    """Cache for resolution analysis results (in-memory backend per ADR-080).
-
-    Single key per novel (``kb:resolution:{novel_id}``) holding a
-    ``{"entries_hash": str, "payload": str}`` envelope; a lookup is a hit
-    only when the stored hash matches the caller's current entries hash.
-
-    Args:
-        cache: Injected cache backend via ``SessionCacheProtocol``.
-        ttl: Cache TTL in seconds.
-        key_prefix: Cache key prefix for namespace isolation.
-    """
-
-    def __init__(
-        self,
-        cache: SessionCacheProtocol,
-        *,
-        ttl: int = _DEFAULT_TTL_SECONDS,
-        key_prefix: str = _DEFAULT_KEY_PREFIX,
-    ) -> None:
-        self._cache = cache
-        self._ttl = ttl
-        self._key_prefix = key_prefix
-
-    def _key(self, novel_id: str) -> str:
-        return f"{self._key_prefix}{novel_id}"
-
-    async def get(self, novel_id: str, entries_hash: str) -> str | None:
-        """Return the cached payload iff it was stored for ``entries_hash``.
-
-        Backend failures and malformed envelopes degrade to a miss
-        (fails open — recomputation is always correct, RULE-11).
-        """
-        try:
-            raw = await self._cache.get(self._key(novel_id))
-            envelope = cast(
-                "dict[str, object] | None",
-                json.loads(raw) if raw is not None else None,
-            )
-        except Exception:
-            logger.warning("resolution_cache_unavailable", novel_id=novel_id)
-            return None
-        if not isinstance(envelope, dict) or envelope.get("entries_hash") != entries_hash:
-            return None
-        payload = envelope.get("payload")
-        if not isinstance(payload, str):
-            logger.warning("resolution_cache_malformed", novel_id=novel_id)
-            return None
-        logger.debug("resolution_cache_hit", novel_id=novel_id)
-        return payload
-
-    async def set(self, novel_id: str, value: str, entries_hash: str) -> None:
-        """Cache the analysis payload bound to ``entries_hash`` with the TTL."""
-        envelope = json.dumps({"entries_hash": entries_hash, "payload": value})
-        await self._cache.set(self._key(novel_id), envelope, ttl_seconds=self._ttl)
-        logger.debug("resolution_cache_set", novel_id=novel_id)
-
-    async def delete_all(self, novel_id: str) -> None:
-        """Invalidate the cached analysis for a novel (KB-mutation hook point)."""
-        await self._cache.delete(self._key(novel_id))
-        logger.debug("resolution_cache_invalidated", novel_id=novel_id)
-
-
 class ResolutionAnalysisService:
     """Detection pass: snapshots → engine → banded suggestions (+ cache).
 
     Implements :class:`~narrare.kb.entity_resolution.contracts.ResolutionAnalyzerProtocol`.
     Dependencies are injected (RULE-19): the snapshot builder, the pure
-    scoring engine, and the analysis cache. Stateless w.r.t. suggestion
-    identity — the same entry pair always yields the same suggestion id.
+    scoring engine, the analysis cache, and the optional rejection ledger.
+    Stateless w.r.t. suggestion identity — the same entry pair always
+    yields the same suggestion id.
     """
 
     def __init__(
@@ -162,10 +102,12 @@ class ResolutionAnalysisService:
         builder: SnapshotBuilderProtocol,
         engine: ResolutionEngine,
         cache: ResolutionAnalysisCache,
+        dismissed: DismissedSuggestionStoreProtocol | None = None,
     ) -> None:
         self._builder = builder
         self._engine = engine
         self._cache = cache
+        self._dismissed = dismissed
 
     async def analyze(
         self,
@@ -182,7 +124,8 @@ class ResolutionAnalysisService:
             refresh: Skip the cache read and force a recompute.
 
         Returns:
-            The surfaced suggestions, per-band stats, and cache status.
+            The surfaced suggestions (minus rejected ones), per-band stats
+            recounted over the kept suggestions, and cache status.
         """
         novel_str = str(novel_id)
         snapshots = await self._builder.build(novel_id)
@@ -192,7 +135,9 @@ class ResolutionAnalysisService:
             cached = await self._cache.get(novel_str, entries_hash)
             if cached is not None:
                 response = ResolutionAnalysisResponse.model_validate_json(cached)
-                return response.model_copy(update={"cache_hit": True})
+                return await self._apply_dismissals(
+                    response.model_copy(update={"cache_hit": True}), novel_id
+                )
 
         names: Mapping[UUID, str] = {s.entry_id: s.name for s in snapshots}
         suggestions: list[SuggestionResponse] = []
@@ -232,7 +177,7 @@ class ResolutionAnalysisService:
             auto_eligible=auto_eligible,
             suppressed=suppressed,
         )
-        return response
+        return await self._apply_dismissals(response, novel_id)
 
     async def get_cached(self, novel_id: UUID) -> ResolutionAnalysisResponse:
         """Return the cached analysis WITHOUT recomputing (spec §7 GET suggestions).
@@ -252,7 +197,46 @@ class ResolutionAnalysisService:
                 cache_hit=False,
             )
         response = ResolutionAnalysisResponse.model_validate_json(cached)
-        return response.model_copy(update={"cache_hit": True})
+        return await self._apply_dismissals(
+            response.model_copy(update={"cache_hit": True}), novel_id
+        )
+
+    async def _apply_dismissals(
+        self,
+        response: ResolutionAnalysisResponse,
+        novel_id: UUID,
+    ) -> ResolutionAnalysisResponse:
+        """Drop rejected suggestions from a SERVED analysis (spec §7 reject).
+
+        The cache payload stays unfiltered (rejections apply retroactively
+        to results cached before them); ``review``/``auto_eligible`` are
+        recounted over the kept suggestions while ``suppressed`` stays
+        detection-truth. A missing ledger (``dismissed=None``) and an
+        empty ledger are passthroughs.
+        """
+        if self._dismissed is None:
+            return response
+        rejected = await self._dismissed.rejected_ids(novel_id)
+        if not rejected:
+            return response
+        kept = [s for s in response.suggestions if s.suggestion_id not in rejected]
+        if len(kept) == len(response.suggestions):
+            return response
+        logger.info(
+            "resolution_suggestions_dismissal_filtered",
+            novel_id=str(novel_id),
+            dropped=len(response.suggestions) - len(kept),
+        )
+        return response.model_copy(
+            update={
+                "suggestions": kept,
+                "stats": BandStats(
+                    review=sum(1 for s in kept if s.band == "REVIEW"),
+                    auto_eligible=sum(1 for s in kept if s.band == "AUTO_ELIGIBLE"),
+                    suppressed=response.stats.suppressed,
+                ),
+            }
+        )
 
     async def invalidate(self, novel_id: UUID) -> None:
         """Drop the cached analysis for a novel.

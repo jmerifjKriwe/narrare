@@ -83,6 +83,7 @@ class TestRouteTable:
         paths = mounted_paths(create_app(test_mode=True))
         assert "/api/v1/novels/{novel_id}/kb/resolution/analyze" in paths
         assert "/api/v1/novels/{novel_id}/kb/resolution/suggestions" in paths
+        assert "/api/v1/novels/{novel_id}/kb/resolution/suggestions/{suggestion_id}/reject" in paths
 
 
 # --- Auth -----------------------------------------------------------------------

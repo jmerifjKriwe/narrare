@@ -39,6 +39,10 @@ async def get_graph(
     ),
     max_nodes: int = Query(default=500, ge=1, le=1000),
     max_edges: int = Query(default=2000, ge=1, le=5000),
+    include_deprecated: bool = Query(
+        default=False,
+        description="Include deprecated (merged) entities — hidden by default (ADR-085 §9(c))",
+    ),
 ) -> GraphResponse:
     """Get the complete graph for a novel's KB.
 
@@ -50,6 +54,7 @@ async def get_graph(
         rel_types=rel_types.split(",") if rel_types else None,
         max_nodes=max_nodes,
         max_edges=max_edges,
+        include_deprecated=include_deprecated,
     )
     return await service.get_graph(
         novel_id=novel_id,

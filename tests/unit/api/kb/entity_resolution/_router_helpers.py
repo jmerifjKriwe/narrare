@@ -19,13 +19,12 @@ from fastapi.responses import JSONResponse
 from narrare._app.database import get_async_session
 from narrare._app.dependencies_auth import get_current_user_id
 from narrare.kb.dependencies_core import get_kb_repository, get_rel_repository
-from narrare.kb.entity_resolution.analysis_service import (
-    ResolutionAnalysisCache,
-    ResolutionAnalysisService,
-)
+from narrare.kb.entity_resolution.analysis_cache import ResolutionAnalysisCache
+from narrare.kb.entity_resolution.analysis_service import ResolutionAnalysisService
 from narrare.kb.entity_resolution.dependencies import (
     get_novel_scope_repository,
     get_resolution_analyzer,
+    get_resolution_dismissal_store,
 )
 from narrare.kb.entity_resolution.router import router as resolution_router
 from narrare.kb.entity_resolution.schemas_resolution import (
@@ -128,6 +127,27 @@ class FakeResolutionRelationshipRepo:
         entity_ids: set[UUID] | None = None,
     ) -> dict[str, set[str]]:
         return dict(self._adjacency)
+
+
+class FakeDismissedStore:
+    """In-memory DismissedSuggestionStore fake recording dismiss calls.
+
+    Shared by the P3 production-wiring builder (which must not touch the
+    DB-backed ledger) and the P4 endorse tests (which assert on the
+    recorded dismiss calls) — defined here so the builders stay
+    import-cycle-free (_endorse_helpers imports from this module).
+    """
+
+    def __init__(self) -> None:
+        self._rejected: dict[UUID, set[str]] = {}
+        self.dismiss_calls: list[tuple[UUID, str]] = []
+
+    async def dismiss(self, novel_id: UUID, suggestion_id: str) -> None:
+        self.dismiss_calls.append((novel_id, suggestion_id))
+        self._rejected.setdefault(novel_id, set()).add(suggestion_id)
+
+    async def rejected_ids(self, novel_id: UUID) -> frozenset[str]:
+        return frozenset(self._rejected.get(novel_id, set()))
 
 
 async def stub_session() -> AsyncIterator[object]:
@@ -248,13 +268,31 @@ def make_resolution_service(
 
 
 def _add_not_found_handler(app: FastAPI) -> None:
-    """Mirror the production NarrareError mapping this router relies on."""
+    """Mirror the production NarrareError mappings these routes rely on.
+
+    ``_app/main.py`` maps NotFoundError → 404, ConflictError → 409 and
+    ValidationError → 422; the endorse/reject surface asserts against all
+    three, so the test app mirrors them (404 handler unchanged).
+    """
+    from narrare_core.shared.errors import ConflictError, ValidationError
 
     @app.exception_handler(NotFoundError)
     async def _not_found_handler(  # pyright: ignore[reportUnusedFunction]
         _: Request, exc: NotFoundError
     ) -> JSONResponse:
         return JSONResponse(status_code=404, content={"detail": str(exc), "code": exc.code})
+
+    @app.exception_handler(ConflictError)
+    async def _conflict_handler(  # pyright: ignore[reportUnusedFunction]
+        _: Request, exc: ConflictError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": str(exc), "code": exc.code})
+
+    @app.exception_handler(ValidationError)
+    async def _validation_handler(  # pyright: ignore[reportUnusedFunction]
+        _: Request, exc: ValidationError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=422, content={"detail": str(exc), "code": exc.code})
 
 
 def build_app(
@@ -290,6 +328,7 @@ def build_production_app(
     app.dependency_overrides[get_async_session] = stub_session
     app.dependency_overrides[get_kb_repository] = lambda: kb_repo
     app.dependency_overrides[get_rel_repository] = lambda: rel_repo
+    app.dependency_overrides[get_resolution_dismissal_store] = lambda: FakeDismissedStore()
     return app
 
 

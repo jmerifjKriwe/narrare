@@ -19,6 +19,7 @@ from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from narrare.kb.improve_service import KBImproveService
+    from narrare_core.agents.kb_improve_types import ImprovementSuggestion
 
 # ---------------------------------------------------------------------------
 # Factory helpers
@@ -48,6 +49,7 @@ def _make_service(
     suggestions_returned: bool = True,
     world_context_empty: bool = False,
     adjacency_fails: bool = False,
+    extra_suggestions: list[ImprovementSuggestion] | None = None,
 ) -> tuple[KBImproveService, dict[str, AsyncMock]]:
     """Create a KBImproveService with all dependencies mocked.
 
@@ -126,6 +128,7 @@ def _make_service(
                     confidence=0.75,
                     reasoning="Mentor relationship would enrich story",
                 ),
+                *(extra_suggestions or []),
             ],
             overall_assessment="Entry needs more detail",
             completeness_score=0.4,
@@ -260,3 +263,75 @@ class TestApply:
 
         assert result.success is False
         assert result.applied_count == 0
+
+
+# ---------------------------------------------------------------------------
+# Tests: reserved metadata keys (ADR-085 §5/§6 invariant)
+# ---------------------------------------------------------------------------
+
+
+def _reserved_target_suggestion(target: str) -> ImprovementSuggestion:
+    from narrare_core.agents.kb_improve_types import ImprovementSuggestion, SuggestionType
+
+    return ImprovementSuggestion(
+        type=SuggestionType.ADD_FIELD,
+        target=target,
+        description="LLM forge attempt",
+        proposed_content="forged by the model",
+        confidence=0.9,
+        reasoning="Model proposed a platform-reserved key",
+    )
+
+
+class TestApplyReservedKeyGuard:
+    """LLM proposals can never write ``provenance``/``resolution`` keys.
+
+    Same invariant class as the extraction apply flow: platform-reserved
+    metadata keys are stripped from every proposal consumption site. The
+    improve path historically wrote ``suggestion.proposed_content`` under
+    ``suggestion.target`` unguarded (progress.md Task 10 binding note).
+    """
+
+    async def test_apply_reserved_target_is_not_written(self) -> None:
+        """A forged ``resolution`` target is skipped; normal keys still land."""
+        reserved = _reserved_target_suggestion("resolution")
+        service, mocks = _make_service(extra_suggestions=[reserved])
+        novel_id = uuid4()
+        entry_id = uuid4()
+
+        with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
+            mock_agent_instance = MockAgent.return_value
+            mock_agent_instance.run = AsyncMock(return_value=mocks["agent_output"])
+
+            result = await service.apply(
+                novel_id=novel_id,
+                entry_id=entry_id,
+                suggestion_ids=[0, 2],
+            )
+
+        assert result.success is True
+        metadata_updates = mocks["kb_repo"].update.await_args.args[1]["metadata_"]
+        assert "resolution" not in metadata_updates
+        assert metadata_updates["personality"] == "Brave and cunning"
+
+    async def test_apply_provenance_target_is_not_written(self) -> None:
+        """The ``provenance`` key is equally protected (forge guard)."""
+        service, mocks = _make_service(
+            extra_suggestions=[_reserved_target_suggestion("provenance")],
+        )
+        novel_id = uuid4()
+        entry_id = uuid4()
+
+        with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
+            mock_agent_instance = MockAgent.return_value
+            mock_agent_instance.run = AsyncMock(return_value=mocks["agent_output"])
+
+            await service.apply(
+                novel_id=novel_id,
+                entry_id=entry_id,
+                suggestion_ids=[2],
+            )
+
+        # Only the reserved suggestion was selected → nothing else to write,
+        # so kb_repo.update must not have been called at all.
+        mocks["kb_repo"].update.assert_not_awaited()

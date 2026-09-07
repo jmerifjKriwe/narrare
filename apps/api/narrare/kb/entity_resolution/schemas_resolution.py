@@ -106,6 +106,18 @@ class ResolutionAnalysisResponse(BaseModel):
     """Whether this response came from the analysis cache."""
 
 
+class ResolutionEndorseRequest(BaseModel):
+    """Optional endorse body (spec §7): ``{survivor_id?}``.
+
+    When omitted (or ``None``), the survivor is picked by the §6.1
+    deterministic total order; when present it must name one of the two
+    suggested entries.
+    """
+
+    survivor_id: UUID | None = None
+    """Endorsement override: the suggested entry that keeps its row."""
+
+
 # --- Merge executor (ADR-085 P4, spec §6) ----------------------------------------
 
 

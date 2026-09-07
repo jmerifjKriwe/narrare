@@ -78,6 +78,7 @@ class GraphFilter(BaseModel):
     rel_types: list[str] | None = None  # Filter to specific relationship types
     max_nodes: int = Field(default=500, ge=1, le=1000)
     max_edges: int = Field(default=2000, ge=1, le=5000)
+    include_deprecated: bool = False  # ADR-085 §9(c): deprecated hidden unless asked
 
 
 # --- Graph Response ---

@@ -24,7 +24,10 @@ from narrare_core.kb.resolution.scoring import ResolutionEngine
 
 if TYPE_CHECKING:
     from narrare.kb.entity_resolution.analysis_service import ResolutionAnalysisService
-    from narrare.kb.entity_resolution.contracts import SnapshotBuilderProtocol
+    from narrare.kb.entity_resolution.contracts import (
+        DismissedSuggestionStoreProtocol,
+        SnapshotBuilderProtocol,
+    )
     from narrare.kb.entity_resolution.schemas_resolution import ResolutionAnalysisResponse
     from narrare_core.writing.session_manager import SessionCacheProtocol
 
@@ -142,11 +145,10 @@ def _distractor_pair() -> tuple[EntitySnapshot, EntitySnapshot]:
 def _make_service(
     snapshots: tuple[EntitySnapshot, ...],
     cache: _FakeCache | None = None,
+    dismissed: object = None,
 ) -> tuple[ResolutionAnalysisService, _FakeBuilder, _FakeCache]:
-    from narrare.kb.entity_resolution.analysis_service import (
-        ResolutionAnalysisCache,
-        ResolutionAnalysisService,
-    )
+    from narrare.kb.entity_resolution.analysis_cache import ResolutionAnalysisCache
+    from narrare.kb.entity_resolution.analysis_service import ResolutionAnalysisService
 
     builder = _FakeBuilder(snapshots)
     fake_cache = cache if cache is not None else _FakeCache()
@@ -154,6 +156,7 @@ def _make_service(
         builder=cast("SnapshotBuilderProtocol", builder),
         engine=ResolutionEngine(),
         cache=ResolutionAnalysisCache(cast("SessionCacheProtocol", fake_cache)),
+        dismissed=cast("DismissedSuggestionStoreProtocol", dismissed),
     )
     return service, builder, fake_cache
 

@@ -29,6 +29,18 @@ from narrare.kb.dependencies_core import (
     get_kb_repository,
     get_rel_repository,
 )
+from narrare.kb.entity_resolution._dismissal_store import (  # noqa: TC001 - FastAPI DI runtime
+    ResolutionDismissalStore,
+)
+from narrare.kb.entity_resolution.analysis_service import (  # noqa: TC001 - FastAPI DI runtime
+    ResolutionAnalysisService,
+)
+from narrare.kb.entity_resolution.endorse_service import (  # noqa: TC001 - FastAPI DI runtime
+    ResolutionEndorseService,
+)
+from narrare.kb.entity_resolution.merge_executor import (  # noqa: TC001 - FastAPI DI runtime
+    MergeExecutor,
+)
 from narrare.kb.relationship_repository import (  # noqa: TC001 - FastAPI DI runtime
     RelationshipRepository,
 )
@@ -36,7 +48,6 @@ from narrare.kb.repository import KBRepository  # noqa: TC001 - FastAPI DI runti
 from narrare.novels.repository import NovelRepository
 
 if TYPE_CHECKING:
-    from narrare.kb.entity_resolution.analysis_service import ResolutionAnalysisService
     from narrare_core.cache import InMemorySessionCache
 
 # Module-level singleton state — mutable, no @lru_cache (mirrors the
@@ -84,21 +95,40 @@ async def verify_novel_scope(
         raise NotFoundError("Novel", identifier=str(novel_id))
 
 
+def get_resolution_dismissal_store(session: SessionDep) -> ResolutionDismissalStore:
+    """Wire the rejection ledger over the existing dismissed-findings table."""
+    from narrare.kb.dismissed_repository import DismissedFindingRepository
+    from narrare.kb.entity_resolution._dismissal_store import ResolutionDismissalStore
+
+    return ResolutionDismissalStore(DismissedFindingRepository(session))
+
+
+def get_merge_executor(
+    kb_repo: Annotated[KBRepository, Depends(get_kb_repository)],
+    rel_repo: Annotated[RelationshipRepository, Depends(get_rel_repository)],
+    session: SessionDep,
+) -> MergeExecutor:
+    """Wire the merge executor (savepoint owner = request session)."""
+    from narrare.kb.entity_resolution.merge_executor import MergeExecutor
+
+    return MergeExecutor(kb_repo=kb_repo, rel_repo=rel_repo, session=session)
+
+
 def get_resolution_analyzer(
     kb_repo: Annotated[KBRepository, Depends(get_kb_repository)],
     rel_repo: Annotated[RelationshipRepository, Depends(get_rel_repository)],
+    dismissed: Annotated[ResolutionDismissalStore, Depends(get_resolution_dismissal_store)],
 ) -> ResolutionAnalysisService:
     """Wire the analysis service: snapshot builder + pure engine + cache.
 
     The kb/relationship repositories come from the canonical kb factories
     (overridable seam — route tests inject fakes there while this factory
     and the scope guard run for real). The engine is I/O-free
-    (narrare_core); the cache backend is the process-wide singleton.
+    (narrare_core); the cache backend is the process-wide singleton; the
+    rejection ledger filters served analyses (spec §7 reject).
     """
-    from narrare.kb.entity_resolution.analysis_service import (
-        ResolutionAnalysisCache,
-        ResolutionAnalysisService,
-    )
+    from narrare.kb.entity_resolution.analysis_cache import ResolutionAnalysisCache
+    from narrare.kb.entity_resolution.analysis_service import ResolutionAnalysisService
     from narrare.kb.entity_resolution.snapshot_service import SnapshotBuilder
     from narrare_core.kb.resolution.scoring import ResolutionEngine
 
@@ -106,4 +136,24 @@ def get_resolution_analyzer(
         builder=SnapshotBuilder(kb_repo, rel_repo),
         engine=ResolutionEngine(),
         cache=ResolutionAnalysisCache(_get_cache_backend()),
+        dismissed=dismissed,
+    )
+
+
+def get_endorse_service(
+    analyzer: Annotated[ResolutionAnalysisService, Depends(get_resolution_analyzer)],
+    executor: Annotated[MergeExecutor, Depends(get_merge_executor)],
+    kb_repo: Annotated[KBRepository, Depends(get_kb_repository)],
+    rel_repo: Annotated[RelationshipRepository, Depends(get_rel_repository)],
+    dismissals: Annotated[ResolutionDismissalStore, Depends(get_resolution_dismissal_store)],
+) -> ResolutionEndorseService:
+    """Wire the endorse/reject adjudication service (spec §7)."""
+    from narrare.kb.entity_resolution.endorse_service import ResolutionEndorseService
+
+    return ResolutionEndorseService(
+        analyzer=analyzer,
+        executor=executor,
+        kb_repo=kb_repo,
+        rel_repo=rel_repo,
+        dismissals=dismissals,
     )
