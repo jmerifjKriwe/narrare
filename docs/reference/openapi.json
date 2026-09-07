@@ -5912,6 +5912,114 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/resolution/analyze": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Analyze Resolution",
+        "description": "Run (or fetch) the duplicate detection analysis for one novel.",
+        "operationId": "analyze_resolution_api_v1_novels__novel_id__kb_resolution_analyze_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/narrare__kb__entity_resolution__schemas_resolution__AnalyzeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolutionAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/resolution/suggestions": {
+      "get": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Get Resolution Suggestions",
+        "description": "Return the cached analysis without recomputing (empty when never analyzed).",
+        "operationId": "get_resolution_suggestions_api_v1_novels__novel_id__kb_resolution_suggestions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolutionAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/consistency-check": {
       "post": {
         "tags": [
@@ -8656,7 +8764,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AnalyzeRequest"
+                "$ref": "#/components/schemas/narrare__memory__schemas__AnalyzeRequest"
               }
             }
           },
@@ -12033,21 +12141,6 @@
         "title": "AdaptiveWeightsResponse",
         "description": "Adaptive weights in an API response (clamped, read-only)."
       },
-      "AnalyzeRequest": {
-        "properties": {
-          "project_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Project Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "project_id"
-        ],
-        "title": "AnalyzeRequest",
-        "description": "Request body for triggering preference analysis."
-      },
       "AnalyzeResponse": {
         "properties": {
           "id": {
@@ -12688,6 +12781,30 @@
           "models"
         ],
         "title": "AvailableModelsResponse"
+      },
+      "BandStats": {
+        "properties": {
+          "review": {
+            "type": "integer",
+            "title": "Review"
+          },
+          "auto_eligible": {
+            "type": "integer",
+            "title": "Auto Eligible"
+          },
+          "suppressed": {
+            "type": "integer",
+            "title": "Suppressed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "review",
+          "auto_eligible",
+          "suppressed"
+        ],
+        "title": "BandStats",
+        "description": "Per-band pair counts for one analysis run."
       },
       "BandSummaryOverrideRequest": {
         "properties": {
@@ -19055,6 +19172,32 @@
         "title": "ReprocessResponse",
         "description": "Response model for reprocessing endpoint."
       },
+      "ResolutionAnalysisResponse": {
+        "properties": {
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionResponse"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/BandStats"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "suggestions",
+          "stats",
+          "cache_hit"
+        ],
+        "title": "ResolutionAnalysisResponse",
+        "description": "Detection result for one novel scope (spec §7 analyze response)."
+      },
       "ResolveReferencesRequest": {
         "properties": {
           "text": {
@@ -20376,6 +20519,35 @@
         "title": "ShortestPathResponse",
         "description": "Response for shortest path query."
       },
+      "SignalEvidence": {
+        "properties": {
+          "signal": {
+            "type": "string",
+            "title": "Signal"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "veto": {
+            "type": "boolean",
+            "title": "Veto"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "signal",
+          "value",
+          "veto",
+          "detail"
+        ],
+        "title": "SignalEvidence",
+        "description": "Per-signal evidence attached to one suggestion (evidence transparency)."
+      },
       "SkippedItem": {
         "properties": {
           "name": {
@@ -20868,6 +21040,69 @@
         ],
         "title": "StyleVariantRegenerateRequest",
         "description": "Request to regenerate an AI output in a specific style variant.\n\nThe source text is the existing AI output (or selection) that the writer\nwants regenerated in a controlled creative direction.  Context markers\nprovide surrounding text for register matching.  Model/provider/token\nsettings resolve through the existing cascade — the variant never changes\nproviders."
+      },
+      "SuggestionResponse": {
+        "properties": {
+          "suggestion_id": {
+            "type": "string",
+            "title": "Suggestion Id"
+          },
+          "entry_a_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entry A Id"
+          },
+          "entry_b_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entry B Id"
+          },
+          "name_a": {
+            "type": "string",
+            "title": "Name A"
+          },
+          "name_b": {
+            "type": "string",
+            "title": "Name B"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "band": {
+            "type": "string",
+            "enum": [
+              "REVIEW",
+              "AUTO_ELIGIBLE"
+            ],
+            "title": "Band"
+          },
+          "auto_merge_eligible": {
+            "type": "boolean",
+            "title": "Auto Merge Eligible"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/SignalEvidence"
+            },
+            "type": "array",
+            "title": "Signals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "suggestion_id",
+          "entry_a_id",
+          "entry_b_id",
+          "name_a",
+          "name_b",
+          "confidence",
+          "band",
+          "auto_merge_eligible",
+          "signals"
+        ],
+        "title": "SuggestionResponse",
+        "description": "One surfaced merge suggestion (band REVIEW or AUTO_ELIGIBLE)."
       },
       "SuitabilityIssueMetadata": {
         "properties": {
@@ -23772,6 +24007,33 @@
         ],
         "title": "WorldbuildingSeverity",
         "description": "Severity level for worldbuilding findings."
+      },
+      "narrare__kb__entity_resolution__schemas_resolution__AnalyzeRequest": {
+        "properties": {
+          "refresh": {
+            "type": "boolean",
+            "title": "Refresh",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "AnalyzeRequest",
+        "description": "Request body for the analyze endpoint (spec §7)."
+      },
+      "narrare__memory__schemas__AnalyzeRequest": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Project Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id"
+        ],
+        "title": "AnalyzeRequest",
+        "description": "Request body for triggering preference analysis."
       },
       "narrare__memory__schemas__ResetResponse": {
         "properties": {

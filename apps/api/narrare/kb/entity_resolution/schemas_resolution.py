@@ -1,4 +1,4 @@
-"""KB entity resolution response schemas (ADR-085 P3, spec §2/§7).
+"""KB entity resolution request/response schemas (ADR-085 P3, spec §2/§7).
 
 Pydantic models for the detection-analysis surface. ``ResolutionAnalysis``
 in ``contracts.py`` is discharged by ``ResolutionAnalysisResponse`` — the
@@ -77,6 +77,13 @@ class BandStats(BaseModel):
 
     suppressed: int
     """Pairs below the REVIEW threshold (never surfaced; logged, RULE-11)."""
+
+
+class AnalyzeRequest(BaseModel):
+    """Request body for the analyze endpoint (spec §7)."""
+
+    refresh: bool = False
+    """Skip the cache read and force a detection recompute."""
 
 
 class ResolutionAnalysisResponse(BaseModel):

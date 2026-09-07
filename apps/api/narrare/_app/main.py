@@ -197,6 +197,7 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.embeddings.router import router as embeddings_router
     from narrare.export.router import router as export_router
     from narrare.generation.router import router as generation_router
+    from narrare.kb.entity_resolution.router import router as kb_resolution_router
     from narrare.kb.router import router as kb_router
     from narrare.kb.router_consistency import router as kb_consistency_router
     from narrare.kb.router_extraction import router as kb_extraction_router
@@ -272,6 +273,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(volumes_router, prefix=prefix)
     app.include_router(export_router, prefix=prefix)
     app.include_router(kb_router, prefix=prefix)
+    app.include_router(kb_resolution_router, prefix=prefix)
     app.include_router(kb_consistency_router, prefix=prefix)
     app.include_router(kb_graph_router, prefix=prefix)
     app.include_router(kb_relationships_router, prefix=prefix)

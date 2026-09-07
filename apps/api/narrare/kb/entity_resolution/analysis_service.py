@@ -234,6 +234,26 @@ class ResolutionAnalysisService:
         )
         return response
 
+    async def get_cached(self, novel_id: UUID) -> ResolutionAnalysisResponse:
+        """Return the cached analysis WITHOUT recomputing (spec §7 GET suggestions).
+
+        The cache payload is validated against the current entries hash, so
+        reading it requires building snapshots — a read-only KB fetch, not a
+        detection recompute (the engine never runs here). A miss (never
+        analyzed, invalidated, or stale after a KB mutation) yields the empty
+        response with ``cache_hit=False`` — the endpoint is 404-free (§7).
+        """
+        snapshots = await self._builder.build(novel_id)
+        cached = await self._cache.get(str(novel_id), _entries_hash(snapshots))
+        if cached is None:
+            return ResolutionAnalysisResponse(
+                suggestions=[],
+                stats=BandStats(review=0, auto_eligible=0, suppressed=0),
+                cache_hit=False,
+            )
+        response = ResolutionAnalysisResponse.model_validate_json(cached)
+        return response.model_copy(update={"cache_hit": True})
+
     async def invalidate(self, novel_id: UUID) -> None:
         """Drop the cached analysis for a novel.
 
