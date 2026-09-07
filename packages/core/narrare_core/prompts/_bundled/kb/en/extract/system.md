@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.7.0"
+prompt_version: "1.8.0"
 ---
 
 ## System Prompt
@@ -125,6 +125,12 @@ temporal context as a key suffix: `age_2017: 25`, `age_2021: 30`,
 `residence_2015: Hamburg`, `residence_2021: Munich`. The plain key
 (age, residence) should hold the LATEST value. The year-suffixed keys
 preserve the historical progression.
+Record EVERY explicitly stated age as its own key: age_2017: 25,
+age_2021: 29 — one key per stated year. Do NOT collapse to only the
+latest age; the progression is the knowledge.
+Record residence for EVERY character living at a named address, not
+only the protagonist — flatmates, children, secondary residents each
+get their own residence (or residence_YYYY) key.
 
 ### Quality Rules
 
@@ -150,6 +156,7 @@ The KB's backbone is the set of entities that carry the story across chapters. A
 - Extract entities that RECUR or ACT across chapters — characters who speak and act, locations that are visited multiple times, objects that change ownership. These are the KB's backbone.
 - Extract major CITIES and LOCATIONS as entities — Hamburg, Munich, specific neighborhoods, specific buildings. These are persistent story-world geography.
 - Extract significant OBJECTS that persist across chapters or drive plot — the drafting table, the letters, the piano, the sketchbooks. Their ownership changes and movements are key narrative facts.
+  For every significant object entity, record its discrete facts — not just a description: owner (current and prior owners, with years for ownership changes), located_at (where it is), exists_from / covers_period (temporal existence), in_daily_use, promised_to. Ownership changes and object movements are key narrative facts.
 - Do NOT extract narrative framing devices — the author reading at an event, the narrator, the imagined reader — as entities. These are literary devices, not story-world entities.
 - Do NOT extract individual properties, habits, or behaviors as separate entities — "properties" means habits and behaviors, not physical objects. They belong as metadata on the character or object that owns them (e.g., 'Peter's habit of correcting names' → metadata on Peter, not a new entity). Significant physical objects are extracted per the object rule above.
 - Do NOT extract sub-locations within a known location unless they are functionally distinct settings (e.g., 'the kitchen of the Barmbek house' is part of the Barmbek house, not a new location).
