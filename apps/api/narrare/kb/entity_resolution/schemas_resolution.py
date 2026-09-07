@@ -79,8 +79,13 @@ class BandStats(BaseModel):
     """Pairs below the REVIEW threshold (never surfaced; logged, RULE-11)."""
 
 
-class AnalyzeRequest(BaseModel):
-    """Request body for the analyze endpoint (spec §7)."""
+class ResolutionAnalyzeRequest(BaseModel):
+    """Request body for the analyze endpoint (spec §7).
+
+    Prefixed ``Resolution…`` so the generated OpenAPI schema name cannot
+    collide with the unrelated memory-domain ``AnalyzeRequest`` (fix
+    round 1 — a collision forced FastAPI to rename the memory schema).
+    """
 
     refresh: bool = False
     """Skip the cache read and force a detection recompute."""

@@ -5942,7 +5942,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/narrare__kb__entity_resolution__schemas_resolution__AnalyzeRequest"
+                "$ref": "#/components/schemas/ResolutionAnalyzeRequest"
               }
             }
           }
@@ -8764,7 +8764,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/narrare__memory__schemas__AnalyzeRequest"
+                "$ref": "#/components/schemas/AnalyzeRequest"
               }
             }
           },
@@ -12140,6 +12140,21 @@
         "type": "object",
         "title": "AdaptiveWeightsResponse",
         "description": "Adaptive weights in an API response (clamped, read-only)."
+      },
+      "AnalyzeRequest": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Project Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id"
+        ],
+        "title": "AnalyzeRequest",
+        "description": "Request body for triggering preference analysis."
       },
       "AnalyzeResponse": {
         "properties": {
@@ -19198,6 +19213,18 @@
         "title": "ResolutionAnalysisResponse",
         "description": "Detection result for one novel scope (spec §7 analyze response)."
       },
+      "ResolutionAnalyzeRequest": {
+        "properties": {
+          "refresh": {
+            "type": "boolean",
+            "title": "Refresh",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ResolutionAnalyzeRequest",
+        "description": "Request body for the analyze endpoint (spec §7).\n\nPrefixed ``Resolution…`` so the generated OpenAPI schema name cannot\ncollide with the unrelated memory-domain ``AnalyzeRequest`` (fix\nround 1 — a collision forced FastAPI to rename the memory schema)."
+      },
       "ResolveReferencesRequest": {
         "properties": {
           "text": {
@@ -24007,33 +24034,6 @@
         ],
         "title": "WorldbuildingSeverity",
         "description": "Severity level for worldbuilding findings."
-      },
-      "narrare__kb__entity_resolution__schemas_resolution__AnalyzeRequest": {
-        "properties": {
-          "refresh": {
-            "type": "boolean",
-            "title": "Refresh",
-            "default": false
-          }
-        },
-        "type": "object",
-        "title": "AnalyzeRequest",
-        "description": "Request body for the analyze endpoint (spec §7)."
-      },
-      "narrare__memory__schemas__AnalyzeRequest": {
-        "properties": {
-          "project_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Project Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "project_id"
-        ],
-        "title": "AnalyzeRequest",
-        "description": "Request body for triggering preference analysis."
       },
       "narrare__memory__schemas__ResetResponse": {
         "properties": {

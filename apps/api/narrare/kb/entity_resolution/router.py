@@ -19,8 +19,8 @@ from narrare.kb.entity_resolution.dependencies import (
     verify_novel_scope,
 )
 from narrare.kb.entity_resolution.schemas_resolution import (
-    AnalyzeRequest,
     ResolutionAnalysisResponse,
+    ResolutionAnalyzeRequest,
 )
 
 router = APIRouter(tags=["kb"], dependencies=[Depends(verify_novel_scope)])
@@ -32,7 +32,7 @@ router = APIRouter(tags=["kb"], dependencies=[Depends(verify_novel_scope)])
 )
 async def analyze_resolution(
     novel_id: UUID,
-    request: AnalyzeRequest,
+    request: ResolutionAnalyzeRequest,
     user_id: CurrentUserIdDep,
     service: Annotated[
         ResolutionAnalysisService,
