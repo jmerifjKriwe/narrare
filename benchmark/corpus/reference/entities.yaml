@@ -4,6 +4,7 @@ persons:
   - id: p_anna_meyer
     name: Anna Meyer
     aliases: ["Anna"]
+    gender: female
     facts:
       - id: F004
         predicate: age_stated
@@ -67,6 +68,7 @@ persons:
   - id: p_peter_meyer
     name: Peter Meyer
     aliases: ["Peter"]
+    gender: male
     facts:
       - id: F009
         predicate: profession
@@ -104,6 +106,7 @@ persons:
   - id: p_thomas_meyer
     name: Thomas Meyer
     aliases: ["Thomas"]
+    gender: male
     facts:
       - id: F008
         predicate: owner_of
@@ -121,6 +124,7 @@ persons:
   - id: p_lisa_brandt
     name: Lisa Brandt
     aliases: ["Lisa"]
+    gender: female
     facts:
       - id: F013
         predicate: residence
@@ -144,6 +148,7 @@ persons:
   - id: p_marco_weise
     name: Marco Weise
     aliases: ["Marco Weise", "Weise"]
+    gender: male
     facts:
       - id: F023
         predicate: profession
@@ -152,6 +157,7 @@ persons:
   - id: p_martin_wiese
     name: Martin Wiese
     aliases: ["Martin Wiese", "Wiese"]
+    gender: male
     facts:
       - id: F024
         predicate: profession
@@ -160,6 +166,7 @@ persons:
   - id: p_hajo_pfeiffer
     name: Hajo Pfeiffer
     aliases: ["Hajo Pfeiffer"]
+    gender: male
     facts:
       - id: F026
         predicate: profession
@@ -168,6 +175,7 @@ persons:
   - id: p_margarete_meyer
     name: Margarete Meyer
     aliases: ["Margarete"]
+    gender: female
     facts:
       - id: F036
         predicate: age_stated
@@ -190,6 +198,7 @@ persons:
   - id: p_ilse_meyer
     name: Ilse Meyer
     aliases: ["Ilse", "Mama"]
+    gender: female
     facts:
       - id: F043
         predicate: age_stated
@@ -208,6 +217,7 @@ persons:
   - id: p_gert_meyer
     name: Gert Meyer
     aliases: ["Gert", "Papa"]
+    gender: male
     facts:
       - id: F044
         predicate: age_stated
@@ -226,10 +236,12 @@ persons:
   - id: p_elke_richter
     name: Elke Richter
     aliases: ["Elke"]
+    gender: female
     facts: []                           # ch-04 presence is relational (neighbor/observes); handled in relations
   - id: p_juna_meyer
     name: Juna Meyer
     aliases: ["Juna"]
+    gender: female
     facts:
       - id: F054
         predicate: birth_date
@@ -252,10 +264,12 @@ persons:
   - id: p_sofia_lenz
     name: Sofia Lenz
     aliases: ["Sofia"]
+    gender: female
     facts: []                           # ch-07 states only the jury encounter (relational); handled as relation/event
   - id: p_maria_sommer
     name: Maria Sommer
     aliases: ["Maria"]
+    gender: female
     facts:
       - id: F093
         predicate: profession
@@ -265,6 +279,7 @@ persons:
   - id: p_anna_meier
     name: Anna Meier
     aliases: ["Anna Meier"]
+    gender: female
     facts:
       - id: F096
         predicate: residence
@@ -275,6 +290,7 @@ persons:
     name: Ilses Sohn (namenlos, geboren 1983)
     aliases: []                    # DESIGN: shell entity so half-sibling relations (F106) are encodable;
                                   # NO name, NO further facts — prose states none (bible discipline)
+    gender: male
     facts:
       - id: F103
         predicate: relation_to_ilse
@@ -292,6 +308,7 @@ persons:
   - id: p_ben_schulz
     name: Ben Schulz
     aliases: ["Ben"]
+    gender: male
     facts:
       - id: F134
         predicate: residence
@@ -301,6 +318,7 @@ persons:
   - id: p_alexander_wolf
     name: Alexander Wolf
     aliases: ["Alex", "Sascha", "Alexander"]
+    gender: male
     facts: []                           # alias split per F137: "Alex" by colleagues, "Sascha" by family, never resolved on-page; represented by R024 + E030
 
 places:

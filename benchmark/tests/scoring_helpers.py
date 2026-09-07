@@ -12,6 +12,7 @@ from __future__ import annotations
 from benchmark.corpus_views import (
     Entity,
     Fact,
+    Gender,
     PartialDate,
     Reference,
     Relation,
@@ -61,8 +62,9 @@ def ref_entity(
     *,
     aliases: tuple[str, ...] = (),
     facts: tuple[Fact, ...] = (),
+    gender: Gender | None = None,
 ) -> Entity:
-    return Entity(id=entity_id, name=name, aliases=aliases, facts=facts)
+    return Entity(id=entity_id, name=name, aliases=aliases, facts=facts, gender=gender)
 
 
 def ref_relation(rel_id: str, subject: str, predicate: str, target: str) -> Relation:

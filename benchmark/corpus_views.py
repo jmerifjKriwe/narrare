@@ -14,7 +14,13 @@ All views are frozen; sequence fields are tuples.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast
+from typing import Final, Literal, cast
+
+Gender = Literal["male", "female"]
+"""Person sex as ground truth (``entities.yaml`` persons only); feeds the
+gender-aware kinship equivalence in ``benchmark.scoring.relation_match``."""
+
+_GENDERS: Final[tuple[str, ...]] = ("male", "female")
 
 
 class CorpusError(RuntimeError):
@@ -53,12 +59,17 @@ class Fact:
 
 @dataclass(frozen=True)
 class Entity:
-    """Person/place/object with its facts (same facts shape per README)."""
+    """Person/place/object with its facts (same facts shape per README).
+
+    ``gender`` is persons-only ground truth (absent → ``None``); places
+    and objects never carry it.
+    """
 
     id: str
     name: str
     aliases: tuple[str, ...]
     facts: tuple[Fact, ...]
+    gender: Gender | None = None
 
 
 @dataclass(frozen=True)
@@ -214,12 +225,23 @@ def _fact(raw: dict[str, object], where: str) -> Fact:
     )
 
 
+def _opt_gender(raw: dict[str, object], where: str) -> Gender | None:
+    """Read the optional persons-only ``gender`` key; values are closed."""
+    value = raw.get("gender")
+    if value is None:
+        return None
+    if value not in _GENDERS:
+        raise CorpusError(f"{where}: key 'gender' must be 'male' or 'female', got {value!r}")
+    return value
+
+
 def _entity(raw: dict[str, object], where: str) -> Entity:
     facts = mapping_entries(raw.get("facts"), f"{where}: facts")
     return Entity(
         id=_req_str(raw, "id", where),
         name=_req_str(raw, "name", where),
         aliases=str_tuple(raw, "aliases", where),
+        gender=_opt_gender(raw, where),
         facts=tuple(_fact(entry, f"{where}.facts[{index}]") for index, entry in enumerate(facts)),
     )
 

@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 
 from benchmark.scoring.entity_match import EntityMatch, EntityMatchResult, match_entities
 from benchmark.scoring.fact_match import actual_facts_from, score_facts, spurious_facts
-from benchmark.scoring.relation_match import score_relations
+from benchmark.scoring.relation_match import person_genders, score_relations
 from benchmark.scoring.score_records import (
     BuildQualityScore,
     EntityOutcome,
@@ -74,7 +74,12 @@ def score_build_quality(
             )
         )
 
-    relation_result = score_relations(reference.relations, _dedupe_edges(details), ref_to_entry)
+    relation_result = score_relations(
+        reference.relations,
+        _dedupe_edges(details),
+        ref_to_entry,
+        person_genders(reference.persons),
+    )
 
     expected_facts = len(fact_outcomes)
     found_facts = sum(1 for fact in fact_outcomes if fact.status != "missing")

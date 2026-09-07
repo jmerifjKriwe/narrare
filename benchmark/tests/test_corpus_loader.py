@@ -200,6 +200,7 @@ class TestReference:
         reference = real_corpus().reference()
 
         anna = next(e for e in reference.persons if e.id == "p_anna_meyer")
+        assert anna.gender == "female"
         f132 = next(f for f in anna.facts if f.id == "F132")
         assert (f132.predicate, f132.value) == ("age_stated", "35")
         assert f132.source_chapters == (12,)
@@ -211,6 +212,7 @@ class TestReference:
 
         wolf = next(e for e in reference.persons if e.id == "p_alexander_wolf")
         assert wolf.aliases == ("Alex", "Sascha", "Alexander")
+        assert wolf.gender == "male"
 
         r001 = next(r for r in reference.relations if r.id == "R001")
         assert (r001.subject, r001.predicate, r001.object) == (
@@ -223,6 +225,16 @@ class TestReference:
         e009 = next(e for e in reference.events if e.id == "E009")
         assert e009.date == PartialDate(2018, month=5, day=26)
         assert "p_anna_meyer" in e009.participants
+
+        hamburg = next(p for p in reference.places if p.id == "pl_hamburg")
+        assert hamburg.gender is None  # gender is persons-only
+
+    def test_invalid_person_gender_is_rejected(self, tmp_path: Path) -> None:
+        root = corpus_copy(tmp_path)
+        mutate(root / "reference/entities.yaml", "gender: male", "gender: divers")
+
+        with pytest.raises(CorpusError, match="gender"):
+            load_corpus(root)
 
     def test_views_are_read_only(self) -> None:
         chapter = real_corpus().chapters("clean")[0]

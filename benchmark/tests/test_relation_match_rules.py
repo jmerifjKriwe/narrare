@@ -5,7 +5,10 @@ surface forms ("mother", "business_partner") fold onto their canonical
 ``_of``-suffixed registry predicates before comparison, while genuinely
 different predicates keep missing (no semantic synonym folding — the
 scorer must stay strict; vocabulary alignment happens in the extraction
-prompt, not here).
+prompt, not here). Gender-conditioned kinship equivalence
+(``parent_of`` ≡ ``father_of`` etc.) is pinned separately in
+``test_relation_match_gender.py``; with unknown gender even those pairs
+stay strict, as this module's ``sibling_of``/``brother_of`` control shows.
 """
 
 from __future__ import annotations
@@ -62,7 +65,12 @@ def test_relation_canonical_forms_still_match_identity() -> None:
 
 
 def test_relation_does_not_fold_semantic_synonyms() -> None:
-    """Negative control: ``brother_of`` is NOT folded onto ``sibling_of``."""
+    """Negative control: ``brother_of`` is NOT folded onto ``sibling_of``.
+
+    The synthetic subject has no known gender, so the gender-aware
+    equivalence stays strict (a male subject WOULD match — see
+    ``test_relation_match_gender.py``).
+    """
     status, matched = _score("sibling_of", "brother_of")
     assert status == "missing"
     assert matched is None

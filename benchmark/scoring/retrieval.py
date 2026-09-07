@@ -53,7 +53,7 @@ from benchmark.drivers.out_records import EntrySummary
 from benchmark.scoring.entity_match import match_entities
 from benchmark.scoring.fact_match import actual_facts_from, score_facts
 from benchmark.scoring.normalize import boundary_matches, normalize_predicate, parse_date_value
-from benchmark.scoring.relation_match import score_relations
+from benchmark.scoring.relation_match import person_genders, score_relations
 from benchmark.scoring.retrieval_coverage import coverage_rows
 from benchmark.scoring.retrieval_queries import DEFAULT_SAMPLE_SIZE, generate_queries
 from benchmark.scoring.retrieval_records import (
@@ -118,6 +118,7 @@ class _Resolver:
             match.ref.id: self._by_entry[match.entry.id] for match in matched.matches
         }
         self._ref_to_entry = {match.ref.id: match.entry.id for match in matched.matches}
+        self._person_gender = person_genders(reference.persons)
         self._relation_by_id = {relation.id: relation for relation in reference.relations}
         self._edges: tuple[RelationshipDetail, ...] = tuple(
             edge for record in details for edge in record.relationships
@@ -171,7 +172,7 @@ class _Resolver:
 
     def _answer_relationship(self, query: RetrievalQuery) -> AnswerOutcome:
         relation = self._relation_by_id[query.ref_id]
-        result = score_relations((relation,), self._edges, self._ref_to_entry)
+        result = score_relations((relation,), self._edges, self._ref_to_entry, self._person_gender)
         matched_edge_id = result.outcomes[0].matched_edge_id
         if result.outcomes[0].status == "missing" or matched_edge_id is None:
             return _outcome(query, "missing", interval_checked=False, answered_by=None)
