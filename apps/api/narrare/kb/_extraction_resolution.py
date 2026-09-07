@@ -9,9 +9,12 @@ Pure decision helpers used by ``ExtractionApplyService``:
 - ``merge_metadata``: compose an ``update_entity`` item's
   ``proposed_content`` over the entry's existing metadata (merge-not-clobber:
   proposed keys overwrite, keys the item omits survive).
-- ``resolve_relationship_endpoints``: resolve both endpoints of a
-  ``relationship`` item (``source_entity_name``/``target_entity_name``,
-  with legacy ``name``/``related_entity_name`` fallbacks) to KB entries.
+
+Relationship endpoint resolution (``resolve_relationship_endpoints``,
+including in-batch creation lookup) lives in
+:mod:`narrare.kb._extraction_endpoint_resolution` — split for RULE-04
+compliance when in-batch resolution (benchmark run 5) grew this file
+past its size limit.
 
 Extracted from ``extraction_apply_service.py`` for RULE-04 compliance (the
 apply service sits at the 300-line limit). All guards are blocking-only:
@@ -255,117 +258,3 @@ def merge_metadata(
     merged: dict[str, object] = dict(existing or {})
     merged.update(proposed)
     return merged
-
-
-@dataclass(frozen=True)
-class RelationshipEndpoints:
-    """Resolved source and target entries for a relationship item."""
-
-    source: KBEntry
-    """The relationship's subject entry."""
-
-    target: KBEntry
-    """The relationship's object entry."""
-
-
-@dataclass(frozen=True)
-class UnresolvedRelationship:
-    """A relationship item whose endpoints cannot be resolved.
-
-    ``reason`` is a stable machine-readable identifier that the apply
-    service reports in ``ApplyExtractionResponse.skipped`` — unapplied
-    items are never silently dropped.
-    """
-
-    reason: str
-
-
-async def resolve_relationship_endpoints(
-    item: ApplyExtractionItem,
-    kb_repo: KBRepositoryProtocol,
-    novel_id: uuid.UUID,
-) -> RelationshipEndpoints | UnresolvedRelationship:
-    """Resolve both endpoints of a ``relationship`` item to KB entries.
-
-    Source resolution: ``source_entity_name``, falling back to ``name``
-    (legacy payloads carried the source entity name there — the prompt
-    contract pre-v1.4.0, which used ``name`` for a relationship label,
-    is the dead path this resolver repairs). Target resolution:
-    ``target_entity_name``, falling back to ``related_entity_name``.
-
-    Every failure mode logs a distinct warning and yields an
-    :class:`UnresolvedRelationship` with a stable reason — the caller
-    reports the item as skipped (RULE-11 per-item isolation, no crash,
-    no silent drop).
-
-    Args:
-        item: The endorsed extraction item.
-        kb_repo: KB repository (novel-scoped lookups).
-        novel_id: Novel whose KB is the resolution scope.
-
-    Returns:
-        :class:`RelationshipEndpoints` on success, otherwise
-        :class:`UnresolvedRelationship`.
-    """
-    source_name = item.source_entity_name or item.name
-    target_name = item.target_entity_name or item.related_entity_name
-    if not _has_text(source_name) or not _has_text(target_name):
-        logger.warning(
-            "relationship_missing_endpoint_names",
-            name=item.name,
-            source_entity_name=item.source_entity_name,
-            target_entity_name=item.target_entity_name,
-        )
-        return UnresolvedRelationship(reason="missing_source_or_target_name")
-
-    source = await _lookup_by_name(kb_repo, novel_id, source_name, role="source")
-    if isinstance(source, UnresolvedRelationship):
-        return source
-
-    assert target_name is not None
-    target = await _lookup_by_name(kb_repo, novel_id, target_name, role="target")
-    if isinstance(target, UnresolvedRelationship):
-        return target
-
-    return RelationshipEndpoints(source=source, target=target)
-
-
-async def _lookup_by_name(
-    kb_repo: KBRepositoryProtocol,
-    novel_id: uuid.UUID,
-    name: str,
-    role: str,
-) -> KBEntry | UnresolvedRelationship:
-    """Novel-scoped exact-name lookup with a role-tagged failure reason.
-
-    Ambiguous names (several matches) are treated as unresolvable —
-    never a silent pick.
-    """
-    try:
-        entry = await kb_repo.get_by_name(novel_id, name)
-    except MultipleResultsFound:
-        logger.warning("relationship_ambiguous_name", role=role, name=name)
-        return UnresolvedRelationship(reason=f"{role}_ambiguous_name")
-    except Exception as exc:
-        logger.warning(
-            "relationship_name_lookup_failed",
-            role=role,
-            name=name,
-            error=str(exc),
-        )
-        return UnresolvedRelationship(reason=f"{role}_lookup_failed")
-
-    if entry is None:
-        logger.warning(
-            "relationship_endpoint_not_found",
-            role=role,
-            name=name,
-            novel_id=str(novel_id),
-        )
-        return UnresolvedRelationship(reason=f"{role}_not_found")
-    return entry
-
-
-def _has_text(value: str | None) -> bool:
-    """True when value is a non-empty, non-whitespace string."""
-    return value is not None and value.strip() != ""

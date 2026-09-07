@@ -40,8 +40,9 @@ async def get_extraction_service(
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
     for system prompts, and ChapterRepository + KBRepository for data.
 
-    Also injects KBService and RelationshipRepository for the apply
-    extraction step (KB-007).
+    Also injects KBService, RelationshipRepository, and the request-scoped
+    session for the apply extraction step (KB-007) — the apply service
+    wraps each item in a SAVEPOINT on that session.
 
     Includes InvocationPipeline for invocation evidence (ADR-040) and a
     DefaultRunLimitResolver for ADR-045 output-budget enforcement at the
@@ -82,6 +83,7 @@ async def get_extraction_service(
             embedding_hooks=None,
         ),
         rel_repo=RelationshipRepository(session),
+        session=session,
         invocation_pipeline=get_invocation_pipeline(),
         api_key=resolved.api_key,
         base_url=resolved.base_url,

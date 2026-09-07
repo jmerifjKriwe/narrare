@@ -25,6 +25,8 @@ from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.relationship_repository import RelationshipRepository
@@ -51,6 +53,9 @@ class ExtractionService:
         composer: PromptComposer for bundled system prompts (RULE-02).
         kb_service: KBService for the apply step (optional, needed for apply).
         rel_repo: RelationshipRepository for the apply step (optional).
+        session: Request-scoped AsyncSession for the apply step (optional;
+            needed for apply — ExtractionApplyService wraps each item in a
+            SAVEPOINT on this session).
         invocation_pipeline: Optional pipeline for invocation evidence.
         api_key: Optional per-user provider API key override (model-routing
             cascade) — injected into ``ModelRegistry.prepare``.
@@ -76,6 +81,7 @@ class ExtractionService:
         composer: PromptComposer,
         kb_service: KBService | None = None,
         rel_repo: RelationshipRepository | None = None,
+        session: AsyncSession | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
@@ -89,6 +95,7 @@ class ExtractionService:
         self._composer = composer
         self._kb_service = kb_service
         self._rel_repo = rel_repo
+        self._session = session
         self._invocation_pipeline = invocation_pipeline
         self._api_key = api_key
         self._base_url = base_url
@@ -264,6 +271,8 @@ class ExtractionService:
             raise ValueError(
                 "KBService and RelationshipRepository must be configured for apply_extraction"
             )
+        if self._session is None:
+            raise ValueError("Session must be configured for apply_extraction")
 
         from narrare.kb.extraction_apply_service import ExtractionApplyService
 
@@ -271,6 +280,7 @@ class ExtractionService:
             kb_service=self._kb_service,
             rel_repo=self._rel_repo,
             kb_repo=self._kb_repo,
+            session=self._session,
         )
         return await apply_service.apply(
             novel_id=novel_id,

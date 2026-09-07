@@ -25,6 +25,8 @@ from narrare.kb.schemas_extraction import ApplyExtractionItem, ApplyExtractionRe
 from narrare_core.llm import ResolvedModelConfig
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.relationship_repository import RelationshipRepository
@@ -34,6 +36,7 @@ if TYPE_CHECKING:
 
 # Fakes live in the shared helpers module (RULE-04 extraction)
 from ._apply_extraction_helpers import (
+    _FakeApplySession,
     _FakeKBRepoForApply,
     _FakeKBService,
     _FakeRelationshipRepo,
@@ -130,6 +133,7 @@ async def test_apply_mixed_items_handles_all_types(
         kb_service=cast("KBService", fake_kb_service),
         rel_repo=cast("RelationshipRepository", fake_rel_repo),
         kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
+        session=cast("AsyncSession", _FakeApplySession()),
     )
 
     items = [
@@ -176,6 +180,7 @@ async def test_apply_one_item_fails_others_proceed(
         kb_service=cast("KBService", fake_kb_service),
         rel_repo=cast("RelationshipRepository", fake_rel_repo),
         kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
+        session=cast("AsyncSession", _FakeApplySession()),
     )
 
     items = [
@@ -221,6 +226,7 @@ async def test_extraction_service_delegates_to_apply_service() -> None:
         composer=cast("PromptComposer", composer),
         kb_service=cast("KBService", kb_service),
         rel_repo=cast("RelationshipRepository", rel_repo),
+        session=cast("AsyncSession", _FakeApplySession()),
     )
 
     items = [
@@ -299,4 +305,5 @@ def apply_service(
         kb_service=cast("KBService", fake_kb_service),
         rel_repo=cast("RelationshipRepository", fake_rel_repo),
         kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
+        session=cast("AsyncSession", _FakeApplySession()),
     )

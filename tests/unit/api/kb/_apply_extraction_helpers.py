@@ -10,6 +10,8 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID, uuid4
 
+from sqlalchemy.exc import IntegrityError
+
 
 class _FakeEntry:
     """Minimal fake KB entry returned by FakeKBService."""
@@ -101,14 +103,78 @@ class _FakeKBService:
 
 
 class _FakeRelationshipRepo:
-    """Fake RelationshipRepository that records creates."""
+    """Fake RelationshipRepository that records creates.
+
+    ``exists`` mirrors the production ``uq_kb_relationships_unique``
+    constraint (source_id, target_id, rel_type) over the recorded
+    creates; ``fail_on_rel_types`` injects an IntegrityError for
+    selected predicates (batch-robustness regression tests).
+    """
 
     def __init__(self) -> None:
         self.created: list[object] = []
+        self.fail_on_rel_types: set[str] = set()
 
     async def create(self, rel: object) -> object:
+        rel_type = getattr(rel, "rel_type", None)
+        if rel_type in self.fail_on_rel_types:
+            raise IntegrityError("INSERT", {}, Exception("uq_kb_relationships_unique"))
         self.created.append(rel)
         return rel
+
+    async def exists(self, source_id: UUID, target_id: UUID, rel_type: str) -> bool:
+        """True when an identical edge was already recorded in this fake."""
+        return any(
+            getattr(rel, "source_id", None) == source_id
+            and getattr(rel, "target_id", None) == target_id
+            and getattr(rel, "rel_type", None) == rel_type
+            for rel in self.created
+        )
+
+
+class _FakeNestedSavepoint:
+    """Savepoint stand-in: records rollback vs release, never suppresses.
+
+    Mirrors ``AsyncSessionTransaction`` semantics the apply service
+    relies on: an exception passing through the context manager rolls
+    back only this savepoint (the outer session stays usable) and is
+    re-raised.
+    """
+
+    def __init__(self, owner: _FakeApplySession) -> None:
+        self._owner = owner
+        self.rolled_back = False
+
+    async def __aenter__(self) -> _FakeNestedSavepoint:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: object,
+    ) -> bool:
+        if exc_type is not None:
+            self.rolled_back = True
+            self._owner.rollbacks += 1
+        return False
+
+
+class _FakeApplySession:
+    """Minimal AsyncSession stand-in exposing only ``begin_nested``.
+
+    Records how many savepoints were begun and how many rolled back so
+    the batch-robustness tests can verify per-item SAVEPOINT semantics
+    without a real database.
+    """
+
+    def __init__(self) -> None:
+        self.begun = 0
+        self.rollbacks = 0
+
+    def begin_nested(self) -> _FakeNestedSavepoint:
+        self.begun += 1
+        return _FakeNestedSavepoint(self)
 
 
 class _FakeKBRepoForApply:

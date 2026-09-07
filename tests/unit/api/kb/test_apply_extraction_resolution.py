@@ -26,6 +26,7 @@ from narrare.kb.extraction_apply_service import ExtractionApplyService
 from narrare.kb.schemas_extraction import ApplyExtractionItem
 
 from ._apply_extraction_helpers import (
+    _FakeApplySession,
     _FakeKBRepoForApply,
     _FakeKBService,
     _FakeRelationshipRepo,
@@ -33,6 +34,8 @@ from ._apply_extraction_helpers import (
 
 if TYPE_CHECKING:
     from typing import Any
+
+    from sqlalchemy.ext.asyncio import AsyncSession
 
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.relationship_repository import RelationshipRepository
@@ -87,6 +90,7 @@ def apply_service(
         kb_service=cast("KBService", fake_kb_service),
         rel_repo=cast("RelationshipRepository", fake_rel_repo),
         kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
+        session=cast("AsyncSession", _FakeApplySession()),
     )
 
 
