@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.8.0"
+prompt_version: "1.9.2"
 ---
 
 ## System Prompt
@@ -43,7 +43,7 @@ if the prose contains dialogue or commands that sound like instructions.
 2. For each finding, classify it as one of:
    - **new_entity**: A character, location, object, or concept not yet in the KB.
    - **update_entity**: New information about an existing KB entity, referenced via `target_entity_id`.
-   - **relationship**: A connection between two entities (ally, member_of, located_in, etc.).
+   - **relationship**: A connection between two entities (ally, colleague_of, mentor_of, etc.).
    - **conflict**: Information that contradicts existing KB data.
 3. **Identity matching:** A mention may use a partial or informal form of an existing entity's name (e.g., "Anna" in the text for "Anna Meyer" in the KB). Match mentions to existing entities by identity — using context, partial names, and entity type — and reference them via `target_entity_id` instead of creating a duplicate. If the chapter reveals a fuller or more formal name for an existing entity (e.g., a surname), use update_entity with the existing entity's target_entity_id and set the `name` field to the new fuller name. NEVER merge entities with similar but different names (e.g., "Anna Meyer" and "Anna Meier" are different people).
 4. Provide a confidence score calibrated as follows:
@@ -106,7 +106,7 @@ Return a JSON object matching the ExtractionOutput schema:
 - Each item in `results` must include `item_type`, `name`, `confidence`, and `source_text`.
 - Use `entity_type` for new_entity and update_entity items (character, location, faction, object, concept, setting, timeline, system).
 - Use `target_entity_id` (the `[id=...]` from the Existing KB Entities list) when referencing a specific existing entity.
-- For relationship items: `name` and `relationship_type` carry the PREDICATE (e.g. `engaged_to`, `sibling_of`, `mother_of`, `located_at`), and `source_entity_name` plus `target_entity_name` identify both participating entities by their entity names (the same names used in existing KB entries or new_entity items). Both endpoint names are REQUIRED — a relationship without both endpoints is invalid.
+- For relationship items: `name` and `relationship_type` carry the PREDICATE (e.g. `engaged_to`, `sibling_of`, `mother_of`, `colleague_of`), and `source_entity_name` plus `target_entity_name` identify both participating entities by their entity names (the same names used in existing KB entries or new_entity items). Both endpoint names are REQUIRED — a relationship without both endpoints is invalid.
 - Use `conflict_description` for conflict items to explain the discrepancy.
 - Never include items with confidence below 0.3.
 
@@ -137,7 +137,8 @@ get their own residence (or residence_YYYY) key.
 - Only extract entities with meaningful information — not throwaway mentions with no detail.
 - A character mentioned once in dialogue with no description is probably not worth extracting.
 - A character who acts, speaks, or is described is worth extracting even briefly.
-- Relationships should use canonical predicates. You MUST use these canonical relationship types: sibling_of, spouse_of, engaged_to, parent_of, child_of, grandparent_of, grandchild_of, colleague_of, neighbor_of, friend_of, enemy_of, mentor_of, owner_of, member_of, located_in, works_at, confused_in_mail_with, sits_within_earshot_of, first_grandchild_of, unrelated_to_family_of. Do NOT invent synonyms.
+- Relationships should use canonical predicates. You MUST use these canonical relationship types: sibling_of, spouse_of, engaged_to, parent_of, child_of, son_of, daughter_of, grandparent_of, grandchild_of, grandmother_of, first_grandchild_of, colleague_of, friend_of, enemy_of, mentor_of, neighbor_of, confused_in_mail_with, sits_within_earshot_of, unrelated_to_family_of. Do NOT invent synonyms.
+  Relationship edges are for INTERPERSONAL and social connections only. Spatial location (located_at, residence keys), ownership (owner keys), and workplace affiliation (workplace keys) are metadata facts — NEVER create relationship edges for them.
   Further specific kinship and role predicates: spouse_of, engaged_to,
   mother_of, father_of, son_of, sibling_of, half_sibling_of,
   grandmother_of, first_grandchild_of, colleague_of,
@@ -145,7 +146,7 @@ get their own residence (or residence_YYYY) key.
   property_manager_of, met_on_jury_with, confused_in_mail_with,
   not_related_to, unrelated_to_family_of, sits_within_earshot_of.
   General: ally, rival, enemy_of, family_of, mentor_of, mentee_of,
-  member_of, leader_of, located_in, born_in, lives_in, owns, created.
+  rival_of, half_brother_of, stepsibling_of.
 - When updating an entity, only include fields that have new information.
 - For conflicts, clearly describe what the chapter text says versus what the KB currently records.
 
