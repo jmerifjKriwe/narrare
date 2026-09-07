@@ -244,3 +244,32 @@ class TestRejectEndpoint:
         assert after.json()["cache_hit"] is True
         assert after.json()["suggestions"] == []
         assert after.json()["stats"] == {"review": 0, "auto_eligible": 0, "suppressed": 0}
+
+    def test_endorse_after_reject_returns_409(self) -> None:
+        """Composition: a rejected pair can no longer be endorsed.
+
+        The re-validation re-score runs over the ledger-filtered analysis,
+        so the rejected id is simply absent → 409 — and nothing is merged.
+        """
+        world = EndorseWorld()
+        with TestClient(world.app) as client:
+            analyzed = client.post(
+                f"/api/v1/novels/{ENDORSE_NOVEL_ID}/kb/resolution/analyze",
+                json={"refresh": False},
+            )
+            suggestion_id = analyzed.json()["suggestions"][0]["suggestion_id"]
+
+            rejected = client.post(
+                f"/api/v1/novels/{ENDORSE_NOVEL_ID}/kb/resolution/suggestions/"
+                f"{suggestion_id}/reject"
+            )
+            endorsed = client.post(
+                f"/api/v1/novels/{ENDORSE_NOVEL_ID}/kb/resolution/suggestions/"
+                f"{suggestion_id}/endorse",
+                json={},
+            )
+
+        assert rejected.status_code == 204
+        assert endorsed.status_code == 409
+        assert endorsed.json()["code"] == "CONFLICT"
+        assert world.kb_repo.updates == []  # the rejected pair was never merged

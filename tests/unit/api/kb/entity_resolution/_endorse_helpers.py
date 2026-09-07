@@ -28,11 +28,6 @@ from narrare.kb.entity_resolution.dependencies import (
     get_resolution_dismissal_store,
 )
 from narrare.kb.entity_resolution.router import router as resolution_router
-from narrare.kb.entity_resolution.schemas_resolution import (
-    BandStats,
-    ResolutionAnalysisResponse,
-    SuggestionResponse,
-)
 
 from ._router_helpers import (
     NOVEL_ID,
@@ -220,10 +215,6 @@ async def fake_endorse_session() -> AsyncIterator[FakeEndorseSession]:
 # --- Factory helpers --------------------------------------------------------------
 
 
-async def stub_session_iter() -> AsyncIterator[object]:
-    yield object()
-
-
 def suggestion_id_for(a: UUID, b: UUID) -> str:
     """The stateless suggestion id: sha256(min ‖ max)[:16]."""
     import hashlib
@@ -266,26 +257,3 @@ def build_endorse_app(
     app.dependency_overrides[get_rel_repository] = lambda: rel_repo
     app.dependency_overrides[get_resolution_dismissal_store] = lambda: dismissed_store
     return app
-
-
-def analysis_response_for(
-    entry_a: FakeEndorseEntry, entry_b: FakeEndorseEntry
-) -> ResolutionAnalysisResponse:
-    """Canned single-suggestion response for a concrete entry pair."""
-    return ResolutionAnalysisResponse(
-        suggestions=[
-            SuggestionResponse(
-                suggestion_id=suggestion_id_for(entry_a.id, entry_b.id),
-                entry_a_id=min(entry_a.id, entry_b.id),
-                entry_b_id=max(entry_a.id, entry_b.id),
-                name_a=entry_a.name,
-                name_b=entry_b.name,
-                confidence=0.645,
-                band="REVIEW",
-                auto_merge_eligible=False,
-                signals=[],
-            )
-        ],
-        stats=BandStats(review=1, auto_eligible=0, suppressed=0),
-        cache_hit=False,
-    )
