@@ -23,7 +23,7 @@ import structlog
 from narrare.kb.entity_resolution.schemas_resolution import MergeConflict
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
 logger = structlog.get_logger(__name__)
 
@@ -129,3 +129,68 @@ def merge_metadata(
         if key_contributed:
             contributed.add(key)
     return merged, conflicts, sorted(contributed)
+
+
+def read_resolution_block(metadata: Mapping[str, object] | None) -> dict[str, object]:
+    """Tolerant read of a stored ``metadata["resolution"]`` block.
+
+    Returns:
+        The stored block, or ``{}`` when absent or malformed (never raises
+        — corrupted JSONB must not crash a merge).
+    """
+    raw = (metadata or {}).get("resolution")
+    return cast("dict[str, object]", raw) if isinstance(raw, dict) else {}
+
+
+def resolution_block(
+    prior: Mapping[str, object] | None,
+    conflicts: Sequence[MergeConflict],
+    *,
+    survivor_id: str,
+    merged_at: str,
+    suggestion_id: str,
+    confidence: float | None,
+) -> dict[str, object]:
+    """Build the survivor's ``metadata["resolution"]`` block (§6.2/§6.4).
+
+    Chained merges accumulate: prior ``conflicts`` are preserved and the
+    new ones appended (no silent loss — fix round 1), while
+    ``merged_into``/``merged_at``/``suggestion_id``/``confidence`` always
+    reflect the LATEST merge. Unknown prior fields pass through untouched.
+
+    Args:
+        prior: The survivor's previous ``resolution`` block (may be ``{}``).
+        conflicts: This merge's conflicts, serialized and appended.
+        survivor_id: Survivor id string (``merged_into`` of the latest merge).
+        merged_at: ISO-8601 timestamp of the latest merge.
+        suggestion_id: Suggestion identity of the latest merge.
+        confidence: Re-scored confidence of the latest merge.
+
+    Returns:
+        The merged audit block to store on the survivor.
+    """
+    block: dict[str, object] = dict(prior or {})
+    raw_conflicts = block.get("conflicts")
+    prior_conflicts: list[object] = (
+        cast("list[object]", raw_conflicts) if isinstance(raw_conflicts, list) else []
+    )
+    block["conflicts"] = [*prior_conflicts, *(c.model_dump() for c in conflicts)]
+    block["merged_into"] = survivor_id
+    block["merged_at"] = merged_at
+    block["suggestion_id"] = suggestion_id
+    block["confidence"] = confidence
+    return block
+
+
+def persisted_int(block: Mapping[str, object], key: str) -> int:
+    """Strictly-int field of a stored block (bools excluded); ``0`` when absent/malformed."""
+    value = block.get(key)
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def persisted_str_list(block: Mapping[str, object], key: str) -> list[str]:
+    """String-list field of a stored block; ``[]`` when absent/malformed."""
+    value = block.get(key)
+    if isinstance(value, list):
+        return [item for item in cast("list[object]", value) if isinstance(item, str)]
+    return []

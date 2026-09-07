@@ -270,6 +270,34 @@ def decide_rename(current_name: str, proposed_name: str) -> str | None:
     return proposed
 
 
+def pick_canonical_name(survivor_name: str, loser_name: str) -> str:
+    """Pick the canonical merged name (ADR-085 spec §6.1).
+
+    The longer name (casefold length) wins; ties keep the survivor's name.
+    ``decide_rename`` is consulted first and honoured when it agrees with
+    that rule — true for every substring pair (its downgrade guard keeps
+    the fuller name, "Anna" ⊂ "Anna Meyer" → "Anna Meyer"). For disjoint
+    names ``decide_rename`` unconditionally accepts the proposal, which
+    would rename the survivor to a SHORTER loser name ("Anna Meyer" + "Bea"
+    → "Bea"); the longer-name rule overrides it there (coordinator ruling,
+    Task 9 fix round 1).
+
+    Args:
+        survivor_name: The surviving entry's name.
+        loser_name: The deprecated entry's name.
+
+    Returns:
+        The canonical name for the merged entry.
+    """
+    survivor_cf = survivor_name.strip().casefold()
+    loser_cf = loser_name.strip().casefold()
+    longer = loser_name if len(loser_cf) > len(survivor_cf) else survivor_name
+    decided = decide_rename(survivor_name, loser_name)
+    if decided is not None and decided.strip().casefold() == longer.strip().casefold():
+        return decided
+    return longer
+
+
 def merge_metadata(
     existing: dict[str, object] | None,
     proposed: dict[str, object] | None,

@@ -109,7 +109,9 @@ class TestMetadataMerge:
         with capture_logs() as logs:
             result = await w.executor.execute(NOVEL, USER, w.plan())
         assert "provenance" not in w.survivor.metadata_
-        assert w.survivor.metadata_["resolution"] == {"conflicts": []}
+        resolution = cast("dict[str, object]", w.survivor.metadata_["resolution"])
+        assert resolution["conflicts"] == []
+        assert resolution["merged_into"] == str(w.survivor.id)
         assert w.survivor.metadata_["job"] == "smith"
         assert "provenance" not in result.merged_fact_keys
         assert any(e["event"] == "merge_reserved_key_skipped" for e in logs)
@@ -198,11 +200,65 @@ class TestResultNameRuling:
             survivor=_FakeEntry(name="Anna"),
             loser=_FakeEntry(name="Anna Meyer"),
         )
-        with pytest.raises(ValueError, match="decide_rename"):
+        with pytest.raises(ValueError, match="OQ-5"):
             await w.executor.execute(NOVEL, USER, w.plan(result_name="Anna Maria Meyer"))
         assert w.survivor.name == "Anna"
         assert w.kb_repo.updates == []
         assert w.session.begun == 0
+
+
+# --- Fix round 1: canonical-name ruling (longer name wins, §6.1 intent) -----------
+
+
+class TestCanonicalNameRuling:
+    async def test_disjoint_shorter_loser_name_does_not_rename_survivor(self) -> None:
+        w = _world(survivor=_FakeEntry(name="Anna Meyer"), loser=_FakeEntry(name="Bea"))
+        await w.executor.execute(NOVEL, USER, w.plan())
+        assert w.survivor.name == "Anna Meyer"
+
+    async def test_disjoint_longer_loser_name_becomes_canonical(self) -> None:
+        w = _world(survivor=_FakeEntry(name="Bea"), loser=_FakeEntry(name="Konstanze"))
+        await w.executor.execute(NOVEL, USER, w.plan())
+        assert w.survivor.name == "Konstanze"
+
+    async def test_equal_length_names_keep_survivor_name(self) -> None:
+        w = _world(survivor=_FakeEntry(name="Anne"), loser=_FakeEntry(name="Lena"))
+        await w.executor.execute(NOVEL, USER, w.plan())
+        assert w.survivor.name == "Anne"
+
+
+# --- Fix round 1: chained-merge conflict accumulation ------------------------------
+
+
+class TestChainedMerge:
+    async def test_prior_survivor_conflicts_are_preserved_and_appended(self) -> None:
+        prior_conflict = {
+            "key": "eye_color",
+            "survivor_value": "green",
+            "loser_value": "blue",
+        }
+        w = _world(
+            survivor=_FakeEntry(
+                name="Anna Meyer",
+                metadata={
+                    "gender": "female",
+                    "resolution": {
+                        "conflicts": [prior_conflict],
+                        "merged_into": "00000000-0000-0000-0000-000000000001",
+                    },
+                },
+            ),
+            loser=_FakeEntry(name="Anna", metadata={"gender": "other"}),
+        )
+        result = await w.executor.execute(NOVEL, USER, w.plan())
+        resolution = cast("dict[str, object]", w.survivor.metadata_["resolution"])
+        assert resolution["conflicts"] == [
+            prior_conflict,
+            {"key": "gender", "survivor_value": "female", "loser_value": "other"},
+        ]
+        assert resolution["merged_into"] == str(w.survivor.id)
+        assert resolution["suggestion_id"] == SUGGESTION_ID
+        assert [c.key for c in result.conflicts] == ["gender"]
 
 
 # --- §6.6 Idempotency -------------------------------------------------------------
@@ -226,6 +282,29 @@ class TestIdempotency:
         assert first.survivor_id == w.survivor.id
         assert len(w.kb_repo.updates) + len(w.rel_repo.updates) == writes_after_first
         assert any(e["event"] == "merge_already_applied" for e in logs)
+
+    async def test_replay_returns_the_persisted_original_counts(self) -> None:
+        other = uuid4()
+        w = _world(loser=_FakeEntry(name="Anna", metadata={"job": "smith"}))
+        w.rel_repo.add_edge(source_id=w.loser.id, target_id=other)
+        first = await w.executor.execute(NOVEL, USER, w.plan())
+        second = await w.executor.execute(NOVEL, USER, w.plan())
+        assert first.merged_fact_keys == second.merged_fact_keys == ["job"]
+        assert first.repointed_relationships == second.repointed_relationships == 1
+        assert first.skipped_relationships == second.skipped_relationships == 0
+
+    async def test_stale_plan_with_wrong_survivor_is_rejected(self) -> None:
+        w = _world()
+        third = _FakeEntry(name="Third Party")
+        w.kb_repo.seed(third)
+        await w.executor.execute(NOVEL, USER, w.plan())
+        stale = MergePlan(
+            survivor_id=third.id,
+            loser_id=w.loser.id,
+            suggestion_id=SUGGESTION_ID,
+        )
+        with pytest.raises(ValueError, match="stale"):
+            await w.executor.execute(NOVEL, USER, stale)
 
 
 # --- Plan validation ---------------------------------------------------------------

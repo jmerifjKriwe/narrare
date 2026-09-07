@@ -27,8 +27,11 @@ custom names raise ``ValueError`` (mapped to 422 at the HTTP seam).
 
 The whole write phase runs inside one ``session.begin_nested()`` savepoint
 (ExtractionApplyService pattern): any failure rolls the merge back cleanly
-and leaves the outer transaction usable. Re-executing an already-deprecated
-loser is a logged no-op returning the zeroed result shape (§6.6 idempotency).
+and leaves the outer transaction usable. Re-executing a loser already
+deprecated BY THIS SURVIVOR is a logged no-op replaying the persisted
+original counts (§6.6 idempotency, fix round 1); a deprecated loser under a
+different ``merged_into`` is a stale plan and rejected. Chained merges
+accumulate the survivor's ``resolution.conflicts`` — never clobbered.
 """
 
 from __future__ import annotations
@@ -38,8 +41,14 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.kb._extraction_resolution import decide_rename
-from narrare.kb.entity_resolution._merge_metadata import merge_metadata
+from narrare.kb._extraction_resolution import pick_canonical_name
+from narrare.kb.entity_resolution._merge_metadata import (
+    merge_metadata,
+    persisted_int,
+    persisted_str_list,
+    read_resolution_block,
+    resolution_block,
+)
 from narrare.kb.entity_resolution.schemas_resolution import (
     MergeExecutionResult,
     MergePlan,
@@ -142,6 +151,9 @@ class MergeExecutor:
         survivor = await self._load_scoped(novel_id, plan.survivor_id)
         loser = await self._load_scoped(novel_id, plan.loser_id)
         if loser.status == "deprecated":
+            prior = read_resolution_block(loser.metadata_)
+            if prior.get("merged_into") != str(plan.survivor_id):
+                raise ValueError("loser is already deprecated under a different merge — stale plan")
             logger.info(
                 "merge_already_applied",
                 novel_id=str(novel_id),
@@ -153,27 +165,22 @@ class MergeExecutor:
             return MergeExecutionResult(
                 survivor_id=plan.survivor_id,
                 loser_id=plan.loser_id,
-                merged_fact_keys=[],
-                repointed_relationships=0,
-                skipped_relationships=0,
+                merged_fact_keys=persisted_str_list(prior, "merged_fact_keys"),
+                repointed_relationships=persisted_int(prior, "repointed_relationships"),
+                skipped_relationships=persisted_int(prior, "skipped_relationships"),
                 conflicts=[],
             )
         if survivor.status == "deprecated":
             raise ValueError("survivor is deprecated — stale plan, re-run the analysis")
-        auto_name = decide_rename(survivor.name, loser.name)
-        if plan.result_name is not None and plan.result_name != auto_name:
+        canonical = pick_canonical_name(survivor.name, loser.name)
+        if plan.result_name is not None and plan.result_name != canonical:
             raise ValueError(
-                "result_name must equal the decide_rename auto-result "
-                f"({auto_name!r}); custom names are rejected (OQ-5)"
+                "result_name must equal the canonical name auto-pick "
+                f"({canonical!r}); custom names are rejected (OQ-5)"
             )
         try:
             async with self._session.begin_nested():
-                return await self._apply(
-                    plan,
-                    survivor,
-                    loser,
-                    final_name=self._final_name(plan, survivor, loser, auto_name),
-                )
+                return await self._apply(plan, survivor, loser, final_name=canonical)
         except Exception as exc:
             logger.error(
                 "merge_execution_failed",
@@ -193,19 +200,20 @@ class MergeExecutor:
             raise NotFoundError("KBEntry", identifier=str(entry_id))
         return entry
 
-    @staticmethod
-    def _final_name(
-        plan: MergePlan, survivor: KBEntry, loser: KBEntry, auto_name: str | None
-    ) -> str:
-        """Canonical survivor name: plan echo of the auto-result, or the auto-result."""
-        return plan.result_name if plan.result_name is not None else auto_name or survivor.name
-
     async def _apply(
         self, plan: MergePlan, survivor: KBEntry, loser: KBEntry, *, final_name: str
     ) -> MergeExecutionResult:
         """Perform all merge writes inside the caller's open savepoint."""
         merged_meta, conflicts, merged_keys = merge_metadata(survivor.metadata_, loser.metadata_)
-        merged_meta["resolution"] = {"conflicts": [c.model_dump() for c in conflicts]}
+        merged_at = datetime.now(tz=UTC).isoformat()
+        merged_meta["resolution"] = resolution_block(
+            read_resolution_block(merged_meta),
+            conflicts,
+            survivor_id=str(survivor.id),
+            merged_at=merged_at,
+            suggestion_id=plan.suggestion_id,
+            confidence=plan.confidence,
+        )
         survivor_data: dict[str, object] = {
             "metadata_": merged_meta,
             "embeddings_dirty": True,
@@ -214,14 +222,17 @@ class MergeExecutor:
             survivor_data["name"] = final_name
         await self._kb_repo.update(survivor, survivor_data)
 
-        repointed = await self._repoint_edges(survivor, loser)
+        repointed, skipped = await self._repoint_edges(survivor, loser)
 
         loser_meta: dict[str, object] = dict(loser.metadata_ or {})
         loser_meta["resolution"] = {
             "merged_into": str(survivor.id),
-            "merged_at": datetime.now(tz=UTC).isoformat(),
+            "merged_at": merged_at,
             "suggestion_id": plan.suggestion_id,
             "confidence": plan.confidence,
+            "merged_fact_keys": merged_keys,
+            "repointed_relationships": repointed,
+            "skipped_relationships": skipped,
         }
         await self._kb_repo.update(loser, {"status": "deprecated", "metadata_": loser_meta})
         logger.info(
@@ -229,16 +240,16 @@ class MergeExecutor:
             survivor_id=str(survivor.id),
             loser_id=str(loser.id),
             merged_fact_keys=merged_keys,
-            repointed_relationships=repointed[0],
-            skipped_relationships=repointed[1],
+            repointed_relationships=repointed,
+            skipped_relationships=skipped,
             conflicts=len(conflicts),
         )
         return MergeExecutionResult(
             survivor_id=survivor.id,
             loser_id=loser.id,
             merged_fact_keys=merged_keys,
-            repointed_relationships=repointed[0],
-            skipped_relationships=repointed[1],
+            repointed_relationships=repointed,
+            skipped_relationships=skipped,
             conflicts=conflicts,
         )
 
