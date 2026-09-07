@@ -20,6 +20,7 @@ from uuid import uuid4
 
 import structlog
 
+from narrare.kb._extraction_position import resolve_chapter_position
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
 
 if TYPE_CHECKING:
@@ -251,6 +252,7 @@ class ExtractionService:
         novel_id: UUID,
         user_id: UUID,
         items: list[ApplyExtractionItem],
+        chapter_id: UUID | None = None,
     ) -> ApplyExtractionResponse:
         """Apply endorsed extraction items to the Knowledge Base.
 
@@ -260,6 +262,10 @@ class ExtractionService:
             novel_id: Novel to apply items to.
             user_id: Requesting user.
             items: Endorsed extraction items to apply.
+            chapter_id: Chapter the items were extracted from, when known;
+                its ordering position is resolved via the chapter
+                repository for provenance stamping (ADR-085 §5). ``None``
+                (old clients / old run artifacts) applies unchanged.
 
         Returns:
             ApplyExtractionResponse with created and updated entries.
@@ -282,8 +288,10 @@ class ExtractionService:
             kb_repo=self._kb_repo,
             session=self._session,
         )
+        chapter_position = await resolve_chapter_position(self._chapter_repo, novel_id, chapter_id)
         return await apply_service.apply(
             novel_id=novel_id,
             user_id=user_id,
             items=items,
+            chapter_position=chapter_position,
         )

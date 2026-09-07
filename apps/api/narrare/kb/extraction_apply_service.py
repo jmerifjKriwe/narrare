@@ -79,6 +79,7 @@ class ExtractionApplyService:
         novel_id: UUID,
         user_id: UUID,
         items: list[ApplyExtractionItem],
+        chapter_position: int | None = None,
     ) -> ApplyExtractionResponse:
         """Apply all endorsed items, collecting results and skips.
 
@@ -86,6 +87,12 @@ class ExtractionApplyService:
             novel_id: Novel to apply items to.
             user_id: Requesting user.
             items: Endorsed extraction items to apply.
+            chapter_position: Chapter's position in the novel's chapter
+                ordering, resolved by the caller via the chapter
+                repository (ADR-085 §5/§9(b)). ``None`` (absent
+                ``chapter_id``) applies items exactly as before — no
+                provenance is stamped and stored provenance is never
+                altered.
 
         Returns:
             ApplyExtractionResponse with created_entries, updated_entries,
@@ -104,6 +111,7 @@ class ExtractionApplyService:
                         novel_id=novel_id,
                         user_id=user_id,
                         item=item,
+                        chapter_position=chapter_position,
                         created_entries=created_entries,
                         updated_entries=updated_entries,
                     )
@@ -138,6 +146,7 @@ class ExtractionApplyService:
         item: ApplyExtractionItem,
         created_entries: list[ApplyExtractionEntryResult],
         updated_entries: list[ApplyExtractionEntryResult],
+        chapter_position: int | None = None,
     ) -> str | None:
         """Apply a single endorsed extraction item.
 
@@ -147,6 +156,8 @@ class ExtractionApplyService:
             item: The extraction item to apply.
             created_entries: Accumulator for newly created entries.
             updated_entries: Accumulator for updated entries.
+            chapter_position: Resolved chapter position for provenance
+                stamping, or ``None`` when the request carries no chapter.
 
         Returns:
             Machine-readable skip reason, or ``None`` when applied.
@@ -159,6 +170,7 @@ class ExtractionApplyService:
                 item=item,
                 kb_service=self._kb_service,
                 created_entries=created_entries,
+                chapter_position=chapter_position,
             )
             return None
         if item.item_type == "update_entity":
@@ -169,6 +181,7 @@ class ExtractionApplyService:
                 kb_repo=self._kb_repo,
                 kb_service=self._kb_service,
                 updated_entries=updated_entries,
+                chapter_position=chapter_position,
             )
         if item.item_type == "relationship":
             return await self._apply_relationship(novel_id, item, created_entries)

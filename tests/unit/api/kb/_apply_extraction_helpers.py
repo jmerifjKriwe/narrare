@@ -215,3 +215,29 @@ class _FakeKBRepoForApply:
         self, *args: object, **kwargs: object
     ) -> tuple[list[dict[str, Any]], int]:
         return [], 0
+
+
+class _FakeChapter:
+    """Minimal chapter stand-in exposing only the ordering position."""
+
+    def __init__(self, position: int) -> None:
+        self.position = position
+
+
+class _FakeChapterRepo:
+    """Fake ChapterRepositoryProtocol recording ``get_by_id`` calls.
+
+    Serves the provenance-stamping tests (ADR-085 P2): positions come
+    from the repository, never from client-supplied numbers.
+    """
+
+    def __init__(self) -> None:
+        self.chapters: dict[UUID, _FakeChapter] = {}
+        self.calls: list[UUID] = []
+
+    def seed(self, chapter_id: UUID, position: int) -> None:
+        self.chapters[chapter_id] = _FakeChapter(position=position)
+
+    async def get_by_id(self, chapter_id: UUID, novel_id: UUID) -> _FakeChapter | None:
+        self.calls.append(chapter_id)
+        return self.chapters.get(chapter_id)

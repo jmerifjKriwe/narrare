@@ -7,6 +7,7 @@ Request/response models for the KB extraction apply flow.
 from __future__ import annotations
 
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -61,6 +62,16 @@ class ApplyExtractionRequest(BaseModel):
     """
 
     items: list[ApplyExtractionItem]
+
+    chapter_id: UUID | None = None
+    """Chapter the endorsed items were extracted from, when known.
+
+    Optional for backward compatibility (spec ADR-085 §9(d)): absent
+    ``chapter_id`` means zero behavior change — the apply flow then
+    never writes provenance. When present, the chapter *position* is
+    resolved server-side via the chapter repository and stamped into
+    the reserved ``metadata["provenance"]`` block (ADR-085 §5).
+    """
 
 
 class ApplyExtractionEntryResult(BaseModel):

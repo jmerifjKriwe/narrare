@@ -44,6 +44,15 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
+RESERVED_METADATA_KEYS: frozenset[str] = frozenset({"provenance", "resolution"})
+"""Metadata keys owned by the platform, never by LLM proposals.
+
+``provenance`` is maintained exclusively by the apply flow (ADR-085 §5);
+``resolution`` is reserved for the merge executor (ADR-085 §6). Both are
+stripped from ``proposed_content`` before any composition so proposals
+can never forge or clobber them.
+"""
+
 
 @dataclass(frozen=True)
 class ResolutionDecision:
@@ -59,6 +68,14 @@ class ResolutionDecision:
     """Existing entry metadata composed with the item's ``proposed_content``
     (merge-not-clobber), or ``None`` when the item proposes no metadata
     (leave the stored metadata untouched)."""
+
+    existing_metadata: dict[str, object] | None = None
+    """Copy of the target entry's stored metadata before composition.
+
+    The apply flow needs the pre-merge state to advance the reserved
+    ``provenance`` block even when the item proposes no metadata —
+    rebuilding from storage avoids clobbering existing keys.
+    """
 
 
 async def resolve_update_target(
@@ -92,8 +109,34 @@ async def resolve_update_target(
     return ResolutionDecision(
         target_id=entry.id,
         rename_to=decide_rename(current_name=entry.name, proposed_name=item.name),
-        merged_metadata=merge_metadata(entry.metadata_, item.proposed_content),
+        merged_metadata=merge_metadata(
+            entry.metadata_,
+            strip_reserved_keys(item.proposed_content),
+        ),
+        existing_metadata=dict(entry.metadata_) if entry.metadata_ else None,
     )
+
+
+def strip_reserved_keys(
+    proposed: dict[str, object] | None,
+) -> dict[str, object] | None:
+    """Drop platform-reserved metadata keys from an LLM proposal.
+
+    Every ``proposed_content`` consumption site (merge composition AND the
+    create path) must route through this guard: proposals are model output
+    and can never own ``provenance``/``resolution`` (ADR-085 §5). Returns a
+    shallow copy — the caller's dict is never mutated. ``None``/empty
+    proposals pass through unchanged.
+
+    Args:
+        proposed: The item's ``proposed_content`` (may be ``None``/empty).
+
+    Returns:
+        A copy without reserved keys, or the input when ``None``/empty.
+    """
+    if not proposed:
+        return proposed
+    return {key: value for key, value in proposed.items() if key not in RESERVED_METADATA_KEYS}
 
 
 async def _find_candidate(
