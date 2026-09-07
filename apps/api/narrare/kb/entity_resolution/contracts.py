@@ -1,20 +1,17 @@
-"""Entity-resolution sub-package contracts (ADR-085 P3, spec §3).
+"""Entity-resolution sub-package contracts (ADR-085 P3/P4, spec §3).
 
 Protocol definitions for the KB entity resolution lifecycle, written
-before their implementations (RULE-03). ``SnapshotBuilderProtocol`` is
-implemented by this slice (P3); ``ResolutionAnalyzerProtocol``,
-``MergeExecutorProtocol``, and ``UncertainBandAdjudicatorProtocol`` are
-declared with spec §3 signatures verbatim so the Protocol surface is
-stable from day one — their implementations land in later slices.
+before their implementations (RULE-03). ``SnapshotBuilderProtocol`` and
+``ResolutionAnalyzerProtocol`` are implemented by the P3 slice;
+``MergeExecutorProtocol`` by P4; ``UncertainBandAdjudicatorProtocol``
+is declared with spec §3 signatures verbatim so the Protocol surface is
+stable from day one — its implementation lands in a later slice.
 
-The result types the future protocols reference (``MergePlan``,
-``MergeExecutionResult``, ``PairCandidate``, ``Adjudication``) remain
-provisionally bound to ``object``: their concrete Pydantic shapes are
-designed together with the implementing slices and land in later
-modules, at which point these aliases are replaced by real imports.
-``ResolutionAnalysis`` is already discharged — the analyzer protocol
-resolves to ``ResolutionAnalysisResponse`` from
-``schemas_resolution.py``.
+Result-type bindings are discharged incrementally: ``ResolutionAnalysis``,
+``MergePlan``, and ``MergeExecutionResult`` resolve to their concrete
+Pydantic shapes from ``schemas_resolution.py``. ``PairCandidate`` and
+``Adjudication`` remain provisionally bound to ``object`` until the T12
+adjudicator slice defines them.
 """
 
 from __future__ import annotations
@@ -25,14 +22,22 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from uuid import UUID
 
-    from narrare.kb.entity_resolution.schemas_resolution import ResolutionAnalysisResponse
+    from narrare.kb.entity_resolution.schemas_resolution import (
+        MergeExecutionResult as MergeExecutionResultSchema,
+    )
+    from narrare.kb.entity_resolution.schemas_resolution import (
+        MergePlan as MergePlanSchema,
+    )
+    from narrare.kb.entity_resolution.schemas_resolution import (
+        ResolutionAnalysisResponse,
+    )
     from narrare_core.kb.resolution.models import EntitySnapshot
 
 # --- Result-type bindings (discharged incrementally by implementing slices) ---
 
 type ResolutionAnalysis = ResolutionAnalysisResponse
-type MergeExecutionResult = object
-type MergePlan = object
+type MergeExecutionResult = MergeExecutionResultSchema
+type MergePlan = MergePlanSchema
 type PairCandidate = object
 type Adjudication = object
 

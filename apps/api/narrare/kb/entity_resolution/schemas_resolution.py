@@ -1,8 +1,10 @@
-"""KB entity resolution request/response schemas (ADR-085 P3, spec §2/§7).
+"""KB entity resolution request/response schemas (ADR-085 P3/P4, spec §2/§6/§7).
 
-Pydantic models for the detection-analysis surface. ``ResolutionAnalysis``
-in ``contracts.py`` is discharged by ``ResolutionAnalysisResponse`` — the
-analyzer protocol's result type is the concrete response shape defined here.
+Pydantic models for the detection-analysis surface and the merge executor.
+``ResolutionAnalysis`` in ``contracts.py`` is discharged by
+``ResolutionAnalysisResponse`` — the analyzer protocol's result type is the
+concrete response shape defined here. ``MergePlan``/``MergeExecutionResult``
+discharge the remaining merge aliases in ``contracts.py`` (spec §6).
 Field names ``suggestions``/``stats``/``cache_hit`` are spec §7 contract.
 """
 
@@ -102,3 +104,72 @@ class ResolutionAnalysisResponse(BaseModel):
 
     cache_hit: bool
     """Whether this response came from the analysis cache."""
+
+
+# --- Merge executor (ADR-085 P4, spec §6) ----------------------------------------
+
+
+class MergeConflict(BaseModel):
+    """One scalar metadata conflict resolved in the survivor's favor (§6.2).
+
+    Recorded in the survivor's ``metadata["resolution"]["conflicts"]`` and
+    in :attr:`MergeExecutionResult.conflicts` — merge-not-clobber, the
+    loser's value is preserved here and in the deprecated loser row (never
+    silently lost).
+    """
+
+    key: str
+    """Dotted metadata path of the conflict, e.g. ``gender`` or ``address.city``."""
+
+    survivor_value: object
+    """Value kept (the survivor's)."""
+
+    loser_value: object
+    """Value overridden (the loser's) — preserved in this record, not lost."""
+
+
+class MergePlan(BaseModel):
+    """Endorsed merge order (spec §6 input)."""
+
+    survivor_id: UUID
+    """Entry that keeps its row and absorbs the loser."""
+
+    loser_id: UUID
+    """Entry deprecated by the merge — never deleted (§6.4)."""
+
+    suggestion_id: str
+    """Stateless suggestion identity this plan was endorsed from (§7)."""
+
+    confidence: float | None = None
+    """Re-scored pair confidence at endorse time; recorded in the loser's
+    ``resolution`` block. ``None`` only for executor-level callers that did
+    not re-validate (the endorse endpoint always supplies it)."""
+
+    result_name: str | None = None
+    """Optional canonical name. Per PO ruling OQ-5 this is accepted ONLY
+    when it exactly equals the ``decide_rename`` auto-result for the pair;
+    explicit custom names are rejected (422 at the HTTP seam)."""
+
+
+class MergeExecutionResult(BaseModel):
+    """Outcome of one executed merge (spec §6)."""
+
+    survivor_id: UUID
+    """Entry that absorbed the loser."""
+
+    loser_id: UUID
+    """Entry deprecated by the merge."""
+
+    merged_fact_keys: list[str]
+    """Top-level loser metadata keys incorporated without conflict (added,
+    recursively merged, list-unioned, or already equal)."""
+
+    repointed_relationships: int
+    """Edges re-pointed from the loser to the survivor (§6.3)."""
+
+    skipped_relationships: int
+    """Edges left untouched: ``uq_kb_relationships_unique`` collisions and
+    would-be self-references (logged per RULE-11, never deleted)."""
+
+    conflicts: list[MergeConflict]
+    """Scalar conflicts resolved in the survivor's favor (§6.2)."""
