@@ -1,15 +1,15 @@
 """Capability driver mapping — the cap_id -> driver class registry.
 
-``benchmark.capabilities`` holds the 26-entry inventory table; THIS
+``benchmark.capabilities`` holds the inventory entry table; THIS
 module owns which driver CLASS serves each entry (plan Task 7). Plan
 Tasks 8-10 implemented the drivers direction by direction (Task 8 the
 whole ``in`` direction, Task 9 the whole ``out`` direction, Task 10 the
-whole ``check`` direction) — the registry is COMPLETE: every entry maps
-to a real driver class (completion pin in ``test_capabilities.py``;
-the ``PlaceholderDriver`` stand-in was removed with Task 10). An id
-missing from the map (a future registry addition without a driver)
-surfaces as a ``KeyError``/``DriverNotRegisteredError`` — loud, never a
-silent no-op.
+whole ``check`` direction) — the ``PlaceholderDriver`` stand-in was
+removed with Task 10. Transitional (ADR-085 P6): CAP-IN-10 is registered
+with its driver PENDING (plan Task 14 lands ``ResolutionDriver`` here);
+until then ``DRIVERS`` holds every driven entry and an id in
+``DRIVERS_PENDING`` surfaces as a ``KeyError``/``DriverNotRegisteredError``
+— loud, never a silent no-op.
 """
 
 from __future__ import annotations
@@ -43,7 +43,8 @@ DRIVERS: Final[dict[str, type[CapabilityDriver]]] = {
     **OUT_DIRECTION_DRIVERS,
     **CHECK_DIRECTION_DRIVERS,
 }
-"""cap_id → driver class — ALL 26 registry entries (Task 10 completion)."""
+"""cap_id → driver class — every driven registry entry (26 while CAP-IN-10
+awaits its Task-14 driver; see ``DRIVERS_PENDING``)."""
 
 
 def driver_for(cap_id: str) -> type[CapabilityDriver]:

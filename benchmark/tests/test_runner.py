@@ -68,7 +68,7 @@ def test_run_wires_all_stages_in_order(tmp_path: Path) -> None:
     ]
 
 
-def test_run_without_filter_drives_all_26_in_registry_order(tmp_path: Path) -> None:
+def test_run_without_filter_drives_every_registry_entry_in_order(tmp_path: Path) -> None:
     wired = Wiring(tmp_path, capabilities=())
 
     run(wired.request, wired.deps)

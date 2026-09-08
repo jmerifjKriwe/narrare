@@ -1,8 +1,18 @@
-"""THE capability registry — all 26 inventoried entries as literal data.
+"""THE capability registry — all 27 inventoried entries, assembled.
 
-Hand-curated literal table (plan Task 7 decision): deterministic and
-reviewable, held honest by ``test_capabilities.py`` against the inventory
-files (set-equality, exactly 26 entries, directions, duplicate-freeness).
+RULE-04 split (plan Task 13 fix, ADR-085 P6): the direction entry tables
+outgrew the 400-line hard limit and moved to
+``benchmark._registry_entries_in`` / ``benchmark._registry_entries_out``;
+the shared entry schema (type aliases + dataclasses) moved to
+``benchmark._registry_schema`` (entry tables instantiate it at import
+time, so one extra hop keeps table→schema acyclic). THIS module stays
+the public import surface: every schema name, ``CAPABILITIES``,
+``DRIVERS_PENDING``, and ``UNAVAILABLE_SURFACES`` remain importable from
+here unchanged (``benchmark.capabilities`` re-exports to the wider
+world; benchmark tests import ``DRIVERS_PENDING`` directly).
+
+Held honest by ``test_capabilities.py`` against the inventory files
+(set-equality, exactly 27 entries, directions, duplicate-freeness).
 
 Per entry: ``cap_id``, ``direction`` (in/out/check), the invocation
 ``shape`` (rest/sse/poll, api-surface.md §7), the SSE ``sse_flavor``
@@ -11,294 +21,56 @@ under ``/api/v1``, from the inventory's API path field / map §7), the
 ``output_schema`` — a ≤80-char pointer derived from the inventory's
 ``| Output artifact |`` field, citing the entry's own cap id — and the
 ``driver_name`` — the NAME of the driver class that plan Tasks 8-10
-implement and map in ``benchmark/drivers``. All 26 entries are mounted
-routes, so none carries ``unavailable_reason``.
+implement and map in ``benchmark/drivers``. All 27 entries are mounted
+routes, so none carries ``unavailable_reason``. ``llm_backed`` records
+honestly whether the driven path may call an LLM (``None`` = not
+recorded for the pre-ADR-085 entries, where the inventory's tri-state
+``LLM-backed`` row is the SSOT); ``requires`` lists ingest-precondition
+cap ids a driver must satisfy first (ADR-085 P6, CAP-IN-10).
 
-Unmounted surfaces (``UNAVAILABLE_SURFACES``): KB-009 merge/dedup and
-CONS-001 chapter↔KB consistency are inventory FINDINGS (register
-Findings 3 and 1), not entries — they have no CAP ids and are therefore
-deliberately NOT in the 26-entry table (that would break the
+``DRIVERS_PENDING``: registry ids whose driver class is not mapped YET
+(CAP-IN-10 only — plan Task 14 lands ``ResolutionDriver``).
+``driver_for`` keeps raising ``DriverNotRegisteredError`` for them —
+loud, never a silent no-op; the driver-completion pins subtract this
+set until Task 14 empties it.
+
+Unmounted surfaces (``UNAVAILABLE_SURFACES``): the retired KB-009
+merge/dedup and CONS-001 chapter↔KB consistency are inventory FINDINGS
+(register Findings 3 and 1), not entries — they have no CAP ids and are
+therefore deliberately NOT in the entry table (that would break the
 completeness test and invent ids). They are recorded here explicitly
 with their 404-at-runtime reasons so the run artifacts can honestly list
-them as ``SKIPPED(unavailable)`` — never silently omitted.
+them as ``SKIPPED(unavailable)`` — never silently omitted. KB-009 is
+superseded by CAP-IN-10 (ADR-085 D5): the capability returned on the
+mounted entity-resolution surface.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Final, Literal
+from typing import Final
 
-Direction = Literal["in", "out", "check"]
-InvocationShape = Literal["rest", "sse", "poll"]
-SseFlavor = Literal["A", "B"]
-
-
-@dataclass(frozen=True)
-class EndpointSpec:
-    """One method-pinned endpoint (path template relative to ``/api/v1``)."""
-
-    method: str
-    path: str
-
-
-@dataclass(frozen=True)
-class CapabilitySpec:
-    """One inventoried capability: identity, shape, endpoints, output, driver."""
-
-    cap_id: str
-    direction: Direction
-    shape: InvocationShape
-    sse_flavor: SseFlavor | None
-    driver_name: str
-    output_schema: str
-    endpoints: tuple[EndpointSpec, ...]
-    unavailable_reason: str | None = None
-
-
-@dataclass(frozen=True)
-class UnavailableSurface:
-    """An inventoried capability whose routes 404 at runtime (unmounted)."""
-
-    label: str
-    direction: Direction
-    endpoints: tuple[EndpointSpec, ...]
-    reason: str
-
-
-_CAP_IN: Final[tuple[CapabilitySpec, ...]] = (
-    CapabilitySpec(
-        cap_id="CAP-IN-01",
-        direction="in",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="ExtractionDriver",
-        output_schema="extraction result JSON + apply response (updated KB entries) (CAP-IN-01)",
-        endpoints=(
-            EndpointSpec("POST", "/novels/{novel_id}/kb/extract/{chapter_id}"),
-            EndpointSpec("POST", "/novels/{novel_id}/kb/extract/apply"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-IN-02",
-        direction="in",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="AssistSessionDriver",
-        output_schema="session JSON with AI suggestions; complete returns entry ID (CAP-IN-02)",
-        endpoints=(
-            EndpointSpec("POST", "/novels/{novel_id}/kb/sessions"),
-            EndpointSpec("POST", "/novels/{novel_id}/kb/sessions/{session_id}/suggest/{field_key}"),
-            EndpointSpec("POST", "/novels/{novel_id}/kb/sessions/{session_id}/interview"),
-            EndpointSpec("POST", "/novels/{novel_id}/kb/sessions/{session_id}/enhance"),
-            EndpointSpec("PATCH", "/novels/{novel_id}/kb/sessions/{session_id}/fields/{field_key}"),
-            EndpointSpec("POST", "/novels/{novel_id}/kb/sessions/{session_id}/complete"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-IN-03",
-        direction="in",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="ImproveAnalysisDriver",
-        output_schema="improvement suggestions + apply response (updated entry) (CAP-IN-03)",
-        endpoints=(
-            EndpointSpec("POST", "/novels/{novel_id}/kb/entities/{entry_id}/improve"),
-            EndpointSpec("POST", "/novels/{novel_id}/kb/entities/{entry_id}/improve/apply"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-IN-04",
-        direction="in",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="WorldbuildingDriver",
-        output_schema="analysis report + apply response with created KB relationships (CAP-IN-04)",
-        endpoints=(
-            EndpointSpec("POST", "/novels/{novel_id}/kb/worldbuilding/analyze"),
-            EndpointSpec("POST", "/novels/{novel_id}/kb/worldbuilding/apply"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-IN-05",
-        direction="in",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="ManualAuthoringDriver",
-        output_schema="created/updated KBEntry / SeriesKBEntry / KBRelationship (CAP-IN-05)",
-        endpoints=(
-            EndpointSpec("POST", "/novels/{novel_id}/kb/entries"),
-            EndpointSpec("PATCH", "/novels/{novel_id}/kb/entries/{entry_id}"),
-            EndpointSpec("POST", "/series/{series_id}/kb"),
-            EndpointSpec("PATCH", "/series/{series_id}/kb/{entry_id}"),
-            EndpointSpec("POST", "/novels/{novel_id}/kb/relationships"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-IN-06",
-        direction="in",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="ScopeMoveDriver",
-        output_schema="scope-moved SeriesKBEntry/NovelKBEntry; JoinPreview/JoinResult (CAP-IN-06)",
-        endpoints=(
-            EndpointSpec("POST", "/novels/{novel_id}/kb/{entry_id}/promote"),
-            EndpointSpec("POST", "/novels/{novel_id}/kb/{entry_id}/demote"),
-            EndpointSpec("POST", "/series/{series_id}/novels"),
-            EndpointSpec("POST", "/series/{series_id}/novels/{novel_id}/apply"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-IN-07",
-        direction="in",
-        shape="sse",
-        sse_flavor="A",
-        driver_name="TimelineExtractionDriver",
-        output_schema="SSE stream of extracted expressions; confirmed TimelineEvent (CAP-IN-07)",
-        endpoints=(
-            EndpointSpec("POST", "/planning/timeline/{novel_id}/extract"),
-            EndpointSpec("POST", "/planning/timeline/{novel_id}/extract/confirm"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-IN-08",
-        direction="in",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="WikiRefreshDriver",
-        output_schema="WikiRefreshResponse (summary status); mark-stale affected count (CAP-IN-08)",
-        endpoints=(
-            EndpointSpec("POST", "/novels/{novel_id}/wiki/summaries/{entity_id}/refresh"),
-            EndpointSpec("POST", "/novels/{novel_id}/wiki/mark-stale"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-IN-09",
-        direction="in",
-        shape="sse",
-        sse_flavor="B",
-        driver_name="CharacterVoiceDriver",
-        output_schema="SSE stream B: progress/result/done; voice analysis to KB (CAP-IN-09)",
-        endpoints=(EndpointSpec("POST", "/analysis/character-voice/{novel_id}"),),
-    ),
+from benchmark._registry_entries_in import CAP_IN
+from benchmark._registry_entries_out import CAP_OUT
+from benchmark._registry_schema import (
+    CapabilitySpec,
+    Direction,
+    EndpointSpec,
+    InvocationShape,
+    SseFlavor,
+    UnavailableSurface,
 )
 
-_CAP_OUT: Final[tuple[CapabilitySpec, ...]] = (
-    CapabilitySpec(
-        cap_id="CAP-OUT-01",
-        direction="out",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="EntryBrowseDriver",
-        output_schema="paginated KBEntryListResponse + autocomplete name list (CAP-OUT-01)",
-        endpoints=(
-            EndpointSpec("GET", "/novels/{novel_id}/kb/entries"),
-            EndpointSpec("GET", "/novels/{novel_id}/kb/entries/autocomplete"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-OUT-02",
-        direction="out",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="EntrySearchDriver",
-        output_schema="KBEntryListResponse filtered by substring match (CAP-OUT-02)",
-        endpoints=(EndpointSpec("GET", "/novels/{novel_id}/kb/entries/search"),),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-OUT-03",
-        direction="out",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="EntityDetailDriver",
-        output_schema="entities+relations JSON (CAP-OUT-03)",
-        endpoints=(
-            EndpointSpec("GET", "/novels/{novel_id}/kb/entries/{entry_id}"),
-            EndpointSpec("GET", "/novels/{novel_id}/kb/entries/{entry_id}/relationships"),
-            EndpointSpec("GET", "/novels/{novel_id}/kb/relationships/inverse-suggestion"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-OUT-04",
-        direction="out",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="GraphDriver",
-        output_schema="GraphResponse (nodes/edges/statistics) + ShortestPathResponse (CAP-OUT-04)",
-        endpoints=(
-            EndpointSpec("GET", "/novels/{novel_id}/kb/graph"),
-            EndpointSpec("GET", "/novels/{novel_id}/kb/graph/shortest-path"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-OUT-05",
-        direction="out",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="SeriesCanonReadDriver",
-        output_schema="SeriesKBEntry list / single entry (CAP-OUT-05)",
-        endpoints=(
-            EndpointSpec("GET", "/series/{series_id}/kb"),
-            EndpointSpec("GET", "/series/{series_id}/kb/{entry_id}"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-OUT-06",
-        direction="out",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="WikiReadDriver",
-        output_schema="Wiki summary/chapter/index responses (overview + health) (CAP-OUT-06)",
-        endpoints=(
-            EndpointSpec("GET", "/novels/{novel_id}/wiki/summaries"),
-            EndpointSpec("GET", "/novels/{novel_id}/wiki/summaries/{entity_id}"),
-            EndpointSpec("GET", "/novels/{novel_id}/wiki/chapters/{chapter_id}/summary"),
-            EndpointSpec("GET", "/novels/{novel_id}/wiki/index"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-OUT-07",
-        direction="out",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="TimelineReadDriver",
-        output_schema="TimelineEventCRUDResponse list / single; CharacterAgeReport (CAP-OUT-07)",
-        endpoints=(
-            EndpointSpec("GET", "/planning/timeline/{novel_id}/events"),
-            EndpointSpec("GET", "/planning/timeline/{novel_id}/events/{event_id}"),
-            EndpointSpec("GET", "/planning/timeline/{novel_id}/character-ages"),
-        ),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-OUT-08",
-        direction="out",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="ProactiveSuggestionsDriver",
-        output_schema="ranked KBSuggestionResponse list, max_results <= 100 (CAP-OUT-08)",
-        endpoints=(EndpointSpec("GET", "/novels/{novel_id}/kb/suggestions/{chapter_id}"),),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-OUT-09",
-        direction="out",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="ReferenceResolutionDriver",
-        output_schema="ResolveReferencesResponse (linked refs + rendered HTML) (CAP-OUT-09)",
-        endpoints=(EndpointSpec("POST", "/novels/{novel_id}/kb/resolve-references"),),
-    ),
-    CapabilitySpec(
-        cap_id="CAP-OUT-10",
-        direction="out",
-        shape="rest",
-        sse_flavor=None,
-        driver_name="TemplatesDriver",
-        output_schema="TemplateInfoResponse list / TemplateDetailResponse (CAP-OUT-10)",
-        endpoints=(
-            EndpointSpec("GET", "/novels/{novel_id}/kb/templates"),
-            EndpointSpec("GET", "/novels/{novel_id}/kb/templates/{entity_type}"),
-        ),
-    ),
-)
+__all__ = [
+    "CAPABILITIES",
+    "DRIVERS_PENDING",
+    "UNAVAILABLE_SURFACES",
+    "CapabilitySpec",
+    "Direction",
+    "EndpointSpec",
+    "InvocationShape",
+    "SseFlavor",
+    "UnavailableSurface",
+]
 
 _CAP_CHK: Final[tuple[CapabilitySpec, ...]] = (
     CapabilitySpec(
@@ -369,8 +141,15 @@ _CAP_CHK: Final[tuple[CapabilitySpec, ...]] = (
     ),
 )
 
-CAPABILITIES: Final[tuple[CapabilitySpec, ...]] = (*_CAP_IN, *_CAP_OUT, *_CAP_CHK)
-"""The 26 inventory entries, in inventory order (in / out / check)."""
+CAPABILITIES: Final[tuple[CapabilitySpec, ...]] = (*CAP_IN, *CAP_OUT, *_CAP_CHK)
+"""The 27 inventory entries, in inventory order (in / out / check)."""
+
+DRIVERS_PENDING: Final[frozenset[str]] = frozenset({"CAP-IN-10"})
+"""Registry ids whose driver class is not mapped YET (plan Task 14 lands
+``ResolutionDriver`` in ``benchmark/drivers``). ``driver_for`` keeps
+raising ``DriverNotRegisteredError`` for these ids — loud, never a
+silent no-op; the driver-completion pins subtract this set until Task 14
+empties it."""
 
 UNAVAILABLE_SURFACES: Final[tuple[UnavailableSurface, ...]] = (
     UnavailableSurface(
@@ -378,9 +157,10 @@ UNAVAILABLE_SURFACES: Final[tuple[UnavailableSurface, ...]] = (
         direction="in",
         endpoints=(EndpointSpec("POST", "/novels/{novel_id}/kb/merge"),),
         reason=(
-            "router kb/router_merge.py is never included in _app/main.py — "
-            "POST /kb/merge returns 404 at runtime (inventory 01-in Finding 1, "
-            "register Finding 3); driven as SKIPPED(unavailable)"
+            "router kb/router_merge.py was deleted (ADR-085 D5, plan "
+            "Task 11) — POST /kb/merge returns 404 at runtime; superseded "
+            "by CAP-IN-10 (inventory 01-in Finding 1, register Finding "
+            "3); driven as SKIPPED(unavailable)"
         ),
     ),
     UnavailableSurface(

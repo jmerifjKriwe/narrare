@@ -1,18 +1,20 @@
-"""Unit tests for the 26-entry capability registry (``benchmark.capabilities``).
+"""Unit tests for the 27-entry capability registry (``benchmark.capabilities``).
 
 Registry completeness (plan Task 7): the literal table must match the
 inventory files 1:1 — the ``### CAP-...`` headings of
 ``benchmark/inventory/0{1,2,3}-*.md`` are parsed here via regex and
-asserted for set-equality (exactly 26), per-entry direction (each
+asserted for set-equality (exactly 27), per-entry direction (each
 entry's own ``| Direction |`` table row), and duplicate-freeness. The
-two unmounted routers (KB-009 merge, CONS-001 chapter↔KB consistency)
-are inventory *findings* without CAP ids — the tests assert they are
-present as ``UNAVAILABLE_SURFACES`` (with their 404 reasons) and absent
-from the 26-entry table, so ``SKIPPED(unavailable)`` semantics live
-outside the inventory table without breaking set-equality. Driver
-mapping tests pin the Task-10 completion contract: all 26 entries map
-to real driver classes whose names match the registry ``driver_name``
-(placeholder stand-ins are gone).
+retired KB-009 merge router and the unmounted CONS-001 chapter↔KB
+consistency router are inventory *findings* without CAP ids — the tests
+assert they are present as ``UNAVAILABLE_SURFACES`` (with their 404
+reasons) and absent from the entry table, so ``SKIPPED(unavailable)``
+semantics live outside the inventory table without breaking
+set-equality. Driver mapping tests pin the Task-10 completion contract:
+every driven entry maps to a real driver class whose name matches the
+registry ``driver_name`` (placeholder stand-ins are gone) — CAP-IN-10 is
+the one transitional exception (registered by ADR-085 P6 Task 13, driver
+pending plan Task 14, tracked in ``DRIVERS_PENDING``).
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ from benchmark.capabilities import (
     UnknownCapabilityError,
     capability,
 )
+from benchmark.capabilities_registry import DRIVERS_PENDING
 from benchmark.drivers import DRIVERS, DriverNotRegisteredError, driver_for
 
 INVENTORY_DIR = Path(__file__).resolve().parents[1] / "inventory"
@@ -63,12 +66,12 @@ def _inventory_entries() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-def test_registry_matches_inventory_headings_set_exact_and_count_26() -> None:
+def test_registry_matches_inventory_headings_set_exact_and_count_27() -> None:
     inventory = _inventory_entries()
     registry = [spec.cap_id for spec in CAPABILITIES]
 
     assert set(registry) == set(inventory)
-    assert len(inventory) == 26
+    assert len(inventory) == 27
     assert len(registry) == len(set(registry)), "duplicate cap ids in the registry table"
 
 
@@ -155,12 +158,17 @@ def test_unavailable_endpoint_paths_are_absent_from_the_registry_table() -> None
 
 
 # ---------------------------------------------------------------------------
-# Driver mapping — the Task-10 completion pin (all 26 real, zero placeholders)
+# Driver mapping — the Task-10 completion pin (every driven entry real,
+# zero placeholders; CAP-IN-10 transitional until plan Task 14)
 # ---------------------------------------------------------------------------
 
 
 def test_every_registry_id_resolves_through_driver_for() -> None:
     for spec in CAPABILITIES:
+        if spec.cap_id in DRIVERS_PENDING:
+            with pytest.raises(DriverNotRegisteredError, match=spec.cap_id):
+                driver_for(spec.cap_id)
+            continue
         assert driver_for(spec.cap_id) is DRIVERS[spec.cap_id]
 
 
@@ -169,12 +177,15 @@ def test_unknown_driver_id_raises_driver_not_registered() -> None:
         driver_for("CAP-NOPE-99")
 
 
-def test_t10_completion_all_26_entries_real_and_names_pinned() -> None:
-    """Completion pin (plan Task 10 acceptance): every entry maps to the
-    registry driver class; no direction map is missing."""
-    assert set(DRIVERS) == {spec.cap_id for spec in CAPABILITIES}
+def test_t10_completion_every_driven_entry_real_and_names_pinned() -> None:
+    """Completion pin (plan Task 10 acceptance, ADR-085 P6 transition):
+    every entry except ``DRIVERS_PENDING`` maps to the registry driver
+    class; the pending set is loud, never a silent no-op."""
+    assert set(DRIVERS) == {spec.cap_id for spec in CAPABILITIES} - DRIVERS_PENDING
     assert len(DRIVERS) == 26
     for spec in CAPABILITIES:
+        if spec.cap_id in DRIVERS_PENDING:
+            continue
         driver = DRIVERS[spec.cap_id]
         assert driver.__name__ == spec.driver_name
         assert driver.__module__.startswith("benchmark.drivers.")

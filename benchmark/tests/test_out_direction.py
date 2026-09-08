@@ -19,6 +19,7 @@ import httpx
 import pytest
 
 from benchmark.capabilities import CAPABILITIES, capability
+from benchmark.capabilities_registry import DRIVERS_PENDING
 from benchmark.drivers import DRIVERS
 from benchmark.drivers.base import CapabilityStatus
 from benchmark.drivers.out_direction import (
@@ -78,9 +79,14 @@ def test_t9_carry_forward_all_ten_replaced_and_names_pinned() -> None:
 
 
 def test_t9_carry_forward_check_entries_completed_by_task_10() -> None:
-    """Task 10 completed the boundary: the remaining set is empty."""
+    """Task 10 completed the boundary: the remaining set is empty.
+
+    CAP-IN-10 (ADR-085 P6) is excluded as the transitional
+    ``DRIVERS_PENDING`` entry — its driver is plan Task 14."""
     remaining = [
-        spec.cap_id for spec in CAPABILITIES if DRIVERS[spec.cap_id].__name__ != spec.driver_name
+        spec.cap_id
+        for spec in CAPABILITIES
+        if spec.cap_id not in DRIVERS_PENDING and DRIVERS[spec.cap_id].__name__ != spec.driver_name
     ]
     assert remaining == []
 

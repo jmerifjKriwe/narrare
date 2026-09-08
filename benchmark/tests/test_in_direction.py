@@ -7,7 +7,8 @@ CAP-IN-05..09 tests live in ``test_in_direction_surfaces.py``; shared
 fixtures in ``in_direction_helpers.py``. The T7 carry-forward acceptance
 is pinned here: all nine ``DRIVERS`` entries are real classes whose
 names match the registry ``driver_name`` (Task 10 completed the registry
-— see ``test_capabilities.py`` for the 26-entry completion pin).
+— see ``test_capabilities.py`` for the completion pin; CAP-IN-10 is the
+transitional ``DRIVERS_PENDING`` exception, ADR-085 P6).
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ import httpx
 import pytest
 
 from benchmark.capabilities import CAPABILITIES, capability
+from benchmark.capabilities_registry import DRIVERS_PENDING
 from benchmark.drivers import DRIVERS
 from benchmark.drivers.base import CapabilityStatus
 from benchmark.drivers.in_direction import (
@@ -65,10 +67,12 @@ if TYPE_CHECKING:
 
 
 def test_t8_carry_forward_all_nine_replaced_and_names_pinned() -> None:
+    # CAP-IN-10 is the transitional DRIVERS_PENDING exception (ADR-085 P6
+    # Task 13 registered it; plan Task 14 lands ResolutionDriver here).
     assert len(IN_DIRECTION_DRIVERS) == 9
-    assert set(IN_DIRECTION_DRIVERS) == {
-        spec.cap_id for spec in CAPABILITIES if spec.direction == "in"
-    }
+    assert set(IN_DIRECTION_DRIVERS) == (
+        {spec.cap_id for spec in CAPABILITIES if spec.direction == "in"} - DRIVERS_PENDING
+    )
     for cap_id, driver in IN_DIRECTION_DRIVERS.items():
         spec = capability(cap_id)
         assert spec.direction == "in"
