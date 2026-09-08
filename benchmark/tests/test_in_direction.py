@@ -2,13 +2,13 @@
 
 Covers CAP-IN-01..04 (the ``benchmark.drivers.in_direction`` half: happy
 path sequence, request payload shape, parsed-record fields, missing-target
-SKIP, plus the HTTP-500→ERROR matrix over ALL nine drivers). The
-CAP-IN-05..09 tests live in ``test_in_direction_surfaces.py``; shared
-fixtures in ``in_direction_helpers.py``. The T7 carry-forward acceptance
-is pinned here: all nine ``DRIVERS`` entries are real classes whose
-names match the registry ``driver_name`` (Task 10 completed the registry
-— see ``test_capabilities.py`` for the completion pin; CAP-IN-10 is the
-transitional ``DRIVERS_PENDING`` exception, ADR-085 P6).
+SKIP, plus the HTTP-500→ERROR matrix over ALL ten drivers) and CAP-IN-10
+(the Task-14 ``ResolutionDriver``). The CAP-IN-05..09 tests live in
+``test_in_direction_surfaces.py``; shared fixtures in
+``in_direction_helpers.py``. The T7 carry-forward acceptance is pinned
+here: all ten ``DRIVERS`` entries are real classes whose names match the
+registry ``driver_name`` (Task 14 completed the direction — see
+``test_capabilities.py`` for the 27-entry completion pin).
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ import httpx
 import pytest
 
 from benchmark.capabilities import CAPABILITIES, capability
-from benchmark.capabilities_registry import DRIVERS_PENDING
 from benchmark.drivers import DRIVERS
 from benchmark.drivers.base import CapabilityStatus
 from benchmark.drivers.in_direction import (
@@ -31,6 +30,7 @@ from benchmark.drivers.in_direction import (
     ExtractionDriver,
     ImproveAnalysisDriver,
     ManualAuthoringDriver,
+    ResolutionDriver,
     ScopeMoveDriver,
     TimelineExtractionDriver,
     WikiRefreshDriver,
@@ -38,8 +38,12 @@ from benchmark.drivers.in_direction import (
 )
 from benchmark.drivers.in_records import (
     AssistSessionRecord,
+    BandStats,
     ExtractionRecord,
     ImproveRecord,
+    MergeResult,
+    ResolutionRecord,
+    ResolutionSuggestion,
     WorldbuildingRecord,
 )
 from benchmark.tests.client_helpers import ScriptedApi, make_client
@@ -49,6 +53,8 @@ from benchmark.tests.in_direction_helpers import (
     EXTRACT_BODY,
     IMPROVE_APPLY_BODY,
     KB,
+    RESOLUTION_ANALYZE_BODY,
+    RESOLUTION_MERGE_BODIES,
     SESSION_BODY,
     WORLDBUILDING_APPLY_BODY,
     context,
@@ -62,17 +68,15 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------
-# T7 carry-forward acceptance: the 9 replaced entries are real and pinned
+# T7 carry-forward acceptance: the 10 replaced entries are real and pinned
 # ---------------------------------------------------------------------------
 
 
-def test_t8_carry_forward_all_nine_replaced_and_names_pinned() -> None:
-    # CAP-IN-10 is the transitional DRIVERS_PENDING exception (ADR-085 P6
-    # Task 13 registered it; plan Task 14 lands ResolutionDriver here).
-    assert len(IN_DIRECTION_DRIVERS) == 9
-    assert set(IN_DIRECTION_DRIVERS) == (
-        {spec.cap_id for spec in CAPABILITIES if spec.direction == "in"} - DRIVERS_PENDING
-    )
+def test_t8_carry_forward_all_ten_replaced_and_names_pinned() -> None:
+    assert len(IN_DIRECTION_DRIVERS) == 10
+    assert set(IN_DIRECTION_DRIVERS) == {
+        spec.cap_id for spec in CAPABILITIES if spec.direction == "in"
+    }
     for cap_id, driver in IN_DIRECTION_DRIVERS.items():
         spec = capability(cap_id)
         assert spec.direction == "in"
@@ -259,6 +263,78 @@ def test_worldbuilding_driver_applies_connection_suggestions() -> None:
 
 
 # ---------------------------------------------------------------------------
+# CAP-IN-10 — ResolutionDriver: analyze then endorse every suggestion
+# ---------------------------------------------------------------------------
+
+
+def test_resolution_driver_analyzes_then_endorses_every_suggestion() -> None:
+    routes = {
+        f"POST {KB}/resolution/analyze": RESOLUTION_ANALYZE_BODY,
+        f"POST {KB}/resolution/suggestions/sug-1/endorse": RESOLUTION_MERGE_BODIES["sug-1"],
+        f"POST {KB}/resolution/suggestions/sug-2/endorse": RESOLUTION_MERGE_BODIES["sug-2"],
+    }
+
+    api, events, parsed = invoke(ResolutionDriver, routes)
+
+    assert api.paths() == [
+        f"POST {KB}/resolution/analyze",
+        f"POST {KB}/resolution/suggestions/sug-1/endorse",
+        f"POST {KB}/resolution/suggestions/sug-2/endorse",
+    ]
+    assert api.calls[0].body == {"refresh": False}
+    assert api.calls[1].body is None  # no body — §6.1 deterministic survivor
+    assert api.calls[2].body is None
+    assert isinstance(parsed, ResolutionRecord)
+    assert parsed == ResolutionRecord(
+        suggestions=(
+            ResolutionSuggestion(
+                suggestion_id="sug-1",
+                entry_a_id="entry-1",
+                entry_b_id="entry-9",
+                name_a="Anna Meyer",
+                name_b="Anna Meyer",
+                confidence=0.93,
+                band="REVIEW",
+                auto_merge_eligible=False,
+            ),
+            ResolutionSuggestion(
+                suggestion_id="sug-2",
+                entry_a_id="entry-2",
+                entry_b_id="entry-4",
+                name_a="HafenCity",
+                name_b="Hafen City",
+                confidence=0.97,
+                band="AUTO_ELIGIBLE",
+                auto_merge_eligible=True,
+            ),
+        ),
+        stats=BandStats(review=1, auto_eligible=1, suppressed=4),
+        cache_hit=False,
+        merges=(
+            MergeResult(
+                survivor_id="entry-1",
+                loser_id="entry-9",
+                merged_fact_keys=("description",),
+                repointed_relationships=1,
+                skipped_relationships=0,
+            ),
+            MergeResult(
+                survivor_id="entry-2",
+                loser_id="entry-4",
+                merged_fact_keys=(),
+                repointed_relationships=0,
+                skipped_relationships=2,
+            ),
+        ),
+    )
+    assert [event.step for event in events] == [
+        "CAP-IN-10:analyze",
+        "CAP-IN-10:endorse",
+        "CAP-IN-10:endorse",
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Structural targets — missing ingest-discovered ids are SKIPPED, not made up
 # ---------------------------------------------------------------------------
 
@@ -283,7 +359,7 @@ def test_missing_target_is_skipped_structural(
 # Error paths — HTTP 500 becomes ERROR with a reason, for every driver
 # ---------------------------------------------------------------------------
 
-_ALL_NINE: tuple[tuple[Callable[[], CapabilityDriver], str, dict[str, str]], ...] = (
+_ALL_TEN: tuple[tuple[Callable[[], CapabilityDriver], str, dict[str, str]], ...] = (
     (ExtractionDriver, "CAP-IN-01", {"chapter_id": "chapter-1"}),
     (AssistSessionDriver, "CAP-IN-02", {}),
     (ImproveAnalysisDriver, "CAP-IN-03", {"entry_id": "entry-1"}),
@@ -293,13 +369,14 @@ _ALL_NINE: tuple[tuple[Callable[[], CapabilityDriver], str, dict[str, str]], ...
     (TimelineExtractionDriver, "CAP-IN-07", {}),
     (WikiRefreshDriver, "CAP-IN-08", {"entry_id": "entry-1"}),
     (CharacterVoiceDriver, "CAP-IN-09", {}),
+    (ResolutionDriver, "CAP-IN-10", {}),
 )
 
 
 @pytest.mark.parametrize(
     ("driver", "cap_id", "targets"),
-    _ALL_NINE,
-    ids=[cap_id for _driver, cap_id, _targets in _ALL_NINE],
+    _ALL_TEN,
+    ids=[cap_id for _driver, cap_id, _targets in _ALL_TEN],
 )
 def test_http_500_surfaces_as_error_result(
     driver: Callable[[], CapabilityDriver], cap_id: str, targets: dict[str, str]

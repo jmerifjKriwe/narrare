@@ -35,6 +35,9 @@ Schema sources (``apps/api/narrare/`` unless noted):
   (``wiki/router.py``).
 - ``VoiceProfile`` / ``CharacterVoiceRecord`` — ``CharacterVoiceResult``
   payloads of the flavor-B stream (``analysis/schemas_character_voice.py``).
+- ``ResolutionSuggestion`` / ``BandStats`` / ``MergeResult`` —
+  ``SuggestionResponse`` / ``BandStats`` / ``MergeExecutionResult``
+  (``kb/entity_resolution/schemas_resolution.py``).
 """
 
 from __future__ import annotations
@@ -197,3 +200,47 @@ class CharacterVoiceRecord:
 
     characters: tuple[VoiceProfile, ...]
     progress_messages: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ResolutionSuggestion:
+    """One surfaced merge suggestion (``SuggestionResponse``, spec §7)."""
+
+    suggestion_id: str
+    entry_a_id: str
+    entry_b_id: str
+    name_a: str
+    name_b: str
+    confidence: float
+    band: str
+    auto_merge_eligible: bool
+
+
+@dataclass(frozen=True)
+class BandStats:
+    """Per-band pair counts of one analysis run (``BandStats``, spec §7)."""
+
+    review: int
+    auto_eligible: int
+    suppressed: int
+
+
+@dataclass(frozen=True)
+class MergeResult:
+    """One endorsed merge (``MergeExecutionResult``, spec §6)."""
+
+    survivor_id: str
+    loser_id: str
+    merged_fact_keys: tuple[str, ...]
+    repointed_relationships: int
+    skipped_relationships: int
+
+
+@dataclass(frozen=True)
+class ResolutionRecord:
+    """CAP-IN-10: detection analysis + endorse-all merge outcomes."""
+
+    suggestions: tuple[ResolutionSuggestion, ...]
+    stats: BandStats
+    cache_hit: bool
+    merges: tuple[MergeResult, ...]

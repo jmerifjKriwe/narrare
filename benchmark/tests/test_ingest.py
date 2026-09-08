@@ -5,7 +5,9 @@ Fake-client orchestration over the scripted MockTransport backend
 Pinned here: the exact call sequence (novel once, then per chapter
 create → content → extract → endorse), the documented novel payload,
 endorse-all candidate mapping (``confidence``/``conflict_description``
-dropped — not ApplyExtractionItem fields, map §4.3.2), pacing
+dropped — not ApplyExtractionItem fields, map §4.3.2) with the request
+carrying ``chapter_id`` — the chapter just extracted — so the server
+stamps entry provenance (ADR-085 §9(d), plan Task 14), pacing
 (``PACING_SECONDS`` only on inter-chapter boundaries, incremental only),
 import mode = identical sequence without waits (map §7: no bulk import
 endpoint exists), caller-error validation before any HTTP traffic, and
@@ -140,6 +142,19 @@ def test_endorse_all_maps_every_candidate_dropping_non_apply_fields() -> None:
         "source_text": "Peter kam abends von einem Hafen.",
     }
     assert all("confidence" not in item and "conflict_description" not in item for item in items)
+
+
+def test_endorse_request_carries_the_extracted_chapter_id() -> None:
+    """Provenance threading (ADR-085 §9(d), plan Task 14): each apply body
+    names the chapter whose extraction the items endorse."""
+    api, _events, _result = run_ingest("incremental")
+
+    apply_calls = [call for call in api.calls if call.path == apply_path()]
+
+    assert [cast("dict[str, object]", call.body)["chapter_id"] for call in apply_calls] == [
+        chapter_id(0),
+        chapter_id(1),
+    ]
 
 
 def test_result_reports_novel_and_per_chapter_counts() -> None:
@@ -304,7 +319,7 @@ def test_empty_candidate_set_still_records_empty_endorsement() -> None:
 
     apply_calls = [call for call in api.calls if call.path == apply_path()]
     assert len(apply_calls) == len(CHAPTERS)
-    assert apply_calls[0].body == {"items": []}
+    assert apply_calls[0].body == {"items": [], "chapter_id": chapter_id(0)}
     assert result.chapters[0].candidates == 0
     assert result.chapters[0].endorsed == 0
     assert result.chapters[0].created_entries == 1  # scripted apply still returns entry-1

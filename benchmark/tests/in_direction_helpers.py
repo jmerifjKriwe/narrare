@@ -67,6 +67,60 @@ APPLY_BODY: dict[str, object] = {
     "created_entries": [{"id": "entry-9", "name": "Anna Meyer", "entity_type": "person"}],
     "updated_entries": [{"id": "entry-2", "name": "HafenCity", "entity_type": "location"}],
 }
+RESOLUTION_ANALYZE_BODY: dict[str, object] = {
+    "suggestions": [
+        {
+            "suggestion_id": "sug-1",
+            "entry_a_id": "entry-1",
+            "entry_b_id": "entry-9",
+            "name_a": "Anna Meyer",
+            "name_b": "Anna Meyer",
+            "confidence": 0.93,
+            "band": "REVIEW",
+            "auto_merge_eligible": False,
+            "signals": [],
+            "adjudication_note": None,
+        },
+        {
+            "suggestion_id": "sug-2",
+            "entry_a_id": "entry-2",
+            "entry_b_id": "entry-4",
+            "name_a": "HafenCity",
+            "name_b": "Hafen City",
+            "confidence": 0.97,
+            "band": "AUTO_ELIGIBLE",
+            "auto_merge_eligible": True,
+            "signals": [],
+            "adjudication_note": None,
+        },
+    ],
+    "stats": {"review": 1, "auto_eligible": 1, "suppressed": 4},
+    "cache_hit": False,
+}
+RESOLUTION_MERGE_BODIES: dict[str, dict[str, object]] = {
+    "sug-1": {
+        "survivor_id": "entry-1",
+        "loser_id": "entry-9",
+        "merged_fact_keys": ["description"],
+        "repointed_relationships": 1,
+        "skipped_relationships": 0,
+        "conflicts": [],
+    },
+    "sug-2": {
+        "survivor_id": "entry-2",
+        "loser_id": "entry-4",
+        "merged_fact_keys": [],
+        "repointed_relationships": 0,
+        "skipped_relationships": 2,
+        "conflicts": [
+            {
+                "key": "address.city",
+                "survivor_value": "Hamburg",
+                "loser_value": "Hansestadt",
+            }
+        ],
+    },
+}
 SESSION_BODY: dict[str, object] = {
     "id": "session-1",
     "novel_id": NOVEL_ID,

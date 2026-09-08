@@ -28,11 +28,11 @@ recorded for the pre-ADR-085 entries, where the inventory's tri-state
 ``LLM-backed`` row is the SSOT); ``requires`` lists ingest-precondition
 cap ids a driver must satisfy first (ADR-085 P6, CAP-IN-10).
 
-``DRIVERS_PENDING``: registry ids whose driver class is not mapped YET
-(CAP-IN-10 only — plan Task 14 lands ``ResolutionDriver``).
-``driver_for`` keeps raising ``DriverNotRegisteredError`` for them —
-loud, never a silent no-op; the driver-completion pins subtract this
-set until Task 14 empties it.
+``DRIVERS_PENDING``: registry ids whose driver class is not mapped
+YET — EMPTY since plan Task 14 landed ``ResolutionDriver`` (all 27
+entries are driven). The constant stays as the loud-gap home for future
+registry additions: ids listed here make ``driver_for`` raise
+``DriverNotRegisteredError`` — never a silent no-op.
 
 Unmounted surfaces (``UNAVAILABLE_SURFACES``): the retired KB-009
 merge/dedup and CONS-001 chapter↔KB consistency are inventory FINDINGS
@@ -144,12 +144,12 @@ _CAP_CHK: Final[tuple[CapabilitySpec, ...]] = (
 CAPABILITIES: Final[tuple[CapabilitySpec, ...]] = (*CAP_IN, *CAP_OUT, *_CAP_CHK)
 """The 27 inventory entries, in inventory order (in / out / check)."""
 
-DRIVERS_PENDING: Final[frozenset[str]] = frozenset({"CAP-IN-10"})
-"""Registry ids whose driver class is not mapped YET (plan Task 14 lands
-``ResolutionDriver`` in ``benchmark/drivers``). ``driver_for`` keeps
-raising ``DriverNotRegisteredError`` for these ids — loud, never a
-silent no-op; the driver-completion pins subtract this set until Task 14
-empties it."""
+DRIVERS_PENDING: Final[frozenset[str]] = frozenset()
+"""Registry ids whose driver class is not mapped YET — empty since plan
+Task 14 landed ``ResolutionDriver`` (ADR-085 P6): all 27 entries are
+driven. The constant stays as the loud-gap home for future registry
+additions; ids listed here make ``driver_for`` raise
+``DriverNotRegisteredError`` — never a silent no-op."""
 
 UNAVAILABLE_SURFACES: Final[tuple[UnavailableSurface, ...]] = (
     UnavailableSurface(

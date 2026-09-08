@@ -273,8 +273,11 @@ def endorse_all(
     v1 strategy: endorse all, deterministically — the strategy is part of
     the measured pipeline (plan Task 6). The candidate→apply mapping drops
     the ExtractionItem-only fields; rejection = omission has no role here.
-    Returns the apply responses' entry ids (created, updated) — the T8
-    rider's run-target source (``runner_targets``).
+    The request body carries ``chapter_id`` — the chapter just extracted —
+    so the server resolves its position and stamps entry provenance
+    (ADR-085 §9(d), plan Task 14). Returns the apply responses' entry ids
+    (created, updated) — the T8 rider's run-target source
+    (``runner_targets``).
     """
     items = [
         {field: candidate[field] for field in _APPLY_FIELDS if field in candidate}
@@ -288,7 +291,7 @@ def endorse_all(
         chapter_id=chapter_id,
         method="POST",
         path=f"/api/v1/novels/{novel_id}/kb/extract/apply",
-        request_body={"items": items},
+        request_body={"items": items, "chapter_id": chapter_id},
     )
     return _entry_ids(body, chapter_id)
 

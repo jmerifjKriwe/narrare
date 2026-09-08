@@ -2,12 +2,13 @@
 
 This module owns the four drivers on the core KB routes
 (``/novels/{novel_id}/kb/...``): extraction (01), assist session (02),
-improve (03), worldbuilding (04). The remaining five IN drivers live in
-``benchmark.drivers.in_direction_surfaces``; THIS module is the
-direction's registration facade — ``IN_DIRECTION_DRIVERS`` (the cap_id →
-driver class map wired into ``benchmark.drivers``) is assembled here
-from both halves (RULE-04 split, facade precedent:
-``benchmark.capabilities``).
+improve (03), worldbuilding (04). The remaining IN drivers live in
+their own RULE-04 modules — beyond-KB surfaces (05..09) in
+``benchmark.drivers.in_direction_surfaces``, entity resolution (10) in
+``benchmark.drivers.in_resolution``; THIS module is the direction's
+registration facade — ``IN_DIRECTION_DRIVERS`` (the cap_id → driver
+class map wired into ``benchmark.drivers``) is assembled here from all
+three halves (facade precedent: ``benchmark.capabilities``).
 
 Shared rules (module docstring of ``benchmark.drivers.in_parsing``):
 every driver invokes exactly its registry ``EndpointSpec`` surface via
@@ -54,6 +55,7 @@ from benchmark.drivers.in_records import (
     ImproveRecord,
     WorldbuildingRecord,
 )
+from benchmark.drivers.in_resolution import ResolutionDriver
 from benchmark.drivers.shapes import invoke_rest
 
 if TYPE_CHECKING:
@@ -78,6 +80,7 @@ __all__ = [
     "ExtractionDriver",
     "ImproveAnalysisDriver",
     "ManualAuthoringDriver",
+    "ResolutionDriver",
     "ScopeMoveDriver",
     "TimelineExtractionDriver",
     "WikiRefreshDriver",
@@ -299,5 +302,6 @@ IN_DIRECTION_DRIVERS: Final[dict[str, type[CapabilityDriver]]] = {
     "CAP-IN-07": TimelineExtractionDriver,
     "CAP-IN-08": WikiRefreshDriver,
     "CAP-IN-09": CharacterVoiceDriver,
+    "CAP-IN-10": ResolutionDriver,
 }
 """cap_id → driver class for the whole ``in`` direction (registry-mirrored)."""

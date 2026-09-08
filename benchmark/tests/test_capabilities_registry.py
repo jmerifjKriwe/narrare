@@ -1,7 +1,8 @@
 """CAP-IN-10 registry-consistency tests (plan Task 13, ADR-085 P6).
 
-The entity-resolution capability enters the registry one task BEFORE its
-driver (plan Task 14 lands ``ResolutionDriver``) — these tests pin the
+The entity-resolution capability entered the registry one task BEFORE
+its driver (Task 13 registered it; Task 14 has since landed
+``ResolutionDriver``) — these tests pin the
 entry's honesty contract: identity/direction per the ``01-in.md``
 section, ``llm_backed`` truthfully recorded (the deterministic detection
 core is what the metrics score, but the REVIEW band may call the
@@ -10,8 +11,9 @@ METHOD-PINNED endpoint parity with the LIVE app route table (mirrors
 ``tests/unit/api/kb/test_route_table.py``: the OpenAPI paths of
 ``create_app(test_mode=True)`` — mounted routes, not merely decorated
 ones; the unmounted KB-009 merge router is the drift class this guards
-against). The transitional driver gap is pinned to exactly CAP-IN-10 so
-it cannot silently grow.
+against). The driver gap is CLOSED (plan Task 14 landed
+``ResolutionDriver``): the pin asserts ``DRIVERS_PENDING`` stays empty
+so a future registry addition cannot silently grow a driver-less entry.
 """
 
 from __future__ import annotations
@@ -87,24 +89,24 @@ def test_registry_covers_exactly_the_live_resolution_surface() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Transitional driver gap — exactly CAP-IN-10 until plan Task 14
+# Driver gap closed — the pending pin is EMPTY since Task 14
 # ---------------------------------------------------------------------------
 
 
-def test_cap_in_10_is_the_only_entry_waiting_for_its_driver() -> None:
-    assert frozenset({"CAP-IN-10"}) == DRIVERS_PENDING
+def test_drivers_pending_is_empty_after_the_resolution_driver_landed() -> None:
+    """Plan Task 14 landed ``ResolutionDriver``: no entry waits."""
+    assert frozenset() == DRIVERS_PENDING
 
 
-def test_cap_in_10_driver_resolution_stays_loud() -> None:
-    """driver_for keeps raising for the pending id — never a silent no-op."""
-    from benchmark.drivers import DriverNotRegisteredError, driver_for
+def test_cap_in_10_resolves_the_registry_driver() -> None:
+    """The landed driver resolves through ``driver_for`` and matches the
+    registry ``driver_name`` — loud mapping, never a silent no-op."""
+    from benchmark.drivers import driver_for
 
-    try:
-        driver_for("CAP-IN-10")
-    except DriverNotRegisteredError as exc:
-        assert "CAP-IN-10" in str(exc)
-    else:
-        raise AssertionError("CAP-IN-10 resolved a driver before Task 14")
+    driver = driver_for("CAP-IN-10")
+
+    assert driver.__name__ == "ResolutionDriver"
+    assert driver.__name__ == _cap_in_10().driver_name
 
 
 def test_preexisting_ids_stay_resolvable() -> None:
