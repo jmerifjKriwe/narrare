@@ -24,7 +24,7 @@ read, keeping consistency findings and resolution rejections disjoint.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -42,6 +42,14 @@ from narrare.kb.entity_resolution.schemas_resolution import (
 from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
 
 from ._endorse_helpers import FakeDismissedStore, suggestion_id_for
+
+if TYPE_CHECKING:
+    from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
+    from narrare.kb.dismissed_repository import DismissedFindingRepository
+    from narrare.kb.entity_resolution.contracts import (
+        MergeExecutorProtocol,
+        ResolutionAnalyzerProtocol,
+    )
 
 NOVEL = uuid4()
 USER = uuid4()
@@ -158,10 +166,10 @@ def _service(
     fake_rel = rel_repo if rel_repo is not None else _FakeRelRepo()
     fake_store = store if store is not None else FakeDismissedStore()
     service = ResolutionEndorseService(
-        analyzer=cast("object", analyzer),
-        executor=cast("object", fake_executor),
-        kb_repo=cast("object", kb_repo),
-        rel_repo=cast("object", fake_rel),
+        analyzer=cast("ResolutionAnalyzerProtocol", analyzer),
+        executor=cast("MergeExecutorProtocol", fake_executor),
+        kb_repo=cast("KBRepositoryProtocol", kb_repo),
+        rel_repo=cast("RelationshipRepositoryProtocol", fake_rel),
         dismissals=fake_store,
     )
     return service, analyzer, fake_executor, fake_store
@@ -302,7 +310,7 @@ class _FakeFindingRepo:
 class TestResolutionDismissalStore:
     async def test_dismiss_namespaces_the_fingerprint(self) -> None:
         repo = _FakeFindingRepo()
-        store = ResolutionDismissalStore(cast("object", repo))
+        store = ResolutionDismissalStore(cast("DismissedFindingRepository", repo))
 
         await store.dismiss(NOVEL, "abc123")
 
@@ -310,7 +318,7 @@ class TestResolutionDismissalStore:
 
     async def test_rejected_ids_strip_prefix_and_ignore_other_domains(self) -> None:
         repo = _FakeFindingRepo()
-        store = ResolutionDismissalStore(cast("object", repo))
+        store = ResolutionDismissalStore(cast("DismissedFindingRepository", repo))
 
         rejected = await store.rejected_ids(NOVEL)
 

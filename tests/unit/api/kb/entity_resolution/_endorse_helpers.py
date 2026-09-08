@@ -25,10 +25,10 @@ from narrare._app.dependencies_auth import get_current_user_id
 from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.kb.dependencies_core import get_kb_repository, get_rel_repository
 from narrare.kb.entity_resolution.dependencies import (
-    get_merge_adjudicator,
     get_novel_scope_repository,
     get_resolution_dismissal_store,
 )
+from narrare.kb.entity_resolution.dependencies_adjudicator import get_merge_adjudicator
 from narrare.kb.entity_resolution.router import router as resolution_router
 
 from ._adjudicator_helpers import noop_limiter, stub_adjudicator

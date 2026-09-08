@@ -27,8 +27,12 @@ def _snap(name: str = "Anna") -> EntitySnapshot:
 
 def test_snapshots_are_frozen():
     s = _snap()
+    # Explicit __setattr__ call: this is exactly what the assignment statement
+    # `s.name = "X"` compiles to — the frozen dataclass __setattr__ raises
+    # FrozenInstanceError at runtime (ruff B010 rejects the setattr() form,
+    # pyright rejects attribute assignment on frozen dataclasses).
     with pytest.raises(dataclasses.FrozenInstanceError):
-        s.name = "X"
+        s.__setattr__("name", "X")
 
 
 def test_signal_result_defaults():

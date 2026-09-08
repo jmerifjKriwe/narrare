@@ -35,6 +35,7 @@ if TYPE_CHECKING:
         SnapshotBuilderProtocol,
         UncertainBandAdjudicatorProtocol,
     )
+    from narrare.kb.merge_contracts import KBMergeServiceProtocol
     from narrare_core.writing.session_manager import SessionCacheProtocol
 
 SAME_EMBEDDING: tuple[float, ...] = (1.0, 0.0)
@@ -91,7 +92,7 @@ class _StubMergeService:
 def stub_adjudicator() -> UncertainBandAdjudicator:
     """Adjudicator over the stub merge service (hermetic LLM stand-in)."""
 
-    async def factory(novel_id: UUIDT, user_id: UUIDT) -> object:
+    async def factory(novel_id: UUIDT, user_id: UUIDT) -> KBMergeServiceProtocol:
         return _StubMergeService()
 
     return UncertainBandAdjudicator(merge_service_factory=factory)

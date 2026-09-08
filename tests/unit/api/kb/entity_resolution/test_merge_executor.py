@@ -16,7 +16,7 @@ Fakes, builders, and the executor wiring live in ``_merge_helpers.py``
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 import pytest
@@ -28,6 +28,9 @@ from narrare_core.shared.errors import NotFoundError
 
 from ._merge_helpers import NOVEL, SUGGESTION_ID, USER, _FakeEntry, _world
 
+if TYPE_CHECKING:
+    from narrare.kb.models import KBEntry
+
 # --- §6.1 Deterministic survivor order ------------------------------------------
 
 
@@ -35,22 +38,27 @@ class TestSelectSurvivor:
     def test_more_metadata_fact_keys_win(self) -> None:
         rich = _FakeEntry(name="Anna", metadata={"age": 24, "job": "smith"})
         poor = _FakeEntry(name="Anna", metadata={"age": 24})
-        assert select_survivor(rich, poor, {}) == rich.id
+        assert select_survivor(cast("KBEntry", rich), cast("KBEntry", poor), {}) == rich.id
 
     def test_more_relationships_break_fact_key_tie(self) -> None:
         a = _FakeEntry(name="Anna", metadata={"age": 24})
         b = _FakeEntry(name="Anna", metadata={"job": "smith"})
-        assert select_survivor(a, b, {a.id: 1, b.id: 2}) == b.id
+        assert select_survivor(cast("KBEntry", a), cast("KBEntry", b), {a.id: 1, b.id: 2}) == b.id
 
     def test_longer_name_breaks_relationship_tie(self) -> None:
         short = _FakeEntry(name="Anna")
         full = _FakeEntry(name="Anna Meyer")
-        assert select_survivor(short, full, {short.id: 1, full.id: 1}) == full.id
+        assert (
+            select_survivor(
+                cast("KBEntry", short), cast("KBEntry", full), {short.id: 1, full.id: 1}
+            )
+            == full.id
+        )
 
     def test_older_created_at_breaks_name_tie(self) -> None:
         older = _FakeEntry(name="Anne", created_at=datetime.now(tz=UTC) - timedelta(days=1))
         newer = _FakeEntry(name="Anne", created_at=datetime.now(tz=UTC))
-        assert select_survivor(older, newer, {}) == older.id
+        assert select_survivor(cast("KBEntry", older), cast("KBEntry", newer), {}) == older.id
 
 
 # --- §6.2 Metadata merge ---------------------------------------------------------

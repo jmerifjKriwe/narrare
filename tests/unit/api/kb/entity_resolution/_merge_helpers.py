@@ -10,10 +10,17 @@ production ``uq_kb_relationships_unique`` shape (source, target, rel_type).
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING, cast
 from uuid import UUID, uuid4
 
 from narrare.kb.entity_resolution.merge_executor import MergeExecutor
 from narrare.kb.entity_resolution.schemas_resolution import MergePlan
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.repository import KBRepository
 
 NOVEL = uuid4()
 USER = uuid4()
@@ -147,9 +154,9 @@ class _World:
         self.rel_repo = _FakeRelRepo()
         self.session = _FakeSession()
         self.executor = MergeExecutor(
-            kb_repo=self.kb_repo,
-            rel_repo=self.rel_repo,
-            session=self.session,
+            kb_repo=cast("KBRepository", self.kb_repo),
+            rel_repo=cast("RelationshipRepository", self.rel_repo),
+            session=cast("AsyncSession", self.session),
         )
 
     def plan(self, *, result_name: str | None = None, confidence: float | None = 0.91) -> MergePlan:

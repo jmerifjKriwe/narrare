@@ -24,11 +24,11 @@ from narrare.kb.entity_resolution.analysis_cache import ResolutionAnalysisCache
 from narrare.kb.entity_resolution.analysis_service import ResolutionAnalysisService
 from narrare.kb.entity_resolution.dependencies import (
     get_adjudicated_analyzer,
-    get_merge_adjudicator,
     get_novel_scope_repository,
     get_resolution_analyzer,
     get_resolution_dismissal_store,
 )
+from narrare.kb.entity_resolution.dependencies_adjudicator import get_merge_adjudicator
 from narrare.kb.entity_resolution.router import router as resolution_router
 from narrare.kb.entity_resolution.schemas_resolution import (
     BandStats,

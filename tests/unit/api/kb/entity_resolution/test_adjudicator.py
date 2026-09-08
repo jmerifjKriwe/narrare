@@ -45,7 +45,9 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from uuid import UUID
 
-type MergeServiceFactory = Callable[[UUID, UUID], Awaitable[object]]
+    from narrare.kb.merge_contracts import KBMergeServiceProtocol
+
+type MergeServiceFactory = Callable[[UUID, UUID], Awaitable[KBMergeServiceProtocol]]
 
 
 # --- Fakes ----------------------------------------------------------------------
@@ -100,14 +102,14 @@ class _FakeMergeService:
 
 
 def _factory_for(
-    service: object,
+    service: _FakeMergeService,
     received: list[tuple[UUID, UUID]] | None = None,
     *,
     error: Exception | None = None,
-) -> Callable[[UUID, UUID], Awaitable[object]]:
+) -> MergeServiceFactory:
     """Async factory handing out ``service`` (or raising), recording calls."""
 
-    async def factory(novel_id: UUID, user_id: UUID) -> object:
+    async def factory(novel_id: UUID, user_id: UUID) -> KBMergeServiceProtocol:
         if received is not None:
             received.append((novel_id, user_id))
         if error is not None:
