@@ -19,11 +19,13 @@ executor consumes a RESOLVED plan (survivor and loser named); the endorse
 wiring (P4 router slice) calls ``select_survivor`` when the endorse body
 omits the ``survivor_id`` override, so §6.1 semantics live only here.
 
-The canonical survivor name is the ``decide_rename`` auto-result
-(kb/_extraction_resolution.py) — the downgrade guard keeps the fuller name
-("Anna" + "Anna Meyer" → "Anna Meyer"). Per PO ruling OQ-5 a plan-supplied
-``result_name`` is accepted ONLY when it exactly equals that auto-result;
-custom names raise ``ValueError`` (mapped to 422 at the HTTP seam).
+The canonical survivor name is the ``pick_canonical_name`` auto-pick
+(kb/_extraction_resolution.py) — the longer casefold name wins, the
+survivor wins ties; ``decide_rename`` drives the substring cases (its
+downgrade guard keeps the fuller name, "Anna" + "Anna Meyer" → "Anna
+Meyer"). Per PO ruling OQ-5 a plan-supplied ``result_name`` is accepted
+ONLY when it exactly equals that auto-pick; custom names raise
+``ValueError`` (mapped to 422 at the HTTP seam).
 
 The whole write phase runs inside one ``session.begin_nested()`` savepoint
 (ExtractionApplyService pattern): any failure rolls the merge back cleanly

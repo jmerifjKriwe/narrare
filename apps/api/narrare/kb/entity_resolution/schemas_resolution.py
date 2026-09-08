@@ -167,8 +167,8 @@ class MergePlan(BaseModel):
 
     result_name: str | None = None
     """Optional canonical name. Per PO ruling OQ-5 this is accepted ONLY
-    when it exactly equals the ``decide_rename`` auto-result for the pair;
-    explicit custom names are rejected (422 at the HTTP seam)."""
+    when it exactly equals the ``pick_canonical_name`` auto-pick for the
+    pair; explicit custom names are rejected (422 at the HTTP seam)."""
 
 
 class MergeExecutionResult(BaseModel):

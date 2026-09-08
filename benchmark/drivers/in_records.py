@@ -237,6 +237,21 @@ class MergeResult:
 
 
 @dataclass(frozen=True)
+class SkippedEndorse:
+    """One endorse answered ``409 Conflict`` — already reconciled via a
+    prior pair (transitive duplicate groups; ADR-085 fix wave).
+
+    Not a response schema: the tolerated skip of the driver's endorse-all
+    sequence, recorded so the artifacts show why a surfaced suggestion
+    carries no merge. The suggestion itself stays in
+    :attr:`ResolutionRecord.suggestions` for precision/recall scoring.
+    """
+
+    suggestion_id: str
+    detail: str
+
+
+@dataclass(frozen=True)
 class ResolutionRecord:
     """CAP-IN-10: detection analysis + endorse-all merge outcomes."""
 
@@ -244,3 +259,4 @@ class ResolutionRecord:
     stats: BandStats
     cache_hit: bool
     merges: tuple[MergeResult, ...]
+    skips: tuple[SkippedEndorse, ...] = ()
