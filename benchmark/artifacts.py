@@ -162,7 +162,9 @@ def _render(
     """Render ALL files in memory; any failure happens before a write."""
     return {
         "results.json": dumps_sorted(
-            results_document(inputs.build_quality, inputs.detection, inputs.retrieval),
+            results_document(
+                inputs.build_quality, inputs.detection, inputs.retrieval, inputs.resolution
+            ),
             pretty=True,
         ),
         "answers.jsonl": "\n".join(answers_lines(inputs.answers)) + "\n" if inputs.answers else "",

@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from benchmark.config_schemas import BenchmarkConfig
     from benchmark.ingest_events import IngestEvent
     from benchmark.scoring.detection_records import DetectionReport
+    from benchmark.scoring.resolution_match import ResolutionScore
     from benchmark.scoring.retrieval_records import RetrievalScore
     from benchmark.scoring.score_records import BuildQualityScore
 
@@ -94,6 +95,10 @@ class RunInputs:
     during detection scoring (plan Task 15 v1: ``False`` — the clean run
     is a separate full run and its reports are not supplied; the overview
     must state the case so FP counts are never misread as subtracted).
+
+    ``resolution`` is the CAP-IN-10 scorer output (ADR-085 P6) — ``None``
+    (the default) when the capability was not driven: the section is
+    omitted from results.json instead of reporting fabricated zeros.
     """
 
     variant: str
@@ -109,6 +114,7 @@ class RunInputs:
     events: tuple[IngestEvent, ...]
     stack: StackFacts
     fp_baseline: bool
+    resolution: ResolutionScore | None = None
 
 
 @dataclass(frozen=True)

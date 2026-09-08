@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from benchmark.config_schemas import BenchmarkConfig
     from benchmark.ingest_events import IngestEvent
     from benchmark.scoring.detection_records import DetectionReport
+    from benchmark.scoring.resolution_match import ResolutionScore
     from benchmark.scoring.retrieval_records import RetrievalScore
     from benchmark.scoring.score_records import BuildQualityScore
 
@@ -98,10 +99,18 @@ def dumps_sorted(document: object, *, pretty: bool) -> str:
 
 
 def results_document(
-    build_quality: BuildQualityScore, detection: DetectionReport, retrieval: RetrievalScore
+    build_quality: BuildQualityScore,
+    detection: DetectionReport,
+    retrieval: RetrievalScore,
+    resolution: ResolutionScore | None = None,
 ) -> dict[str, object]:
-    """Per-capability x per-class scores + itemized traceable evidence."""
-    return {
+    """Per-capability x per-class scores + itemized traceable evidence.
+
+    ``resolution`` (CAP-IN-10, spec §8) is sectioned only when the
+    capability was driven — an absent section means "not measured",
+    never zero.
+    """
+    document: dict[str, object] = {
         "build_quality": {
             "entity_coverage": build_quality.entity_coverage,
             "fact_coverage": build_quality.fact_coverage,
@@ -127,6 +136,16 @@ def results_document(
             "coverage": [asdict(row) for row in retrieval.coverage],
         },
     }
+    if resolution is not None:
+        document["resolution"] = {
+            "precision": resolution.precision,
+            "recall": resolution.recall,
+            "auto_band_ok": resolution.auto_band_ok,
+            "distractor_gate": resolution.distractor_never_suggested,
+            "expected_pair_count": resolution.expected_pair_count,
+            "suggested_count": resolution.suggested_count,
+        }
+    return document
 
 
 # ---------------------------------------------------------------------------

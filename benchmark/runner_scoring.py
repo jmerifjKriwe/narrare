@@ -33,6 +33,18 @@ clean run's check reports are the FP-baseline MATERIAL for later
 comparison, not detection evidence; scoring an empty registry would
 misreport every honest finding as FP (the matrix contract documents
 ``expected=0`` cells as "nothing scored"). Pure and deterministic.
+
+Resolution (CAP-IN-10, ADR-085 P6, spec §8): scored as a FOURTH,
+SEPARATE metric set from the driven CAP-IN-10 record — never folded
+into build quality. The KB fetch runs AFTER the drivers, so endorsed
+merges are already applied in the fetched state (no pre/post re-score,
+no double counting): entity/relation coverage is reported AS MEASURED
+(post-merge), and the resolution metrics (precision/recall/band/
+distractor gate) come from ``score_resolution``. The deprecated merge
+losers are hidden from the post-merge listing (ADR-085 §9(c)), so the
+expected-pair universe reconstructs them from the record's merge +
+suggestion id→name pairs. CAP-IN-10 not driven (or not OK) →
+``resolution is None`` — absence, never a fabricated score.
 """
 
 from __future__ import annotations
@@ -43,6 +55,7 @@ from typing import TYPE_CHECKING
 from benchmark.capabilities import capability
 from benchmark.drivers.base import CapabilityContext, CapabilityStatus
 from benchmark.drivers.in_parsing import as_list
+from benchmark.drivers.in_records import ResolutionRecord
 from benchmark.drivers.out_direction import entry_detail, paginated_entries, relationship_detail
 from benchmark.drivers.out_records import (
     EntityDetailRecord,
@@ -55,6 +68,7 @@ from benchmark.runner_driving import capability_timings
 from benchmark.scoring.build_quality import score_build_quality
 from benchmark.scoring.detection import score_detection
 from benchmark.scoring.detection_records import DetectionReport
+from benchmark.scoring.resolution_match import ClaimEntry, claim_groups, score_resolution
 from benchmark.scoring.retrieval import score_retrieval
 
 if TYPE_CHECKING:
@@ -64,8 +78,9 @@ if TYPE_CHECKING:
     from benchmark.client import BenchmarkClient
     from benchmark.config_schemas import BenchmarkConfig
     from benchmark.corpus_loader import Corpus
-    from benchmark.corpus_views import ErrorSpec, Reference
+    from benchmark.corpus_views import Entity, ErrorSpec, Reference
     from benchmark.ingest_events import IngestEvent
+    from benchmark.scoring.resolution_match import ResolutionScore
     from benchmark.scoring.retrieval_records import RetrievalScore
     from benchmark.scoring.score_records import BuildQualityScore
 __all__ = ["RunScores", "ScoredKb", "fetch_scored_kb", "score_run"]
@@ -85,11 +100,16 @@ class ScoredKb:
 
 @dataclass(frozen=True)
 class RunScores:
-    """The three scorer outputs of one run, in artifacts order."""
+    """The scorer outputs of one run, in artifacts order.
+
+    ``resolution`` is present ONLY when CAP-IN-10 was driven OK (its
+    record is the sole evidence) — ``None`` means not measured.
+    """
 
     build_quality: BuildQualityScore
     detection: DetectionReport
     retrieval: RetrievalScore
+    resolution: ResolutionScore | None = None
 
 
 def fetch_scored_kb(
@@ -175,11 +195,59 @@ def score_run(
     reference = corpus.reference()
     driven_details = _ok_detail(answers)
     timeline = _ok_parsed(answers, "CAP-OUT-07", TimelineReadRecord)
+    resolution_record = _ok_parsed(answers, "CAP-IN-10", ResolutionRecord)
     return RunScores(
         build_quality=score_build_quality(reference, kb_state.entries, kb_state.details),
         detection=_detection(corpus, variant, answers, reference, chapter_map),
         retrieval=score_retrieval(reference, driven_details, timeline),
+        resolution=_resolution(reference, kb_state, resolution_record),
     )
+
+
+def _resolution(
+    reference: Reference, kb_state: ScoredKb, record: ResolutionRecord | None
+) -> ResolutionScore | None:
+    """CAP-IN-10 scoring from the driven record (module docstring contract).
+
+    Expected pairs derive from the reference bindings over the PRE-merge
+    entry view — the scored listing plus the record's deprecated merge
+    losers — so precision/recall are measured even though the fetch ran
+    after the endorse phase.
+    """
+    if record is None:
+        return None
+    groups = claim_groups(_reference_entities(reference), _pre_merge_entries(kb_state, record))
+    return score_resolution(groups, record.suggestions, record.merges)
+
+
+def _reference_entities(reference: Reference) -> tuple[Entity, ...]:
+    """All reference entities in fixed category order (deterministic
+    first-reference-wins bindings)."""
+    return (*reference.persons, *reference.places, *reference.objects)
+
+
+def _pre_merge_entries(kb_state: ScoredKb, record: ResolutionRecord) -> tuple[ClaimEntry, ...]:
+    """Scored listing + the record's merge losers = the pre-merge view.
+
+    Loser names come from the suggestion id→name pairs (first observation
+    wins); an unknown name is the empty string, which matches no
+    reference key — the loser stays unbound (absence, never a fabricated
+    name) and merely leaves the expected set untouched.
+    """
+    entries = [
+        ClaimEntry(id=entry.id, name=entry.name, slug=entry.slug) for entry in kb_state.entries
+    ]
+    entry_ids = {entry.id for entry in entries}
+    names: dict[str, str] = {}
+    for suggestion in record.suggestions:
+        names.setdefault(suggestion.entry_a_id, suggestion.name_a)
+        names.setdefault(suggestion.entry_b_id, suggestion.name_b)
+    losers = [
+        ClaimEntry(id=merge.loser_id, name=names.get(merge.loser_id, ""), slug="")
+        for merge in record.merges
+        if merge.loser_id not in entry_ids
+    ]
+    return (*entries, *losers)
 
 
 def _detection(
