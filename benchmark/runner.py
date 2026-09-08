@@ -284,6 +284,7 @@ def run(request: RunRequest, deps: RunnerDeps | None = None) -> ArtifactPaths:
                 build_quality=scores.build_quality,
                 detection=scores.detection,
                 retrieval=scores.retrieval,
+                resolution=scores.resolution,
                 answers=answers,
                 events=tuple(events),
                 stack=stack_facts(stack, client),

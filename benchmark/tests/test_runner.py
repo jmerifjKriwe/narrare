@@ -27,6 +27,7 @@ from benchmark.drivers.check_direction_series import SeriesConsistencyDriver
 from benchmark.ingest import IngestError
 from benchmark.ingest_events import IngestEvent
 from benchmark.runner import run
+from benchmark.scoring.resolution_match import ResolutionScore
 from benchmark.tests.runner_fixtures import Wiring, voice_check_record
 from benchmark.tests.runner_helpers import (
     COMPOSE_SHA256,
@@ -150,6 +151,51 @@ def test_build_quality_scores_even_without_out_capabilities_driven(tmp_path: Pat
     assert [answer.cap_id for answer in inputs.answers] == ["CAP-IN-01"]
     assert inputs.build_quality.entity_coverage == 1.0
     assert inputs.build_quality.fact_coverage == 1.0
+
+
+def resolution_result() -> CapabilityResult:
+    """An OK CAP-IN-10 answer (empty record — the fixture KB has no duplicates)."""
+    from benchmark.drivers.in_records import BandStats, ResolutionRecord
+
+    record = ResolutionRecord(
+        suggestions=(),
+        stats=BandStats(review=0, auto_eligible=0, suppressed=0),
+        cache_hit=False,
+        merges=(),
+    )
+    return CapabilityResult.ok("CAP-IN-10", parsed=record, elapsed_seconds=1.0)
+
+
+def test_run_carries_the_resolution_score_into_run_inputs(tmp_path: Path) -> None:
+    """ADR-085 P6 wiring pin: the scorer's resolution output MUST reach
+    ``RunInputs`` — dropping that link (fix round 1) silently voids the
+    results.json resolution section while every other gate stays green."""
+    wired = Wiring(
+        tmp_path, results={"CAP-IN-10": resolution_result()}, capabilities=("CAP-IN-10",)
+    )
+
+    run(wired.request, wired.deps)
+
+    _, inputs, _ = wired.artifacts.calls[0]
+    assert inputs.resolution == ResolutionScore(
+        precision=1.0,
+        recall=1.0,
+        auto_band_ok=True,
+        distractor_never_suggested=True,
+        expected_pair_count=0,  # fixture KB: one entry, no duplicate pair
+        suggested_count=0,
+        endorsed_count=0,
+        endorsed_expected_pairs=0,
+    )
+
+
+def test_run_without_cap_in_10_leaves_run_inputs_resolution_absent(tmp_path: Path) -> None:
+    wired = Wiring(tmp_path, capabilities=("CAP-IN-01",))
+
+    run(wired.request, wired.deps)
+
+    _, inputs, _ = wired.artifacts.calls[0]
+    assert inputs.resolution is None
 
 
 def test_teardown_verifies_after_success(tmp_path: Path) -> None:

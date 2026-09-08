@@ -27,6 +27,7 @@ from benchmark.artifacts_json import results_document
 from benchmark.artifacts_records import RunInputs
 from benchmark.drivers.in_records import MergeResult, ResolutionSuggestion
 from benchmark.runner_scoring import RunScores, score_run
+from benchmark.scoring.entity_match import match_entities
 from benchmark.scoring.resolution_match import (
     ResolutionScore,
     claim_groups,
@@ -47,7 +48,7 @@ from benchmark.tests.resolution_helpers import (
     resolution_answer,
     synthetic_corpus,
 )
-from benchmark.tests.scoring_helpers import ref_entity
+from benchmark.tests.scoring_helpers import ref_entity, summary
 
 if TYPE_CHECKING:
     from benchmark.corpus_views import Entity
@@ -104,6 +105,30 @@ def test_unbound_entries_appear_in_no_group() -> None:
 
 def test_pair_key_is_unordered() -> None:
     assert pair_key("b", "a") == pair_key("a", "b") == ("a", "b")
+
+
+def test_claim_groups_agree_with_entity_match_bindings() -> None:
+    """Cross-reference pin: the duplicated binding rule (normalized
+    name/slug vs reference name + alias set) must not drift between
+    ``claim_groups`` and ``entity_match`` — every entry ``match_entities``
+    claims for a reference sits in the SAME reference's claim group. The
+    duplicate "Anna" entry is the DOCUMENTED divergence: spurious under
+    build quality's 1:1 claim rule, expected-bound for resolution."""
+    refs = (ref("p-anna", "Anna Meyer", aliases=("Anna",)), ref("p-meier", "Anna Meier"))
+    names = ((E_ANNA, "Anna"), (E_ANNA_MEYER, "Anna Meyer"), (E_ANNA_MEIER, "Anna Meier"))
+    entries = tuple(claim_entry(entry_id, name) for entry_id, name in names)
+    summaries = tuple(summary(entry_id, name) for entry_id, name in names)
+
+    matched = match_entities(refs, summaries)
+    by_ref = {
+        entity.id: group for entity, group in zip(refs, claim_groups(refs, entries), strict=True)
+    }
+
+    assert {match.ref.id for match in matched.matches} == {"p-anna", "p-meier"}
+    for match in matched.matches:
+        assert match.entry.id in by_ref[match.ref.id]
+    assert E_ANNA in by_ref["p-anna"]  # the documented divergence
+    assert E_OTHER not in by_ref["p-anna"] | by_ref["p-meier"]
 
 
 # ---------------------------------------------------------------------------
