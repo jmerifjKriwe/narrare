@@ -1,11 +1,15 @@
 """KB entity-resolution routes — analyze/suggestions/endorse/reject (spec §7).
 
 Thin delegation only (RULE-06/12): the scope guard runs as a router-level
-dependency and every handler forwards to its service — analysis reads to
-the analysis service, adjudication to the endorse service. The endorse
-endpoint re-validates the suggestion (409 when stale/rejected/low-band),
-executes the merge, and invalidates the analysis cache; reject persists
-the dismissal (204) without touching the cache.
+dependency and every handler forwards to its service — the analyze route
+uses the ADJUDICATED analyzer (REVIEW-band LLM annotation, ADR-085 P5;
+carries ``AI_ANALYSIS_LIMITER`` — T8 carry-forward, the adjudicated path
+is LLM-calling), while suggestions/endorse/reject use the deterministic
+analyzer (cache reads and re-validation never touch the LLM, spec §8).
+The endorse endpoint re-validates the suggestion (409 when
+stale/rejected/low-band), executes the merge, and invalidates the
+analysis cache; reject persists the dismissal (204) without touching the
+cache.
 """
 
 from __future__ import annotations
@@ -16,8 +20,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 
 from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.kb.entity_resolution.analysis_service import ResolutionAnalysisService
 from narrare.kb.entity_resolution.dependencies import (
+    get_adjudicated_analyzer,
     get_endorse_service,
     get_resolution_analyzer,
     verify_novel_scope,
@@ -36,6 +42,7 @@ router = APIRouter(tags=["kb"], dependencies=[Depends(verify_novel_scope)])
 @router.post(
     "/novels/{novel_id}/kb/resolution/analyze",
     response_model=ResolutionAnalysisResponse,
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
 )
 async def analyze_resolution(
     novel_id: UUID,
@@ -43,7 +50,7 @@ async def analyze_resolution(
     user_id: CurrentUserIdDep,
     service: Annotated[
         ResolutionAnalysisService,
-        Depends(get_resolution_analyzer),
+        Depends(get_adjudicated_analyzer),
     ],
 ) -> ResolutionAnalysisResponse:
     """Run (or fetch) the duplicate detection analysis for one novel."""

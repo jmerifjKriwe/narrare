@@ -16,23 +16,64 @@ single-key invalidation for the KB-mutation hooks.
 
 The payload stored here is the UNFILTERED detection result — rejected
 suggestions (spec §7) are applied at read time by the analysis service,
-so a rejection also covers results cached before it.
+so a rejection also covers results cached before it. The entries hash
+derivation (:func:`compute_entries_hash`) moved here together with the
+envelope (RULE-04, P5): it IS the cache-key validation data, so the
+module owning the envelope owns the digest too.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import TYPE_CHECKING, Final, cast
 
 import structlog
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from narrare_core.kb.resolution.models import EntitySnapshot
     from narrare_core.writing.session_manager import SessionCacheProtocol
 
 logger = structlog.get_logger(__name__)
 
 _DEFAULT_TTL_SECONDS: Final[int] = 600
 _DEFAULT_KEY_PREFIX: Final[str] = "kb:resolution:"
+
+
+def compute_entries_hash(snapshots: Sequence[EntitySnapshot]) -> str:
+    """Derive the stable 8-char digest binding a cached analysis to its inputs.
+
+    Snapshots are digested in ``str(entry_id)`` order regardless of builder
+    ordering; every field the engine consumes (name, type, status, metadata,
+    provenance chapters/variants, neighbor ids, embedding) participates, so
+    any KB mutation that could change the analysis changes the hash.
+    """
+    digest = hashlib.sha256()
+    for snapshot in sorted(snapshots, key=lambda s: str(s.entry_id)):
+        provenance = snapshot.provenance
+        digest.update(
+            json.dumps(
+                {
+                    "id": str(snapshot.entry_id),
+                    "name": snapshot.name,
+                    "entity_type": snapshot.entity_type,
+                    "status": snapshot.status,
+                    "metadata": snapshot.metadata,
+                    "provenance": None
+                    if provenance is None
+                    else [list(provenance.chapters), list(provenance.name_variants)],
+                    "neighbors": sorted(str(n) for n in snapshot.neighbor_ids),
+                    "embedding": (
+                        list(snapshot.embedding) if snapshot.embedding is not None else None
+                    ),
+                },
+                sort_keys=True,
+                default=str,
+            ).encode()
+        )
+    return digest.hexdigest()[:8]
 
 
 class ResolutionAnalysisCache:

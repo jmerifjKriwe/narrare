@@ -22,13 +22,16 @@ from fastapi import FastAPI
 
 from narrare._app.database import get_async_session
 from narrare._app.dependencies_auth import get_current_user_id
+from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.kb.dependencies_core import get_kb_repository, get_rel_repository
 from narrare.kb.entity_resolution.dependencies import (
+    get_merge_adjudicator,
     get_novel_scope_repository,
     get_resolution_dismissal_store,
 )
 from narrare.kb.entity_resolution.router import router as resolution_router
 
+from ._adjudicator_helpers import noop_limiter, stub_adjudicator
 from ._router_helpers import (
     NOVEL_ID,
     USER_ID,
@@ -245,7 +248,13 @@ def build_endorse_app(
     rel_repo: FakeEndorseRelRepo,
     dismissed_store: FakeDismissedStore,
 ) -> FastAPI:
-    """App with the REAL analyzer + endorse factories — fakes at the seams."""
+    """App with the REAL analyzer + endorse factories — fakes at the seams.
+
+    The analyze route's shared limiter and adjudicator are neutralized at
+    their DI seams (hermetic route tests; the endorse re-validation path
+    itself is deterministic and untouched — see ``test_adjudicator.py``
+    for the limiter metadata pin).
+    """
     app = FastAPI()
     app.include_router(resolution_router, prefix="/api/v1")
     _add_not_found_handler(app)
@@ -256,4 +265,6 @@ def build_endorse_app(
     app.dependency_overrides[get_kb_repository] = lambda: kb_repo
     app.dependency_overrides[get_rel_repository] = lambda: rel_repo
     app.dependency_overrides[get_resolution_dismissal_store] = lambda: dismissed_store
+    app.dependency_overrides[AI_ANALYSIS_LIMITER] = noop_limiter
+    app.dependency_overrides[get_merge_adjudicator] = lambda: stub_adjudicator()
     return app

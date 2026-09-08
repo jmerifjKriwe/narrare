@@ -16,20 +16,30 @@ ledger applies at read time, so a rejection also covers results cached
 before it. A missing ledger (``dismissed=None``, e.g. in unit fakes) is
 a passthrough.
 
+Uncertain-band annotation (P5, spec §2/D7): an optional injected
+``UncertainBandAdjudicatorProtocol`` annotates REVIEW-band suggestions
+with LLM verdict notes before the payload is cached. Only the uncertain
+band reaches the adjudicator — AUTO_ELIGIBLE and SUPPRESSED pairs never
+do (spec §8: detection stays LLM-free) — and a cache hit serves the
+stored notes without re-invoking it. A missing adjudicator
+(``adjudicator=None``) keeps the analysis fully deterministic.
+
 Caching mirrors the ``kb/consistency_cache.py`` pattern — injected
 ``SessionCacheProtocol`` backend, 10-minute TTL, novel-scoped key,
-tolerant reads; the cache lives in the sibling ``analysis_cache`` module
-(RULE-04 split when the dismissal filter landed).
+tolerant reads; the cache and the entries-hash derivation live in the
+sibling ``analysis_cache`` module (RULE-04 splits: the dismissal filter
+landed in P4, the hash followed the envelope in P5).
 """
 
 from __future__ import annotations
 
 import hashlib
-import json
 from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.kb.entity_resolution.adjudicator import annotate_review_band
+from narrare.kb.entity_resolution.analysis_cache import compute_entries_hash
 from narrare.kb.entity_resolution.schemas_resolution import (
     BandStats,
     ResolutionAnalysisResponse,
@@ -38,53 +48,20 @@ from narrare.kb.entity_resolution.schemas_resolution import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Mapping
     from uuid import UUID
 
     from narrare.kb.entity_resolution.analysis_cache import ResolutionAnalysisCache
     from narrare.kb.entity_resolution.contracts import (
         DismissedSuggestionStoreProtocol,
         SnapshotBuilderProtocol,
+        UncertainBandAdjudicatorProtocol,
     )
     from narrare.kb.entity_resolution.schemas_resolution import SuggestionBand
-    from narrare_core.kb.resolution.models import EntitySnapshot, PairScore
+    from narrare_core.kb.resolution.models import PairScore
     from narrare_core.kb.resolution.scoring import ResolutionEngine
 
 logger = structlog.get_logger(__name__)
-
-
-def _entries_hash(snapshots: Sequence[EntitySnapshot]) -> str:
-    """Derive the stable 8-char digest binding a cached analysis to its inputs.
-
-    Snapshots are digested in ``str(entry_id)`` order regardless of builder
-    ordering; every field the engine consumes (name, type, status, metadata,
-    provenance chapters/variants, neighbor ids, embedding) participates, so
-    any KB mutation that could change the analysis changes the hash.
-    """
-    digest = hashlib.sha256()
-    for snapshot in sorted(snapshots, key=lambda s: str(s.entry_id)):
-        provenance = snapshot.provenance
-        digest.update(
-            json.dumps(
-                {
-                    "id": str(snapshot.entry_id),
-                    "name": snapshot.name,
-                    "entity_type": snapshot.entity_type,
-                    "status": snapshot.status,
-                    "metadata": snapshot.metadata,
-                    "provenance": None
-                    if provenance is None
-                    else [list(provenance.chapters), list(provenance.name_variants)],
-                    "neighbors": sorted(str(n) for n in snapshot.neighbor_ids),
-                    "embedding": (
-                        list(snapshot.embedding) if snapshot.embedding is not None else None
-                    ),
-                },
-                sort_keys=True,
-                default=str,
-            ).encode()
-        )
-    return digest.hexdigest()[:8]
 
 
 class ResolutionAnalysisService:
@@ -92,9 +69,9 @@ class ResolutionAnalysisService:
 
     Implements :class:`~narrare.kb.entity_resolution.contracts.ResolutionAnalyzerProtocol`.
     Dependencies are injected (RULE-19): the snapshot builder, the pure
-    scoring engine, the analysis cache, and the optional rejection ledger.
-    Stateless w.r.t. suggestion identity — the same entry pair always
-    yields the same suggestion id.
+    scoring engine, the analysis cache, the optional rejection ledger, and
+    the optional uncertain-band adjudicator. Stateless w.r.t. suggestion
+    identity — the same entry pair always yields the same suggestion id.
     """
 
     def __init__(
@@ -103,11 +80,13 @@ class ResolutionAnalysisService:
         engine: ResolutionEngine,
         cache: ResolutionAnalysisCache,
         dismissed: DismissedSuggestionStoreProtocol | None = None,
+        adjudicator: UncertainBandAdjudicatorProtocol | None = None,
     ) -> None:
         self._builder = builder
         self._engine = engine
         self._cache = cache
         self._dismissed = dismissed
+        self._adjudicator = adjudicator
 
     async def analyze(
         self,
@@ -124,12 +103,13 @@ class ResolutionAnalysisService:
             refresh: Skip the cache read and force a recompute.
 
         Returns:
-            The surfaced suggestions (minus rejected ones), per-band stats
+            The surfaced suggestions (minus rejected ones, REVIEW pairs
+            annotated when an adjudicator is wired), per-band stats
             recounted over the kept suggestions, and cache status.
         """
         novel_str = str(novel_id)
         snapshots = await self._builder.build(novel_id)
-        entries_hash = _entries_hash(snapshots)
+        entries_hash = compute_entries_hash(snapshots)
 
         if not refresh:
             cached = await self._cache.get(novel_str, entries_hash)
@@ -162,6 +142,19 @@ class ResolutionAnalysisService:
             else:
                 review += 1
 
+        # Uncertain-band annotation (P5, spec §2): only REVIEW pairs reach
+        # the adjudicator; AUTO/SUPPRESSED stay deterministic (spec §8).
+        # Notes are part of the cached payload, so cache hits never
+        # re-invoke the LLM.
+        if self._adjudicator is not None:
+            suggestions = await annotate_review_band(
+                suggestions,
+                adjudicator=self._adjudicator,
+                novel_id=novel_id,
+                user_id=user_id,
+                entity_types={s.entry_id: s.entity_type for s in snapshots},
+            )
+
         response = ResolutionAnalysisResponse(
             suggestions=suggestions,
             stats=BandStats(review=review, auto_eligible=auto_eligible, suppressed=suppressed),
@@ -189,7 +182,7 @@ class ResolutionAnalysisService:
         response with ``cache_hit=False`` — the endpoint is 404-free (§7).
         """
         snapshots = await self._builder.build(novel_id)
-        cached = await self._cache.get(str(novel_id), _entries_hash(snapshots))
+        cached = await self._cache.get(str(novel_id), compute_entries_hash(snapshots))
         if cached is None:
             return ResolutionAnalysisResponse(
                 suggestions=[],

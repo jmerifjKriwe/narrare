@@ -1,11 +1,13 @@
-"""KB entity resolution request/response schemas (ADR-085 P3/P4, spec §2/§6/§7).
+"""KB entity resolution request/response schemas (ADR-085 P3-P5, spec §2/§6/§7).
 
 Pydantic models for the detection-analysis surface and the merge executor.
 ``ResolutionAnalysis`` in ``contracts.py`` is discharged by
 ``ResolutionAnalysisResponse`` — the analyzer protocol's result type is the
 concrete response shape defined here. ``MergePlan``/``MergeExecutionResult``
-discharge the remaining merge aliases in ``contracts.py`` (spec §6).
-Field names ``suggestions``/``stats``/``cache_hit`` are spec §7 contract.
+discharge the merge aliases in ``contracts.py`` (spec §6); the uncertain-band
+``PairCandidate``/``Adjudication`` shapes live in ``schemas_adjudication.py``
+(spec §2, P5). Field names ``suggestions``/``stats``/``cache_hit`` are spec
+§7 contract.
 """
 
 from __future__ import annotations
@@ -66,6 +68,12 @@ class SuggestionResponse(BaseModel):
 
     signals: list[SignalEvidence]
     """All five signal results in canonical S1..S5 order."""
+
+    adjudication_note: str | None = None
+    """LLM adjudicator note for REVIEW-band pairs (ADR-085 P5). ``None``
+    when no adjudicator is wired, the band is deterministic, or the pair
+    was never annotated; a failure note records LLM unavailability
+    (RULE-11) instead of crashing the analysis."""
 
 
 class BandStats(BaseModel):

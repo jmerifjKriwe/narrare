@@ -1,22 +1,30 @@
-"""Entity-resolution sub-package contracts (ADR-085 P3/P4, spec §3).
+"""Entity-resolution sub-package contracts (ADR-085 P3-P5, spec §3).
 
 Protocol definitions for the KB entity resolution lifecycle, written
 before their implementations (RULE-03). ``SnapshotBuilderProtocol`` and
 ``ResolutionAnalyzerProtocol`` are implemented by the P3 slice;
-``MergeExecutorProtocol`` by P4; ``UncertainBandAdjudicatorProtocol``
-is declared with spec §3 signatures verbatim so the Protocol surface is
-stable from day one — its implementation lands in a later slice.
+``MergeExecutorProtocol`` by P4; ``UncertainBandAdjudicatorProtocol`` by
+the P5 adapter (``adjudicator.py``).
 
-Result-type bindings are discharged incrementally: ``ResolutionAnalysis``,
+Result-type bindings are all discharged: ``ResolutionAnalysis``,
 ``MergePlan``, and ``MergeExecutionResult`` resolve to their concrete
-Pydantic shapes from ``schemas_resolution.py``. ``PairCandidate`` and
-``Adjudication`` remain provisionally bound to ``object`` until the T12
-adjudicator slice defines them.
+Pydantic shapes from ``schemas_resolution.py``; ``PairCandidate`` and
+``Adjudication`` resolve to their concrete Pydantic shapes from
+``schemas_adjudication.py`` (T12).
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+# Runtime imports: PEP 695 aliases evaluate lazily, so the schema names
+# must exist when ``__value__`` is accessed (they are NOT annotation-only).
+from narrare.kb.entity_resolution.schemas_adjudication import (
+    Adjudication as AdjudicationSchema,
+)
+from narrare.kb.entity_resolution.schemas_adjudication import (
+    PairCandidate as PairCandidateSchema,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -33,13 +41,13 @@ if TYPE_CHECKING:
     )
     from narrare_core.kb.resolution.models import EntitySnapshot
 
-# --- Result-type bindings (discharged incrementally by implementing slices) ---
+# --- Result-type bindings (all discharged; no provisional aliases remain) --------
 
 type ResolutionAnalysis = ResolutionAnalysisResponse
 type MergeExecutionResult = MergeExecutionResultSchema
 type MergePlan = MergePlanSchema
-type PairCandidate = object
-type Adjudication = object
+type PairCandidate = PairCandidateSchema
+type Adjudication = AdjudicationSchema
 
 
 @runtime_checkable

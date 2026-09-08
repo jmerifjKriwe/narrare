@@ -21364,6 +21364,17 @@
             },
             "type": "array",
             "title": "Signals"
+          },
+          "adjudication_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjudication Note"
           }
         },
         "type": "object",

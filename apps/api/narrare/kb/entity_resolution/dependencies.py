@@ -32,8 +32,14 @@ from narrare.kb.dependencies_core import (
 from narrare.kb.entity_resolution._dismissal_store import (  # noqa: TC001 - FastAPI DI runtime
     ResolutionDismissalStore,
 )
+from narrare.kb.entity_resolution.adjudicator import (  # noqa: TC001 - FastAPI DI runtime
+    UncertainBandAdjudicator,
+)
 from narrare.kb.entity_resolution.analysis_service import (  # noqa: TC001 - FastAPI DI runtime
     ResolutionAnalysisService,
+)
+from narrare.kb.entity_resolution.dependencies_adjudicator import (
+    get_merge_adjudicator,
 )
 from narrare.kb.entity_resolution.endorse_service import (  # noqa: TC001 - FastAPI DI runtime
     ResolutionEndorseService,
@@ -114,18 +120,17 @@ def get_merge_executor(
     return MergeExecutor(kb_repo=kb_repo, rel_repo=rel_repo, session=session)
 
 
-def get_resolution_analyzer(
-    kb_repo: Annotated[KBRepository, Depends(get_kb_repository)],
-    rel_repo: Annotated[RelationshipRepository, Depends(get_rel_repository)],
-    dismissed: Annotated[ResolutionDismissalStore, Depends(get_resolution_dismissal_store)],
+def _build_analyzer(
+    kb_repo: KBRepository,
+    rel_repo: RelationshipRepository,
+    dismissed: ResolutionDismissalStore,
+    *,
+    adjudicator: UncertainBandAdjudicator | None = None,
 ) -> ResolutionAnalysisService:
-    """Wire the analysis service: snapshot builder + pure engine + cache.
+    """Assemble the analysis service from its injected collaborators.
 
-    The kb/relationship repositories come from the canonical kb factories
-    (overridable seam — route tests inject fakes there while this factory
-    and the scope guard run for real). The engine is I/O-free
-    (narrare_core); the cache backend is the process-wide singleton; the
-    rejection ledger filters served analyses (spec §7 reject).
+    Shared by the deterministic analyzer (endorse/suggestions re-validation
+    and cache reads) and the adjudicated analyzer (analyze route).
     """
     from narrare.kb.entity_resolution.analysis_cache import ResolutionAnalysisCache
     from narrare.kb.entity_resolution.analysis_service import ResolutionAnalysisService
@@ -137,7 +142,38 @@ def get_resolution_analyzer(
         engine=ResolutionEngine(),
         cache=ResolutionAnalysisCache(_get_cache_backend()),
         dismissed=dismissed,
+        adjudicator=adjudicator,
     )
+
+
+def get_resolution_analyzer(
+    kb_repo: Annotated[KBRepository, Depends(get_kb_repository)],
+    rel_repo: Annotated[RelationshipRepository, Depends(get_rel_repository)],
+    dismissed: Annotated[ResolutionDismissalStore, Depends(get_resolution_dismissal_store)],
+) -> ResolutionAnalysisService:
+    """Wire the DETERMINISTIC analyzer: snapshot builder + pure engine + cache.
+
+    The kb/relationship repositories come from the canonical kb factories
+    (overridable seam — route tests inject fakes there while this factory
+    and the scope guard run for real). No adjudicator: endorse
+    re-validation and cache reads never touch the LLM (spec §8).
+    """
+    return _build_analyzer(kb_repo, rel_repo, dismissed)
+
+
+def get_adjudicated_analyzer(
+    kb_repo: Annotated[KBRepository, Depends(get_kb_repository)],
+    rel_repo: Annotated[RelationshipRepository, Depends(get_rel_repository)],
+    dismissed: Annotated[ResolutionDismissalStore, Depends(get_resolution_dismissal_store)],
+    adjudicator: Annotated[UncertainBandAdjudicator, Depends(get_merge_adjudicator)],
+) -> ResolutionAnalysisService:
+    """Wire the ADJUDICATED analyzer (analyze route only, ADR-085 P5).
+
+    Same deterministic core plus the uncertain-band annotation: REVIEW
+    pairs may be LLM-adjudicated through the existing KBMergeService; a
+    failure degrades to a note (RULE-11), never a crashed analysis.
+    """
+    return _build_analyzer(kb_repo, rel_repo, dismissed, adjudicator=adjudicator)
 
 
 def get_endorse_service(

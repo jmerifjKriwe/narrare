@@ -18,10 +18,13 @@ from fastapi.responses import JSONResponse
 
 from narrare._app.database import get_async_session
 from narrare._app.dependencies_auth import get_current_user_id
+from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.kb.dependencies_core import get_kb_repository, get_rel_repository
 from narrare.kb.entity_resolution.analysis_cache import ResolutionAnalysisCache
 from narrare.kb.entity_resolution.analysis_service import ResolutionAnalysisService
 from narrare.kb.entity_resolution.dependencies import (
+    get_adjudicated_analyzer,
+    get_merge_adjudicator,
     get_novel_scope_repository,
     get_resolution_analyzer,
     get_resolution_dismissal_store,
@@ -38,6 +41,8 @@ from narrare_core.kb.resolution.scoring import ResolutionEngine
 from narrare_core.kb.schemas.entry import NovelKBEntry
 from narrare_core.shared.errors import NotFoundError
 from tests.fakes.fake_novel_repo import FakeNovelRepository
+
+from ._adjudicator_helpers import noop_limiter, stub_adjudicator
 
 if TYPE_CHECKING:
     from narrare.kb.entity_resolution.contracts import SnapshotBuilderProtocol
@@ -301,7 +306,12 @@ def build_app(
     *,
     override_auth: bool = True,
 ) -> FastAPI:
-    """App with the analyzer SEAM overridden (fakes at the service seam)."""
+    """App with the analyzer SEAM overridden (fakes at the service seam).
+
+    Both analyzer seams are pinned to the same instance: the analyze
+    route resolves the adjudicated factory (P5), suggestions/endorse the
+    deterministic one.
+    """
     app = FastAPI()
     app.include_router(resolution_router, prefix="/api/v1")
     _add_not_found_handler(app)
@@ -310,6 +320,7 @@ def build_app(
         app.dependency_overrides[get_current_user_id] = lambda: str(USER_ID)
     app.dependency_overrides[get_novel_scope_repository] = lambda: novel_repo
     app.dependency_overrides[get_resolution_analyzer] = lambda: analyzer
+    app.dependency_overrides[get_adjudicated_analyzer] = lambda: analyzer
     return app
 
 
@@ -318,7 +329,13 @@ def build_production_app(
     kb_repo: FakeResolutionKbRepo,
     rel_repo: FakeResolutionRelationshipRepo,
 ) -> FastAPI:
-    """App with the REAL analyzer factory — fakes only at the repository seam."""
+    """App with the REAL analyzer factory — fakes only at the repository seam.
+
+    The shared AI_ANALYSIS_LIMITER (process-wide 5/min bucket) is
+    neutralized and the adjudicator stubbed at their DI seams — route
+    tests stay hermetic; the limiter wiring itself is pinned by the
+    metadata assertion in ``test_adjudicator.py``.
+    """
     app = FastAPI()
     app.include_router(resolution_router, prefix="/api/v1")
     _add_not_found_handler(app)
@@ -329,6 +346,8 @@ def build_production_app(
     app.dependency_overrides[get_kb_repository] = lambda: kb_repo
     app.dependency_overrides[get_rel_repository] = lambda: rel_repo
     app.dependency_overrides[get_resolution_dismissal_store] = lambda: FakeDismissedStore()
+    app.dependency_overrides[AI_ANALYSIS_LIMITER] = noop_limiter
+    app.dependency_overrides[get_merge_adjudicator] = lambda: stub_adjudicator()
     return app
 
 
