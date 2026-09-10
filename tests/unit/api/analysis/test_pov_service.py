@@ -11,11 +11,13 @@ from uuid import uuid4
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.analysis.services.pov_service import POVService
 from narrare_core.agents.pov_types import POVDetectionOutput
 from narrare_core.analysis.types import POVResult
 from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.model_config import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.shared.errors import NotFoundError
 from tests.fakes import FakeChapterRepository, FakeModelRegistry, FakeNovelRepository
 from tests.unit.api._test_helpers import make_chapter, make_novel, seed_repos
@@ -65,7 +67,8 @@ def _make_service(
         novel_repo=nr,
         kb_repo=kb,
         model_registry=FakeModelRegistry(),
-        model_config=_CONFIG,
+        # ADR-086: unit tests pin the resolved config via StaticModelResolution.
+        model_resolution=StaticModelResolution(ResolvedModel(config=_CONFIG)),
         composer=composer or FakeComposer(),
         invocation_pipeline=invocation_pipeline,
     )
@@ -86,6 +89,7 @@ def _prepared() -> PreparedModelCall:
 def _inject(svc: POVService, agent: FakePOVAgent) -> None:
     async def _prepare_agent(
         system_prompt: str | None = None,
+        resolved_model: ResolvedModel | None = None,
     ) -> tuple[FakePOVAgent, PreparedModelCall]:
         return agent, _prepared()
 
@@ -233,7 +237,7 @@ class TestMultipleChapters:
             novel_repo=nr,
             kb_repo=SeededKBRepository([]),
             model_registry=FakeModelRegistry(),
-            model_config=_CONFIG,
+            model_resolution=StaticModelResolution(ResolvedModel(config=_CONFIG)),
             composer=FakeComposer(),
         )
         fake = FakePOVAgent(output=_pov_output())
@@ -282,6 +286,7 @@ class TestMode1PromptComposition:
 
         async def spy_prepare_agent(
             system_prompt: str | None = None,
+            resolved_model: ResolvedModel | None = None,
         ) -> tuple[FakePOVAgent, PreparedModelCall]:
             captured["system_prompt"] = system_prompt
             return FakePOVAgent(output=_pov_output()), _prepared()

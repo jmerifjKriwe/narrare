@@ -7,13 +7,20 @@ Tests the service-layer dependency factory functions:
 - ``get_user_providers_service`` / ``get_user_ai_settings_service``
   / ``get_project_ai_settings_service``
 - ``get_model_routing_resolver``
+- ``ModelResolution`` / ``LazyModelResolution`` / ``StaticModelResolution``
+  — lazy model resolution primitives
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from narrare._app.dependencies_services import (
+    LazyModelResolution,
+    ModelResolution,
+    StaticModelResolution,
     SystemModelCategory,
     build_system_default_config,
     get_cascade_resolver,
@@ -25,6 +32,8 @@ from narrare._app.dependencies_services import (
     get_user_ai_settings_service,
     get_user_providers_service,
 )
+from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 
 # ---------------------------------------------------------------------------
 # Fake session
@@ -108,3 +117,97 @@ class TestFactoryFunctions:
         session: Any = _FakeSession()
         resolver = get_model_routing_resolver(session)  # type: ignore[arg-type]
         assert resolver.__class__.__name__ == "ModelRoutingResolverImpl"
+
+
+# ---------------------------------------------------------------------------
+# Model resolution primitives (lazy/static)
+# ---------------------------------------------------------------------------
+
+_PROBE_MODEL = ResolvedModel(
+    config=ResolvedModelConfig(provider_name="anthropic", model_id="claude-haiku"),
+    source="probe",
+)
+
+
+class _CountingFactory:
+    """Async factory that counts invocations and can fail N times first."""
+
+    def __init__(self, failures: int = 0) -> None:
+        self._failures = failures
+        self.calls = 0
+
+    async def __call__(self) -> ResolvedModel:
+        self.calls += 1
+        if self.calls <= self._failures:
+            msg = "simulated resolution failure"
+            raise RuntimeError(msg)
+        return _PROBE_MODEL
+
+
+class TestLazyModelResolution:
+    async def test_resolve_invokes_factory_once_and_caches(self) -> None:
+        factory = _CountingFactory()
+        resolution = LazyModelResolution(factory)
+
+        first = await resolution.resolve()
+        second = await resolution.resolve()
+
+        assert factory.calls == 1
+        assert first is second
+        assert first is _PROBE_MODEL
+
+    async def test_resolve_error_not_cached_retries_factory(self) -> None:
+        factory = _CountingFactory(failures=1)
+        resolution = LazyModelResolution(factory)
+
+        with pytest.raises(RuntimeError, match="simulated resolution failure"):
+            await resolution.resolve()
+
+        resolved = await resolution.resolve()
+
+        assert factory.calls == 2
+        assert resolved is _PROBE_MODEL
+
+    async def test_resolve_after_error_then_caches_success(self) -> None:
+        factory = _CountingFactory(failures=1)
+        resolution = LazyModelResolution(factory)
+
+        with pytest.raises(RuntimeError, match="simulated resolution failure"):
+            await resolution.resolve()
+        resolved = await resolution.resolve()
+        cached = await resolution.resolve()
+
+        assert factory.calls == 2
+        assert resolved is cached
+        assert cached is _PROBE_MODEL
+
+
+class TestStaticModelResolution:
+    async def test_resolve_returns_fixed_model(self) -> None:
+        resolution = StaticModelResolution(_PROBE_MODEL)
+
+        resolved = await resolution.resolve()
+
+        assert resolved is _PROBE_MODEL
+
+    async def test_resolve_is_idempotent(self) -> None:
+        resolution = StaticModelResolution(_PROBE_MODEL)
+
+        first = await resolution.resolve()
+        second = await resolution.resolve()
+
+        assert first is second
+
+
+class TestModelResolutionContracts:
+    async def test_lazy_satisfies_protocol(self) -> None:
+        resolution: ModelResolution = LazyModelResolution(_CountingFactory())
+
+        assert isinstance(resolution, ModelResolution)
+        assert isinstance(await resolution.resolve(), ResolvedModel)
+
+    async def test_static_satisfies_protocol(self) -> None:
+        resolution: ModelResolution = StaticModelResolution(_PROBE_MODEL)
+
+        assert isinstance(resolution, ModelResolution)
+        assert isinstance(await resolution.resolve(), ResolvedModel)

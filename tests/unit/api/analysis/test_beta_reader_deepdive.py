@@ -13,6 +13,7 @@ from uuid import uuid4
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.analysis.beta_reader_cache import BetaReaderCache
 from narrare.analysis.beta_reader_service import BetaReaderService
 from narrare.analysis.contracts import FeedbackCategory
@@ -28,6 +29,8 @@ from narrare.analysis.schemas import (
     BetaReaderResponse,
 )
 from narrare_core.agents.beta_reader_types import BetaReaderDeps, BetaReaderPhase2Output
+from narrare_core.analysis.assembler import AnalysisContextAssembler
+from narrare_core.llm import ResolvedModel
 from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.intents import LLMIntent
 
@@ -116,7 +119,9 @@ def _make_service(
     composer = AsyncMock()
     composer.build = AsyncMock(return_value=composed)
 
-    # Config — real instance instead of bare MagicMock (RULE-TEST-01)
+    # Config — real instance instead of bare MagicMock (RULE-TEST-01),
+    # wrapped in StaticModelResolution (ADR-086: the service resolves at
+    # first use via ModelResolution, never via a bare config).
     from narrare_core.llm import ResolvedModelConfig
 
     config = ResolvedModelConfig(
@@ -126,12 +131,17 @@ def _make_service(
         max_tokens=4096,
     )
 
+    async def _default_budget_assembler() -> AnalysisContextAssembler:
+        """Default (uncapped) budget assembler — pre-ADR-086 unit default."""
+        return AnalysisContextAssembler()
+
     return BetaReaderService(
         context_assembler=assembler,
         cache=cache,
         registry=registry,
-        config=config,
+        model_resolution=StaticModelResolution(ResolvedModel(config=config)),
         composer=composer,
+        budget_assembler_factory=_default_budget_assembler,
         invocation_pipeline=invocation_pipeline,
     )
 

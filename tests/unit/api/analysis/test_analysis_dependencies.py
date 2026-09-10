@@ -19,11 +19,12 @@ pattern), so tests mock at the module attribute level before calling.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from narrare._app.dependencies_services import LazyModelResolution
 from narrare.analysis.dependencies import (
     get_pov_service,
     get_readability_service,
@@ -68,14 +69,14 @@ def _fake_resolver() -> tuple[MagicMock, ResolvedModel]:
 class TestGetBetaReaderService:
     """get_beta_reader_service(session, user_id, novel_id) — async factory.
 
-    C5/ADR-082: resolves context_total_budget through the cascade and the
-    model boundary, and injects it as the budget assembler's total
-    (RULE-18b runtime-consumer evidence for the analysis side). Model
-    routing resolves via the per-user cascade (Task 2a).
+    ADR-086: the factory wires LAZILY — both the routing cascade AND the
+    token-limits cascade (RULE-18b; source unchanged, timing deferred)
+    run at the service's first use, not at construction (which happens
+    pre-body-validation).
     """
 
-    async def test_returns_beta_reader_service_with_resolved_budget(self) -> None:
-        """All deps wired; budget_assembler.total_budget = resolved total."""
+    async def test_wires_lazy_resolution_and_defers_both_cascades(self) -> None:
+        """No resolution at construction; first use runs both cascades."""
         import uuid as _uuid
 
         from narrare._app.config import Settings
@@ -88,6 +89,8 @@ class TestGetBetaReaderService:
         mock_composer = MagicMock(spec=["compose", "build"])
         mock_pipeline = MagicMock(spec=["generate"])
         resolver, resolved = _fake_resolver()
+        user_id = str(_uuid.uuid4())
+        novel_id = _uuid.uuid4()
 
         fake_limits = TokenLimitOverrides(context_total_budget=24_000)
         fake_token_service = MagicMock(spec=TokenLimitsService)
@@ -131,14 +134,32 @@ class TestGetBetaReaderService:
                 return_value=MagicMock(spec=Settings, name="settings"),
             ),
         ):
-            result = await get_beta_reader_service(
-                session, user_id=str(_uuid.uuid4()), novel_id=_uuid.uuid4()
-            )
+            result = await get_beta_reader_service(session, user_id=user_id, novel_id=novel_id)
 
-        assert result._budget_assembler.total_budget == 24_000
-        assert result._config is resolved.config
-        assert result._api_key == _USER_KEY
-        assert result._base_url == _USER_BASE_URL
+        # ADR-086 lazy wiring: the factory runs pre-body-validation, so
+        # it must NOT resolve — BOTH cascades are deferred to first use.
+        assert resolver.resolve.await_args_list == []
+        assert fake_token_service.get_resolved_limits.await_args_list == []
+        assert isinstance(result._model_resolution, LazyModelResolution)
+
+        # First use, step 1: the routing cascade runs with the real
+        # intent (BETA_READ) for this user + novel (project tier).
+        resolved_model = await result._model_resolution.resolve()
+        assert resolver.resolve.await_args_list == [
+            call(LLMIntent.BETA_READ, UUID(user_id), novel_id)
+        ]
+        assert resolved_model.config is resolved.config
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL
+
+        # First use, step 2: the deferred composition awaits the
+        # token-limits cascade + the resolved window and builds the
+        # budget assembler at the resolved context_total_budget.
+        budget_assembler = await result._budget_assembler_factory()
+        fake_token_service.get_resolved_limits.assert_awaited_once_with(
+            user_id=user_id, project_id=str(novel_id)
+        )
+        assert budget_assembler.total_budget == 24_000
 
 
 # ---------------------------------------------------------------------------
@@ -217,12 +238,13 @@ class TestGetSentimentService:
 class TestGetReadabilityService:
     """get_readability_service(novel_id, session, user_id) — async factory.
 
-    Model routing resolves via the per-user cascade (Task 2a); the resolved
-    config + credentials are wired into the service.
+    ADR-086: the factory wires LAZILY — no resolution at construction
+    (which happens pre-body-validation); the ANALYSE cascade runs at the
+    service's first use.
     """
 
-    async def test_returns_readability_service_with_model_registry(self) -> None:
-        """Returns ReadabilityService with ModelRegistry, config, composer, and pipeline."""
+    async def test_wires_lazy_resolution_and_defers_cascade(self) -> None:
+        """No resolution at construction; first use runs the cascade."""
         session = AsyncMock(spec=AsyncSession)
         mock_registry = MagicMock(spec=["get_model", "register_model"])
         mock_composer = MagicMock(spec=["compose", "build"])
@@ -246,12 +268,22 @@ class TestGetReadabilityService:
                 novel_id=novel_id, session=session, user_id=user_id
             )
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.ANALYSE, UUID(user_id), novel_id)
+        # ADR-086 lazy wiring: the factory runs pre-body-validation, so
+        # it must NOT resolve — the cascade is deferred to first use.
+        assert resolver.resolve.await_args_list == []
+        assert isinstance(result._model_resolution, LazyModelResolution)
+
+        resolved_model = await result._model_resolution.resolve()
+        # The REAL intent (ANALYSE), for THIS user, WITH the novel
+        # (project) tier — invoked at first use, not at construction:
+        assert resolver.resolve.await_args_list == [
+            call(LLMIntent.ANALYSE, UUID(user_id), novel_id)
+        ]
         assert result._model_registry is mock_registry
-        assert result._model_config is resolved.config
+        assert resolved_model.config is resolved.config
         assert result._composer is mock_composer
-        assert result._api_key == _USER_KEY
-        assert result._base_url == _USER_BASE_URL
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL
 
 
 # ---------------------------------------------------------------------------
@@ -262,12 +294,13 @@ class TestGetReadabilityService:
 class TestGetPOVService:
     """get_pov_service(novel_id, session, user_id) — async factory.
 
-    Model routing resolves via the per-user cascade (Task 2a); the resolved
-    config + credentials are wired into the service.
+    ADR-086: the factory wires LAZILY — no resolution at construction
+    (which happens pre-body-validation); the ANALYSE cascade runs at the
+    service's first use.
     """
 
-    async def test_returns_pov_service_with_kb_repo(self) -> None:
-        """Returns POVService with KB repository for character name resolution."""
+    async def test_wires_lazy_resolution_and_defers_cascade(self) -> None:
+        """No resolution at construction; first use runs the cascade."""
         session = AsyncMock(spec=AsyncSession)
         mock_registry = MagicMock(spec=["get_model", "register_model"])
         mock_composer = MagicMock(spec=["compose", "build"])
@@ -290,9 +323,19 @@ class TestGetPOVService:
         ):
             result = await get_pov_service(novel_id=novel_id, session=session, user_id=user_id)
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.ANALYSE, UUID(user_id), novel_id)
+        # ADR-086 lazy wiring: the factory runs pre-body-validation, so
+        # it must NOT resolve — the cascade is deferred to first use.
+        assert resolver.resolve.await_args_list == []
+        assert isinstance(result._model_resolution, LazyModelResolution)
+
+        resolved_model = await result._model_resolution.resolve()
+        # The REAL intent (ANALYSE), for THIS user, WITH the novel
+        # (project) tier — invoked at first use, not at construction:
+        assert resolver.resolve.await_args_list == [
+            call(LLMIntent.ANALYSE, UUID(user_id), novel_id)
+        ]
         assert result._model_registry is mock_registry
-        assert result._model_config is resolved.config
+        assert resolved_model.config is resolved.config
         assert result._composer is mock_composer
-        assert result._api_key == _USER_KEY
-        assert result._base_url == _USER_BASE_URL
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL

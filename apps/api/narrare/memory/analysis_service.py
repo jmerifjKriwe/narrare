@@ -4,12 +4,17 @@ Takes feedback events from the DB, formats them for the core
 ``PreferenceAnalysisAgent``, runs the analysis, and persists the
 result to the ``preference_profiles`` table.
 
-Model acquisition follows the per-user model-routing cascade: the DI
-factory (``router_analysis._get_analysis_service``) resolves
-``LLMIntent.EXTRACT`` for the authenticated user and passes the resolved
-config + credentials in; the agent runner threads them to its ACTUAL
-``registry.prepare()`` resolution point (the single assembly point).
-All prompts come from PromptComposer (RULE-02).
+Model acquisition follows the per-user model-routing cascade with LAZY
+first-use resolution (ADR-086): the DI factory
+(``router_analysis._get_analysis_service``) wires a
+``LazyModelResolution`` around ``resolver.resolve(LLMIntent.EXTRACT, …)``
+— no resolution at construction (FastAPI solves all sub-dependencies
+BEFORE body validation, so an eager resolve there would preempt
+legitimate 422s with 400/500s). The service resolves on first use at
+the top of ``_run_agent()`` — after ``analyze()``'s event-count
+validation — and the agent runner threads the resolved config +
+credentials to its ACTUAL ``registry.prepare()`` resolution point (the
+single assembly point). All prompts come from PromptComposer (RULE-02).
 """
 
 from __future__ import annotations
@@ -25,11 +30,11 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from uuid import UUID
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.memory.models import FeedbackEventModel
     from narrare.memory.repository import FeedbackRepository, PreferenceProfileRepository
     from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
@@ -47,11 +52,14 @@ class PreferenceAnalysisService:
         feedback_repo: Repository for querying feedback events.
         profile_repo: Repository for persisting analysis results.
         composer: PromptComposer for building prompts (RULE-02).
-        config: Resolved model config from the per-user routing cascade
-            (resolved at the DI boundary in ``router_analysis``).
+        model_resolution: Lazy model-routing source (ADR-086). The
+            per-user cascade (provider/model/credentials) resolves on
+            first use at the top of ``_run_agent()`` — after
+            request-body validation — and is cached by
+            ``LazyModelResolution``; production wires
+            ``LazyModelResolution``, tests/overrides wire
+            ``StaticModelResolution``.
         invocation_pipeline: Optional InvocationPipeline for evidence recording.
-        api_key: Per-user provider API key (model-routing cascade).
-        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -60,20 +68,15 @@ class PreferenceAnalysisService:
         feedback_repo: FeedbackRepository,
         profile_repo: PreferenceProfileRepository,
         composer: PromptComposer,
-        config: ResolvedModelConfig,
+        model_resolution: ModelResolution,
         invocation_pipeline: InvocationPipeline | None = None,
-        *,
-        api_key: str | None = None,
-        base_url: str | None = None,
     ) -> None:
         self._registry = registry
         self._feedback_repo = feedback_repo
         self._profile_repo = profile_repo
         self._composer = composer
-        self._config = config
+        self._model_resolution = model_resolution
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
 
     async def analyze(self, user_id: UUID, project_id: UUID) -> AnalyzeResponse:
         """Run PreferenceAnalysisAgent on accumulated feedback.
@@ -205,15 +208,24 @@ class PreferenceAnalysisService:
     ) -> PreferenceAnalysisOutput:
         """Run the PreferenceAnalysisAgent with the given feedback.
 
+        ADR-086: resolve the per-user routing at the TOP — first use,
+        after request-body validation and after ``analyze()``'s
+        event-count validation (which must precede any resolution).
+        ``ConfigurationError`` propagates loudly (RULE-11, AI-mandatory
+        endpoint); ``LazyModelResolution`` caches after the first
+        success. Tests mock this method, so resolution stays behind the
+        existing monkeypatch seam.
+
         Delegated to :mod:`narrare.memory._agent_runner` (RULE-04 split —
         agent invocation is a separate responsibility from the
         analyze/persist flow).
         """
+        resolved = await self._model_resolution.resolve()
         return await run_preference_analysis_agent(
             model_registry=self._registry,
-            model_config=self._config,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            model_config=resolved.config,
+            api_key=resolved.api_key,
+            base_url=resolved.base_url,
             composer=self._composer,
             invocation_pipeline=self._invocation_pipeline,
             feedback_text=feedback_text,

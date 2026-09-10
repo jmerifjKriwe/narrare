@@ -24,9 +24,11 @@ from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.model_routing import ResolvedModel
 from tests.fakes import (
     FakeFeedbackRepository,
     FakePreferenceProfileRepository,
@@ -130,9 +132,9 @@ class TestPreferenceAnalysisPrepareWiring:
             feedback_repo=feedback_repo,
             profile_repo=profile_repo,
             composer=FakePromptComposer(),
-            config=config,
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
         )
         output = MagicMock(spec=PreferenceAnalysisOutput)
         output.summary = "Prefers concise prose."

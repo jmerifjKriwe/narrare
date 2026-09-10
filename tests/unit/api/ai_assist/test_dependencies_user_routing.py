@@ -1,10 +1,14 @@
 """User-routing migration tests for the ai_assist dependency factory (Task 4).
 
 Regression-first proof that ``ai_assist/dependencies.get_dialogue_coach_service``
-resolves the dialogue-coach model via the per-user ``ModelRoutingResolver``
-cascade (instead of the legacy ``build_system_default_config``) with the
-correct intent + user_id, and that the resolved config + credentials land
-on the service that owns the actual ``get_model`` call:
+wires the dialogue-coach model resolution via the per-user
+``ModelRoutingResolver`` cascade (instead of the legacy
+``build_system_default_config``) with the correct intent + user_id, and
+that the resolved config + credentials land on the service that owns the
+actual ``get_model`` call. Since ADR-086 the factory wires the cascade
+LAZILY (``LazyModelResolution``) — no resolution at construction (FastAPI
+solves sub-dependencies pre-body-validation); the assertions therefore
+pin both the deferral and the post-``ensure_resolved()`` cascade call:
 
 - DialogueCoach model — ``LLMIntent.DIALOGUE_COACH`` (ADR-069 Decision 5,
   feature ``ai_assist_dialogue_coach``)
@@ -153,7 +157,7 @@ class TestFactoryStructure:
 
 
 class TestDialogueCoachDepsUserRouting:
-    """get_dialogue_coach_service resolves DIALOGUE_COACH for THIS user."""
+    """get_dialogue_coach_service wires DIALOGUE_COACH lazily for THIS user."""
 
     async def test_resolves_intent_and_threads_results_into_wiring(self) -> None:
         from narrare.ai_assist.dependencies import get_dialogue_coach_service
@@ -190,6 +194,13 @@ class TestDialogueCoachDepsUserRouting:
                 user_id=user_id,
             )
 
+        # ADR-086 lazy wiring: the factory runs pre-body-validation, so it
+        # must NOT resolve — the cascade is deferred to first use.
+        assert resolver.resolve.await_args_list == []
+
+        assert isinstance(service, DialogueCoachService)
+        resolved_model = await service.ensure_resolved()
+
         # The REAL intent (feature ai_assist_dialogue_coach), for THIS user,
         # WITHOUT the project tier (no novel path param on the router — the
         # novel is only known after the chapter load inside the service).
@@ -197,17 +208,13 @@ class TestDialogueCoachDepsUserRouting:
             call(LLMIntent.DIALOGUE_COACH, UUID(user_id), None)
         ]
 
-        assert isinstance(service, DialogueCoachService)
-        config = service._config
-        assert isinstance(config, ResolvedModelConfig)
-        assert config is resolved.config
-        assert config.model_id == "glm-4.7"
-        assert config.provider_name == "zai"
-
-        # Resolved user credentials land on the service (threaded onwards to
-        # the agent-runner get_model resolution point).
-        assert service._api_key == _USER_KEY
-        assert service._base_url == _USER_BASE_URL
+        # The cascade result lands on the service (threaded onwards to the
+        # agent-runner get_model resolution point at consumption time).
+        assert resolved_model.config is resolved.config
+        assert resolved_model.config.model_id == "glm-4.7"
+        assert resolved_model.config.provider_name == "zai"
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL
 
 
 # ===========================================================================

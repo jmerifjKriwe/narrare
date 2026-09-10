@@ -175,7 +175,9 @@ class TestAnalyseServicePrepareWiring:
         assert events[-1].is_final is True
 
     async def test_readability_service_prepares_and_forwards_triple(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.analysis.services.readability_service import ReadabilityService
+        from narrare_core.llm import ResolvedModel
 
         config = _user_config()
         registry = _RecordingPrepareRegistry()
@@ -189,10 +191,11 @@ class TestAnalyseServicePrepareWiring:
             chapter_repo=cr,
             novel_repo=nr,
             model_registry=cast("ModelRegistry", registry),
-            model_config=config,
+            # ADR-086: first-use resolution pinned via StaticModelResolution.
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
             composer=FakeComposer(),
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
 
         with patch("narrare_core.agents.readability_agent.ReadabilityAgent") as MockAgent:
@@ -208,7 +211,9 @@ class TestAnalyseServicePrepareWiring:
         assert len(results) == 1
 
     async def test_pov_service_prepares_and_forwards_triple(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.analysis.services.pov_service import POVService
+        from narrare_core.llm import ResolvedModel
 
         config = _user_config()
         registry = _RecordingPrepareRegistry()
@@ -221,10 +226,11 @@ class TestAnalyseServicePrepareWiring:
             novel_repo=nr,
             kb_repo=SeededKBRepository(["Alice"]),
             model_registry=cast("ModelRegistry", registry),
-            model_config=config,
+            # ADR-086: first-use resolution pinned via StaticModelResolution.
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
             composer=FakeComposer(),
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
         sentinel_output = POVDetectionOutput(
             scenes=[
