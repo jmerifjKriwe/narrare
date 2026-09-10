@@ -6,9 +6,7 @@
   "adoption_debt": [
     "writing | inline_fallback_count | 1"
   ],
-  "prompt_integrity_findings": [
-    "PROMPT-VARS | packages/core/narrare_core/prompts/variable_registry.py | Dead variable(s) in SYSTEM_VARS — registered but never used in any prompt template: feedback_text, mode, style_constraints"
-  ],
+  "prompt_integrity_findings": [],
   "approved_exceptions": [
     "inline_fallback | packages/core/narrare_core/agents/writing_graph_prompts.py | fallback when composer=None | Test ergonomics — not a production path",
     "pyproject | RULE-01b | packages/core/narrare_core/llm/embedding_providers.py | Batch embedding API requires direct client access for performance",

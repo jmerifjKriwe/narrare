@@ -14,6 +14,7 @@
 | Symbol | Meaning |
 |--------|---------|
 | ✅ | Accepted — in effect |
+| ✅ Implemented | Accepted — implementation complete |
 | 🔄 | Proposed — under discussion |
 | ⛔ | Superseded — replaced by newer ADR |
 | 🗄️ | Deprecated — no longer relevant |
