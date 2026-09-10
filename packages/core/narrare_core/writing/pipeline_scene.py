@@ -49,7 +49,9 @@ async def stream_scene_by_scene(
         scene_prompt = pipeline._build_prompt_context(  # pyright: ignore[reportPrivateUsage]
             request,
             context,
-            mode="scene",
+            # Route-composition fix (T1f): "scene" is not a governed WRITE
+            # context-mode (route_table.py); the governed mode is scene_by_scene.
+            mode="scene_by_scene",
             author_instructions=scene_outline,
             extra_overrides={
                 "scene_number": str(idx),

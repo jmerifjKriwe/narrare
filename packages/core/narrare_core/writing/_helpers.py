@@ -68,6 +68,20 @@ def extract_frontmatter_references(frontmatter: str) -> set[str]:
     return ids
 
 
+def optional_block(label: str, text: str) -> str:
+    """Wrap populated tier text in a value-side labelled block (T1a).
+
+    Returns ``""`` when ``text`` is empty so plain variable substitution
+    renders byte-identically for KB-empty novels.  For populated tiers the
+    label lives on the value side (never in templates) and adds no ``### ``
+    markers, so :meth:`WritingContext.to_metadata` entry counts (which
+    count ``### `` headings) stay unchanged.
+    """
+    if not text:
+        return ""
+    return "\n\n" + label + ":\n" + text
+
+
 _COMPACT_ENTITY_OMISSIONS: tuple[tuple[ProvenanceField, OmissionReason], ...] = (
     ("priority", "tier_does_not_require"),
     ("provenance", "tier_does_not_require"),

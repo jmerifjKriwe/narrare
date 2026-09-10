@@ -39,8 +39,14 @@ _COMMON_OPTIONAL_VARIABLES = frozenset(
         "kb_context_warnings",
         "kb_factions",
         "kb_other",
+        # ADR-050 P1-D / Tier-5 KB injection (PO ruling 1B, 2026-09-10):
+        # pinned-notes / magic-system / timeline tier blocks. Declared
+        # optional for the same RULE-11 reason as the kb_* vars above.
+        "kb_pinned",
         "kb_relationships",
         "kb_suggested",
+        "kb_systems",
+        "kb_timelines",
         "novel_synopsis",
         "recent_chapters",
         # Spec 2 / SERIES-002: series-history block. Declared optional so

@@ -139,6 +139,11 @@ async def stream_coauthor(
         "chapter_outline": context.chapter_outline,
         "kb_characters": context.kb_characters,
         "kb_locations": context.kb_locations,
+        # ADR-050 P1-D / Tier-5 KB injection (T1e): labeled tier blocks —
+        # "" when the tier is empty, so the render stays byte-identical.
+        "kb_systems": context.kb_systems,
+        "kb_timelines": context.kb_timelines,
+        "kb_pinned": context.kb_pinned,
         "recent_chapters": context.recent_chapters,
         "character_voice_profiles": context.character_voice_profiles,
         "tone_instructions": tone_instr,
@@ -151,8 +156,6 @@ async def stream_coauthor(
         # CR-AUFG-07-22: style-variant creative direction. Empty string when
         # no variant is requested → template renders nothing (backward compat).
         "style_variant_instructions": get_style_variant_instructions(style_variant),
-        # Backward compatibility: chapter_content maps to selection_text
-        "chapter_content": selection_text,
     }
 
     # Construct PromptContext with mode="co_author" — drives the

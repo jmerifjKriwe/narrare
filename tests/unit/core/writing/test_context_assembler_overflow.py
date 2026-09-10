@@ -396,5 +396,4 @@ class TestEdgeCases:
         variables = ctx.to_prompt_variables()
         assert isinstance(variables, dict)
         assert variables["project_title"] == "Test"
-        assert variables["chapter_content"] == "Content."
         assert "is_first_chapter" in variables

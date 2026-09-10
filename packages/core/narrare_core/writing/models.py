@@ -164,7 +164,6 @@ class WritingContext:
         rendered as empty strings so templates never see ``None``.
         """
         return {
-            "chapter_content": self.chapter_content,
             "chapter_frontmatter": self.chapter_frontmatter,
             "chapter_outline": self.chapter_outline,
             "recent_chapters": self.recent_chapters,

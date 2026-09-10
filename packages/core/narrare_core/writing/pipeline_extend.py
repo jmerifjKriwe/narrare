@@ -60,6 +60,11 @@ async def stream_extend(
         "chapter_outline": context.chapter_outline,
         "kb_characters": context.kb_characters,
         "kb_locations": context.kb_locations,
+        # ADR-050 P1-D / Tier-5 KB injection (T1c): labeled tier blocks —
+        # "" when the tier is empty, so the render stays byte-identical.
+        "kb_systems": context.kb_systems,
+        "kb_timelines": context.kb_timelines,
+        "kb_pinned": context.kb_pinned,
         "recent_chapters": context.recent_chapters,
         "character_voice_profiles": context.character_voice_profiles,
         "word_target": str(word_target),

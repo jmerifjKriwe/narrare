@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.3.0"
+prompt_version: "1.4.0"
 ---
 
 ## System Prompt
@@ -40,7 +40,7 @@ Other entities:
 {{kb_other}}
 
 Relationships:
-{{kb_relationships}}
+{{kb_relationships}}{{kb_systems}}{{kb_timelines}}{{kb_pinned}}
 
 ### Suggested KB Entries
 
