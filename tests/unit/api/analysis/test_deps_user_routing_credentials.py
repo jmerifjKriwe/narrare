@@ -143,7 +143,6 @@ class TestCredentialsReachResolutionPoint:
         service = POVService(
             chapter_repo=MagicMock(spec=True, name="ChapterRepository"),
             novel_repo=MagicMock(spec=True, name="NovelRepository"),
-            kb_repo=MagicMock(spec=True, name="KBRepository"),
             model_registry=cast("ModelRegistry", registry),
             model_resolution=StaticModelResolution(resolved),
             composer=MagicMock(spec=True, name="PromptComposer"),

@@ -173,16 +173,12 @@ class TestPOVInvocationWiring:
         mock_chapter_repo = MagicMock(spec=["get_by_id"])
         mock_chapter_repo.get_by_id = AsyncMock(return_value=mock_chapter)
 
-        mock_kb_repo = MagicMock(spec=["list_entries"])
-        mock_kb_repo.list_entries = AsyncMock(return_value=([], 0))
-
         mock_composer = AsyncMock(spec=["build"])
         mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="s", user=""))
 
         service = POVService(
             chapter_repo=mock_chapter_repo,
             novel_repo=mock_novel_repo,
-            kb_repo=mock_kb_repo,
             model_registry=MagicMock(spec=["get_model", "prepare"]),
             model_resolution=_static_resolution(),
             composer=mock_composer,

@@ -3516,7 +3516,7 @@
           "analysis"
         ],
         "summary": "Analyze POV consistency — scene detection + head-hopping + knowledge leakage",
-        "description": "Analyze POV consistency for one or more chapters.\n\nDetects POV character per scene, flags head-hopping, knowledge\nleakage, emotional leakage, and physical impossibility violations.\n\nArgs:\n    novel_id: The novel containing the chapters.\n    request: Chapter IDs + language + optional POV type hint.\n\nReturns:\n    ``POVResult`` with per-scene assignments, flagged violations,\n    and distribution statistics.",
+        "description": "Analyze POV consistency for one or more chapters.\n\nDetects POV character per scene, flags head-hopping, knowledge\nleakage, emotional leakage, and physical impossibility violations.\n\nArgs:\n    novel_id: The novel containing the chapters.\n    request: Chapter IDs + language.\n\nReturns:\n    ``POVResult`` with per-scene assignments, flagged violations,\n    and distribution statistics.",
         "operationId": "analyze_pov_api_v1_analysis_pov_post",
         "security": [
           {
@@ -18103,17 +18103,6 @@
             "minLength": 2,
             "title": "Language",
             "default": "en"
-          },
-          "pov_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pov Type"
           }
         },
         "type": "object",
@@ -18121,7 +18110,7 @@
           "chapter_ids"
         ],
         "title": "POVRequest",
-        "description": "Request for POV consistency analysis.\n\nAttributes:\n    chapter_ids: One or more chapter UUIDs to analyze (1-10).\n        Chapters are concatenated before analysis.\n    language: Language for analysis output. Defaults to ``\"en\"``.\n    pov_type: Optional POV type hint (``\"third_limited\"``,\n        ``\"first_person\"``, ``\"omniscient\"``).  If ``None``,\n        auto-detect from the text."
+        "description": "Request for POV consistency analysis.\n\nAttributes:\n    chapter_ids: One or more chapter UUIDs to analyze (1-10).\n        Chapters are concatenated before analysis.\n    language: Language for analysis output. Defaults to ``\"en\"``."
       },
       "POVResult": {
         "properties": {

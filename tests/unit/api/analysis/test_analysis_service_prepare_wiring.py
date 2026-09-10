@@ -39,7 +39,7 @@ from tests.unit.api.analysis._coreference_test_helpers import consume
 from tests.unit.api.analysis._coreference_test_helpers import (
     make_agent_output as make_coreference_output,
 )
-from tests.unit.api.analysis._fakes import FakeComposer, SeededKBRepository
+from tests.unit.api.analysis._fakes import FakeComposer
 
 if TYPE_CHECKING:
     from pydantic_ai.usage import UsageLimits
@@ -224,7 +224,6 @@ class TestAnalyseServicePrepareWiring:
         service = POVService(
             chapter_repo=cr,
             novel_repo=nr,
-            kb_repo=SeededKBRepository(["Alice"]),
             model_registry=cast("ModelRegistry", registry),
             # ADR-086: first-use resolution pinned via StaticModelResolution.
             model_resolution=StaticModelResolution(

@@ -102,16 +102,12 @@ def map_output_to_result(output: object) -> POVResult:
 def build_deps(
     text: str,
     language: str,
-    known_characters: list[str],
-    pov_type_hint: str | None,
 ) -> POVDeps:
     """Build ``POVDeps`` — helper to keep import out of module top-level.
 
     Args:
         text: Concatenated chapter content.
         language: Resolved language code.
-        known_characters: Character names from KB.
-        pov_type_hint: Optional POV type hint.
 
     Returns:
         A ``POVDeps`` instance.
@@ -121,6 +117,4 @@ def build_deps(
     return POVDeps(
         text=text,
         language=language,
-        known_characters=known_characters,
-        pov_type_hint=pov_type_hint,
     )

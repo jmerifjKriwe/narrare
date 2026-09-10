@@ -39,7 +39,7 @@ async def analyze_pov(
 
     Args:
         novel_id: The novel containing the chapters.
-        request: Chapter IDs + language + optional POV type hint.
+        request: Chapter IDs + language.
 
     Returns:
         ``POVResult`` with per-scene assignments, flagged violations,
@@ -50,5 +50,4 @@ async def analyze_pov(
         chapter_ids=request.chapter_ids,
         user_id=uuid.UUID(user_id),
         language=request.language,
-        pov_type=request.pov_type,
     )

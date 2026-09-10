@@ -168,24 +168,10 @@ class TestMapOutputToResult:
 class TestBuildDeps:
     """POVDeps construction."""
 
-    def test_creates_deps_with_all_fields(self) -> None:
+    def test_creates_deps(self) -> None:
         deps = build_deps(
             text="Alice walked home.",
             language="en",
-            known_characters=["Alice", "Bob"],
-            pov_type_hint="third_limited",
         )
         assert deps.text == "Alice walked home."
         assert deps.language == "en"
-        assert deps.known_characters == ["Alice", "Bob"]
-        assert deps.pov_type_hint == "third_limited"
-
-    def test_none_pov_type_hint_accepted(self) -> None:
-        deps = build_deps(
-            text="Some text.",
-            language="de",
-            known_characters=[],
-            pov_type_hint=None,
-        )
-        assert deps.pov_type_hint is None
-        assert deps.known_characters == []

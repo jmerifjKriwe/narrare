@@ -141,7 +141,6 @@ async def get_pov_service(
     Production wiring:
     - ChapterRepository for chapter content fetching.
     - NovelRepository for novel access control + language resolution.
-    - KBRepository for resolving known character names from KB.
     - ModelRegistry + lazy ModelResolution (ADR-086) for the
       POVDetectionAgent (AI-powered scene detection + violation analysis).
     - PromptComposer for Mode 1 (composer-driven) system prompt assembly (ADR-048).
@@ -154,7 +153,6 @@ async def get_pov_service(
     )
     from narrare.analysis.services.pov_service import POVService
     from narrare.chapters.repository import ChapterRepository
-    from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
 
     resolver = get_model_routing_resolver(session)
@@ -166,12 +164,10 @@ async def get_pov_service(
 
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)
-    kb_repo = KBRepository(session)
 
     return POVService(
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
-        kb_repo=kb_repo,
         model_registry=registry,
         model_resolution=model_resolution,
         composer=get_composer(),

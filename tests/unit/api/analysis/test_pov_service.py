@@ -24,7 +24,6 @@ from tests.unit.api._test_helpers import make_chapter, make_novel, seed_repos
 from tests.unit.api.analysis._fakes import (
     FakeComposer,
     FakePOVAgent,
-    SeededKBRepository,
     SpyInvocationPipeline,
 )
 
@@ -52,7 +51,6 @@ def _pov_output(**overrides: Any) -> POVDetectionOutput:
 
 def _make_service(
     content: str = "Alice saw the light.",
-    kb_names: list[str] | None = None,
     writing_language: str = "en",
     invocation_pipeline: InvocationPipeline | None = None,
     composer: FakeComposer | None = None,
@@ -60,12 +58,10 @@ def _make_service(
     novel = make_novel(writing_language=writing_language)
     ch = make_chapter(novel_id=novel.id, content=content)
     nr, cr = FakeNovelRepository(), FakeChapterRepository()
-    kb = SeededKBRepository(kb_names or [])
     seed_repos(novel, ch, novel_repo=nr, chapter_repo=cr)
     svc = POVService(
         chapter_repo=cr,
         novel_repo=nr,
-        kb_repo=kb,
         model_registry=FakeModelRegistry(),
         # ADR-086: unit tests pin the resolved config via StaticModelResolution.
         model_resolution=StaticModelResolution(ResolvedModel(config=_CONFIG)),
@@ -132,24 +128,6 @@ class TestPOVAnalyzeHappyPath:
         )
         assert fake.last_deps.language == "fr"
 
-    @pytest.mark.asyncio
-    async def test_passes_known_characters_from_kb(self) -> None:
-        novel, ch, svc = _make_service(kb_names=["Alice", "Bob"])
-        fake = FakePOVAgent(output=_pov_output())
-        _inject(svc, fake)
-        await svc.analyze(novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id)
-        assert "Alice" in fake.last_deps.known_characters
-
-    @pytest.mark.asyncio
-    async def test_pov_type_hint_passed_to_deps(self) -> None:
-        novel, ch, svc = _make_service()
-        fake = FakePOVAgent(output=_pov_output())
-        _inject(svc, fake)
-        await svc.analyze(
-            novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id, pov_type="first_person"
-        )
-        assert fake.last_deps.pov_type_hint == "first_person"
-
 
 # ---------------------------------------------------------------------------
 # B. analyze — error cases
@@ -205,23 +183,8 @@ class TestPOVAnalyzeEmptyText:
 
 
 # ---------------------------------------------------------------------------
-# D. _resolve_characters + multiple chapters
+# D. Multiple chapters
 # ---------------------------------------------------------------------------
-
-
-class TestResolveCharacters:
-    @pytest.mark.asyncio
-    async def test_returns_character_names_from_kb(self) -> None:
-        novel, _, svc = _make_service(kb_names=["Alice", "Bob"])
-        names = await svc._resolve_characters(novel.id)
-        assert "Alice" in names
-        assert "Bob" in names
-
-    @pytest.mark.asyncio
-    async def test_empty_kb_returns_empty_list(self) -> None:
-        novel, _, svc = _make_service(kb_names=[])
-        names = await svc._resolve_characters(novel.id)
-        assert names == []
 
 
 class TestMultipleChapters:
@@ -235,7 +198,6 @@ class TestMultipleChapters:
         svc = POVService(
             chapter_repo=cr,
             novel_repo=nr,
-            kb_repo=SeededKBRepository([]),
             model_registry=FakeModelRegistry(),
             model_resolution=StaticModelResolution(ResolvedModel(config=_CONFIG)),
             composer=FakeComposer(),

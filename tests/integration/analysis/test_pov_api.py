@@ -129,40 +129,6 @@ class TestPOVAnalysis:
 
         mock_pov_service.analyze.assert_awaited_once()
 
-    async def test_pov_with_type_hint(
-        self,
-        app: FastAPI,
-        client: AsyncClient,
-        auth_headers: dict[str, str],
-        mock_pov_service: MagicMock,
-    ) -> None:
-        """POST with pov_type hint passes it through to service."""
-        app.dependency_overrides[get_pov_service] = lambda: mock_pov_service
-        try:
-            novel_id = uuid4()
-            chapter_id = uuid4()
-
-            resp = await client.post(
-                "/api/v1/analysis/pov",
-                params={"novel_id": str(novel_id)},
-                json={
-                    "chapter_ids": [str(chapter_id)],
-                    "language": "en",
-                    "pov_type": "first_person",
-                },
-                headers=auth_headers,
-            )
-        finally:
-            # Session-scoped app — pop the override to prevent leakage into
-            # subsequent tests (see test_pov_returns_200).
-            app.dependency_overrides.pop(get_pov_service, None)
-
-        assert resp.status_code == 200
-
-        # Verify pov_type was passed to the service
-        call_kwargs = mock_pov_service.analyze.call_args
-        assert call_kwargs.kwargs["pov_type"] == "first_person"
-
     async def test_pov_missing_chapter_returns_404(
         self,
         app: FastAPI,

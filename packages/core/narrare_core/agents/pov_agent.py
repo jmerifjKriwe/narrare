@@ -10,8 +10,6 @@ Usage::
     deps = POVDeps(
         text="Alice felt a chill run down her spine...",
         language="en",
-        known_characters=["Alice", "Bob"],
-        pov_type_hint="third_limited",
     )
     result = await agent.run(
         prompt="Analyze POV in this text.",
@@ -44,29 +42,21 @@ class POVDeps:
     Attributes:
         text: The passage / chapter text to analyse.
         language: Language code (``"en"``, ``"de"``, ``"fr"``).
-        known_characters: List of known character names for POV assignment.
-        pov_type_hint: Expected POV type (``"third_limited"``,
-            ``"first_person"``, ``"omniscient"``).
     """
 
     def __init__(
         self,
         text: str = "",
         language: str = "en",
-        known_characters: list[str] | None = None,
-        pov_type_hint: str | None = None,
     ) -> None:
         self.text = text
         self.language = language
-        self.known_characters = known_characters or []
-        self.pov_type_hint = pov_type_hint
 
 
 class POVDetectionAgent(NarrareAgent[POVDeps, POVDetectionOutput]):
     """Agent for POV character detection and violation analysis.
 
-    Takes a text passage (optionally with known characters and a POV
-    type hint), identifies the POV character per scene, and flags
+    Takes a text passage, identifies the POV character per scene, and flags
     violations such as head-hopping, knowledge leakage, emotional
     leakage, and physical impossibility.
     """

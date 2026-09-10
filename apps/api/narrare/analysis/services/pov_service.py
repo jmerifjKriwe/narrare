@@ -1,8 +1,8 @@
 """POV analysis service — orchestrates POVDetectionAgent for POV detection.
 
 Handles HTTP-layer concerns: fetching chapter content, resolving language,
-access control, and character resolution from KB.  Delegates AI analysis to
-``POVDetectionAgent`` via ``ModelRegistry``.
+and access control.  Delegates AI analysis to ``POVDetectionAgent`` via
+``ModelRegistry``.
 
 No DB queries — delegated to repositories (RULE-06).
 LLM calls go through ``POVDetectionAgent`` via ``ModelRegistry`` (RULE-01b).
@@ -28,7 +28,6 @@ if TYPE_CHECKING:
 
     from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.repository import ChapterRepository
-    from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.agents.pov_agent import POVDetectionAgent
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -43,14 +42,12 @@ logger = structlog.get_logger(__name__)
 class POVService:
     """Implements ``POVServiceProtocol`` (see ``analysis/contracts.py``).
 
-    Orchestrates: validate access → fetch chapters → resolve characters
-    from KB → concatenate texts → run POVDetectionAgent → map output
-    → return ``POVResult``.
+    Orchestrates: validate access → fetch chapters → concatenate texts
+    → run POVDetectionAgent → map output → return ``POVResult``.
 
     Args:
         chapter_repo: For fetching chapter content.
         novel_repo: For resolving novel language and access control.
-        kb_repo: For resolving known character names from KB entries.
         model_registry: LLM model registry for constructing the
             ``POVDetectionAgent``.
         model_resolution: Lazy model-routing source (ADR-086): the
@@ -68,7 +65,6 @@ class POVService:
         *,
         chapter_repo: ChapterRepository,
         novel_repo: NovelRepository,
-        kb_repo: KBRepository,
         model_registry: ModelRegistry,
         model_resolution: ModelResolution,
         composer: PromptComposer,
@@ -77,7 +73,6 @@ class POVService:
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
-        self._kb_repo = kb_repo
         self._model_registry = model_registry
         self._model_resolution = model_resolution
         self._composer = composer
@@ -95,7 +90,6 @@ class POVService:
         chapter_ids: list[UUID],
         user_id: UUID,
         language: str = "en",
-        pov_type: str | None = None,
     ) -> POVResult:
         """Analyze POV consistency for one or more chapters.
 
@@ -103,17 +97,15 @@ class POVService:
         1. Validate novel access (user owns it).
         2. Resolve effective language (override → novel default → ``"en"``).
         3. Fetch chapter contents (404 if any is missing).
-        4. Fetch known character names from KB.
-        5. Concatenate chapter texts.
-        6. Run POVDetectionAgent with known characters + POV hint.
-        7. Map ``POVDetectionOutput`` → ``POVResult``.
+        4. Concatenate chapter texts.
+        5. Run POVDetectionAgent with the composed prompt.
+        6. Map ``POVDetectionOutput`` → ``POVResult``.
 
         Args:
             novel_id: The project containing the chapters.
             chapter_ids: Chapters to analyse (concatenated before analysis).
             user_id: The user requesting analysis (for access control).
             language: Language override. Defaults to ``"en"``.
-            pov_type: Optional POV type hint. If ``None``, auto-detect.
 
         Returns:
             A ``POVResult`` with per-scene assignments, flagged violations,
@@ -158,10 +150,7 @@ class POVService:
                 analysis_type="",
             )
 
-        # 3. Fetch known character names from KB
-        known_characters = await self._resolve_characters(novel_id)
-
-        # 4. Compose prompt via Mode 1 (composer-driven, ADR-048) with
+        # 3. Compose prompt via Mode 1 (composer-driven, ADR-048) with
         # correlated evidence + enrichment. Falls back to direct composition
         # on pipeline failure so analysis proceeds regardless of
         # evidence/enrichment issues.
@@ -176,7 +165,7 @@ class POVService:
             mode="pov",
         )
 
-        # 5. Run POVDetectionAgent with the composed feature-specific prompt
+        # 4. Run POVDetectionAgent with the composed feature-specific prompt
         try:
             agent, prepared = await self._prepare_agent(
                 system_prompt=composed.system, resolved_model=resolved_model
@@ -184,8 +173,6 @@ class POVService:
             deps = build_deps(
                 text=combined_text,
                 language=effective_language,
-                known_characters=known_characters,
-                pov_type_hint=pov_type,
             )
             output = await agent.run(
                 prompt="Analyze POV consistency in this text.",
@@ -203,7 +190,7 @@ class POVService:
             )
             raise
 
-        # 6. Map POVDetectionOutput → POVResult
+        # 5. Map POVDetectionOutput → POVResult
         result = map_output_to_result(output)
 
         logger.info(
@@ -221,21 +208,6 @@ class POVService:
     # -------------------------------------------------------------------
     # Private helpers
     # -------------------------------------------------------------------
-
-    async def _resolve_characters(self, novel_id: UUID) -> list[str]:
-        """Fetch character names from KB entries.
-
-        Args:
-            novel_id: The novel to look up characters for.
-
-        Returns:
-            List of character names, or empty list if none found.
-        """
-        entries, _ = await self._kb_repo.list_entries(
-            novel_id=novel_id,
-            entity_type="character",
-        )
-        return [e.name for e in entries]
 
     async def _prepare_agent(
         self,

@@ -50,28 +50,14 @@ class TestPOVDeps:
         deps = POVDeps()
         assert deps.text == ""
         assert deps.language == "en"
-        assert deps.known_characters == []
-        assert deps.pov_type_hint is None
 
     def test_custom_values(self) -> None:
         deps = POVDeps(
             text="Alice felt a chill...",
             language="de",
-            known_characters=["Alice", "Bob", "Charlie"],
-            pov_type_hint="third_limited",
         )
         assert deps.text == "Alice felt a chill..."
         assert deps.language == "de"
-        assert deps.known_characters == ["Alice", "Bob", "Charlie"]
-        assert deps.pov_type_hint == "third_limited"
-
-    def test_known_characters_default_empty_list(self) -> None:
-        deps = POVDeps()
-        assert deps.known_characters == []
-        # Ensure it's not shared between instances
-        deps2 = POVDeps()
-        deps.known_characters.append("Alice")
-        assert deps2.known_characters == []
 
 
 # ---------------------------------------------------------------------------
@@ -110,28 +96,6 @@ class TestPOVDetectionAgentRun:
         assert isinstance(result, POVDetectionOutput)
 
     @pytest.mark.asyncio
-    async def test_run_with_known_characters(self) -> None:
-        agent = POVDetectionAgent(model=TestModel(custom_output_args=_pov_output_args()))
-        deps = POVDeps(
-            text="Alice watched Bob carefully.",
-            language="en",
-            known_characters=["Alice", "Bob"],
-        )
-        result = await agent.run("Analyze POV.", deps=deps)
-        assert isinstance(result, POVDetectionOutput)
-
-    @pytest.mark.asyncio
-    async def test_run_with_pov_type_hint(self) -> None:
-        agent = POVDetectionAgent(model=TestModel(custom_output_args=_pov_output_args()))
-        deps = POVDeps(
-            text="I walked into the dark room.",
-            language="en",
-            pov_type_hint="first_person",
-        )
-        result = await agent.run("Analyze POV.", deps=deps)
-        assert isinstance(result, POVDetectionOutput)
-
-    @pytest.mark.asyncio
     async def test_run_with_system_prompt(self) -> None:
         agent = POVDetectionAgent(
             model=TestModel(custom_output_args=_pov_output_args()),
@@ -147,8 +111,6 @@ class TestPOVDetectionAgentRun:
         deps = POVDeps(
             text="Alice spürte einen Schauer.",
             language="de",
-            known_characters=["Alice"],
-            pov_type_hint="third_limited",
         )
         result = await agent.run("Analysiere die Erzählperspektive.", deps=deps)
         assert isinstance(result, POVDetectionOutput)
