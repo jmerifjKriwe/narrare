@@ -5,8 +5,6 @@ governance can distinguish direct user content from trusted system data and
 feature-specific runtime data (INFRA-012 / RULE-22).
 
 Variable Naming Convention:
-- ``writing_language`` — canonical name for output/writing language (e.g. "Deutsch")
-- ``language`` — DEPRECATED alias for writing_language; do not use in new templates
 - ``explanation_language`` — separate variable for name meaning explanations
   (distinct from writing_language)
 """
@@ -24,14 +22,12 @@ __all__ = [
     "FEATURE_DYNAMIC_VARS",
     "SYSTEM_VARS",
     "USER_CONTENT_VARS",
-    "VARIABLE_ALIASES",
     "VARIABLE_CLASSIFICATIONS",
     "VariableClassification",
     "VariableProvenance",
     "VariableSecurity",
     "get_variable_classification",
     "is_registered_variable",
-    "resolve_canonical_variable",
 ]
 
 
@@ -62,7 +58,6 @@ USER_CONTENT_VARS: frozenset[str] = frozenset(
 SYSTEM_VARS: frozenset[str] = frozenset(
     {
         "recent_chapters",
-        "chapter_content",
         "chapter_outline",
         "chapter_context",
         "chapter_summaries",
@@ -118,7 +113,6 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "character_name",
         "character_current_state",
         "character_goal_state",
-        "feedback_text",
         "template_structure",
         "template_structures",
         "world_context",
@@ -131,7 +125,6 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "target_field_description",
         "project_title",
         "genre",
-        "language",
         "writing_language",
         "tone",
         "tone_instructions",
@@ -146,7 +139,6 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "chapter_titles",
         "count",
         "event_count",
-        "event_context",
         "focus_categories",
         "check_types",
         "co_author_focus_instructions",
@@ -161,9 +153,7 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "category_focus_instructions",
         "available_rel_types",
         "gender",
-        "known_characters",
         "name_type",
-        "pov_type_hint",
         "previous_summaries",
         "structure_type",
         "summary",
@@ -198,20 +188,3 @@ def get_variable_classification(name: str) -> VariableClassification | None:
 def is_registered_variable(name: str) -> bool:
     """Return whether a prompt variable is in the governed taxonomy."""
     return name in VARIABLE_CLASSIFICATIONS
-
-
-# Canonical alias mapping — use canonical names in all new templates.
-# Aliases exist for backward compatibility only.
-VARIABLE_ALIASES: dict[str, str] = {
-    "language": "writing_language",  # DEPRECATED: use writing_language for output language
-}
-
-
-def resolve_canonical_variable(name: str) -> str:
-    """Resolve a variable name to its canonical form.
-
-    Returns the alias target if the name is deprecated, otherwise the
-    name itself.  Unknown variable names are returned unchanged so that
-    callers can still detect and report unregistered variables.
-    """
-    return VARIABLE_ALIASES.get(name, name)
