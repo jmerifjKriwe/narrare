@@ -5,11 +5,15 @@ Feature-specific beta-reader wiring lives in
 coreference wiring in :mod:`narrare.analysis.dependencies_coreference`.
 This module holds the remaining analysis factories.
 
-Model acquisition follows the per-user model-routing cascade: the LLM-backed
-factories resolve ``LLMIntent`` for the authenticated user (+ novel for
-project-level overrides) and pass the resolved config + credentials into the
-services. The sentiment factory stays deterministic (ADR-021, no LLM).
-No business logic lives here — only wiring.
+Model acquisition follows the per-user model-routing cascade with LAZY
+first-use resolution (ADR-086): the LLM-backed factories wire a
+``LazyModelResolution`` around ``resolver.resolve(LLMIntent.ANALYSE,
+user_id, novel_id)`` — no resolution at construction (FastAPI solves all
+sub-dependencies BEFORE body validation, so an eager resolve here would
+preempt legitimate 422s). The routing cascade runs at the service's
+first use, inside the service layer. The sentiment factory stays
+deterministic (ADR-021, no LLM). No business logic lives here — only
+wiring.
 """
 
 from __future__ import annotations
@@ -23,7 +27,10 @@ from narrare._app.dependencies import (
     SessionDep,
     get_current_user_id,
 )
-from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.dependencies_services import (
+    LazyModelResolution,
+    get_model_routing_resolver,
+)
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
@@ -65,19 +72,21 @@ async def get_readability_service(
     session: SessionDep,
     user_id: str = Depends(get_current_user_id),
 ) -> ReadabilityService:
-    """Create a ReadabilityService with per-user resolved model routing.
+    """Create a ReadabilityService with lazily-wired per-user routing.
 
     FastAPI dependency: novel_id comes from the endpoint's query parameter,
-    user_id and session are resolved via Depends. The model is resolved
-    through the per-user cascade; ``ConfigurationError`` propagates when
-    the user has no provider configured (analysis routers are
-    auth-mandatory).
+    user_id and session are resolved via Depends. The routing cascade
+    (ANALYSE for this user + novel) resolves at the service's FIRST USE —
+    NOT here (ADR-086): construction happens pre-body-validation, and
+    eager resolution would preempt legitimate 422s (and the P2 novel
+    guard would preempt them with 404s). ``ConfigurationError`` propagates
+    loudly at first use (RULE-11; analysis routers are auth-mandatory).
 
     Production wiring:
     - ChapterRepository for chapter content fetching.
     - NovelRepository for novel access control + language resolution.
-    - ModelRegistry + ResolvedModelConfig for the ReadabilityAgent
-      (AI-powered sentence analysis).
+    - ModelRegistry + lazy ModelResolution (ADR-086) for the
+      ReadabilityAgent (AI-powered sentence analysis).
     - PromptComposer for Mode 1 (composer-driven) system prompt assembly (ADR-048).
     - InvocationPipeline for invocation evidence (ADR-040).
 
@@ -95,10 +104,8 @@ async def get_readability_service(
     from narrare.novels.repository import NovelRepository
 
     resolver = get_model_routing_resolver(session)
-    resolved = await resolver.resolve(
-        LLMIntent.ANALYSE,
-        UUID(user_id),
-        novel_id,
+    model_resolution = LazyModelResolution(
+        lambda: resolver.resolve(LLMIntent.ANALYSE, UUID(user_id), novel_id)
     )
 
     registry = get_model_registry()
@@ -110,11 +117,9 @@ async def get_readability_service(
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
         model_registry=registry,
-        model_config=resolved.config,
+        model_resolution=model_resolution,
         composer=get_composer(),
         invocation_pipeline=get_invocation_pipeline(),
-        api_key=resolved.api_key,
-        base_url=resolved.base_url,
     )
 
 
@@ -123,20 +128,22 @@ async def get_pov_service(
     session: SessionDep,
     user_id: str = Depends(get_current_user_id),
 ) -> POVService:
-    """Create a POVService with per-user resolved model routing.
+    """Create a POVService with lazily-wired per-user routing.
 
     FastAPI dependency: novel_id comes from the endpoint's query parameter,
-    user_id and session are resolved via Depends. The model is resolved
-    through the per-user cascade; ``ConfigurationError`` propagates when
-    the user has no provider configured (analysis routers are
-    auth-mandatory).
+    user_id and session are resolved via Depends. The routing cascade
+    (ANALYSE for this user + novel) resolves at the service's FIRST USE —
+    NOT here (ADR-086): construction happens pre-body-validation, and
+    eager resolution would preempt legitimate 422s (and the P2 novel
+    guard would preempt them with 404s). ``ConfigurationError`` propagates
+    loudly at first use (RULE-11; analysis routers are auth-mandatory).
 
     Production wiring:
     - ChapterRepository for chapter content fetching.
     - NovelRepository for novel access control + language resolution.
     - KBRepository for resolving known character names from KB.
-    - ModelRegistry + ResolvedModelConfig for the POVDetectionAgent
-      (AI-powered scene detection + violation analysis).
+    - ModelRegistry + lazy ModelResolution (ADR-086) for the
+      POVDetectionAgent (AI-powered scene detection + violation analysis).
     - PromptComposer for Mode 1 (composer-driven) system prompt assembly (ADR-048).
     - InvocationPipeline for invocation evidence (ADR-040).
     """
@@ -151,10 +158,8 @@ async def get_pov_service(
     from narrare.novels.repository import NovelRepository
 
     resolver = get_model_routing_resolver(session)
-    resolved = await resolver.resolve(
-        LLMIntent.ANALYSE,
-        UUID(user_id),
-        novel_id,
+    model_resolution = LazyModelResolution(
+        lambda: resolver.resolve(LLMIntent.ANALYSE, UUID(user_id), novel_id)
     )
 
     registry = get_model_registry()
@@ -168,9 +173,7 @@ async def get_pov_service(
         novel_repo=novel_repo,
         kb_repo=kb_repo,
         model_registry=registry,
-        model_config=resolved.config,
+        model_resolution=model_resolution,
         composer=get_composer(),
         invocation_pipeline=get_invocation_pipeline(),
-        api_key=resolved.api_key,
-        base_url=resolved.base_url,
     )

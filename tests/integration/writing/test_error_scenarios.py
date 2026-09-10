@@ -195,7 +195,7 @@ class TestNonExistentResources:
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """Generation for non-existent chapter returns 404 or 500."""
+        """Generation for non-existent chapter returns 404."""
         fake_chapter_id = uuid.uuid4()
         fake_novel_id = uuid.uuid4()
 
@@ -209,8 +209,10 @@ class TestNonExistentResources:
             },
             headers=auth_headers,
         )
-        # Will be 404 (chapter not found) or 500 (FK violation)
-        assert resp.status_code in (404, 500)
+        # Locked to 404: the model-routing resolver validates novel
+        # existence before auto-creating project_settings (previously the
+        # FK violation surfaced as an unhandled 500 here).
+        assert resp.status_code == 404
 
     async def test_accept_nonexistent_request_returns_404(
         self,

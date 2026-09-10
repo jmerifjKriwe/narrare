@@ -32,7 +32,7 @@ import pytest
 
 from narrare_core.analysis.author_metrics import AuthorMetrics
 from narrare_core.kb.schemas.character import VoiceMetrics
-from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm import ResolvedModel, ResolvedModelConfig
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
@@ -112,53 +112,56 @@ class TestCredentialsReachResolutionPoint:
     """The resolved key must flow into the ACTUAL get_model call (setup bug)."""
 
     async def test_readability_service_threads_credentials_into_get_model(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.analysis.services.readability_service import ReadabilityService
 
         config = _user_config()
         registry = _RecordingRegistry(stop_after_record=_StopResolution())
+        resolved = ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
         service = ReadabilityService(
             chapter_repo=MagicMock(spec=True, name="ChapterRepository"),
             novel_repo=MagicMock(spec=True, name="NovelRepository"),
             model_registry=cast("ModelRegistry", registry),
-            model_config=config,
+            model_resolution=StaticModelResolution(resolved),
             composer=MagicMock(spec=True, name="PromptComposer"),
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
 
         with pytest.raises(_StopResolution):
-            await service._prepare_agent(system_prompt="system prompt")
+            await service._prepare_agent(system_prompt="system prompt", resolved_model=resolved)
 
         assert registry.calls == [
             {"config": config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}
         ]
 
     async def test_pov_service_threads_credentials_into_get_model(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.analysis.services.pov_service import POVService
 
         config = _user_config()
         registry = _RecordingRegistry(stop_after_record=_StopResolution())
+        resolved = ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
         service = POVService(
             chapter_repo=MagicMock(spec=True, name="ChapterRepository"),
             novel_repo=MagicMock(spec=True, name="NovelRepository"),
             kb_repo=MagicMock(spec=True, name="KBRepository"),
             model_registry=cast("ModelRegistry", registry),
-            model_config=config,
+            model_resolution=StaticModelResolution(resolved),
             composer=MagicMock(spec=True, name="PromptComposer"),
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
 
         with pytest.raises(_StopResolution):
-            await service._prepare_agent(system_prompt="system prompt")
+            await service._prepare_agent(system_prompt="system prompt", resolved_model=resolved)
 
         assert registry.calls == [
             {"config": config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}
         ]
 
     async def test_beta_reader_service_threads_credentials_into_get_model(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.analysis.beta_reader_service import BetaReaderService
         from narrare.analysis.schemas import BetaReaderRequest
+        from narrare_core.analysis.assembler import AnalysisContextAssembler
+        from narrare_core.llm import ResolvedModel
 
         config = _user_config()
         registry = _RecordingRegistry(stop_after_record=_StopResolution())
@@ -178,15 +181,20 @@ class TestCredentialsReachResolutionPoint:
             return_value=ComposedPrompt(system="system prompt", user="user prompt")
         )
 
+        async def _default_budget_assembler() -> AnalysisContextAssembler:
+            """Default (uncapped) budget assembler — pre-ADR-086 unit default."""
+            return AnalysisContextAssembler()
+
         service = BetaReaderService(
             context_assembler=assembler,
             cache=cache,
             registry=cast("ModelRegistry", registry),
-            config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
             composer=composer,
+            budget_assembler_factory=_default_budget_assembler,
             invocation_pipeline=None,
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
 
         with pytest.raises(_StopResolution):

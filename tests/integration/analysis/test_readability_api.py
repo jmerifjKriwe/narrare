@@ -86,16 +86,22 @@ class TestReadabilityAnalysis:
     ) -> None:
         """POST with valid params/body returns 200 with ReadabilityResult list."""
         app.dependency_overrides[get_readability_service] = lambda: mock_readability_service
+        try:
+            novel_id = uuid4()
+            chapter_id = uuid4()
 
-        novel_id = uuid4()
-        chapter_id = uuid4()
-
-        resp = await client.post(
-            "/api/v1/analysis/readability",
-            params={"novel_id": str(novel_id)},
-            json={"chapter_ids": [str(chapter_id)], "language": "en"},
-            headers=auth_headers,
-        )
+            resp = await client.post(
+                "/api/v1/analysis/readability",
+                params={"novel_id": str(novel_id)},
+                json={"chapter_ids": [str(chapter_id)], "language": "en"},
+                headers=auth_headers,
+            )
+        finally:
+            # The app fixture is session-scoped — an override left behind
+            # leaks into subsequent tests (order-dependent flakiness under
+            # pytest-randomly). Same cleanup convention as
+            # tests/integration/ai_assist/test_dialogue_coach_sse.py.
+            app.dependency_overrides.pop(get_readability_service, None)
 
         assert resp.status_code == 200
         body = resp.json()
@@ -140,16 +146,20 @@ class TestReadabilityAnalysis:
         mock_readability_service.analyze = AsyncMock(return_value=[empty_result])
 
         app.dependency_overrides[get_readability_service] = lambda: mock_readability_service
+        try:
+            novel_id = uuid4()
+            chapter_id = uuid4()
 
-        novel_id = uuid4()
-        chapter_id = uuid4()
-
-        resp = await client.post(
-            "/api/v1/analysis/readability",
-            params={"novel_id": str(novel_id)},
-            json={"chapter_ids": [str(chapter_id)]},
-            headers=auth_headers,
-        )
+            resp = await client.post(
+                "/api/v1/analysis/readability",
+                params={"novel_id": str(novel_id)},
+                json={"chapter_ids": [str(chapter_id)]},
+                headers=auth_headers,
+            )
+        finally:
+            # Session-scoped app — pop the override to prevent leakage into
+            # subsequent tests (see test_readability_returns_200).
+            app.dependency_overrides.pop(get_readability_service, None)
 
         assert resp.status_code == 200
         body = resp.json()
@@ -172,16 +182,20 @@ class TestReadabilityAnalysis:
         )
 
         app.dependency_overrides[get_readability_service] = lambda: mock_readability_service
+        try:
+            novel_id = uuid4()
+            chapter_id = uuid4()
 
-        novel_id = uuid4()
-        chapter_id = uuid4()
-
-        resp = await client.post(
-            "/api/v1/analysis/readability",
-            params={"novel_id": str(novel_id)},
-            json={"chapter_ids": [str(chapter_id)]},
-            headers=auth_headers,
-        )
+            resp = await client.post(
+                "/api/v1/analysis/readability",
+                params={"novel_id": str(novel_id)},
+                json={"chapter_ids": [str(chapter_id)]},
+                headers=auth_headers,
+            )
+        finally:
+            # Session-scoped app — pop the override to prevent leakage into
+            # subsequent tests (see test_readability_returns_200).
+            app.dependency_overrides.pop(get_readability_service, None)
 
         assert resp.status_code == 404
 
@@ -198,13 +212,21 @@ class TestReadabilityAnalysis:
 
         assert resp.status_code == 401
 
-    async def test_readability_returns_422_with_empty_chapter_ids(
+    async def test_readability_nonexistent_novel_with_invalid_body_returns_422(
         self,
-        app: FastAPI,
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """POST with empty chapter_ids returns 422."""
+        """POST readability with an invalid body returns 422 (real chain).
+
+        Regression (ADR-086 S4a): the factory previously resolved the
+        per-user routing cascade eagerly at DI-construction time. FastAPI
+        solves all sub-dependencies BEFORE body validation, so the P2
+        novel guard inside ``resolve()`` (404 for a nonexistent novel)
+        preempted the legitimate 422 for the invalid body. With lazy
+        first-use resolution (ADR-086) the body is validated first and
+        the cascade (including the novel guard) runs only on first use.
+        """
         resp = await client.post(
             "/api/v1/analysis/readability",
             params={"novel_id": str(uuid4())},
@@ -214,19 +236,50 @@ class TestReadabilityAnalysis:
 
         assert resp.status_code == 422
 
+    async def test_readability_returns_422_with_empty_chapter_ids(
+        self,
+        app: FastAPI,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+        mock_readability_service: MagicMock,
+    ) -> None:
+        """POST with empty chapter_ids returns 422."""
+        # Body validation happens before the service is invoked — pin the
+        # dependency so the test exercises validation, not the routing
+        # cascade (the real chain resolves the nonexistent novel first and
+        # returns 404 before the 422 can be produced).
+        app.dependency_overrides[get_readability_service] = lambda: mock_readability_service
+        try:
+            resp = await client.post(
+                "/api/v1/analysis/readability",
+                params={"novel_id": str(uuid4())},
+                json={"chapter_ids": []},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_readability_service, None)
+
+        assert resp.status_code == 422
+
     async def test_readability_returns_422_without_chapter_ids(
         self,
         app: FastAPI,
         client: AsyncClient,
         auth_headers: dict[str, str],
+        mock_readability_service: MagicMock,
     ) -> None:
         """POST with missing chapter_ids returns 422."""
-        resp = await client.post(
-            "/api/v1/analysis/readability",
-            params={"novel_id": str(uuid4())},
-            json={},
-            headers=auth_headers,
-        )
+        # See test_readability_returns_422_with_empty_chapter_ids for rationale.
+        app.dependency_overrides[get_readability_service] = lambda: mock_readability_service
+        try:
+            resp = await client.post(
+                "/api/v1/analysis/readability",
+                params={"novel_id": str(uuid4())},
+                json={},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_readability_service, None)
 
         assert resp.status_code == 422
 
@@ -243,16 +296,20 @@ class TestReadabilityAnalysis:
         )
 
         app.dependency_overrides[get_readability_service] = lambda: mock_readability_service
+        try:
+            novel_id = uuid4()
+            chapter_ids = [str(uuid4()), str(uuid4())]
 
-        novel_id = uuid4()
-        chapter_ids = [str(uuid4()), str(uuid4())]
-
-        resp = await client.post(
-            "/api/v1/analysis/readability",
-            params={"novel_id": str(novel_id)},
-            json={"chapter_ids": chapter_ids},
-            headers=auth_headers,
-        )
+            resp = await client.post(
+                "/api/v1/analysis/readability",
+                params={"novel_id": str(novel_id)},
+                json={"chapter_ids": chapter_ids},
+                headers=auth_headers,
+            )
+        finally:
+            # Session-scoped app — pop the override to prevent leakage into
+            # subsequent tests (see test_readability_returns_200).
+            app.dependency_overrides.pop(get_readability_service, None)
 
         assert resp.status_code == 200
         body = resp.json()

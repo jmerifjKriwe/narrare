@@ -6,6 +6,7 @@ and ``ReadabilityAgent``.
 
 No DB queries — delegated to repositories (RULE-06).
 LLM calls go through ``ReadabilityAgent`` via ``ModelRegistry`` (RULE-01b).
+Model routing resolves lazily at first use, after body validation (ADR-086).
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from narrare_core.shared.errors import NotFoundError
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.agents.readability_agent import ReadabilityAgent
@@ -32,7 +34,7 @@ if TYPE_CHECKING:
     from narrare_core.analysis.types import ReadabilityResult
     from narrare_core.llm import ModelRegistry
     from narrare_core.llm._prepared_call import PreparedModelCall
-    from narrare_core.llm.model_config import ResolvedModelConfig
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -50,16 +52,15 @@ class ReadabilityService:
         novel_repo: For resolving novel language and access control.
         model_registry: LLM model registry for constructing the
             ``ReadabilityAgent``.
-        model_config: Resolved model configuration (provider, model_id,
-            temperature, max_tokens).
+        model_resolution: Lazy model-routing source (ADR-086): the
+            per-user cascade (config + credentials) resolves at first
+            use — after body validation — and is cached by the
+            implementation; tests/overrides wire ``StaticModelResolution``.
         composer: PromptComposer for Mode 1 (composer-driven) system prompt
             assembly (ADR-048). Builds the feature-specific readability
             system prompt from the bundled ``analysis/{lang}/readability``
             template.
         invocation_pipeline: Optional pipeline for invocation evidence.
-        api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.prepare``.
-        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -68,22 +69,18 @@ class ReadabilityService:
         chapter_repo: ChapterRepository,
         novel_repo: NovelRepository,
         model_registry: ModelRegistry,
-        model_config: ResolvedModelConfig,
+        model_resolution: ModelResolution,
         composer: PromptComposer,
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
         self._model_registry = model_registry
-        self._model_config = model_config
+        self._model_resolution = model_resolution
         self._composer = composer
         self._formula_analyzer = FormulaReadabilityAnalyzer()
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     # -------------------------------------------------------------------
@@ -123,6 +120,9 @@ class ReadabilityService:
             NotFoundError: If the novel or any chapter does not exist
                 or is not accessible.
         """
+        # ADR-086 first use: routing resolves post-body-validation (RULE-11).
+        resolved_model = await self._model_resolution.resolve()
+
         # 1. Novel access check + language resolution
         novel = await self._novel_repo.get_by_id(novel_id, user_id)
         if novel is None:
@@ -138,6 +138,7 @@ class ReadabilityService:
                 chapter_id=chapter_id,
                 user_id=user_id,
                 language=effective_language,
+                resolved_model=resolved_model,
             )
             results.append(result)
 
@@ -161,6 +162,7 @@ class ReadabilityService:
         chapter_id: UUID,
         user_id: UUID,
         language: str,
+        resolved_model: ResolvedModel,
     ) -> ReadabilityResult:
         """Run both deterministic + AI analysis for a single chapter.
 
@@ -169,6 +171,8 @@ class ReadabilityService:
             chapter_id: The chapter to analyze.
             user_id: The user requesting analysis (for enrichment).
             language: Resolved language code.
+            resolved_model: Routing-cascade resolution from first use
+                (ADR-086) — config + credentials for the AI phase.
 
         Returns:
             Combined ``ReadabilityResult``.
@@ -203,7 +207,9 @@ class ReadabilityService:
                     mode="readability",
                 )
 
-                agent, prepared = await self._prepare_agent(system_prompt=composed.system)
+                agent, prepared = await self._prepare_agent(
+                    system_prompt=composed.system, resolved_model=resolved_model
+                )
                 agent_result = await agent.run(
                     prompt="Analyze readability of this text.",
                     deps=build_deps(content, language),
@@ -240,13 +246,16 @@ class ReadabilityService:
 
     async def _prepare_agent(
         self,
-        system_prompt: str | None = None,
+        system_prompt: str | None,
+        resolved_model: ResolvedModel,
     ) -> tuple[ReadabilityAgent, PreparedModelCall]:
         """Prepare the model call and construct a ``ReadabilityAgent``.
 
         Args:
             system_prompt: Composed feature-specific system prompt (Mode 1,
                 ADR-048). When ``None`` the agent falls back to Capabilities only.
+            resolved_model: Routing-cascade resolution (ADR-086) threaded
+                from first use in ``analyze``.
 
         Returns:
             A fresh agent per call — agents are lightweight wrappers
@@ -258,14 +267,14 @@ class ReadabilityService:
         from narrare_core.agents.readability_agent import ReadabilityAgent
 
         resolved = self._run_limit_resolver.resolve(
-            config=self._model_config, budget=None, invocation_id=uuid4()
+            config=resolved_model.config, budget=None, invocation_id=uuid4()
         )
         prepared = await self._model_registry.prepare(
-            self._model_config,
+            resolved_model.config,
             intent=LLMIntent.ANALYSE,
             usage_limits=resolved.usage_limits,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            api_key=resolved_model.api_key,
+            base_url=resolved_model.base_url,
         )
         return ReadabilityAgent(model=prepared.model, system_prompt=system_prompt), prepared
 

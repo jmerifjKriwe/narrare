@@ -33,6 +33,7 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import UsageLimits
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.analysis.beta_reader_cache import BetaReaderCache
 from narrare.analysis.beta_reader_service import BetaReaderService
 from narrare.analysis.contracts import FeedbackCategory
@@ -50,7 +51,8 @@ from narrare_core.agents.beta_reader_types import (
     BetaReaderPhase1Output,
     BetaReaderPhase2Output,
 )
-from narrare_core.llm import ResolvedModelConfig
+from narrare_core.analysis.assembler import AnalysisContextAssembler
+from narrare_core.llm import ResolvedModel, ResolvedModelConfig
 from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.intents import LLMIntent
 
@@ -159,11 +161,17 @@ def _make_service(
         context_assembler=assembler,
         cache=cache,
         registry=cast("ModelRegistry", registry),
-        config=config,
+        model_resolution=StaticModelResolution(
+            ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+        ),
         composer=composer,
-        api_key=_USER_KEY,
-        base_url=_USER_BASE_URL,
+        budget_assembler_factory=_default_budget_assembler,
     )
+
+
+async def _default_budget_assembler() -> AnalysisContextAssembler:
+    """Default (uncapped) budget assembler — pre-ADR-086 unit default."""
+    return AnalysisContextAssembler()
 
 
 def _cached_phase1_response() -> BetaReaderResponse:

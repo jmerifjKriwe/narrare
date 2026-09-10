@@ -6,12 +6,15 @@ migration). Owns the single responsibility of running the
 ``PreferenceAnalysisAgent`` with the resolved prompt — mirroring the
 ``ai_assist/_agent_runner.py`` precedent.
 
-Model acquisition follows the per-user model-routing cascade: the DI
-factory (``router_analysis._get_analysis_service``) resolves
-``LLMIntent.EXTRACT`` for the authenticated user and passes the resolved
-config + credentials in; this runner threads them to its ACTUAL
-``registry.prepare()`` resolution point (the single assembly point).
-All prompts come from PromptComposer (RULE-02).
+Model acquisition follows the per-user model-routing cascade with LAZY
+first-use resolution (ADR-086): the DI factory
+(``router_analysis._get_analysis_service``) wires a
+``LazyModelResolution`` around ``resolver.resolve(LLMIntent.EXTRACT, …)``
+— no resolution at construction; the service resolves on first use at
+the top of its ``_run_agent()`` (after request-body validation) and
+passes the resolved config + credentials in; this runner threads them
+to its ACTUAL ``registry.prepare()`` resolution point (the single
+assembly point). All prompts come from PromptComposer (RULE-02).
 
 See:
     RULE-01b (agents are the primary LLM surface),
@@ -94,11 +97,13 @@ async def run_preference_analysis_agent(
         from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
         # Real resolution point: the config was resolved for THIS user
-        # by the DI factory (per-user model-routing cascade); the
-        # credentials must reach the resolution call so the provider
-        # actually authenticates as the user (the setup-wizard bug
-        # class). Single assembly point (Task 6d — Task 4/5 pattern):
-        # model + intent-aware runtime settings + usage limits as one
+        # at first use (ADR-086 lazy resolution — the service resolved
+        # the per-user model-routing cascade at the top of its
+        # _run_agent(), not in the DI factory); the credentials must
+        # reach the resolution call so the provider actually
+        # authenticates as the user (the setup-wizard bug class).
+        # Single assembly point (Task 6d — Task 4/5 pattern): model +
+        # intent-aware runtime settings + usage limits as one
         # coherent triple.
         resolved = (run_limit_resolver or DefaultRunLimitResolver()).resolve(
             config=model_config, budget=None, invocation_id=uuid4()

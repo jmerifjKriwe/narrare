@@ -21,11 +21,12 @@ registry fakes (mirrors ``test_deps_user_routing.py``, Task 1a).
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from narrare._app.dependencies_services import LazyModelResolution
 from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.intents import LLMIntent
@@ -67,7 +68,7 @@ def _fake_resolver() -> tuple[MagicMock, ResolvedModel]:
 
 
 class TestBetaReaderFactoryUserRouting:
-    """get_beta_reader_service resolves via the cascade (BETA_READ + novel)."""
+    """get_beta_reader_service wires the BETA_READ cascade lazily (novel tier)."""
 
     async def test_resolves_beta_read_for_user_and_novel(self) -> None:
         from narrare._app.config import Settings
@@ -130,12 +131,36 @@ class TestBetaReaderFactoryUserRouting:
                 novel_id=novel_id,
             )
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.BETA_READ, UUID(user_id), novel_id)
+        # ADR-086 lazy wiring: the factory runs pre-body-validation, so
+        # it must NOT resolve — the cascade is deferred to first use.
+        assert resolver.resolve.await_args_list == []
+
         assert isinstance(service, BetaReaderService)
-        assert service._config is resolved.config
-        assert service._api_key == _USER_KEY
-        assert service._base_url == _USER_BASE_URL
-        assert service._budget_assembler.total_budget == 24_000
+        assert isinstance(service._model_resolution, LazyModelResolution)
+        resolved_model = await service._model_resolution.resolve()
+
+        # The REAL intent (BETA_READ), for THIS user, WITH the novel
+        # (project) tier — invoked at first use, not at construction:
+        assert resolver.resolve.await_args_list == [
+            call(LLMIntent.BETA_READ, UUID(user_id), novel_id)
+        ]
+
+        # The cascade result lands on the service (threaded onwards to
+        # the run-limit resolver + registry.prepare at consumption time).
+        assert resolved_model.config is resolved.config
+        assert resolved_model.config.model_id == "glm-4.7"
+        assert resolved_model.config.provider_name == "zai"
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL
+
+        # RULE-18b: the token-limits cascade is likewise deferred — it
+        # composes at first use through the deferred budget assembler.
+        assert fake_token_service.get_resolved_limits.await_args_list == []
+        budget_assembler = await service._budget_assembler_factory()
+        fake_token_service.get_resolved_limits.assert_awaited_once_with(
+            user_id=user_id, project_id=str(novel_id)
+        )
+        assert budget_assembler.total_budget == 24_000
 
 
 class TestCharacterVoiceFactoryUserRouting:

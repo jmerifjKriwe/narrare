@@ -1,10 +1,14 @@
 """User-routing migration tests — Task 6 memory factory.
 
 Mirrors ``tests/unit/api/series/test_deps_user_routing_factories.py``
-(Task 5 conventions). Proves that the memory analysis factory resolves
-via the per-user ``ModelRoutingResolver`` cascade with the correct intent
+(Task 5 conventions). Proves that the memory analysis factory wires the
+per-user ``ModelRoutingResolver`` cascade with the correct intent
 + user_id and that the resolved config + credentials reach the service's
-ACTUAL ``get_model`` resolution point:
+ACTUAL ``get_model`` resolution point. Since ADR-086 the factory wires
+the cascade LAZILY (``LazyModelResolution``) — no resolution at
+construction (FastAPI solves sub-dependencies pre-body-validation); the
+assertions therefore pin both the deferral and the first-use cascade
+call:
 
 - ``_get_analysis_service`` (EXTRACT — ``_run_agent`` composes the
   preference-analysis invocation with ``intent=LLMIntent.EXTRACT`` at
@@ -22,12 +26,13 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from narrare._app.dependencies_services import LazyModelResolution, StaticModelResolution
 from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.intents import LLMIntent
@@ -124,7 +129,7 @@ class _RecordingRegistry:
 
 
 class TestMemoryAnalysisFactoryUserRouting:
-    """_get_analysis_service resolves via the cascade (EXTRACT, no project)."""
+    """_get_analysis_service wires the EXTRACT cascade lazily (no project)."""
 
     async def test_resolves_extract_for_user_without_project_tier(self) -> None:
         from narrare.memory.analysis_service import PreferenceAnalysisService
@@ -154,11 +159,26 @@ class TestMemoryAnalysisFactoryUserRouting:
         ):
             service = await _get_analysis_service(session=session, user_id=user_id)
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.EXTRACT, UUID(user_id), None)
+        # ADR-086 lazy wiring: the factory runs pre-body-validation, so
+        # it must NOT resolve — the cascade is deferred to first use.
+        assert resolver.resolve.await_args_list == []
+
         assert isinstance(service, PreferenceAnalysisService)
-        assert service._config is resolved.config
-        assert service._api_key == _USER_KEY
-        assert service._base_url == _USER_BASE_URL
+        assert isinstance(service._model_resolution, LazyModelResolution)
+        resolved_model = await service._model_resolution.resolve()
+
+        # The REAL intent (EXTRACT), for THIS user, WITHOUT the project
+        # tier (project_id arrives only in the request BODY) — invoked
+        # at first use, not at construction:
+        assert resolver.resolve.await_args_list == [call(LLMIntent.EXTRACT, UUID(user_id), None)]
+
+        # The cascade result lands on the service (threaded onwards to
+        # the agent-runner get_model resolution point at consumption time).
+        assert resolved_model.config is resolved.config
+        assert resolved_model.config.model_id == "glm-4.7"
+        assert resolved_model.config.provider_name == "zai"
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL
 
 
 # ===========================================================================
@@ -197,9 +217,9 @@ class TestMemoryCredentialsReachResolutionPoint:
             feedback_repo=feedback_repo,
             profile_repo=FakePreferenceProfileRepository(),
             composer=cast("PromptComposer", MagicMock(spec=["build"], name="PromptComposer")),
-            config=config,
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
         )
 
         # The sentinel escapes the service's broad RULE-11 error wrapper

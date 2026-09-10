@@ -124,6 +124,12 @@ class TestAnalyzePreferences:
 
         This test requires seeding 5+ feedback events first.
         The LLM agent is mocked to avoid real API calls.
+
+        ADR-086 note: per-user model resolution happens at the top of
+        ``_run_agent()`` (first use, after body validation) — mocking
+        that seam therefore also bypasses the routing cascade entirely,
+        so this test needs no provider configuration and no
+        ``StaticModelResolution`` override.
         """
         from narrare.memory.analysis_service import PreferenceAnalysisService
         from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput

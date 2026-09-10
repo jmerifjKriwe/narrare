@@ -1,9 +1,12 @@
 """User-routing migration tests for analysis dependency factories (Tasks 2a/2b).
 
-Regression-first proof that the analysis factories (readability, pov) resolve
-the model via the per-user ``ModelRoutingResolver`` cascade (instead of the
-legacy ``build_system_default_config``) with the correct intent + user_id +
-novel_id, and that the resolved config + api_key/base_url reach the services.
+Regression-first proof that the analysis factories (readability, pov) wire
+the per-user ``ModelRoutingResolver`` cascade (instead of the legacy
+``build_system_default_config``) with the correct intent + user_id +
+novel_id, and that the resolved config + api_key/base_url reach the
+services. Per ADR-086 the cascade is LAZY: construction wires a
+``LazyModelResolution`` (no resolve pre-body-validation); the resolve +
+resolved triple land at the service's first use.
 
 Split for the RULE-04 test-file hard limit:
 - ``test_deps_user_routing.py`` (this file) — structural + readability/pov.
@@ -21,12 +24,13 @@ Pattern reference: ``tests/unit/api/kb/test_deps_user_routing.py`` (Task 1a).
 from __future__ import annotations
 
 import inspect
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from narrare._app.dependencies_services import LazyModelResolution
 from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.intents import LLMIntent
@@ -210,7 +214,12 @@ class TestFactoryStructure:
 
 
 class TestReadabilityFactoryUserRouting:
-    """get_readability_service resolves via the cascade (ANALYSE + novel)."""
+    """get_readability_service resolves via the cascade (ANALYSE + novel).
+
+    ADR-086: the factory wires LAZILY — no resolution at construction
+    (which happens pre-body-validation); the ANALYSE cascade runs at the
+    service's first use.
+    """
 
     async def test_resolves_analyse_for_user_and_novel(self) -> None:
         from narrare.analysis.dependencies import get_readability_service
@@ -245,15 +254,30 @@ class TestReadabilityFactoryUserRouting:
                 user_id=user_id,
             )
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.ANALYSE, UUID(user_id), novel_id)
+        # ADR-086 lazy wiring: the factory runs pre-body-validation, so
+        # it must NOT resolve — the cascade is deferred to first use.
+        assert resolver.resolve.await_args_list == []
         assert isinstance(service, ReadabilityService)
-        assert service._model_config is resolved.config
-        assert service._api_key == _USER_KEY
-        assert service._base_url == _USER_BASE_URL
+        assert isinstance(service._model_resolution, LazyModelResolution)
+
+        # First use: the REAL intent (ANALYSE), for THIS user, WITH the
+        # novel (project) tier:
+        resolved_model = await service._model_resolution.resolve()
+        assert resolver.resolve.await_args_list == [
+            call(LLMIntent.ANALYSE, UUID(user_id), novel_id)
+        ]
+        assert resolved_model.config is resolved.config
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL
 
 
 class TestPOVFactoryUserRouting:
-    """get_pov_service resolves via the cascade (ANALYSE + novel)."""
+    """get_pov_service resolves via the cascade (ANALYSE + novel).
+
+    ADR-086: the factory wires LAZILY — no resolution at construction
+    (which happens pre-body-validation); the ANALYSE cascade runs at the
+    service's first use.
+    """
 
     async def test_resolves_analyse_for_user_and_novel(self) -> None:
         from narrare.analysis.dependencies import get_pov_service
@@ -288,8 +312,18 @@ class TestPOVFactoryUserRouting:
                 user_id=user_id,
             )
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.ANALYSE, UUID(user_id), novel_id)
+        # ADR-086 lazy wiring: the factory runs pre-body-validation, so
+        # it must NOT resolve — the cascade is deferred to first use.
+        assert resolver.resolve.await_args_list == []
         assert isinstance(service, POVService)
-        assert service._model_config is resolved.config
-        assert service._api_key == _USER_KEY
-        assert service._base_url == _USER_BASE_URL
+        assert isinstance(service._model_resolution, LazyModelResolution)
+
+        # First use: the REAL intent (ANALYSE), for THIS user, WITH the
+        # novel (project) tier:
+        resolved_model = await service._model_resolution.resolve()
+        assert resolver.resolve.await_args_list == [
+            call(LLMIntent.ANALYSE, UUID(user_id), novel_id)
+        ]
+        assert resolved_model.config is resolved.config
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL

@@ -33,13 +33,16 @@ from narrare.analysis.schemas import (
 )
 from narrare.analysis.validation import validate_word_count
 from narrare_core.agents.beta_reader_agent import BetaReaderAgent
-from narrare_core.analysis.assembler import AnalysisContextAssembler
-from narrare_core.llm import LLMIntent, ResolvedModelConfig
+from narrare_core.llm import LLMIntent
 from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.analysis.context_assembler import ContextAssembler
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
+    from narrare_core.analysis.assembler import AnalysisContextAssembler
     from narrare_core.llm import ModelRegistry
     from narrare_core.prompts import PromptComposer
 
@@ -57,13 +60,16 @@ class BetaReaderService:
         context_assembler: Builds BetaReaderDeps from chapter + KB data.
         cache: In-memory result cache (30min TTL, ADR-080).
         registry: ModelRegistry for LLM model resolution.
-        config: Default ResolvedModelConfig for BETA_READ intent.
+        model_resolution: Lazy model-routing source (ADR-086): the
+            per-user cascade (config + credentials) resolves at first
+            use — after body validation — and is cached by the
+            implementation; tests/overrides wire ``StaticModelResolution``.
         composer: PromptComposer for system prompt assembly.
+        budget_assembler_factory: Deferred ADR-082/086 composition of the
+            token-limits cascade + resolved model window into the
+            assembler; composed once at first use.
         invocation_pipeline: Optional pipeline for invocation evidence.
             When provided, evidence is recorded for every LLM call.
-        api_key: Optional per-user provider API key override (model-routing
-            cascade) — forwarded to ``ModelRegistry.prepare``.
-        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -71,23 +77,20 @@ class BetaReaderService:
         context_assembler: ContextAssembler,
         cache: BetaReaderCache,
         registry: ModelRegistry,
-        config: ResolvedModelConfig,
+        model_resolution: ModelResolution,
         composer: PromptComposer,
-        budget_assembler: AnalysisContextAssembler | None = None,
+        budget_assembler_factory: Callable[[], Awaitable[AnalysisContextAssembler]],
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._assembler = context_assembler
         self._cache = cache
         self._registry = registry
-        self._config = config
+        self._model_resolution = model_resolution
         self._composer = composer
-        self._budget_assembler = budget_assembler or AnalysisContextAssembler()
+        self._budget_assembler_factory = budget_assembler_factory
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
+        self._budget_assembler: AnalysisContextAssembler | None = None
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def analyze(
@@ -118,6 +121,13 @@ class BetaReaderService:
             chapter_ids=request.chapter_ids,
             refresh=request.refresh,
         )
+
+        # ADR-086: first use — resolve routing + budgets after request-
+        # body validation; ConfigurationError propagates loudly (RULE-11).
+        resolved_model = await self._model_resolution.resolve()
+        if self._budget_assembler is None:
+            self._budget_assembler = await self._budget_assembler_factory()
+        budget_assembler = self._budget_assembler
 
         # 1. Assemble context (validates chapters exist)
         deps = await assemble_context(self._assembler, novel_id, user_id, request.chapter_ids)
@@ -155,18 +165,18 @@ class BetaReaderService:
             mode="beta_reader",
         )
         resolved = self._run_limit_resolver.resolve(
-            config=self._config, budget=None, invocation_id=uuid4()
+            config=resolved_model.config, budget=None, invocation_id=uuid4()
         )
         prepared = await self._registry.prepare(
-            self._config,
+            resolved_model.config,
             intent=LLMIntent.BETA_READ,
             usage_limits=resolved.usage_limits,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            api_key=resolved_model.api_key,
+            base_url=resolved_model.base_url,
         )
 
         agent = BetaReaderAgent(model=prepared.model, system_prompt=composed.system)
-        user_prompt = await build_budgeted_prompt(deps, self._budget_assembler)
+        user_prompt = await build_budgeted_prompt(deps, budget_assembler)
         result = await run_phase1(
             agent,
             user_prompt,
@@ -221,6 +231,10 @@ class BetaReaderService:
             category=request.category.value,
         )
 
+        # ADR-086: first use — resolve the routing cascade after request-
+        # body validation; ConfigurationError propagates loudly (RULE-11).
+        resolved_model = await self._model_resolution.resolve()
+
         # 1. Assemble context first (needed to compute content_hash for Phase 1 lookup)
         deps = await assemble_context(self._assembler, novel_id, user_id, request.chapter_ids)
         content_hash = hashlib.sha256(deps.chapter_text.encode()).hexdigest()[:12]
@@ -251,14 +265,14 @@ class BetaReaderService:
             mode="beta_reader_deepdive",
         )
         resolved = self._run_limit_resolver.resolve(
-            config=self._config, budget=None, invocation_id=uuid4()
+            config=resolved_model.config, budget=None, invocation_id=uuid4()
         )
         prepared = await self._registry.prepare(
-            self._config,
+            resolved_model.config,
             intent=LLMIntent.BETA_READ,
             usage_limits=resolved.usage_limits,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            api_key=resolved_model.api_key,
+            base_url=resolved_model.base_url,
         )
 
         agent = BetaReaderAgent(model=prepared.model, system_prompt=composed.system)

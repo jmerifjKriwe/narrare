@@ -58,13 +58,21 @@ class TestCreateChapter:
             json={"title": "Chapter One"},
             headers=auth_headers,
         )
-        response = await client.post(
+        second = await client.post(
             f"/api/v1/novels/{novel_id}/chapters",
             json={"title": "Chapter Two"},
             headers=auth_headers,
         )
-        validated = ChapterResponse.model_validate(response.json())
-        assert validated.position == 0
+        validated = ChapterResponse.model_validate(second.json())
+        assert validated.position == 1
+
+        third = await client.post(
+            f"/api/v1/novels/{novel_id}/chapters",
+            json={"title": "Chapter Three"},
+            headers=auth_headers,
+        )
+        validated = ChapterResponse.model_validate(third.json())
+        assert validated.position == 2
 
 
 class TestUpdateChapterContent:

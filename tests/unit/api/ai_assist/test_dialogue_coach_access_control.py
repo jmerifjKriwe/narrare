@@ -28,6 +28,7 @@ from tests.unit.api.ai_assist.test_dialogue_coach_service import (
     FakeModelRegistry,
     FakeNovelRepo,
     _coach_output_args,
+    _static_resolution,
 )
 
 
@@ -49,7 +50,7 @@ class TestPlanBug23AccessControl:
             chapter_repo=EmptyChapterRepo(),  # type: ignore[arg-type]
             novel_repo=FakeNovelRepo(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(TestModel()),  # type: ignore[arg-type]
-            model_config=None,  # type: ignore[arg-type]
+            model_resolution=_static_resolution(),
             composer=FakeComposer(),  # type: ignore[arg-type]
             invocation_pipeline=None,
             adaptive_provider=FakeAdaptiveProvider(),  # type: ignore[arg-type]
@@ -79,7 +80,7 @@ class TestPlanBug23AccessControl:
             chapter_repo=FakeChapterRepo(),  # type: ignore[arg-type]
             novel_repo=EmptyNovelRepo(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(TestModel()),  # type: ignore[arg-type]
-            model_config=None,  # type: ignore[arg-type]
+            model_resolution=_static_resolution(),
             composer=FakeComposer(),  # type: ignore[arg-type]
             invocation_pipeline=None,
             adaptive_provider=FakeAdaptiveProvider(),  # type: ignore[arg-type]
@@ -118,7 +119,7 @@ class TestPlanBug23AccessControl:
             chapter_repo=tracker,  # type: ignore[arg-type]
             novel_repo=FakeNovelRepo(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(TestModel(custom_output_args=_coach_output_args())),  # type: ignore[arg-type]
-            model_config=None,  # type: ignore[arg-type]
+            model_resolution=_static_resolution(),
             composer=FakeComposer(),  # type: ignore[arg-type]
             invocation_pipeline=None,
             adaptive_provider=FakeAdaptiveProvider(),  # type: ignore[arg-type]

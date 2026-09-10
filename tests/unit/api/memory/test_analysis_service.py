@@ -83,8 +83,10 @@ class TestPreferenceAnalysisService:
     def _make_service(
         self, event_count: int = 10
     ) -> tuple[Any, FakeFeedbackRepository, FakePreferenceProfileRepository]:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.memory.analysis_service import PreferenceAnalysisService
         from narrare_core.llm import ResolvedModelConfig
+        from narrare_core.llm.model_routing import ResolvedModel
 
         registry = FakeModelRegistry()
         feedback_repo = FakeFeedbackRepository()
@@ -95,11 +97,15 @@ class TestPreferenceAnalysisService:
             feedback_repo=feedback_repo,
             profile_repo=profile_repo,
             composer=composer,
-            config=ResolvedModelConfig(
-                provider_name="zai",
-                model_id="glm-4.7",
-                temperature=0.7,
-                max_tokens=4096,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(
+                    config=ResolvedModelConfig(
+                        provider_name="zai",
+                        model_id="glm-4.7",
+                        temperature=0.7,
+                        max_tokens=4096,
+                    )
+                )
             ),
         )
         return service, feedback_repo, profile_repo
