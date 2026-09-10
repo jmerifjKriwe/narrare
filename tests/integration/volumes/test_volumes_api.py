@@ -55,7 +55,8 @@ class TestCreateVolume:
         data = response.json()
         validated = VolumeResponse.model_validate(data)
         assert validated.title == "Book One"
-        assert validated.position == 0
+        # Position 1: the auto-created default volume occupies position 0.
+        assert validated.position == 1
         assert "id" in data
 
     async def test_create_without_title_returns_422(
@@ -71,11 +72,13 @@ class TestCreateVolume:
     async def test_second_volume_gets_next_position(
         self, client: AsyncClient, auth_headers: dict[str, str], novel_id: str
     ) -> None:
-        await client.post(
+        second = await client.post(
             f"/api/v1/novels/{novel_id}/volumes",
             json={"title": "Book One"},
             headers=auth_headers,
         )
+        validated = VolumeResponse.model_validate(second.json())
+        assert validated.position == 1
         response = await client.post(
             f"/api/v1/novels/{novel_id}/volumes",
             json={"title": "Book Two"},
@@ -84,7 +87,8 @@ class TestCreateVolume:
         assert response.status_code == 201
         validated = VolumeResponse.model_validate(response.json())
         assert validated.title == "Book Two"
-        assert validated.position == 0
+        # Position 2: positions continue after the default volume (0) and Book One (1).
+        assert validated.position == 2
 
 
 class TestUpdateVolume:
@@ -188,7 +192,8 @@ class TestVolumeCRUDLifecycle:
         assert create_resp.status_code == 201
         vol2 = create_resp.json()
         vol2_id = vol2["id"]
-        assert vol2["position"] == 0
+        # Position 1: the auto-created default volume occupies position 0.
+        assert vol2["position"] == 1
         assert vol2["title"] == "Volume 2"
 
         list_resp = await client.get(
