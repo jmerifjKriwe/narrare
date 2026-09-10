@@ -133,6 +133,12 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "culture_guidelines",
         "novel_synopsis",
         "word_target",
+        # Item-3 (2026-09-10): scene-position metadata for the WRITE
+        # context-mode scene_by_scene. Supplied per scene by
+        # stream_scene_by_scene (pipeline_scene.py) via extra_overrides
+        # and rendered by the scene_by_scene template numbering line.
+        "scene_number",
+        "total_scenes",
         "word_count",
         "extend_length",
         "chapter_title",

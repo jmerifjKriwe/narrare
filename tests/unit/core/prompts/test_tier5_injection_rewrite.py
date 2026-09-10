@@ -21,6 +21,7 @@ for empty tiers, so:
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -34,6 +35,7 @@ from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 from narrare_core.prompts.context import PromptContext
 from narrare_core.prompts.registry import PromptRegistry
 from narrare_core.writing import GenerationMode
+from narrare_core.writing._helpers import kb_context_extras
 from narrare_core.writing.context_assembler import WritingContextAssembler
 from narrare_core.writing.draft_processor import DraftProcessor
 from narrare_core.writing.models import GenerationRequest, WritingContext
@@ -104,6 +106,14 @@ _GOLDEN_PRE_TIER5_EMPTY_REWRITE = (
 _KB_SYSTEMS_BLOCK = "\n\nSystems:\nMagic costs stamina and cannot raise the dead."
 _KB_TIMELINES_BLOCK = "\n\nTimelines:\nDay 1: The Fall of Thornwall."
 _KB_PINNED_BLOCK = "\n\nPinned context (always included):\nNever kill Elena."
+
+# A2 populated-delta sentinels: raw (render-ready) values for the five KB
+# variables the rewrite route previously assembled but never supplied.
+_KB_RELATIONSHIPS_TEXT = "Elena and Mara: uneasy allies since the siege"
+_KB_FACTIONS_TEXT = "### Faction: Bridge Wardens"
+_KB_OTHER_TEXT = "### Item: Rusty Key"
+_KB_SUGGESTED_TEXT = "### Character: Bernd (unaccepted candidate)"
+_KB_CONTEXT_WARNINGS_TEXT = "Orphan reference: char-9 (removed entity)"
 
 
 def _rewrite_prompt_context(
@@ -251,3 +261,90 @@ class TestTier5InjectionRewrite:
         assert extra["kb_systems"] == _KB_SYSTEMS_BLOCK
         assert extra["kb_timelines"] == _KB_TIMELINES_BLOCK
         assert extra["kb_pinned"] == _KB_PINNED_BLOCK
+
+    async def test_populated_kb_vars_render_once_at_placeholders(self) -> None:
+        """A2 delta: the five previously-unsupplied KB vars render exactly once.
+
+        ``extra`` is built the way the route now does: base extras merged with
+        ``kb_context_extras(WritingContext)``.
+        """
+        context = WritingContext(
+            kb_relationships=_KB_RELATIONSHIPS_TEXT,
+            kb_factions=_KB_FACTIONS_TEXT,
+            kb_other=_KB_OTHER_TEXT,
+            kb_suggested=_KB_SUGGESTED_TEXT,
+            kb_context_warnings=_KB_CONTEXT_WARNINGS_TEXT,
+        )
+        base = _rewrite_prompt_context()
+        prompt_ctx = replace(base, extra={**base.extra, **kb_context_extras(context)})
+        composer = PromptComposer(PromptRegistry())
+        result = await composer.build(LLMIntent.REWRITE, prompt_ctx)
+
+        assert result.system.count(_KB_RELATIONSHIPS_TEXT) == 1
+        assert result.system.count(_KB_FACTIONS_TEXT) == 1
+        assert result.system.count(_KB_OTHER_TEXT) == 1
+        assert result.system.count(_KB_SUGGESTED_TEXT) == 1
+        assert result.system.count(_KB_CONTEXT_WARNINGS_TEXT) == 1
+        # Each value lands directly at its static template label.
+        assert f"Knowledge Base\n\n{_KB_CONTEXT_WARNINGS_TEXT}\nCharacters:" in result.system
+        assert f"Factions:\n{_KB_FACTIONS_TEXT}\n" in result.system
+        assert f"Other entities:\n{_KB_OTHER_TEXT}\n" in result.system
+        assert f"Relationships:\n{_KB_RELATIONSHIPS_TEXT}\n" in result.system
+        assert f"curated KB.\n\n{_KB_SUGGESTED_TEXT}\n" in result.system
+        assert "Locations:" in result.system  # remaining static label unchanged
+        assert "{{kb_" not in result.system
+
+        # Mutation-style: helper output all "" (KB-empty novel) → the render
+        # equals the Tier-5 golden byte-for-byte (supplied-empty is neutral).
+        empty_ctx = replace(base, extra={**base.extra, **kb_context_extras(WritingContext())})
+        empty_result = await composer.build(LLMIntent.REWRITE, empty_ctx)
+        assert empty_result.system == _GOLDEN_PRE_TIER5_EMPTY_REWRITE
+
+    async def test_stream_rewrite_supplies_all_kb_vars_in_extra(self) -> None:
+        """A2 wiring: the kb_context_extras merge forwards all ten KB vars.
+
+        Without the merge in pipeline_rewrite.py, the five previously-unsupplied
+        variables would silently render "" via the optional-variable fallback
+        (RULE-11) and assembled KB content would never reach the prompt.
+        """
+        composer = MagicMock(spec=PromptComposer)
+        composer.build = AsyncMock(return_value=ComposedPrompt(system="sys", user="usr"))
+        assembler = MagicMock(spec=WritingContextAssembler)
+        assembler.assemble = AsyncMock(
+            return_value=WritingContext(
+                kb_relationships=_KB_RELATIONSHIPS_TEXT,
+                kb_factions=_KB_FACTIONS_TEXT,
+                kb_other=_KB_OTHER_TEXT,
+                kb_suggested=_KB_SUGGESTED_TEXT,
+                kb_context_warnings=_KB_CONTEXT_WARNINGS_TEXT,
+            )
+        )
+        registry = MagicMock(spec=["stream", "run"])
+        registry.stream = MagicMock(spec=[], return_value=_final_only_stream())
+        processor = MagicMock(spec=DraftProcessor)
+        processor.process = MagicMock(spec=[], side_effect=lambda text, **kw: text)
+        pipeline = WritingPipeline(
+            registry=registry,
+            composer=composer,
+            context_assembler=assembler,
+            draft_processor=processor,
+        )
+        request = GenerationRequest(
+            chapter_id=uuid4(),
+            project_id=uuid4(),
+            user_id=uuid4(),
+            mode=GenerationMode.REWRITE,
+        )
+
+        async for _chunk in pipeline.generate(request, config=_CONFIG):
+            pass
+
+        extra: dict[str, Any] = composer.build.call_args.args[1].extra
+        assert extra["kb_relationships"] == _KB_RELATIONSHIPS_TEXT
+        assert extra["kb_factions"] == _KB_FACTIONS_TEXT
+        assert extra["kb_other"] == _KB_OTHER_TEXT
+        assert extra["kb_suggested"] == _KB_SUGGESTED_TEXT
+        assert extra["kb_context_warnings"] == _KB_CONTEXT_WARNINGS_TEXT
+        # Previously-supplied variables keep identical values ("" here).
+        assert extra["kb_characters"] == ""
+        assert extra["kb_locations"] == ""
