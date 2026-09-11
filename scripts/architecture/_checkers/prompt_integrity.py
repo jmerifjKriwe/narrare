@@ -5,6 +5,8 @@ Detects:
 - Variable registration issues (unregistered template variables)
 - Variable usage issues (dead registrations)
 - i18n parity gaps (EN prompts without DE/FR counterparts for localized families)
+- Rogue level-2 headers in registry-governed system.md templates
+  (R2 Slice 0 — ``_check_system_headers``)
 
 INFRA-012: New findings are blocking violations. Pre-existing gaps listed in the
 ``ai-gate-baseline.json`` ``prompt_integrity_findings`` section are reported as
@@ -29,6 +31,9 @@ from scripts.architecture._checkers._check_i18n import (
     check_prompt_i18n_completeness,
 )
 from scripts.architecture._checkers._check_intents import check_intent_consistency
+from scripts.architecture._checkers._check_system_headers import (
+    check_system_prompt_l2_headers,
+)
 from scripts.architecture._checkers._check_variables import (
     check_variable_registration,
     check_variable_usage,
@@ -144,6 +149,13 @@ def run_all_checks(result: CheckResult) -> None:
         sig = _finding_signature(v)
         if sig in baseline:
             result.approved_exceptions.append(v)
+
+    # --- R2 Slice 0: level-2 header governance (own explicit allowlist) ---
+    # Runs AFTER the advisory ratchet window closes: its allowlisted templates
+    # are governed by the dedicated ``system_prompt_l2_header_allowlist``
+    # baseline section (path-keyed, reason + slice ref per entry), NOT by the
+    # ``prompt_integrity_findings`` signature ratchet above.
+    check_system_prompt_l2_headers(result)
 
 
 def _finding_signature(violation: Violation) -> str:

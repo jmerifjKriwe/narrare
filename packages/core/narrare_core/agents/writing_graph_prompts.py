@@ -226,6 +226,12 @@ def _enrich_prompt_context_with_kb(
         context.extra["recent_chapters"] = writing_context.recent_chapters
     if writing_context.user_preferences:
         context.extra["user_preferences"] = writing_context.user_preferences
+    # R2-A: cross_session_context reaches the graph path the same way —
+    # the apps service fetches it (writing/service.py prepare_generation_context)
+    # and the assembler carries it on WritingContext; mirror the conditional
+    # user_preferences pattern (empty → absent, graceful when no memory layer).
+    if writing_context.cross_session_context:
+        context.extra["cross_session_context"] = writing_context.cross_session_context
 
 
 async def get_review_prompt(
@@ -276,11 +282,21 @@ async def get_revise_prompt(
 ) -> tuple[str, str]:
     """Return (system_prompt, user_prompt) for the revise_draft step.
 
+    Assembles the WritingContext (graceful-None, RULE-11) and enriches
+    the prompt with the full KB variable set. The REWRITE route renders
+    the new_chapter template via its context-mode override, so the same
+    route-family variables (kb_* set, chapter_outline) apply as on the
+    draft path (commit ac55a094 — identical defect class).
+
     Raises:
         ConfigurationError: If ``composer`` is ``None`` — a DI-wiring error.
     """
     if cast("Any", composer) is None:
         raise ConfigurationError(_COMPOSER_MISSING_MSG, code=_COMPOSER_MISSING_CODE)
+
+    # Assemble KB context — graceful degradation on failure: when assembly
+    # yields None the revision proceeds KB-blind (kb_* render empty).
+    writing_context = await _assemble_writing_context(deps, state)
 
     revise_content = "Revise based on feedback: " + state.feedback + "\n\n" + state.draft
 
@@ -290,6 +306,18 @@ async def get_revise_prompt(
     context.existing_content = state.draft
     if deps.word_target:
         context.extra = {"word_target": str(deps.word_target)}
+    # new_chapter-template placeholder ({{chapter_outline}}) is not
+    # route-optional on the REWRITE context-mode override — the revise
+    # step owns the outline and must supply it, exactly like the draft.
+    context.extra["chapter_outline"] = state.outline
+
+    # KB-blind fallback: when assembly yields None (no assembler wired,
+    # missing ids, or assembly failure), an empty WritingContext still
+    # supplies every kb_* key as "" so the template's KB placeholders
+    # render empty instead of raising PromptVariableError (RULE-11
+    # graceful) — mirroring the draft path.
+    kb_source = writing_context if writing_context is not None else WritingContext()
+    _enrich_prompt_context_with_kb(context, kb_source)
 
     composed: ComposedPrompt = await composer.build(
         LLMIntent.REWRITE,

@@ -16,7 +16,11 @@ Golden methodology (mirrors the T1c Tier-5 goldens): the KB-empty constants
 below were captured by composing the REAL ``PromptRegistry`` +
 ``PromptComposer`` route with the exact PromptContext the fixed
 ``get_draft_prompt`` builds for a KB-empty / no-assembler draft. The template
-is untouched by item-2, so KB-empty drafts MUST stay byte-identical.
+is untouched by item-2, so KB-empty drafts MUST stay byte-identical — EXCEPT
+under R2-A (2026-09-11): the new_chapter template's rogue level-2 headers
+("## Output Format", "## Do NOT") were demoted to level-3 (v1.4.0 → v1.5.0),
+so the previously-dropped tail region now renders and the goldens were
+re-captured for the R2-A header demotion.
 """
 
 from __future__ import annotations
@@ -42,41 +46,59 @@ _OUTLINE = "Elena crosses the flooded bridge at dawn."
 
 # ---------------------------------------------------------------------------
 # Golden: KB-empty new_chapter render (captured 2026-09-10 against
-# writing/en/new_chapter/system.md v1.4.0 via the real PromptComposer route;
-# see module docstring for methodology). Do NOT hand-edit — recapture
-# mechanically if the template legitimately changes.
+# writing/en/new_chapter/system.md v1.4.0; re-captured 2026-09-11 for
+# R2-A header demotion — previously-dropped region now renders: the
+# former "## Output Format" / "## Do NOT" tails are level-3 headers in
+# v1.5.0, so the System Prompt section extends to EOF) via the real
+# PromptComposer route; see module docstring for methodology. Do NOT
+# hand-edit — recapture mechanically if the template legitimately changes.
 # ---------------------------------------------------------------------------
 
 _GOLDEN_KB_EMPTY_SYSTEM = (
-    "You are a skilled creative writing assistant helping an author generate new chapter co"
-    "ntent. Your role is to produce polished, engaging prose that respects the author's est"
-    "ablished voice, world, and characters.\n\n\n\n### Context\n\n- Project: \n- Genre: fan"
-    "tasy\n- Language: English\n- Timeline: \n- **Story Structure**: \n\n### Knowledge Base"
-    "\n\n\nCharacters:\n\n\nLocations:\n\n\nFactions:\n\n\nOther entities:\n\n\nRelationshi"
-    "ps:\n\n\n### Suggested KB Entries\n\nOptional lower-priority generated KB suggestions."
-    " These are unaccepted candidates.\nUse them only when they support the current author "
-    "instructions, project writing\nprofile, current scene/timeline context, and curated KB"
-    ". They must not override\ncurrent author instructions, the project profile, current sc"
-    "ene/timeline context,\nor curated KB.\n\n\n\n### Recent Chapters\n\n\n\n### Series His"
-    "tory\n\nFor novels that are part of a series, this block summarises what happened in\n"
-    "the preceding bands. Use it to preserve continuity of plot, world state, and\ncharacte"
-    "r arcs across the series. It is empty for standalone novels.\n\n\n\n### Story Synopsis"
-    "\n\n\n\n### Style Profile\n\nThe author's established writing style:\n\n\n\n### Charac"
-    "ter Voice Profiles\n\nWhen writing dialogue, maintain each character's distinct voice "
-    "based on their speech patterns:\n\n\n\n**Voice consistency rules:**\n- Each character "
-    "must use their established dialect, vocabulary, and verbal tics\n- Match their persona"
-    "lity traits when they speak (formal, casual, terse, eloquent)\n- Characters should be "
-    "identifiable by their speech alone, without dialogue tags\n- Do NOT make all character"
-    "s sound the same — preserve their linguistic individuality\n\n### Author Voice\n\nThe "
-    "narrator's prose voice for this novel (descriptive profile, not raw metrics):\n\n\n\n#"
-    "## Instructions\n\nWrite a complete chapter draft based on the outline and context pro"
-    "vided. Follow these guidelines:\n\n1. Match the author's established style and tone fr"
-    "om recent chapters\n2. Maintain consistency with all referenced characters, locations,"
-    " and plot points\n3. Use natural dialogue that reflects each character's voice\n4. Wea"
-    "ve setting details organically into the narrative\n5. Respect pacing — balance action,"
-    " dialogue, description, and reflection\n\nChapter outline: Elena crosses the flooded b"
-    "ridge at dawn.\nAuthor instructions: <user_instructions>Elena crosses the flooded brid"
-    "ge at dawn.</user_instructions>\nWord target: 1500\nTone: "
+    "You are a skilled creative writing assistant helping an author generate ne"
+    "w chapter content. Your role is to produce polished, engaging prose that r"
+    "espects the author's established voice, world, and characters.\n\n\n\n### "
+    "Context\n\n- Project: \n- Genre: fantasy\n- Language: English\n- Timeline:"
+    " \n- **Story Structure**: \n\n### Knowledge Base\n\n\nCharacters:\n\n\nLoc"
+    "ations:\n\n\nFactions:\n\n\nOther entities:\n\n\nRelationships:\n\n\n### S"
+    "uggested KB Entries\n\nOptional lower-priority generated KB suggestions. T"
+    "hese are unaccepted candidates.\nUse them only when they support the curre"
+    "nt author instructions, project writing\nprofile, current scene/timeline c"
+    "ontext, and curated KB. They must not override\ncurrent author instruction"
+    "s, the project profile, current scene/timeline context,\nor curated KB.\n"
+    "\n\n\n### Recent Chapters\n\n\n\n### Series History\n\nFor novels that are"
+    " part of a series, this block summarises what happened in\nthe preceding b"
+    "ands. Use it to preserve continuity of plot, world state, and\ncharacter a"
+    "rcs across the series. It is empty for standalone novels.\n\n\n\n### Story"
+    " Synopsis\n\n\n\n### Style Profile\n\nThe author's established writing sty"
+    "le:\n\n\n\n### Character Voice Profiles\n\nWhen writing dialogue, maintain"
+    " each character's distinct voice based on their speech patterns:\n\n\n\n**"
+    "Voice consistency rules:**\n- Each character must use their established di"
+    "alect, vocabulary, and verbal tics\n- Match their personality traits when "
+    "they speak (formal, casual, terse, eloquent)\n- Characters should be ident"
+    "ifiable by their speech alone, without dialogue tags\n- Do NOT make all ch"
+    "aracters sound the same — preserve their linguistic individuality\n\n### A"
+    "uthor Voice\n\nThe narrator's prose voice for this novel (descriptive prof"
+    "ile, not raw metrics):\n\n\n\n### Instructions\n\nWrite a complete chapter"
+    " draft based on the outline and context provided. Follow these guidelines:"
+    "\n\n1. Match the author's established style and tone from recent chapters"
+    "\n2. Maintain consistency with all referenced characters, locations, and p"
+    "lot points\n3. Use natural dialogue that reflects each character's voice\n"
+    "4. Weave setting details organically into the narrative\n5. Respect pacing"
+    " — balance action, dialogue, description, and reflection\n\nChapter outlin"
+    "e: Elena crosses the flooded bridge at dawn.\nAuthor instructions: <user_i"
+    "nstructions>Elena crosses the flooded bridge at dawn.</user_instructions>"
+    "\nWord target: 1500\nTone: \n\n### Output Format\n\nOutput the complete ch"
+    "apter draft as prose. No meta-commentary, no labels, no explanations befor"
+    "e or after the text.\n\n### User Preferences\n\n\n\n### Cross-Session Cont"
+    "ext\n\nPrevious writing sessions for this project:\n\n\n\n### Do NOT\n\n- "
+    "Do NOT change the narrative perspective unless established\n- Do NOT add o"
+    "r remove characters not in the outline or KB\n- Do NOT introduce new plot "
+    "elements not in the outline\n- Do NOT contradict established facts from re"
+    "cent chapters\n\n### Constraints\n\n- Write in English\n- Do not introduce"
+    " new major characters not referenced in the outline or KB\n- Do not contra"
+    "dict established facts from recent chapters\n- Respect the author's avoida"
+    "nce patterns: "
 )
 
 _GOLDEN_KB_EMPTY_USER = "Elena crosses the flooded bridge at dawn."
@@ -99,12 +121,17 @@ _KB_PINNED_BLOCK = "\n\nPinned context (always included):\nNever kill Elena."
 _KB_CONTEXT_WARNINGS = "Orphan reference: char-9 (removed entity)"
 _RECENT_CHAPTERS = "Chapter 1: The hero arrived."
 _USER_PREFERENCES = "Avoid excessive adjectives."
+_CROSS_SESSION_CONTEXT = "Session 4 ended mid-storm; the author prefers slow tension builds."
 
 # Placeholders the new_chapter template's RENDERED "## System Prompt"
-# section actually carries. Note: {{user_preferences}} lives in the
-# template's "## Output Format" tail (after the system section boundary)
-# and is therefore never rendered into the composed system prompt — the
-# value is still supplied via extra (wiring test below).
+# section actually carries. Since the R2-A header demotion (v1.5.0) the
+# System Prompt section extends to EOF, so {{user_preferences}} and
+# {{cross_session_context}} render too (wiring below supplies them via
+# the enrichment extras). {{avoidance_patterns}} renders but stays empty
+# on the graph path — no graph enrichment supplies it and the graph's
+# PromptContext keeps the dataclass default "" (the composer's
+# preference auto-injection only fills user_preferences, and only when a
+# preference_service + user_id/project_id are wired).
 # kb_systems/kb_timelines/kb_pinned have NO placeholders in this template
 # at all — supplied-but-unused is ignored by the composer (substitute only
 # replaces found placeholders).
@@ -117,6 +144,8 @@ _RENDERED_SENTINELS: tuple[tuple[str, str], ...] = (
     ("kb_relationships", _KB_RELATIONSHIPS),
     ("kb_suggested", _KB_SUGGESTED),
     ("recent_chapters", _RECENT_CHAPTERS),
+    ("user_preferences", _USER_PREFERENCES),
+    ("cross_session_context", _CROSS_SESSION_CONTEXT),
 )
 _UNUSED_SENTINELS: tuple[str, ...] = (_KB_SYSTEMS_BLOCK, _KB_TIMELINES_BLOCK, _KB_PINNED_BLOCK)
 
@@ -160,6 +189,7 @@ def _populated_assembler() -> MagicMock:
             kb_context_warnings=_KB_CONTEXT_WARNINGS,
             recent_chapters=_RECENT_CHAPTERS,
             user_preferences=_USER_PREFERENCES,
+            cross_session_context=_CROSS_SESSION_CONTEXT,
         )
     )
     return assembler
@@ -229,14 +259,20 @@ class TestDraftPromptPopulatedKB:
         assert f"Factions:\n{_KB_FACTIONS}" in system
         assert f"Other entities:\n{_KB_OTHER}" in system
         assert f"Relationships:\n{_KB_RELATIONSHIPS}" in system
+        # R2-A: the previously-dropped region now renders its vars —
+        # user_preferences and cross_session_context land at their
+        # placeholders (value-side, under the level-3 section headers),
+        # avoidance_patterns substitutes empty (graph path supplies no
+        # value; PromptContext dataclass default "").
+        assert f"### User Preferences\n\n{_USER_PREFERENCES}" in system
+        assert f"Previous writing sessions for this project:\n\n{_CROSS_SESSION_CONTEXT}" in system
+        assert system.endswith("- Respect the author's avoidance patterns: ")
         # Supplied-but-unused extras (no placeholders in this template) are
-        # ignored by the composer — Tier-5 blocks must NOT leak. The same
-        # holds for user_preferences: its placeholder sits in the template's
-        # unrendered "## Output Format" tail, so the value never renders.
-        for block in (*_UNUSED_SENTINELS, _USER_PREFERENCES):
+        # ignored by the composer — Tier-5 blocks must NOT leak.
+        for block in _UNUSED_SENTINELS:
             assert block not in system
         # No unsubstituted placeholder survives composition.
-        assert "{{kb_" not in system
+        assert "{{" not in system
 
 
 class TestDraftPromptWiring:
@@ -261,9 +297,12 @@ class TestDraftPromptWiring:
         assert captured.extra["word_target"] == "1500"
         for name, sentinel in _RENDERED_SENTINELS:
             assert captured.extra[name] == sentinel
-        # Supplied even though the placeholder renders on no surface of this
-        # route (template tail) — the enrich contract is route-independent.
+        # Enrichment conditionals reach the render surface since R2-A —
+        # user_preferences and cross_session_context placeholders now live
+        # inside the rendered System Prompt section (route-independent
+        # enrich contract preserved).
         assert captured.extra["user_preferences"] == _USER_PREFERENCES
+        assert captured.extra["cross_session_context"] == _CROSS_SESSION_CONTEXT
 
     async def test_draft_without_assembler_degrades_kb_values_to_empty(self) -> None:
         """None assembly → kb_* keys present but "" (KB-blind render).
@@ -281,7 +320,7 @@ class TestDraftPromptWiring:
         assert captured.extra["chapter_outline"] == _OUTLINE
         assert captured.extra["word_target"] == "1500"
         for name, _sentinel in _RENDERED_SENTINELS:
-            if name in ("recent_chapters", "user_preferences"):
+            if name in ("recent_chapters", "user_preferences", "cross_session_context"):
                 assert name not in captured.extra  # empty-field conditionals
             else:
                 assert captured.extra[name] == ""
@@ -312,3 +351,4 @@ class TestEnrichFullSet:
         assert prompt_ctx.extra["word_target"] == "1000"
         assert "recent_chapters" not in prompt_ctx.extra
         assert "user_preferences" not in prompt_ctx.extra
+        assert "cross_session_context" not in prompt_ctx.extra

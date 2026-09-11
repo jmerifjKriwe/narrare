@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.5.0"
+prompt_version: "1.6.0"
 ---
 
 ## System Prompt
@@ -100,7 +100,7 @@ Scene-by-scene approach:
 - Build each scene around its central moment or turning point
 - Ensure smooth transitions between scenes
 
-## Output Format
+### Output Format
 
 Output ONE scene at a time as prose. No meta-commentary, no labels, no explanations before or after the text. Wait for the author's signal before generating the next scene.
 
@@ -108,7 +108,7 @@ Output ONE scene at a time as prose. No meta-commentary, no labels, no explanati
 
 {{user_preferences}}
 
-## Do NOT
+### Do NOT
 
 - Do NOT generate more than one scene at a time
 - Do NOT change the narrative perspective unless established

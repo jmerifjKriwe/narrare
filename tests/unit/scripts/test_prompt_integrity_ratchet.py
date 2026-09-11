@@ -36,11 +36,14 @@ _REGISTRY_REL = "packages/core/narrare_core/prompts/variable_registry.py"
 
 # Sub-checkers of run_all_checks that are irrelevant to the ratchet logic
 # under test — replaced with no-ops so tests exercise only baseline matching.
+# (check_system_prompt_l2_headers is governed by its own path-keyed allowlist,
+# see _check_system_headers — it ratchets outside this window.)
 _UNRELATED_SUBCHECKS = (
     "check_intent_consistency",
     "check_variable_registration",
     "check_prompt_i18n_completeness",
     "check_i18n_parity",
+    "check_system_prompt_l2_headers",
 )
 
 

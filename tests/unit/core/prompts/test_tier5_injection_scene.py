@@ -13,7 +13,7 @@ The three Tier-5 variables (``{{kb_systems}}``, ``{{kb_timelines}}``,
 assembler (T1a, ``_helpers.optional_block``) supplies value-side labeled
 blocks (``"\\n\\n<Label>:\\n<text>"``) or ``""`` for empty tiers, so:
 
-* KB-empty novels render BYTE-IDENTICALLY to the pre-T1f prompt (golden), and
+* KB-empty novels render BYTE-IDENTICALLY to the R2-C1 baseline golden, and
 * populated tiers render their labeled blocks in fixed order after
   ``Relationships:``.
 
@@ -32,34 +32,26 @@ Item-3 (2026-09-10): the template gained the scene numbering line
 both vars are SYSTEM_VARS supplied via ``extra_overrides``, the redundant
 ``scene_outline`` extra was removed, and the golden was re-captured (see
 the provenance note at the constant). Numbering render tests live in
-``test_scene_numbering.py`` (RULE-04 split).
+``test_scene_numbering.py`` (RULE-04 split). R2-C1: the golden recapture
+pushed this module past the 400-line hard limit, so the two pipeline-stream
+wiring tests moved to ``test_tier5_injection_scene_wiring.py`` (render-level
+tests stay here; pipeline-wiring tests live there).
 """
 
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
 
 import pytest
 
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
-from narrare_core.llm import LLMIntent, ResolvedModelConfig
-from narrare_core.llm.result import StreamChunk, TokenUsage
-from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
+from narrare_core.llm import LLMIntent
+from narrare_core.prompts.composer import PromptComposer
 from narrare_core.prompts.context import PromptContext
 from narrare_core.prompts.registry import PromptRegistry
 from narrare_core.prompts.routes import resolve_prompt_route
 from narrare_core.shared.errors import PromptRouteNotConfiguredError
-from narrare_core.writing import GenerationMode
 from narrare_core.writing._helpers import kb_context_extras
-from narrare_core.writing.context_assembler import WritingContextAssembler
-from narrare_core.writing.draft_processor import DraftProcessor
-from narrare_core.writing.models import GenerationRequest, WritingContext
-from narrare_core.writing.pipeline import WritingPipeline
+from narrare_core.writing.models import WritingContext
 
 # ---------------------------------------------------------------------------
 # Golden: WRITE/scene_by_scene system prompt with ALL Tier-5 kb values empty
@@ -76,39 +68,58 @@ from narrare_core.writing.pipeline import WritingPipeline
 # mirrors the pipeline's item-3 extras (scene_number="1", total_scenes="2" —
 # the first scene of the two-scene outline). Recaptured mechanically with the
 # real PromptRegistry + PromptComposer under identical composer/context
-# conditions (2367 bytes). Empty-tier byte-identity is now asserted relative
-# to THIS baseline, not the pre-T1f render. Do NOT hand-edit — if the
-# template legitimately changes, recapture mechanically and update this note.
+# conditions (2367 bytes — truncated at the then-rogue ``## Output Format``
+# header).
+#
+# RE-CAPTURED 2026-09-11 for R2-C1 header demotion (prompt_version 1.6.0):
+# the rogue ``## Output Format`` / ``## Do NOT`` headers were demoted to
+# ``###`` (only ``## System Prompt`` remains level-2), so the previously
+# dropped Output Format / User Preferences / Do NOT / Constraints sections
+# now render in the system prompt. Recaptured mechanically with the real
+# PromptRegistry + PromptComposer via ``_scene_prompt_context()`` (identical
+# inputs): 3059 UTF-8 bytes (3055 chars). Empty-tier byte-identity is
+# asserted relative to THIS baseline. Do NOT hand-edit — if the template
+# legitimately changes, recapture mechanically and update this note.
 # ---------------------------------------------------------------------------
 
 _GOLDEN_EMPTY_TIERS_BASELINE = (
-    "You are a skilled creative writing assistant helping an author generate chapter content scene "
-    "by scene. Your role is to produce one scene at a time, waiting for the author's signal before "
-    "continuing.\n\nScene 1 of 2.\n\n\n\n### Context\n\n- Project: Test Novel\n- Genre: fantasy\n- "
-    "Language: English\n- Timeline: \n- **Story Structure**: \n\n### Knowledge Base\n\n\nCharacters"
-    ":\n\n\nLocations:\n\n\nFactions:\n\n\nOther entities:\n\n\nRelationships:\n\n\n### Suggested K"
-    "B Entries\n\nOptional lower-priority generated KB suggestions. These are unaccepted candidates"
-    ".\nUse them only when they support the current author instructions, project writing\nprofile, "
-    "current scene/timeline context, and curated KB. They must not override\ncurrent author instruc"
-    "tions, the project profile, current scene/timeline context,\nor curated KB.\n\n\n\n### Recent "
-    "Chapters\n\n\n\n### Story Synopsis\n\n\n\n### Style Profile\n\nThe author's established writin"
-    "g style:\n\n\n\n### Character Voice Profiles\n\nWhen writing dialogue, maintain each character"
-    "'s distinct voice based on their speech patterns:\n\nElena: formal, terse.\n\n**Voice consiste"
-    "ncy rules:**\n- Each character must use their established dialect, vocabulary, and verbal tics"
-    "\n- Match their personality traits when they speak (formal, casual, terse, eloquent)\n- Charac"
-    "ters should be identifiable by their speech alone, without dialogue tags\n- Do NOT make all ch"
-    "aracters sound the same — preserve their linguistic individuality\n\n### Author Voice\n\nThe n"
-    "arrator's prose voice for this novel (descriptive profile, not raw metrics):\n\nLyrical, close"
-    " third person.\n\n### Instructions\n\nGenerate ONE scene at a time from the chapter outline. F"
-    "ollow these guidelines:\n\n1. Each scene should be a self-contained narrative unit\n2. Separat"
-    'e scenes with a scene break marker: `***`\n3. Wait for the author\'s signal (e.g. "continue", '
-    '"next scene") before generating the next scene\n4. Match the established style from recent cha'
-    "pters\n5. End each scene at a natural break point — never mid-action unless cliffhanger is app"
-    "ropriate\n\nChapter outline: Bridge chapter in two scenes.\nAuthor instructions: <user_instruc"
-    "tions>The bridge at night, rain on the river.</user_instructions>\nWord target per scene: 400"
-    "\nTone: \n\nScene-by-scene approach:\n- Identify the key beats for each scene from the outline"
-    "\n- Build each scene around its central moment or turning point\n- Ensure smooth transitions b"
-    "etween scenes"
+    "You are a skilled creative writing assistant helping an author generate chapter content "
+    "scene by scene. Your role is to produce one scene at a time, waiting for the author's si"
+    "gnal before continuing.\n\nScene 1 of 2.\n\n\n\n### Context\n\n- Project: Test Novel\n- "
+    "Genre: fantasy\n- Language: English\n- Timeline: \n- **Story Structure**: \n\n### Knowle"
+    "dge Base\n\n\nCharacters:\n\n\nLocations:\n\n\nFactions:\n\n\nOther entities:\n\n\nRelat"
+    "ionships:\n\n\n### Suggested KB Entries\n\nOptional lower-priority generated KB suggesti"
+    "ons. These are unaccepted candidates.\nUse them only when they support the current autho"
+    "r instructions, project writing\nprofile, current scene/timeline context, and curated KB"
+    ". They must not override\ncurrent author instructions, the project profile, current scen"
+    "e/timeline context,\nor curated KB.\n\n\n\n### Recent Chapters\n\n\n\n### Story Synopsis"
+    "\n\n\n\n### Style Profile\n\nThe author's established writing style:\n\n\n\n### Characte"
+    "r Voice Profiles\n\nWhen writing dialogue, maintain each character's distinct voice base"
+    "d on their speech patterns:\n\nElena: formal, terse.\n\n**Voice consistency rules:**\n- "
+    "Each character must use their established dialect, vocabulary, and verbal tics\n- Match "
+    "their personality traits when they speak (formal, casual, terse, eloquent)\n- Characters"
+    " should be identifiable by their speech alone, without dialogue tags\n- Do NOT make all "
+    "characters sound the same — preserve their linguistic individuality\n\n### Author V"
+    "oice\n\nThe narrator's prose voice for this novel (descriptive profile, not raw metrics)"
+    ":\n\nLyrical, close third person.\n\n### Instructions\n\nGenerate ONE scene at a time fr"
+    "om the chapter outline. Follow these guidelines:\n\n1. Each scene should be a self-conta"
+    "ined narrative unit\n2. Separate scenes with a scene break marker: `***`\n3. Wait for th"
+    'e author\'s signal (e.g. "continue", "next scene") before generating the next scene\n4. M'
+    "atch the established style from recent chapters\n5. End each scene at a natural break po"
+    "int — never mid-action unless cliffhanger is appropriate\n\nChapter outline: Bridge"
+    " chapter in two scenes.\nAuthor instructions: <user_instructions>The bridge at night, ra"
+    "in on the river.</user_instructions>\nWord target per scene: 400\nTone: \n\nScene-by-sce"
+    "ne approach:\n- Identify the key beats for each scene from the outline\n- Build each sce"
+    "ne around its central moment or turning point\n- Ensure smooth transitions between scene"
+    "s\n\n### Output Format\n\nOutput ONE scene at a time as prose. No meta-commentary, no la"
+    "bels, no explanations before or after the text. Wait for the author's signal before gene"
+    "rating the next scene.\n\n### User Preferences\n\nConcise prose.\n\n### Do NOT\n\n- Do N"
+    "OT generate more than one scene at a time\n- Do NOT change the narrative perspective unl"
+    "ess established\n- Do NOT add or remove characters not in the outline or KB\n- Do NOT in"
+    "troduce new plot elements not in the outline\n\n### Constraints\n\n- Write in English\n-"
+    " Do not introduce new major characters not referenced in the outline or KB\n- Do not con"
+    "tradict established facts from recent chapters\n- Respect the author's avoidance pattern"
+    "s: Cliches."
 )
 
 # Wire-format Tier-5 blocks exactly as T1a's ``_helpers.optional_block`` emits
@@ -182,19 +193,11 @@ def _scene_prompt_context(
     )
 
 
-_CONFIG = ResolvedModelConfig(provider_name="test", model_id="test-model", max_tokens=2000)
-_USAGE = TokenUsage(prompt_tokens=10, completion_tokens=50, total_tokens=60)
-
-
-async def _final_only_stream() -> AsyncIterator[StreamChunk]:
-    yield StreamChunk(text="", is_final=True, usage=_USAGE)
-
-
 class TestTier5InjectionScene:
     """scene_by_scene (T1f): Tier-5 vars render inert when empty, labeled when populated."""
 
     async def test_empty_tiers_render_byte_identical_to_baseline(self) -> None:
-        """KB-empty render MUST equal the item-3 baseline golden byte-for-byte."""
+        """KB-empty render MUST equal the R2-C1 baseline golden byte-for-byte."""
         composer = PromptComposer(PromptRegistry())
         result = await composer.build(LLMIntent.WRITE, _scene_prompt_context())
 
@@ -203,9 +206,17 @@ class TestTier5InjectionScene:
         assert "Systems:" not in result.system
         assert "Timelines:" not in result.system
         assert "Pinned context" not in result.system
-        # No unsubstituted placeholder survives composition.
-        assert "{{kb_" not in result.system
-        assert "{{scene_" not in result.system
+        # R2-C1 render pins: previously-dropped sections render and no
+        # level-2 header or unsubstituted placeholder survives.
+        for section in (
+            "### Output Format",
+            "### User Preferences",
+            "### Do NOT",
+            "### Constraints",
+        ):
+            assert section in result.system
+        assert not any(line.startswith("## ") for line in result.system.splitlines())
+        assert "{{" not in result.system
 
     async def test_populated_tiers_render_labeled_blocks_after_relationships(self) -> None:
         """Populated tiers render their labeled blocks in order after 'Relationships:'."""
@@ -228,67 +239,6 @@ class TestTier5InjectionScene:
         assert "Magic costs stamina and cannot raise the dead." in result.system
         assert "Day 1: The Fall of Thornwall." in result.system
         assert "Never kill Elena." in result.system
-
-    async def test_stream_scene_supplies_tier5_vars_in_extra(self) -> None:
-        """stream_scene_by_scene forwards Tier-5 blocks + the fixed route mode.
-
-        Guards the pipeline wiring (pipeline.py ``_build_prompt_context`` +
-        the pipeline_scene.py route-composition fix): without the three keys,
-        populated tiers would silently render "" via the route's
-        optional-variable fallback (RULE-11); with the old ``mode="scene"``
-        the real composition would raise PromptRouteNotConfiguredError.
-        """
-        composer = MagicMock(spec=PromptComposer)
-        composer.build = AsyncMock(return_value=ComposedPrompt(system="sys", user="usr"))
-        assembler = MagicMock(spec=WritingContextAssembler)
-        assembler.assemble = AsyncMock(
-            return_value=WritingContext(
-                project_title="Test Novel",
-                genre="fantasy",
-                language="en",
-                tone="balanced",
-                writing_language="English",
-                chapter_outline="Single bridge scene outline.",
-                word_target=400,
-                kb_systems=_KB_SYSTEMS_BLOCK,
-                kb_timelines=_KB_TIMELINES_BLOCK,
-                kb_pinned=_KB_PINNED_BLOCK,
-            )
-        )
-        registry = MagicMock(spec=["stream", "run"])
-        registry.stream = MagicMock(spec=[], side_effect=lambda **kw: _final_only_stream())
-        processor = MagicMock(spec=DraftProcessor)
-        processor.process = MagicMock(spec=[], side_effect=lambda text, **kw: text)
-        pipeline = WritingPipeline(
-            registry=registry,
-            composer=composer,
-            context_assembler=assembler,
-            draft_processor=processor,
-        )
-        request = GenerationRequest(
-            chapter_id=uuid4(),
-            project_id=uuid4(),
-            user_id=uuid4(),
-            mode=GenerationMode.SCENE_BY_SCENE,
-            outline="Single bridge scene outline.",
-        )
-
-        async for _chunk in pipeline.generate(request, config=_CONFIG):
-            pass
-
-        prompt_ctx = composer.build.call_args.args[1]
-        assert prompt_ctx.mode == "scene_by_scene"
-        extra: dict[str, Any] = prompt_ctx.extra
-        assert extra["kb_systems"] == _KB_SYSTEMS_BLOCK
-        assert extra["kb_timelines"] == _KB_TIMELINES_BLOCK
-        assert extra["kb_pinned"] == _KB_PINNED_BLOCK
-        # Item-3: scene-position extras are forwarded (single-scene outline →
-        # 1 of 1) and the redundant scene_outline extra is gone (the outline
-        # flows as author_instructions; the var exists in no registry or
-        # template — it was supplied-but-unrendered dead data).
-        assert extra["scene_number"] == "1"
-        assert extra["total_scenes"] == "1"
-        assert "scene_outline" not in extra
 
     async def test_populated_kb_vars_render_once_at_placeholders(self) -> None:
         """A2 delta: the five previously-unsupplied KB vars render exactly once.
@@ -323,63 +273,11 @@ class TestTier5InjectionScene:
         assert "{{kb_" not in result.system
 
         # Mutation-style: helper output all "" (KB-empty novel) → the render
-        # equals the empty-tiers baseline golden byte-for-byte
-        # (supplied-empty is neutral; scene extras ride in via base.extra).
+        # equals the R2-C1 baseline golden byte-for-byte (supplied-empty is
+        # neutral; scene extras ride in via base.extra).
         empty_ctx = replace(base, extra={**base.extra, **kb_context_extras(WritingContext())})
         empty_result = await composer.build(LLMIntent.WRITE, empty_ctx)
         assert empty_result.system == _GOLDEN_EMPTY_TIERS_BASELINE
-
-    async def test_stream_scene_supplies_all_kb_vars_in_extra(self) -> None:
-        """A2 wiring: the kb_context_extras merge forwards all ten KB vars.
-
-        Without the merge in pipeline.py ``_build_prompt_context`` (which the
-        scene route inherits), the five previously-unsupplied variables would
-        silently render "" via the optional-variable fallback (RULE-11).
-        """
-        composer = MagicMock(spec=PromptComposer)
-        composer.build = AsyncMock(return_value=ComposedPrompt(system="sys", user="usr"))
-        assembler = MagicMock(spec=WritingContextAssembler)
-        assembler.assemble = AsyncMock(
-            return_value=WritingContext(
-                chapter_outline="Single bridge scene outline.",
-                word_target=400,
-                kb_relationships=_KB_RELATIONSHIPS_TEXT,
-                kb_factions=_KB_FACTIONS_TEXT,
-                kb_other=_KB_OTHER_TEXT,
-                kb_suggested=_KB_SUGGESTED_TEXT,
-                kb_context_warnings=_KB_CONTEXT_WARNINGS_TEXT,
-            )
-        )
-        registry = MagicMock(spec=["stream", "run"])
-        registry.stream = MagicMock(spec=[], side_effect=lambda **kw: _final_only_stream())
-        processor = MagicMock(spec=DraftProcessor)
-        processor.process = MagicMock(spec=[], side_effect=lambda text, **kw: text)
-        pipeline = WritingPipeline(
-            registry=registry,
-            composer=composer,
-            context_assembler=assembler,
-            draft_processor=processor,
-        )
-        request = GenerationRequest(
-            chapter_id=uuid4(),
-            project_id=uuid4(),
-            user_id=uuid4(),
-            mode=GenerationMode.SCENE_BY_SCENE,
-            outline="Single bridge scene outline.",
-        )
-
-        async for _chunk in pipeline.generate(request, config=_CONFIG):
-            pass
-
-        extra: dict[str, Any] = composer.build.call_args.args[1].extra
-        assert extra["kb_relationships"] == _KB_RELATIONSHIPS_TEXT
-        assert extra["kb_factions"] == _KB_FACTIONS_TEXT
-        assert extra["kb_other"] == _KB_OTHER_TEXT
-        assert extra["kb_suggested"] == _KB_SUGGESTED_TEXT
-        assert extra["kb_context_warnings"] == _KB_CONTEXT_WARNINGS_TEXT
-        # Previously-supplied variables keep identical values ("" here).
-        assert extra["kb_characters"] == ""
-        assert extra["kb_locations"] == ""
 
     def test_scene_route_mode_is_governed(self) -> None:
         """Regression for the T1f route-composition fix.

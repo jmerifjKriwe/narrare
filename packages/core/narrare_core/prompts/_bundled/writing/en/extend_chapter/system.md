@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.4.0"
+prompt_version: "1.5.0"
 ---
 
 ## System Prompt
@@ -98,7 +98,7 @@ Author instructions: <user_instructions>{{author_instructions}}</user_instructio
 Word target: approximately {{extend_length}} words
 Tone: {{tone_instructions}}
 
-## Output Format
+### Output Format
 
 Output ONLY the continuation text — no meta-commentary, no labels, no explanations. The output will be inserted directly after the `[CONTINUE FROM HERE]` marker.
 
@@ -106,7 +106,7 @@ Output ONLY the continuation text — no meta-commentary, no labels, no explanat
 
 {{user_preferences}}
 
-## Do NOT
+### Do NOT
 
 - Do NOT change the narrative perspective unless explicitly asked
 - Do NOT add or remove characters from the scene

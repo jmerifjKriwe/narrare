@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.4.0"
+prompt_version: "1.5.0"
 ---
 
 ## System Prompt
@@ -101,7 +101,7 @@ Author instructions: <user_instructions>{{author_instructions}}</user_instructio
 Word target: {{word_target}}
 Tone: {{tone_instructions}}
 
-## Output Format
+### Output Format
 
 Output the complete chapter draft as prose. No meta-commentary, no labels, no explanations before or after the text.
 
@@ -115,7 +115,7 @@ Previous writing sessions for this project:
 
 {{cross_session_context}}
 
-## Do NOT
+### Do NOT
 
 - Do NOT change the narrative perspective unless established
 - Do NOT add or remove characters not in the outline or KB

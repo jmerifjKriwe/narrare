@@ -13,7 +13,7 @@ The three Tier-5 variables (``{{kb_systems}}``, ``{{kb_timelines}}``,
 assembler (T1a, ``_helpers.optional_block``) supplies value-side labeled
 blocks (``"\\n\\n<Label>:\\n<text>"``) or ``""`` for empty tiers, so:
 
-* KB-empty novels render BYTE-IDENTICALLY to the pre-T1c prompt (golden), and
+* KB-empty novels render BYTE-IDENTICALLY to the R2-C1 baseline golden, and
 * populated tiers render their labeled blocks in fixed order after
   ``Relationships:``.
 """
@@ -41,120 +41,74 @@ from narrare_core.writing.models import GenerationRequest, WritingContext
 from narrare_core.writing.pipeline import WritingPipeline
 
 # ---------------------------------------------------------------------------
-# Golden: pre-T1c render of the EXTEND system prompt with ALL Tier-5 kb
-# values empty (the KB-empty novel case). Captured 2026-09-10 — BEFORE the
-# T1c template edit (prompt_version 1.3.0) — by composing the real
-# PromptRegistry + PromptComposer route with the ``_extend_prompt_context``
-# helper below (identical inputs). The T1c edit appends
+# Golden: EXTEND system prompt with ALL Tier-5 kb values empty (the
+# KB-empty novel case).
+#
+# Provenance: originally captured 2026-09-10 — BEFORE the T1c template edit
+# (prompt_version 1.3.0) — by composing the real PromptRegistry +
+# PromptComposer route with the ``_extend_prompt_context`` helper below
+# (identical inputs). The T1c edit appends
 # {{kb_systems}}{{kb_timelines}}{{kb_pinned}} to the {{kb_relationships}}
-# line; with empty tiers the render MUST stay byte-identical to this
-# constant (2720 UTF-8 bytes (2712 chars)). Do NOT hand-edit — if the template
-# legitimately changes, recapture mechanically and update this provenance note.
+# line; with empty tiers the render stayed byte-identical (2720 bytes —
+# truncated at the then-rogue ``## Output Format`` header).
+#
+# RE-CAPTURED 2026-09-11 for R2-C1 header demotion (prompt_version 1.5.0):
+# the rogue ``## Output Format`` / ``## Do NOT`` headers were demoted to
+# ``###`` (only ``## System Prompt`` remains level-2), so the previously
+# dropped Output Format / User Preferences / Do NOT / Constraints sections
+# now render in the system prompt. Recaptured mechanically with the real
+# PromptRegistry + PromptComposer via ``_extend_prompt_context()``
+# (identical inputs): 3731 UTF-8 bytes (3721 chars). Empty-tier
+# byte-identity is asserted relative to THIS baseline. Do NOT hand-edit —
+# if the template legitimately changes, recapture mechanically and update
+# this provenance note.
 # ---------------------------------------------------------------------------
 
-_GOLDEN_PRE_TIER5_EMPTY = (
-    "You are a skilled creative writing assistant helping an author continue their text seamlessly"
-    ". Your task is to pick up exactly where the author left off and produce prose that is indisti"
-    "nguishable from the existing text — matching voice, tense, pacing, and narrative register.\n"
-    "\n"
-    "\n"
-    "\n"
-    "### Context\n"
-    "\n"
-    "- Project: Test Novel\n"
-    "- Genre: fantasy\n"
-    "- Language: English\n"
-    "- Timeline: \n"
-    "- **Story Structure**: \n"
-    "\n"
-    "### Existing Content\n"
-    "\n"
-    "Below is the text surrounding the continuation point. The marker `[CONTINUE FROM HERE]` shows"
-    " exactly where you must resume writing. Study the style, rhythm, and voice of the pre-text ca"
-    "refully.\n"
-    "\n"
-    "<user_provided_text>Pre-text\n"
-    "[CONTINUE FROM HERE]\n"
-    "Post-text</user_provided_text>\n"
-    "\n"
-    "### Knowledge Base\n"
-    "\n"
-    "\n"
-    "Characters:\n"
-    "\n"
-    "\n"
-    "Locations:\n"
-    "\n"
-    "\n"
-    "Factions:\n"
-    "\n"
-    "\n"
-    "Other entities:\n"
-    "\n"
-    "\n"
-    "Relationships:\n"
-    "\n"
-    "\n"
-    "### Suggested KB Entries\n"
-    "\n"
-    "Optional lower-priority generated KB suggestions. These are unaccepted candidates.\n"
-    "Use them only when they support the current author instructions, project writing\n"
-    "profile, current scene/timeline context, and curated KB. They must not override\n"
-    "current author instructions, the project profile, current scene/timeline context,\n"
-    "or curated KB.\n"
-    "\n"
-    "\n"
-    "\n"
-    "### Recent Chapters\n"
-    "\n"
-    "\n"
-    "\n"
-    "### Story Synopsis\n"
-    "\n"
-    "\n"
-    "\n"
-    "### Style Profile\n"
-    "\n"
-    "The author's established writing style:\n"
-    "\n"
-    "\n"
-    "\n"
-    "### Character Voice Profiles\n"
-    "\n"
-    "When writing dialogue, maintain each character's distinct voice based on their speech pattern"
-    "s:\n"
-    "\n"
-    "Elena: formal, terse.\n"
-    "\n"
-    "**Voice consistency rules:**\n"
-    "- Each character must use their established dialect, vocabulary, and verbal tics\n"
-    "- Match their personality traits when they speak (formal, casual, terse, eloquent)\n"
-    "- Characters should be identifiable by their speech alone, without dialogue tags\n"
-    "- Do NOT make all characters sound the same — preserve their linguistic individuality\n"
-    "\n"
-    "### Author Voice\n"
-    "\n"
-    "The narrator's prose voice for this novel (descriptive profile, not raw metrics):\n"
-    "\n"
-    "Lyrical, close third person.\n"
-    "\n"
-    "### Instructions\n"
-    "\n"
-    "Continue the text from the `[CONTINUE FROM HERE]` marker. Follow these guidelines:\n"
-    "\n"
-    "1. **Seamless continuation**: The first sentence you write must flow naturally from the last "
-    "sentence before the marker — no repetition, no summary, no meta-commentary\n"
-    "2. **Style matching**: Replicate the author's sentence length, rhythm, diction, and narrative"
-    " distance exactly\n"
-    "3. **Plot continuity**: Maintain consistency with established characters, locations, and ongo"
-    "ing scenes\n"
-    "4. **Natural dialogue**: Use each character's established voice patterns\n"
-    "5. **Pacing**: Maintain the current scene's momentum — do not artificially escalate or deflat"
-    "e tension\n"
-    "\n"
-    "Author instructions: <user_instructions>Keep the momentum.</user_instructions>\n"
-    "Word target: approximately 400 words\n"
-    "Tone: Match the author's tone."
+_GOLDEN_EMPTY_TIERS_BASELINE = (
+    "You are a skilled creative writing assistant helping an author continue their text seaml"
+    "essly. Your task is to pick up exactly where the author left off and produce prose that "
+    "is indistinguishable from the existing text — matching voice, tense, pacing, and na"
+    "rrative register.\n\n\n\n### Context\n\n- Project: Test Novel\n- Genre: fantasy\n- Langu"
+    "age: English\n- Timeline: \n- **Story Structure**: \n\n### Existing Content\n\nBelow is "
+    "the text surrounding the continuation point. The marker `[CONTINUE FROM HERE]` shows exa"
+    "ctly where you must resume writing. Study the style, rhythm, and voice of the pre-text c"
+    "arefully.\n\n<user_provided_text>Pre-text\n[CONTINUE FROM HERE]\nPost-text</user_provide"
+    "d_text>\n\n### Knowledge Base\n\n\nCharacters:\n\n\nLocations:\n\n\nFactions:\n\n\nOther"
+    " entities:\n\n\nRelationships:\n\n\n### Suggested KB Entries\n\nOptional lower-priority "
+    "generated KB suggestions. These are unaccepted candidates.\nUse them only when they supp"
+    "ort the current author instructions, project writing\nprofile, current scene/timeline co"
+    "ntext, and curated KB. They must not override\ncurrent author instructions, the project "
+    "profile, current scene/timeline context,\nor curated KB.\n\n\n\n### Recent Chapters\n\n"
+    "\n\n### Story Synopsis\n\n\n\n### Style Profile\n\nThe author's established writing styl"
+    "e:\n\n\n\n### Character Voice Profiles\n\nWhen writing dialogue, maintain each character"
+    "'s distinct voice based on their speech patterns:\n\nElena: formal, terse.\n\n**Voice co"
+    "nsistency rules:**\n- Each character must use their established dialect, vocabulary, and"
+    " verbal tics\n- Match their personality traits when they speak (formal, casual, terse, e"
+    "loquent)\n- Characters should be identifiable by their speech alone, without dialogue ta"
+    "gs\n- Do NOT make all characters sound the same — preserve their linguistic individ"
+    "uality\n\n### Author Voice\n\nThe narrator's prose voice for this novel (descriptive pro"
+    "file, not raw metrics):\n\nLyrical, close third person.\n\n### Instructions\n\nContinue "
+    "the text from the `[CONTINUE FROM HERE]` marker. Follow these guidelines:\n\n1. **Seamle"
+    "ss continuation**: The first sentence you write must flow naturally from the last senten"
+    "ce before the marker — no repetition, no summary, no meta-commentary\n2. **Style ma"
+    "tching**: Replicate the author's sentence length, rhythm, diction, and narrative distanc"
+    "e exactly\n3. **Plot continuity**: Maintain consistency with established characters, loc"
+    "ations, and ongoing scenes\n4. **Natural dialogue**: Use each character's established vo"
+    "ice patterns\n5. **Pacing**: Maintain the current scene's momentum — do not artific"
+    "ially escalate or deflate tension\n\nAuthor instructions: <user_instructions>Keep the mo"
+    "mentum.</user_instructions>\nWord target: approximately 400 words\nTone: Match the autho"
+    "r's tone.\n\n### Output Format\n\nOutput ONLY the continuation text — no meta-comme"
+    "ntary, no labels, no explanations. The output will be inserted directly after the `[CONT"
+    "INUE FROM HERE]` marker.\n\n### User Preferences\n\nConcise prose.\n\n### Do NOT\n\n- Do"
+    " NOT change the narrative perspective unless explicitly asked\n- Do NOT add or remove ch"
+    "aracters from the scene\n- Do NOT introduce new plot elements not in the KB or recent ch"
+    "apters\n- Do NOT over-explain or add exposition not in the original\n- Do NOT repeat or "
+    "rephrase the text before the marker\n\n### Constraints\n\n- Write in English\n- Do NOT r"
+    'epeat or rephrase the text before the marker\n- Do NOT add meta-commentary (e.g., "Here '
+    'is the continuation:", "Continuing from where we left off:")\n- Do NOT introduce new maj'
+    "or characters not referenced in the KB or recent chapters\n- Do NOT contradict establish"
+    "ed facts from recent chapters\n- If post-text exists after the marker, your continuation"
+    " must bridge naturally to it\n- Respect the author's avoidance patterns: Cliches."
 )
 
 # Wire-format Tier-5 blocks exactly as T1a's ``_helpers.optional_block`` emits
@@ -227,18 +181,27 @@ async def _final_only_stream() -> AsyncIterator[StreamChunk]:
 class TestTier5InjectionExtend:
     """extend_chapter (T1c): Tier-5 vars render inert when empty, labeled when populated."""
 
-    async def test_empty_tiers_render_byte_identical_to_pre_tier5(self) -> None:
-        """KB-empty render MUST equal the pre-T1c golden byte-for-byte."""
+    async def test_empty_tiers_render_byte_identical_to_baseline(self) -> None:
+        """KB-empty render MUST equal the R2-C1 baseline golden byte-for-byte."""
         composer = PromptComposer(PromptRegistry())
         result = await composer.build(LLMIntent.EXTEND, _extend_prompt_context())
 
-        assert result.system == _GOLDEN_PRE_TIER5_EMPTY
+        assert result.system == _GOLDEN_EMPTY_TIERS_BASELINE
         # Inert by default: no tier labels leak into the prompt.
         assert "Systems:" not in result.system
         assert "Timelines:" not in result.system
         assert "Pinned context" not in result.system
-        # No unsubstituted placeholder survives composition.
-        assert "{{kb_" not in result.system
+        # R2-C1 render pins: previously-dropped sections render and no
+        # level-2 header or unsubstituted placeholder survives.
+        for section in (
+            "### Output Format",
+            "### User Preferences",
+            "### Do NOT",
+            "### Constraints",
+        ):
+            assert section in result.system
+        assert not any(line.startswith("## ") for line in result.system.splitlines())
+        assert "{{" not in result.system
 
     async def test_populated_tiers_render_labeled_blocks_after_relationships(self) -> None:
         """Populated tiers render their labeled blocks in order after 'Relationships:'."""
@@ -343,10 +306,11 @@ class TestTier5InjectionExtend:
         assert "{{kb_" not in result.system
 
         # Mutation-style: helper output all "" (KB-empty novel) → the render
-        # equals the Tier-5 golden byte-for-byte (supplied-empty is neutral).
+        # equals the R2-C1 baseline golden byte-for-byte (supplied-empty is
+        # neutral).
         empty_ctx = replace(base, extra={**base.extra, **kb_context_extras(WritingContext())})
         empty_result = await composer.build(LLMIntent.EXTEND, empty_ctx)
-        assert empty_result.system == _GOLDEN_PRE_TIER5_EMPTY
+        assert empty_result.system == _GOLDEN_EMPTY_TIERS_BASELINE
 
     async def test_stream_extend_supplies_all_kb_vars_in_extra(self) -> None:
         """A2 wiring: the kb_context_extras merge forwards all ten KB vars.
