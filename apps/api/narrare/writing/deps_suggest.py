@@ -8,6 +8,7 @@ from uuid import UUID
 
 from narrare._app.dependencies import get_composer, get_model_registry
 from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare.writing.deps_ownership import ensure_novel_owned
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.run_limits import SUGGEST_MAX_TOKENS
 
@@ -22,10 +23,25 @@ async def get_suggest_service(
     user_id: str,
     project_id: UUID | None = None,
 ) -> InlineSuggestService:
-    """Factory for InlineSuggestService — resolves model config for SUGGEST."""
+    """Factory for InlineSuggestService — resolves model config for SUGGEST.
+
+    Raises:
+        NotFoundError: If ``project_id`` is given but unknown or not
+            owned by ``user_id`` (fix-wave N1, consistency close: gated
+            BEFORE the resolver's auto-creating project-settings read —
+            foreign ≡ unknown → 404, never a 500 FK oracle). The only
+            production caller passes ``project_id=None`` (user scope);
+            the gate protects any future project-scoped wiring.
+    """
     from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.writing.suggest_service import InlineSuggestService
+
+    # Fix-wave N1: gate the project scope BEFORE model routing — the
+    # resolver's project-settings read auto-creates a row (unknown novel
+    # → FK IntegrityError = 500 oracle; foreign novel → victim row).
+    await ensure_novel_owned(session, user_id, project_id)
 
     resolver = get_model_routing_resolver(session)
     assert isinstance(resolver, ModelRoutingResolverImpl)
@@ -39,12 +55,15 @@ async def get_suggest_service(
     registry = get_model_registry()
     composer = get_composer()
     chapter_repo = ChapterRepository(session)
+    # IDOR S6: novel repo backs the chapter-ownership gate.
+    novel_repo = NovelRepository(session)
 
     return InlineSuggestService(
         registry=registry,
         composer=composer,
         config=config,
         chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
     )

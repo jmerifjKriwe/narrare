@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 
@@ -31,6 +31,33 @@ def mock_repo() -> AsyncMock:
             "most_used_model": "claude-sonnet-4-5-20251020",
         }
     )
+    return repo
+
+
+@pytest.fixture
+def mock_chapter_repo() -> AsyncMock:
+    """Mock ChapterRepository — gate-open for non-ownership tests.
+
+    The returned chapter binds to ANY addressed novel (``mock.ANY``) so the
+    S6 ``verify_chapter_access`` gate passes for whatever random
+    ``(chapter_id, novel_id)`` pair a behavior test draws.  The ownership
+    matrix itself lives in ``test_generation_access_matrix.py`` with real
+    fakes.
+    """
+    from tests.factories import make_chapter
+
+    repo = AsyncMock(spec=["get"])
+    repo.get = AsyncMock(return_value=make_chapter(novel_id=ANY))
+    return repo
+
+
+@pytest.fixture
+def mock_novel_repo() -> AsyncMock:
+    """Mock NovelRepository — every novel belongs to the caller (gate-open)."""
+    from tests.factories import make_novel
+
+    repo = AsyncMock(spec=["get_by_id"])
+    repo.get_by_id = AsyncMock(return_value=make_novel())
     return repo
 
 
@@ -66,6 +93,8 @@ def service(
     mock_pipeline: AsyncMock,
     mock_draft_processor: MagicMock,
     config: ResolvedModelConfig,
+    mock_chapter_repo: AsyncMock,
+    mock_novel_repo: AsyncMock,
 ) -> WritingService:
     """WritingService with mocked dependencies (no tone service by default)."""
     return WritingService(
@@ -73,4 +102,6 @@ def service(
         pipeline=mock_pipeline,
         draft_processor=mock_draft_processor,
         config=config,
+        chapter_repo=mock_chapter_repo,
+        novel_repo=mock_novel_repo,
     )

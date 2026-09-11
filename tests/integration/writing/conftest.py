@@ -29,6 +29,7 @@ import pytest
 # added ~1s to the first test that called each service.
 from narrare._app.dependencies import get_composer
 from narrare.chapters.repository import ChapterRepository
+from narrare.novels.repository import NovelRepository
 from narrare.writing.extend_service import ExtendService
 from narrare.writing.repository import GenerationRepository
 from narrare.writing.rewrite_service import RewriteService
@@ -98,6 +99,8 @@ async def _make_writing_service(
         pipeline=pipeline,
         draft_processor=_processor,
         config=config,
+        chapter_repo=ChapterRepository(session),
+        novel_repo=NovelRepository(session),
     )
 
 
@@ -144,6 +147,8 @@ async def _make_extend_service(
         pipeline=pipeline,
         draft_processor=_processor,
         config=config,
+        chapter_repo=ChapterRepository(session),
+        novel_repo=NovelRepository(session),
     )
 
 
@@ -183,6 +188,8 @@ async def _make_rewrite_service(
         pipeline=pipeline,
         draft_processor=_processor,
         config=config,
+        chapter_repo=ChapterRepository(session),
+        novel_repo=NovelRepository(session),
     )
 
 
@@ -213,6 +220,7 @@ async def _make_suggest_service(
         composer=get_composer(),
         config=config,
         chapter_repo=chapter_repo,
+        novel_repo=NovelRepository(session),
     )
 
 
@@ -253,6 +261,8 @@ async def _make_style_variant_service(
         pipeline=pipeline,
         draft_processor=_processor,
         config=config,
+        chapter_repo=ChapterRepository(session),
+        novel_repo=NovelRepository(session),
     )
 
 

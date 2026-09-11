@@ -26,7 +26,8 @@ interface ChatMessageProps {
   readonly aiDraftBadge: string;
   readonly addToDraftLabel: string;
   readonly addedToDraftLabel: string;
-  readonly projectId?: string;
+  /** Project scope for ratings; null/undefined hides the rating control. */
+  readonly projectId?: string | null;
   readonly isStreaming?: boolean;
 }
 

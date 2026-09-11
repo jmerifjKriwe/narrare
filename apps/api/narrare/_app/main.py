@@ -20,6 +20,7 @@ from narrare._app.middleware import (
     get_trusted_origins,
 )
 from narrare._app.telemetry import setup_telemetry
+from narrare_core.notes.types import ScopeError
 from narrare_core.shared.errors import NarrareError
 
 logger = structlog.get_logger(__name__)
@@ -109,6 +110,26 @@ def create_app(*, test_mode: bool = False) -> FastAPI:
         return JSONResponse(
             status_code=status_code,
             content={"detail": str(exc), "code": exc.code},
+        )
+
+    # --- Notes scope-invariant handler (NOTES-001, T7 review carry-over) ---
+    # ScopeError deliberately subclasses ValueError (NOT NarrareError) so the
+    # pydantic schemas can raise it inside model_validators — pydantic wraps
+    # it into a 422 automatically. The service re-validates the same
+    # invariant on the MERGED PATCH state (stored note + patch), where the
+    # raw ScopeError escapes pydantic and would otherwise surface as 500.
+    # 422 matches the schema-level mapping of the identical invariant — one
+    # error type, one status, regardless of the enforcing layer. Registered
+    # app-level so the router stays free of try/except (RULE-06), mirroring
+    # the ExportError handler below.
+    @app.exception_handler(ScopeError)
+    async def _scope_error_handler(  # pyright: ignore[reportUnusedFunction]
+        _: Request, exc: ScopeError
+    ) -> JSONResponse:
+        logger.warning("scope_error", detail=str(exc))
+        return JSONResponse(
+            status_code=422,
+            content={"detail": str(exc), "code": "SCOPE_CONFLICT"},
         )
 
     # --- Export-domain error handler (IO-001 / ADR-081) ---
@@ -211,6 +232,7 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.memory.router import router as memory_router
     from narrare.memory.router_analysis import router as memory_analysis_router
     from narrare.metrics.router import router as metrics_router
+    from narrare.notes.router import router as notes_router
     from narrare.novels.router import router as novels_router
     from narrare.planning.router import router as planning_router
     from narrare.prompts.router import router as prompts_router
@@ -249,6 +271,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(auth_router, prefix=prefix)
     app.include_router(auth_me_router, prefix=prefix)
     app.include_router(novels_router, prefix=prefix)
+    app.include_router(notes_router, prefix=prefix)
     app.include_router(series_router, prefix=prefix)
     app.include_router(series_novels_router, prefix=prefix)
     app.include_router(series_band_summary_router, prefix=prefix)

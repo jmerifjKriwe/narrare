@@ -55,6 +55,9 @@ def _make_service_with_feedback(
     cache.get = AsyncMock(return_value=None)
     cache.set = AsyncMock()
 
+    novel_repo = AsyncMock()
+    novel_repo.get_by_id = AsyncMock(return_value=object())  # permissive gate (IDOR S9)
+
     service = KBConsistencyService(
         analyzer=analyzer,
         asymmetry_checker=asymmetry_checker,
@@ -62,6 +65,7 @@ def _make_service_with_feedback(
         kb_repo=AsyncMock(),
         rel_repo=AsyncMock(),
         cache=cache,
+        novel_repo=novel_repo,
         feedback_memory=feedback_memory,  # type: ignore[arg-type]
     )
     service._run_cross_entity = AsyncMock(return_value=[])  # type: ignore[assignment]
@@ -91,7 +95,7 @@ class TestSemanticSuppression:
         result = await service.check(
             novel_id=novel_id,
             request=ConsistencyCheckRequest(),
-            user_id="user-1",
+            user_id=str(uuid4()),
         )
 
         assert result.issues == []
@@ -111,7 +115,7 @@ class TestSemanticSuppression:
         result = await service.check(
             novel_id=novel_id,
             request=ConsistencyCheckRequest(),
-            user_id="user-1",
+            user_id=str(uuid4()),
         )
 
         assert len(result.issues) == 1
@@ -129,7 +133,7 @@ class TestSemanticSuppression:
         result = await service.check(
             novel_id=novel_id,
             request=ConsistencyCheckRequest(),
-            user_id="user-1",
+            user_id=str(uuid4()),
         )
 
         assert len(result.issues) == 1
@@ -151,17 +155,22 @@ class TestSemanticSuppression:
         result = await service.check(
             novel_id=novel_id,
             request=ConsistencyCheckRequest(),
-            user_id="user-1",
+            user_id=str(uuid4()),
         )
 
         assert len(result.issues) == 1
         assert result.suppressed_count == 0
 
-    async def test_check_with_none_user_id_suppresses_nothing(self) -> None:
-        """user_id=None disables suppression (no identity to scope by)."""
+    async def test_check_threads_user_id_into_suppression_query(self) -> None:
+        """IDOR S9: ``user_id`` is required at the service boundary (a gate
+        that can be skipped via ``None`` is not a gate) and is threaded —
+        not dropped — into the mem0 suppression query. Helper-level
+        ``None`` behaviour stays covered by ``test_consistency_suppress.py``."""
         feedback_memory = AsyncMock()
+        feedback_memory.find_similar_dismissals = AsyncMock(return_value=[])
         service, mocks = _make_service_with_feedback(feedback_memory)
         novel_id = uuid4()
+        user_id = str(uuid4())
 
         mocks["asymmetry_checker"].check = AsyncMock(return_value=[])
         issue = _make_issue()
@@ -170,9 +179,11 @@ class TestSemanticSuppression:
         result = await service.check(
             novel_id=novel_id,
             request=ConsistencyCheckRequest(),
-            user_id=None,
+            user_id=user_id,
         )
 
         assert len(result.issues) == 1
         assert result.suppressed_count == 0
-        feedback_memory.find_similar_dismissals.assert_not_awaited()
+        feedback_memory.find_similar_dismissals.assert_awaited_once_with(
+            user_id, novel_id, finding_description=issue.description
+        )

@@ -593,6 +593,8 @@
       "aiRewriteDescription": "Text markieren und KI-Menü öffnen",
       "commandPalette": "Kommandopalette",
       "commandPaletteDescription": "Befehlspalette öffnen",
+      "quickCapture": "Schnellerfassung",
+      "quickCaptureDescription": "Die Schnellerfassung von überall öffnen",
       "ghostTextAccept": "Ghost Text übernehmen",
       "ghostTextAcceptDescription": "Vorgeschlagenen Text vollständig übernehmen",
       "ghostTextWord": "Ghost Text wortweise",

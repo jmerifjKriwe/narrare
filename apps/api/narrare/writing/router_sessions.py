@@ -1,35 +1,63 @@
 """Writing session routes — WebSocket interactive sessions.
 
 Extracted from ``router.py`` for RULE-04 compliance (max 150 lines).
+Identity is server-derived (ADR-084): the handshake consumes a single-use
+ticket from ``POST /api/v1/auth/ws-ticket`` — the client-asserted
+``user_id`` query param is removed (sanctioned backward break).
+Handshake order: ticket → ``project_id`` → origin → rate limit →
+reattach admission (reconnects) → ownership gate + runtime resolution
+(IDOR S3, ``ws_session_config``).
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from uuid import UUID
 
 from fastapi import APIRouter, WebSocket
 
 from narrare._app.dependencies import get_composer, get_model_registry
 from narrare._app.rate_limits import AI_WS_LIMITER
+from narrare.writing.ws_payloads import build_recovery_failed_payload
+from narrare_core.shared.errors import NotFoundError
 
 router = APIRouter(tags=["writing"])
+
+
+async def _close_with_error(websocket: WebSocket, *, code: int, reason: str) -> None:
+    """Accept → error JSON frame → close (house pattern — browsers cannot read close codes)."""
+    await websocket.accept()
+    await websocket.send_json({"type": "error", "message": reason})
+    await websocket.close(code=code, reason=reason)
+
+
+async def _close_with_recovery_failed(
+    websocket: WebSocket,
+    rejection: Mapping[str, object],
+) -> None:
+    """Accept → typed recovery_failed frame → close 4404 (handler reject convention)."""
+    await websocket.accept()
+    await websocket.send_json(build_recovery_failed_payload(rejection))
+    await websocket.close(code=4404)
 
 
 @router.websocket("/writing/sessions/{chapter_id}")
 async def interactive_session(
     websocket: WebSocket,
     chapter_id: UUID,
-    user_id: str = "",
+    token: str = "",
     project_id: UUID | None = None,
     mode: str = "interactive_session",
     session_id: UUID | None = None,
 ) -> None:
     """WebSocket endpoint for interactive writing sessions.
 
+    Handshake (ADR-084): ticket → ``project_id`` → origin → rate limit; the
+    ``token`` is a single-use 60 s ticket (fresh per reconnect).
     Args:
-        mode: Session mode — ``interactive_session`` (collaborative writing)
-            or ``interview_assisted`` (structured interview → draft).
+        mode: ``interactive_session`` or ``interview_assisted``.
     """
+    from narrare.auth import ws_tickets
     from narrare.writing.deps_ws import (
         get_active_turn_registry,
         get_session_control_service,
@@ -38,45 +66,34 @@ async def interactive_session(
     )
     from narrare.writing.ws_factory import build_writing_session_handler
 
-    if not user_id or project_id is None:
-        await websocket.accept()
-        await websocket.send_json(
-            {
-                "type": "error",
-                "message": "Missing user_id or project_id — please reload the page.",
-            }
-        )
-        await websocket.close(code=4001, reason="Missing user_id or project_id")
+    # 1. Ticket validation (authn, ADR-084) — identity is DERIVED from the
+    #    registry record; the uniform WsTicketError message (anti-enumeration)
+    #    is the client-facing reason.
+    try:
+        user_id = str(ws_tickets.consume(token))
+    except ws_tickets.WsTicketError as exc:
+        await _close_with_error(websocket, code=4401, reason=str(exc))
         return
 
-    # Origin validation (CSRF defense-in-depth, AUFG-05-13)
+    # 2. project_id presence
+    if project_id is None:
+        await _close_with_error(websocket, code=4001, reason="Missing project_id")
+        return
+
+    # 3. Origin validation (CSRF defense-in-depth, AUFG-05-13) — a policy
+    #    violation per RFC 6455 §7.4.1, hence 1008 (ADR-084 reclassification).
     from narrare._app.config import get_settings
 
-    _settings = get_settings()
-    _trusted = _settings.csrf_trusted_origins
+    _trusted = get_settings().csrf_trusted_origins
     _origin = websocket.headers.get("origin", "")
     if _origin and _origin not in _trusted:
-        await websocket.accept()
-        await websocket.send_json(
-            {
-                "type": "error",
-                "message": "Origin not allowed",
-            }
-        )
-        await websocket.close(code=4001, reason="Origin not allowed")
+        await _close_with_error(websocket, code=1008, reason="Origin not allowed")
         return
 
-    # Rate-limit check (in-memory, AR-05-02)
+    # 4. Rate-limit check keyed on the DERIVED user (AR-05-02; unspoofable).
     ws_key = f"ws:writing:{user_id}:{chapter_id}"
     if not AI_WS_LIMITER.try_acquire(ws_key, blocking=False):
-        await websocket.accept()
-        await websocket.send_json(
-            {
-                "type": "error",
-                "message": "Rate limited — too many writing sessions. Try again later.",
-            }
-        )
-        await websocket.close(code=4003, reason="Rate limited")
+        await _close_with_error(websocket, code=4003, reason="Rate limited")
         return
 
     session_manager = get_session_manager(websocket.app)
@@ -91,49 +108,30 @@ async def interactive_session(
     model_registry = get_model_registry()
     composer = get_composer()
 
-    # Resolve token limits from DB — replaces hardcoded defaults
-    from narrare._app.config import get_settings
-    from narrare._app.database import get_async_session
+    # 5. Reattach admission (reconnects, ADR-052) + ownership gate +
+    #    runtime resolution (IDOR S3) — security-pinned order and full
+    #    rationale: ``ws_session_config``. Rejections: typed
+    #    ``recovery_failed`` frame + close 4404 for reconnects, close
+    #    4001 for gate misses (foreign ≡ unknown, anti-enumeration).
     from narrare._app.dependencies_pipeline import get_invocation_pipeline
-    from narrare.settings.token_limits.repository import (
-        ProjectTokenLimitsRepository,
-        UserTokenLimitsRepository,
-    )
-    from narrare.settings.token_limits.service import TokenLimitsService
+    from narrare.writing.ws_session_config import ReattachRejectedError, resolve_ws_session_config
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
-    _session_gen = get_async_session()
-    session = await _session_gen.__anext__()
     try:
-        token_limits_service = TokenLimitsService(
-            user_repo=UserTokenLimitsRepository(session),
-            project_repo=ProjectTokenLimitsRepository(session),
-            config=get_settings(),
-        )
-        limits = await token_limits_service.get_resolved_limits(
-            user_id=user_id,
-            project_id=str(project_id) if project_id else None,
-        )
-
-        # Resolve model config per-user via routing resolver (RULE-18)
-        from dataclasses import replace as dataclass_replace
-
-        from narrare._app.dependencies_services import get_model_routing_resolver
-        from narrare_core.llm.intents import LLMIntent
-        from narrare_core.llm.run_limits import DefaultRunLimitResolver
-
-        resolver = get_model_routing_resolver(session)
-        resolved = await resolver.resolve(
-            LLMIntent.WRITE,
-            UUID(user_id),
+        config, limits = await resolve_ws_session_config(
+            user_id,
+            chapter_id,
             project_id,
+            session_id=session_id,
+            control_service=control_service,
         )
-        config = dataclass_replace(
-            resolved.config,
-            temperature=0.7,
-            max_tokens=limits.output_limit,
-        )
-    finally:
-        await _session_gen.aclose()
+    except ReattachRejectedError as rejection:
+        await _close_with_recovery_failed(websocket, rejection.payload)
+        return
+    except NotFoundError as exc:
+        await _close_with_error(websocket, code=4001, reason=str(exc))
+        return
+
     handler = build_writing_session_handler(
         session_manager=session_manager,
         registry=active_turn_registry,

@@ -25,7 +25,7 @@ from narrare.writing.deps_suggest import (
 from narrare.writing.deps_writing import (
     get_writing_service as get_writing_service,
 )
-from narrare.writing.deps_writing import (
+from narrare.writing.deps_writing_stream import (
     get_writing_service_for_stream as get_writing_service_for_stream,
 )
 

@@ -70,7 +70,7 @@ class TestGetSession:
         session = make_session()
         await store.create(session)
 
-        result = await service.get_session(session.id)
+        result = await service.get_session(session.id, session.novel_id, session.user_id)
         assert result is not None
         assert result.id == session.id
 
@@ -78,7 +78,7 @@ class TestGetSession:
         """get_session returns None for unknown ID."""
         service, _, _ = make_service()
 
-        result = await service.get_session(uuid4())
+        result = await service.get_session(uuid4(), uuid4(), uuid4())
         assert result is None
 
 
@@ -96,7 +96,9 @@ class TestAnswerField:
         session = make_session()
         await store.create(session)
 
-        updated = await service.answer_field(session.id, "name", "Aria")
+        updated = await service.answer_field(
+            session.id, session.novel_id, session.user_id, "name", "Aria"
+        )
 
         name_field = next(f for f in updated.fields if f.field_key == "name")
         assert name_field.user_value == "Aria"
@@ -110,7 +112,9 @@ class TestAnswerField:
         await store.create(session)
 
         with pytest.raises(ValueError, match="Field 'unknown' not found"):
-            await service.answer_field(session.id, "unknown", "value")
+            await service.answer_field(
+                session.id, session.novel_id, session.user_id, "unknown", "value"
+            )
 
     async def test_raises_for_inactive_session(self) -> None:
         """answer_field raises ValueError for non-active session."""
@@ -119,4 +123,6 @@ class TestAnswerField:
         await store.create(session)
 
         with pytest.raises(ValueError, match="has status 'complete'"):
-            await service.answer_field(session.id, "name", "Aria")
+            await service.answer_field(
+                session.id, session.novel_id, session.user_id, "name", "Aria"
+            )

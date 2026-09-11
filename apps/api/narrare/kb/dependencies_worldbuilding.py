@@ -52,6 +52,7 @@ async def get_worldbuilding_service(
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
     from narrare.kb.worldbuilding_cache import WorldbuildingCache
     from narrare.kb.worldbuilding_service import WorldbuildingService
+    from narrare.novels.repository import NovelRepository
     from narrare_core.cache import InMemorySessionCache
 
     resolver = get_model_routing_resolver(session)
@@ -66,6 +67,7 @@ async def get_worldbuilding_service(
 
     kb_repo = KBRepository(session)
     rel_repo = RelationshipRepository(session)
+    novel_repo = NovelRepository(session)
 
     # In-memory worldbuilding cache with 10min TTL (ADR-080)
     cache = InMemorySessionCache()
@@ -87,6 +89,8 @@ async def get_worldbuilding_service(
     return WorldbuildingService(
         analyzer=analyzer,
         rel_repo=rel_repo,
+        entry_repo=kb_repo,
         cache=worldbuilding_cache,
+        novel_repo=novel_repo,
         invocation_pipeline=get_invocation_pipeline(),
     )

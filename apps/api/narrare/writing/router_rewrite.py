@@ -54,7 +54,8 @@ async def rewrite_chapter(
 
     # Pre-validate before starting SSE response to avoid RuntimeError
     # when ConflictError/NotFoundError fires after headers are sent.
-    await service.validate_rewrite(chapter_id, novel_id, request)
+    # user_id threads the S6 ownership gate (foreign ≡ unknown → 404).
+    await service.validate_rewrite(chapter_id, novel_id, request, user_id=user_id)
 
     async def event_stream() -> AsyncIterator[str]:
         async for chunk in service.stream_rewrite(

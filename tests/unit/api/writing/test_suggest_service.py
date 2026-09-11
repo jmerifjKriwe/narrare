@@ -56,11 +56,14 @@ def suggest_service(
     suggest_config: ResolvedModelConfig,
 ) -> InlineSuggestService:
     """InlineSuggestService with mocked dependencies."""
+    from tests.unit.api.writing._suggest_factories import make_mock_novel_repo
+
     return InlineSuggestService(
         registry=mock_registry,
         composer=mock_composer,
         config=suggest_config,
         chapter_repo=mock_chapter_repo,
+        novel_repo=make_mock_novel_repo(),
     )
 
 

@@ -38,6 +38,7 @@ from narrare.kb.service import KBService
 
 if TYPE_CHECKING:
     from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 # --- Repository seam (compiled-SQL assertions) -----------------------------------
 
@@ -302,6 +303,13 @@ class _FakeGraphRelRepo:
         return {}
 
 
+class _FakeGraphNovelRepo:
+    """Permissive novel repo — ownership behavior lives in the S11 matrix."""
+
+    async def get_by_id(self, novel_id: object, user_id: object) -> object:
+        return object()
+
+
 class TestGraphDeprecatedVisibility:
     def _service(
         self,
@@ -313,6 +321,7 @@ class TestGraphDeprecatedVisibility:
             GraphService(
                 cast("KBRepositoryProtocol", repo),
                 cast("RelationshipRepositoryProtocol", _FakeGraphRelRepo()),
+                cast("NovelRepositoryProtocol", _FakeGraphNovelRepo()),
             ),
             repo,
             active,

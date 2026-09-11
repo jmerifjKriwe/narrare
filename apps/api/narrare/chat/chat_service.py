@@ -11,23 +11,25 @@ Follows ChatServiceProtocol from core contracts.py.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import uuid4
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
-from narrare.chat._context import build_prompt_context
-from narrare_core.agents.process_history import ProcessHistory
+from narrare.chat._context import build_prompt_context, resolve_effective_message
 from narrare_core.chat.chat_service_core import new_conversation_id
 from narrare_core.chat.contracts import ChatMessage, ChatRequest, ChatServiceProtocol
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
+    from narrare.notes.contracts import OwnedLinkLookupProtocol
+    from narrare_core.agents.process_history import ProcessHistory
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
+    from narrare_core.notes.contracts import NoteLookupProtocol
     from narrare_core.prompts import PromptComposer
     from narrare_core.prompts.composer import ComposedPrompt
     from narrare_core.prompts.context import PromptContext
@@ -38,10 +40,12 @@ class ChatService(ChatServiceProtocol):
 
     Handles the full chat lifecycle:
     1. Conversation creation or history loading
-    2. Context assembly and prompt composition
-    3. Agent-based LLM streaming via ChatAgent (ADR-024)
-    4. ProcessHistory tracking for conversational continuity (ADR-034)
-    5. Message persistence via SQLAlchemyConversationStore
+    2. Note context injection into the user message (NOTES-001 §6b —
+       runtime-input channel, RULE-02)
+    3. Context assembly and prompt composition
+    4. Agent-based LLM streaming via ChatAgent (ADR-024)
+    5. ProcessHistory tracking for conversational continuity (ADR-034)
+    6. Message persistence via SQLAlchemyConversationStore
     """
 
     def __init__(
@@ -54,6 +58,8 @@ class ChatService(ChatServiceProtocol):
         run_limit_resolver: DefaultRunLimitResolver | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
+        note_lookup: NoteLookupProtocol | None = None,
+        novel_lookup: OwnedLinkLookupProtocol | None = None,
     ) -> None:
         """Initialize the chat service with injected dependencies.
 
@@ -72,6 +78,16 @@ class ChatService(ChatServiceProtocol):
                 factory.
             base_url: Resolved base-URL override for OpenAI-compatible
                 providers. ``None`` uses the provider default endpoint.
+            note_lookup: Optional ``NoteLookupProtocol`` (NOTES-001 §6b) —
+                resolves ``note_id`` requests into a note whose context
+                block is prepended to the user message (runtime input,
+                RULE-02). ``None`` (default) disables note injection.
+            novel_lookup: Optional ``OwnedLinkLookupProtocol`` (notes
+                pattern) — validates that a non-null ``project_id``
+                belongs to the caller BEFORE any write or enrichment
+                correlation (IDOR hardening). ``None`` (default) skips the
+                check; production wiring (``chat.dependencies``) always
+                provides it, mirroring the notes T7-review invariant.
         """
         self._composer = prompt_composer
         self._registry = model_registry
@@ -81,6 +97,8 @@ class ChatService(ChatServiceProtocol):
         self._run_limit_resolver = run_limit_resolver
         self._api_key = api_key
         self._base_url = base_url
+        self._note_lookup = note_lookup
+        self._novel_lookup = novel_lookup
         self._histories: dict[UUID, ProcessHistory] = {}
 
     async def ask(
@@ -99,7 +117,10 @@ class ChatService(ChatServiceProtocol):
         ``ProcessHistory`` for conversational continuity across turns.
 
         Args:
-            request: The chat request (project_id, message, conversation_id).
+            request: The chat request — ``project_id`` is optional since
+                NOTES-001 §6b (project-less chat skips KB/project context
+                tiers); ``note_id`` attaches a scratchpad note as a
+                runtime context block in the user message (NOTES-001 §6b).
             user_id: The authenticated user's UUID.
 
         Returns:
@@ -108,18 +129,41 @@ class ChatService(ChatServiceProtocol):
         conv_id = request.conversation_id or new_conversation_id()
         is_new = request.conversation_id is None
 
+        # 0. NOTES-001 §6b: attach a requested note as RUNTIME INPUT — its
+        # context block is prepended to the user message, never baked into
+        # a prompt template (RULE-02). Missing/unowned notes degrade
+        # gracefully inside the resolver (warn + proceed, RULE-11).
+        message = await resolve_effective_message(
+            note_lookup=self._note_lookup,
+            note_id=request.note_id,
+            message=request.message,
+            user_id=user_id,
+        )
+
+        # 0.5 Project link ownership (IDOR hardening, notes ``_validate_link``
+        # pattern): a non-null ``project_id`` must belong to the caller —
+        # BEFORE the conversation is created/referenced and before the id
+        # feeds invocation enrichment correlation. Foreign and unknown
+        # novels are indistinguishable (NotFoundError → HTTP 404).
+        await self._validate_project_link(request.project_id, user_id)
+
         # 1. Create conversation or add message to existing
         if is_new:
             conv_id = await self._store.create_conversation(
                 request.project_id,
                 user_id,
-                request.message,
+                message,
             )
             history: list[ChatMessage] = []
         else:
             assert conv_id is not None
-            await self._store.add_message(conv_id, "user", request.message)
-            history = await self._store.get_history(conv_id)
+            # Ownership gate BEFORE the write (IDOR hardening): a foreign
+            # or unknown conversation raises NotFoundError before any
+            # message row is appended — no write pollution, and (against
+            # PostgreSQL) no FK-violation 500 for unknown ids.
+            await self._store.get_conversation(conv_id, user_id)
+            await self._store.add_message(conv_id, "user", message)
+            history = await self._store.get_history(conv_id, user_id)
 
         # 2. Build context + compose prompt
         context = build_prompt_context(history)
@@ -127,15 +171,15 @@ class ChatService(ChatServiceProtocol):
         composed = await self._composer.build(
             LLMIntent.CHAT,
             context,
-            user_prompt=request.message,
+            user_prompt=message,
         )
 
         # 3. Return the async generator that streams events via ChatAgent
         return self._stream_agent_response(
-            conv_id,
-            composed,
-            context,
-            request.message,
+            conv_id=conv_id,
+            composed=composed,
+            context=context,
+            user_prompt=message,
             user_id=user_id,
             project_id=request.project_id,
         )
@@ -148,133 +192,106 @@ class ChatService(ChatServiceProtocol):
         user_prompt: str,
         *,
         user_id: UUID,
-        project_id: UUID,
+        project_id: UUID | None,
     ) -> AsyncIterator[dict[str, object]]:
-        """Stream the chat response via ``ChatAgent.run_stream()`` (ADR-024).
+        """Stream one turn — thin delegation (RULE-04) to ``chat._agent_stream``."""
+        from narrare.chat._agent_stream import stream_agent_response
 
-        Composes the ADR-048 Mode 2 invocation first for evidence + enrichment
-        (flows to ``ChatDeps``); a no-op when ``invocation_pipeline`` is
-        ``None`` (backward compatible). See ``chat._invocation`` for details.
-
-        Args:
-            conv_id: The conversation UUID.
-            composed: The composed prompt (system + user prompts).
-            context: The prompt context with project metadata.
-            user_prompt: The raw user message text.
-            user_id: The authenticated user's UUID (ADR-045 Decision 6).
-            project_id: The project UUID for enrichment correlation.
-
-        Yields:
-            Dict-based SSE events for the streaming response.
-        """
-        from narrare.chat._invocation import compose_chat_invocation, resolve_chat_run_limits
-        from narrare.chat._sse_stream import stream_agent_events
-        from narrare_core.chat.chat_agent import ChatAgent
-        from narrare_core.chat.chat_deps import ChatDeps
-
-        # Resolve the model via the single assembly point (Task 6d —
-        # Task 4/5 pattern): model + intent-aware runtime settings + usage
-        # limits as one coherent triple. api_key/base_url carry the resolved
-        # per-user credentials (model-routing cascade) into the resolution
-        # point. Usage limits stay owned by the ADR-045 run-limit resolver,
-        # so ``usage_limits`` here is ``None``.
-        prepared = await self._registry.prepare(
-            self._config,
-            intent=LLMIntent.CHAT,
+        async for event in stream_agent_response(
+            registry=self._registry,
+            config=self._config,
             api_key=self._api_key,
             base_url=self._base_url,
-        )
-
-        # Compose the invocation (Mode 2) → enriched context for ChatDeps.
-        invocation_id = uuid4()
-        effective_context = await compose_chat_invocation(
+            composer=self._composer,
+            store=self._store,
+            histories=self._histories,
             invocation_pipeline=self._invocation_pipeline,
-            prompt_ctx=context,
+            run_limit_resolver=self._run_limit_resolver,
+            conv_id=conv_id,
+            composed=composed,
+            context=context,
+            user_prompt=user_prompt,
             user_id=user_id,
             project_id=project_id,
-            conv_id=conv_id,
-            invocation_id=invocation_id,
-        )
-
-        # Create ChatAgent (HistoryPolicy.CONVERSATIONAL). ADR-046: inject the
-        # feature system prompt into the SYSTEM channel via the constructor,
-        # never concatenated into the user prompt.
-        agent = ChatAgent(model=prepared.model, system_prompt=composed.system or None)
-
-        # ChatDeps carries the enriched context to the agent (ADR-048 Mode 2).
-        deps = ChatDeps(
-            prompt_composer=self._composer,
-            context=effective_context,
-            user_prompt=user_prompt,
-        )
-
-        # Get or create ProcessHistory for this conversation
-        history = self._histories.get(conv_id, ProcessHistory())
-
-        # Resolve run limits when a resolver is wired (ADR-045 Decision 4).
-        # The assembly point's settings form the merge base; the resolver's
-        # per-turn output cap stays authoritative on conflicts (Task 6d-1).
-        message_history = history.messages if not history.is_empty else None
-        stream_kwargs = resolve_chat_run_limits(
-            resolver=self._run_limit_resolver,
-            config=self._config,
-            invocation_id=invocation_id,
-            base_model_settings=prepared.model_settings,
-        )
-
-        # Map the agent stream to chat SSE events (ADR-024/ADR-034) and
-        # persist the response — delegated to the RULE-04 bridge helper.
-        async for event in stream_agent_events(
-            agent=agent,
-            deps=deps,
-            prompt=composed.user,
-            message_history=message_history,
-            stream_kwargs=stream_kwargs,
-            conv_id=conv_id,
-            history=history,
-            histories=self._histories,
-            store=self._store,
         ):
             yield event
 
     async def get_history(
         self,
         conversation_id: UUID,
+        user_id: UUID,
         *,
         limit: int = 50,
     ) -> list[ChatMessage]:
-        """Get conversation history.
+        """Get conversation history for its owner.
 
         Args:
             conversation_id: The conversation to retrieve.
+            user_id: The authenticated user — must own the conversation.
             limit: Maximum number of messages (newest first). Defaults to 50.
 
         Returns:
             List of ChatMessage dataclasses ordered by creation time.
+
+        Raises:
+            NotFoundError: The conversation does not exist or is owned by
+                another user (mapped to HTTP 404).
         """
-        return await self._store.get_history(conversation_id, limit=limit)
+        return await self._store.get_history(conversation_id, user_id, limit=limit)
 
     async def get_project_id_for_conversation(
         self,
         conversation_id: UUID,
+        user_id: UUID,
     ) -> UUID | None:
         """Get the project_id associated with a conversation.
 
         Args:
             conversation_id: The conversation to look up.
+            user_id: The authenticated user — must own the conversation.
 
         Returns:
-            The project UUID, or None if the conversation does not exist.
+            The project UUID, or ``None`` for a project-less conversation
+            (NOTES-001 §6b).
+
+        Raises:
+            NotFoundError: The conversation does not exist or is owned by
+                another user (mapped to HTTP 404).
         """
-        return await self._store.get_conversation_project_id(conversation_id)
+        return await self._store.get_conversation_project_id(conversation_id, user_id)
 
     async def clear_history(
         self,
         conversation_id: UUID,
+        user_id: UUID,
     ) -> None:
         """Clear conversation history (deletes all messages).
 
         Args:
             conversation_id: The conversation to clear.
+            user_id: The authenticated user — must own the conversation.
+
+        Raises:
+            NotFoundError: The conversation does not exist or is owned by
+                another user (mapped to HTTP 404).
         """
-        await self._store.clear_history(conversation_id)
+        await self._store.clear_history(conversation_id, user_id)
+
+    async def _validate_project_link(
+        self,
+        project_id: UUID | None,
+        user_id: UUID,
+    ) -> None:
+        """A non-null project link must exist AND belong to the caller.
+
+        Notes ``_validate_link`` semantics (NOTES-001 ownership pattern):
+        ``get_owned`` returns the entity only for its owner, so foreign and
+        unknown novels are indistinguishable — both raise NotFoundError
+        (→ HTTP 404, no enumeration oracle). ``lookup is None`` (test
+        contexts only; production wiring always provides it) skips the
+        check.
+        """
+        if project_id is None or self._novel_lookup is None:
+            return
+        if await self._novel_lookup.get_owned(project_id, user_id) is None:
+            raise NotFoundError("Novel", identifier=str(project_id))

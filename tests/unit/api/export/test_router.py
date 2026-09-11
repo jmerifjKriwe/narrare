@@ -21,6 +21,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
+from narrare._app.dependencies import get_current_user_id
 from narrare.export import registry
 from narrare.export.contracts import Artifact
 from narrare.export.dependencies import get_export_renderers, get_export_service
@@ -38,6 +39,11 @@ from tests.unit.api.export.conftest import FakeRenderer, RecordingEnqueuer
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from uuid import UUID
+
+# Authenticated caller for the HTTP tests (ownership matrix lives in
+# test_export_ownership.py).
+TEST_USER = uuid4()
 
 
 class TestExportRouterShape:
@@ -71,7 +77,9 @@ class TestDependencyFactories:
             assert renderer.format == fmt
 
     def test_get_export_service_wires_renderers_and_production_enqueuer(self) -> None:
-        service = get_export_service()
+        from unittest.mock import AsyncMock
+
+        service = get_export_service(AsyncMock())
         assert isinstance(service, ExportServiceImpl)
         assert set(service._renderers.keys()) == {
             ExportFormat.PDF,
@@ -81,6 +89,8 @@ class TestDependencyFactories:
         }
         # The production enqueuer is wired (not a recording fake).
         assert service._enqueue is enqueue_export
+        # The Pattern B ownership gate is wired (fail-closed, never None).
+        assert service._novel_lookup is not None
 
 
 class TestAppRegistrationSmoke:
@@ -102,7 +112,8 @@ class TestAppRegistrationSmoke:
 
 def _build_export_app(service: ExportServiceImpl) -> tuple[FastAPI, TestClient]:
     """Minimal FastAPI app: real export router + ExportError handler (mirrors
-    ``_app/main.py``) + ``get_export_service`` overridden to ``service``.
+    ``_app/main.py``) + ``get_export_service`` overridden to ``service`` +
+    auth overridden to ``TEST_USER`` (the router's ``CurrentUserIdDep``).
 
     No lifespan / DB: the in-memory registry + the fakes carry the state.
     """
@@ -127,11 +138,30 @@ def _build_export_app(service: ExportServiceImpl) -> tuple[FastAPI, TestClient]:
         )
 
     app.dependency_overrides[get_export_service] = lambda: service
+
+    async def _mock_auth() -> str:
+        return str(TEST_USER)
+
+    app.dependency_overrides[get_current_user_id] = _mock_auth
     return app, TestClient(app)
 
 
+class _PermissiveNovelLookup:
+    """OwnedLinkLookupProtocol fake that owns every novel for ``TEST_USER``.
+
+    These are behaviour tests (dispatch/status/errors), not the ownership
+    matrix (that lives in test_export_ownership.py) — so the gate always
+    passes for the authenticated caller.
+    """
+
+    async def get_owned(self, entity_id: UUID, user_id: UUID) -> object | None:
+        return object() if user_id == TEST_USER else None
+
+
 def _service_with(renderers: dict[ExportFormat, FakeRenderer]) -> ExportServiceImpl:
-    return ExportServiceImpl(renderers=renderers, enqueue=RecordingEnqueuer())
+    return ExportServiceImpl(
+        renderers=renderers, enqueue=RecordingEnqueuer(), novel_lookup=_PermissiveNovelLookup()
+    )
 
 
 @pytest.fixture
@@ -205,7 +235,7 @@ class TestRouterEndpoints:
     ) -> None:
         client, _service = _export_app
         # Seed the registry with a COMPLETED job (the runner would do this).
-        job = registry.create(uuid4(), ExportFormat.MARKDOWN)
+        job = registry.create(uuid4(), TEST_USER, ExportFormat.MARKDOWN)
         registry.mark_completed(
             job.job_id,
             Artifact(

@@ -394,7 +394,7 @@ describe("WritingSessionSocket (WebSocket)", () => {
     const onMessage = vi.fn();
     const onError = vi.fn();
 
-    const socket = new WritingSessionSocket("ch-1", onMessage, onError);
+    const socket = new WritingSessionSocket("ch-1", onMessage, onError, async () => "ticket-1");
 
     // These should not throw even if WebSocket is not available in test env
     expect(() => socket.send({ type: "user_direction", content: "test" })).not.toThrow();
@@ -402,7 +402,7 @@ describe("WritingSessionSocket (WebSocket)", () => {
   });
 
   it("should prevent reconnect after close()", () => {
-    const socket = new WritingSessionSocket("ch-1", vi.fn(), vi.fn());
+    const socket = new WritingSessionSocket("ch-1", vi.fn(), vi.fn(), async () => "ticket-1");
     socket.close();
 
     // After close(), internal reconnectAttempts should be at max

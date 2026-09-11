@@ -1,8 +1,14 @@
 """Beta reader analysis service — business logic orchestration.
 
-Orchestrates: validation → cache → context assembly → agent → cache → response.
-No DB queries — delegated to repositories via context_assembler.
-Response mapping delegated to beta_reader_mapper.py (RULE-04).
+Orchestrates: ownership gate → validation → cache → context assembly → agent →
+cache → response. No DB queries — delegated to repositories via
+context_assembler. Response mapping delegated to beta_reader_mapper.py
+(RULE-04).
+
+Ownership (IDOR remediation S12a): context assembly gates novel ownership in
+Step 0 (see :mod:`narrare.analysis.context_assembler`). The resulting
+``NotFoundError`` (foreign ≡ unknown → 404) is re-raised UNWRAPPED — it must
+never be masked by the generic ``AnalysisError`` wrap (RULE-11).
 
 Follows the same pattern as worldbuilding_service.py and improve_service.py.
 """
@@ -18,13 +24,12 @@ import structlog
 from narrare.analysis._invocation_compose import compose_analysis_invocation_prompt
 from narrare.analysis.beta_reader_agent_run import run_phase1, run_phase2
 from narrare.analysis.beta_reader_cache import BetaReaderCache
-from narrare.analysis.beta_reader_context import assemble_context
+from narrare.analysis.beta_reader_context import assemble_context, deep_dive_deps
 from narrare.analysis.beta_reader_mapper import (
     map_phase1_response,
     map_phase2_response,
 )
 from narrare.analysis.beta_reader_prompt import build_budgeted_prompt
-from narrare.analysis.errors import CacheRetrievalError
 from narrare.analysis.schemas import (
     BetaReaderDeepDiveRequest,
     BetaReaderDeepDiveResponse,
@@ -33,7 +38,7 @@ from narrare.analysis.schemas import (
 )
 from narrare.analysis.validation import validate_word_count
 from narrare_core.agents.beta_reader_agent import BetaReaderAgent
-from narrare_core.llm import LLMIntent
+from narrare_core.llm import LLMIntent, ResolvedModel
 from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 if TYPE_CHECKING:
@@ -44,6 +49,7 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.analysis.assembler import AnalysisContextAssembler
     from narrare_core.llm import ModelRegistry
+    from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.prompts import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -93,6 +99,19 @@ class BetaReaderService:
         self._budget_assembler: AnalysisContextAssembler | None = None
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
+    async def _prepare_model(self, resolved_model: ResolvedModel) -> PreparedModelCall:
+        """Single assembly point (Task 6d): run limits + credentials → prepare()."""
+        resolved = self._run_limit_resolver.resolve(
+            config=resolved_model.config, budget=None, invocation_id=uuid4()
+        )
+        return await self._registry.prepare(
+            resolved_model.config,
+            intent=LLMIntent.BETA_READ,
+            usage_limits=resolved.usage_limits,
+            api_key=resolved_model.api_key,
+            base_url=resolved_model.base_url,
+        )
+
     async def analyze(
         self,
         *,
@@ -111,6 +130,8 @@ class BetaReaderService:
             Complete beta reader feedback with overall assessment.
 
         Raises:
+            NotFoundError: The novel is unknown or owned by another user
+                (ownership gate, IDOR S12a — foreign ≡ unknown → 404).
             InsufficientWordCountError: If total word count < 1000.
             ExcessiveWordCountError: If total word count > 10000.
             AnalysisError: If context assembly or agent execution fails.
@@ -164,16 +185,7 @@ class BetaReaderService:
             language=deps.language,
             mode="beta_reader",
         )
-        resolved = self._run_limit_resolver.resolve(
-            config=resolved_model.config, budget=None, invocation_id=uuid4()
-        )
-        prepared = await self._registry.prepare(
-            resolved_model.config,
-            intent=LLMIntent.BETA_READ,
-            usage_limits=resolved.usage_limits,
-            api_key=resolved_model.api_key,
-            base_url=resolved_model.base_url,
-        )
+        prepared = await self._prepare_model(resolved_model)
 
         agent = BetaReaderAgent(model=prepared.model, system_prompt=composed.system)
         user_prompt = await build_budgeted_prompt(deps, budget_assembler)
@@ -222,6 +234,8 @@ class BetaReaderService:
             Detailed category-specific feedback with revision suggestions.
 
         Raises:
+            NotFoundError: The novel is unknown or owned by another user
+                (ownership gate, IDOR S12a — foreign ≡ unknown → 404).
             CacheRetrievalError: If Phase 1 cache is missing.
             AnalysisError: If context assembly or agent execution fails.
         """
@@ -235,21 +249,16 @@ class BetaReaderService:
         # body validation; ConfigurationError propagates loudly (RULE-11).
         resolved_model = await self._model_resolution.resolve()
 
-        # 1. Assemble context first (needed to compute content_hash for Phase 1 lookup)
-        deps = await assemble_context(self._assembler, novel_id, user_id, request.chapter_ids)
-        content_hash = hashlib.sha256(deps.chapter_text.encode()).hexdigest()[:12]
-
-        # 2. Retrieve Phase 1 from cache for context (using content-aware key)
-        phase1_json = await self._cache.get(
-            str(novel_id), request.chapter_ids, content_hash=content_hash
+        # 1-2. Assemble deep-dive deps + cached Phase 1 retrieval (context
+        # module owns the gate + content-aware cache key — RULE-04).
+        deps = await deep_dive_deps(
+            self._assembler,
+            self._cache,
+            novel_id=novel_id,
+            user_id=user_id,
+            chapter_ids=request.chapter_ids,
+            category_value=request.category.value,
         )
-        if phase1_json is None:
-            raise CacheRetrievalError("Phase 1 analysis not found. Run full analysis first.")
-
-        phase1 = BetaReaderResponse.model_validate_json(phase1_json)
-        deps.deepdive_category = request.category.value
-        deps.phase1_strengths_summary = "; ".join(s.title for s in phase1.strengths)
-        deps.phase1_feedback_summary = "; ".join(f.title for f in phase1.feedback[:10])
 
         # 3. Compose Phase 2 prompt via Mode 1 (composer-driven, ADR-048)
         # with correlated evidence + enrichment. Falls back to direct
@@ -264,16 +273,7 @@ class BetaReaderService:
             language=deps.language,
             mode="beta_reader_deepdive",
         )
-        resolved = self._run_limit_resolver.resolve(
-            config=resolved_model.config, budget=None, invocation_id=uuid4()
-        )
-        prepared = await self._registry.prepare(
-            resolved_model.config,
-            intent=LLMIntent.BETA_READ,
-            usage_limits=resolved.usage_limits,
-            api_key=resolved_model.api_key,
-            base_url=resolved_model.base_url,
-        )
+        prepared = await self._prepare_model(resolved_model)
 
         agent = BetaReaderAgent(model=prepared.model, system_prompt=composed.system)
         result = await run_phase2(

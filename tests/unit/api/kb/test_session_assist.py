@@ -7,6 +7,7 @@ Uses fakes from test_session_service via conftest import.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING, cast
 from uuid import UUID, uuid4
 
 from narrare.kb.assist_contracts import (
@@ -16,6 +17,11 @@ from narrare.kb.assist_contracts import (
 )
 from narrare.kb.session_models import KBCreationField, KBCreationSession
 from narrare.kb.session_service import KBSessionService
+
+from ._test_fakes import FakeNovelRepo
+
+if TYPE_CHECKING:
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 # ---------------------------------------------------------------------------
 # Fakes (duplicated from test_session_service for isolation)
@@ -99,7 +105,11 @@ def _make_service() -> tuple[KBSessionService, _FakeStore, _FakeAssist]:
     """Create a KBSessionService with fakes for testing."""
     store = _FakeStore()
     assist = _FakeAssist()
-    service = KBSessionService(session_store=store, assist_service=assist)  # type: ignore[arg-type]
+    service = KBSessionService(
+        session_store=store,  # type: ignore[arg-type]
+        assist_service=assist,
+        novel_repo=cast("NovelRepositoryProtocol", FakeNovelRepo()),
+    )
     return service, store, assist
 
 
@@ -117,7 +127,9 @@ class TestRequestSuggestion:
         session = _make_session()
         await store.create(session)
 
-        updated, suggestion = await service.request_suggestion(session.id, "name")
+        updated, suggestion = await service.request_suggestion(
+            session.id, session.novel_id, session.user_id, "name"
+        )
 
         assert fake_assist.last_suggestion_args is not None
         assert fake_assist.last_suggestion_args["field_key"] == "name"
@@ -131,7 +143,9 @@ class TestRequestSuggestion:
         session = _make_session()
         await store.create(session)
 
-        updated, _ = await service.request_suggestion(session.id, "name")
+        updated, _ = await service.request_suggestion(
+            session.id, session.novel_id, session.user_id, "name"
+        )
 
         name_field = next(f for f in updated.fields if f.field_key == "name")
         assert name_field.ai_suggested_value is not None
@@ -147,7 +161,9 @@ class TestRequestInterviewQuestion:
         session = _make_session()
         await store.create(session)
 
-        _updated, question = await service.request_interview_question(session.id)
+        _updated, question = await service.request_interview_question(
+            session.id, session.novel_id, session.user_id
+        )
 
         assert fake_assist.last_question_args is not None
         assert "entity_type" in fake_assist.last_question_args
@@ -159,9 +175,9 @@ class TestRequestInterviewQuestion:
         service, store, fake_assist = _make_service()
         session = _make_session()
         await store.create(session)
-        await service.answer_field(session.id, "name", "Elena")
+        await service.answer_field(session.id, session.novel_id, session.user_id, "name", "Elena")
 
-        await service.request_interview_question(session.id)
+        await service.request_interview_question(session.id, session.novel_id, session.user_id)
 
         assert fake_assist.last_question_args is not None
 
@@ -175,7 +191,9 @@ class TestRequestEnhancement:
         session = _make_session()
         await store.create(session)
 
-        _updated, enhancement = await service.request_enhancement(session.id)
+        _updated, enhancement = await service.request_enhancement(
+            session.id, session.novel_id, session.user_id
+        )
 
         assert fake_assist.last_enhancement_args is not None
         assert "draft_entry" in enhancement
@@ -187,7 +205,9 @@ class TestRequestEnhancement:
         session = _make_session()
         await store.create(session)
 
-        updated, _ = await service.request_enhancement(session.id)
+        updated, _ = await service.request_enhancement(
+            session.id, session.novel_id, session.user_id
+        )
 
         name_field = next(f for f in updated.fields if f.field_key == "name")
         assert name_field.ai_suggested_value is not None
@@ -197,9 +217,13 @@ class TestRequestEnhancement:
         service, store, _ = _make_service()
         session = _make_session()
         await store.create(session)
-        await service.answer_field(session.id, "name", "UserChosenName")
+        await service.answer_field(
+            session.id, session.novel_id, session.user_id, "name", "UserChosenName"
+        )
 
-        updated, _ = await service.request_enhancement(session.id)
+        updated, _ = await service.request_enhancement(
+            session.id, session.novel_id, session.user_id
+        )
 
         name_field = next(f for f in updated.fields if f.field_key == "name")
         assert name_field.user_value == "UserChosenName"

@@ -151,6 +151,8 @@ async def _periodic_cleanup_loop() -> None:
     errors so a single failure does not stop the loop.  Also sweeps the
     in-memory export-job registry (D1): drops expired artifact records +
     unlinks their temp files (the safety net for artifacts never downloaded).
+    And sweeps the WS-ticket registry (ADR-084): drops expired-unused
+    tickets (consumed ones are already deleted on use).
     """
     while True:
         await asyncio.sleep(300)
@@ -168,6 +170,14 @@ async def _periodic_cleanup_loop() -> None:
                 logger.info("export_artifact_sweep", jobs_swept=swept)
         except Exception:
             logger.warning("export_artifact_sweep_failed", exc_info=True)
+        try:
+            from narrare.auth import ws_tickets
+
+            swept_tickets = ws_tickets.sweep_expired()
+            if swept_tickets > 0:
+                logger.info("ws_ticket_sweep", tickets_swept=swept_tickets)
+        except Exception:
+            logger.warning("ws_ticket_sweep_failed", exc_info=True)
 
 
 @asynccontextmanager

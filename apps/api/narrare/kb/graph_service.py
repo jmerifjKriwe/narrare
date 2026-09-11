@@ -2,6 +2,11 @@
 
 Transforms KB entries and relationships into graph elements
 suitable for visualization. No LLM calls — pure data transformation.
+
+Both operations gate on novel ownership at service entry (IDOR fix S9):
+the caller must own ``novel_id`` BEFORE any entry, relationship, or
+adjacency data is read. Foreign and unknown novels are indistinguishable
+(``NotFoundError`` → 404).
 """
 
 from __future__ import annotations
@@ -11,6 +16,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.kb._novel_gate import verify_novel_owned
 from narrare.kb.graph_schemas import (
     GraphEdge,
     GraphFilter,
@@ -27,6 +33,7 @@ if TYPE_CHECKING:
         KBRepositoryProtocol,
         RelationshipRepositoryProtocol,
     )
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 logger = structlog.get_logger(__name__)
 
@@ -37,15 +44,23 @@ class GraphService:
     Serializes KB entries and relationships into graph elements
     (nodes + edges) for frontend visualization. Computes statistics
     and supports BFS shortest path finding.
+
+    Args:
+        kb_repo: KB entry repository (graph nodes).
+        rel_repo: Relationship repository (graph edges + adjacency).
+        novel_repo: Novel repository — the novel ownership gate (IDOR
+            fix S9); both reads verify the caller owns the novel first.
     """
 
     def __init__(
         self,
         kb_repo: KBRepositoryProtocol,
         rel_repo: RelationshipRepositoryProtocol,
+        novel_repo: NovelRepositoryProtocol,
     ) -> None:
         self._kb_repo = kb_repo
         self._rel_repo = rel_repo
+        self._novel_repo = novel_repo
 
     async def get_graph(
         self,
@@ -55,17 +70,23 @@ class GraphService:
     ) -> GraphResponse:
         """Serialize all KB entries and relationships as graph elements.
 
+        Ownership gate first (IDOR fix S9): the caller must own
+        ``novel_id`` — BEFORE any entry, relationship, or adjacency
+        read. Foreign and unknown novels are indistinguishable.
+
         Args:
             novel_id: The novel whose KB to visualize.
-            user_id: The user requesting the graph (for authorization).
+            user_id: Caller identity — the ownership gate input.
             filter: Optional filter to reduce the graph scope.
 
         Returns:
             GraphResponse with nodes, edges, and computed statistics.
 
         Raises:
-            NotFoundError: Novel not found or not accessible.
+            NotFoundError: Novel not found or not owned by the caller.
         """
+        await verify_novel_owned(self._novel_repo, novel_id, user_id)
+
         max_nodes = filter.max_nodes if filter else 500
 
         # 1. Fetch all entries for the novel (up to max_nodes). Deprecated
@@ -172,9 +193,13 @@ class GraphService:
     ) -> ShortestPathResponse:
         """Find the shortest path between two entities via BFS.
 
+        Ownership gate first (IDOR fix S9): the caller must own
+        ``novel_id`` — BEFORE the source/target entry load, so foreign
+        entity ids are not enumerable either.
+
         Args:
             novel_id: The novel whose KB to search.
-            user_id: The user requesting the path.
+            user_id: Caller identity — the ownership gate input.
             source_id: Starting entity ID.
             target_id: Target entity ID.
 
@@ -182,8 +207,11 @@ class GraphService:
             ShortestPathResponse with path, length, and entity names.
 
         Raises:
-            NotFoundError: Source or target entry not found.
+            NotFoundError: Novel not owned by the caller, or source or
+                target entry not found in the novel.
         """
+        await verify_novel_owned(self._novel_repo, novel_id, user_id)
+
         # Validate that both entities exist in the novel
         source = await self._kb_repo.get_by_id(source_id)
         if source is None or source.novel_id != novel_id:

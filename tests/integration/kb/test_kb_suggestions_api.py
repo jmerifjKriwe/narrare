@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -48,6 +48,22 @@ def _override_service(
     app.dependency_overrides[get_kb_suggest_service] = lambda: mock_suggest_service  # type: ignore[assignment]
 
 
+def _caller_user_id(auth_headers: dict[str, str]) -> UUID:
+    """Decode the authenticated caller's id from the bearer token.
+
+    The ``auth_headers`` fixture mints a fresh user per test, so the
+    ownership input (``user_id`` threaded since IDOR S9) can only be
+    recovered from the token itself.
+    """
+    from narrare._app.config import get_settings
+    from narrare.auth.security import verify_access_token
+
+    token = auth_headers["Authorization"].removeprefix("Bearer ")
+    payload = verify_access_token(token, get_settings().secret_key)
+    assert payload is not None, "auth_headers fixture must carry a valid token"
+    return UUID(payload["sub"])
+
+
 # ---------------------------------------------------------------------------
 # Tests: GET /novels/{novel_id}/kb/suggestions/{chapter_id}
 # ---------------------------------------------------------------------------
@@ -85,6 +101,7 @@ class TestGetSuggestions:
         mock_suggest_service.get_suggestions.assert_awaited_once_with(
             chapter_id=chapter_id,
             novel_id=novel_id,
+            user_id=_caller_user_id(auth_headers),
             max_results=20,
         )
 
@@ -217,6 +234,7 @@ class TestGetSuggestions:
         mock_suggest_service.get_suggestions.assert_awaited_once_with(
             chapter_id=chapter_id,
             novel_id=novel_id,
+            user_id=_caller_user_id(auth_headers),
             max_results=5,
         )
 

@@ -1,8 +1,8 @@
 /**
- * Auth API — register, login, and user info.
+ * Auth API — register, login, user info, and WS handshake tickets.
  */
 
-import type { TokenResponse, User } from "@/types";
+import type { TokenResponse, User, WsTicket } from "@/types";
 import { fetchApi } from "./core";
 
 export const authApi = {
@@ -19,4 +19,11 @@ export const authApi = {
     }),
 
   me: () => fetchApi<User>("/auth/me"),
+
+  /**
+   * Mint a single-use, short-lived (60 s) WebSocket handshake ticket
+   * (ADR-084). Bearer auth is attached by `fetchApi`; the raw token is
+   * delivered exactly once and consumed by the writing WS handshake.
+   */
+  wsTicket: () => fetchApi<WsTicket>("/auth/ws-ticket", { method: "POST" }),
 };

@@ -27,6 +27,8 @@ export function StudioWorkspaceShell({ children }: StudioWorkspaceShellProps) {
   }, [sidebarOpen]);
 
   return (
+    // QuickCaptureProvider lives in the (studio) layout (T29b) — it wraps
+    // shell AND non-shell studio pages from a single mount.
     <div className="size-full flex bg-background">
       <div className="hidden lg:flex lg:shrink-0">
         <Sidebar variant="desktop" />

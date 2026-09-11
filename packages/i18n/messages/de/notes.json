@@ -1,0 +1,71 @@
+{
+  "nav": { "label": "Notizblock" },
+  "page": {
+    "title": "Notizblock",
+    "subtitle": "Gedanken festhalten, bevor sie entgleiten — Ideen, Konzepte, Fragen."
+  },
+  "empty": {
+    "title": "Noch nichts festgehalten",
+    "description": "Speichere deinen ersten Gedanken — einen Plot-Twist, eine Weltbau-Idee, eine Handwerksfrage.",
+    "cta": "Gedanken festhalten",
+    "selectPrompt": "Wähle eine Notiz zum Lesen oder Bearbeiten aus."
+  },
+  "list": {
+    "searchPlaceholder": "Notizen durchsuchen…",
+    "typeFilterLabel": "Typ",
+    "allTypes": "Alle Typen",
+    "tagFilterLabel": "Tag",
+    "allTags": "Alle Tags",
+    "tagFilterPlaceholder": "Nach Tag filtern…",
+    "clearTagFilter": "Tag-Filter entfernen",
+    "scopeFilterLabel": "Verknüpft mit",
+    "allScopes": "Alle",
+    "scopeNovelsGroup": "Romane",
+    "scopeSeriesGroup": "Reihen",
+    "noResults": "Keine Notizen passen zu diesen Filtern.",
+    "untitled": "Ohne Titel",
+    "updated": "Aktualisiert {date}"
+  },
+  "type": { "idea": "Idee", "concept": "Konzept", "question": "Frage", "other": "Sonstiges" },
+  "editor": {
+    "titlePlaceholder": "Titel (optional — sonst wird die erste Zeile verwendet)",
+    "contentLabel": "Notiz",
+    "contentPlaceholder": "Schreib es auf… (Markdown möglich)",
+    "preview": "Vorschau",
+    "edit": "Bearbeiten",
+    "typeLabel": "Typ",
+    "tagsLabel": "Tags",
+    "tagPlaceholder": "Tag hinzufügen…",
+    "tagSuggestions": "Vorschläge",
+    "linkLabel": "Verknüpfung (optional)",
+    "noLink": "Nicht verknüpft",
+    "novelLink": "Verknüpfter Roman",
+    "seriesLink": "Verknüpfte Reihe",
+    "discuss": "Im Chat besprechen",
+    "delete": "Notiz löschen",
+    "deleteTitle": "Diese Notiz löschen?",
+    "deleteDescription": "Die Notiz wird endgültig entfernt. Das kann nicht rückgängig gemacht werden.",
+    "save": "Speichern",
+    "saveFailed": "Notiz konnte nicht gespeichert werden.",
+    "deleted": "Notiz gelöscht.",
+    "deleteFailed": "Notiz konnte nicht gelöscht werden."
+  },
+  "search": {
+    "semanticToggle": "Semantisch",
+    "semanticBadge": "semantisch",
+    "lexicalBadge": "lexikalisch"
+  },
+  "quickCapture": {
+    "open": "Schnellerfassung",
+    "close": "Schnellerfassung schließen",
+    "title": "Gedanken erfassen",
+    "titlePlaceholder": "Titel (optional)",
+    "textPlaceholder": "Was liegt dir im Kopf?",
+    "tagPlaceholder": "Tag (optional)",
+    "save": "Notiz speichern",
+    "saved": "Gedanke festgehalten.",
+    "openInScratchpad": "Im Notizblock öffnen",
+    "shortcutHint": "Strg/⌘+Shift+U"
+  },
+  "chat": { "attachedNote": "Zur Notiz: {title}", "close": "Chat schließen" }
+}

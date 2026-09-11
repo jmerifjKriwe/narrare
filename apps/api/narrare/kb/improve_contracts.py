@@ -64,7 +64,11 @@ class KBImproveApplyResponse(BaseModel):
 class KBImproveProtocol(Protocol):
     """Protocol for KB improve service.
 
-    Provides two operations:
+    Provides two operations, both gated on novel ownership (IDOR fix S8):
+    the caller must own ``novel_id`` and the entry must belong to that
+    novel BEFORE any cache lookup, LLM analysis, or write. Foreign and
+    unknown ids are indistinguishable (``NotFoundError`` → 404).
+
     - analyze: Analyze an existing entry and return improvement suggestions
     - apply: Apply selected suggestions to the entry
     """
@@ -74,6 +78,7 @@ class KBImproveProtocol(Protocol):
         *,
         novel_id: UUID,
         entry_id: UUID,
+        user_id: UUID,
     ) -> KBImproveAnalysisResponse: ...
 
     async def apply(
@@ -82,4 +87,5 @@ class KBImproveProtocol(Protocol):
         novel_id: UUID,
         entry_id: UUID,
         suggestion_ids: list[int],
+        user_id: UUID,
     ) -> KBImproveApplyResponse: ...

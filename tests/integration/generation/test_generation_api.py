@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -16,6 +16,8 @@ from tests.fakes.fake_llm_gateway import FakeModelRegistry
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
+    from narrare.novels.contracts import NovelRepositoryProtocol
+
 # Shared mock data for LLM name generation response
 _MOCK_NAMES_JSON = (
     '{"names": ['
@@ -24,6 +26,13 @@ _MOCK_NAMES_JSON = (
     '{"name": "Zephyra", "pronunciation": "zeh-FEER-ah", "meaning": "west wind"}'
     "]}"
 )
+
+
+class _PermissiveNovelRepo:
+    """Owns everything — random test project ids pass the S12b gate."""
+
+    async def get_by_id(self, novel_id: object, user_id: object) -> object:
+        return object()
 
 
 @pytest.fixture
@@ -51,10 +60,15 @@ class TestGenerateNames:
 
         # Use FakeModelRegistry — its run() signature matches the
         # positional-arg call in NameGeneratorService.generate_names().
+        # _get_service is patched away, so the factory-level S12b gate is
+        # bypassed here — the permissive novel repo keeps the service-level
+        # gate satisfied for the random test project id.
         mock_service = NameGeneratorService(
             registry=mock_registry,
             composer=_get_composer_instance(),
             config=mock_config,
+            # Minimal fake — cast at the construction seam (house pattern).
+            novel_repo=cast("NovelRepositoryProtocol", _PermissiveNovelRepo()),
         )
 
         # _get_service is called directly in the route handler (not via

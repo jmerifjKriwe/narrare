@@ -25,6 +25,9 @@ from narrare.export.options import ExportFormat
 from tests.unit.api.export.conftest import make_options
 
 NOVEL_ID = UUID("00000000-0000-0000-0000-000000000001")
+# Caller that owns every seeded job (owner-binding tests live in
+# test_export_ownership.py; here OWNER is just the mechanical caller).
+OWNER = UUID("00000000-0000-0000-0000-0000000000ff")
 
 
 def _token_from_url(artifact_url: str) -> str:
@@ -47,34 +50,34 @@ class TestJobLifecycle:
 
     @pytest.mark.asyncio
     async def test_create_returns_pending_job(self) -> None:
-        job = registry.create(NOVEL_ID, ExportFormat.PDF)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.PDF)
         assert job.status is ExportJobStatus.PENDING
         assert job.format is ExportFormat.PDF
         assert job.artifact_url is None
         assert job.error is None
         # The job is retrievable by id.
-        assert registry.get(job.job_id).job_id == job.job_id
+        assert registry.get(job.job_id, OWNER).job_id == job.job_id
 
     @pytest.mark.asyncio
     async def test_full_lifecycle_consume_then_second_consume_raises(self, tmp_path: Path) -> None:
-        job = registry.create(NOVEL_ID, ExportFormat.MARKDOWN)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.MARKDOWN)
         registry.mark_running(job.job_id)
-        assert registry.get(job.job_id).status is ExportJobStatus.RUNNING
+        assert registry.get(job.job_id, OWNER).status is ExportJobStatus.RUNNING
 
         artifact = _make_artifact(tmp_path / "art.md")
         registry.mark_completed(job.job_id, artifact)
 
-        completed = registry.get(job.job_id)
+        completed = registry.get(job.job_id, OWNER)
         assert completed.status is ExportJobStatus.COMPLETED
         assert completed.artifact_url is not None
 
         token = _token_from_url(completed.artifact_url)  # type: ignore[arg-type]
-        consumed = registry.consume_artifact(job.job_id, token)
+        consumed = registry.consume_artifact(job.job_id, token, OWNER)
         assert consumed.path == artifact.path
 
         # Single-use: the second consume raises.
         with pytest.raises(ExportArtifactExpiredError):
-            registry.consume_artifact(job.job_id, token)
+            registry.consume_artifact(job.job_id, token, OWNER)
 
 
 class TestTokenSecurity:
@@ -83,11 +86,11 @@ class TestTokenSecurity:
 
     @pytest.mark.asyncio
     async def test_stored_hash_is_sha256_not_raw_token(self, tmp_path: Path) -> None:
-        job = registry.create(NOVEL_ID, ExportFormat.PDF)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.PDF)
         registry.mark_completed(job.job_id, _make_artifact(tmp_path / "a.pdf", ExportFormat.PDF))
 
         record = registry._JOBS[job.job_id]
-        token = _token_from_url(registry.get(job.job_id).artifact_url)  # type: ignore[arg-type]
+        token = _token_from_url(registry.get(job.job_id, OWNER).artifact_url)  # type: ignore[arg-type]
 
         expected_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
         assert record.artifact_token_hash == expected_hash
@@ -96,18 +99,18 @@ class TestTokenSecurity:
 
     @pytest.mark.asyncio
     async def test_wrong_token_is_rejected_as_expired(self, tmp_path: Path) -> None:
-        job = registry.create(NOVEL_ID, ExportFormat.EPUB)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.EPUB)
         registry.mark_completed(job.job_id, _make_artifact(tmp_path / "a.epub", ExportFormat.EPUB))
 
         with pytest.raises(ExportArtifactExpiredError):
-            registry.consume_artifact(job.job_id, "totally-wrong-token")
+            registry.consume_artifact(job.job_id, "totally-wrong-token", OWNER)
 
     @pytest.mark.asyncio
     async def test_consume_before_completed_raises(self) -> None:
-        job = registry.create(NOVEL_ID, ExportFormat.MARKDOWN)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.MARKDOWN)
         registry.mark_running(job.job_id)
         with pytest.raises(ExportArtifactExpiredError):
-            registry.consume_artifact(job.job_id, "any")
+            registry.consume_artifact(job.job_id, "any", OWNER)
 
 
 class TestSweepExpired:
@@ -115,7 +118,7 @@ class TestSweepExpired:
 
     @pytest.mark.asyncio
     async def test_sweep_drops_expired_job_and_unlinks_file(self, tmp_path: Path) -> None:
-        job = registry.create(NOVEL_ID, ExportFormat.MARKDOWN)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.MARKDOWN)
         artifact = _make_artifact(tmp_path / "gone.md")
         registry.mark_completed(job.job_id, artifact)
         assert artifact.path.exists()
@@ -132,7 +135,7 @@ class TestSweepExpired:
 
     @pytest.mark.asyncio
     async def test_sweep_keeps_unexpired_jobs(self, tmp_path: Path) -> None:
-        job = registry.create(NOVEL_ID, ExportFormat.MARKDOWN)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.MARKDOWN)
         registry.mark_completed(job.job_id, _make_artifact(tmp_path / "keep.md"))
 
         assert registry.sweep_expired() == 0
@@ -140,7 +143,7 @@ class TestSweepExpired:
 
     @pytest.mark.asyncio
     async def test_sweep_is_idempotent(self, tmp_path: Path) -> None:
-        job = registry.create(NOVEL_ID, ExportFormat.MARKDOWN)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.MARKDOWN)
         registry.mark_completed(job.job_id, _make_artifact(tmp_path / "idem.md"))
         record = registry._JOBS[job.job_id]
         assert record.artifact_expires_at is not None
@@ -157,18 +160,18 @@ class TestGetAndMarkFailed:
     @pytest.mark.asyncio
     async def test_get_unknown_raises(self) -> None:
         with pytest.raises(ExportJobNotFoundError):
-            registry.get("does-not-exist")
+            registry.get("does-not-exist", OWNER)
 
     @pytest.mark.asyncio
     async def test_consume_unknown_raises_not_found(self) -> None:
         with pytest.raises(ExportJobNotFoundError):
-            registry.consume_artifact("nope", "token")
+            registry.consume_artifact("nope", "token", OWNER)
 
     @pytest.mark.asyncio
     async def test_mark_failed_records_reason(self) -> None:
-        job = registry.create(NOVEL_ID, ExportFormat.PDF)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.PDF)
         registry.mark_failed(job.job_id, "renderer exploded")
-        failed = registry.get(job.job_id)
+        failed = registry.get(job.job_id, OWNER)
         assert failed.status is ExportJobStatus.FAILED
         assert failed.error == "renderer exploded"
 

@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from narrare.adaptive.schemas import (
         AdaptiveContextResponse,
         AdaptiveSettingsResponse,
+        AdaptiveSnapshotsResponse,
         AdaptiveWeightsInput,
     )
     from narrare_core.ai_invocation.adaptive_context import AdaptiveSettings
@@ -34,16 +35,19 @@ if TYPE_CHECKING:
 class AdaptiveContextServiceProtocol(Protocol):
     """Public-API service for the Adaptivity Dashboard (LEARN-002).
 
-    Three operations:
+    Four operations:
     - ``get_context()``: read the current adaptive state (enabled flag,
       weights, source summary) for the dashboard.
     - ``set_enabled()``: toggle adaptivity on/off for the project.
     - ``set_weights()``: update the four adaptive weights (clamped to
       ``[0.0, 1.0]``).
+    - ``get_adaptive_snapshots()``: list recent adaptive evidence
+      snapshots for the dashboard timeline (ADR-070; ownership-gated in
+      the service, IDOR S11c).
 
     Implementations delegate to ``AdaptiveContextProvider`` (for the read
-    path) + ``AdaptiveSettingsRepository`` (for persistence). All three
-    methods are async (DB I/O).
+    path) + ``AdaptiveSettingsRepository`` (for persistence) + the
+    evidence repository (snapshots). All four methods are async (DB I/O).
     """
 
     async def get_context(
@@ -70,6 +74,19 @@ class AdaptiveContextServiceProtocol(Protocol):
         weights: AdaptiveWeightsInput,
     ) -> AdaptiveSettingsResponse:
         """Update adaptive weights (clamped); persist + return new state."""
+        ...
+
+    async def get_adaptive_snapshots(
+        self,
+        project_id: UUID,
+        user_id: UUID,
+        limit: int = 20,
+    ) -> AdaptiveSnapshotsResponse:
+        """List recent adaptive evidence snapshots (ADR-070).
+
+        Ownership is verified in the service before the evidence read;
+        unknown/foreign projects raise ``NotFoundError``.
+        """
         ...
 
 

@@ -39,11 +39,19 @@ import type {
   MirroredMargins,
   PaperSize,
   PdfOptions,
+  WsTicket,
 } from "@/types";
 
 function fieldNames<T extends object>(sample: T): string[] {
   return Object.keys(sample).sort();
 }
+
+describe("auth types mirror Pydantic (RULE-17 — ADR-084)", () => {
+  it("WsTicket matches the WsTicketResponse shape from POST /auth/ws-ticket", () => {
+    const sample: WsTicket = { token: "t", expires_in: 60 };
+    expect(fieldNames(sample)).toEqual(["expires_in", "token"]);
+  });
+});
 
 describe("adaptive types mirror Pydantic (RULE-17)", () => {
   it("AdaptiveWeightsResponse has the 4 clamped weights", () => {

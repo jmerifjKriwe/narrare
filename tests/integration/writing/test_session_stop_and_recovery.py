@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from narrare._app.main import create_app
+from narrare.auth import ws_tickets
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.prompts.composer import ComposedPrompt
 
@@ -97,8 +98,15 @@ def _session_url(
     *,
     session_id: str | None = None,
 ) -> str:
-    """Build the WRITE-005 WebSocket URL."""
-    url = f"/api/v1/writing/sessions/{chapter_id}?user_id={user_id}&project_id={project_id}"
+    """Build the WRITE-005 WebSocket URL with a FRESH single-use ticket.
+
+    Identity is derived from the consumed ticket (ADR-084); every
+    connect/reconnect presents a new ticket (single-use — a replayed
+    one is rejected with 4401). Minted via the registry directly,
+    no REST hop needed in test setup.
+    """
+    token = ws_tickets.issue(UUID(user_id))
+    url = f"/api/v1/writing/sessions/{chapter_id}?token={token}&project_id={project_id}"
     if session_id is not None:
         url += f"&session_id={session_id}"
     return url

@@ -62,6 +62,17 @@ def _no_real_embedding_calls() -> Iterator[None]:  # pyright: ignore[reportUnuse
     references. The embedding path still runs end-to-end (content hash →
     upsert) but with stable dummy vectors and no network.
 
+    The third import site, ``narrare.notes.search_service`` (NOTES-001 §6a),
+    gets a RAISING stub instead of the provider route: its integration tests
+    exercise the RULE-11 lexical fallback, which must trigger without any
+    network attempt (previously each lexical search made one doomed HTTPS
+    call to the embedding API that the fallback then swallowed — T11 review
+    carry-over). Raising deterministically forces ``mode="lexical"``; tests
+    that later exercise the semantic path override ``embed_texts`` with
+    their own function-scoped ``monkeypatch.setattr`` (composes correctly —
+    same-module attribute patching after the session guard, like the mem0
+    overrides below).
+
     SESSION-SCOPED (not function-scoped ``monkeypatch``): the embedding hook
     dispatches fire-and-forget via ``asyncio.create_task``. A task dispatched
     near the end of one test could reach ``embed_texts`` only after a
@@ -83,10 +94,23 @@ def _no_real_embedding_calls() -> Iterator[None]:  # pyright: ignore[reportUnuse
     ) -> list[list[float]]:
         return await _provider.embed_texts(texts, model=model)
 
+    async def _raising_embed_texts(
+        texts: list[str],
+        *,
+        model: str | None = None,
+        provider: str | None = None,  # kept for signature parity with embed_texts
+    ) -> list[list[float]]:
+        raise RuntimeError(
+            "network guard: narrare.notes.search_service must not call the real "
+            "embed_texts in integration tests — the RULE-11 lexical fallback is "
+            "the deterministic path under test here (see fixture docstring)."
+        )
+
     mp = pytest.MonkeyPatch()
     # Every app-level import site of embed_texts (see docstring rationale).
     mp.setattr("narrare.embeddings.tasks.embed_texts", _fake_embed_texts)
     mp.setattr("narrare.embeddings.service.embed_texts", _fake_embed_texts)
+    mp.setattr("narrare.notes.search_service.embed_texts", _raising_embed_texts)
     yield
     mp.undo()
 

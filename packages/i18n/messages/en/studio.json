@@ -593,6 +593,8 @@
       "aiRewriteDescription": "Select text and open AI menu",
       "commandPalette": "Command Palette",
       "commandPaletteDescription": "Open the command palette",
+      "quickCapture": "Quick capture",
+      "quickCaptureDescription": "Open the quick-capture panel from anywhere",
       "ghostTextAccept": "Accept Ghost Text",
       "ghostTextAcceptDescription": "Accept the full suggested text",
       "ghostTextWord": "Ghost Text word-by-word",

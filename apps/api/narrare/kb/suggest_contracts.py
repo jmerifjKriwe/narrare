@@ -16,12 +16,19 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class KBSuggestProtocol(Protocol):
-    """Protocol for KB suggestion API service."""
+    """Protocol for KB suggestion API service.
+
+    ``get_suggestions`` is gated on novel ownership (IDOR fix S9): the
+    caller must own ``novel_id`` BEFORE chapter content or KB entries are
+    loaded — foreign and unknown novels are indistinguishable
+    (``NotFoundError`` → 404).
+    """
 
     async def get_suggestions(
         self,
         chapter_id: uuid.UUID,
         *,
         novel_id: uuid.UUID,
+        user_id: uuid.UUID,
         max_results: int = 20,
     ) -> list[KBSuggestionResponse]: ...

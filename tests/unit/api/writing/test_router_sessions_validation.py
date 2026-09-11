@@ -2,19 +2,25 @@
 
 Split from test_router_sessions_basic.py per RULE-04.
 
-Covers: missing params, origin validation, rate limiting, and exception
-safety (guard clauses before the success path).
+Covers the post-ticket guard clauses: missing ``project_id``, origin
+validation (1008 — RFC 6455 policy violation), rate limiting, and
+exception safety. Ticket-gate coverage (4401, anti-enumeration, derived
+identity) lives in ``test_router_sessions_auth.py``.
 """
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
 
 from narrare._app.config import Settings as AppSettings
 from narrare.writing.router_sessions import interactive_session
+from tests.unit.api.writing.ws_test_helpers import mint_ws_ticket
+
+# Any fixed identity — only the ticket binding matters, never the client.
+USER_ID = "00000000-0000-0000-0000-0000000000aa"
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -22,10 +28,8 @@ from narrare.writing.router_sessions import interactive_session
 
 
 @pytest.fixture
-def mock_websocket() -> MagicMock:
+def mock_websocket() -> AsyncMock:
     """A mock WebSocket with standard headers for localhost origin."""
-    from unittest.mock import AsyncMock
-
     ws = AsyncMock()
     ws.app = MagicMock(spec=["state"])
     ws.headers = {"origin": "http://localhost:3000"}
@@ -48,40 +52,19 @@ def project_id() -> UUID:
 
 
 # ---------------------------------------------------------------------------
-# Error path: Missing parameters
+# Error path: Missing project_id (after a valid ticket)
 # ---------------------------------------------------------------------------
 
 
-async def test_missing_user_id_returns_error(
-    mock_websocket: MagicMock,
-    chapter_id: UUID,
-    project_id: UUID,
-) -> None:
-    """When user_id is an empty string, send error + close(4001)."""
-    await interactive_session(
-        mock_websocket,
-        chapter_id,
-        user_id="",
-        project_id=project_id,
-    )
-
-    mock_websocket.accept.assert_awaited_once()
-    mock_websocket.send_json.assert_awaited_once()
-    mock_websocket.close.assert_awaited_once_with(
-        code=4001,
-        reason="Missing user_id or project_id",
-    )
-
-
 async def test_none_project_id_returns_error(
-    mock_websocket: MagicMock,
+    mock_websocket: AsyncMock,
     chapter_id: UUID,
 ) -> None:
     """When project_id is None, send error + close(4001)."""
     await interactive_session(
         mock_websocket,
         chapter_id,
-        user_id="user123",
+        token=mint_ws_ticket(USER_ID),
         project_id=None,
     )
 
@@ -89,7 +72,7 @@ async def test_none_project_id_returns_error(
     mock_websocket.send_json.assert_awaited_once()
     mock_websocket.close.assert_awaited_once_with(
         code=4001,
-        reason="Missing user_id or project_id",
+        reason="Missing project_id",
     )
 
 
@@ -99,30 +82,34 @@ async def test_none_project_id_returns_error(
 
 
 async def test_untrusted_origin_returns_error(
-    mock_websocket: MagicMock,
+    mock_websocket: AsyncMock,
     chapter_id: UUID,
     project_id: UUID,
 ) -> None:
-    """When origin is not in csrf_trusted_origins, send error + close(4001)."""
+    """When origin is not in csrf_trusted_origins, send error + close(1008).
+
+    Reclassified from 4001 per ADR-084: an untrusted origin is a policy
+    violation per RFC 6455 §7.4.1, not a malformed handshake.
+    """
     mock_websocket.headers["origin"] = "http://evil.com"
 
     await interactive_session(
         mock_websocket,
         chapter_id,
-        user_id="user123",
+        token=mint_ws_ticket(USER_ID),
         project_id=project_id,
     )
 
     mock_websocket.accept.assert_awaited_once()
     mock_websocket.send_json.assert_awaited_once()
     mock_websocket.close.assert_awaited_once_with(
-        code=4001,
+        code=1008,
         reason="Origin not allowed",
     )
 
 
 async def test_empty_origin_is_allowed(
-    mock_websocket: MagicMock,
+    mock_websocket: AsyncMock,
     chapter_id: UUID,
     project_id: UUID,
 ) -> None:
@@ -143,7 +130,7 @@ async def test_empty_origin_is_allowed(
         await interactive_session(
             mock_websocket,
             chapter_id,
-            user_id="user123",
+            token=mint_ws_ticket(USER_ID),
             project_id=project_id,
         )
 
@@ -162,7 +149,7 @@ async def test_empty_origin_is_allowed(
 
 
 async def test_rate_limited_returns_error(
-    mock_websocket: MagicMock,
+    mock_websocket: AsyncMock,
     chapter_id: UUID,
     project_id: UUID,
 ) -> None:
@@ -178,7 +165,7 @@ async def test_rate_limited_returns_error(
         await interactive_session(
             mock_websocket,
             chapter_id,
-            user_id="user123",
+            token=mint_ws_ticket(USER_ID),
             project_id=project_id,
         )
 
@@ -196,7 +183,7 @@ async def test_rate_limited_returns_error(
 
 
 async def test_origin_check_closes_on_empty_trusted_list(
-    mock_websocket: MagicMock,
+    mock_websocket: AsyncMock,
     chapter_id: UUID,
     project_id: UUID,
 ) -> None:
@@ -215,13 +202,13 @@ async def test_origin_check_closes_on_empty_trusted_list(
         await interactive_session(
             mock_websocket,
             chapter_id,
-            user_id="user123",
+            token=mint_ws_ticket(USER_ID),
             project_id=project_id,
         )
 
     mock_websocket.accept.assert_awaited_once()
     mock_websocket.send_json.assert_awaited_once()
     mock_websocket.close.assert_awaited_once_with(
-        code=4001,
+        code=1008,
         reason="Origin not allowed",
     )

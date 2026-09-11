@@ -1,13 +1,16 @@
 """Unit tests for DismissedFindingService — uses an in-memory fake repository.
 
 Tests that the service correctly delegates to the repository and returns
-the expected response shapes.  No DB, no HTTP (ADR-030 fake-based testing).
+the expected response shapes.  No DB, no HTTP (ADR-030 fake-based
+testing).  The novel ownership gate is permissive here (IDOR S10): the
+ownership matrix lives in ``tests/unit/api/kb/
+test_relationship_dismissed_extraction_ownership.py``.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-from uuid import uuid4
+from typing import TYPE_CHECKING, cast
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -18,7 +21,10 @@ from narrare.kb.consistency_contracts import (
 from narrare.kb.dismissed_service import DismissedFindingService
 
 if TYPE_CHECKING:
-    from uuid import UUID
+    from narrare.novels.contracts import NovelRepositoryProtocol
+
+# Every test here acts as the novel's owner (permissive gate, IDOR S10).
+_USER_ID = str(uuid4())
 
 
 # ---------------------------------------------------------------------------
@@ -57,6 +63,17 @@ class FakeDismissedFindingRepository:
         return self._store.get((novel_id, fingerprint))
 
 
+class _FakeNovelRepo:
+    """Permissive novel gate — every caller owns every novel (IDOR S10).
+
+    Kept local because this suite lives outside the ``tests/unit/api/kb``
+    package that hosts the shared ``FakeNovelRepo``.
+    """
+
+    async def get_by_id(self, novel_id: UUID, user_id: UUID) -> object | None:
+        return object()  # the gate only checks existence
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -69,7 +86,10 @@ def fake_repo() -> FakeDismissedFindingRepository:
 
 @pytest.fixture
 def service(fake_repo: FakeDismissedFindingRepository) -> DismissedFindingService:
-    return DismissedFindingService(fake_repo)
+    return DismissedFindingService(
+        fake_repo,
+        cast("NovelRepositoryProtocol", _FakeNovelRepo()),
+    )
 
 
 @pytest.fixture
@@ -97,7 +117,7 @@ class TestDismissFinding:
             reason="Accepted as intentional",
         )
 
-        result = await service.dismiss_finding(novel_id=novel_id, request=request)
+        result = await service.dismiss_finding(novel_id=novel_id, request=request, user_id=_USER_ID)
 
         assert isinstance(result, DismissedFindingsResponse)
         assert "Ages conflict::Alice,Bob" in result.fingerprints
@@ -111,7 +131,7 @@ class TestDismissFinding:
         """Dismiss delegates to the repository so the fingerprint is stored."""
         request = DismissFindingRequest(fingerprint="fp-1")
 
-        await service.dismiss_finding(novel_id=novel_id, request=request)
+        await service.dismiss_finding(novel_id=novel_id, request=request, user_id=_USER_ID)
 
         stored = await fake_repo.list_dismissed(novel_id)
         assert "fp-1" in stored
@@ -125,7 +145,7 @@ class TestDismissFinding:
         """Dismiss without a reason persists successfully (reason defaults None)."""
         request = DismissFindingRequest(fingerprint="fp-no-reason")
 
-        await service.dismiss_finding(novel_id=novel_id, request=request)
+        await service.dismiss_finding(novel_id=novel_id, request=request, user_id=_USER_ID)
 
         assert fake_repo.get_reason(novel_id, "fp-no-reason") is None
 
@@ -139,11 +159,13 @@ class TestDismissFinding:
             await service.dismiss_finding(
                 novel_id=novel_id,
                 request=DismissFindingRequest(fingerprint=fp),
+                user_id=_USER_ID,
             )
 
         result = await service.dismiss_finding(
             novel_id=novel_id,
             request=DismissFindingRequest(fingerprint="fp-d"),
+            user_id=_USER_ID,
         )
 
         assert set(result.fingerprints) == {"fp-a", "fp-b", "fp-c", "fp-d"}
@@ -163,7 +185,7 @@ class TestListDismissed:
         novel_id: UUID,
     ) -> None:
         """List returns empty fingerprints for a novel with no dismissals."""
-        result = await service.list_dismissed(novel_id=novel_id)
+        result = await service.list_dismissed(novel_id=novel_id, user_id=_USER_ID)
 
         assert result.fingerprints == []
 
@@ -177,9 +199,10 @@ class TestListDismissed:
             await service.dismiss_finding(
                 novel_id=novel_id,
                 request=DismissFindingRequest(fingerprint=fp),
+                user_id=_USER_ID,
             )
 
-        result = await service.list_dismissed(novel_id=novel_id)
+        result = await service.list_dismissed(novel_id=novel_id, user_id=_USER_ID)
 
         assert set(result.fingerprints) == {"fp-1", "fp-2"}
 
@@ -194,14 +217,16 @@ class TestListDismissed:
         await service.dismiss_finding(
             novel_id=novel_a,
             request=DismissFindingRequest(fingerprint="fp-a"),
+            user_id=_USER_ID,
         )
         await service.dismiss_finding(
             novel_id=novel_b,
             request=DismissFindingRequest(fingerprint="fp-b"),
+            user_id=_USER_ID,
         )
 
-        result_a = await service.list_dismissed(novel_id=novel_a)
-        result_b = await service.list_dismissed(novel_id=novel_b)
+        result_a = await service.list_dismissed(novel_id=novel_a, user_id=_USER_ID)
+        result_b = await service.list_dismissed(novel_id=novel_b, user_id=_USER_ID)
 
         assert result_a.fingerprints == ["fp-a"]
         assert result_b.fingerprints == ["fp-b"]
@@ -224,15 +249,18 @@ class TestUndismissFinding:
         await service.dismiss_finding(
             novel_id=novel_id,
             request=DismissFindingRequest(fingerprint="fp-1"),
+            user_id=_USER_ID,
         )
         await service.dismiss_finding(
             novel_id=novel_id,
             request=DismissFindingRequest(fingerprint="fp-2"),
+            user_id=_USER_ID,
         )
 
         result = await service.undismiss_finding(
             novel_id=novel_id,
             fingerprint="fp-1",
+            user_id=_USER_ID,
         )
 
         assert "fp-1" not in result.fingerprints
@@ -247,6 +275,7 @@ class TestUndismissFinding:
         result = await service.undismiss_finding(
             novel_id=novel_id,
             fingerprint="never-dismissed",
+            user_id=_USER_ID,
         )
 
         assert result.fingerprints == []
@@ -262,11 +291,13 @@ class TestUndismissFinding:
         await service.dismiss_finding(
             novel_id=novel_id,
             request=DismissFindingRequest(fingerprint=fp),
+            user_id=_USER_ID,
         )
-        await service.undismiss_finding(novel_id=novel_id, fingerprint=fp)
+        await service.undismiss_finding(novel_id=novel_id, fingerprint=fp, user_id=_USER_ID)
         result = await service.dismiss_finding(
             novel_id=novel_id,
             request=DismissFindingRequest(fingerprint=fp),
+            user_id=_USER_ID,
         )
 
         assert fp in result.fingerprints

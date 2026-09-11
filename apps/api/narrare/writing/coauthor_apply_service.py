@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.writing._helpers import record_batch_feedback
+from narrare.writing._helpers import get_validated_request, record_batch_feedback
 from narrare_core.shared.errors import NotFoundError
 from narrare_core.writing.text_reconstructor import reconstruct_text
 
@@ -79,8 +79,18 @@ class CoAuthorApplyService:
             Updated Chapter ORM model.
 
         Raises:
-            NotFoundError: If chapter does not exist.
+            NotFoundError: If the generation request does not exist or
+                belongs to another user, if the request row does not
+                reference the addressed chapter and novel, or if the
+                chapter does not exist.
         """
+        # Ownership gate (Pattern A): the write is bound to a generation
+        # request the caller owns — unknown and foreign request ids are
+        # indistinguishable (anti-enumeration).
+        request_model = await get_validated_request(self._repo, request.request_id, user_id)
+        if request_model.chapter_id != chapter_id or request_model.novel_id != novel_id:
+            raise NotFoundError("Chapter", identifier=str(chapter_id))
+
         chapter = await self._chapter_repo.get_by_id(chapter_id, novel_id)
         if not chapter:
             raise NotFoundError("Chapter", identifier=str(chapter_id))
@@ -98,25 +108,24 @@ class CoAuthorApplyService:
             word_count,
         )
 
-        # Feedback for rejected changes (LEARN-001)
+        # Feedback for rejected changes (LEARN-001) — recorded against the
+        # caller-validated request row (never another user's learning data).
         if request.rejected and self._feedback:
-            request_model = await self._repo.get_by_id(request.request_id)
-            if request_model:
-                rejected_fb = [
-                    ChangeFeedback(
-                        change_id=f"rejected_{i}",
-                        action="reject",
-                        focus="word_choice",
-                        original=c.original_text,
-                        revised=c.revised_text,
-                    )
-                    for i, c in enumerate(request.rejected)
-                ]
-                await record_batch_feedback(
-                    self._feedback,
-                    request_model,
-                    rejected_fb,
+            rejected_fb = [
+                ChangeFeedback(
+                    change_id=f"rejected_{i}",
+                    action="reject",
+                    focus="word_choice",
+                    original=c.original_text,
+                    revised=c.revised_text,
                 )
+                for i, c in enumerate(request.rejected)
+            ]
+            await record_batch_feedback(
+                self._feedback,
+                request_model,
+                rejected_fb,
+            )
 
         return updated
 
@@ -124,21 +133,24 @@ class CoAuthorApplyService:
         self,
         request_id: UUID,
         feedback: list[ChangeFeedback],
+        user_id: str,
     ) -> None:
         """Record batch per-change feedback for co-author (LEARN-001).
 
         Creates individual ``FeedbackEvent`` entries for each change
         feedback item.  Silently no-ops when no ``FeedbackCollector``
-        is configured.
+        is configured.  The ownership gate (Pattern A) guarantees the
+        events are stamped with the caller's own user id — feedback can
+        never pollute another user's preference learning.
 
         Args:
             request_id: The generation request ID these changes belong to.
             feedback: Per-change feedback items.
+            user_id: Authenticated user identifier (access check).
 
         Raises:
-            NotFoundError: If the generation request does not exist.
+            NotFoundError: If the generation request does not exist or
+                belongs to another user.
         """
-        request_model = await self._repo.get_by_id(request_id)
-        if not request_model:
-            raise NotFoundError("GenerationRequest", identifier=str(request_id))
+        request_model = await get_validated_request(self._repo, request_id, user_id)
         await record_batch_feedback(self._feedback, request_model, feedback)

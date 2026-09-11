@@ -183,6 +183,33 @@
         }
       }
     },
+    "/api/v1/auth/ws-ticket": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Issue Ws Ticket",
+        "description": "Issue a single-use, 60 s WebSocket handshake ticket (ADR-084).\n\nBearer-gated (no ambient credential → no CSRF surface, hence no\ndedicated limiter — same stance as /auth/refresh). The writing WS\nhandshake consumes the ticket as the ``token`` query param and derives\nthe session identity from it.",
+        "operationId": "issue_ws_ticket_api_v1_auth_ws_ticket_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WsTicketResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/auth/me": {
       "get": {
         "tags": [
@@ -412,6 +439,447 @@
               "type": "string",
               "format": "uuid",
               "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notes/tags": {
+      "get": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "List Tags",
+        "description": "Distinct existing tags (autocomplete; optional prefix ``q``).",
+        "operationId": "list_tags_api_v1_notes_tags_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteTagsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notes": {
+      "get": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "List Notes",
+        "description": "List notes, default sort ``updated_at DESC`` (spec §5).",
+        "operationId": "list_notes_api_v1_notes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Note Type"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "series_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Series Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NoteResponse"
+                  },
+                  "title": "Response List Notes Api V1 Notes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "Create Note",
+        "description": "Create a note (quick capture and full editor both use this).",
+        "operationId": "create_note_api_v1_notes_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notes/search": {
+      "post": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "Search Notes",
+        "description": "Semantic search with honest lexical fallback (spec §6a).",
+        "operationId": "search_notes_api_v1_notes_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notes/{note_id}": {
+      "get": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "Get Note",
+        "operationId": "get_note_api_v1_notes__note_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Note Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "Update Note",
+        "operationId": "update_note_api_v1_notes__note_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Note Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "Delete Note",
+        "operationId": "delete_note_api_v1_notes__note_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Note Id"
             }
           }
         ],
@@ -4180,7 +4648,7 @@
           "embeddings"
         ],
         "summary": "Get Embedding Status",
-        "description": "Return embedding statistics for a novel.",
+        "description": "Return embedding statistics for a novel (owner-only, IDOR S13).",
         "operationId": "get_embedding_status_api_v1_admin_embeddings_status__novel_id__get",
         "security": [
           {
@@ -4229,7 +4697,7 @@
           "embeddings"
         ],
         "summary": "Reprocess Embeddings",
-        "description": "Trigger re-embedding for all content in a novel.",
+        "description": "Trigger re-embedding for all content in a novel (owner-only, IDOR S13).",
         "operationId": "reprocess_embeddings_api_v1_admin_embeddings_reprocess__novel_id__post",
         "security": [
           {
@@ -4295,7 +4763,7 @@
           "embeddings"
         ],
         "summary": "Get Model Info",
-        "description": "Return the currently active embedding model and dimension.",
+        "description": "Return the currently active embedding model and dimension.\n\nGlobal-inert resource (D3:a): the minimal gate is authenticated-user\nexistence — no per-novel ownership applies.",
         "operationId": "get_model_info_api_v1_admin_embeddings_model_get",
         "responses": {
           "200": {
@@ -4749,7 +5217,7 @@
           "export"
         ],
         "summary": "Create Export",
-        "description": "Create + dispatch an export job (201). 503 if the format is unavailable.",
+        "description": "Create + dispatch an export job (201). 404 if the novel is not owned by\nthe caller (foreign ≡ unknown); 503 if the format is unavailable.",
         "operationId": "create_export_api_v1_export_post",
         "requestBody": {
           "content": {
@@ -4782,7 +5250,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/export/jobs/{job_id}": {
@@ -4791,8 +5264,13 @@
           "export"
         ],
         "summary": "Get Export Job",
-        "description": "Poll an export job's status (404 if unknown — lost on restart, D1).",
+        "description": "Poll an export job's status (owner-only; 404 if unknown or foreign —\nincluding lost on restart, D1).",
         "operationId": "get_export_job_api_v1_export_jobs__job_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "job_id",
@@ -4834,8 +5312,13 @@
           "export"
         ],
         "summary": "Download Export Artifact",
-        "description": "Download the artifact once (200 stream, 404 unknown, 410 gone/expired).\n\nProxies the file as an attachment (per the IO-001 decision: a proxied\nstream, NOT a 302 redirect). The temp file is unlinked after the response\nstream completes via the ``BackgroundTask``.",
+        "description": "Download the artifact once (200 stream, 404 unknown/foreign, 410 gone).\n\nProxies the file as an attachment (per the IO-001 decision: a proxied\nstream, NOT a 302 redirect). The temp file is unlinked after the response\nstream completes via the ``BackgroundTask``.",
         "operationId": "download_export_artifact_api_v1_export_jobs__job_id__artifact_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "job_id",
@@ -7035,7 +7518,7 @@
           "kb-sessions"
         ],
         "summary": "Get Session",
-        "description": "Get a KB creation session by ID.",
+        "description": "Get a KB creation session by ID (ownership-scoped, IDOR S7).",
         "operationId": "get_session_api_v1_novels__novel_id__kb_sessions__session_id__get",
         "security": [
           {
@@ -7094,7 +7577,7 @@
           "kb-sessions"
         ],
         "summary": "Abandon Session",
-        "description": "Abandon and delete a session.",
+        "description": "Abandon and delete a session (unknown/foreign → 404 via global handler).",
         "operationId": "abandon_session_api_v1_novels__novel_id__kb_sessions__session_id__delete",
         "security": [
           {
@@ -8400,15 +8883,15 @@
         }
       }
     },
-    "/api/v1/settings/settings/token-limits/": {
+    "/api/v1/settings/token-limits/": {
       "get": {
         "tags": [
           "settings",
           "token-limits"
         ],
         "summary": "Get Resolved Limits",
-        "description": "Get resolved token limits (merged across all layers).\n\nOptional query parameters:\n- ``project_id``: Include project-level overrides.\n- ``provider`` + ``model_id``: Attach model calibration metadata.\n- ``intent`` (with provider/model): Attach suitability metadata.",
-        "operationId": "get_resolved_limits_api_v1_settings_settings_token_limits__get",
+        "description": "Get resolved token limits (merged across all layers).\n\nOptional query parameters:\n- ``project_id``: Include project-level overrides (caller must own\n  the project — IDOR remediation S11b; the dependency gates before\n  the auto-creating project repository read runs).\n- ``provider`` + ``model_id``: Attach model calibration metadata.\n- ``intent`` (with provider/model): Attach suitability metadata.",
+        "operationId": "get_resolved_limits_api_v1_settings_token_limits__get",
         "security": [
           {
             "HTTPBearer": []
@@ -8422,7 +8905,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "format": "uuid"
                 },
                 {
                   "type": "null"
@@ -8504,7 +8988,7 @@
         }
       }
     },
-    "/api/v1/settings/settings/token-limits/user": {
+    "/api/v1/settings/token-limits/user": {
       "put": {
         "tags": [
           "settings",
@@ -8512,7 +8996,7 @@
         ],
         "summary": "Update User Limits",
         "description": "Update user-level token limit overrides.",
-        "operationId": "update_user_limits_api_v1_settings_settings_token_limits_user_put",
+        "operationId": "update_user_limits_api_v1_settings_token_limits_user_put",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8545,15 +9029,15 @@
         ]
       }
     },
-    "/api/v1/settings/settings/token-limits/project/{project_id}": {
+    "/api/v1/settings/token-limits/project/{project_id}": {
       "put": {
         "tags": [
           "settings",
           "token-limits"
         ],
         "summary": "Update Project Limits",
-        "description": "Update project-level token limit overrides.",
-        "operationId": "update_project_limits_api_v1_settings_settings_token_limits_project__project_id__put",
+        "description": "Update project-level token limit overrides.\n\n``project_id`` must be the caller's novel UUID (project ≡ novel) —\nthe ownership dependency gates BEFORE the auto-creating project\nrepository read runs (IDOR remediation S11b).",
+        "operationId": "update_project_limits_api_v1_settings_token_limits_project__project_id__put",
         "security": [
           {
             "HTTPBearer": []
@@ -8566,6 +9050,7 @@
             "required": true,
             "schema": {
               "type": "string",
+              "format": "uuid",
               "title": "Project Id"
             }
           }
@@ -9456,7 +9941,7 @@
           "prompts"
         ],
         "summary": "Save Override",
-        "description": "Save a prompt override and record a history revision (CR-AUFG-07-19).\n\nDelegates to ``PromptHistoryApiService.save_override_recorded``: the\nactive override FILE is written via the core service (authoritative),\nthen a revision row is recorded (best-effort, deduplicated).\n\n``event_publisher`` is the in-process wiki EventPublisher (Q-016): a\nwiki-category override publishes ``wiki.prompt.changed`` so wiki\nsummaries are marked stale for regeneration.",
+        "description": "Save a prompt override and record a history revision (CR-AUFG-07-19).\n\nDelegates to ``PromptHistoryApiService.save_override_recorded``: the\nactive override FILE is written via the core service (authoritative),\nthen a revision row is recorded (best-effort, deduplicated).\n\n``event_publisher`` is the in-process wiki EventPublisher (Q-016): a\nwiki-category override publishes ``wiki.prompt.changed`` so wiki\nsummaries are marked stale for regeneration.\n\nTrust stance: see module docstring (D2:a — GLOBAL file; user_id is the audit actor only).",
         "operationId": "save_override_api_v1_prompts__prompt_id__put",
         "security": [
           {
@@ -9507,7 +9992,7 @@
           "prompts"
         ],
         "summary": "Reset Override",
-        "description": "Reset a prompt override, restoring bundled default.",
+        "description": "Reset a prompt override, restoring bundled default.\n\nTrust stance: see the module docstring (D2:a — GLOBAL override file).",
         "operationId": "reset_override_api_v1_prompts__prompt_id__override_delete",
         "security": [
           {
@@ -11065,7 +11550,7 @@
           "writing"
         ],
         "summary": "Get Stats",
-        "description": "Get aggregated generation statistics for a novel.",
+        "description": "Get aggregated generation statistics for a novel.\n\nOwnership is enforced by the verify_novel_owned dependency BEFORE\nthe service is constructed (IDOR remediation S13) — foreign ≡\nunknown novel ids surface as 404.",
         "operationId": "get_stats_api_v1_writing_novels__novel_id__stats_get",
         "security": [
           {
@@ -11426,7 +11911,7 @@
           "summary"
         ],
         "summary": "Summarize Chapter",
-        "description": "Generate a summary for the given chapter.\n\nArgs:\n    chapter_id: UUID of the chapter to summarize.\n    request: Optional request body with max_sentences and language.\n    service: Injected ChapterSummaryService instance.\n\nReturns:\n    SummaryResult with summary text, word count, and key points.\n\nRaises:\n    404: If the chapter does not exist.\n    500: If the LLM call fails.",
+        "description": "Generate a summary for the given chapter.\n\nArgs:\n    chapter_id: UUID of the chapter to summarize.\n    user_id: Authenticated user identifier (ownership check).\n    request: Optional request body with max_sentences and language.\n    service: Injected ChapterSummaryService instance.\n\nReturns:\n    SummaryResult with summary text, word count, and key points.\n\nRaises:\n    404: If the chapter does not exist or belongs to another user.\n    500: If the LLM call fails.",
         "operationId": "summarize_chapter_api_v1_summary_chapters__chapter_id__post",
         "security": [
           {
@@ -11919,7 +12404,7 @@
           "chat"
         ],
         "summary": "Get History",
-        "description": "Get the full message history for a conversation.\n\nArgs:\n    conversation_id: UUID of the conversation to retrieve.\n    user_id: Authenticated user extracted from JWT.\n    service: Injected ChatService instance.\n\nReturns:\n    ChatHistoryResponse with messages, timestamps, and project info.",
+        "description": "Get the full message history for a conversation.\n\nOwnership-scoped (IDOR hardening): unknown and foreign conversations\nboth raise NotFoundError → HTTP 404 via the global handler.\n\nArgs:\n    conversation_id: UUID of the conversation to retrieve.\n    user_id: Authenticated user extracted from JWT — must own the\n        conversation.\n    service: Injected ChatService instance.\n\nReturns:\n    ChatHistoryResponse with messages, timestamps, and project info.",
         "operationId": "get_history_api_v1_chat_history__conversation_id__get",
         "security": [
           {
@@ -11966,7 +12451,7 @@
           "chat"
         ],
         "summary": "Clear History",
-        "description": "Clear all messages in a conversation.\n\nArgs:\n    conversation_id: UUID of the conversation to clear.\n    user_id: Authenticated user extracted from JWT.\n    service: Injected ChatService instance.\n\nReturns:\n    ChatDeleteResponse confirming deletion.",
+        "description": "Clear all messages in a conversation.\n\nOwnership-scoped (IDOR hardening): unknown and foreign conversations\nboth raise NotFoundError → HTTP 404 via the global handler.\n\nArgs:\n    conversation_id: UUID of the conversation to clear.\n    user_id: Authenticated user extracted from JWT — must own the\n        conversation.\n    service: Injected ChatService instance.\n\nReturns:\n    ChatDeleteResponse confirming deletion.",
         "operationId": "clear_history_api_v1_chat_history__conversation_id__delete",
         "security": [
           {
@@ -14139,8 +14624,15 @@
             "title": "Conversation Id"
           },
           "project_id": {
-            "type": "string",
-            "format": "uuid",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Project Id"
           },
           "messages": {
@@ -14164,7 +14656,6 @@
         "type": "object",
         "required": [
           "conversation_id",
-          "project_id",
           "messages"
         ],
         "title": "ChatHistoryResponse",
@@ -14204,9 +14695,17 @@
       "ChatRequest": {
         "properties": {
           "project_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Project Id"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id",
+            "description": "Project (novel) scope. Omit for project-less chat (e.g. global notes)."
           },
           "message": {
             "type": "string",
@@ -14227,15 +14726,27 @@
             ],
             "title": "Conversation Id",
             "description": "Existing conversation ID. Omit to start a new conversation."
+          },
+          "note_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Id",
+            "description": "Scratchpad note attached as runtime context (NOTES-001 §6b)."
           }
         },
         "type": "object",
         "required": [
-          "project_id",
           "message"
         ],
         "title": "ChatRequest",
-        "description": "Request to send a chat message.\n\nExtends the core ``ChatRequestSchema`` with FastAPI-specific validation."
+        "description": "Request to send a chat message.\n\nExtends the core ``ChatRequestSchema`` with FastAPI-specific validation.\n``project_id`` is optional since NOTES-001 (global notes have no\nproject); ``note_id`` attaches a scratchpad note as runtime context."
       },
       "CoAuthorFeedbackRequest": {
         "properties": {
@@ -17612,6 +18123,448 @@
         "type": "object",
         "title": "NarrativeArc",
         "description": "Detected narrative arc from sentiment progression.\n\nAttributes:\n    arc_type: The detected narrative arc type.\n    confidence: How well the text matches this arc (0.0 to 1.0).\n    segments: List of arc segments (e.g. ``\"exposition\"``,\n        ``\"rising_action\"``, ``\"climax\"``, ``\"falling_action\"``,\n        ``\"resolution\"``) with VAD per segment.\n    explanation: Human-readable description of why this arc was detected."
+      },
+      "NoteCreateRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 50000,
+            "title": "Content",
+            "default": ""
+          },
+          "note_type": {
+            "$ref": "#/components/schemas/NoteType",
+            "default": "idea"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Tags"
+          },
+          "novel_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Novel Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          }
+        },
+        "type": "object",
+        "title": "NoteCreateRequest",
+        "description": "Create a note — used by BOTH quick capture and the full editor (spec §5)."
+      },
+      "NoteResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "note_type": {
+            "type": "string",
+            "title": "Note Type"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "novel_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Novel Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "content",
+          "note_type",
+          "tags",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "NoteResponse",
+        "description": "API representation of a note.\n\n``title`` is the stored (possibly None) title — display fallback lives\nwith the client (``noteDisplayTitle``) per spec §4."
+      },
+      "NoteSearchHit": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "note_type": {
+            "type": "string",
+            "title": "Note Type"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "novel_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Novel Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Similarity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "content",
+          "note_type",
+          "tags",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "NoteSearchHit",
+        "description": "A note plus its similarity score (None in lexical mode)."
+      },
+      "NoteSearchRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Query"
+          },
+          "note_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NoteType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "novel_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Novel Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 20
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "NoteSearchRequest",
+        "description": "Semantic search body — same optional filters as the list endpoint (§6a)."
+      },
+      "NoteSearchResponse": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "lexical",
+              "semantic"
+            ],
+            "title": "Mode"
+          },
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/NoteSearchHit"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "query",
+          "results"
+        ],
+        "title": "NoteSearchResponse",
+        "description": "Search result with an honest mode badge (RULE-11 spirit, §6a)."
+      },
+      "NoteTagsResponse": {
+        "properties": {
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tags"
+        ],
+        "title": "NoteTagsResponse",
+        "description": "Distinct existing tags for autocomplete (spec §5 GET /notes/tags)."
+      },
+      "NoteType": {
+        "type": "string",
+        "enum": [
+          "idea",
+          "concept",
+          "question",
+          "other"
+        ],
+        "title": "NoteType",
+        "description": "Language-neutral note type keys — displayed via i18n ``notes.type.*``."
+      },
+      "NoteUpdateRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "note_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NoteType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "novel_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Novel Id"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          }
+        },
+        "type": "object",
+        "title": "NoteUpdateRequest",
+        "description": "Partial update. Explicit ``null`` clears a field (exclude_unset semantics)."
       },
       "NovelKBEntry": {
         "properties": {
@@ -24284,6 +25237,25 @@
         ],
         "title": "WorldbuildingSeverity",
         "description": "Severity level for worldbuilding findings."
+      },
+      "WsTicketResponse": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "expires_in"
+        ],
+        "title": "WsTicketResponse",
+        "description": "Single-use WebSocket handshake ticket (ADR-084).\n\n``token`` is opaque, returned exactly once, and never stored raw\nserver-side (only its SHA-256 hash — see ``auth/ws_tickets.py``)."
       },
       "narrare__memory__schemas__ResetResponse": {
         "properties": {

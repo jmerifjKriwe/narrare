@@ -41,6 +41,12 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  // ADR-084: single-use WS handshake ticket. Static token by default — tests
+  // that need per-mint freshness install a counting handler via server.use().
+  http.post("*/api/v1/auth/ws-ticket", async () => {
+    return HttpResponse.json({ token: "test-ws-ticket", expires_in: 60 });
+  }),
+
   http.get("*/api/v1/auth/me", async ({ request }) => {
     const authHeader = request.headers.get("Authorization");
     if (!authHeader) {

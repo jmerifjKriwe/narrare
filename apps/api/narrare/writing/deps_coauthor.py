@@ -8,6 +8,7 @@ from uuid import UUID
 
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.kb.relationship_repository import RelationshipRepository
+from narrare.writing.deps_ownership import ensure_novel_owned
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
@@ -31,8 +32,17 @@ async def get_coauthor_service(
 
     Returns:
         Configured CoAuthorService ready for use.
+
+    Raises:
+        NotFoundError: If ``project_id`` is given but unknown or not
+            owned by ``user_id`` (fix-wave N1: gated BEFORE the
+            auto-creating project-settings reads of the resolver and
+            token-limit service — foreign ≡ unknown → 404, never a
+            500 FK oracle).
     """
     from narrare._app.config import get_settings
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.settings.token_limits.context_budgets import resolve_context_budgets
     from narrare.settings.token_limits.repository import (
@@ -44,6 +54,12 @@ async def get_coauthor_service(
     from narrare.writing.deps_pipeline import create_pipeline
     from narrare.writing.repository import GenerationRepository
     from narrare_core.writing.draft_processor import DraftProcessor
+
+    # Fix-wave N1: gate the project scope BEFORE model routing / token
+    # limits — both read project-keyed settings through auto-creating
+    # repositories (unknown novel → FK IntegrityError = 500 oracle;
+    # foreign novel → transient victim row).
+    await ensure_novel_owned(session, user_id, project_id)
 
     resolver = get_model_routing_resolver(session)
     assert isinstance(resolver, ModelRoutingResolverImpl)
@@ -83,12 +99,17 @@ async def get_coauthor_service(
     )
     repo = GenerationRepository(session)
     relationship_repo = RelationshipRepository(session)
+    # IDOR S6: chapter/novel repos back the verify_chapter_access gate.
+    chapter_repo = ChapterRepository(session)
+    novel_repo = NovelRepository(session)
 
     return CoAuthorService(
         repo=repo,
         pipeline=pipeline,
         draft_processor=draft_processor,
         config=config,
+        chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         relationship_repo=relationship_repo,

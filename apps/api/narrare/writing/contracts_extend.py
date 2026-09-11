@@ -30,13 +30,23 @@ class ExtendServiceProtocol(Protocol):
         chapter_id: UUID,
         novel_id: UUID,
         request: ExtendRequest,
+        *,
+        user_id: str,
     ) -> None:
         """Pre-validate extend request before starting SSE response.
 
+        Ownership gate (IDOR remediation S6): the chapter must exist,
+        belong to the addressed novel, and the novel must belong to the
+        caller — foreign and unknown ids are indistinguishable 404s
+        raised BEFORE any input validation, active-generation check, or
+        request-row creation.
+
         Raises:
+            NotFoundError: If the chapter does not exist, does not
+                belong to the addressed novel, or the novel belongs to
+                another user.
             ValidationError: If text_before is empty.
             ConflictError: If another generation is active.
-            NotFoundError: If chapter does not exist.
         """
         ...
 

@@ -57,11 +57,14 @@ def suggest_service(
     suggest_config: ResolvedModelConfig,
 ) -> InlineSuggestService:
     """InlineSuggestService with mocked dependencies."""
+    from tests.unit.api.writing._suggest_factories import make_mock_novel_repo
+
     return InlineSuggestService(
         registry=mock_registry,
         composer=mock_composer,
         config=suggest_config,
         chapter_repo=mock_chapter_repo,
+        novel_repo=make_mock_novel_repo(),
     )
 
 
@@ -269,12 +272,19 @@ class TestSuggestInline:
         ctx = build_call[0][1]
         assert ctx.language == "en"
 
-    async def test_suggest_inline_chapter_none_returns_empty_context(
+    async def test_suggest_inline_chapter_none_raises_not_found(
         self,
         suggest_service: InlineSuggestService,
         mock_chapter_repo: MagicMock,
     ) -> None:
-        """_build_chapter_context returns '' when chapter not found (line 182)."""
+        """Unknown chapter → NotFoundError from the S6 ownership gate.
+
+        Pre-S6 this streamed gracefully with an empty chapter context —
+        exactly the existence-oracle the IDOR remediation removes; the
+        access matrix (``test_generation_access_matrix.py``) pins the
+        foreign ≡ unknown shape.
+        """
+        from narrare_core.shared.errors import NotFoundError
 
         mock_chapter_repo.get = AsyncMock(return_value=None)
 
@@ -282,10 +292,10 @@ class TestSuggestInline:
         user_id = str(uuid.uuid4())
         request = InlineSuggestRequest(text_before="Hello world")
 
-        async for _ in suggest_service.suggest_inline(chapter_id, user_id, request):
-            pass
+        with pytest.raises(NotFoundError, match="Chapter"):
+            async for _ in suggest_service.suggest_inline(chapter_id, user_id, request):
+                pass
 
-        # Context is empty but suggest_inline still works
         mock_chapter_repo.get.assert_called_with(chapter_id)
 
     async def test_suggest_inline_with_pov_in_context(
@@ -296,9 +306,10 @@ class TestSuggestInline:
     ) -> None:
         """_build_chapter_context includes POV when set (line 188)."""
 
-        chapter = MagicMock(spec=["title", "pov_character_id"])
+        chapter = MagicMock(spec=["title", "pov_character_id", "novel_id"])
         chapter.title = "Test Chapter"
         chapter.pov_character_id = "pov-123"
+        chapter.novel_id = uuid.uuid4()
         mock_chapter_repo.get = AsyncMock(return_value=chapter)
 
         chapter_id = uuid.uuid4()

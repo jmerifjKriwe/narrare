@@ -283,6 +283,8 @@ class TestRewriteStreamErrors:
         # Overrides the autouse conftest patch for the duration of this call.
         async def _make_failing_service(session, user_id, project_id=None):  # type: ignore[no-untyped-def]
             from narrare._app.dependencies import get_composer
+            from narrare.chapters.repository import ChapterRepository
+            from narrare.novels.repository import NovelRepository
             from narrare.writing.repository import GenerationRepository
             from narrare.writing.rewrite_service import RewriteService
             from narrare_core.llm import ResolvedModelConfig
@@ -312,6 +314,8 @@ class TestRewriteStreamErrors:
                 pipeline=pipeline,
                 draft_processor=DraftProcessor(),
                 config=config,
+                chapter_repo=ChapterRepository(session),
+                novel_repo=NovelRepository(session),
             )
 
         with patch(

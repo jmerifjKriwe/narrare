@@ -66,6 +66,7 @@ async def get_consistency_service(
     from narrare.kb.repository import KBRepository
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
     from narrare.kb.worldbuilding_cache import WorldbuildingCache
+    from narrare.novels.repository import NovelRepository
     from narrare_core.cache import InMemorySessionCache
 
     resolver = get_model_routing_resolver(session)
@@ -85,6 +86,7 @@ async def get_consistency_service(
 
     kb_repo = KBRepository(session)
     rel_repo = RelationshipRepository(session)
+    novel_repo = NovelRepository(session)
 
     # In-memory consistency cache with 10min TTL (ADR-080). Shared with the
     # worldbuilding cache below (both consume SessionCacheProtocol).
@@ -127,6 +129,7 @@ async def get_consistency_service(
         worldbuilding_analyzer=worldbuilding_analyzer,
         kb_repo=kb_repo,
         rel_repo=rel_repo,
+        novel_repo=novel_repo,
         cache=consistency_cache,
         invocation_pipeline=get_invocation_pipeline(),
         feedback_memory=get_consistency_feedback_memory_instance(),

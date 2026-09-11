@@ -42,7 +42,8 @@ async def get_extraction_service(
 
     Also injects KBService, RelationshipRepository, and the request-scoped
     session for the apply extraction step (KB-007) — the apply service
-    wraps each item in a SAVEPOINT on that session.
+    wraps each item in a SAVEPOINT on that session. NovelRepository backs
+    the novel ownership gate (IDOR fix S10).
 
     Includes InvocationPipeline for invocation evidence (ADR-040) and a
     DefaultRunLimitResolver for ADR-045 output-budget enforcement at the
@@ -59,6 +60,7 @@ async def get_extraction_service(
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.kb.service import KBService
+    from narrare.novels.repository import NovelRepository
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
     resolver = get_model_routing_resolver(session)
@@ -77,6 +79,7 @@ async def get_extraction_service(
         chapter_repo=ChapterRepository(session),
         kb_repo=KBRepository(session),
         composer=composer,
+        novel_repo=NovelRepository(session),
         kb_service=KBService(
             repo=KBRepository(session),
             novel_repo=None,

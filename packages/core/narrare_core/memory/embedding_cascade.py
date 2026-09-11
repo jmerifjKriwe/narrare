@@ -6,6 +6,12 @@ Tier 3: Local sentence-transformers all-MiniLM-L6-v2 (no API key needed)
 Tier 4: Disabled — NullMemoryClient (no embeddings)
 
 Resolution order follows user's configured providers.
+
+The tier models below are intentionally NOT routed through
+``CoreSettings.default_embedding_model``/``-dimension``: they are per-tier
+fallbacks for mem0's internal vector store (Tier 3 uses all-MiniLM-L6-v2,
+384-dim). The app-level default is API Settings ``memory_embedding_model``,
+which overrides the Tier-1 model (ADR-071 §5 keeps it out of CoreSettings).
 """
 
 from __future__ import annotations

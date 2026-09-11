@@ -16,21 +16,33 @@ if TYPE_CHECKING:
 
 @dataclass
 class ChatMessage:
-    """A single chat message in a conversation."""
+    """A single chat message in a conversation.
+
+    ``message_id`` is the persisted message row id (``chat_messages.id``)
+    — distinct from ``conversation_id``; the REST history endpoint
+    reports it per message.
+    """
 
     conversation_id: UUID
     role: str  # "user" or "assistant"
     content: str
+    message_id: UUID
     created_at: str = field(default="")
 
 
 @dataclass
 class ChatRequest:
-    """Request to send a chat message."""
+    """Request to send a chat message.
 
-    project_id: UUID
-    message: str
+    ``project_id`` is optional since NOTES-001: chatting about a global note
+    has no project (KB/project context tiers are skipped then). ``note_id``
+    attaches a scratchpad note as runtime context (spec §6b).
+    """
+
+    project_id: UUID | None = None
+    message: str = ""
     conversation_id: UUID | None = None
+    note_id: UUID | None = None
 
 
 @dataclass
@@ -43,10 +55,14 @@ class ChatResponse:
 
 @dataclass
 class ChatConversation:
-    """A chat conversation scoped to a project."""
+    """A chat conversation, optionally scoped to a project.
+
+    ``project_id`` is ``None`` for project-less conversations (NOTES-001
+    §6b, e.g. chatting about a global note).
+    """
 
     id: UUID
-    project_id: UUID
+    project_id: UUID | None
     user_id: UUID
     title: str = field(default="")
     created_at: str = field(default="")
@@ -57,6 +73,10 @@ class ChatServiceProtocol(Protocol):
     """Service protocol for free-form chat.
 
     Follows RULE-03 (Contract first) and RULE-13 (streaming interface).
+
+    History access is ownership-scoped: unknown and foreign conversations
+    both raise ``NotFoundError`` (→ HTTP 404 via the global handler) so
+    callers cannot probe for other users' conversations.
     """
 
     async def ask(
@@ -73,25 +93,43 @@ class ChatServiceProtocol(Protocol):
     async def get_history(
         self,
         conversation_id: UUID,
+        user_id: UUID,
         *,
         limit: int = 50,
     ) -> list[ChatMessage]:
-        """Get conversation history."""
+        """Get conversation history for its owner.
+
+        Raises:
+            NotFoundError: The conversation does not exist or is owned by
+                another user.
+        """
         ...
 
     async def get_project_id_for_conversation(
         self,
         conversation_id: UUID,
+        user_id: UUID,
     ) -> UUID | None:
         """Get the project_id associated with a conversation.
 
-        Returns the project UUID, or None if the conversation does not exist.
+        Returns the project UUID, or ``None`` for a project-less
+        conversation (NOTES-001 §6b).
+
+        Raises:
+            NotFoundError: The conversation does not exist or is owned by
+                another user.
         """
         ...
 
     async def clear_history(
         self,
         conversation_id: UUID,
+        user_id: UUID,
     ) -> None:
-        """Clear conversation history."""
+        """Clear conversation history.
+
+        Raises:
+            NotFoundError: The conversation does not exist or is owned by
+                another user.
+        """
         ...

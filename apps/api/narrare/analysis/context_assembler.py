@@ -14,6 +14,13 @@ consumes KB context as prompt text, never structurally.
 Dependencies are injected: ``ChapterRepositoryProtocol``,
 ``KBContextProviderProtocol``, ``NovelRepositoryProtocol``. No direct DB access
 here.
+
+Ownership (IDOR remediation S12a): ``build_context`` requires the caller's
+``user_id`` and gates novel ownership in Step 0 — a single user-scoped
+``get_by_id`` lookup both authorizes the request AND supplies the genre/language
+metadata, BEFORE any chapter or KB load. Foreign and unknown novels are
+indistinguishable (``NotFoundError`` → 404); lookup failures propagate — the
+previous degrade-to-defaults path silently masked foreign access (RULE-11).
 """
 
 from __future__ import annotations
@@ -24,6 +31,7 @@ import structlog
 
 from narrare_core.agents.beta_reader_types import BetaReaderDeps
 from narrare_core.context._render_options import RenderOptions
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -56,7 +64,8 @@ class ContextAssembler:
             ``RenderOptions(annotate_provenance=True)`` so provenance flows
             (FIND-017). When ``None`` or when the KB is empty, both slots
             degrade to empty strings (RULE-11) — the analysis still runs.
-        novel_repo: Novel repository for genre metadata.
+        novel_repo: Novel repository — the Step 0 user-scoped ownership
+            gate AND the genre/language metadata source (IDOR S12a).
         max_previous_chapters: Maximum previous chapters to include summaries for.
         kb_summary_truncation: Maximum characters for the chapter-content
             fallback summary (used when a previous chapter has no stored
@@ -82,30 +91,43 @@ class ContextAssembler:
         self,
         novel_id: UUID,
         chapter_ids: list[UUID],
-        user_id: UUID | None = None,
+        user_id: UUID,
     ) -> BetaReaderDeps:
         """Assemble BetaReaderDeps from database.
 
         Steps:
+          0. Ownership gate: user-scoped novel lookup (also the metadata
+             source) — BEFORE any chapter/KB load (IDOR S12a)
           1. Fetch all chapters for the novel
           2. Identify target chapters (by IDs) and validate
           3. Fetch previous chapter summaries (up to 3)
           4. Fetch + render KB context through the canonical provider
-          5. Fetch novel metadata (genre + language)
-          6. Build and return BetaReaderDeps
+          5. Build and return BetaReaderDeps
 
         Args:
             novel_id: The novel containing the chapters.
             chapter_ids: Specific chapters to analyze.
-            user_id: Optional user ID for authorization checks.
+            user_id: The caller's identity — REQUIRED ownership gate input.
 
         Returns:
             Fully populated BetaReaderDeps ready for the agent.
 
         Raises:
+            NotFoundError: The novel is unknown or owned by another user —
+                both cases are indistinguishable by design (→ 404).
             ChapterNotFoundError: If any chapter_id is not found.
         """
         from narrare.analysis.errors import ChapterNotFoundError
+
+        # Step 0: Ownership gate + metadata in ONE user-scoped lookup. This
+        # replaces the former try/except-degrade in ``_fetch_novel_metadata``
+        # (RULE-11: graceful degradation may never carry an authorization
+        # decision) and runs BEFORE chapters or KB entities are loaded.
+        novel = await self._novel_repo.get_by_id(novel_id, user_id)
+        if novel is None:
+            raise NotFoundError("Novel", identifier=str(novel_id))
+        genre = novel.genre or ""
+        language = novel.writing_language or "en"
 
         # Step 1: Fetch all chapters for the novel
         all_chapters = await self._chapter_repo.list_by_novel(novel_id)
@@ -127,10 +149,7 @@ class ContextAssembler:
         # empty KB degrades to empty renderings (RULE-11).
         kb_characters, kb_locations = await self._fetch_kb_context(novel_id)
 
-        # Step 5: Fetch novel metadata (genre + language)
-        genre, language = await self._fetch_novel_metadata(novel_id, user_id)
-
-        # Step 6: Build BetaReaderDeps
+        # Step 5: Build BetaReaderDeps
         chapter_text = "\n\n---\n\n".join(c.content for c in target_chapters)
         chapter_titles = [c.title for c in target_chapters]
         word_count = sum(c.word_count for c in target_chapters)
@@ -228,33 +247,3 @@ class ContextAssembler:
                 options=options,
             )
         return bundle.characters.text, bundle.locations.text
-
-    async def _fetch_novel_metadata(
-        self, novel_id: UUID, user_id: UUID | None = None
-    ) -> tuple[str, str]:
-        """Fetch genre and language from novel metadata.
-
-        Returns both fields in a single DB call to avoid fetching the novel
-        twice for different metadata attributes.
-
-        Args:
-            novel_id: The novel to look up.
-            user_id: Optional user ID for authorization.
-
-        Returns:
-            Tuple of (genre, language). Either defaults to empty string / "en"
-            if the novel is not found or an error occurs.
-        """
-        try:
-            if user_id is not None:
-                novel = await self._novel_repo.get_by_id(novel_id, user_id)
-            else:
-                # Fallback: system-level access without ownership check
-                novel = await self._novel_repo.get(novel_id)
-            if novel is not None:
-                genre = novel.genre or ""
-                language = getattr(novel, "writing_language", "en") or "en"
-                return genre, language
-        except Exception:
-            logger.warning("novel_metadata_fetch_failed", novel_id=str(novel_id))
-        return "", "en"

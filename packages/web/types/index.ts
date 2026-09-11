@@ -15,6 +15,7 @@ export type {
   ApiError,
   TokenResponse,
   User,
+  WsTicket,
 } from "./auth";
 export type {
   ChatDoneEvent,
@@ -71,6 +72,20 @@ export type {
   KBTemplateSection,
   KBTemplateUpdateInfo,
 } from "./kb";
+// Scratchpad notes (NOTES-001)
+export type {
+  Note,
+  NoteCreate,
+  NoteListParams,
+  NoteSearchHit,
+  NoteSearchMode,
+  NoteSearchRequest,
+  NoteSearchResponse,
+  NoteTagsResponse,
+  NoteTypeKey,
+  NoteUpdate,
+} from "./notes";
+export { NOTE_TYPE_KEYS, noteDisplayTitle } from "./notes";
 export type {
   Chapter,
   ChapterSummary,

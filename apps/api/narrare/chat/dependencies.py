@@ -33,7 +33,25 @@ from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
+    import uuid
+
     from narrare.chat.chat_service import ChatService
+    from narrare.novels.repository import NovelRepository
+
+
+class _NovelOwnedLookup:
+    """OwnedLinkLookupProtocol adapter over NovelRepository.get_by_id.
+
+    Same pattern as ``narrare.notes.dependencies._NovelOwnedLookup``
+    (module-local: notes' adapter is private to its module). get_by_id is
+    already ownership-filtered, so this is pure delegation.
+    """
+
+    def __init__(self, repo: NovelRepository) -> None:
+        self._repo = repo
+
+    async def get_owned(self, entity_id: uuid.UUID, user_id: uuid.UUID) -> object | None:
+        return await self._repo.get_by_id(entity_id, user_id)
 
 
 async def get_chat_service(
@@ -53,6 +71,13 @@ async def get_chat_service(
       Mode 2 — agent-internal composition via ChatAgent).
     - DefaultRunLimitResolver for output-budget enforcement (ADR-045
       Decision 4).
+    - NoteService as NoteLookupProtocol for note context injection
+      (NOTES-001 §6b — wiring-level import, precedented by
+      ``narrare.novels.router`` importing ``narrare.volumes.repository``).
+    - _NovelOwnedLookup as OwnedLinkLookupProtocol for project-link
+      ownership validation (P-SEC, notes pattern). ALWAYS wired — the
+      service fails open on ``None`` (test contexts only), so a missing
+      lookup would silently skip validation (notes T7-review invariant).
 
     Args:
         session: SQLAlchemy async session for DB access.
@@ -63,6 +88,8 @@ async def get_chat_service(
     """
     from narrare.chat.chat_service import ChatService
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
+    from narrare.notes.dependencies import get_note_service
+    from narrare.novels.repository import NovelRepository
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
     resolver = get_model_routing_resolver(session)
@@ -80,4 +107,6 @@ async def get_chat_service(
         run_limit_resolver=DefaultRunLimitResolver(),
         api_key=resolved.api_key,
         base_url=resolved.base_url,
+        note_lookup=get_note_service(session),
+        novel_lookup=_NovelOwnedLookup(NovelRepository(session)),
     )

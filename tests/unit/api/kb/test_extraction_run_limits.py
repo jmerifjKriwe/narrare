@@ -33,6 +33,7 @@ from ._extraction_helpers import (
     FakeModelRegistry,
     make_chapter,
     make_extraction_output,
+    permissive_novel_gate,
 )
 
 if TYPE_CHECKING:
@@ -67,6 +68,7 @@ def _make_service(
         chapter_repo=cast("ChapterRepositoryProtocol", chapter_repo),
         kb_repo=cast("KBRepositoryProtocol", kb_repo),
         composer=cast("PromptComposer", composer),
+        novel_repo=permissive_novel_gate(),
         run_limit_resolver=resolver,
     )
 

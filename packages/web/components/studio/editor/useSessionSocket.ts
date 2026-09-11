@@ -8,9 +8,10 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { WritingSessionSocket } from "@/lib/api/generation";
+import type { WritingSessionSocket } from "@/lib/api/generation";
 import type { Message } from "../editor/ChatMessage";
-import { createSessionMessageHandler, type RecoveryState } from "./createSessionMessageHandler";
+import type { RecoveryState } from "./createSessionMessageHandler";
+import { createSessionSocket } from "./createSessionSocket";
 import {
   buildSessionClientMessage,
   type SendMessageOptions,
@@ -50,38 +51,36 @@ export function useSessionSocket({
   const socketRef = useRef<WritingSessionSocket | null>(null);
   const streamingTextRef = useRef("");
   const sessionIdRef = useRef<string | undefined>(undefined);
+  // True after a terminal ticket-mint failure: no socket exists and none is
+  // scheduled (single-shot per connect(), ADR-084), so sends must
+  // re-establish the connection instead of writing into the dead socket.
+  const transportDeadRef = useRef(false);
 
   useEffect(() => {
     if (!userId) return;
 
-    const socket = new WritingSessionSocket(
+    // A fresh socket invalidates any dead-end marker from a previous run.
+    transportDeadRef.current = false;
+
+    const socket = createSessionSocket({
       chapterId,
-      createSessionMessageHandler({
-        setMessages,
-        setStreamingText,
-        setIsStreaming,
-        setIsConnected,
-        setSaveNotification,
-        streamingTextRef,
-        mode,
-        sessionEndedLabel,
-        errorConnectingLabel,
-        savedLabel,
-        generationStoppedLabel,
-        recoveryFailedLabel,
-        setRecoveryState,
-        setSessionId: (sessionId) => {
-          sessionIdRef.current = sessionId;
-        },
-      }),
-      () => {
-        setIsConnected(false);
-        if (sessionIdRef.current) setRecoveryState("reconnecting");
-      },
-      userId,
       novelId,
       mode,
-    );
+      sessionEndedLabel,
+      errorConnectingLabel,
+      savedLabel,
+      generationStoppedLabel,
+      recoveryFailedLabel,
+      setMessages,
+      setStreamingText,
+      setIsStreaming,
+      setIsConnected,
+      setSaveNotification,
+      setRecoveryState,
+      streamingTextRef,
+      sessionIdRef,
+      transportDeadRef,
+    });
 
     socketRef.current = socket;
     socket.connect();
@@ -110,6 +109,15 @@ export function useSessionSocket({
       if (!socketRef.current) return false;
       const message = buildSessionClientMessage(type, content, options, sessionIdRef.current);
       if (!message) return false;
+      if (transportDeadRef.current) {
+        // After a terminal mint failure there is no socket to carry this
+        // message (the banner retry lands here): re-establish the
+        // connection — connect() mints a FRESH ticket and replays a pending
+        // recover_session automatically once the socket opens.
+        transportDeadRef.current = false;
+        socketRef.current.connect();
+        return true;
+      }
       socketRef.current.send(message);
       return true;
     },

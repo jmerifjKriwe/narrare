@@ -26,6 +26,7 @@ inline-suggest, and WS-turn streaming paths route through
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -171,10 +172,14 @@ class TestSummaryPrepareWiring:
         registry = _RecordingPrepareRegistry()
         chapter = make_chapter(content="Once upon a time in a faraway land...", title="Chapter 1")
         chapter_repo = AsyncMock(get=AsyncMock(return_value=chapter), update_summary=AsyncMock())
+        novel_repo = AsyncMock(
+            get_by_id=AsyncMock(return_value=SimpleNamespace(id=uuid4(), user_id=uuid4()))
+        )
         service = ChapterSummaryService(
             registry=cast("ModelRegistry", registry),
             config=config,
             chapter_repo=cast("ChapterRepository", chapter_repo),
+            novel_repo=cast("NovelRepository", novel_repo),
             composer=cast("PromptComposer", _FakeComposer()),
             api_key=_USER_KEY,
             base_url=_USER_BASE_URL,
@@ -195,7 +200,9 @@ class TestSummaryPrepareWiring:
                 new=AsyncMock(return_value=_ComposedInvocation()),
             ),
         ):
-            result = await service.summarize(chapter_id=chapter.id, max_sentences=3)
+            result = await service.summarize(
+                chapter_id=chapter.id, max_sentences=3, user_id=str(uuid4())
+            )
 
         _assert_prepare_wiring(
             registry,

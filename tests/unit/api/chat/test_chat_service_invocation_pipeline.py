@@ -210,7 +210,7 @@ class TestChatServiceWithPipeline:
                     conv_id_from_meta = str(event.get("conversation_id", ""))
 
         assert conv_id_from_meta is not None
-        history = await in_memory_store.get_history(UUID(conv_id_from_meta))
+        history = await in_memory_store.get_history(UUID(conv_id_from_meta), user_id)
         assert len(history) >= 2
         assert history[0].role == "user"
         assert history[0].content == "Save this message"
@@ -285,5 +285,5 @@ class TestBackwardCompatibility:
                     conv_id_from_meta = str(event.get("conversation_id", ""))
 
         assert conv_id_from_meta is not None
-        history = await in_memory_store.get_history(UUID(conv_id_from_meta))
+        history = await in_memory_store.get_history(UUID(conv_id_from_meta), user_id)
         assert len(history) >= 2

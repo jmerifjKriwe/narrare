@@ -10,10 +10,11 @@ Backward-compatibility tests (``invocation_pipeline=None``) live in
 Services covered:
 1. ExtractionService — ExtractionAgent
 2. KBConsistencyService — LLM phases
-3. KBImproveService — KBImproveAnalyzer
-4. WorldbuildingService — WorldbuildingAnalyzer
-5. KBAssistService — KBAssistAgent
-6. KBMergeService — KBMergeAgent
+3. KBAssistService — KBAssistAgent
+4. KBMergeService — KBMergeAgent
+
+KBImproveService/WorldbuildingService wiring lives in
+``test_invocation_wiring_kb_improve_worldbuilding.py`` (RULE-04 split).
 
 See:
     ADR-040, INFRA-013, CONSTRAINTS.md RULE-10/RULE-11.
@@ -30,6 +31,7 @@ import pytest
 
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
 from narrare_core.llm import ResolvedModelConfig
+from tests.unit.api.kb._extraction_helpers import permissive_novel_gate
 
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.models import FeatureInvocationEvidence
@@ -105,6 +107,7 @@ class TestExtractionInvocationWiring:
             chapter_repo=mock_chapter_repo,
             kb_repo=mock_kb_repo,
             composer=mock_composer,
+            novel_repo=permissive_novel_gate(),  # ownership gate (IDOR S10)
             invocation_pipeline=pipeline,
         )
 
@@ -147,6 +150,11 @@ class TestConsistencyInvocationWiring:
         mock_analyzer = MagicMock(spec=["analyze_entries"])
         mock_analyzer.analyze_entries = AsyncMock(return_value=([], 0))
 
+        # Permissive ownership gate (IDOR fix S9) — the gate is the caller's
+        # novel; ownership behavior is covered by the kb ownership matrix.
+        mock_novel_repo = MagicMock(spec=["get_by_id"])
+        mock_novel_repo.get_by_id = AsyncMock(return_value=object())
+
         service = KBConsistencyService(
             analyzer=mock_analyzer,
             asymmetry_checker=MagicMock(spec=["check"]),
@@ -154,6 +162,7 @@ class TestConsistencyInvocationWiring:
             kb_repo=MagicMock(spec=["list_entries"]),
             rel_repo=MagicMock(spec=["get_by_id"]),
             cache=MagicMock(spec=["get", "set", "hash_entity_types"]),
+            novel_repo=mock_novel_repo,
             invocation_pipeline=pipeline,
         )
 
@@ -174,72 +183,17 @@ class TestConsistencyInvocationWiring:
                 include_entry_internal=True,
                 include_cross_entity=False,
             )
-            _result = await service.check(novel_id=novel_id, request=request)
+            _result = await service.check(
+                novel_id=novel_id,
+                request=request,
+                user_id=str(uuid4()),
+            )
 
         assert len(sink.records) >= 1
 
 
 # ===========================================================================
-# 3. KBImproveService invocation wiring
-# ===========================================================================
-
-
-class TestImproveInvocationWiring:
-    """KBImproveService delegates to analyzer (evidence recorded there)."""
-
-    @pytest.mark.asyncio
-    async def test_analyze_delegates_to_analyzer(self) -> None:
-        from narrare.kb.improve_service import KBImproveService
-
-        mock_analyzer = MagicMock(spec=["analyze"])
-        mock_analyzer.analyze = AsyncMock(return_value=MagicMock(spec=["suggestions"]))
-
-        service = KBImproveService(
-            analyzer=mock_analyzer,
-            kb_repo=MagicMock(spec=["get_by_id"]),
-            kb_service=MagicMock(spec=["get"]),
-            rel_repo=MagicMock(spec=["get_by_id"]),
-        )
-
-        await service.analyze(novel_id=uuid4(), entry_id=uuid4())
-
-        # Evidence recording has moved to the analyzer (ADR-048 Mode 1).
-        # The service is now a thin delegation layer.
-        mock_analyzer.analyze.assert_awaited_once()
-
-
-# ===========================================================================
-# 4. WorldbuildingService invocation wiring
-# ===========================================================================
-
-
-class TestWorldbuildingInvocationWiring:
-    """WorldbuildingService delegates to analyzer (evidence recorded there)."""
-
-    @pytest.mark.asyncio
-    async def test_analyze_delegates_to_analyzer(self) -> None:
-        from narrare.kb.worldbuilding_contracts import WorldbuildingAnalysisRequest
-        from narrare.kb.worldbuilding_service import WorldbuildingService
-
-        mock_analyzer = MagicMock(spec=["analyze"])
-        mock_analyzer.analyze = AsyncMock(return_value=MagicMock(spec=["connections"]))
-
-        service = WorldbuildingService(
-            analyzer=mock_analyzer,
-            rel_repo=MagicMock(spec=["get_by_id"]),
-            cache=MagicMock(spec=["get", "set"]),
-        )
-
-        request = WorldbuildingAnalysisRequest()
-        await service.analyze(novel_id=uuid4(), request=request)
-
-        # Evidence recording has moved to the analyzer (ADR-048 Mode 1).
-        # The service is now a thin delegation layer.
-        mock_analyzer.analyze.assert_awaited_once()
-
-
-# ===========================================================================
-# 5. KBAssistService invocation wiring
+# 3. KBAssistService invocation wiring
 # ===========================================================================
 
 
@@ -291,7 +245,7 @@ class TestAssistInvocationWiring:
 
 
 # ===========================================================================
-# 6. KBMergeService invocation wiring
+# 4. KBMergeService invocation wiring
 # ===========================================================================
 
 

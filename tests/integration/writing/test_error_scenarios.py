@@ -11,8 +11,13 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
+from sqlalchemy import select
+
+from narrare.settings.models import ProjectSettings
+
 if TYPE_CHECKING:
     from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 # ---------------------------------------------------------------------------
@@ -214,6 +219,41 @@ class TestNonExistentResources:
         # FK violation surfaced as an unhandled 500 here).
         assert resp.status_code == 404
 
+    async def test_coauthor_for_unknown_novel_returns_404_without_settings_row(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+        db_session: AsyncSession,
+    ) -> None:
+        """Unknown novel on a real factory → 404, no settings row materialized.
+
+        The co-author route is the one writing surface whose factory is
+        NOT replaced by the integration conftest, so this exercises the
+        real ``get_coauthor_service`` resolution chain. Before the
+        fix-wave N1 gate, the model-routing resolver's project-settings
+        read auto-created + flushed a ``project_settings`` row for the
+        unknown novel → FK IntegrityError → HTTP 500 — a novel-existence
+        oracle (foreign ≢ unknown). The factory-entry gate must reject
+        with 404 BEFORE the resolver runs, so no row is ever written.
+        """
+        fake_novel_id = uuid.uuid4()
+        fake_chapter_id = uuid.uuid4()
+
+        resp = await client.post(
+            f"/api/v1/writing/chapters/{fake_chapter_id}/co-author",
+            params={"novel_id": str(fake_novel_id)},
+            json={"selection_text": "s" * 60, "focus": ["word_choice"]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 404
+
+        # The auto-creating project-settings read must never have run —
+        # no project_settings row may exist for the unknown novel.
+        result = await db_session.execute(
+            select(ProjectSettings).where(ProjectSettings.novel_id == fake_novel_id)
+        )
+        assert result.scalar_one_or_none() is None
+
     async def test_accept_nonexistent_request_returns_404(
         self,
         client: AsyncClient,
@@ -256,16 +296,40 @@ class TestNonExistentResources:
         )
         assert resp.status_code == 404
 
-    async def test_stats_for_nonexistent_novel_returns_200_with_zeros(
+    async def test_stats_for_unknown_novel_returns_404(
         self,
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """Stats for non-existent novel returns 200 with zero counts."""
+        """Stats for an unknown novel returns 404 (IDOR S13 ownership gate).
+
+        Anti-enumeration: an unknown novel id is indistinguishable from a
+        foreign user's novel — both surface as 404, never 200-with-zeros.
+        """
         fake_novel_id = uuid.uuid4()
 
         resp = await client.get(
             f"/api/v1/writing/novels/{fake_novel_id}/stats",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_stats_for_owned_novel_without_generations_returns_200_with_zeros(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Stats for an owned novel with no generations returns zero counts."""
+        novel_resp = await client.post(
+            "/api/v1/novels",
+            json={"title": "Zero Stats Novel", "language": "en"},
+            headers=auth_headers,
+        )
+        assert novel_resp.status_code == 201
+        novel_id = novel_resp.json()["id"]
+
+        resp = await client.get(
+            f"/api/v1/writing/novels/{novel_id}/stats",
             headers=auth_headers,
         )
         # Stats endpoint returns zeros for novel with no generations

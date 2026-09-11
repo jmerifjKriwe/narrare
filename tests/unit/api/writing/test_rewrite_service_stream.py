@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import uuid
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 
@@ -74,7 +74,6 @@ async def _fake_stream(*texts: str) -> Any:
 @pytest.fixture()
 def mock_repo() -> AsyncMock:
     repo = AsyncMock()
-    repo.chapter_exists = AsyncMock(return_value=True)
     repo.get_active_for_chapter = AsyncMock(return_value=None)
     repo.create_if_no_active = AsyncMock(return_value=uuid.uuid4())
     repo.update_status = AsyncMock()
@@ -107,11 +106,21 @@ def service(
     mock_draft_processor: MagicMock,
 ) -> RewriteService:
     """RewriteService with mocked dependencies (no tone/relationship services)."""
+    # S6 gate-open repos (chapter binds to ANY novel, every novel owned);
+    # access matrix: test_generation_access_matrix.py.
+    from tests.factories import make_chapter, make_novel
+
+    chapter_repo = AsyncMock(spec=["get"])
+    chapter_repo.get = AsyncMock(return_value=make_chapter(novel_id=ANY))
+    novel_repo = AsyncMock(spec=["get_by_id"])
+    novel_repo.get_by_id = AsyncMock(return_value=make_novel())
     return RewriteService(
         repo=mock_repo,
         pipeline=mock_pipeline,
         draft_processor=mock_draft_processor,
         config=CONFIG,
+        chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
     )
 
 

@@ -4,6 +4,10 @@ Builds prompts via PromptComposer, calls ModelRegistry, parses structured
 JSON responses into GeneratedName objects.  When a KB repository is
 injected, existing entity names are passed to the LLM for proactive
 dedup and generated names are flagged if they match existing KB entries.
+
+Ownership (IDOR remediation S12b): ``generate_names`` gates the request's
+project on the caller BEFORE ``_fetch_existing_names`` and any LLM call —
+foreign and unknown projects are indistinguishable (``NotFoundError`` → 404).
 """
 
 from __future__ import annotations
@@ -19,12 +23,14 @@ from narrare.generation.schemas import (
     NameGenerateRequest,
     NameGenerateResponse,
 )
+from narrare_core.shared.errors import NotFoundError
 from narrare_core.writing.budget import cap_to_budget
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.kb.contracts import KBRepositoryProtocol
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
@@ -61,6 +67,16 @@ class NameGeneratorService:
     Parses structured JSON responses into GeneratedName objects.  When a
     KB repository is injected, existing entity names are passed to the LLM
     for proactive dedup and generated names are flagged on match.
+
+    Args:
+        registry: ModelRegistry for LLM execution.
+        composer: PromptComposer for prompt assembly.
+        config: Resolved model configuration.
+        novel_repo: Novel repository — the project ownership gate (IDOR S12b).
+        api_key: Optional per-user API key override.
+        base_url: Optional per-user base URL override.
+        kb_repo: Optional KB repository for name dedup.
+        invocation_pipeline: Optional pipeline for invocation evidence.
     """
 
     def __init__(
@@ -68,6 +84,7 @@ class NameGeneratorService:
         registry: ModelRegistry,
         composer: PromptComposer,
         config: ResolvedModelConfig,
+        novel_repo: NovelRepositoryProtocol,
         api_key: str | None = None,
         base_url: str | None = None,
         kb_repo: KBRepositoryProtocol | None = None,
@@ -76,22 +93,42 @@ class NameGeneratorService:
         self._registry = registry
         self._composer = composer
         self._config = config
+        self._novel_repo = novel_repo
         self._api_key = api_key
         self._base_url = base_url
         self._kb_repo = kb_repo
         self._invocation_pipeline = invocation_pipeline
 
-    async def generate_names(self, request: NameGenerateRequest) -> NameGenerateResponse:
+    async def generate_names(
+        self, request: NameGenerateRequest, user_id: UUID
+    ) -> NameGenerateResponse:
         """Generate names based on request parameters.
+
+        The FIRST statement gates the request's project on the caller
+        (Pattern B, IDOR S12b): a foreign or unknown project raises
+        ``NotFoundError`` BEFORE the project's KB entity names are read
+        (they would otherwise flow into the LLM prompt) and before any
+        LLM call.
 
         Args:
             request: Name generation request with type, name_style, count, etc.
+            user_id: The caller's identity — ownership gate input.
 
         Returns:
             NameGenerateResponse with generated names and metadata.
+
+        Raises:
+            NotFoundError: The project is unknown or owned by another user —
+                both cases are indistinguishable by design (→ 404).
         """
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext
+
+        # Ownership gate (IDOR S12b) — BEFORE _fetch_existing_names and any
+        # LLM call. Foreign KB names must never reach the prompt.
+        novel = await self._novel_repo.get_by_id(request.project_id, user_id)
+        if novel is None:
+            raise NotFoundError("Novel", identifier=str(request.project_id))
 
         # Fetch existing KB names BEFORE the LLM call for proactive dedup.
         existing_names = await self._fetch_existing_names(

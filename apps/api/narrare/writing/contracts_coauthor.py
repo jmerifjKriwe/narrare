@@ -38,19 +38,27 @@ class CoAuthorServiceProtocol(Protocol):
         chapter_id: UUID,
         novel_id: UUID,
         request: CoAuthorRequest,
+        *,
+        user_id: str,
     ) -> None:
         """Pre-validate co-author request before starting SSE response.
 
+        Ownership gate (IDOR remediation S6): ``verify_chapter_access``
+        runs FIRST — foreign and unknown chapter ids are indistinguishable
+        404s raised before any input validation, active-generation check,
+        or request-row creation.
+
         Checks:
-        1. ``selection_text`` is not empty.
-        2. ``focus`` list is not empty.
-        3. Chapter exists in the database.
+        1. Caller owns the chapter within the addressed novel.
+        2. ``selection_text`` is not empty.
+        3. ``focus`` list is not empty.
         4. No other generation is active for this chapter (conflict prevention).
 
         Raises:
+            NotFoundError: Chapter unknown, not in the addressed novel,
+                or novel owned by another user.
             ValidationError: If selection_text is empty or focus is empty.
             ConflictError: If another generation is active for the chapter.
-            NotFoundError: If the chapter or novel does not exist.
         """
         ...
 
@@ -108,7 +116,10 @@ class CoAuthorServiceProtocol(Protocol):
             Updated ``Chapter`` ORM model with reconstructed content.
 
         Raises:
-            NotFoundError: If the chapter does not exist.
+            NotFoundError: If the generation request does not exist or
+                belongs to another user, if the request row does not
+                reference the addressed chapter and novel, or if the
+                chapter does not exist.
         """
         ...
 
@@ -116,18 +127,24 @@ class CoAuthorServiceProtocol(Protocol):
         self,
         request_id: UUID,
         feedback: list[ChangeFeedback],
+        user_id: str,
     ) -> None:
         """Record batch per-change feedback for co-author (LEARN-001).
 
         Creates individual ``FeedbackEvent`` entries for each change
         feedback item.  Silently no-ops when no ``FeedbackCollector``
-        is configured.
+        is configured.  Events are always stamped with the request
+        row's user — the ownership gate guarantees that row belongs to
+        the caller, so feedback can never pollute another user's
+        preference learning.
 
         Args:
             request_id: The generation request ID these changes belong to.
             feedback: Per-change feedback items with action and metadata.
+            user_id: Authenticated user identifier (access check).
 
         Raises:
-            NotFoundError: If the generation request does not exist.
+            NotFoundError: If the generation request does not exist or
+                belongs to another user.
         """
         ...

@@ -19,6 +19,7 @@ import structlog
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.kb.relationship_repository import RelationshipRepository
 from narrare.writing._session_memory_deps import get_session_memory_instance
+from narrare.writing.deps_ownership import ensure_novel_owned
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.run_limits import SUGGEST_MAX_TOKENS
 
@@ -48,8 +49,16 @@ async def get_writing_service(
 
     Returns:
         Configured WritingService ready for use.
+
+    Raises:
+        NotFoundError: If ``project_id`` is given but unknown or not
+            owned by ``user_id`` (fix-wave N1: gated BEFORE the
+            auto-creating project-settings reads of the resolver and
+            token-limit service — foreign ≡ unknown → 404, never a
+            500 FK oracle).
     """
     from narrare._app.config import get_settings
+    from narrare.chapters.repository import ChapterRepository
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.settings.repository import UserSettingsRepository
@@ -63,6 +72,12 @@ async def get_writing_service(
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.service import WritingService
     from narrare_core.writing.draft_processor import DraftProcessor
+
+    # Fix-wave N1: gate the project scope BEFORE model routing / token
+    # limits — both read project-keyed settings through auto-creating
+    # repositories (unknown novel → FK IntegrityError = 500 oracle;
+    # foreign novel → transient victim row).
+    await ensure_novel_owned(session, user_id, project_id)
 
     resolver = get_model_routing_resolver(session)
     assert isinstance(resolver, ModelRoutingResolverImpl)
@@ -86,9 +101,13 @@ async def get_writing_service(
     # over the full total.
     from narrare.novels.repository import NovelRepository
 
+    # IDOR S6: novel repo backs the verify_chapter_access ownership gate
+    # inside start_generation (via _helpers.start_generation_request) and
+    # the series-in-scope resolution below.
+    novel_repo = NovelRepository(session)
     series_in_scope = False
     if project_id is not None:
-        novel = await NovelRepository(session).get(project_id)
+        novel = await novel_repo.get(project_id)
         series_in_scope = novel is not None and novel.series_id is not None
 
     budgets = resolve_context_budgets(
@@ -126,7 +145,7 @@ async def get_writing_service(
     from narrare.series.series_history_provider import SeriesHistoryProvider
 
     series_history_provider = SeriesHistoryProvider(
-        novel_repo=NovelRepository(session),
+        novel_repo=novel_repo,
         series_repo=SeriesRepository(session),
         band_summary_repo=BandSummaryRepository(session),
     )
@@ -136,6 +155,8 @@ async def get_writing_service(
         pipeline=pipeline,
         draft_processor=draft_processor,
         config=config,
+        chapter_repo=ChapterRepository(session),
+        novel_repo=novel_repo,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         tone_service=tone_service,
@@ -144,43 +165,3 @@ async def get_writing_service(
         series_history_provider=series_history_provider,
         series_history_budget=budgets.series_history,
     )
-
-
-async def get_writing_service_for_stream(
-    session: AsyncSession,
-    user_id: str,
-    request_id: UUID,
-) -> WritingService:
-    """Request-scoped factory for the SSE stream path (ADR-082, Task 3e).
-
-    The stream route only knows ``request_id`` — the novel is recoverable
-    solely from the generation-request row. Resolving it here keeps the one
-    factory resolution path project-aware on the real generation path:
-    ADR-082 budget carving (series in scope → series-history ceiling +
-    tier-base carve-out) and project-level model routing both key on the
-    project id. The row is validated via
-    :func:`narrare.writing._helpers.get_validated_request`, so ownership is
-    enforced before the SSE response starts (CR-07).
-
-    Args:
-        session: DB session for repository and settings lookups.
-        user_id: Authenticated user identifier (access check).
-        request_id: The generation request being streamed.
-
-    Raises:
-        NotFoundError: If the request does not exist or belongs to
-            another user.
-
-    Returns:
-        Configured WritingService with budgets resolved for the
-        request's novel.
-    """
-    from narrare.writing._helpers import get_validated_request
-    from narrare.writing.repository import GenerationRepository
-
-    request_model = await get_validated_request(
-        GenerationRepository(session),
-        request_id,
-        user_id,
-    )
-    return await get_writing_service(session, user_id, request_model.novel_id)

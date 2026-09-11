@@ -62,7 +62,7 @@ def build_chat_invocation_context(
     *,
     prompt_ctx: PromptContext,
     user_id: UUID,
-    project_id: UUID,
+    project_id: UUID | None,
     conv_id: UUID,
     invocation_id: UUID,
 ) -> PromptInvocationContext:
@@ -76,7 +76,8 @@ def build_chat_invocation_context(
     Args:
         prompt_ctx: The composed chat prompt context.
         user_id: The authenticated user's UUID.
-        project_id: The project UUID for enrichment correlation.
+        project_id: The project UUID for enrichment correlation, or
+            ``None`` for project-less chat (NOTES-001 §6b).
         conv_id: The conversation UUID.
         invocation_id: The per-turn invocation UUID.
 
@@ -104,7 +105,7 @@ async def compose_chat_invocation(
     invocation_pipeline: InvocationPipeline | None,
     prompt_ctx: PromptContext,
     user_id: UUID,
-    project_id: UUID,
+    project_id: UUID | None,
     conv_id: UUID,
     invocation_id: UUID,
 ) -> PromptContext:
@@ -121,7 +122,8 @@ async def compose_chat_invocation(
         invocation_pipeline: The InvocationPipeline, or ``None`` for a no-op.
         prompt_ctx: The original chat prompt context.
         user_id: The authenticated user's UUID.
-        project_id: The project UUID for enrichment correlation.
+        project_id: The project UUID for enrichment correlation, or
+            ``None`` for project-less chat (NOTES-001 §6b).
         conv_id: The conversation UUID.
         invocation_id: The per-turn invocation UUID.
 

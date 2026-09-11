@@ -1,11 +1,12 @@
 """Extraction Service — orchestrates ExtractionAgent for chapter → KB extraction.
 
 Manages the full extraction flow:
-1. Fetch chapter content from the chapter repository
-2. Fetch existing KB entries: dedup names, typed ID roster, world context
-3. Build system prompt via PromptComposer
-4. Run ExtractionAgent over the chapter text
-5. Return structured ExtractionOutput
+1. Verify the caller owns the novel (IDOR fix S10) — BEFORE any load
+2. Fetch chapter content from the chapter repository
+3. Fetch existing KB entries: dedup names, typed ID roster, world context
+4. Build system prompt via PromptComposer
+5. Run ExtractionAgent over the chapter text
+6. Return structured ExtractionOutput
 
 Also provides ``apply_extraction()`` that delegates to
 ExtractionApplyService for the apply step (KB-007).
@@ -16,11 +17,11 @@ Uses ModelRegistry + PromptComposer (RULE-01b, RULE-02).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import uuid4
 
 import structlog
 
 from narrare.kb._extraction_position import resolve_chapter_position
+from narrare.kb._novel_gate import verify_novel_owned
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
 
 if TYPE_CHECKING:
@@ -33,11 +34,12 @@ if TYPE_CHECKING:
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.schemas_extraction import ApplyExtractionItem, ApplyExtractionResponse
     from narrare.kb.service import KBService
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.agents.extraction_types import ExtractionOutput
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.llm.run_limits import DefaultRunLimitResolver, ResolvedRunLimits
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -52,6 +54,9 @@ class ExtractionService:
         chapter_repo: Chapter repository for reading chapter content.
         kb_repo: KB repository for fetching existing entity names (dedup).
         composer: PromptComposer for bundled system prompts (RULE-02).
+        novel_repo: Novel repository — the novel ownership gate (IDOR
+            fix S10); extraction verifies the caller owns the novel
+            before the chapter content load.
         kb_service: KBService for the apply step (optional, needed for apply).
         rel_repo: RelationshipRepository for the apply step (optional).
         session: Request-scoped AsyncSession for the apply step (optional;
@@ -80,6 +85,7 @@ class ExtractionService:
         chapter_repo: ChapterRepositoryProtocol,
         kb_repo: KBRepositoryProtocol,
         composer: PromptComposer,
+        novel_repo: NovelRepositoryProtocol,
         kb_service: KBService | None = None,
         rel_repo: RelationshipRepository | None = None,
         session: AsyncSession | None = None,
@@ -94,6 +100,7 @@ class ExtractionService:
         self._chapter_repo = chapter_repo
         self._kb_repo = kb_repo
         self._composer = composer
+        self._novel_repo = novel_repo
         self._kb_service = kb_service
         self._rel_repo = rel_repo
         self._session = session
@@ -111,18 +118,27 @@ class ExtractionService:
     ) -> ExtractionOutput:
         """Extract entities, facts, and relationships from a chapter.
 
+        Ownership gate first (IDOR fix S10): the caller must own
+        ``novel_id`` — BEFORE the chapter content load, the KB dedup
+        read, prompt composition, or any LLM call. A ``novel_id`` path
+        segment is addressing, not authorization.
+
         Args:
             novel_id: Novel identifier (scopes the chapter + KB lookup).
             chapter_id: Chapter to analyze.
-            user_id: Requesting user (forwarded for ownership checks).
+            user_id: Requesting user — the novel ownership gate input.
 
         Returns:
             Structured ExtractionOutput with results and analysis notes.
 
         Raises:
-            ValueError: Chapter not found or has no content.
+            NotFoundError: Novel unknown or owned by another user.
+            ValueError: Chapter not found in the novel or has no content.
         """
-        # 1. Get chapter content — scoped by novel_id for ownership.
+        await verify_novel_owned(self._novel_repo, novel_id, user_id)
+
+        # 1. Get chapter content — chapter∈novel linkage (data integrity);
+        #    the user scope was enforced by the ownership gate above.
         chapter = await self._chapter_repo.get_by_id(chapter_id, novel_id)
         if chapter is None:
             raise ValueError(f"Chapter {chapter_id} not found")
@@ -140,6 +156,7 @@ class ExtractionService:
             fetch_existing_entries_graceful,
             format_entity_roster,
         )
+        from narrare.kb._extraction_invocation import compose_and_prepare
         from narrare.kb._world_context import format_world_context
 
         existing_entries = await fetch_existing_entries_graceful(self._kb_repo, novel_id, user_id)
@@ -154,69 +171,25 @@ class ExtractionService:
         # is not handled here — it reaches the prompt via ``user_preferences``.
         world_context = format_world_context(existing_entries)
 
-        # 3. Compose prompt via compose_invocation (Mode 1 — composer-driven,
-        #    ADR-048). Enrichment flows through the composer into the system
-        #    prompt.
-        from narrare._app.invocation_context import build_invocation_context
-        from narrare_core.ai_invocation import compose_invocation
-        from narrare_core.llm.intents import LLMIntent
-
-        prompt_context = build_extraction_prompt_context(
-            chapter_title=chapter.title or "",
-            existing_entity_roster=entity_roster,
-            world_context=world_context,
-        )
-        invocation_context = build_invocation_context(
-            feature_id="kb_extract",
-            intent=LLMIntent.KB_EXTRACT,
-            user_id=user_id,
-            project_id=novel_id,
-        )
-        try:
-            invocation_result = await compose_invocation(
-                invocation_pipeline=self._invocation_pipeline,
-                invocation_context=invocation_context,
-                composer=self._composer,
-                prompt_context=prompt_context,
-                intent=LLMIntent.KB_EXTRACT,
-            )
-            assert invocation_result.composed_prompt is not None  # Mode 1 always composes
-            system_prompt = invocation_result.composed_prompt.system
-        except Exception:
-            logger.warning(
-                "invocation_composition_failed",
-                feature_id="kb_extract",
-                exc_info=True,
-            )
-            composed = await self._composer.build(LLMIntent.KB_EXTRACT, prompt_context)
-            system_prompt = composed.system
-
-        # 4. Resolve run limits first (ADR-045 Decision 4) so the prepared
-        #    call can carry them: usage_limits (+ max_tokens mirrored into
-        #    model_settings) bound generation even on thinking models with
-        #    tool_choice: required. None (legacy/test default) applies no
-        #    output caps.
-        resolved_limits: ResolvedRunLimits | None = None
-        if self._run_limit_resolver is not None:
-            resolved_limits = self._run_limit_resolver.resolve(
-                config=self._config,
-                budget=None,
-                invocation_id=uuid4(),
-            )
-
-        # 5. Single assembly point (ModelRegistry.prepare): resolves the
-        #    model with per-user credentials injected (model-routing
-        #    cascade — the user's wizard-configured provider is used) AND
-        #    builds the runtime model_settings (intent-aware thinking
-        #    policy + ADR-045 output cap) as one coherent triple. The
-        #    historical duplicate get_model call and the fragmented
-        #    settings assembly are impossible by construction now.
-        prepared = await self._registry.prepare(
-            self._config,
-            intent=LLMIntent.KB_EXTRACT,
-            usage_limits=resolved_limits.usage_limits if resolved_limits else None,
+        # 3-5. Compose system prompt (Mode 1, ADR-048, graceful fallback) +
+        # resolve ADR-045 run limits + prepare via the single assembly
+        # point — the invocation scaffolding lives in the dedicated
+        # module (RULE-04/RULE-06).
+        system_prompt, prepared = await compose_and_prepare(
+            composer=self._composer,
+            invocation_pipeline=self._invocation_pipeline,
+            registry=self._registry,
+            config=self._config,
             api_key=self._api_key,
             base_url=self._base_url,
+            run_limit_resolver=self._run_limit_resolver,
+            novel_id=novel_id,
+            user_id=user_id,
+            prompt_context=build_extraction_prompt_context(
+                chapter_title=chapter.title or "",
+                existing_entity_roster=entity_roster,
+                world_context=world_context,
+            ),
         )
 
         agent = ExtractionAgent(
@@ -256,6 +229,13 @@ class ExtractionService:
     ) -> ApplyExtractionResponse:
         """Apply endorsed extraction items to the Knowledge Base.
 
+        Ownership gate first (IDOR remediation S13, carried from S10):
+        the caller must own ``novel_id`` BEFORE the apply service is
+        constructed or any KB write happens. Without the gate a foreign
+        caller could create/update entries in the victim's KB — and the
+        per-item error swallowing in ``ExtractionApplyService`` would
+        have logged (not surfaced) the downstream denials.
+
         Delegates to ExtractionApplyService for per-item handling.
 
         Args:
@@ -271,8 +251,11 @@ class ExtractionService:
             ApplyExtractionResponse with created and updated entries.
 
         Raises:
+            NotFoundError: Novel unknown or owned by another user.
             ValueError: If required dependencies not configured.
         """
+        await verify_novel_owned(self._novel_repo, novel_id, user_id)
+
         if self._kb_service is None or self._rel_repo is None:
             raise ValueError(
                 "KBService and RelationshipRepository must be configured for apply_extraction"

@@ -40,6 +40,7 @@ from narrare_core.export.normalizer import NarrareNormalizer
 from tests.unit.api.export.conftest import make_chapter, make_source
 
 NOVEL_ID = UUID("00000000-0000-0000-0000-0000000000a1")
+OWNER = UUID("00000000-0000-0000-0000-0000000000ff")  # job owner for registry seeding
 
 _REQUIRES_PANDOC = pytest.mark.skipif(
     shutil.which("pandoc") is None,
@@ -330,16 +331,17 @@ class TestRunnerEndToEndRealRenderer:
         )
         _install_session_and_repo(monkeypatch, source=source)
 
-        job = registry.create(NOVEL_ID, ExportFormat.MARKDOWN)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.MARKDOWN)
         await tasks.run_export_inprocess(
             job.job_id, NOVEL_ID, ExportOptions(format=ExportFormat.MARKDOWN)
         )
 
-        completed = registry.get(job.job_id)
+        completed = registry.get(job.job_id, OWNER)
         assert completed.status is ExportJobStatus.COMPLETED
         assert completed.artifact_url is not None
 
-        artifact = registry.consume_artifact(job.job_id, _token_from_url(completed.artifact_url))
+        token = _token_from_url(completed.artifact_url)
+        artifact = registry.consume_artifact(job.job_id, token, OWNER)
         try:
             md = artifact.path.read_text(encoding="utf-8")
             assert artifact.media_type == "text/markdown"

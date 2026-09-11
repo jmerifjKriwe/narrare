@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from pydantic_ai.models import Model
     from pydantic_ai.usage import UsageLimits
 
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.llm.gateway import ModelRegistry
 
 # ---------------------------------------------------------------------------
@@ -265,6 +266,8 @@ class TestCredentialsReachResolutionPoint:
         )
         kb_repo = MagicMock(spec=["list_entries"], name="KBRepository")
         kb_repo.list_entries = AsyncMock(return_value=([], 0))
+        novel_repo = MagicMock(spec=["get_by_id"], name="NovelRepository")
+        novel_repo.get_by_id = AsyncMock(return_value=SimpleNamespace(id=uuid4()))
 
         service = ExtractionService(
             registry=cast("ModelRegistry", registry),
@@ -272,6 +275,7 @@ class TestCredentialsReachResolutionPoint:
             chapter_repo=chapter_repo,
             kb_repo=kb_repo,
             composer=composer,
+            novel_repo=cast("NovelRepositoryProtocol", novel_repo),
             api_key=_USER_KEY,
             base_url=_USER_BASE_URL,
         )
