@@ -11,11 +11,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
+from uuid import UUID, uuid4
 
+import pytest
 from pydantic_ai.models import Model
 
 from narrare_core.agents.base import StreamEvent
 from narrare_core.chat.chat_agent import ChatAgent
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from unittest.mock import AsyncMock
@@ -80,7 +83,7 @@ class TestAskNewConversation:
         in_memory_store: InMemoryConversationStore,
     ) -> None:
         """A new conversation is persisted via the store."""
-        from uuid import UUID, uuid4
+        from uuid import uuid4
 
         from tests.unit.api.chat.conftest import _async_gen, _make_request
 
@@ -106,7 +109,7 @@ class TestAskNewConversation:
         store_conv_id = UUID(conv_id_from_meta)
 
         # Verify the user message and assistant response were stored
-        history = await in_memory_store.get_history(store_conv_id)
+        history = await in_memory_store.get_history(store_conv_id, user_id)
         assert len(history) >= 2  # user message + assistant response
         assert history[0].role == "user"
         assert history[0].content == "First message!"
@@ -212,7 +215,7 @@ class TestAskExistingConversation:
         assert events[-1]["type"] == "done"
 
         # Verify the user message was stored
-        history = await in_memory_store.get_history(conv_id)
+        history = await in_memory_store.get_history(conv_id, user_id)
         assert history[-2].role == "user"
         assert history[-2].content == "Tell me more!"
         assert history[-1].role == "assistant"
@@ -247,8 +250,42 @@ class TestAskExistingConversation:
                 pass
 
         # The new user message should have been saved before streaming
-        history = await in_memory_store.get_history(conv_id)
+        history = await in_memory_store.get_history(conv_id, user_id)
         assert len(history) >= 2
+
+    async def test_ask_to_foreign_conversation_writes_nothing_and_raises(
+        self,
+        service: ChatService,
+        in_memory_store: InMemoryConversationStore,
+    ) -> None:
+        """IDOR write regression: posting to another user's conversation 404s
+        with NO message appended (ownership gates BEFORE the write)."""
+        from tests.unit.api.chat.conftest import _make_request
+
+        owner_id, attacker_id = uuid4(), uuid4()
+        conv_id = await in_memory_store.create_conversation(None, owner_id, "Owner's message")
+
+        request = _make_request(message="Foreign injection", conversation_id=conv_id)
+
+        with pytest.raises(NotFoundError):
+            await service.ask(request, attacker_id)
+
+        # The foreign conversation is unchanged — no message row appended.
+        history = await in_memory_store.get_history(conv_id, owner_id)
+        assert [m.content for m in history] == ["Owner's message"]
+
+    async def test_ask_to_unknown_conversation_raises_not_found(
+        self,
+        service: ChatService,
+    ) -> None:
+        """An unknown conversation_id 404s instead of writing orphan messages
+        (against PostgreSQL the ungated write would even fail as FK 500)."""
+        from tests.unit.api.chat.conftest import _make_request
+
+        request = _make_request(message="Hello?", conversation_id=uuid4())
+
+        with pytest.raises(NotFoundError):
+            await service.ask(request, uuid4())
 
 
 # ---------------------------------------------------------------------------

@@ -107,6 +107,8 @@ class AuthorVoiceDriftService:
         composer: PromptComposer | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
@@ -115,6 +117,8 @@ class AuthorVoiceDriftService:
         self._config = model_config
         self._composer = composer
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def run(
         self,
@@ -275,6 +279,8 @@ class AuthorVoiceDriftService:
             novel_id=novel_id,
             model_registry=self._registry,
             model_config=config,
+            api_key=self._api_key,
+            base_url=self._base_url,
         )
         logger.info(
             "author_voice_drift_complete",

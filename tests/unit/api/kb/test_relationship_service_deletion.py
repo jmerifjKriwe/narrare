@@ -6,12 +6,16 @@ with validation rules (ownership, existence, known types).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 import pytest
 
 from narrare.kb.relationship_service import RelationshipService
 from narrare_core.shared.errors import NotFoundError
+
+if TYPE_CHECKING:
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 # ---------------------------------------------------------------------------
 # Fake classes (mirrored from test_relationship_service.py for isolation)
@@ -91,12 +95,18 @@ class FakeRelRepo:
 
 
 def _make_service() -> tuple[RelationshipService, FakeEntryRepo, FakeRelRepo]:
-    """Create a RelationshipService with fake dependencies."""
+    """Create a RelationshipService with fake dependencies.
+
+    The novel gate is permissive (IDOR S10): every caller owns the novel.
+    """
+    from ._test_fakes import FakeNovelRepo
+
     entry_repo = FakeEntryRepo()
     rel_repo = FakeRelRepo()
     service = RelationshipService(
         rel_repo=rel_repo,  # type: ignore[arg-type]
         entry_repo=entry_repo,  # type: ignore[arg-type]
+        novel_repo=cast("NovelRepositoryProtocol", FakeNovelRepo()),
     )
     return service, entry_repo, rel_repo
 

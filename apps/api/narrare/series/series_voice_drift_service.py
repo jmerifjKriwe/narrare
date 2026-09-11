@@ -57,7 +57,7 @@ from narrare.analysis.schemas_author_voice_drift import (
     AuthorVoiceDriftNoProfile,
     AuthorVoiceDriftResponse,
 )
-from narrare_core.profiles.author_voice import AuthorVoiceProfile
+from narrare.series.series_voice_profile_reader import read_series_voice_profile
 from narrare_core.shared.errors import (
     ConfigurationError,
     ForbiddenError,
@@ -103,6 +103,8 @@ class SeriesVoiceDriftService:
         composer: PromptComposer | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         """Initialise the service with all dependencies injected (RULE-07).
 
@@ -117,6 +119,10 @@ class SeriesVoiceDriftService:
             composer: PromptComposer for the governed author_voice_drift prompt
                 (None → ConfigurationError at check time).
             invocation_pipeline: Optional InvocationPipeline for evidence.
+            api_key: Optional per-user provider API key override (model-routing
+                cascade) — forwarded to the drift pipeline's ``get_model``
+                call.
+            base_url: Optional per-user provider base URL override.
         """
         self._series_repo = series_repo
         self._novel_repo = novel_repo
@@ -125,6 +131,8 @@ class SeriesVoiceDriftService:
         self._config = model_config
         self._composer = composer
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def check(
         self,
@@ -156,8 +164,9 @@ class SeriesVoiceDriftService:
         language = novel.writing_language or series.writing_language or "en"
 
         # 3. Load the SERIES voice profile (Spec 3 storage target). None →
-        #    graceful no_profile, no LLM call.
-        profile = await self._load_series_voice(series_id)
+        #    graceful no_profile, no LLM call. Reading goes through the
+        #    extracted reader (RULE-04: series_voice_profile_reader.py).
+        profile = await read_series_voice_profile(self._series_repo, series_id)
         if profile is None:
             logger.info(
                 "series_voice_drift_no_profile",
@@ -241,6 +250,8 @@ class SeriesVoiceDriftService:
             novel_id=novel_id,
             model_registry=self._registry,
             model_config=config,
+            api_key=self._api_key,
+            base_url=self._base_url,
         )
         logger.info(
             "series_voice_drift_complete",
@@ -267,27 +278,6 @@ class SeriesVoiceDriftService:
         if series is None or series.user_id != user_id:
             raise ForbiddenError("You do not have access to this series")
         return series
-
-    async def _load_series_voice(self, series_id: UUID) -> AuthorVoiceProfile | None:
-        """Load the stored series voice profile (None when empty or malformed).
-
-        Reads ``SeriesSettings.author_voice`` via :meth:`SeriesRepository.get_settings`
-        (RULE-07: no raw column access). A malformed JSONB blob degrades
-        gracefully to None (RULE-11) — mirrors
-        :meth:`SeriesVoiceService.get`.
-        """
-        settings = await self._series_repo.get_settings(series_id)
-        if settings is None or settings.author_voice is None:
-            return None
-        try:
-            return AuthorVoiceProfile.model_validate(settings.author_voice)
-        except Exception as exc:  # malformed JSONB — graceful (RULE-11)
-            logger.warning(
-                "series_voice_drift_malformed_json",
-                series_id=str(series_id),
-                error=str(exc),
-            )
-            return None
 
 
 def _no_profile_response(novel_id: UUID, reason: str) -> AuthorVoiceDriftResponse:

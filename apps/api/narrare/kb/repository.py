@@ -77,10 +77,20 @@ class KBRepository(KBScopeRepository):
         review_status: str | None = None,
         page: int = 1,
         page_size: int = 50,
+        include_deprecated: bool = False,
     ) -> tuple[list[KBEntry], int]:
-        """List entries for a novel with optional filters and pagination."""
+        """List entries for a novel with optional filters and pagination.
+
+        Deprecated entries (ADR-085 merge losers) are non-authoritative
+        (spec §6.7/§9(c)): excluded — from rows AND total count — unless
+        explicitly requested via ``include_deprecated``.
+        """
         query = select(KBEntry).where(KBEntry.novel_id == novel_id)
         count_query = select(func.count()).select_from(KBEntry).where(KBEntry.novel_id == novel_id)
+
+        if not include_deprecated:
+            query = query.where(KBEntry.status != "deprecated")
+            count_query = count_query.where(KBEntry.status != "deprecated")
 
         if entity_type is not None:
             query = query.where(KBEntry.entity_type == entity_type)
@@ -126,8 +136,13 @@ class KBRepository(KBScopeRepository):
         tags: list[str] | None = None,
         page: int = 1,
         page_size: int = 50,
+        include_deprecated: bool = False,
     ) -> tuple[list[KBEntry], int]:
-        """Search entries by name and body using ILIKE."""
+        """Search entries by name and body using ILIKE.
+
+        Deprecated entries are excluded (rows AND count) unless
+        explicitly requested (spec §6.7/§9(c) visibility policy).
+        """
         pattern = f"%{query}%"
         search_filter = or_(
             KBEntry.name.ilike(pattern),
@@ -140,6 +155,10 @@ class KBRepository(KBScopeRepository):
             .select_from(KBEntry)
             .where(KBEntry.novel_id == novel_id, search_filter)
         )
+
+        if not include_deprecated:
+            base = base.where(KBEntry.status != "deprecated")
+            count_base = count_base.where(KBEntry.status != "deprecated")
 
         if entity_type is not None:
             base = base.where(KBEntry.entity_type == entity_type)
@@ -165,3 +184,26 @@ class KBRepository(KBScopeRepository):
             select(func.count()).select_from(KBEntry).where(KBEntry.novel_id == novel_id)
         )
         return result.scalar_one()
+
+    async def filter_ids_in_novel(
+        self,
+        novel_id: uuid.UUID,
+        entry_ids: set[uuid.UUID],
+    ) -> set[uuid.UUID]:
+        """Return the subset of ``entry_ids`` that belong to ``novel_id``.
+
+        Batch entry∈novel ownership probe (W2): one query instead of N+1
+        ``get_by_id`` round-trips when a write path must validate every
+        client-referenced entry id against the gated novel. Series-canon
+        entries (``novel_id IS NULL``) never match — canon ids are not
+        novel-owned by definition.
+        """
+        if not entry_ids:
+            return set()
+        result = await self._session.execute(
+            select(KBEntry.id).where(
+                KBEntry.novel_id == novel_id,
+                KBEntry.id.in_(entry_ids),
+            )
+        )
+        return set(result.scalars())

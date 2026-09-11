@@ -46,6 +46,7 @@ import argparse
 import asyncio
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID, uuid4
 
@@ -61,6 +62,7 @@ from scripts.probes.base_probe import (  # noqa: E402
     merge_feature_marker,
 )
 
+from narrare._app.dependencies_services import StaticModelResolution  # noqa: E402
 from narrare.ai_assist.schemas import (  # noqa: E402
     DialogueCoachRequest,
     DialogueCoachStreamEvent,
@@ -70,13 +72,14 @@ from narrare_core.ai_invocation.adaptive_context import (  # noqa: E402
     AdaptiveContext,
     AdaptiveSettings,
 )
+from narrare_core.llm import ResolvedModelConfig  # noqa: E402
+from narrare_core.llm.model_routing import ResolvedModel  # noqa: E402
 
 if TYPE_CHECKING:
     from narrare.adaptive.adaptive_context_provider import AdaptiveContextProviderImpl
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
@@ -154,9 +157,40 @@ class _FakeModelRegistry:
     def __init__(self, model: TestModel) -> None:
         self._model = model
 
-    async def get_model(self, config: Any) -> TestModel:
-        del config
+    async def get_model(
+        self,
+        config: Any,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> TestModel:
+        # api_key/base_url: per-user routing credentials (user-routing
+        # migration) — accepted for protocol fidelity with
+        # ModelRegistry.get_model; the fake ignores them.
+        del config, api_key, base_url
         return self._model
+
+    async def prepare(
+        self,
+        config: Any,
+        *,
+        intent: Any = None,
+        usage_limits: Any = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> Any:
+        """Task-6d bridge: resolution flows through prepare → get_model.
+
+        The agent runner (Task 6d-1) resolves via the single assembly
+        point; the bridge forwards the intent/credential pass-throughs so
+        the TestModel-based probe keeps its get_model semantics.
+        """
+        del intent
+        return SimpleNamespace(
+            model=await self.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
 
 
 class _FakeAdaptiveProvider:
@@ -215,6 +249,20 @@ def _coach_output_args() -> dict[str, Any]:
 # ── Service factory ─────────────────────────────────────────────────────────
 
 
+def _static_resolution() -> StaticModelResolution:
+    """Pre-resolved ModelResolution for the probe harness (ADR-086).
+
+    Mechanical S2 follow-up: ``DialogueCoachService`` takes a
+    ``ModelResolution`` instead of a ``model_config`` triple. The probe's
+    fakes ignore the config, so a fixed resolution preserves behavior.
+    """
+    return StaticModelResolution(
+        ResolvedModel(
+            config=ResolvedModelConfig(provider_name="anthropic", model_id="claude-haiku")
+        )
+    )
+
+
 def _make_service(
     *,
     model: TestModel,
@@ -230,7 +278,7 @@ def _make_service(
         chapter_repo=cast("ChapterRepository", _FakeChapterRepo()),
         novel_repo=cast("NovelRepository", _FakeNovelRepo()),
         model_registry=cast("ModelRegistry", _FakeModelRegistry(model)),
-        model_config=cast("ResolvedModelConfig | None", None),
+        model_resolution=_static_resolution(),
         composer=cast("PromptComposer", _FakeComposer()),
         invocation_pipeline=pipeline,
         adaptive_provider=cast("AdaptiveContextProviderImpl", _FakeAdaptiveProvider()),

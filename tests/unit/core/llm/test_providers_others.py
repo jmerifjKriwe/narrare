@@ -10,13 +10,14 @@ Exercises the actual factory bodies to verify:
 from __future__ import annotations
 
 import pytest
-from openai import OpenAIError
 from pydantic_ai.exceptions import UserError
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openrouter import OpenRouterProvider
 
 from narrare_core.llm._providers.others import _make_google, _make_groq, _make_openrouter
+from narrare_core.llm._schema_transformer import NarrareOpenAICompatJsonSchemaTransformer
 
 
 class TestMakeGoogle:
@@ -111,13 +112,47 @@ class TestMakeOpenRouter:
         model = _make_openrouter("meta/llama")
         assert isinstance(model, OpenAIChatModel)
 
-    def test_no_credentials_raises_openai_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_no_credentials_raises_user_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """No key arg and no env var -> construction fails fast.
 
-        OpenRouter passes the (empty) resolved key to ``OpenAIProvider``, which
-        raises an ``OpenAIError`` at construction. Correct fail-fast behaviour:
-        an LLM client cannot be built without a credential.
+        ``OpenRouterProvider`` validates credential availability eagerly and
+        raises a pydantic-ai ``UserError``. Correct fail-fast behaviour: an LLM
+        client cannot be built without a credential.
         """
         monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-        with pytest.raises(OpenAIError):
+        with pytest.raises(UserError):
             _make_openrouter("meta/llama")
+
+
+class TestOpenRouterCapFix:
+    """OpenRouter only accepts the legacy ``max_tokens`` field.
+
+    ``OpenRouterProvider`` (pydantic-ai) declares
+    ``openai_chat_supports_max_completion_tokens=False`` in its model profile.
+    Building the model through the generic ``OpenAIProvider`` loses that fact:
+    the unified ``max_tokens`` setting travels as ``max_completion_tokens``,
+    which OpenRouter silently drops — runtime output caps (ADR-045) never
+    reach the endpoint and generation runs unbounded. Routing through the
+    native provider class imports the capability fact; the shared profile hook
+    adds universal schema inlining on top.
+    """
+
+    def test_profile_sends_max_tokens_not_max_completion_tokens(self) -> None:
+        model = _make_openrouter("openai/gpt-4o", api_key="or-key")
+        assert model.profile.get("openai_chat_supports_max_completion_tokens") is False
+
+    def test_profile_carries_inlining_transformer(self) -> None:
+        model = _make_openrouter("openai/gpt-4o", api_key="or-key")
+        assert model.profile.get("json_schema_transformer") is (
+            NarrareOpenAICompatJsonSchemaTransformer
+        )
+
+    def test_provider_is_native_openrouter_provider(self) -> None:
+        model = _make_openrouter("openai/gpt-4o", api_key="or-key")
+        assert isinstance(model.provider, OpenRouterProvider)
+
+    def test_upstream_capability_facts_retained(self) -> None:
+        """The native provider's own facts must survive profile resolution."""
+        model = _make_openrouter("openai/gpt-4o", api_key="or-key")
+        assert model.profile.get("supports_thinking") is True
+        assert model.profile.get("openai_chat_thinking_field") == "reasoning"

@@ -17,11 +17,7 @@ class POVRequest(BaseModel):
         chapter_ids: One or more chapter UUIDs to analyze (1-10).
             Chapters are concatenated before analysis.
         language: Language for analysis output. Defaults to ``"en"``.
-        pov_type: Optional POV type hint (``"third_limited"``,
-            ``"first_person"``, ``"omniscient"``).  If ``None``,
-            auto-detect from the text.
     """
 
     chapter_ids: list[UUID] = Field(min_length=1, max_length=10)
     language: str = Field(default="en", min_length=2, max_length=5)
-    pov_type: str | None = None

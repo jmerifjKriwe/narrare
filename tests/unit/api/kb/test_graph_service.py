@@ -67,9 +67,15 @@ def _make_service(
     relationships: list[types.SimpleNamespace] | None = None,
     adjacency: dict[str, set[str]] | None = None,
 ) -> tuple[GraphService, dict[str, AsyncMock]]:
-    """Create a GraphService with faked dependencies."""
+    """Create a GraphService with faked dependencies.
+
+    The novel-ownership gate (IDOR fix S9) is permissive by default:
+    ``novel_repo.get_by_id`` always resolves a novel. Ownership behavior
+    is covered by ``test_graph_suggest_consistency_ownership.py``.
+    """
     kb_repo = AsyncMock()
     rel_repo = AsyncMock()
+    novel_repo = AsyncMock()
     _entries = entries or []
     _total = total_count if total_count is not None else len(_entries)
     kb_repo.list_entries = AsyncMock(return_value=(_entries, _total))
@@ -78,7 +84,8 @@ def _make_service(
     rel_repo.list_all_for_novel = AsyncMock(return_value=_rels)
     _adj = adjacency or {}
     rel_repo.get_adjacency_map = AsyncMock(return_value=_adj)
-    service = GraphService(kb_repo=kb_repo, rel_repo=rel_repo)
+    novel_repo.get_by_id = AsyncMock(return_value=object())  # gate: caller owns it
+    service = GraphService(kb_repo=kb_repo, rel_repo=rel_repo, novel_repo=novel_repo)
     return service, {"kb_repo": kb_repo, "rel_repo": rel_repo}
 
 

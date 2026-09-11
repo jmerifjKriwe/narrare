@@ -118,12 +118,18 @@ class TestTokenLimitProfiles:
     def test_long_texts_profile_has_defaults(self) -> None:
         profile = TOKEN_LIMIT_PROFILES["long_texts"]
         assert "default" in profile
-        assert profile["default"].max_tokens == 8000
+        # Raised 8000 → 16000 with the core preset (structured extraction on
+        # thinking models hit the old ceiling before generating output), then
+        # 16000 → 32000 (benchmark: ch-11 KB extraction on the densest reveal
+        # chapter exhausted the 16000 ceiling), then 32000 → 64000 (extraction
+        # retries=3 count against the cumulative pydantic-ai
+        # output_tokens_limit; the growing entity-ID roster inflates payloads).
+        assert profile["default"].max_tokens == 64000
 
     def test_comprehensive_profile_has_defaults(self) -> None:
         profile = TOKEN_LIMIT_PROFILES["comprehensive"]
         assert "default" in profile
-        assert profile["default"].max_tokens == 16000
+        assert profile["default"].max_tokens == 64000
 
     def test_custom_profile_starts_empty(self) -> None:
         profile = TOKEN_LIMIT_PROFILES["custom"]

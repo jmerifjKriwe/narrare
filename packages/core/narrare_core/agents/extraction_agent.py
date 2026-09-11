@@ -31,6 +31,7 @@ from pydantic_ai.capabilities import ToolSearch, Toolset
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.extraction_types import ExtractionOutput
+from narrare_core.agents.extraction_validators import dedup_key, has_text
 
 if TYPE_CHECKING:
     from narrare_core.agents.kb_agent import KBAgent
@@ -74,6 +75,7 @@ class ExtractionAgent(NarrareAgent[ExtractionDeps, ExtractionOutput]):
         model: Any,
         kb_agent: KBAgent | None = None,
         system_prompt: str | None = None,
+        retries: int | None = None,
     ) -> None:
         # Build capabilities: ToolSearch + KBAgent tools when available
         capabilities: list[Any] = []
@@ -84,9 +86,10 @@ class ExtractionAgent(NarrareAgent[ExtractionDeps, ExtractionOutput]):
         super().__init__(
             model=model,
             deps_type=ExtractionDeps,
-            output_type=[self._process_output, ExtractionOutput],
+            output_type=ExtractionOutput,
             capabilities=capabilities,
             system_prompt=system_prompt,
+            retries=retries,
         )
         self._agent.output_validator(self._validate_output)
 
@@ -103,9 +106,12 @@ class ExtractionAgent(NarrareAgent[ExtractionDeps, ExtractionOutput]):
         Invariants:
         - entity_type required when item_type is new_entity or update_entity
         - source_text non-empty for all items
-        - relationship items need relationship_type AND related_entity_name
+        - relationship items need relationship_type, a non-empty
+          source_entity_name, and a target (target_entity_name, or legacy
+          related_entity_name)
         - conflict items need conflict_description
-        - No duplicate items (same name + item_type)
+        - No duplicate items — relationships by (predicate, endpoints),
+          everything else by name + item_type
         - Filter out items with empty names
         """
         # Filter out items with empty names
@@ -127,15 +133,20 @@ class ExtractionAgent(NarrareAgent[ExtractionDeps, ExtractionOutput]):
                     f"Item '{item.name}' ({item.item_type}) must have a non-empty entity_type"
                 )
 
-            # relationship items need both relationship_type and related_entity_name
+            # relationship items need the predicate and both endpoint names
             if item.item_type == "relationship":
                 if not item.relationship_type or not item.relationship_type.strip():
                     raise ModelRetry(
                         f"Relationship item '{item.name}' must have a non-empty relationship_type"
                     )
-                if not item.related_entity_name or not item.related_entity_name.strip():
+                if not has_text(item.source_entity_name):
                     raise ModelRetry(
-                        f"Relationship item '{item.name}' must have a non-empty related_entity_name"
+                        f"Relationship item '{item.name}' must have a non-empty source_entity_name"
+                    )
+                if not (has_text(item.target_entity_name) or has_text(item.related_entity_name)):
+                    raise ModelRetry(
+                        f"Relationship item '{item.name}' must have a non-empty "
+                        "target_entity_name (or legacy related_entity_name)"
                     )
 
             # conflict items need conflict_description
@@ -146,39 +157,16 @@ class ExtractionAgent(NarrareAgent[ExtractionDeps, ExtractionOutput]):
                     f"Conflict item '{item.name}' must have a non-empty conflict_description"
                 )
 
-        # Check for duplicates (same name + item_type)
-        seen: set[tuple[str, str]] = set()
+        # Check for duplicates — relationship identity is (predicate, endpoints);
+        # name alone would falsely collide for same-type edges (predicate contract)
+        seen: set[tuple[str, ...]] = set()
         for item in valid_items:
-            key = (item.name.strip(), item.item_type)
+            key = dedup_key(item)
             if key in seen:
                 raise ModelRetry(f"Duplicate extraction item: '{item.name}' ({item.item_type})")
             seen.add(key)
 
         return output.model_copy(update={"results": valid_items})
-
-    async def _process_output(
-        self,
-        ctx: RunContext[ExtractionDeps],
-        results: list[dict[str, Any]] | None = None,
-        analysis_notes: str = "",
-    ) -> ExtractionOutput:
-        """Output Function — structures the LLM response into ExtractionOutput.
-
-        During streaming (ctx.partial_output), returns minimal result.
-        """
-        if ctx.partial_output:
-            return ExtractionOutput()
-
-        from narrare_core.agents.extraction_types import ExtractionItem
-
-        items: list[ExtractionItem] = []
-        for r in results or []:
-            items.append(ExtractionItem.model_validate(r))
-
-        return ExtractionOutput(
-            results=items,
-            analysis_notes=analysis_notes,
-        )
 
     async def run(
         self,

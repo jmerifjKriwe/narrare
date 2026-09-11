@@ -9,10 +9,12 @@ TokenLimitsService / TokenLimitsMetadataService — no business logic here
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from narrare.settings.dependencies import verify_owned_project_scope, verify_project_owned
 from narrare.settings.token_limits.contracts import DEFAULT_TIER_PERCENTAGES
 from narrare.settings.token_limits.dependencies import (
     CurrentUserIdDep,
@@ -34,29 +36,38 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-router = APIRouter(prefix="/settings/token-limits", tags=["token-limits"])
+# Included into the "/settings"-prefixed parent router (settings/router.py),
+# which PREPENDS its own prefix — declaring "/settings/token-limits" here
+# doubled the mounted path to "/settings/settings/token-limits/…" and made
+# the surface unreachable at the path the frontend and the API reference
+# use. The prefix is the sub-path only (root-cause fix, IDOR remediation
+# S11b — the ownership gate must be reachable at /settings/token-limits/…).
+router = APIRouter(prefix="/token-limits", tags=["token-limits"])
 
 
 @router.get("/", response_model=TokenLimitOverridesResponse)
 async def get_resolved_limits(
     user_id: CurrentUserIdDep,
-    project_id: str | None = None,
+    project_id: UUID | None = None,
     provider: str | None = None,
     model_id: str | None = None,
     intent: str | None = None,
     service: TokenLimitsService = Depends(get_token_limits_service),
     metadata_service: TokenLimitsMetadataService = Depends(get_token_limits_metadata_service),
+    _: None = Depends(verify_owned_project_scope),
 ) -> TokenLimitOverridesResponse:
     """Get resolved token limits (merged across all layers).
 
     Optional query parameters:
-    - ``project_id``: Include project-level overrides.
+    - ``project_id``: Include project-level overrides (caller must own
+      the project — IDOR remediation S11b; the dependency gates before
+      the auto-creating project repository read runs).
     - ``provider`` + ``model_id``: Attach model calibration metadata.
     - ``intent`` (with provider/model): Attach suitability metadata.
     """
     limits = await service.get_resolved_limits(
         user_id=user_id,
-        project_id=project_id,
+        project_id=str(project_id) if project_id is not None else None,
     )
     calibration, suitability = resolve_model_metadata(
         metadata_service,
@@ -97,16 +108,22 @@ async def update_user_limits(
 
 @router.put("/project/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def update_project_limits(
-    project_id: str,
+    project_id: UUID,
     request: UpdateTokenLimitsRequest,
     user_id: CurrentUserIdDep,
     service: TokenLimitsService = Depends(get_token_limits_service),
+    _: None = Depends(verify_project_owned),
 ) -> None:
-    """Update project-level token limit overrides."""
+    """Update project-level token limit overrides.
+
+    ``project_id`` must be the caller's novel UUID (project ≡ novel) —
+    the ownership dependency gates BEFORE the auto-creating project
+    repository read runs (IDOR remediation S11b).
+    """
     overrides = request.model_dump(exclude_none=True)
     if not overrides:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="At least one field must be provided",
         )
-    await service.update_project_limits(project_id=project_id, overrides=overrides)
+    await service.update_project_limits(project_id=str(project_id), overrides=overrides)

@@ -14,6 +14,21 @@ if TYPE_CHECKING:
     import pytest
 
 
+class _KwargsCapturingAgent:
+    """Minimal pydantic-ai Agent stand-in recording constructor kwargs.
+
+    Mirrors the CapturingPydanticAgent pattern used in
+    ``test_all_production_agent_classes_inherit_adr026_capabilities``:
+    patches the stable construction hook instead of inspecting
+    pydantic-ai private internals.
+    """
+
+    calls: ClassVar[list[dict[str, Any]]] = []
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.calls.append(kwargs)
+
+
 class TestNarrareAgent:
     """Test suite for NarrareAgent base class."""
 
@@ -132,6 +147,44 @@ class TestNarrareAgent:
         # Agent with non-None deps type
         result = await agent.run("Hallo", deps=MyDeps(user_name="Alice"))
         assert result == "success (no tool calls)"
+
+    def test_retries_forwarded_to_pydantic_ai_when_set(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Explicit ``retries`` is forwarded to the pydantic-ai Agent."""
+        import narrare_core.agents.base as base_module
+
+        monkeypatch.setattr(base_module, "Agent", _KwargsCapturingAgent)
+        before = len(_KwargsCapturingAgent.calls)
+
+        class MyAgent(NarrareAgent[None, str]):
+            pass
+
+        constructor: Any = MyAgent
+        constructor(model=object(), deps_type=type(None), output_type=str, retries=3)
+
+        assert len(_KwargsCapturingAgent.calls) == before + 1
+        assert _KwargsCapturingAgent.calls[-1]["retries"] == 3
+
+    def test_retries_none_omits_kwarg_keeps_pydantic_ai_default(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """``retries=None`` omits the kwarg so pydantic-ai's default (1) applies."""
+        import narrare_core.agents.base as base_module
+
+        monkeypatch.setattr(base_module, "Agent", _KwargsCapturingAgent)
+        before = len(_KwargsCapturingAgent.calls)
+
+        class MyAgent(NarrareAgent[None, str]):
+            pass
+
+        constructor: Any = MyAgent
+        constructor(model=object(), deps_type=type(None), output_type=str)
+
+        assert len(_KwargsCapturingAgent.calls) == before + 1
+        assert "retries" not in _KwargsCapturingAgent.calls[-1]
 
     def test_all_production_agent_classes_inherit_adr026_capabilities(
         self,

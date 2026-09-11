@@ -19,9 +19,14 @@ class ChatRequest(BaseModel):
     """Request to send a chat message.
 
     Extends the core ``ChatRequestSchema`` with FastAPI-specific validation.
+    ``project_id`` is optional since NOTES-001 (global notes have no
+    project); ``note_id`` attaches a scratchpad note as runtime context.
     """
 
-    project_id: UUID
+    project_id: UUID | None = Field(
+        default=None,
+        description="Project (novel) scope. Omit for project-less chat (e.g. global notes).",
+    )
     message: str = Field(
         min_length=1,
         max_length=4000,
@@ -30,6 +35,10 @@ class ChatRequest(BaseModel):
     conversation_id: UUID | None = Field(
         default=None,
         description="Existing conversation ID. Omit to start a new conversation.",
+    )
+    note_id: UUID | None = Field(
+        default=None,
+        description="Scratchpad note attached as runtime context (NOTES-001 §6b).",
     )
 
 
@@ -51,7 +60,7 @@ class ChatHistoryResponse(BaseModel):
     """Full conversation history returned by the API."""
 
     conversation_id: UUID
-    project_id: UUID
+    project_id: UUID | None = None
     messages: list[ChatMessageSchema]
     created_at: str = ""
     updated_at: str = ""

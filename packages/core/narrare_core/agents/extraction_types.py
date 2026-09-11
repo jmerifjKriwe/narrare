@@ -16,14 +16,17 @@ class ExtractionItem(BaseModel):
     Attributes:
         item_type: What kind of extraction this is.
         entity_type: KB entity type (character, location, etc.) for new/update.
-        name: Entity or relationship name.
+        name: Entity name; for relationship items the predicate
+            (e.g. ``engaged_to``) — legacy outputs carry a label here.
         confidence: Confidence score 0.0-1.0.
         source_text: Exact quote from chapter text supporting this extraction.
         proposed_content: Suggested metadata fields for new/update entities.
         target_entity_id: ID of existing entity (update_entity mode).
         conflict_description: What contradicts existing KB data (conflict mode).
-        relationship_type: Type of relationship (ally, member_of, etc.).
-        related_entity_name: The other entity in a relationship.
+        relationship_type: Type of relationship (engaged_to, member_of, etc.).
+        related_entity_name: Legacy target field; prefer ``target_entity_name``.
+        source_entity_name: Subject entity name (relationship items).
+        target_entity_name: Object entity name (relationship items).
     """
 
     item_type: Literal["new_entity", "update_entity", "relationship", "conflict"]
@@ -36,6 +39,8 @@ class ExtractionItem(BaseModel):
     conflict_description: str | None = None
     relationship_type: str | None = None
     related_entity_name: str | None = None
+    source_entity_name: str | None = None
+    target_entity_name: str | None = None
 
 
 class ExtractionOutput(BaseModel):

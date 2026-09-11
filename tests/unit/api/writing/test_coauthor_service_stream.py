@@ -13,8 +13,8 @@ Covers:
 
 from __future__ import annotations
 
-from typing import Any, cast
-from unittest.mock import AsyncMock, MagicMock
+from typing import TYPE_CHECKING, Any, cast
+from unittest.mock import ANY, AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -28,6 +28,10 @@ from narrare_core.memory.protocols import FeedbackCollector
 from narrare_core.writing.draft_processor import DraftProcessor
 from narrare_core.writing.pipeline import WritingPipeline
 from tests.unit.api.writing._test_coauthor_helpers import _make_generation_request
+
+if TYPE_CHECKING:
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -76,6 +80,17 @@ async def _fake_stream(*chunks: StreamChunk) -> Any:
 # ---------------------------------------------------------------------------
 
 
+def _gate_open_repos() -> tuple[AsyncMock, AsyncMock]:
+    """S6 gate-open repos (chapter binds to ANY novel, every novel owned)."""
+    from tests.factories import make_chapter, make_novel
+
+    chapter_repo = AsyncMock(spec=["get"])
+    chapter_repo.get = AsyncMock(return_value=make_chapter(novel_id=ANY))
+    novel_repo = AsyncMock(spec=["get_by_id"])
+    novel_repo.get_by_id = AsyncMock(return_value=make_novel())
+    return chapter_repo, novel_repo
+
+
 class TestStreamCoauthorHappyPath:
     """Tests for successful stream_coauthor execution."""
 
@@ -84,7 +99,6 @@ class TestStreamCoauthorHappyPath:
         """Successful stream: creates request, updates statuses, yields chunks."""
         request_id = uuid4()
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.get_by_id = AsyncMock(return_value=None)
@@ -106,11 +120,14 @@ class TestStreamCoauthorHappyPath:
             side_effect=lambda text, **kw: text,
         )
 
+        cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
             pipeline=cast("WritingPipeline", pipeline),
             draft_processor=cast("DraftProcessor", proc),
             config=CONFIG,
+            chapter_repo=cast("ChapterRepository", cr),
+            novel_repo=cast("NovelRepository", nr),
         )
 
         req = _request()
@@ -141,7 +158,6 @@ class TestStreamCoauthorHappyPath:
         """Multiple intermediate chunks are yielded before the final chunk."""
         request_id = uuid4()
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.get_by_id = AsyncMock(return_value=None)
@@ -164,11 +180,14 @@ class TestStreamCoauthorHappyPath:
             side_effect=lambda text, **kw: text,
         )
 
+        cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
             pipeline=cast("WritingPipeline", pipeline),
             draft_processor=cast("DraftProcessor", proc),
             config=CONFIG,
+            chapter_repo=cast("ChapterRepository", cr),
+            novel_repo=cast("NovelRepository", nr),
         )
 
         req = _request()
@@ -183,7 +202,6 @@ class TestStreamCoauthorHappyPath:
         """Final chunk with context_meta gets request_id injected."""
         request_id = uuid4()
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.get_by_id = AsyncMock(return_value=None)
@@ -212,11 +230,14 @@ class TestStreamCoauthorHappyPath:
             side_effect=lambda text, **kw: text,
         )
 
+        cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
             pipeline=cast("WritingPipeline", pipeline),
             draft_processor=cast("DraftProcessor", proc),
             config=CONFIG,
+            chapter_repo=cast("ChapterRepository", cr),
+            novel_repo=cast("NovelRepository", nr),
         )
 
         req = _request()
@@ -236,7 +257,6 @@ class TestStreamCoauthorHappyPath:
         gen_request = _make_generation_request(id=request_id)
 
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.get_by_id = AsyncMock(return_value=gen_request)
@@ -259,11 +279,14 @@ class TestStreamCoauthorHappyPath:
 
         feedback_service: AsyncMock = AsyncMock(spec=FeedbackCollector)
 
+        cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
             pipeline=cast("WritingPipeline", pipeline),
             draft_processor=cast("DraftProcessor", proc),
             config=CONFIG,
+            chapter_repo=cast("ChapterRepository", cr),
+            novel_repo=cast("NovelRepository", nr),
             feedback_service=cast("FeedbackCollector", feedback_service),
         )
 
@@ -290,7 +313,6 @@ class TestStreamCoauthorErrors:
         """Pipeline error updates status to failed with error message."""
         request_id = uuid4()
         repo: AsyncMock = AsyncMock(spec=GenerationRepository)
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=request_id)
         repo.update_status = AsyncMock()
@@ -307,11 +329,14 @@ class TestStreamCoauthorErrors:
             side_effect=lambda text, **kw: text,
         )
 
+        cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
             pipeline=cast("WritingPipeline", pipeline),
             draft_processor=cast("DraftProcessor", proc),
             config=CONFIG,
+            chapter_repo=cast("ChapterRepository", cr),
+            novel_repo=cast("NovelRepository", nr),
         )
 
         req = _request()

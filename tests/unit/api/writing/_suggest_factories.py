@@ -7,6 +7,7 @@ to avoid fixture duplication while keeping each file within RULE-04 limits.
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 from narrare.chapters.repository import ChapterRepository
 from narrare_core.llm import ResolvedModelConfig
@@ -57,9 +58,20 @@ def make_suggest_config() -> ResolvedModelConfig:
 
 def make_mock_chapter_repo() -> MagicMock:
     """ChapterRepository mock returning a simple chapter."""
-    chapter = MagicMock(spec=["title", "pov_character_id"])
+    chapter = MagicMock(spec=["title", "pov_character_id", "novel_id"])
     chapter.title = "Test Chapter"
     chapter.pov_character_id = None
+    chapter.novel_id = uuid4()
     repo = MagicMock(spec=ChapterRepository)
     repo.get = AsyncMock(return_value=chapter)
+    return repo
+
+
+def make_mock_novel_repo() -> MagicMock:
+    """NovelRepository mock — every novel belongs to the caller (S6 gate open)."""
+    from narrare.novels.repository import NovelRepository
+    from tests.factories import make_novel
+
+    repo = MagicMock(spec=NovelRepository)
+    repo.get_by_id = AsyncMock(return_value=make_novel())
     return repo

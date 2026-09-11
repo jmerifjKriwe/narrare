@@ -28,6 +28,19 @@ logger = structlog.get_logger(__name__)
 class ConsistencyCache:
     """Cache for consistency check results (in-memory backend per ADR-080).
 
+    Invariant — why the cache key carries NO owner dimension: keys are
+    scoped to the novel only. This is safe because (a) novels are
+    single-owner and ownership is not transferable, and (b) every access
+    path sits behind the novel-ownership entry gate
+    (``verify_novel_owned`` via ``kb/_novel_gate``, called in
+    ``consistency_service`` before any cache read/write), so a non-owner
+    can never reach this cache for someone else's novel. This invariant
+    BREAKS if novels ever become multi-owner or ownership becomes
+    transferable — a new owner could then be served the previous owner's
+    cached consistency results; in that case, add an owner dimension to
+    the key (or invalidate on ownership change) BEFORE enabling such a
+    model.
+
     Args:
         cache: Injected cache backend via SessionCacheProtocol.
         ttl: Cache TTL in seconds.

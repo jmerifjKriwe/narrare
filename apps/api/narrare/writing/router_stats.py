@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare.writing.deps import get_writing_service
+from narrare.writing.deps_ownership import verify_novel_owned
 from narrare.writing.schemas import (
     AcceptResponse,
     GenerationStatsResponse,
@@ -64,7 +65,13 @@ async def get_stats(
     novel_id: uuid.UUID,
     user_id: CurrentUserIdDep,
     session: SessionDep,
+    _: None = Depends(verify_novel_owned),
 ) -> GenerationStatsResponse:
-    """Get aggregated generation statistics for a novel."""
+    """Get aggregated generation statistics for a novel.
+
+    Ownership is enforced by the verify_novel_owned dependency BEFORE
+    the service is constructed (IDOR remediation S13) — foreign ≡
+    unknown novel ids surface as 404.
+    """
     service = await get_writing_service(session, user_id, novel_id)
     return await service.get_stats(novel_id, user_id)

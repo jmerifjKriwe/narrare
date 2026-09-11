@@ -19,6 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from narrare_core.agents.author_voice_types import AuthorVoiceOutput
 from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.prompts.composer import ComposedPrompt
 from tests.fakes.fake_chapter_repo import FakeChapterRepository
 from tests.fakes.fake_novel_repo import FakeNovelRepository
@@ -27,7 +28,10 @@ from tests.fakes.fake_series_repo import FakeSeriesRepository
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from pydantic_ai.usage import UsageLimits
+
     from narrare.series.series_voice_service import SeriesVoiceService
+    from narrare_core.llm.intents import LLMIntent
 
 
 class _FakeComposer:
@@ -40,10 +44,45 @@ class _FakeComposer:
 
 
 class _FakeModelRegistry:
-    """Fake ModelRegistry returning a stub Model."""
+    """Fake ModelRegistry returning a stub Model.
+
+    ``prepare`` mirrors the real single assembly point (Task 4): exactly
+    one ``get_model`` resolution, a canned sentinel ``model_settings``
+    (so pass-through to ``agent.run`` is assertable), and the
+    ``usage_limits`` pass-through. Mirrors the analysis-domain
+    ``FakeModelRegistry`` fakes (Task 6a).
+    """
 
     def __init__(self) -> None:
         self.get_model = AsyncMock(return_value=MagicMock(spec=object))
+        self.prepare_calls: list[dict[str, object]] = []
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: LLMIntent | None = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        model = await self.get_model(config, api_key=api_key, base_url=base_url)
+        prepared = PreparedModelCall(
+            model=model,
+            model_settings={"max_tokens": 12_345},
+            usage_limits=usage_limits,
+        )
+        self.prepare_calls.append(
+            {
+                "config": config,
+                "intent": intent,
+                "usage_limits": usage_limits,
+                "api_key": api_key,
+                "base_url": base_url,
+                "prepared": prepared,
+            }
+        )
+        return prepared
 
 
 class _FakeComposedInvocation:

@@ -24,13 +24,15 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 import structlog
-from sqlalchemy.exc import IntegrityError
 
-from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
+from narrare.writing._helpers import create_request_row, verify_chapter_access
+from narrare_core.shared.errors import ConflictError, ValidationError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.schemas_style_variants import StyleVariantRegenerateRequest
     from narrare_core.llm import ResolvedModelConfig
@@ -58,6 +60,8 @@ class StyleVariantService:
         pipeline: WritingPipeline,
         draft_processor: DraftProcessor,
         config: ResolvedModelConfig,
+        chapter_repo: ChapterRepository,
+        novel_repo: NovelRepository,
         api_key: str | None = None,
         base_url: str | None = None,
     ) -> None:
@@ -65,6 +69,8 @@ class StyleVariantService:
         self._pipeline = pipeline
         self._draft_processor = draft_processor
         self._config = config
+        self._chapter_repo = chapter_repo
+        self._novel_repo = novel_repo
         self._api_key = api_key
         self._base_url = base_url
 
@@ -75,27 +81,30 @@ class StyleVariantService:
         chapter_id: UUID,
         novel_id: UUID,
         request: StyleVariantRegenerateRequest,
+        *,
+        user_id: str,
     ) -> None:
         """Pre-validate the style-variant request before SSE response.
 
-        Called by the router BEFORE creating the StreamingResponse to
-        ensure validation errors (422, 409, 404) are returned with proper
-        HTTP status codes instead of causing RuntimeError after headers
-        are sent.
+        Ownership gate (IDOR S6): ``verify_chapter_access`` runs FIRST —
+        foreign ≡ unknown 404s precede input validation, the conflict
+        check, and any request-row creation.
 
         Raises:
+            NotFoundError: Chapter unknown, not in the addressed novel,
+                or novel owned by another user.
             ValidationError: If source_text is empty.
             ConflictError: If another generation is active for the chapter.
-            NotFoundError: If the chapter or novel does not exist.
         """
+        await verify_chapter_access(
+            self._chapter_repo, self._novel_repo, chapter_id, novel_id, user_id
+        )
+
         if not request.source_text.strip():
             raise ValidationError(
                 "source_text must not be empty",
                 code="MISSING_INPUT",
             )
-
-        if not await self._repo.chapter_exists(chapter_id):
-            raise NotFoundError("Chapter", identifier=str(chapter_id))
 
         active = await self._repo.get_active_for_chapter(chapter_id)
         if active is not None:
@@ -142,19 +151,11 @@ class StyleVariantService:
         is_co_author = request.source_mode == "co_author"
         mode_enum = GenerationMode.CO_AUTHOR if is_co_author else GenerationMode.REWRITE
 
-        # Step 1: Validate + create request row.
-        await self.validate_variant(chapter_id, novel_id, request)
-
-        try:
-            request_id = await self._repo.create_if_no_active(
-                chapter_id=chapter_id,
-                novel_id=novel_id,
-                user_id=UUID(user_id),
-                mode=request.source_mode,
-                tone=request.tone,
-            )
-        except IntegrityError as exc:
-            raise NotFoundError("Chapter or Novel", identifier=str(chapter_id)) from exc
+        # Step 1: Validate (ownership gate first) + create request row.
+        await self.validate_variant(chapter_id, novel_id, request, user_id=user_id)
+        request_id = await create_request_row(
+            self._repo, chapter_id, novel_id, user_id, request.source_mode, request.tone
+        )
 
         # Step 2: Transition to streaming.
         await self._repo.update_status(

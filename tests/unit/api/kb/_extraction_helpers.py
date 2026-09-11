@@ -5,16 +5,34 @@ Extracted from test_extraction_service.py per RULE-04 (file size limits).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 from narrare.kb.extraction_service import ExtractionService
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
+from narrare_core.llm._model_settings import build_runtime_model_settings
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.prompts.composer import ComposedPrompt
 
+from ._test_fakes import FakeNovelRepo
+
 if TYPE_CHECKING:
+    from pydantic_ai.usage import UsageLimits
+
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm.intents import LLMIntent
+
+
+def permissive_novel_gate() -> NovelRepositoryProtocol:
+    """Novel repo whose ownership gate always passes (IDOR S10).
+
+    Non-ownership extraction tests act as the novel's owner; the
+    ownership matrix lives in
+    ``test_relationship_dismissed_extraction_ownership.py``.
+    """
+    return cast("NovelRepositoryProtocol", FakeNovelRepo())
 
 
 # ---------------------------------------------------------------------------
@@ -22,8 +40,36 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-class FakeModelRegistry:
-    """Fake ModelRegistry with configurable get_model."""
+class FakePrepareMixin:
+    """Mirrors :meth:`ModelRegistry.prepare` on top of a ``get_model`` stub.
+
+    Composes the fake's ``get_model`` with the real
+    ``build_runtime_model_settings`` — exactly like the real
+    ``ModelRegistry.prepare`` — so wiring tests assert the true settings
+    composition (intent-aware thinking policy + ADR-045 output cap)
+    flowing into ``agent.run``, not a canned triple.
+    """
+
+    get_model: AsyncMock
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: LLMIntent | None = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        model = await self.get_model(
+            config, api_key=api_key, base_url=base_url, usage_limits=usage_limits
+        )
+        settings = build_runtime_model_settings(config, usage_limits, intent=intent)
+        return PreparedModelCall(model=model, model_settings=settings, usage_limits=usage_limits)
+
+
+class FakeModelRegistry(FakePrepareMixin):
+    """Fake ModelRegistry with configurable ``get_model`` + ``prepare``."""
 
     def __init__(self) -> None:
         self.get_model = AsyncMock(return_value=MagicMock(spec=object))
@@ -63,6 +109,7 @@ def make_service(
     chapter_repo: FakeChapterRepo | object,
     kb_repo: FakeKBRepo | object,
     composer: FakeComposer | object,
+    retries: int = 3,
 ) -> ExtractionService:
     """Build an ExtractionService with the given (mocked) dependencies."""
     return ExtractionService(
@@ -71,6 +118,8 @@ def make_service(
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
         kb_repo=kb_repo,  # type: ignore[arg-type]
         composer=composer,  # type: ignore[arg-type]
+        novel_repo=permissive_novel_gate(),
+        retries=retries,
     )
 
 

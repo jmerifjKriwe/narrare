@@ -29,6 +29,7 @@ from narrare_core.llm._model_settings import (
 from narrare_core.llm._model_settings import (
     get_cache_settings as _get_cache_settings,
 )
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm._providers.registry import get as get_provider
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.llm.run_limits import profile_to_usage_limits
@@ -48,7 +49,7 @@ logger = structlog.get_logger(__name__)
 T = TypeVar("T")
 
 # Public API
-__all__ = ["ModelRegistry"]
+__all__ = ["ModelRegistry", "PreparedModelCall"]
 
 
 class ModelRegistry:
@@ -120,6 +121,22 @@ class ModelRegistry:
         factory = get_provider(config.provider_name)
         return factory(config.model_id, api_key=api_key, base_url=base_url)
 
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: LLMIntent | None = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        """Single assembly point: model + settings + limits as a coherent triple."""
+        model = await self.get_model(
+            config, api_key=api_key, base_url=base_url, usage_limits=usage_limits
+        )
+        settings = build_runtime_model_settings(config, usage_limits, intent=intent)
+        return PreparedModelCall(model=model, model_settings=settings, usage_limits=usage_limits)
+
     def get_cache_settings(self, config: ResolvedModelConfig) -> ModelSettings:
         """Build provider-specific ModelSettings for prompt caching.
 
@@ -153,7 +170,8 @@ class ModelRegistry:
         :mod:`~narrare_core.agents` instead.
 
         Args:
-            intent: The operation intent (used for logging).
+            intent: The operation intent (drives the thinking policy and
+                logging).
             prompt: The user message / prompt text.
             config: Fully resolved model configuration.
             system_prompt: Optional system prompt.  Defaults to empty string.
@@ -179,7 +197,7 @@ class ModelRegistry:
             output_type=output_type or str,
         )
         try:
-            model_settings = build_runtime_model_settings(config, usage_limits)
+            model_settings = build_runtime_model_settings(config, usage_limits, intent=intent)
             # narrare: allow-agent reason="ModelRegistry run() passes model_settings (ADR-016)"
             result = await agent.run(
                 prompt,
@@ -231,7 +249,8 @@ class ModelRegistry:
         example interactive writing sessions or draft generation.
 
         Args:
-            intent: The operation intent (used for logging).
+            intent: The operation intent (drives the thinking policy and
+                logging).
             system_prompt: System role message.
             user_prompt: User role message.
             config: Fully resolved model configuration.
@@ -253,7 +272,7 @@ class ModelRegistry:
         start = time.monotonic()
 
         # narrare: allow-agent reason="ModelRegistry convenience stream() (ADR-015)"
-        model_settings = build_runtime_model_settings(config, usage_limits)
+        model_settings = build_runtime_model_settings(config, usage_limits, intent=intent)
         async with agent.run_stream(
             user_prompt, model_settings=model_settings, usage_limits=usage_limits
         ) as stream_result:

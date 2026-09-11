@@ -39,6 +39,7 @@ See:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 import structlog
 
@@ -50,6 +51,8 @@ from narrare.series.series_consistency_runtime_content import (
 from narrare.series.series_consistency_schemas import SeriesConsistencyCheckResponse
 from narrare_core.agents.series_consistency_agent import SeriesConsistencyAgent
 from narrare_core.agents.series_consistency_types import SeriesConsistencyDeps
+from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import (
     ConfigurationError,
     ForbiddenError,
@@ -104,6 +107,9 @@ class SeriesConsistencyService:
         composer: PromptComposer | None = None,
         agent_factory: Callable[..., SeriesConsistencyAgent] | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         """Initialise the service with all dependencies injected (RULE-07).
 
@@ -120,6 +126,11 @@ class SeriesConsistencyService:
             agent_factory: Callable ``(model, system_prompt) -> Agent``.
                 Defaults to the real constructor; tests inject a Fake.
             invocation_pipeline: Optional InvocationPipeline for evidence.
+            api_key: Optional per-user provider API key override (model-routing
+                cascade) — injected into ``ModelRegistry.get_model``.
+            base_url: Optional per-user provider base URL override.
+            run_limit_resolver: Optional ADR-045 run-limit resolver; defaults to
+                ``DefaultRunLimitResolver`` (Task 3 wiring).
         """
         self._series_repo = series_repo
         self._novel_repo = novel_repo
@@ -130,6 +141,9 @@ class SeriesConsistencyService:
         self._composer = composer
         self._agent_factory = agent_factory or _default_agent_factory
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def check_novel(
         self,
@@ -205,8 +219,22 @@ class SeriesConsistencyService:
             formatted_canon = format_canon_entries(canon_entries)
 
             # 7. Resolve model + instantiate agent (RULE-01b: agents-first).
-            model = await self._registry.get_model(self._config)
-            agent = self._agent_factory(model, system_prompt)
+            #    Single assembly point (Task 6d — Task 4/5 pattern): model +
+            #    intent-aware runtime settings + usage limits as one
+            #    coherent triple. The per-user provider credentials
+            #    (model-routing cascade) are injected into the resolution
+            #    call.
+            resolved = self._run_limit_resolver.resolve(
+                config=self._config, budget=None, invocation_id=uuid4()
+            )
+            prepared = await self._registry.prepare(
+                self._config,
+                intent=LLMIntent.ANALYSE,
+                usage_limits=resolved.usage_limits,
+                api_key=self._api_key,
+                base_url=self._base_url,
+            )
+            agent = self._agent_factory(prepared.model, system_prompt)
 
             # 8. Run the agent. Canon entries + chapter texts flow as runtime
             #    content in the user-channel prompt (RULE-02a category 3);
@@ -219,6 +247,8 @@ class SeriesConsistencyService:
             result = await agent.run(
                 prompt=format_run_prompt(formatted_canon, chapter_texts),
                 deps=deps,
+                model_settings=prepared.model_settings,
+                usage_limits=prepared.usage_limits,
             )
             logger.info(
                 "series_consistency_complete",

@@ -5,6 +5,11 @@ split module ``router_prompt_ux.py`` (RULE-04 — router hard limit 150 lines).
 Both routers share ``prefix="/prompts"`` and ``tags=["prompts"]``; POST
 routes in ``router_prompt_ux.py`` do not conflict with the GET/PUT/DELETE
 routes here (HTTP methods differ).
+
+Multi-user stance (IDOR plan §S13, PO decision D2:a): overrides are
+GLOBAL files — any authenticated user rewrites them for ALL users.
+Documented single-user-trust (local-first product: one author per
+installation); scope override storage per user before going multi-user.
 """
 
 from __future__ import annotations
@@ -121,6 +126,8 @@ async def save_override(
     ``event_publisher`` is the in-process wiki EventPublisher (Q-016): a
     wiki-category override publishes ``wiki.prompt.changed`` so wiki
     summaries are marked stale for regeneration.
+
+    Trust stance: see module docstring (D2:a — GLOBAL file; user_id is the audit actor only).
     """
     service = await get_prompt_history_service(session, event_publisher)
     await service.save_override_recorded(
@@ -136,5 +143,8 @@ async def reset_override(
     user_id: CurrentUserIdDep,
     service: PromptManagementApiService = Depends(_get_service),
 ) -> bool:
-    """Reset a prompt override, restoring bundled default."""
+    """Reset a prompt override, restoring bundled default.
+
+    Trust stance: see the module docstring (D2:a — GLOBAL override file).
+    """
     return await service.reset_override(prompt_id)

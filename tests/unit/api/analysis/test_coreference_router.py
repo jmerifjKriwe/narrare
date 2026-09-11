@@ -53,9 +53,13 @@ async def test_analyze_coreference_serializes_result_done_and_sentinel() -> None
     )
 
     with pytest.MonkeyPatch.context() as mp:
+
+        async def _fake_factory(**_kwargs: object) -> FakeCoreferenceService:
+            return FakeCoreferenceService(response)
+
         mp.setattr(
             "narrare.analysis.router_coreference.get_coreference_service",
-            lambda _session: FakeCoreferenceService(response),
+            _fake_factory,
         )
         stream_response = await analyze_coreference(
             chapter_id=chapter_id,
@@ -95,9 +99,13 @@ async def test_analyze_coreference_emits_error_event_on_failure() -> None:
             # treats ``analyze`` as an async generator.
 
     with pytest.MonkeyPatch.context() as mp:
+
+        async def _failing_factory(**_kwargs: object) -> FailingService:
+            return FailingService()
+
         mp.setattr(
             "narrare.analysis.router_coreference.get_coreference_service",
-            lambda _session: FailingService(),  # type: ignore[arg-type]
+            _failing_factory,  # type: ignore[arg-type]
         )
         stream_response = await analyze_coreference(
             chapter_id=uuid4(),

@@ -4,85 +4,25 @@ Tests the thin delegation layer (RULE-06) using a ``FakeChatService``
 that implements ``ChatServiceProtocol`` (ADR-030 Fake pattern).
 
 Each router endpoint is called directly — no FastAPI app or HTTP layer.
+The NotFoundError raised for foreign/unknown conversations is mapped to
+HTTP 404 by the global NarrareError handler (covered at app level).
 """
 
 from __future__ import annotations
 
 import json
 from typing import TYPE_CHECKING, cast
-from uuid import UUID, uuid4
+from uuid import uuid4
+
+import pytest
+from tests.unit.api.chat.conftest import FakeChatService
 
 from narrare.chat.router import chat, clear_history, get_history
 from narrare.chat.schemas import ChatRequest as APIChatRequest
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
-    from narrare_core.chat.contracts import ChatMessage, ChatRequest
-
-
-# ---------------------------------------------------------------------------
-# FakeChatService — implements ChatServiceProtocol (ADR-030)
-# ---------------------------------------------------------------------------
-
-
-class FakeChatService:
-    """In-memory Fake for ChatServiceProtocol.
-
-    Allows configuring stream events, history, and project_id per test.
-    Records clear_history calls for verification.
-    """
-
-    def __init__(self) -> None:
-        self._events: list[dict[str, object]] = []
-        self._history: list[ChatMessage] = []
-        self._project_id: UUID | None = None
-        self.cleared_ids: list[UUID] = []
-
-    def set_stream_events(self, *events: dict[str, object]) -> None:
-        """Pre-configure the events that ``ask()`` will stream."""
-        self._events = list(events)
-
-    def set_history(self, *messages: ChatMessage) -> None:
-        """Pre-configure messages returned by ``get_history()``."""
-        self._history = list(messages)
-
-    def set_project_id(self, project_id: UUID | None) -> None:
-        """Set the project_id returned by ``get_project_id_for_conversation()``."""
-        self._project_id = project_id
-
-    async def ask(
-        self,
-        request: ChatRequest,
-        user_id: UUID,
-    ) -> AsyncIterator[dict[str, object]]:
-        """Return a pre-configured async stream of events."""
-
-        async def _stream() -> AsyncIterator[dict[str, object]]:
-            for event in self._events:
-                yield event
-
-        return _stream()
-
-    async def get_history(
-        self,
-        conversation_id: UUID,
-        *,
-        limit: int = 50,
-    ) -> list[ChatMessage]:
-        return list(self._history)
-
-    async def get_project_id_for_conversation(
-        self,
-        conversation_id: UUID,
-    ) -> UUID | None:
-        return self._project_id
-
-    async def clear_history(
-        self,
-        conversation_id: UUID,
-    ) -> None:
-        self.cleared_ids.append(conversation_id)
+    from narrare.chat.chat_service import ChatService
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +53,6 @@ class TestChatEndpoint:
 
     async def test_streams_meta_token_done_as_sse(self) -> None:
         """Happy path: meta, token, and done events produce SSE-formatted chunks."""
-        from narrare.chat.chat_service import ChatService
 
         fake = FakeChatService()
         fake.set_stream_events(
@@ -146,7 +85,6 @@ class TestChatEndpoint:
 
     async def test_serializes_non_string_values_in_meta(self) -> None:
         """_serialize_for_json converts non-string values to strings."""
-        from narrare.chat.chat_service import ChatService
 
         fake = FakeChatService()
         fake.set_stream_events(
@@ -167,7 +105,6 @@ class TestChatEndpoint:
 
     async def test_unknown_event_type_produces_no_chunk(self) -> None:
         """Events with unknown types are silently skipped."""
-        from narrare.chat.chat_service import ChatService
 
         fake = FakeChatService()
         fake.set_stream_events(
@@ -187,6 +124,24 @@ class TestChatEndpoint:
         # Only meta and done produce chunks — unknown is skipped
         assert len(chunks) == 2
 
+    async def test_chat_raises_not_found_before_stream_starts(self) -> None:
+        """IDOR write regression: a foreign/unknown conversation 404s.
+
+        ``ask()`` must run BEFORE the StreamingResponse is created — a
+        NotFoundError surfacing inside the body iterator would fire after
+        the 200 headers (broken stream), not as HTTP 404 via the global
+        NarrareError handler.
+        """
+        fake = FakeChatService()
+        fake.set_ask_error(NotFoundError("ChatConversation", identifier=str(uuid4())))
+
+        with pytest.raises(NotFoundError):
+            await chat(
+                request=_make_api_request(),
+                user_id=str(uuid4()),
+                service=cast("ChatService", fake),
+            )
+
 
 # ---------------------------------------------------------------------------
 # GET /chat/history/{conversation_id}
@@ -198,11 +153,11 @@ class TestGetHistoryEndpoint:
 
     async def test_returns_messages_with_real_project_id(self) -> None:
         """History endpoint returns messages and resolves project_id."""
-        from narrare.chat.chat_service import ChatService
         from narrare_core.chat.contracts import ChatMessage
 
         conv_id = uuid4()
         project_id = uuid4()
+        msg_ids = (uuid4(), uuid4())
 
         fake = FakeChatService()
         fake.set_history(
@@ -211,12 +166,14 @@ class TestGetHistoryEndpoint:
                 role="user",
                 content="Question?",
                 created_at="2026-01-01T00:00:00Z",
+                message_id=msg_ids[0],
             ),
             ChatMessage(
                 conversation_id=conv_id,
                 role="assistant",
                 content="Answer!",
                 created_at="2026-01-02T00:00:00Z",
+                message_id=msg_ids[1],
             ),
         )
         fake.set_project_id(project_id)
@@ -232,10 +189,12 @@ class TestGetHistoryEndpoint:
         assert len(result.messages) == 2
         assert result.messages[0].role == "user"
         assert result.messages[1].role == "assistant"
+        # Regression (W4): each message must report its OWN id — previously
+        # every row reported the conversation id as message_id.
+        assert [m.message_id for m in result.messages] == list(msg_ids)
 
-    async def test_falls_back_to_zero_uuid_when_project_not_found(self) -> None:
-        """When project_id is None, the response uses UUID(int=0)."""
-        from narrare.chat.chat_service import ChatService
+    async def test_project_id_is_none_when_project_not_found(self) -> None:
+        """When project_id resolves to None, the response exposes None honestly (NOTES-001 §8)."""
 
         conv_id = uuid4()
 
@@ -248,7 +207,60 @@ class TestGetHistoryEndpoint:
             service=cast("ChatService", fake),
         )
 
-        assert result.project_id == UUID(int=0)
+        assert result.project_id is None
+
+    async def test_get_history_with_owner_user_returns_history(self) -> None:
+        """Owner access: the authenticated owner still receives the history (HTTP 200)."""
+        from narrare_core.chat.contracts import ChatMessage
+
+        owner_id = uuid4()
+        conv_id = uuid4()
+
+        fake = FakeChatService()
+        fake.set_owner(owner_id)
+        fake.set_history(
+            ChatMessage(
+                conversation_id=conv_id,
+                role="user",
+                content="Owner question",
+                created_at="2026-01-01T00:00:00Z",
+                message_id=uuid4(),
+            )
+        )
+        fake.set_project_id(uuid4())
+
+        result = await get_history(
+            conversation_id=conv_id,
+            user_id=str(owner_id),
+            service=cast("ChatService", fake),
+        )
+
+        assert result.conversation_id == conv_id
+        assert len(result.messages) == 1
+        assert result.messages[0].content == "Owner question"
+
+    async def test_get_history_with_foreign_user_raises_not_found(self) -> None:
+        """IDOR regression: user B reading user A's conversation gets 404.
+
+        The endpoint must forward the authenticated user_id so the service
+        can scope the lookup; NotFoundError is mapped to HTTP 404 by the
+        global NarrareError handler.
+        """
+
+        owner_id = uuid4()
+        attacker_id = uuid4()
+        conv_id = uuid4()
+
+        fake = FakeChatService()
+        fake.set_owner(owner_id)
+        fake.set_history()  # would leak if returned
+
+        with pytest.raises(NotFoundError):
+            await get_history(
+                conversation_id=conv_id,
+                user_id=str(attacker_id),
+                service=cast("ChatService", fake),
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +273,6 @@ class TestClearHistoryEndpoint:
 
     async def test_clears_and_returns_delete_response(self) -> None:
         """clear_history delegates to service and returns confirmation."""
-        from narrare.chat.chat_service import ChatService
 
         conv_id = uuid4()
 
@@ -276,3 +287,45 @@ class TestClearHistoryEndpoint:
         assert result.conversation_id == conv_id
         assert result.deleted is True
         assert conv_id in fake.cleared_ids
+
+    async def test_clear_history_with_owner_user_clears(self) -> None:
+        """Owner access: the authenticated owner can delete (HTTP 200/204)."""
+
+        owner_id = uuid4()
+        conv_id = uuid4()
+
+        fake = FakeChatService()
+        fake.set_owner(owner_id)
+
+        result = await clear_history(
+            conversation_id=conv_id,
+            user_id=str(owner_id),
+            service=cast("ChatService", fake),
+        )
+
+        assert result.conversation_id == conv_id
+        assert result.deleted is True
+        assert conv_id in fake.cleared_ids
+
+    async def test_clear_history_with_foreign_user_raises_not_found(self) -> None:
+        """IDOR regression: user B deleting user A's conversation gets 404.
+
+        NotFoundError propagates to the global NarrareError handler (404);
+        the conversation must not be cleared for a non-owner.
+        """
+
+        owner_id = uuid4()
+        attacker_id = uuid4()
+        conv_id = uuid4()
+
+        fake = FakeChatService()
+        fake.set_owner(owner_id)
+
+        with pytest.raises(NotFoundError):
+            await clear_history(
+                conversation_id=conv_id,
+                user_id=str(attacker_id),
+                service=cast("ChatService", fake),
+            )
+
+        assert conv_id not in fake.cleared_ids

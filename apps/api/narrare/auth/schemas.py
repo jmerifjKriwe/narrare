@@ -30,6 +30,17 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class WsTicketResponse(BaseModel):
+    """Single-use WebSocket handshake ticket (ADR-084).
+
+    ``token`` is opaque, returned exactly once, and never stored raw
+    server-side (only its SHA-256 hash — see ``auth/ws_tickets.py``).
+    """
+
+    token: str
+    expires_in: int  # seconds (60 — mirrors TokenResponse.expires_in)
+
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

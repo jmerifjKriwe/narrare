@@ -18,6 +18,7 @@ not ``MagicMock``:
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 from narrare.series.series_consistency_service import SeriesConsistencyService
@@ -53,16 +54,49 @@ class FakeSeriesConsistencyRegistry:
     def __init__(self) -> None:
         self.get_model_calls: int = 0
 
-    async def get_model(self, config: Any, **kwargs: Any) -> Any:
+    async def get_model(
+        self,
+        config: Any,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> Any:
+        # api_key/base_url: per-user routing credentials — accepted for
+        # protocol fidelity with ModelRegistry.get_model; the fake ignores
+        # them.
         self.get_model_calls += 1
         return object()  # the agent factory ignores it in tests
+
+    async def prepare(
+        self,
+        config: Any,
+        *,
+        intent: Any = None,
+        usage_limits: Any = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> Any:
+        """Task-6d bridge: resolution flows through prepare → get_model.
+
+        The service (Task 6d-2) resolves via the single assembly point;
+        the bridge forwards the intent/credential pass-throughs so the
+        existing get_model-based tests keep their semantics.
+        """
+        _ = intent
+        return SimpleNamespace(
+            model=await self.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
 
 
 class FakeSeriesConsistencyAgent:
     """Fake SeriesConsistencyAgent — records the run call and returns fixed output.
 
     Configurable via ``output`` / ``raises``; captures ``last_deps`` /
-    ``last_prompt`` for assertions.
+    ``last_prompt`` for assertions. Task 6d-2: ``last_model`` (set by the
+    service's agent factory) and ``last_run_kwargs`` record the coherent
+    prepare() triple at the agent boundary.
     """
 
     def __init__(
@@ -74,11 +108,14 @@ class FakeSeriesConsistencyAgent:
         self._raises = raises
         self.last_deps: Any = None
         self.last_prompt: str = ""
+        self.last_model: Any = None
+        self.last_run_kwargs: dict[str, Any] = {}
         self.run_count: int = 0
 
     async def run(self, prompt: str, deps: Any, **kwargs: Any) -> SeriesConsistencyOutput:
         self.last_prompt = prompt
         self.last_deps = deps
+        self.last_run_kwargs = kwargs
         self.run_count += 1
         if self._raises is not None:
             raise self._raises
@@ -123,7 +160,10 @@ def make_service(
     kb_repo: FakeScopeKBRepo | None = None,
     agent: FakeSeriesConsistencyAgent | None = None,
     composer: FakeSeriesConsistencyComposer | None = None,
-    registry: FakeSeriesConsistencyRegistry | None = None,
+    registry: Any | None = None,
+    config: ResolvedModelConfig | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
 ) -> tuple[
     SeriesConsistencyService,
     FakeSeriesConsistencyAgent,
@@ -133,6 +173,10 @@ def make_service(
     FakeChapterRepository,
 ]:
     """Build a SeriesConsistencyService wired with fakes + a fake agent factory.
+
+    Task 6d-2: ``config`` / ``api_key`` / ``base_url`` overrides let wiring
+    tests inject the recorded prepare() registry + per-user credentials.
+    The agent factory records the resolved model on ``agent.last_model``.
 
     Returns ``(service, agent, kb_repo, series_repo, novel_repo, chapter_repo)``
     so tests can seed data and assert interactions.
@@ -145,15 +189,22 @@ def make_service(
     composer = composer or FakeSeriesConsistencyComposer()
     registry = registry or FakeSeriesConsistencyRegistry()
 
+    def _agent_factory(model: Any, system_prompt: Any = None) -> FakeSeriesConsistencyAgent:
+        del system_prompt
+        agent.last_model = model
+        return agent
+
     service = SeriesConsistencyService(
         series_repo=series_repo,  # type: ignore[arg-type]
         novel_repo=novel_repo,  # type: ignore[arg-type]
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
         kb_repo=kb_repo,  # type: ignore[arg-type]
         registry=registry,  # type: ignore[arg-type]
-        config=make_config(),
+        config=config or make_config(),
+        api_key=api_key,
+        base_url=base_url,
         composer=composer,  # type: ignore[arg-type]
-        agent_factory=lambda model, system_prompt=None: agent,  # type: ignore[arg-type]
+        agent_factory=_agent_factory,  # type: ignore[arg-type]
     )
     return service, agent, kb_repo, series_repo, novel_repo, chapter_repo
 

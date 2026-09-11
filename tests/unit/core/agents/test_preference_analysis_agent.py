@@ -2,7 +2,6 @@
 
 Test-Strategie:
 - TestModel für deterministische Agent-Tests
-- Output Function wird direkt via ``_process_analysis`` getestet
 - Keine echten LLM-Calls (RULE-01b)
 """
 

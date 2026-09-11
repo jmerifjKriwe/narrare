@@ -140,8 +140,9 @@ class KBService:
         review_status: str | None = None,
         page: int = 1,
         page_size: int = 50,
+        include_deprecated: bool = False,
     ) -> tuple[list[KBEntry], int]:
-        """List entries for a novel with optional filters."""
+        """List entries for a novel with optional filters (deprecated hidden)."""
         await self._verify_novel_ownership(novel_id, user_id)
         return await self._repo.list_entries(
             novel_id,
@@ -150,6 +151,7 @@ class KBService:
             review_status=review_status,
             page=page,
             page_size=page_size,
+            include_deprecated=include_deprecated,
         )
 
     async def update(
@@ -271,8 +273,9 @@ class KBService:
         tags: list[str] | None = None,
         page: int = 1,
         page_size: int = 50,
+        include_deprecated: bool = False,
     ) -> tuple[list[KBEntry], int]:
-        """Search entries by text query."""
+        """Search entries by text query (deprecated hidden by default)."""
         await self._verify_novel_ownership(novel_id, user_id)
         return await self._repo.search(
             novel_id,
@@ -281,4 +284,5 @@ class KBService:
             tags=tags,
             page=page,
             page_size=page_size,
+            include_deprecated=include_deprecated,
         )

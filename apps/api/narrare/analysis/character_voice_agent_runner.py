@@ -13,6 +13,7 @@ See:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
@@ -21,6 +22,8 @@ from narrare.analysis.character_voice_kb_writer import (
     format_attributed_dialogue,
     format_metrics_summary,
 )
+from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -47,6 +50,9 @@ async def run_character_voice_agent(
     model_registry: ModelRegistry,
     model_config: ResolvedModelConfig,
     composed_prompt: ComposedPrompt,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    run_limit_resolver: DefaultRunLimitResolver | None = None,
 ) -> CharacterVoiceOutput:
     """Format runtime content and run one ``CharacterVoiceAgent`` call.
 
@@ -61,13 +67,28 @@ async def run_character_voice_agent(
         model_registry: Model registry used to resolve the configured model.
         model_config: Resolved model configuration.
         composed_prompt: The composed system + user prompt (Mode 1).
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.prepare``.
+        base_url: Optional per-user provider base URL override.
 
     Returns:
         The agent output with per-character voice profiles.
     """
     attributed_dialogue = format_attributed_dialogue(utterances)
     metrics_summary = format_metrics_summary(metrics)
-    model = await model_registry.get_model(model_config)
+    # Single assembly point (Task 6a — Task 4/5 pattern): model + intent-aware
+    # runtime settings + usage limits as one coherent triple, so the thinking
+    # policy actually reaches this call.
+    resolved = (run_limit_resolver or DefaultRunLimitResolver()).resolve(
+        config=model_config, budget=None, invocation_id=uuid4()
+    )
+    prepared = await model_registry.prepare(
+        model_config,
+        intent=LLMIntent.VOICE,
+        usage_limits=resolved.usage_limits,
+        api_key=api_key,
+        base_url=base_url,
+    )
 
     from narrare_core.agents.character_voice_agent import CharacterVoiceAgent
     from narrare_core.agents.character_voice_types import CharacterVoiceDeps
@@ -81,10 +102,12 @@ async def run_character_voice_agent(
         writing_language=language,
     )
     try:
-        agent = CharacterVoiceAgent(model=model, system_prompt=composed_prompt.system)
+        agent = CharacterVoiceAgent(model=prepared.model, system_prompt=composed_prompt.system)
         output = await agent.run(
             prompt=composed_prompt.user or build_run_prompt(attributed_dialogue, metrics_summary),
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
     except Exception as exc:
         logger.error(

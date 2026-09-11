@@ -26,10 +26,16 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import structlog
 
+from narrare.prompts._live_test_invocation import (
+    agent_text_stream,
+    build_deps,
+    build_snapshot,
+    intent_label_for,
+)
 from narrare.prompts._live_test_sse import live_test_event_stream
 from narrare.prompts.schemas_prompt_ux import LiveTestRequest, LiveTestStartedResponse
 from narrare_core.llm.intents import LLMIntent
-from narrare_core.prompts.contracts import ContextSnapshot
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import ValidationError
 
 if TYPE_CHECKING:
@@ -37,11 +43,10 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from pydantic_ai.models import Model
+    from pydantic_ai.usage import UsageLimits
 
-    from narrare_core.agents.prompt_live_test_agent import (
-        PromptLiveTestAgent,
-        PromptLiveTestDeps,
-    )
+    from narrare_core.agents.prompt_live_test_agent import PromptLiveTestAgent
+    from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.llm.model_config import ResolvedModelConfig
     from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.contracts import PromptPreviewProtocol
@@ -72,13 +77,15 @@ class _ModelResolver(Protocol):
 class _ModelRegistry(Protocol):
     """Minimal surface of ``ModelRegistry`` needed by this service."""
 
-    async def get_model(
+    async def prepare(
         self,
         config: ResolvedModelConfig,
         *,
+        intent: LLMIntent | None = ...,
+        usage_limits: UsageLimits | None = ...,
         api_key: str | None = ...,
         base_url: str | None = ...,
-    ) -> Model: ...
+    ) -> PreparedModelCall: ...
 
 
 @runtime_checkable
@@ -103,8 +110,10 @@ class PromptLiveTestApiService:
     Args:
         resolver: Model routing resolver — the provider gate. Raises
             ``ConfigurationError`` when no provider is configured.
-        registry: ModelRegistry — builds the pydantic-ai Model from the
-            resolved config + credentials.
+        registry: ModelRegistry — prepares the coherent
+            ``(model, model_settings, usage_limits)`` call (Task 4
+            single assembly point) from the resolved config +
+            credentials.
         preview: Core ``PromptPreviewProtocol`` — composes the system
             prompt (provider-free) so the live test uses the real
             cascade-resolved prompt unless ``edited_override`` is set.
@@ -127,6 +136,7 @@ class PromptLiveTestApiService:
         agent_factory: _AgentFactory,
         intent: LLMIntent = LLMIntent.WRITE,
         rate_limit_budget: int = 5,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._resolver = resolver
         self._registry = registry
@@ -134,6 +144,7 @@ class PromptLiveTestApiService:
         self._agent_factory = agent_factory
         self._intent = intent
         self._rate_limit_budget = rate_limit_budget
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def validate_live_test(
         self,
@@ -167,7 +178,7 @@ class PromptLiveTestApiService:
         resolved = await self._resolver.resolve(self._intent, UUID(user_id), None)
         return LiveTestStartedResponse(
             prompt_id=prompt_id,
-            intent=_intent_label_for(prompt_id),
+            intent=intent_label_for(prompt_id),
             model_id=resolved.config.model_id,
             rate_limit_remaining=max(0, self._rate_limit_budget - 1),
         )
@@ -198,28 +209,33 @@ class PromptLiveTestApiService:
         After the first frame is yielded, errors surface as SSE error
         events (see :func:`live_test_event_stream`).
         """
-        from uuid import UUID
+        from uuid import UUID, uuid4
 
         # Gate + model resolution — raises before SSE if no provider.
         resolved = await self._resolver.resolve(self._intent, UUID(user_id), None)
-        model = await self._registry.get_model(
+        limits = self._run_limit_resolver.resolve(
+            config=resolved.config, budget=None, invocation_id=uuid4()
+        )
+        prepared = await self._registry.prepare(
             resolved.config,
+            intent=self._intent,
+            usage_limits=limits.usage_limits,
             api_key=resolved.api_key,
             base_url=resolved.base_url,
         )
-        agent = self._agent_factory(model=model)
+        agent = self._agent_factory(model=prepared.model)
 
         # Compose the system prompt via the provider-free Core preview.
         # When edited_override is set, the preview surfaces the override;
         # otherwise the cascade-resolved bundled prompt is used.
-        snapshot = _build_snapshot(request)
+        snapshot = build_snapshot(request)
         preview_result: PromptPreview = await self._preview.preview(
             prompt_id=prompt_id,
             snapshot=snapshot,
             edited_override=request.edited_override,
         )
 
-        deps = _build_deps(request, preview_result.system_prompt)
+        deps = build_deps(request, preview_result.system_prompt)
         logger.info(
             "prompt_live_test_started",
             prompt_id=prompt_id,
@@ -228,63 +244,13 @@ class PromptLiveTestApiService:
         )
 
         async for frame in live_test_event_stream(
-            _agent_text_stream(agent, request.user_prompt, deps),
+            agent_text_stream(
+                agent,
+                request.user_prompt,
+                deps,
+                model_settings=prepared.model_settings,
+                usage_limits=prepared.usage_limits,
+            ),
             metadata=metadata,
         ):
             yield frame
-
-
-# ---------------------------------------------------------------------------
-# Module-private helpers — kept here (not in __init__) for testability.
-# ---------------------------------------------------------------------------
-
-
-def _intent_label_for(prompt_id: str) -> str:
-    """Derive the intent label (prompt category) from the prompt_id."""
-    return prompt_id.split("/")[0] if "/" in prompt_id else prompt_id
-
-
-def _build_snapshot(request: LiveTestRequest) -> ContextSnapshot:
-    """Build a Core ``ContextSnapshot`` from the live-test request."""
-    return ContextSnapshot(
-        variables=dict(request.variables),
-        language=request.language,
-        genre=request.genre,
-        mode=request.mode,
-    )
-
-
-def _build_deps(
-    request: LiveTestRequest,
-    composed_system: str,
-) -> PromptLiveTestDeps:
-    """Build ``PromptLiveTestDeps`` for the agent run.
-
-    The composed system prompt comes from the provider-free preview
-    (cascade-resolved or the edited override). The user message is the
-    raw ``user_prompt`` from the request.
-    """
-    from narrare_core.agents.prompt_live_test_agent import PromptLiveTestDeps
-
-    return PromptLiveTestDeps(
-        composed_system=composed_system,
-        composed_user=request.user_prompt,
-        language=request.language,
-    )
-
-
-async def _agent_text_stream(
-    agent: PromptLiveTestAgent,
-    user_prompt: str,
-    deps: PromptLiveTestDeps,
-) -> AsyncIterator[str]:
-    """Convert ``StreamEvent`` objects from the agent to text chunks.
-
-    The agent's ``run_stream`` yields ``StreamEvent`` events; the SSE
-    helper expects an async iterator of raw text chunks. This adapter
-    extracts ``event.text`` from token events. Done/error events carry
-    no additional text for the SSE layer.
-    """
-    async for event in agent.run_stream(prompt=user_prompt, deps=deps):
-        if event.type == "token":
-            yield event.text

@@ -13,6 +13,8 @@
  *  - onSuccess: with content vs null
  *  - onError: partial absent (no message) path
  *  - clearConversation / cancelStream
+ *  - project-less chat + note context passthrough (NOTES-001 §6b):
+ *    legacy parity (project_id set, note_id null) and null project_id + note_id
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -259,6 +261,97 @@ describe("useChat — onError", () => {
     expect(result.current.error).toEqual(errResponse);
     expect(result.current.error?.userMessage).toBe("stream failed");
     expect(result.current.error?.retryable).toBe(false);
+  });
+});
+
+describe("useChat — project-less & note context (NOTES-001 §6b)", () => {
+  // Drive pattern mirrors the brief's module-mock of chatApi: stage the message
+  // via sendMessage, then run the captured execute() so streamChat receives
+  // the real body the hook constructs.
+  it("sends project_id and no note_id for legacy project chat", async () => {
+    const { result } = renderHook(() => useChat("p1"), { wrapper: createWrapper() });
+
+    act(() => {
+      result.current.sendMessage("hello"); // stages messageRef
+    });
+    streamChat.mockImplementationOnce(async (_body, cbs) => {
+      cbs.onMeta({ conversation_id: "c1", request_id: "r1" });
+      cbs.onToken("answer");
+      cbs.onDone({
+        type: "done",
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      });
+    });
+
+    const content = await capturedOptions.execute(new AbortController().signal);
+
+    expect(streamChat).toHaveBeenCalled();
+    expect(streamChat.mock.calls[0][0]).toMatchObject({
+      project_id: "p1",
+      message: "hello",
+    });
+    expect(streamChat.mock.calls[0][0].note_id ?? null).toBeNull();
+
+    // Streamed tokens surface as the assistant reply (via onSuccess).
+    act(() => {
+      capturedOptions.onSuccess(content);
+    });
+    expect(result.current.messages.at(-1)?.content).toBe("answer");
+  });
+
+  it("sends null project_id and note_id for project-less note chat", async () => {
+    const { result } = renderHook(() => useChat(null, "note-1"), { wrapper: createWrapper() });
+
+    act(() => {
+      result.current.sendMessage("discuss this"); // stages messageRef
+    });
+    streamChat.mockImplementationOnce(async (_body, cbs) => {
+      cbs.onMeta({ conversation_id: "c1", request_id: "r1" });
+      cbs.onToken("answer");
+      cbs.onDone({
+        type: "done",
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      });
+    });
+
+    const content = await capturedOptions.execute(new AbortController().signal);
+
+    expect(streamChat).toHaveBeenCalled();
+    expect(streamChat.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        project_id: null,
+        message: "discuss this",
+        note_id: "note-1",
+      }),
+    );
+
+    // Streamed tokens surface as the assistant reply (via onSuccess).
+    act(() => {
+      capturedOptions.onSuccess(content);
+    });
+    expect(result.current.messages.at(-1)?.content).toBe("answer");
+  });
+
+  it("reads note_id from the committed ref, not the execute closure (follow-up P-FE4)", async () => {
+    const { result, rerender } = renderHook(({ id }) => useChat(null, id), {
+      initialProps: { id: "note-1" as string | null },
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.sendMessage("hi"); // stages messageRef
+    });
+    // Capture the FIRST render's execute, then change the noteId prop —
+    // the effect commits it into the ref.
+    const firstRenderExecute = capturedOptions.execute;
+    rerender({ id: "note-2" });
+    streamChat.mockImplementationOnce(async () => {});
+
+    // Even an execute closure captured on an earlier render must send the
+    // last committed noteId — no silent re-scoping through stale closures.
+    await firstRenderExecute(new AbortController().signal);
+
+    expect(streamChat.mock.calls[0][0]).toMatchObject({ note_id: "note-2" });
   });
 });
 

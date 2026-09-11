@@ -6,6 +6,7 @@ Tests the async generator that yields ExtractedEventResponse per chapter.
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -82,7 +83,10 @@ class TestStreamExtraction:
         )
 
         mock_model = AsyncMock(spec=[])
-        mock_registry.get_model.return_value = mock_model
+        # Task-6b-2: model resolution flows through the prepare() assembly point.
+        mock_registry.prepare.return_value = SimpleNamespace(
+            model=mock_model, model_settings=None, usage_limits=None
+        )
 
         mock_agent_instance = AsyncMock()
         mock_agent_instance.run.return_value = fake_output
@@ -121,11 +125,16 @@ class TestStreamExtraction:
         ]
 
         mock_model = AsyncMock(spec=[])
-        mock_registry.get_model.return_value = mock_model
+        # Task-6b-2: model resolution flows through the prepare() assembly point.
+        mock_registry.prepare.return_value = SimpleNamespace(
+            model=mock_model, model_settings=None, usage_limits=None
+        )
 
+        mock_agent_instance = AsyncMock()
         with patch(
             "narrare_core.agents.temporal_extraction_agent.TemporalExtractionAgent",
-        ) as mock_agent_cls:
+            return_value=mock_agent_instance,
+        ):
             results: list[ExtractedEventResponse] = []
             async for event in service_with_config.stream_extraction(
                 novel_id, user_id, chapter_ids=None
@@ -133,8 +142,11 @@ class TestStreamExtraction:
                 results.append(event)
 
         assert len(results) == 0
-        # Agent should NOT be called for empty chapters
-        mock_agent_cls.assert_not_called()
+        # Agent should NOT be called for empty chapters. Task-6b-2 note: the
+        # stateless agent wrapper is now constructed once before the loop
+        # (loop-invariant model + system prompt); the preserved contract is
+        # that empty chapters never reach agent.run() and yield nothing.
+        mock_agent_instance.run.assert_not_called()
 
     async def test_stream_handles_chapter_failure_gracefully(
         self,
@@ -168,7 +180,10 @@ class TestStreamExtraction:
         )
 
         mock_model = AsyncMock(spec=[])
-        mock_registry.get_model.return_value = mock_model
+        # Task-6b-2: model resolution flows through the prepare() assembly point.
+        mock_registry.prepare.return_value = SimpleNamespace(
+            model=mock_model, model_settings=None, usage_limits=None
+        )
 
         # First call raises, second succeeds
         mock_agent_instance = AsyncMock()

@@ -3,6 +3,11 @@
 Coordinates KBImproveAnalyzer for LLM analysis and handles the apply
 operation (field updates + relationship connections).  The analyzer is
 extracted into ``improve_analyzer.py`` for RULE-04 compliance.
+
+Both public operations gate on novel ownership at service entry (IDOR
+fix S8): the caller must own ``novel_id`` and the entry must belong to
+that novel BEFORE any cache lookup, LLM analysis, or write. The analyzer
+itself stays gate-free (it runs post-gate only).
 """
 
 from __future__ import annotations
@@ -12,15 +17,19 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from .improve_contracts import KBImproveAnalysisResponse, KBImproveApplyResponse
+from narrare.kb._extraction_resolution import RESERVED_METADATA_KEYS
+from narrare.kb.improve_contracts import KBImproveAnalysisResponse, KBImproveApplyResponse
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.kb.improve_analyzer import KBImproveAnalyzer
+    from narrare.kb.models import KBEntry
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.kb.service import KBService
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 logger = structlog.get_logger(__name__)
@@ -31,6 +40,14 @@ class KBImproveService:
 
     Delegates LLM analysis to :class:`KBImproveAnalyzer` and handles the
     apply operation (field updates + relationship connections) directly.
+
+    Args:
+        analyzer: LLM analysis orchestration (runs post-gate only).
+        kb_repo: KB entry repository.
+        kb_service: KB entry service (legacy wiring).
+        rel_repo: Relationship repository.
+        novel_repo: Novel repository — novel ownership gate (IDOR fix S8).
+        invocation_pipeline: Optional invocation evidence pipeline.
     """
 
     def __init__(
@@ -39,26 +56,57 @@ class KBImproveService:
         kb_repo: KBRepository,
         kb_service: KBService,
         rel_repo: RelationshipRepository,
+        novel_repo: NovelRepositoryProtocol,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._analyzer = analyzer
         self._kb_repo = kb_repo
         self._kb_service = kb_service
         self._rel_repo = rel_repo
+        self._novel_repo = novel_repo
         self._invocation_pipeline = invocation_pipeline
+
+    async def _verify_novel_ownership(self, novel_id: UUID, user_id: UUID) -> None:
+        """Raise NotFoundError if the novel is not owned by the caller.
+
+        Foreign and unknown novels are indistinguishable (anti-enumeration);
+        a missing novel is a 404, never a 403 (which stays reserved for the
+        series module).
+        """
+        novel = await self._novel_repo.get_by_id(novel_id, user_id)
+        if novel is None:
+            raise NotFoundError("Novel", identifier=str(novel_id))
+
+    async def _get_owned_entry(self, novel_id: UUID, entry_id: UUID) -> KBEntry:
+        """Load an entry and assert it belongs to the given novel.
+
+        A foreign entry (belonging to another novel) and an unknown entry
+        are indistinguishable — both raise ``NotFoundError``.
+        """
+        entry = await self._kb_repo.get_by_id(entry_id)
+        if entry is None or entry.novel_id != novel_id:
+            raise NotFoundError("KBEntry", identifier=str(entry_id))
+        return entry
 
     async def analyze(
         self,
         *,
         novel_id: UUID,
         entry_id: UUID,
+        user_id: UUID,
     ) -> KBImproveAnalysisResponse:
         """Analyze an existing KB entry and return improvement suggestions.
+
+        Ownership gates run FIRST: the caller must own ``novel_id`` and the
+        entry must belong to that novel — BEFORE any analyzer/LLM work, so
+        a foreign entry's body never reaches the LLM.
 
         Delegates to :class:`KBImproveAnalyzer` which handles caching,
         deps building, prompt composition, and agent execution.
         Evidence recording happens in the analyzer (ADR-048 Mode 1).
         """
+        await self._verify_novel_ownership(novel_id, user_id)
+        await self._get_owned_entry(novel_id, entry_id)
         return await self._analyzer.analyze(novel_id=novel_id, entry_id=entry_id)
 
     async def apply(
@@ -67,13 +115,21 @@ class KBImproveService:
         novel_id: UUID,
         entry_id: UUID,
         suggestion_ids: list[int],
+        user_id: UUID,
     ) -> KBImproveApplyResponse:
         """Apply selected improvement suggestions.
+
+        Ownership gates run FIRST — before the cache lookup (so a foreign
+        caller cannot even probe the analysis cache), before any LLM
+        fallback, and before any write.
 
         Uses the cached analysis when available (avoids re-running the LLM).
         On success, invalidates the cache so that subsequent analyses are fresh.
         Operates directly on repositories (internal tool).
         """
+        await self._verify_novel_ownership(novel_id, user_id)
+        entry = await self._get_owned_entry(novel_id, entry_id)
+
         # Try to get analysis from cache first — avoids re-running the LLM
         analysis = await self._analyzer.get_cached_analysis(entry_id)
 
@@ -91,19 +147,23 @@ class KBImproveService:
                 message="No valid suggestions selected.",
             )
 
-        entry = await self._kb_repo.get_by_id(entry_id)
-        if entry is None:
-            from narrare_core.shared.errors import NotFoundError
-
-            raise NotFoundError("KBEntry", identifier=str(entry_id))
-
-        # Apply field changes (add_field, expand, reorganize)
+        # Apply field changes (add_field, expand, reorganize). Reserved
+        # metadata keys (provenance/resolution, ADR-085 §5/§6) are skipped
+        # with a warning — the same invariant class as the extraction apply
+        # flow: LLM proposals never own platform-owned keys (RULE-11).
         metadata_updates: dict[str, object] = {}
         for suggestion in selected:
             if (
                 suggestion.type in ("add_field", "expand", "reorganize")
                 and suggestion.proposed_content is not None
             ):
+                if suggestion.target in RESERVED_METADATA_KEYS:
+                    logger.warning(
+                        "improve_apply_reserved_target_blocked",
+                        entry_id=str(entry_id),
+                        target=suggestion.target,
+                    )
+                    continue
                 metadata_updates[suggestion.target] = suggestion.proposed_content
 
         update_data: dict[str, object] = {}

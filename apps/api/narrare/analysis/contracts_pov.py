@@ -29,7 +29,6 @@ class POVServiceProtocol(Protocol):
         chapter_ids: list[UUID],
         user_id: UUID,
         language: str = "en",
-        pov_type: str | None = None,
     ) -> POVResult:
         """Analyse POV consistency for the given chapters.
 
@@ -41,9 +40,6 @@ class POVServiceProtocol(Protocol):
             language: Language override.  If ``"auto"``, resolves from
                 the novel's ``writing_language`` setting.
                 Defaults to ``"en"``.
-            pov_type: Optional POV type hint (``"single_character"``,
-                ``"omniscient"``, ``"first_person"``).  If ``None``,
-                auto-detect from the text.
 
         Returns:
             A ``POVResult`` with per-scene assignments, flagged

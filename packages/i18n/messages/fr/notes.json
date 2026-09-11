@@ -1,0 +1,71 @@
+{
+  "nav": { "label": "Bloc-notes" },
+  "page": {
+    "title": "Bloc-notes",
+    "subtitle": "Captez vos pensées avant qu'elles s'échappent — idées, concepts, questions."
+  },
+  "empty": {
+    "title": "Rien de capturé pour l'instant",
+    "description": "Sauvegardez votre première pensée — un rebondissement, une idée d'univers, une question d'écriture.",
+    "cta": "Capter une pensée",
+    "selectPrompt": "Sélectionnez une note pour la lire ou la modifier."
+  },
+  "list": {
+    "searchPlaceholder": "Rechercher des notes…",
+    "typeFilterLabel": "Type",
+    "allTypes": "Tous les types",
+    "tagFilterLabel": "Étiquette",
+    "allTags": "Toutes les étiquettes",
+    "tagFilterPlaceholder": "Filtrer par étiquette…",
+    "clearTagFilter": "Effacer le filtre d'étiquette",
+    "scopeFilterLabel": "Lié à",
+    "allScopes": "Tout",
+    "scopeNovelsGroup": "Romans",
+    "scopeSeriesGroup": "Séries",
+    "noResults": "Aucune note ne correspond à ces filtres.",
+    "untitled": "Sans titre",
+    "updated": "Mis à jour {date}"
+  },
+  "type": { "idea": "Idée", "concept": "Concept", "question": "Question", "other": "Autre" },
+  "editor": {
+    "titlePlaceholder": "Titre (facultatif — sinon la première ligne est utilisée)",
+    "contentLabel": "Note",
+    "contentPlaceholder": "Notez-la… (Markdown pris en charge)",
+    "preview": "Aperçu",
+    "edit": "Modifier",
+    "typeLabel": "Type",
+    "tagsLabel": "Étiquettes",
+    "tagPlaceholder": "Ajouter une étiquette…",
+    "tagSuggestions": "Suggestions",
+    "linkLabel": "Lien (facultatif)",
+    "noLink": "Non liée",
+    "novelLink": "Roman lié",
+    "seriesLink": "Série liée",
+    "discuss": "Discuter dans le chat",
+    "delete": "Supprimer la note",
+    "deleteTitle": "Supprimer cette note ?",
+    "deleteDescription": "La note sera définitivement supprimée. Cette action est irréversible.",
+    "save": "Enregistrer",
+    "saveFailed": "Impossible d'enregistrer la note.",
+    "deleted": "Note supprimée.",
+    "deleteFailed": "Impossible de supprimer la note."
+  },
+  "search": {
+    "semanticToggle": "Sémantique",
+    "semanticBadge": "sémantique",
+    "lexicalBadge": "lexicale"
+  },
+  "quickCapture": {
+    "open": "Capture rapide",
+    "close": "Fermer la capture rapide",
+    "title": "Capter une pensée",
+    "titlePlaceholder": "Titre (facultatif)",
+    "textPlaceholder": "À quoi pensez-vous ?",
+    "tagPlaceholder": "Étiquette (facultatif)",
+    "save": "Enregistrer la note",
+    "saved": "Pensée capturée.",
+    "openInScratchpad": "Ouvrir dans le bloc-notes",
+    "shortcutHint": "Ctrl/⌘+Maj+U"
+  },
+  "chat": { "attachedNote": "À propos de la note : {title}", "close": "Fermer le chat" }
+}

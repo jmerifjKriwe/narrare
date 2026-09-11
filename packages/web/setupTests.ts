@@ -146,6 +146,12 @@ vi.mock("next-intl", () => ({
   useLocale: () => "en",
   useNow: () => new Date("2024-01-01"),
   useTimeZone: () => "UTC",
+  // Deterministic stand-in for next-intl's formatter (v4 API: `dateTime`):
+  // tests assert the ISO date, proving the component formatted via
+  // useFormatter (locale-aware) rather than toLocaleDateString (browser locale).
+  useFormatter: () => ({
+    dateTime: (value: Date) => value.toISOString().slice(0, 10),
+  }),
 }));
 
 // Mock next/navigation globally (useRouter, useParams, useSearchParams, usePathname)

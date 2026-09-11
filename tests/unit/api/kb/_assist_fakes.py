@@ -19,17 +19,45 @@ from narrare.kb.context_contracts import KBContextBundle
 from narrare_core.agents.kb_assist_agent import KBAssistDeps
 from narrare_core.agents.kb_assist_types import KBAssistOutput
 from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
+    from pydantic_ai.usage import UsageLimits
+
     from narrare.kb.assist_service import KBAssistService
+    from narrare_core.llm.intents import LLMIntent
 
 
 class FakeModelRegistry:
-    """Fake ModelRegistry returning a stub Model."""
+    """Fake ModelRegistry returning a stub Model.
+
+    ``prepare`` mirrors the real single assembly point (Task 4/6c):
+    exactly one ``get_model`` resolution plus a canned sentinel settings
+    dict, so pass-through wiring stays assertable.
+    """
 
     def __init__(self) -> None:
         self.get_model: AsyncMock = AsyncMock(return_value=MagicMock(spec=object))
+        self.prepare_calls: list[dict[str, object]] = []
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: LLMIntent | None = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        model = await self.get_model(config, api_key=api_key, base_url=base_url)
+        prepared = PreparedModelCall(
+            model=model,
+            model_settings={"max_tokens": 12_345},
+            usage_limits=usage_limits,
+        )
+        self.prepare_calls.append({"config": config, "intent": intent, "prepared": prepared})
+        return prepared
 
 
 class FakeKBContextProvider:

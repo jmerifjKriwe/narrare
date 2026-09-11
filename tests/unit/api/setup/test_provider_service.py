@@ -7,9 +7,11 @@ Updated for CR-AUFG-08-06: ``_fetch_models`` returns ``FetchResult``
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+import os
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from pydantic_ai.models.test import TestModel
 
 from narrare.setup._model_fetchers import FetchResult
 from narrare.setup.base_schemas import AIProvider
@@ -20,6 +22,11 @@ from narrare.setup.provider_service import ProviderService
 @pytest.fixture
 def service() -> ProviderService:
     return ProviderService()
+
+
+def _ok_model() -> TestModel:
+    """Deterministic pydantic-ai model — no network, always replies "OK"."""
+    return TestModel(custom_output_text="OK")
 
 
 # ---------------------------------------------------------------------------
@@ -204,3 +211,70 @@ class TestProviderServiceFetchDelegation:
         assert call_args[0][2] == ""
         # Fourth arg is _FALLBACK_MODELS dict — verify it's populated
         assert len(call_args[0][3]) > 0
+
+
+# ---------------------------------------------------------------------------
+# _test_call — per-request credential pass-through
+#
+# Regression (benchmark finding #5, KB rehearsal spec §6): the previous
+# implementation mutated ``os.environ`` and called provider factories bare.
+# ``get_core_settings()`` is lru-cached (ADR-071) and instantiated at startup,
+# so env writes after startup are invisible — zai step-4 validation failed
+# with "Missing credentials ... OPENAI_API_KEY" despite a valid key.
+# The registry contract (ProviderFactory) documents per-request pass-through
+# via ``factory(model_id, api_key=..., base_url=...)``.
+# ---------------------------------------------------------------------------
+
+
+class TestProviderServiceTestCallCredentialPassthrough:
+    """_test_call must pass credentials per-request to the provider factories."""
+
+    async def test_passes_api_key_to_zai_coding_factory(self, service: ProviderService) -> None:
+        with patch(
+            "narrare_core.llm._providers.zai.make_zai_coding",
+            return_value=_ok_model(),
+        ) as mock_zai_coding:
+            await service._test_call(
+                AIProvider.ZAI, "zai-key-123", "glm-4-flash", "", zai_endpoint="coding"
+            )
+
+        mock_zai_coding.assert_called_once_with("glm-4-flash", api_key="zai-key-123")
+
+    async def test_passes_api_key_to_registry_factory(self, service: ProviderService) -> None:
+        mock_factory = Mock(return_value=_ok_model())
+        with patch("narrare_core.llm._providers.registry.get", return_value=mock_factory):
+            await service._test_call(AIProvider.OPENAI, "sk-key-123", "gpt-4o", "")
+
+        mock_factory.assert_called_once_with("gpt-4o", api_key="sk-key-123")
+
+    async def test_passes_ollama_url_as_base_url(self, service: ProviderService) -> None:
+        """Ollama has no key — the URL must reach the factory via base_url."""
+        mock_factory = Mock(return_value=_ok_model())
+        with patch("narrare_core.llm._providers.registry.get", return_value=mock_factory):
+            await service._test_call(AIProvider.OLLAMA, "", "llama3.2", "http://my-ollama:11434")
+
+        mock_factory.assert_called_once_with("llama3.2", base_url="http://my-ollama:11434")
+
+    @pytest.mark.parametrize(
+        ("provider", "env_var"),
+        [
+            (AIProvider.ANTHROPIC, "ANTHROPIC_API_KEY"),
+            (AIProvider.OPENAI, "OPENAI_API_KEY"),
+            (AIProvider.ZAI, "ZAI_API_KEY"),
+            (AIProvider.OLLAMA, "OLLAMA_BASE_URL"),
+        ],
+    )
+    async def test_does_not_mutate_environ(
+        self,
+        service: ProviderService,
+        monkeypatch: pytest.MonkeyPatch,
+        provider: AIProvider,
+        env_var: str,
+    ) -> None:
+        """_test_call is forbidden from writing credentials into os.environ."""
+        monkeypatch.delenv(env_var, raising=False)
+        mock_factory = Mock(return_value=_ok_model())
+        with patch("narrare_core.llm._providers.registry.get", return_value=mock_factory):
+            await service._test_call(provider, "cred-value", "some-model", "http://ollama:11434")
+
+        assert env_var not in os.environ

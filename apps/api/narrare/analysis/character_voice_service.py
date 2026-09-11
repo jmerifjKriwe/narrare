@@ -106,6 +106,9 @@ class CharacterVoiceService:
             for ``analyze``.
         invocation_pipeline: Optional pipeline for invocation evidence
             (Mode 1 prepare/finalize). Retained for DI-contract stability.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -119,6 +122,8 @@ class CharacterVoiceService:
         relationship_repo: RelationshipRepository | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
@@ -128,6 +133,8 @@ class CharacterVoiceService:
         self._composer = composer
         self._relationship_repo = relationship_repo
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def analyze(
         self,
@@ -243,6 +250,8 @@ class CharacterVoiceService:
             model_registry=self._registry,
             model_config=self._config,
             composed_prompt=composed_prompt,
+            api_key=self._api_key,
+            base_url=self._base_url,
         )
 
         # 7. Merge + write per character; yield one result event each.

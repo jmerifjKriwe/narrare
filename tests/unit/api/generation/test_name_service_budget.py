@@ -29,6 +29,8 @@ from tests.unit.api.generation._dedup_fakes import (
     kb_repo,
 )
 
+from ._ownership_fakes import permissive_novel_repo
+
 
 def _default_request(**overrides: Any) -> NameGenerateRequest:
     defaults: dict[str, Any] = {
@@ -74,9 +76,10 @@ class TestNameServiceTokenBudget:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo(_long_names(200)),
         )
-        await service.generate_names(_default_request())
+        await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         context = mock_composer.build.call_args.args[1]
         existing: str = context.extra["existing_names"]
@@ -103,9 +106,10 @@ class TestNameServiceTokenBudget:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo(entries),
         )
-        await service.generate_names(_default_request())
+        await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         context = mock_composer.build.call_args.args[1]
         existing: str = context.extra["existing_names"]
@@ -126,8 +130,9 @@ class TestNameServiceTokenBudget:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
         )
-        await service.generate_names(_default_request())
+        await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         context = mock_composer.build.call_args.args[1]
         assert context.extra["existing_names"] == ""

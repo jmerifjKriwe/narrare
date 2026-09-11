@@ -11,6 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from narrare._app.dependencies_auth import CurrentUserIdDep
 from narrare.writing.summary_contracts import SummaryResult
 from narrare.writing.summary_deps import get_summary_service
 from narrare_core.shared.errors import NotFoundError, WritingError
@@ -29,6 +30,7 @@ router = APIRouter(prefix="/summary", tags=["summary"])
 @router.post("/chapters/{chapter_id}", response_model=SummaryResult)
 async def summarize_chapter(
     chapter_id: UUID,
+    user_id: CurrentUserIdDep,
     request: SummarizeRequest | None = None,
     service=Depends(get_summary_service),
 ) -> SummaryResult:
@@ -36,6 +38,7 @@ async def summarize_chapter(
 
     Args:
         chapter_id: UUID of the chapter to summarize.
+        user_id: Authenticated user identifier (ownership check).
         request: Optional request body with max_sentences and language.
         service: Injected ChapterSummaryService instance.
 
@@ -43,7 +46,7 @@ async def summarize_chapter(
         SummaryResult with summary text, word count, and key points.
 
     Raises:
-        404: If the chapter does not exist.
+        404: If the chapter does not exist or belongs to another user.
         500: If the LLM call fails.
     """
     max_sentences = request.max_sentences if request is not None else 4
@@ -54,6 +57,7 @@ async def summarize_chapter(
             chapter_id=chapter_id,
             max_sentences=max_sentences,
             language=language,
+            user_id=user_id,
         )
         return result
     except NotFoundError as exc:

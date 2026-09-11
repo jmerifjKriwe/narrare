@@ -103,7 +103,7 @@ async def list_dismissed(
     The frontend uses this list to filter out dismissed issues from
     consistency check results.
     """
-    return await service.list_dismissed(novel_id=novel_id)
+    return await service.list_dismissed(novel_id=novel_id, user_id=user_id)
 
 
 @router.delete(
@@ -125,4 +125,5 @@ async def undismiss_finding(
     return await service.undismiss_finding(
         novel_id=novel_id,
         fingerprint=fingerprint,
+        user_id=user_id,
     )

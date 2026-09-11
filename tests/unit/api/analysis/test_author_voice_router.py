@@ -27,13 +27,15 @@ if TYPE_CHECKING:
 
 
 def _service_factory(service: Any) -> Any:
-    """Typed factory closure for MonkeyPatch.setattr (pyright strict mode).
+    """Typed async factory closure for MonkeyPatch.setattr (pyright strict).
 
     Mirrors the integration-test helper: a named closure with an explicit
     ``Any`` annotation satisfies the checker where a lambda would not.
+    Async since Task 2b — the router awaits the factory (per-user model
+    routing resolution happens inside).
     """
 
-    def _factory(_session: Any) -> Any:
+    async def _factory(**_kwargs: Any) -> Any:
         return service
 
     return _factory

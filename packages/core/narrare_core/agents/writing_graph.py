@@ -132,7 +132,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             system_prompt=system_prompt or None,
         )
         deps = OutlineDeps(genre=ctx.deps.genre, tone=ctx.deps.tone, language=ctx.deps.language)
-        result = await agent.run(prompt=user_prompt, deps=deps)
+        result = await agent.run(
+            prompt=user_prompt,
+            deps=deps,
+            model_settings=ctx.deps.model_settings,
+            usage_limits=ctx.deps.usage_limits,
+        )
         ctx.state.outline = result.outline_text or result.chapter_title
         ctx.state.status = WritingStatus.OUTLINED
         await save_state(ctx)
@@ -155,7 +160,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             word_target=ctx.deps.word_target,
         )
         deps = DraftDeps(context_assembler=ctx.deps.context_assembler)
-        result = await agent.run(prompt=user_prompt, deps=deps)
+        result = await agent.run(
+            prompt=user_prompt,
+            deps=deps,
+            model_settings=ctx.deps.model_settings,
+            usage_limits=ctx.deps.usage_limits,
+        )
         ctx.state.draft = result.text
         ctx.state.status = WritingStatus.DRAFTED
         await save_state(ctx)
@@ -194,7 +204,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             system_prompt=system_prompt or None,
         )
         rdeps = ReviewDeps(word_target=target, writing_context=writing_context)
-        result = await agent.run(prompt=user_prompt, deps=rdeps)
+        result = await agent.run(
+            prompt=user_prompt,
+            deps=rdeps,
+            model_settings=ctx.deps.model_settings,
+            usage_limits=ctx.deps.usage_limits,
+        )
 
         if not result.approved and ctx.state.attempts < 3:
             ctx.state.attempts += 1
@@ -228,7 +243,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             word_target=ctx.deps.word_target,
         )
         deps = DraftDeps(context_assembler=ctx.deps.context_assembler)
-        result = await agent.run(prompt=user_prompt, deps=deps)
+        result = await agent.run(
+            prompt=user_prompt,
+            deps=deps,
+            model_settings=ctx.deps.model_settings,
+            usage_limits=ctx.deps.usage_limits,
+        )
         ctx.state.revision = result.text
         ctx.state.draft = result.text
         ctx.state.status = WritingStatus.REVISED
@@ -276,7 +296,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             genre=ctx.deps.genre,
             chapter_title=ctx.state.outline[:100],
         )
-        result = await agent.run(prompt=user_prompt, deps=deps)
+        result = await agent.run(
+            prompt=user_prompt,
+            deps=deps,
+            model_settings=ctx.deps.model_settings,
+            usage_limits=ctx.deps.usage_limits,
+        )
         ctx.state.summary = result.summary
         ctx.state.status = WritingStatus.SUMMARIZED
         await save_state(ctx)

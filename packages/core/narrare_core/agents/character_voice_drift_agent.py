@@ -72,16 +72,14 @@ from __future__ import annotations
 from typing import Any
 
 # RunContext is intentionally a RUNTIME import (not TYPE_CHECKING): pydantic-ai
-# evaluates the output function's type hints via typing.get_type_hints() at
-# agent-construction time, so the annotation ``ctx: RunContext[...]`` MUST
-# resolve at runtime. Mirrors CharacterVoiceCheckerAgent. noqa: TC002.
+# introspects output-validator signatures at agent-construction time, so the
+# annotation ``ctx: RunContext[...]`` MUST resolve at runtime.
+# Mirrors CharacterVoiceCheckerAgent. noqa: TC002.
 from pydantic_ai import RunContext  # noqa: TC002
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.character_voice_drift_types import (
-    ChapterNote,
     CharacterVoiceDriftDeps,
-    DriftType,
     VoiceDriftResult,
 )
 
@@ -105,7 +103,7 @@ class CharacterVoiceDriftAgent(NarrareAgent[CharacterVoiceDriftDeps, VoiceDriftR
         super().__init__(
             model=model,
             deps_type=CharacterVoiceDriftDeps,
-            output_type=[self._process_output, VoiceDriftResult],
+            output_type=VoiceDriftResult,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -147,30 +145,6 @@ class CharacterVoiceDriftAgent(NarrareAgent[CharacterVoiceDriftDeps, VoiceDriftR
                 "longitudinal_reasons": valid_reasons,
                 "suggested_attention": valid_attention,
             }
-        )
-
-    async def _process_output(
-        self,
-        ctx: RunContext[CharacterVoiceDriftDeps],
-        drift_type: DriftType = "evolution",
-        confidence: float = 0.0,
-        longitudinal_reasons: list[str] | None = None,
-        per_chapter_notes: list[dict[str, Any]] | None = None,
-        suggested_attention: list[str] | None = None,
-    ) -> VoiceDriftResult:
-        """Output Function — structures the LLM response into VoiceDriftResult.
-
-        During streaming (``ctx.partial_output``) returns a minimal empty result.
-        """
-        if ctx.partial_output:
-            return VoiceDriftResult()
-
-        return VoiceDriftResult(
-            drift_type=drift_type,
-            confidence=confidence,
-            longitudinal_reasons=longitudinal_reasons or [],
-            per_chapter_notes=[ChapterNote(**note) for note in (per_chapter_notes or [])],
-            suggested_attention=suggested_attention or [],
         )
 
     async def run(

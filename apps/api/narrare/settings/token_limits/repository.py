@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from narrare._app.base_repository import BaseRepository
 from narrare.settings.token_limits.models import ProjectTokenLimits, UserTokenLimits
@@ -27,6 +28,14 @@ class UserTokenLimitsRepository(BaseRepository):
     async def get(self, user_id: str) -> UserTokenLimits:
         """Get user-level token limit overrides.
 
+        Race-safe: the INSERT carries ``ON CONFLICT (user_id) DO NOTHING``
+        so a concurrent request winning the insert does not raise
+        IntegrityError — the loser re-selects the winner's committed row
+        (READ COMMITTED snapshot). Without this, a racing request hit a
+        UniqueViolation on ``user_token_limits_pkey`` → HTTP 500 (same
+        defect class as ``ProjectAiSettingsRepository``, benchmark
+        2026-09-07-clean-failed-1).
+
         Args:
             user_id: The user's ID (string from auth).
 
@@ -38,9 +47,21 @@ class UserTokenLimitsRepository(BaseRepository):
         )
         limits = result.scalar_one_or_none()
         if not limits:
-            limits = UserTokenLimits(user_id=user_id)
-            self._session.add(limits)
-            await self._flush_and_refresh(limits)
+            # ``overrides`` has no server_default — pass it explicitly so the
+            # core INSERT satisfies the NOT NULL constraint.
+            stmt = (
+                pg_insert(UserTokenLimits)
+                .values(user_id=user_id, overrides={})
+                .on_conflict_do_nothing(index_elements=["user_id"])
+            )
+            await self._session.execute(stmt)
+            result = await self._session.execute(
+                select(UserTokenLimits).where(UserTokenLimits.user_id == user_id)
+            )
+            limits = result.scalar_one_or_none()
+            # Post-upsert the row always exists: either our INSERT landed or
+            # the concurrent winner's row is committed and visible.
+            assert limits is not None
         return limits
 
     async def update(
@@ -71,6 +92,14 @@ class ProjectTokenLimitsRepository(BaseRepository):
     async def get(self, project_id: str) -> ProjectTokenLimits:
         """Get project-level token limit overrides.
 
+        Race-safe: the INSERT carries ``ON CONFLICT (project_id) DO
+        NOTHING`` so a concurrent request winning the insert does not
+        raise IntegrityError — the loser re-selects the winner's committed
+        row (READ COMMITTED snapshot). Without this, a racing request hit
+        a UniqueViolation on ``project_token_limits_pkey`` → HTTP 500
+        (same defect class as ``ProjectAiSettingsRepository``, benchmark
+        2026-09-07-clean-failed-1).
+
         Args:
             project_id: The project/novel ID.
 
@@ -82,9 +111,21 @@ class ProjectTokenLimitsRepository(BaseRepository):
         )
         limits = result.scalar_one_or_none()
         if not limits:
-            limits = ProjectTokenLimits(project_id=project_id)
-            self._session.add(limits)
-            await self._flush_and_refresh(limits)
+            # ``overrides`` has no server_default — pass it explicitly so the
+            # core INSERT satisfies the NOT NULL constraint.
+            stmt = (
+                pg_insert(ProjectTokenLimits)
+                .values(project_id=project_id, overrides={})
+                .on_conflict_do_nothing(index_elements=["project_id"])
+            )
+            await self._session.execute(stmt)
+            result = await self._session.execute(
+                select(ProjectTokenLimits).where(ProjectTokenLimits.project_id == project_id)
+            )
+            limits = result.scalar_one_or_none()
+            # Post-upsert the row always exists: either our INSERT landed or
+            # the concurrent winner's row is committed and visible.
+            assert limits is not None
         return limits
 
     async def update(

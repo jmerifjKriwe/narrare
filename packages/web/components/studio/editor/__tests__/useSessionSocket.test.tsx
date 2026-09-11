@@ -113,6 +113,19 @@ type MockWebSocketInstance = {
   send: () => void;
 };
 
+/** Instantly-resolving ticket provider (ADR-084 handshake credential). */
+const ticketProvider = async () => "test-ticket";
+
+/**
+ * Yield enough microtask ticks for the awaited ticket provider to settle
+ * before the socket opens (fake-timer safe — microtasks are never faked).
+ */
+async function flushTicketFetch(): Promise<void> {
+  for (let i = 0; i < 8; i++) {
+    await Promise.resolve();
+  }
+}
+
 describe("WritingSessionSocket uses reconnect defaults (behavioral)", () => {
   let instances: MockWebSocketInstance[];
 
@@ -142,11 +155,12 @@ describe("WritingSessionSocket uses reconnect defaults (behavioral)", () => {
     vi.unstubAllGlobals();
   });
 
-  it("reconnects exactly DEFAULT_MAX_RECONNECT_ATTEMPTS times (default options, as used by useSessionSocket)", () => {
+  it("reconnects exactly DEFAULT_MAX_RECONNECT_ATTEMPTS times (default options, as used by useSessionSocket)", async () => {
     // Constructed without socketOptions — exactly how useSessionSocket does it
     // (see useSessionSocket.ts: `new WritingSessionSocket(chapterId, ...)`).
-    const socket = new WritingSessionSocket("ch-1", vi.fn(), vi.fn());
+    const socket = new WritingSessionSocket("ch-1", vi.fn(), vi.fn(), ticketProvider);
     socket.connect();
+    await flushTicketFetch();
     expect(instances).toHaveLength(1); // initial connect
 
     // Drain reconnects: close the current socket, run the scheduled reconnect
@@ -158,6 +172,8 @@ describe("WritingSessionSocket uses reconnect defaults (behavioral)", () => {
       const before = instances.length;
       current.onclose?.();
       vi.runOnlyPendingTimers();
+      // The reconnect fetches a ticket (microtask) before opening the socket.
+      await flushTicketFetch();
       // No new instance created ⇒ reconnect ceiling reached, stop draining.
       if (instances.length === before) break;
     }
@@ -166,16 +182,18 @@ describe("WritingSessionSocket uses reconnect defaults (behavioral)", () => {
     expect(instances).toHaveLength(1 + DEFAULT_MAX_RECONNECT_ATTEMPTS);
   });
 
-  it("schedules each reconnect at DEFAULT_RECONNECT_BASE_DELAY_MS × attempt (linear backoff)", () => {
+  it("schedules each reconnect at DEFAULT_RECONNECT_BASE_DELAY_MS × attempt (linear backoff)", async () => {
     const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
-    const socket = new WritingSessionSocket("ch-1", vi.fn(), vi.fn());
+    const socket = new WritingSessionSocket("ch-1", vi.fn(), vi.fn(), ticketProvider);
     socket.connect();
+    await flushTicketFetch();
 
     // First close schedules reconnect #1 at baseDelay × 1.
     const first = instances[instances.length - 1];
     first?.onclose?.();
-    vi.runOnlyPendingTimers(); // fires reconnect #1 → creates second WS
+    vi.runOnlyPendingTimers(); // fires reconnect #1 → fetches ticket → new WS
+    await flushTicketFetch();
 
     expect(setTimeoutSpy).toHaveBeenLastCalledWith(
       expect.any(Function),
@@ -186,6 +204,7 @@ describe("WritingSessionSocket uses reconnect defaults (behavioral)", () => {
     const second = instances[instances.length - 1];
     second?.onclose?.();
     vi.runOnlyPendingTimers();
+    await flushTicketFetch();
 
     expect(setTimeoutSpy).toHaveBeenLastCalledWith(
       expect.any(Function),

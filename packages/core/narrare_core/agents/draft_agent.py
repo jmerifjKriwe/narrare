@@ -1,7 +1,8 @@
 """DraftAgent — NarrareAgent für Kapitel-Draft-Generierung.
 
-Ersetzt den bisherigen DraftProcessor durch eine Output Function
-im pydantic-ai Agent-Modell (siehe ADR-015 Phase 2.2).
+Post-processing (artifact removal, markdown normalisation, word-target
+enforcement) lives in the ADR-035 output validator ``_validate_output``
+(deterministic, at the agent boundary) — see ADR-015 Phase 2.2.
 
 Usage:
     model = await registry.get_model(config)
@@ -30,13 +31,13 @@ if TYPE_CHECKING:
 
 
 class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
-    """Agent für Kapitel-Draft-Generierung mit Output Function.
+    """Agent für Kapitel-Draft-Generierung.
 
     Features:
-    - Output Function: Post-Processing (Artifact-Removal, Markdown-Normalisierung)
+    - Output validator: Post-Processing (Artifact-Removal, Markdown-Normalisierung,
+      Wortzahl-Target-Enforcement) + ADR-035 Invarianten
     - Tool: KB-Kontext-Abfrage (über ContextAssembler)
     - Capabilities: ToolSearch + KB-Tools (über KBAgent)
-    - Validator: Qualitäts-Check (Mindestwortzahl) via ``ModelRetry``
     """
 
     def __init__(
@@ -56,46 +57,41 @@ class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
             capabilities.append(ToolSearch(strategy="keywords"))
             capabilities.append(Toolset(kb_agent.get_toolset()))
 
-        # output_type als Sequence: Output Function + Fallback-Typ
-        # Der Callable wird als Output-Tool registriert, den das Modell
-        # mit Parametern (text, title) aufrufen kann.
         super().__init__(
             model=model,
             deps_type=DraftDeps,
-            output_type=[self._process_draft_output, DraftOutput],
+            output_type=DraftOutput,
             capabilities=capabilities,
             system_prompt=system_prompt,
         )
 
-        self._agent.output_validator(validate_draft_output)
+        self._agent.output_validator(self._validate_output)
 
         # Tools nach Super-Konstruktor registrieren
         self._agent.tool(self.get_kb_context)
 
     # ------------------------------------------------------------------
-    # Output Function
+    # Output validator: Post-Processing + Invarianten
     # ------------------------------------------------------------------
 
-    async def _process_draft_output(
+    async def _validate_output(
         self,
         ctx: RunContext[DraftDeps],
-        text: str,
-        title: str | None = None,
+        output: DraftOutput,
     ) -> DraftOutput:
-        """Output Function — Post-Processing + Validierung.
+        """Post-process and validate the draft output.
 
-        Führt die Logik des bisherigen ``DraftProcessor`` aus:
+        Takes over the deterministic post-processing formerly done by the
+        deleted output function (see ADR-015 Phase 2.2):
         1. Artifact-Removal
         2. Markdown-Normalisierung
         3. Wortzahl-Berechnung und Target-Enforcement
 
-        Bei Streaming (``ctx.partial_output``) wird nur minimal verarbeitet.
+        Then delegates to :func:`validate_draft_output` for the ADR-035
+        module-level invariants (non-empty text, valid scene_breaks,
+        word-count match).
         """
-        if ctx.partial_output:
-            return DraftOutput(text=text)
-
-        # Vollständige Verarbeitung nur beim finalen Output
-        cleaned = self._draft_processor.strip_artifacts(text)
+        cleaned = self._draft_processor.strip_artifacts(output.text)
         normalized = self._draft_processor.normalise_markdown(cleaned)
 
         if self._word_target is not None:
@@ -110,11 +106,8 @@ class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
                 "Please generate more content."
             )
 
-        return DraftOutput(
-            text=normalized,
-            title=title,
-            word_count=word_count,
-        )
+        processed = output.model_copy(update={"text": normalized, "word_count": word_count})
+        return await validate_draft_output(ctx, processed)
 
     # ------------------------------------------------------------------
     # Tools

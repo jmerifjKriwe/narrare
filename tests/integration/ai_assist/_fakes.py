@@ -61,7 +61,16 @@ class FakeModelRegistry:
     def __init__(self, model: TestModel) -> None:
         self._model = model
 
-    async def get_model(self, config: Any) -> TestModel:
+    async def get_model(
+        self,
+        config: Any,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> TestModel:
+        # api_key/base_url: per-user routing credentials (user-routing
+        # migration) — accepted for protocol fidelity with
+        # ModelRegistry.get_model; the fake ignores them.
         return self._model
 
 

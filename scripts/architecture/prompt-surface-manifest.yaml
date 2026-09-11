@@ -20,7 +20,7 @@ routes:
     content_type: customizable_feature_prompt
     output_language_variable: writing_language
     required_variables: [chapter_outline]
-    optional_variables: [author_instructions, kb_suggested, kb_characters, kb_locations, kb_factions, kb_relationships, recent_chapters, novel_synopsis, style_profile, character_voice_profiles, author_voice, user_preferences, avoidance_patterns, culture_guidelines, tone_instructions, project_title, genre, language, writing_language, word_target, timeline_position, story_structure, world_context]
+    optional_variables: [author_instructions, kb_suggested, kb_characters, kb_locations, kb_factions, kb_other, kb_relationships, kb_pinned, kb_systems, kb_timelines, kb_context_warnings, recent_chapters, novel_synopsis, style_profile, character_voice_profiles, author_voice, user_preferences, avoidance_patterns, culture_guidelines, tone_instructions, project_title, genre, writing_language, word_target, timeline_position, story_structure, world_context]
     security:
       xml_required: [author_instructions]
       generated_suggestions_must_be_labelled: [kb_suggested]
@@ -34,7 +34,7 @@ routes:
     content_type: customizable_feature_prompt
     output_language_variable: writing_language
     required_variables: [existing_content]
-    optional_variables: [author_instructions, kb_suggested, kb_characters, kb_locations, kb_factions, kb_relationships, recent_chapters, novel_synopsis, style_profile, character_voice_profiles, author_voice, user_preferences, avoidance_patterns, culture_guidelines, tone_instructions, project_title, genre, language, writing_language, extend_length, timeline_position, story_structure, world_context]
+    optional_variables: [author_instructions, kb_suggested, kb_characters, kb_locations, kb_factions, kb_other, kb_relationships, kb_pinned, kb_systems, kb_timelines, kb_context_warnings, recent_chapters, novel_synopsis, style_profile, character_voice_profiles, author_voice, user_preferences, avoidance_patterns, culture_guidelines, tone_instructions, project_title, genre, writing_language, extend_length, timeline_position, story_structure, world_context]
     security:
       xml_required: [existing_content, author_instructions]
       generated_suggestions_must_be_labelled: [kb_suggested]
@@ -48,7 +48,7 @@ routes:
     content_type: customizable_feature_prompt
     output_language_variable: writing_language
     required_variables: [selection_text]
-    optional_variables: [author_instructions, context_before, context_after, kb_suggested, kb_characters, kb_locations, kb_factions, kb_relationships, recent_chapters, style_profile, character_voice_profiles, author_voice, user_preferences, avoidance_patterns, culture_guidelines, tone_instructions, project_title, genre, language, writing_language, rewrite_mode_instructions, count, timeline_position, story_structure, world_context]
+    optional_variables: [author_instructions, context_before, context_after, kb_suggested, kb_characters, kb_locations, kb_factions, kb_other, kb_relationships, kb_pinned, kb_systems, kb_timelines, kb_context_warnings, recent_chapters, style_profile, character_voice_profiles, author_voice, user_preferences, avoidance_patterns, culture_guidelines, tone_instructions, project_title, genre, writing_language, rewrite_mode_instructions, count, timeline_position, story_structure, world_context]
     security:
       xml_required: [selection_text, context_before, context_after, author_instructions]
       generated_suggestions_must_be_labelled: [kb_suggested]
@@ -62,7 +62,7 @@ routes:
     content_type: customizable_feature_prompt
     output_language_variable: writing_language
     required_variables: [selection_text]
-    optional_variables: [author_instructions, context_before, context_after, kb_suggested, kb_characters, kb_locations, kb_factions, kb_relationships, recent_chapters, style_profile, character_voice_profiles, author_voice, user_preferences, avoidance_patterns, culture_guidelines, project_title, genre, language, writing_language, co_author_focus_instructions, timeline_position, story_structure, world_context]
+    optional_variables: [author_instructions, context_before, context_after, kb_suggested, kb_characters, kb_locations, kb_factions, kb_other, kb_relationships, kb_pinned, kb_systems, kb_timelines, kb_context_warnings, recent_chapters, style_profile, character_voice_profiles, author_voice, user_preferences, avoidance_patterns, culture_guidelines, project_title, genre, writing_language, co_author_focus_instructions, timeline_position, story_structure, world_context]
     security:
       xml_required: [selection_text, context_before, context_after, author_instructions]
       generated_suggestions_must_be_labelled: [kb_suggested]
@@ -117,7 +117,7 @@ routes:
     content_type: customizable_feature_prompt
     output_language_variable: null
     required_variables: []
-    optional_variables: [conversation_history, kb_characters, kb_locations, kb_factions, kb_relationships, kb_suggested, recent_chapters, character_voice_profiles, author_voice, user_preferences, avoidance_patterns, culture_guidelines, project_title, genre, language, writing_language, timeline_position, story_structure, world_context]
+    optional_variables: [conversation_history, kb_characters, kb_locations, kb_factions, kb_relationships, kb_suggested, recent_chapters, character_voice_profiles, author_voice, user_preferences, avoidance_patterns, culture_guidelines, project_title, genre, writing_language, timeline_position, story_structure, world_context]
     security:
       xml_required: [conversation_history]
       generated_suggestions_must_be_labelled: [kb_suggested]

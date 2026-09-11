@@ -62,7 +62,7 @@ class ReadabilityAgent(NarrareAgent[ReadabilityDeps, ReadabilityAgentOutput]):
         super().__init__(
             model=model,
             deps_type=ReadabilityDeps,
-            output_type=[self._process_output, ReadabilityAgentOutput],
+            output_type=ReadabilityAgentOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -99,24 +99,6 @@ class ReadabilityAgent(NarrareAgent[ReadabilityDeps, ReadabilityAgentOutput]):
             update={
                 "problematic_sentences": valid_sentences,
             }
-        )
-
-    async def _process_output(
-        self,
-        ctx: RunContext[ReadabilityDeps],
-        problematic_sentences: list[dict[str, Any]] | None = None,
-        overall_assessment: str | None = None,
-    ) -> ReadabilityAgentOutput:
-        """Output Function — structures the LLM response into ReadabilityAgentOutput.
-
-        During streaming (``ctx.partial_output``) returns a minimal empty result.
-        """
-        if ctx.partial_output:
-            return ReadabilityAgentOutput()
-
-        return ReadabilityAgentOutput(
-            problematic_sentences=problematic_sentences or [],
-            overall_assessment=overall_assessment or "",
         )
 
     async def run(

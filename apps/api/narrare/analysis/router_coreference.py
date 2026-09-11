@@ -58,7 +58,7 @@ async def analyze_coreference(
     On failure, a ``"error"`` event (``is_final=True``) precedes the
     ``[DONE]`` sentinel.
     """
-    service = get_coreference_service(session)
+    service = await get_coreference_service(session=session, user_id=user_id)
 
     async def event_stream() -> AsyncIterator[str]:
         try:

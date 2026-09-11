@@ -1,19 +1,15 @@
-"""AuthorVoiceAgent — output-type contract + binding-boundary + output-function
-+ validator tests.
+"""AuthorVoiceAgent — output-type contract + binding-boundary + validator tests.
 
 Split from ``test_author_voice_agent.py`` per RULE-04 (file-size limit — files
 ending in ``_agent.py`` have a 200-line cap). This file (which does NOT match
-that suffix) gets the default 400-line cap and consolidates the four
-output-related test groups:
+that suffix) gets the default 400-line cap and consolidates the output-related
+test groups:
 
     - The :class:`AuthorVoiceOutput` descriptive-only contract (formality
       bounds, vocabulary / sentence / emotional-range literal enums).
     - The binding-boundary regression: the output type carries NO metric
       fields (ADR-074 binding — agent produces descriptive only; measurement
       is deterministic).
-    - The ``_process_output`` output function (CoreferenceAgent test pattern —
-      TestModel's random default output trips the strict validator, so the
-      output function is exercised directly).
     - ADR-035 output validation (marker + examples cleanup via ``_validate_output``).
 
 See:
@@ -140,59 +136,6 @@ class TestAuthorVoiceOutputBindingBoundary:
             "author_examples",
         }
         assert expected <= set(AuthorVoiceOutput.model_fields.keys())
-
-
-# ---------------------------------------------------------------------------
-# Output function (_process_output) — CoreferenceAgent / CharacterVoiceAgent
-# test pattern: TestModel's random default output trips the strict validator,
-# so the output function is exercised directly with hand-crafted args.
-# ---------------------------------------------------------------------------
-
-
-class TestProcessOutput:
-    """The _process_output output function structures the LLM response."""
-
-    @pytest.mark.asyncio
-    async def test_process_output_returns_author_voice_output(
-        self, agent: AuthorVoiceAgent
-    ) -> None:
-        result = await agent._process_output(  # type: ignore[reportPrivateUsage]
-            ctx=_make_ctx(),
-            formality=0.72,
-            vocabulary_level="complex",
-            sentence_profile="varied",
-            emotional_range="expressive",
-            cultural_regional_markers="British, literate register",
-            author_examples=["The wind moved.", "She did not turn."],
-        )
-        assert isinstance(result, AuthorVoiceOutput)
-        assert result.formality == pytest.approx(0.72)
-        assert result.vocabulary_level == "complex"
-        assert result.sentence_profile == "varied"
-        assert result.emotional_range == "expressive"
-        assert result.cultural_regional_markers == "British, literate register"
-        assert result.author_examples == ["The wind moved.", "She did not turn."]
-
-    @pytest.mark.asyncio
-    async def test_process_output_with_defaults(self, agent: AuthorVoiceAgent) -> None:
-        """No arguments produce a valid default AuthorVoiceOutput."""
-        result = await agent._process_output(_make_ctx())
-        assert isinstance(result, AuthorVoiceOutput)
-        assert result.author_examples == []
-        assert result.cultural_regional_markers is None
-
-    @pytest.mark.asyncio
-    async def test_process_output_partial_args(self, agent: AuthorVoiceAgent) -> None:
-        """The model may return only some fields; the rest take defaults."""
-        result = await agent._process_output(
-            _make_ctx(),
-            formality=0.3,
-            vocabulary_level="simple",
-        )
-        assert result.formality == pytest.approx(0.3)
-        assert result.vocabulary_level == "simple"
-        assert result.sentence_profile == "medium"  # default
-        assert result.emotional_range == "moderate"  # default
 
 
 # ---------------------------------------------------------------------------

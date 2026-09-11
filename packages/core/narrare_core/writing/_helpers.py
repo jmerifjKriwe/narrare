@@ -21,6 +21,7 @@ from narrare_core.shared.frontmatter import parse_frontmatter
 if TYPE_CHECKING:
     from narrare_core.context._render_options import RenderOptions
     from narrare_core.writing.context_models import KBEntity
+    from narrare_core.writing.models import WritingContext
 
 
 _REFERENCE_KEYS: frozenset[str] = frozenset(
@@ -66,6 +67,46 @@ def extract_frontmatter_references(frontmatter: str) -> set[str]:
         else:
             ids.add(str(value))  # pyright: ignore[reportUnknownArgumentType]
     return ids
+
+
+def optional_block(label: str, text: str) -> str:
+    """Wrap populated tier text in a value-side labelled block (T1a).
+
+    Returns ``""`` when ``text`` is empty so plain variable substitution
+    renders byte-identically for KB-empty novels.  For populated tiers the
+    label lives on the value side (never in templates) and adds no ``### ``
+    markers, so :meth:`WritingContext.to_metadata` entry counts (which
+    count ``### `` headings) stay unchanged.
+    """
+    if not text:
+        return ""
+    return "\n\n" + label + ":\n" + text
+
+
+_KB_CONTEXT_EXTRA_FIELDS: tuple[str, ...] = (
+    "kb_characters",
+    "kb_locations",
+    "kb_factions",
+    "kb_other",
+    "kb_relationships",
+    "kb_suggested",
+    "kb_systems",
+    "kb_timelines",
+    "kb_pinned",
+    "kb_context_warnings",
+)
+
+
+def kb_context_extras(context: WritingContext) -> dict[str, str]:
+    """Extract the ten KB prompt variables from a writing context.
+
+    Single source of truth for the KB extras that writing-route prompt
+    invocations (extend / rewrite / co_author / scene_by_scene) splice
+    into their variable payloads.  ``None``-valued fields coalesce to
+    ``""`` (mirroring the ``WritingContext`` defaults) so templates never
+    see ``None``.  Pure transformation — no I/O.
+    """
+    return {name: getattr(context, name) or "" for name in _KB_CONTEXT_EXTRA_FIELDS}
 
 
 _COMPACT_ENTITY_OMISSIONS: tuple[tuple[ProvenanceField, OmissionReason], ...] = (

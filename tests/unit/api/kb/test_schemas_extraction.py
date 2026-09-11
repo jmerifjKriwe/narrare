@@ -18,6 +18,7 @@ from narrare.kb.schemas_extraction import (
     ApplyExtractionItem,
     ApplyExtractionRequest,
     ApplyExtractionResponse,
+    SkippedItem,
 )
 
 # ---------------------------------------------------------------------------
@@ -68,6 +69,31 @@ class TestApplyExtractionItem:
         assert item.item_type == "relationship"
         assert item.relationship_type == "ally"
         assert item.related_entity_name == "Kael"
+
+    def test_relationship_with_endpoint_names(self) -> None:
+        """Relationship item with explicit source/target entity names."""
+        item = ApplyExtractionItem(
+            item_type="relationship",
+            name="engaged_to",
+            relationship_type="engaged_to",
+            source_entity_name="Aria",
+            target_entity_name="Kael",
+        )
+
+        assert item.source_entity_name == "Aria"
+        assert item.target_entity_name == "Kael"
+
+    def test_endpoint_names_default_to_none(self) -> None:
+        """Endpoint name fields default to None (legacy payloads)."""
+        item = ApplyExtractionItem(
+            item_type="relationship",
+            name="Aria",
+            relationship_type="ally",
+            related_entity_name="Kael",
+        )
+
+        assert item.source_entity_name is None
+        assert item.target_entity_name is None
 
     def test_conflict_valid(self) -> None:
         """Valid conflict item."""
@@ -243,3 +269,59 @@ class TestApplyExtractionResponse:
 
         assert len(response.created_entries) == 1
         assert len(response.updated_entries) == 1
+
+
+# ---------------------------------------------------------------------------
+# SkippedItem
+# ---------------------------------------------------------------------------
+
+
+class TestSkippedItem:
+    """SkippedItem schema — reports unapplied items with a reason."""
+
+    def test_valid_skipped_item(self) -> None:
+        """SkippedItem with name, item_type, and reason."""
+        skip = SkippedItem(
+            name="engaged_to",
+            item_type="relationship",
+            reason="source_not_found",
+        )
+
+        assert skip.name == "engaged_to"
+        assert skip.item_type == "relationship"
+        assert skip.reason == "source_not_found"
+
+    def test_missing_field_raises(self) -> None:
+        """Missing any required field raises ValidationError."""
+        with pytest.raises(ValidationError):
+            cast("Any", SkippedItem)(name="engaged_to", item_type="relationship")
+
+
+# ---------------------------------------------------------------------------
+# ApplyExtractionResponse.skipped
+# ---------------------------------------------------------------------------
+
+
+class TestApplyExtractionResponseSkipped:
+    """The response's skipped list reports unapplied items."""
+
+    def test_skipped_defaults_empty(self) -> None:
+        """skipped defaults to an empty list."""
+        response = ApplyExtractionResponse()
+
+        assert response.skipped == []
+
+    def test_with_skipped_items(self) -> None:
+        """Response carrying skipped items."""
+        response = ApplyExtractionResponse(
+            skipped=[
+                SkippedItem(
+                    name="engaged_to",
+                    item_type="relationship",
+                    reason="source_not_found",
+                ),
+            ],
+        )
+
+        assert len(response.skipped) == 1
+        assert response.skipped[0].reason == "source_not_found"

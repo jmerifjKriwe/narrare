@@ -30,10 +30,8 @@ from pydantic_ai.capabilities import ToolSearch, Toolset
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.kb_improve_types import (
-    ImprovementSuggestion,
     KBImproveDeps,
     KBImproveOutput,
-    SuggestionType,
 )
 
 if TYPE_CHECKING:
@@ -63,7 +61,7 @@ class KBImproveAgent(NarrareAgent[KBImproveDeps, KBImproveOutput]):
         super().__init__(
             model=model,
             deps_type=KBImproveDeps,
-            output_type=[self._process_output, KBImproveOutput],
+            output_type=KBImproveOutput,
             capabilities=capabilities,
             system_prompt=system_prompt,
         )
@@ -111,48 +109,6 @@ class KBImproveAgent(NarrareAgent[KBImproveDeps, KBImproveOutput]):
                 "suggestions": valid_suggestions,
                 "completeness_score": clamped_score,
             }
-        )
-
-    async def _process_output(
-        self,
-        ctx: RunContext[KBImproveDeps],
-        suggestions: list[dict[str, Any]] | None = None,
-        overall_assessment: str = "",
-        completeness_score: float = 0.0,
-        context_used: list[str] | None = None,
-    ) -> KBImproveOutput:
-        """Output Function — structures LLM response into KBImproveOutput.
-
-        During streaming (ctx.partial_output), returns minimal result.
-        """
-        if ctx.partial_output:
-            return KBImproveOutput(
-                suggestions=[],
-                overall_assessment="",
-                completeness_score=0.0,
-            )
-
-        parsed_suggestions: list[ImprovementSuggestion] = []
-        if suggestions:
-            for s in suggestions:
-                parsed_suggestions.append(
-                    ImprovementSuggestion(
-                        type=SuggestionType(s.get("type", "expand")),
-                        target=s.get("target", ""),
-                        description=s.get("description", ""),
-                        proposed_content=s.get("proposed_content"),
-                        related_entity_id=s.get("related_entity_id"),
-                        related_entity_name=s.get("related_entity_name"),
-                        confidence=s.get("confidence", 0.5),
-                        reasoning=s.get("reasoning"),
-                    )
-                )
-
-        return KBImproveOutput(
-            suggestions=parsed_suggestions,
-            overall_assessment=overall_assessment,
-            completeness_score=min(max(completeness_score, 0.0), 1.0),
-            context_used=context_used or [],
         )
 
     async def run(

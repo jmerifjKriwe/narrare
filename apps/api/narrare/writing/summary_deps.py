@@ -21,6 +21,7 @@ from narrare._app.dependencies import (
 )
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.chapters.repository import ChapterRepository
+from narrare.novels.repository import NovelRepository
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
@@ -79,12 +80,14 @@ async def get_summary_service(
 
     registry = get_model_registry()
     repo = ChapterRepository(session)
+    novel_repo = NovelRepository(session)
     composer = get_composer()
 
     return ChapterSummaryService(
         registry=registry,
         config=config,
         chapter_repo=repo,
+        novel_repo=novel_repo,
         composer=composer,
         api_key=resolved.api_key,
         base_url=resolved.base_url,

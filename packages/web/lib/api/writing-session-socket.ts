@@ -76,6 +76,18 @@ export interface WritingSessionSocketOptions {
 export const DEFAULT_MAX_RECONNECT_ATTEMPTS = 5;
 export const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
 
+/**
+ * Origin of an error reported through the `onError` callback.
+ *
+ * - `"ticket_mint"` — the single-use ticket could not be fetched; the
+ *   attempt was aborted and NO reconnect is scheduled (single-shot per
+ *   `connect()`, ADR-084). Terminal from the socket's perspective, so
+ *   consumers must not promise reconnection for it.
+ * - `"socket"` — the WebSocket itself errored; the usual `onclose`
+ *   reconnect machinery applies.
+ */
+export type SessionSocketErrorKind = "ticket_mint" | "socket";
+
 // ---------------------------------------------------------------------------
 // WritingSessionSocket
 // ---------------------------------------------------------------------------
@@ -86,6 +98,12 @@ export const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
  * Connects to `ws(s)://{host}/api/v1/writing/sessions/{chapterId}` and
  * handles reconnection up to maxReconnectAttempts. Gracefully degrades
  * when WebSocket is unavailable (e.g. test environments).
+ *
+ * Authentication (ADR-084): the handshake presents a single-use, 60 s
+ * ticket from `POST /auth/ws-ticket` as the `token` query param — identity
+ * is derived server-side, so the former client-asserted `user_id` param is
+ * gone. A FRESH ticket is fetched for every connection attempt (a reconnect
+ * must never replay a consumed ticket).
  */
 export class WritingSessionSocket {
   private ws: WebSocket | null = null;
@@ -99,8 +117,8 @@ export class WritingSessionSocket {
   constructor(
     private readonly chapterId: string,
     private readonly onMessage: (msg: SessionResponse) => void,
-    private readonly onError: () => void,
-    private readonly userId?: string,
+    private readonly onError: (kind: SessionSocketErrorKind) => void,
+    private readonly ticketProvider: () => Promise<string>,
     private readonly novelId?: string,
     private readonly mode?: string,
     socketOptions?: WritingSessionSocketOptions,
@@ -116,13 +134,35 @@ export class WritingSessionSocket {
   /** Open the WebSocket connection. Safe to call multiple times. */
   connect(): void {
     if (this.closed) return;
+    void this.connectWithFreshTicket();
+  }
+
+  /**
+   * Fetch a fresh single-use ticket, then open the socket (ADR-084).
+   *
+   * The ticket is minted per attempt — every (re)connect re-enters here, so
+   * a consumed ticket is never replayed. A ticket-fetch failure surfaces
+   * through `onError("ticket_mint")` (RULE-11 honest — there is no
+   * unauthenticated fallback) and aborts the attempt without scheduling a
+   * reconnect.
+   */
+  private async connectWithFreshTicket(): Promise<void> {
+    let token: string;
+    try {
+      token = await this.ticketProvider();
+    } catch {
+      this.onError("ticket_mint");
+      return;
+    }
+    // close() may have run while the ticket request was in flight.
+    if (this.closed) return;
 
     const protocol =
       typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = typeof window !== "undefined" ? window.location.host : "localhost";
 
     const params = new URLSearchParams();
-    if (this.userId) params.set("user_id", this.userId);
+    params.set("token", token);
     if (this.novelId) params.set("project_id", this.novelId);
     if (this.mode) params.set("mode", this.mode);
     if (this.sessionId) params.set("session_id", this.sessionId);
@@ -151,7 +191,7 @@ export class WritingSessionSocket {
       };
 
       this.ws.onerror = () => {
-        this.onError();
+        this.onError("socket");
       };
 
       this.ws.onclose = () => {

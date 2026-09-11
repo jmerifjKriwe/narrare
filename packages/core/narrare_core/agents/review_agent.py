@@ -56,7 +56,7 @@ class ReviewAgent(NarrareAgent[ReviewDeps, ReviewOutput]):
         super().__init__(
             model=model,
             deps_type=ReviewDeps,
-            output_type=[self._process_review, ReviewOutput],
+            output_type=ReviewOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -103,30 +103,6 @@ class ReviewAgent(NarrareAgent[ReviewDeps, ReviewOutput]):
                 "suggestions": filtered_suggestions,
                 "issues": filtered_issues,
             }
-        )
-
-    async def _process_review(
-        self,
-        ctx: RunContext[ReviewDeps],
-        approved: bool = False,
-        feedback: str = "",
-        suggestions: list[str] | None = None,
-        quality_score: int = 5,
-        issues: list[str] | None = None,
-    ) -> ReviewOutput:
-        """Output Function — strukturiert die LLM-Response in ReviewOutput.
-
-        Bei Streaming (``ctx.partial_output``) wird nur ein Minimalergebnis zurückgegeben.
-        """
-        if ctx.partial_output:
-            return ReviewOutput()
-
-        return ReviewOutput(
-            approved=approved,
-            feedback=feedback,
-            suggestions=suggestions or [],
-            quality_score=quality_score,
-            issues=issues or [],
         )
 
     async def run(

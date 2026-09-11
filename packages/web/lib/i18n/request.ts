@@ -21,6 +21,7 @@ const namespaces = [
   "adaptive",
   "dialogueCoach",
   "aiAssist",
+  "notes",
 ] as const;
 
 export default getRequestConfig(async ({ requestLocale }) => {

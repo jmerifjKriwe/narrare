@@ -34,9 +34,17 @@ export const chatApi = {
    *
    * POST /api/v1/chat with SSE response.
    * Event types: meta, token, done.
+   *
+   * `project_id` may be null for project-less chat (NOTES-001 global notes);
+   * `note_id` optionally attaches a scratchpad note as runtime context.
    */
   streamChat: async (
-    body: { project_id: string; message: string; conversation_id?: string | null },
+    body: {
+      project_id?: string | null;
+      message: string;
+      conversation_id?: string | null;
+      note_id?: string | null;
+    },
     callbacks: {
       onMeta: (meta: ChatMetaEvent) => void;
       onToken: (text: string) => void;

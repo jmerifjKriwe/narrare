@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import pytest
 
@@ -35,7 +36,7 @@ class TestErrorHandling:
         fake_registry.raises(RuntimeError("LLM provider down"))
 
         with pytest.raises(RuntimeError, match="LLM provider down"):
-            await service.generate_names(_default_request())
+            await service.generate_names(_default_request(), user_id=uuid4())
 
     async def test_registry_auth_error_propagates(
         self,
@@ -48,7 +49,7 @@ class TestErrorHandling:
         fake_registry.raises(LLMAuthError("Invalid API key"))
 
         with pytest.raises(LLMAuthError, match="Invalid API key"):
-            await service.generate_names(_default_request())
+            await service.generate_names(_default_request(), user_id=uuid4())
 
     async def test_invalid_json_returns_empty_names_not_exception(
         self,
@@ -58,7 +59,7 @@ class TestErrorHandling:
         """Malformed JSON → empty list, not an exception."""
         fake_registry.returns("{invalid json content")
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert result.names == []
         assert result.count == 0
 
@@ -71,7 +72,7 @@ class TestErrorHandling:
         fake_registry.returns("not json")
 
         result = await service.generate_names(
-            _default_request(name_style="egyptian", name_type=NameType.CHARACTER)
+            _default_request(name_style="egyptian", name_type=NameType.CHARACTER), user_id=uuid4()
         )
         assert result.name_style == "egyptian"
         assert result.name_type == "character"
@@ -93,7 +94,7 @@ class TestEdgeCases:
         """Count=1 should work correctly."""
         fake_registry.returns(_json_names_response([{"name": "Solo", "meaning": "the only one"}]))
 
-        result = await service.generate_names(_default_request(count=1))
+        result = await service.generate_names(_default_request(count=1), user_id=uuid4())
         assert len(result.names) == 1
 
     async def test_max_count_requested(
@@ -105,7 +106,7 @@ class TestEdgeCases:
         names = [{"name": f"Name{i}", "meaning": f"meaning {i}"} for i in range(50)]
         fake_registry.returns(_json_names_response(names))
 
-        result = await service.generate_names(_default_request(count=50))
+        result = await service.generate_names(_default_request(count=50), user_id=uuid4())
         assert len(result.names) == 50
 
     async def test_extra_fields_in_json_ignored(
@@ -122,7 +123,7 @@ class TestEdgeCases:
             )
         )
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert len(result.names) == 1
         assert result.names[0].name == "Arin"
 
@@ -141,7 +142,7 @@ class TestEdgeCases:
             )
         )
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert result.names[0].name == "Königin"
         assert result.names[1].name == "東京"
 
@@ -153,7 +154,7 @@ class TestEdgeCases:
         """If LLM returns name as a number, it's converted to string."""
         fake_registry.returns(json.dumps([{"name": 42, "meaning": "the answer"}]))
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert len(result.names) == 1
         assert result.names[0].name == "42"
 
@@ -165,6 +166,6 @@ class TestEdgeCases:
         """If LLM returns an object without 'name' key, defaults to empty string."""
         fake_registry.returns(json.dumps([{"meaning": "unknown entity"}]))
 
-        result = await service.generate_names(_default_request())
+        result = await service.generate_names(_default_request(), user_id=uuid4())
         assert len(result.names) == 1
         assert result.names[0].name == ""

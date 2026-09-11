@@ -20,10 +20,11 @@ from narrare._app.dependencies import (
     get_model_registry,
 )
 from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare.novels.ownership import verify_novel_owned
 from narrare.novels.repository import NovelRepository
 from narrare.planning.repository import OutlineRepository
 from narrare.writing.story_suggest_service import StorySuggestService
-from narrare_core.shared.errors import ConfigurationError, NotFoundError
+from narrare_core.shared.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,11 +65,10 @@ async def get_story_suggest_service(
 
     uid = uuid.UUID(user_id)
 
-    # Validate novel exists BEFORE resolver auto-creates project_settings.
+    # Validate novel exists BEFORE resolver auto-creates project_settings
+    # (canonical gate — narrare.novels.ownership, consolidated W3).
     novel_repo = NovelRepository(session)
-    novel = await novel_repo.get_by_id(novel_id, uid)
-    if novel is None:
-        raise NotFoundError("Novel", identifier=str(novel_id))
+    await verify_novel_owned(novel_repo, novel_id, uid)
 
     # Resolve model config — gracefully handle missing AI provider.
     registry = get_model_registry()

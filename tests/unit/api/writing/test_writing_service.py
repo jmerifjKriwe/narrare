@@ -81,8 +81,7 @@ class TestStartGeneration:
         await service.start_generation(chapter_id, novel_id, user_id, request)
 
         mock_repo.create_if_no_active.assert_called_once()
-        call_kwargs = mock_repo.create_if_no_active.call_args.kwargs
-        assert call_kwargs["tone"] == "humorous"
+        assert mock_repo.create_if_no_active.call_args.args[4] == "humorous"
 
     async def test_start_generation_default_tone_is_balanced(
         self,
@@ -97,8 +96,7 @@ class TestStartGeneration:
 
         await service.start_generation(chapter_id, novel_id, user_id, request)
 
-        call_kwargs = mock_repo.create_if_no_active.call_args.kwargs
-        assert call_kwargs.get("tone", "balanced") == "balanced"
+        assert mock_repo.create_if_no_active.call_args.args[4] == "balanced"
 
     async def test_start_generation_with_concurrent_request_raises_conflict(
         self,

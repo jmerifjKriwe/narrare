@@ -13,11 +13,13 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from narrare.novels.models import Novel
 from narrare.settings.project_ai_settings_service import ProjectAiSettingsService
 from narrare.settings.schemas import (
     ProjectAiSettingsResponse,
     UpdateProjectAiSettingsRequest,
 )
+from tests.fakes.fake_novel_repo import FakeNovelRepository
 
 # ---------------------------------------------------------------------------
 # Fake ORM objects
@@ -40,6 +42,15 @@ class FakeUserAiSettings:
     category_overrides: dict[str, Any] = field(default_factory=dict)
     intent_overrides: dict[str, Any] = field(default_factory=dict)
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+class _PermissiveNovelRepo(FakeNovelRepository):
+    """Ownership-permissive novel repo — these are BEHAVIOR tests; the
+    ownership matrix lives in
+    ``tests/unit/api/settings/test_project_settings_ownership.py``."""
+
+    async def get_by_id(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> Novel | None:
+        return Novel(id=novel_id, user_id=user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -75,6 +86,7 @@ def service(
     return ProjectAiSettingsService(
         project_ai_repo=mock_project_ai_repo,
         user_ai_repo=mock_user_ai_repo,
+        novel_repo=_PermissiveNovelRepo(),
     )
 
 

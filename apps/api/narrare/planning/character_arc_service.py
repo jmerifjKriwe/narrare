@@ -17,11 +17,13 @@ Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
 from narrare.planning._event_render import render_confirmed_events
 from narrare.planning.schemas import ArcPhaseResponse, CharacterArcRequest, CharacterArcResponse
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -77,6 +79,7 @@ class CharacterArcService:
         api_key: str | None = None,
         base_url: str | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._registry = model_registry
@@ -86,6 +89,7 @@ class CharacterArcService:
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def generate_character_arc(
         self,
@@ -176,7 +180,19 @@ class CharacterArcService:
                 code="COMPOSITION_EMPTY",
             )
 
-        model = await self._registry.get_model(self._config)
+        # Single assembly point (Task 6b — Task 4/5 pattern): model + intent-aware
+        # runtime settings + usage limits as one coherent triple, so the thinking
+        # policy actually reaches this call.
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
+        prepared = await self._registry.prepare(
+            self._config,
+            intent=LLMIntent.PLAN,
+            usage_limits=resolved.usage_limits,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
         # Build agent dependencies
         deps = CharacterArcDeps(
@@ -192,7 +208,7 @@ class CharacterArcService:
         # ``run()``). The character data additionally flows as the run prompt
         # (runtime data, RULE-02a category 3) when the template has no
         # "## First Message".
-        agent = CharacterArcAgent(model=model, system_prompt=composed_prompt.system)
+        agent = CharacterArcAgent(model=prepared.model, system_prompt=composed_prompt.system)
         result = await agent.run(
             prompt=composed_prompt.user
             or (
@@ -201,6 +217,8 @@ class CharacterArcService:
                 f"Goal state: {request.character_goal_state}"
             ),
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
 
         # Map core output to API response

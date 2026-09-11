@@ -29,6 +29,8 @@ from tests.unit.api.generation._dedup_fakes import (
     kb_repo,
 )
 
+from ._ownership_fakes import permissive_novel_repo
+
 
 def _default_request(**overrides: Any) -> NameGenerateRequest:
     defaults: dict[str, Any] = {
@@ -56,6 +58,7 @@ class TestExistingNamesInPrompt:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo(
                 [
                     _FakeKBEntry("Anna", "character"),
@@ -63,7 +66,7 @@ class TestExistingNamesInPrompt:
                 ]
             ),
         )
-        await service.generate_names(_default_request())
+        await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         context = mock_composer.build.call_args.args[1]
         existing = context.extra["existing_names"]
@@ -82,8 +85,9 @@ class TestExistingNamesInPrompt:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
         )
-        await service.generate_names(_default_request())
+        await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         context = mock_composer.build.call_args.args[1]
         assert context.extra["existing_names"] == ""
@@ -100,6 +104,7 @@ class TestExistingNamesInPrompt:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo(
                 [
                     _FakeKBEntry("Anna", "character"),
@@ -108,7 +113,7 @@ class TestExistingNamesInPrompt:
                 ]
             ),
         )
-        await service.generate_names(_default_request())
+        await service.generate_names(_default_request(), user_id=uuid.uuid4())
 
         context = mock_composer.build.call_args.args[1]
         existing = context.extra["existing_names"]
@@ -139,6 +144,7 @@ class TestEntityTypeFiltering:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo(
                 [
                     _FakeKBEntry("Anna", "character"),
@@ -146,7 +152,9 @@ class TestEntityTypeFiltering:
                 ]
             ),
         )
-        result = await service.generate_names(_default_request(name_type=NameType.CHARACTER))
+        result = await service.generate_names(
+            _default_request(name_type=NameType.CHARACTER), user_id=uuid.uuid4()
+        )
 
         anna = next(n for n in result.names if n.name == "Anna")
         thornhaven = next(n for n in result.names if n.name == "Thornhaven")
@@ -172,6 +180,7 @@ class TestEntityTypeFiltering:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo(
                 [
                     _FakeKBEntry("Anna", "character"),
@@ -179,7 +188,9 @@ class TestEntityTypeFiltering:
                 ]
             ),
         )
-        result = await service.generate_names(_default_request(name_type=NameType.PLACE))
+        result = await service.generate_names(
+            _default_request(name_type=NameType.PLACE), user_id=uuid.uuid4()
+        )
 
         thornhaven = next(n for n in result.names if n.name == "Thornhaven")
         anna = next(n for n in result.names if n.name == "Anna")
@@ -198,6 +209,7 @@ class TestEntityTypeFiltering:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo(
                 [
                     _FakeKBEntry("Anna", "character"),
@@ -205,7 +217,9 @@ class TestEntityTypeFiltering:
                 ]
             ),
         )
-        await service.generate_names(_default_request(name_type=NameType.PLACE))
+        await service.generate_names(
+            _default_request(name_type=NameType.PLACE), user_id=uuid.uuid4()
+        )
 
         context = mock_composer.build.call_args.args[1]
         existing = context.extra["existing_names"]

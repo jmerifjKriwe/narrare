@@ -39,19 +39,28 @@ class SummaryServiceProtocol(Protocol):
         chapter_id: UUID,
         max_sentences: int = 4,
         language: str = "en",
+        *,
+        user_id: str,
     ) -> SummaryResult:
         """Generate a summary for the given chapter.
+
+        Ownership gate (IDOR remediation S4, Pattern B): the chapter's
+        novel must belong to ``user_id`` BEFORE any content load, LLM
+        call, or ``update_summary`` write.  Foreign and unknown chapter
+        ids are indistinguishable (both raise ``NotFoundError``).
 
         Args:
             chapter_id: The UUID of the chapter to summarize.
             max_sentences: Maximum number of sentences in the summary.
             language: Output language code (default "en").
+            user_id: Authenticated user identifier (ownership check).
 
         Returns:
             SummaryResult with summary text, word count, and key points.
 
         Raises:
-            NotFoundError: If the chapter does not exist.
+            NotFoundError: If the chapter does not exist or its novel
+                belongs to another user.
             WritingError: If the LLM call fails.
         """
         ...

@@ -2,7 +2,7 @@
 name: NarrareFrontendSpecialist
 description: "Frontend layer — Next.js 16, TipTap v3, React, TypeScript, Tailwind v4, shadcn"
 mode: subagent
-model: zai-coding-plan/glm-5.3
+model: zai-coding-plan/glm-5.3-flash
 temperature: 0
 permission:
   skill:

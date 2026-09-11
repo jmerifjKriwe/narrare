@@ -7,24 +7,39 @@ The reusable KB-context surface (ADR-067 — :class:`KBContextBundle` value
 type and :class:`KBContextProviderProtocol`) lives in the sibling
 :mod:`narrare.kb.context_contracts` module (extracted to respect the 200-line
 contracts file-size limit, RULE-04).
+
+The relationship Protocols (:class:`RelationshipRepositoryProtocol`,
+:class:`RelationshipServiceProtocol`) live in
+:mod:`narrare.kb.contracts_relationships` (same RULE-04 split) and are
+re-exported here so historical import sites stay stable.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from narrare.kb.contracts_relationships import (
+    RelationshipRepositoryProtocol,
+    RelationshipServiceProtocol,
+)
+
 if TYPE_CHECKING:
     import uuid
 
-    from narrare.kb.models import KBEntry, KBRelationship
-    from narrare.kb.relationship_repository import RelationshipEdgeRow
+    from narrare.kb.models import KBEntry
     from narrare.kb.schemas import (
         KBEntryCreate,
         KBEntryUpdate,
-        KBRelationshipCreate,
         ResolveReferencesResponse,
     )
     from narrare_core.kb.schemas.entry import NovelKBEntry, SeriesKBEntry
+
+__all__ = [
+    "KBRepositoryProtocol",
+    "KBServiceProtocol",
+    "RelationshipRepositoryProtocol",
+    "RelationshipServiceProtocol",
+]
 
 
 @runtime_checkable
@@ -49,6 +64,7 @@ class KBRepositoryProtocol(Protocol):
         review_status: str | None = None,
         page: int = 1,
         page_size: int = 50,
+        include_deprecated: bool = False,
     ) -> tuple[list[KBEntry], int]: ...
     async def update(self, entry: KBEntry, data: dict[str, object]) -> KBEntry: ...
     async def delete(self, entry: KBEntry) -> None: ...
@@ -60,8 +76,12 @@ class KBRepositoryProtocol(Protocol):
         tags: list[str] | None = None,
         page: int = 1,
         page_size: int = 50,
+        include_deprecated: bool = False,
     ) -> tuple[list[KBEntry], int]: ...
     async def count_by_novel(self, novel_id: uuid.UUID) -> int: ...
+    async def filter_ids_in_novel(
+        self, novel_id: uuid.UUID, entry_ids: set[uuid.UUID]
+    ) -> set[uuid.UUID]: ...
     async def find_canon_for_series(self, series_id: uuid.UUID) -> list[SeriesKBEntry]: ...
     async def find_canon_by_slug(self, series_id: uuid.UUID, slug: str) -> KBEntry | None: ...
     async def find_overlay_for_novel(self, novel_id: uuid.UUID) -> list[NovelKBEntry]: ...
@@ -133,65 +153,3 @@ class KBServiceProtocol(Protocol):
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[KBEntry], int]: ...
-
-
-@runtime_checkable
-class RelationshipRepositoryProtocol(Protocol):
-    """Protocol for KB relationship persistence operations."""
-
-    async def create(self, rel: KBRelationship) -> KBRelationship: ...
-    async def get_by_id(self, rel_id: uuid.UUID) -> KBRelationship | None: ...
-    async def list_for_entry(
-        self,
-        entry_id: uuid.UUID,
-        direction: str | None = None,
-    ) -> list[KBRelationship]: ...
-    async def delete(self, rel: KBRelationship) -> None: ...
-    async def exists(self, source_id: uuid.UUID, target_id: uuid.UUID, rel_type: str) -> bool: ...
-    async def list_all_for_novel(
-        self,
-        novel_id: uuid.UUID,
-    ) -> list[KBRelationship]:
-        """List all relationships for a novel in a single query.
-
-        Used by GraphService to build edges efficiently.
-        """
-        ...
-
-    async def get_adjacency_map(
-        self,
-        novel_id: uuid.UUID,
-        entity_ids: set[uuid.UUID] | None = None,
-    ) -> dict[str, set[str]]: ...
-
-    async def get_relationships_with_names(
-        self,
-        novel_id: uuid.UUID,
-        entity_ids: set[uuid.UUID] | None = None,
-    ) -> list[RelationshipEdgeRow]:
-        """Fetch relationship edges with entity names.
-
-        Returns list of RelationshipEdgeRow namedtuples.
-        """
-        ...
-
-
-@runtime_checkable
-class RelationshipServiceProtocol(Protocol):
-    """Protocol for KB relationship business logic."""
-
-    async def create(
-        self,
-        novel_id: uuid.UUID,
-        user_id: uuid.UUID,
-        data: KBRelationshipCreate,
-    ) -> KBRelationship: ...
-    async def list_for_entry(
-        self,
-        novel_id: uuid.UUID,
-        entry_id: uuid.UUID,
-        user_id: uuid.UUID,
-        direction: str | None = None,
-    ) -> list[KBRelationship]: ...
-    async def delete(self, novel_id: uuid.UUID, rel_id: uuid.UUID, user_id: uuid.UUID) -> None: ...
-    def get_inverse_suggestion(self, rel_type: str) -> str | None: ...

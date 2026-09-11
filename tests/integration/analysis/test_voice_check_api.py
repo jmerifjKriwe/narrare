@@ -48,9 +48,13 @@ class TestVoiceCheckAPI:
     ) -> None:
         """POST streams progress/result/done JSON events plus [DONE]."""
         with pytest.MonkeyPatch.context() as mp:
+
+            async def _fake_factory(**_kwargs: object) -> FakeVoiceCheckService:
+                return FakeVoiceCheckService()
+
             mp.setattr(
                 "narrare.analysis.router_voice_check.get_voice_check_service",
-                lambda _session: FakeVoiceCheckService(),
+                _fake_factory,
             )
             resp = await client.post(
                 f"/api/v1/analysis/voice-check/{uuid4()}",

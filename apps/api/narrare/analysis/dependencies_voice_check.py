@@ -1,22 +1,45 @@
-"""Analysis dependency injection factory — voice check (WRITE-010)."""
+"""Analysis dependency injection factory — voice check (WRITE-010).
+
+Model acquisition follows the per-user model-routing cascade: the factory
+resolves ``LLMIntent.VOICE`` for the authenticated user and passes the
+resolved config + credentials into the service. The voice-check router is
+chapter-scoped (no novel_id), so the cascade resolves without the project
+tier. No business logic lives here — only wiring.
+"""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
-from narrare._app.dependencies import SessionDep  # noqa: TC001 — needed at runtime for FastAPI DI
+from fastapi import Depends
+
+from narrare._app.dependencies import (
+    SessionDep,
+    get_current_user_id,
+)
+from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from narrare.analysis.voice_check_service import CharacterVoiceCheckerService
     from narrare.kb.models import KBEntry
     from narrare_core.profiles.contracts import VoiceProfileConsumer
     from narrare_core.writing.context_models import KBEntity
 
 
-def get_voice_check_service(session: SessionDep) -> CharacterVoiceCheckerService:
-    """Create a CharacterVoiceCheckerService with injected dependencies.
+async def get_voice_check_service(
+    session: SessionDep,
+    user_id: str = Depends(get_current_user_id),
+) -> CharacterVoiceCheckerService:
+    """Create a CharacterVoiceCheckerService with per-user resolved model routing.
+
+    FastAPI dependency: user_id and session are resolved via Depends. The
+    voice-check router is chapter-scoped — the novel id is only known after
+    the service loads the chapter — so the cascade resolves WITHOUT the
+    project tier (user intent → user category → user default).
+    ``ConfigurationError`` propagates when the user has no provider
+    configured (analysis routers are auth-mandatory).
 
     Production wiring:
     - NovelRepository for access control + language/metadata resolution.
@@ -31,10 +54,6 @@ def get_voice_check_service(session: SessionDep) -> CharacterVoiceCheckerService
         get_invocation_pipeline,
         get_model_registry,
     )
-    from narrare._app.dependencies_services import (
-        SystemModelCategory,
-        build_system_default_config,
-    )
     from narrare.analysis.voice_check_service import CharacterVoiceCheckerService
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
@@ -42,9 +61,15 @@ def get_voice_check_service(session: SessionDep) -> CharacterVoiceCheckerService
     from narrare.novels.repository import NovelRepository
     from narrare.writing.voice_profile_adapter import make_voice_profile_consumer
 
+    resolver = get_model_routing_resolver(session)
+    resolved = await resolver.resolve(
+        LLMIntent.VOICE,
+        UUID(user_id),
+        None,
+    )
+
     registry = get_model_registry()
     composer = get_composer()
-    config = build_system_default_config(SystemModelCategory.ANALYSIS)
 
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)
@@ -66,10 +91,12 @@ def get_voice_check_service(session: SessionDep) -> CharacterVoiceCheckerService
         chapter_repo=chapter_repo,
         model_registry=registry,
         consumer_provider=consumer_provider,
-        model_config=config,
+        model_config=resolved.config,
         composer=composer,
         relationship_repo=relationship_repo,
         invocation_pipeline=get_invocation_pipeline(),
+        api_key=resolved.api_key,
+        base_url=resolved.base_url,
     )
 
 

@@ -33,6 +33,9 @@ from narrare.kb.models import KBEntry, KBRelationship  # noqa: F401
 # ── Memory / Feedback ──
 from narrare.memory.models import FeedbackEventModel, PreferenceProfileModel  # noqa: F401
 
+# ── Notes (NOTES-001 scratchpad) ──
+from narrare.notes.models import Note  # noqa: F401
+
 # ── Novels ──
 from narrare.novels.models import Novel  # noqa: F401
 

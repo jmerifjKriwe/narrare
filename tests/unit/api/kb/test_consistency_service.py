@@ -73,6 +73,9 @@ def _make_service() -> tuple[KBConsistencyService, dict[str, AsyncMock | Mock]]:
     cache.get = AsyncMock(return_value=None)
     cache.set = AsyncMock()
 
+    novel_repo = AsyncMock()
+    novel_repo.get_by_id = AsyncMock(return_value=object())  # permissive gate (IDOR S9)
+
     service = KBConsistencyService(
         analyzer=analyzer,
         asymmetry_checker=asymmetry_checker,
@@ -80,6 +83,7 @@ def _make_service() -> tuple[KBConsistencyService, dict[str, AsyncMock | Mock]]:
         kb_repo=AsyncMock(),
         rel_repo=AsyncMock(),
         cache=cache,
+        novel_repo=novel_repo,
     )
     # Mock private helper to avoid full worldbuilding-entity-assembly pipeline.
     mock_run_cross = AsyncMock(return_value=[])
@@ -116,7 +120,9 @@ class TestKBConsistencyService:
         )
         mocks["_run_cross_entity"].return_value = [cross_issue]
 
-        result = await service.check(novel_id=novel_id, request=ConsistencyCheckRequest())
+        result = await service.check(
+            novel_id=novel_id, request=ConsistencyCheckRequest(), user_id=str(uuid4())
+        )
 
         assert len(result.issues) == 3
         categories = {issue.category for issue in result.issues}
@@ -138,7 +144,7 @@ class TestKBConsistencyService:
         request = ConsistencyCheckRequest()
         types_hash = mocks["cache"].hash_entity_types(request.entity_types)
 
-        await service.check(novel_id=novel_id, request=request)
+        await service.check(novel_id=novel_id, request=request, user_id=str(uuid4()))
 
         mocks["cache"].set.assert_awaited_once()
         call_args = mocks["cache"].set.call_args[0]
@@ -167,7 +173,7 @@ class TestKBConsistencyService:
 
         request = ConsistencyCheckRequest()
 
-        result1 = await service.check(novel_id=novel_id, request=request)
+        result1 = await service.check(novel_id=novel_id, request=request, user_id=str(uuid4()))
         assert result1.novel_id == str(novel_id)
         mocks["asymmetry_checker"].check.assert_awaited()
 
@@ -176,7 +182,7 @@ class TestKBConsistencyService:
         mocks["analyzer"].analyze_entries.reset_mock()
         mocks["_run_cross_entity"].reset_mock()
 
-        result2 = await service.check(novel_id=novel_id, request=request)
+        result2 = await service.check(novel_id=novel_id, request=request, user_id=str(uuid4()))
         assert result2.entity_count == 10
         assert result2.checked_at == "2025-01-01T00:00:00+00:00"
         mocks["asymmetry_checker"].check.assert_not_awaited()
@@ -191,7 +197,11 @@ class TestKBConsistencyService:
         mocks["asymmetry_checker"].check = AsyncMock(return_value=[])
         mocks["analyzer"].analyze_entries = AsyncMock(return_value=([], 2))
 
-        await service.check(novel_id=novel_id, request=ConsistencyCheckRequest(refresh=True))
+        await service.check(
+            novel_id=novel_id,
+            request=ConsistencyCheckRequest(refresh=True),
+            user_id=str(uuid4()),
+        )
 
         mocks["cache"].get.assert_not_awaited()
         mocks["cache"].set.assert_awaited_once()
@@ -210,7 +220,7 @@ class TestKBConsistencyService:
             include_cross_entity=False,
         )
 
-        result = await service.check(novel_id=novel_id, request=request)
+        result = await service.check(novel_id=novel_id, request=request, user_id=str(uuid4()))
 
         mocks["asymmetry_checker"].check.assert_awaited_once()
         mocks["analyzer"].analyze_entries.assert_not_awaited()
@@ -242,7 +252,7 @@ class TestKBConsistencyService:
             include_cross_entity=False,
         )
 
-        result = await service.check(novel_id=novel_id, request=request)
+        result = await service.check(novel_id=novel_id, request=request, user_id=str(uuid4()))
 
         issue = result.issues[0]
         assert issue.category == ConsistencyCategory.RELATIONSHIP_ASYMMETRY

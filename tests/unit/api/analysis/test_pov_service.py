@@ -6,21 +6,24 @@ Uses Fake classes for all dependencies (no MagicMock).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.analysis.services.pov_service import POVService
 from narrare_core.agents.pov_types import POVDetectionOutput
 from narrare_core.analysis.types import POVResult
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.model_config import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.shared.errors import NotFoundError
 from tests.fakes import FakeChapterRepository, FakeModelRegistry, FakeNovelRepository
 from tests.unit.api._test_helpers import make_chapter, make_novel, seed_repos
 from tests.unit.api.analysis._fakes import (
     FakeComposer,
     FakePOVAgent,
-    SeededKBRepository,
     SpyInvocationPipeline,
 )
 
@@ -48,7 +51,6 @@ def _pov_output(**overrides: Any) -> POVDetectionOutput:
 
 def _make_service(
     content: str = "Alice saw the light.",
-    kb_names: list[str] | None = None,
     writing_language: str = "en",
     invocation_pipeline: InvocationPipeline | None = None,
     composer: FakeComposer | None = None,
@@ -56,22 +58,38 @@ def _make_service(
     novel = make_novel(writing_language=writing_language)
     ch = make_chapter(novel_id=novel.id, content=content)
     nr, cr = FakeNovelRepository(), FakeChapterRepository()
-    kb = SeededKBRepository(kb_names or [])
     seed_repos(novel, ch, novel_repo=nr, chapter_repo=cr)
     svc = POVService(
         chapter_repo=cr,
         novel_repo=nr,
-        kb_repo=kb,
         model_registry=FakeModelRegistry(),
-        model_config=_CONFIG,
+        # ADR-086: unit tests pin the resolved config via StaticModelResolution.
+        model_resolution=StaticModelResolution(ResolvedModel(config=_CONFIG)),
         composer=composer or FakeComposer(),
         invocation_pipeline=invocation_pipeline,
     )
     return novel, ch, svc
 
 
+def _prepared() -> PreparedModelCall:
+    """Canned coherent triple for injected-agent tests (Task 6a-2).
+
+    The injected ``_prepare_agent`` replacement skips the real registry,
+    so the run-pass-through (``model_settings`` / ``usage_limits``) is
+    verified by the dedicated wiring suite
+    (``test_analysis_service_prepare_wiring.py``) instead.
+    """
+    return PreparedModelCall(model=MagicMock(spec=object), model_settings=None, usage_limits=None)
+
+
 def _inject(svc: POVService, agent: FakePOVAgent) -> None:
-    svc._get_agent = lambda system_prompt=None: agent  # type: ignore[method-assign]
+    async def _prepare_agent(
+        system_prompt: str | None = None,
+        resolved_model: ResolvedModel | None = None,
+    ) -> tuple[FakePOVAgent, PreparedModelCall]:
+        return agent, _prepared()
+
+    svc._prepare_agent = _prepare_agent  # type: ignore[method-assign]
 
 
 # ---------------------------------------------------------------------------
@@ -109,24 +127,6 @@ class TestPOVAnalyzeHappyPath:
             novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id, language="fr"
         )
         assert fake.last_deps.language == "fr"
-
-    @pytest.mark.asyncio
-    async def test_passes_known_characters_from_kb(self) -> None:
-        novel, ch, svc = _make_service(kb_names=["Alice", "Bob"])
-        fake = FakePOVAgent(output=_pov_output())
-        _inject(svc, fake)
-        await svc.analyze(novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id)
-        assert "Alice" in fake.last_deps.known_characters
-
-    @pytest.mark.asyncio
-    async def test_pov_type_hint_passed_to_deps(self) -> None:
-        novel, ch, svc = _make_service()
-        fake = FakePOVAgent(output=_pov_output())
-        _inject(svc, fake)
-        await svc.analyze(
-            novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id, pov_type="first_person"
-        )
-        assert fake.last_deps.pov_type_hint == "first_person"
 
 
 # ---------------------------------------------------------------------------
@@ -183,23 +183,8 @@ class TestPOVAnalyzeEmptyText:
 
 
 # ---------------------------------------------------------------------------
-# D. _resolve_characters + multiple chapters
+# D. Multiple chapters
 # ---------------------------------------------------------------------------
-
-
-class TestResolveCharacters:
-    @pytest.mark.asyncio
-    async def test_returns_character_names_from_kb(self) -> None:
-        novel, _, svc = _make_service(kb_names=["Alice", "Bob"])
-        names = await svc._resolve_characters(novel.id)
-        assert "Alice" in names
-        assert "Bob" in names
-
-    @pytest.mark.asyncio
-    async def test_empty_kb_returns_empty_list(self) -> None:
-        novel, _, svc = _make_service(kb_names=[])
-        names = await svc._resolve_characters(novel.id)
-        assert names == []
 
 
 class TestMultipleChapters:
@@ -213,9 +198,8 @@ class TestMultipleChapters:
         svc = POVService(
             chapter_repo=cr,
             novel_repo=nr,
-            kb_repo=SeededKBRepository([]),
             model_registry=FakeModelRegistry(),
-            model_config=_CONFIG,
+            model_resolution=StaticModelResolution(ResolvedModel(config=_CONFIG)),
             composer=FakeComposer(),
         )
         fake = FakePOVAgent(output=_pov_output())
@@ -262,11 +246,14 @@ class TestMode1PromptComposition:
         novel, ch, svc = _make_service(composer=composer)
         captured: dict[str, object] = {}
 
-        def spy_get_agent(system_prompt: str | None = None) -> FakePOVAgent:
+        async def spy_prepare_agent(
+            system_prompt: str | None = None,
+            resolved_model: ResolvedModel | None = None,
+        ) -> tuple[FakePOVAgent, PreparedModelCall]:
             captured["system_prompt"] = system_prompt
-            return FakePOVAgent(output=_pov_output())
+            return FakePOVAgent(output=_pov_output()), _prepared()
 
-        svc._get_agent = spy_get_agent  # type: ignore[method-assign]
+        svc._prepare_agent = spy_prepare_agent  # type: ignore[method-assign]
         await svc.analyze(novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id)
 
         assert captured["system_prompt"] == "POV-SYSTEM-PROMPT"

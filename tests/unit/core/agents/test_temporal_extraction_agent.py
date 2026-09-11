@@ -4,9 +4,8 @@ Covers:
 1. TemporalExtractionDeps defaults and custom values
 2. Agent instantiation
 3. Agent run with TestModel (deterministic, no LLM calls)
-4. _process_output with valid TemporalExtractionOutput
-5. _process_output with list of ExtractedTemporalExpression
-6. _process_output with empty/invalid input
+4. ExtractedTemporalExpression model behaviour
+5. TemporalExtractionOutput model behaviour
 """
 
 from __future__ import annotations

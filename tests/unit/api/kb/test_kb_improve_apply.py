@@ -6,17 +6,23 @@ Uses factory helpers defined here to keep tests self-contained.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
 from narrare.kb.improve_contracts import KBImproveApplyResponse
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import NotFoundError
+
+from ._test_fakes import FakeNovelRepo
 
 if TYPE_CHECKING:
     from narrare.kb.improve_service import KBImproveService
+    from narrare.novels.contracts import NovelRepositoryProtocol
+    from narrare_core.agents.kb_improve_types import ImprovementSuggestion
 
 # ---------------------------------------------------------------------------
 # Factory helpers
@@ -28,15 +34,17 @@ def _make_entry(
     name: str = "John Smith",
     entity_type: str = "character",
     body: str = "A brave hero.",
+    novel_id: UUID | None = None,
 ) -> MagicMock:
     """Create a minimal mock KB entry with required attributes."""
-    entry = MagicMock(spec=["name", "entity_type", "metadata_", "body", "tags", "id"])
+    entry = MagicMock(spec=["name", "entity_type", "metadata_", "body", "tags", "id", "novel_id"])
     entry.name = name
     entry.entity_type = entity_type
     entry.metadata_ = {"age": 30, "role": "protagonist"}
     entry.body = body
     entry.tags = ["hero", "protagonist"]
     entry.id = uuid4()
+    entry.novel_id = novel_id if novel_id is not None else uuid4()
     return entry
 
 
@@ -46,6 +54,7 @@ def _make_service(
     suggestions_returned: bool = True,
     world_context_empty: bool = False,
     adjacency_fails: bool = False,
+    extra_suggestions: list[ImprovementSuggestion] | None = None,
 ) -> tuple[KBImproveService, dict[str, AsyncMock]]:
     """Create a KBImproveService with all dependencies mocked.
 
@@ -85,10 +94,13 @@ def _make_service(
     composed.system = "System prompt for KB improve"
     prompt_composer.build = AsyncMock(return_value=composed)
 
-    # --- Model Registry ---
-    registry = AsyncMock(spec=["get_model"])
-    model = MagicMock(spec=object)
-    registry.get_model = AsyncMock(return_value=model)
+    # --- Model Registry (Task 6c: prepare() assembly point) ---
+    registry = AsyncMock(spec=["prepare"])
+    registry.prepare = AsyncMock(
+        return_value=SimpleNamespace(
+            model=MagicMock(spec=object), model_settings=None, usage_limits=None
+        )
+    )
 
     # --- KB Service ---
     kb_service = AsyncMock(spec=["get", "create", "update"])
@@ -121,6 +133,7 @@ def _make_service(
                     confidence=0.75,
                     reasoning="Mentor relationship would enrich story",
                 ),
+                *(extra_suggestions or []),
             ],
             overall_assessment="Entry needs more detail",
             completeness_score=0.4,
@@ -134,11 +147,11 @@ def _make_service(
             completeness_score=0.9,
         )
 
-    config = MagicMock(spec=["provider_name", "model_id", "temperature", "max_tokens"])
-    config.provider_name = "default"
-    config.model_id = "default"
-    config.temperature = 0.7
-    config.max_tokens = 4096
+    # Real config value object — the ADR-045 run-limit resolver (Task 3)
+    # reads resolve_output_limit()/token_limit_profile from it.
+    config = ResolvedModelConfig(
+        provider_name="default", model_id="default", temperature=0.7, max_tokens=4096
+    )
 
     from narrare.kb.improve_analyzer import KBImproveAnalyzer
     from narrare.kb.improve_service import KBImproveService
@@ -159,8 +172,10 @@ def _make_service(
         kb_repo=kb_repo,
         kb_service=kb_service,
         rel_repo=rel_repo,
+        novel_repo=cast("NovelRepositoryProtocol", FakeNovelRepo()),  # permissive: owner flow
     )
 
+    entry_mock = kb_repo.get_by_id.return_value
     mocks = {
         "kb_repo": kb_repo,
         "rel_repo": rel_repo,
@@ -169,6 +184,7 @@ def _make_service(
         "registry": registry,
         "kb_service": kb_service,
         "agent_output": agent_output,
+        "novel_id": entry_mock.novel_id if entry_mock is not None else uuid4(),
     }
 
     return service, mocks
@@ -185,7 +201,7 @@ class TestApply:
     async def test_apply_happy_path_applies_suggestions(self) -> None:
         """apply with valid suggestion_ids applies changes and returns success."""
         service, mocks = _make_service()
-        novel_id = uuid4()
+        novel_id = mocks["novel_id"]  # entry's novel (owner flow)
         entry_id = uuid4()
 
         with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
@@ -196,6 +212,7 @@ class TestApply:
                 novel_id=novel_id,
                 entry_id=entry_id,
                 suggestion_ids=[0, 1],
+                user_id=uuid4(),
             )
 
         assert isinstance(result, KBImproveApplyResponse)
@@ -206,7 +223,7 @@ class TestApply:
     async def test_apply_no_valid_suggestions_returns_failure(self) -> None:
         """apply with no matching suggestion_ids returns success=False."""
         service, mocks = _make_service()
-        novel_id = uuid4()
+        novel_id = mocks["novel_id"]  # entry's novel (owner flow)
         entry_id = uuid4()
 
         with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
@@ -218,6 +235,7 @@ class TestApply:
                 novel_id=novel_id,
                 entry_id=entry_id,
                 suggestion_ids=[999],
+                user_id=uuid4(),
             )
 
         assert result.success is False
@@ -235,12 +253,13 @@ class TestApply:
                 novel_id=novel_id,
                 entry_id=entry_id,
                 suggestion_ids=[0],
+                user_id=uuid4(),
             )
 
     async def test_apply_empty_suggestion_ids_returns_empty(self) -> None:
         """apply with empty suggestion_ids list returns success=False."""
         service, mocks = _make_service()
-        novel_id = uuid4()
+        novel_id = mocks["novel_id"]  # entry's novel (owner flow)
         entry_id = uuid4()
 
         with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
@@ -251,7 +270,82 @@ class TestApply:
                 novel_id=novel_id,
                 entry_id=entry_id,
                 suggestion_ids=[],
+                user_id=uuid4(),
             )
 
         assert result.success is False
         assert result.applied_count == 0
+
+
+# ---------------------------------------------------------------------------
+# Tests: reserved metadata keys (ADR-085 §5/§6 invariant)
+# ---------------------------------------------------------------------------
+
+
+def _reserved_target_suggestion(target: str) -> ImprovementSuggestion:
+    from narrare_core.agents.kb_improve_types import ImprovementSuggestion, SuggestionType
+
+    return ImprovementSuggestion(
+        type=SuggestionType.ADD_FIELD,
+        target=target,
+        description="LLM forge attempt",
+        proposed_content="forged by the model",
+        confidence=0.9,
+        reasoning="Model proposed a platform-reserved key",
+    )
+
+
+class TestApplyReservedKeyGuard:
+    """LLM proposals can never write ``provenance``/``resolution`` keys.
+
+    Same invariant class as the extraction apply flow: platform-reserved
+    metadata keys are stripped from every proposal consumption site. The
+    improve path historically wrote ``suggestion.proposed_content`` under
+    ``suggestion.target`` unguarded (progress.md Task 10 binding note).
+    """
+
+    async def test_apply_reserved_target_is_not_written(self) -> None:
+        """A forged ``resolution`` target is skipped; normal keys still land."""
+        reserved = _reserved_target_suggestion("resolution")
+        service, mocks = _make_service(extra_suggestions=[reserved])
+        novel_id = mocks["novel_id"]  # entry's novel (owner flow)
+        entry_id = uuid4()
+
+        with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
+            mock_agent_instance = MockAgent.return_value
+            mock_agent_instance.run = AsyncMock(return_value=mocks["agent_output"])
+
+            result = await service.apply(
+                novel_id=novel_id,
+                entry_id=entry_id,
+                suggestion_ids=[0, 2],
+                user_id=uuid4(),
+            )
+
+        assert result.success is True
+        metadata_updates = mocks["kb_repo"].update.await_args.args[1]["metadata_"]
+        assert "resolution" not in metadata_updates
+        assert metadata_updates["personality"] == "Brave and cunning"
+
+    async def test_apply_provenance_target_is_not_written(self) -> None:
+        """The ``provenance`` key is equally protected (forge guard)."""
+        service, mocks = _make_service(
+            extra_suggestions=[_reserved_target_suggestion("provenance")],
+        )
+        novel_id = mocks["novel_id"]  # entry's novel (owner flow)
+        entry_id = uuid4()
+
+        with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
+            mock_agent_instance = MockAgent.return_value
+            mock_agent_instance.run = AsyncMock(return_value=mocks["agent_output"])
+
+            await service.apply(
+                novel_id=novel_id,
+                entry_id=entry_id,
+                suggestion_ids=[2],
+                user_id=uuid4(),
+            )
+
+        # Only the reserved suggestion was selected → nothing else to write,
+        # so kb_repo.update must not have been called at all.
+        mocks["kb_repo"].update.assert_not_awaited()

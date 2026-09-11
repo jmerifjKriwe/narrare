@@ -27,6 +27,7 @@ from tests.unit.api.export.conftest import (
 )
 
 NOVEL_ID = UUID("00000000-0000-0000-0000-000000000001")
+OWNER = UUID("00000000-0000-0000-0000-0000000000ff")  # job owner for registry seeding
 
 
 @pytest.fixture(autouse=True)
@@ -185,7 +186,7 @@ class TestEnqueueExport:
 
         monkeypatch.setattr(tasks, "run_export_inprocess", fake_runner)
 
-        job = registry.create(NOVEL_ID, ExportFormat.MARKDOWN)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.MARKDOWN)
         await tasks.enqueue_export(job.job_id, NOVEL_ID, make_options())
 
         assert len(tasks._INFLIGHT_TASKS) == 1
@@ -214,7 +215,7 @@ class TestEnqueueExport:
             await asyncio.sleep(3600)
 
         monkeypatch.setattr(tasks, "run_export_inprocess", block)
-        job = registry.create(NOVEL_ID, ExportFormat.PDF)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.PDF)
         registry.mark_running(job.job_id)
         await tasks.enqueue_export(job.job_id, NOVEL_ID, make_options(ExportFormat.PDF))
 
@@ -224,7 +225,7 @@ class TestEnqueueExport:
             await tracked
         await asyncio.sleep(0)  # let _on_done fire
 
-        failed = registry.get(job.job_id)
+        failed = registry.get(job.job_id, OWNER)
         assert failed.status is ExportJobStatus.FAILED
         assert failed.error == "cancelled (server shutdown)"
 
@@ -238,13 +239,13 @@ class TestEnqueueExport:
             await asyncio.sleep(3600)
 
         monkeypatch.setattr(tasks, "run_export_inprocess", block)
-        job = registry.create(NOVEL_ID, ExportFormat.EPUB)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.EPUB)
         registry.mark_running(job.job_id)
         await tasks.enqueue_export(job.job_id, NOVEL_ID, make_options(ExportFormat.EPUB))
 
         await drain_inflight_tasks()
 
-        failed = registry.get(job.job_id)
+        failed = registry.get(job.job_id, OWNER)
         assert failed.status is ExportJobStatus.FAILED
         assert "cancelled" in (failed.error or "")
 
@@ -260,10 +261,10 @@ class TestRunExportInprocess:
         source = make_source(chapters=[make_chapter(title="C1", content="<p>hi</p>")])
         _install_session_and_repo(monkeypatch, source=source)
 
-        job = registry.create(NOVEL_ID, ExportFormat.MARKDOWN)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.MARKDOWN)
         await tasks.run_export_inprocess(job.job_id, NOVEL_ID, make_options())
 
-        completed = registry.get(job.job_id)
+        completed = registry.get(job.job_id, OWNER)
         assert completed.status is ExportJobStatus.COMPLETED
         assert completed.artifact_url is not None
         # The fake normalizer received the assembled HTML (with the h2 title).
@@ -278,10 +279,10 @@ class TestRunExportInprocess:
         _install_runner_deps(monkeypatch, renderer=renderer)
         _install_session_and_repo(monkeypatch, source=None)
 
-        job = registry.create(NOVEL_ID, ExportFormat.MARKDOWN)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.MARKDOWN)
         await tasks.run_export_inprocess(job.job_id, NOVEL_ID, make_options())
 
-        failed = registry.get(job.job_id)
+        failed = registry.get(job.job_id, OWNER)
         assert failed.status is ExportJobStatus.FAILED
         assert "not found" in (failed.error or "")
         assert renderer.render_calls == []
@@ -292,10 +293,10 @@ class TestRunExportInprocess:
         _install_runner_deps(monkeypatch, renderer=renderer)
         _install_session_and_repo(monkeypatch, source=make_source(chapters=[make_chapter()]))
 
-        job = registry.create(NOVEL_ID, ExportFormat.MARKDOWN)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.MARKDOWN)
         await tasks.run_export_inprocess(job.job_id, NOVEL_ID, make_options())
 
-        failed = registry.get(job.job_id)
+        failed = registry.get(job.job_id, OWNER)
         assert failed.status is ExportJobStatus.FAILED
         assert "pandoc died" in (failed.error or "")
 
@@ -308,10 +309,10 @@ class TestRunExportInprocess:
             source=make_source(language="klingon", chapters=[make_chapter()]),
         )
 
-        job = registry.create(NOVEL_ID, ExportFormat.MARKDOWN)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.MARKDOWN)
         await tasks.run_export_inprocess(job.job_id, uuid4(), make_options())
 
-        failed = registry.get(job.job_id)
+        failed = registry.get(job.job_id, OWNER)
         assert failed.status is ExportJobStatus.FAILED
 
     @pytest.mark.asyncio
@@ -328,10 +329,10 @@ class TestRunExportInprocess:
             epub_options=EpubOptions(isbn="978-3-16-148410-0", description="A tale."),
         )
 
-        job = registry.create(NOVEL_ID, ExportFormat.EPUB)
+        job = registry.create(NOVEL_ID, OWNER, ExportFormat.EPUB)
         await tasks.run_export_inprocess(job.job_id, NOVEL_ID, options)
 
-        completed = registry.get(job.job_id)
+        completed = registry.get(job.job_id, OWNER)
         assert completed.status is ExportJobStatus.COMPLETED
         manuscript, _opts = renderer.render_calls[0]
         assert manuscript.isbn == "978-3-16-148410-0"

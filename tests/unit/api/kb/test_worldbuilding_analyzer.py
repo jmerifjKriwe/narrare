@@ -6,6 +6,7 @@ and the analyze() method with mocked dependencies.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -111,7 +112,9 @@ def _make_analyzer(
     kb_repo = FakeKBRepo()
     cache = FakeCache(data=cache_data)
     registry = MagicMock(spec=ModelRegistry)
-    config = MagicMock(spec=ResolvedModelConfig)
+    # Real config value object — the ADR-045 run-limit resolver (Task 3)
+    # reads resolve_output_limit()/token_limit_profile from it.
+    config = ResolvedModelConfig(provider_name="test", model_id="test-model")
     analyzer = WorldbuildingAnalyzer(
         kb_repo=cast("KBRepository", kb_repo),
         rel_repo=cast("RelationshipRepository", FakeRelRepo()),
@@ -208,8 +211,11 @@ class TestAnalyze:
         novel_id = uuid4()
         analyzer, deps = _make_analyzer(cache_data=None)
         deps["kb_repo"]._entries = [FakeKBEntry()]
-        mock_model = MagicMock(spec=Model)
-        deps["registry"].get_model = AsyncMock(return_value=mock_model)
+        deps["registry"].prepare = AsyncMock(
+            return_value=SimpleNamespace(
+                model=MagicMock(spec=Model), model_settings=None, usage_limits=None
+            )
+        )
 
         with patch("narrare.kb.worldbuilding_analyzer.WorldbuildingAgent") as MockAgent:
             MockAgent.return_value.run_phase1 = AsyncMock(
@@ -226,7 +232,11 @@ class TestAnalyze:
         novel_id = uuid4()
         analyzer, deps = _make_analyzer(cache_data=None)
         deps["kb_repo"]._entries = [FakeKBEntry()]
-        deps["registry"].get_model = AsyncMock(return_value=MagicMock(spec=Model))
+        deps["registry"].prepare = AsyncMock(
+            return_value=SimpleNamespace(
+                model=MagicMock(spec=Model), model_settings=None, usage_limits=None
+            )
+        )
 
         with patch("narrare.kb.worldbuilding_analyzer.WorldbuildingAgent") as MockAgent:
             instance = MockAgent.return_value
@@ -245,7 +255,11 @@ class TestAnalyze:
         novel_id = uuid4()
         analyzer, deps = _make_analyzer(cache_data=None)
         deps["kb_repo"]._entries = [FakeKBEntry()]
-        deps["registry"].get_model = AsyncMock(return_value=MagicMock(spec=Model))
+        deps["registry"].prepare = AsyncMock(
+            return_value=SimpleNamespace(
+                model=MagicMock(spec=Model), model_settings=None, usage_limits=None
+            )
+        )
 
         with patch("narrare.kb.worldbuilding_analyzer.WorldbuildingAgent") as MockAgent:
             MockAgent.return_value.run_phase1 = AsyncMock(
@@ -262,7 +276,11 @@ class TestAnalyze:
         novel_id = uuid4()
         analyzer, deps = _make_analyzer(cache_data=None)
         deps["kb_repo"]._entries = [FakeKBEntry()]
-        deps["registry"].get_model = AsyncMock(return_value=MagicMock(spec=Model))
+        deps["registry"].prepare = AsyncMock(
+            return_value=SimpleNamespace(
+                model=MagicMock(spec=Model), model_settings=None, usage_limits=None
+            )
+        )
 
         with patch("narrare.kb.worldbuilding_analyzer.WorldbuildingAgent") as MockAgent:
             MockAgent.return_value.run_phase1 = AsyncMock(return_value=_make_phase1())

@@ -17,6 +17,7 @@ import narrare.generation.models
 import narrare.kb.dismissed_models  # register model metadata for autogenerate
 import narrare.kb.models
 import narrare.memory.models
+import narrare.notes.models  # register Note metadata for autogenerate (NOTES-001)
 import narrare.novels.models
 import narrare.planning.models
 import narrare.prompts.models

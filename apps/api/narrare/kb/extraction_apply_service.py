@@ -7,26 +7,33 @@ relationships accordingly.
 Separated from ExtractionService to keep both files under the 300-line limit
 (RULE-04) and to segregate the apply concern (which needs KBService and
 RelationshipRepository) from the extraction concern (which needs the LLM
-extraction pipeline).
+extraction pipeline). Per-item application logic lives in
+:mod:`narrare.kb._extraction_apply_entity` and
+:mod:`narrare.kb._extraction_apply_relationship` (same RULE-04 split).
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 import structlog
 
-from narrare.kb.schemas import (
-    KBEntryCreate,
-    KBEntryUpdate,
+from narrare.kb._extraction_apply_entity import (
+    apply_new_entity_item,
+    apply_update_entity_item,
 )
+from narrare.kb._extraction_apply_relationship import apply_relationship_item
 from narrare.kb.schemas_extraction import (
     ApplyExtractionEntryResult,
     ApplyExtractionResponse,
+    SkippedItem,
 )
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.schemas_extraction import ApplyExtractionItem
@@ -44,8 +51,15 @@ class ExtractionApplyService:
     - ``relationship`` → Creates a relationship via RelationshipRepository
     - ``conflict`` → Logged and skipped (user acknowledged)
 
-    Errors are handled per-item — a single failing item does not
-    block the remaining items.
+    Each item is applied inside a SAVEPOINT (benchmark run 5): a failing
+    item rolls back only itself, the outer session stays usable, and the
+    remaining items proceed — the request-final commit can no longer be
+    poisoned by a single item's IntegrityError, so the response's
+    created/updated lists match what is actually committed.
+
+    Errors are handled per-item. Every unapplied item (resolution
+    failure or exception) is reported in the response's ``skipped``
+    list with a machine-readable reason — nothing vanishes silently.
     """
 
     def __init__(
@@ -53,39 +67,54 @@ class ExtractionApplyService:
         kb_service: KBService,
         rel_repo: RelationshipRepository,
         kb_repo: KBRepositoryProtocol,
+        session: AsyncSession,
     ) -> None:
         self._kb_service = kb_service
         self._rel_repo = rel_repo
         self._kb_repo = kb_repo
+        self._session = session
 
     async def apply(
         self,
         novel_id: UUID,
         user_id: UUID,
         items: list[ApplyExtractionItem],
+        chapter_position: int | None = None,
     ) -> ApplyExtractionResponse:
-        """Apply all endorsed items, collecting results.
+        """Apply all endorsed items, collecting results and skips.
 
         Args:
             novel_id: Novel to apply items to.
             user_id: Requesting user.
             items: Endorsed extraction items to apply.
+            chapter_position: Chapter's position in the novel's chapter
+                ordering, resolved by the caller via the chapter
+                repository (ADR-085 §5/§9(b)). ``None`` (absent
+                ``chapter_id``) applies items exactly as before — no
+                provenance is stamped and stored provenance is never
+                altered.
 
         Returns:
-            ApplyExtractionResponse with created_entries and updated_entries.
+            ApplyExtractionResponse with created_entries, updated_entries,
+            and every unapplied item in skipped (with reason).
         """
         created_entries: list[ApplyExtractionEntryResult] = []
         updated_entries: list[ApplyExtractionEntryResult] = []
+        skipped: list[SkippedItem] = []
 
         for item in items:
             try:
-                await self._apply_single_item(
-                    novel_id=novel_id,
-                    user_id=user_id,
-                    item=item,
-                    created_entries=created_entries,
-                    updated_entries=updated_entries,
-                )
+                # SAVEPOINT per item: on failure only this item's writes
+                # roll back; the outer transaction stays usable.
+                async with self._session.begin_nested():
+                    reason = await self._apply_single_item(
+                        novel_id=novel_id,
+                        user_id=user_id,
+                        item=item,
+                        chapter_position=chapter_position,
+                        created_entries=created_entries,
+                        updated_entries=updated_entries,
+                    )
             except Exception as exc:
                 logger.error(
                     "apply_item_failed",
@@ -94,11 +123,20 @@ class ExtractionApplyService:
                     error=str(exc),
                     exc_info=True,
                 )
-                continue
+                reason = f"exception: {exc}"
+            if reason is not None:
+                skipped.append(
+                    SkippedItem(
+                        name=item.name,
+                        item_type=item.item_type,
+                        reason=reason,
+                    ),
+                )
 
         return ApplyExtractionResponse(
             created_entries=created_entries,
             updated_entries=updated_entries,
+            skipped=skipped,
         )
 
     async def _apply_single_item(
@@ -108,7 +146,8 @@ class ExtractionApplyService:
         item: ApplyExtractionItem,
         created_entries: list[ApplyExtractionEntryResult],
         updated_entries: list[ApplyExtractionEntryResult],
-    ) -> None:
+        chapter_position: int | None = None,
+    ) -> str | None:
         """Apply a single endorsed extraction item.
 
         Args:
@@ -117,180 +156,76 @@ class ExtractionApplyService:
             item: The extraction item to apply.
             created_entries: Accumulator for newly created entries.
             updated_entries: Accumulator for updated entries.
+            chapter_position: Resolved chapter position for provenance
+                stamping, or ``None`` when the request carries no chapter.
+
+        Returns:
+            Machine-readable skip reason, or ``None`` when applied.
+            Conflict items return ``None`` (acknowledged by design).
         """
         if item.item_type == "new_entity":
-            await self._apply_new_entity(
-                novel_id,
-                user_id,
-                item,
-                created_entries,
+            await apply_new_entity_item(
+                novel_id=novel_id,
+                user_id=user_id,
+                item=item,
+                kb_service=self._kb_service,
+                created_entries=created_entries,
+                chapter_position=chapter_position,
             )
-        elif item.item_type == "update_entity":
-            await self._apply_update_entity(
-                novel_id,
-                user_id,
-                item,
-                updated_entries,
+            return None
+        if item.item_type == "update_entity":
+            return await apply_update_entity_item(
+                novel_id=novel_id,
+                user_id=user_id,
+                item=item,
+                kb_repo=self._kb_repo,
+                kb_service=self._kb_service,
+                updated_entries=updated_entries,
+                chapter_position=chapter_position,
             )
-        elif item.item_type == "relationship":
-            await self._apply_relationship(novel_id, item)
-        elif item.item_type == "conflict":
+        if item.item_type == "relationship":
+            return await self._apply_relationship(novel_id, item, created_entries)
+        if item.item_type == "conflict":
             logger.info(
                 "conflict_acknowledged",
                 name=item.name,
                 source_text=item.source_text,
             )
-        else:
-            logger.warning(
-                "unknown_item_type",
-                item_type=item.item_type,
-                name=item.name,
-            )
-
-    async def _apply_new_entity(
-        self,
-        novel_id: UUID,
-        user_id: UUID,
-        item: ApplyExtractionItem,
-        created_entries: list[ApplyExtractionEntryResult],
-    ) -> None:
-        """Create a new KB entry from a ``new_entity`` extraction item.
-
-        Args:
-            novel_id: Novel scope.
-            user_id: Requesting user.
-            item: The extraction item.
-            created_entries: Accumulator for results.
-        """
-        data = KBEntryCreate(
-            entity_type=item.entity_type or "unknown",
-            name=item.name,
-            metadata=item.proposed_content,
-            body=item.source_text,
-            status="draft",
-            source="auto_extraction",
-            review_status="pending",
-        )
-        entry = await self._kb_service.create(
-            novel_id=novel_id,
-            user_id=user_id,
-            data=data,
-        )
-        created_entries.append(
-            ApplyExtractionEntryResult(
-                id=str(entry.id),
-                name=entry.name,
-                entity_type=entry.entity_type,
-            ),
-        )
-        logger.info(
-            "apply_new_entity_created",
-            entry_id=str(entry.id),
-            name=item.name,
-            entity_type=item.entity_type,
-        )
-
-    async def _apply_update_entity(
-        self,
-        novel_id: UUID,
-        user_id: UUID,
-        item: ApplyExtractionItem,
-        updated_entries: list[ApplyExtractionEntryResult],
-    ) -> None:
-        """Update an existing KB entry from an ``update_entity`` item.
-
-        Args:
-            novel_id: Novel scope.
-            user_id: Requesting user.
-            item: The extraction item.
-            updated_entries: Accumulator for results.
-        """
-        if not item.target_entity_id:
-            logger.warning(
-                "update_entity_missing_target_id",
-                name=item.name,
-            )
-            return
-
-        target_id = UUID(item.target_entity_id)
-
-        data = KBEntryUpdate(
-            metadata=item.proposed_content,
-        )
-        entry = await self._kb_service.update(
-            novel_id=novel_id,
-            entry_id=target_id,
-            user_id=user_id,
-            data=data,
-        )
-        updated_entries.append(
-            ApplyExtractionEntryResult(
-                id=str(entry.id),
-                name=entry.name,
-                entity_type=entry.entity_type,
-            ),
-        )
-        logger.info(
-            "apply_update_entity_updated",
-            entry_id=str(entry.id),
+            return None
+        logger.warning(
+            "unknown_item_type",
+            item_type=item.item_type,
             name=item.name,
         )
+        return "unknown_item_type"
 
     async def _apply_relationship(
         self,
         novel_id: UUID,
         item: ApplyExtractionItem,
-    ) -> None:
+        created_entries: list[ApplyExtractionEntryResult],
+    ) -> str | None:
         """Create a relationship from a ``relationship`` extraction item.
 
-        Looks up source and target entities by name within the novel.
+        Predicate validation, endpoint resolution (in-batch creations
+        first, then the DB), duplicate acknowledgment, and edge creation
+        live in :mod:`narrare.kb._extraction_apply_relationship`;
+        unresolvable items are reported as skips — never silently dropped.
 
         Args:
             novel_id: Novel scope.
             item: The extraction item.
+            created_entries: Entries created earlier in this request;
+                forwarded so in-batch entity references resolve (Fix C).
+
+        Returns:
+            Skip reason, or ``None`` when the relationship was created
+            (or already existed — acknowledged duplicate).
         """
-        if not item.related_entity_name or not item.relationship_type:
-            logger.warning(
-                "relationship_missing_fields",
-                name=item.name,
-                related_entity_name=item.related_entity_name,
-                relationship_type=item.relationship_type,
-            )
-            return
-
-        # Look up source and target entities by name in the novel
-        source_entry = await self._kb_repo.get_by_name(novel_id, item.name)
-        if source_entry is None:
-            logger.warning(
-                "relationship_source_not_found",
-                name=item.name,
-                novel_id=str(novel_id),
-            )
-            return
-
-        target_entry = await self._kb_repo.get_by_name(
-            novel_id,
-            item.related_entity_name,
-        )
-        if target_entry is None:
-            logger.warning(
-                "relationship_target_not_found",
-                name=item.related_entity_name,
-                novel_id=str(novel_id),
-            )
-            return
-
-        from narrare.kb.models import KBRelationship
-
-        rel = KBRelationship(
-            source_id=source_entry.id,
-            target_id=target_entry.id,
-            rel_type=item.relationship_type,
-        )
-        await self._rel_repo.create(rel)
-        logger.info(
-            "apply_relationship_created",
-            source=item.name,
-            target=item.related_entity_name,
-            rel_type=item.relationship_type,
+        return await apply_relationship_item(
+            novel_id=novel_id,
+            item=item,
+            kb_repo=self._kb_repo,
+            rel_repo=self._rel_repo,
+            in_batch_creations=created_entries,
         )

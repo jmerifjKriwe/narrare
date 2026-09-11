@@ -80,9 +80,13 @@ async def test_analyze_voice_check_serializes_progress_result_done_and_sentinel(
     service = FakeVoiceCheckService(result)
 
     with pytest.MonkeyPatch.context() as mp:
+
+        async def _fake_factory(**_kwargs: object) -> FakeVoiceCheckService:
+            return service
+
         mp.setattr(
             "narrare.analysis.router_voice_check.get_voice_check_service",
-            lambda _session: service,
+            _fake_factory,
         )
         stream_response = await analyze_voice_check(
             chapter_id=chapter_id,
@@ -121,9 +125,13 @@ async def test_analyze_voice_check_emits_error_event_on_failure() -> None:
             yield  # pragma: no cover - makes this an async generator
 
     with pytest.MonkeyPatch.context() as mp:
+
+        async def _failing_factory(**_kwargs: object) -> FailingService:
+            return FailingService()
+
         mp.setattr(
             "narrare.analysis.router_voice_check.get_voice_check_service",
-            lambda _session: FailingService(),
+            _failing_factory,
         )
         stream_response = await analyze_voice_check(
             chapter_id=uuid4(),

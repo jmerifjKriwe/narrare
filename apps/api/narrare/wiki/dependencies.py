@@ -3,24 +3,49 @@
 Creates WikiRepository, ChapterWikiService, and APIWikiService with all
 required dependencies wired up following the pattern from kb/dependencies.py.
 Two factories: user-facing (normal ownership checks) and system (bypassed).
+
+Model planes (Task 6 user-routing migration):
+- ``get_wiki_service`` (user-facing refresh path) resolves via the
+  per-user model-routing cascade — real intent SUMMARIZE (the intent
+  core ``WikiService`` composes with at both call sites) — with the
+  novel_id project tier (all wiki routes are novel-scoped).
+- ``build_core_wiki_service`` with ``config=None`` stays on the operator
+  plane (system-default config): it serves the STARTUP wiki listener in
+  ``_app/lifespan.py``, where no user context exists. Plan-sanctioned
+  survivor (user-routing migration plan, Global Constraints). The core
+  service factory itself lives in ``dependencies_core.py`` (RULE-04
+  split) and is re-exported here for wiring stability.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
+
+from fastapi import Depends
 
 from narrare._app.dependencies import (
     SessionDep,
+    get_current_user_id,
     get_invocation_pipeline,
 )
+from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare.wiki.dependencies_core import build_core_wiki_service
+from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from narrare.wiki.repository import WikiRepository
     from narrare.wiki.service import APIWikiService
-    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.wiki.contracts import WikiServiceProtocol
+
+__all__ = [
+    "build_core_wiki_service",
+    "get_wiki_repository",
+    "get_wiki_service",
+    "make_system_wiki_factory",
+]
 
 
 def get_wiki_repository(session: SessionDep) -> WikiRepository:
@@ -30,42 +55,19 @@ def get_wiki_repository(session: SessionDep) -> WikiRepository:
     return WikiRepository(session)
 
 
-async def build_core_wiki_service(
-    invocation_pipeline: InvocationPipeline | None = None,
-) -> WikiServiceProtocol:
-    """Create the core WikiService with agent, event bus, and optional pipeline.
-
-    Args:
-        invocation_pipeline: Optional InvocationPipeline for evidence
-            recording (ADR-048). When ``None``, pipeline is skipped.
-
-    Returns:
-        A configured WikiService instance.
-    """
-    from narrare._app.dependencies import get_model_registry
-    from narrare._app.dependencies_services import (
-        SystemModelCategory,
-        build_system_default_config,
-    )
-    from narrare_core.events.bus import NullEventBus
-    from narrare_core.wiki.agent import WikiGenerationAgent
-    from narrare_core.wiki.service import WikiService
-
-    registry = get_model_registry()
-    config = build_system_default_config(
-        SystemModelCategory.WRITING, temperature=0.7, max_tokens=4096
-    )
-    model = await registry.get_model(config)
-    agent = WikiGenerationAgent(model=model)
-    return WikiService(
-        agent=agent,
-        event_bus=NullEventBus(),
-        invocation_pipeline=invocation_pipeline,
-    )
-
-
-async def get_wiki_service(session: SessionDep) -> APIWikiService:
+async def get_wiki_service(
+    novel_id: UUID,
+    session: SessionDep,
+    user_id: str = Depends(get_current_user_id),
+) -> APIWikiService:
     """Create APIWikiService with all injected dependencies.
+
+    User-facing refresh path: resolves ``LLMIntent.SUMMARIZE`` (the real
+    intent core ``WikiService`` composes with) via the per-user cascade
+    WITH the novel_id project tier — every wiki route is novel-scoped, so
+    the path parameter is available at dependency-wiring time.
+    ``ConfigurationError`` propagates when the user has no provider
+    configured (wiki routers are auth-mandatory).
 
     Production wiring: WikiGenerationAgent for core WikiService,
     NullEventBus for event publishing, invocation pipeline for
@@ -80,8 +82,16 @@ async def get_wiki_service(session: SessionDep) -> APIWikiService:
     from narrare.wiki.repository import WikiRepository
     from narrare.wiki.service import APIWikiService
 
+    resolver = get_model_routing_resolver(session)
+    resolved = await resolver.resolve(LLMIntent.SUMMARIZE, UUID(user_id), novel_id)
+
     pipeline = get_invocation_pipeline()
-    core_service = await build_core_wiki_service(invocation_pipeline=pipeline)
+    core_service = await build_core_wiki_service(
+        invocation_pipeline=pipeline,
+        config=resolved.config,
+        api_key=resolved.api_key,
+        base_url=resolved.base_url,
+    )
 
     chapter_wiki_svc = ChapterWikiService(
         wiki_repo=WikiRepository(session),

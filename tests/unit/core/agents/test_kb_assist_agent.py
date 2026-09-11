@@ -6,7 +6,10 @@ Test strategy:
 - TestModel for instantiation tests
 - No real LLM calls (RULE-01b)
 
-See also: test_kb_assist_agent_output.py — _process_output tests
+The single strict output type registers one output tool named
+``final_result`` (pydantic-ai 2.x single-model naming).
+
+See also: test_kb_assist_validation.py — _validate_output tests
 """
 
 from __future__ import annotations
@@ -124,7 +127,7 @@ class TestAgentRun:
             lambda messages, info: ModelResponse(
                 parts=[
                     ToolCallPart(
-                        tool_name="final_result__process_output",
+                        tool_name="final_result",
                         args={
                             "mode": "question",
                             "question": "What is the name?",
@@ -146,7 +149,7 @@ class TestAgentRun:
             lambda messages, info: ModelResponse(
                 parts=[
                     ToolCallPart(
-                        tool_name="final_result__process_output",
+                        tool_name="final_result",
                         args={
                             "mode": "suggestion",
                             "suggestion": "A dark tower",
@@ -167,7 +170,7 @@ class TestAgentRun:
             lambda messages, info: ModelResponse(
                 parts=[
                     ToolCallPart(
-                        tool_name="final_result__process_output",
+                        tool_name="final_result",
                         args={"mode": "draft", "draft_entry": {"name": "Anna"}, "progress": 0.5},
                     )
                 ]
@@ -185,7 +188,7 @@ class TestAgentRun:
             lambda messages, info: ModelResponse(
                 parts=[
                     ToolCallPart(
-                        tool_name="final_result__process_output",
+                        tool_name="final_result",
                         args={"mode": "complete", "final_entry": {"name": "Anna"}, "progress": 1.0},
                     )
                 ]

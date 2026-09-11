@@ -6,8 +6,10 @@ Uses AsyncMock(spec=...) and MagicMock(spec=...) patterns.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -22,7 +24,13 @@ from narrare_core.agents.kb_improve_types import (
     KBImproveOutput,
     SuggestionType,
 )
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import NotFoundError
+
+from ._test_fakes import FakeNovelRepo
+
+if TYPE_CHECKING:
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 # ---------------------------------------------------------------------------
 # Factory helpers
@@ -34,15 +42,17 @@ def _make_entry(
     name: str = "John Smith",
     entity_type: str = "character",
     body: str = "A brave hero.",
+    novel_id: UUID | None = None,
 ) -> MagicMock:
     """Create a minimal mock KB entry with required attributes."""
-    entry = MagicMock(spec=["name", "entity_type", "metadata_", "body", "tags", "id"])
+    entry = MagicMock(spec=["name", "entity_type", "metadata_", "body", "tags", "id", "novel_id"])
     entry.name = name
     entry.entity_type = entity_type
     entry.metadata_ = {"age": 30, "role": "protagonist"}
     entry.body = body
     entry.tags = ["hero", "protagonist"]
     entry.id = uuid4()
+    entry.novel_id = novel_id if novel_id is not None else uuid4()
     return entry
 
 
@@ -96,10 +106,13 @@ def _make_service(
     composed.system = "System prompt for KB improve"
     prompt_composer.build = AsyncMock(return_value=composed)
 
-    # --- Model Registry ---
-    registry = AsyncMock(spec=["get_model"])
-    model = MagicMock(spec=object)
-    registry.get_model = AsyncMock(return_value=model)
+    # --- Model Registry (Task 6c: prepare() assembly point) ---
+    registry = AsyncMock(spec=["prepare"])
+    registry.prepare = AsyncMock(
+        return_value=SimpleNamespace(
+            model=MagicMock(spec=object), model_settings=None, usage_limits=None
+        )
+    )
 
     # --- KB Service ---
     kb_service = AsyncMock(spec=["get", "create", "update"])
@@ -137,11 +150,11 @@ def _make_service(
             completeness_score=0.9,
         )
 
-    config = MagicMock(spec=["provider_name", "model_id", "temperature", "max_tokens"])
-    config.provider_name = "default"
-    config.model_id = "default"
-    config.temperature = 0.7
-    config.max_tokens = 4096
+    # Real config value object — the ADR-045 run-limit resolver (Task 3)
+    # reads resolve_output_limit()/token_limit_profile from it.
+    config = ResolvedModelConfig(
+        provider_name="default", model_id="default", temperature=0.7, max_tokens=4096
+    )
 
     analyzer = KBImproveAnalyzer(
         registry=registry,
@@ -159,8 +172,10 @@ def _make_service(
         kb_repo=kb_repo,
         kb_service=kb_service,
         rel_repo=rel_repo,
+        novel_repo=cast("NovelRepositoryProtocol", FakeNovelRepo()),  # permissive: owner flow
     )
 
+    entry_mock = kb_repo.get_by_id.return_value
     mocks = {
         "kb_repo": kb_repo,
         "rel_repo": rel_repo,
@@ -169,6 +184,7 @@ def _make_service(
         "registry": registry,
         "kb_service": kb_service,
         "agent_output": agent_output,
+        "novel_id": entry_mock.novel_id if entry_mock is not None else uuid4(),
     }
 
     return service, mocks
@@ -185,7 +201,7 @@ class TestAnalyze:
     async def test_analyze_happy_path_returns_suggestions(self) -> None:
         """analyze with valid entry returns KBImproveAnalysisResponse with suggestions."""
         service, mocks = _make_service()
-        novel_id = uuid4()
+        novel_id = mocks["novel_id"]  # entry's novel (owner flow)
         entry_id = uuid4()
 
         with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
@@ -195,6 +211,7 @@ class TestAnalyze:
             result = await service.analyze(
                 novel_id=novel_id,
                 entry_id=entry_id,
+                user_id=uuid4(),
             )
 
         assert isinstance(result, KBImproveAnalysisResponse)
@@ -219,6 +236,7 @@ class TestAnalyze:
             await service.analyze(
                 novel_id=novel_id,
                 entry_id=entry_id,
+                user_id=uuid4(),
             )
 
     async def test_analyze_empty_world_context_still_works(self) -> None:
@@ -228,7 +246,7 @@ class TestAnalyze:
         empty/unavailable KB; analyze must still compose its deps and run.
         """
         service, mocks = _make_service(world_context_empty=True)
-        novel_id = uuid4()
+        novel_id = mocks["novel_id"]  # entry's novel (owner flow)
         entry_id = uuid4()
 
         with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
@@ -238,6 +256,7 @@ class TestAnalyze:
             result = await service.analyze(
                 novel_id=novel_id,
                 entry_id=entry_id,
+                user_id=uuid4(),
             )
 
         # Should still return suggestions (world_context is empty but not fatal)
@@ -249,7 +268,7 @@ class TestAnalyze:
     async def test_analyze_adjacency_map_fails_gracefully(self) -> None:
         """analyze still works when adjacency map is unavailable."""
         service, mocks = _make_service(adjacency_fails=True)
-        novel_id = uuid4()
+        novel_id = mocks["novel_id"]  # entry's novel (owner flow)
         entry_id = uuid4()
 
         with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
@@ -259,6 +278,7 @@ class TestAnalyze:
             result = await service.analyze(
                 novel_id=novel_id,
                 entry_id=entry_id,
+                user_id=uuid4(),
             )
 
         assert isinstance(result, KBImproveAnalysisResponse)
@@ -269,7 +289,7 @@ class TestAnalyze:
     async def test_analyze_empty_suggestions_returns_empty_list(self) -> None:
         """analyze returns empty suggestions list when agent finds no improvements."""
         service, mocks = _make_service(suggestions_returned=False)
-        novel_id = uuid4()
+        novel_id = mocks["novel_id"]  # entry's novel (owner flow)
         entry_id = uuid4()
 
         with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
@@ -279,6 +299,7 @@ class TestAnalyze:
             result = await service.analyze(
                 novel_id=novel_id,
                 entry_id=entry_id,
+                user_id=uuid4(),
             )
 
         assert isinstance(result, KBImproveAnalysisResponse)

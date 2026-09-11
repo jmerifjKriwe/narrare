@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from narrare.planning.timeline_consistency_service import TimelineConsistencyService
+from narrare_core.llm import ResolvedModelConfig
 
 
 def _make_novel(**overrides: object) -> MagicMock:
@@ -94,7 +95,9 @@ def service_with_llm(
     from narrare_core.prompts.composer import ComposedPrompt
 
     mock_registry = AsyncMock()
-    mock_config = MagicMock(spec=["provider_name", "model_id"])
+    # Real config value object — the ADR-045 run-limit resolver (Task 3)
+    # reads resolve_output_limit()/provider_name/model_id from it.
+    mock_config = ResolvedModelConfig(provider_name="test", model_id="test-model")
     # PromptComposer is required by the production guard (_run_llm_checks skips
     # when _composer is None). The service calls ``await composer.build(...)``
     # and reads ``.system``, so return a real ComposedPrompt.

@@ -47,7 +47,9 @@ from narrare.analysis.schemas_voice_drift import (
 from narrare.analysis.voice_drift_pipeline import (
     analyse_character_drift,
     collect_speakers,
+    make_dialogue_parser,
     make_no_profile_event,
+    make_voice_metrics_analyzer,
     resolve_drift_prompt,
 )
 from narrare_core.profiles.contracts import VoiceProfileConsumer
@@ -58,8 +60,6 @@ if TYPE_CHECKING:
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.analysis.dialogue_parser import DialogueParser
-    from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
@@ -90,6 +90,9 @@ class CharacterVoiceDriftService:
             classifier distinguish ``context`` drift from ``inconsistency``).
             When ``None``, degrades gracefully to an empty string (RULE-11).
         invocation_pipeline: Optional invocation governance pipeline.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.get_model``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -103,6 +106,8 @@ class CharacterVoiceDriftService:
         relationship_repo: RelationshipRepository | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
@@ -112,6 +117,8 @@ class CharacterVoiceDriftService:
         self._composer = composer
         self._relationship_repo = relationship_repo
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def run(
         self,
@@ -197,8 +204,8 @@ class CharacterVoiceDriftService:
         profiles_by_name = {p.name: p for p in profiles}
 
         # 5. Collect all speakers across the selected chapters (parse once).
-        parser = self._make_dialogue_parser()
-        analyzer = self._make_voice_metrics_analyzer(language)
+        parser = make_dialogue_parser()
+        analyzer = make_voice_metrics_analyzer(language)
         all_speakers = collect_speakers(chapters, parser)
 
         # 6. Determine the character set to iterate.
@@ -272,6 +279,8 @@ class CharacterVoiceDriftService:
                 language=language,
                 model_registry=self._registry,
                 model_config=config,
+                api_key=self._api_key,
+                base_url=self._base_url,
             )
             yield VoiceDriftEvent(event="character_result", result=result)
 
@@ -282,17 +291,3 @@ class CharacterVoiceDriftService:
             character_count=len(all_names),
         )
         yield VoiceDriftEvent(event="done", is_final=True)
-
-    # ------------------------------------------------------------------
-    # Analyzer construction (overridable for tests)
-    # ------------------------------------------------------------------
-
-    def _make_dialogue_parser(self) -> DialogueParser:
-        from narrare_core.analysis.dialogue_parser import DialogueParser
-
-        return DialogueParser()
-
-    def _make_voice_metrics_analyzer(self, language: str) -> VoiceMetricsAnalyzer:
-        from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
-
-        return VoiceMetricsAnalyzer(language=language)

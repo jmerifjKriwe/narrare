@@ -99,7 +99,7 @@ class TestBandSummaryMode1PromptPath:
         with (
             patch("narrare.series.band_summary_service.BandSummaryAgent") as MockAgent,
             patch(
-                "narrare.series.band_summary_service.compose_invocation",
+                "narrare.series.band_summary_prompt.compose_invocation",
                 new=AsyncMock(return_value=_FakeComposedInvocation()),
             ) as mock_compose,
         ):
@@ -128,7 +128,7 @@ class TestBandSummaryMode1PromptPath:
         with (
             patch("narrare.series.band_summary_service.BandSummaryAgent") as MockAgent,
             patch(
-                "narrare.series.band_summary_service.compose_invocation",
+                "narrare.series.band_summary_prompt.compose_invocation",
                 new=AsyncMock(return_value=_FakeComposedInvocation()),
             ),
         ):
@@ -149,7 +149,7 @@ class TestBandSummaryMode1PromptPath:
         with (
             patch("narrare.series.band_summary_service.BandSummaryAgent") as MockAgent,
             patch(
-                "narrare.series.band_summary_service.compose_invocation",
+                "narrare.series.band_summary_prompt.compose_invocation",
                 new=AsyncMock(return_value=_FakeComposedInvocation()),
             ),
         ):
@@ -172,7 +172,7 @@ class TestBandSummaryMode1PromptPath:
         with (
             patch("narrare.series.band_summary_service.BandSummaryAgent") as MockAgent,
             patch(
-                "narrare.series.band_summary_service.compose_invocation",
+                "narrare.series.band_summary_prompt.compose_invocation",
                 new=AsyncMock(return_value=_FakeComposedInvocation()),
             ),
         ):

@@ -7,7 +7,7 @@ requires-python = ">=3.14"
 dependencies = [
   # Web framework
   "fastapi==0.141.1",
-  "uvicorn[standard]==0.52.3",
+  "uvicorn[standard]==0.52.4",
   "python-multipart==0.0.32",
 
   # Data validation
@@ -34,13 +34,13 @@ dependencies = [
   "pyrate-limiter>=4.0,<5",
 
   # Email
-  "aiosmtplib==5.1.2",
+  "aiosmtplib==5.1.3",
 
   # Templates
   "jinja2==3.1.6",
 
   # File operations
-  "filelock==3.32.3",
+  "filelock==3.32.4",
 
   # Workspace packages
   "narrare-core",

@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.3.0"
+prompt_version: "1.4.0"
 ---
 
 ## System Prompt
@@ -112,7 +112,7 @@ When the author requests revisions:
 3. Keep changes minimal — only modify what the author asked for
 4. If the revision request is vague, ask for clarification before rewriting
 
-## Output Format
+### Output Format
 
 Generate prose in response to the author's direction. Output only the prose content — no meta-commentary unless discussing the approach with the author.
 
@@ -120,7 +120,7 @@ Generate prose in response to the author's direction. Output only the prose cont
 
 {{user_preferences}}
 
-## Do NOT
+### Do NOT
 
 - Do NOT change the narrative perspective without author approval
 - Do NOT add or remove characters without approval

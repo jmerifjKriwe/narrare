@@ -98,6 +98,7 @@ reportDeprecated = false
 # Was geprüft wird
 include = [
   "apps/api",
+  "benchmark",
   "packages/core",
   "packages/i18n",
   "scripts",
@@ -144,7 +145,7 @@ exclude = [
 [tool.ruff]
 target-version = "py314"
 line-length = 100
-src = ["apps/api", "packages/core", "packages/i18n", "evals"]
+src = ["apps/api", "packages/core", "packages/i18n", "evals", "benchmark"]
 
 [tool.ruff.lint]
 select = [
@@ -175,6 +176,9 @@ ignore = [
 # SQLAlchemy needs datetime at runtime, not just type-checking
 "**/models.py" = ["TC003"]
 "**/*_models.py" = ["TC003"]
+# pydantic resolves model annotations at runtime; the UUID import is
+# load-bearing (TYPE_CHECKING-only breaks ApplyExtractionRequest.chapter_id)
+"**/kb/schemas_extraction.py" = ["TC003"]
 "packages/core/narrare_core/llm/retry.py" = ["S311"]  # PRNG for jitter is OK
 
 [tool.ruff.lint.isort]

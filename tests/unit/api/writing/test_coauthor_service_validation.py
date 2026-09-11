@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import uuid
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 
@@ -53,21 +53,34 @@ def _request(**kw: Any) -> CoAuthorRequest:
     return CoAuthorRequest(**defaults)
 
 
+def _gate_open_repos() -> tuple[AsyncMock, AsyncMock]:
+    """S6 gate-open repos (chapter binds to ANY novel, every novel owned)."""
+    from tests.factories import make_chapter, make_novel
+
+    chapter_repo = AsyncMock(spec=["get"])
+    chapter_repo.get = AsyncMock(return_value=make_chapter(novel_id=ANY))
+    novel_repo = AsyncMock(spec=["get_by_id"])
+    novel_repo.get_by_id = AsyncMock(return_value=make_novel())
+    return chapter_repo, novel_repo
+
+
 def _make_service(max_selection_words: int = 2000) -> CoAuthorService:
     """Create a CoAuthorService with mocked deps and configurable word limit."""
     repo = AsyncMock()
-    repo.chapter_exists = AsyncMock(return_value=True)
     repo.get_active_for_chapter = AsyncMock(return_value=None)
 
     pipeline = AsyncMock()
     proc = MagicMock(spec=["process"])
     proc.process = MagicMock(spec=[], side_effect=lambda text, **kw: text)
+    chapter_repo, novel_repo = _gate_open_repos()
 
     return CoAuthorService(
         repo=repo,
         pipeline=pipeline,
         draft_processor=proc,
         config=CONFIG,
+        chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
         max_selection_words=max_selection_words,
     )
 
@@ -87,7 +100,7 @@ class TestCascadeUserLevel:
         text_100_words = " ".join(["a"] * 100)
         req = _request(selection_text=text_100_words)
         # Should pass — 100 < 500
-        await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+        await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4()))
 
     async def test_user_override_rejects_oversized(self) -> None:
         """When user sets max_selection_words=500, 600 words is rejected."""
@@ -95,7 +108,9 @@ class TestCascadeUserLevel:
         text_600_words = " ".join(["a"] * 600)
         req = _request(selection_text=text_600_words)
         with pytest.raises(ValidationError, match="exceeds 500 words"):
-            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+            await service.validate_coauthor(
+                uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4())
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -111,7 +126,7 @@ class TestCascadeProjectLevel:
         service = _make_service(max_selection_words=3000)
         text_2500_words = " ".join(["a"] * 2500)
         req = _request(selection_text=text_2500_words)
-        await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+        await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4()))
 
     async def test_project_override_rejects_oversized(self) -> None:
         """When project sets max_selection_words=100, 200 words is rejected."""
@@ -119,7 +134,9 @@ class TestCascadeProjectLevel:
         text_200_words = " ".join(["a"] * 200)
         req = _request(selection_text=text_200_words)
         with pytest.raises(ValidationError, match="exceeds 100 words"):
-            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+            await service.validate_coauthor(
+                uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4())
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -135,14 +152,16 @@ class TestCascadeDefaultFallback:
         service = _make_service()  # default 2000
         text_2000_words = " ".join(["a"] * 2000)
         req = _request(selection_text=text_2000_words)
-        await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+        await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4()))
 
     async def test_default_2000_rejects_2001_words(self) -> None:
         """2001 words is rejected when using default 2000."""
         service = _make_service()  # default 2000
         req = _request(selection_text=_LONG_SELECTION)
         with pytest.raises(ValidationError, match="exceeds 2000 words"):
-            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+            await service.validate_coauthor(
+                uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4())
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +178,9 @@ class TestValidationBehavior:
         text_100_words = " ".join(["a"] * 100)
         req = _request(selection_text=text_100_words)
         with pytest.raises(ValidationError) as exc_info:
-            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+            await service.validate_coauthor(
+                uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4())
+            )
         assert exc_info.value.code == "SELECTION_TOO_LONG"
 
     async def test_error_message_includes_actual_count(self) -> None:
@@ -168,13 +189,15 @@ class TestValidationBehavior:
         text_100_words = " ".join(["a"] * 100)
         req = _request(selection_text=text_100_words)
         with pytest.raises(ValidationError, match="got 100"):
-            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+            await service.validate_coauthor(
+                uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4())
+            )
 
     async def test_short_selection_passes_with_default_limit(self) -> None:
         """A short selection passes validation with the default 2000 limit."""
         service = _make_service()
         req = _request()
-        await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+        await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4()))
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +214,9 @@ class TestBasicValidation:
         # 50+ spaces pass Pydantic min_length but strip to empty
         req = _request(selection_text=" " * 50)
         with pytest.raises(ValidationError, match="selection_text must not be empty") as exc:
-            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+            await service.validate_coauthor(
+                uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4())
+            )
         assert exc.value.code == "MISSING_INPUT"
 
     async def test_empty_focus_raises_validation_error(self) -> None:
@@ -205,47 +230,57 @@ class TestBasicValidation:
             language="en",
         )
         with pytest.raises(ValidationError, match="focus must contain at least one area") as exc:
-            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+            await service.validate_coauthor(
+                uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4())
+            )
         assert exc.value.code == "MISSING_INPUT"
 
     async def test_chapter_not_found_raises_not_found(self) -> None:
         """When chapter does not exist, NotFoundError is raised."""
         repo = AsyncMock()
-        repo.chapter_exists = AsyncMock(return_value=False)
         repo.get_active_for_chapter = AsyncMock(return_value=None)
 
         pipeline = AsyncMock()
         proc = MagicMock(spec=["process"])
         proc.process = MagicMock(spec=[], side_effect=lambda text, **kw: text)
+        chapter_repo, novel_repo = _gate_open_repos()
+        chapter_repo.get = AsyncMock(return_value=None)  # unknown chapter
 
         service = CoAuthorService(
             repo=repo,
             pipeline=pipeline,
             draft_processor=proc,
             config=CONFIG,
+            chapter_repo=chapter_repo,
+            novel_repo=novel_repo,
         )
         req = _request()
         with pytest.raises(NotFoundError, match="Chapter"):
-            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
-        repo.chapter_exists.assert_called_once()
+            await service.validate_coauthor(
+                uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4())
+            )
 
     async def test_active_generation_raises_conflict(self) -> None:
         """When an active generation exists, ConflictError is raised."""
         repo = AsyncMock()
-        repo.chapter_exists = AsyncMock(return_value=True)
         repo.get_active_for_chapter = AsyncMock(return_value=object())  # non-None = active
 
         pipeline = AsyncMock()
         proc = MagicMock(spec=["process"])
         proc.process = MagicMock(spec=[], side_effect=lambda text, **kw: text)
+        chapter_repo, novel_repo = _gate_open_repos()
 
         service = CoAuthorService(
             repo=repo,
             pipeline=pipeline,
             draft_processor=proc,
             config=CONFIG,
+            chapter_repo=chapter_repo,
+            novel_repo=novel_repo,
         )
         req = _request()
         with pytest.raises(ConflictError, match="active"):
-            await service.validate_coauthor(uuid.uuid4(), uuid.uuid4(), req)
+            await service.validate_coauthor(
+                uuid.uuid4(), uuid.uuid4(), req, user_id=str(uuid.uuid4())
+            )
         repo.get_active_for_chapter.assert_called_once()

@@ -11,6 +11,7 @@ Mirrors the ``_character_arc_test_helpers.py`` pattern (ADR-054 precedent).
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
@@ -30,10 +31,30 @@ if TYPE_CHECKING:
 
 
 class FakeModelRegistry:
-    """Fake ModelRegistry returning a stub Model."""
+    """Fake ModelRegistry returning a stub Model.
+
+    Task-6b-2 bridge: model resolution flows through the ``prepare()``
+    single assembly point (which delegates to ``get_model``), so tests
+    exercise the migrated service path.
+    """
 
     def __init__(self) -> None:
         self.get_model: AsyncMock = AsyncMock(return_value=MagicMock(spec=object))
+
+    async def prepare(
+        self,
+        config: object,
+        *,
+        intent: object = None,
+        usage_limits: object = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object:
+        return SimpleNamespace(
+            model=await self.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
 
 
 class FakeComposer:

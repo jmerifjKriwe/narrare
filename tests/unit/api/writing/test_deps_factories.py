@@ -113,6 +113,12 @@ class TestStyleVariantsFactory:
         fake_settings = MagicMock(spec=True, name="Settings")
         fake_repo = MagicMock(spec=["get_by_id"], name="GenerationRepository")
 
+        # Fix-wave N1: the factory gates the project scope at entry via
+        # the (call-time imported) NovelRepository — stub the ownership
+        # lookup so the hermetic smoke test stays on the happy path.
+        fake_novel_repo = MagicMock(spec=["get_by_id"], name="NovelRepository")
+        fake_novel_repo.get_by_id = AsyncMock(return_value=MagicMock(spec=True, name="novel"))
+
         with (
             patch(
                 "narrare.writing.deps_style_variants.get_model_routing_resolver",
@@ -140,6 +146,7 @@ class TestStyleVariantsFactory:
             patch("narrare._app.config.get_settings", return_value=fake_settings),
             patch("narrare.writing.deps_pipeline.create_pipeline", return_value=fake_pipeline),
             patch("narrare.writing.repository.GenerationRepository", return_value=fake_repo),
+            patch("narrare.novels.repository.NovelRepository", return_value=fake_novel_repo),
         ):
             service = await get_style_variant_service(
                 session=session,
@@ -366,6 +373,12 @@ class TestSuggestFactory:
         fake_composer = MagicMock(spec=["compose"], name="PromptComposer")
         fake_repo = MagicMock(spec=["get_by_id"], name="ChapterRepository")
 
+        # Fix-wave N1: the factory gates the project scope at entry via
+        # the (call-time imported) NovelRepository — stub the ownership
+        # lookup so the hermetic smoke test stays on the happy path.
+        fake_novel_repo = MagicMock(spec=["get_by_id"], name="NovelRepository")
+        fake_novel_repo.get_by_id = AsyncMock(return_value=MagicMock(spec=True, name="novel"))
+
         with (
             patch(
                 "narrare.writing.deps_suggest.get_model_routing_resolver",
@@ -375,6 +388,7 @@ class TestSuggestFactory:
             patch("narrare.writing.deps_suggest.get_composer", return_value=fake_composer),
             # Lazy import inside function body — patch at definition site
             patch("narrare.chapters.repository.ChapterRepository", return_value=fake_repo),
+            patch("narrare.novels.repository.NovelRepository", return_value=fake_novel_repo),
         ):
             service = await get_suggest_service(
                 session=session,

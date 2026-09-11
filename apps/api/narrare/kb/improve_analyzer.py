@@ -12,12 +12,14 @@ See:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
 from narrare_core.agents.kb_improve_agent import KBImproveAgent
 from narrare_core.agents.kb_improve_types import KBImproveDeps, KBImproveOutput
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 from .improve_contracts import (
     ImproveSuggestionResponse,
@@ -28,14 +30,13 @@ from .template_fields import get_template_fields
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from pydantic_ai.models import Model
-
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.kb.improve_cache import KBImproveCache
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.prompts.context import PromptContext
@@ -61,6 +62,9 @@ class KBImproveAnalyzer:
         rel_repo: Relationship repository.
         improve_cache: Optional in-memory cache for 10min TTL (ADR-080).
         kb_agent: Optional KBAgent for cross-agent tool access.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.prepare``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -74,6 +78,9 @@ class KBImproveAnalyzer:
         improve_cache: KBImproveCache | None = None,
         kb_agent: object | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         from narrare_core.agents.kb_agent import KBAgent
 
@@ -86,6 +93,9 @@ class KBImproveAnalyzer:
         self._improve_cache = improve_cache
         self._kb_agent = kb_agent if isinstance(kb_agent, KBAgent) else None
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def _build_deps(
         self,
@@ -172,9 +182,25 @@ class KBImproveAnalyzer:
             },
         )
 
-    async def _get_model(self) -> Model:
-        """Resolve the LLM model lazily from the registry."""
-        return await self._registry.get_model(self._config)
+    async def _prepare(self) -> PreparedModelCall:
+        """Resolve the coherent call triple lazily from the registry.
+
+        Single assembly point (Task 6c — Task 4/5 pattern): model +
+        intent-aware runtime settings + usage limits as one result.
+        Per-user credentials are injected so the user's
+        wizard-configured provider is used (model-routing cascade), not
+        the operator env.
+        """
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
+        return await self._registry.prepare(
+            self._config,
+            intent=LLMIntent.KB_IMPROVE,
+            usage_limits=resolved.usage_limits,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
     async def has_cached_analysis(self, entry_id: UUID) -> bool:
         """Check whether a cached analysis exists for the given entry.
@@ -258,9 +284,9 @@ class KBImproveAnalyzer:
             composed = await self._prompt_composer.build(LLMIntent.KB_IMPROVE, prompt_context)
             system_prompt = composed.system
 
-        model = await self._get_model()
+        prepared = await self._prepare()
         agent = KBImproveAgent(
-            model=model,
+            model=prepared.model,
             kb_agent=self._kb_agent,
             system_prompt=system_prompt,
         )
@@ -271,7 +297,12 @@ class KBImproveAnalyzer:
             "'" + str(entry_name) + "' "
             "and identify improvement opportunities."
         )
-        result: KBImproveOutput = await agent.run(prompt=user_prompt, deps=deps)
+        result: KBImproveOutput = await agent.run(
+            prompt=user_prompt,
+            deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
+        )
 
         suggestions = [
             ImproveSuggestionResponse(
