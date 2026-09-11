@@ -128,11 +128,22 @@ def _make_analyzer(
     composer_raise: Exception | None = None,
 ) -> tuple[WorldbuildingAnalyzer, SpyComposer]:
     """Build a WorldbuildingAnalyzer with fake deps and a SpyComposer."""
+    from types import SimpleNamespace
+
     kb_repo = FakeKBRepo(entries)
     spy = SpyComposer(raise_error=composer_raise)
     registry = MagicMock(spec=ModelRegistry)
-    registry.get_model = AsyncMock(return_value=MagicMock(spec=Model))
-    config = MagicMock(spec=ResolvedModelConfig)
+    # Task 6c: the analyzer resolves via the prepare() assembly point.
+    registry.prepare = AsyncMock(
+        return_value=SimpleNamespace(
+            model=MagicMock(spec=Model),
+            model_settings=None,
+            usage_limits=None,
+        )
+    )
+    # Real config value object — the ADR-045 run-limit resolver (Task 3)
+    # reads resolve_output_limit()/token_limit_profile from it.
+    config = ResolvedModelConfig(provider_name="test", model_id="test-model")
     analyzer = WorldbuildingAnalyzer(
         kb_repo=cast("KBRepository", kb_repo),
         rel_repo=cast("RelationshipRepository", FakeRelRepo()),

@@ -48,17 +48,23 @@ class TestTokenLimitsRoutesOwnership:
     """Owner unchanged (incl. first-touch auto-create); foreign/unknown → 404."""
 
     async def test_owner_put_204_first_touch_creates_row(self, app, client) -> None:
-        """Owner PUT on a project without a row auto-creates it (unchanged)."""
-        session = install_session(app, _novel(), None)
+        """Owner PUT on a project without a row auto-creates it (unchanged).
+
+        Adapted to the main-branch upsert mechanism (race fix): the row is
+        materialized via ``pg_insert ... ON CONFLICT DO NOTHING`` and comes
+        back from the post-upsert re-select — not from ``session.add`` —
+        so the fake queues the re-select result instead.
+        """
+        row = ProjectTokenLimits(project_id=str(NOVEL_ID), overrides={})
+        # The row result is consumed twice: once by the upsert statement,
+        # once by the post-upsert re-select.
+        install_session(app, _novel(), None, row, row)
 
         response = await client.put(
             _TOKEN_PROJECT_URL.format(project_id=NOVEL_ID), json={"output_limit": 2048}
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        assert len(session.added) == 1
-        row = session.added[0]
-        assert isinstance(row, ProjectTokenLimits)
         assert row.project_id == str(NOVEL_ID)
         assert row.overrides == {"output_limit": 2048}
 

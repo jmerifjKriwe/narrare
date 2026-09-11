@@ -38,15 +38,15 @@ if TYPE_CHECKING:
 
 
 def _fake_service_factory(service: Any) -> Any:
-    """Return a factory closure with a typed parameter for MonkeyPatch.setattr.
+    """Return an async factory closure for MonkeyPatch.setattr.
 
-    Pyright's strict mode flags ``lambda _session: Service()`` because the
-    lambda parameter type is unknown. A named closure with an explicit
-    ``Any`` annotation satisfies the checker while preserving the runtime
-    behaviour (the dependency-injection factory ignores its session argument).
+    The migrated dependency factories are async and accept arbitrary
+    keyword arguments (session, novel_id, user_id), so the patched
+    factory must be awaitable and ignore whatever the router passes
+    while returning the fake service unchanged.
     """
 
-    def _factory(_session: Any) -> Any:
+    async def _factory(**_kwargs: object) -> Any:
         return service
 
     return _factory

@@ -26,8 +26,10 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare_core.ai_invocation import ManualInjectionDeclaration, compose_invocation
+from narrare_core.llm.run_limits import merge_model_settings
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from uuid import UUID
 
     from narrare_core.ai_invocation.models import PromptInvocationContext
@@ -159,24 +161,35 @@ def resolve_chat_run_limits(
     resolver: DefaultRunLimitResolver | None,
     config: ResolvedModelConfig,
     invocation_id: UUID,
+    base_model_settings: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     """Resolve pydantic-ai run/stream kwargs for output-budget enforcement.
 
     Mirrors ``WritingTurnService`` (ADR-045 Decision 4): resolves
     provider-safe ``UsageLimits`` and ``model_settings`` from the resolved
-    model config. Returns an empty dict when no resolver is wired (no limits
-    applied — backward compatible).
+    model config. Returns an empty dict when no resolver is wired and no
+    base settings are given (backward compatible).
+
+    Task 6d-1: ``base_model_settings`` carries the assembly point's
+    intent-aware runtime settings (``prepared.model_settings`` from
+    ``ModelRegistry.prepare``). They form the merge BASE; the resolver's
+    per-turn output-budget ``max_tokens`` is layered on top, keeping the
+    resolver authoritative on key conflicts (ADR-045 Decision 4).
 
     Args:
         resolver: The run-limit resolver, or ``None`` for no enforcement.
         config: The resolved model configuration.
         invocation_id: The per-turn invocation UUID (correlates with evidence).
+        base_model_settings: Assembly-point runtime settings used as the
+            merge base (``None`` preserves the pre-6d behavior).
 
     Returns:
         A kwargs dict (``usage_limits`` / ``model_settings``) for
         ``agent.run_stream()``.
     """
     if resolver is None:
+        if base_model_settings:
+            return {"model_settings": dict(base_model_settings)}
         return {}
     resolved = resolver.resolve(
         config=config,
@@ -186,6 +199,7 @@ def resolve_chat_run_limits(
     kwargs: dict[str, object] = {}
     if resolved.usage_limits is not None:
         kwargs["usage_limits"] = resolved.usage_limits
-    if resolved.model_settings:
-        kwargs["model_settings"] = dict(resolved.model_settings)
+    merged = merge_model_settings(base_model_settings, resolved)
+    if merged is not None:
+        kwargs["model_settings"] = merged
     return kwargs

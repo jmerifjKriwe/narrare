@@ -1,8 +1,9 @@
-"""Integration tests for KB session API endpoints.
+"""Integration tests for the KB session lifecycle API endpoints.
 
-Tests the full session lifecycle: create, get, answer_field,
-request_suggestion, interview, enhance, complete, stream, abandon.
-Mocks KBSessionService via dependency_overrides.
+Covers create, get, answer_field, complete, stream (not exposed), abandon;
+the LLM-mediated assist endpoints (suggest, interview, enhance) live in
+``test_kb_sessions_assist_api.py``. Mocks KBSessionService via
+dependency_overrides.
 """
 
 from __future__ import annotations
@@ -34,10 +35,17 @@ def _make_session(**overrides: object) -> KBCreationSession:
         ],
     }
     defaults.update(overrides)
-    return KBCreationSession(**defaults)  # type: ignore[arg-type]
+    return KBCreationSession.model_validate(defaults)
 
 
 def _override(app: FastAPI, svc: MagicMock) -> None:
+    """Wire the mock service into the app's dependency overrides.
+
+    Callers must pop the override in a ``finally`` block — the app fixture
+    is session-scoped, so a leftover override leaks into subsequent tests
+    (order-dependent flakiness under pytest-randomly). Cleanup convention:
+    tests/integration/analysis/test_analysis_api.py.
+    """
     app.dependency_overrides[get_kb_session_service] = lambda: svc
 
 
@@ -93,11 +101,14 @@ class TestCreateSession:
         mock_service: MagicMock,
     ) -> None:
         _override(app, mock_service)
-        resp = await client.post(
-            f"/api/v1/novels/{uuid4()}/kb/sessions",
-            json={"entity_type": "character"},
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{uuid4()}/kb/sessions",
+                json={"entity_type": "character"},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 201
         data = resp.json()
         assert data["entity_type"] == "character"
@@ -109,9 +120,12 @@ class TestCreateSession:
         self, client: AsyncClient, app: FastAPI, mock_service: MagicMock
     ) -> None:
         _override(app, mock_service)
-        resp = await client.post(
-            f"/api/v1/novels/{uuid4()}/kb/sessions", json={"entity_type": "character"}
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{uuid4()}/kb/sessions", json={"entity_type": "character"}
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 401
 
     async def test_returns_422_empty_entity_type(
@@ -122,9 +136,14 @@ class TestCreateSession:
         mock_service: MagicMock,
     ) -> None:
         _override(app, mock_service)
-        resp = await client.post(
-            f"/api/v1/novels/{uuid4()}/kb/sessions", json={"entity_type": ""}, headers=auth_headers
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{uuid4()}/kb/sessions",
+                json={"entity_type": ""},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 422
 
 
@@ -137,9 +156,12 @@ class TestGetSession:
         mock_service: MagicMock,
     ) -> None:
         _override(app, mock_service)
-        resp = await client.get(
-            f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}", headers=auth_headers
-        )
+        try:
+            resp = await client.get(
+                f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}", headers=auth_headers
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 200
         data = resp.json()
         assert data["entity_type"] == "character"
@@ -149,7 +171,10 @@ class TestGetSession:
         self, client: AsyncClient, app: FastAPI, mock_service: MagicMock
     ) -> None:
         _override(app, mock_service)
-        resp = await client.get(f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}")
+        try:
+            resp = await client.get(f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}")
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 401
 
     async def test_returns_404_when_not_found(
@@ -161,9 +186,12 @@ class TestGetSession:
     ) -> None:
         mock_service.get_session = AsyncMock(return_value=None)
         _override(app, mock_service)
-        resp = await client.get(
-            f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}", headers=auth_headers
-        )
+        try:
+            resp = await client.get(
+                f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}", headers=auth_headers
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 404
 
 
@@ -180,11 +208,14 @@ class TestAnswerField:
         session.fields[0].final_value = "Aria"
         mock_service.answer_field = AsyncMock(return_value=session)
         _override(app, mock_service)
-        resp = await client.patch(
-            f"/api/v1/novels/{uuid4()}/kb/sessions/{session.id}/fields/name",
-            json={"value": "Aria"},
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.patch(
+                f"/api/v1/novels/{uuid4()}/kb/sessions/{session.id}/fields/name",
+                json={"value": "Aria"},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 200
         assert resp.json()["fields"][0]["user_value"] == "Aria"
 
@@ -192,9 +223,13 @@ class TestAnswerField:
         self, client: AsyncClient, app: FastAPI, mock_service: MagicMock
     ) -> None:
         _override(app, mock_service)
-        resp = await client.patch(
-            f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/fields/name", json={"value": "Aria"}
-        )
+        try:
+            resp = await client.patch(
+                f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/fields/name",
+                json={"value": "Aria"},
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 401
 
     async def test_returns_422_empty_value(
@@ -205,103 +240,15 @@ class TestAnswerField:
         mock_service: MagicMock,
     ) -> None:
         _override(app, mock_service)
-        resp = await client.patch(
-            f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/fields/name",
-            json={"value": ""},
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.patch(
+                f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/fields/name",
+                json={"value": ""},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 422
-
-
-class TestRequestSuggestion:
-    async def test_returns_200(
-        self,
-        client: AsyncClient,
-        app: FastAPI,
-        auth_headers: dict[str, str],
-        mock_service: MagicMock,
-    ) -> None:
-        _override(app, mock_service)
-        resp = await client.post(
-            f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/suggest/name", headers=auth_headers
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "session" in data
-        assert data["suggestion"]["field_key"] == "name"
-        assert data["suggestion"]["suggestion"] == "Aria"
-
-    async def test_returns_401_without_auth(
-        self, client: AsyncClient, app: FastAPI, mock_service: MagicMock
-    ) -> None:
-        _override(app, mock_service)
-        resp = await client.post(f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/suggest/name")
-        assert resp.status_code == 401
-
-    async def test_returns_422_invalid_uuid(
-        self,
-        client: AsyncClient,
-        app: FastAPI,
-        auth_headers: dict[str, str],
-        mock_service: MagicMock,
-    ) -> None:
-        _override(app, mock_service)
-        resp = await client.post(
-            "/api/v1/novels/not-a-uuid/kb/sessions/not-a-uuid/suggest/name", headers=auth_headers
-        )
-        assert resp.status_code == 422
-
-
-class TestRequestInterviewQuestion:
-    async def test_returns_200(
-        self,
-        client: AsyncClient,
-        app: FastAPI,
-        auth_headers: dict[str, str],
-        mock_service: MagicMock,
-    ) -> None:
-        _override(app, mock_service)
-        resp = await client.post(
-            f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/interview", headers=auth_headers
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "session" in data
-        assert data["question"]["field_key"] == "personality"
-
-    async def test_returns_401_without_auth(
-        self, client: AsyncClient, app: FastAPI, mock_service: MagicMock
-    ) -> None:
-        _override(app, mock_service)
-        resp = await client.post(f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/interview")
-        assert resp.status_code == 401
-
-
-class TestRequestEnhancement:
-    async def test_returns_200(
-        self,
-        client: AsyncClient,
-        app: FastAPI,
-        auth_headers: dict[str, str],
-        mock_service: MagicMock,
-    ) -> None:
-        _override(app, mock_service)
-        resp = await client.post(
-            f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/enhance", headers=auth_headers
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "session" in data
-        assert "enhancement" in data
-        assert "draft_entry" in data["enhancement"]
-        assert "progress" in data["enhancement"]
-
-    async def test_returns_401_without_auth(
-        self, client: AsyncClient, app: FastAPI, mock_service: MagicMock
-    ) -> None:
-        _override(app, mock_service)
-        resp = await client.post(f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/enhance")
-        assert resp.status_code == 401
 
 
 class TestCompleteSession:
@@ -317,9 +264,12 @@ class TestCompleteSession:
             return_value=(_make_session(status="complete"), entry_id)
         )
         _override(app, mock_service)
-        resp = await client.post(
-            f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/complete", headers=auth_headers
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/complete", headers=auth_headers
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 200
         data = resp.json()
         assert data["session"]["status"] == "complete"
@@ -329,7 +279,10 @@ class TestCompleteSession:
         self, client: AsyncClient, app: FastAPI, mock_service: MagicMock
     ) -> None:
         _override(app, mock_service)
-        resp = await client.post(f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/complete")
+        try:
+            resp = await client.post(f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/complete")
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 401
 
 
@@ -344,9 +297,12 @@ class TestStreamSession:
         """The unused session state stream is not part of the public API."""
 
         _override(app, mock_service)
-        resp = await client.get(
-            f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/stream", headers=auth_headers
-        )
+        try:
+            resp = await client.get(
+                f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/stream", headers=auth_headers
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 404
 
     async def test_stream_endpoint_is_not_exposed_without_auth(
@@ -355,7 +311,10 @@ class TestStreamSession:
         """Missing auth does not matter because the route is not registered."""
 
         _override(app, mock_service)
-        resp = await client.get(f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/stream")
+        try:
+            resp = await client.get(f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/stream")
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 404
 
 
@@ -368,9 +327,12 @@ class TestAbandonSession:
         mock_service: MagicMock,
     ) -> None:
         _override(app, mock_service)
-        resp = await client.delete(
-            f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}", headers=auth_headers
-        )
+        try:
+            resp = await client.delete(
+                f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}", headers=auth_headers
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 204
         mock_service.abandon_session.assert_awaited_once()
 
@@ -378,7 +340,10 @@ class TestAbandonSession:
         self, client: AsyncClient, app: FastAPI, mock_service: MagicMock
     ) -> None:
         _override(app, mock_service)
-        resp = await client.delete(f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}")
+        try:
+            resp = await client.delete(f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}")
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 401
 
     async def test_returns_422_invalid_uuid(
@@ -389,7 +354,10 @@ class TestAbandonSession:
         mock_service: MagicMock,
     ) -> None:
         _override(app, mock_service)
-        resp = await client.delete(
-            "/api/v1/novels/not-a-uuid/kb/sessions/not-a-uuid", headers=auth_headers
-        )
+        try:
+            resp = await client.delete(
+                "/api/v1/novels/not-a-uuid/kb/sessions/not-a-uuid", headers=auth_headers
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_session_service, None)
         assert resp.status_code == 422

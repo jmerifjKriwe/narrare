@@ -1,17 +1,11 @@
-"""Tests for ReadabilityAgent output types and _process_output.
+"""Tests for ReadabilityAgent output types.
 
 Covers:
 1. Output type structure (SentenceIssue, SentenceSuggestion, ReadabilityAgentOutput)
-2. Output function (_process_output) with values and streaming
 """
 
 from __future__ import annotations
 
-import pytest
-from pydantic_ai import RunContext, RunUsage
-from pydantic_ai.models.test import TestModel
-
-from narrare_core.agents.readability_agent import ReadabilityAgent, ReadabilityDeps
 from narrare_core.agents.readability_types import (
     ReadabilityAgentOutput,
     SentenceIssue,
@@ -95,73 +89,3 @@ class TestReadabilityAgentOutput:
         data = output.model_dump()
         assert data["overall_assessment"] == "Easy to read."
         assert data["problematic_sentences"] == []
-
-
-# ---------------------------------------------------------------------------
-# D. Output Function — _process_output
-# ---------------------------------------------------------------------------
-
-
-class TestProcessOutput:
-    """Output Function structures the LLM response correctly."""
-
-    @pytest.fixture()
-    def run_context(self) -> RunContext[ReadabilityDeps]:
-        return RunContext[ReadabilityDeps](
-            deps=ReadabilityDeps(),
-            model=TestModel(),
-            usage=RunUsage(),
-        )
-
-    @pytest.mark.asyncio
-    async def test_process_output_with_values(
-        self,
-        run_context: RunContext[ReadabilityDeps],
-    ) -> None:
-        sentences = [
-            {"sentence": "Long sentence.", "position": 0, "issues": [], "suggestions": []},
-        ]
-        result = await ReadabilityAgent(model=TestModel())._process_output(
-            run_context,
-            problematic_sentences=sentences,
-            overall_assessment="Clear text overall.",
-        )
-        assert len(result.problematic_sentences) == 1
-        assert result.overall_assessment == "Clear text overall."
-
-    @pytest.mark.asyncio
-    async def test_process_output_partial_streaming(
-        self,
-        run_context: RunContext[ReadabilityDeps],
-    ) -> None:
-        run_context.partial_output = True
-        result = await ReadabilityAgent(model=TestModel())._process_output(
-            run_context,
-            problematic_sentences=[{"sentence": "test"}],
-            overall_assessment="Partial.",
-        )
-        # Streaming returns empty output
-        assert result.problematic_sentences == []
-        assert result.overall_assessment == ""
-
-    @pytest.mark.asyncio
-    async def test_process_output_empty(
-        self,
-        run_context: RunContext[ReadabilityDeps],
-    ) -> None:
-        result = await ReadabilityAgent(model=TestModel())._process_output(
-            run_context,
-        )
-        assert result.problematic_sentences == []
-        assert result.overall_assessment == ""
-
-    @pytest.mark.asyncio
-    async def test_process_output_returns_correct_type(
-        self,
-        run_context: RunContext[ReadabilityDeps],
-    ) -> None:
-        result = await ReadabilityAgent(model=TestModel())._process_output(
-            run_context,
-            overall_assessment="Test.",
-        )
-        assert isinstance(result, ReadabilityAgentOutput)

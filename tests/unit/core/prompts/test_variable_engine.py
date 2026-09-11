@@ -220,7 +220,6 @@ class TestVariableConstants:
             "novel_synopsis",
             "style_profile",
             "chapter_summaries",
-            "known_characters",
         ):
             assert name in _SYSTEM_VARS
 

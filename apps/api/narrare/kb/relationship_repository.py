@@ -41,6 +41,13 @@ class RelationshipRepository(BaseRepository):
         await self._flush_and_refresh(rel)
         return rel
 
+    async def update(self, rel: KBRelationship, data: dict[str, object]) -> KBRelationship:
+        """Update fields on an existing relationship (edge re-pointing)."""
+        for field, value in data.items():
+            setattr(rel, field, value)
+        await self._flush_and_refresh(rel)
+        return rel
+
     async def get_by_id(self, rel_id: uuid.UUID) -> KBRelationship | None:
         """Fetch a single relationship by its primary key."""
         result = await self._session.execute(

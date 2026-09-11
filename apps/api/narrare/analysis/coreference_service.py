@@ -28,6 +28,7 @@ See:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
@@ -38,6 +39,8 @@ from narrare.analysis.schemas_coreference import (
     CoreferenceStreamEvent,
     PronounResolutionResponse,
 )
+from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -91,6 +94,9 @@ class CoreferenceService:
         invocation_pipeline: Optional pipeline for invocation evidence
             (Mode 1 prepare/finalize). Retained for DI-contract
             stability.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.prepare``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -103,6 +109,9 @@ class CoreferenceService:
         kb_context_provider: KBContextProviderProtocol | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
@@ -111,6 +120,9 @@ class CoreferenceService:
         self._composer = composer
         self._kb_context_provider = kb_context_provider
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def analyze(
         self,
@@ -200,7 +212,19 @@ class CoreferenceService:
             kb_vars=kb_vars,
         )
 
-        model = await self._registry.get_model(self._config)
+        # Single assembly point (Task 6a-2 — Task 4/5 pattern): model +
+        # intent-aware runtime settings + usage limits as one coherent
+        # triple, so the thinking policy actually reaches this call.
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
+        prepared = await self._registry.prepare(
+            self._config,
+            intent=LLMIntent.ANALYSE,
+            usage_limits=resolved.usage_limits,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
         # 3. Build agent dependencies — structured project/chapter context.
         #    The chapter text additionally flows as the run prompt (runtime
@@ -222,10 +246,12 @@ class CoreferenceService:
         # the run prompt (user channel) when the template has no
         # "## First Message".
         try:
-            agent = CoreferenceAgent(model=model, system_prompt=composed_prompt.system)
+            agent = CoreferenceAgent(model=prepared.model, system_prompt=composed_prompt.system)
             result = await agent.run(
                 prompt=composed_prompt.user or chapter_text,
                 deps=deps,
+                model_settings=prepared.model_settings,
+                usage_limits=prepared.usage_limits,
             )
         except Exception as exc:
             logger.error(

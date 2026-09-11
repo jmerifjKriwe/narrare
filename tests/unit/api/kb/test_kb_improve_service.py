@@ -6,6 +6,7 @@ Uses AsyncMock(spec=...) and MagicMock(spec=...) patterns.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
@@ -23,6 +24,7 @@ from narrare_core.agents.kb_improve_types import (
     KBImproveOutput,
     SuggestionType,
 )
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import NotFoundError
 
 from ._test_fakes import FakeNovelRepo
@@ -104,10 +106,13 @@ def _make_service(
     composed.system = "System prompt for KB improve"
     prompt_composer.build = AsyncMock(return_value=composed)
 
-    # --- Model Registry ---
-    registry = AsyncMock(spec=["get_model"])
-    model = MagicMock(spec=object)
-    registry.get_model = AsyncMock(return_value=model)
+    # --- Model Registry (Task 6c: prepare() assembly point) ---
+    registry = AsyncMock(spec=["prepare"])
+    registry.prepare = AsyncMock(
+        return_value=SimpleNamespace(
+            model=MagicMock(spec=object), model_settings=None, usage_limits=None
+        )
+    )
 
     # --- KB Service ---
     kb_service = AsyncMock(spec=["get", "create", "update"])
@@ -145,11 +150,11 @@ def _make_service(
             completeness_score=0.9,
         )
 
-    config = MagicMock(spec=["provider_name", "model_id", "temperature", "max_tokens"])
-    config.provider_name = "default"
-    config.model_id = "default"
-    config.temperature = 0.7
-    config.max_tokens = 4096
+    # Real config value object — the ADR-045 run-limit resolver (Task 3)
+    # reads resolve_output_limit()/token_limit_profile from it.
+    config = ResolvedModelConfig(
+        provider_name="default", model_id="default", temperature=0.7, max_tokens=4096
+    )
 
     analyzer = KBImproveAnalyzer(
         registry=registry,

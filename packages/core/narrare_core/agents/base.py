@@ -96,6 +96,7 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
             | None
         ) = None,
         history_policy: HistoryPolicy = HistoryPolicy.NONE,
+        retries: int | None = None,
     ) -> None:
         """Initialise the NarrareAgent wrapper.
 
@@ -117,6 +118,10 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
                 KB context, style profiles). Passed straight through to
                 ``pydantic_ai.Agent``.
             history_policy: History policy for this agent (ADR-034).
+            retries: Retry budget for tool-call and output validation
+                failures. Pass a higher value for models that intermittently
+                produce schema-invalid output. ``None`` (default) uses the
+                pydantic-ai default of 1.
         """
         # Build Agent kwargs: pydantic-ai does not accept None for
         # output_type, system_prompt, or instructions, so only pass when
@@ -137,6 +142,8 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
             agent_kwargs["system_prompt"] = system_prompt
         if instructions is not None:
             agent_kwargs["instructions"] = instructions
+        if retries is not None:
+            agent_kwargs["retries"] = retries
 
         self._agent = Agent(**agent_kwargs)
         self._history_policy = history_policy

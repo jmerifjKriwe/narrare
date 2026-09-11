@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from narrare.kb.dependencies import get_kb_suggest_service
 from narrare.kb.schemas import KBSuggestionResponse
 from narrare.kb.suggest_service import KBSuggestService
 
@@ -37,9 +38,13 @@ def _override_service(
     app: FastAPI,
     mock_suggest_service: MagicMock,
 ) -> None:
-    """Wire the mock service into the app's dependency overrides."""
-    from narrare.kb.dependencies import get_kb_suggest_service
+    """Wire the mock service into the app's dependency overrides.
 
+    Callers must pop the override in a ``finally`` block — the app fixture
+    is session-scoped, so a leftover override leaks into subsequent tests
+    (order-dependent flakiness under pytest-randomly). Cleanup convention:
+    tests/integration/analysis/test_analysis_api.py.
+    """
     app.dependency_overrides[get_kb_suggest_service] = lambda: mock_suggest_service  # type: ignore[assignment]
 
 
@@ -80,10 +85,13 @@ class TestGetSuggestions:
         novel_id = uuid4()
         chapter_id = uuid4()
 
-        resp = await client.get(
-            f"/api/v1/novels/{novel_id}/kb/suggestions/{chapter_id}",
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.get(
+                f"/api/v1/novels/{novel_id}/kb/suggestions/{chapter_id}",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_suggest_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -141,10 +149,13 @@ class TestGetSuggestions:
         novel_id = uuid4()
         chapter_id = uuid4()
 
-        resp = await client.get(
-            f"/api/v1/novels/{novel_id}/kb/suggestions/{chapter_id}",
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.get(
+                f"/api/v1/novels/{novel_id}/kb/suggestions/{chapter_id}",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_suggest_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -185,9 +196,12 @@ class TestGetSuggestions:
         novel_id = uuid4()
         chapter_id = uuid4()
 
-        resp = await client.get(
-            f"/api/v1/novels/{novel_id}/kb/suggestions/{chapter_id}",
-        )
+        try:
+            resp = await client.get(
+                f"/api/v1/novels/{novel_id}/kb/suggestions/{chapter_id}",
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_suggest_service, None)
 
         assert resp.status_code == 401
 
@@ -204,11 +218,14 @@ class TestGetSuggestions:
         novel_id = uuid4()
         chapter_id = uuid4()
 
-        resp = await client.get(
-            f"/api/v1/novels/{novel_id}/kb/suggestions/{chapter_id}",
-            params={"max_results": 5},
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.get(
+                f"/api/v1/novels/{novel_id}/kb/suggestions/{chapter_id}",
+                params={"max_results": 5},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_suggest_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -231,9 +248,12 @@ class TestGetSuggestions:
         """GET suggestions returns 422 when path params are not valid UUIDs."""
         _override_service(app, mock_suggest_service)
 
-        resp = await client.get(
-            "/api/v1/novels/not-a-uuid/kb/suggestions/also-not-a-uuid",
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.get(
+                "/api/v1/novels/not-a-uuid/kb/suggestions/also-not-a-uuid",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_suggest_service, None)
 
         assert resp.status_code == 422

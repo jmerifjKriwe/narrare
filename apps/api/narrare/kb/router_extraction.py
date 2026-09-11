@@ -44,6 +44,7 @@ async def apply_extraction(
             novel_id=novel_id,
             user_id=UUID(user_id),
             items=body.items,
+            chapter_id=body.chapter_id,
         )
         return result
     except NotFoundError:

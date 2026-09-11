@@ -53,7 +53,7 @@ class BandSummaryAgent(NarrareAgent[BandSummaryDeps, BandSummaryOutput]):
         super().__init__(
             model=model,
             deps_type=BandSummaryDeps,
-            output_type=[self._process_output, BandSummaryOutput],
+            output_type=BandSummaryOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -84,21 +84,6 @@ class BandSummaryAgent(NarrareAgent[BandSummaryDeps, BandSummaryOutput]):
             )
 
         return output
-
-    async def _process_output(
-        self,
-        ctx: RunContext[BandSummaryDeps],
-        full_summary: str = "",
-        short_summary: str = "",
-    ) -> BandSummaryOutput:
-        """Output Function — strukturiert die LLM-Response in BandSummaryOutput.
-
-        Bei Streaming (``ctx.partial_output``) wird nur ein Minimalergebnis zurückgegeben.
-        """
-        if ctx.partial_output:
-            return BandSummaryOutput()
-
-        return BandSummaryOutput(full_summary=full_summary, short_summary=short_summary)
 
     async def run(
         self,

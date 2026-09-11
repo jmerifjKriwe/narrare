@@ -71,6 +71,10 @@ class FakeDialogueCoachService:
     The service → agent → output chain is unit-tested separately.
     """
 
+    async def ensure_resolved(self) -> None:
+        """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+        return None
+
     async def stream(
         self,
         *,

@@ -13,6 +13,8 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+    from pydantic_ai.usage import UsageLimits
+
     from narrare.chat.chat_service import ChatService
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
     from narrare.notes.contracts import OwnedLinkLookupProtocol
@@ -143,9 +145,34 @@ def _make_mock_composer() -> AsyncMock:
 
 
 def _make_mock_registry() -> AsyncMock:
-    """Create a mock ModelRegistry."""
+    """Create a mock ModelRegistry.
+
+    Task 6d-1: the service resolves via ``prepare()`` (single assembly
+    point). The bridge delegates to ``get_model`` so tests keep configuring
+    ``registry.get_model.return_value`` — the resolved model reaches the
+    agent unchanged, with no settings/limits layered on (pre-6d behavior).
+    """
+    from narrare_core.llm._prepared_call import PreparedModelCall
+
     registry = AsyncMock()
     registry.get_model = AsyncMock()
+
+    async def _prepare(
+        config: object,
+        *,
+        intent: object = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        _ = intent
+        return PreparedModelCall(
+            model=await registry.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
+
+    registry.prepare = AsyncMock(side_effect=_prepare)
     return registry
 
 

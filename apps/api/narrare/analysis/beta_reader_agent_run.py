@@ -14,6 +14,9 @@ from narrare.analysis.beta_reader_mapper import build_deepdive_prompt
 from narrare.analysis.errors import AnalysisError
 
 if TYPE_CHECKING:
+    from pydantic_ai.settings import ModelSettings
+    from pydantic_ai.usage import UsageLimits
+
     from narrare_core.agents.beta_reader_agent import BetaReaderAgent
     from narrare_core.agents.beta_reader_types import (
         BetaReaderDeps,
@@ -28,10 +31,23 @@ async def run_phase1(
     agent: BetaReaderAgent,
     user_prompt: str,
     deps: BetaReaderDeps,
+    *,
+    model_settings: ModelSettings | None = None,
+    usage_limits: UsageLimits | None = None,
 ) -> BetaReaderPhase1Output:
-    """Run Phase 1 agent with error handling."""
+    """Run Phase 1 agent with error handling.
+
+    ``model_settings``/``usage_limits`` come from the coherent
+    ``ModelRegistry.prepare()`` triple and are forwarded to the
+    underlying pydantic-ai run.
+    """
     try:
-        return await agent.run_phase1(user_prompt, deps=deps)
+        return await agent.run_phase1(
+            user_prompt,
+            deps=deps,
+            model_settings=model_settings,
+            usage_limits=usage_limits,
+        )
     except AnalysisError:
         raise
     except Exception as exc:
@@ -43,10 +59,24 @@ async def run_phase2(
     agent: BetaReaderAgent,
     deps: BetaReaderDeps,
     model: object,
+    *,
+    model_settings: ModelSettings | None = None,
+    usage_limits: UsageLimits | None = None,
 ) -> BetaReaderPhase2Output:
-    """Run Phase 2 agent with error handling."""
+    """Run Phase 2 agent with error handling.
+
+    ``model_settings``/``usage_limits`` come from the coherent
+    ``ModelRegistry.prepare()`` triple and are forwarded to the
+    phase-2 agent run (core kwargs pass-through, Task 1).
+    """
     try:
-        return await agent.run_phase2(build_deepdive_prompt(deps), deps=deps, model=model)
+        return await agent.run_phase2(
+            build_deepdive_prompt(deps),
+            deps=deps,
+            model=model,
+            model_settings=model_settings,
+            usage_limits=usage_limits,
+        )
     except AnalysisError:
         raise
     except Exception as exc:

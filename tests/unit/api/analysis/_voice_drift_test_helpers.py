@@ -18,17 +18,21 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from narrare.analysis.voice_drift_service import CharacterVoiceDriftService
 from narrare_core.agents.character_voice_drift_types import VoiceDriftResult
 from narrare_core.kb.schemas.character import VoiceMetrics
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.profiles.models import CharacterVoiceProfile
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterator
 
+    from pydantic_ai.usage import UsageLimits
+
     from narrare.analysis.schemas_voice_drift import VoiceDriftEvent
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.intents import LLMIntent
     from narrare_core.llm.model_config import ResolvedModelConfig
     from narrare_core.profiles.contracts import VoiceProfileConsumer, VoiceProfileProvider
     from narrare_core.prompts.composer import PromptComposer
@@ -55,10 +59,45 @@ class FakeChapter:
 
 
 class FakeModelRegistry:
-    """Fake ModelRegistry returning a stub model."""
+    """Fake ModelRegistry returning a stub Model.
+
+    ``prepare`` mirrors the real single assembly point (Task 4): exactly
+    one ``get_model`` resolution, a canned sentinel ``model_settings``
+    (so pass-through to ``agent.run`` is assertable), and the
+    ``usage_limits`` pass-through. Calls are recorded in
+    ``prepare_calls`` for wiring assertions.
+    """
 
     def __init__(self) -> None:
         self.get_model: AsyncMock = AsyncMock(return_value=MagicMock(spec=object))
+        self.prepare_calls: list[dict[str, object]] = []
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: LLMIntent | None = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        model = await self.get_model(config, api_key=api_key, base_url=base_url)
+        prepared = PreparedModelCall(
+            model=model,
+            model_settings={"max_tokens": 12_345},
+            usage_limits=usage_limits,
+        )
+        self.prepare_calls.append(
+            {
+                "config": config,
+                "intent": intent,
+                "usage_limits": usage_limits,
+                "api_key": api_key,
+                "base_url": base_url,
+                "prepared": prepared,
+            }
+        )
+        return prepared
 
 
 class FakeComposer:

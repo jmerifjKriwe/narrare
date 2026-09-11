@@ -15,10 +15,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from pydantic_ai.models.test import TestModel
+
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.result import LLMResult, StreamChunk, TokenUsage
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+    from pydantic_ai.usage import UsageLimits
 
     from narrare_core.llm import LLMIntent, ResolvedModelConfig
 
@@ -61,6 +66,7 @@ class FakeModelRegistry:
         self._errors: list[Exception] = []
         self._call_queue: list[str] = []  # "response" | "stream" | "error"
         self.calls: list[RegistryCall] = []
+        self.prepare_calls: list[dict[str, Any]] = []
 
     # ------------------------------------------------------------------
     # Setup methods (configure in test setup)
@@ -164,6 +170,37 @@ class FakeModelRegistry:
                     total_tokens=10 + len("".join(chunks).split()) * 2,
                 ),
             )
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig | None = None,
+        *,
+        intent: LLMIntent | None = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        """Fake single assembly point — returns a canned coherent triple.
+
+        Records the call in ``prepare_calls`` for wiring assertions.  The
+        canned ``model_settings`` are ``None``; tests that need the real
+        settings composition should mirror ``ModelRegistry.prepare`` in
+        their domain fake instead.
+        """
+        self.prepare_calls.append(
+            {
+                "config": config,
+                "intent": intent,
+                "usage_limits": usage_limits,
+                "api_key": api_key,
+                "base_url": base_url,
+            }
+        )
+        return PreparedModelCall(
+            model=TestModel(),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
 
     # ------------------------------------------------------------------
     # Assertion helpers
@@ -311,6 +348,24 @@ class FakeLLMGateway:
             base_url=base_url,
         ):
             yield chunk
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig | None = None,
+        *,
+        intent: LLMIntent | None = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        """Delegates to the inner ``FakeModelRegistry.prepare``."""
+        return await self._registry.prepare(
+            config,
+            intent=intent,
+            usage_limits=usage_limits,
+            api_key=api_key,
+            base_url=base_url,
+        )
 
     @property
     def call_count(self) -> int:

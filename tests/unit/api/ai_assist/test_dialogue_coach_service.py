@@ -3,34 +3,36 @@
 Uses fakes for all I/O dependencies. The TestModel exercises the real
 DialogueCoachAgent (Task 11) end-to-end through the service.
 
-Plan-Bug #22 fix: the DialogueCoachAgent uses tool-mode output
-(``output_type=[_process_output, DialogueCoachOutput]``). Per pydantic-ai 2.x
-(see ``tests/unit/core/agents/test_dialogue_coach_agent.py`` header note),
-tool-mode agents require ``custom_output_args`` (a dict of tool-call arguments),
-NOT ``custom_output_text`` (a plain JSON string). The original plan used
-``custom_output_text``; every test would fail because the model response never
-triggers the output function. Fixed here by using ``custom_output_args``.
+The DialogueCoachAgent's structured output is a tool call (``final_result``,
+single ``DialogueCoachOutput`` schema). Per pydantic-ai 2.x (see
+``tests/unit/core/agents/test_dialogue_coach_agent.py`` header note),
+tool-mode output requires ``custom_output_args`` (a dict of tool-call
+arguments), NOT ``custom_output_text`` (a plain JSON string).
 """
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
 import pytest
 from pydantic_ai.models.test import TestModel
 
+from narrare._app.dependencies_services import ModelResolution, StaticModelResolution
 from narrare.ai_assist.schemas import DialogueCoachRequest
 from narrare.ai_assist.service import DialogueCoachService
 from narrare_core.ai_invocation.adaptive_context import AdaptiveContext
+from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 
 
 def _coach_output_args(*, adaptive_summary: str = "signals active") -> dict[str, Any]:
-    """Build ``custom_output_args`` matching DialogueCoachAgent._process_output.
+    """Build ``custom_output_args`` matching DialogueCoachOutput.
 
-    Tool-mode output (Plan-Bug #22): the agent's output function is invoked
-    as a tool, so TestModel must supply the call arguments as a dict, not a
-    JSON string via ``custom_output_text``.
+    Tool-mode output: the structured output is invoked as the ``final_result``
+    tool, so TestModel must supply the call arguments as a dict, not a JSON
+    string via ``custom_output_text``.
     """
     return {
         "issues": [
@@ -98,8 +100,40 @@ class FakeModelRegistry:
     def __init__(self, model: TestModel) -> None:
         self._model = model
 
-    async def get_model(self, config: Any) -> TestModel:
+    async def get_model(
+        self,
+        config: Any,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> TestModel:
+        # api_key/base_url: per-user routing credentials (Task 4 migration) —
+        # accepted for protocol fidelity with ModelRegistry.get_model; the
+        # fake ignores them.
+        _ = api_key, base_url
         return self._model
+
+    async def prepare(
+        self,
+        config: Any,
+        *,
+        intent: Any = None,
+        usage_limits: Any = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> Any:
+        """Task-6d bridge: resolution flows through prepare → get_model.
+
+        The agent runner (Task 6d-1) resolves via the single assembly
+        point; the bridge forwards the intent/credential pass-throughs so
+        TestModel-based behavior tests keep their get_model semantics.
+        """
+        _ = intent
+        return SimpleNamespace(
+            model=await self.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
 
 
 class FakeAdaptiveProvider:
@@ -125,12 +159,45 @@ class FakeAdaptiveProvider:
         self.snapshot_calls.append((invocation_id, adaptive_context))
 
 
-def _make_service(*, model: TestModel | None = None) -> DialogueCoachService:
+def _resolved_model() -> ResolvedModel:
+    """A fixed model triple, as the routing cascade would return it."""
+    return ResolvedModel(
+        config=ResolvedModelConfig(provider_name="anthropic", model_id="claude-haiku"),
+        source="unit-test",
+    )
+
+
+def _static_resolution() -> StaticModelResolution:
+    """Pre-resolved ModelResolution for the unit-test harness (ADR-086)."""
+    return StaticModelResolution(_resolved_model())
+
+
+class _CountingResolution:
+    """Fake ModelResolution — counts resolve() calls, never caches.
+
+    Exposes the service-level lazy seam (ADR-086): the service must call
+    ``resolve()`` exactly once (first use), never at construction.
+    """
+
+    def __init__(self, model: ResolvedModel | None = None) -> None:
+        self._model = model if model is not None else _resolved_model()
+        self.calls = 0
+
+    async def resolve(self) -> ResolvedModel:
+        self.calls += 1
+        return self._model
+
+
+def _make_service(
+    *,
+    model: TestModel | None = None,
+    resolution: ModelResolution | None = None,
+) -> DialogueCoachService:
     return DialogueCoachService(
         chapter_repo=FakeChapterRepo(),  # type: ignore[arg-type]
         novel_repo=FakeNovelRepo(),  # type: ignore[arg-type]
         model_registry=FakeModelRegistry(model or TestModel()),  # type: ignore[arg-type]
-        model_config=None,  # type: ignore[arg-type]
+        model_resolution=resolution if resolution is not None else _static_resolution(),
         composer=FakeComposer(),  # type: ignore[arg-type]
         invocation_pipeline=None,
         adaptive_provider=FakeAdaptiveProvider(),  # type: ignore[arg-type]
@@ -196,6 +263,60 @@ class TestStream:
         assert len(result_events[0].issues) == 1
 
 
+class TestLazyModelResolution:
+    """ADR-086 lazy semantics at the service boundary.
+
+    The DI factory runs pre-body-validation (FastAPI solves all
+    sub-dependencies first), so the service must NOT resolve at
+    construction. The first ``ensure_resolved()`` / ``run()`` resolves
+    exactly once; repeat calls reuse the cached triple.
+    """
+
+    @pytest.mark.asyncio
+    async def test_no_resolution_at_construction(self) -> None:
+        resolution = _CountingResolution()
+        _make_service(resolution=resolution)
+        assert resolution.calls == 0
+
+    @pytest.mark.asyncio
+    async def test_ensure_resolved_resolves_once_and_is_idempotent(self) -> None:
+        resolution = _CountingResolution()
+        service = _make_service(resolution=resolution)
+
+        first = await service.ensure_resolved()
+        second = await service.ensure_resolved()
+
+        assert resolution.calls == 1
+        assert first is second
+
+    @pytest.mark.asyncio
+    async def test_run_resolves_lazily_on_first_use(self) -> None:
+        resolution = _CountingResolution()
+        service = _make_service(
+            model=TestModel(custom_output_args=_coach_output_args()),
+            resolution=resolution,
+        )
+        request = DialogueCoachRequest(selection_text='"Hi."', mode="analyze")
+
+        await service.run(chapter_id=uuid4(), user_id=uuid4(), request=request)
+
+        assert resolution.calls == 1
+
+    @pytest.mark.asyncio
+    async def test_run_after_ensure_resolved_reuses_cache(self) -> None:
+        resolution = _CountingResolution()
+        service = _make_service(
+            model=TestModel(custom_output_args=_coach_output_args()),
+            resolution=resolution,
+        )
+        request = DialogueCoachRequest(selection_text='"Hi."', mode="analyze")
+
+        await service.ensure_resolved()
+        await service.run(chapter_id=uuid4(), user_id=uuid4(), request=request)
+
+        assert resolution.calls == 1
+
+
 class TestInvocationIdPlumbing:
     """record_snapshot receives the real invocation_id (not chapter.id).
 
@@ -224,7 +345,7 @@ class TestInvocationIdPlumbing:
             chapter_repo=FakeChapterRepo(),  # type: ignore[arg-type]
             novel_repo=FakeNovelRepo(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(model),  # type: ignore[arg-type]
-            model_config=None,  # type: ignore[arg-type]
+            model_resolution=_static_resolution(),
             composer=FakeComposer(),  # type: ignore[arg-type]
             invocation_pipeline=None,
             adaptive_provider=provider,  # type: ignore[arg-type]

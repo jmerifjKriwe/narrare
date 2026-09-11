@@ -25,6 +25,7 @@ Sibling matrix: ``test_relationship_dismissed_extraction_ownership.py``
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -41,6 +42,7 @@ from tests.unit.api.kb._test_fakes import FakeNovelRepo
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
+    from sqlalchemy.ext.asyncio import AsyncSession
 
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.kb.contracts import KBRepositoryProtocol
@@ -135,6 +137,8 @@ def _make_service() -> tuple[
     config = ResolvedModelConfig(
         provider_name="test", model_id="test-model", temperature=0.7, max_tokens=128
     )
+    session = MagicMock(spec=["begin_nested"], name="session")
+    session.begin_nested.return_value = AsyncMock()  # async context manager (SAVEPOINT)
     service = ExtractionService(
         registry=cast("ModelRegistry", object()),
         config=config,
@@ -144,6 +148,7 @@ def _make_service() -> tuple[
         novel_repo=cast("NovelRepositoryProtocol", novel_repo),
         kb_service=cast("KBService", kb_service),
         rel_repo=cast("RelationshipRepository", rel_repo),
+        session=cast("AsyncSession", session),
     )
     return service, kb_service, rel_repo, novel_repo
 
@@ -221,7 +226,14 @@ class _GatedStubService:
     def __init__(self, owner: UUID) -> None:
         self._owner = owner
 
-    async def apply_extraction(self, *, novel_id: UUID, user_id: UUID, items: list[object]):
+    async def apply_extraction(
+        self,
+        *,
+        novel_id: UUID,
+        user_id: UUID,
+        items: list[object],
+        chapter_id: UUID | None = None,
+    ):
         if user_id != self._owner:
             raise NotFoundError("Novel", identifier=str(novel_id))
         raise AssertionError("owner path not under test here")

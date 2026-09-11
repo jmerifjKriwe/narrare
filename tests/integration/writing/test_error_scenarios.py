@@ -214,7 +214,9 @@ class TestNonExistentResources:
             },
             headers=auth_headers,
         )
-        # Foreign ≡ unknown (anti-enumeration): 404, never a 500 oracle.
+        # Locked to 404: the model-routing resolver validates novel
+        # existence before auto-creating project_settings (previously the
+        # FK violation surfaced as an unhandled 500 here).
         assert resp.status_code == 404
 
     async def test_coauthor_for_unknown_novel_returns_404_without_settings_row(

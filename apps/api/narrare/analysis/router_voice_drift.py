@@ -71,7 +71,7 @@ async def analyze_voice_drift(
     On failure, an ``"error"`` event (``is_final=True``) precedes the
     ``[DONE]`` sentinel.
     """
-    service = get_voice_drift_service(session)
+    service = await get_voice_drift_service(novel_id=novel_id, session=session, user_id=user_id)
 
     async def event_stream() -> AsyncIterator[str]:
         try:

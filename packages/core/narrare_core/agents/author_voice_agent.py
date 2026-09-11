@@ -68,17 +68,14 @@ from __future__ import annotations
 from typing import Any
 
 # RunContext is intentionally a RUNTIME import (not TYPE_CHECKING): pydantic-ai
-# evaluates the output function's type hints via typing.get_type_hints() at
-# agent-construction time, so the annotation ``ctx: RunContext[...]`` MUST
-# resolve at runtime. Mirrors CharacterVoiceDriftAgent. noqa: TC002.
+# evaluates validator type hints at agent-construction time, so the annotation
+# ``ctx: RunContext[...]`` MUST resolve at runtime. Mirrors
+# CharacterVoiceDriftAgent. noqa: TC002.
 from pydantic_ai import RunContext  # noqa: TC002
 
 from narrare_core.agents.author_voice_types import (
     AuthorVoiceDeps,
     AuthorVoiceOutput,
-    EmotionalRange,
-    SentenceProfile,
-    VocabularyLevel,
 )
 from narrare_core.agents.base import NarrareAgent
 
@@ -101,7 +98,7 @@ class AuthorVoiceAgent(NarrareAgent[AuthorVoiceDeps, AuthorVoiceOutput]):
         super().__init__(
             model=model,
             deps_type=AuthorVoiceDeps,
-            output_type=[self._process_output, AuthorVoiceOutput],
+            output_type=AuthorVoiceOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -144,33 +141,6 @@ class AuthorVoiceAgent(NarrareAgent[AuthorVoiceDeps, AuthorVoiceOutput]):
                 "cultural_regional_markers": cleaned_markers,
                 "author_examples": cleaned_examples,
             }
-        )
-
-    async def _process_output(
-        self,
-        ctx: RunContext[AuthorVoiceDeps],
-        formality: float = 0.5,
-        vocabulary_level: VocabularyLevel = "moderate",
-        sentence_profile: SentenceProfile = "medium",
-        emotional_range: EmotionalRange = "moderate",
-        cultural_regional_markers: str | None = None,
-        author_examples: list[str] | None = None,
-    ) -> AuthorVoiceOutput:
-        """Output Function — structures the LLM response into AuthorVoiceOutput.
-
-        During streaming (``ctx.partial_output``) returns a minimal default
-        result (mirrors the sibling agents' partial-output convention).
-        """
-        if ctx.partial_output:
-            return AuthorVoiceOutput()
-
-        return AuthorVoiceOutput(
-            formality=formality,
-            vocabulary_level=vocabulary_level,
-            sentence_profile=sentence_profile,
-            emotional_range=emotional_range,
-            cultural_regional_markers=cultural_regional_markers,
-            author_examples=author_examples or [],
         )
 
     async def run(

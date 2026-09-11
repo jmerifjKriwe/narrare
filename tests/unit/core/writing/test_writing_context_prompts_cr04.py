@@ -53,7 +53,6 @@ class TestWritingContextPromptVariables:
         ctx = WritingContext()
         vars = ctx.to_prompt_variables()
         expected = {
-            "chapter_content",
             "chapter_frontmatter",
             "chapter_outline",
             "recent_chapters",

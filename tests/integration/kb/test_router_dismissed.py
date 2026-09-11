@@ -15,6 +15,7 @@ from uuid import UUID
 import pytest
 
 from narrare.kb.consistency_contracts import DismissedFindingsResponse
+from narrare.kb.dependencies import get_dismissed_service
 from narrare.kb.dismissed_service import DismissedFindingService
 
 if TYPE_CHECKING:
@@ -59,18 +60,22 @@ class TestDismissEndpoint:
         mock_dismissed_service: MagicMock,
     ) -> None:
         """POST dismiss returns 200 with DismissedFindingsResponse."""
-        from narrare.kb.dependencies import get_dismissed_service
-
         novel_id = "00000000-0000-0000-0000-000000000001"
         app.dependency_overrides[get_dismissed_service] = (
             lambda: mock_dismissed_service  # type: ignore[assignment]
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/consistency/dismiss",
-            json={"fingerprint": "fp-1", "reason": "Accepted"},
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/consistency/dismiss",
+                json={"fingerprint": "fp-1", "reason": "Accepted"},
+                headers=auth_headers,
+            )
+        finally:
+            # The app fixture is session-scoped — an override left behind
+            # leaks into subsequent tests (order-dependent flakiness under
+            # pytest-randomly). Same cleanup convention as
+            # tests/integration/analysis/test_analysis_api.py.
+            app.dependency_overrides.pop(get_dismissed_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -84,17 +89,17 @@ class TestDismissEndpoint:
         mock_dismissed_service: MagicMock,
     ) -> None:
         """POST dismiss returns 401 without auth token."""
-        from narrare.kb.dependencies import get_dismissed_service
-
         novel_id = "00000000-0000-0000-0000-000000000001"
         app.dependency_overrides[get_dismissed_service] = (
             lambda: mock_dismissed_service  # type: ignore[assignment]
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/consistency/dismiss",
-            json={"fingerprint": "fp-1"},
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/consistency/dismiss",
+                json={"fingerprint": "fp-1"},
+            )
+        finally:
+            app.dependency_overrides.pop(get_dismissed_service, None)
 
         assert resp.status_code == 401
 
@@ -106,18 +111,18 @@ class TestDismissEndpoint:
         mock_dismissed_service: MagicMock,
     ) -> None:
         """POST dismiss returns 422 when fingerprint is missing."""
-        from narrare.kb.dependencies import get_dismissed_service
-
         novel_id = "00000000-0000-0000-0000-000000000001"
         app.dependency_overrides[get_dismissed_service] = (
             lambda: mock_dismissed_service  # type: ignore[assignment]
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/consistency/dismiss",
-            json={"reason": "no fingerprint"},
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/consistency/dismiss",
+                json={"reason": "no fingerprint"},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_dismissed_service, None)
 
         assert resp.status_code == 422
 
@@ -138,17 +143,17 @@ class TestListDismissedEndpoint:
         mock_dismissed_service: MagicMock,
     ) -> None:
         """GET dismissed returns 200 with fingerprints list."""
-        from narrare.kb.dependencies import get_dismissed_service
-
         novel_id = "00000000-0000-0000-0000-000000000001"
         app.dependency_overrides[get_dismissed_service] = (
             lambda: mock_dismissed_service  # type: ignore[assignment]
         )
-
-        resp = await client.get(
-            f"/api/v1/novels/{novel_id}/kb/consistency/dismissed",
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.get(
+                f"/api/v1/novels/{novel_id}/kb/consistency/dismissed",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_dismissed_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -162,16 +167,16 @@ class TestListDismissedEndpoint:
         mock_dismissed_service: MagicMock,
     ) -> None:
         """GET dismissed returns 401 without auth token."""
-        from narrare.kb.dependencies import get_dismissed_service
-
         novel_id = "00000000-0000-0000-0000-000000000001"
         app.dependency_overrides[get_dismissed_service] = (
             lambda: mock_dismissed_service  # type: ignore[assignment]
         )
-
-        resp = await client.get(
-            f"/api/v1/novels/{novel_id}/kb/consistency/dismissed",
-        )
+        try:
+            resp = await client.get(
+                f"/api/v1/novels/{novel_id}/kb/consistency/dismissed",
+            )
+        finally:
+            app.dependency_overrides.pop(get_dismissed_service, None)
 
         assert resp.status_code == 401
 
@@ -192,17 +197,17 @@ class TestUndismissEndpoint:
         mock_dismissed_service: MagicMock,
     ) -> None:
         """DELETE undismiss returns 200 with updated fingerprints."""
-        from narrare.kb.dependencies import get_dismissed_service
-
         novel_id = "00000000-0000-0000-0000-000000000001"
         app.dependency_overrides[get_dismissed_service] = (
             lambda: mock_dismissed_service  # type: ignore[assignment]
         )
-
-        resp = await client.delete(
-            f"/api/v1/novels/{novel_id}/kb/consistency/dismissed/fp-1",
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.delete(
+                f"/api/v1/novels/{novel_id}/kb/consistency/dismissed/fp-1",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_dismissed_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -216,8 +221,6 @@ class TestUndismissEndpoint:
         mock_dismissed_service: MagicMock,
     ) -> None:
         """DELETE handles URL-encoded fingerprints with special characters."""
-        from narrare.kb.dependencies import get_dismissed_service
-
         novel_id = "00000000-0000-0000-0000-000000000001"
         app.dependency_overrides[get_dismissed_service] = (
             lambda: mock_dismissed_service  # type: ignore[assignment]
@@ -226,10 +229,13 @@ class TestUndismissEndpoint:
         raw_fingerprint = "Ages conflict::Alice,Bob"
         encoded = quote(raw_fingerprint, safe="")
 
-        resp = await client.delete(
-            f"/api/v1/novels/{novel_id}/kb/consistency/dismissed/{encoded}",
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.delete(
+                f"/api/v1/novels/{novel_id}/kb/consistency/dismissed/{encoded}",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_dismissed_service, None)
 
         assert resp.status_code == 200
         # Verify the service received the decoded fingerprint — and the
@@ -249,15 +255,15 @@ class TestUndismissEndpoint:
         mock_dismissed_service: MagicMock,
     ) -> None:
         """DELETE undismiss returns 401 without auth token."""
-        from narrare.kb.dependencies import get_dismissed_service
-
         novel_id = "00000000-0000-0000-0000-000000000001"
         app.dependency_overrides[get_dismissed_service] = (
             lambda: mock_dismissed_service  # type: ignore[assignment]
         )
-
-        resp = await client.delete(
-            f"/api/v1/novels/{novel_id}/kb/consistency/dismissed/fp-1",
-        )
+        try:
+            resp = await client.delete(
+                f"/api/v1/novels/{novel_id}/kb/consistency/dismissed/fp-1",
+            )
+        finally:
+            app.dependency_overrides.pop(get_dismissed_service, None)
 
         assert resp.status_code == 401

@@ -40,15 +40,24 @@ class TestProjectAiSettingsRepository:
         assert session.added == []
 
     async def test_get_auto_creates_when_missing(self) -> None:
-        """When no row exists, get() creates and flushes a new settings row."""
-        session = FakeDbSession([FakeResult(value=None)])
+        """When no row exists, get() upserts (ON CONFLICT DO NOTHING) and
+        re-selects the created row — no add()+flush() (race-safe)."""
+        novel_id = uuid4()
+        created = ProjectSettings(novel_id=novel_id)
+        session = FakeDbSession(
+            [
+                FakeResult(value=None),  # initial select: miss
+                FakeResult(value=None),  # INSERT ... ON CONFLICT DO NOTHING
+                FakeResult(value=created),  # re-select reads the new row back
+            ]
+        )
         repo = ProjectAiSettingsRepository(cast("AsyncSession", session))
 
-        result = await repo.get(uuid4())
+        result = await repo.get(novel_id)
 
-        assert isinstance(result, ProjectSettings)
-        assert len(session.added) == 1
-        assert session.flush_count == 1
+        assert result is created
+        assert session.added == []
+        assert session.flush_count == 0
 
     async def test_update_sets_fields_on_existing_row(self) -> None:
         settings = ProjectSettings(novel_id=uuid4())
@@ -77,14 +86,24 @@ class TestUserAiSettingsRepository:
         assert result is settings
 
     async def test_get_auto_creates_when_missing(self) -> None:
-        session = FakeDbSession([FakeResult(value=None)])
+        """When no row exists, get() upserts (ON CONFLICT DO NOTHING) and
+        re-selects the created row — no add()+flush() (race-safe)."""
+        user_id = uuid4()
+        created = UserAiSettings(user_id=user_id)
+        session = FakeDbSession(
+            [
+                FakeResult(value=None),  # initial select: miss
+                FakeResult(value=None),  # INSERT ... ON CONFLICT DO NOTHING
+                FakeResult(value=created),  # re-select reads the new row back
+            ]
+        )
         repo = UserAiSettingsRepository(cast("AsyncSession", session))
 
-        result = await repo.get(uuid4())
+        result = await repo.get(user_id)
 
-        assert isinstance(result, UserAiSettings)
-        assert len(session.added) == 1
-        assert session.flush_count == 1
+        assert result is created
+        assert session.added == []
+        assert session.flush_count == 0
 
     async def test_update_sets_default_model(self) -> None:
         settings = UserAiSettings(user_id=uuid4())

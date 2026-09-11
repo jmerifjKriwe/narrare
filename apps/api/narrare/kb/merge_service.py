@@ -20,6 +20,7 @@ Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
@@ -29,6 +30,7 @@ from narrare.kb.schemas_merge import (
     MergeResponse,
     MergeStrategyRequest,
 )
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -84,6 +86,7 @@ class KBMergeService:
         api_key: str | None = None,
         base_url: str | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._registry = model_registry
@@ -93,6 +96,7 @@ class KBMergeService:
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def analyze_merge_candidates(
         self,
@@ -201,7 +205,19 @@ class KBMergeService:
                 code="COMPOSITION_EMPTY",
             )
 
-        model = await self._registry.get_model(self._config)
+        # Task 6c single assembly point: coherent (model, model_settings,
+        # usage_limits) triple. This also fixes the latent setup bug where
+        # the bare get_model call dropped the injected per-user credentials.
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
+        prepared = await self._registry.prepare(
+            self._config,
+            intent=LLMIntent.KB_CONSISTENCY,
+            usage_limits=resolved.usage_limits,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
         # Build deps
         deps = KBMergeDeps(
@@ -214,10 +230,12 @@ class KBMergeService:
         # composed system prompt is supplied to the constructor (not to
         # ``run()``). All task framing + candidate data live in the governed
         # template; the run prompt carries no feature framing (RULE-02a).
-        agent = KBMergeAgent(model=model, system_prompt=composed_prompt.system)
+        agent = KBMergeAgent(model=prepared.model, system_prompt=composed_prompt.system)
         result = await agent.run(
             prompt=composed_prompt.user or "",
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
 
         # Map core output to API response

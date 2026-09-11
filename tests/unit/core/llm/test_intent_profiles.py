@@ -63,12 +63,17 @@ class TestProfileValues:
     def test_balanced_less_than_long_texts(self) -> None:
         assert PROFILE_OUTPUT_LIMITS["balanced"] < PROFILE_OUTPUT_LIMITS["long_texts"]
 
-    def test_long_texts_less_than_comprehensive(self) -> None:
-        assert PROFILE_OUTPUT_LIMITS["long_texts"] < PROFILE_OUTPUT_LIMITS["comprehensive"]
+    def test_long_texts_not_greater_than_comprehensive(self) -> None:
+        # Non-strict since the raises (8000 → 16000, then 16000 → 32000 for
+        # the ch-11 benchmark finding, then 32000 → 64000 for the cumulative
+        # retry-limit finding) kept the ladder collapsed: long_texts
+        # equals comprehensive. Strict separation would require a further
+        # comprehensive raise (policy decision, out of scope here).
+        assert PROFILE_OUTPUT_LIMITS["long_texts"] <= PROFILE_OUTPUT_LIMITS["comprehensive"]
 
     def test_comprehensive_profile_exists(self) -> None:
         assert "comprehensive" in PROFILE_OUTPUT_LIMITS
-        assert PROFILE_OUTPUT_LIMITS["comprehensive"] == 16000
+        assert PROFILE_OUTPUT_LIMITS["comprehensive"] == 64000
 
 
 class TestSpecificIntentProfiles:

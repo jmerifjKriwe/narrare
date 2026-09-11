@@ -28,7 +28,6 @@ from pydantic_ai import (
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.temporal_extraction_types import (
-    ExtractedTemporalExpression,
     TemporalExtractionOutput,
 )
 
@@ -65,7 +64,7 @@ class TemporalExtractionAgent(NarrareAgent[TemporalExtractionDeps, TemporalExtra
         super().__init__(
             model=model,
             deps_type=TemporalExtractionDeps,
-            output_type=[self._process_output, TemporalExtractionOutput],
+            output_type=TemporalExtractionOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -97,26 +96,6 @@ class TemporalExtractionAgent(NarrareAgent[TemporalExtractionDeps, TemporalExtra
                 )
 
         return output.model_copy(update={"extracted": valid_extractions})
-
-    async def _process_output(
-        self,
-        ctx: RunContext[TemporalExtractionDeps],
-        extracted: list[dict[str, Any]] | None = None,
-        chapter_temporal_markers: list[str] | None = None,
-        extraction_notes: str | None = None,
-    ) -> TemporalExtractionOutput:
-        """Output Function — structures the LLM response into TemporalExtractionOutput.
-
-        During streaming (``ctx.partial_output``) returns a minimal empty result.
-        """
-        if ctx.partial_output:
-            return TemporalExtractionOutput()
-
-        return TemporalExtractionOutput(
-            extracted=[ExtractedTemporalExpression(**e) for e in (extracted or [])],
-            chapter_temporal_markers=chapter_temporal_markers or [],
-            extraction_notes=extraction_notes or "",
-        )
 
     async def run(
         self,

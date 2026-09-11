@@ -2,24 +2,84 @@
 
 Tests the session-to-repository wiring, the system-mode factory
 closure, and the async factory functions that wire core wiki deps.
+
+Task 6 user-routing migration: ``get_wiki_service`` resolves via the
+per-user ``ModelRoutingResolver`` cascade (real intent SUMMARIZE, with
+the novel_id project tier — all wiki routes are novel-scoped), and
+``build_core_wiki_service`` serves two planes: user plane (resolved
+config + credentials) and operator plane (system default, reserved for
+the startup wiki listener in ``_app/lifespan.py``).
 """
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+if TYPE_CHECKING:
+    from pydantic_ai.usage import UsageLimits
+
+from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
 from narrare.wiki.dependencies import (
-    build_core_wiki_service,
     get_wiki_repository,
     get_wiki_service,
     make_system_wiki_factory,
 )
+from narrare.wiki.dependencies_core import build_core_wiki_service
 from narrare.wiki.repository import WikiRepository
 from narrare.wiki.service import APIWikiService
 from narrare_core.llm import ModelRegistry, ResolvedModelConfig
+from narrare_core.llm._prepared_call import PreparedModelCall
+from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.model_routing import ResolvedModel
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from tests.fakes.fake_core_wiki_service import FakeCoreWikiService
+
+# ---------------------------------------------------------------------------
+# User-routing helpers (mirrors the Task 5 series-file conventions)
+# ---------------------------------------------------------------------------
+
+_USER_KEY = "sk-user-key"
+_USER_BASE_URL = "https://user.example/v1"
+
+
+def _user_config() -> ResolvedModelConfig:
+    """The config a wired-up user's resolver would return (wizard provider)."""
+    return ResolvedModelConfig(
+        provider_name="zai",
+        model_id="glm-4.7",
+        temperature=0.7,
+        max_tokens=4096,
+    )
+
+
+def _expected_usage_limits(config: ResolvedModelConfig) -> UsageLimits | None:
+    """The ADR-045 limits the factory's DefaultRunLimitResolver produces.
+
+    The factory resolves limits from the config alone (budget=None), so
+    the expected ``usage_limits`` are deterministic per config and can be
+    mirrored exactly here.
+    """
+    return (
+        DefaultRunLimitResolver()
+        .resolve(config=config, budget=None, invocation_id=uuid4())
+        .usage_limits
+    )
+
+
+def _fake_resolver() -> tuple[MagicMock, ResolvedModel]:
+    """A spec'd fake resolver whose resolve() returns the user's model."""
+    resolved = ResolvedModel(
+        config=_user_config(),
+        api_key=_USER_KEY,
+        base_url=_USER_BASE_URL,
+    )
+    resolver = MagicMock(spec=ModelRoutingResolverImpl, name="ModelRoutingResolver")
+    resolver.resolve = AsyncMock(return_value=resolved)
+    return resolver, resolved
 
 
 class TestGetWikiRepository:
@@ -83,18 +143,25 @@ class TestBuildCoreWikiService:
         """build_core_wiki_service creates WikiService with agent and NullEventBus.
 
         Tests the full assembly chain: model_registry → config → model →
-        WikiGenerationAgent → WikiService.
+        WikiGenerationAgent → PreparedWikiAgent (Task 2 binding adapter)
+        → WikiService.
         """
         mock_model = AsyncMock()
         mock_registry = MagicMock(spec=ModelRegistry)
-        mock_registry.get_model = AsyncMock(return_value=mock_model)
-        mock_config = MagicMock(spec=ResolvedModelConfig)
+        mock_registry.prepare = AsyncMock(
+            return_value=PreparedModelCall(model=mock_model, model_settings=None, usage_limits=None)
+        )
+        # Real config value object — the ADR-045 run-limit resolver (Task 3)
+        # reads resolve_output_limit()/token_limit_profile from it.
+        system_config = ResolvedModelConfig(
+            provider_name="default", model_id="default", temperature=0.7, max_tokens=4096
+        )
 
         with (
             patch("narrare._app.dependencies.get_model_registry", return_value=mock_registry),
             patch(
                 "narrare._app.dependencies_services.build_system_default_config",
-                return_value=mock_config,
+                return_value=system_config,
             ),
             patch("narrare_core.wiki.agent.WikiGenerationAgent") as mock_agent_cls,
             patch("narrare_core.wiki.service.WikiService") as mock_svc_cls,
@@ -106,8 +173,13 @@ class TestBuildCoreWikiService:
 
             result = await build_core_wiki_service()
 
-            # Verify config built with correct params
-            mock_registry.get_model.assert_awaited_once_with(mock_config)
+            # Verify model resolved via the single assembly point (Task 6d),
+            # with the resolver-produced usage limits (Task 3).
+            mock_registry.prepare.assert_awaited_once_with(
+                system_config,
+                intent=LLMIntent.SUMMARIZE,
+                usage_limits=_expected_usage_limits(system_config),
+            )
 
             # Verify agent created with model
             mock_agent_cls.assert_called_once_with(model=mock_model)
@@ -115,13 +187,111 @@ class TestBuildCoreWikiService:
             # Verify event bus created
             mock_bus_cls.assert_called_once_with()
 
-            # Verify service created with agent + event bus + optional pipeline
-            mock_svc_cls.assert_called_once_with(
-                agent=mock_agent, event_bus=mock_bus, invocation_pipeline=None
-            )
+            # Verify service created with the bound agent (Task 2: the
+            # factory wraps the concrete agent in the PreparedWikiAgent
+            # binding adapter so the prepared halves reach the runs)
+            # + event bus + optional pipeline
+            from typing import Any, cast
+
+            from narrare.wiki.prepared_wiki_agent import PreparedWikiAgent
+
+            mock_svc_cls.assert_called_once()
+            svc_kwargs = mock_svc_cls.call_args.kwargs
+            assert svc_kwargs["event_bus"] is mock_bus
+            assert svc_kwargs["invocation_pipeline"] is None
+            # Task 2: the factory wraps the concrete agent in the
+            # PreparedWikiAgent binding adapter so the prepared halves
+            # reach the agent runs.
+            bound_agent = svc_kwargs["agent"]
+            assert isinstance(bound_agent, PreparedWikiAgent)
+            assert cast("Any", bound_agent)._agent is mock_agent
 
             # Verify return value
             assert result is mock_svc
+
+    async def test_user_plane_skips_system_default_and_threads_credentials(self) -> None:
+        """User plane: resolved config + credentials reach prepare().
+
+        When a resolved config is provided, ``build_core_wiki_service``
+        must NOT touch ``build_system_default_config`` (operator plane)
+        and must thread api_key/base_url + the site intent into the
+        single assembly point (Task 6d).
+        """
+        mock_model = AsyncMock()
+        mock_registry = MagicMock(spec=ModelRegistry)
+        mock_registry.prepare = AsyncMock(
+            return_value=PreparedModelCall(model=mock_model, model_settings=None, usage_limits=None)
+        )
+        config = _user_config()
+
+        with (
+            patch("narrare._app.dependencies.get_model_registry", return_value=mock_registry),
+            patch(
+                "narrare._app.dependencies_services.build_system_default_config"
+            ) as mock_system_config,
+            patch("narrare_core.wiki.agent.WikiGenerationAgent"),
+            patch("narrare_core.wiki.service.WikiService"),
+        ):
+            result = await build_core_wiki_service(
+                config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL
+            )
+
+        mock_registry.prepare.assert_awaited_once_with(
+            config,
+            intent=LLMIntent.SUMMARIZE,
+            usage_limits=_expected_usage_limits(config),
+            api_key=_USER_KEY,
+            base_url=_USER_BASE_URL,
+        )
+        mock_system_config.assert_not_called()
+        assert result is not None
+
+
+class TestGetWikiServiceUserRouting:
+    """get_wiki_service resolves via the cascade (SUMMARIZE, project tier)."""
+
+    async def test_resolves_summarize_for_user_with_project_tier(self) -> None:
+        """The user-facing factory resolves SUMMARIZE for user + novel.
+
+        All wiki routes are novel-scoped, so the novel_id path parameter
+        IS available at dependency-wiring time and threads into resolve()
+        as the cascade's project tier.
+        """
+        mock_session = AsyncMock(spec=AsyncSession)
+        user_id = str(uuid4())
+        novel_id = uuid4()
+        resolver, resolved = _fake_resolver()
+
+        with (
+            patch(
+                "narrare.wiki.dependencies.get_model_routing_resolver",
+                return_value=resolver,
+            ),
+            patch(
+                "narrare.wiki.dependencies.build_core_wiki_service",
+                new_callable=AsyncMock,
+            ) as mock_build_core,
+            patch(
+                "narrare.wiki.dependencies.get_invocation_pipeline",
+                return_value=MagicMock(spec=True, name="InvocationPipeline"),
+            ) as mock_pipeline,
+            patch("narrare.chapters.repository.ChapterRepository"),
+            patch("narrare.novels.repository.NovelRepository"),
+            patch("narrare.kb.repository.KBRepository"),
+            patch("narrare.kb.relationship_repository.RelationshipRepository"),
+            patch("narrare.wiki.repository.WikiRepository"),
+            patch("narrare.wiki.chapter_service.ChapterWikiService"),
+            patch("narrare.wiki.service.APIWikiService"),
+        ):
+            await get_wiki_service(novel_id=novel_id, session=mock_session, user_id=user_id)
+
+        resolver.resolve.assert_awaited_once_with(LLMIntent.SUMMARIZE, UUID(user_id), novel_id)
+        mock_build_core.assert_awaited_once_with(
+            invocation_pipeline=mock_pipeline.return_value,
+            config=resolved.config,
+            api_key=_USER_KEY,
+            base_url=_USER_BASE_URL,
+        )
 
 
 class TestGetWikiService:
@@ -135,12 +305,21 @@ class TestGetWikiService:
         """
         mock_session = AsyncMock(spec=AsyncSession)
         mock_core_service = MagicMock(spec=FakeCoreWikiService)
+        resolver, _resolved = _fake_resolver()
 
         with (
+            patch(
+                "narrare.wiki.dependencies.get_model_routing_resolver",
+                return_value=resolver,
+            ),
             patch(
                 "narrare.wiki.dependencies.build_core_wiki_service",
                 new_callable=AsyncMock,
                 return_value=mock_core_service,
+            ),
+            patch(
+                "narrare._app.dependencies.get_invocation_pipeline",
+                return_value=MagicMock(spec=True, name="InvocationPipeline"),
             ),
             patch("narrare.chapters.repository.ChapterRepository") as mock_chapter_repo_cls,
             patch("narrare.novels.repository.NovelRepository") as mock_novel_repo_cls,
@@ -153,7 +332,9 @@ class TestGetWikiService:
             mock_chapter_svc = mock_chapter_svc_cls.return_value
             mock_api_svc = mock_api_svc_cls.return_value
 
-            result = await get_wiki_service(mock_session)
+            result = await get_wiki_service(
+                novel_id=uuid4(), session=mock_session, user_id=str(uuid4())
+            )
 
             # Verify ChapterWikiService constructed with correct deps
             mock_chapter_svc_cls.assert_called_once_with(

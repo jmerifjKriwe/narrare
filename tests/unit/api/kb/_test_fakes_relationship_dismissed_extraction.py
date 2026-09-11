@@ -21,6 +21,8 @@ from narrare_core.prompts.composer import ComposedPrompt
 from ._test_fakes import FakeNovelRepo
 
 if TYPE_CHECKING:
+    from pydantic_ai.models import Model
+
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.kb.consistency_contracts import DismissedFindingRepositoryProtocol
     from narrare.kb.contracts import (
@@ -252,6 +254,26 @@ class CountingModelRegistry:
     async def get_model(self, _config: object) -> object:
         self.get_model_calls += 1
         return object()
+
+    async def prepare(
+        self,
+        config: object,
+        *,
+        intent: object = None,
+        usage_limits: object = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object:
+        """Task-6d bridge: prepare delegates to the SAME counted get_model."""
+        from typing import cast as _cast
+
+        from narrare_core.llm._prepared_call import PreparedModelCall
+
+        return PreparedModelCall(
+            model=_cast("Model", await self.get_model(config)),
+            model_settings=None,
+            usage_limits=None,
+        )
 
 
 class CountingComposer:

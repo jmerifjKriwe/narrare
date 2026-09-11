@@ -50,6 +50,10 @@ async def list_entries(
     review_status: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=100),
+    include_deprecated: bool = Query(
+        default=False,
+        description="Include deprecated (merged) entries — hidden by default (ADR-085 §9(c))",
+    ),
 ) -> KBEntryListResponse:
     """List KB entries for a novel."""
     entries, total = await service.list_entries(
@@ -60,6 +64,7 @@ async def list_entries(
         review_status=review_status,
         page=page,
         page_size=page_size,
+        include_deprecated=include_deprecated,
     )
     return KBEntryListResponse(
         items=[KBEntryResponse.model_validate(e) for e in entries],
@@ -79,6 +84,10 @@ async def search_entries(
     tags: list[str] | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=100),
+    include_deprecated: bool = Query(
+        default=False,
+        description="Include deprecated (merged) entries — hidden by default (ADR-085 §9(c))",
+    ),
 ) -> KBEntryListResponse:
     """Search KB entries by text."""
     entries, total = await service.search(
@@ -89,6 +98,7 @@ async def search_entries(
         tags=tags,
         page=page,
         page_size=page_size,
+        include_deprecated=include_deprecated,
     )
     return KBEntryListResponse(
         items=[KBEntryResponse.model_validate(e) for e in entries],

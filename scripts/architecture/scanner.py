@@ -28,7 +28,12 @@ from scripts.architecture.types import CheckResult
 # TestScanRootParity``. ``evals/`` is included per 2c6a3b3d (evals code is
 # real production code under limits); unifying both RULE-04 gates on
 # identical roots also subjects evals/ to the full AST checker set.
-DEFAULT_SCAN_ROOTS: tuple[str, ...] = ("apps", "packages", "scripts", "tests", "evals")
+# ``benchmark/`` joined 2026-08-27 (kb-benchmark runner Task 1): the
+# ADR-083 manually-only carve-out excludes benchmark from CI test jobs,
+# but the repo's Python standards (incl. RULE-04 size limits and the AST
+# checker set) DO apply to benchmark code per the plan's Global
+# Constraints — coordinated with the python-size gate + the parity test.
+DEFAULT_SCAN_ROOTS: tuple[str, ...] = ("apps", "packages", "scripts", "tests", "evals", "benchmark")
 
 
 @runtime_checkable

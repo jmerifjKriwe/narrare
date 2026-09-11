@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 from narrare_core.context.assembler import ContextAssembler
+from narrare_core.writing import _helpers
 from narrare_core.writing._classify import classify_entities
 from narrare_core.writing._helpers import extract_frontmatter_references, format_entities
 from narrare_core.writing._tier3_processor import apply_tier3
@@ -311,12 +312,12 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
             kb_characters=chars_text,
             kb_locations=locs_text,
             kb_factions=factions_text,
-            kb_systems=systems_text,
-            kb_timelines=timelines_text,
+            kb_systems=_helpers.optional_block("Systems", systems_text),
+            kb_timelines=_helpers.optional_block("Timelines", timelines_text),
             kb_other=other_text,
             kb_relationships=kb_relationships,
             kb_suggested=suggested_text,
-            kb_pinned=pinned_text,
+            kb_pinned=_helpers.optional_block("Pinned context (always included)", pinned_text),
             project_title=project_title,
             genre=genre,
             language=language,

@@ -126,6 +126,8 @@ async def analyse_author_voice_drift(
     novel_id: UUID,
     model_registry: ModelRegistry,
     model_config: ResolvedModelConfig,
+    api_key: str | None = None,
+    base_url: str | None = None,
 ) -> AuthorVoiceDriftResult:
     """Compute the narrator trend + jumps, run the agent, assemble the result.
 
@@ -157,6 +159,9 @@ async def analyse_author_voice_drift(
             logging).
         model_registry: Model registry used to resolve the configured model.
         model_config: Resolved model configuration.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — forwarded to the agent runner's ``get_model`` call.
+        base_url: Optional per-user provider base URL override.
 
     Returns:
         The API :class:`AuthorVoiceDriftResult` with the deterministic trend
@@ -188,6 +193,8 @@ async def analyse_author_voice_drift(
         novel_id=novel_id,
         model_registry=model_registry,
         model_config=model_config,
+        api_key=api_key,
+        base_url=base_url,
     )
     return assemble_author_voice_drift_result(
         novel_id=novel_id,

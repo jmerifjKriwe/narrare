@@ -20,7 +20,11 @@ import pytest
 
 from narrare.chapters.models import Chapter, ChapterVersion
 from narrare.chapters.repository import ChapterRepository
-from narrare.chapters.schemas import UpdateChapterMetaRequest
+from narrare.chapters.schemas import CreateChapterRequest, UpdateChapterMetaRequest
+from narrare.chapters.service import ChapterService
+from tests.factories import make_novel
+from tests.fakes import FakeNovelService
+from tests.fakes.fake_db_session import FakeDbSession, FakeResult
 
 _RESULT_ATTRS = ["scalars", "scalar_one_or_none"]
 
@@ -206,3 +210,47 @@ class TestUpdateMetaBranch:
 
         assert result is chapter
         mock_session.flush.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Regression — max_position falsy-zero (benchmark run 2026-09-08-clean-1)
+# ---------------------------------------------------------------------------
+
+
+class TestSequentialCreatePositions:
+    """Sequential creates without explicit position must assign 0, 1, 2, …
+
+    Regression guard for the falsy-zero bug in ``ChapterRepository.
+    max_position``: ``scalar_one_or_none() or -1`` mapped a legitimate
+    max position of 0 (the first chapter) to -1, so every subsequent
+    chapter was also created with position 0.
+    """
+
+    async def test_create_without_position_assigns_sequential_0_1_2(self) -> None:
+        """DB max values None → 0 → 1 must produce chapter positions 0, 1, 2."""
+        session = FakeDbSession(
+            [
+                FakeResult(value=None),  # empty novel
+                FakeResult(value=0),  # max = chapter 1
+                FakeResult(value=1),  # max = chapters 1-2
+            ]
+        )
+        repo = ChapterRepository(session)
+        novel_service = FakeNovelService()
+        novel_id, user_id = uuid.uuid4(), uuid.uuid4()
+        novel_service.seed(make_novel(id=novel_id, user_id=user_id))
+        service = ChapterService(repo=repo, novel_service=novel_service)
+
+        chapter_1 = await service.create(
+            novel_id, user_id, CreateChapterRequest(title="Chapter 1", content="one")
+        )
+        chapter_2 = await service.create(
+            novel_id, user_id, CreateChapterRequest(title="Chapter 2", content="two")
+        )
+        chapter_3 = await service.create(
+            novel_id, user_id, CreateChapterRequest(title="Chapter 3", content="three")
+        )
+
+        assert chapter_1.position == 0
+        assert chapter_2.position == 1  # RED before fix: falsy `0 or -1` → both 0
+        assert chapter_3.position == 2

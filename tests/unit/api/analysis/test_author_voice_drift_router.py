@@ -96,9 +96,13 @@ async def test_route_serializes_progress_result_done_and_sentinel() -> None:
     service = FakeAuthorVoiceDriftService(result)
 
     with pytest.MonkeyPatch.context() as mp:
+
+        async def _fake_factory(**_kwargs: object) -> FakeAuthorVoiceDriftService:
+            return service
+
         mp.setattr(
             "narrare.analysis.router_author_voice_drift.get_author_voice_drift_service",
-            lambda _session: service,
+            _fake_factory,
         )
         stream_response = await analyze_author_voice_drift(
             novel_id=novel_id,
@@ -141,9 +145,13 @@ async def test_route_serializes_no_profile_event() -> None:
             yield AuthorVoiceDriftEvent(event="done", is_final=True)
 
     with pytest.MonkeyPatch.context() as mp:
+
+        async def _no_profile_factory(**_kwargs: object) -> NoProfileService:
+            return NoProfileService()
+
         mp.setattr(
             "narrare.analysis.router_author_voice_drift.get_author_voice_drift_service",
-            lambda _session: NoProfileService(),
+            _no_profile_factory,
         )
         stream_response = await analyze_author_voice_drift(
             novel_id=uuid4(),
@@ -178,9 +186,13 @@ async def test_route_emits_error_event_on_failure() -> None:
             yield  # pragma: no cover - makes this an async generator
 
     with pytest.MonkeyPatch.context() as mp:
+
+        async def _failing_factory(**_kwargs: object) -> FailingService:
+            return FailingService()
+
         mp.setattr(
             "narrare.analysis.router_author_voice_drift.get_author_voice_drift_service",
-            lambda _session: FailingService(),
+            _failing_factory,
         )
         stream_response = await analyze_author_voice_drift(
             novel_id=uuid4(),

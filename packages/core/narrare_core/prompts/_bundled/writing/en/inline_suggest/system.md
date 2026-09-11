@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "2.4.0"
+prompt_version: "2.5.0"
 ---
 
 ## System Prompt
@@ -35,7 +35,7 @@ Lower-priority learned avoidance patterns. Respect them when possible without br
 
 {{avoidance_patterns}}
 
-## Do NOT
+### Do NOT
 
 - Do NOT repeat what was already written
 - Do NOT add meta-commentary, explanations, or suggestions

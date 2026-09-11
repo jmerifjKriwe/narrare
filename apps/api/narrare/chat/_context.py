@@ -1,10 +1,10 @@
-"""Chat context preparation (NOTES-001 §6b aware).
+"""Chat prompt-context assembly and effective-message resolution.
 
-Owns the context steps of the chat flow:
-- :func:`assemble_chat_context` builds the base ``PromptContext`` and folds
-  the formatted conversation history into it (ADR-024 minimal tier).
-- :func:`compose_chat_prompt` composes the chat prompt via the
-  PromptComposer cascade (RULE-02 — never inline in the service).
+Owns the context steps of the chat flow (RULE-04 extraction from
+``chat_service``):
+- :func:`build_prompt_context` builds the chat ``PromptContext``: the core
+  chat context (project metadata placeholders) plus the conversation
+  history rendered into ``extra["conversation_history"]``.
 - :func:`prepare_effective_context` composes the ADR-048 Mode 2 invocation
   and returns the enriched context that flows to ``ChatDeps`` — skipping
   project-correlated enrichment for project-less conversations (NOTES-001
@@ -15,12 +15,14 @@ Owns the context steps of the chat flow:
   (NOTES-001 §6b — user-message channel, never a prompt template,
   RULE-02; graceful degradation on missing/unowned notes, RULE-11).
 
-Extracted from ``chat_service.py`` for RULE-04 (300-line service limit),
-following the ``_invocation.py`` / ``_response_helpers.py`` split pattern.
-One responsibility (RULE-06): prepare the effective chat context.
+Extracted from ``chat_service.py`` for RULE-04 (300-line service limit);
+modularise, never compress. One responsibility (RULE-06): prepare the
+effective chat context.
 
-See: ADR-024, ADR-045, ADR-048, NOTES-001 §6b,
-CONSTRAINTS.md RULE-02/RULE-04/RULE-06/RULE-11.
+See:
+    narrare_core.chat.chat_service_core.build_chat_context (core builder),
+    ADR-024, ADR-045, ADR-048, NOTES-001 §6b,
+    CONSTRAINTS.md RULE-02/RULE-04/RULE-06/RULE-11.
 """
 
 from __future__ import annotations
@@ -38,21 +40,19 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.chat.contracts import ChatMessage
     from narrare_core.notes.contracts import NoteLookupProtocol, NoteSnapshot
-    from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
     from narrare_core.prompts.context import PromptContext
 
 logger = structlog.get_logger(__name__)
 
 
-def assemble_chat_context(history: list[ChatMessage]) -> PromptContext:
-    """Build the base chat ``PromptContext`` with formatted history.
+def build_prompt_context(history: list[ChatMessage]) -> PromptContext:
+    """Build the chat PromptContext with the conversation history attached.
 
     Args:
-        history: Prior messages of the conversation (empty when new).
+        history: The conversation messages (oldest first) from the store.
 
     Returns:
-        The minimal ADR-024 context with ``conversation_history`` in
-        ``extra``.
+        A PromptContext with ``extra["conversation_history"]`` populated.
     """
     context = build_chat_context(
         project_title="",
@@ -61,27 +61,6 @@ def assemble_chat_context(history: list[ChatMessage]) -> PromptContext:
     )
     context.extra["conversation_history"] = format_history(history)
     return context
-
-
-async def compose_chat_prompt(
-    composer: PromptComposer,
-    context: PromptContext,
-    user_prompt: str,
-) -> ComposedPrompt:
-    """Compose the chat prompt (system + user) via the PromptComposer cascade.
-
-    Args:
-        composer: The PromptComposer — prompts are built exclusively here
-            (RULE-02), never inline in the service.
-        context: The assembled chat context.
-        user_prompt: The raw user message text.
-
-    Returns:
-        The composed prompt for ``LLMIntent.CHAT``.
-    """
-    from narrare_core.llm.intents import LLMIntent
-
-    return await composer.build(LLMIntent.CHAT, context, user_prompt=user_prompt)
 
 
 async def prepare_effective_context(

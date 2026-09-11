@@ -35,9 +35,14 @@ override ``is_mem0_available`` via their own ``monkeypatch.setattr``.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from pyrate_limiter import Limiter
 
 
 @pytest.fixture(autouse=True)
@@ -162,3 +167,56 @@ def _isolate_core_settings(  # pyright: ignore[reportUnusedFunction] — autouse
     get_core_settings.cache_clear()
     yield
     get_core_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter_buckets() -> Iterator[None]:  # pyright: ignore[reportUnusedFunction] — autouse fixture, invoked via decorator reflection, not direct call. Pyright false-positive.
+    """Flush every module-level rate-limiter bucket before each test.
+
+    The API rate limiters are intentionally process-wide singletons
+    (AR-05-02: ``Limiter`` must accumulate across requests, or limits
+    would never trigger). In the unit-test process that same accumulation
+    is a cross-test leak: CI assigns whole files to shared pytest-xdist
+    workers (``pytest tests/unit/ -n auto --dist loadfile``), so any file
+    that exercises a limiter-protected route consumes from the SAME
+    in-memory bucket as every later file on that worker.
+    ``AI_ANALYSIS_LIMITER`` allows 5 requests/minute, and e.g.
+    ``tests/unit/api/kb/entity_resolution/test_router.py`` needs exactly
+    5 — any upstream consumption (the series voice / voice-drift /
+    consistency router tests alone fire 19) produces spurious ``429``
+    responses whose presence depends on the pytest-randomly seed (CI:
+    2 x ``assert 429 == 200``; same defect class as the known series
+    voice-router flakiness).
+
+    Flushing all singleton buckets per test restores file independence
+    WITHOUT weakening enforcement tests: tests that verify rate limiting
+    accumulate WITHIN a single test (auth 3→429 / 5→429 regression pins
+    in ``tests/unit/api/auth/test_auth_rate_limits.py``) or construct
+    local ``Limiter`` instances (``test_rate_limits.py``,
+    ``test_rate_limiter_compat.py``). Regression pin:
+    ``tests/unit/api/_app/test_rate_limiter_test_isolation.py``.
+    """
+    from narrare._app.rate_limits import (
+        AI_ANALYSIS_LIMITER,
+        AI_LIGHT_LIMITER,
+        AI_PROMPT_LIVE_TEST_LIMITER,
+        AI_WRITE_LIMITER,
+        AI_WS_LIMITER,
+        SETUP_MODELS_LIMITER,
+    )
+    from narrare.auth.router import _LOGIN_LIMITER, _REGISTER_LIMITER
+
+    limiters: tuple[Limiter, ...] = (
+        AI_WRITE_LIMITER.limiter,
+        AI_ANALYSIS_LIMITER.limiter,
+        AI_LIGHT_LIMITER.limiter,
+        SETUP_MODELS_LIMITER.limiter,
+        AI_PROMPT_LIVE_TEST_LIMITER.limiter,
+        AI_WS_LIMITER,
+        _REGISTER_LIMITER.limiter,
+        _LOGIN_LIMITER.limiter,
+    )
+    for limiter in limiters:
+        for bucket in limiter.buckets():
+            bucket.flush()
+    yield

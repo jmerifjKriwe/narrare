@@ -4,9 +4,9 @@ TestModel-based structured-output tests (ADR-035). Verifies the agent
 parses the governed template's JSON contract + the output validator
 enforces invariants.
 
-Note: because the agent uses ``output_type=[_process_output, Model]``
-(tool-mode output), tests use ``custom_output_args`` (tool call arguments)
-rather than ``custom_output_text`` (plain text — incompatible with tool mode
+Note: the agent's structured output is a tool call (``final_result``), so
+tests supply ``custom_output_args`` (tool call arguments) rather than
+``custom_output_text`` (plain text — incompatible with tool-mode output
 in pydantic-ai 2.x).
 """
 
@@ -26,7 +26,7 @@ def _coach_output_args(
     issues: list[dict[str, Any]] | None = None,
     adaptive_summary: str = "",
 ) -> dict[str, Any]:
-    """Build custom_output_args matching _process_output kwargs."""
+    """Build ``custom_output_args`` matching DialogueCoachOutput (final_result tool)."""
     return {
         "issues": issues or [],
         "adaptive_summary": adaptive_summary,
@@ -98,11 +98,17 @@ class TestDialogueCoachAgentImproveMode:
 
 
 class TestDialogueCoachAgentValidator:
-    """Output validator enforces ADR-035 invariants."""
+    """Quality Rule: no issue without a verbatim quote (ADR-035)."""
 
     @pytest.mark.asyncio
-    async def test_drops_issues_with_empty_original_quote(self) -> None:
-        """Quality Rule: no issue without a verbatim quote."""
+    async def test_whitespace_only_quotes_filtered_by_run(self) -> None:
+        """Issues whose quote is whitespace-only are dropped by run()'s guard.
+
+        The strict output model enforces min_length=1 on ``original_quote``
+        (fully empty quotes are rejected at the tool boundary); the
+        run()-level defensive filter catches whitespace-only quotes that
+        pass the Field constraint but are semantically empty.
+        """
         issues = [
             {
                 "issue_type": "redundancy",
@@ -114,7 +120,7 @@ class TestDialogueCoachAgentValidator:
             {
                 "issue_type": "redundancy",
                 "speaker": "",
-                "original_quote": "",  # empty — should be dropped
+                "original_quote": "   ",  # whitespace-only — should be dropped
                 "diagnosis": "y",
                 "severity": "low",
             },

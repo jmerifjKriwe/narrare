@@ -90,16 +90,22 @@ class TestPOVAnalysis:
     ) -> None:
         """POST with valid params/body returns 200 with POVResult."""
         app.dependency_overrides[get_pov_service] = lambda: mock_pov_service
+        try:
+            novel_id = uuid4()
+            chapter_id = uuid4()
 
-        novel_id = uuid4()
-        chapter_id = uuid4()
-
-        resp = await client.post(
-            "/api/v1/analysis/pov",
-            params={"novel_id": str(novel_id)},
-            json={"chapter_ids": [str(chapter_id)], "language": "en"},
-            headers=auth_headers,
-        )
+            resp = await client.post(
+                "/api/v1/analysis/pov",
+                params={"novel_id": str(novel_id)},
+                json={"chapter_ids": [str(chapter_id)], "language": "en"},
+                headers=auth_headers,
+            )
+        finally:
+            # The app fixture is session-scoped — an override left behind
+            # leaks into subsequent tests (order-dependent flakiness under
+            # pytest-randomly). Same cleanup convention as
+            # tests/integration/ai_assist/test_dialogue_coach_sse.py.
+            app.dependency_overrides.pop(get_pov_service, None)
 
         assert resp.status_code == 200
         body = resp.json()
@@ -123,36 +129,6 @@ class TestPOVAnalysis:
 
         mock_pov_service.analyze.assert_awaited_once()
 
-    async def test_pov_with_type_hint(
-        self,
-        app: FastAPI,
-        client: AsyncClient,
-        auth_headers: dict[str, str],
-        mock_pov_service: MagicMock,
-    ) -> None:
-        """POST with pov_type hint passes it through to service."""
-        app.dependency_overrides[get_pov_service] = lambda: mock_pov_service
-
-        novel_id = uuid4()
-        chapter_id = uuid4()
-
-        resp = await client.post(
-            "/api/v1/analysis/pov",
-            params={"novel_id": str(novel_id)},
-            json={
-                "chapter_ids": [str(chapter_id)],
-                "language": "en",
-                "pov_type": "first_person",
-            },
-            headers=auth_headers,
-        )
-
-        assert resp.status_code == 200
-
-        # Verify pov_type was passed to the service
-        call_kwargs = mock_pov_service.analyze.call_args
-        assert call_kwargs.kwargs["pov_type"] == "first_person"
-
     async def test_pov_missing_chapter_returns_404(
         self,
         app: FastAPI,
@@ -168,16 +144,20 @@ class TestPOVAnalysis:
         )
 
         app.dependency_overrides[get_pov_service] = lambda: mock_pov_service
+        try:
+            novel_id = uuid4()
+            chapter_id = uuid4()
 
-        novel_id = uuid4()
-        chapter_id = uuid4()
-
-        resp = await client.post(
-            "/api/v1/analysis/pov",
-            params={"novel_id": str(novel_id)},
-            json={"chapter_ids": [str(chapter_id)]},
-            headers=auth_headers,
-        )
+            resp = await client.post(
+                "/api/v1/analysis/pov",
+                params={"novel_id": str(novel_id)},
+                json={"chapter_ids": [str(chapter_id)]},
+                headers=auth_headers,
+            )
+        finally:
+            # Session-scoped app — pop the override to prevent leakage into
+            # subsequent tests (see test_pov_returns_200).
+            app.dependency_overrides.pop(get_pov_service, None)
 
         assert resp.status_code == 404
 
@@ -194,13 +174,21 @@ class TestPOVAnalysis:
 
         assert resp.status_code == 401
 
-    async def test_pov_invalid_request_returns_422(
+    async def test_pov_nonexistent_novel_with_invalid_body_returns_422(
         self,
-        app: FastAPI,
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """POST with empty chapter_ids returns 422."""
+        """POST POV with an invalid body returns 422 (real chain).
+
+        Regression (ADR-086 S4a): the factory previously resolved the
+        per-user routing cascade eagerly at DI-construction time. FastAPI
+        solves all sub-dependencies BEFORE body validation, so the P2
+        novel guard inside ``resolve()`` (404 for a nonexistent novel)
+        preempted the legitimate 422 for the invalid body. With lazy
+        first-use resolution (ADR-086) the body is validated first and
+        the cascade (including the novel guard) runs only on first use.
+        """
         resp = await client.post(
             "/api/v1/analysis/pov",
             params={"novel_id": str(uuid4())},
@@ -210,19 +198,50 @@ class TestPOVAnalysis:
 
         assert resp.status_code == 422
 
+    async def test_pov_invalid_request_returns_422(
+        self,
+        app: FastAPI,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+        mock_pov_service: MagicMock,
+    ) -> None:
+        """POST with empty chapter_ids returns 422."""
+        # Body validation happens before the service is invoked — pin the
+        # dependency so the test exercises validation, not the routing
+        # cascade (the real chain resolves the nonexistent novel first and
+        # returns 404 before the 422 can be produced).
+        app.dependency_overrides[get_pov_service] = lambda: mock_pov_service
+        try:
+            resp = await client.post(
+                "/api/v1/analysis/pov",
+                params={"novel_id": str(uuid4())},
+                json={"chapter_ids": []},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_pov_service, None)
+
+        assert resp.status_code == 422
+
     async def test_pov_returns_422_without_chapter_ids(
         self,
         app: FastAPI,
         client: AsyncClient,
         auth_headers: dict[str, str],
+        mock_pov_service: MagicMock,
     ) -> None:
         """POST with missing chapter_ids returns 422."""
-        resp = await client.post(
-            "/api/v1/analysis/pov",
-            params={"novel_id": str(uuid4())},
-            json={},
-            headers=auth_headers,
-        )
+        # See test_pov_invalid_request_returns_422 for rationale.
+        app.dependency_overrides[get_pov_service] = lambda: mock_pov_service
+        try:
+            resp = await client.post(
+                "/api/v1/analysis/pov",
+                params={"novel_id": str(uuid4())},
+                json={},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_pov_service, None)
 
         assert resp.status_code == 422
 
@@ -235,16 +254,20 @@ class TestPOVAnalysis:
     ) -> None:
         """POST with multiple chapter_ids — service receives all IDs."""
         app.dependency_overrides[get_pov_service] = lambda: mock_pov_service
+        try:
+            novel_id = uuid4()
+            chapter_ids = [str(uuid4()), str(uuid4()), str(uuid4())]
 
-        novel_id = uuid4()
-        chapter_ids = [str(uuid4()), str(uuid4()), str(uuid4())]
-
-        resp = await client.post(
-            "/api/v1/analysis/pov",
-            params={"novel_id": str(novel_id)},
-            json={"chapter_ids": chapter_ids},
-            headers=auth_headers,
-        )
+            resp = await client.post(
+                "/api/v1/analysis/pov",
+                params={"novel_id": str(novel_id)},
+                json={"chapter_ids": chapter_ids},
+                headers=auth_headers,
+            )
+        finally:
+            # Session-scoped app — pop the override to prevent leakage into
+            # subsequent tests (see test_pov_returns_200).
+            app.dependency_overrides.pop(get_pov_service, None)
 
         assert resp.status_code == 200
 

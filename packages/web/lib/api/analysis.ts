@@ -247,7 +247,6 @@ export interface POVResult {
 export interface POVRequest {
   chapter_ids: string[];
   language?: string;
-  pov_type?: string;
 }
 
 // --- API functions ---

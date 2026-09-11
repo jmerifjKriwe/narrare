@@ -98,7 +98,14 @@ class _FakeSummaryAgent:
         self._output = output
         self.run_calls: int = 0
 
-    async def run(self, *, prompt: str, deps: object) -> SummaryOutput:
+    async def run(
+        self,
+        *,
+        prompt: str,
+        deps: object,
+        model_settings: object = None,
+        usage_limits: object = None,
+    ) -> SummaryOutput:
         self.run_calls += 1
         if self._output is None:
             raise AssertionError("LLM agent.run must not be called for foreign chapters")

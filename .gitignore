@@ -106,8 +106,15 @@ opencode.json
 skills-lock.json
 clawpatch-report.md
 
+# Benchmark runner local config — real LLM credentials (template committed:
+# benchmark/config.template.yaml; ADR-083 manually-only area)
+benchmark/config.local.yaml
+# Benchmark run artifacts (Task 15 default --out root; manual run output)
+benchmark/runs/
+
 # Evidence store (CI artifacts)
 .evidence/*.jsonl
 test-results/
 
 graphify-out/
+.agent-of-empires/

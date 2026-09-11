@@ -5,22 +5,22 @@ Extends NarrareAgent with two run paths:
 - ``generate_chapter`` → WikiChapterOutput (delegates to WikiChapterGenerator)
 
 Streaming support (RULE-13): Both paths accept ``stream: bool = False``.
-When streaming, ``run_stream()`` is used and the output function returns
-default/empty instances for partial outputs (``ctx.partial_output``).
+When streaming, ``run_stream()`` is used and the strict model output
+(WikiEntityOutput / WikiChapterOutput) is streamed directly.
 """
 
 from __future__ import annotations
 
-from typing import Any, cast
-
-from pydantic_ai import (
-    RunContext,  # noqa: TC002
-)  # narrare: allow-agent reason="WikiGenerationAgent uses RunContext for pydantic_ai internals"
+from typing import TYPE_CHECKING, Any, cast
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.wiki.agent_chapter import WikiChapterGenerator
 from narrare_core.wiki.prompt_loader import WikiPromptLoader
 from narrare_core.wiki.types import WikiChapterOutput, WikiEntityOutput, WikiGenerationDeps
+
+if TYPE_CHECKING:
+    from pydantic_ai.settings import ModelSettings
+    from pydantic_ai.usage import UsageLimits
 
 
 class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
@@ -52,39 +52,12 @@ class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
         super().__init__(
             model=model,
             deps_type=WikiGenerationDeps,
-            output_type=[self._process_entity_output, WikiEntityOutput],
+            output_type=WikiEntityOutput,
             system_prompt=system_prompt,
         )
         self._model = model
         self._system_prompt = system_prompt
         self._chapter_generator = WikiChapterGenerator(model=model, system_prompt=system_prompt)
-
-    # ------------------------------------------------------------------
-    # Output function: entity
-    # ------------------------------------------------------------------
-
-    async def _process_entity_output(
-        self,
-        ctx: RunContext[WikiGenerationDeps],
-        narrative_summary: str = "",
-        role_in_story: str | None = None,
-        key_attributes: list[str] | None = None,
-        relationships: list[dict[str, Any]] | None = None,
-        character_arc: str | None = None,
-    ) -> WikiEntityOutput:
-        """Output Function for entity summary generation.
-
-        Streaming (``ctx.partial_output``) returns an empty default instance.
-        """
-        if ctx.partial_output:
-            return WikiEntityOutput(narrative_summary="", key_attributes=[], relationships=[])
-        return WikiEntityOutput(
-            narrative_summary=narrative_summary,
-            role_in_story=role_in_story,
-            key_attributes=key_attributes or [],
-            relationships=relationships or [],
-            character_arc=character_arc,
-        )
 
     # ------------------------------------------------------------------
     # Public API: generate_entity
@@ -95,6 +68,8 @@ class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
         deps: WikiGenerationDeps,
         *,
         stream: bool = False,
+        model_settings: ModelSettings | None = None,
+        usage_limits: UsageLimits | None = None,
     ) -> WikiEntityOutput:
         """Generate a wiki summary for a single KB entity.
 
@@ -104,15 +79,29 @@ class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
         Args:
             deps: Generation dependencies with entity context.
             stream: If True, use ``run_stream()`` for streaming output.
+            model_settings: Settings half of the ModelRegistry.prepare()
+                triple — forwarded to the pydantic-ai run.
+            usage_limits: Usage limits from the prepared triple —
+                forwarded to the pydantic-ai run.
 
         Returns:
             Structured entity wiki summary.
         """
         prompt_text = self._load_entity_prompt(deps)
         if stream:
-            async with self._agent.run_stream(prompt_text, deps=deps) as stream_result:
+            async with self._agent.run_stream(
+                prompt_text,
+                deps=deps,
+                model_settings=model_settings,
+                usage_limits=usage_limits,
+            ) as stream_result:
                 return cast("WikiEntityOutput", await stream_result.get_output())
-        result = await self._agent.run(prompt_text, deps=deps)
+        result = await self._agent.run(
+            prompt_text,
+            deps=deps,
+            model_settings=model_settings,
+            usage_limits=usage_limits,
+        )
         return cast("WikiEntityOutput", result.output)
 
     # ------------------------------------------------------------------
@@ -124,6 +113,8 @@ class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
         deps: WikiGenerationDeps,
         *,
         stream: bool = False,
+        model_settings: ModelSettings | None = None,
+        usage_limits: UsageLimits | None = None,
     ) -> WikiChapterOutput:
         """Generate a wiki summary for a single chapter.
 
@@ -133,12 +124,22 @@ class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
         Args:
             deps: Generation dependencies with chapter context.
             stream: If True, use ``run_stream()`` for streaming output.
+            model_settings: Settings half of the ModelRegistry.prepare()
+                triple — forwarded to the chapter agent run.
+            usage_limits: Usage limits from the prepared triple —
+                forwarded to the chapter agent run.
 
         Returns:
             Structured chapter wiki summary.
         """
         prompt_text = self._load_chapter_prompt(deps)
-        return await self._chapter_generator.generate(prompt_text, deps, stream=stream)
+        return await self._chapter_generator.generate(
+            prompt_text,
+            deps,
+            stream=stream,
+            model_settings=model_settings,
+            usage_limits=usage_limits,
+        )
 
     # ------------------------------------------------------------------
     # Prompt loading

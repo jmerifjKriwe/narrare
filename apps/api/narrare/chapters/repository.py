@@ -46,7 +46,10 @@ class ChapterRepository(BaseRepository):
         result = await self._session.execute(
             select(func.max(Chapter.position)).where(Chapter.novel_id == novel_id)
         )
-        return result.scalar_one_or_none() or -1
+        # Explicit None check: `value or -1` would map a legitimate max of 0
+        # (falsy) to -1, so every chapter would be created with position 0.
+        value = result.scalar_one_or_none()
+        return -1 if value is None else value
 
     async def create(
         self,

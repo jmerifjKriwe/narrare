@@ -11,6 +11,7 @@ ownership validation.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 from tests.fakes.fake_db_session import FakeDbSession
@@ -25,6 +26,23 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from narrare.novels.repository import NovelRepository
+
+
+def _fake_resolver() -> tuple[MagicMock, object]:
+    """A spec'd fake resolver returning one resolved model (Task-4 pattern)."""
+    from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
+    from narrare_core.llm import ResolvedModel, ResolvedModelConfig
+
+    resolved = ResolvedModel(
+        config=ResolvedModelConfig(
+            provider_name="zai", model_id="glm-4.7", temperature=0.7, max_tokens=4096
+        ),
+        api_key="sk-user-key",
+        base_url=None,
+    )
+    resolver = MagicMock(spec=ModelRoutingResolverImpl, name="ModelRoutingResolver")
+    resolver.resolve = AsyncMock(return_value=resolved)
+    return resolver, resolved
 
 
 class _StubNovelRepo:
@@ -58,15 +76,40 @@ class TestNovelOwnedLookup:
 
 
 class TestGetChatService:
-    def test_always_wires_novel_lookup(self) -> None:
+    async def test_always_wires_novel_lookup(self) -> None:
         """P-SEC invariant: the novel lookup is always wired — never ``None``.
 
         ``ChatService`` fails open on a missing lookup (test contexts only),
         so unwired production wiring would silently skip project ownership
         validation. This is the regression pin (notes T7-review pattern).
         """
-        service = get_chat_service(cast("AsyncSession", FakeDbSession()))
+        from unittest.mock import MagicMock, patch
 
+        resolver, resolved = _fake_resolver()
+        with (
+            patch(
+                "narrare.chat.dependencies.get_model_routing_resolver",
+                return_value=resolver,
+            ),
+            patch(
+                "narrare.chat.dependencies.get_model_registry",
+                return_value=MagicMock(spec=True, name="ModelRegistry"),
+            ),
+            patch(
+                "narrare.chat.dependencies.get_composer",
+                return_value=MagicMock(spec=True, name="PromptComposer"),
+            ),
+            patch(
+                "narrare.chat.dependencies.get_invocation_pipeline",
+                return_value=None,
+            ),
+        ):
+            service = await get_chat_service(
+                session=cast("AsyncSession", FakeDbSession()),
+                user_id=str(uuid4()),
+            )
+
+        _ = resolved
         assert isinstance(service, ChatService)
         assert isinstance(
             service._novel_lookup,  # pyright: ignore[reportPrivateUsage] — see docstring

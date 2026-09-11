@@ -49,12 +49,18 @@ async def stream_scene_by_scene(
         scene_prompt = pipeline._build_prompt_context(  # pyright: ignore[reportPrivateUsage]
             request,
             context,
-            mode="scene",
+            # Route-composition fix (T1f): "scene" is not a governed WRITE
+            # context-mode (route_table.py); the governed mode is scene_by_scene.
+            mode="scene_by_scene",
             author_instructions=scene_outline,
             extra_overrides={
+                # Item-3: scene-position metadata rendered by the
+                # scene_by_scene template numbering line. The scene outline
+                # itself flows as author_instructions above — no separate
+                # scene_outline extra (it was supplied-but-unrendered dead
+                # data; the variable exists in no registry or template).
                 "scene_number": str(idx),
                 "total_scenes": str(len(scenes)),
-                "scene_outline": scene_outline,
             },
         )
         prompt = await pipeline._build_and_validate_prompt(  # pyright: ignore[reportPrivateUsage]

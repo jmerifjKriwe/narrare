@@ -9,6 +9,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pydantic_ai.usage import UsageLimits
 
 from narrare.writing.summary_service import ChapterSummaryService
 from narrare_core.llm import ResolvedModelConfig
@@ -52,12 +53,21 @@ def _make_composer() -> AsyncMock:
 
 @pytest.fixture
 def mock_registry() -> AsyncMock:
-    """Mock ModelRegistry."""
+    """Mock ModelRegistry with the prepare() assembly point (Task 6c)."""
     from pydantic_ai.models import Model
+
+    from narrare_core.llm._prepared_call import PreparedModelCall
 
     registry = AsyncMock()
     model_mock = MagicMock(spec=Model)
     registry.get_model = AsyncMock(return_value=model_mock)
+    registry.prepare = AsyncMock(
+        return_value=PreparedModelCall(
+            model=model_mock,
+            model_settings={"max_tokens": 1000},
+            usage_limits=None,
+        )
+    )
     return registry
 
 
@@ -279,9 +289,14 @@ class TestSummarize:
         call_args = mock_composer.build.call_args
         assert call_args[0][0] == LLMIntent.SUMMARIZE
 
-        # Verify the registry was called with the correct config
-        mock_registry.get_model.assert_awaited_once_with(
+        # Verify the registry resolved via the prepare() assembly point
+        # with the SUMMARIZE intent (Task 6c wiring)
+        mock_registry.prepare.assert_awaited_once_with(
             service._config,
+            intent=LLMIntent.SUMMARIZE,
+            # Task 3: the ADR-045 run-limit resolver applies the config's
+            # output cap (max_tokens=1000) at the agent boundary.
+            usage_limits=UsageLimits(output_tokens_limit=1000),
             api_key=None,
             base_url=None,
         )

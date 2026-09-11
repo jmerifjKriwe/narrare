@@ -68,9 +68,13 @@ class TestVoiceDriftAPI:
     ) -> None:
         """POST streams progress/character_result/no_profile/done JSON events plus [DONE]."""
         with pytest.MonkeyPatch.context() as mp:
+
+            async def _fake_factory(**_kwargs: object) -> FakeVoiceDriftService:
+                return FakeVoiceDriftService()
+
             mp.setattr(
                 "narrare.analysis.router_voice_drift.get_voice_drift_service",
-                lambda _session: FakeVoiceDriftService(),
+                _fake_factory,
             )
             resp = await client.post(
                 f"/api/v1/analysis/voice-drift/{uuid4()}",

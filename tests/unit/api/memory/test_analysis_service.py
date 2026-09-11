@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -53,12 +54,39 @@ class FakeModelRegistry(ModelRegistry):
         """Return the configured pydantic-ai TestModel without provider lookup."""
         return self.model
 
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: object = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> SimpleNamespace:
+        """Task-6d bridge: resolution flows through prepare → get_model.
+
+        The service (Task 6d-2) resolves via the single assembly point;
+        the bridge forwards the intent/credential pass-throughs so the
+        existing get_model-based tests keep their semantics.
+        """
+        _ = intent
+        return SimpleNamespace(
+            model=await self.get_model(
+                config, api_key=api_key, base_url=base_url, usage_limits=usage_limits
+            ),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
+
 
 class TestPreferenceAnalysisService:
     def _make_service(
         self, event_count: int = 10
     ) -> tuple[Any, FakeFeedbackRepository, FakePreferenceProfileRepository]:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.memory.analysis_service import PreferenceAnalysisService
+        from narrare_core.llm import ResolvedModelConfig
+        from narrare_core.llm.model_routing import ResolvedModel
 
         registry = FakeModelRegistry()
         feedback_repo = FakeFeedbackRepository()
@@ -69,6 +97,16 @@ class TestPreferenceAnalysisService:
             feedback_repo=feedback_repo,
             profile_repo=profile_repo,
             composer=composer,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(
+                    config=ResolvedModelConfig(
+                        provider_name="zai",
+                        model_id="glm-4.7",
+                        temperature=0.7,
+                        max_tokens=4096,
+                    )
+                )
+            ),
         )
         return service, feedback_repo, profile_repo
 

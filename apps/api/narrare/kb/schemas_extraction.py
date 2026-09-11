@@ -7,6 +7,7 @@ Request/response models for the KB extraction apply flow.
 from __future__ import annotations
 
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -23,7 +24,8 @@ class ApplyExtractionItem(BaseModel):
     """What kind of operation this item represents."""
 
     name: str
-    """Entity or source entity name."""
+    """Entity name; for relationship items the predicate (e.g. ``engaged_to``).
+    Legacy relationship payloads carry the source entity name here."""
 
     entity_type: str | None = None
     """KB entity type (character, location, etc.) for new/update entities."""
@@ -38,7 +40,15 @@ class ApplyExtractionItem(BaseModel):
     """Type of relationship (ally, member_of, etc.)."""
 
     related_entity_name: str | None = None
-    """The other entity name in a relationship."""
+    """Legacy target field for relationship items; prefer ``target_entity_name``."""
+
+    source_entity_name: str | None = None
+    """Source (subject) entity name for relationship items. When absent,
+    ``name`` is used as a legacy fallback during apply."""
+
+    target_entity_name: str | None = None
+    """Target (object) entity name for relationship items. When absent,
+    ``related_entity_name`` is used as a legacy fallback during apply."""
 
     source_text: str = ""
     """Exact quote from chapter text supporting this extraction."""
@@ -52,6 +62,16 @@ class ApplyExtractionRequest(BaseModel):
     """
 
     items: list[ApplyExtractionItem]
+
+    chapter_id: UUID | None = None
+    """Chapter the endorsed items were extracted from, when known.
+
+    Optional for backward compatibility (spec ADR-085 §9(d)): absent
+    ``chapter_id`` means zero behavior change — the apply flow then
+    never writes provenance. When present, the chapter *position* is
+    resolved server-side via the chapter repository and stamped into
+    the reserved ``metadata["provenance"]`` block (ADR-085 §5).
+    """
 
 
 class ApplyExtractionEntryResult(BaseModel):
@@ -75,7 +95,9 @@ class ApplyExtractionResponse(BaseModel):
     """Response after applying endorsed extraction items.
 
     Reports which entries were created vs updated so the frontend
-    can refresh only the affected parts of the KB display.
+    can refresh only the affected parts of the KB display, plus every
+    item that could NOT be applied (with reason) — unapplied items are
+    never silently dropped.
     """
 
     created_entries: list[ApplyExtractionEntryResult] = []
@@ -83,3 +105,23 @@ class ApplyExtractionResponse(BaseModel):
 
     updated_entries: list[ApplyExtractionEntryResult] = []
     """Updated existing KB entries."""
+
+    skipped: list[SkippedItem] = []
+    """Items that could not be applied, each with a machine-readable reason."""
+
+
+class SkippedItem(BaseModel):
+    """An endorsed extraction item that could not be applied.
+
+    Reported in :attr:`ApplyExtractionResponse.skipped` so unapplied
+    items stay visible instead of vanishing into log lines only.
+    """
+
+    name: str
+    """The item's ``name`` field verbatim."""
+
+    item_type: str
+    """The item's operation type (new_entity, update_entity, …)."""
+
+    reason: str
+    """Machine-readable skip reason (e.g. ``source_not_found``)."""

@@ -85,9 +85,13 @@ async def test_analyze_voice_drift_serializes_progress_result_no_profile_done_an
     service = FakeVoiceDriftService(result, no_profile)
 
     with pytest.MonkeyPatch.context() as mp:
+
+        async def _fake_factory(**_kwargs: object) -> FakeVoiceDriftService:
+            return service
+
         mp.setattr(
             "narrare.analysis.router_voice_drift.get_voice_drift_service",
-            lambda _session: service,
+            _fake_factory,
         )
         stream_response = await analyze_voice_drift(
             novel_id=novel_id,
@@ -132,9 +136,13 @@ async def test_analyze_voice_drift_emits_error_event_on_failure() -> None:
             yield  # pragma: no cover - makes this an async generator
 
     with pytest.MonkeyPatch.context() as mp:
+
+        async def _failing_factory(**_kwargs: object) -> FailingService:
+            return FailingService()
+
         mp.setattr(
             "narrare.analysis.router_voice_drift.get_voice_drift_service",
-            lambda _session: FailingService(),
+            _failing_factory,
         )
         stream_response = await analyze_voice_drift(
             novel_id=uuid4(),

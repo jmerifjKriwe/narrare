@@ -36,10 +36,8 @@ from pydantic_ai import (
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.coreference_types import (
-    CharacterMention,
     CoreferenceDeps,
     CoreferenceOutput,
-    PronounResolution,
 )
 
 
@@ -56,7 +54,7 @@ class CoreferenceAgent(NarrareAgent[CoreferenceDeps, CoreferenceOutput]):
         super().__init__(
             model=model,
             deps_type=CoreferenceDeps,
-            output_type=[self._process_output, CoreferenceOutput],
+            output_type=CoreferenceOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -89,28 +87,6 @@ class CoreferenceAgent(NarrareAgent[CoreferenceDeps, CoreferenceOutput]):
             update={
                 "resolutions": valid_resolutions,
             }
-        )
-
-    async def _process_output(
-        self,
-        ctx: RunContext[CoreferenceDeps],
-        resolutions: list[dict[str, Any]] | None = None,
-        character_mentions: list[dict[str, Any]] | None = None,
-        clarity_score: float | None = None,
-        summary: str | None = None,
-    ) -> CoreferenceOutput:
-        """Output Function — structures the LLM response into CoreferenceOutput.
-
-        During streaming (``ctx.partial_output``) returns a minimal empty result.
-        """
-        if ctx.partial_output:
-            return CoreferenceOutput()
-
-        return CoreferenceOutput(
-            resolutions=[PronounResolution(**r) for r in (resolutions or [])],
-            character_mentions=[CharacterMention(**m) for m in (character_mentions or [])],
-            clarity_score=clarity_score if clarity_score is not None else 0.0,
-            summary=summary or "",
         )
 
     async def run(

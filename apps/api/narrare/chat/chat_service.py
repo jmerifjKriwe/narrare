@@ -16,8 +16,10 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+from narrare.chat._context import build_prompt_context, resolve_effective_message
 from narrare_core.chat.chat_service_core import new_conversation_id
 from narrare_core.chat.contracts import ChatMessage, ChatRequest, ChatServiceProtocol
+from narrare_core.llm.intents import LLMIntent
 from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
@@ -29,6 +31,8 @@ if TYPE_CHECKING:
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.notes.contracts import NoteLookupProtocol
     from narrare_core.prompts import PromptComposer
+    from narrare_core.prompts.composer import ComposedPrompt
+    from narrare_core.prompts.context import PromptContext
 
 
 class ChatService(ChatServiceProtocol):
@@ -39,8 +43,7 @@ class ChatService(ChatServiceProtocol):
     2. Note context injection into the user message (NOTES-001 §6b —
        runtime-input channel, RULE-02)
     3. Context assembly and prompt composition
-    4. Agent-based LLM streaming via ChatAgent (ADR-024; delegated to
-       ``chat._streaming``)
+    4. Agent-based LLM streaming via ChatAgent (ADR-024)
     5. ProcessHistory tracking for conversational continuity (ADR-034)
     6. Message persistence via SQLAlchemyConversationStore
     """
@@ -53,6 +56,8 @@ class ChatService(ChatServiceProtocol):
         config: ResolvedModelConfig,
         invocation_pipeline: InvocationPipeline | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
         note_lookup: NoteLookupProtocol | None = None,
         novel_lookup: OwnedLinkLookupProtocol | None = None,
     ) -> None:
@@ -67,6 +72,12 @@ class ChatService(ChatServiceProtocol):
                 and enrichment (ADR-045/ADR-048); ``None`` (default) is a no-op.
             run_limit_resolver: Optional run-limit resolver (ADR-045 Decision 4);
                 ``None`` (default) applies no limits to the stream.
+            api_key: Resolved per-user credential for the model registry call
+                (model-routing cascade). ``None`` only in the unit-test
+                harness; production wiring always supplies it via the DI
+                factory.
+            base_url: Resolved base-URL override for OpenAI-compatible
+                providers. ``None`` uses the provider default endpoint.
             note_lookup: Optional ``NoteLookupProtocol`` (NOTES-001 §6b) —
                 resolves ``note_id`` requests into a note whose context
                 block is prepended to the user message (runtime input,
@@ -84,6 +95,8 @@ class ChatService(ChatServiceProtocol):
         self._config = config
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver
+        self._api_key = api_key
+        self._base_url = base_url
         self._note_lookup = note_lookup
         self._novel_lookup = novel_lookup
         self._histories: dict[UUID, ProcessHistory] = {}
@@ -115,13 +128,6 @@ class ChatService(ChatServiceProtocol):
         """
         conv_id = request.conversation_id or new_conversation_id()
         is_new = request.conversation_id is None
-
-        from narrare.chat._context import (
-            assemble_chat_context,
-            compose_chat_prompt,
-            resolve_effective_message,
-        )
-        from narrare.chat._streaming import stream_chat_response
 
         # 0. NOTES-001 §6b: attach a requested note as RUNTIME INPUT — its
         # context block is prepended to the user message, never baked into
@@ -160,13 +166,42 @@ class ChatService(ChatServiceProtocol):
             history = await self._store.get_history(conv_id, user_id)
 
         # 2. Build context + compose prompt
-        context = assemble_chat_context(history)
-        composed = await compose_chat_prompt(self._composer, context, message)
+        context = build_prompt_context(history)
+
+        composed = await self._composer.build(
+            LLMIntent.CHAT,
+            context,
+            user_prompt=message,
+        )
 
         # 3. Return the async generator that streams events via ChatAgent
-        return stream_chat_response(
+        return self._stream_agent_response(
+            conv_id=conv_id,
+            composed=composed,
+            context=context,
+            user_prompt=message,
+            user_id=user_id,
+            project_id=request.project_id,
+        )
+
+    async def _stream_agent_response(
+        self,
+        conv_id: UUID,
+        composed: ComposedPrompt,
+        context: PromptContext,
+        user_prompt: str,
+        *,
+        user_id: UUID,
+        project_id: UUID | None,
+    ) -> AsyncIterator[dict[str, object]]:
+        """Stream one turn — thin delegation (RULE-04) to ``chat._agent_stream``."""
+        from narrare.chat._agent_stream import stream_agent_response
+
+        async for event in stream_agent_response(
             registry=self._registry,
             config=self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
             composer=self._composer,
             store=self._store,
             histories=self._histories,
@@ -175,10 +210,11 @@ class ChatService(ChatServiceProtocol):
             conv_id=conv_id,
             composed=composed,
             context=context,
-            user_prompt=message,
+            user_prompt=user_prompt,
             user_id=user_id,
-            project_id=request.project_id,
-        )
+            project_id=project_id,
+        ):
+            yield event
 
     async def get_history(
         self,

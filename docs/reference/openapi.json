@@ -3984,7 +3984,7 @@
           "analysis"
         ],
         "summary": "Analyze POV consistency — scene detection + head-hopping + knowledge leakage",
-        "description": "Analyze POV consistency for one or more chapters.\n\nDetects POV character per scene, flags head-hopping, knowledge\nleakage, emotional leakage, and physical impossibility violations.\n\nArgs:\n    novel_id: The novel containing the chapters.\n    request: Chapter IDs + language + optional POV type hint.\n\nReturns:\n    ``POVResult`` with per-scene assignments, flagged violations,\n    and distribution statistics.",
+        "description": "Analyze POV consistency for one or more chapters.\n\nDetects POV character per scene, flags head-hopping, knowledge\nleakage, emotional leakage, and physical impossibility violations.\n\nArgs:\n    novel_id: The novel containing the chapters.\n    request: Chapter IDs + language.\n\nReturns:\n    ``POVResult`` with per-scene assignments, flagged violations,\n    and distribution statistics.",
         "operationId": "analyze_pov_api_v1_analysis_pov_post",
         "security": [
           {
@@ -6076,6 +6076,18 @@
               "default": 50,
               "title": "Page Size"
             }
+          },
+          {
+            "name": "include_deprecated",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include deprecated (merged) entries — hidden by default (ADR-085 §9(c))",
+              "default": false,
+              "title": "Include Deprecated"
+            },
+            "description": "Include deprecated (merged) entries — hidden by default (ADR-085 §9(c))"
           }
         ],
         "responses": {
@@ -6193,6 +6205,18 @@
               "default": 50,
               "title": "Page Size"
             }
+          },
+          {
+            "name": "include_deprecated",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include deprecated (merged) entries — hidden by default (ADR-085 §9(c))",
+              "default": false,
+              "title": "Include Deprecated"
+            },
+            "description": "Include deprecated (merged) entries — hidden by default (ADR-085 §9(c))"
           }
         ],
         "responses": {
@@ -6375,6 +6399,240 @@
               "type": "string",
               "format": "uuid",
               "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/resolution/analyze": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Analyze Resolution",
+        "description": "Run (or fetch) the duplicate detection analysis for one novel.",
+        "operationId": "analyze_resolution_api_v1_novels__novel_id__kb_resolution_analyze_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolutionAnalyzeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolutionAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/resolution/suggestions": {
+      "get": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Get Resolution Suggestions",
+        "description": "Return the cached analysis without recomputing (empty when never analyzed).",
+        "operationId": "get_resolution_suggestions_api_v1_novels__novel_id__kb_resolution_suggestions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolutionAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/resolution/suggestions/{suggestion_id}/endorse": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Endorse Resolution Suggestion",
+        "description": "Re-validate the suggestion, execute the merge (spec §7), 409 when stale.",
+        "operationId": "endorse_resolution_suggestion_api_v1_novels__novel_id__kb_resolution_suggestions__suggestion_id__endorse_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "suggestion_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Suggestion Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ResolutionEndorseRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MergeExecutionResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/resolution/suggestions/{suggestion_id}/reject": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Reject Resolution Suggestion",
+        "description": "Persist the dismissal (existing dismissed-suggestions pattern); 204.",
+        "operationId": "reject_resolution_suggestion_api_v1_novels__novel_id__kb_resolution_suggestions__suggestion_id__reject_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "suggestion_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Suggestion Id"
             }
           }
         ],
@@ -6703,6 +6961,18 @@
               "default": 2000,
               "title": "Max Edges"
             }
+          },
+          {
+            "name": "include_deprecated",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include deprecated (merged) entities — hidden by default (ADR-085 §9(c))",
+              "default": false,
+              "title": "Include Deprecated"
+            },
+            "description": "Include deprecated (merged) entities — hidden by default (ADR-085 §9(c))"
           }
         ],
         "responses": {
@@ -12761,6 +13031,28 @@
             ],
             "title": "Related Entity Name"
           },
+          "source_entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Entity Name"
+          },
+          "target_entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Entity Name"
+          },
           "source_text": {
             "type": "string",
             "title": "Source Text",
@@ -12783,6 +13075,18 @@
             },
             "type": "array",
             "title": "Items"
+          },
+          "chapter_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Id"
           }
         },
         "type": "object",
@@ -12809,11 +13113,19 @@
             "type": "array",
             "title": "Updated Entries",
             "default": []
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedItem"
+            },
+            "type": "array",
+            "title": "Skipped",
+            "default": []
           }
         },
         "type": "object",
         "title": "ApplyExtractionResponse",
-        "description": "Response after applying endorsed extraction items.\n\nReports which entries were created vs updated so the frontend\ncan refresh only the affected parts of the KB display."
+        "description": "Response after applying endorsed extraction items.\n\nReports which entries were created vs updated so the frontend\ncan refresh only the affected parts of the KB display, plus every\nitem that could NOT be applied (with reason) — unapplied items are\nnever silently dropped."
       },
       "ArcPhaseResponse": {
         "properties": {
@@ -13131,6 +13443,30 @@
           "models"
         ],
         "title": "AvailableModelsResponse"
+      },
+      "BandStats": {
+        "properties": {
+          "review": {
+            "type": "integer",
+            "title": "Review"
+          },
+          "auto_eligible": {
+            "type": "integer",
+            "title": "Auto Eligible"
+          },
+          "suppressed": {
+            "type": "integer",
+            "title": "Suppressed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "review",
+          "auto_eligible",
+          "suppressed"
+        ],
+        "title": "BandStats",
+        "description": "Per-band pair counts for one analysis run."
       },
       "BandSummaryOverrideRequest": {
         "properties": {
@@ -17517,6 +17853,75 @@
         "title": "MarkdownOptions",
         "description": "Markdown-specific options (pandoc)."
       },
+      "MergeConflict": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "survivor_value": {
+            "title": "Survivor Value"
+          },
+          "loser_value": {
+            "title": "Loser Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "survivor_value",
+          "loser_value"
+        ],
+        "title": "MergeConflict",
+        "description": "One scalar metadata conflict resolved in the survivor's favor (§6.2).\n\nRecorded in the survivor's ``metadata[\"resolution\"][\"conflicts\"]`` and\nin :attr:`MergeExecutionResult.conflicts` — merge-not-clobber, the\nloser's value is preserved here and in the deprecated loser row (never\nsilently lost)."
+      },
+      "MergeExecutionResult": {
+        "properties": {
+          "survivor_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Survivor Id"
+          },
+          "loser_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Loser Id"
+          },
+          "merged_fact_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Merged Fact Keys"
+          },
+          "repointed_relationships": {
+            "type": "integer",
+            "title": "Repointed Relationships"
+          },
+          "skipped_relationships": {
+            "type": "integer",
+            "title": "Skipped Relationships"
+          },
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/MergeConflict"
+            },
+            "type": "array",
+            "title": "Conflicts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "survivor_id",
+          "loser_id",
+          "merged_fact_keys",
+          "repointed_relationships",
+          "skipped_relationships",
+          "conflicts"
+        ],
+        "title": "MergeExecutionResult",
+        "description": "Outcome of one executed merge (spec §6)."
+      },
       "MirroredMargins": {
         "properties": {
           "inside_mm": {
@@ -18651,17 +19056,6 @@
             "minLength": 2,
             "title": "Language",
             "default": "en"
-          },
-          "pov_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pov Type"
           }
         },
         "type": "object",
@@ -18669,7 +19063,7 @@
           "chapter_ids"
         ],
         "title": "POVRequest",
-        "description": "Request for POV consistency analysis.\n\nAttributes:\n    chapter_ids: One or more chapter UUIDs to analyze (1-10).\n        Chapters are concatenated before analysis.\n    language: Language for analysis output. Defaults to ``\"en\"``.\n    pov_type: Optional POV type hint (``\"third_limited\"``,\n        ``\"first_person\"``, ``\"omniscient\"``).  If ``None``,\n        auto-detect from the text."
+        "description": "Request for POV consistency analysis.\n\nAttributes:\n    chapter_ids: One or more chapter UUIDs to analyze (1-10).\n        Chapters are concatenated before analysis.\n    language: Language for analysis output. Defaults to ``\"en\"``."
       },
       "POVResult": {
         "properties": {
@@ -19965,6 +20359,63 @@
         ],
         "title": "ReprocessResponse",
         "description": "Response model for reprocessing endpoint."
+      },
+      "ResolutionAnalysisResponse": {
+        "properties": {
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionResponse"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/BandStats"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "suggestions",
+          "stats",
+          "cache_hit"
+        ],
+        "title": "ResolutionAnalysisResponse",
+        "description": "Detection result for one novel scope (spec §7 analyze response)."
+      },
+      "ResolutionAnalyzeRequest": {
+        "properties": {
+          "refresh": {
+            "type": "boolean",
+            "title": "Refresh",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ResolutionAnalyzeRequest",
+        "description": "Request body for the analyze endpoint (spec §7).\n\nPrefixed ``Resolution…`` so the generated OpenAPI schema name cannot\ncollide with the unrelated memory-domain ``AnalyzeRequest`` (fix\nround 1 — a collision forced FastAPI to rename the memory schema)."
+      },
+      "ResolutionEndorseRequest": {
+        "properties": {
+          "survivor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Survivor Id"
+          }
+        },
+        "type": "object",
+        "title": "ResolutionEndorseRequest",
+        "description": "Optional endorse body (spec §7): ``{survivor_id?}``.\n\nWhen omitted (or ``None``), the survivor is picked by the §6.1\ndeterministic total order; when present it must name one of the two\nsuggested entries."
       },
       "ResolveReferencesRequest": {
         "properties": {
@@ -21287,6 +21738,59 @@
         "title": "ShortestPathResponse",
         "description": "Response for shortest path query."
       },
+      "SignalEvidence": {
+        "properties": {
+          "signal": {
+            "type": "string",
+            "title": "Signal"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "veto": {
+            "type": "boolean",
+            "title": "Veto"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "signal",
+          "value",
+          "veto",
+          "detail"
+        ],
+        "title": "SignalEvidence",
+        "description": "Per-signal evidence attached to one suggestion (evidence transparency)."
+      },
+      "SkippedItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "item_type": {
+            "type": "string",
+            "title": "Item Type"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "item_type",
+          "reason"
+        ],
+        "title": "SkippedItem",
+        "description": "An endorsed extraction item that could not be applied.\n\nReported in :attr:`ApplyExtractionResponse.skipped` so unapplied\nitems stay visible instead of vanishing into log lines only."
+      },
       "StarterContent": {
         "type": "string",
         "enum": [
@@ -21755,6 +22259,80 @@
         ],
         "title": "StyleVariantRegenerateRequest",
         "description": "Request to regenerate an AI output in a specific style variant.\n\nThe source text is the existing AI output (or selection) that the writer\nwants regenerated in a controlled creative direction.  Context markers\nprovide surrounding text for register matching.  Model/provider/token\nsettings resolve through the existing cascade — the variant never changes\nproviders."
+      },
+      "SuggestionResponse": {
+        "properties": {
+          "suggestion_id": {
+            "type": "string",
+            "title": "Suggestion Id"
+          },
+          "entry_a_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entry A Id"
+          },
+          "entry_b_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entry B Id"
+          },
+          "name_a": {
+            "type": "string",
+            "title": "Name A"
+          },
+          "name_b": {
+            "type": "string",
+            "title": "Name B"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "band": {
+            "type": "string",
+            "enum": [
+              "REVIEW",
+              "AUTO_ELIGIBLE"
+            ],
+            "title": "Band"
+          },
+          "auto_merge_eligible": {
+            "type": "boolean",
+            "title": "Auto Merge Eligible"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/SignalEvidence"
+            },
+            "type": "array",
+            "title": "Signals"
+          },
+          "adjudication_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjudication Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "suggestion_id",
+          "entry_a_id",
+          "entry_b_id",
+          "name_a",
+          "name_b",
+          "confidence",
+          "band",
+          "auto_merge_eligible",
+          "signals"
+        ],
+        "title": "SuggestionResponse",
+        "description": "One surfaced merge suggestion (band REVIEW or AUTO_ELIGIBLE)."
       },
       "SuitabilityIssueMetadata": {
         "properties": {

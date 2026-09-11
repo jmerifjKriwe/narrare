@@ -11,8 +11,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare._app.dependencies import CurrentUserIdDep, SessionDep, get_current_user_id
+from narrare._app.dependencies_services import LazyModelResolution, get_model_routing_resolver
 from narrare.memory.schemas import AnalyzeRequest, AnalyzeResponse
+from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from narrare.memory.analysis_service import PreferenceAnalysisService
@@ -26,8 +28,24 @@ ANALYSIS_COOLDOWN = timedelta(hours=1)
 
 async def _get_analysis_service(
     session: SessionDep,
+    user_id: str = Depends(get_current_user_id),
 ) -> PreferenceAnalysisService:
-    """Async factory for PreferenceAnalysisService."""
+    """Async factory for PreferenceAnalysisService — per-user model routing.
+
+    Wires the model routing LAZILY (ADR-086): the factory runs before
+    FastAPI body validation, so an eager resolve here would preempt
+    legitimate 422s with 400/500s. Instead it passes a
+    ``LazyModelResolution`` around ``resolver.resolve(LLMIntent.EXTRACT,
+    user_id, None)`` into the service — the cascade runs on the
+    service's first use at the top of ``_run_agent()``. It resolves
+    ``LLMIntent.EXTRACT`` (the intent the service's invocation
+    composer actually uses) via the per-user cascade. No project tier:
+    the analyze route has no novel_id path parameter — ``project_id``
+    arrives only in the request BODY, unavailable at DI-wiring time
+    (same documented caveat as the Task 5 series factories).
+    ``ConfigurationError`` still propagates loudly at first use
+    (RULE-11; the route is auth-mandatory).
+    """
     from narrare._app.dependencies import (
         get_composer,
         get_invocation_pipeline,
@@ -35,6 +53,12 @@ async def _get_analysis_service(
     )
     from narrare.memory.analysis_service import PreferenceAnalysisService
     from narrare.memory.repository import FeedbackRepository, PreferenceProfileRepository
+
+    resolver = get_model_routing_resolver(session)
+    user_uuid = UUID(user_id)
+    model_resolution = LazyModelResolution(
+        lambda: resolver.resolve(LLMIntent.EXTRACT, user_uuid, None)
+    )
 
     registry = get_model_registry()
     feedback_repo = FeedbackRepository(session)
@@ -45,6 +69,7 @@ async def _get_analysis_service(
         feedback_repo=feedback_repo,
         profile_repo=profile_repo,
         composer=composer,
+        model_resolution=model_resolution,
         invocation_pipeline=get_invocation_pipeline(),
     )
 

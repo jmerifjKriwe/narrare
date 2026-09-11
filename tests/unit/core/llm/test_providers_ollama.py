@@ -13,8 +13,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.ollama import OllamaProvider
 
 from narrare_core.llm._providers.ollama import _make_ollama
+from narrare_core.llm._schema_transformer import NarrareOpenAICompatJsonSchemaTransformer
 
 if TYPE_CHECKING:
     import pytest
@@ -45,3 +47,28 @@ class TestMakeOllama:
         model = _make_ollama("mistral")
         assert model.base_url == "http://env-host:1234/v1/"
         assert model.model_name == "mistral"
+
+
+class TestOllamaProviderFacts:
+    """Ollama models route through pydantic-ai's native ``OllamaProvider``.
+
+    The native provider imports upstream-maintained capability facts (strict
+    tool definitions unsupported, ``reasoning`` thinking field, native JSON
+    schema output); the shared profile hook swaps in the universal inlining
+    transformer on top.
+    """
+
+    def test_provider_is_native_ollama_provider(self) -> None:
+        model = _make_ollama("llama3")
+        assert isinstance(model.provider, OllamaProvider)
+
+    def test_profile_carries_inlining_transformer(self) -> None:
+        model = _make_ollama("llama3")
+        assert model.profile.get("json_schema_transformer") is (
+            NarrareOpenAICompatJsonSchemaTransformer
+        )
+
+    def test_upstream_capability_facts_retained(self) -> None:
+        model = _make_ollama("llama3")
+        assert model.profile.get("openai_supports_strict_tool_definition") is False
+        assert model.profile.get("openai_chat_thinking_field") == "reasoning"

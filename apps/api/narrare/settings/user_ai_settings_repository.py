@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from narrare._app.base_repository import BaseRepository
 from narrare.settings.models import UserAiSettings
@@ -24,6 +25,14 @@ class UserAiSettingsRepository(BaseRepository):
     async def get(self, user_id: uuid.UUID) -> UserAiSettings:
         """Get AI settings for a user. Auto-creates if missing.
 
+        Race-safe: the INSERT carries ``ON CONFLICT (user_id) DO NOTHING``
+        so a concurrent request winning the insert does not raise
+        IntegrityError — the loser re-selects the winner's committed row
+        (READ COMMITTED snapshot). Without this, a racing request hit a
+        UniqueViolation on ``user_ai_settings_pkey`` → HTTP 500 (same
+        defect class as ``ProjectAiSettingsRepository``, benchmark
+        2026-09-07-clean-failed-1).
+
         Args:
             user_id: The user's UUID.
 
@@ -35,9 +44,19 @@ class UserAiSettingsRepository(BaseRepository):
         )
         settings = result.scalar_one_or_none()
         if not settings:
-            settings = UserAiSettings(user_id=user_id)
-            self._session.add(settings)
-            await self._flush_and_refresh(settings)
+            stmt = (
+                pg_insert(UserAiSettings)
+                .values(user_id=user_id)
+                .on_conflict_do_nothing(index_elements=["user_id"])
+            )
+            await self._session.execute(stmt)
+            result = await self._session.execute(
+                select(UserAiSettings).where(UserAiSettings.user_id == user_id)
+            )
+            settings = result.scalar_one_or_none()
+            # Post-upsert the row always exists: either our INSERT landed or
+            # the concurrent winner's row is committed and visible.
+            assert settings is not None
         return settings
 
     async def update(self, user_id: uuid.UUID, **kwargs: object) -> UserAiSettings:

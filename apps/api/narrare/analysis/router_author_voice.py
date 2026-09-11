@@ -71,7 +71,7 @@ async def analyze_author_voice(
     On failure, an ``"error"`` event (``is_final=True``) precedes the
     ``[DONE]`` sentinel.
     """
-    service = get_author_voice_service(session)
+    service = await get_author_voice_service(novel_id=novel_id, session=session, user_id=user_id)
     chapter_ids = [uuid.UUID(cid) for cid in request.chapter_ids] if request.chapter_ids else None
 
     async def event_stream() -> AsyncIterator[str]:

@@ -44,6 +44,7 @@ import structlog
 
 from narrare_core.llm.result import StreamChunk
 from narrare_core.prompts.context import PromptContext
+from narrare_core.writing._helpers import kb_context_extras
 from narrare_core.writing._invocation_adapter import build_and_validate_prompt
 from narrare_core.writing._mode_dispatch import stream_for_mode
 from narrare_core.writing._stages import (
@@ -273,8 +274,12 @@ class WritingPipeline:
             "user_id": str(request.user_id),
             "project_id": str(request.project_id),
             "chapter_outline": context.chapter_outline,
-            "kb_characters": context.kb_characters,
-            "kb_locations": context.kb_locations,
+            # ADR-050 P1-D / KB extras SSOT (A2): all ten KB prompt variables
+            # merge from kb_context_extras — the Tier-5 trio (systems /
+            # timelines / pinned, "" when empty, byte-identical renders) plus
+            # the previously unsupplied relationship / faction / other /
+            # suggested / context-warning variables.
+            **kb_context_extras(context),
             "recent_chapters": context.recent_chapters,
             "character_voice_profiles": context.character_voice_profiles,
             "author_voice": context.author_voice,

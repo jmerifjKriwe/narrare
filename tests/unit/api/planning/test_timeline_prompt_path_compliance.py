@@ -12,6 +12,7 @@ See:
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -56,10 +57,30 @@ class FakeComposer:
 
 
 class FakeModelRegistry:
-    """Fake ModelRegistry returning a stub model."""
+    """Fake ModelRegistry returning a stub model.
+
+    Task-6b-2 bridge: model resolution flows through the ``prepare()``
+    single assembly point (which delegates to ``get_model``), so tests
+    exercise the migrated helper path.
+    """
 
     def __init__(self) -> None:
         self.get_model = AsyncMock(return_value=MagicMock(spec=object))
+
+    async def prepare(
+        self,
+        config: object,
+        *,
+        intent: object = None,
+        usage_limits: object = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object:
+        return SimpleNamespace(
+            model=await self.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
 
 
 # ---------------------------------------------------------------------------

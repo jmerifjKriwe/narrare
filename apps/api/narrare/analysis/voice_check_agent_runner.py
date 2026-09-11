@@ -9,6 +9,7 @@ this helper performs the focused agent-boundary work.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
@@ -21,6 +22,8 @@ from narrare.analysis.voice_check_runtime_content import (
 )
 from narrare_core.agents.character_voice_checker_agent import CharacterVoiceCheckerAgent
 from narrare_core.agents.character_voice_checker_types import CharacterVoiceCheckerDeps
+from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -55,6 +58,9 @@ async def run_voice_checker_agent(
     composer: PromptComposer,
     invocation_pipeline: InvocationPipeline | None,
     relationship_repo: RelationshipRepository | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    run_limit_resolver: DefaultRunLimitResolver | None = None,
 ) -> dict[str, CharacterVoiceCheckerEntry]:
     """Resolve the governed prompt and run one checker-agent call.
 
@@ -76,6 +82,9 @@ async def run_voice_checker_agent(
             ``kb_relationships`` (character relationships help the checker
             evaluate dialogue-tone consistency). When ``None``, degrades
             gracefully to an empty string (RULE-11).
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — injected into ``ModelRegistry.prepare``.
+        base_url: Optional per-user provider base URL override.
 
     Returns:
         Mapping from character name to qualitative checker entry.
@@ -123,13 +132,29 @@ async def run_voice_checker_agent(
         chapter_title=str(getattr(chapter, "title", "") or ""),
     )
 
-    model = await model_registry.get_model(model_config)
+    # Single assembly point (Task 6a-2 — Task 4/5 pattern): model + intent-aware
+    # runtime settings + usage limits as one coherent triple, so the thinking
+    # policy actually reaches this call.
+    resolved = (run_limit_resolver or DefaultRunLimitResolver()).resolve(
+        config=model_config, budget=None, invocation_id=uuid4()
+    )
+    prepared = await model_registry.prepare(
+        model_config,
+        intent=LLMIntent.VOICE,
+        usage_limits=resolved.usage_limits,
+        api_key=api_key,
+        base_url=base_url,
+    )
     try:
-        agent = CharacterVoiceCheckerAgent(model=model, system_prompt=composed_prompt.system)
+        agent = CharacterVoiceCheckerAgent(
+            model=prepared.model, system_prompt=composed_prompt.system
+        )
         output = await agent.run(
             prompt=composed_prompt.user
             or build_run_prompt(attributed_dialogue, descriptive_profiles, metric_delta),
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
     except Exception as exc:
         logger.error(

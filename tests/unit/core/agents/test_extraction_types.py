@@ -67,6 +67,35 @@ class TestRelationshipItem:
         assert item.relationship_type == "ally"
         assert item.related_entity_name == "Peter"
 
+    def test_relationship_item_with_endpoint_names(self) -> None:
+        """Predicate-contract relationship: name is the predicate, endpoints by name."""
+        item = ExtractionItem(
+            item_type="relationship",
+            name="engaged_to",
+            confidence=0.75,
+            source_text="Anna got engaged to Peter.",
+            relationship_type="engaged_to",
+            source_entity_name="Anna Meyer",
+            target_entity_name="Peter Meyer",
+        )
+        assert item.name == "engaged_to"
+        assert item.relationship_type == "engaged_to"
+        assert item.source_entity_name == "Anna Meyer"
+        assert item.target_entity_name == "Peter Meyer"
+
+    def test_endpoint_names_default_to_none(self) -> None:
+        """Endpoint name fields default to None (legacy outputs)."""
+        item = ExtractionItem(
+            item_type="relationship",
+            name="Anna and Peter",
+            confidence=0.75,
+            source_text="Anna and Peter fought side by side.",
+            relationship_type="ally",
+            related_entity_name="Peter",
+        )
+        assert item.source_entity_name is None
+        assert item.target_entity_name is None
+
 
 class TestConflictItem:
     """item_type='conflict' with conflict_description."""

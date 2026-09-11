@@ -2,22 +2,27 @@
 
 Exercises every repository method including the multi-query ``get_stats``
 (aggregate row + target lookup) and the ``reorder`` bulk-update loop, plus
-the ``max_position`` ``or -1`` empty-set fallback. No real database.
+the ``max_position`` explicit-None empty-set fallback. No real database.
 """
 
 from __future__ import annotations
 
+import uuid
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
-from tests.factories import make_volume
+from tests.factories import make_novel, make_volume
+from tests.fakes import FakeNovelService
 from tests.fakes.fake_db_session import FakeDbSession, FakeResult
 
 from narrare.volumes.repository import VolumeRepository
-from narrare.volumes.schemas import UpdateVolumeRequest
+from narrare.volumes.schemas import CreateVolumeRequest, UpdateVolumeRequest
+from narrare.volumes.service import VolumeService
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from narrare.volumes.models import Volume
 
 
@@ -49,7 +54,7 @@ class TestVolumeRepositoryReads:
         assert result == 3
 
     async def test_max_position_returns_minus_one_when_empty(self) -> None:
-        """An empty aggregate (None) resolves to -1 via ``or -1``."""
+        """An empty aggregate (None) resolves to -1 via the explicit None check."""
         session = FakeDbSession([FakeResult(value=None)])
         repo = VolumeRepository(cast("object", session))  # type: ignore[arg-type]
 
@@ -142,3 +147,38 @@ class TestVolumeRepositoryReorder:
 
         assert result == volumes
         assert session.flush_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Regression — max_position falsy-zero (same class as chapters fix)
+# ---------------------------------------------------------------------------
+
+
+class TestSequentialCreatePositions:
+    """Sequential creates without explicit position must assign 0, 1, 2, …
+
+    Regression guard for the falsy-zero bug in ``VolumeRepository.
+    max_position``: ``scalar_one_or_none() or -1`` mapped a legitimate
+    max position of 0 (the first volume) to -1, so every subsequent
+    volume was also created with position 0.
+    """
+
+    async def test_create_without_position_assigns_sequential_0_1(self) -> None:
+        """DB max values None → 0 must produce volume positions 0, 1."""
+        session = FakeDbSession(
+            [
+                FakeResult(value=None),  # empty novel
+                FakeResult(value=0),  # max = volume 1
+            ]
+        )
+        repo = VolumeRepository(cast("AsyncSession", session))
+        novel_service = FakeNovelService()
+        novel_id, user_id = uuid.uuid4(), uuid.uuid4()
+        novel_service.seed(make_novel(id=novel_id, user_id=user_id))
+        service = VolumeService(repo=repo, novel_service=novel_service)
+
+        volume_1 = await service.create(novel_id, user_id, CreateVolumeRequest(title="Volume 1"))
+        volume_2 = await service.create(novel_id, user_id, CreateVolumeRequest(title="Volume 2"))
+
+        assert volume_1.position == 0
+        assert volume_2.position == 1  # RED before fix: falsy `0 or -1` → both 0

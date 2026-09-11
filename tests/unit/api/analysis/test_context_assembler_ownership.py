@@ -27,6 +27,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.analysis.beta_reader_service import BetaReaderService
 from narrare.analysis.context_assembler import ContextAssembler
 from narrare.analysis.contracts import FeedbackCategory
@@ -36,7 +37,8 @@ from narrare.analysis.schemas import (
     BetaReaderRequest,
     BetaReaderResponse,
 )
-from narrare_core.llm import ResolvedModelConfig
+from narrare_core.analysis.assembler import AnalysisContextAssembler
+from narrare_core.llm import ResolvedModel, ResolvedModelConfig
 from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
@@ -183,14 +185,21 @@ def _make_service(
     cache.set = AsyncMock()
     registry = AsyncMock()
     composer = AsyncMock()
+    config = ResolvedModelConfig(
+        provider_name="test", model_id="test", temperature=0.7, max_tokens=4096
+    )
+
+    async def _default_budget_assembler() -> AnalysisContextAssembler:
+        """Default (uncapped) budget assembler — pre-ADR-086 unit default."""
+        return AnalysisContextAssembler()
+
     service = BetaReaderService(
         context_assembler=assembler,
         cache=cache,
         registry=registry,
-        config=ResolvedModelConfig(
-            provider_name="test", model_id="test", temperature=0.7, max_tokens=4096
-        ),
+        model_resolution=StaticModelResolution(ResolvedModel(config=config)),
         composer=composer,
+        budget_assembler_factory=_default_budget_assembler,
     )
     return service, registry, cache
 

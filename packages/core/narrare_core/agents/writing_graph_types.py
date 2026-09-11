@@ -11,6 +11,9 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from pydantic_ai.settings import ModelSettings
+    from pydantic_ai.usage import UsageLimits
+
     from narrare_core.prompts.composer import PromptComposer
 
 # ---------------------------------------------------------------------------
@@ -48,6 +51,10 @@ class WritingDeps:
         model_config: ResolvedModelConfig für den aktuellen LLM-Call.
         api_key: Optionaler API-Key.
         base_url: Optionaler Base-URL.
+        model_settings: Settings half of the ModelRegistry.prepare()
+            triple — forwarded by every graph step to agent.run().
+        usage_limits: Usage limits from the prepared triple — forwarded
+            by every graph step to agent.run().
         chapter_content: Vorhandener Kapitel-Content.
         chapter_outline: Outline.
         genre: Genre.
@@ -62,6 +69,12 @@ class WritingDeps:
     model_config: Any = None  # ResolvedModelConfig
     api_key: str | None = None
     base_url: str | None = None
+    # Settings half of the ModelRegistry.prepare() triple (Task 1,
+    # pydantic-ai follow-ups): API-side callers wire the prepared
+    # model_settings/usage_limits here; every graph step forwards them
+    # to its agent.run(). None = run without explicit settings (compat).
+    model_settings: ModelSettings | None = None
+    usage_limits: UsageLimits | None = None
     chapter_content: str = ""
     chapter_outline: str = ""
     genre: str = ""

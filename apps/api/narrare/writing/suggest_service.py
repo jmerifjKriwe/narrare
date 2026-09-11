@@ -146,9 +146,14 @@ class InlineSuggestService:
         assembly.  Uses ``LLMIntent.SUGGEST`` → ``writing/inline_suggest``
         prompt mode.  Max ~60 tokens per suggestion for low latency.
 
-        The prompt context includes the user's ``text_before`` as the
-        primary completion trigger, ``text_after`` for forward context,
-        and minimal chapter metadata (title, POV).
+        The prompt context carries the user's ``text_before``/``text_after``
+        as extra variables so the governed template renders them XML-wrapped
+        in the SYSTEM channel (RULE-22 §6 injection defense).
+        ``author_instructions`` is intentionally NOT set: the composer's
+        fallback would pass the raw manuscript text through the user channel,
+        duplicating it alongside the wrapped system copy (R2 Slice B',
+        2026-09-11). ``kb_characters`` is supplied empty — lean ruling, no
+        KB assembly on the <500 ms path (ADR-045 bypass, see below).
 
         ADR-045 Decision 3 Option C exception — intentional pipeline bypass:
             This method intentionally does NOT use ``InvocationPipeline``
@@ -210,11 +215,18 @@ class InlineSuggestService:
         ctx = PromptContext(
             language=request.language,
             mode="inline_suggest",
-            author_instructions=request.text_before,
             extra={
                 "user_id": str(user_id),
                 "chapter_id": str(chapter_id),
+                # SYSTEM-channel XML wrapping via the governed template
+                # (<user_provided_text> blocks) — R2 Slice B'. Never map
+                # text_before to author_instructions: the composer fallback
+                # would leak raw manuscript text into the user channel.
+                "text_before": request.text_before,
                 "text_after": request.text_after or "",
+                # Lean ruling (ADR-045 <500 ms bypass): no KB assembly on the
+                # suggest path — the Characters section renders empty.
+                "kb_characters": "",
                 "chapter_context": chapter_context,
             },
         )

@@ -18,6 +18,7 @@ from uuid import uuid4
 
 import pytest
 
+from narrare.kb._extraction_context import build_extraction_prompt_context
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.prompts import PromptComposer, PromptRegistry
 from narrare_core.shared.errors import PromptNotFoundError
@@ -69,40 +70,22 @@ def mock_kb_repo() -> FakeKBRepo:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_build_prompt_context_includes_chapter_title(
-    mock_registry: FakeModelRegistry,
-    config: ResolvedModelConfig,
-    mock_chapter_repo: FakeChapterRepo,
-    mock_kb_repo: FakeKBRepo,
-    mock_composer: FakeComposer,
-) -> None:
-    """_build_prompt_context returns PromptContext with chapter title and entities."""
-    service = make_service(mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer)
-
-    result = service._build_prompt_context(
+def test_build_prompt_context_includes_chapter_title() -> None:
+    """build_extraction_prompt_context returns PromptContext with title and roster."""
+    result = build_extraction_prompt_context(
         chapter_title="Chapter 1",
-        existing_entity_names=["Anna"],
+        existing_entity_roster="- Anna (character) [id=de7bc3a6-0000-0000-0000-000000000000]",
     )
 
     assert result.chapter_title == "Chapter 1"
-    assert "Anna" in result.extra["existing_entity_names"]
+    assert "Anna (character)" in result.extra["existing_entity_names"]
 
 
-@pytest.mark.asyncio
-async def test_build_prompt_context_uses_extract_mode(
-    mock_registry: FakeModelRegistry,
-    config: ResolvedModelConfig,
-    mock_chapter_repo: FakeChapterRepo,
-    mock_kb_repo: FakeKBRepo,
-    mock_composer: FakeComposer,
-) -> None:
-    """_build_prompt_context uses the extract mode for prompt routing."""
-    service = make_service(mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer)
-
-    result = service._build_prompt_context(
+def test_build_prompt_context_uses_extract_mode() -> None:
+    """build_extraction_prompt_context uses the extract mode for prompt routing."""
+    result = build_extraction_prompt_context(
         chapter_title="Chapter 1",
-        existing_entity_names=["Anna"],
+        existing_entity_roster="- Anna (character) [id=de7bc3a6-0000-0000-0000-000000000000]",
     )
 
     assert result.mode == "extract"

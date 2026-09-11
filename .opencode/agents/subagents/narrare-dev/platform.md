@@ -2,7 +2,7 @@
 name: NarrarePlatformSpecialist
 description: "Platform layer — testing, CI/CD, Docker, deployment, architecture validation, Git/gh owner"
 mode: subagent
-model: zai-coding-plan/glm-5.3
+model: zai-coding-plan/glm-5.3-flash
 temperature: 0
 permission:
   skill:

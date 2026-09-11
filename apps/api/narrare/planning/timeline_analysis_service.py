@@ -21,14 +21,15 @@ Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
 from narrare.planning._event_render import render_confirmed_events
-from narrare.planning._extracted_event_refs import build_extracted_event_create_kwargs
 from narrare.planning._timeline_chapter_context import format_chapter_context
+from narrare.planning._timeline_extraction_helpers import persist_extracted_event
 from narrare.planning.schemas import TimelineEventResponse, TimelineResponse
-from narrare.planning.timeline_schemas import TimelineEventCRUDResponse
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -38,6 +39,7 @@ if TYPE_CHECKING:
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
+    from narrare.planning.timeline_schemas import TimelineEventCRUDResponse
     from narrare_core.agents.temporal_extraction_types import ExtractedTemporalExpression
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
@@ -100,6 +102,7 @@ class TimelineAnalysisService:
         api_key: str | None = None,
         base_url: str | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
@@ -111,6 +114,7 @@ class TimelineAnalysisService:
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def generate_timeline(
         self,
@@ -217,10 +221,19 @@ class TimelineAnalysisService:
         )
         composed = await self._composer.build(LLMIntent.PLAN, ctx)
 
-        # Get model from registry
         from narrare_core.agents.timeline_agent import TimelineAgent, TimelineDeps
 
-        model = await self._registry.get_model(self._config)
+        # Task 6b single assembly point: coherent (model, model_settings, usage_limits) triple.
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
+        prepared = await self._registry.prepare(
+            self._config,
+            intent=LLMIntent.PLAN,
+            usage_limits=resolved.usage_limits,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
         # Build deps
         deps = TimelineDeps(
@@ -231,10 +244,12 @@ class TimelineAnalysisService:
         # pydantic-ai binds ``system_prompt`` at agent construction, so the
         # composed system prompt is supplied to the constructor (not to
         # ``run()``). Chapter data flows as the run prompt (user channel).
-        agent = TimelineAgent(model=model, system_prompt=composed.system)
+        agent = TimelineAgent(model=prepared.model, system_prompt=composed.system)
         result = await agent.run(
             prompt=composed.user or chapter_context,
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
 
         # Map core output to API response
@@ -255,41 +270,15 @@ class TimelineAnalysisService:
     ) -> TimelineEventCRUDResponse:
         """Convert a confirmed extracted expression into a timeline event.
 
-        Creates a TimelineEvent with source='extracted' and confidence
-        from the extraction result.
-
-        Args:
-            novel_id: UUID of the novel.
-            user_id: UUID of the requesting user.
-            extracted: The confirmed extracted expression to persist.
-
-        Returns:
-            The created timeline event as a CRUD response.
-
-        Raises:
-            NotFoundError: If the novel does not exist.
-            ConfigurationError: If no event_repo is available.
+        Delegates to
+        :func:`narrare.planning._timeline_extraction_helpers.persist_extracted_event`
+        (RULE-04 split; deps passed explicitly).
         """
-        if self._event_repo is None:
-            raise ConfigurationError(
-                "Event repository not available for confirming extracted events.",
-                code="NO_EVENT_REPO",
-            )
-
-        novel = await self._novel_repo.get_by_id(novel_id, user_id)
-        if novel is None:
-            raise NotFoundError("Novel", identifier=str(novel_id))
-
-        event = await self._event_repo.create(
-            **await build_extracted_event_create_kwargs(
-                self._kb_context_provider, novel_id, extracted
-            )
+        return await persist_extracted_event(
+            novel_repo=self._novel_repo,
+            event_repo=self._event_repo,
+            kb_context_provider=self._kb_context_provider,
+            novel_id=novel_id,
+            user_id=user_id,
+            extracted=extracted,
         )
-
-        logger.info(
-            "extracted_event_confirmed",
-            event_id=str(event.id),
-            novel_id=str(novel_id),
-            expression=extracted.expression,
-        )
-        return TimelineEventCRUDResponse.model_validate(event)

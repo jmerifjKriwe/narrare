@@ -2,13 +2,13 @@
 
 Extracted from ``dependencies.py`` for RULE-04 modularisation.
 Contains factory functions for AI settings, templates, graph-state,
-and system-default model config.
+system-default model config, and lazy model resolution primitives.
 """
 
 from __future__ import annotations
 
 import enum
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Protocol, runtime_checkable
 
 from fastapi import Depends
 
@@ -16,6 +16,8 @@ from narrare._app.config import get_settings
 from narrare._app.dependencies import SessionDep  # noqa: TC001 - runtime FastAPI DI annotation
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from narrare.generation.graph_store import PostgresGraphStateStore
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.settings.project_ai_settings_service import ProjectAiSettingsService
@@ -25,6 +27,7 @@ if TYPE_CHECKING:
     from narrare.templates.repository import TemplateRepository
     from narrare.templates.service import TemplateApiService
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm.model_routing import ResolvedModel
 
 # ---------------------------------------------------------------------------
 # AI Settings services (Task 10.5, Task 11.1)
@@ -72,8 +75,12 @@ def get_project_ai_settings_service(session: SessionDep) -> ProjectAiSettingsSer
 def get_model_routing_resolver(session: SessionDep) -> ModelRoutingResolverImpl:
     """Factory for ModelRoutingResolverImpl (Task 11.1).
 
-    Creates a resolver with all required repositories injected.
+    Creates a resolver with all required repositories injected. The
+    novels repository powers the nonexistent-novel guard in
+    ``resolve()`` (404 instead of FK-violation 500 for unknown
+    project ids).
     """
+    from narrare.novels.repository import NovelRepository
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.settings.project_ai_settings_repository import ProjectAiSettingsRepository
     from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
@@ -83,7 +90,73 @@ def get_model_routing_resolver(session: SessionDep) -> ModelRoutingResolverImpl:
         user_providers_repo=UserProvidersRepository(session),
         user_ai_settings_repo=UserAiSettingsRepository(session),
         project_ai_settings_repo=ProjectAiSettingsRepository(session),
+        novels_repo=NovelRepository(session),
     )
+
+
+# ---------------------------------------------------------------------------
+# Lazy model resolution (ADR-086)
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class ModelResolution(Protocol):
+    """Resolved model provider triple, deferred until first use.
+
+    Contract for deferring model-routing resolution from FastAPI
+    dependency time (pre-body-validation) to actual consumption time,
+    so that request-body validation errors surface as 422 before any
+    routing cascade runs. Pure result plumbing — no LLM acquisition
+    happens here (RULE-12); the gateway acquires models from the
+    resolved config.
+    """
+
+    async def resolve(self) -> ResolvedModel:
+        """Return the resolved model, resolving lazily if necessary."""
+        ...
+
+
+class LazyModelResolution:
+    """Caching adapter around an async resolution factory.
+
+    Wraps a zero-argument async factory (typically a closure over the
+    request-scoped :class:`ModelRoutingResolverImpl` plus routing
+    context). The factory is invoked at most once successfully; the
+    result is cached and returned on subsequent :meth:`resolve` calls.
+    Errors propagate uncached — the next :meth:`resolve` retries the
+    factory.
+
+    Args:
+        factory: Zero-argument async callable returning ``ResolvedModel``.
+    """
+
+    def __init__(self, factory: Callable[[], Awaitable[ResolvedModel]]) -> None:
+        self._factory = factory
+        self._resolved: ResolvedModel | None = None
+
+    async def resolve(self) -> ResolvedModel:
+        """Return the cached model, or resolve-and-cache on first call."""
+        if self._resolved is None:
+            self._resolved = await self._factory()
+        return self._resolved
+
+
+class StaticModelResolution:
+    """Fixed-resolution adapter holding a pre-resolved model.
+
+    For tests and dependency overrides where the ``ResolvedModel`` is
+    already known and no lazy resolution should happen.
+
+    Args:
+        model: The fixed resolution result to always return.
+    """
+
+    def __init__(self, model: ResolvedModel) -> None:
+        self._model = model
+
+    async def resolve(self) -> ResolvedModel:
+        """Return the fixed model."""
+        return self._model
 
 
 # ---------------------------------------------------------------------------

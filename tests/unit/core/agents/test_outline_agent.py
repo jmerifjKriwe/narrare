@@ -1,15 +1,13 @@
-"""Tests für OutlineAgent — Instantiation, Output Function, Basic Behavior.
+"""Tests für OutlineAgent — Instantiation und Output-Typen.
 
 Test-Strategie:
 - TestModel für deterministische Agent-Tests
-- Output Function wird direkt via ``_process_outline`` getestet
+- Validator-Tests live in ``test_outline_validation.py`` (ADR-035)
 - Keine echten LLM-Calls (RULE-01b)
 """
 
 from __future__ import annotations
 
-import pytest
-from pydantic_ai import RunContext, RunUsage
 from pydantic_ai.models.test import TestModel
 
 from narrare_core.agents.outline_agent import OutlineAgent, OutlineDeps
@@ -81,78 +79,3 @@ class TestOutlineAgent:
         agent = OutlineAgent(model=model)
         assert isinstance(agent, OutlineAgent)
         assert agent._agent is not None
-
-
-# ---------------------------------------------------------------------------
-# D. Output Function — _process_outline
-# ---------------------------------------------------------------------------
-
-
-class TestProcessOutline:
-    """Output Function wird korrekt ausgeführt."""
-
-    @pytest.fixture()
-    def run_context(self) -> RunContext[OutlineDeps]:
-        return RunContext[OutlineDeps](
-            deps=OutlineDeps(),
-            model=TestModel(),
-            usage=RunUsage(),
-        )
-
-    @pytest.mark.asyncio
-    async def test_process_outline_with_scenes(
-        self,
-        run_context: RunContext[OutlineDeps],
-    ) -> None:
-        """Scenes + chapter_title → korrektes OutlineOutput."""
-        result = await OutlineAgent(model=TestModel())._process_outline(
-            run_context,
-            scenes=["Intro", "Conflict", "Resolution"],
-            chapter_title="The Final Battle",
-        )
-        assert result.chapter_title == "The Final Battle"
-        assert len(result.scenes) == 3
-        assert "Intro" in result.outline_text
-        assert "Conflict" in result.outline_text
-
-    @pytest.mark.asyncio
-    async def test_process_outline_partial_streaming(
-        self,
-        run_context: RunContext[OutlineDeps],
-    ) -> None:
-        """partial_output → leeres OutlineOutput."""
-        run_context.partial_output = True
-        result = await OutlineAgent(model=TestModel())._process_outline(
-            run_context,
-            scenes=["Partial scene"],
-            chapter_title="Partial",
-        )
-        assert result.chapter_title == ""  # no processing during streaming
-        assert result.scenes == []
-
-    @pytest.mark.asyncio
-    async def test_process_outline_empty(
-        self,
-        run_context: RunContext[OutlineDeps],
-    ) -> None:
-        """Keine scenes/chapter_title → leeres OutlineOutput."""
-        result = await OutlineAgent(model=TestModel())._process_outline(
-            run_context,
-            scenes=None,
-            chapter_title=None,
-        )
-        assert result.chapter_title == ""
-        assert result.scenes == []
-        assert result.outline_text == ""
-
-    @pytest.mark.asyncio
-    async def test_process_outline_outline_text_generation(
-        self,
-        run_context: RunContext[OutlineDeps],
-    ) -> None:
-        """outline_text = scenes joined by double newline."""
-        result = await OutlineAgent(model=TestModel())._process_outline(
-            run_context,
-            scenes=["Scene one.", "Scene two.", "Scene three."],
-        )
-        assert result.outline_text == "Scene one.\n\nScene two.\n\nScene three."

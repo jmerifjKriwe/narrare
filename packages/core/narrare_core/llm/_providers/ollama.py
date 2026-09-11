@@ -15,9 +15,10 @@ from typing import TYPE_CHECKING
 
 from openai import AsyncOpenAI
 from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.providers.ollama import OllamaProvider
 
 from narrare_core.llm._providers.registry import register
+from narrare_core.llm._schema_transformer import narrare_openai_compat_profile
 from narrare_core.llm._transport_retry import get_transport_max_retries
 from narrare_core.settings import get_core_settings
 
@@ -40,6 +41,13 @@ def _make_ollama(
     layer via :func:`get_transport_max_retries` (ADR-060) and applied to the
     SDK client's ``max_retries`` — uniformly for ``run()`` and ``stream()``.
 
+    The model is built through pydantic-ai's native ``OllamaProvider`` (which
+    imports upstream capability facts: strict tool definitions unsupported,
+    ``reasoning`` thinking field, native JSON schema/object output) with a
+    Narrare-declared transport-retry client (``openai_client=``), so ADR-060
+    survives. The shared OpenAI-compat profile hook swaps in the universal
+    ``$ref``/``$defs`` inlining transformer.
+
     Args:
         model_id: Model identifier (may include "ollama/" prefix).
         api_key: Ignored for Ollama (uses dummy key).
@@ -58,7 +66,8 @@ def _make_ollama(
     )
     return OpenAIChatModel(
         model_id.removeprefix("ollama/"),
-        provider=OpenAIProvider(openai_client=client),
+        provider=OllamaProvider(openai_client=client),
+        profile=narrare_openai_compat_profile,
     )
 
 

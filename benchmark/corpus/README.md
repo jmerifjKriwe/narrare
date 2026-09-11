@@ -65,6 +65,7 @@ persons:
   - id: p_anna                      # stable, unique
     name: Anna Meyer
     aliases: []                     # aliases used in prose, if any
+    gender: female                  # persons only; male | female (kinship equivalence)
     facts:
       - id: F001                    # unique across ALL reference files
         predicate: birth_date       # snake_case predicate vocabulary

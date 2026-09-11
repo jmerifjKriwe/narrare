@@ -14,6 +14,7 @@ import pytest
 
 from narrare.kb.consistency_contracts import ConsistencyCheckResponse
 from narrare.kb.consistency_service import KBConsistencyService
+from narrare.kb.dependencies import get_consistency_service
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -60,17 +61,21 @@ class TestConsistencyCheckEndpoint:
         mock_consistency_service: MagicMock,
     ) -> None:
         """POST /consistency-check returns 200 with ConsistencyCheckResponse schema."""
-        from narrare.kb.dependencies import get_consistency_service
-
         novel_id = uuid4()
 
         app.dependency_overrides[get_consistency_service] = lambda: mock_consistency_service  # type: ignore[assignment]
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/consistency-check",
-            json={"include_entry_internal": True, "include_asymmetry": True},
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/consistency-check",
+                json={"include_entry_internal": True, "include_asymmetry": True},
+                headers=auth_headers,
+            )
+        finally:
+            # The app fixture is session-scoped — an override left behind
+            # leaks into subsequent tests (order-dependent flakiness under
+            # pytest-randomly). Same cleanup convention as
+            # tests/integration/analysis/test_analysis_api.py.
+            app.dependency_overrides.pop(get_consistency_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -87,15 +92,17 @@ class TestConsistencyCheckEndpoint:
         mock_consistency_service: MagicMock,
     ) -> None:
         """POST /consistency-check returns 401 when no auth token is provided."""
-        from narrare.kb.dependencies import get_consistency_service
-
         novel_id = uuid4()
 
         app.dependency_overrides[get_consistency_service] = lambda: mock_consistency_service  # type: ignore[assignment]
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/consistency-check",
-            json={"include_entry_internal": True},
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/consistency-check",
+                json={"include_entry_internal": True},
+            )
+        finally:
+            # Session-scoped app — pop the override to prevent leakage into
+            # subsequent tests (see test_consistency_check_endpoint_returns_200).
+            app.dependency_overrides.pop(get_consistency_service, None)
 
         assert resp.status_code == 401

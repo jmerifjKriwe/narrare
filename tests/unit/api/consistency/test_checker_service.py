@@ -5,6 +5,7 @@ No real DB, no real LLM — all dependencies are mocked per RULE-TEST-01.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any, Protocol
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -25,7 +26,23 @@ from tests.unit.api._test_helpers import make_chapter, make_kb_entry, make_novel
 
 
 class _RegistryProto(Protocol):
-    async def get_model(self, config: object) -> object: ...
+    async def get_model(
+        self,
+        config: object,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object: ...
+
+    async def prepare(
+        self,
+        config: object,
+        *,
+        intent: object = None,
+        usage_limits: object = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> object: ...
 
 
 def _output(**kw) -> ConsistencyOutput:
@@ -50,6 +67,10 @@ def _service(
     kb = kb or AsyncMock(list_entries=AsyncMock(return_value=([], 0)))
     registry = MagicMock(spec=_RegistryProto)
     registry.get_model = AsyncMock(return_value=object())
+    # Task-6b: resolution flows through the prepare() assembly point.
+    registry.prepare = AsyncMock(
+        return_value=SimpleNamespace(model=object(), model_settings=None, usage_limits=None)
+    )
     composed = MagicMock(spec=["system", "user"])
     composed.system = "Test prompt"
     composed.user = ""

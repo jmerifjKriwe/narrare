@@ -56,7 +56,6 @@ from pydantic_ai import (
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.character_voice_types import (
     CharacterVoiceDeps,
-    CharacterVoiceEntry,
     CharacterVoiceOutput,
 )
 
@@ -77,7 +76,7 @@ class CharacterVoiceAgent(NarrareAgent[CharacterVoiceDeps, CharacterVoiceOutput]
         super().__init__(
             model=model,
             deps_type=CharacterVoiceDeps,
-            output_type=[self._process_output, CharacterVoiceOutput],
+            output_type=CharacterVoiceOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -107,22 +106,6 @@ class CharacterVoiceAgent(NarrareAgent[CharacterVoiceDeps, CharacterVoiceOutput]
             )
 
         return output.model_copy(update={"characters": valid_entries})
-
-    async def _process_output(
-        self,
-        ctx: RunContext[CharacterVoiceDeps],
-        characters: list[dict[str, Any]] | None = None,
-    ) -> CharacterVoiceOutput:
-        """Output Function — structures the LLM response into CharacterVoiceOutput.
-
-        During streaming (``ctx.partial_output``) returns a minimal empty result.
-        """
-        if ctx.partial_output:
-            return CharacterVoiceOutput()
-
-        return CharacterVoiceOutput(
-            characters=[CharacterVoiceEntry(**c) for c in (characters or [])],
-        )
 
     async def run(
         self,

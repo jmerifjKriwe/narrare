@@ -17,9 +17,9 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.kb._extraction_resolution import RESERVED_METADATA_KEYS
+from narrare.kb.improve_contracts import KBImproveAnalysisResponse, KBImproveApplyResponse
 from narrare_core.shared.errors import NotFoundError
-
-from .improve_contracts import KBImproveAnalysisResponse, KBImproveApplyResponse
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -147,13 +147,23 @@ class KBImproveService:
                 message="No valid suggestions selected.",
             )
 
-        # Apply field changes (add_field, expand, reorganize)
+        # Apply field changes (add_field, expand, reorganize). Reserved
+        # metadata keys (provenance/resolution, ADR-085 §5/§6) are skipped
+        # with a warning — the same invariant class as the extraction apply
+        # flow: LLM proposals never own platform-owned keys (RULE-11).
         metadata_updates: dict[str, object] = {}
         for suggestion in selected:
             if (
                 suggestion.type in ("add_field", "expand", "reorganize")
                 and suggestion.proposed_content is not None
             ):
+                if suggestion.target in RESERVED_METADATA_KEYS:
+                    logger.warning(
+                        "improve_apply_reserved_target_blocked",
+                        entry_id=str(entry_id),
+                        target=suggestion.target,
+                    )
+                    continue
                 metadata_updates[suggestion.target] = suggestion.proposed_content
 
         update_data: dict[str, object] = {}
