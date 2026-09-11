@@ -24,11 +24,12 @@ from narrare_core.llm.intent_categories import INTENT_CATEGORY_MAP, get_default_
 from narrare_core.llm.intent_profiles import get_intent_profile
 from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.llm.model_routing import ResolvedModel
-from narrare_core.shared.errors import ConfigurationError
+from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from narrare.novels.repository import NovelRepository
     from narrare.settings.project_ai_settings_repository import ProjectAiSettingsRepository
     from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
     from narrare.settings.user_providers_repository import UserProvidersRepository
@@ -47,6 +48,9 @@ class ModelRoutingResolverImpl:
         user_providers_repo: Repository for provider lookups.
         user_ai_settings_repo: Repository for user AI settings.
         project_ai_settings_repo: Repository for project AI settings.
+        novels_repo: Repository for novel existence checks. When injected,
+            ``resolve()`` validates that a non-null ``project_id`` refers
+            to an existing novel before touching project settings.
     """
 
     def __init__(
@@ -54,10 +58,12 @@ class ModelRoutingResolverImpl:
         user_providers_repo: UserProvidersRepository,
         user_ai_settings_repo: UserAiSettingsRepository,
         project_ai_settings_repo: ProjectAiSettingsRepository,
+        novels_repo: NovelRepository | None = None,
     ) -> None:
         self._providers_repo = user_providers_repo
         self._user_ai_repo = user_ai_settings_repo
         self._project_ai_repo = project_ai_settings_repo
+        self._novels_repo = novels_repo
 
     async def resolve(
         self,
@@ -85,6 +91,8 @@ class ModelRoutingResolverImpl:
 
         Raises:
             ConfigurationError: If no provider is configured for this user.
+            NotFoundError: If ``project_id`` is set but the novel does not
+                exist (or is not owned by ``user_id``).
         """
         intent_name = intent.value
         category = INTENT_CATEGORY_MAP.get(intent)
@@ -97,6 +105,19 @@ class ModelRoutingResolverImpl:
 
         # --- Project-level overrides ---
         if project_id is not None:
+            # Existence guard: project_ai_repo.get() auto-creates the
+            # settings row (INSERT ... ON CONFLICT DO NOTHING), and
+            # ON CONFLICT does not suppress FK violations — a nonexistent
+            # novel_id previously surfaced as asyncpg
+            # ForeignKeyViolationError on project_settings_novel_id_fkey
+            # → unhandled HTTP 500. Mirrors planning/_service_factory.py:
+            # the novel must exist (and belong to the user) before
+            # project-scoped resolution.
+            if self._novels_repo is not None:
+                novel = await self._novels_repo.get_by_id(project_id, user_id)
+                if novel is None:
+                    raise NotFoundError("Novel", identifier=str(project_id))
+
             project_settings = await self._project_ai_repo.get(project_id)
 
             # 1. Project intent override

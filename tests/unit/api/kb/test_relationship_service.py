@@ -17,6 +17,7 @@ from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationE
 
 if TYPE_CHECKING:
     from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 # ---------------------------------------------------------------------------
 # Fake classes
@@ -121,7 +122,14 @@ def _make_service(
     *,
     rel_exists: bool = False,
 ) -> tuple[RelationshipService, FakeEntryRepo, FakeRelRepo]:
-    """Create a RelationshipService with fake dependencies."""
+    """Create a RelationshipService with fake dependencies.
+
+    The novel gate is permissive (IDOR S10): every caller owns the novel.
+    The ownership matrix lives in
+    ``test_relationship_dismissed_extraction_ownership.py``.
+    """
+    from ._test_fakes import FakeNovelRepo
+
     entry_repo = FakeEntryRepo()
     rel_repo = FakeRelRepo()
     rel_repo._exists_flag = rel_exists
@@ -129,6 +137,7 @@ def _make_service(
     service = RelationshipService(
         rel_repo=cast("RelationshipRepositoryProtocol", rel_repo),
         entry_repo=cast("KBRepositoryProtocol", entry_repo),
+        novel_repo=cast("NovelRepositoryProtocol", FakeNovelRepo()),
     )
     return service, entry_repo, rel_repo
 

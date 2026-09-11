@@ -13,6 +13,7 @@ from uuid import uuid4
 
 import pytest
 
+from narrare.kb.dependencies import get_worldbuilding_service
 from narrare.kb.worldbuilding_contracts import (
     WorldbuildingAnalysisResponse,
     WorldbuildingApplyResponse,
@@ -86,19 +87,23 @@ class TestAnalyzeEndpoint:
         mock_worldbuilding_service: MagicMock,
     ) -> None:
         """POST /analyze returns 200 with WorldbuildingAnalysisResponse schema."""
-        from narrare.kb.dependencies import get_worldbuilding_service
-
         novel_id = uuid4()
 
         app.dependency_overrides[get_worldbuilding_service] = cast(
             "Callable[[], Any]", lambda: mock_worldbuilding_service
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/worldbuilding/analyze",
-            json={"include_gaps": True, "include_connections": True},
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/worldbuilding/analyze",
+                json={"include_gaps": True, "include_connections": True},
+                headers=auth_headers,
+            )
+        finally:
+            # The app fixture is session-scoped — an override left behind
+            # leaks into subsequent tests (order-dependent flakiness under
+            # pytest-randomly). Same cleanup convention as
+            # tests/integration/analysis/test_analysis_api.py.
+            app.dependency_overrides.pop(get_worldbuilding_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -115,18 +120,18 @@ class TestAnalyzeEndpoint:
         mock_worldbuilding_service: MagicMock,
     ) -> None:
         """POST /analyze returns 401 when no auth token is provided."""
-        from narrare.kb.dependencies import get_worldbuilding_service
-
         novel_id = uuid4()
 
         app.dependency_overrides[get_worldbuilding_service] = cast(
             "Callable[[], Any]", lambda: mock_worldbuilding_service
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/worldbuilding/analyze",
-            json={"include_gaps": True},
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/worldbuilding/analyze",
+                json={"include_gaps": True},
+            )
+        finally:
+            app.dependency_overrides.pop(get_worldbuilding_service, None)
 
         assert resp.status_code == 401
 
@@ -147,8 +152,6 @@ class TestApplyEndpoint:
         mock_worldbuilding_service: MagicMock,
     ) -> None:
         """POST /apply returns 200 with WorldbuildingApplyResponse schema."""
-        from narrare.kb.dependencies import get_worldbuilding_service
-
         novel_id = uuid4()
 
         app.dependency_overrides[get_worldbuilding_service] = cast(
@@ -168,14 +171,17 @@ class TestApplyEndpoint:
             "analyzed_at": "2025-01-01T00:00:00Z",
         }
 
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/worldbuilding/apply",
-            json={
-                "finding_indices": [0, 1],
-                "analysis": analysis_body,
-            },
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/worldbuilding/apply",
+                json={
+                    "finding_indices": [0, 1],
+                    "analysis": analysis_body,
+                },
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_worldbuilding_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -190,31 +196,32 @@ class TestApplyEndpoint:
         mock_worldbuilding_service: MagicMock,
     ) -> None:
         """POST /apply returns 401 when no auth token is provided."""
-        from narrare.kb.dependencies import get_worldbuilding_service
-
         novel_id = uuid4()
 
         app.dependency_overrides[get_worldbuilding_service] = cast(
             "Callable[[], Any]", lambda: mock_worldbuilding_service
         )
 
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/worldbuilding/apply",
-            json={
-                "finding_indices": [0],
-                "analysis": {
-                    "novel_id": str(novel_id),
-                    "entity_count": 0,
-                    "gap_findings": [],
-                    "connection_suggestions": [],
-                    "consistency_issues": [],
-                    "worldbuilding_score": 0.0,
-                    "overall_assessment": "",
-                    "summary": {},
-                    "analyzed_at": "2025-01-01T00:00:00Z",
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/worldbuilding/apply",
+                json={
+                    "finding_indices": [0],
+                    "analysis": {
+                        "novel_id": str(novel_id),
+                        "entity_count": 0,
+                        "gap_findings": [],
+                        "connection_suggestions": [],
+                        "consistency_issues": [],
+                        "worldbuilding_score": 0.0,
+                        "overall_assessment": "",
+                        "summary": {},
+                        "analyzed_at": "2025-01-01T00:00:00Z",
+                    },
                 },
-            },
-        )
+            )
+        finally:
+            app.dependency_overrides.pop(get_worldbuilding_service, None)
 
         assert resp.status_code == 401
 
@@ -226,19 +233,20 @@ class TestApplyEndpoint:
         mock_worldbuilding_service: MagicMock,
     ) -> None:
         """POST /apply returns 422 when body is malformed."""
-        from narrare.kb.dependencies import get_worldbuilding_service
-
         novel_id = uuid4()
 
         app.dependency_overrides[get_worldbuilding_service] = cast(
             "Callable[[], Any]", lambda: mock_worldbuilding_service
         )
 
-        # Missing analysis field
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/worldbuilding/apply",
-            json={"finding_indices": [0]},
-            headers=auth_headers,
-        )
+        try:
+            # Missing analysis field
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/worldbuilding/apply",
+                json={"finding_indices": [0]},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_worldbuilding_service, None)
 
         assert resp.status_code == 422

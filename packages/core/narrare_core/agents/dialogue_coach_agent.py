@@ -47,15 +47,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import ValidationError
-from pydantic_ai import RunContext  # noqa: TC002 — pydantic-ai introspects signatures at runtime
-
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.dialogue_coach_types import (
-    DialogueAlternative,
     DialogueCoachDeps,
     DialogueCoachOutput,
-    DialogueIssue,
 )
 
 
@@ -76,53 +71,8 @@ class DialogueCoachAgent(NarrareAgent[DialogueCoachDeps, DialogueCoachOutput]):
         super().__init__(
             model=model,
             deps_type=DialogueCoachDeps,
-            output_type=[self._process_output, DialogueCoachOutput],
+            output_type=DialogueCoachOutput,
             system_prompt=system_prompt,
-        )
-
-    async def _process_output(
-        self,
-        ctx: RunContext[DialogueCoachDeps],
-        issues: list[dict[str, Any]] | None = None,
-        adaptive_summary: str = "",
-    ) -> DialogueCoachOutput:
-        """Output Function — structures the LLM response.
-
-        Parses the raw JSON response into the typed ``DialogueCoachOutput``.
-        During streaming (``ctx.partial_output``) returns a minimal empty result.
-
-        Malformed issue entries (missing required keys, validation failures)
-        are silently dropped — never crash the agent.
-        """
-        if ctx.partial_output:
-            return DialogueCoachOutput()
-
-        parsed_issues: list[DialogueIssue] = []
-        for raw in issues or []:
-            try:
-                alts_raw = raw.get("alternatives")
-                alternatives: list[DialogueAlternative] | None = None
-                if alts_raw is not None:
-                    alternatives = [DialogueAlternative(**alt) for alt in alts_raw]
-                parsed_issues.append(
-                    DialogueIssue(
-                        issue_type=raw["issue_type"],
-                        speaker=raw.get("speaker", ""),
-                        original_quote=raw["original_quote"],
-                        diagnosis=raw["diagnosis"],
-                        severity=raw.get("severity", "low"),
-                        alternatives=alternatives,
-                    )
-                )
-            except KeyError, TypeError, ValueError, ValidationError:
-                # Skip malformed issue entries — never crash the agent.
-                # ValidationError covers empty original_quote/diagnosis
-                # (min_length=1) and invalid Literal enum values.
-                continue
-
-        return DialogueCoachOutput(
-            issues=parsed_issues,
-            adaptive_summary=adaptive_summary or "",
         )
 
     async def run(

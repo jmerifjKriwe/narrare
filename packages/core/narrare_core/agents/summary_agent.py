@@ -63,7 +63,7 @@ class ChapterSummaryAgent(NarrareAgent[SummaryDeps, SummaryOutput]):
         super().__init__(
             model=model,
             deps_type=SummaryDeps,
-            output_type=[self._process_summary, SummaryOutput],
+            output_type=SummaryOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -97,26 +97,6 @@ class ChapterSummaryAgent(NarrareAgent[SummaryDeps, SummaryOutput]):
             raise ModelRetry("At least one key_point is required when a summary is provided")
 
         return output.model_copy(update={"key_points": filtered_points})
-
-    async def _process_summary(
-        self,
-        ctx: RunContext[SummaryDeps],
-        summary: str = "",
-        key_points: list[str] | None = None,
-        word_count: int = 0,
-    ) -> SummaryOutput:
-        """Output Function — strukturiert die LLM-Response in SummaryOutput.
-
-        Bei Streaming (``ctx.partial_output``) wird nur ein Minimalergebnis zurückgegeben.
-        """
-        if ctx.partial_output:
-            return SummaryOutput()
-
-        return SummaryOutput(
-            summary=summary,
-            key_points=key_points or [],
-            word_count=word_count or len(summary.split()),
-        )
 
     async def run(
         self,

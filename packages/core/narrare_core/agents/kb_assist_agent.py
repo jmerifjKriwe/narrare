@@ -24,7 +24,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import (
     ModelRetry,
@@ -90,7 +90,7 @@ class KBAssistAgent(NarrareAgent[KBAssistDeps, KBAssistOutput]):
         super().__init__(
             model=model,
             deps_type=KBAssistDeps,
-            output_type=[self._process_output, KBAssistOutput],
+            output_type=KBAssistOutput,
             capabilities=capabilities,
             system_prompt=system_prompt,
         )
@@ -136,38 +136,6 @@ class KBAssistAgent(NarrareAgent[KBAssistDeps, KBAssistOutput]):
                 raise ModelRetry("complete mode requires a non-empty 'final_entry' dict")
 
         return output
-
-    async def _process_output(
-        self,
-        ctx: RunContext[KBAssistDeps],
-        mode: str,
-        question: str | None = None,
-        field_key: str | None = None,
-        suggestion: str | None = None,
-        reasoning: str | None = None,
-        context_used: list[str] | None = None,
-        draft_entry: dict[str, Any] | None = None,
-        final_entry: dict[str, Any] | None = None,
-        progress: float | None = None,
-    ) -> KBAssistOutput:
-        """Output Function — structures the LLM response into KBAssistOutput.
-
-        During streaming (ctx.partial_output), returns minimal result.
-        """
-        if ctx.partial_output:
-            return KBAssistOutput(mode=cast("Any", mode))
-
-        return KBAssistOutput(
-            mode=cast("Any", mode),
-            question=question,
-            field_key=field_key,
-            suggestion=suggestion,
-            reasoning=reasoning,
-            context_used=context_used,
-            draft_entry=draft_entry,
-            final_entry=final_entry,
-            progress=progress,
-        )
 
     async def run(
         self,

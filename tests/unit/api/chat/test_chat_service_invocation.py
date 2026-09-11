@@ -16,7 +16,7 @@ See:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -228,6 +228,79 @@ class TestResolveChatRunLimits:
         assert "model_settings" in result
         assert result["usage_limits"] is not None
         assert result["model_settings"] is not None
+
+    def test_base_model_settings_layer_under_resolver_cap(self) -> None:
+        """Task 6d-1: prepared settings form the base, resolver cap wins.
+
+        The single assembly point's ``model_settings`` (thinking policy,
+        cache settings) must reach the stream, while the ADR-045
+        resolver's per-turn ``max_tokens`` cap keeps precedence on key
+        conflicts.
+        """
+        from uuid import uuid4
+
+        from narrare.chat._invocation import resolve_chat_run_limits
+        from narrare_core.llm import ResolvedModelConfig
+        from narrare_core.llm.run_limits import DefaultRunLimitResolver
+
+        config = ResolvedModelConfig(
+            provider_name="test",
+            model_id="test-model",
+            max_tokens=2000,
+            token_limit_profile="balanced",
+        )
+        resolver = DefaultRunLimitResolver()
+        base = {"max_tokens": 12_345, "nar_thinking": "low"}
+
+        baseline = resolve_chat_run_limits(
+            resolver=resolver,
+            config=config,
+            invocation_id=uuid4(),
+        )
+        result = resolve_chat_run_limits(
+            resolver=resolver,
+            config=config,
+            invocation_id=uuid4(),
+            base_model_settings=base,
+        )
+
+        # Resolver keeps usage_limits ownership; the base adds no limits.
+        assert result["usage_limits"] is baseline["usage_limits"] or (
+            result["usage_limits"] is not None
+        )
+        merged = cast("dict[str, object]", result["model_settings"])
+        baseline_settings = cast("dict[str, object]", baseline["model_settings"])
+        # Resolver cap wins on conflict; base-only keys survive.
+        assert merged["max_tokens"] == baseline_settings["max_tokens"]
+        assert merged["max_tokens"] != 12_345
+        assert merged["nar_thinking"] == "low"
+
+    def test_base_model_settings_without_resolver_flow_alone(self) -> None:
+        """Task 6d-1: no resolver → prepared settings still reach the run.
+
+        Pins the audit gap fix: the old path returned an empty kwargs
+        dict when no resolver was wired, so NO settings ever reached
+        ``agent.run_stream``. The assembly-point base must flow.
+        """
+        from uuid import uuid4
+
+        from narrare.chat._invocation import resolve_chat_run_limits
+        from narrare_core.llm import ResolvedModelConfig
+
+        config = ResolvedModelConfig(
+            provider_name="test",
+            model_id="test-model",
+        )
+        base = {"max_tokens": 12_345, "nar_thinking": "low"}
+
+        result = resolve_chat_run_limits(
+            resolver=None,
+            config=config,
+            invocation_id=uuid4(),
+            base_model_settings=base,
+        )
+
+        assert result == {"model_settings": {"max_tokens": 12_345, "nar_thinking": "low"}}
 
 
 # ---------------------------------------------------------------------------

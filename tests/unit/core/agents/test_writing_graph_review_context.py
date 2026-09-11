@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 from narrare_core.agents.review_types import ReviewOutput
 from narrare_core.agents.writing_graph_prompts import (
-    _assemble_review_context,
+    _assemble_writing_context,
     _enrich_prompt_context_with_kb,
     get_review_prompt,
 )
@@ -114,25 +114,25 @@ async def _call_review_node(
 
 
 # ---------------------------------------------------------------------------
-# A. _assemble_review_context — Context Assembly
+# A. _assemble_writing_context — Context Assembly
 # ---------------------------------------------------------------------------
 
 
 class TestAssembleReviewContext:
-    """_assemble_review_context assembles context or gracefully returns None."""
+    """_assemble_writing_context assembles context or gracefully returns None."""
 
     @pytest.mark.asyncio
     async def test_returns_none_when_no_assembler(self) -> None:
         deps = _make_deps(context_assembler=None)
         state = _make_state(chapter_id="ch-01", novel_id="novel-01")
-        assert await _assemble_review_context(deps, state) is None
+        assert await _assemble_writing_context(deps, state) is None
 
     @pytest.mark.asyncio
     async def test_returns_none_when_no_chapter_id(self) -> None:
         assembler = AsyncMock()
         deps = _make_deps(context_assembler=assembler)
         state = _make_state(chapter_id="", novel_id="novel-01")
-        assert await _assemble_review_context(deps, state) is None
+        assert await _assemble_writing_context(deps, state) is None
         assembler.assemble.assert_not_called()
 
     @pytest.mark.asyncio
@@ -140,7 +140,7 @@ class TestAssembleReviewContext:
         assembler = AsyncMock()
         deps = _make_deps(context_assembler=assembler)
         state = _make_state(chapter_id="ch-01", novel_id="")
-        assert await _assemble_review_context(deps, state) is None
+        assert await _assemble_writing_context(deps, state) is None
         assembler.assemble.assert_not_called()
 
     @pytest.mark.asyncio
@@ -150,7 +150,7 @@ class TestAssembleReviewContext:
         assembler.assemble = AsyncMock(return_value=expected)
         deps = _make_deps(context_assembler=assembler)
         state = _make_state(chapter_id=_CH_ID, novel_id=_NOVEL_ID)
-        result = await _assemble_review_context(deps, state)
+        result = await _assemble_writing_context(deps, state)
         assert result is expected
         assembler.assemble.assert_called_once()
 
@@ -161,7 +161,7 @@ class TestAssembleReviewContext:
         assembler.assemble = AsyncMock(side_effect=RuntimeError("DB lost"))
         deps = _make_deps(context_assembler=assembler)
         state = _make_state(chapter_id=_CH_ID, novel_id=_NOVEL_ID)
-        assert await _assemble_review_context(deps, state) is None
+        assert await _assemble_writing_context(deps, state) is None
 
 
 # ---------------------------------------------------------------------------
@@ -185,12 +185,30 @@ class TestEnrichPromptContextWithKB:
         assert prompt_ctx.extra["user_preferences"] == "Avoid excessive adjectives."
         assert prompt_ctx.extra["word_target"] == "1000"
 
-    def test_skips_empty_fields(self) -> None:
+    def test_enriches_empty_kb_fields_to_empty_string(self) -> None:
+        """Full-set contract (item-2): every kb_* key is supplied.
+
+        The ten kb variables come from the ``kb_context_extras`` SSOT and
+        coalesce to ``""`` when empty — placeholders render empty instead of
+        the key being absent (which would raise PromptVariableError on
+        routes without optional-variable fallbacks).
+        """
         prompt_ctx = PromptContext(language="en", genre="fantasy", tone="balanced")
         prompt_ctx.extra = {}
         _enrich_prompt_context_with_kb(prompt_ctx, WritingContext(kb_characters="Elena"))
         assert prompt_ctx.extra["kb_characters"] == "Elena"
-        assert "kb_locations" not in prompt_ctx.extra
+        for key in (
+            "kb_locations",
+            "kb_factions",
+            "kb_other",
+            "kb_relationships",
+            "kb_suggested",
+            "kb_systems",
+            "kb_timelines",
+            "kb_pinned",
+            "kb_context_warnings",
+        ):
+            assert prompt_ctx.extra[key] == ""
 
 
 # ---------------------------------------------------------------------------

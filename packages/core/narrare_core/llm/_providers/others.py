@@ -13,9 +13,10 @@ from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.providers.groq import GroqProvider
-from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.providers.openrouter import OpenRouterProvider
 
 from narrare_core.llm._providers.registry import register, register_model
+from narrare_core.llm._schema_transformer import narrare_openai_compat_profile
 from narrare_core.llm._transport_retry import get_transport_max_retries
 from narrare_core.settings import get_core_settings
 
@@ -146,6 +147,16 @@ def _make_openrouter(
     layer via :func:`get_transport_max_retries` (ADR-060) and applied to the
     SDK client's ``max_retries`` — uniformly for ``run()`` and ``stream()``.
 
+    The model is built through pydantic-ai's native ``OpenRouterProvider``,
+    whose model profile declares
+    ``openai_chat_supports_max_completion_tokens=False`` — OpenRouter only
+    accepts the legacy ``max_tokens`` field, so without the native provider
+    the generic OpenAI profile maps output caps (ADR-045) to
+    ``max_completion_tokens``, which OpenRouter silently drops (unbounded
+    generation). It also imports upstream thinking-field and cache-control
+    facts. The shared OpenAI-compat profile hook swaps in the universal
+    ``$ref``/``$defs`` inlining transformer on top.
+
     Args:
         model_id: Model identifier (may include "openrouter/" prefix).
         api_key: Optional API key — overrides env var when provided.
@@ -161,14 +172,16 @@ def _make_openrouter(
         client = AsyncOpenAI(api_key=resolved_key, base_url=resolved_base, max_retries=max_retries)
         return OpenAIChatModel(
             model_id.removeprefix("openrouter/"),
-            provider=OpenAIProvider(openai_client=client),
+            provider=OpenRouterProvider(openai_client=client),
+            profile=narrare_openai_compat_profile,
         )
-    # No resolvable key (empty string would make the SDK raise at construction):
-    # defer to pydantic-ai, preserving the prior lazy behaviour. This path
-    # cannot make real calls, so transport retry is not applicable.
+    # No resolvable key: ``OpenRouterProvider()`` validates credential
+    # availability eagerly (reads ``OPENROUTER_API_KEY`` itself) and raises
+    # ``UserError`` if nothing resolves — preserving the fail-fast behaviour.
     return OpenAIChatModel(
         model_id.removeprefix("openrouter/"),
-        provider=OpenAIProvider(api_key=resolved_key, base_url=resolved_base),
+        provider=OpenRouterProvider(),
+        profile=narrare_openai_compat_profile,
     )
 
 

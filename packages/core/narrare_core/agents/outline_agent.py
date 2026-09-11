@@ -66,7 +66,7 @@ class OutlineAgent(NarrareAgent[OutlineDeps, OutlineOutput]):
         super().__init__(
             model=model,
             deps_type=OutlineDeps,
-            output_type=[self._process_outline, OutlineOutput],
+            output_type=OutlineOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -98,25 +98,6 @@ class OutlineAgent(NarrareAgent[OutlineDeps, OutlineOutput]):
             raise ModelRetry("At least one scene is required in the outline")
 
         return output.model_copy(update={"scenes": filtered_scenes})
-
-    async def _process_outline(
-        self,
-        ctx: RunContext[OutlineDeps],
-        scenes: list[str] | None = None,
-        chapter_title: str | None = None,
-    ) -> OutlineOutput:
-        """Output Function — strukturiert die LLM-Response in OutlineOutput.
-
-        Bei Streaming (``ctx.partial_output``) wird nur minimal verarbeitet.
-        """
-        if ctx.partial_output:
-            return OutlineOutput()
-
-        return OutlineOutput(
-            chapter_title=chapter_title or "",
-            scenes=scenes or [],
-            outline_text="\n\n".join(scenes) if scenes else "",
-        )
 
     async def run(
         self,

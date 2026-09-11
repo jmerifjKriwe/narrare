@@ -96,6 +96,8 @@ class SeriesVoiceService:
         composer: PromptComposer | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         """Initialise the service with all dependencies injected (RULE-07).
 
@@ -110,6 +112,8 @@ class SeriesVoiceService:
             composer: PromptComposer for the governed author_voice prompt
                 (None → ConfigurationError at profile time).
             invocation_pipeline: Optional InvocationPipeline for evidence.
+            api_key: Per-user provider API key override (model-routing cascade).
+            base_url: Optional per-user provider base URL override.
         """
         self._series_repo = series_repo
         self._novel_repo = novel_repo
@@ -118,6 +122,8 @@ class SeriesVoiceService:
         self._config = model_config
         self._composer = composer
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def profile_from_novel(
         self,
@@ -207,6 +213,8 @@ class SeriesVoiceService:
             model_registry=self._registry,
             model_config=self._config,
             composed_prompt=composed_prompt,
+            api_key=self._api_key,
+            base_url=self._base_url,
         )
 
         # 8. Assemble + persist the profile (RULE-07: via the repository).

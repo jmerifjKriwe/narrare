@@ -1,9 +1,8 @@
-"""Tests for FactExtractorAgent — output processing and validation.
+"""Tests for FactExtractorAgent — output validation.
 
 ADR-044 — Staged Multi-Agent Consistency Pipeline.
 
 Test strategy:
-- Output function tested directly via _process_output
 - Validation tested directly via _validate_output
 - No real LLM calls (RULE-01b)
 """
@@ -41,102 +40,7 @@ def run_context() -> RunContext[FactExtractorDeps]:
 
 
 # ---------------------------------------------------------------------------
-# A. Output Function — _process_output
-# ---------------------------------------------------------------------------
-
-
-class TestProcessOutput:
-    """_process_output structures LLM response into FactExtractorOutput."""
-
-    @pytest.mark.asyncio
-    async def test_returns_fact_extractor_output(
-        self, agent: FactExtractorAgent, run_context: RunContext[FactExtractorDeps]
-    ) -> None:
-        facts = [
-            {
-                "fact_type": "character_state",
-                "subject": "Anna",
-                "predicate": "has eye color",
-                "object_value": "green",
-                "chapter_id": "ch-1",
-                "evidence_text": "Anna's green eyes sparkled.",
-                "confidence": 0.95,
-                "temporal_marker": None,
-            }
-        ]
-        output = await agent._process_output(
-            run_context,
-            facts=facts,
-            assessment_summary="One fact extracted.",
-        )
-        assert len(output.facts) == 1
-        assert output.facts[0].subject == "Anna"
-        assert output.facts[0].fact_type == "character_state"
-        assert output.assessment_summary == "One fact extracted."
-
-    @pytest.mark.asyncio
-    async def test_partial_output_returns_empty(
-        self, agent: FactExtractorAgent, run_context: RunContext[FactExtractorDeps]
-    ) -> None:
-        run_context.partial_output = True
-        result = await agent._process_output(
-            run_context,
-            facts=[
-                {
-                    "fact_type": "event",
-                    "subject": "X",
-                    "predicate": "Y",
-                    "object_value": "Z",
-                    "chapter_id": "ch1",
-                    "evidence_text": "test",
-                    "confidence": 0.9,
-                }
-            ],
-            assessment_summary="Ignored during streaming.",
-        )
-        assert result.facts == []
-        assert result.assessment_summary == ""
-
-    @pytest.mark.asyncio
-    async def test_process_output_with_no_facts(
-        self, agent: FactExtractorAgent, run_context: RunContext[FactExtractorDeps]
-    ) -> None:
-        output = await agent._process_output(run_context)
-        assert output.facts == []
-        assert output.assessment_summary == ""
-
-    @pytest.mark.asyncio
-    async def test_process_output_multiple_facts(
-        self, agent: FactExtractorAgent, run_context: RunContext[FactExtractorDeps]
-    ) -> None:
-        facts = [
-            {
-                "fact_type": "character_state",
-                "subject": "Anna",
-                "predicate": "is",
-                "object_value": "brave",
-                "chapter_id": "ch1",
-                "evidence_text": "Anna was brave.",
-                "confidence": 0.9,
-            },
-            {
-                "fact_type": "event",
-                "subject": "Anna",
-                "predicate": "arrived at",
-                "object_value": "The Tower",
-                "chapter_id": "ch2",
-                "evidence_text": "Anna pushed open the gate.",
-                "confidence": 0.85,
-                "temporal_marker": "at dusk",
-            },
-        ]
-        output = await agent._process_output(run_context, facts=facts)
-        assert len(output.facts) == 2
-        assert output.facts[1].temporal_marker == "at dusk"
-
-
-# ---------------------------------------------------------------------------
-# B. Output Validator — _validate_output
+# A. Output Validator — _validate_output
 # ---------------------------------------------------------------------------
 
 

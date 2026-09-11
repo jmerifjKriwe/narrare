@@ -139,6 +139,10 @@ class ExportService(Protocol):
     Consumable by all four clients (WebUI download, MCP, A2A, CLI) — a new
     client is a new adapter, never a service change. NOT an LLM operation (see
     the non-LLM call-out): no ModelRegistry, no PromptComposer, no agent.
+
+    Ownership (P-SEC S1): every method takes the caller's ``user_id`` — the
+    service gates novel ownership (Pattern B) and binds jobs to their owner,
+    so foreign and unknown ids are indistinguishable (404, anti-enumeration).
     """
 
     async def list_formats(self) -> list[tuple[ExportFormat, bool]]:
@@ -152,20 +156,26 @@ class ExportService(Protocol):
         self,
         novel_id: UUID,
         options: ExportOptions,
+        user_id: UUID,
     ) -> ExportJob:
-        """Create + dispatch an export job.
+        """Create + dispatch an export job for a novel OWNED by ``user_id``.
 
-        Raises :class:`ExportFormatUnavailableError` synchronously if the
-        format's binary is missing (RULE-11 fast-fail).
+        Raises core ``NotFoundError`` (→ HTTP 404) BEFORE any job creation
+        when the novel is unknown or foreign (anti-enumeration: the two are
+        indistinguishable), and :class:`ExportFormatUnavailableError`
+        synchronously if the format's binary is missing (RULE-11 fast-fail).
         """
         ...
 
-    async def get_job(self, job_id: str) -> ExportJob:
-        """Poll job status. Raises :class:`ExportJobNotFoundError` for unknown ids."""
+    async def get_job(self, job_id: str, user_id: UUID) -> ExportJob:
+        """Poll job status for the job's OWNER. Raises
+        :class:`ExportJobNotFoundError` for unknown — or foreign-owned — ids.
+        """
         ...
 
-    async def consume_artifact(self, job_id: str, token: str) -> Artifact:
-        """Validate the signed token, return the ``Artifact`` (single-use), and
-        schedule temp-file cleanup. Raises :class:`ExportArtifactExpiredError`.
+    async def consume_artifact(self, job_id: str, token: str, user_id: UUID) -> Artifact:
+        """Validate the signed token + caller ownership, return the single-use
+        ``Artifact``, and schedule temp-file cleanup. Raises
+        :class:`ExportArtifactExpiredError` / :class:`ExportJobNotFoundError`.
         """
         ...

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import time
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 import structlog
 
@@ -25,9 +26,10 @@ from narrare_core.shared.errors import NotFoundError, ValidationError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
-    from uuid import UUID
 
+    from narrare.chapters.models import Chapter
     from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
     from narrare.writing.schemas import InlineSuggestRequest
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
@@ -56,6 +58,7 @@ class InlineSuggestService:
         composer: Prompt composer for SUGGEST intent prompts.
         config: Resolved model configuration (temperature, max_tokens).
         chapter_repo: Chapter repository for access validation and context.
+        novel_repo: Novel repository for the chapter-ownership gate (IDOR S6).
         api_key: Optional API key override for the LLM provider.
         base_url: Optional base URL override for the LLM provider.
     """
@@ -66,6 +69,7 @@ class InlineSuggestService:
         composer: PromptComposer,
         config: ResolvedModelConfig,
         chapter_repo: ChapterRepository,
+        novel_repo: NovelRepository,
         api_key: str | None = None,
         base_url: str | None = None,
     ) -> None:
@@ -73,8 +77,32 @@ class InlineSuggestService:
         self._composer = composer
         self._config = config
         self._chapter_repo = chapter_repo
+        self._novel_repo = novel_repo
         self._api_key = api_key
         self._base_url = base_url
+
+    # -- Ownership gate (IDOR S6, chapter-only path) ------------------------
+
+    async def _verify_chapter_ownership(self, chapter_id: UUID, user_id: str) -> Chapter:
+        """Load the chapter and verify its novel belongs to the caller.
+
+        The suggest endpoint has no ``novel_id`` parameter, so the gate
+        scopes by the chapter's OWN novel: chapter exists ∧
+        ``novel_repo.get_by_id(chapter.novel_id, user)``.  Every failure
+        raises the same ``NotFoundError`` (foreign ≡ unknown) BEFORE any
+        prompt building, LLM call, or chapter-metadata enrichment.
+
+        Raises:
+            NotFoundError: If the chapter does not exist or its novel
+                belongs to another user.
+        """
+        chapter = await self._chapter_repo.get(chapter_id)
+        if chapter is None:
+            raise NotFoundError("Chapter", identifier=str(chapter_id))
+        novel = await self._novel_repo.get_by_id(chapter.novel_id, UUID(user_id))
+        if novel is None:
+            raise NotFoundError("Chapter", identifier=str(chapter_id))
+        return chapter
 
     # -- Pre-validation (called before SSE starts) -------------------------
 
@@ -88,11 +116,13 @@ class InlineSuggestService:
 
         Called by the router BEFORE creating the StreamingResponse to
         ensure validation errors (422, 404) are returned with proper HTTP
-        status codes instead of causing RuntimeError after headers are sent.
+        status codes instead of causing RuntimeError after headers are
+        sent.  Ownership runs FIRST (IDOR S6).
 
         Raises:
             ValidationError: If text_before is empty or whitespace-only.
-            NotFoundError: If the chapter does not exist.
+            NotFoundError: If the chapter does not exist or its novel
+                belongs to another user.
         """
         if not request.text_before.strip():
             raise ValidationError(
@@ -100,9 +130,7 @@ class InlineSuggestService:
                 code="MISSING_INPUT",
             )
 
-        chapter = await self._chapter_repo.get(chapter_id)
-        if chapter is None:
-            raise NotFoundError("Chapter", identifier=str(chapter_id))
+        await self._verify_chapter_ownership(chapter_id, user_id)
 
     # -- Public API --------------------------------------------------------
 
@@ -118,9 +146,14 @@ class InlineSuggestService:
         assembly.  Uses ``LLMIntent.SUGGEST`` → ``writing/inline_suggest``
         prompt mode.  Max ~60 tokens per suggestion for low latency.
 
-        The prompt context includes the user's ``text_before`` as the
-        primary completion trigger, ``text_after`` for forward context,
-        and minimal chapter metadata (title, POV).
+        The prompt context carries the user's ``text_before``/``text_after``
+        as extra variables so the governed template renders them XML-wrapped
+        in the SYSTEM channel (RULE-22 §6 injection defense).
+        ``author_instructions`` is intentionally NOT set: the composer's
+        fallback would pass the raw manuscript text through the user channel,
+        duplicating it alongside the wrapped system copy (R2 Slice B',
+        2026-09-11). ``kb_characters`` is supplied empty — lean ruling, no
+        KB assembly on the <500 ms path (ADR-045 bypass, see below).
 
         ADR-045 Decision 3 Option C exception — intentional pipeline bypass:
             This method intentionally does NOT use ``InvocationPipeline``
@@ -151,9 +184,17 @@ class InlineSuggestService:
             has ``is_final=True`` and populated ``usage``.
 
         Raises:
+            narrare_core.shared.errors.NotFoundError: If the chapter does
+                not exist or its novel belongs to another user (IDOR S6).
             narrare_core.shared.errors.PromptNotFoundError: If no prompt
                 file exists for ``LLMIntent.SUGGEST``.
         """
+        # Ownership gate FIRST (IDOR S6): foreign ≡ unknown 404s before
+        # rate-limit tracking, prompt building, or chapter-metadata
+        # enrichment — a foreign chapter's title/POV must never reach
+        # the prompt (GAP-MINOR metadata leak).
+        await self._verify_chapter_ownership(chapter_id, user_id)
+
         # Lightweight evidence — invocation tracked via log event (ADR-045
         # Decision 3 Option C exception for low-latency inline suggest).
         logger.info(
@@ -174,11 +215,18 @@ class InlineSuggestService:
         ctx = PromptContext(
             language=request.language,
             mode="inline_suggest",
-            author_instructions=request.text_before,
             extra={
                 "user_id": str(user_id),
                 "chapter_id": str(chapter_id),
+                # SYSTEM-channel XML wrapping via the governed template
+                # (<user_provided_text> blocks) — R2 Slice B'. Never map
+                # text_before to author_instructions: the composer fallback
+                # would leak raw manuscript text into the user channel.
+                "text_before": request.text_before,
                 "text_after": request.text_after or "",
+                # Lean ruling (ADR-045 <500 ms bypass): no KB assembly on the
+                # suggest path — the Characters section renders empty.
+                "kb_characters": "",
                 "chapter_context": chapter_context,
             },
         )

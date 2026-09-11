@@ -36,13 +36,21 @@ class StyleVariantRegenerationProtocol(Protocol):
         chapter_id: UUID,
         novel_id: UUID,
         request: StyleVariantRegenerateRequest,
+        *,
+        user_id: str,
     ) -> None:
         """Pre-validate the style-variant request before SSE response.
 
+        Ownership gate (IDOR remediation S6): ``verify_chapter_access``
+        runs FIRST — foreign and unknown chapter ids are indistinguishable
+        404s raised before any input validation, active-generation check,
+        or request-row creation.
+
         Raises:
+            NotFoundError: Chapter unknown, not in the addressed novel,
+                or novel owned by another user.
             ValidationError: If source_text is empty.
             ConflictError: If another generation is active for the chapter.
-            NotFoundError: If the chapter or novel does not exist.
         """
         ...
 

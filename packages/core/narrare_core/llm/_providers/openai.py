@@ -14,6 +14,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from narrare_core.llm._providers.registry import register, register_model
+from narrare_core.llm._schema_transformer import narrare_openai_compat_profile
 from narrare_core.llm._transport_retry import get_transport_max_retries
 from narrare_core.settings import get_core_settings
 
@@ -45,6 +46,12 @@ def _make_openai(
     env resolution) — this path cannot make real calls, so transport retry is
     not applicable, and deferral preserves the existing dev/test behaviour.
 
+    The shared OpenAI-compat profile hook (``narrare_openai_compat_profile``)
+    swaps in the universal ``$ref``/``$defs`` inlining transformer. OpenAI
+    resolves references natively, so this is a consistency measure (uniform
+    schema shape across every OpenAI-compatible provider), not a correctness
+    fix.
+
     Args:
         model_id: OpenAI model identifier (e.g. "gpt-4o").
         api_key: Optional API key — overrides env var when provided.
@@ -57,12 +64,20 @@ def _make_openai(
     resolved_key = api_key if api_key is not None else get_core_settings().openai_api_key
     if resolved_key is not None:
         client = AsyncOpenAI(api_key=resolved_key, base_url=base_url, max_retries=max_retries)
-        return OpenAIChatModel(model_id, provider=OpenAIProvider(openai_client=client))
+        return OpenAIChatModel(
+            model_id,
+            provider=OpenAIProvider(openai_client=client),
+            profile=narrare_openai_compat_profile,
+        )
     # No resolvable credential: defer to pydantic-ai (cannot build a client
     # without a key; this path makes no real calls).
     if base_url is not None:
-        return OpenAIChatModel(model_id, provider=OpenAIProvider(api_key=None, base_url=base_url))
-    return OpenAIChatModel(model_id)
+        return OpenAIChatModel(
+            model_id,
+            provider=OpenAIProvider(api_key=None, base_url=base_url),
+            profile=narrare_openai_compat_profile,
+        )
+    return OpenAIChatModel(model_id, profile=narrare_openai_compat_profile)
 
 
 register("openai", _make_openai)

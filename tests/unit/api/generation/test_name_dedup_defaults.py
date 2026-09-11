@@ -12,6 +12,7 @@ See: docs/architecture/governance/cr-08-p3-governed-defaults-manifest.md §4.2
 """
 
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
 
@@ -19,6 +20,8 @@ from narrare.generation.name_service import (
     DEFAULT_NAME_DEDUP_PAGE_SIZE,
     MAX_EXISTING_NAMES_TOKENS,
 )
+
+from ._ownership_fakes import permissive_novel_repo
 
 
 class TestNameDedupGovernedDefaults:
@@ -80,7 +83,6 @@ class TestNameDedupGovernedDefaults:
         by ``test_max_existing_names_tokens_matches_manifest``.
         """
         import inspect
-        from uuid import uuid4
 
         # Wiring: _fetch_existing_names must reference the constant by name,
         # not a bare literal (one definition site — RULE-06).
@@ -104,6 +106,7 @@ class TestNameDedupGovernedDefaults:
             registry=MagicMock(spec=["get_model"]),
             composer=MagicMock(spec=["build"]),
             config=MagicMock(spec=[]),
+            novel_repo=permissive_novel_repo(),
             kb_repo=mock_repo,
         )
 
@@ -128,7 +131,6 @@ class TestNameDedupGovernedDefaults:
         Guards the interaction between the page size and the token cap: with
         100 short names and a 500-token budget, nothing is truncated.
         """
-        from uuid import uuid4
 
         mock_repo = MagicMock(spec=["list_entries"])
         entries = [MagicMock(spec=["name"]) for _ in range(100)]
@@ -142,6 +144,7 @@ class TestNameDedupGovernedDefaults:
             registry=MagicMock(spec=["get_model"]),
             composer=MagicMock(spec=["build"]),
             config=MagicMock(spec=[]),
+            novel_repo=permissive_novel_repo(),
             kb_repo=mock_repo,
         )
 

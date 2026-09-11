@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { StatusMessage } from "@/components/ui/status-message";
 import { useChat } from "@/lib/hooks/useChat";
 import { listContainerVariants, listItemVariants } from "@/lib/motion-variants";
+import { cn } from "@/lib/utils";
 import { ChatInputArea } from "./ChatInputArea";
 import { ChatMessage } from "./ChatMessage";
 
@@ -27,15 +28,24 @@ import { ChatMessage } from "./ChatMessage";
 // ---------------------------------------------------------------------------
 
 interface ChatPanelProps {
-  readonly projectId: string;
+  /** Project (novel) scope, or null for project-less chat (NOTES-001). */
+  readonly projectId: string | null;
+  /** Optional scratchpad note attached as runtime context (NOTES-001 §6b). */
+  readonly noteId?: string | null;
   readonly onClose: () => void;
+  /**
+   * Optional layout overrides for the root element (merged via tailwind-merge).
+   * Hosts like NotesChatDrawer fill their panel (`w-full border-l-0`);
+   * the default fixed-width chrome is unchanged for the studio chat page.
+   */
+  readonly className?: string;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
+export function ChatPanel({ projectId, noteId, onClose, className }: ChatPanelProps) {
   const t = useTranslations("studio");
   const {
     messages,
@@ -46,7 +56,7 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
     clearConversation,
     cancelStream,
     chatEndRef,
-  } = useChat(projectId);
+  } = useChat(projectId, noteId);
 
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -86,7 +96,7 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
   }, [isStreaming, cancelStream, onClose]);
 
   return (
-    <div className="flex flex-col h-full border-l border-border bg-card w-80">
+    <div className={cn("flex flex-col h-full border-l border-border bg-card w-80", className)}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">

@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import uuid
+
 import structlog
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from pyrate_limiter import Duration, Limiter, Rate
 
 from narrare._app.config import Settings, get_settings
-from narrare._app.dependencies import SessionDep
+from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare._app.rate_limiter_dep import RateLimiter as _RateLimiterDep
 from narrare.auth.cookie_helpers import clear_refresh_cookie, set_refresh_cookie
 from narrare.auth.repository import AuthRepository
-from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
+from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse, WsTicketResponse
 from narrare.auth.service import AuthService
 
 logger = structlog.get_logger(__name__)
@@ -127,3 +129,18 @@ async def logout(
     """
     await service.logout()
     clear_refresh_cookie(response)
+
+
+@router.post("/ws-ticket", response_model=WsTicketResponse)
+async def issue_ws_ticket(
+    user_id: CurrentUserIdDep,
+    service: AuthService = Depends(_get_auth_service),
+) -> WsTicketResponse:
+    """Issue a single-use, 60 s WebSocket handshake ticket (ADR-084).
+
+    Bearer-gated (no ambient credential → no CSRF surface, hence no
+    dedicated limiter — same stance as /auth/refresh). The writing WS
+    handshake consumes the ticket as the ``token`` query param and derives
+    the session identity from it.
+    """
+    return service.issue_ws_ticket(uuid.UUID(user_id))

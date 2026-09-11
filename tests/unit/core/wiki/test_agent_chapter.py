@@ -1,21 +1,33 @@
-"""Tests for WikiChapterGenerator and generate_chapter path.
+"""Tests for generate_chapter path (WikiGenerationAgent → WikiChapterGenerator).
 
 Test-Strategie:
 - TestModel für deterministische Agent-Tests
-- Output Function (``_process_output``) wird direkt via WikiChapterGenerator getestet
 - generate_chapter auf WikiGenerationAgent testet die Integration
 - Keine echten LLM-Calls (RULE-01b)
 """
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+from typing import Any, cast
+from unittest.mock import AsyncMock
+
 import pytest
-from pydantic_ai import RunContext, RunUsage
 from pydantic_ai.models.test import TestModel
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.usage import UsageLimits
 
 from narrare_core.wiki.agent import WikiGenerationAgent
 from narrare_core.wiki.agent_chapter import WikiChapterGenerator
 from narrare_core.wiki.types import WikiChapterOutput, WikiGenerationDeps
+
+
+def _chapter_output() -> WikiChapterOutput:
+    """Minimal valid chapter output (real value object, ADR-030)."""
+    return WikiChapterOutput(
+        narrative_summary="Summary.", key_events=[], entities_involved=[], themes=[]
+    )
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -58,12 +70,6 @@ def deps() -> WikiGenerationDeps:
     )
 
 
-@pytest.fixture()
-def run_context(deps_chapter: WikiGenerationDeps) -> RunContext[WikiGenerationDeps]:
-    """Basic RunContext for testing output functions."""
-    return RunContext[WikiGenerationDeps](deps=deps_chapter, model=TestModel(), usage=RunUsage())
-
-
 # ---------------------------------------------------------------------------
 # A. generate_chapter via WikiGenerationAgent
 # ---------------------------------------------------------------------------
@@ -77,11 +83,11 @@ class TestGenerateChapter:
         agent = WikiGenerationAgent(model=TestModel())
         result = await agent.generate_chapter(deps=deps_chapter)
         assert isinstance(result, WikiChapterOutput)
-        # TestModel with output function returns default values
-        assert result.narrative_summary == ""
-        assert result.key_events == []
-        assert result.entities_involved == []
-        assert result.themes == []
+        # TestModel fills the strict output schema with type-based placeholders
+        assert isinstance(result.narrative_summary, str)
+        assert isinstance(result.key_events, list)
+        assert isinstance(result.entities_involved, list)
+        assert isinstance(result.themes, list)
 
     @pytest.mark.asyncio
     async def test_generate_chapter_with_entity_deps_falls_back(
@@ -94,51 +100,109 @@ class TestGenerateChapter:
 
 
 # ---------------------------------------------------------------------------
-# B. Output Function: WikiChapterGenerator._process_output
+# B. WikiChapterGenerator — model_settings/usage_limits pass-through (Task 1)
 # ---------------------------------------------------------------------------
 
 
-class TestProcessChapterOutput:
-    """Chapter output function tests (WikiChapterGenerator)."""
+class _StreamResultStub:
+    """Stub for the pydantic-ai run_stream result object."""
+
+    def __init__(self, output: object) -> None:
+        self._output = output
+
+    async def get_output(self) -> object:
+        return self._output
+
+
+class _StreamContextStub:
+    """Async context manager yielded by a stubbed run_stream call."""
+
+    def __init__(self, result: _StreamResultStub) -> None:
+        self._result = result
+
+    async def __aenter__(self) -> _StreamResultStub:
+        return self._result
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+
+class _RunStreamStub:
+    """Callable fake recording run_stream calls (ADR-030 fake style)."""
+
+    def __init__(self, output: object) -> None:
+        self._context = _StreamContextStub(_StreamResultStub(output))
+        self.calls: list[dict[str, object]] = []
+
+    def __call__(self, *args: object, **kwargs: object) -> _StreamContextStub:
+        self.calls.append({"args": args, "kwargs": kwargs})
+        return self._context
+
+
+class TestChapterGeneratorSettings:
+    """WikiChapterGenerator.generate forwards kwargs to the internal agent."""
 
     @pytest.mark.asyncio
-    async def test_with_full_values(self, run_context: RunContext[WikiGenerationDeps]) -> None:
+    async def test_run_forwards_settings_and_limits(self, deps_chapter: WikiGenerationDeps) -> None:
         generator = WikiChapterGenerator(model=TestModel())
-        result = await generator._process_output(
-            run_context,
-            narrative_summary="Lyra and Eldrin descend into the cave.",
-            key_events=["Enter cave", "Find crystal", "Confront guardian"],
-            entities_involved=[
-                {"name": "Lyra", "role": "protagonist", "significance": 0.9},
-            ],
-            themes=["Discovery", "Courage"],
-            emotional_arc="From tension to triumph.",
+        expected = _chapter_output()
+        stub_agent = AsyncMock(name="inner_agent")
+        stub_agent.run = AsyncMock(return_value=SimpleNamespace(output=expected))
+        cast("Any", generator)._chapter_agent = stub_agent
+        sentinel_settings = ModelSettings(max_tokens=12_345)
+        sentinel_limits = UsageLimits(request_limit=7)
+
+        result = await generator.generate(
+            "Prompt text.",
+            deps_chapter,
+            model_settings=sentinel_settings,
+            usage_limits=sentinel_limits,
         )
-        assert result.narrative_summary == "Lyra and Eldrin descend into the cave."
-        assert len(result.key_events) == 3
-        assert len(result.entities_involved) == 1
-        assert len(result.themes) == 2
-        assert result.emotional_arc == "From tension to triumph."
+
+        assert result is expected
+        kwargs = stub_agent.run.call_args
+        assert kwargs is not None
+        assert kwargs.kwargs["model_settings"] is sentinel_settings
+        assert kwargs.kwargs["usage_limits"] is sentinel_limits
 
     @pytest.mark.asyncio
-    async def test_partial_streaming(self, run_context: RunContext[WikiGenerationDeps]) -> None:
-        run_context.partial_output = True
+    async def test_stream_forwards_settings_and_limits(
+        self, deps_chapter: WikiGenerationDeps
+    ) -> None:
         generator = WikiChapterGenerator(model=TestModel())
-        result = await generator._process_output(
-            run_context,
-            narrative_summary="Partial...",
-            key_events=["Partial event"],
+        expected = _chapter_output()
+        run_stream_stub = _RunStreamStub(expected)
+        stub_agent = AsyncMock(name="inner_agent")
+        stub_agent.run_stream = run_stream_stub
+        cast("Any", generator)._chapter_agent = stub_agent
+        sentinel_settings = ModelSettings(max_tokens=12_345)
+        sentinel_limits = UsageLimits(request_limit=7)
+
+        result = await generator.generate(
+            "Prompt text.",
+            deps_chapter,
+            stream=True,
+            model_settings=sentinel_settings,
+            usage_limits=sentinel_limits,
         )
-        assert result.narrative_summary == ""
-        assert result.key_events == []
-        assert result.entities_involved == []
-        assert result.themes == []
+
+        assert result is expected
+        assert len(run_stream_stub.calls) == 1
+        kwargs = cast("dict[str, object]", run_stream_stub.calls[0]["kwargs"])
+        assert kwargs["model_settings"] is sentinel_settings
+        assert kwargs["usage_limits"] is sentinel_limits
 
     @pytest.mark.asyncio
-    async def test_empty_defaults(self, run_context: RunContext[WikiGenerationDeps]) -> None:
+    async def test_run_defaults_to_none(self, deps_chapter: WikiGenerationDeps) -> None:
+        """Without kwargs the internal run receives None (backward compat)."""
         generator = WikiChapterGenerator(model=TestModel())
-        result = await generator._process_output(run_context)
-        assert result.narrative_summary == ""
-        assert result.key_events == []
-        assert result.entities_involved == []
-        assert result.themes == []
+        stub_agent = AsyncMock(name="inner_agent")
+        stub_agent.run = AsyncMock(return_value=SimpleNamespace(output=_chapter_output()))
+        cast("Any", generator)._chapter_agent = stub_agent
+
+        await generator.generate("Prompt text.", deps_chapter)
+
+        run_call = stub_agent.run.call_args
+        assert run_call is not None
+        assert run_call.kwargs["model_settings"] is None
+        assert run_call.kwargs["usage_limits"] is None

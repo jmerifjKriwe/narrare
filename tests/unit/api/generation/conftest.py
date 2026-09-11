@@ -18,6 +18,8 @@ from narrare.generation.schemas import (
 from narrare_core.llm import ResolvedModelConfig
 from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
+from ._ownership_fakes import permissive_novel_repo
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -137,6 +139,7 @@ def service(
         registry=fake_registry,
         composer=mock_composer,
         config=config,
+        novel_repo=permissive_novel_repo(),
         api_key=None,
         base_url=None,
         kb_repo=None,

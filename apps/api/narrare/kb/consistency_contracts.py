@@ -107,6 +107,10 @@ class KBConsistencyProtocol(Protocol):
     - Entry-internal: LLM-based per-entry field contradiction detection
     - Relationship asymmetry: algorithmic reciprocal relationship validation
     - Cross-entity: LLM-based entity-pair contradiction detection (reuses KB-006b)
+
+    Every ``check`` call is gated on novel ownership (IDOR fix S9) BEFORE
+    the cache probe and every analysis phase: foreign and unknown novels
+    are indistinguishable (``NotFoundError`` → 404).
     """
 
     async def check(
@@ -114,21 +118,26 @@ class KBConsistencyProtocol(Protocol):
         *,
         novel_id: UUID,
         request: ConsistencyCheckRequest,
-        user_id: str | None = None,
+        user_id: str,
     ) -> ConsistencyCheckResponse:
         """Run a consistency check on the project's KB.
 
         Args:
             novel_id: The project to check.
             request: Check options and filters.
-            user_id: Authenticated user identifier, used to scope mem0
-                semantic-suppression queries (CR-AUFG-03-10). ``None`` disables
-                suppression (passthrough — existing behaviour) and is the
-                default for backwards compatibility with callers/tests that do
-                not yet pass it.
+            user_id: Authenticated user identifier — REQUIRED (IDOR fix
+                S9). Gates novel ownership before any phase runs; also
+                scopes mem0 semantic-suppression queries
+                (CR-AUFG-03-10). The former ``None`` passthrough was
+                removed from the service boundary because a gate that
+                can be skipped is not a gate; helper-level ``None``
+                behaviour stays covered by ``_consistency_suppress``.
 
         Returns:
             Complete consistency report with all requested issue types.
+
+        Raises:
+            NotFoundError: If the novel is unknown or not owned by the caller.
         """
         ...
 
@@ -192,6 +201,11 @@ class DismissedFindingProtocol(Protocol):
     Persisted per-novel so that findings a user has consciously reviewed and
     accepted can be hidden from future consistency checks.  The frontend
     fetches the dismissed fingerprint list and filters issues client-side.
+
+    Every method gates on novel ownership at entry (IDOR fix S10): the
+    caller must own ``novel_id`` — dismissal state is user-scoped data,
+    and a foreign dismiss/undismiss is a foreign WRITE into the victim's
+    consistency results.
     """
 
     async def dismiss_finding(
@@ -199,15 +213,20 @@ class DismissedFindingProtocol(Protocol):
         *,
         novel_id: UUID,
         request: DismissFindingRequest,
+        user_id: str,
     ) -> DismissedFindingsResponse:
         """Dismiss a finding by its stable fingerprint (idempotent upsert).
 
         Args:
             novel_id: The project the finding belongs to.
             request: The finding fingerprint and optional reason.
+            user_id: Authenticated caller — the novel ownership gate input.
 
         Returns:
             Updated list of all dismissed fingerprints for the novel.
+
+        Raises:
+            NotFoundError: The novel is unknown or owned by another user.
         """
         ...
 
@@ -215,14 +234,19 @@ class DismissedFindingProtocol(Protocol):
         self,
         *,
         novel_id: UUID,
+        user_id: str,
     ) -> DismissedFindingsResponse:
         """List all dismissed finding fingerprints for a novel.
 
         Args:
             novel_id: The project to list dismissed findings for.
+            user_id: Authenticated caller — the novel ownership gate input.
 
         Returns:
             All currently-dismissed fingerprints for the novel.
+
+        Raises:
+            NotFoundError: The novel is unknown or owned by another user.
         """
         ...
 
@@ -231,14 +255,19 @@ class DismissedFindingProtocol(Protocol):
         *,
         novel_id: UUID,
         fingerprint: str,
+        user_id: str,
     ) -> DismissedFindingsResponse:
         """Re-enable a previously dismissed finding.
 
         Args:
             novel_id: The project the finding belongs to.
             fingerprint: The stable fingerprint to un-dismiss.
+            user_id: Authenticated caller — the novel ownership gate input.
 
         Returns:
             Updated list of all dismissed fingerprints for the novel.
+
+        Raises:
+            NotFoundError: The novel is unknown or owned by another user.
         """
         ...

@@ -8,47 +8,38 @@ PromptComposer for system prompts (RULE-02).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
 from narrare_core.agents.kb_assist_agent import KBAssistAgent, KBAssistDeps
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import (
     ConfigurationError,
     InvocationValidationError,
     PromptError,
 )
 
+from ._assist_context import build_assist_deps, build_prompt_context
 from .assist_contracts import (
     KBAssistEnhancementResponse,
     KBAssistQuestionResponse,
     KBAssistSuggestionResponse,
 )
-from .template_fields import get_template_fields
 
 if TYPE_CHECKING:
     from uuid import UUID
-
-    from pydantic_ai.models import (
-        Model,
-    )
 
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare_core.agents.kb_assist_types import KBAssistOutput
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
-    from narrare_core.prompts.context import PromptContext
 
 logger = structlog.get_logger(__name__)
-
-# Intent mapping for each assist mode.
-_INTENT_MAP = {
-    "interview": LLMIntent.KB_INTERVIEW,
-    "suggest": LLMIntent.KB_SUGGEST,
-    "enhance": LLMIntent.KB_ENHANCE,
-}
 
 
 class KBAssistService:
@@ -71,6 +62,10 @@ class KBAssistService:
             ``- name (type): brief`` and degrades to empty (RULE-11).
         prompt_composer: PromptComposer for bundling system prompts.
         kb_agent: Optional KBAgent for toolset composition.
+        invocation_pipeline: Optional invocation evidence pipeline (ADR-040).
+        api_key: Optional per-user provider API key (model-routing cascade),
+            injected into ``ModelRegistry.prepare``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -81,6 +76,9 @@ class KBAssistService:
         prompt_composer: PromptComposer,
         kb_agent: object | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         from narrare_core.agents.kb_agent import KBAgent
 
@@ -90,73 +88,30 @@ class KBAssistService:
         self._prompt_composer = prompt_composer
         self._kb_agent = kb_agent if isinstance(kb_agent, KBAgent) else None
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
-    async def _build_deps(
-        self,
-        novel_id: UUID,
-        entity_type: str,
-        existing_fields: dict[str, str],
-    ) -> KBAssistDeps:
-        """Build KBAssistDeps with world context from the KBContextProvider.
+    async def _prepare(self, intent: LLMIntent) -> PreparedModelCall:
+        """Resolve the coherent call triple lazily from the registry.
 
-        World context is the canonical curated KB aggregate (ADR-067):
-        existing entries of the entity type, rendered as
-        ``- name (type): brief``. Degrades to empty on an unavailable
-        repository or empty KB (RULE-11, handled inside the provider) so
-        assist always composes its deps.
+        Single assembly point (Task 6c — Task 4/5 pattern): model +
+        intent-aware runtime settings + usage limits as one result. The
+        intent is dynamic — each public assist method passes its own
+        (KB_INTERVIEW / KB_SUGGEST / KB_ENHANCE). Per-user credentials
+        (model-routing cascade) are forwarded so the user's
+        wizard-configured provider is used, not the operator env.
         """
-        # Get template structure for this entity type
-        template_fields = get_template_fields(entity_type)
-        template_structure = {f.field_key: f.label for f in template_fields}
-
-        # Single source for KB world context (ADR-067). The provider owns
-        # RULE-11 degradation (empty string on missing/empty KB).
-        world_context = await self._kb_context_provider.fetch_world_context(
-            novel_id,
-            entity_type=entity_type,
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
         )
-
-        return KBAssistDeps(
-            language="en",
-            entity_type=entity_type,
-            template_structure=template_structure,
-            existing_answers=existing_fields or None,
-            world_context=world_context or None,
+        return await self._registry.prepare(
+            self._config,
+            intent=intent,
+            usage_limits=resolved.usage_limits,
+            api_key=self._api_key,
+            base_url=self._base_url,
         )
-
-    def _build_prompt_context(
-        self,
-        intent: LLMIntent,
-        entity_type: str,
-        existing_fields: dict[str, str],
-    ) -> PromptContext:
-        """Build PromptContext for the assist prompt (RULE-02).
-
-        Prompt construction is retained here; composition happens via
-        ``compose_invocation`` in ``_run_agent``.
-        """
-        from narrare_core.prompts.context import PromptContext
-
-        intent_mode = _INTENT_MAP.get(intent, LLMIntent.KB_INTERVIEW)
-        return PromptContext(
-            language="en",
-            genre="",
-            project_title="",
-            mode=intent_mode.value,
-            extra={
-                "entity_type": entity_type,
-                "existing_answers": str(existing_fields),
-            },
-        )
-
-    async def _get_model(self) -> Model:
-        """Resolve the LLM model lazily from the registry.
-
-        Uses the injected ``ResolvedModelConfig`` to obtain a configured
-        ``Model`` instance.  This allows the service to be instantiated
-        before provider credentials are available (e.g. during app startup).
-        """
-        return await self._registry.get_model(self._config)
 
     async def _run_agent(
         self,
@@ -174,7 +129,7 @@ class KBAssistService:
         from narrare._app.invocation_context import build_invocation_context
         from narrare_core.ai_invocation import compose_invocation
 
-        prompt_context = self._build_prompt_context(intent, entity_type, existing_fields)
+        prompt_context = build_prompt_context(intent, entity_type, existing_fields)
         invocation_context = build_invocation_context(
             feature_id="kb_assist",
             intent=intent,
@@ -207,13 +162,18 @@ class KBAssistService:
             composed = await self._prompt_composer.build(intent, prompt_context)
             system_prompt = composed.system
 
-        model = await self._get_model()
+        prepared = await self._prepare(intent)
         agent = KBAssistAgent(
-            model=model,
+            model=prepared.model,
             kb_agent=self._kb_agent,
             system_prompt=system_prompt,
         )
-        result = await agent.run(prompt=user_prompt, deps=deps)
+        result = await agent.run(
+            prompt=user_prompt,
+            deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
+        )
         return result
 
     async def get_interview_question(
@@ -224,7 +184,9 @@ class KBAssistService:
         existing_fields: dict[str, str],
     ) -> KBAssistQuestionResponse:
         """Get next interview question from KBAssistAgent."""
-        deps = await self._build_deps(novel_id, entity_type, existing_fields)
+        deps = await build_assist_deps(
+            self._kb_context_provider, novel_id, entity_type, existing_fields
+        )
         user_prompt = "Ask the next most important question."
         result = await self._run_agent(
             user_prompt=user_prompt,
@@ -249,7 +211,9 @@ class KBAssistService:
         existing_fields: dict[str, str],
     ) -> KBAssistSuggestionResponse:
         """Get AI suggestion for a specific field."""
-        deps = await self._build_deps(novel_id, entity_type, existing_fields)
+        deps = await build_assist_deps(
+            self._kb_context_provider, novel_id, entity_type, existing_fields
+        )
         user_prompt = "Suggest a value for the '" + field_key + "' field."
         result = await self._run_agent(
             user_prompt=user_prompt,
@@ -274,7 +238,9 @@ class KBAssistService:
         existing_fields: dict[str, str],
     ) -> KBAssistEnhancementResponse:
         """Get AI-enhanced draft of multiple fields."""
-        deps = await self._build_deps(novel_id, entity_type, existing_fields)
+        deps = await build_assist_deps(
+            self._kb_context_provider, novel_id, entity_type, existing_fields
+        )
         user_prompt = "Generate a draft entry based on the provided information."
         result = await self._run_agent(
             user_prompt=user_prompt,

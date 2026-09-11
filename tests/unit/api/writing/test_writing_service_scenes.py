@@ -6,7 +6,7 @@ Split from test_writing_service.py for RULE-04 compliance.
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 
@@ -14,6 +14,28 @@ from narrare.writing.models import GenerationRequest
 from narrare.writing.service import WritingService
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import NotFoundError
+
+
+def _gate_open_chapter_repo() -> AsyncMock:
+    """Chapter repo whose chapter binds to ANY novel (S6 gate open).
+
+    These tests exercise draft/scene/stats flows, not ownership — the
+    access matrix lives in ``test_generation_access_matrix.py``.
+    """
+    from tests.factories import make_chapter
+
+    repo = AsyncMock(spec=["get"])
+    repo.get = AsyncMock(return_value=make_chapter(novel_id=ANY))
+    return repo
+
+
+def _gate_open_novel_repo() -> AsyncMock:
+    """Novel repo where every novel belongs to the caller (S6 gate open)."""
+    from tests.factories import make_novel
+
+    repo = AsyncMock(spec=["get_by_id"])
+    repo.get_by_id = AsyncMock(return_value=make_novel())
+    return repo
 
 
 def _make_config() -> ResolvedModelConfig:
@@ -95,6 +117,8 @@ def service(
         pipeline=mock_pipeline,
         draft_processor=mock_draft_processor,
         config=config,
+        chapter_repo=_gate_open_chapter_repo(),
+        novel_repo=_gate_open_novel_repo(),
     )
 
 

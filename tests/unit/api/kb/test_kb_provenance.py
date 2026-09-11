@@ -21,6 +21,8 @@ from narrare.kb.schemas import KBEntryCreate
 from narrare.kb.service import KBService
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from narrare.kb.relationship_repository import RelationshipRepository
 
 pytestmark = pytest.mark.mutation_inert
@@ -81,6 +83,7 @@ class TestExtractionProvenance:
         """Extraction apply creates KBEntryCreate with auto_extraction provenance."""
         from narrare.kb.extraction_apply_service import ExtractionApplyService
         from narrare.kb.schemas_extraction import ApplyExtractionItem
+        from tests.unit.api.kb._apply_extraction_helpers import _FakeApplySession
         from tests.unit.api.kb.test_apply_extraction import (
             _FakeKBRepoForApply,
             _FakeKBService,
@@ -95,6 +98,7 @@ class TestExtractionProvenance:
             kb_service=cast("KBService", kb_service),
             rel_repo=cast("RelationshipRepository", rel_repo),
             kb_repo=cast("KBRepositoryProtocol", kb_repo),
+            session=cast("AsyncSession", _FakeApplySession()),
         )
 
         item = cast("Any", ApplyExtractionItem)(

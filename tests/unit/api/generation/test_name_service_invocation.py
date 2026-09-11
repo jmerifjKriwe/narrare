@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 import pytest
 
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from narrare_core.llm import ResolvedModelConfig
     from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
+from ._ownership_fakes import permissive_novel_repo
 from .conftest import SAMPLE_ARRAY_RESPONSE, _default_request
 
 # ---------------------------------------------------------------------------
@@ -45,7 +47,7 @@ class TestInvocationComposition:
             new=AsyncMock(wraps=_identity_compose),
         ) as mock_compose:
             request = _default_request()
-            await service.generate_names(request)
+            await service.generate_names(request, user_id=uuid4())
 
         mock_compose.assert_awaited_once()
         args, _ = mock_compose.call_args
@@ -70,7 +72,7 @@ class TestInvocationComposition:
         ) as mock_compose:
             project_id = uuid.uuid4()
             request = _default_request(project_id=project_id)
-            await service.generate_names(request)
+            await service.generate_names(request, user_id=uuid4())
 
         kwargs = mock_compose.call_args.kwargs
         assert kwargs.get("project_id") == project_id
@@ -88,7 +90,9 @@ class TestInvocationComposition:
             "narrare.generation.name_service.compose_name_invocation",
             new=AsyncMock(wraps=_identity_compose),
         ) as mock_compose:
-            await service.generate_names(_default_request(explanation_language="de"))
+            await service.generate_names(
+                _default_request(explanation_language="de"), user_id=uuid4()
+            )
 
         kwargs = mock_compose.call_args.kwargs
         assert kwargs.get("language") == "de"
@@ -113,7 +117,7 @@ class TestInvocationComposition:
                 gender=GenderEnum.MALE,
                 explanation_language="en",
             )
-            await service.generate_names(request)
+            await service.generate_names(request, user_id=uuid4())
 
         kwargs = mock_compose.call_args.kwargs
         ctx = kwargs.get("prompt_context")
@@ -143,6 +147,7 @@ class TestInvocationComposition:
             registry=fake_registry,
             composer=mock_composer,
             config=config,
+            novel_repo=permissive_novel_repo(),
             api_key=None,
             base_url=None,
             kb_repo=None,
@@ -153,7 +158,7 @@ class TestInvocationComposition:
             "narrare.generation.name_service.compose_name_invocation",
             new=AsyncMock(wraps=_identity_compose),
         ) as mock_compose:
-            await svc.generate_names(_default_request())
+            await svc.generate_names(_default_request(), user_id=uuid4())
 
         mock_compose.assert_awaited_once()
         args, _ = mock_compose.call_args
@@ -175,7 +180,7 @@ class TestInvocationComposition:
             new=AsyncMock(wraps=_identity_compose),
         ):
             request = _default_request(explanation_language="fr")
-            await service.generate_names(request)
+            await service.generate_names(request, user_id=uuid4())
 
         # Verify composer received the enriched context (identical to original when None)
         mock_composer.build.assert_awaited_once()

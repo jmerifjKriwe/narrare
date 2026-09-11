@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare.settings.dependencies import verify_novel_owned
 from narrare.settings.models_router import router as models_router
 from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
 from narrare.settings.router_ai import router as ai_router
@@ -36,7 +37,9 @@ router.include_router(tones_router)
 # Include models sub-router (no prefix - routes already have /models/ prefix)
 router.include_router(models_router)
 
-# Include token limits sub-router (no prefix - routes already have /settings/token-limits/ prefix)
+# Include token limits sub-router — it carries the "/token-limits" sub-path
+# prefix; the parent's "/settings" prefix is prepended on inclusion, so the
+# routes mount at /settings/token-limits/… (single prefix, IDOR S11b fix).
 router.include_router(token_limits_router)
 
 
@@ -69,9 +72,12 @@ async def update_user_settings(
 @router.get("/novels/{novel_id}", response_model=ProjectSettingsResponse)
 async def get_project_settings(
     novel_id: uuid.UUID,
-    user_id: CurrentUserIdDep,
     session: SessionDep,
+    _: None = Depends(verify_novel_owned),
 ) -> ProjectSettingsResponse:
+    # Ownership is enforced by the verify_novel_owned dependency BEFORE
+    # this handler runs — critical because ProjectSettingsRepository.get
+    # auto-creates a row on first read (IDOR remediation S11a).
     repo = ProjectSettingsRepository(session)
     settings = await repo.get(novel_id)
     return ProjectSettingsResponse.model_validate(settings)
@@ -81,9 +87,10 @@ async def get_project_settings(
 async def update_project_settings(
     novel_id: uuid.UUID,
     request: UpdateProjectSettingsRequest,
-    user_id: CurrentUserIdDep,
     session: SessionDep,
+    _: None = Depends(verify_novel_owned),
 ) -> ProjectSettingsResponse:
+    # Same gate-first ordering as GET above (IDOR remediation S11a).
     repo = ProjectSettingsRepository(session)
     settings = await repo.update(novel_id, request)
     return ProjectSettingsResponse.model_validate(settings)

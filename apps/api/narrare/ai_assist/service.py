@@ -8,13 +8,16 @@ one prompt-composition + agent-invocation path (ADR-065):
   (progress / result / done / error).
 
 Pipeline (both methods):
-1. Resolve the chapter (access control + content + language/title/genre).
-2. Attribute speakers deterministically (DialogueParser — ADR-055 D3).
-3. Load AdaptiveContext (Phase 1 Protocol) for the project + user.
-4. Compose the governed system prompt via Mode 1 (Task 8 template).
-5. Run the DialogueCoachAgent (Task 11) — one LLM call.
-6. Map the output to API schemas.
-7. Record the adaptive snapshot (Phase 3 Task 4 capability) — best-effort.
+1. Resolve the per-user model routing once, lazily (ADR-086):
+   ``ensure_resolved()`` caches the resolved triple; the DI factory runs
+   pre-body-validation, so resolution happens on first use instead.
+2. Resolve the chapter (access control + content + language/title/genre).
+3. Attribute speakers deterministically (DialogueParser — ADR-055 D3).
+4. Load AdaptiveContext (Phase 1 Protocol) for the project + user.
+5. Compose the governed system prompt via Mode 1 (Task 8 template).
+6. Run the DialogueCoachAgent (Task 11) — one LLM call.
+7. Map the output to API schemas.
+8. Record the adaptive snapshot (Phase 3 Task 4 capability) — best-effort.
 
 RULE-11 graceful degradation: empty selection (after parsing) → a
 "nothing to analyse" result, no LLM call. Missing adaptive signals →
@@ -44,17 +47,19 @@ from narrare.ai_assist.schemas import (
     DialogueCoachResponse,
     DialogueCoachStreamEvent,
 )
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.adaptive.adaptive_context_provider import AdaptiveContextProviderImpl
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -73,9 +78,11 @@ class DialogueCoachService:
             it would have queried ``Chapter.novel_id = user_id`` → always
             None → 404 on every request).
         model_registry: Shared LLM model registry.
-        model_config: Resolved model config (analysis-tier). ``None`` only
-            in the unit-test harness (fake registry ignores it); production
-            always supplies a real config via the DI factory (Plan-Bug #21).
+        model_resolution: Lazy model-routing source (ADR-086). The
+            per-user cascade (provider/model/credentials) resolves on
+            first ``ensure_resolved()`` — after request-body validation —
+            and is cached; production wires ``LazyModelResolution``,
+            tests/overrides wire ``StaticModelResolution``.
         composer: PromptComposer for Mode 1 resolution.
         invocation_pipeline: Optional pipeline for evidence.
         adaptive_provider: AdaptiveContextProviderImpl — loads adaptive
@@ -88,18 +95,34 @@ class DialogueCoachService:
         chapter_repo: ChapterRepository,
         novel_repo: NovelRepository,
         model_registry: ModelRegistry,
-        model_config: ResolvedModelConfig | None,
+        model_resolution: ModelResolution,
         composer: PromptComposer,
         invocation_pipeline: InvocationPipeline | None,
         adaptive_provider: AdaptiveContextProviderImpl,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
         self._registry = model_registry
-        self._config = model_config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._composer = composer
         self._pipeline = invocation_pipeline
         self._adaptive_provider = adaptive_provider
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086).
+
+        First call resolves via the injected ``ModelResolution`` and
+        caches the triple; repeat calls return the cached value without
+        re-running the cascade. Errors propagate loudly and are never
+        cached (RULE-11): ``ConfigurationError`` (``NO_AI_PROVIDER``)
+        surfaces as a pre-header 400 on this AI-mandatory endpoint.
+        """
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     # ------------------------------------------------------------------
     # Shared pipeline — both run() and stream() call this.
@@ -114,6 +137,13 @@ class DialogueCoachService:
     ) -> DialogueCoachResponse:
         """Run the full pipeline and return the response."""
         from narrare_core.shared.errors import NotFoundError
+
+        # ADR-086: resolve the per-user routing on first use (lazy) — the
+        # DI factory runs pre-body-validation, so this is the earliest
+        # post-validation point. RULE-11: ConfigurationError propagates
+        # loudly (AI-mandatory endpoint, no degradation). Idempotent — the
+        # router's pre-header call already resolved for the SSE path.
+        resolved = await self.ensure_resolved()
 
         # Plan-Bug #23 fix (voice_check_service precedent): load the chapter
         # unscoped via ``get()``, then enforce access control via novel
@@ -182,7 +212,10 @@ class DialogueCoachService:
             voice_profiles_text=adaptive_ctx.voice_profiles_text,
             chapter_id=chapter_id,
             model_registry=self._registry,
-            model_config=self._config,
+            model_config=resolved.config,
+            api_key=resolved.api_key,
+            base_url=resolved.base_url,
+            run_limit_resolver=self._run_limit_resolver,
             composed_prompt=composed_prompt,
         )
 

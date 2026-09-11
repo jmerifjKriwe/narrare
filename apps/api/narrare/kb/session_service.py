@@ -2,6 +2,11 @@
 
 Orchestrates session creation, field updates, AI suggestions, and completion.
 Delegates AI operations to KBAssistService and storage to KBCreationSessionStore.
+
+Every session access is ownership-scoped (IDOR remediation S7): a session is
+only addressable by its owning user under its own novel. Foreign and unknown
+ids are indistinguishable — ownership failures raise ``NotFoundError`` (→ 404
+via the global handler), never a bare ``ValueError``.
 """
 
 from __future__ import annotations
@@ -15,11 +20,13 @@ import structlog
 from narrare.kb.session_mapper import map_session_to_entry
 from narrare.kb.session_models import KBCreationSession
 from narrare.kb.template_fields import get_template_fields
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from narrare.kb.assist_contracts import KBAssistProtocol
     from narrare.kb.contracts import KBServiceProtocol
     from narrare.kb.session_store import KBCreationSessionStore
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 logger = structlog.get_logger(__name__)
 
@@ -30,6 +37,7 @@ class KBSessionService:
     Args:
         session_store: In-memory ephemeral storage (ADR-080).
         assist_service: KB assisted creation service (AI orchestration).
+        novel_repo: Novel repository — create-time novel ownership gate.
         kb_service: KB entry service — used to persist completed sessions.
     """
 
@@ -37,10 +45,12 @@ class KBSessionService:
         self,
         session_store: KBCreationSessionStore,
         assist_service: KBAssistProtocol,
+        novel_repo: NovelRepositoryProtocol,
         kb_service: KBServiceProtocol | None = None,
     ) -> None:
         self._store = session_store
         self._assist = assist_service
+        self._novel_repo = novel_repo
         self._kb_service = kb_service
 
     async def create_session(
@@ -49,7 +59,15 @@ class KBSessionService:
         user_id: UUID,
         entity_type: str,
     ) -> KBCreationSession:
-        """Create a new KB creation session with template fields."""
+        """Create a new KB creation session with template fields.
+
+        Raises:
+            NotFoundError: The novel does not belong to the caller — no
+                session row is created (Pattern B gate, IDOR S7).
+        """
+        novel = await self._novel_repo.get_by_id(novel_id, user_id)
+        if novel is None:
+            raise NotFoundError("Novel", identifier=str(novel_id))
         fields = get_template_fields(entity_type)
         session = KBCreationSession(
             id=uuid4(),
@@ -68,18 +86,24 @@ class KBSessionService:
         )
         return session
 
-    async def get_session(self, session_id: UUID) -> KBCreationSession | None:
-        """Retrieve a session by ID."""
-        return await self._store.get(session_id)
+    async def get_session(
+        self, session_id: UUID, novel_id: UUID, user_id: UUID
+    ) -> KBCreationSession | None:
+        """Retrieve a session by ID, scoped to (novel_id, user_id).
+
+        Returns None for unknown AND foreign sessions — the two are
+        indistinguishable to the caller (Pattern A, anti-enumeration).
+        """
+        session = await self._store.get(session_id)
+        if session is None or session.novel_id != novel_id or session.user_id != user_id:
+            return None
+        return session
 
     async def answer_field(
-        self,
-        session_id: UUID,
-        field_key: str,
-        value: str,
+        self, session_id: UUID, novel_id: UUID, user_id: UUID, field_key: str, value: str
     ) -> KBCreationSession:
-        """Update a field with a user-provided value."""
-        session = await self._get_or_raise(session_id)
+        """Update a field with a user-provided value (ownership-gated)."""
+        session = await self._get_or_raise(session_id, novel_id, user_id)
         self._validate_status(session, "active")
 
         for field in session.fields:
@@ -96,12 +120,13 @@ class KBSessionService:
         return session
 
     async def request_suggestion(
-        self,
-        session_id: UUID,
-        field_key: str,
+        self, session_id: UUID, novel_id: UUID, user_id: UUID, field_key: str
     ) -> tuple[KBCreationSession, dict[str, object]]:
-        """Request AI suggestion for a field. Returns updated session + suggestion."""
-        session = await self._get_or_raise(session_id)
+        """Request AI suggestion for a field (ownership-gated).
+
+        Returns updated session + suggestion.
+        """
+        session = await self._get_or_raise(session_id, novel_id, user_id)
         self._validate_status(session, "active")
 
         existing = self._extract_existing_fields(session)
@@ -131,11 +156,10 @@ class KBSessionService:
         }
 
     async def request_interview_question(
-        self,
-        session_id: UUID,
+        self, session_id: UUID, novel_id: UUID, user_id: UUID
     ) -> tuple[KBCreationSession, dict[str, str | None]]:
-        """Get next interview question from AI."""
-        session = await self._get_or_raise(session_id)
+        """Get next interview question from AI (ownership-gated)."""
+        session = await self._get_or_raise(session_id, novel_id, user_id)
         self._validate_status(session, "active")
 
         existing = self._extract_existing_fields(session)
@@ -156,11 +180,10 @@ class KBSessionService:
         }
 
     async def request_enhancement(
-        self,
-        session_id: UUID,
+        self, session_id: UUID, novel_id: UUID, user_id: UUID
     ) -> tuple[KBCreationSession, dict[str, object]]:
-        """Request AI enhancement of the entire entry."""
-        session = await self._get_or_raise(session_id)
+        """Request AI enhancement of the entire entry (ownership-gated)."""
+        session = await self._get_or_raise(session_id, novel_id, user_id)
         self._validate_status(session, "active")
 
         existing = self._extract_existing_fields(session)
@@ -193,10 +216,9 @@ class KBSessionService:
         }
 
     async def complete_session(
-        self,
-        session_id: UUID,
+        self, session_id: UUID, novel_id: UUID, user_id: UUID
     ) -> tuple[KBCreationSession, UUID]:
-        """Complete session and create KB entry.
+        """Complete session and create KB entry (ownership-gated).
 
         Creates the KB entry from session fields BEFORE marking the
         session as complete. If entry creation fails, the session
@@ -207,9 +229,10 @@ class KBSessionService:
             Tuple of (updated session, created entry ID).
 
         Raises:
-            ValueError: Session not found, invalid status, or name missing.
+            NotFoundError: Session is unknown or not owned by (novel_id, user_id).
+            ValueError: Invalid status, name missing, or KB service misconfigured.
         """
-        session = await self._get_or_raise(session_id)
+        session = await self._get_or_raise(session_id, novel_id, user_id)
         self._validate_status(session, "active", "review")
 
         # Fill final_value for any remaining fields
@@ -242,9 +265,9 @@ class KBSessionService:
 
         return session, entry.id
 
-    async def abandon_session(self, session_id: UUID) -> None:
-        """Mark session as abandoned and delete from store."""
-        session = await self._get_or_raise(session_id)
+    async def abandon_session(self, session_id: UUID, novel_id: UUID, user_id: UUID) -> None:
+        """Mark session as abandoned and delete from store (ownership-gated)."""
+        session = await self._get_or_raise(session_id, novel_id, user_id)
         session.status = "abandoned"
         session.updated_at = datetime.now(UTC)
         await self._store.update(session)
@@ -259,11 +282,13 @@ class KBSessionService:
                 result[field.field_key] = value
         return result
 
-    async def _get_or_raise(self, session_id: UUID) -> KBCreationSession:
-        """Get session or raise ValueError if not found."""
-        session = await self._store.get(session_id)
+    async def _get_or_raise(
+        self, session_id: UUID, novel_id: UUID, user_id: UUID
+    ) -> KBCreationSession:
+        """Get the caller-owned session or raise NotFoundError (IDOR S7)."""
+        session = await self.get_session(session_id, novel_id, user_id)
         if session is None:
-            raise ValueError(f"Session {session_id} not found")
+            raise NotFoundError("KB creation session", identifier=str(session_id))
         return session
 
     def _validate_status(self, session: KBCreationSession, *allowed: str) -> None:

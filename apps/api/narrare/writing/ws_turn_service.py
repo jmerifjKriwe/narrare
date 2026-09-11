@@ -37,6 +37,8 @@ if TYPE_CHECKING:
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.prompts.context import PromptContext
+    from narrare_core.writing.context_assembler import WritingContextAssembler
+    from narrare_core.writing.models import WritingContext
 
 logger = structlog.get_logger(__name__)
 
@@ -59,6 +61,8 @@ class WritingTurnService:
         config: Fully resolved model configuration.
         run_limit_resolver: Resolves output budgets into pydantic-ai
             runtime limits (ADR-045 Decision 4).
+        context_assembler: Optional WritingContextAssembler for KB-enriched
+            supply; ``None`` or failure → KB-blind turn (RULE-11, ac55a094).
     """
 
     def __init__(
@@ -68,12 +72,14 @@ class WritingTurnService:
         registry: ModelRegistry,
         config: ResolvedModelConfig,
         run_limit_resolver: DefaultRunLimitResolver,
+        context_assembler: WritingContextAssembler | None = None,
     ) -> None:
         self._composer = composer
         self._invocation_pipeline = invocation_pipeline
         self._registry = registry
         self._config = config
         self._run_limit_resolver = run_limit_resolver
+        self._context_assembler = context_assembler
 
     async def stream_turn(
         self,
@@ -119,7 +125,13 @@ class WritingTurnService:
         intent = self._resolve_intent(session_mode)
         prompt_mode = self._resolve_prompt_mode(session_mode)
 
-        prompt_ctx = self._build_prompt_context(content, prompt_mode)
+        # KB assembly graceful-None — see _assemble_writing_context (RULE-11).
+        writing_context = await self._assemble_writing_context(
+            project_id=project_id,
+            chapter_id=chapter_id,
+            prompt_mode=prompt_mode,
+        )
+        prompt_ctx = self._build_prompt_context(content, prompt_mode, writing_context)
         invocation_id = uuid4()
         invocation_ctx = self._build_invocation_context(
             intent=intent,
@@ -187,20 +199,67 @@ class WritingTurnService:
             return "interview"
         return "interactive_session"
 
-    @staticmethod
-    def _build_prompt_context(content: str, prompt_mode: str) -> PromptContext:
-        """Build the PromptContext from the user's direction.
+    async def _assemble_writing_context(
+        self,
+        *,
+        project_id: UUID,
+        chapter_id: UUID,
+        prompt_mode: str,
+    ) -> WritingContext | None:
+        """Assemble the WritingContext graceful-None (RULE-11).
 
-        The caller's direction becomes ``author_instructions``, which is
-        the runtime-input channel (RULE-02a). System/task prompts are
-        built by the PromptComposer cascade, not here.
+        Mirrors the writing-graph helper (ac55a094): ``None`` assembler or
+        assembly failure → KB-blind turn (kb_* render empty); never silent.
+        """
+        if self._context_assembler is None:
+            return None
+        try:
+            return await self._context_assembler.assemble(
+                chapter_id=chapter_id,
+                project_id=project_id,
+                mode=prompt_mode,
+            )
+        except Exception as exc:
+            logger.warning(
+                "ws_turn_context_assembly_failed",
+                error=str(exc),
+                chapter_id=str(chapter_id),
+                session_mode=prompt_mode,
+            )
+            return None
+
+    @staticmethod
+    def _build_prompt_context(
+        content: str,
+        prompt_mode: str,
+        writing_context: WritingContext | None,
+    ) -> PromptContext:
+        """Build the PromptContext from the user's direction + KB context.
+
+        The direction becomes ``author_instructions`` (RULE-02a). The
+        composition contract (build_and_validate_prompt) requires the caller
+        to carry assembled KB context into the PromptContext: supplies the
+        ``kb_context_extras`` SSOT spread, ``chapter_outline`` /
+        ``timeline_position`` / ``recent_chapters`` (empty when KB-blind), and
+        ``word_target`` for interactive_session only (probe-proven demand
+        asymmetry, 2026-09-11).
         """
         from narrare_core.prompts.context import PromptContext
+        from narrare_core.writing._helpers import kb_context_extras
+        from narrare_core.writing.models import WritingContext
 
+        kb_source = writing_context if writing_context is not None else WritingContext()
+        extra: dict[str, str] = kb_context_extras(kb_source)
+        extra["chapter_outline"] = kb_source.chapter_outline
+        extra["timeline_position"] = kb_source.timeline_position
+        extra["recent_chapters"] = kb_source.recent_chapters
+        if prompt_mode == "interactive_session":
+            extra["word_target"] = str(kb_source.word_target or "")
         return PromptContext(
             language="en",
             mode=prompt_mode,
             author_instructions=content,
+            extra=extra,
         )
 
     @staticmethod

@@ -7,14 +7,18 @@ The deterministic FormulaReadabilityAnalyzer is used as-is (pure math).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.analysis.services.readability_service import ReadabilityService
 from narrare_core.agents.readability_types import ReadabilityAgentOutput
 from narrare_core.analysis.types import ReadabilityResult
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.model_config import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.shared.errors import NotFoundError
 from tests.fakes import FakeChapterRepository, FakeModelRegistry, FakeNovelRepository
 from tests.unit.api._test_helpers import make_chapter, make_novel, seed_repos
@@ -48,15 +52,33 @@ def _make_service(
         chapter_repo=cr,
         novel_repo=nr,
         model_registry=FakeModelRegistry(),
-        model_config=_CONFIG,
+        # ADR-086: unit tests pin the resolved config via StaticModelResolution.
+        model_resolution=StaticModelResolution(ResolvedModel(config=_CONFIG)),
         composer=composer or FakeComposer(),
         invocation_pipeline=invocation_pipeline,
     )
     return novel, ch, svc
 
 
+def _prepared() -> PreparedModelCall:
+    """Canned coherent triple for injected-agent tests (Task 6a-2).
+
+    The injected ``_prepare_agent`` replacement skips the real registry,
+    so the run-pass-through (``model_settings`` / ``usage_limits``) is
+    verified by the dedicated wiring suite
+    (``test_analysis_service_prepare_wiring.py``) instead.
+    """
+    return PreparedModelCall(model=MagicMock(spec=object), model_settings=None, usage_limits=None)
+
+
 def _inject(svc: ReadabilityService, agent: FakeReadabilityAgent) -> None:
-    svc._get_agent = lambda system_prompt=None: agent  # type: ignore[method-assign]
+    async def _prepare_agent(
+        system_prompt: str | None = None,
+        resolved_model: ResolvedModel | None = None,
+    ) -> tuple[FakeReadabilityAgent, PreparedModelCall]:
+        return agent, _prepared()
+
+    svc._prepare_agent = _prepare_agent  # type: ignore[method-assign]
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +140,7 @@ class TestReadabilityAnalyzeHappyPath:
             chapter_repo=cr,
             novel_repo=nr,
             model_registry=FakeModelRegistry(),
-            model_config=_CONFIG,
+            model_resolution=StaticModelResolution(ResolvedModel(config=_CONFIG)),
             composer=FakeComposer(),
         )
         _inject(svc, FakeReadabilityAgent())
@@ -220,11 +242,14 @@ class TestMode1PromptComposition:
         novel, ch, svc = _make_service(composer=composer)
         captured: dict[str, object] = {}
 
-        def spy_get_agent(system_prompt: str | None = None) -> FakeReadabilityAgent:
+        async def spy_prepare_agent(
+            system_prompt: str | None = None,
+            resolved_model: ResolvedModel | None = None,
+        ) -> tuple[FakeReadabilityAgent, PreparedModelCall]:
             captured["system_prompt"] = system_prompt
-            return FakeReadabilityAgent()
+            return FakeReadabilityAgent(), _prepared()
 
-        svc._get_agent = spy_get_agent  # type: ignore[method-assign]
+        svc._prepare_agent = spy_prepare_agent  # type: ignore[method-assign]
         await svc.analyze(novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id)
 
         assert captured["system_prompt"] == "READABILITY-SYSTEM-PROMPT"

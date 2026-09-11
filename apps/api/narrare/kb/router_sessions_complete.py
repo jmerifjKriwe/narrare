@@ -36,7 +36,7 @@ async def complete_session(
     new entry's ID.
     """
     try:
-        session, entry_id = await service.complete_session(session_id)
+        session, entry_id = await service.complete_session(session_id, novel_id, UUID(user_id))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -167,8 +167,8 @@ jobs:
       # declared dependency of the root project), causing
       # `No module named 'narrare'` flakes.
       # ─────────────────────────────────────────────────────────────────
-      - name: Check architecture constraints
-        run: uv run --no-sync python scripts/check_architecture.py
+      - name: Check architecture constraints (incl. prompt integrity)
+        run: uv run --no-sync python scripts/check_architecture.py --prompt-integrity
 
       # RULE-23 type-ignore discipline — blocking ratchet (wired 2026-08-19,
       # RULE-23 Phase 2). Full scan against the JSON baseline: production
@@ -463,7 +463,7 @@ jobs:
 
       - name: Pytest coverage comment
         if: github.event_name == 'pull_request'
-        uses: MishaKav/pytest-coverage-comment@v1.11.0
+        uses: MishaKav/pytest-coverage-comment@v1.12.2
         with:
           pytest-coverage-path: ./pytest-coverage.txt
           pytest-xml-coverage-path: ./coverage.xml

@@ -13,7 +13,10 @@ if str(_ROOT) not in sys.path:
 if str(_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(_ROOT / "scripts"))
 
-from scripts.architecture.baselines import compare_section  # noqa: E402
+from scripts.architecture.baselines import (  # noqa: E402
+    DEFAULT_BASELINE_PATH,
+    compare_section,
+)
 from scripts.check_exception_baseline import collect_exception_fingerprints  # noqa: E402
 from scripts.check_frontend_file_size import collect_violations  # noqa: E402
 
@@ -36,6 +39,22 @@ def test_compare_section_flags_new_debt(tmp_path: Path) -> None:
 
     assert not comparison.ok
     assert comparison.new_items == {"new"}
+
+
+def test_prompt_integrity_findings_section_is_schema_consistent() -> None:
+    """ai-gate-baseline.json prompt_integrity_findings must stay a list of
+    ``rule | file | detail`` signature strings (T3 self-consistency)."""
+    data = json.loads(DEFAULT_BASELINE_PATH.read_text(encoding="utf-8"))
+
+    assert "prompt_integrity_findings" in data
+    items: list[str] = data["prompt_integrity_findings"]
+    assert isinstance(items, list)
+    assert all(isinstance(item, str) for item in items)
+    for item in items:
+        rule, file_, detail = item.split(" | ", 2)
+        assert rule
+        assert file_
+        assert detail
 
 
 def test_frontend_file_size_uses_type_specific_limits(tmp_path: Path) -> None:

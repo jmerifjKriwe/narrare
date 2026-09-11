@@ -83,6 +83,25 @@ class CoreSettings(BaseSettings):
     the authoritative accessor with validation and the RULE-18b effect test."""
 
     default_embedding_model: str = "text-embedding-3-small"
+    """Default embedding model for the pgvector write/search paths (ADR-071 §3).
+
+    Resolved at runtime by the embedding providers, ``EmbeddingService`` /
+    ``NoteSearchService`` (read paths), and ``run_embed_source`` (write path).
+    Env var: ``DEFAULT_EMBEDDING_MODEL`` (field-name uppercasing, no
+    ``NARRARE_`` alias — mirrors the pre-ADR-071 env var).
+    """
+
+    default_embedding_dimension: int = 1536
+    """Default embedding vector dimension recorded on the write path (P-DIM).
+
+    Metadata stored alongside each vector (``embeddings.dimension`` column) —
+    matches the pgvector column width ``vector(1536)`` (migration 0022).
+    Env var: ``DEFAULT_EMBEDDING_DIMENSION`` (sibling of
+    ``DEFAULT_EMBEDDING_MODEL``). Does NOT govern mem0's internal memory
+    embeddings — those follow the memory cascade (ADR-071 §5 keeps
+    ``memory_embedding_model`` in API Settings).
+    """
+
     e2e_test: bool = Field(default=False, validation_alias="NARRARE_E2E_TEST")
 
 

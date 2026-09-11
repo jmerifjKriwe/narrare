@@ -48,8 +48,8 @@ async def get_session(
     user_id: CurrentUserIdDep,
     service: KBSessionService = Depends(get_kb_session_service),
 ) -> dict[str, object]:
-    """Get a KB creation session by ID."""
-    session = await service.get_session(session_id)
+    """Get a KB creation session by ID (ownership-scoped, IDOR S7)."""
+    session = await service.get_session(session_id, novel_id, UUID(user_id))
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
     return _session_to_response(session)
@@ -66,7 +66,9 @@ async def answer_field(
 ) -> dict[str, object]:
     """Update a field with a user-provided value."""
     try:
-        session = await service.answer_field(session_id, field_key, request.value)
+        session = await service.answer_field(
+            session_id, novel_id, UUID(user_id), field_key, request.value
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _session_to_response(session)
@@ -85,7 +87,9 @@ async def request_suggestion(
 ) -> dict[str, object]:
     """Request AI suggestion for a specific field."""
     try:
-        session, suggestion = await service.request_suggestion(session_id, field_key)
+        session, suggestion = await service.request_suggestion(
+            session_id, novel_id, UUID(user_id), field_key
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"session": _session_to_response(session), "suggestion": suggestion}
@@ -103,7 +107,9 @@ async def request_interview_question(
 ) -> dict[str, object]:
     """Get next interview question from AI."""
     try:
-        session, question = await service.request_interview_question(session_id)
+        session, question = await service.request_interview_question(
+            session_id, novel_id, UUID(user_id)
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"session": _session_to_response(session), "question": question}
@@ -121,7 +127,9 @@ async def request_enhancement(
 ) -> dict[str, object]:
     """Request AI enhancement of the entire entry."""
     try:
-        session, enhancement = await service.request_enhancement(session_id)
+        session, enhancement = await service.request_enhancement(
+            session_id, novel_id, UUID(user_id)
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"session": _session_to_response(session), "enhancement": enhancement}
@@ -136,8 +144,5 @@ async def abandon_session(
     user_id: CurrentUserIdDep,
     service: KBSessionService = Depends(get_kb_session_service),
 ) -> None:
-    """Abandon and delete a session."""
-    try:
-        await service.abandon_session(session_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    """Abandon and delete a session (unknown/foreign → 404 via global handler)."""
+    await service.abandon_session(session_id, novel_id, UUID(user_id))

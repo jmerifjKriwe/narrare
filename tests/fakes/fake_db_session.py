@@ -89,6 +89,7 @@ class FakeDbSession:
         self.deleted: list[Any] = []
         self.flush_count: int = 0
         self.refreshed: list[Any] = []
+        self.statements: list[Any] = []
 
     def queue(self, *results: Any) -> FakeDbSession:
         """Append results to the end of the execute() queue."""
@@ -116,6 +117,7 @@ class FakeDbSession:
 
     async def execute(self, stmt: Any) -> FakeResult:
         """Return the next queued result (or an empty one if exhausted)."""
+        self.statements.append(stmt)
         if self._idx < len(self._results):
             queued = self._results[self._idx]
             self._idx += 1

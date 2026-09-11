@@ -35,6 +35,7 @@ async def analyze_entry(
     return await service.analyze(
         novel_id=novel_id,
         entry_id=entry_id,
+        user_id=uuid.UUID(user_id),
     )
 
 
@@ -55,4 +56,5 @@ async def apply_improvements(
         novel_id=novel_id,
         entry_id=entry_id,
         suggestion_ids=request.suggestion_ids,
+        user_id=uuid.UUID(user_id),
     )

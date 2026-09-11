@@ -3,25 +3,47 @@
 Production wiring for :class:`CharacterVoiceDriftService`. Mirrors
 ``dependencies_voice_check`` — the drift service is a read-only consumer of
 the same ``VoiceProfileConsumer`` contract (ADR-050 — no SSOT bypass).
+
+Model acquisition follows the per-user model-routing cascade: the factory
+resolves ``LLMIntent.VOICE`` for the authenticated user (+ novel for
+project-level overrides) and passes the resolved config + credentials into
+the service. No business logic lives here — only wiring.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
-from narrare._app.dependencies import SessionDep  # noqa: TC001 — needed at runtime for FastAPI DI
+from fastapi import Depends
+
+from narrare._app.dependencies import (
+    SessionDep,
+    get_current_user_id,
+)
+from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from narrare.analysis.voice_drift_service import CharacterVoiceDriftService
     from narrare.kb.models import KBEntry
     from narrare_core.profiles.contracts import VoiceProfileConsumer
     from narrare_core.writing.context_models import KBEntity
 
 
-def get_voice_drift_service(session: SessionDep) -> CharacterVoiceDriftService:
-    """Create a CharacterVoiceDriftService with injected dependencies.
+async def get_voice_drift_service(
+    novel_id: UUID,
+    session: SessionDep,
+    user_id: str = Depends(get_current_user_id),
+) -> CharacterVoiceDriftService:
+    """Create a CharacterVoiceDriftService with per-user resolved model routing.
+
+    FastAPI dependency: novel_id comes from the route path, user_id and
+    session are resolved via Depends. The model is resolved through the
+    per-user cascade (project intent → project category → user intent →
+    user category → user default); ``ConfigurationError`` propagates when
+    the user has no provider configured (analysis routers are
+    auth-mandatory).
 
     Production wiring:
     - NovelRepository for novel access control + language/metadata resolution.
@@ -40,10 +62,6 @@ def get_voice_drift_service(session: SessionDep) -> CharacterVoiceDriftService:
         get_invocation_pipeline,
         get_model_registry,
     )
-    from narrare._app.dependencies_services import (
-        SystemModelCategory,
-        build_system_default_config,
-    )
     from narrare.analysis.voice_drift_service import CharacterVoiceDriftService
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
@@ -51,9 +69,15 @@ def get_voice_drift_service(session: SessionDep) -> CharacterVoiceDriftService:
     from narrare.novels.repository import NovelRepository
     from narrare.writing.voice_profile_adapter import make_voice_profile_consumer
 
+    resolver = get_model_routing_resolver(session)
+    resolved = await resolver.resolve(
+        LLMIntent.VOICE,
+        UUID(user_id),
+        novel_id,
+    )
+
     registry = get_model_registry()
     composer = get_composer()
-    config = build_system_default_config(SystemModelCategory.ANALYSIS)
 
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)
@@ -75,10 +99,12 @@ def get_voice_drift_service(session: SessionDep) -> CharacterVoiceDriftService:
         chapter_repo=chapter_repo,
         model_registry=registry,
         consumer_provider=consumer_provider,
-        model_config=config,
+        model_config=resolved.config,
         composer=composer,
         relationship_repo=relationship_repo,
         invocation_pipeline=get_invocation_pipeline(),
+        api_key=resolved.api_key,
+        base_url=resolved.base_url,
     )
 
 

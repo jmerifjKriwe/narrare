@@ -14,12 +14,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from starlette.websockets import WebSocketDisconnect
 
 from narrare._app.main import create_app
+from narrare.auth import ws_tickets
 from narrare_core.prompts.composer import ComposedPrompt
 from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
@@ -27,6 +28,17 @@ from ._ws_db_isolation import ws_db_test_client
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
+
+
+def _session_url(chapter_id: str, user_id: str, project_id: str) -> str:
+    """Build the WRITE-005 WebSocket URL with a FRESH single-use ticket.
+
+    Identity is derived from the consumed ticket (ADR-084) — minted here
+    via the registry directly, no REST hop needed in test setup.
+    """
+    token = ws_tickets.issue(UUID(user_id))
+    return f"/api/v1/writing/sessions/{chapter_id}?token={token}&project_id={project_id}"
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -175,7 +187,7 @@ class TestWebSocketSessionLifecycle:
         novel_id, chapter_id = _create_novel_and_chapter(client, auth_headers)
 
         with client.websocket_connect(
-            f"/api/v1/writing/sessions/{chapter_id}?user_id={user_id}&project_id={novel_id}",
+            _session_url(chapter_id, user_id, novel_id),
         ) as ws:
             greeting = ws.receive_json()
             assert greeting["type"] == "greeting"
@@ -192,7 +204,7 @@ class TestWebSocketSessionLifecycle:
         novel_id, chapter_id = _create_novel_and_chapter(client, auth_headers)
 
         with client.websocket_connect(
-            f"/api/v1/writing/sessions/{chapter_id}?user_id={user_id}&project_id={novel_id}",
+            _session_url(chapter_id, user_id, novel_id),
         ) as ws:
             # Consume greeting
             ws.receive_json()
@@ -224,7 +236,7 @@ class TestWebSocketSessionLifecycle:
         novel_id, chapter_id = _create_novel_and_chapter(client, auth_headers)
 
         with client.websocket_connect(
-            f"/api/v1/writing/sessions/{chapter_id}?user_id={user_id}&project_id={novel_id}",
+            _session_url(chapter_id, user_id, novel_id),
         ) as ws:
             ws.receive_json()  # consume greeting
 
@@ -241,7 +253,7 @@ class TestWebSocketSessionLifecycle:
         novel_id, chapter_id = _create_novel_and_chapter(client, auth_headers)
 
         with client.websocket_connect(
-            f"/api/v1/writing/sessions/{chapter_id}?user_id={user_id}&project_id={novel_id}",
+            _session_url(chapter_id, user_id, novel_id),
         ) as ws:
             ws.receive_json()  # consume greeting
 
@@ -257,27 +269,28 @@ class TestWebSocketSessionLifecycle:
         novel_id, chapter_id = _create_novel_and_chapter(client, auth_headers)
 
         with client.websocket_connect(
-            f"/api/v1/writing/sessions/{chapter_id}?user_id={user_id}&project_id={novel_id}",
+            _session_url(chapter_id, user_id, novel_id),
         ) as ws:
             ws.receive_json()  # consume greeting
             ws.send_json({"type": "end_session"})
             # WebSocket should close gracefully
 
-    def test_ws_session_missing_params_closes(self, ws_env) -> None:
-        """WebSocket without user_id or project_id closes with 4001."""
+    def test_ws_session_without_ticket_closes_4401(self, ws_env) -> None:
+        """WebSocket without a ticket (e.g. old client sending only user_id)
+        is accepted, receives an error JSON, then closes with 4401."""
         client, _ = ws_env
         _, auth_headers = _register_user(client)
         _, chapter_id = _create_novel_and_chapter(client, auth_headers)
 
-        # Connect without required params.
-        # Server accepts, sends an error JSON, then closes with code 4001.
+        # Connect without a ticket — identity cannot be derived (ADR-084).
+        # Server accepts, sends an error JSON, then closes with code 4401.
         with client.websocket_connect(
-            f"/api/v1/writing/sessions/{chapter_id}",
+            f"/api/v1/writing/sessions/{chapter_id}?project_id={chapter_id}",
         ) as ws:
             msg = ws.receive_json()
             assert msg["type"] == "error"
             msg_lower = str(msg.get("message", "")).lower()
-            assert "user_id" in msg_lower or "project_id" in msg_lower
+            assert "ticket" in msg_lower
             # The close frame should raise WebSocketDisconnect on next receive
             with pytest.raises(WebSocketDisconnect):
                 ws.receive_json()

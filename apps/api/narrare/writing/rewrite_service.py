@@ -18,16 +18,18 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 import structlog
-from sqlalchemy.exc import IntegrityError
 
+from narrare.writing._helpers import create_request_row, verify_chapter_access
 from narrare.writing.schemas import GenerateResponse
 from narrare.writing.tone_resolver import resolve_tone_instructions
-from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
+from narrare_core.shared.errors import ConflictError, ValidationError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.novels.repository import NovelRepository
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.schemas_rewrite import RewriteRequest
@@ -54,6 +56,8 @@ class RewriteService:
         pipeline: WritingPipeline,
         draft_processor: DraftProcessor,
         config: ResolvedModelConfig,
+        chapter_repo: ChapterRepository,
+        novel_repo: NovelRepository,
         api_key: str | None = None,
         base_url: str | None = None,
         tone_service: CustomToneService | None = None,
@@ -63,6 +67,8 @@ class RewriteService:
         self._pipeline = pipeline
         self._draft_processor = draft_processor
         self._config = config
+        self._chapter_repo = chapter_repo
+        self._novel_repo = novel_repo
         self._api_key = api_key
         self._base_url = base_url
         self._tone_service = tone_service
@@ -75,6 +81,8 @@ class RewriteService:
         chapter_id: UUID,
         novel_id: UUID,
         request: RewriteRequest,
+        *,
+        user_id: str,
     ) -> None:
         """Pre-validate rewrite request before starting SSE response.
 
@@ -83,19 +91,25 @@ class RewriteService:
         HTTP status codes instead of causing RuntimeError after headers
         are sent.
 
+        Ownership gate (IDOR S6): ``verify_chapter_access`` runs FIRST —
+        foreign ≡ unknown 404s precede input validation, the conflict
+        check, and any request-row creation.
+
         Raises:
+            NotFoundError: Chapter unknown, not in the addressed novel,
+                or novel owned by another user.
             ValidationError: If selection_text is empty.
             ConflictError: If another generation is active for the chapter.
-            NotFoundError: If the chapter or novel does not exist.
         """
+        await verify_chapter_access(
+            self._chapter_repo, self._novel_repo, chapter_id, novel_id, user_id
+        )
+
         if not request.selection_text.strip():
             raise ValidationError(
                 "selection_text must not be empty",
                 code="MISSING_INPUT",
             )
-
-        if not await self._repo.chapter_exists(chapter_id):
-            raise NotFoundError("Chapter", identifier=str(chapter_id))
 
         active = await self._repo.get_active_for_chapter(chapter_id)
         if active is not None:
@@ -124,18 +138,10 @@ class RewriteService:
             ConflictError: If another generation is active for the chapter.
             NotFoundError: If the chapter or novel does not exist.
         """
-        await self.validate_rewrite(chapter_id, novel_id, request)
-
-        try:
-            request_id = await self._repo.create_if_no_active(
-                chapter_id=chapter_id,
-                novel_id=novel_id,
-                user_id=UUID(user_id),
-                mode="rewrite",
-                tone=request.tone,
-            )
-        except IntegrityError as exc:
-            raise NotFoundError("Chapter or Novel", identifier=str(chapter_id)) from exc
+        await self.validate_rewrite(chapter_id, novel_id, request, user_id=user_id)
+        request_id = await create_request_row(
+            self._repo, chapter_id, novel_id, user_id, "rewrite", request.tone
+        )
 
         logger.info(
             "rewrite_started",

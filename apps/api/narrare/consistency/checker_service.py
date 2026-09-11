@@ -62,6 +62,10 @@ class ConsistencyCheckerService:
         token_limits_service: Optional TokenLimitsService for dynamic limit resolution.
         orchestrator: Optional ConsistencyOrchestrator for staged pipeline.
         invocation_pipeline: Optional InvocationPipeline for evidence recording.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — threads into the legacy ``run_legacy_check``
+            resolution point.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -77,6 +81,8 @@ class ConsistencyCheckerService:
         token_limits_service: TokenLimitsServiceProtocol | None = None,
         orchestrator: ConsistencyOrchestratorProtocol | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
@@ -89,6 +95,8 @@ class ConsistencyCheckerService:
         self._token_limits_service = token_limits_service
         self._orchestrator = orchestrator
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def check(
         self,
@@ -266,6 +274,8 @@ class ConsistencyCheckerService:
             novel_id=novel_id,
             context=context,
             invocation_pipeline=self._invocation_pipeline,
+            api_key=self._api_key,
+            base_url=self._base_url,
         )
 
     async def _resolve_system_prompt(self, language: str) -> str:

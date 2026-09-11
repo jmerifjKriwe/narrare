@@ -21,7 +21,9 @@ from httpx import ASGITransport, AsyncClient
 from narrare._app.database import get_async_session
 from narrare._app.dependencies import get_current_user_id
 from narrare._app.main import create_app
+from narrare.novels.models import Novel
 from narrare.writing.schemas import AcceptResponse, GenerationStatsResponse, SceneNextResponse
+from tests.fakes.fake_db_session import FakeDbSession
 
 TEST_USER_ID = "00000000-0000-0000-0000-0000000000ff"
 
@@ -253,6 +255,19 @@ class TestSceneAccept:
 # ---------------------------------------------------------------------------
 
 
+def _satisfy_ownership_gate(app, novel_id: UUID) -> None:
+    """Queue an owned novel row for the stats route's ownership gate (IDOR S13).
+
+    The gate runs BEFORE the (patched) writing-service factory, so these
+    delegation-mapping tests only need the ownership lookup to succeed —
+    the ownership matrix itself lives in
+    ``test_stats_route_ownership.py``.
+    """
+    app.dependency_overrides[get_async_session] = lambda: FakeDbSession(
+        results=[Novel(id=novel_id, user_id=UUID(TEST_USER_ID))]
+    )
+
+
 class TestGenerationStats:
     """Tests for GET /api/v1/writing/novels/{novel_id}/stats."""
 
@@ -263,6 +278,7 @@ class TestGenerationStats:
         novel_id: UUID,
     ) -> None:
         """Happy path: generation stats request returns 200."""
+        _satisfy_ownership_gate(app, novel_id)
         mock_service = AsyncMock()
         mock_service.get_stats = AsyncMock(
             return_value=MockResponse(
@@ -305,6 +321,7 @@ class TestGenerationStats:
         """Error: non-existent novel returns 404."""
         from narrare_core.shared.errors import NotFoundError
 
+        _satisfy_ownership_gate(app, novel_id)
         mock_service = AsyncMock()
         mock_service.get_stats.side_effect = NotFoundError(
             "Novel",
@@ -327,6 +344,7 @@ class TestGenerationStats:
         """Error: WritingError from service returns 400."""
         from narrare_core.shared.errors import WritingError
 
+        _satisfy_ownership_gate(app, novel_id)
         mock_service = AsyncMock()
         mock_service.get_stats.side_effect = WritingError(
             "Stats not available for this novel",

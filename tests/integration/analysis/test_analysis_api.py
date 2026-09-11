@@ -89,16 +89,22 @@ class TestBetaReaderAnalyze:
     ) -> None:
         """POST with valid params/body returns 200 with BetaReaderResponse."""
         app.dependency_overrides[get_beta_reader_service] = lambda: mock_beta_reader_service
+        try:
+            novel_id = uuid4()
+            chapter_id = str(uuid4())
 
-        novel_id = uuid4()
-        chapter_id = str(uuid4())
-
-        resp = await client.post(
-            "/api/v1/analysis/beta-reader",
-            params={"novel_id": str(novel_id)},
-            json={"chapter_ids": [chapter_id]},
-            headers=auth_headers,
-        )
+            resp = await client.post(
+                "/api/v1/analysis/beta-reader",
+                params={"novel_id": str(novel_id)},
+                json={"chapter_ids": [chapter_id]},
+                headers=auth_headers,
+            )
+        finally:
+            # The app fixture is session-scoped — an override left behind
+            # leaks into subsequent tests (order-dependent flakiness under
+            # pytest-randomly). Same cleanup convention as
+            # tests/integration/ai_assist/test_dialogue_coach_sse.py.
+            app.dependency_overrides.pop(get_beta_reader_service, None)
 
         assert resp.status_code == 200
         body = resp.json()
@@ -136,14 +142,23 @@ class TestBetaReaderAnalyze:
         app: FastAPI,
         client: AsyncClient,
         auth_headers: dict[str, str],
+        mock_beta_reader_service: MagicMock,
     ) -> None:
         """POST with empty chapter_ids returns 422."""
-        resp = await client.post(
-            "/api/v1/analysis/beta-reader",
-            params={"novel_id": str(uuid4())},
-            json={"chapter_ids": []},
-            headers=auth_headers,
-        )
+        # Body validation happens before the service is invoked — pin the
+        # dependency so the test exercises validation, not the routing
+        # cascade (the real chain resolves the nonexistent novel first and
+        # returns 404 before the 422 can be produced).
+        app.dependency_overrides[get_beta_reader_service] = lambda: mock_beta_reader_service
+        try:
+            resp = await client.post(
+                "/api/v1/analysis/beta-reader",
+                params={"novel_id": str(uuid4())},
+                json={"chapter_ids": []},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_beta_reader_service, None)
 
         assert resp.status_code == 422
 
@@ -152,14 +167,20 @@ class TestBetaReaderAnalyze:
         app: FastAPI,
         client: AsyncClient,
         auth_headers: dict[str, str],
+        mock_beta_reader_service: MagicMock,
     ) -> None:
         """POST with missing chapter_ids returns 422."""
-        resp = await client.post(
-            "/api/v1/analysis/beta-reader",
-            params={"novel_id": str(uuid4())},
-            json={},
-            headers=auth_headers,
-        )
+        # See test_analyze_returns_422_with_empty_chapter_ids for rationale.
+        app.dependency_overrides[get_beta_reader_service] = lambda: mock_beta_reader_service
+        try:
+            resp = await client.post(
+                "/api/v1/analysis/beta-reader",
+                params={"novel_id": str(uuid4())},
+                json={},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_beta_reader_service, None)
 
         assert resp.status_code == 422
 
@@ -181,20 +202,24 @@ class TestBetaReaderDeepDive:
     ) -> None:
         """POST with valid params/body returns 200 with BetaReaderDeepDiveResponse."""
         app.dependency_overrides[get_beta_reader_service] = lambda: mock_beta_reader_service
+        try:
+            novel_id = uuid4()
+            chapter_id = str(uuid4())
 
-        novel_id = uuid4()
-        chapter_id = str(uuid4())
-
-        resp = await client.post(
-            "/api/v1/analysis/beta-reader/deep-dive",
-            params={"novel_id": str(novel_id)},
-            json={
-                "chapter_ids": [chapter_id],
-                "category": "plot",
-                "cache_key": "test-cache-key-123",
-            },
-            headers=auth_headers,
-        )
+            resp = await client.post(
+                "/api/v1/analysis/beta-reader/deep-dive",
+                params={"novel_id": str(novel_id)},
+                json={
+                    "chapter_ids": [chapter_id],
+                    "category": "plot",
+                    "cache_key": "test-cache-key-123",
+                },
+                headers=auth_headers,
+            )
+        finally:
+            # Session-scoped app — pop the override to prevent leakage into
+            # subsequent tests (see test_analyze_returns_200_with_response).
+            app.dependency_overrides.pop(get_beta_reader_service, None)
 
         assert resp.status_code == 200
         body = resp.json()
@@ -228,14 +253,74 @@ class TestBetaReaderDeepDive:
         app: FastAPI,
         client: AsyncClient,
         auth_headers: dict[str, str],
+        mock_beta_reader_service: MagicMock,
     ) -> None:
         """POST without cache_key returns 422."""
+        # See test_analyze_returns_422_with_empty_chapter_ids for rationale.
+        app.dependency_overrides[get_beta_reader_service] = lambda: mock_beta_reader_service
+        try:
+            resp = await client.post(
+                "/api/v1/analysis/beta-reader/deep-dive",
+                params={"novel_id": str(uuid4())},
+                json={
+                    "chapter_ids": [str(uuid4())],
+                    "category": "plot",
+                },
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_beta_reader_service, None)
+
+        assert resp.status_code == 422
+
+    async def test_deep_dive_nonexistent_novel_returns_404(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST with a nonexistent novel UUID returns 404.
+
+        Regression: ModelRoutingResolver.resolve() previously auto-created
+        a project_settings row (INSERT ... ON CONFLICT DO NOTHING) for the
+        nonexistent novel, tripping ``project_settings_novel_id_fkey`` and
+        surfacing as an unhandled 500. The resolver now validates novel
+        existence first and raises the domain NotFoundError (404).
+        """
         resp = await client.post(
             "/api/v1/analysis/beta-reader/deep-dive",
             params={"novel_id": str(uuid4())},
             json={
                 "chapter_ids": [str(uuid4())],
                 "category": "plot",
+                "cache_key": "test-cache-key-123",
+            },
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 404
+
+    async def test_deep_dive_nonexistent_novel_with_invalid_body_returns_422(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST deep-dive with an invalid body returns 422 (real chain).
+
+        Regression (ADR-086 S4-beta): the factory previously resolved the
+        per-user routing cascade eagerly at DI-construction time. FastAPI
+        solves all sub-dependencies BEFORE body validation, so the P2
+        novel guard inside ``resolve()`` (404 for a nonexistent novel)
+        preempted the legitimate 422 for the invalid body. With lazy
+        first-use resolution (ADR-086) the body is validated first and
+        the cascade (including the novel guard) runs only on first use.
+        """
+        resp = await client.post(
+            "/api/v1/analysis/beta-reader/deep-dive",
+            params={"novel_id": str(uuid4())},
+            json={
+                "chapter_ids": [],
+                "category": "plot",
+                "cache_key": "test-cache-key-123",
             },
             headers=auth_headers,
         )
@@ -247,17 +332,23 @@ class TestBetaReaderDeepDive:
         app: FastAPI,
         client: AsyncClient,
         auth_headers: dict[str, str],
+        mock_beta_reader_service: MagicMock,
     ) -> None:
         """POST with empty chapter_ids returns 422."""
-        resp = await client.post(
-            "/api/v1/analysis/beta-reader/deep-dive",
-            params={"novel_id": str(uuid4())},
-            json={
-                "chapter_ids": [],
-                "category": "plot",
-                "cache_key": "test-cache-key-123",
-            },
-            headers=auth_headers,
-        )
+        # See test_analyze_returns_422_with_empty_chapter_ids for rationale.
+        app.dependency_overrides[get_beta_reader_service] = lambda: mock_beta_reader_service
+        try:
+            resp = await client.post(
+                "/api/v1/analysis/beta-reader/deep-dive",
+                params={"novel_id": str(uuid4())},
+                json={
+                    "chapter_ids": [],
+                    "category": "plot",
+                    "cache_key": "test-cache-key-123",
+                },
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_beta_reader_service, None)
 
         assert resp.status_code == 422

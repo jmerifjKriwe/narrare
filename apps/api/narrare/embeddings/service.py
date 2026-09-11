@@ -52,7 +52,10 @@ class EmbeddingService:
         # DEFAULT_EMBEDDING_MODEL is owned by CoreSettings (ADR-071 §3) — read
         # via get_core_settings(), not os.environ.
         self._model = model or get_core_settings().default_embedding_model
-        self._dimension = dimension or 1536
+        # Sibling of the model default above: the dimension is row metadata
+        # recorded on upsert — resolve from the same CoreSettings source so a
+        # ``DEFAULT_EMBEDDING_DIMENSION`` override reaches this path (RULE-18b).
+        self._dimension = dimension or get_core_settings().default_embedding_dimension
         self._provider = provider
         self._scoring_config = scoring_config or ScoringConfig()
 

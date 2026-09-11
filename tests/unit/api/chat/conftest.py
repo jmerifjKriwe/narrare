@@ -13,12 +13,17 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+    from pydantic_ai.usage import UsageLimits
+
     from narrare.chat.chat_service import ChatService
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
+    from narrare.notes.contracts import OwnedLinkLookupProtocol
     from narrare_core.agents.base import StreamEvent
+    from narrare_core.chat.contracts import ChatMessage
     from narrare_core.chat.conversation_store import InMemoryConversationStore
 
 from narrare_core.chat.contracts import ChatRequest
+from narrare_core.shared.errors import NotFoundError
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -32,6 +37,97 @@ async def _async_gen(*events: StreamEvent) -> AsyncIterator[StreamEvent]:
     """
     for event in events:
         yield event
+
+
+class FakeChatService:
+    """In-memory Fake for ChatServiceProtocol (ADR-030).
+
+    Allows configuring stream events, history, project_id, and the
+    conversation owner per test. Records clear_history calls for
+    verification.
+
+    Ownership semantics mirror the real service contract: when an owner is
+    configured via ``set_owner()``, history access by any other user raises
+    ``NotFoundError`` (mapped to HTTP 404 by the global NarrareError
+    handler — foreign and unknown conversations are indistinguishable).
+    """
+
+    def __init__(self) -> None:
+        self._events: list[dict[str, object]] = []
+        self._history: list[ChatMessage] = []
+        self._project_id: UUID | None = None
+        self._owner_id: UUID | None = None
+        self._ask_error: Exception | None = None
+        self.cleared_ids: list[UUID] = []
+
+    def set_stream_events(self, *events: dict[str, object]) -> None:
+        """Pre-configure the events that ``ask()`` will stream."""
+        self._events = list(events)
+
+    def set_history(self, *messages: ChatMessage) -> None:
+        """Pre-configure messages returned by ``get_history()``."""
+        self._history = list(messages)
+
+    def set_project_id(self, project_id: UUID | None) -> None:
+        """Set the project_id returned by ``get_project_id_for_conversation()``."""
+        self._project_id = project_id
+
+    def set_owner(self, owner_id: UUID) -> None:
+        """Set the user that owns the configured conversation.
+
+        While set, history access by any other user_id raises NotFoundError.
+        """
+        self._owner_id = owner_id
+
+    def set_ask_error(self, error: Exception) -> None:
+        """Make ``ask()`` raise — e.g. NotFoundError for foreign conversations."""
+        self._ask_error = error
+
+    def _require_owner(self, conversation_id: UUID, user_id: UUID) -> None:
+        """Raise NotFoundError when another user accesses the conversation."""
+        if self._owner_id is not None and user_id != self._owner_id:
+            raise NotFoundError("ChatConversation", identifier=str(conversation_id))
+
+    async def ask(
+        self,
+        request: ChatRequest,
+        user_id: UUID,
+    ) -> AsyncIterator[dict[str, object]]:
+        """Return a pre-configured async stream of events (or raise)."""
+        if self._ask_error is not None:
+            raise self._ask_error
+
+        async def _stream() -> AsyncIterator[dict[str, object]]:
+            for event in self._events:
+                yield event
+
+        return _stream()
+
+    async def get_history(
+        self,
+        conversation_id: UUID,
+        user_id: UUID,
+        *,
+        limit: int = 50,
+    ) -> list[ChatMessage]:
+        self._require_owner(conversation_id, user_id)
+        return list(self._history)
+
+    async def get_project_id_for_conversation(
+        self,
+        conversation_id: UUID,
+        user_id: UUID,
+    ) -> UUID | None:
+        self._require_owner(conversation_id, user_id)
+        return self._project_id
+
+    async def clear_history(
+        self,
+        conversation_id: UUID,
+        user_id: UUID,
+    ) -> None:
+        self._require_owner(conversation_id, user_id)
+        self.cleared_ids.append(conversation_id)
 
 
 def _make_mock_composer() -> AsyncMock:
@@ -49,9 +145,34 @@ def _make_mock_composer() -> AsyncMock:
 
 
 def _make_mock_registry() -> AsyncMock:
-    """Create a mock ModelRegistry."""
+    """Create a mock ModelRegistry.
+
+    Task 6d-1: the service resolves via ``prepare()`` (single assembly
+    point). The bridge delegates to ``get_model`` so tests keep configuring
+    ``registry.get_model.return_value`` — the resolved model reaches the
+    agent unchanged, with no settings/limits layered on (pre-6d behavior).
+    """
+    from narrare_core.llm._prepared_call import PreparedModelCall
+
     registry = AsyncMock()
     registry.get_model = AsyncMock()
+
+    async def _prepare(
+        config: object,
+        *,
+        intent: object = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        _ = intent
+        return PreparedModelCall(
+            model=await registry.get_model(config, api_key=api_key, base_url=base_url),
+            model_settings=None,
+            usage_limits=usage_limits,
+        )
+
+    registry.prepare = AsyncMock(side_effect=_prepare)
     return registry
 
 
@@ -82,6 +203,29 @@ def _make_request(
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
+
+class FakeNovelLookup:
+    """In-memory Fake for OwnedLinkLookupProtocol (ADR-030).
+
+    Returns the novel only for its seeded (novel_id, owner_id) pair —
+    foreign or unknown ids resolve to ``None`` (the service then raises
+    NotFoundError, notes ``_validate_link`` semantics).
+    """
+
+    def __init__(self) -> None:
+        self._owned: dict[UUID, UUID] = {}
+        self.calls: list[tuple[UUID, UUID]] = []
+
+    def seed_owned(self, novel_id: UUID, owner_id: UUID) -> None:
+        """Register a novel as owned by ``owner_id``."""
+        self._owned[novel_id] = owner_id
+
+    async def get_owned(self, entity_id: UUID, user_id: UUID) -> object | None:
+        self.calls.append((entity_id, user_id))
+        if self._owned.get(entity_id) == user_id:
+            return object()
+        return None
 
 
 @pytest.fixture
@@ -122,4 +266,30 @@ def service(
         model_registry=mock_registry,
         conversation_store=cast("SQLAlchemyConversationStore", in_memory_store),
         config=mock_config,
+    )
+
+
+@pytest.fixture
+def novel_lookup() -> FakeNovelLookup:
+    """Ownership-scoped novel lookup Fake (OwnedLinkLookupProtocol)."""
+    return FakeNovelLookup()
+
+
+@pytest.fixture
+def service_with_novel_lookup(
+    mock_composer: AsyncMock,
+    mock_registry: AsyncMock,
+    in_memory_store: InMemoryConversationStore,
+    mock_config: MagicMock,
+    novel_lookup: FakeNovelLookup,
+) -> ChatService:
+    """ChatService with the novel-ownership lookup wired (production shape)."""
+    from narrare.chat.chat_service import ChatService
+
+    return ChatService(
+        prompt_composer=mock_composer,
+        model_registry=mock_registry,
+        conversation_store=cast("SQLAlchemyConversationStore", in_memory_store),
+        config=mock_config,
+        novel_lookup=cast("OwnedLinkLookupProtocol", novel_lookup),
     )

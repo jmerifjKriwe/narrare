@@ -7,14 +7,17 @@ has a different schema than WikiEntityOutput.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic_ai import (
     Agent as PydanticAgent,
 )  # narrare: allow-agent reason="WikiChapterGenerator wraps internal PydanticAgent (ADR-015)"
-from pydantic_ai import RunContext
 
 from narrare_core.wiki.types import WikiChapterOutput, WikiGenerationDeps
+
+if TYPE_CHECKING:
+    from pydantic_ai.settings import ModelSettings
+    from pydantic_ai.usage import UsageLimits
 
 
 class WikiChapterGenerator:
@@ -41,6 +44,8 @@ class WikiChapterGenerator:
         deps: WikiGenerationDeps,
         *,
         stream: bool = False,
+        model_settings: ModelSettings | None = None,
+        usage_limits: UsageLimits | None = None,
     ) -> WikiChapterOutput:
         """Generate a wiki summary for a single chapter.
 
@@ -48,16 +53,28 @@ class WikiChapterGenerator:
             prompt_text: The rendered prompt text with substituted variables.
             deps: Generation dependencies with chapter context.
             stream: If True, use ``run_stream()`` for streaming output.
+            model_settings: Settings half of the ModelRegistry.prepare()
+                triple — forwarded to the pydantic-ai run.
+            usage_limits: Usage limits from the prepared triple —
+                forwarded to the pydantic-ai run.
 
         Returns:
             Structured chapter wiki summary.
         """
         agent = self._get_agent()
         if stream:
-            async with agent.run_stream(prompt_text, deps=deps) as stream_result:
+            async with agent.run_stream(
+                prompt_text,
+                deps=deps,
+                model_settings=model_settings,
+                usage_limits=usage_limits,
+            ) as stream_result:
                 return cast("WikiChapterOutput", await stream_result.get_output())
         result = await agent.run(  # narrare: allow-agent reason="internal PydanticAgent (ADR-015)"
-            prompt_text, deps=deps
+            prompt_text,
+            deps=deps,
+            model_settings=model_settings,
+            usage_limits=usage_limits,
         )
         return cast("WikiChapterOutput", result.output)
 
@@ -67,37 +84,9 @@ class WikiChapterGenerator:
             kwargs: dict[str, Any] = {
                 "model": self._model,
                 "deps_type": WikiGenerationDeps,
-                "output_type": [self._process_output, WikiChapterOutput],
+                "output_type": WikiChapterOutput,
             }
             if self._system_prompt is not None:
                 kwargs["system_prompt"] = self._system_prompt
             self._chapter_agent = PydanticAgent(**kwargs)
         return self._chapter_agent
-
-    async def _process_output(
-        self,
-        ctx: RunContext[WikiGenerationDeps],
-        narrative_summary: str = "",
-        key_events: list[str] | None = None,
-        entities_involved: list[dict[str, Any]] | None = None,
-        themes: list[str] | None = None,
-        emotional_arc: str | None = None,
-    ) -> WikiChapterOutput:
-        """Output Function for chapter summary generation.
-
-        Streaming (``ctx.partial_output``) returns an empty default instance.
-        """
-        if ctx.partial_output:
-            return WikiChapterOutput(
-                narrative_summary="",
-                key_events=[],
-                entities_involved=[],
-                themes=[],
-            )
-        return WikiChapterOutput(
-            narrative_summary=narrative_summary,
-            key_events=key_events or [],
-            entities_involved=entities_involved or [],
-            themes=themes or [],
-            emotional_arc=emotional_arc,
-        )

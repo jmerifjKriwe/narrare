@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import structlog
 
@@ -29,15 +29,7 @@ from narrare.kb.worldbuilding_contracts import (
     WorldbuildingAnalysisResponse,
     WorldbuildingSeverity,
 )
-from narrare.kb.worldbuilding_entity_assembly import (
-    build_available_rel_types,
-    build_entity_summaries,
-    build_template_structures,
-    get_adjacency_safe,
-    get_relationships_for,
-    list_entities,
-    prioritize_entities,
-)
+from narrare.kb.worldbuilding_entity_assembly import build_deps
 from narrare.kb.worldbuilding_prompt_formatting import (
     format_candidate_pairs,
     format_entity_details,
@@ -46,12 +38,14 @@ from narrare.kb.worldbuilding_prompt_formatting import (
 from narrare_core.agents.worldbuilding_agent import WorldbuildingAgent
 from narrare_core.agents.worldbuilding_types import WorldbuildingDeps
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:
     from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
@@ -73,6 +67,9 @@ class WorldbuildingAnalyzer:
         config: Resolved model configuration.
         composer: Prompt composer for building prompts (both phases).
         max_phase2_pairs: Maximum number of entity pairs for Phase 2 consistency check.
+        api_key: Optional per-user provider API key (model-routing cascade),
+            injected into ``ModelRegistry.prepare``.
+        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -86,6 +83,9 @@ class WorldbuildingAnalyzer:
         *,
         max_phase2_pairs: int = 15,
         invocation_pipeline: InvocationPipeline | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._kb_repo = kb_repo
         self._rel_repo = rel_repo
@@ -95,6 +95,28 @@ class WorldbuildingAnalyzer:
         self._composer = composer
         self._max_phase2_pairs = max_phase2_pairs
         self._invocation_pipeline = invocation_pipeline
+        self._api_key = api_key
+        self._base_url = base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+
+    async def _prepare(self) -> PreparedModelCall:
+        """Resolve the coherent call triple lazily from the registry.
+
+        Single assembly point (Task 6c — Task 4/5 pattern): model +
+        intent-aware runtime settings + usage limits as one result.
+        Forwards the injected per-user provider credentials
+        (model-routing cascade).
+        """
+        resolved = self._run_limit_resolver.resolve(
+            config=self._config, budget=None, invocation_id=uuid4()
+        )
+        return await self._registry.prepare(
+            self._config,
+            intent=LLMIntent.KB_WORLDBUILD,
+            usage_limits=resolved.usage_limits,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
 
     async def analyze(
         self,
@@ -110,7 +132,9 @@ class WorldbuildingAnalyzer:
             if cached is not None:
                 return WorldbuildingAnalysisResponse.model_validate_json(cached)
 
-        deps, total_count = await self._build_deps(novel_id, request.entity_types)
+        deps, total_count = await build_deps(
+            self._kb_repo, self._rel_repo, novel_id, request.entity_types
+        )
         gaps, connections, pairs, score, assessment = await self._run_phase1(deps, novel_id)
 
         issues: list[ConsistencyIssue] = []
@@ -137,35 +161,6 @@ class WorldbuildingAnalyzer:
 
         await self._cache.set(novel_str, response.model_dump_json(), types_hash)
         return response
-
-    # ------------------------------------------------------------------
-    # Deps Assembly
-    # ------------------------------------------------------------------
-
-    async def _build_deps(
-        self,
-        novel_id: UUID,
-        entity_types: list[str] | None,
-    ) -> tuple[WorldbuildingDeps, int]:
-        """Assemble entity data into WorldbuildingDeps."""
-        entities = await list_entities(self._kb_repo, novel_id, entity_types)
-        total_count = len(entities)
-        if not entities:
-            return WorldbuildingDeps(language="en"), 0
-
-        adjacency = await get_adjacency_safe(self._rel_repo, novel_id, entities)
-        summaries = build_entity_summaries(entities, adjacency)
-        prioritized = prioritize_entities(summaries)
-        relationships = await get_relationships_for(prioritized, self._rel_repo)
-
-        type_set = {e.entity_type for e in entities}
-        return WorldbuildingDeps(
-            language="en",
-            entity_summaries=prioritized,
-            template_structures=build_template_structures(type_set),
-            existing_relationships=relationships,
-            available_rel_types=build_available_rel_types(type_set),
-        ), total_count
 
     # ------------------------------------------------------------------
     # Phase Execution
@@ -212,14 +207,16 @@ class WorldbuildingAnalyzer:
             composed = await self._composer.build(LLMIntent.KB_WORLDBUILD, ctx)
             system_prompt = composed.system
 
-        model = await self._registry.get_model(self._config)
-        agent = WorldbuildingAgent(model=model, system_prompt=system_prompt)
+        prepared = await self._prepare()
+        agent = WorldbuildingAgent(model=prepared.model, system_prompt=system_prompt)
         result = await agent.run_phase1(
             prompt=(
                 f"Analyze worldbuilding for {len(deps.entity_summaries)} entities. "
                 "Identify gaps, suggest connections, evaluate health."
             ),
             deps=deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
 
         type_map = {s.entry_id: s.entity_type for s in deps.entity_summaries}
@@ -323,13 +320,15 @@ class WorldbuildingAnalyzer:
             composed = await self._composer.build(LLMIntent.KB_WORLDBUILD, ctx)
             system_prompt = composed.system
 
-        model = await self._registry.get_model(self._config)
-        agent = WorldbuildingAgent(model=model)
+        prepared = await self._prepare()
+        agent = WorldbuildingAgent(model=prepared.model)
         result = await agent.run_phase2(
             prompt=phase2_user_prompt,
             deps=phase2_deps,
-            model=model,
+            model=prepared.model,
             system_prompt=system_prompt,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
         )
 
         return [

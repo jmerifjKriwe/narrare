@@ -8,6 +8,11 @@ Combines:
 Merges all issues, sorts by severity, caches the result, and returns a
 unified :class:`ConsistencyCheckResponse`.
 
+Every ``check`` call is gated on novel ownership at service entry (IDOR
+fix S9): foreign and unknown novels are indistinguishable —
+``NotFoundError`` → 404 — BEFORE the cache probe and before any phase
+reads the novel's data.
+
 See:
     :class:`narrare.kb.consistency_contracts.KBConsistencyProtocol`
 """
@@ -16,55 +21,38 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 import structlog
 
 from narrare.kb._consistency_helpers import (
+    SEVERITY_ORDER,
     asymmetry_to_issue,
     generate_candidate_pairs,
 )
+from narrare.kb._consistency_invocation import CONSISTENCY_MANUAL_INJECTION
 from narrare.kb._consistency_suppress import suppress_dismissed_issues
+from narrare.kb._novel_gate import verify_novel_owned
 from narrare.kb.consistency_contracts import (
     ConsistencyCheckRequest,
     ConsistencyCheckResponse,
 )
 from narrare.kb.worldbuilding_contracts import ConsistencyCategory, ConsistencyIssue
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from narrare.kb.consistency_analyzer import KBConsistencyAnalyzer
     from narrare.kb.consistency_cache import ConsistencyCache
-    from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
+    from narrare.kb.contracts import (
+        KBRepositoryProtocol,
+        RelationshipRepositoryProtocol,
+    )
     from narrare.kb.relationship_asymmetry import RelationshipAsymmetryChecker
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.memory.protocols import ConsistencyFeedbackCollector
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: KBConsistencyAnalyzer and WorldbuildingAnalyzer
-# compose their prompts internally from deps (entity summaries, template
-# structures, existing relationships). Evidence is recorded at the parent
-# service layer, covering both Phase 2 (entry-internal) and Phase 3
-# (cross-entity) LLM calls.
-_CONSISTENCY_MANUAL_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "KBConsistencyAnalyzer and WorldbuildingAnalyzer compose their prompts "
-        "internally from deps (entity summaries, template structures, "
-        "existing relationships). See ADR-044 staged consistency pipeline."
-    ),
-    variables=("entity_summaries", "template_structures", "existing_relationships"),
-    injection_mechanism="agent_deps",
-)
-
-_SEVERITY_ORDER: dict[str, int] = {
-    "critical": 0,
-    "major": 1,
-    "minor": 2,
-    "info": 3,
-}
 
 
 class KBConsistencyService:
@@ -76,6 +64,8 @@ class KBConsistencyService:
         worldbuilding_analyzer: Cross-entity consistency via Phase 2.
         kb_repo: KB entry repository for building Phase 3 deps.
         rel_repo: Relationship repository for candidate pair generation.
+        novel_repo: Novel repository — the novel ownership gate (IDOR
+            fix S9), checked before the cache probe and every phase.
         cache: In-memory cache for consistency results (10min TTL, ADR-080).
         invocation_pipeline: Optional pipeline for invocation evidence.
         feedback_memory: Optional mem0-backed dismissal collector. When
@@ -94,6 +84,7 @@ class KBConsistencyService:
         kb_repo: KBRepositoryProtocol,
         rel_repo: RelationshipRepositoryProtocol,
         cache: ConsistencyCache,
+        novel_repo: NovelRepositoryProtocol,
         invocation_pipeline: InvocationPipeline | None = None,
         feedback_memory: ConsistencyFeedbackCollector | None = None,
         *,
@@ -105,6 +96,7 @@ class KBConsistencyService:
         self._kb_repo = kb_repo
         self._rel_repo = rel_repo
         self._cache = cache
+        self._novel_repo = novel_repo
         self._invocation_pipeline = invocation_pipeline
         self._feedback_memory = feedback_memory
         self._max_phase2_pairs = max_phase2_pairs
@@ -114,20 +106,32 @@ class KBConsistencyService:
         *,
         novel_id: UUID,
         request: ConsistencyCheckRequest,
-        user_id: str | None = None,
+        user_id: str,
     ) -> ConsistencyCheckResponse:
         """Run consistency check combining all 3 sources.
+
+        Ownership gate first (IDOR fix S9): the caller must own
+        ``novel_id`` — BEFORE the cache probe (a cached report must not
+        leak to a foreign caller) and before any phase, algorithmic or
+        LLM, reads the novel's data.
 
         Args:
             novel_id: The project to check.
             request: Check options and filters.
-            user_id: Authenticated user identifier, used to scope mem0
-                semantic-suppression queries (CR-AUFG-03-10). ``None``
-                disables suppression (passthrough).
+            user_id: Authenticated user identifier — REQUIRED (IDOR fix
+                S9). Gates novel ownership before any phase; also scopes
+                mem0 semantic-suppression queries (CR-AUFG-03-10).
 
         Returns:
             Complete consistency report with all requested issue types.
+
+        Raises:
+            NotFoundError: If the novel is unknown or not owned by the caller.
         """
+        # 0. Ownership gate — before the cache probe and every phase
+        # (RULE-11: authorization gates RAISE, never degrade).
+        await verify_novel_owned(self._novel_repo, novel_id, UUID(user_id))
+
         novel_str = str(novel_id)
         types_hash = self._cache.hash_entity_types(request.entity_types)
 
@@ -163,7 +167,7 @@ class KBConsistencyService:
                 await compose_invocation(
                     invocation_pipeline=self._invocation_pipeline,
                     invocation_context=invocation_context,
-                    manual_injection=_CONSISTENCY_MANUAL_INJECTION,
+                    manual_injection=CONSISTENCY_MANUAL_INJECTION,
                 )
             except Exception:
                 logger.warning(
@@ -191,7 +195,7 @@ class KBConsistencyService:
 
         # 5. Sort by severity (critical first)
         all_issues.sort(
-            key=lambda i: _SEVERITY_ORDER.get(i.severity.value, 1),
+            key=lambda i: SEVERITY_ORDER.get(i.severity.value, 1),
         )
 
         # 5a. Semantic suppression (CR-AUFG-03-10): filter out issues the

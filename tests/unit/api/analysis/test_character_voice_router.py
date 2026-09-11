@@ -55,9 +55,13 @@ async def test_analyze_character_voice_serializes_progress_result_done_and_senti
     )
 
     with pytest.MonkeyPatch.context() as mp:
+
+        async def _fake_factory(**_kwargs: object) -> FakeCharacterVoiceService:
+            return FakeCharacterVoiceService(result)
+
         mp.setattr(
             "narrare.analysis.router_character_voice.get_character_voice_service",
-            lambda _session: FakeCharacterVoiceService(result),
+            _fake_factory,
         )
         stream_response = await analyze_character_voice(
             novel_id=novel_id,
@@ -102,9 +106,13 @@ async def test_analyze_character_voice_emits_error_event_on_failure() -> None:
             yield  # pragma: no cover - make this an async generator
 
     with pytest.MonkeyPatch.context() as mp:
+
+        async def _failing_factory(**_kwargs: object) -> FailingService:
+            return FailingService()
+
         mp.setattr(
             "narrare.analysis.router_character_voice.get_character_voice_service",
-            lambda _session: FailingService(),  # type: ignore[arg-type]
+            _failing_factory,  # type: ignore[arg-type]
         )
         stream_response = await analyze_character_voice(
             novel_id=uuid4(),
@@ -146,9 +154,13 @@ async def test_analyze_character_voice_passes_chapter_ids_to_service() -> None:
             yield CharacterVoiceStreamEvent(event="done", is_final=True)
 
     with pytest.MonkeyPatch.context() as mp:
+
+        async def _capturing_factory(**_kwargs: object) -> CapturingService:
+            return CapturingService()
+
         mp.setattr(
             "narrare.analysis.router_character_voice.get_character_voice_service",
-            lambda _session: CapturingService(),
+            _capturing_factory,
         )
         stream_response = await analyze_character_voice(
             novel_id=novel_id,

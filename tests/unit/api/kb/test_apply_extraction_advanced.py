@@ -25,6 +25,8 @@ from narrare.kb.schemas_extraction import ApplyExtractionItem, ApplyExtractionRe
 from narrare_core.llm import ResolvedModelConfig
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.relationship_repository import RelationshipRepository
@@ -32,12 +34,14 @@ if TYPE_CHECKING:
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
-# Reuse fakes from the main test module
-from tests.unit.api.kb.test_apply_extraction import (
+# Fakes live in the shared helpers module (RULE-04 extraction)
+from ._apply_extraction_helpers import (
+    _FakeApplySession,
     _FakeKBRepoForApply,
     _FakeKBService,
     _FakeRelationshipRepo,
 )
+from ._extraction_helpers import permissive_novel_gate
 
 
 def _item(
@@ -118,15 +122,19 @@ async def test_apply_mixed_items_handles_all_types(
     fake_rel_repo: _FakeRelationshipRepo,
 ) -> None:
     """Mixed item types are all handled correctly."""
+    novel_id = uuid4()
+    existing_id = uuid4()
     fake_kb_service = _FakeKBService()
-    fake_kb_repo.seed("Anna", entity_type="character")
-    fake_kb_repo.seed("Dark Forest", entity_type="location")
-    fake_kb_service.seed("Existing One")
+    fake_kb_repo.seed("Anna", entity_type="character", novel_id=novel_id)
+    fake_kb_repo.seed("Dark Forest", entity_type="location", novel_id=novel_id)
+    fake_kb_repo.seed("Existing One", entry_id=existing_id, novel_id=novel_id)
+    fake_kb_service.seed("Existing One", entry_id=existing_id)
 
     service = ExtractionApplyService(
         kb_service=cast("KBService", fake_kb_service),
         rel_repo=cast("RelationshipRepository", fake_rel_repo),
         kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
+        session=cast("AsyncSession", _FakeApplySession()),
     )
 
     items = [
@@ -134,7 +142,7 @@ async def test_apply_mixed_items_handles_all_types(
         _item(
             item_type="update_entity",
             name="Existing One",
-            target_entity_id=str(uuid4()),
+            target_entity_id=str(existing_id),
             proposed_content={"age": 30},
         ),
         _item(
@@ -146,7 +154,7 @@ async def test_apply_mixed_items_handles_all_types(
         _item(item_type="conflict", name="Some Conflict"),
     ]
 
-    result = await service.apply(novel_id=uuid4(), user_id=uuid4(), items=items)
+    result = await service.apply(novel_id=novel_id, user_id=uuid4(), items=items)
 
     assert len(result.created_entries) == 1
     assert len(result.updated_entries) == 1
@@ -173,6 +181,7 @@ async def test_apply_one_item_fails_others_proceed(
         kb_service=cast("KBService", fake_kb_service),
         rel_repo=cast("RelationshipRepository", fake_rel_repo),
         kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
+        session=cast("AsyncSession", _FakeApplySession()),
     )
 
     items = [
@@ -216,8 +225,10 @@ async def test_extraction_service_delegates_to_apply_service() -> None:
         chapter_repo=cast("ChapterRepositoryProtocol", chapter_repo),
         kb_repo=cast("KBRepositoryProtocol", kb_repo),
         composer=cast("PromptComposer", composer),
+        novel_repo=permissive_novel_gate(),
         kb_service=cast("KBService", kb_service),
         rel_repo=cast("RelationshipRepository", rel_repo),
+        session=cast("AsyncSession", _FakeApplySession()),
     )
 
     items = [
@@ -256,6 +267,7 @@ async def test_extraction_service_apply_without_deps_raises() -> None:
         chapter_repo=cast("ChapterRepositoryProtocol", chapter_repo),
         kb_repo=cast("KBRepositoryProtocol", kb_repo),
         composer=cast("PromptComposer", composer),
+        novel_repo=permissive_novel_gate(),
     )
 
     with pytest.raises(ValueError, match="KBService and RelationshipRepository"):
@@ -296,4 +308,5 @@ def apply_service(
         kb_service=cast("KBService", fake_kb_service),
         rel_repo=cast("RelationshipRepository", fake_rel_repo),
         kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
+        session=cast("AsyncSession", _FakeApplySession()),
     )

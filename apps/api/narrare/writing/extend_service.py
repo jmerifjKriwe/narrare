@@ -17,16 +17,18 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 import structlog
-from sqlalchemy.exc import IntegrityError
 
+from narrare.writing._helpers import create_request_row, verify_chapter_access
 from narrare.writing.schemas import ExtendLength, ExtendRequest, GenerateResponse
 from narrare.writing.tone_resolver import resolve_tone_instructions
-from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
+from narrare_core.shared.errors import ConflictError, ValidationError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.novels.repository import NovelRepository
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.writing.repository import GenerationRepository
     from narrare_core.llm import ResolvedModelConfig
@@ -59,6 +61,8 @@ class ExtendService:
         pipeline: WritingPipeline,
         draft_processor: DraftProcessor,
         config: ResolvedModelConfig,
+        chapter_repo: ChapterRepository,
+        novel_repo: NovelRepository,
         api_key: str | None = None,
         base_url: str | None = None,
         tone_service: CustomToneService | None = None,
@@ -68,6 +72,8 @@ class ExtendService:
         self._pipeline = pipeline
         self._draft_processor = draft_processor
         self._config = config
+        self._chapter_repo = chapter_repo
+        self._novel_repo = novel_repo
         self._api_key = api_key
         self._base_url = base_url
         self._tone_service = tone_service
@@ -80,6 +86,8 @@ class ExtendService:
         chapter_id: UUID,
         novel_id: UUID,
         request: ExtendRequest,
+        *,
+        user_id: str,
     ) -> None:
         """Pre-validate extend request before starting SSE response.
 
@@ -88,19 +96,27 @@ class ExtendService:
         HTTP status codes instead of causing RuntimeError after headers
         are sent.
 
+        Ownership gate (IDOR remediation S6): the S5 helper
+        :func:`verify_chapter_access` runs FIRST — foreign and unknown
+        chapter ids are indistinguishable 404s raised before any input
+        validation, active-generation check, or request-row creation.
+
         Raises:
+            NotFoundError: If the chapter does not exist, does not belong
+                to the addressed novel, or the novel belongs to another
+                user.
             ValidationError: If text_before is empty.
             ConflictError: If another generation is active for the chapter.
-            NotFoundError: If the chapter or novel does not exist.
         """
+        await verify_chapter_access(
+            self._chapter_repo, self._novel_repo, chapter_id, novel_id, user_id
+        )
+
         if not request.text_before.strip():
             raise ValidationError(
                 "text_before must not be empty",
                 code="MISSING_INPUT",
             )
-
-        if not await self._repo.chapter_exists(chapter_id):
-            raise NotFoundError("Chapter", identifier=str(chapter_id))
 
         active = await self._repo.get_active_for_chapter(chapter_id)
         if active is not None:
@@ -129,18 +145,10 @@ class ExtendService:
             ConflictError: If another generation is active for the chapter.
             NotFoundError: If the chapter or novel does not exist.
         """
-        await self.validate_extend(chapter_id, novel_id, request)
-
-        try:
-            request_id = await self._repo.create_if_no_active(
-                chapter_id=chapter_id,
-                novel_id=novel_id,
-                user_id=UUID(user_id),
-                mode="extend",
-                tone=request.tone,
-            )
-        except IntegrityError as exc:
-            raise NotFoundError("Chapter or Novel", identifier=str(chapter_id)) from exc
+        await self.validate_extend(chapter_id, novel_id, request, user_id=user_id)
+        request_id = await create_request_row(
+            self._repo, chapter_id, novel_id, user_id, "extend", request.tone
+        )
 
         logger.info(
             "extend_started",

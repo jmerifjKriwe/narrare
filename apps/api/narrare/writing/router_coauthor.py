@@ -66,7 +66,8 @@ async def coauthor_chapter(
 
     # Pre-validate before starting SSE response to avoid RuntimeError
     # when ConflictError/NotFoundError fires after headers are sent.
-    await service.validate_coauthor(chapter_id, novel_id, request)
+    # user_id threads the S6 ownership gate (foreign ≡ unknown → 404).
+    await service.validate_coauthor(chapter_id, novel_id, request, user_id=user_id)
 
     return StreamingResponse(
         coauthor_event_stream(service, chapter_id, novel_id, user_id, request),
@@ -107,4 +108,4 @@ async def record_coauthor_feedback(
     the ``FeedbackCollector`` for preference learning.
     """
     service = await get_coauthor_apply_service(session)
-    await service.record_feedback(request.request_id, request.feedback)
+    await service.record_feedback(request.request_id, request.feedback, user_id=user_id)

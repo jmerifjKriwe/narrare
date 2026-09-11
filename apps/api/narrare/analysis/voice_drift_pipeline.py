@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from narrare_core.analysis.voice_drift_scoring_types import (
         PerChapterMetrics,
     )
+    from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
     from narrare_core.kb.schemas.character import VoiceMetrics
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
@@ -131,6 +132,31 @@ def collect_speakers(chapters: list[Chapter], parser: DialogueParser) -> set[str
     return speakers
 
 
+def make_dialogue_parser() -> DialogueParser:
+    """Create the deterministic dialogue parser used by the drift pipeline.
+
+    Owns the analyzer-construction seam next to the pipeline logic that
+    consumes it (RULE-04 modularization — the service stays below its size
+    limit while construction remains in the analysis layer). Tests patch
+    this module function instead of a service method.
+    """
+    from narrare_core.analysis.dialogue_parser import DialogueParser
+
+    return DialogueParser()
+
+
+def make_voice_metrics_analyzer(language: str) -> VoiceMetricsAnalyzer:
+    """Create the deterministic voice-metrics analyzer for ``language``.
+
+    Construction seam paired with :func:`make_dialogue_parser` — both feed
+    :func:`collect_speakers` and
+    :func:`narrare_core.analysis.voice_drift_scoring.compute_per_chapter_metrics`.
+    """
+    from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
+
+    return VoiceMetricsAnalyzer(language=language)
+
+
 async def analyse_character_drift(
     *,
     profile: CharacterVoiceProfile,
@@ -141,6 +167,8 @@ async def analyse_character_drift(
     language: str,
     model_registry: ModelRegistry,
     model_config: ResolvedModelConfig,
+    api_key: str | None = None,
+    base_url: str | None = None,
 ) -> VoiceDriftCharacterResult:
     """Compute trend + jumps, run the agent, and assemble one character's result.
 
@@ -164,6 +192,9 @@ async def analyse_character_drift(
         language: Writing language code.
         model_registry: Model registry used to resolve the configured model.
         model_config: Resolved model configuration.
+        api_key: Optional per-user provider API key override (model-routing
+            cascade) — forwarded to the agent runner's ``get_model`` call.
+        base_url: Optional per-user provider base URL override.
 
     Returns:
         The API :class:`VoiceDriftCharacterResult` with the deterministic
@@ -195,6 +226,8 @@ async def analyse_character_drift(
         language=language,
         model_registry=model_registry,
         model_config=model_config,
+        api_key=api_key,
+        base_url=base_url,
     )
     return assemble_voice_drift_result(
         profile=profile,

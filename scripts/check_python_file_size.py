@@ -82,8 +82,17 @@ _SKIP_PATH_FRAGMENTS: frozenset[str] = frozenset(
 # comparison: the behavioral walk skips nonexistent directories, so a
 # candidate list buried inside ``_iter_python_sources`` is invisible to
 # behavioral tests whenever the added directory does not exist in the
-# synthetic tree.
-PYTHON_SIZE_SCAN_ROOTS: tuple[str, ...] = ("apps", "packages", "scripts", "tests", "evals")
+# synthetic tree. ``benchmark/`` joined 2026-08-27 (kb-benchmark runner
+# Task 1; RULE-04 size limits DO apply to benchmark code per plan
+# Global Constraints — coordinated with scanner.py + the parity test).
+PYTHON_SIZE_SCAN_ROOTS: tuple[str, ...] = (
+    "apps",
+    "packages",
+    "scripts",
+    "tests",
+    "evals",
+    "benchmark",
+)
 
 
 def _display_path(path: Path, base: Path = ROOT) -> Path:

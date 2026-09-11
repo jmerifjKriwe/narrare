@@ -28,7 +28,7 @@ Status: every remaining entry is ``RULE-11`` (legitimately optional). All
 ``kb_locations``/``kb_factions`` — were wired through the canonical
 ``KBContextProvider`` in W4a). With §7 stub-gaps at 0 the detector
 (:mod:`doc_drift.stub_variable_checks`) is now **CI-blocking** (critical):
-any *new* unallowlisted stub fails CI, while the 18 RULE-11 entries stay
+any *new* unallowlisted stub fails CI, while the RULE-11 entries stay
 absorbed (no finding).
 
 The detector imports :data:`STUB_ALLOWLIST` and :func:`allowlist_pairs` from
@@ -201,6 +201,23 @@ STUB_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
     # ── planning/* — §7 gaps CLOSED (entity_events + existing_plot_points
     #    now wired from the injected TimelineEventRepository; rendered via
     #    planning/_event_render.py). No allowlist entries remain here. ──
+    # ── writing/suggest_service.py — RULE-11 lean inline-suggest path ──
+    #    ADR-045 <500 ms bypass: the suggest path skips full context
+    #    assembly by design (no KB assembler, no WritingContext), so the
+    #    registered SYSTEM var kb_characters is declared explicitly empty.
+    #    Required since R2 Slice B' demoted the rogue header that used to
+    #    truncate the Characters section out of the rendered system prompt —
+    #    the placeholder is now parse-reachable and MUST be supplied; ""
+    #    honors the lean ruling (Characters section renders empty).
+    (
+        "apps/api/narrare/writing/suggest_service.py",
+        "kb_characters",
+        "RULE-11: lean inline-suggest path (ADR-045 <500 ms bypass) runs "
+        "no KB assembly — kb_characters is declared explicitly empty so "
+        "the Characters section renders empty instead of raising "
+        "PromptVariableError (parse-reachable since R2 Slice B' header "
+        "demotion).",
+    ),
     # ── writing/* — RULE-11 confirmed-optional ──
     (
         "apps/api/narrare/writing/story_suggest_service.py",

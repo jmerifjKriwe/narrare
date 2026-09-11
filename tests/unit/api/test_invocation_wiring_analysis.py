@@ -6,9 +6,12 @@ invocation evidence when an ``InvocationPipeline`` (with a
 ``invocation_pipeline=None`` (backward compatibility).
 
 Services covered:
-1. BetaReaderService — Phase 1 + Phase 2
-2. ReadabilityService — Phase 2 AI analysis
-3. POVService — POVDetectionAgent
+1. ReadabilityService — Phase 2 AI analysis
+2. POVService — POVDetectionAgent
+
+BetaReaderService coverage lives in the companion
+``test_invocation_wiring_beta_reader.py`` (RULE-04 split when the
+ADR-086 S4-beta wiring updates pushed this file past its hard limit).
 
 See:
     ADR-040, INFRA-013, CONSTRAINTS.md RULE-10/RULE-11.
@@ -16,14 +19,17 @@ See:
 
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
+from narrare_core.llm._prepared_call import PreparedModelCall
+from narrare_core.llm.model_config import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
@@ -49,154 +55,20 @@ def _pipeline_with_sink(sink: FakeEvidenceSink) -> InvocationPipeline:
     return InvocationPipeline(evidence_sink=sink)
 
 
-# ===========================================================================
-# 1. BetaReaderService invocation wiring
-# ===========================================================================
+def _prepared_stub() -> PreparedModelCall:
+    """Canned coherent triple for patched ``_prepare_agent`` (Task 6a-2).
+
+    These tests stub the agent entirely, so the real prepare→run
+    pass-through is verified by the dedicated wiring suites instead.
+    """
+    return PreparedModelCall(model=MagicMock(spec=object), model_settings=None, usage_limits=None)
 
 
-class TestBetaReaderInvocationWiring:
-    """BetaReaderService records evidence when invocation_pipeline is wired."""
-
-    @pytest.mark.asyncio
-    async def test_analyze_produces_evidence(self) -> None:
-        sink = FakeEvidenceSink()
-        pipeline = _pipeline_with_sink(sink)
-
-        from narrare.analysis.beta_reader_service import BetaReaderService
-
-        mock_cache = MagicMock(spec=["get", "set", "hash_chapter_ids"])
-        mock_cache.get = AsyncMock(return_value=None)
-        mock_cache.set = AsyncMock()
-
-        mock_assembler = AsyncMock()
-
-        mock_composer = AsyncMock(spec=["build"])
-        # Use a real ComposedPrompt (not a spec'd MagicMock) so the pipeline's
-        # fingerprint_prompt can read both .system and .user when recording evidence.
-        mock_composed = ComposedPrompt(system="System prompt", user="")
-        mock_composer.build = AsyncMock(return_value=mock_composed)
-
-        mock_registry = MagicMock(spec=["get_model"])
-        mock_registry.get_model = AsyncMock(return_value=MagicMock(spec=["run"]))
-
-        service = BetaReaderService(
-            context_assembler=mock_assembler,
-            cache=mock_cache,
-            registry=mock_registry,
-            config=MagicMock(spec=["model_id", "provider_name"]),
-            composer=mock_composer,
-            invocation_pipeline=pipeline,
-        )
-
-        mock_deps = MagicMock(spec=["chapter_text", "word_count", "language", "focus_categories"])
-        mock_deps.chapter_text = "Some text. " * 200
-        mock_deps.word_count = 500
-        mock_deps.language = "en"
-        mock_deps.focus_categories = []
-
-        # Patch the internal methods to avoid full agent execution.
-        # Must patch _assemble_context so the flow reaches _record_evidence.
-        # (_compose_prompt fallback is in the shared helper now; the pipeline
-        # path succeeds via the ComposedPrompt mock above, so no fallback patch.)
-        with (
-            patch.object(service, "_assemble_context", AsyncMock(return_value=mock_deps)),
-            patch("narrare.analysis.beta_reader_service.validate_word_count"),
-            patch(
-                "narrare.analysis.beta_reader_service.run_phase1",
-                AsyncMock(return_value=MagicMock(spec=["output"])),
-            ),
-            patch(
-                "narrare.analysis.beta_reader_service.map_phase1_response",
-                return_value=MagicMock(
-                    spec=["model_dump_json", "cache_key"],
-                    model_dump_json=MagicMock(spec=["__call__"], return_value="{}"),
-                    cache_key="abc",
-                ),
-            ),
-            patch(
-                "narrare.analysis.beta_reader_service.BetaReaderCache.hash_chapter_ids",
-                return_value="abc123",
-            ),
-            contextlib.suppress(Exception),
-        ):
-            await service.analyze(
-                novel_id=uuid4(),
-                user_id=uuid4(),
-                request=MagicMock(
-                    spec=["chapter_ids", "refresh", "categories"],
-                    chapter_ids=["ch1"],
-                    refresh=True,
-                    categories=None,
-                ),
-            )
-            # May fail on response mapping — evidence is what matters
-
-        assert len(sink.records) >= 1, "Expected at least one evidence record"
-
-    @pytest.mark.asyncio
-    async def test_analyze_without_pipeline_no_evidence(self) -> None:
-        sink = FakeEvidenceSink()
-        # Pipeline NOT wired to the service
-        mock_cache = MagicMock(spec=["get", "set", "hash_chapter_ids"])
-        mock_cache.get = AsyncMock(return_value=None)
-
-        from narrare.analysis.beta_reader_service import BetaReaderService
-
-        # No pipeline → compose_invocation falls back to composer.build() directly.
-        mock_composer = AsyncMock(spec=["build"])
-        mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="s", user=""))
-
-        service = BetaReaderService(
-            context_assembler=AsyncMock(),
-            cache=mock_cache,
-            registry=MagicMock(spec=["get_model"]),
-            config=MagicMock(spec=["model_id", "provider_name"]),
-            composer=mock_composer,
-            invocation_pipeline=None,
-        )
-
-        with (
-            patch.object(
-                service,
-                "_assemble_context",
-                AsyncMock(
-                    return_value=MagicMock(
-                        spec=["chapter_text", "word_count", "language", "focus_categories"],
-                        chapter_text="x" * 100,
-                        word_count=50,
-                        language="en",
-                        focus_categories=[],
-                    )
-                ),
-            ),
-            patch("narrare.analysis.beta_reader_service.validate_word_count"),
-            patch(
-                "narrare.analysis.beta_reader_service.run_phase1",
-                AsyncMock(return_value=MagicMock(spec=["output"])),
-            ),
-            patch(
-                "narrare.analysis.beta_reader_service.map_phase1_response",
-                return_value=MagicMock(
-                    spec=["model_dump_json"],
-                    model_dump_json=MagicMock(spec=["__call__"], return_value="{}"),
-                ),
-            ),
-            patch.object(mock_cache, "set", AsyncMock()),
-            patch.object(mock_cache, "hash_chapter_ids", return_value="abc"),
-            contextlib.suppress(Exception),
-        ):
-            await service.analyze(
-                novel_id=uuid4(),
-                user_id=uuid4(),
-                request=MagicMock(
-                    spec=["chapter_ids", "refresh", "categories"],
-                    chapter_ids=["ch1"],
-                    refresh=True,
-                    categories=None,
-                ),
-            )
-
-        assert len(sink.records) == 0, "No evidence should be recorded without pipeline"
+def _static_resolution() -> StaticModelResolution:
+    """ADR-086: pin the resolved model for direct service construction."""
+    return StaticModelResolution(
+        ResolvedModel(config=ResolvedModelConfig(provider_name="test", model_id="test-model"))
+    )
 
 
 # ===========================================================================
@@ -233,8 +105,8 @@ class TestReadabilityInvocationWiring:
         service = ReadabilityService(
             chapter_repo=mock_chapter_repo,
             novel_repo=mock_novel_repo,
-            model_registry=MagicMock(spec=["get_model"]),
-            model_config=MagicMock(spec=["model_id", "provider_name"]),
+            model_registry=MagicMock(spec=["get_model", "prepare"]),
+            model_resolution=_static_resolution(),
             composer=mock_composer,
             invocation_pipeline=pipeline,
         )
@@ -247,7 +119,7 @@ class TestReadabilityInvocationWiring:
                 "_merge_agent_result",
                 return_value=MagicMock(spec=["metrics", "sentence_analyses"]),
             ),
-            patch.object(service, "_get_agent") as mock_get_agent,
+            patch.object(service, "_prepare_agent") as mock_prepare_agent,
         ):
             mock_result = MagicMock(
                 spec=["metrics", "sentence_analyses", "genre_benchmarks", "overall_assessment"],
@@ -262,7 +134,7 @@ class TestReadabilityInvocationWiring:
 
             mock_agent = AsyncMock()
             mock_agent.run = AsyncMock(return_value=MagicMock(spec=["output"]))
-            mock_get_agent.return_value = mock_agent
+            mock_prepare_agent.return_value = (mock_agent, _prepared_stub())
 
             await service.analyze(
                 novel_id=novel_id,
@@ -301,29 +173,25 @@ class TestPOVInvocationWiring:
         mock_chapter_repo = MagicMock(spec=["get_by_id"])
         mock_chapter_repo.get_by_id = AsyncMock(return_value=mock_chapter)
 
-        mock_kb_repo = MagicMock(spec=["list_entries"])
-        mock_kb_repo.list_entries = AsyncMock(return_value=([], 0))
-
         mock_composer = AsyncMock(spec=["build"])
         mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="s", user=""))
 
         service = POVService(
             chapter_repo=mock_chapter_repo,
             novel_repo=mock_novel_repo,
-            kb_repo=mock_kb_repo,
-            model_registry=MagicMock(spec=["get_model"]),
-            model_config=MagicMock(spec=["model_id", "provider_name"]),
+            model_registry=MagicMock(spec=["get_model", "prepare"]),
+            model_resolution=_static_resolution(),
             composer=mock_composer,
             invocation_pipeline=pipeline,
         )
 
         with (
-            patch.object(service, "_get_agent") as mock_get_agent,
+            patch.object(service, "_prepare_agent") as mock_prepare_agent,
             patch("narrare.analysis.services.pov_service.map_output_to_result") as mock_map,
         ):
             mock_agent = AsyncMock()
             mock_agent.run = AsyncMock(return_value=MagicMock(spec=["output"]))
-            mock_get_agent.return_value = mock_agent
+            mock_prepare_agent.return_value = (mock_agent, _prepared_stub())
 
             from narrare_core.analysis.types import POVResult
 

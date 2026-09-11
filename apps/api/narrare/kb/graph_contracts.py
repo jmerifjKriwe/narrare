@@ -23,6 +23,11 @@ class GraphServiceProtocol(Protocol):
 
     Transforms KB entries and relationships into graph elements
     suitable for visualization. No LLM calls — pure data transformation.
+
+    Both operations gate on novel ownership (IDOR fix S9): the caller
+    must own ``novel_id`` BEFORE any entry, relationship, or adjacency
+    data is read. Foreign and unknown novels are indistinguishable
+    (``NotFoundError`` → 404).
     """
 
     async def get_graph(
@@ -35,11 +40,16 @@ class GraphServiceProtocol(Protocol):
 
         Args:
             novel_id: The novel whose KB to visualize.
-            user_id: The user requesting the graph (for authorization).
+            user_id: Caller identity — the ownership gate input: the
+                caller must own ``novel_id`` (first statement, before
+                any data fetch).
             filter: Optional filter to reduce the graph scope.
 
         Returns:
             GraphResponse with nodes, edges, and computed statistics.
+
+        Raises:
+            NotFoundError: Novel unknown or not owned by the caller.
         """
         ...
 
@@ -54,11 +64,16 @@ class GraphServiceProtocol(Protocol):
 
         Args:
             novel_id: The novel whose KB to search.
-            user_id: The user requesting the path.
+            user_id: Caller identity — the ownership gate input: the
+                caller must own ``novel_id`` (before any entry load).
             source_id: Starting entity ID.
             target_id: Target entity ID.
 
         Returns:
             ShortestPathResponse with path, length, and entity names.
+
+        Raises:
+            NotFoundError: Novel unknown or not owned by the caller, or
+                source/target entry not found in the novel.
         """
         ...

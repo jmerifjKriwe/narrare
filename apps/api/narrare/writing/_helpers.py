@@ -6,11 +6,15 @@ Contains validation and feedback helpers used across writing sub-services.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
+
+from sqlalchemy.exc import IntegrityError
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
+    from narrare.chapters.models import Chapter
+    from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.novels.repository import NovelRepository
     from narrare.series.series_history_provider import SeriesHistoryProvider
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.writing.models import GenerationRequest
@@ -216,6 +220,110 @@ async def get_validated_request(
     if str(request_model.user_id) != user_id:
         raise NotFoundError("Generation request", identifier=str(request_id))
     return request_model
+
+
+async def verify_chapter_access(
+    chapter_repo: ChapterRepository,
+    novel_repo: NovelRepository,
+    chapter_id: UUID,
+    novel_id: UUID,
+    user_id: str,
+) -> Chapter:
+    """Verify caller access to a chapter within a novel (IDOR remediation S5).
+
+    Compound gate composing the EXISTING repository methods (zero repo
+    signature changes): the chapter must exist AND belong to the addressed
+    novel AND the novel must belong to the caller.  Every failure raises
+    the same ``NotFoundError`` so foreign and unknown chapter ids are
+    indistinguishable (anti-enumeration, Pattern B).
+
+    Args:
+        chapter_repo: Repository for the chapter lookup (``get``).
+        novel_repo: Repository for the novel ownership lookup (``get_by_id``).
+        chapter_id: The chapter requested by the caller.
+        novel_id: The novel the request is scoped to.
+        user_id: Authenticated user identifier (``str``; converted to
+            ``UUID`` at this boundary).
+
+    Raises:
+        NotFoundError: If the chapter does not exist, does not belong to
+            the addressed novel, or the novel belongs to another user.
+
+    Returns:
+        The authorized ``Chapter`` ORM model.
+    """
+    chapter = await chapter_repo.get(chapter_id)
+    if chapter is None or chapter.novel_id != novel_id:
+        raise NotFoundError("Chapter", identifier=str(chapter_id))
+    novel = await novel_repo.get_by_id(novel_id, UUID(user_id))
+    if novel is None:
+        raise NotFoundError("Chapter", identifier=str(chapter_id))
+    return chapter
+
+
+async def create_request_row(
+    repo: GenerationRepository,
+    chapter_id: UUID,
+    novel_id: UUID,
+    user_id: str,
+    mode: str,
+    tone: str,
+) -> UUID:
+    """Insert a ``generation_request`` row, mapping FK races to 404.
+
+    Shared by the SSE-direct writing services (RULE-04); the
+    ``IntegrityError`` catch backstops deletions between gate and insert.
+
+    Raises:
+        NotFoundError: If the insert violates a foreign key.
+
+    Returns:
+        The id of the newly created generation request.
+    """
+    try:
+        return await repo.create_if_no_active(chapter_id, novel_id, UUID(user_id), mode, tone)
+    except IntegrityError as exc:
+        raise NotFoundError("Chapter or Novel", identifier=str(chapter_id)) from exc
+
+
+async def start_generation_request(
+    repo: GenerationRepository,
+    chapter_repo: ChapterRepository,
+    novel_repo: NovelRepository,
+    chapter_id: UUID,
+    novel_id: UUID,
+    user_id: str,
+    request: GenerateRequest,
+) -> UUID:
+    """Gate chapter access, then create the request row (IDOR S6a).
+
+    Order per plan: ``ownership → input → active-conflict``.  Extracted
+    from :meth:`WritingService.start_generation` per RULE-04; foreign ≡
+    unknown ids raise BEFORE any row is written (no victim pollution,
+    no owner-blocking via the unique active index).
+
+    Args:
+        repo: Generation repository (``create_if_no_active``).
+        chapter_repo: Chapter lookup repo (``get``).
+        novel_repo: Novel ownership repo (``get_by_id``).
+        chapter_id: The chapter requested by the caller.
+        novel_id: The novel the request is scoped to.
+        user_id: Authenticated user id (converted to ``UUID`` here).
+        request: The generate request payload.
+
+    Raises:
+        NotFoundError: No chapter access (foreign ≡ unknown) or FK race.
+        ValidationError: If no input source is provided.
+        ConflictError: If a generation is already active for the chapter.
+
+    Returns:
+        The id of the newly created generation request.
+    """
+    await verify_chapter_access(chapter_repo, novel_repo, chapter_id, novel_id, user_id)
+    validate_generation_input(request)
+    return await create_request_row(
+        repo, chapter_id, novel_id, user_id, request.mode.value, request.tone
+    )
 
 
 def build_pipeline_request(

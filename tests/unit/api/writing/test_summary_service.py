@@ -9,11 +9,15 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pydantic_ai.usage import UsageLimits
 
 from narrare.writing.summary_service import ChapterSummaryService
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.prompts.composer import ComposedPrompt
 from narrare_core.shared.errors import NotFoundError, WritingError
+
+TEST_USER_ID = "00000000-0000-0000-0000-0000000000aa"  # novel owner in these tests
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -49,12 +53,21 @@ def _make_composer() -> AsyncMock:
 
 @pytest.fixture
 def mock_registry() -> AsyncMock:
-    """Mock ModelRegistry."""
+    """Mock ModelRegistry with the prepare() assembly point (Task 6c)."""
     from pydantic_ai.models import Model
+
+    from narrare_core.llm._prepared_call import PreparedModelCall
 
     registry = AsyncMock()
     model_mock = MagicMock(spec=Model)
     registry.get_model = AsyncMock(return_value=model_mock)
+    registry.prepare = AsyncMock(
+        return_value=PreparedModelCall(
+            model=model_mock,
+            model_settings={"max_tokens": 1000},
+            usage_limits=None,
+        )
+    )
     return registry
 
 
@@ -64,6 +77,16 @@ def mock_chapter_repo() -> AsyncMock:
     repo = AsyncMock()
     repo.get = AsyncMock(return_value=None)
     repo.update_summary = AsyncMock()
+    return repo
+
+
+@pytest.fixture
+def mock_novel_repo() -> AsyncMock:
+    """Mock NovelRepository — every novel belongs to TEST_USER_ID (gate passes)."""
+    from tests.factories import make_novel
+
+    repo = AsyncMock()
+    repo.get_by_id = AsyncMock(return_value=make_novel())
     return repo
 
 
@@ -82,12 +105,14 @@ def service(
     mock_registry: AsyncMock,
     config: ResolvedModelConfig,
     mock_chapter_repo: AsyncMock,
+    mock_novel_repo: AsyncMock,
     mock_composer: AsyncMock,
 ) -> ChapterSummaryService:
     return ChapterSummaryService(
         registry=mock_registry,
         config=config,
         chapter_repo=mock_chapter_repo,
+        novel_repo=mock_novel_repo,
         composer=mock_composer,
     )
 
@@ -129,6 +154,7 @@ class TestSummarize:
                 chapter_id=chapter.id,
                 max_sentences=3,
                 language="en",
+                user_id=TEST_USER_ID,
             )
 
         assert result.summary == "A hero begins their journey."
@@ -151,7 +177,7 @@ class TestSummarize:
         chapter = make_chapter(content="", title="Empty Chapter")
         mock_chapter_repo.get = AsyncMock(return_value=chapter)
 
-        result = await service.summarize(chapter_id=chapter.id)
+        result = await service.summarize(chapter_id=chapter.id, user_id=TEST_USER_ID)
 
         assert result.summary == ""
         assert result.word_count == 0
@@ -169,6 +195,7 @@ class TestSummarize:
         with pytest.raises(NotFoundError, match="Chapter"):
             await service.summarize(
                 chapter_id="00000000-0000-0000-0000-000000000001",  # type: ignore[arg-type]
+                user_id=TEST_USER_ID,
             )
 
     async def test_summarize_when_llm_fails_raises_writing_error(
@@ -194,7 +221,7 @@ class TestSummarize:
             ),
             pytest.raises(WritingError, match="Chapter summarization failed"),
         ):
-            await service.summarize(chapter_id=chapter.id)
+            await service.summarize(chapter_id=chapter.id, user_id=TEST_USER_ID)
 
         mock_chapter_repo.update_summary.assert_not_called()
 
@@ -222,7 +249,7 @@ class TestSummarize:
             ),
             pytest.raises(NotFoundError, match="Chapter"),
         ):
-            await service.summarize(chapter_id=chapter.id)
+            await service.summarize(chapter_id=chapter.id, user_id=TEST_USER_ID)
 
     async def test_summarize_uses_composer_for_prompt(
         self,
@@ -254,6 +281,7 @@ class TestSummarize:
                 chapter_id=chapter.id,
                 max_sentences=5,
                 language="de",
+                user_id=TEST_USER_ID,
             )
 
         # Verify the composer was called with the correct intent
@@ -261,9 +289,14 @@ class TestSummarize:
         call_args = mock_composer.build.call_args
         assert call_args[0][0] == LLMIntent.SUMMARIZE
 
-        # Verify the registry was called with the correct config
-        mock_registry.get_model.assert_awaited_once_with(
+        # Verify the registry resolved via the prepare() assembly point
+        # with the SUMMARIZE intent (Task 6c wiring)
+        mock_registry.prepare.assert_awaited_once_with(
             service._config,
+            intent=LLMIntent.SUMMARIZE,
+            # Task 3: the ADR-045 run-limit resolver applies the config's
+            # output cap (max_tokens=1000) at the agent boundary.
+            usage_limits=UsageLimits(output_tokens_limit=1000),
             api_key=None,
             base_url=None,
         )

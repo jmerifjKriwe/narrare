@@ -70,6 +70,14 @@ export const SETTINGS_SHORTCUTS: ShortcutConfig[] = [
     descKey: "settings.shortcutsSection.commandPaletteDescription",
   },
   {
+    // Follow-up b3: document the global quick-capture shortcut (NOTES-001
+    // §7). Key string matches the QuickCaptureProvider binding (metaKey ||
+    // ctrlKey) + Shift + U and the panel's kbd chip notation.
+    key: "Ctrl/⌘+Shift+U",
+    labelKey: "settings.shortcutsSection.quickCapture",
+    descKey: "settings.shortcutsSection.quickCaptureDescription",
+  },
+  {
     key: "Ctrl+B",
     labelKey: "settings.shortcutsSection.bold",
     descKey: "settings.shortcutsSection.boldDescription",

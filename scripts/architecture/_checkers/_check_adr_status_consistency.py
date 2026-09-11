@@ -46,15 +46,39 @@ _INDEX_ROW_RE = re.compile(
     r"\|\s*\[(ADR-\d+)\]\(([^)]+)\)\s*\|[^|]*\|\s*([^|]+?)\s*\|",
 )
 
-# Regex to extract the Status line from an ADR file.
-# Matches: > **Status:** ✅ Accepted  OR  Status: Proposed  OR  **Status:** 🔄
-_ADR_STATUS_RE = re.compile(
-    r"\*?\*?Status:?\*?\*?\s*:?\s*(.+?)(?:$|\n)",
-    re.IGNORECASE | re.MULTILINE,
+# Status-field shapes, derived from the real ADR corpus (83 INDEX-listed
+# files).  A Status declaration is EITHER a labeled field (82 files, e.g.
+# ``> **Status:** ✅ Accepted`` — blockquote+bold is canonical; ADR-022 uses
+# bold without blockquote; a plain ``Status: Proposed`` label also matches)
+# OR an exact ``## Status`` heading with the value on the next non-empty
+# line (ADR-017).  Both are line-anchored and require a colon directly
+# after ``Status`` (inside the bold: ``**Status:**``), so prose mentions
+# NEVER match — notably an H1 title like ADR-062's ``… Status SSOT …``
+# must not shadow the real field (P6 regression), nor may ``Status note
+# (…):`` / ``(Status Quo)`` / lowercase YAML ``status:`` lines.
+_ADR_STATUS_FIELD_RE = re.compile(
+    r"^[ \t]*(?:>[ \t]*)?\*{0,2}Status[ \t]*:[ \t]*\*{0,2}[ \t]*(\S.*)$",
+    re.MULTILINE,
+)
+_ADR_STATUS_HEADING_RE = re.compile(
+    r"^#{1,6}[ \t]+Status[ \t]*$\n+(?:[ \t]*\n)*[ \t]*(\S.*)$",
+    re.MULTILINE,
 )
 
 # Rule identifier.
 _RULE = "ADR-STATUS"
+
+# Keyword stems for Status fields without a leading symbol (e.g.
+# ``Status: Accepted (…)``).  Matched against the FIRST word only.
+_STATUS_KEYWORD_STEMS: tuple[tuple[str, str], ...] = (
+    ("accept", "Accepted"),
+    ("propos", "Proposed"),
+    ("supers", "Superseded"),
+    ("deprecat", "Deprecated"),
+)
+
+# First alphabetic run of a Status field (the leading status word).
+_LEADING_WORD_RE = re.compile(r"[A-Za-z]+")
 
 
 # ---------------------------------------------------------------------------
@@ -104,29 +128,41 @@ def _normalize_index_status(raw: str) -> str:
 def _parse_adr_file_status(content: str) -> str:
     """Extract the Status from an ADR file's header.
 
-    Looks for lines like:
-    - ``> **Status:** ✅ Accepted``
-    - ``> **Status:** 🔄 Proposed``
-    - ``Status: Accepted``
+    Recognizes the corpus-derived declaration shapes (see
+    ``_ADR_STATUS_FIELD_RE`` / ``_ADR_STATUS_HEADING_RE``):
+    - ``> **Status:** ✅ Accepted``  (labeled field, canonical form)
+    - ``**Status:** ✅ Accepted``    (bold, no blockquote)
+    - ``Status: Proposed``          (plain label)
+    - ``## Status`` heading with the value on the next non-empty line
+
+    The FIRST labeled field wins (the header block precedes embedded
+    per-section status notes, e.g. ADR-009 §Variant B).  Prose mentions —
+    including an H1 title like ADR-062's "… Status SSOT Consistency …" —
+    never match, so they can no longer shadow the real field.
+
+    Classification is anchored to the Status field's LEADING marker
+    (``<symbol> <word>``): a leading status symbol (✅ 🔄 ⛔ 🗄️) declares
+    the status; otherwise the leading word is matched against the keyword
+    stems.  Symbols or stems that only appear LATER in the line are
+    informational prose (e.g. ``🔄 Proposed (flips to ✅ Implemented …)``
+    stays Proposed) and never override the leading marker.
     """
-    match = _ADR_STATUS_RE.search(content)
+    match = _ADR_STATUS_FIELD_RE.search(content) or _ADR_STATUS_HEADING_RE.search(content)
     if match is None:
         return ""
     raw = match.group(1).strip()
-    # Extract the keyword from the raw status text
+    # Leading symbol declares the status (✅/🔄/⛔/🗄️ first in the field).
     for symbol, keyword in _INDEX_STATUS_SYMBOLS.items():
-        if symbol in raw:
+        if raw.startswith(symbol):
             return keyword
-    # Check for keyword without symbol
-    lower = raw.lower()
-    if "accept" in lower:
-        return "Accepted"
-    if "propos" in lower:
-        return "Proposed"
-    if "supers" in lower:
-        return "Superseded"
-    if "deprecated" in lower:
-        return "Deprecated"
+    # No leading symbol: classify by the leading word (e.g. "Accepted (…)").
+    first_word = _LEADING_WORD_RE.search(raw)
+    if first_word is None:
+        return ""
+    stem = first_word.group(0).lower()
+    for keyword_stem, keyword in _STATUS_KEYWORD_STEMS:
+        if stem.startswith(keyword_stem):
+            return keyword
     return ""
 
 
@@ -187,8 +223,23 @@ def check_adr_status_consistency(result: CheckResult, root: Path) -> None:
 
         adr_status = _parse_adr_file_status(adr_content)
         if not adr_status:
-            # ADR file has no parseable Status line — skip (not all ADRs
-            # may use the same format; this is informational, not blocking).
+            # INDEX lists the ADR but its file declares no parseable Status
+            # field.  P6: this used to be a SILENT skip, which hid real
+            # defects (ADR-062's Status field was shadowed by its own H1
+            # title).  An unparseable file cannot be verified → violation.
+            result.violations.append(
+                Violation(
+                    file=adr_path,
+                    line=0,
+                    rule=_RULE,
+                    detail=(
+                        f"INDEX.md lists {adr_id}, but the ADR file has no "
+                        f"parseable Status field. Expected a labeled field "
+                        f"like '> **Status:** ✅ Accepted' (or a '## Status' "
+                        f"heading) near the top of the file."
+                    ),
+                )
+            )
             continue
 
         if index_status != adr_status:

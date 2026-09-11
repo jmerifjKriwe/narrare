@@ -44,6 +44,17 @@ def asymmetry_to_issue(idx: int, a: RelationshipAsymmetry) -> ConsistencyIssue:
     )
 
 
+# Severity ranking for report ordering (critical first). Shared by
+# ``consistency_service.check`` — moved here (IDOR fix S9, RULE-04) to
+# keep the service under the file-size limit.
+SEVERITY_ORDER: dict[str, int] = {
+    "critical": 0,
+    "major": 1,
+    "minor": 2,
+    "info": 3,
+}
+
+
 def generate_candidate_pairs(
     adjacency: dict[str, set[str]],
     max_pairs: int = 15,

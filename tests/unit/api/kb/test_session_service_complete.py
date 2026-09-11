@@ -11,6 +11,8 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from narrare_core.shared.errors import NotFoundError
+
 from ._test_fakes import FakeKBService, make_service, make_session
 
 # ---------------------------------------------------------------------------
@@ -28,7 +30,9 @@ class TestCompleteSession:
         session = make_session(name="Aria")
         await store.create(session)
 
-        result_session, entry_id = await service.complete_session(session.id)
+        result_session, entry_id = await service.complete_session(
+            session.id, session.novel_id, session.user_id
+        )
 
         assert result_session.status == "complete"
         assert isinstance(entry_id, UUID)
@@ -42,7 +46,7 @@ class TestCompleteSession:
         session = make_session(name="Aria")
         await store.create(session)
 
-        _, entry_id = await service.complete_session(session.id)
+        _, entry_id = await service.complete_session(session.id, session.novel_id, session.user_id)
 
         assert isinstance(entry_id, UUID)
         assert str(entry_id) != "00000000-0000-0000-0000-000000000000"
@@ -55,7 +59,7 @@ class TestCompleteSession:
         session = make_session(name="Aria")
         await store.create(session)
 
-        await service.complete_session(session.id)
+        await service.complete_session(session.id, session.novel_id, session.user_id)
 
         assert len(created) == 1
         call_data = created[0]
@@ -70,7 +74,7 @@ class TestCompleteSession:
         await store.create(session)
 
         with pytest.raises(RuntimeError, match="KB service create failed"):
-            await service.complete_session(session.id)
+            await service.complete_session(session.id, session.novel_id, session.user_id)
 
         # Session should still be active
         stored = await store.get(session.id)
@@ -78,12 +82,12 @@ class TestCompleteSession:
         assert stored.status == "active"
 
     async def test_raises_for_session_not_found(self) -> None:
-        """Unknown session ID raises ValueError."""
+        """Unknown session ID raises NotFoundError (IDOR S7: 404 shape)."""
         fake_kb = FakeKBService()
         service, _, _ = make_service(kb_service=fake_kb)
 
-        with pytest.raises(ValueError, match="not found"):
-            await service.complete_session(uuid4())
+        with pytest.raises(NotFoundError, match="not found"):
+            await service.complete_session(uuid4(), uuid4(), uuid4())
 
     async def test_raises_for_invalid_status(self) -> None:
         """Session in 'abandoned' status raises ValueError."""
@@ -93,7 +97,7 @@ class TestCompleteSession:
         await store.create(session)
 
         with pytest.raises(ValueError, match="has status 'abandoned'"):
-            await service.complete_session(session.id)
+            await service.complete_session(session.id, session.novel_id, session.user_id)
 
     async def test_raises_for_completed_session(self) -> None:
         """Already completed session raises ValueError."""
@@ -103,7 +107,7 @@ class TestCompleteSession:
         await store.create(session)
 
         with pytest.raises(ValueError, match="has status 'complete'"):
-            await service.complete_session(session.id)
+            await service.complete_session(session.id, session.novel_id, session.user_id)
 
     async def test_raises_for_session_without_name(self) -> None:
         """Session without name raises ValueError (from mapper)."""
@@ -113,7 +117,7 @@ class TestCompleteSession:
         await store.create(session)
 
         with pytest.raises(ValueError, match="Session must have a name"):
-            await service.complete_session(session.id)
+            await service.complete_session(session.id, session.novel_id, session.user_id)
 
     async def test_raises_without_kb_service(self) -> None:
         """Session service without kb_service raises ValueError."""
@@ -122,7 +126,7 @@ class TestCompleteSession:
         await store.create(session)
 
         with pytest.raises(ValueError, match="KB service not configured"):
-            await service.complete_session(session.id)
+            await service.complete_session(session.id, session.novel_id, session.user_id)
 
     async def test_works_with_review_status(self) -> None:
         """Session in 'review' status can be completed."""
@@ -131,7 +135,9 @@ class TestCompleteSession:
         session = make_session(name="Aria", status="review")
         await store.create(session)
 
-        result_session, entry_id = await service.complete_session(session.id)
+        result_session, entry_id = await service.complete_session(
+            session.id, session.novel_id, session.user_id
+        )
 
         assert result_session.status == "complete"
         assert isinstance(entry_id, UUID)

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, cast
 
 from narrare.prompts.live_test_service import PromptLiveTestApiService
 from narrare_core.agents.base import StreamEvent
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.llm.model_routing import ResolvedModel
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from pydantic_ai.models import Model
+    from pydantic_ai.usage import UsageLimits
 
     from narrare_core.agents.prompt_live_test_agent import PromptLiveTestAgent
     from narrare_core.prompts.contracts import ContextSnapshot
@@ -33,6 +35,8 @@ class FakeResolver:
 
     should_fail: bool = False
     model_id: str = "test-model"
+    api_key: str | None = None
+    base_url: str | None = None
     calls: list[tuple[LLMIntent, UUID, UUID | None]] = field(default_factory=list)
 
     async def resolve(
@@ -52,17 +56,23 @@ class FakeResolver:
                 provider_name="test",
                 model_id=self.model_id,
             ),
-            api_key=None,
-            base_url=None,
+            api_key=self.api_key,
+            base_url=self.base_url,
             source="user_default",
         )
 
 
 @dataclass
 class FakeRegistry:
-    """Fake ``ModelRegistry`` — returns a sentinel as the pydantic-ai Model."""
+    """Fake ``ModelRegistry`` — returns a sentinel as the pydantic-ai Model.
+
+    ``prepare`` bridges to the same recording ``get_model`` (Task-6a
+    pattern) and wraps the sentinel in a ``PreparedModelCall`` with a
+    canned sentinel ``model_settings``.
+    """
 
     calls: list[ResolvedModelConfig] = field(default_factory=list)
+    prepare_calls: list[ResolvedModelConfig] = field(default_factory=list)
 
     async def get_model(
         self,
@@ -74,6 +84,23 @@ class FakeRegistry:
         self.calls.append(config)
         # Sentinel — the service passes this to agent_factory; fakes don't inspect it.
         return cast("Model", object())
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: LLMIntent | None = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        model = await self.get_model(config, api_key=api_key, base_url=base_url)
+        self.prepare_calls.append(config)
+        return PreparedModelCall(
+            model=model,
+            model_settings={"max_tokens": 12_345},
+            usage_limits=usage_limits,
+        )
 
 
 @dataclass

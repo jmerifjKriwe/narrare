@@ -2,7 +2,7 @@
 
 C5 / ADR-082 enforcement evidence for the REAL stream call shape: the
 stream route only knows ``request_id``, so the request-scoped factory
-(:func:`narrare.writing.deps_writing.get_writing_service_for_stream`)
+(:func:`narrare.writing.deps_writing_stream.get_writing_service_for_stream`)
 must recover the novel from the generation-request row and resolve
 ADR-082 Decision-6 budgets (series carve-out vs. standalone full total)
 plus ownership on that basis.
@@ -11,7 +11,8 @@ RULE-04 note: this class is the module split of what the Task 3e brief
 prescribed as an append to ``test_context_budget_wiring.py`` — the
 append pushed that file past the 400-line hard limit (320 + 110 = 430).
 The shared hermetic patch helpers stay in the original module; see the
-task report for the flagged deviation.
+task report for the flagged deviation. The factory itself moved to
+``deps_writing_stream.py`` in the same RULE-04 spirit (fix-wave N1).
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ class TestStreamFactoryRequestScopedWiring:
         ctx, pipeline_spy, adapter_spy = _budget_patch_context(
             "narrare.writing.deps_writing", budgets
         )
-        module = importlib.import_module("narrare.writing.deps_writing")
+        module = importlib.import_module("narrare.writing.deps_writing_stream")
 
         user_id = uuid.uuid4()
         row = SimpleNamespace(id=uuid.uuid4(), user_id=user_id, novel_id=uuid.uuid4())
@@ -56,6 +57,8 @@ class TestStreamFactoryRequestScopedWiring:
         ):
             gen_repo_cls.return_value.get_by_id = AsyncMock(return_value=row)
             novel_repo_cls.return_value.get = AsyncMock(return_value=series_novel)
+            # N1 gate: entry lookup must report the novel as owned.
+            novel_repo_cls.return_value.get_by_id = AsyncMock(return_value=series_novel)
             service = await module.get_writing_service_for_stream(
                 session=_fake_session(),
                 user_id=str(user_id),
@@ -75,7 +78,7 @@ class TestStreamFactoryRequestScopedWiring:
         ctx, pipeline_spy, adapter_spy = _budget_patch_context(
             "narrare.writing.deps_writing", budgets
         )
-        module = importlib.import_module("narrare.writing.deps_writing")
+        module = importlib.import_module("narrare.writing.deps_writing_stream")
 
         user_id = uuid.uuid4()
         row = SimpleNamespace(id=uuid.uuid4(), user_id=user_id, novel_id=uuid.uuid4())
@@ -91,6 +94,8 @@ class TestStreamFactoryRequestScopedWiring:
         ):
             gen_repo_cls.return_value.get_by_id = AsyncMock(return_value=row)
             novel_repo_cls.return_value.get = AsyncMock(return_value=standalone_novel)
+            # N1 gate: entry lookup must report the novel as owned.
+            novel_repo_cls.return_value.get_by_id = AsyncMock(return_value=standalone_novel)
             service = await module.get_writing_service_for_stream(
                 session=_fake_session(),
                 user_id=str(user_id),
@@ -115,7 +120,7 @@ class TestStreamFactoryRequestScopedWiring:
         ctx, _pipeline_spy, adapter_spy = _budget_patch_context(
             "narrare.writing.deps_writing", budgets
         )
-        module = importlib.import_module("narrare.writing.deps_writing")
+        module = importlib.import_module("narrare.writing.deps_writing_stream")
 
         row = SimpleNamespace(id=uuid.uuid4(), user_id=uuid.uuid4(), novel_id=uuid.uuid4())
         with (

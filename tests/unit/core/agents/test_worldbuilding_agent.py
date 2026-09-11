@@ -1,17 +1,26 @@
-"""Tests for agents/worldbuilding_agent.py — Instantiation and Output Functions.
+"""Tests for agents/worldbuilding_agent.py — Instantiation and Deps.
 
 Test-Strategie:
 - TestModel for deterministic agent tests
-- Output Functions tested directly via _process_phase1 / _process_phase2
+- Validator tests live in ``test_worldbuilding_validation.py`` (ADR-035)
 - No real LLM calls (RULE-01b)
 """
 
 from __future__ import annotations
 
-from pydantic_ai.models.test import TestModel
+from unittest.mock import AsyncMock, patch
 
+import pytest
+from pydantic_ai.models.test import TestModel
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.usage import UsageLimits
+
+from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.worldbuilding_agent import WorldbuildingAgent
-from narrare_core.agents.worldbuilding_types import WorldbuildingDeps
+from narrare_core.agents.worldbuilding_types import (
+    WorldbuildingDeps,
+    WorldbuildingPhase2Output,
+)
 
 # ---------------------------------------------------------------------------
 # A. WorldbuildingDeps
@@ -63,3 +72,50 @@ class TestWorldbuildingAgentInstantiation:
             system_prompt="You are a worldbuilding analyst.",
         )
         assert isinstance(agent, WorldbuildingAgent)
+
+
+# ---------------------------------------------------------------------------
+# C. WorldbuildingAgent — run_phase2 kwargs pass-through (Task 1 core fix)
+# ---------------------------------------------------------------------------
+
+
+class TestRunPhase2Settings:
+    """run_phase2 forwards model_settings/usage_limits to the inner run."""
+
+    @pytest.mark.asyncio
+    async def test_forwards_settings_and_limits(self) -> None:
+        agent = WorldbuildingAgent(model=TestModel())
+        deps = WorldbuildingDeps(candidate_pairs=[("ent-1", "ent-2")])
+        expected = WorldbuildingPhase2Output(issues=[], assessment="Consistent.")
+        sentinel_settings = ModelSettings(max_tokens=12_345)
+        sentinel_limits = UsageLimits(request_limit=7)
+
+        with patch.object(NarrareAgent, "run", new=AsyncMock(return_value=expected)) as mock_run:
+            result = await agent.run_phase2(
+                "Check consistency",
+                deps,
+                model=TestModel(),
+                system_prompt="Phase 2 prompt.",
+                model_settings=sentinel_settings,
+                usage_limits=sentinel_limits,
+            )
+
+        assert result is expected
+        kwargs = mock_run.call_args.kwargs
+        assert kwargs["model_settings"] is sentinel_settings
+        assert kwargs["usage_limits"] is sentinel_limits
+
+    @pytest.mark.asyncio
+    async def test_defaults_to_none(self) -> None:
+        """Without kwargs the inner run receives None (backward compat)."""
+        agent = WorldbuildingAgent(model=TestModel())
+        deps = WorldbuildingDeps(candidate_pairs=[("ent-1", "ent-2")])
+        expected = WorldbuildingPhase2Output(issues=[], assessment="Consistent.")
+
+        with patch.object(NarrareAgent, "run", new=AsyncMock(return_value=expected)) as mock_run:
+            result = await agent.run_phase2("Check consistency", deps, model=TestModel())
+
+        assert result is expected
+        kwargs = mock_run.call_args.kwargs
+        assert kwargs["model_settings"] is None
+        assert kwargs["usage_limits"] is None

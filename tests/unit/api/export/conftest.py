@@ -108,6 +108,29 @@ class FakeNormalizer:
         )
 
 
+class FakeNovelLookup:
+    """In-memory fake of ``OwnedLinkLookupProtocol`` (ADR-030, mirrors chat's).
+
+    Returns a truthy sentinel only for a seeded ``(novel_id, owner_id)`` pair —
+    foreign or unknown ids resolve to ``None`` (the service then raises
+    ``NotFoundError``: foreign ≡ unknown anti-enumeration).
+    """
+
+    def __init__(self) -> None:
+        self._owned: dict[UUID, UUID] = {}
+        self.calls: list[tuple[UUID, UUID]] = []
+
+    def seed_owned(self, novel_id: UUID, owner_id: UUID) -> None:
+        """Register a novel as owned by ``owner_id``."""
+        self._owned[novel_id] = owner_id
+
+    async def get_owned(self, entity_id: UUID, user_id: UUID) -> object | None:
+        self.calls.append((entity_id, user_id))
+        if self._owned.get(entity_id) == user_id:
+            return object()
+        return None
+
+
 @dataclass
 class RecordingEnqueuer:
     """Records dispatches instead of scheduling real asyncio tasks.

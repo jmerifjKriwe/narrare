@@ -158,7 +158,10 @@ class WorldbuildingProtocol(Protocol):
 
     Provides three analysis operations (gap detection, connection suggestions,
     consistency checking) delivered through a unified analyze() call, plus
-    apply() for creating suggested relationships.
+    apply() for creating suggested relationships. Both operations gate on
+    novel ownership (IDOR fix S8): the caller must own ``novel_id`` BEFORE
+    any analysis or relationship write; foreign and unknown ids are
+    indistinguishable (``NotFoundError`` → 404).
     """
 
     async def analyze(
@@ -166,6 +169,7 @@ class WorldbuildingProtocol(Protocol):
         *,
         novel_id: UUID,
         request: WorldbuildingAnalysisRequest,
+        user_id: UUID,
     ) -> WorldbuildingAnalysisResponse:
         """Analyze the project's worldbuilding health.
 
@@ -175,6 +179,7 @@ class WorldbuildingProtocol(Protocol):
         Args:
             novel_id: The project to analyze.
             request: Analysis options and filters.
+            user_id: The caller — must own the novel (ownership gate).
 
         Returns:
             Complete analysis with all requested finding types.
@@ -193,10 +198,14 @@ class WorldbuildingProtocol(Protocol):
 
         Creates KBRelationship entries for the selected suggestions.
         Requires the original analysis response for context (entity IDs, rel types).
+        Every referenced entry id must belong to the gated novel (W2):
+        one batch ownership query runs before any write, and a single
+        foreign/unknown entry id rejects the whole batch — no partial
+        writes.
 
         Args:
             novel_id: The project containing the entities.
-            user_id: The user performing the action.
+            user_id: The caller — must own the novel (ownership gate).
             request: Which connection indices to apply.
             analysis: The analysis response containing the suggestions.
 

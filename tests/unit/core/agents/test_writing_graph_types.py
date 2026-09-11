@@ -7,6 +7,9 @@ Test-Strategie:
 
 from __future__ import annotations
 
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.usage import UsageLimits
+
 from narrare_core.agents.writing_graph_types import (
     Approved,
     NeedsRevision,
@@ -14,6 +17,20 @@ from narrare_core.agents.writing_graph_types import (
     WritingState,
     WritingStatus,
 )
+
+
+def _make_deps(
+    *,
+    model_settings: ModelSettings | None = None,
+    usage_limits: UsageLimits | None = None,
+) -> WritingDeps:
+    """Minimal WritingDeps with mock registry/composer (single sanctioned arg-type suppression)."""
+    return WritingDeps(
+        registry="mock_registry",
+        composer="mock_composer",  # type: ignore[arg-type]
+        model_settings=model_settings,
+        usage_limits=usage_limits,
+    )
 
 
 class TestWritingStatus:
@@ -78,10 +95,7 @@ class TestWritingDeps:
 
     def test_writing_deps_minimal(self) -> None:
         """WritingDeps requires registry + composer (CR-AUFG-02-07)."""
-        deps = WritingDeps(
-            registry="mock_registry",
-            composer="mock_composer",  # type: ignore[arg-type]
-        )
+        deps = _make_deps()
         assert deps.registry == "mock_registry"
         assert deps.composer == "mock_composer"
         assert deps.context_assembler is None
@@ -94,6 +108,23 @@ class TestWritingDeps:
         assert deps.word_target is None
         assert deps.tone == "balanced"
         assert deps.language == "en"
+
+    def test_writing_deps_prepared_triple_settings_default_none(self) -> None:
+        """Prepared-triple settings half defaults to None (Task 1)."""
+        deps = _make_deps()
+        assert deps.model_settings is None
+        assert deps.usage_limits is None
+
+    def test_writing_deps_carries_prepared_triple_settings(self) -> None:
+        """Settings/limits from ModelRegistry.prepare() can be wired via deps."""
+        sentinel_settings = ModelSettings(max_tokens=12_345)
+        sentinel_limits = UsageLimits(request_limit=7)
+        deps = _make_deps(
+            model_settings=sentinel_settings,
+            usage_limits=sentinel_limits,
+        )
+        assert deps.model_settings is sentinel_settings
+        assert deps.usage_limits is sentinel_limits
 
 
 class TestDecisionSignals:

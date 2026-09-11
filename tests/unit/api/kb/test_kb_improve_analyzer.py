@@ -10,14 +10,19 @@ import pytest
 from pydantic_ai.models import Model
 
 from narrare.kb.improve_contracts import KBImproveAnalysisResponse
+from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
+    from pydantic_ai.usage import UsageLimits
+
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.kb.improve_cache import KBImproveCache
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.intents import LLMIntent
     from narrare_core.prompts.composer import PromptComposer
 
 # ---------------------------------------------------------------------------
@@ -90,8 +95,34 @@ class _FakeImproveCache:
 
 
 class _FakeRegistry:
+    """Fake ModelRegistry with the prepare() assembly point (Task 6c).
+
+    ``prepare`` mirrors the real single assembly point: exactly one
+    ``get_model`` resolution plus a canned sentinel settings dict, so
+    pass-through wiring stays assertable.
+    """
+
     def __init__(self) -> None:
         self.get_model = AsyncMock(return_value=MagicMock(spec=Model))
+        self.prepare_calls: list[dict[str, object]] = []
+
+    async def prepare(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        intent: LLMIntent | None = None,
+        usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> PreparedModelCall:
+        model = await self.get_model(config, api_key=api_key, base_url=base_url)
+        prepared = PreparedModelCall(
+            model=model,
+            model_settings={"max_tokens": 12_345},
+            usage_limits=usage_limits,
+        )
+        self.prepare_calls.append({"config": config, "intent": intent, "prepared": prepared})
+        return prepared
 
 
 def _make_analyzer(

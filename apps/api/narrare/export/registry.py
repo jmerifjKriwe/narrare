@@ -22,6 +22,19 @@ legitimate client the signed URL via polling); the validation secret stored on
 the record is the one-way hash. A consumer who only reads
 ``artifact_token_hash`` cannot forge a consume (they would need the preimage).
 
+Owner binding (P-SEC S1)
+------------------------
+Every job record carries ``owner_user_id`` (bound at :func:`create`, i.e.
+after the service's owned-novel gate). :func:`get` and
+:func:`consume_artifact` take the caller's ``user_id`` and treat an
+owner-mismatch exactly like an unknown job id — same
+:class:`ExportJobNotFoundError`, same message shape (foreign ≡ unknown,
+anti-enumeration). The owner check runs BEFORE the token/single-use logic,
+so a foreign consume attempt never flips ``artifact_consumed`` and never
+reveals whether the job exists (no 410 oracle). The task-time ``mark_*``
+mutations stay job_id-keyed: they run only for jobs the gate already
+admitted, dispatched by the service.
+
 Single-use: the first successful :func:`consume_artifact` flips
 ``artifact_consumed``; every subsequent attempt raises
 :class:`ExportArtifactExpiredError`. Temp-file cleanup is belt-and-braces:
@@ -78,6 +91,11 @@ def _hash_token(token: str) -> str:
 class _JobRecord:
     """Mutable in-memory state for one export job.
 
+    ``owner_user_id`` is the caller bound at :func:`create` (P-SEC S1) —
+    ``get``/``consume_artifact`` treat any other user as if the job did not
+    exist. It lives on the private record only, never on the public
+    :class:`ExportJob` view (no owner identity in API responses).
+
     ``artifact`` carries the full :class:`Artifact` (path + media_type +
     suggested_filename) so :func:`consume_artifact` can return it without
     re-reading disk. ``artifact_token_hash`` is the SHA-256 of the raw token —
@@ -86,6 +104,7 @@ class _JobRecord:
     """
 
     job: ExportJob
+    owner_user_id: UUID
     artifact: Artifact | None = None
     artifact_token_hash: str | None = None
     artifact_expires_at: datetime | None = None
@@ -104,8 +123,12 @@ def _artifact_url(job_id: str, token: str) -> str:
     return f"/api/v1/export/jobs/{job_id}/artifact?token={quote(token, safe='')}"
 
 
-def create(novel_id: UUID, fmt: ExportFormat) -> ExportJob:
-    """Register a PENDING job and return its public view."""
+def create(novel_id: UUID, user_id: UUID, fmt: ExportFormat) -> ExportJob:
+    """Register a PENDING job owned by ``user_id`` and return its public view.
+
+    The service calls this only AFTER the owned-novel gate passed, so the
+    owner binding is trustworthy by construction.
+    """
     job = ExportJob(
         job_id=secrets.token_urlsafe(16),
         novel_id=novel_id,
@@ -114,15 +137,20 @@ def create(novel_id: UUID, fmt: ExportFormat) -> ExportJob:
         created_at=_now(),
         updated_at=_now(),
     )
-    _JOBS[job.job_id] = _JobRecord(job=job)
+    _JOBS[job.job_id] = _JobRecord(job=job, owner_user_id=user_id)
     logger.info("export_job_created", job_id=job.job_id, novel_id=str(novel_id), format=fmt.value)
     return job
 
 
-def get(job_id: str) -> ExportJob:
-    """Return the public job view. Raises :class:`ExportJobNotFoundError`."""
+def get(job_id: str, user_id: UUID) -> ExportJob:
+    """Return the public job view — owner-only.
+
+    Raises :class:`ExportJobNotFoundError` for unknown ids AND for jobs owned
+    by another user (foreign ≡ unknown: same error, same message — no
+    enumeration oracle).
+    """
     record = _JOBS.get(job_id)
-    if record is None:
+    if record is None or record.owner_user_id != user_id:
         raise ExportJobNotFoundError(f"Export job '{job_id}' not found")
     return record.job
 
@@ -187,16 +215,19 @@ def mark_failed(job_id: str, error: str) -> None:
     logger.warning("export_job_failed", job_id=job_id, error=error)
 
 
-def consume_artifact(job_id: str, token: str) -> Artifact:
-    """Validate the token and return the single-use :class:`Artifact`.
+def consume_artifact(job_id: str, token: str, user_id: UUID) -> Artifact:
+    """Validate ownership + the token and return the single-use :class:`Artifact`.
 
-    Raises :class:`ExportJobNotFoundError` for unknown ids and
-    :class:`ExportArtifactExpiredError` if the job is not COMPLETED, the token
-    is wrong, the artifact was already consumed, or the TTL elapsed. The
-    caller (router) is responsible for unlinking the temp file after streaming.
+    Raises :class:`ExportJobNotFoundError` for unknown ids AND jobs owned by
+    another user (foreign ≡ unknown) — checked FIRST, so a foreign attempt
+    never flips the single-use flag and never surfaces the token/expiry errors
+    (no oracle). Then raises :class:`ExportArtifactExpiredError` if the job is
+    not COMPLETED, the token is wrong, the artifact was already consumed, or
+    the TTL elapsed. The caller (router) is responsible for unlinking the temp
+    file after streaming.
     """
     record = _JOBS.get(job_id)
-    if record is None:
+    if record is None or record.owner_user_id != user_id:
         raise ExportJobNotFoundError(f"Export job '{job_id}' not found")
 
     if record.artifact is None or record.artifact_token_hash is None:

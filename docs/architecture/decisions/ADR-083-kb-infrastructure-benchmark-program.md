@@ -221,5 +221,10 @@ plans.
 - [ ] When a **KB capability changes shape** (new, removed, or re-routed API
       surface) — Decision 9 check: benchmark corpus and capability-inventory
       assumptions must be updated in the same change or explicitly waived.
+      *Check record (2026-09-07, ADR-085 P4/D5):* the unmounted KB-009 merge
+      router (`kb/router_merge.py`, `POST /novels/{novel_id}/kb/merge`) was
+      deleted; the capability is superseded by the entity-resolution surface
+      (`/kb/resolution/*`). The capability-inventory update (CAP-IN-10) lands
+      with the benchmark integration slice.
 - [ ] When any **gate ever proposes to consume benchmark results** — hard
       conflict with Decision 2; requires superseding this ADR, not amending it.

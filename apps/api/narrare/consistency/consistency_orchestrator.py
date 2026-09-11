@@ -11,6 +11,7 @@ internal collaborator injected into ``ConsistencyCheckerService``.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import structlog
 
@@ -20,6 +21,7 @@ from narrare_core.agents.fact_extractor_types import (
     FactExtractorDeps,
     TimelineEventEnvelope,
 )
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
 if TYPE_CHECKING:
     import uuid
@@ -44,6 +46,14 @@ class ConsistencyOrchestrator:
         consistency_config: ResolvedModelConfig for CONSISTENCY intent.
         composer: PromptComposer for prompt cascade resolution.
         invocation_pipeline: Optional InvocationPipeline for evidence recording.
+        fact_extractor_api_key: Optional per-user provider API key for the
+            FACT_EXTRACT stage (model-routing cascade).
+        fact_extractor_base_url: Optional per-user provider base URL for the
+            FACT_EXTRACT stage.
+        consistency_api_key: Optional per-user provider API key for the
+            CONSISTENCY stage (model-routing cascade).
+        consistency_base_url: Optional per-user provider base URL for the
+            CONSISTENCY stage.
     """
 
     def __init__(
@@ -53,12 +63,22 @@ class ConsistencyOrchestrator:
         consistency_config: ResolvedModelConfig,
         composer: PromptComposer,
         invocation_pipeline: InvocationPipeline | None = None,
+        fact_extractor_api_key: str | None = None,
+        fact_extractor_base_url: str | None = None,
+        consistency_api_key: str | None = None,
+        consistency_base_url: str | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._registry = registry
         self._fact_extractor_config = fact_extractor_config
         self._consistency_config = consistency_config
         self._composer = composer
         self._invocation_pipeline = invocation_pipeline
+        self._fact_extractor_api_key = fact_extractor_api_key
+        self._fact_extractor_base_url = fact_extractor_base_url
+        self._consistency_api_key = consistency_api_key
+        self._consistency_base_url = consistency_base_url
+        self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def run_staged_check(
         self,
@@ -106,6 +126,8 @@ class ConsistencyOrchestrator:
             max_chapter_tokens=max_chapter_tokens,
             fact_output=fact_output,
             invocation_pipeline=self._invocation_pipeline,
+            api_key=self._consistency_api_key,
+            base_url=self._consistency_base_url,
         )
 
     async def stream_staged_check(
@@ -169,6 +191,8 @@ class ConsistencyOrchestrator:
             max_chapter_tokens=max_chapter_tokens,
             fact_output=fact_output,
             invocation_pipeline=self._invocation_pipeline,
+            api_key=self._consistency_api_key,
+            base_url=self._consistency_base_url,
         )
         for index, issue in enumerate(response.issues, start=1):
             yield ConsistencyStageEvent(
@@ -265,6 +289,23 @@ class ConsistencyOrchestrator:
             system_prompt = composed.system
             user_prompt = composed.user
 
-        model = await self._registry.get_model(self._fact_extractor_config)
-        agent = FactExtractorAgent(model=model, system_prompt=system_prompt)
-        return await agent.run(prompt=user_prompt, deps=extractor_deps)
+        # Single assembly point (Task 6b — Task 4/5 pattern): model + intent-aware
+        # runtime settings + usage limits as one coherent triple, so the thinking
+        # policy actually reaches this call.
+        resolved = self._run_limit_resolver.resolve(
+            config=self._fact_extractor_config, budget=None, invocation_id=uuid4()
+        )
+        prepared = await self._registry.prepare(
+            self._fact_extractor_config,
+            intent=LLMIntent.FACT_EXTRACT,
+            usage_limits=resolved.usage_limits,
+            api_key=self._fact_extractor_api_key,
+            base_url=self._fact_extractor_base_url,
+        )
+        agent = FactExtractorAgent(model=prepared.model, system_prompt=system_prompt)
+        return await agent.run(
+            prompt=user_prompt,
+            deps=extractor_deps,
+            model_settings=prepared.model_settings,
+            usage_limits=prepared.usage_limits,
+        )

@@ -192,17 +192,19 @@ def check_variable_usage(result: CheckResult) -> None:
             continue
         used_vars.update(_TEMPLATE_VAR_RE.findall(content))
 
-    # Find dead variables
+    # Find dead variables — emit ONE violation per dead var so each entry is
+    # individually baselinable (a single-var drift must not invalidate an
+    # aggregate signature covering other still-dead vars).
     dead_vars = sorted(system_vars - used_vars)
-    if dead_vars:
+    for var in dead_vars:
         result.approved_exceptions.append(
             Violation(
                 file=Path("packages/core/narrare_core/prompts/variable_registry.py"),
                 line=0,
                 rule="PROMPT-VARS",
                 detail=(
-                    f"Dead variable(s) in SYSTEM_VARS — registered but never used "
-                    f"in any prompt template: {', '.join(dead_vars)}"
+                    f"Dead variable in SYSTEM_VARS — registered but never used "
+                    f"in any prompt template: {var}"
                 ),
                 approved=True,
                 approval_reason="Variable usage audit — dead registration",

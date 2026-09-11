@@ -70,7 +70,7 @@ class FactExtractorAgent(NarrareAgent[FactExtractorDeps, FactExtractorOutput]):
         super().__init__(
             model=model,
             deps_type=FactExtractorDeps,
-            output_type=[self._process_output, FactExtractorOutput],
+            output_type=FactExtractorOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -127,30 +127,6 @@ class FactExtractorAgent(NarrareAgent[FactExtractorDeps, FactExtractorOutput]):
             seen.add(key)
 
         return output.model_copy(update={"facts": valid_facts})
-
-    async def _process_output(
-        self,
-        ctx: RunContext[FactExtractorDeps],
-        facts: list[dict[str, Any]] | None = None,
-        assessment_summary: str = "",
-    ) -> FactExtractorOutput:
-        """Output Function — structures the LLM response into FactExtractorOutput.
-
-        During streaming (ctx.partial_output), returns a minimal empty result.
-        """
-        if ctx.partial_output:
-            return FactExtractorOutput()
-
-        from narrare_core.agents.fact_extractor_types import ExtractedFact
-
-        items: list[ExtractedFact] = []
-        for f in facts or []:
-            items.append(ExtractedFact.model_validate(f))
-
-        return FactExtractorOutput(
-            facts=items,
-            assessment_summary=assessment_summary,
-        )
 
     async def run(
         self,

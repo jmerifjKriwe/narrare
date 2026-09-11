@@ -3,7 +3,8 @@
 persons:
   - id: p_anna_meyer
     name: Anna Meyer
-    aliases: []
+    aliases: ["Anna"]
+    gender: female
     facts:
       - id: F004
         predicate: age_stated
@@ -66,7 +67,8 @@ persons:
         source_chapters: [12]
   - id: p_peter_meyer
     name: Peter Meyer
-    aliases: []
+    aliases: ["Peter"]
+    gender: male
     facts:
       - id: F009
         predicate: profession
@@ -103,7 +105,8 @@ persons:
         source_chapters: [8]
   - id: p_thomas_meyer
     name: Thomas Meyer
-    aliases: []
+    aliases: ["Thomas"]
+    gender: male
     facts:
       - id: F008
         predicate: owner_of
@@ -120,7 +123,8 @@ persons:
         source_chapters: [2]
   - id: p_lisa_brandt
     name: Lisa Brandt
-    aliases: []
+    aliases: ["Lisa"]
+    gender: female
     facts:
       - id: F013
         predicate: residence
@@ -143,7 +147,8 @@ persons:
         source_chapters: [3]
   - id: p_marco_weise
     name: Marco Weise
-    aliases: []
+    aliases: ["Marco Weise", "Weise"]
+    gender: male
     facts:
       - id: F023
         predicate: profession
@@ -151,7 +156,8 @@ persons:
         source_chapters: [3]
   - id: p_martin_wiese
     name: Martin Wiese
-    aliases: []
+    aliases: ["Martin Wiese", "Wiese"]
+    gender: male
     facts:
       - id: F024
         predicate: profession
@@ -159,7 +165,8 @@ persons:
         source_chapters: [3]
   - id: p_hajo_pfeiffer
     name: Hajo Pfeiffer
-    aliases: []
+    aliases: ["Hajo Pfeiffer"]
+    gender: male
     facts:
       - id: F026
         predicate: profession
@@ -167,7 +174,8 @@ persons:
         source_chapters: [3]
   - id: p_margarete_meyer
     name: Margarete Meyer
-    aliases: []
+    aliases: ["Margarete"]
+    gender: female
     facts:
       - id: F036
         predicate: age_stated
@@ -189,7 +197,8 @@ persons:
         source_chapters: [5]
   - id: p_ilse_meyer
     name: Ilse Meyer
-    aliases: []
+    aliases: ["Ilse", "Mama"]
+    gender: female
     facts:
       - id: F043
         predicate: age_stated
@@ -207,7 +216,8 @@ persons:
         source_chapters: [8]
   - id: p_gert_meyer
     name: Gert Meyer
-    aliases: []
+    aliases: ["Gert", "Papa"]
+    gender: male
     facts:
       - id: F044
         predicate: age_stated
@@ -225,11 +235,13 @@ persons:
         source_chapters: [7]
   - id: p_elke_richter
     name: Elke Richter
-    aliases: []
+    aliases: ["Elke"]
+    gender: female
     facts: []                           # ch-04 presence is relational (neighbor/observes); handled in relations
   - id: p_juna_meyer
     name: Juna Meyer
-    aliases: []
+    aliases: ["Juna"]
+    gender: female
     facts:
       - id: F054
         predicate: birth_date
@@ -251,11 +263,13 @@ persons:
         source_chapters: [12]
   - id: p_sofia_lenz
     name: Sofia Lenz
-    aliases: []
+    aliases: ["Sofia"]
+    gender: female
     facts: []                           # ch-07 states only the jury encounter (relational); handled as relation/event
   - id: p_maria_sommer
     name: Maria Sommer
-    aliases: []
+    aliases: ["Maria"]
+    gender: female
     facts:
       - id: F093
         predicate: profession
@@ -264,7 +278,8 @@ persons:
         source_chapters: [9]
   - id: p_anna_meier
     name: Anna Meier
-    aliases: []
+    aliases: ["Anna Meier"]
+    gender: female
     facts:
       - id: F096
         predicate: residence
@@ -275,6 +290,7 @@ persons:
     name: Ilses Sohn (namenlos, geboren 1983)
     aliases: []                    # DESIGN: shell entity so half-sibling relations (F106) are encodable;
                                   # NO name, NO further facts — prose states none (bible discipline)
+    gender: male
     facts:
       - id: F103
         predicate: relation_to_ilse
@@ -291,7 +307,8 @@ persons:
         source_chapters: [10]
   - id: p_ben_schulz
     name: Ben Schulz
-    aliases: []
+    aliases: ["Ben"]
+    gender: male
     facts:
       - id: F134
         predicate: residence
@@ -300,7 +317,8 @@ persons:
                                    # no valid_from: "seit 2022" scopes the babysitting (R021), not the move-in; residence undated — prose states no move-in date
   - id: p_alexander_wolf
     name: Alexander Wolf
-    aliases: ["Alex", "Sascha"]
+    aliases: ["Alex", "Sascha", "Alexander"]
+    gender: male
     facts: []                           # alias split per F137: "Alex" by colleagues, "Sascha" by family, never resolved on-page; represented by R024 + E030
 
 places:
@@ -309,6 +327,7 @@ places:
     facts: []                           # city container; no standalone place facts stated in ch. 1-3
   - id: pl_eppendorf_wohnung
     name: Eppendorfer Baum 14
+    aliases: ["Eppendorfer Baum 14"]
     facts:
       - id: PF001
         predicate: residence_of
@@ -318,6 +337,7 @@ places:
         source_chapters: [1, 8]
   - id: pl_pfeiffer_buero
     name: Pfeiffer & Partner Architekten
+    aliases: ["Pfeiffer & Partner", "Pfeiffer & Partner Architekten"]
     facts:
       - id: PF002
         predicate: district
@@ -364,6 +384,7 @@ places:
         source_chapters: [8]
   - id: pl_gartenlaube
     name: Kleingarten in Hamburg-Wandsbek
+    aliases: ["Kleingarten in Wandsbek"]
     facts:
       - id: PF009
         predicate: allotment_of
@@ -372,6 +393,7 @@ places:
         source_chapters: [7]
   - id: pl_lenz_meyer_buero
     name: Lenz & Meyer Architekten (Glockenbachviertel, München)
+    aliases: ["Lenz & Meyer Architekten"]
     facts:
       - id: PF010
         predicate: exists_from
@@ -381,6 +403,7 @@ places:
 objects:
   - id: o_zeichentisch
     name: Zeichentisch (Margaretes Zeichentisch)
+    aliases: ["Zeichentisch"]
     facts:
       - id: OF001
         predicate: owner
@@ -400,6 +423,7 @@ objects:
         source_chapters: [8]
   - id: o_briefe
     name: Briefe (beide Bündel 1982–1984)
+    aliases: ["Briefe"]
     facts:
       - id: OF003
         predicate: owner
@@ -423,6 +447,7 @@ objects:
 
   - id: o_frida
     name: Frida (Hund)
+    aliases: ["Frida"]
     facts:
       - id: OF006
         predicate: owner
@@ -431,6 +456,7 @@ objects:
         source_chapters: [7]
   - id: o_klavier
     name: Klavier (hochbeinig)
+    aliases: ["Klavier"]
     facts:
       - id: OF007
         predicate: owner
@@ -445,6 +471,7 @@ objects:
         source_chapters: [8]
   - id: o_skizzenbuecher
     name: Reise-Skizzenbücher
+    aliases: ["Skizzenbücher"]
     facts:
       - id: OF009
         predicate: owner
@@ -453,6 +480,7 @@ objects:
         source_chapters: [9]
   - id: o_fuellfederhalter
     name: Füllfederhalter "L&M 2024"
+    aliases: ["Füllfederhalter"]
     facts:
       - id: OF011
         predicate: owner
@@ -466,6 +494,7 @@ objects:
         source_chapters: [12]
   - id: o_armbanduhr
     name: Silberne Armbanduhr (Ilses Uhr)
+    aliases: ["Uhr"]
     facts:
       - id: OF013
         predicate: owner

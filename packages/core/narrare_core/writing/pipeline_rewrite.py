@@ -15,6 +15,7 @@ import structlog
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.result import StreamChunk
 from narrare_core.prompts.context import PromptContext
+from narrare_core.writing._helpers import kb_context_extras
 from narrare_core.writing.style_variants import StyleVariant, get_style_variant_instructions
 
 if TYPE_CHECKING:
@@ -123,8 +124,12 @@ async def stream_rewrite(
         "user_id": str(request.user_id),
         "project_id": str(request.project_id),
         "chapter_outline": context.chapter_outline,
-        "kb_characters": context.kb_characters,
-        "kb_locations": context.kb_locations,
+        # ADR-050 P1-D / KB extras SSOT (A2): all ten KB prompt variables
+        # merge from kb_context_extras — the Tier-5 trio ("" when empty,
+        # byte-identical renders) plus the previously unsupplied
+        # relationship / faction / other / suggested / context-warning
+        # variables.
+        **kb_context_extras(context),
         "recent_chapters": context.recent_chapters,
         "character_voice_profiles": context.character_voice_profiles,
         "tone_instructions": tone_instr,
@@ -138,8 +143,6 @@ async def stream_rewrite(
         # no variant is requested → template renders nothing (backward compat).
         "style_variant_instructions": get_style_variant_instructions(style_variant),
         "count": str(count),
-        # Backward compatibility: chapter_content maps to selection_text
-        "chapter_content": selection_text,
     }
 
     if rewrite_mode == "custom" and custom_instructions:

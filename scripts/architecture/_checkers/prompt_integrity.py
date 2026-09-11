@@ -5,15 +5,25 @@ Detects:
 - Variable registration issues (unregistered template variables)
 - Variable usage issues (dead registrations)
 - i18n parity gaps (EN prompts without DE/FR counterparts for localized families)
+- Rogue level-2 headers in registry-governed system.md templates
+  (R2 Slice 0 — ``_check_system_headers``)
 
 INFRA-012: New findings are blocking violations. Pre-existing gaps listed in the
 ``ai-gate-baseline.json`` ``prompt_integrity_findings`` section are reported as
 approved exceptions.
+
+Baseline hygiene (T3 hardening):
+- Findings are ratcheted individually (one baseline signature per finding), so
+  single-finding drift cannot hide inside an aggregate signature.
+- A baseline entry matching no current finding is itself a failure
+  (``[STALE-BASELINE]``) — resolved debt must be pruned from the baseline, not
+  carried as a phantom entry.
 """
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from scripts.architecture._checkers._check_i18n import (
@@ -21,6 +31,9 @@ from scripts.architecture._checkers._check_i18n import (
     check_prompt_i18n_completeness,
 )
 from scripts.architecture._checkers._check_intents import check_intent_consistency
+from scripts.architecture._checkers._check_system_headers import (
+    check_system_prompt_l2_headers,
+)
 from scripts.architecture._checkers._check_variables import (
     check_variable_registration,
     check_variable_usage,
@@ -41,8 +54,8 @@ _BASELINE_PATH = ROOT / "scripts" / "architecture" / "ai-gate-baseline.json"
 def _load_prompt_integrity_baseline() -> set[str]:
     """Load the ``prompt_integrity_findings`` baseline set from JSON.
 
-    Returns a set of normalised finding signatures (e.g.
-    ``"PROMPT-VARS | .../variable_registry.py | Dead variable(s)..."``).
+    Returns a set of normalised finding signatures — one per finding, e.g.
+    ``"PROMPT-VARS | .../variable_registry.py | Dead variable in SYSTEM_VARS — ...: <name>"``.
     An empty set means no baseline is present (all advisory findings are new).
     """
     try:
@@ -70,6 +83,8 @@ def run_all_checks(result: CheckResult) -> None:
     - Legacy advisory findings (i18n gaps, dead vars) → baselined findings use
       ``result.approved_exceptions``; UNBASELINED advisory findings become
       ``result.violations`` to enforce no-silent-growth.
+    - STALE baseline entries (matching no current finding) → ``result.violations``
+      (blocking — resolved debt must be pruned from the baseline).
     """
     baseline = _load_prompt_integrity_baseline()
 
@@ -84,6 +99,11 @@ def run_all_checks(result: CheckResult) -> None:
     # Collect advisory findings into a temporary list first, then compare
     # against the baseline. Unbaselined findings become violations.
     pre_baseline_count = len(result.approved_exceptions)
+    # Findings already reported outside the prompt-integrity advisory window
+    # (base-scanner output + blocking findings from this run). A baseline
+    # entry still matching one of those is relocated, not phantom.
+    other_sigs = {_finding_signature(v) for v in result.violations}
+    other_sigs.update(_finding_signature(v) for v in result.approved_exceptions)
 
     check_prompt_i18n_completeness(result)
     check_i18n_parity(result)
@@ -91,8 +111,10 @@ def run_all_checks(result: CheckResult) -> None:
 
     # Ratchet: any new advisory finding that is NOT in the baseline → violation
     new_advisory = result.approved_exceptions[pre_baseline_count:]
+    live_sigs: set[str] = set()
     for v in new_advisory:
         sig = _finding_signature(v)
+        live_sigs.add(sig)
         if sig not in baseline:
             # Promote to blocking violation
             result.violations.append(
@@ -105,6 +127,21 @@ def run_all_checks(result: CheckResult) -> None:
                 )
             )
 
+    # STALE-BASELINE: baseline entries matching no live advisory finding AND no
+    # finding reported in another bucket are phantom debt → blocking failure.
+    # This is the root-cause prevention for baseline drift going unnoticed.
+    for sig in sorted(baseline - live_sigs - other_sigs):
+        result.violations.append(
+            Violation(
+                file=Path("scripts/architecture/ai-gate-baseline.json"),
+                line=0,
+                rule="PROMPT-INTEGRITY",
+                detail=(
+                    f"[STALE-BASELINE] Baseline entry matches no current finding — remove: {sig}"
+                ),
+            )
+        )
+
     # Remove baselined findings from approved_exceptions (they're expected)
     # but keep them visible by re-adding only the baselined ones
     result.approved_exceptions = result.approved_exceptions[:pre_baseline_count]
@@ -112,6 +149,13 @@ def run_all_checks(result: CheckResult) -> None:
         sig = _finding_signature(v)
         if sig in baseline:
             result.approved_exceptions.append(v)
+
+    # --- R2 Slice 0: level-2 header governance (own explicit allowlist) ---
+    # Runs AFTER the advisory ratchet window closes: its allowlisted templates
+    # are governed by the dedicated ``system_prompt_l2_header_allowlist``
+    # baseline section (path-keyed, reason + slice ref per entry), NOT by the
+    # ``prompt_integrity_findings`` signature ratchet above.
+    check_system_prompt_l2_headers(result)
 
 
 def _finding_signature(violation: Violation) -> str:

@@ -4,6 +4,11 @@ Tests the ``record_feedback`` method of
 :class:`CoAuthorApplyService` without touching the database.
 All dependencies are mocked (DI pattern, RULE-07).
 
+Since the IDOR remediation (plan S2), ``record_feedback`` resolves the
+generation request caller-scoped (Pattern A) — these tests seed an OWNED
+row and pass its user as the caller; the foreign and unknown matrices
+live in ``test_coauthor_apply_ownership.py``.
+
 See ADR-023 and ADR-023-Restimplementierung Phase 1 for context.
 """
 
@@ -70,6 +75,7 @@ class TestRecordFeedback:
         await service.record_feedback(
             request_id=gen_req.id,
             feedback=feedback_items,
+            user_id=str(gen_req.user_id),
         )
 
         # Two feedback events should be recorded
@@ -91,10 +97,11 @@ class TestRecordFeedback:
             feedback_service=cast("FeedbackCollector", feedback_service),
         )
 
-        with pytest.raises(NotFoundError, match="GenerationRequest"):
+        with pytest.raises(NotFoundError, match="Generation request"):
             await service.record_feedback(
                 request_id=uuid4(),
                 feedback=[],
+                user_id=str(uuid4()),
             )
 
         feedback_service.record.assert_not_called()
@@ -127,6 +134,7 @@ class TestRecordFeedback:
                     revised="new",
                 ),
             ],
+            user_id=str(gen_req.user_id),
         )
 
     @pytest.mark.asyncio
@@ -149,6 +157,7 @@ class TestRecordFeedback:
         await service.record_feedback(
             request_id=gen_req.id,
             feedback=[],
+            user_id=str(gen_req.user_id),
         )
 
         # No feedback events should be recorded for an empty list

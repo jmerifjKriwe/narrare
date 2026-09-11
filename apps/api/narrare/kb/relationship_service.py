@@ -2,6 +2,12 @@
 
 Orchestrates relationship creation with validation (no self-reference,
 uniqueness, entry ownership).  Delegates to repositories.
+
+All novel-scoped operations gate on novel ownership at service entry
+(IDOR fix S10): entry→novel linkage is data integrity, NOT user scope —
+the caller must own ``novel_id`` before any entry, relationship, or
+adjacency data is read or written. Foreign and unknown novels are
+indistinguishable (``NotFoundError`` → 404).
 """
 
 from __future__ import annotations
@@ -10,6 +16,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.kb._novel_gate import verify_novel_owned
 from narrare_core.kb.relationships import INVERSE_SUGGESTIONS
 from narrare_core.shared.errors import (
     ConflictError,
@@ -26,6 +33,7 @@ if TYPE_CHECKING:
     )
     from narrare.kb.models import KBRelationship
     from narrare.kb.schemas import KBRelationshipCreate
+    from narrare.novels.contracts import NovelRepositoryProtocol
 
 logger = structlog.get_logger(__name__)
 
@@ -37,9 +45,11 @@ class RelationshipService:
         self,
         rel_repo: RelationshipRepositoryProtocol,
         entry_repo: KBRepositoryProtocol,
+        novel_repo: NovelRepositoryProtocol,
     ) -> None:
         self._rel_repo = rel_repo
         self._entry_repo = entry_repo
+        self._novel_repo = novel_repo
 
     async def create(
         self,
@@ -49,14 +59,19 @@ class RelationshipService:
     ) -> KBRelationship:
         """Create a new relationship.
 
-        Validates both entries exist, belong to the novel, no self-ref,
-        and no duplicate.
+        Ownership gate first (IDOR fix S10): the caller must own
+        ``novel_id`` — BEFORE any entry load or relationship write.
+        Then validates both entries exist, belong to the novel, no
+        self-ref, and no duplicate.
 
         Raises:
-            NotFoundError: Source or target entry not found.
+            NotFoundError: Novel unknown/foreign, or source or target
+                entry not found.
             ValidationError: Self-referencing relationship.
             ConflictError: Relationship already exists.
         """
+        await verify_novel_owned(self._novel_repo, novel_id, user_id)
+
         # Validate source entry
         source = await self._entry_repo.get_by_id(data.source_id)
         if source is None or source.novel_id != novel_id:
@@ -108,11 +123,15 @@ class RelationshipService:
     ) -> list[KBRelationship]:
         """List relationships for an entry.
 
-        Validates the entry belongs to the novel.
+        Ownership gate first (IDOR fix S10): the caller must own
+        ``novel_id`` — BEFORE the entry or any relationship is read.
+        Then validates the entry belongs to the novel.
 
         Raises:
-            NotFoundError: Entry not found.
+            NotFoundError: Novel unknown/foreign, or entry not found.
         """
+        await verify_novel_owned(self._novel_repo, novel_id, user_id)
+
         entry = await self._entry_repo.get_by_id(entry_id)
         if entry is None or entry.novel_id != novel_id:
             raise NotFoundError("KBEntry", identifier=str(entry_id))
@@ -122,11 +141,16 @@ class RelationshipService:
     async def delete(self, novel_id: uuid.UUID, rel_id: uuid.UUID, user_id: uuid.UUID) -> None:
         """Delete a relationship.
 
-        Validates the relationship belongs to an entry in the novel.
+        Ownership gate first (IDOR fix S10): the caller must own
+        ``novel_id`` — BEFORE the relationship is fetched or deleted.
+        Then validates the relationship belongs to an entry in the novel.
 
         Raises:
-            NotFoundError: Relationship not found or not in novel.
+            NotFoundError: Novel unknown/foreign, or relationship not
+                found or not in novel.
         """
+        await verify_novel_owned(self._novel_repo, novel_id, user_id)
+
         rel = await self._rel_repo.get_by_id(rel_id)
         if rel is None:
             raise NotFoundError("KBRelationship", identifier=str(rel_id))

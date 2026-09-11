@@ -19,12 +19,15 @@ def get_dismissed_service(session: SessionDep) -> DismissedFindingService:
     Pure persistence CRUD plus an optional mem0 learning-layer forward
     (CR-AUFG-03-10). The feedback memory is a process-wide singleton that
     returns ``None`` when mem0 is unavailable (graceful degradation).
+    NovelRepository backs the novel ownership gate (IDOR fix S10).
     """
     from narrare.kb.dismissed_repository import DismissedFindingRepository
     from narrare.kb.dismissed_service import DismissedFindingService
+    from narrare.novels.repository import NovelRepository
 
     feedback_memory = get_consistency_feedback_memory_instance()
     return DismissedFindingService(
         DismissedFindingRepository(session),
+        NovelRepository(session),
         feedback_memory=feedback_memory,
     )

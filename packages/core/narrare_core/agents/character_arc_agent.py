@@ -29,7 +29,6 @@ from pydantic_ai import (
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.character_arc_types import (
-    ArcPhase,
     CharacterArcOutput,
 )
 
@@ -78,7 +77,7 @@ class CharacterArcAgent(NarrareAgent[CharacterArcDeps, CharacterArcOutput]):
         super().__init__(
             model=model,
             deps_type=CharacterArcDeps,
-            output_type=[self._process_output, CharacterArcOutput],
+            output_type=CharacterArcOutput,
             system_prompt=system_prompt,
         )
         self._agent.output_validator(self._validate_output)
@@ -132,36 +131,6 @@ class CharacterArcAgent(NarrareAgent[CharacterArcDeps, CharacterArcOutput]):
                 )
 
         return output
-
-    async def _process_output(
-        self,
-        ctx: RunContext[CharacterArcDeps],
-        character_name: str | None = None,
-        starting_state: str | None = None,
-        ending_state: str | None = None,
-        arc_type: str | None = None,
-        phases: list[dict[str, str]] | None = None,
-        key_relationships: list[str] | None = None,
-        internal_conflict: str | None = None,
-        resolution: str | None = None,
-    ) -> CharacterArcOutput:
-        """Output Function — strukturiert die LLM-Response in CharacterArcOutput.
-
-        Bei Streaming (``ctx.partial_output``) wird nur ein Minimalergebnis zurückgegeben.
-        """
-        if ctx.partial_output:
-            return CharacterArcOutput()
-
-        return CharacterArcOutput(
-            character_name=character_name or "",
-            starting_state=starting_state or "",
-            ending_state=ending_state or "",
-            arc_type=arc_type or "",
-            phases=[ArcPhase(**p) for p in (phases or [])],
-            key_relationships=key_relationships or [],
-            internal_conflict=internal_conflict or "",
-            resolution=resolution or "",
-        )
 
     async def run(
         self,

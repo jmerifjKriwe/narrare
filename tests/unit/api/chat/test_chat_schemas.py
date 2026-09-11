@@ -60,6 +60,26 @@ class TestChatRequest:
             ChatRequest(project_id=uuid4(), message="x" * 4001)
 
 
+class TestChatRequestNotesExtension:
+    """NOTES-001 §6b: project_id optional + note_id context attachment."""
+
+    def test_legacy_request_with_project_unchanged(self) -> None:
+        """Regression: the pre-NOTES-001 shape validates identically."""
+        project_id = uuid4()
+        req = ChatRequest(project_id=project_id, message="How do I write dialogue?")
+        assert req.project_id == project_id
+        assert req.note_id is None
+
+    def test_projectless_request_valid(self) -> None:
+        req = ChatRequest(message="Discuss this global note")
+        assert req.project_id is None
+
+    def test_note_id_optional(self) -> None:
+        note_id = uuid4()
+        req = ChatRequest(message="Discuss", note_id=note_id)
+        assert req.note_id == note_id
+
+
 # ---------------------------------------------------------------------------
 # ChatMessageSchema
 # ---------------------------------------------------------------------------
@@ -135,6 +155,18 @@ class TestChatHistoryResponse:
         )
 
         assert len(resp.messages) == 2
+
+
+class TestChatHistoryResponseOptionalProject:
+    """NOTES-001 §6b: history exposes an honest nullable project_id."""
+
+    def test_project_id_may_be_none(self) -> None:
+        resp = ChatHistoryResponse(
+            conversation_id=uuid4(),
+            project_id=None,
+            messages=[],
+        )
+        assert resp.project_id is None
 
 
 # ---------------------------------------------------------------------------

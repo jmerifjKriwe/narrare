@@ -17,6 +17,19 @@ export interface TokenResponse {
   expires_in: number;
 }
 
+/**
+ * Single-use WebSocket handshake ticket (ADR-084, `POST /auth/ws-ticket`).
+ *
+ * Mirrors the backend `WsTicketResponse` schema (RULE-17 snake_case): the
+ * opaque `token` is presented as the `token` query param on the writing
+ * WS handshake and is consumed exactly once; `expires_in` is the ticket
+ * lifetime in seconds (60).
+ */
+export interface WsTicket {
+  token: string;
+  expires_in: number;
+}
+
 // API error shape
 export interface ApiError {
   detail: string;

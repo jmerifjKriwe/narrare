@@ -3,9 +3,11 @@
 Tests the deterministic invariants enforced by _validate_output:
 - entity_type required for new_entity / update_entity
 - source_text non-empty for all items
-- relationship items need relationship_type AND related_entity_name
+- relationship items need relationship_type, source_entity_name, and a
+  target (target_entity_name or legacy related_entity_name)
 - conflict items need conflict_description
-- No duplicate items (same name + item_type)
+- No duplicate items — relationships by (predicate, endpoints), others
+  by name + item_type
 - Filter out items with empty names
 
 Test strategy:
@@ -97,13 +99,15 @@ class TestValidOutputPasses:
                 _make_item(
                     item_type="relationship",
                     entity_type=None,
-                    relationship_type="ally",
-                    related_entity_name="Marcus",
+                    name="engaged_to",
+                    relationship_type="engaged_to",
+                    source_entity_name="Elena",
+                    target_entity_name="Marcus",
                 ),
             ]
         )
         result = await agent._validate_output(ctx, output)
-        assert result.results[0].relationship_type == "ally"
+        assert result.results[0].relationship_type == "engaged_to"
 
     @pytest.mark.asyncio
     async def test_valid_conflict_passes(
@@ -260,11 +264,13 @@ class TestInvariantViolations:
                     item_type="relationship",
                     entity_type=None,
                     relationship_type="ally",
+                    source_entity_name="Elena",
+                    target_entity_name=None,
                     related_entity_name="",
                 ),
             ]
         )
-        with pytest.raises(ModelRetry, match="non-empty related_entity_name"):
+        with pytest.raises(ModelRetry, match="non-empty target_entity_name"):
             await agent._validate_output(ctx, output)
 
     @pytest.mark.asyncio
@@ -305,11 +311,12 @@ class TestInvariantViolations:
             results=[
                 _make_item(name="Elena", item_type="new_entity"),
                 _make_item(
-                    name="Elena",
+                    name="engaged_to",
                     item_type="relationship",
                     entity_type=None,
-                    relationship_type="ally",
-                    related_entity_name="Marcus",
+                    relationship_type="engaged_to",
+                    source_entity_name="Elena",
+                    target_entity_name="Marcus",
                 ),
             ]
         )
