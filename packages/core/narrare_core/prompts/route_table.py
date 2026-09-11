@@ -294,7 +294,17 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
     # values. The previous `PromptRouteConfig("chat", "")` was an unauthorised
     # drift that created a root-mode path (`chat/en/system.md`) invisible to
     # PromptManagement and inconsistent with the manifest template path.
-    LLMIntent.CHAT: PromptRouteConfig("writing", "chat"),
+    # WS interview context-mode (2026-09-11 WS supply slice): the governed
+    # interview template demands {{tone_instructions}}, which has no runtime
+    # owner on the WebSocket interview path (tone instructions are resolved
+    # from DB settings by the tone resolver on the extend/rewrite routes
+    # only). Declared optional so it renders "" instead of raising
+    # PromptVariableError at compose (RULE-11 graceful, probe-proven demand).
+    LLMIntent.CHAT: PromptRouteConfig(
+        "writing",
+        "chat",
+        optional_variables=frozenset({"tone_instructions"}),
+    ),
     # ADR-069 Decision 5 + Decision 10: DIALOGUE_COACH route entry. Phase 1
     # Task 5 deferred this to Phase 4 step 17 — this is that step.
     # optional_variables mirrors the prompt-surface-manifest declaration
