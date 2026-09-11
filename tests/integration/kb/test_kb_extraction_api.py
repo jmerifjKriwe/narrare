@@ -13,6 +13,7 @@ from uuid import uuid4
 
 import pytest
 
+from narrare.kb.dependencies import get_extraction_service
 from narrare.kb.extraction_service import ExtractionService
 from narrare.kb.schemas_extraction import ApplyExtractionEntryResult, ApplyExtractionResponse
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
@@ -112,19 +113,23 @@ class TestExtractChapter:
         mock_extraction_service: MagicMock,
     ) -> None:
         """POST /extract returns 200 with results and analysis_notes."""
-        from narrare.kb.dependencies import get_extraction_service
-
         novel_id = uuid4()
         chapter_id = uuid4()
 
         app.dependency_overrides[get_extraction_service] = cast(
             "Callable[[], Any]", lambda: mock_extraction_service
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/extract/{chapter_id}",
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/extract/{chapter_id}",
+                headers=auth_headers,
+            )
+        finally:
+            # The app fixture is session-scoped — an override left behind
+            # leaks into subsequent tests (order-dependent flakiness under
+            # pytest-randomly). Same cleanup convention as
+            # tests/integration/analysis/test_analysis_api.py.
+            app.dependency_overrides.pop(get_extraction_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -147,19 +152,19 @@ class TestExtractChapter:
         mock_extraction_service_empty: MagicMock,
     ) -> None:
         """POST /extract returns 200 with empty results when nothing found."""
-        from narrare.kb.dependencies import get_extraction_service
-
         novel_id = uuid4()
         chapter_id = uuid4()
 
         app.dependency_overrides[get_extraction_service] = cast(
             "Callable[[], Any]", lambda: mock_extraction_service_empty
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/extract/{chapter_id}",
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/extract/{chapter_id}",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_extraction_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -173,18 +178,18 @@ class TestExtractChapter:
         mock_extraction_service: MagicMock,
     ) -> None:
         """POST /extract returns 401 when no auth token is provided."""
-        from narrare.kb.dependencies import get_extraction_service
-
         novel_id = uuid4()
         chapter_id = uuid4()
 
         app.dependency_overrides[get_extraction_service] = cast(
             "Callable[[], Any]", lambda: mock_extraction_service
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/extract/{chapter_id}",
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/extract/{chapter_id}",
+            )
+        finally:
+            app.dependency_overrides.pop(get_extraction_service, None)
 
         assert resp.status_code == 401
 
@@ -196,18 +201,18 @@ class TestExtractChapter:
         mock_extraction_service: MagicMock,
     ) -> None:
         """POST /extract returns 422 when novel_id is not a valid UUID."""
-        from narrare.kb.dependencies import get_extraction_service
-
         chapter_id = uuid4()
 
         app.dependency_overrides[get_extraction_service] = cast(
             "Callable[[], Any]", lambda: mock_extraction_service
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/not-a-uuid/kb/extract/{chapter_id}",
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/not-a-uuid/kb/extract/{chapter_id}",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_extraction_service, None)
 
         assert resp.status_code == 422
 
@@ -228,29 +233,29 @@ class TestApplyExtraction:
         mock_extraction_service: MagicMock,
     ) -> None:
         """POST /extract/apply returns 200 with ApplyExtractionResponse schema."""
-        from narrare.kb.dependencies import get_extraction_service
-
         novel_id = uuid4()
 
         app.dependency_overrides[get_extraction_service] = cast(
             "Callable[[], Any]", lambda: mock_extraction_service
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/extract/apply",
-            json={
-                "items": [
-                    {
-                        "item_type": "new_entity",
-                        "name": "Alice",
-                        "entity_type": "character",
-                        "proposed_content": {"description": "A curious girl"},
-                        "source_text": "Alice was beginning to get very tired",
-                    },
-                ],
-            },
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/extract/apply",
+                json={
+                    "items": [
+                        {
+                            "item_type": "new_entity",
+                            "name": "Alice",
+                            "entity_type": "character",
+                            "proposed_content": {"description": "A curious girl"},
+                            "source_text": "Alice was beginning to get very tired",
+                        },
+                    ],
+                },
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_extraction_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -270,27 +275,27 @@ class TestApplyExtraction:
         mock_extraction_service_empty_apply: MagicMock,
     ) -> None:
         """POST /extract/apply returns 200 when nothing is created or updated."""
-        from narrare.kb.dependencies import get_extraction_service
-
         novel_id = uuid4()
 
         app.dependency_overrides[get_extraction_service] = cast(
             "Callable[[], Any]", lambda: mock_extraction_service_empty_apply
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/extract/apply",
-            json={
-                "items": [
-                    {
-                        "item_type": "conflict",
-                        "name": "Unknown",
-                        "source_text": "Ambiguous reference",
-                    },
-                ],
-            },
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/extract/apply",
+                json={
+                    "items": [
+                        {
+                            "item_type": "conflict",
+                            "name": "Unknown",
+                            "source_text": "Ambiguous reference",
+                        },
+                    ],
+                },
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_extraction_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -304,26 +309,26 @@ class TestApplyExtraction:
         mock_extraction_service: MagicMock,
     ) -> None:
         """POST /extract/apply returns 401 when no auth token is provided."""
-        from narrare.kb.dependencies import get_extraction_service
-
         novel_id = uuid4()
 
         app.dependency_overrides[get_extraction_service] = cast(
             "Callable[[], Any]", lambda: mock_extraction_service
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/extract/apply",
-            json={
-                "items": [
-                    {
-                        "item_type": "new_entity",
-                        "name": "Alice",
-                        "entity_type": "character",
-                    },
-                ],
-            },
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/extract/apply",
+                json={
+                    "items": [
+                        {
+                            "item_type": "new_entity",
+                            "name": "Alice",
+                            "entity_type": "character",
+                        },
+                    ],
+                },
+            )
+        finally:
+            app.dependency_overrides.pop(get_extraction_service, None)
 
         assert resp.status_code == 401
 
@@ -335,20 +340,20 @@ class TestApplyExtraction:
         mock_extraction_service: MagicMock,
     ) -> None:
         """POST /extract/apply returns 422 when body is missing required fields."""
-        from narrare.kb.dependencies import get_extraction_service
-
         novel_id = uuid4()
 
         app.dependency_overrides[get_extraction_service] = cast(
             "Callable[[], Any]", lambda: mock_extraction_service
         )
-
-        # Missing "items" field entirely
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/extract/apply",
-            json={},
-            headers=auth_headers,
-        )
+        try:
+            # Missing "items" field entirely
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/extract/apply",
+                json={},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_extraction_service, None)
 
         assert resp.status_code == 422
 
@@ -360,25 +365,25 @@ class TestApplyExtraction:
         mock_extraction_service: MagicMock,
     ) -> None:
         """POST /extract/apply returns 422 when item_type is not a valid literal."""
-        from narrare.kb.dependencies import get_extraction_service
-
         novel_id = uuid4()
 
         app.dependency_overrides[get_extraction_service] = cast(
             "Callable[[], Any]", lambda: mock_extraction_service
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/extract/apply",
-            json={
-                "items": [
-                    {
-                        "item_type": "invalid_type",
-                        "name": "Alice",
-                    },
-                ],
-            },
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/extract/apply",
+                json={
+                    "items": [
+                        {
+                            "item_type": "invalid_type",
+                            "name": "Alice",
+                        },
+                    ],
+                },
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_extraction_service, None)
 
         assert resp.status_code == 422

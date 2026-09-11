@@ -12,6 +12,7 @@ from uuid import uuid4
 
 import pytest
 
+from narrare.kb.dependencies import get_kb_improve_service
 from narrare.kb.improve_contracts import (
     ImproveSuggestionResponse,
     KBImproveAnalysisResponse,
@@ -95,8 +96,6 @@ class TestImproveEndpoint:
         mock_improve_service: MagicMock,
     ) -> None:
         """POST /improve returns 200 with KBImproveAnalysisResponse schema."""
-        from narrare.kb.dependencies import get_kb_improve_service
-
         novel_id = uuid4()
         entry_id = uuid4()
 
@@ -104,11 +103,17 @@ class TestImproveEndpoint:
         app.dependency_overrides[get_kb_improve_service] = cast(
             "Callable[[], Any]", lambda: mock_improve_service
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve",
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve",
+                headers=auth_headers,
+            )
+        finally:
+            # The app fixture is session-scoped — an override left behind
+            # leaks into subsequent tests (order-dependent flakiness under
+            # pytest-randomly). Same cleanup convention as
+            # tests/integration/analysis/test_analysis_api.py.
+            app.dependency_overrides.pop(get_kb_improve_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -131,18 +136,18 @@ class TestImproveEndpoint:
         mock_improve_service: MagicMock,
     ) -> None:
         """POST /improve returns 401 when no auth token is provided."""
-        from narrare.kb.dependencies import get_kb_improve_service
-
         novel_id = uuid4()
         entry_id = uuid4()
 
         app.dependency_overrides[get_kb_improve_service] = cast(
             "Callable[[], Any]", lambda: mock_improve_service
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve",
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve",
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_improve_service, None)
 
         assert resp.status_code == 401
 
@@ -154,16 +159,16 @@ class TestImproveEndpoint:
         mock_improve_service: MagicMock,
     ) -> None:
         """POST /improve returns 422 when novel_id is not a valid UUID."""
-        from narrare.kb.dependencies import get_kb_improve_service
-
         app.dependency_overrides[get_kb_improve_service] = cast(
             "Callable[[], Any]", lambda: mock_improve_service
         )
-
-        resp = await client.post(
-            "/api/v1/novels/not-a-uuid/kb/entities/not-a-uuid/improve",
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                "/api/v1/novels/not-a-uuid/kb/entities/not-a-uuid/improve",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_improve_service, None)
 
         assert resp.status_code == 422
 
@@ -184,20 +189,20 @@ class TestImproveApplyEndpoint:
         mock_improve_service: MagicMock,
     ) -> None:
         """POST /improve/apply returns 200 with KBImproveApplyResponse schema."""
-        from narrare.kb.dependencies import get_kb_improve_service
-
         novel_id = uuid4()
         entry_id = uuid4()
 
         app.dependency_overrides[get_kb_improve_service] = cast(
             "Callable[[], Any]", lambda: mock_improve_service
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply",
-            json={"suggestion_ids": [0, 1]},
-            headers=auth_headers,
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply",
+                json={"suggestion_ids": [0, 1]},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_improve_service, None)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -212,19 +217,19 @@ class TestImproveApplyEndpoint:
         mock_improve_service: MagicMock,
     ) -> None:
         """POST /improve/apply returns 401 when no auth token is provided."""
-        from narrare.kb.dependencies import get_kb_improve_service
-
         novel_id = uuid4()
         entry_id = uuid4()
 
         app.dependency_overrides[get_kb_improve_service] = cast(
             "Callable[[], Any]", lambda: mock_improve_service
         )
-
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply",
-            json={"suggestion_ids": [0]},
-        )
+        try:
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply",
+                json={"suggestion_ids": [0]},
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_improve_service, None)
 
         assert resp.status_code == 401
 
@@ -236,21 +241,21 @@ class TestImproveApplyEndpoint:
         mock_improve_service: MagicMock,
     ) -> None:
         """POST /improve/apply returns 422 when body is malformed."""
-        from narrare.kb.dependencies import get_kb_improve_service
-
         novel_id = uuid4()
         entry_id = uuid4()
 
         app.dependency_overrides[get_kb_improve_service] = cast(
             "Callable[[], Any]", lambda: mock_improve_service
         )
-
-        # Missing suggestion_ids field
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply",
-            json={},
-            headers=auth_headers,
-        )
+        try:
+            # Missing suggestion_ids field
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply",
+                json={},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_improve_service, None)
 
         assert resp.status_code == 422
 
@@ -262,20 +267,20 @@ class TestImproveApplyEndpoint:
         mock_improve_service: MagicMock,
     ) -> None:
         """POST /improve/apply returns 422 when suggestion_ids is not a list."""
-        from narrare.kb.dependencies import get_kb_improve_service
-
         novel_id = uuid4()
         entry_id = uuid4()
 
         app.dependency_overrides[get_kb_improve_service] = cast(
             "Callable[[], Any]", lambda: mock_improve_service
         )
-
-        # suggestion_ids as string instead of list
-        resp = await client.post(
-            f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply",
-            json={"suggestion_ids": "not-a-list"},
-            headers=auth_headers,
-        )
+        try:
+            # suggestion_ids as string instead of list
+            resp = await client.post(
+                f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply",
+                json={"suggestion_ids": "not-a-list"},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(get_kb_improve_service, None)
 
         assert resp.status_code == 422
