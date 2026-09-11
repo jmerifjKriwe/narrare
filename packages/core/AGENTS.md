@@ -175,7 +175,7 @@ prompt_version: "1.0.0"
 
 ## System Prompt
 
-[System-Anweisungen hier. Variablen: {{project_title}}, {{language}}, etc.]
+[System-Anweisungen hier. Variablen: {{project_title}}, {{writing_language}}, etc.]
 
 ## First Message
 
