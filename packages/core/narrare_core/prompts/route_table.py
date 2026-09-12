@@ -208,9 +208,38 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
     # channel), exactly as coreference/readability receive the analysed
     # passage as runtime input. analysis-category convention: no
     # MODE_REQUIRED_VARS entry (see test_non_writing_category_has_no_mode_requirements).
+    #
+    # R2 Slice 6 manifest reconciliation (2026-09-12): the summarize +
+    # band_summary header demotion activated the previously parse-truncated
+    # Knowledge-Base region, so optional_variables now mirrors the
+    # prompt-surface-manifest declaration (SUMMARIZE intent-level +
+    # context_modes entries — RULE-22 runtime↔governance coherence): the
+    # PromptContext fields (project_title / genre / writing_language /
+    # chapter_title / user_preferences / avoidance_patterns), the
+    # composer-seam culture_guidelines, and the four kb_* slots supplied
+    # via the ADR-067 provider spread. A project may legitimately lack any
+    # of them, so each MUST render as empty rather than crash the variable
+    # engine (RULE-11 graceful degradation — prepare_variables_for_template
+    # raises PromptVariableError on any template placeholder that is
+    # neither supplied nor declared optional).
     LLMIntent.SUMMARIZE: PromptRouteConfig(
         "analysis",
         "summarize",
+        optional_variables=frozenset(
+            {
+                "project_title",
+                "genre",
+                "writing_language",
+                "culture_guidelines",
+                "chapter_title",
+                "kb_characters",
+                "kb_locations",
+                "kb_factions",
+                "kb_relationships",
+                "user_preferences",
+                "avoidance_patterns",
+            }
+        ),
         allowed_context_modes=frozenset({"summarize", "band_summary"}),
     ),
     # ADR-055 D4: VOICE is a multi-mode analysis intent. character_voice

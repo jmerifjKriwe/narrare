@@ -65,11 +65,11 @@ async def compose_band_summary_system_prompt(
     # reusable provider (mirrors ChapterSummaryService) and spread — not
     # literal ""-assigned — into ``PromptContext.extra``. Degrades to an
     # empty bundle when no provider is wired or the KB is empty (RULE-11) —
-    # the provider never raises. Inert today: the governed band_summary
-    # template's Knowledge-Base region sits below the ``extract_section``
-    # parse cutoff (``## Output Format``), so these extra variables do not
-    # alter the composed render (inert pre-activation for the template
-    # re-enablement slice).
+    # the provider never raises. Active since the band_summary template's
+    # header-demotion activation slice: the Knowledge-Base region is
+    # rendered (no longer below the ``extract_section`` parse cutoff), so
+    # these variables land in the composed render; degradation stays an
+    # empty bundle (RULE-11).
     from narrare_core.context._render_options import RenderOptions
 
     if kb_context_provider is None:

@@ -156,11 +156,11 @@ class ChapterSummaryService:
             # provider is wired or the KB is empty (RULE-11) — the provider
             # never raises. Spreading ``to_prompt_variables()`` — not a
             # literal ``""`` assignment — keeps every slot fed from real KB
-            # context (architectural-discipline §7). Inert today: the
-            # governed summarize template's Knowledge-Base region sits below
-            # the extract_section parse cutoff, so these extra variables do
-            # not alter the composed render (inert pre-activation for the
-            # template re-enablement slice).
+            # context (architectural-discipline §7). Active since the
+            # summarize template's header-demotion activation slice: the
+            # Knowledge-Base region is rendered (no longer below the
+            # extract_section parse cutoff), so these variables land in the
+            # composed render; degradation stays an empty bundle (RULE-11).
             from narrare_core.context._render_options import RenderOptions
 
             if self._kb_context_provider is None:
