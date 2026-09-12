@@ -82,7 +82,7 @@ class TestDialogueCoachTemplateStructure:
         assert "### Quality Rules" in _read_template()
 
     def test_has_do_not_section(self) -> None:
-        assert "## Do NOT" in _read_template()
+        assert "### Do NOT" in _read_template()
 
 
 @pytest.mark.mutation_inert

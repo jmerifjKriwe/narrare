@@ -11,7 +11,7 @@ supply ``_FakeBandSummaryAgent`` whose ``.run()`` returns a controlled
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from narrare.series.band_summary_service import BandSummaryService
 from narrare_core.agents.band_summary_types import BandSummaryOutput
@@ -20,6 +20,12 @@ from narrare_core.prompts.composer import ComposedPrompt
 from tests.fakes.fake_band_summary_repo import FakeBandSummaryRepository
 from tests.fakes.fake_chapter_repo import FakeChapterRepository
 from tests.fakes.fake_novel_repo import FakeNovelRepository
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from narrare.kb.context_contracts import KBContextProviderProtocol
+    from narrare_core.prompts.composer import PromptComposer
 
 
 class FakeBandSummaryComposer:
@@ -119,17 +125,24 @@ def make_band_summary_service(
     chapter_repo: FakeChapterRepository | None = None,
     repo: FakeBandSummaryRepository | None = None,
     agent: FakeBandSummaryAgent | None = None,
-    composer: FakeBandSummaryComposer | None = None,
+    composer: FakeBandSummaryComposer | PromptComposer | None = None,
     registry: Any | None = None,
     config: ResolvedModelConfig | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
+    kb_context_provider: KBContextProviderProtocol | None = None,
+    agent_factory: Callable[..., Any] | None = None,
 ) -> tuple[BandSummaryService, FakeBandSummaryAgent, FakeBandSummaryRepository]:
     """Build a ``BandSummaryService`` wired with fakes + a fake agent factory.
 
     Task 6d-2: ``config`` / ``api_key`` / ``base_url`` overrides let wiring
     tests inject the recorded prepare() registry + per-user credentials.
     The agent factory records the resolved model on ``agent.last_model``.
+    ``composer`` accepts the real ``PromptComposer`` (prompt-render tests
+    compose the governed template through the real cascade) and
+    ``kb_context_provider`` the ADR-067 provider (Slice 5 kb_* supply).
+    ``agent_factory`` overrides the default discarding factory (system-prompt
+    capture tests).
 
     Returns ``(service, agent, repo)`` so tests can assert interactions.
     """
@@ -154,6 +167,7 @@ def make_band_summary_service(
         api_key=api_key,
         base_url=base_url,
         composer=composer,  # type: ignore[arg-type]
-        agent_factory=_agent_factory,  # type: ignore[arg-type]
+        agent_factory=agent_factory or _agent_factory,  # type: ignore[arg-type]
+        kb_context_provider=kb_context_provider,
     )
     return service, agent, repo

@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -91,7 +91,7 @@ Field semantics:
 - `voice_examples` must be exact quotes from the supplied dialogue — never paraphrases.
 - `distinctiveness_notes` must reference the *other* characters in the run; if only one character is profiled, state that no comparison is possible.
 
-## Do NOT
+### Do NOT
 
 - Do NOT recompute or fabricate the deterministic metrics — they are supplied to you; interpret them only.
 - Do NOT profile characters that have no attributable dialogue without flagging the data as insufficient.

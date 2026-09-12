@@ -116,3 +116,14 @@ class TestSummaryDepsFactory:
             )
 
         assert isinstance(service, ChapterSummaryService)
+        # Slice 3 wiring pin: the canonical KB-context provider (ADR-067) is
+        # wired for the kb_characters / kb_locations / kb_factions /
+        # kb_relationships prompt slots (render-live since the Slice 4
+        # header activation; previously inert below the parse cutoff). Introspected via
+        # the instance dict — direct private-attribute access would add a
+        # reportPrivateUsage finding, and the type-ignore baseline is a
+        # no-growth gate this slice must not extend.
+        from narrare.kb._context_provider import KBContextProvider
+
+        provider = vars(service)["_kb_context_provider"]
+        assert isinstance(provider, KBContextProvider)

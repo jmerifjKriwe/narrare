@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -81,7 +81,7 @@ Field semantics:
 - `author_examples` must be exact quotes from the supplied prose — never paraphrases, never invented.
 - `formality` must be coherent with the descriptive reading: a "complex" / "formal" reading should not pair with `formality: 0.1`.
 
-## Do NOT
+### Do NOT
 
 - Do NOT recompute, estimate, or fabricate the deterministic metrics — they are supplied to you; interpret them only.
 - Do NOT emit numeric metric values other than `formality`. The deterministic metric blocks (`VoiceMetrics`, `AuthorMetrics`) are produced by the analyzers, NOT by you.

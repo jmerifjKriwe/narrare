@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -88,7 +88,7 @@ Field semantics:
 - `quote` values must be exact verbatim excerpts of the supplied chapter dialogue — never paraphrases, never truncations that change meaning.
 - Keep the per-character judgment coherent: a `match_judgment` of `consistent` must not coexist with a non-empty `flagged_lines` list, and a `qualitative_sub_score` below ~40 must not coexist with `consistent`.
 
-## Do NOT
+### Do NOT
 
 - Do NOT recompute, estimate, or fabricate the deterministic voice metrics or the metric-delta — they are supplied to you; interpret them only.
 - Do NOT suggest, draft, or imply rewrites for flagged lines — this checker flags and scores only (rewrite-on-flagged-line is a separate feature, WRITE-004).

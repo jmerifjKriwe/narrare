@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -95,7 +95,7 @@ Field semantics:
 - `suggested_attention` chapter ids MUST come from the supplied trend — never invent chapter ids.
 - Sparse `per_chapter_notes`: only chapters with something concrete to say appear; never pad the list with generic notes.
 
-## Do NOT
+### Do NOT
 
 - Do NOT recompute, estimate, or fabricate the deterministic match scores, per-metric deltas, or jump points — they are supplied to you; interpret them only.
 - Do NOT judge a single chapter in isolation — that is the checker's job (WRITE-010). You classify the *whole narrator trend*.

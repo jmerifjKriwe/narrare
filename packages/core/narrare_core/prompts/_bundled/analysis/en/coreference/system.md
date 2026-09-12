@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -111,7 +111,7 @@ Example output:
 - Prefer the most recent matching antecedent (standard coreference heuristic) unless context overrides it.
 - `is_pov` should be `true` for at most one character — the one whose perspective the passage is told from.
 
-## Do NOT
+### Do NOT
 
 - Do NOT invent characters that do not appear in the text.
 - Do NOT resolve a pronoun to a referent without textual support.

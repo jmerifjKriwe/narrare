@@ -341,7 +341,15 @@ routes:
     content_type: customizable_feature_prompt
     output_language_variable: null
     required_variables: []
-    optional_variables: []
+    # R2 Slice 6 manifest reconciliation (2026-09-12): Slice 4 demoted the
+    # summarize template's rogue level-2 headers, activating the previously
+    # parse-truncated region — the manifest lagged with an empty optional set.
+    # The activated placeholders are exactly the per-chapter template's
+    # variables: PromptContext fields (project_title / genre /
+    # writing_language / chapter_title / user_preferences /
+    # avoidance_patterns), the composer-seam culture_guidelines, and the four
+    # kb_* slots supplied via the ADR-067 provider spread (Slice 3).
+    optional_variables: [project_title, genre, writing_language, culture_guidelines, chapter_title, kb_characters, kb_locations, kb_factions, kb_relationships, user_preferences, avoidance_patterns]
     security:
       xml_required: []
       generated_suggestions_must_be_labelled: []
@@ -359,13 +367,17 @@ routes:
         template: packages/core/narrare_core/prompts/_bundled/analysis/en/summarize/system.md
         content_type: customizable_feature_prompt
         required_variables: []
-        optional_variables: []
+        optional_variables: [project_title, genre, writing_language, culture_guidelines, chapter_title, kb_characters, kb_locations, kb_factions, kb_relationships, user_preferences, avoidance_patterns]
         security: {xml_required: [], generated_suggestions_must_be_labelled: []}
         fallback_policy: fail_loudly_if_bundled_missing
       - mode: band_summary
         template: packages/core/narrare_core/prompts/_bundled/analysis/en/band_summary/system.md
         content_type: customizable_feature_prompt
         required_variables: []
+        # R2 Slice 6 (2026-09-12): header demotion activated this template's
+        # parse-truncated region — the pre-declared optional set is now the
+        # live surface (probe-verified: all placeholders resolve with the
+        # Slice-5 provider spread, populated and empty).
         optional_variables: [project_title, genre, writing_language, culture_guidelines, kb_characters, kb_locations, kb_factions, kb_relationships, user_preferences, avoidance_patterns]
         security: {xml_required: [], generated_suggestions_must_be_labelled: []}
         fallback_policy: fail_loudly_if_bundled_missing

@@ -27,6 +27,7 @@ from narrare_core.prompts.context import PromptContext
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.prompts import PromptComposer
 
@@ -44,6 +45,7 @@ async def compose_band_summary_system_prompt(
     genre: str,
     language: str,
     novel_id: UUID,
+    kb_context_provider: KBContextProviderProtocol | None = None,
 ) -> str:
     """Resolve the governed ``band_summary`` system prompt (RULE-02b).
 
@@ -51,8 +53,36 @@ async def compose_band_summary_system_prompt(
     InvocationPipeline when available, falling back to direct
     ``composer.build`` on any failure — mirroring ``ChapterSummaryService``
     so a pipeline hiccup never blocks generation.
+
+    ``kb_context_provider`` (ADR-067) supplies the kb_characters /
+    kb_locations / kb_factions / kb_relationships prompt variables;
+    ``None`` degrades to an empty bundle (RULE-11).
     """
     from narrare._app.invocation_context import build_invocation_context
+
+    # Canonical KB context (ADR-067): the kb_characters / kb_locations /
+    # kb_factions / kb_relationships slots are fetched+rendered through the
+    # reusable provider (mirrors ChapterSummaryService) and spread — not
+    # literal ""-assigned — into ``PromptContext.extra``. Degrades to an
+    # empty bundle when no provider is wired or the KB is empty (RULE-11) —
+    # the provider never raises. Inert today: the governed band_summary
+    # template's Knowledge-Base region sits below the ``extract_section``
+    # parse cutoff (``## Output Format``), so these extra variables do not
+    # alter the composed render (inert pre-activation for the template
+    # re-enablement slice).
+    from narrare_core.context._render_options import RenderOptions
+
+    if kb_context_provider is None:
+        from narrare.kb.context_contracts import KBContextBundle
+
+        kb_bundle = KBContextBundle.empty(RenderOptions(annotate_provenance=True))
+    else:
+        kb_bundle = await kb_context_provider.fetch_context(
+            novel_id,
+            entity_types=["character", "location", "faction"],
+            options=RenderOptions(annotate_provenance=True),
+        )
+    kb_vars = kb_bundle.to_prompt_variables()
 
     context = PromptContext(
         language=language,
@@ -60,6 +90,7 @@ async def compose_band_summary_system_prompt(
         project_title=novel_title,
         genre=genre,
         mode=_BAND_SUMMARY_MODE,
+        extra={**(kb_vars or {})},
     )
     invocation_context = build_invocation_context(
         feature_id="series_band_summary",

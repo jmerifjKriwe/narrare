@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from narrare.chapters.contracts import ChapterRepositoryProtocol
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare.series.band_summary_contracts import BandSummaryRepositoryProtocol
     from narrare.series.band_summary_models import BandSummary
@@ -87,6 +88,7 @@ class BandSummaryService:
         api_key: str | None = None,
         base_url: str | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        kb_context_provider: KBContextProviderProtocol | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         """Initialise the service with all dependencies.
@@ -103,6 +105,10 @@ class BandSummaryService:
             api_key: Optional per-user API key override.
             base_url: Optional per-user base URL override.
             invocation_pipeline: Optional InvocationPipeline for evidence.
+            kb_context_provider: Optional canonical KB-context provider
+                (ADR-067) for the kb_characters / kb_locations / kb_factions /
+                kb_relationships prompt variables. ``None`` degrades to an
+                empty bundle (RULE-11).
             run_limit_resolver: Optional ADR-045 run-limit resolver; defaults to
                 ``DefaultRunLimitResolver`` (Task 3 wiring).
         """
@@ -116,6 +122,7 @@ class BandSummaryService:
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
+        self._kb_context_provider = kb_context_provider
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def get(self, novel_id: uuid.UUID) -> BandSummary:
@@ -267,7 +274,9 @@ class BandSummaryService:
 
         Delegated to :mod:`narrare.series.band_summary_prompt` (RULE-04
         split — prompt composition is a separate responsibility from the
-        generate/persist flow).
+        generate/persist flow). The optional KB-context provider is
+        forwarded so the prompt module can supply the kb_* variables
+        (inert pre-activation — see there).
         """
         return await compose_band_summary_system_prompt(
             composer=self._composer,
@@ -276,6 +285,7 @@ class BandSummaryService:
             genre=genre,
             language=language,
             novel_id=novel_id,
+            kb_context_provider=self._kb_context_provider,
         )
 
 

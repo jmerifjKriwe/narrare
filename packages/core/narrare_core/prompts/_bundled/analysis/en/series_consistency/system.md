@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -114,7 +114,7 @@ Example with conflicts:
 - Write the `summary` and `explanation` fields in {{writing_language}}.
 - Respect the author's avoidance patterns: {{avoidance_patterns}}
 
-## Do NOT
+### Do NOT
 
 - Do NOT invent Canon entries — only flag contradictions against Canon entries that were explicitly supplied.
 - Do NOT fabricate or paraphrase the `chapter_text_excerpt` — it must be a verbatim quote from the chapter text.

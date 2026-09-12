@@ -22,6 +22,7 @@ from narrare_core.shared.errors import NotFoundError, WritingError
 
 if TYPE_CHECKING:
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
@@ -47,6 +48,9 @@ class ChapterSummaryService:
         _api_key: Optional per-user API key override.
         _base_url: Optional per-user base URL override.
         _invocation_pipeline: Optional InvocationPipeline for evidence recording.
+        _kb_context_provider: Optional canonical KB-context provider (ADR-067)
+            supplying the kb_characters / kb_locations / kb_factions /
+            kb_relationships prompt variables.
     """
 
     def __init__(
@@ -60,6 +64,7 @@ class ChapterSummaryService:
         api_key: str | None = None,
         base_url: str | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        kb_context_provider: KBContextProviderProtocol | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         """Initialize ChapterSummaryService with all dependencies.
@@ -73,6 +78,10 @@ class ChapterSummaryService:
             api_key: Optional per-user API key override.
             base_url: Optional per-user base URL override.
             invocation_pipeline: Optional InvocationPipeline for evidence recording.
+            kb_context_provider: Optional canonical KB-context provider
+                (ADR-067) for the kb_characters / kb_locations / kb_factions /
+                kb_relationships prompt variables. ``None`` degrades to an
+                empty bundle (RULE-11).
             run_limit_resolver: Optional ADR-045 run-limit resolver; defaults to
                 ``DefaultRunLimitResolver`` (Task 3 wiring).
         """
@@ -84,6 +93,7 @@ class ChapterSummaryService:
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
+        self._kb_context_provider = kb_context_provider
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
     async def summarize(
@@ -139,12 +149,41 @@ class ChapterSummaryService:
         try:
             from narrare._app.invocation_context import build_invocation_context
 
+            # Canonical KB context (ADR-067): the kb_characters /
+            # kb_locations / kb_factions / kb_relationships slots are
+            # fetched+rendered through the reusable provider (mirrors
+            # coreference_service). Degrades to an empty bundle when no
+            # provider is wired or the KB is empty (RULE-11) — the provider
+            # never raises. Spreading ``to_prompt_variables()`` — not a
+            # literal ``""`` assignment — keeps every slot fed from real KB
+            # context (architectural-discipline §7). Inert today: the
+            # governed summarize template's Knowledge-Base region sits below
+            # the extract_section parse cutoff, so these extra variables do
+            # not alter the composed render (inert pre-activation for the
+            # template re-enablement slice).
+            from narrare_core.context._render_options import RenderOptions
+
+            if self._kb_context_provider is None:
+                from narrare.kb.context_contracts import KBContextBundle
+
+                kb_bundle = KBContextBundle.empty(RenderOptions(annotate_provenance=True))
+            else:
+                kb_bundle = await self._kb_context_provider.fetch_context(
+                    chapter.novel_id,
+                    entity_types=["character", "location", "faction"],
+                    options=RenderOptions(annotate_provenance=True),
+                )
+            kb_vars = kb_bundle.to_prompt_variables()
+
             context = PromptContext(
                 language=language,
                 genre="",
                 chapter_title=chapter.title,
                 mode="summarize",
-                extra={"max_sentences": str(max_sentences)},
+                extra={
+                    "max_sentences": str(max_sentences),
+                    **(kb_vars or {}),
+                },
             )
             invocation_context = build_invocation_context(
                 feature_id="writing_summary",

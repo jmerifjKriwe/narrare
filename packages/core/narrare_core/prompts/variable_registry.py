@@ -139,13 +139,16 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         # and rendered by the scene_by_scene template numbering line.
         "scene_number",
         "total_scenes",
-        "word_count",
+        # R2 beta_reader slice (2026-09-12): word_count / chapter_titles /
+        # focus_categories / previous_summaries were used exclusively by the
+        # beta_reader system template's context blocks, deleted as dead
+        # duplicates of the user channel (build_budgeted_prompt) — pruned
+        # together with those blocks. No other bundled template references
+        # them.
         "extend_length",
         "chapter_title",
-        "chapter_titles",
         "count",
         "event_count",
-        "focus_categories",
         "check_types",
         "co_author_focus_instructions",
         "rewrite_mode_instructions",
@@ -153,14 +156,18 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         # the rewrite_selection template. System-injected (not user content,
         # not feature-dynamic) — analogous to rewrite_mode_instructions.
         "style_variant_instructions",
-        "deepdive_category",
-        "phase1_strengths_summary",
-        "phase1_feedback_summary",
-        "category_focus_instructions",
+        # R2 beta_reader_deepdive slice (2026-09-12): deepdive_category /
+        # phase1_strengths_summary / phase1_feedback_summary were used
+        # exclusively by the beta_reader_deepdive system template's context
+        # blocks, deleted as dead duplicates of the user channel
+        # (build_deepdive_prompt via deep_dive_deps); category_focus_instructions
+        # had no runtime supplier at all. Pruned together with those blocks —
+        # the BetaReaderDeps fields remain user-channel data, outside this
+        # registry. chapter_text stays in USER_CONTENT_VARS (RULE-22
+        # user-content hygiene, not a usage-ledger entry).
         "available_rel_types",
         "gender",
         "name_type",
-        "previous_summaries",
         "structure_type",
         "summary",
         "mode",

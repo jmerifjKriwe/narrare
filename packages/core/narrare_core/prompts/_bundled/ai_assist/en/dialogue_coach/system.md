@@ -1,7 +1,7 @@
 ---
 prompt_type: ai_assist
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -109,7 +109,7 @@ Field semantics:
 - Rewrite fidelity: in improve mode, every rewrite must address the specific issue it is attached to. Generic "make it better" rewrites are forbidden.
 - When the passage has no dialogue issues, return an empty `issues` list — do not invent issues to fill space.
 
-## Do NOT
+### Do NOT
 
 - Do NOT reference or rely on any numeric per-character statistics. The descriptive `{{character_voice_profiles}}` text is the only voice signal you receive.
 - Do NOT rewrite dialogue in `analyze` mode. The `alternatives` field is present only when `mode=improve`.

@@ -147,6 +147,20 @@ async def build_band_summary_service(
         max_tokens=limits.output_limit,
     )
 
+    # Canonical KB-context provider (ADR-067): single fetch+render source for
+    # the kb_characters / kb_locations / kb_factions / kb_relationships
+    # prompt variables. Degrades gracefully (RULE-11). Inert for the current
+    # band_summary template (Knowledge-Base region below the parse cutoff) —
+    # wired ahead of the template re-enablement slice.
+    from narrare.kb._context_provider import KBContextProvider
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.repository import KBRepository
+
+    kb_context_provider = KBContextProvider(
+        kb_repo=KBRepository(session),
+        relationship_repo=RelationshipRepository(session),
+    )
+
     return BandSummaryService(
         repo=BandSummaryRepository(session),
         novel_repo=NovelRepository(session),
@@ -157,6 +171,7 @@ async def build_band_summary_service(
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         invocation_pipeline=get_invocation_pipeline(),
+        kb_context_provider=kb_context_provider,
     )
 
 
