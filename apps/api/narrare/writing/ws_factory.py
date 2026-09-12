@@ -60,6 +60,7 @@ def build_writing_session_handler(
     Returns:
         A fully wired :class:`WritingSessionHandler`.
     """
+    from narrare.writing.ws_context_assembler import WsWritingContextAssembler
     from narrare.writing.ws_direction_dispatch import WritingDirectionDispatcher
     from narrare.writing.ws_handler import WritingSessionHandler
     from narrare.writing.ws_message_router import WritingSessionMessageRouter
@@ -71,6 +72,10 @@ def build_writing_session_handler(
         registry=model_registry,
         config=config,
         run_limit_resolver=run_limit_resolver,
+        # FO-4: data-fetching assembler so WS turns are KB-enriched.
+        # Constructed here (not injected) to keep the route handshake
+        # unchanged; it acquires its own per-turn session.
+        context_assembler=WsWritingContextAssembler(),
     )
     direction_dispatcher = WritingDirectionDispatcher(
         session_manager=session_manager,

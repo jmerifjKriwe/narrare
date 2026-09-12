@@ -39,8 +39,11 @@ def get_writing_turn_service(
 ) -> WritingTurnService:
     """Create a WritingTurnService for a WebSocket session.
 
-    Wires the shared invocation pipeline, model registry, and a fresh
-    run-limit resolver for per-connection streaming turns.
+    Wires the shared invocation pipeline, model registry, a fresh
+    run-limit resolver for per-connection streaming turns, and the
+    data-fetching context assembler (FO-4 — KB-enriched turns; the
+    assembler acquires its own per-turn session, so no app state is
+    needed here).
 
     Args:
         config: The per-request resolved model configuration.
@@ -48,6 +51,7 @@ def get_writing_turn_service(
     Returns:
         Configured :class:`WritingTurnService`.
     """
+    from narrare.writing.ws_context_assembler import WsWritingContextAssembler
     from narrare.writing.ws_turn_service import WritingTurnService
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
@@ -57,6 +61,7 @@ def get_writing_turn_service(
         registry=get_model_registry(),
         config=config,
         run_limit_resolver=DefaultRunLimitResolver(),
+        context_assembler=WsWritingContextAssembler(),
     )
 
 

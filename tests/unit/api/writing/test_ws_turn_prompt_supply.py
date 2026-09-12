@@ -38,14 +38,14 @@ assembly / assembly failure) must render byte-identically.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 from uuid import uuid4
 
 import pytest
 
 from narrare.writing.ws_turn_service import WritingTurnService
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
-from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm import ModelRegistry, ResolvedModelConfig
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.llm.run_limits import DefaultRunLimitResolver
@@ -250,6 +250,86 @@ class TestChatRouteInterviewOptional:
         renders it as "" instead of raising PromptVariableError."""
         route = resolve_prompt_route(LLMIntent.CHAT, "interview")
         assert "tone_instructions" in route.optional_variables
+
+
+class TestProductionWiring:
+    """FO-4: both production construction sites wire a real assembler.
+
+    The core ``WritingContextAssembler`` is a pure data transformation —
+    the wiring pin therefore asserts the API-layer data-fetching subclass
+    (``WsWritingContextAssembler``), not just ``is not None``.
+    """
+
+    def test_deps_ws_wires_real_context_assembler(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """get_writing_turn_service constructs the fetching assembler."""
+        from narrare.writing.deps_ws import get_writing_turn_service
+        from narrare.writing.ws_context_assembler import WsWritingContextAssembler
+
+        monkeypatch.setattr(
+            "narrare.writing.deps_ws.get_composer",
+            lambda: MagicMock(spec=PromptComposer),
+        )
+        monkeypatch.setattr(
+            "narrare.writing.deps_ws.get_invocation_pipeline",
+            lambda: MagicMock(spec=InvocationPipeline),
+        )
+        monkeypatch.setattr(
+            "narrare.writing.deps_ws.get_model_registry",
+            lambda: MagicMock(spec=ModelRegistry),
+        )
+        config = ResolvedModelConfig(
+            provider_name="test",
+            model_id="test-model",
+            temperature=0.7,
+            max_tokens=2000,
+        )
+
+        service = get_writing_turn_service(config)
+
+        assert isinstance(service._context_assembler, WsWritingContextAssembler)
+
+    def test_ws_factory_wires_real_context_assembler(self) -> None:
+        """build_writing_session_handler hands the fetching assembler to
+        the turn service shared by dispatcher and message router."""
+        from narrare.writing._ws_cache import InMemorySessionCache
+        from narrare.writing.ws_active_turn_registry import ActiveTurnRegistry
+        from narrare.writing.ws_context_assembler import WsWritingContextAssembler
+        from narrare.writing.ws_factory import build_writing_session_handler
+        from narrare.writing.ws_session_control_service import (
+            WritingSessionControlService,
+        )
+        from narrare_core.writing.session_manager import SessionManager
+        from narrare_core.writing.session_turn_state import SessionTurnStateStore
+
+        cache = InMemorySessionCache()
+        session_manager = SessionManager(cache=cache)
+        turn_state = SessionTurnStateStore()
+        active_registry = ActiveTurnRegistry()
+        control_service = WritingSessionControlService(
+            session_manager=session_manager,
+            turn_state=turn_state,
+            registry=active_registry,
+        )
+
+        handler = build_writing_session_handler(
+            session_manager=session_manager,
+            registry=active_registry,
+            turn_state=turn_state,
+            control_service=control_service,
+            model_registry=MagicMock(spec=ModelRegistry),
+            composer=MagicMock(spec=PromptComposer),
+            config=ResolvedModelConfig(
+                provider_name="test",
+                model_id="test-model",
+                temperature=0.7,
+                max_tokens=2000,
+            ),
+            invocation_pipeline=MagicMock(spec=InvocationPipeline),
+            run_limit_resolver=DefaultRunLimitResolver(),
+        )
+
+        turn_service = handler._message_router._direction_dispatcher._turn_service
+        assert isinstance(turn_service._context_assembler, WsWritingContextAssembler)
 
 
 @pytest.mark.parametrize("session_mode", ["interactive_session", "interview_assisted"])
