@@ -157,8 +157,12 @@ async def get_draft_prompt(
         context.author_instructions = state.outline
     if deps.chapter_content:
         context.existing_content = deps.chapter_content
-    if deps.word_target:
-        context.extra = {"word_target": str(deps.word_target)}
+    # FO-3: {{word_target}} is route-required on the new_chapter template
+    # (not in _COMMON_OPTIONAL_VARIABLES) — supply unconditionally, None
+    # coalescing to "" (get_review_prompt convention); key-level assignment
+    # also preserves the _base_context user/project extras that the
+    # previous dict-reassignment wiped.
+    context.extra["word_target"] = str(deps.word_target or "")
     # WRITE route-required variable (route_table.py) — the draft step owns
     # the outline and must supply it for the template's {{chapter_outline}}.
     context.extra["chapter_outline"] = state.outline
@@ -304,8 +308,10 @@ async def get_revise_prompt(
     context.mode = "new_chapter"
     context.author_instructions = state.feedback
     context.existing_content = state.draft
-    if deps.word_target:
-        context.extra = {"word_target": str(deps.word_target)}
+    # FO-3: {{word_target}} is route-required here as well (REWRITE renders
+    # the new_chapter template via its context-mode override) — supply
+    # unconditionally like the draft path.
+    context.extra["word_target"] = str(deps.word_target or "")
     # new_chapter-template placeholder ({{chapter_outline}}) is not
     # route-optional on the REWRITE context-mode override — the revise
     # step owns the outline and must supply it, exactly like the draft.

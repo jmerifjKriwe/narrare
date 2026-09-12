@@ -150,13 +150,13 @@ _RENDERED_SENTINELS: tuple[tuple[str, str], ...] = (
 _UNUSED_SENTINELS: tuple[str, ...] = (_KB_SYSTEMS_BLOCK, _KB_TIMELINES_BLOCK, _KB_PINNED_BLOCK)
 
 
-def _make_deps(composer: Any, assembler: Any = None) -> WritingDeps:
+def _make_deps(composer: Any, assembler: Any = None, word_target: int | None = 1500) -> WritingDeps:
     return WritingDeps(
         registry=AsyncMock(),
         composer=composer,
         genre="fantasy",
         tone="balanced",
-        word_target=1500,
+        word_target=word_target,
         language="en",
         writing_language="English",
         context_assembler=assembler,
@@ -239,6 +239,36 @@ class TestDraftPromptKBEmptyGolden:
         assert system == _GOLDEN_KB_EMPTY_SYSTEM
         assert user == _GOLDEN_KB_EMPTY_USER
         assembler.assemble.assert_not_called()
+
+
+class TestDraftPromptWordTargetNone:
+    """FO-3: word_target=None composes without raising on the real composer.
+
+    Before FO-3 ``word_target`` was supplied only ``if deps.word_target``
+    while the new_chapter template demands {{word_target}} unconditionally
+    (not in _COMMON_OPTIONAL_VARIABLES) — a draft without a word target
+    raised ``PromptVariableError: word_target``. The fix supplies the key
+    unconditionally; None renders as an empty value.
+    """
+
+    async def test_draft_without_word_target_composes_rendering_empty_value(self) -> None:
+        """Real composer: None → no raise; golden with the one-line empty-target delta."""
+        composer = PromptComposer(PromptRegistry())
+        system, user = await get_draft_prompt(
+            composer, _make_deps(composer, word_target=None), _make_state()
+        )
+        # Explicit pin: the KB-empty golden family with exactly the
+        # "Word target: {{word_target}}" line rendered blank.
+        assert system == _GOLDEN_KB_EMPTY_SYSTEM.replace("Word target: 1500\n", "Word target: \n")
+        assert user == _GOLDEN_KB_EMPTY_USER
+
+    async def test_draft_without_word_target_supplies_empty_extra(self) -> None:
+        """Wiring: None → extra["word_target"] == "" (key present, value empty)."""
+        composer = AsyncMock()
+        composer.build = AsyncMock(return_value=ComposedPrompt(system="s", user="u"))
+        await get_draft_prompt(composer, _make_deps(composer, word_target=None), _make_state())
+        captured = composer.build.call_args.args[1]
+        assert captured.extra["word_target"] == ""
 
 
 class TestDraftPromptPopulatedKB:
