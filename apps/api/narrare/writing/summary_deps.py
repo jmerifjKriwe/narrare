@@ -85,9 +85,10 @@ async def get_summary_service(
 
     # Canonical KB-context provider (ADR-067): single fetch+render source for
     # the kb_characters / kb_locations / kb_factions / kb_relationships
-    # prompt variables. Degrades gracefully (RULE-11). Inert for the current
-    # summarize template (Knowledge-Base region below the parse cutoff) —
-    # wired ahead of the template re-enablement slice.
+    # prompt variables. Degrades gracefully (RULE-11). Active since the
+    # summarize template's header-demotion activation slice: the
+    # Knowledge-Base region renders (no longer below the parse cutoff);
+    # degradation → empty bundle (RULE-11).
     from narrare.kb._context_provider import KBContextProvider
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository

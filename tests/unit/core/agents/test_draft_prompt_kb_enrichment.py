@@ -29,10 +29,8 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
-from narrare_core.agents.writing_graph_prompts import (
-    enrich_prompt_context_with_kb,
-    get_draft_prompt,
-)
+from narrare_core.agents.writing_graph_kb_context import enrich_prompt_context_with_kb
+from narrare_core.agents.writing_graph_prompts import get_draft_prompt
 from narrare_core.agents.writing_graph_types import WritingDeps, WritingState
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 from narrare_core.prompts.context import PromptContext
