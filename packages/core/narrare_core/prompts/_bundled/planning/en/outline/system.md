@@ -1,7 +1,7 @@
 ---
 prompt_type: planning
 prompt_language: en
-prompt_version: "1.0.1"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -33,7 +33,7 @@ Characters:
 Locations:
 {{kb_locations}}
 
-## Output Format
+### Output Format
 
 Provide the outline according to the Structured Output schema described below. Use a <scratchpad> to analyze and plan before writing.
 
@@ -59,7 +59,7 @@ Provide your outline as structured output with these fields:
 
 {{user_preferences}}
 
-## Do NOT
+### Do NOT
 
 - Do NOT introduce characters or locations not in the Knowledge Base without noting them as new
 - Do NOT resolve major plot arcs in a single chapter unless requested

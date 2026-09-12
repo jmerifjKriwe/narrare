@@ -1,7 +1,7 @@
 ---
 prompt_type: planning
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -62,7 +62,7 @@ Return a JSON object matching the TemporalExtractionOutput schema:
 - `character_names` should be empty when none are present near the expression.
 - `extracted` may be empty if the chapter genuinely contains no temporal expressions — say so in `extraction_notes`.
 
-## Do NOT
+### Do NOT
 
 - Do NOT fabricate temporal expressions that are not present in the supplied chapter text.
 - Do NOT invent timestamps the text does not support — keep `timestamp_raw` faithful to the source.

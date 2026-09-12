@@ -1,7 +1,7 @@
 ---
 prompt_type: planning
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -77,7 +77,7 @@ Return a JSON object matching the CharacterArcOutput schema:
 - `turning_point` for each phase must be concrete (an event/decision), not a mood.
 - `key_relationships` and `phases` may be empty arrays only if genuinely nothing applies — otherwise populate them.
 
-## Do NOT
+### Do NOT
 
 - Do NOT invent a `flat` arc unless the genre or an explicit request demands it — flat arcs are the exception, not the default.
 - Do NOT skip the internal conflict — an arc without an internal struggle is a plot outline, not a character arc.

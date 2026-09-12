@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.3.1"
+prompt_version: "1.4.0"
 ---
 
 ## System Prompt
@@ -53,7 +53,7 @@ The author has deliberately chosen the following style and content preferences. 
 - Do not introduce new plot elements or characters not in the draft
 - Respect the author's avoidance patterns: {{avoidance_patterns}}
 
-## Output Format
+### Output Format
 
 Provide your review as structured output according to the schema described in the Structured Output section above.
 
@@ -115,7 +115,7 @@ Example:
 - Evidence gate: ground each issue or suggestion in a specific passage, pattern, or provided context via `text_excerpt`. If the evidence is weak or subjective, frame it as an optional consideration rather than a defect, and omit low-confidence false positives.
 - Confidence gate: do not emit low-confidence subjective preferences as `"error"` or `"warning"` defects. If `confidence` is below 0.6, frame the item as an optional consideration (`"info"` severity) or omit it.
 
-## Do NOT
+### Do NOT
 
 - Do NOT rewrite the draft — provide guidance for the author to revise
 - Do NOT introduce new plot elements or characters not in the draft

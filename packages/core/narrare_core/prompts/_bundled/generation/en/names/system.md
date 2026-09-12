@@ -1,7 +1,7 @@
 ---
 prompt_type: generation
 prompt_language: en
-prompt_version: "1.1.0"
+prompt_version: "1.2.0"
 ---
 
 ## System Prompt
@@ -23,7 +23,7 @@ Generate {{count}} {{name_type}} names for a fiction project.
 - Explain meanings in: {{explanation_language}}
 - Existing names in project (avoid duplicates): {{existing_names}}
 
-## Do NOT
+### Do NOT
 
 - Do NOT generate names that already exist in the project (listed in existing_names)
 - Do NOT return more or fewer names than requested

@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.2"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -27,7 +27,7 @@ Focus on three areas:
 
 {{user_preferences}}
 
-## Output Format
+### Output Format
 
 Provide your analysis as structured output with the fields described in the Structured Output section above.
 
@@ -80,7 +80,7 @@ Example:
 - Do not judge or evaluate preferences — describe them neutrally
 - Respect the user's avoidance patterns: {{avoidance_patterns}}
 
-## Do NOT
+### Do NOT
 
 - Do NOT rewrite or edit the content — analyze, don't create
 - Do NOT provide generic feedback without specific references

@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.1"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -12,7 +12,7 @@ Given a {{structure_type}} story structure, which stage does this chapter belong
 
 Summary: {{summary}}
 
-## Output Format
+### Output Format
 
 Respond with the stage ID of the best-matching narrative stage. If no stage fits, return the best match with a brief justification. Return "UNKNOWN" if the summary is empty or completely ambiguous.
 
@@ -28,7 +28,7 @@ Respond with the stage ID of the best-matching narrative stage. If no stage fits
 - If no stage fits perfectly, choose the closest matching stage and explain your reasoning
 - If the chapter summary is empty or ambiguous, respond with "UNKNOWN" and a brief reason
 
-## Do NOT
+### Do NOT
 
 - Do NOT guess — if no stage fits closely, say so and explain why
 - Do NOT return multiple stages — choose the single best match

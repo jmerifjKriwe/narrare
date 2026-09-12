@@ -9,22 +9,15 @@
     "analysis/en/beta_reader_deepdive | Missing recommended variable {{kb_characters}} for category 'analysis' (SHOULD)",
     "analysis/en/beta_reader_deepdive | Missing recommended variable {{kb_factions}} for category 'analysis' (SHOULD)",
     "analysis/en/beta_reader_deepdive | Missing recommended variable {{kb_locations}} for category 'analysis' (SHOULD)",
-    "analysis/en/beta_reader_deepdive | Missing recommended variable {{kb_relationships}} for category 'analysis' (SHOULD)"
+    "analysis/en/beta_reader_deepdive | Missing recommended variable {{kb_relationships}} for category 'analysis' (SHOULD)",
+    "analysis/en/remap | Do-NOT section has only 3 items (minimum: 4)"
   ],
   "frontmatter_schema_warnings": [],
   "adoption_debt": [
     "writing | inline_fallback_count | 1"
   ],
   "prompt_integrity_findings": [],
-  "system_prompt_l2_header_allowlist": [
-    "packages/core/narrare_core/prompts/_bundled/analysis/en/preferences/system.md | sections dropped at parse time by extract_section truncation: ## Output Format (L30), ## Do NOT (L83) | R2 header-demotion slice pending",
-    "packages/core/narrare_core/prompts/_bundled/analysis/en/remap/system.md | sections dropped at parse time by extract_section truncation: ## Output Format (L15), ## Do NOT (L31) | R2 header-demotion slice pending",
-    "packages/core/narrare_core/prompts/_bundled/analysis/en/review/system.md | sections dropped at parse time by extract_section truncation: ## Output Format (L56), ## Do NOT (L118) | R2 header-demotion slice pending",
-    "packages/core/narrare_core/prompts/_bundled/generation/en/names/system.md | sections dropped at parse time by extract_section truncation: ## Do NOT (L26) | R2 header-demotion slice pending",
-    "packages/core/narrare_core/prompts/_bundled/planning/en/character_arc/system.md | sections dropped at parse time by extract_section truncation: ## Do NOT (L80) | R2 header-demotion slice pending",
-    "packages/core/narrare_core/prompts/_bundled/planning/en/outline/system.md | sections dropped at parse time by extract_section truncation: ## Output Format (L36), ## Do NOT (L62) | R2 header-demotion slice pending",
-    "packages/core/narrare_core/prompts/_bundled/planning/en/timeline_extraction/system.md | sections dropped at parse time by extract_section truncation: ## Do NOT (L65) | R2 header-demotion slice pending"
-  ],
+  "system_prompt_l2_header_allowlist": [],
   "approved_exceptions": [
     "inline_fallback | packages/core/narrare_core/agents/writing_graph_prompts.py | fallback when composer=None | Test ergonomics — not a production path",
     "pyproject | RULE-01b | packages/core/narrare_core/llm/embedding_providers.py | Batch embedding API requires direct client access for performance",
