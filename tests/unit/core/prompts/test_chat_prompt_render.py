@@ -22,28 +22,27 @@ residue, and the pre-change render is a byte-prefix of the post-change render
   band_summary precedent only recognize L1-3 headings)
 * prompt_version 1.4.0 → 1.5.0
 
-PRE-EXISTING GAP (not this slice's, documented as a tripwire below): the CHAT
-route declares only ``tone_instructions`` optional, but the template (since
-CR-04, commit cbb49f76) demands ``{{timeline_position}}``, ``{{kb_context_
-warnings}}``, ``{{kb_other}}`` and ``{{kb_suggested}}`` ABOVE the cutoff —
-none of which the production chat seam (``build_prompt_context`` →
-``build_chat_context`` + ``conversation_history``) supplies. A bare
-production-shaped context therefore raises ``PromptVariableError`` at compose
-today, independent of the demotion. The route-exact probe context declares
-those four slots explicitly empty (the analysis-seam RULE-11 convention).
+PRE-EXISTING GAP — RESOLVED (FO-7, 2026-09-12): the CHAT route declares only
+``tone_instructions`` optional, but the template (since CR-04, commit
+cbb49f76) demands ``{{timeline_position}}``, ``{{kb_context_warnings}}``,
+``{{kb_other}}`` and ``{{kb_suggested}}`` ABOVE the cutoff — none of which
+the production chat seam supplied, so a bare production-shaped context
+raised ``PromptVariableError`` at compose (pinned by a tripwire below).
+Fixed by supplying the four slots explicitly empty in the chat context-tier
+builder (``build_chat_context`` in ``narrare_core.chat.chat_service_core``
+— the analysis-seam RULE-11 convention), so the route-exact probes below
+now use the bare production seam with NO test-side supply: a supply
+regression fails the compose tests instead of being masked.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from narrare_core.chat.chat_service_core import build_chat_context
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.composer import PromptComposer
 from narrare_core.prompts.registry import PromptRegistry
-from narrare_core.shared.errors import PromptVariableError
 from narrare_core.shared.frontmatter import parse_frontmatter
 from tests.unit.core._bundled import bundled_prompts_root
 
@@ -72,10 +71,9 @@ _ALREADY_LIVE_SECTIONS = (
     "### User Preferences",
 )
 
-# Template variables the production chat seam does not supply (pre-existing
-# gap, above the cutoff). Declared explicitly empty per the analysis-seam
-# RULE-11 convention so the optional-less CHAT route composes.
-_UNSUPPLIED_TEMPLATE_VARS = (
+# Template variables the chat context tier now supplies explicitly empty
+# (FO-7 fix in build_chat_context) — pinned by TestChatSupplyFix.
+_FO7_SUPPLIED_VARS = (
     "timeline_position",
     "kb_context_warnings",
     "kb_other",
@@ -88,16 +86,14 @@ def _prompt_path():
 
 
 def _route_context() -> PromptContext:
-    """Route-exact context via the real build_chat_context seam.
+    """Route-exact context via the bare build_chat_context seam.
 
     Mirrors ``apps/api/narrare/chat/_context.py`` ``build_prompt_context``
-    (project-less chat shape: empty title/genre, history attached), plus the
-    four unsupplied template variables declared explicitly empty.
+    (project-less chat shape: empty title/genre, history attached). No
+    test-side variable supply — the seam itself must carry the FO-7 slots.
     """
     context = build_chat_context(project_title="", genre="", language="en")
     context.extra["conversation_history"] = "Author: How do I pace my opening chapter?"
-    for var in _UNSUPPLIED_TEMPLATE_VARS:
-        context.extra[var] = ""
     return context
 
 
@@ -159,18 +155,30 @@ class TestChatDoNotActivation:
         prompt = await _compose(_route_context())
         assert "{{" not in prompt.system, "placeholder residue in render"
 
-    async def test_bare_seam_context_compose_raises_preexisting_gap(self) -> None:
-        """PRE-EXISTING GAP TRIPWIRE (above the cutoff, not this slice).
 
-        The bare production-shaped seam context (``build_chat_context`` +
-        ``conversation_history``, no explicit-empty declarations) does NOT
-        compose: the CHAT route declares only ``tone_instructions`` optional
-        while the template (since CR-04) demands ``{{timeline_position}}``
-        and friends — none supplied by the chat service seam. This pins the
-        latent defect so the fix (supply wiring or route optionals) flips
-        this test deliberately instead of silently.
-        """
+class TestChatSupplyFix:
+    """FO-7 (2026-09-12): the chat context tier supplies the four slots.
+
+    The former tripwire (``test_bare_seam_context_compose_raises_
+    preexisting_gap``) pinned the latent defect — a bare production-shaped
+    seam context raised ``PromptVariableError('timeline_position')`` at
+    compose. The fix supplies the slots in ``build_chat_context``; these
+    tests pin the flip deliberately: the bare seam composes, and removing
+    the supply regresses loudly.
+    """
+
+    def test_chat_context_tier_supplies_fo7_slots(self) -> None:
+        """The seam itself (not the test) carries the four demanded slots,
+        explicitly empty (analysis-seam RULE-11 convention)."""
         context = build_chat_context(project_title="", genre="", language="en")
-        context.extra["conversation_history"] = "Author: Hello"
-        with pytest.raises(PromptVariableError, match="timeline_position"):
-            await _compose(context)
+        for var in _FO7_SUPPLIED_VARS:
+            assert context.extra.get(var) == "", (
+                f"FO-7 supply regression: {var!r} missing/empty-mismatch"
+            )
+
+    async def test_bare_seam_context_composes_after_fo7_supply_fix(self) -> None:
+        """The exact pre-fix raiser shape (bare build_chat_context +
+        conversation_history, no test-side supply) now composes."""
+        prompt = await _compose(_route_context())
+        assert "writing craft assistant" in prompt.system
+        assert "{{" not in prompt.system, "placeholder residue in render"

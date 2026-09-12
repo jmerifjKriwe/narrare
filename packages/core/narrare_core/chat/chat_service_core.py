@@ -41,6 +41,18 @@ def build_chat_context(
     context.extra["kb_relationships"] = kb_relationships
     context.extra["recent_chapters"] = recent_chapters
 
+    # FO-7: the governed chat template (writing/en/chat, since CR-04) also
+    # demands {{timeline_position}} / {{kb_context_warnings}} / {{kb_other}}
+    # / {{kb_suggested}}, while the CHAT route declares only
+    # {{tone_instructions}} optional. The minimal chat tier (ADR-024) holds
+    # none of this data — declare the four slots explicitly empty (the
+    # analysis-seam RULE-11 convention) so compose renders them empty
+    # instead of raising PromptVariableError.
+    context.extra["timeline_position"] = ""
+    context.extra["kb_context_warnings"] = ""
+    context.extra["kb_other"] = ""
+    context.extra["kb_suggested"] = ""
+
     return context
 
 

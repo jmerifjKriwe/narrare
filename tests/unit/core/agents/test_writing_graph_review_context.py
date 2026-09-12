@@ -19,9 +19,11 @@ if TYPE_CHECKING:
     from narrare_core.agents.review_agent import ReviewDeps
 
 from narrare_core.agents.review_types import ReviewOutput
+from narrare_core.agents.writing_graph_kb_context import (
+    assemble_writing_context,
+    enrich_prompt_context_with_kb,
+)
 from narrare_core.agents.writing_graph_prompts import (
-    _assemble_writing_context,
-    _enrich_prompt_context_with_kb,
     get_review_prompt,
 )
 from narrare_core.agents.writing_graph_types import (
@@ -114,25 +116,25 @@ async def _call_review_node(
 
 
 # ---------------------------------------------------------------------------
-# A. _assemble_writing_context — Context Assembly
+# A. assemble_writing_context — Context Assembly
 # ---------------------------------------------------------------------------
 
 
 class TestAssembleReviewContext:
-    """_assemble_writing_context assembles context or gracefully returns None."""
+    """assemble_writing_context assembles context or gracefully returns None."""
 
     @pytest.mark.asyncio
     async def test_returns_none_when_no_assembler(self) -> None:
         deps = _make_deps(context_assembler=None)
         state = _make_state(chapter_id="ch-01", novel_id="novel-01")
-        assert await _assemble_writing_context(deps, state) is None
+        assert await assemble_writing_context(deps, state) is None
 
     @pytest.mark.asyncio
     async def test_returns_none_when_no_chapter_id(self) -> None:
         assembler = AsyncMock()
         deps = _make_deps(context_assembler=assembler)
         state = _make_state(chapter_id="", novel_id="novel-01")
-        assert await _assemble_writing_context(deps, state) is None
+        assert await assemble_writing_context(deps, state) is None
         assembler.assemble.assert_not_called()
 
     @pytest.mark.asyncio
@@ -140,7 +142,7 @@ class TestAssembleReviewContext:
         assembler = AsyncMock()
         deps = _make_deps(context_assembler=assembler)
         state = _make_state(chapter_id="ch-01", novel_id="")
-        assert await _assemble_writing_context(deps, state) is None
+        assert await assemble_writing_context(deps, state) is None
         assembler.assemble.assert_not_called()
 
     @pytest.mark.asyncio
@@ -150,7 +152,7 @@ class TestAssembleReviewContext:
         assembler.assemble = AsyncMock(return_value=expected)
         deps = _make_deps(context_assembler=assembler)
         state = _make_state(chapter_id=_CH_ID, novel_id=_NOVEL_ID)
-        result = await _assemble_writing_context(deps, state)
+        result = await assemble_writing_context(deps, state)
         assert result is expected
         assembler.assemble.assert_called_once()
 
@@ -161,7 +163,7 @@ class TestAssembleReviewContext:
         assembler.assemble = AsyncMock(side_effect=RuntimeError("DB lost"))
         deps = _make_deps(context_assembler=assembler)
         state = _make_state(chapter_id=_CH_ID, novel_id=_NOVEL_ID)
-        assert await _assemble_writing_context(deps, state) is None
+        assert await assemble_writing_context(deps, state) is None
 
 
 # ---------------------------------------------------------------------------
@@ -176,7 +178,7 @@ class TestEnrichPromptContextWithKB:
         ctx = _make_writing_context()
         prompt_ctx = PromptContext(language="en", genre="fantasy", tone="balanced")
         prompt_ctx.extra = {"word_target": "1000"}
-        _enrich_prompt_context_with_kb(prompt_ctx, ctx)
+        enrich_prompt_context_with_kb(prompt_ctx, ctx)
         assert prompt_ctx.extra["kb_characters"] == "Elena — warrior queen"
         assert prompt_ctx.extra["kb_locations"] == "Dark Forest"
         assert prompt_ctx.extra["kb_factions"] == "Rebels"
@@ -195,7 +197,7 @@ class TestEnrichPromptContextWithKB:
         """
         prompt_ctx = PromptContext(language="en", genre="fantasy", tone="balanced")
         prompt_ctx.extra = {}
-        _enrich_prompt_context_with_kb(prompt_ctx, WritingContext(kb_characters="Elena"))
+        enrich_prompt_context_with_kb(prompt_ctx, WritingContext(kb_characters="Elena"))
         assert prompt_ctx.extra["kb_characters"] == "Elena"
         for key in (
             "kb_locations",

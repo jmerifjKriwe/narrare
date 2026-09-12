@@ -12,9 +12,10 @@ no ``allowed_context_modes``, so the context mode overrides the default
 mock composers, so the gap was invisible.
 
 The fix wires the same enrichment the draft step uses into the revise path:
-``_assemble_writing_context`` (graceful-None, RULE-11) +
-``_enrich_prompt_context_with_kb`` (full 10-key KB set via the SSOT
-``kb_context_extras``) + the ``chapter_outline`` extra.
+``assemble_writing_context`` (graceful-None, RULE-11, now in
+``writing_graph_kb_context.py``) + ``enrich_prompt_context_with_kb`` (full
+10-key KB set via the SSOT ``kb_context_extras``) + the ``chapter_outline``
+extra.
 
 Golden methodology (mirrors the item-2 draft goldens): the KB-empty constants
 below were captured by composing the REAL ``PromptRegistry`` +

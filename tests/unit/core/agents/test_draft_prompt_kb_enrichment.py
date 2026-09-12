@@ -8,8 +8,8 @@ optional on the WRITE route, and ``chapter_outline`` is route-required) —
 every existing graph test used mock composers, so the gap was invisible.
 
 Item-2 wires the same enrichment the review step uses into the draft path:
-``_assemble_writing_context`` (graceful-None, RULE-11) +
-``_enrich_prompt_context_with_kb`` (full 10-key KB set via the A1 SSOT
+``assemble_writing_context`` (graceful-None, RULE-11) +
+``enrich_prompt_context_with_kb`` (full 10-key KB set via the A1 SSOT
 ``kb_context_extras``) + the route-required ``chapter_outline`` extra.
 
 Golden methodology (mirrors the T1c Tier-5 goldens): the KB-empty constants
@@ -30,7 +30,7 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 from narrare_core.agents.writing_graph_prompts import (
-    _enrich_prompt_context_with_kb,
+    enrich_prompt_context_with_kb,
     get_draft_prompt,
 )
 from narrare_core.agents.writing_graph_types import WritingDeps, WritingState
@@ -357,12 +357,12 @@ class TestDraftPromptWiring:
 
 
 class TestEnrichFullSet:
-    """(d): _enrich_prompt_context_with_kb supplies the full 10-key SSOT set."""
+    """(d): enrich_prompt_context_with_kb supplies the full 10-key SSOT set."""
 
     def test_enrich_supplies_full_kb_set_coalescing_empty(self) -> None:
         prompt_ctx = PromptContext(language="en", genre="fantasy", tone="balanced")
         prompt_ctx.extra = {"word_target": "1000"}
-        _enrich_prompt_context_with_kb(prompt_ctx, WritingContext(kb_characters="Elena"))
+        enrich_prompt_context_with_kb(prompt_ctx, WritingContext(kb_characters="Elena"))
 
         expected_all = {
             "kb_characters": "Elena",

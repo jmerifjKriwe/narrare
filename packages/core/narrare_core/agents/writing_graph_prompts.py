@@ -4,7 +4,11 @@ Extracted from writing_graph.py to respect the 200-line limit (RULE-04).
 Contains:
 - Prompt building functions for each graph step
 - Shared helpers (save_state, get_model)
-- Context assembly helper for enriched review
+
+KB context assembly (``_assemble_writing_context``) and prompt enrichment
+(``_enrich_prompt_context_with_kb``) live in ``writing_graph_kb_context.py``
+(RULE-04 extraction) and are re-imported here for the graph steps and the
+existing import surface.
 
 See CONSTRAINTS.md RULE-02 (all prompts from PromptComposer).
 """
@@ -13,13 +17,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-import structlog
-
+from narrare_core.agents.writing_graph_kb_context import (
+    assemble_writing_context,
+    enrich_prompt_context_with_kb,
+)
 from narrare_core.agents.writing_graph_types import Approved, NeedsRevision
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import ConfigurationError
-from narrare_core.writing._helpers import kb_context_extras
 from narrare_core.writing.models import WritingContext
 
 if TYPE_CHECKING:
@@ -27,8 +32,6 @@ if TYPE_CHECKING:
 
     from narrare_core.agents.writing_graph_types import WritingDeps, WritingState
     from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
-
-logger = structlog.get_logger(__name__)
 
 # CR-AUFG-02-07 / ADR-046: The ``composer is None`` fallback paths were
 # removed. ``PromptComposer`` is now a required dependency (RULE-11:
@@ -122,8 +125,17 @@ async def get_outline_prompt(
 
     context = _base_context(deps, state)
     context.mode = "outline"
+    # FO-10: the planning/outline template demands {{variant_count}} (route-
+    # required, MODE_REQUIRED_VARS; no deps/state owner exists — the graph
+    # plans a single outline, the template's documented default of 1) and
+    # {{kb_characters}} / {{kb_locations}} (PLAN declares no optionals).
+    # KB supply mirrors get_draft_prompt: graceful-None assembly + the
+    # kb_context_extras SSOT so placeholders render instead of raising.
+    writing_context = await assemble_writing_context(deps, state)
+    context.extra["variant_count"] = 1
     if deps.chapter_content:
         context.existing_content = deps.chapter_content[:500]
+    enrich_prompt_context_with_kb(context, writing_context or WritingContext())
 
     composed: ComposedPrompt = await composer.build(LLMIntent.PLAN, context)
     return (composed.system, composed.user)
@@ -149,7 +161,7 @@ async def get_draft_prompt(
 
     # Assemble KB context — graceful degradation on failure: when assembly
     # yields None the draft proceeds KB-blind (kb_* render empty).
-    writing_context = await _assemble_writing_context(deps, state)
+    writing_context = await assemble_writing_context(deps, state)
 
     context = _base_context(deps, state)
     context.mode = "new_chapter"
@@ -173,69 +185,10 @@ async def get_draft_prompt(
     # empty instead of raising PromptVariableError (RULE-11 graceful) —
     # mirroring how the writing pipelines always carry kb_context_extras.
     kb_source = writing_context if writing_context is not None else WritingContext()
-    _enrich_prompt_context_with_kb(context, kb_source)
+    enrich_prompt_context_with_kb(context, kb_source)
 
     composed: ComposedPrompt = await composer.build(LLMIntent.WRITE, context)
     return (composed.system, composed.user)
-
-
-async def _assemble_writing_context(
-    deps: WritingDeps,
-    state: WritingState,
-) -> WritingContext | None:
-    """Try to assemble WritingContext for KB-enriched prompts.
-
-    Used by the review_draft and write_draft steps.  Gracefully returns
-    None if context assembly fails — the step proceeds without KB context
-    (better than blocking).  Follows RULE-11 (no silent failures): errors
-    are logged via structlog.
-    """
-    if deps.context_assembler is None:
-        return None
-
-    if not state.chapter_id or not state.novel_id:
-        return None
-
-    try:
-        from uuid import UUID
-
-        result = await deps.context_assembler.assemble(
-            chapter_id=UUID(state.chapter_id),
-            project_id=UUID(state.novel_id),
-            mode="full_draft",
-        )
-        return cast("WritingContext", result)
-    except Exception as exc:
-        logger.warning(
-            "review_context_assembly_failed",
-            error=str(exc),
-            chapter_id=state.chapter_id,
-        )
-        return None
-
-
-def _enrich_prompt_context_with_kb(
-    context: PromptContext,
-    writing_context: WritingContext,
-) -> None:
-    """Populate PromptContext.extra with KB data from WritingContext.
-
-    Supplies the full ten-variable KB set via the ``kb_context_extras``
-    SSOT (``writing/_helpers.py``); empty fields coalesce to ``""`` so
-    templates with placeholders render empty instead of raising
-    PromptVariableError on routes without optional-variable fallbacks.
-    """
-    context.extra.update(kb_context_extras(writing_context))
-    if writing_context.recent_chapters:
-        context.extra["recent_chapters"] = writing_context.recent_chapters
-    if writing_context.user_preferences:
-        context.extra["user_preferences"] = writing_context.user_preferences
-    # R2-A: cross_session_context reaches the graph path the same way —
-    # the apps service fetches it (writing/service.py prepare_generation_context)
-    # and the assembler carries it on WritingContext; mirror the conditional
-    # user_preferences pattern (empty → absent, graceful when no memory layer).
-    if writing_context.cross_session_context:
-        context.extra["cross_session_context"] = writing_context.cross_session_context
 
 
 async def get_review_prompt(
@@ -259,7 +212,7 @@ async def get_review_prompt(
     draft_text = state.draft or ""
 
     # Assemble KB context — graceful degradation on failure
-    writing_context = await _assemble_writing_context(deps, state)
+    writing_context = await assemble_writing_context(deps, state)
 
     context = _base_context(deps, state)
     context.mode = "review"
@@ -268,11 +221,17 @@ async def get_review_prompt(
         "word_count": str(word_count),
     }
 
-    if writing_context is not None:
-        _enrich_prompt_context_with_kb(context, writing_context)
+    # FO-8: the governed composer route for the analysis/en/review template
+    # is ANALYSE + mode="review" — BETA_READ does not allow mode="review"
+    # (PromptRouteNotConfiguredError at compose). KB-blind fallback mirrors
+    # the draft/revise convention: ANALYSE declares no optional variables,
+    # so an empty WritingContext supplies every kb_* key as "" instead of
+    # raising PromptVariableError when assembly yields None (RULE-11).
+    kb_source = writing_context if writing_context is not None else WritingContext()
+    enrich_prompt_context_with_kb(context, kb_source)
 
     composed: ComposedPrompt = await composer.build(
-        LLMIntent.BETA_READ,
+        LLMIntent.ANALYSE,
         context,
         user_prompt=draft_text,
     )
@@ -300,7 +259,7 @@ async def get_revise_prompt(
 
     # Assemble KB context — graceful degradation on failure: when assembly
     # yields None the revision proceeds KB-blind (kb_* render empty).
-    writing_context = await _assemble_writing_context(deps, state)
+    writing_context = await assemble_writing_context(deps, state)
 
     revise_content = "Revise based on feedback: " + state.feedback + "\n\n" + state.draft
 
@@ -323,7 +282,7 @@ async def get_revise_prompt(
     # render empty instead of raising PromptVariableError (RULE-11
     # graceful) — mirroring the draft path.
     kb_source = writing_context if writing_context is not None else WritingContext()
-    _enrich_prompt_context_with_kb(context, kb_source)
+    enrich_prompt_context_with_kb(context, kb_source)
 
     composed: ComposedPrompt = await composer.build(
         LLMIntent.REWRITE,
