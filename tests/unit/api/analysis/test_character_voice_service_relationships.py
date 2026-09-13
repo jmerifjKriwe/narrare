@@ -182,7 +182,9 @@ class TestCharacterVoiceServiceRelationshipsConstructor:
         composer: FakeComposer,
         config: ResolvedModelConfig,
     ) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.analysis.character_voice_service import CharacterVoiceService
+        from narrare_core.llm.model_routing import ResolvedModel
         from tests.unit.api.analysis._character_voice_test_helpers import FakeModelRegistry
 
         service = CharacterVoiceService(
@@ -191,7 +193,9 @@ class TestCharacterVoiceServiceRelationshipsConstructor:
             kb_repo=AsyncMock(),  # type: ignore[arg-type]
             relationship_repo=AsyncMock(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            model_config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, source="unit-test")
+            ),
             composer=composer,  # type: ignore[arg-type]
         )
 
@@ -202,7 +206,9 @@ class TestCharacterVoiceServiceRelationshipsConstructor:
         composer: FakeComposer,
         config: ResolvedModelConfig,
     ) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.analysis.character_voice_service import CharacterVoiceService
+        from narrare_core.llm.model_routing import ResolvedModel
         from tests.unit.api.analysis._character_voice_test_helpers import FakeModelRegistry
 
         service = CharacterVoiceService(
@@ -210,7 +216,9 @@ class TestCharacterVoiceServiceRelationshipsConstructor:
             chapter_repo=AsyncMock(),  # type: ignore[arg-type]
             kb_repo=AsyncMock(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            model_config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, source="unit-test")
+            ),
             composer=composer,  # type: ignore[arg-type]
         )
 

@@ -12,6 +12,7 @@ See:
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -25,6 +26,9 @@ from tests.unit.api.analysis._character_voice_test_helpers import (
     make_service,
     patch_mode1,
 )
+
+if TYPE_CHECKING:
+    from narrare_core.llm.model_routing import ResolvedModel
 
 
 @pytest.fixture
@@ -69,17 +73,30 @@ class TestErrorHandling:
             await consume(service.analyze(uuid.uuid4(), None, uuid.uuid4()))  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
-    async def test_no_model_config_raises_not_found_error(
+    async def test_resolver_configuration_error_propagates_un_swallowed(
         self,
         composer: FakeComposer,
+        config: ResolvedModelConfig,
     ) -> None:
-        from narrare_core.shared.errors import NotFoundError
+        """RULE-11 / ADR-086: the routing cascade's ConfigurationError
+        (unconfigured provider) propagates from the entry point — the
+        service never swallows it (AI-mandatory endpoint)."""
+        from narrare_core.shared.errors import ConfigurationError
 
-        service = make_service(composer, ResolvedModelConfig(provider_name="t", model_id="t"))
-        service._config = None  # type: ignore[assignment]
-        service._novel_repo.get_by_id = AsyncMock(return_value=make_novel())  # type: ignore[attr-defined]
+        class _RaisingResolution:
+            async def resolve(self) -> ResolvedModel:
+                raise ConfigurationError(
+                    "No AI provider configured.",
+                    code="NO_AI_PROVIDER",
+                )
 
-        with pytest.raises(NotFoundError):
+        service = make_service(
+            composer,
+            config,
+            model_resolution=_RaisingResolution(),
+        )
+
+        with pytest.raises(ConfigurationError):
             await consume(service.analyze(uuid.uuid4(), None, uuid.uuid4()))  # type: ignore[arg-type]
 
     @pytest.mark.asyncio

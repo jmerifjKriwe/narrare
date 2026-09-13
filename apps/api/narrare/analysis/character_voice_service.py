@@ -58,6 +58,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
@@ -65,8 +66,8 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.analysis.dialogue_parser import DialogueParser
     from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -100,15 +101,13 @@ class CharacterVoiceService:
             shape their register and vocabulary). When ``None``, degrades
             gracefully to an empty string (RULE-11).
         model_registry: Shared LLM model registry.
-        model_config: Resolved model config (provider + model ID).
+        model_resolution: Lazy model-routing source (ADR-086), resolved
+            and cached on first use (Lazy/StaticModelResolution).
         composer: PromptComposer for resolving the governed character-voice
             system prompt via the cascade (RULE-02b / ADR-054 D1). Required
             for ``analyze``.
         invocation_pipeline: Optional pipeline for invocation evidence
             (Mode 1 prepare/finalize). Retained for DI-contract stability.
-        api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.get_model``.
-        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -117,24 +116,27 @@ class CharacterVoiceService:
         chapter_repo: ChapterRepository,
         kb_repo: KBRepository,
         model_registry: ModelRegistry,
-        model_config: ResolvedModelConfig | None = None,
+        model_resolution: ModelResolution,
         composer: PromptComposer | None = None,
         relationship_repo: RelationshipRepository | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
         self._kb_repo = kb_repo
         self._registry = model_registry
-        self._config = model_config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._composer = composer
         self._relationship_repo = relationship_repo
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086)."""
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def analyze(
         self,
@@ -161,16 +163,16 @@ class CharacterVoiceService:
 
         Raises:
             NotFoundError: If the novel or any selected chapter does not
-                exist or is not accessible, or no model config is configured.
+                exist or is not accessible.
             ConfigurationError: If no ``PromptComposer`` is configured.
         """
+        # ADR-086: first-use lazy resolve, post-validation (see ensure_resolved).
+        resolved = await self.ensure_resolved()
+
         # 1. Resolve novel (access control + metadata).
         novel = await self._novel_repo.get_by_id(novel_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(novel_id))
-
-        if self._config is None:
-            raise NotFoundError("Model config", identifier="no_model_config")
 
         if self._composer is None:
             raise ConfigurationError(
@@ -248,10 +250,10 @@ class CharacterVoiceService:
             novel_id=novel_id,
             language=language,
             model_registry=self._registry,
-            model_config=self._config,
+            model_config=resolved.config,
             composed_prompt=composed_prompt,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            api_key=resolved.api_key,
+            base_url=resolved.base_url,
         )
 
         # 7. Merge + write per character; yield one result event each.
@@ -284,9 +286,7 @@ class CharacterVoiceService:
 
         yield CharacterVoiceStreamEvent(event="done", is_final=True)
 
-    # ------------------------------------------------------------------
     # Analyzer construction (overridable for tests)
-    # ------------------------------------------------------------------
 
     def _make_dialogue_parser(self) -> DialogueParser:
         from narrare_core.analysis.dialogue_parser import DialogueParser

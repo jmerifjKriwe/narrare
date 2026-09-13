@@ -164,9 +164,9 @@ class TestBetaReaderFactoryUserRouting:
 
 
 class TestCharacterVoiceFactoryUserRouting:
-    """get_character_voice_service resolves via the cascade (VOICE + novel)."""
+    """get_character_voice_service wires the VOICE cascade lazily (novel tier)."""
 
-    async def test_resolves_voice_for_user_and_novel(self) -> None:
+    async def test_resolves_voice_for_user_and_novel_at_first_use(self) -> None:
         from narrare.analysis.character_voice_service import CharacterVoiceService
         from narrare.analysis.dependencies_character_voice import (
             get_character_voice_service,
@@ -201,11 +201,25 @@ class TestCharacterVoiceFactoryUserRouting:
                 user_id=user_id,
             )
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.VOICE, UUID(user_id), novel_id)
+        # ADR-086 lazy wiring: the factory runs pre-body-validation, so
+        # it must NOT resolve — the cascade is deferred to first use.
+        assert resolver.resolve.await_args_list == []
+
         assert isinstance(service, CharacterVoiceService)
-        assert service._config is resolved.config
-        assert service._api_key == _USER_KEY
-        assert service._base_url == _USER_BASE_URL
+        resolved_model = await service.ensure_resolved()
+
+        # The REAL intent (VOICE), for THIS user, WITH the novel
+        # (project) tier — invoked at first use, not at construction:
+        assert resolver.resolve.await_args_list == [call(LLMIntent.VOICE, UUID(user_id), novel_id)]
+
+        # The cascade result lands on the service (threaded onwards to
+        # the agent-runner registry.prepare resolution point at
+        # consumption time).
+        assert resolved_model.config is resolved.config
+        assert resolved_model.config.model_id == "glm-4.7"
+        assert resolved_model.config.provider_name == "zai"
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL
 
 
 class TestCoreferenceFactoryUserRouting:

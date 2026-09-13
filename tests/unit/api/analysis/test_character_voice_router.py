@@ -9,7 +9,7 @@ JSON events and the ``[DONE]`` sentinel.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -21,9 +21,16 @@ from narrare.analysis.schemas_character_voice import (
     CharacterVoiceStreamEvent,
 )
 from narrare_core.kb.schemas.character import VoiceAnalysis
+from narrare_core.shared.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+#: The route's ``SessionDep`` is unused in direct calls (the service factory
+#: is patched); a seam cast types the deliberate ``None`` without suppression.
+_no_session = cast("AsyncSession", None)
 
 
 class FakeCharacterVoiceService:
@@ -31,6 +38,10 @@ class FakeCharacterVoiceService:
 
     def __init__(self, result: CharacterVoiceResult) -> None:
         self._result = result
+
+    async def ensure_resolved(self) -> None:
+        """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+        return None
 
     async def analyze(
         self,
@@ -67,7 +78,7 @@ async def test_analyze_character_voice_serializes_progress_result_done_and_senti
             novel_id=novel_id,
             request=CharacterVoiceRequest(chapter_ids=None),
             user_id=str(uuid4()),
-            session=None,  # type: ignore[arg-type]
+            session=_no_session,
         )
 
     chunks = [
@@ -96,6 +107,10 @@ async def test_analyze_character_voice_emits_error_event_on_failure() -> None:
     """A service failure is surfaced as an in-band ``"error"`` event (RULE-11)."""
 
     class FailingService:
+        async def ensure_resolved(self) -> None:
+            """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+            return None
+
         async def analyze(
             self,
             novel_id: UUID,
@@ -112,13 +127,13 @@ async def test_analyze_character_voice_emits_error_event_on_failure() -> None:
 
         mp.setattr(
             "narrare.analysis.router_character_voice.get_character_voice_service",
-            _failing_factory,  # type: ignore[arg-type]
+            _failing_factory,
         )
         stream_response = await analyze_character_voice(
             novel_id=uuid4(),
             request=CharacterVoiceRequest(chapter_ids=None),
             user_id=str(uuid4()),
-            session=None,  # type: ignore[arg-type]
+            session=_no_session,
         )
 
     chunks = [
@@ -143,6 +158,10 @@ async def test_analyze_character_voice_passes_chapter_ids_to_service() -> None:
     captured: dict[str, object] = {}
 
     class CapturingService:
+        async def ensure_resolved(self) -> None:
+            """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+            return None
+
         async def analyze(
             self,
             novel_id: UUID,
@@ -166,7 +185,7 @@ async def test_analyze_character_voice_passes_chapter_ids_to_service() -> None:
             novel_id=novel_id,
             request=CharacterVoiceRequest(chapter_ids=[str(chapter_a), str(chapter_b)]),
             user_id=str(uuid4()),
-            session=None,  # type: ignore[arg-type]
+            session=_no_session,
         )
 
     # Consume the stream so the async generator runs.
@@ -175,3 +194,44 @@ async def test_analyze_character_voice_passes_chapter_ids_to_service() -> None:
 
     assert captured["novel_id"] == novel_id
     assert captured["chapter_ids"] == [chapter_a, chapter_b]
+
+
+@pytest.mark.asyncio
+async def test_analyze_character_voice_raises_configuration_error_pre_header() -> None:
+    """ADR-086 Decision 3: ensure_resolved runs BEFORE the StreamingResponse.
+
+    An unconfigured provider (``ConfigurationError`` from the cascade)
+    must surface as a pre-header 400 via the NarrareError handler —
+    never as an in-band SSE error event. Direct route-call proof: the
+    route function itself raises before constructing the response.
+    """
+
+    class UnconfiguredService:
+        async def ensure_resolved(self) -> None:
+            raise ConfigurationError("No AI provider configured.", code="NO_AI_PROVIDER")
+
+        async def analyze(
+            self,
+            novel_id: UUID,
+            chapter_ids: list[UUID] | None,
+            user_id: UUID,
+        ) -> AsyncIterator[CharacterVoiceStreamEvent]:
+            raise AssertionError("analyze must not run when resolution fails")
+            yield  # pragma: no cover - make this an async generator
+
+    with pytest.MonkeyPatch.context() as mp:
+
+        async def _unconfigured_factory(**_kwargs: object) -> UnconfiguredService:
+            return UnconfiguredService()
+
+        mp.setattr(
+            "narrare.analysis.router_character_voice.get_character_voice_service",
+            _unconfigured_factory,
+        )
+        with pytest.raises(ConfigurationError):
+            await analyze_character_voice(
+                novel_id=uuid4(),
+                request=CharacterVoiceRequest(chapter_ids=None),
+                user_id=str(uuid4()),
+                session=_no_session,
+            )

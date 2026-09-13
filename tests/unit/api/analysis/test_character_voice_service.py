@@ -33,6 +33,7 @@ import pytest
 from narrare_core.llm.model_config import ResolvedModelConfig
 from tests.unit.api.analysis._character_voice_test_helpers import (
     FakeComposer,
+    _CountingResolution,
     consume,
     make_agent_output,
     make_chapter,
@@ -79,15 +80,15 @@ class TestHappyPath:
         kb_repo.update = AsyncMock()
 
         service = make_service(composer, config, kb_repo=kb_repo)
-        service._novel_repo.get_by_id = AsyncMock(return_value=novel)  # type: ignore[attr-defined]
-        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])  # type: ignore[attr-defined]
+        service._novel_repo.get_by_id = AsyncMock(return_value=novel)
+        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])
 
         with patch_mode1() as (MockAgent, _MockDeps, _mc):
             mock_agent = MagicMock(spec=["run"])
             mock_agent.run = AsyncMock(return_value=make_agent_output())
             MockAgent.return_value = mock_agent
 
-            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))  # type: ignore[arg-type]
+            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))
 
         event_types = [e.event for e in events]
         assert event_types[0] == "progress"
@@ -96,7 +97,7 @@ class TestHappyPath:
         # Two result events (one per character).
         result_events = [e for e in events if e.event == "result"]
         assert len(result_events) == 2
-        names = {e.result.character_name for e in result_events}  # type: ignore[union-attr]
+        names = {e.result.character_name for e in result_events}
         assert names == {"Elena", "Marc"}
 
     @pytest.mark.asyncio
@@ -112,15 +113,15 @@ class TestHappyPath:
         kb_repo.update = AsyncMock()
 
         service = make_service(composer, config, kb_repo=kb_repo)
-        service._novel_repo.get_by_id = AsyncMock(return_value=novel)  # type: ignore[attr-defined]
-        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])  # type: ignore[attr-defined]
+        service._novel_repo.get_by_id = AsyncMock(return_value=novel)
+        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])
 
         with patch_mode1() as (MockAgent, _MockDeps, _mc):
             mock_agent = MagicMock(spec=["run"])
             mock_agent.run = AsyncMock(return_value=make_agent_output())
             MockAgent.return_value = mock_agent
 
-            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))  # type: ignore[arg-type]
+            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))
 
         elena_event = next(
             e
@@ -167,15 +168,15 @@ class TestWriteToKBContract:
         kb_repo.update = AsyncMock()
 
         service = make_service(composer, config, kb_repo=kb_repo)
-        service._novel_repo.get_by_id = AsyncMock(return_value=novel)  # type: ignore[attr-defined]
-        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])  # type: ignore[attr-defined]
+        service._novel_repo.get_by_id = AsyncMock(return_value=novel)
+        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])
 
         with patch_mode1() as (MockAgent, _MockDeps, _mc):
             mock_agent = MagicMock(spec=["run"])
             mock_agent.run = AsyncMock(return_value=make_agent_output())
             MockAgent.return_value = mock_agent
 
-            await consume(service.analyze(novel.id, None, uuid.uuid4()))  # type: ignore[arg-type]
+            await consume(service.analyze(novel.id, None, uuid.uuid4()))
 
         kb_repo.update.assert_awaited()
         update_data = kb_repo.update.call_args.args[1]
@@ -202,15 +203,15 @@ class TestWriteToKBContract:
         kb_repo.update = AsyncMock()
 
         service = make_service(composer, config, kb_repo=kb_repo)
-        service._novel_repo.get_by_id = AsyncMock(return_value=novel)  # type: ignore[attr-defined]
-        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])  # type: ignore[attr-defined]
+        service._novel_repo.get_by_id = AsyncMock(return_value=novel)
+        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])
 
         with patch_mode1() as (MockAgent, _MockDeps, _mc):
             mock_agent = MagicMock(spec=["run"])
             mock_agent.run = AsyncMock(return_value=make_agent_output())
             MockAgent.return_value = mock_agent
 
-            await consume(service.analyze(novel.id, None, uuid.uuid4()))  # type: ignore[arg-type]
+            await consume(service.analyze(novel.id, None, uuid.uuid4()))
 
         update_data = kb_repo.update.call_args.args[1]
         assert "updated_at" in update_data
@@ -231,15 +232,15 @@ class TestWriteToKBContract:
         kb_repo.update = AsyncMock()
 
         service = make_service(composer, config, kb_repo=kb_repo)
-        service._novel_repo.get_by_id = AsyncMock(return_value=novel)  # type: ignore[attr-defined]
-        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])  # type: ignore[attr-defined]
+        service._novel_repo.get_by_id = AsyncMock(return_value=novel)
+        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])
 
         with patch_mode1() as (MockAgent, _MockDeps, _mc):
             mock_agent = MagicMock(spec=["run"])
             mock_agent.run = AsyncMock(return_value=make_agent_output())
             MockAgent.return_value = mock_agent
 
-            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))  # type: ignore[arg-type]
+            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))
 
         result_events = [e for e in events if e.event == "result"]
         assert len(result_events) == 2
@@ -266,11 +267,11 @@ class TestGracefulDegradation:
 
         kb_repo = AsyncMock()
         service = make_service(composer, config, kb_repo=kb_repo)
-        service._novel_repo.get_by_id = AsyncMock(return_value=novel)  # type: ignore[attr-defined]
-        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])  # type: ignore[attr-defined]
+        service._novel_repo.get_by_id = AsyncMock(return_value=novel)
+        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])
 
         with patch_mode1() as (MockAgent, _MockDeps, _mc):
-            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))  # type: ignore[arg-type]
+            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))
 
             # Agent must NOT be called when there is no dialogue.
             MockAgent.assert_not_called()
@@ -280,3 +281,91 @@ class TestGracefulDegradation:
         assert event_types[-1] == "done"
         assert events[-1].is_final is True
         assert not any(e.event == "result" for e in events)
+
+
+# ---------------------------------------------------------------------------
+# ADR-086: lazy model resolution at the service boundary
+# ---------------------------------------------------------------------------
+
+
+class TestLazyModelResolution:
+    """ADR-086 lazy semantics at the service boundary.
+
+    The DI factory runs pre-body-validation (FastAPI solves all
+    sub-dependencies first), so the service must NOT resolve at
+    construction. The first ``ensure_resolved()`` / ``analyze()`` resolves
+    exactly once; repeat calls reuse the cached triple.
+    """
+
+    @pytest.mark.asyncio
+    async def test_no_resolution_at_construction(
+        self,
+        composer: FakeComposer,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        make_service(composer, config, model_resolution=resolution)
+        assert resolution.calls == 0
+
+    @pytest.mark.asyncio
+    async def test_ensure_resolved_resolves_once_and_is_idempotent(
+        self,
+        composer: FakeComposer,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        service = make_service(composer, config, model_resolution=resolution)
+
+        first = await service.ensure_resolved()
+        second = await service.ensure_resolved()
+
+        assert resolution.calls == 1
+        assert first is second
+
+    @pytest.mark.asyncio
+    async def test_analyze_resolves_lazily_on_first_use(
+        self,
+        composer: FakeComposer,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        novel = make_novel()
+        chapter = make_chapter(novel_id=novel.id)
+
+        service = make_service(composer, config, model_resolution=resolution)
+        service._novel_repo.get_by_id = AsyncMock(return_value=novel)
+        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])
+
+        with patch_mode1() as (MockAgent, _MockDeps, _mc):
+            mock_agent = MagicMock(spec=["run"])
+            mock_agent.run = AsyncMock(return_value=make_agent_output())
+            MockAgent.return_value = mock_agent
+
+            await consume(service.analyze(novel.id, None, uuid.uuid4()))
+
+        assert resolution.calls == 1
+
+    @pytest.mark.asyncio
+    async def test_analyze_after_ensure_resolved_reuses_cache(
+        self,
+        composer: FakeComposer,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        novel = make_novel()
+        chapter = make_chapter(novel_id=novel.id)
+
+        service = make_service(composer, config, model_resolution=resolution)
+        service._novel_repo.get_by_id = AsyncMock(return_value=novel)
+        service._chapter_repo.list_by_novel = AsyncMock(return_value=[chapter])
+
+        await service.ensure_resolved()
+
+        with patch_mode1() as (MockAgent, _MockDeps, _mc):
+            mock_agent = MagicMock(spec=["run"])
+            mock_agent.run = AsyncMock(return_value=make_agent_output())
+            MockAgent.return_value = mock_agent
+
+            await consume(service.analyze(novel.id, None, uuid.uuid4()))
+
+        assert resolution.calls == 1

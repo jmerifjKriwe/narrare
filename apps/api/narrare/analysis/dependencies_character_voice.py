@@ -3,10 +3,16 @@
 Extracted from ``dependencies.py`` to keep that file under the 200-line
 limit (RULE-04). Production wiring for ``CharacterVoiceService`` lives here.
 
-Model acquisition follows the per-user model-routing cascade: the factory
-resolves ``LLMIntent.VOICE`` for the authenticated user (+ novel for
-project-level overrides) and passes the resolved config + credentials into
-the service. No business logic lives here — only wiring.
+Model acquisition follows the per-user model-routing cascade with LAZY
+first-use resolution (ADR-086): the factory wires a
+``LazyModelResolution`` around ``resolver.resolve(LLMIntent.VOICE,
+user_id, novel_id)`` and passes it into the service — no resolution at
+construction (FastAPI solves all sub-dependencies BEFORE body
+validation, so an eager resolve here would preempt legitimate 422s with
+400/500s). The cascade runs on the service's first
+``ensure_resolved()``; the router keeps pre-header 400 semantics by
+calling it before the SSE stream starts. No business logic lives here —
+only wiring.
 """
 
 from __future__ import annotations
@@ -20,7 +26,10 @@ from narrare._app.dependencies import (
     SessionDep,
     get_current_user_id,
 )
-from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.dependencies_services import (
+    LazyModelResolution,
+    get_model_routing_resolver,
+)
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
@@ -35,9 +44,11 @@ async def get_character_voice_service(
     """Create a CharacterVoiceService with per-user resolved model routing.
 
     FastAPI dependency: novel_id comes from the route path, user_id and
-    session are resolved via Depends. The model is resolved through the
-    per-user cascade; ``ConfigurationError`` propagates when the user has
-    no provider configured (analysis routers are auth-mandatory).
+    session are resolved via Depends. The model resolves through the
+    per-user cascade on the service's first ``ensure_resolved()`` — NOT
+    here (ADR-086): construction happens pre-body-validation, and eager
+    resolution would preempt 422s. ``ConfigurationError`` still
+    propagates loudly at first use (analysis routers are auth-mandatory).
 
     Production wiring:
     - NovelRepository for novel access control + language/metadata resolution.
@@ -46,8 +57,10 @@ async def get_character_voice_service(
       ``voice_analysis`` (Layer-0 storage contract, ADR-055).
     - RelationshipRepository for populating ``kb_relationships`` (character
       relationships are charakterprägend for voice profiling).
-    - ModelRegistry + ResolvedModelConfig for the CharacterVoiceAgent
-      (AI-powered qualitative voice profiling).
+    - ModelRegistry + lazy model resolution (ADR-086) for the
+      CharacterVoiceAgent (AI-powered qualitative voice profiling).
+      The resolved credentials reach the agent-runner
+      ``registry.prepare`` resolution point at consumption time.
     - PromptComposer for resolving the governed character-voice system
       prompt via the cascade (Mode 1, ADR-054).
     - InvocationPipeline for invocation evidence (ADR-040 / ADR-045).
@@ -64,10 +77,12 @@ async def get_character_voice_service(
     from narrare.novels.repository import NovelRepository
 
     resolver = get_model_routing_resolver(session)
-    resolved = await resolver.resolve(
-        LLMIntent.VOICE,
-        UUID(user_id),
-        novel_id,
+    model_resolution = LazyModelResolution(
+        lambda: resolver.resolve(
+            LLMIntent.VOICE,
+            UUID(user_id),
+            novel_id,
+        )
     )
 
     registry = get_model_registry()
@@ -84,9 +99,7 @@ async def get_character_voice_service(
         kb_repo=kb_repo,
         relationship_repo=relationship_repo,
         model_registry=registry,
-        model_config=resolved.config,
+        model_resolution=model_resolution,
         composer=composer,
         invocation_pipeline=get_invocation_pipeline(),
-        api_key=resolved.api_key,
-        base_url=resolved.base_url,
     )

@@ -88,6 +88,12 @@ async def analyze_character_voice(
             yield f"data: {json.dumps(enrich_sse_data(error_event.model_dump(mode='json')))}\n\n"
         yield "data: [DONE]\n\n"
 
+    # ADR-086 Decision 3: resolve the per-user model routing BEFORE the
+    # StreamingResponse is constructed, so ConfigurationError surfaces as
+    # a proper pre-header 400 instead of an in-band SSE error. Idempotent
+    # one-line lifecycle call — RULE-06-compatible service delegation.
+    await service.ensure_resolved()
+
     return StreamingResponse(
         event_stream(),
         media_type="text/event-stream",
