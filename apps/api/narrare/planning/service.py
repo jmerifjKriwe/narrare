@@ -15,18 +15,16 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.planning._helpers import (
-    ai_suggest_stage,
+    build_remap_items,
     chapter_in_storyboard,
     compute_sync,
     ensure_outlines,
     find_position,
-    should_use_ai_remap,
     to_outline_response,
 )
 from narrare.planning.schemas import (
     OutlineResponse,
     OutlineUpdateRequest,
-    RemapPreviewItem,
     RemapResponse,
     StoryboardResponse,
     StoryboardStageResponse,
@@ -43,6 +41,7 @@ if TYPE_CHECKING:
     from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare.novels.models import Novel
     from narrare.planning.contracts import OutlineRepositoryProtocol
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.planning.remap import AIRemapService
@@ -68,6 +67,7 @@ class StoryboardService:
         *,
         api_key: str | None = None,
         base_url: str | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._outline_repo = outline_repo
         self._chapter_repo = chapter_repo
@@ -77,6 +77,7 @@ class StoryboardService:
         self._model_config = model_config
         self._api_key = api_key
         self._base_url = base_url
+        self._invocation_pipeline = invocation_pipeline
 
     # ------------------------------------------------------------------
     # Storyboard view
@@ -242,31 +243,21 @@ class StoryboardService:
         outlines = await self._outline_repo.get_all_for_novel(novel_id)
         outline_map = {o.chapter_id: o for o in outlines}
         new_adapter = adapter_registry.get(new_structure)
-        total = max(len(chapters), 1)
 
-        # Determine whether to use AI-powered stage suggestions
-        use_ai = await should_use_ai_remap(self._ai_remap_service, chapters)
-
-        items: list[RemapPreviewItem] = []
-        for idx, ch in enumerate(chapters, start=1):
-            outline = outline_map.get(ch.id)
-            old_stage = outline.stage_assignment if outline else ""
-
-            if use_ai and self._ai_remap_service is not None and ch.summary:
-                new_stage = await ai_suggest_stage(
-                    self._ai_remap_service, ch.summary, new_structure, idx, total, new_adapter
-                )
-            else:
-                new_stage = new_adapter.suggest_stage(idx, total)
-
-            items.append(
-                RemapPreviewItem(
-                    chapter_id=ch.id,
-                    chapter_title=ch.title,
-                    old_stage=old_stage,
-                    new_stage=new_stage,
-                )
-            )
+        # AI-powered stage suggestions when service + coverage + model allow;
+        # degrades to the position-ratio heuristic per chapter (WRITE-012).
+        items = await build_remap_items(
+            chapters,
+            outline_map,
+            new_adapter,
+            new_structure,
+            self._ai_remap_service,
+            self._model_registry,
+            self._model_config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+            invocation_pipeline=self._invocation_pipeline,
+        )
 
         if confirm:
             for item in items:

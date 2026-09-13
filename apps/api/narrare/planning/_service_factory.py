@@ -10,12 +10,17 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare._app.dependencies import get_model_registry
+from narrare._app.dependencies import (
+    get_composer,
+    get_invocation_pipeline,
+    get_model_registry,
+)
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.chapters.repository import ChapterRepository
 from narrare.novels.repository import NovelRepository
 from narrare.planning.repository import OutlineRepository
 from narrare.planning.service import StoryboardService
+from narrare_core.planning.remap import AIRemapService
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -37,7 +42,10 @@ async def get_storyboard_service(
     Validates novel existence BEFORE calling the resolver to prevent
     auto-creation of project_settings for a nonexistent novel (FK
     constraint violation). Gracefully degrades when no AI provider is
-    configured — storyboard, outlines, and sync work without AI.
+    configured — storyboard, outlines, and sync work without AI; the
+    governed AIRemapService is injected unconditionally (composer-based,
+    provider-independent) and only engages on explicit remap requests
+    with sufficient chapter-summary coverage.
     """
     from narrare_core.llm.intents import LLMIntent
 
@@ -67,8 +75,10 @@ async def get_storyboard_service(
         outline_repo=OutlineRepository(session),
         chapter_repo=ChapterRepository(session),
         novel_repo=novel_repo,
+        ai_remap_service=AIRemapService(composer=get_composer()),
         model_registry=registry,
         model_config=model_config,
         api_key=api_key,
         base_url=base_url,
+        invocation_pipeline=get_invocation_pipeline(),
     )

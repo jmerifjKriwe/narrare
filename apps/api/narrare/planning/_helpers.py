@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, cast
 
-from narrare.planning.schemas import BeatSchema, OutlineResponse
+from narrare.planning.schemas import BeatSchema, OutlineResponse, RemapPreviewItem
 from narrare_core.planning.adapters.base import BeatDef
 from narrare_core.planning.models import ChapterOutlineData, SyncStatus
 from narrare_core.planning.sync import StructuralSyncChecker
@@ -23,6 +23,10 @@ if TYPE_CHECKING:
     from narrare.chapters.models import Chapter
     from narrare.planning.models import ChapterOutline
     from narrare.planning.schemas import ChapterInStoryboard
+    from narrare_core.agents.summary_agent import ChapterSummaryAgent
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
+    from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm.gateway import ModelRegistry
 
     class _OutlineRepoProtocol(Protocol):
         """Minimal outline repository interface — duck-typing for ensure_outlines."""
@@ -198,12 +202,14 @@ async def ai_suggest_stage(
     position: int,
     total: int,
     adapter: object,
+    agent: object | None = None,
+    invocation_pipeline: InvocationPipeline | None = None,
 ) -> str:
     """Ask AIRemapService to suggest a stage from summary content.
 
-    Creates a ChapterSummaryAgent if model_registry + model_config
-    are available for deeper AI analysis. Falls back to adapter
-    suggestion when the AI service returns empty.
+    Forwards the optional agent and invocation pipeline to the governed
+    remap service. Falls back to adapter suggestion when the AI service
+    returns empty (no agent, composition failure, or invalid output).
     """
     from narrare_core.planning.remap import AIRemapService
 
@@ -215,11 +221,11 @@ async def ai_suggest_stage(
         return ""
 
     try:
-        agent: object = None
         stage = await ai_remap_service.analyze_chapter_role(
             summary=summary,
             structure_type=structure_type,
             agent=agent,
+            invocation_pipeline=invocation_pipeline,
         )
         if stage:
             return stage
@@ -227,6 +233,127 @@ async def ai_suggest_stage(
         _logger.warning("ai_stage_suggestion_failed", exc_info=exc)
 
     # Fall back to position-ratio heuristic
+    from narrare_core.planning.adapters.base import StructureAdapter
+
+    if isinstance(adapter, StructureAdapter):
+        return adapter.suggest_stage(position, total)
+    return ""
+
+
+async def build_remap_agent(
+    model_registry: ModelRegistry | None,
+    model_config: ResolvedModelConfig | None,
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> ChapterSummaryAgent | None:
+    """Lazily build the remap agent from the resolved model routing.
+
+    Resolution goes through the single assembly point
+    ``ModelRegistry.prepare()`` (Task 6b — Task 4/5 pattern): model +
+    intent-aware runtime settings + usage limits as one coherent triple
+    (PLAN — the intent the storyboard factory routes this config for,
+    mirroring ``_timeline_consistency_helpers.py``).
+
+    Known limitation (documented in-code per the guard's design):
+    ``AIRemapService.analyze_chapter_role`` (packages/core) invokes
+    ``agent.run(prompt, deps)`` with no model_settings/usage_limits
+    surface, so only ``prepared.model`` can be consumed here — the
+    settings/limits halves of the triple stop at that core boundary
+    (same gap class as the wiki path noted in
+    ``test_prepare_coverage_guard.py``). Widening the core remap
+    surface is out of scope for this file; the guard itself stays
+    intact (no sanctioned-exception entry).
+
+    Returns ``None`` when no provider is configured (model_config is
+    None) or model construction fails — AI remap then degrades to the
+    position-ratio heuristic per chapter (RULE-11: logged, never silent).
+    """
+    if model_registry is None or model_config is None:
+        return None
+    from uuid import uuid4
+
+    from narrare_core.agents.summary_agent import ChapterSummaryAgent
+    from narrare_core.llm.intents import LLMIntent
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
+
+    try:
+        resolved = DefaultRunLimitResolver().resolve(
+            config=model_config, budget=None, invocation_id=uuid4()
+        )
+        prepared = await model_registry.prepare(
+            model_config,
+            intent=LLMIntent.PLAN,
+            usage_limits=resolved.usage_limits,
+            api_key=api_key,
+            base_url=base_url,
+        )
+        # Only the model half crosses the AIRemapService boundary — see
+        # the limitation note in the docstring above.
+        return ChapterSummaryAgent(model=prepared.model)
+    except Exception as exc:
+        _logger.warning("remap_agent_build_failed", exc_info=exc)
+        return None
+
+
+async def build_remap_items(
+    chapters: list[Chapter],
+    outline_map: Mapping[uuid.UUID, ChapterOutline],
+    new_adapter: object,
+    structure_type: str,
+    ai_remap_service: object | None,
+    model_registry: ModelRegistry | None,
+    model_config: ResolvedModelConfig | None,
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    invocation_pipeline: InvocationPipeline | None = None,
+) -> list[RemapPreviewItem]:
+    """Build remap preview items, suggesting stages via AI when warranted.
+
+    The AI path (WRITE-012) requires an injected AIRemapService, >=50%
+    chapter-summary coverage, and a resolvable model; the agent is built
+    lazily once per remap call. Chapters without a summary always use the
+    position-ratio heuristic; every unmet condition degrades per chapter
+    (RULE-11: logged, never silent).
+    """
+    use_ai = await should_use_ai_remap(ai_remap_service, chapters)
+    remap_agent = (
+        await build_remap_agent(model_registry, model_config, api_key=api_key, base_url=base_url)
+        if use_ai
+        else None
+    )
+    total = max(len(chapters), 1)
+    items: list[RemapPreviewItem] = []
+    for idx, ch in enumerate(chapters, start=1):
+        outline = outline_map.get(ch.id)
+        old_stage = outline.stage_assignment if outline else ""
+        if use_ai and ai_remap_service is not None and ch.summary:
+            new_stage = await ai_suggest_stage(
+                ai_remap_service,
+                ch.summary,
+                structure_type,
+                idx,
+                total,
+                new_adapter,
+                agent=remap_agent,
+                invocation_pipeline=invocation_pipeline,
+            )
+        else:
+            new_stage = _adapter_suggested_stage(new_adapter, idx, total)
+        items.append(
+            RemapPreviewItem(
+                chapter_id=ch.id,
+                chapter_title=ch.title,
+                old_stage=old_stage,
+                new_stage=new_stage,
+            )
+        )
+    return items
+
+
+def _adapter_suggested_stage(adapter: object, position: int, total: int) -> str:
+    """Position-ratio stage suggestion; empty when not a StructureAdapter."""
     from narrare_core.planning.adapters.base import StructureAdapter
 
     if isinstance(adapter, StructureAdapter):
