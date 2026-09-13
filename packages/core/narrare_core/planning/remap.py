@@ -5,11 +5,14 @@ within a given story structure. Falls back to position-ratio heuristic
 when insufficient summaries exist.
 
 Invocation pipeline (ADR-048): ``analyze_chapter_role()`` accepts an
-optional ``invocation_pipeline`` and calls ``compose_invocation()`` with
-Mode 2 (agent-internal composition) because ``ChapterSummaryAgent``
-composes its prompt internally from the summary and structure type.
-When ``invocation_pipeline`` is ``None`` (backward-compatible default),
-the pipeline is gracefully skipped.
+optional ``invocation_pipeline`` and composes its prompt through the
+governed EXTRACT/remap route (Mode 1 — composer-driven). The remap
+template (``analysis/en/remap/system.md``) is resolved, validated, and
+versioned by PromptRegistry/PromptComposer; the composed system prompt
+is passed to ``agent.run()`` as the runtime prompt. When
+``invocation_pipeline`` is ``None`` (backward-compatible default), the
+prompt is composed directly via ``composer.build()`` without pipeline
+evidence.
 
 See ADR-015 Phase 5 — Storyboard AI Enhancement.
 """
@@ -17,98 +20,83 @@ See ADR-015 Phase 5 — Storyboard AI Enhancement.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from narrare_core.ai_invocation import (
-    ManualInjectionDeclaration,
     PromptInvocationContext,
     compose_invocation,
 )
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
+    from narrare_core.prompts.composer import PromptComposer
 
 logger = logging.getLogger(__name__)
 _remap_structlog = structlog.get_logger(__name__)
 
-# Load bundled remap prompt template (loaded once at module level)
-_remap_prompt_template: str | None = None
 
-# Manual-injection declaration for Mode 2 (agent-internal composition).
-# ChapterSummaryAgent composes its prompt internally from the summary and
-# structure type — the service delegates to agent.run() with a rendered
-# prompt template.
-_REMAP_MANUAL_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "ChapterSummaryAgent receives a rendered prompt template with the "
-        "chapter summary and structure type. The agent internally processes "
-        "this prompt and returns a stage classification. No PromptComposer "
-        "is used at the service level."
-    ),
-    variables=("summary", "structure_type"),
-    injection_mechanism="agent_deps",
-    precedence_level="generated_suggestion",
-)
-
-
-def _get_remap_prompt() -> str:
-    """Load the bundled remap prompt template (lazy, cached)."""
-    global _remap_prompt_template
-    if _remap_prompt_template is None:
-        path = (
-            Path(__file__).parent.parent
-            / "prompts"
-            / "_bundled"
-            / "analysis"
-            / "en"
-            / "remap"
-            / "system.md"
-        )
-        _remap_prompt_template = path.read_text(encoding="utf-8")
-    return _remap_prompt_template
-
-
-async def _compose_remap_invocation(
-    invocation_pipeline: InvocationPipeline,
+async def _compose_remap_system_prompt(
+    composer: PromptComposer,
+    invocation_pipeline: InvocationPipeline | None,
     structure_type: str,
     summary: str,
-) -> None:
-    """Compose a remap invocation via the pipeline (Mode 2).
+) -> str | None:
+    """Compose the remap prompt via the governed EXTRACT/remap route.
 
-    Called before ``agent.run()`` to record evidence that a remap
-    classification was requested. Uses ``compose_invocation()`` with a
-    ``ManualInjectionDeclaration`` because ``ChapterSummaryAgent``
-    composes its prompt internally.
+    Mode 1 (composer-driven, ADR-048): when an ``invocation_pipeline``
+    is wired, ``compose_invocation()`` merges pipeline enrichment into
+    the context, composes the real prompt, and records invocation
+    evidence in one step. On pipeline failure it falls back to a direct
+    ``composer.build()`` (evidence-less but still governed). A total
+    composition failure returns ``None`` so the caller degrades to the
+    position-ratio heuristic (RULE-11: logged, never silent).
 
     Args:
-        invocation_pipeline: The invocation pipeline.
+        composer: The injected PromptComposer (governed route owner).
+        invocation_pipeline: Optional pipeline for enrichment + evidence.
         structure_type: The story structure type.
         summary: The chapter summary text.
 
-    Raises:
-        Any exceptions are logged and swallowed — remap proceeds
-        without pipeline evidence on failure.
+    Returns:
+        The composed system prompt, or ``None`` when composition failed.
     """
-    ctx = PromptInvocationContext(
-        feature_id="planning_remap",
-        intent=LLMIntent.PLAN,
+    context = PromptContext(
         language="en",
+        mode="remap",
+        extra={"structure_type": structure_type, "summary": summary},
     )
+    if invocation_pipeline is not None:
+        try:
+            result = await compose_invocation(
+                invocation_pipeline=invocation_pipeline,
+                invocation_context=PromptInvocationContext(
+                    feature_id="planning_remap",
+                    intent=LLMIntent.EXTRACT,
+                    language="en",
+                ),
+                composer=composer,
+                prompt_context=context,
+                intent=LLMIntent.EXTRACT,
+            )
+            assert result.composed_prompt is not None  # Mode 1 always composes
+            return result.composed_prompt.system
+        except Exception:
+            _remap_structlog.warning(
+                "remap_invocation_compose_failed",
+                feature_id="planning_remap",
+            )
     try:
-        await compose_invocation(
-            invocation_pipeline=invocation_pipeline,
-            invocation_context=ctx,
-            manual_injection=_REMAP_MANUAL_INJECTION,
-        )
+        return (await composer.build(LLMIntent.EXTRACT, context)).system
     except Exception:
         _remap_structlog.warning(
-            "remap_invocation_compose_failed",
+            "remap_prompt_compose_failed",
             feature_id="planning_remap",
         )
+        return None
 
 
 class AIRemapService:
@@ -120,6 +108,15 @@ class AIRemapService:
     """
 
     DEFAULT_COVERAGE_THRESHOLD = 0.5  # 50%
+
+    def __init__(self, composer: PromptComposer) -> None:
+        """Initialize the service with its governed prompt composer.
+
+        Args:
+            composer: PromptComposer used to build the remap prompt via
+                the EXTRACT/remap route (RULE-02: no raw template loads).
+        """
+        self._composer = composer
 
     async def analyze_chapter_role(
         self,
@@ -134,8 +131,9 @@ class AIRemapService:
             summary: The chapter summary text.
             structure_type: The story structure type (e.g. "three_act").
             agent: Optional ChapterSummaryAgent instance for AI analysis.
-            invocation_pipeline: Optional InvocationPipeline for evidence
-                recording (ADR-048). When ``None``, pipeline is skipped
+            invocation_pipeline: Optional InvocationPipeline for enrichment
+                and evidence recording (ADR-048 Mode 1). When ``None``,
+                the prompt is composed directly without pipeline evidence
                 (backward-compatible default).
 
         Returns:
@@ -144,28 +142,27 @@ class AIRemapService:
         if not summary.strip():
             return ""
 
-        if agent is not None:
-            # Record invocation evidence via pipeline (ADR-048 Mode 2).
-            # ChapterSummaryAgent composes its prompt internally, so we use
-            # a manual-injection declaration. Failures are logged and
-            # swallowed — generation proceeds regardless (RULE-11).
-            if invocation_pipeline is not None:
-                await _compose_remap_invocation(invocation_pipeline, structure_type, summary)
+        if agent is None:
+            return ""
 
-            # Load prompt from bundled template (RULE-02: prompts in core/prompts/)
-            prompt_template = _get_remap_prompt()
-            prompt = prompt_template.replace("{{structure_type}}", structure_type).replace(
-                "{{summary}}", summary
-            )
-            deps_type = type("Deps", (), {"language": "en"})()
-            try:
-                # narrare: allow-agent reason="injected agent, not instantiated here"
-                result = await agent.run(prompt=prompt, deps=deps_type)
-                stage = result.summary.strip().lower()
-                if stage:
-                    return stage
-            except Exception as exc:
-                logger.warning("analyze_chapter_role_failed", exc_info=exc)
+        # Compose the prompt via the governed EXTRACT/remap route
+        # (RULE-02). Composition failure degrades to "" so the caller
+        # falls back to the position heuristic (RULE-11).
+        prompt = await _compose_remap_system_prompt(
+            self._composer, invocation_pipeline, structure_type, summary
+        )
+        if prompt is None:
+            return ""
+
+        deps_type = type("Deps", (), {"language": "en"})()
+        try:
+            # narrare: allow-agent reason="injected agent, not instantiated here"
+            result = await agent.run(prompt=prompt, deps=deps_type)
+            stage = result.summary.strip().lower()
+            if stage:
+                return stage
+        except Exception as exc:
+            logger.warning("analyze_chapter_role_failed", exc_info=exc)
 
         return ""
 

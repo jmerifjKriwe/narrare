@@ -15,8 +15,16 @@ import pytest
 from narrare.planning._helpers import ai_suggest_stage, should_use_ai_remap
 from narrare.planning.service import StoryboardService
 from narrare_core.planning.remap import AIRemapService
+from narrare_core.prompts.composer import PromptComposer
+from narrare_core.prompts.registry import PromptRegistry
 from tests.factories import make_chapter, make_chapter_outline, make_novel
 from tests.fakes import FakeChapterRepository, FakeNovelRepository, FakeOutlineRepository
+
+
+def make_ai_remap_service() -> AIRemapService:
+    """AIRemapService with a real (governed) composer — FO-9 contract."""
+    return AIRemapService(composer=PromptComposer(PromptRegistry()))
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -40,7 +48,7 @@ def novel_repo() -> FakeNovelRepository:
 
 @pytest.fixture
 def ai_remap_service() -> AIRemapService:
-    return AIRemapService()
+    return make_ai_remap_service()
 
 
 @pytest.fixture
@@ -113,7 +121,7 @@ class TestShouldUseAIRemap:
         _seed_chapters(chapter_repo, novel_id, 3, with_summaries=True)
 
         chapters = await chapter_repo.list_by_novel(novel_id)
-        result = await should_use_ai_remap(AIRemapService(), chapters)
+        result = await should_use_ai_remap(make_ai_remap_service(), chapters)
 
         assert result is True
 
@@ -131,7 +139,7 @@ class TestShouldUseAIRemap:
             ch.summary = "Only this chapter has a summary."
 
         chapters = await chapter_repo.list_by_novel(novel_id)
-        result = await should_use_ai_remap(AIRemapService(), chapters)
+        result = await should_use_ai_remap(make_ai_remap_service(), chapters)
 
         assert result is False
 
@@ -196,7 +204,7 @@ class TestAISuggestStage:
 
         adapter = adapter_registry.get("three_act")
         stage = await ai_suggest_stage(
-            ai_remap_service=AIRemapService(),
+            ai_remap_service=make_ai_remap_service(),
             summary="A test summary.",
             structure_type="three_act",
             position=1,

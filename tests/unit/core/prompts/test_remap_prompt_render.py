@@ -13,13 +13,19 @@ already satisfied on the governed EXTRACT route: ``avoidance_patterns`` is
 declared optional (route_table LLMIntent.EXTRACT), ``user_preferences`` is
 a PromptContext dataclass field (always present). The pre-existing
 ``{{structure_type}}`` / ``{{summary}}`` demands (L11/L13, above the old
-cutoff) are unchanged and supplied route-exactly per the remap
-ManualInjectionDeclaration (``variables=("summary", "structure_type")`` in
-``packages/core/narrare_core/planning/remap.py``).
+cutoff) are unchanged and supplied route-exact per the service's
+governed context supply (``extra={"structure_type": …, "summary": …}``
+in ``packages/core/narrare_core/planning/remap.py`` — FO-9 composer
+migration).
 
 * ``## Output Format`` → ``### Output Format`` (L3 children become siblings)
 * ``## Do NOT`` → ``### Do NOT``
 * prompt_version 1.0.1 → 1.1.0
+
+Do-NOT item 4 (2026-09-12): a fourth Do-NOT bullet was added (no invented
+stages/characters/events beyond the provided structure and summary),
+resolving the prompt-structure checker warning (minimum 4 items);
+prompt_version 1.1.0 → 1.2.0 and the ai-gate baseline seed removed.
 
 EXTRACT-route enriched behavior (SPECIAL): compose is asserted non-crashing
 with BOTH empty and enriched ``avoidance_patterns`` / ``user_preferences``.
@@ -34,11 +40,13 @@ from narrare_core.prompts.registry import PromptRegistry
 from narrare_core.shared.frontmatter import parse_frontmatter
 from tests.unit.core._bundled import bundled_prompts_root
 
-# Distinctive Do-NOT content from the restored tail (dropped L31-35 pre-slice).
+# Distinctive Do-NOT content from the restored tail (dropped L31-35 pre-slice)
+# plus the item-4 bullet added 2026-09-12 (checker minimum 4 items).
 _DO_NOT_BULLETS = (
     "Do NOT guess — if no stage fits closely, say so and explain why",
     "Do NOT return multiple stages — choose the single best match",
     "Do NOT rewrite or edit the content — analyze the structure only",
+    "Do NOT invent stages, characters, or events beyond the provided structure and summary",
 )
 
 # Restored tail sections (dropped L15-43 pre-slice).
@@ -109,10 +117,26 @@ class TestRemapHeaderSurgery:
         for section in _RESTORED_TAIL_SECTIONS:
             assert section in resolved.system_prompt, f"missing section {section!r}"
 
-    def test_prompt_version_bumped_to_1_1_0(self) -> None:
-        """Header surgery bumps the template minor version (1.0.1 → 1.1.0)."""
+    def test_prompt_version_bumped_to_1_2_0(self) -> None:
+        """Content changes bump the template minor version (1.0.1 → 1.1.0
+        header surgery; 1.1.0 → 1.2.0 Do-NOT item 4)."""
         parsed = parse_frontmatter(_prompt_path().read_text(encoding="utf-8"))
-        assert parsed.metadata.get("prompt_version") == "1.1.0"
+        assert parsed.metadata.get("prompt_version") == "1.2.0"
+
+    def test_do_not_section_has_minimum_four_items(self) -> None:
+        """The Do-NOT section carries at least 4 bullets — the
+        prompt-structure checker minimum (baseline seed genuinely resolved,
+        not baselined)."""
+        body = parse_frontmatter(_prompt_path().read_text(encoding="utf-8")).content
+        lines = body.splitlines()
+        start = next(i for i, ln in enumerate(lines) if ln.startswith("### Do NOT"))
+        items = 0
+        for ln in lines[start + 1 :]:
+            if ln.startswith("#"):
+                break
+            if ln.lstrip().startswith("- "):
+                items += 1
+        assert items >= 4, "Do-NOT section below checker minimum of 4 items"
 
     def test_source_keeps_pre_existing_demands(self) -> None:
         """The demotion does not touch the pre-existing structure_type /
