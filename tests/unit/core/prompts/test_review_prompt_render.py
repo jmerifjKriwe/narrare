@@ -63,9 +63,14 @@ def _prompt_path():
 
 def _route_context(kb_relationships: str = "") -> PromptContext:
     """Route-exact context mirroring get_review_prompt enrichment:
-    word_target/word_count extras, user_preferences, and the ten KB
+    word_target_line/word_count extras, user_preferences, and the ten KB
     extras from ``kb_context_extras`` (populated variant probed via
-    ``kb_relationships`` — the caller-supplied production shape)."""
+    ``kb_relationships`` — the caller-supplied production shape).
+
+    Item F (2026-09-12): the word-target label moved into the value
+    ({{word_target_line}}, label-in-value / append-to-previous-line) — the
+    supplier builds the full line "\n- Word target: N" instead of supplying
+    a bare number against a static template label."""
     ctx = PromptContext(
         language="en",
         writing_language="en",
@@ -76,7 +81,7 @@ def _route_context(kb_relationships: str = "") -> PromptContext:
     )
     ctx.mode = "review"
     ctx.extra = {
-        "word_target": "2000",
+        "word_target_line": "\n- Word target: 2000",
         "word_count": "1800",
         "user_preferences": "- Prefers concise sentences",
         "kb_characters": "",
@@ -117,10 +122,11 @@ class TestReviewHeaderSurgery:
         for section in _ALREADY_LIVE_SECTIONS:
             assert section in resolved.system_prompt, f"regression: {section!r} dropped"
 
-    def test_prompt_version_bumped_to_1_4_0(self) -> None:
-        """Header surgery bumps the template minor version (1.3.1 → 1.4.0)."""
+    def test_prompt_version_bumped_to_1_5_0(self) -> None:
+        """Header surgery bumped 1.3.1 → 1.4.0 (R2 Batch D); Item F
+        (word-target label-in-value) bumps 1.4.0 → 1.5.0."""
         parsed = parse_frontmatter(_prompt_path().read_text(encoding="utf-8"))
-        assert parsed.metadata.get("prompt_version") == "1.4.0"
+        assert parsed.metadata.get("prompt_version") == "1.5.0"
 
 
 class TestReviewTailActivation:
