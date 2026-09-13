@@ -9,8 +9,7 @@
     "analysis/en/beta_reader_deepdive | Missing recommended variable {{kb_characters}} for category 'analysis' (SHOULD)",
     "analysis/en/beta_reader_deepdive | Missing recommended variable {{kb_factions}} for category 'analysis' (SHOULD)",
     "analysis/en/beta_reader_deepdive | Missing recommended variable {{kb_locations}} for category 'analysis' (SHOULD)",
-    "analysis/en/beta_reader_deepdive | Missing recommended variable {{kb_relationships}} for category 'analysis' (SHOULD)",
-    "analysis/en/remap | Do-NOT section has only 3 items (minimum: 4)"
+    "analysis/en/beta_reader_deepdive | Missing recommended variable {{kb_relationships}} for category 'analysis' (SHOULD)"
   ],
   "frontmatter_schema_warnings": [],
   "adoption_debt": [

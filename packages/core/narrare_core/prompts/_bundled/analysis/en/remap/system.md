@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.1.0"
+prompt_version: "1.2.0"
 ---
 
 ## System Prompt
@@ -33,6 +33,7 @@ Respond with the stage ID of the best-matching narrative stage. If no stage fits
 - Do NOT guess — if no stage fits closely, say so and explain why
 - Do NOT return multiple stages — choose the single best match
 - Do NOT rewrite or edit the content — analyze the structure only
+- Do NOT invent stages, characters, or events beyond the provided structure and summary — map only to the stages given
 
 ### Constraints
 
