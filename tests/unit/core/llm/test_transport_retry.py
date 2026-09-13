@@ -11,7 +11,7 @@ retry at the correct runtime boundary:
 2. **Behavioral effect** (mandatory, fail-if-changed): changing the governed
    ``max_retries`` changes the *observable* number of HTTP attempts the SDK
    makes against a persistent transient error. The SDK's real retry loop runs;
-   only the network is faked (``httpx.MockTransport``) — the retry behaviour
+   only the network is faked (``httpx2.MockTransport``) — the retry behaviour
    under test is NOT mocked away.
 3. **Factory wiring**: each provider factory passes the governed value to its
    SDK client (``client.max_retries`` for OpenAI/Anthropic/Groq;
@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-import httpx
+import httpx2
 import pytest
 from openai import AsyncOpenAI, RateLimitError
 
@@ -88,10 +88,10 @@ async def _count_429_attempts(max_retries: int) -> int:
     """
     attempts = 0
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         nonlocal attempts
         attempts += 1
-        return httpx.Response(
+        return httpx2.Response(
             status_code=429,
             json={
                 "error": {
@@ -101,13 +101,15 @@ async def _count_429_attempts(max_retries: int) -> int:
             },
         )
 
-    transport = httpx.MockTransport(handler)
+    transport = httpx2.MockTransport(handler)
     # Constructed exactly as the provider factory does:
     # AsyncOpenAI(api_key=..., max_retries=get_transport_max_retries()).
+    # openai>=3 consumes the httpx2 line (httpx 2.x distribution) — the
+    # injected mock client must be httpx2 to match the SDK's transport types.
     client = AsyncOpenAI(
         api_key="sk-effect-test",
         max_retries=max_retries,
-        http_client=httpx.AsyncClient(transport=transport),
+        http_client=httpx2.AsyncClient(transport=transport),
     )
     try:
         with pytest.raises(RateLimitError):
