@@ -38,6 +38,7 @@ See: docs/_shared/CONSTRAINTS.md (RULE-11)
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -127,13 +128,21 @@ def _is_allowlisted(rel_path: str) -> bool:
 
 
 def _iter_markdown(scan_root: Path) -> Iterator[Path]:
-    """Yield ``*.md`` files under *scan_root*, skipping vendored/cache dirs."""
+    """Yield ``*.md`` files under *scan_root*, pruning vendored/cache dirs.
+
+    Traversal pruning (``os.walk`` with in-place ``dirnames`` filtering) instead
+    of post-match filtering: excluded subtrees (``.venv``, ``node_modules``,
+    ``.git``, …) are never entered, keeping cold-cache scans fast on trees with
+    large vendored directories. The yielded file set is identical to the
+    previous ``rglob`` + post-filter approach.
+    """
     if not scan_root.exists():
         return
-    for path in scan_root.rglob("*.md"):
-        if any(part in _SKIP_DIRS for part in path.relative_to(scan_root).parts):
-            continue
-        yield path
+    for dirpath, dirnames, filenames in os.walk(scan_root):
+        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
+        for name in filenames:
+            if name.endswith(".md"):
+                yield Path(dirpath) / name
 
 
 def check_removed_governance_refs(

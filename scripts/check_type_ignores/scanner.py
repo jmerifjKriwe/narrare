@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 import re
 import tokenize
 from dataclasses import dataclass, field
@@ -141,26 +142,28 @@ def _get_category(file: Path) -> str:
     return "other"
 
 
-def _should_skip(file: Path) -> bool:
-    """Return True for directories / files that should never be scanned."""
-    return any(part in EXCLUDE_DIRS for part in file.parts)
-
-
 # ── Scanning ─────────────────────────────────────────────────────────────────
 
 
 def scan_codebase() -> ScanResult:
-    """Walk all Python files under *SCAN_DIRS* and collect type-ignore data."""
+    """Walk all Python files under *SCAN_DIRS* and collect type-ignore data.
+
+    Directory pruning (``os.walk`` with in-place ``dirnames`` filtering against
+    ``EXCLUDE_DIRS``) instead of post-match filtering: excluded subtrees
+    (``.venv``, ``__pycache__``, …) are never entered, keeping cold-cache scans
+    fast on trees with large vendored directories. The scanned file set is
+    identical to the previous ``rglob`` + ``_should_skip`` post-filter approach.
+    """
     result = ScanResult()
 
     for scan_root in SCAN_DIRS:
         if not scan_root.exists():
             continue
-        for py_file in scan_root.rglob("*.py"):
-            if _should_skip(py_file):
-                continue
-
-            _scan_single_file(py_file, result)
+        for dirpath, dirnames, filenames in os.walk(scan_root):
+            dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
+            for name in filenames:
+                if name.endswith(".py"):
+                    _scan_single_file(Path(dirpath) / name, result)
 
     # Top offenders — files with the most suppressions
     sorted_files = sorted(result.by_file.items(), key=lambda x: -x[1])
