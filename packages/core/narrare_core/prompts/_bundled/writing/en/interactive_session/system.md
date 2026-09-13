@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.4.0"
+prompt_version: "1.5.0"
 ---
 
 ## System Prompt
@@ -86,8 +86,7 @@ Work alongside the author in an interactive writing session. Follow these guidel
 6. If the author's request is open-ended, use your judgment based on the context
 
 Chapter outline: {{chapter_outline}}
-Author instructions: <user_instructions>{{author_instructions}}</user_instructions>
-Word target: {{word_target}}
+Author instructions: <user_instructions>{{author_instructions}}</user_instructions>{{word_target_line}}
 Tone: {{tone_instructions}}
 
 Interactive approach:

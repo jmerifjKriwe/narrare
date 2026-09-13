@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.5.0"
+prompt_version: "1.6.0"
 ---
 
 ## System Prompt
@@ -97,8 +97,7 @@ Write a complete chapter draft based on the outline and context provided. Follow
 5. Respect pacing — balance action, dialogue, description, and reflection
 
 Chapter outline: {{chapter_outline}}
-Author instructions: <user_instructions>{{author_instructions}}</user_instructions>
-Word target: {{word_target}}
+Author instructions: <user_instructions>{{author_instructions}}</user_instructions>{{word_target_line}}
 Tone: {{tone_instructions}}
 
 ### Output Format

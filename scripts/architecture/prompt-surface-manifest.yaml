@@ -20,7 +20,7 @@ routes:
     content_type: customizable_feature_prompt
     output_language_variable: writing_language
     required_variables: [chapter_outline]
-    optional_variables: [author_instructions, kb_suggested, kb_characters, kb_locations, kb_factions, kb_other, kb_relationships, kb_pinned, kb_systems, kb_timelines, kb_context_warnings, recent_chapters, novel_synopsis, style_profile, character_voice_profiles, author_voice, user_preferences, avoidance_patterns, culture_guidelines, tone_instructions, project_title, genre, writing_language, word_target, timeline_position, story_structure, world_context]
+    optional_variables: [author_instructions, kb_suggested, kb_characters, kb_locations, kb_factions, kb_other, kb_relationships, kb_pinned, kb_systems, kb_timelines, kb_context_warnings, recent_chapters, novel_synopsis, style_profile, character_voice_profiles, author_voice, user_preferences, avoidance_patterns, culture_guidelines, tone_instructions, project_title, genre, writing_language, word_target_line, timeline_position, story_structure, world_context]
     security:
       xml_required: [author_instructions]
       generated_suggestions_must_be_labelled: [kb_suggested]

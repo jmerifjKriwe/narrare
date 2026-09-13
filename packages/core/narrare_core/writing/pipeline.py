@@ -44,7 +44,7 @@ import structlog
 
 from narrare_core.llm.result import StreamChunk
 from narrare_core.prompts.context import PromptContext
-from narrare_core.writing._helpers import kb_context_extras
+from narrare_core.writing._helpers import kb_context_extras, word_target_line
 from narrare_core.writing._invocation_adapter import build_and_validate_prompt
 from narrare_core.writing._mode_dispatch import stream_for_mode
 from narrare_core.writing._stages import (
@@ -284,10 +284,13 @@ class WritingPipeline:
             "character_voice_profiles": context.character_voice_profiles,
             "author_voice": context.author_voice,
             "series_history": context.series_history,
-            "word_target": str(context.word_target) if context.word_target else "",
             "tone_instructions": tone_instr,
             "writing_language": context.writing_language,
         }
+        if mode == "scene_by_scene":
+            extra["word_target_line"] = word_target_line(
+                context.word_target, label="Word target per scene: "
+            )
         if extra_overrides:
             extra.update(extra_overrides)
 

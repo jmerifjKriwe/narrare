@@ -47,10 +47,19 @@ _REQUIRED_VARIABLES = (
 
 # Mode-specific required variables (not shared by all modes)
 _MODE_VARIABLES = {
-    "new_chapter": ("{{word_target}}",),
-    "scene_by_scene": ("{{word_target}}",),
+    # Slice-2 word_target migration: new_chapter renders its target via
+    # {{word_target_line}} (label-in-value, append-to-previous-line) — the
+    # static "Word target:" label line is gone from the template.
+    "new_chapter": ("{{word_target_line}}",),
+    # Slice-1 word_target migration: scene_by_scene renders its target via
+    # {{word_target_line}} (label-in-value, append-to-previous-line) — the
+    # static "Word target per scene:" label line is gone from the template.
+    "scene_by_scene": ("{{word_target_line}}",),
     "interview": (),  # interview is a Q&A flow, not draft generation
-    "interactive_session": ("{{word_target}}",),
+    # Slice-3 word_target migration: interactive_session renders its target
+    # via {{word_target_line}} (label-in-value, append-to-previous-line) —
+    # the static "Word target:" label line is gone from the template.
+    "interactive_session": ("{{word_target_line}}",),
 }
 
 # Common variables that all modes share

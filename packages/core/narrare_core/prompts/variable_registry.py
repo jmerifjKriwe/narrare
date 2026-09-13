@@ -132,15 +132,14 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "author_name",
         "culture_guidelines",
         "novel_synopsis",
-        "word_target",
         # Item F (2026-09-12): pre-formatted word-target prompt line
         # (label-in-value, Tier-5 append-to-previous-line pattern). Supplied
         # by the prompt supplier of each migrated template — "" when no
         # target is set, "\n<label>N" when populated. Per-template label
         # phrasing (review: "- Word target: "; new_chapter:
-        # "Word target: "). Registered while {{word_target}} (bare number)
-        # remains on the not-yet-migrated templates — pruned together with
-        # the last static-label migration.
+        # "Word target: "). The bare {{word_target}} number was pruned
+        # with the last static-label migration (2026-09-13) — the label
+        # now lives in the value on every template.
         "word_target_line",
         # Item-3 (2026-09-10): scene-position metadata for the WRITE
         # context-mode scene_by_scene. Supplied per scene by

@@ -17,6 +17,12 @@ The fix wires the same enrichment the draft step uses into the revise path:
 10-key KB set via the SSOT ``kb_context_extras``) + the ``chapter_outline``
 extra.
 
+Slice 2 (2026-09-13): the revise path supplies the word target as the
+full label-in-value line (``word_target_line``, shared
+``writing._helpers.word_target_line`` helper) instead of the bare
+``word_target`` number the new_chapter template's former static label
+line demanded.
+
 Golden methodology (mirrors the item-2 draft goldens): the KB-empty constants
 below were captured by composing the REAL ``PromptRegistry`` +
 ``PromptComposer`` route with the exact PromptContext the fixed
@@ -56,7 +62,12 @@ _REVISE_CONTENT = f"Revise based on feedback: {_FEEDBACK}\n\n{_DRAFT}"
 # writing/en/new_chapter/system.md v1.4.0; re-captured 2026-09-11 for
 # R2-A header demotion — previously-dropped region now renders: the
 # former "## Output Format" / "## Do NOT" tails are level-3 headers in
-# v1.5.0, so the System Prompt section extends to EOF) via the real
+# v1.5.0, so the System Prompt section extends to EOF; re-verified
+# 2026-09-13 for the slice-2 word_target label-in-value migration
+# (v1.5.0 → v1.6.0) — the POPULATED render below stays byte-identical
+# because the value-side "\nWord target: 1500" line reproduces the
+# former static-label layout exactly; only the None-target delta
+# changed, from blank-value to whole-line removal) via the real
 # PromptComposer route [REWRITE intent, context-mode override
 # "new_chapter"]; see module docstring for methodology. Do NOT hand-edit —
 # recapture mechanically if the template legitimately changes.
@@ -253,36 +264,6 @@ class TestRevisePromptKBEmptyGolden:
         assembler.assemble.assert_not_called()
 
 
-class TestRevisePromptWordTargetNone:
-    """FO-3: word_target=None composes without raising on the real composer.
-
-    Before FO-3 ``word_target`` was supplied only ``if deps.word_target``
-    while the REWRITE route renders the new_chapter template via its
-    context-mode override, where {{word_target}} is not route-optional —
-    a revision without a word target raised ``PromptVariableError:
-    word_target`` (same masked-by-mocks defect class as the draft path).
-    """
-
-    async def test_revise_without_word_target_composes_rendering_empty_value(self) -> None:
-        """Real composer: None → no raise; golden with the one-line empty-target delta."""
-        composer = PromptComposer(PromptRegistry())
-        system, user = await get_revise_prompt(
-            composer, _make_deps(composer, word_target=None), _make_state()
-        )
-        # Explicit pin: the KB-empty golden family with exactly the
-        # "Word target: {{word_target}}" line rendered blank.
-        assert system == _GOLDEN_KB_EMPTY_SYSTEM.replace("Word target: 1500\n", "Word target: \n")
-        assert user == _GOLDEN_KB_EMPTY_USER
-
-    async def test_revise_without_word_target_supplies_empty_extra(self) -> None:
-        """Wiring: None → extra["word_target"] == "" (key present, value empty)."""
-        composer = AsyncMock()
-        composer.build = AsyncMock(return_value=ComposedPrompt(system="s", user="u"))
-        await get_revise_prompt(composer, _make_deps(composer, word_target=None), _make_state())
-        captured = composer.build.call_args.args[1]
-        assert captured.extra["word_target"] == ""
-
-
 class TestRevisePromptPopulatedKB:
     """Populated KB values render exactly once at their placeholders."""
 
@@ -346,7 +327,8 @@ class TestRevisePromptWiring:
         assert captured.author_instructions == _FEEDBACK
         assert captured.existing_content == _DRAFT
         assert captured.extra["chapter_outline"] == _OUTLINE
-        assert captured.extra["word_target"] == "1500"
+        # Slice 2: the full label-in-value line (append-to-previous-line).
+        assert captured.extra["word_target_line"] == "\nWord target: 1500"
         for name, sentinel in _RENDERED_SENTINELS:
             assert captured.extra[name] == sentinel
         # Enrichment conditionals reach the render surface since R2-A —
@@ -371,7 +353,7 @@ class TestRevisePromptWiring:
 
         captured = composer.build.call_args.args[1]
         assert captured.extra["chapter_outline"] == _OUTLINE
-        assert captured.extra["word_target"] == "1500"
+        assert captured.extra["word_target_line"] == "\nWord target: 1500"
         for name, _sentinel in _RENDERED_SENTINELS:
             if name in ("recent_chapters", "user_preferences", "cross_session_context"):
                 assert name not in captured.extra  # empty-field conditionals

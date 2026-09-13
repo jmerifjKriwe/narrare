@@ -25,6 +25,7 @@ from narrare_core.agents.writing_graph_types import Approved, NeedsRevision
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import ConfigurationError
+from narrare_core.writing._helpers import word_target_line
 from narrare_core.writing.models import WritingContext
 
 if TYPE_CHECKING:
@@ -41,30 +42,6 @@ _COMPOSER_MISSING_MSG = (
     "WritingDeps.composer must be wired by the DI container."
 )
 _COMPOSER_MISSING_CODE = "writing_graph_missing_composer"
-
-
-def _word_target_line(value: int | None, *, label: str) -> str:
-    """Build the full word-target prompt line (label-in-value, Item F).
-
-    Root-cause pattern per the Tier-5 / ADR-050 P1-D ``optional_block``
-    precedent: the label lives in the VALUE, not in the template, so an
-    empty target cannot leave a dangling ``"Word target: "`` label in the
-    render. The leading newline is the append-to-previous-line convention —
-    the placeholder sits at the end of the previous template line, so:
-
-    - empty value → ``""`` → renders byte-identically to a template without
-      the line at all (no blank line, no dangling label);
-    - populated → ``"\\n<label>N"`` → reproduces the former static-label
-      bullet layout byte-for-byte.
-
-    ``label`` carries the per-template phrasing (review: ``"- Word target: "``,
-    new_chapter: ``"Word target: "``). Follow-up slices (pipeline / WS) are
-    expected to promote this helper to ``narrare_core.writing._helpers``
-    next to ``optional_block`` when the second supplier lands.
-    """
-    if not value:
-        return ""
-    return f"\n{label}{value}"
 
 
 # ---------------------------------------------------------------------------
@@ -112,6 +89,21 @@ async def get_or_create_agent(
 # ---------------------------------------------------------------------------
 # Prompt context builder
 # ---------------------------------------------------------------------------
+
+
+def _context_bullet(value: str, label: str) -> str:
+    """Build a full leading Context bullet (label-in-value).
+
+    Leading-line twin of ``writing._helpers.word_target_line``: the template
+    placeholder starts a line, so a populated value carries the bullet label
+    plus a trailing newline (``"- Genre: Fantasy\\n"``) and an empty value
+    renders ``""`` — byte-identical to a template without the bullet, so an
+    unset value can never leave a dangling label. Label phrasing is
+    per-template, exactly as ``word_target_line`` carries its own.
+    """
+    if not value:
+        return ""
+    return f"{label}{value}\n"
 
 
 def _base_context(deps: WritingDeps, state: WritingState) -> PromptContext:
@@ -193,12 +185,17 @@ async def get_draft_prompt(
         context.author_instructions = state.outline
     if deps.chapter_content:
         context.existing_content = deps.chapter_content
-    # FO-3: {{word_target}} is route-required on the new_chapter template
-    # (not in _COMMON_OPTIONAL_VARIABLES) — supply unconditionally, None
-    # coalescing to "" (get_review_prompt convention); key-level assignment
-    # also preserves the _base_context user/project extras that the
-    # previous dict-reassignment wiped.
-    context.extra["word_target"] = str(deps.word_target or "")
+    # Slice-2 word_target migration (2026-09-13): the new_chapter template
+    # renders its word target via {{word_target_line}} (label-in-value,
+    # append-to-previous-line) — the static "Word target:" label line is
+    # gone from the template, so an unset target no longer renders a
+    # dangling label. The full line is supplied unconditionally (None → ""
+    # inside the shared helper), preserving the FO-3 key-present convention
+    # for a non-route-optional placeholder; the bare {{word_target}} extra
+    # is no longer referenced by this route's template and is not supplied
+    # here — no supplied-but-unrendered dead data. Key-level assignment
+    # also preserves the _base_context user/project extras.
+    context.extra["word_target_line"] = word_target_line(deps.word_target, label="Word target: ")
     # WRITE route-required variable (route_table.py) — the draft step owns
     # the outline and must supply it for the template's {{chapter_outline}}.
     context.extra["chapter_outline"] = state.outline
@@ -219,7 +216,6 @@ async def get_review_prompt(
     composer: PromptComposer,
     deps: WritingDeps,
     state: WritingState,
-    word_count: int,
 ) -> tuple[str, str, WritingContext | None]:
     """Return (system_prompt, user_prompt, writing_context) for the review_draft step.
 
@@ -249,8 +245,19 @@ async def get_review_prompt(
     # cannot leave a dangling "- Word target: " bullet (the bare
     # {{word_target}} extra is no longer referenced by this route's template
     # and is not supplied here — no supplied-but-unrendered dead data).
-    context.extra["word_target_line"] = _word_target_line(deps.word_target, label="- Word target: ")
-    context.extra["word_count"] = str(word_count)
+    # Slice 2 dedup: the shared writing._helpers.word_target_line SSOT
+    # (the former private twin here was removed).
+    context.extra["word_target_line"] = word_target_line(deps.word_target, label="- Word target: ")
+    # Review-dangles fix (2026-09-13): the leading Context bullets are
+    # label-in-value too — the supplier builds the full bullet ("" when
+    # unset → the line renders away, no dangling "- Project: " / "- Genre: "
+    # label). Genre comes from deps ("" by default); the title is
+    # best-effort from the assembled WritingContext metadata tier.
+    context.project_title = _context_bullet(
+        writing_context.project_title if writing_context else "",
+        "- Project: ",
+    )
+    context.genre = _context_bullet(deps.genre, "- Genre: ")
 
     # FO-8: the governed composer route for the analysis/en/review template
     # is ANALYSE + mode="review" — BETA_READ does not allow mode="review"
@@ -298,10 +305,12 @@ async def get_revise_prompt(
     context.mode = "new_chapter"
     context.author_instructions = state.feedback
     context.existing_content = state.draft
-    # FO-3: {{word_target}} is route-required here as well (REWRITE renders
-    # the new_chapter template via its context-mode override) — supply
-    # unconditionally like the draft path.
-    context.extra["word_target"] = str(deps.word_target or "")
+    # Slice-2 word_target migration: REWRITE renders the new_chapter
+    # template via its context-mode override — supply the full
+    # label-in-value line exactly like the draft path (None → "" inside
+    # the shared helper; the bare {{word_target}} extra is no longer
+    # referenced by the rendered template and is not supplied here).
+    context.extra["word_target_line"] = word_target_line(deps.word_target, label="Word target: ")
     # new_chapter-template placeholder ({{chapter_outline}}) is not
     # route-optional on the REWRITE context-mode override — the revise
     # step owns the outline and must supply it, exactly like the draft.

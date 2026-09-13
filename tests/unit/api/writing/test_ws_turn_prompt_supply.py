@@ -13,14 +13,18 @@ Fix (mirrors ac55a094 / R2-A): the service assembles a ``WritingContext``
 graceful-None (RULE-11: failure → empty values, turn proceeds), spreads the
 ``kb_context_extras`` SSOT (10 kb_* keys, ``None`` → ``""``), supplies
 ``chapter_outline`` / ``timeline_position`` / ``recent_chapters`` from the
-assembled context, and supplies ``word_target`` for ``interactive_session``
-only.
+assembled context, and supplies ``word_target_line`` for
+``interactive_session`` only (slice-3 word_target migration, 2026-09-13:
+full ``"\nWord target: N"`` line via the public ``word_target_line``
+helper — empty target renders no label at all).
 
 Probe evidence (real PromptRegistry + PromptComposer, /tmp/opencode
 probe, 2026-09-11):
 
 * ``interactive_session`` (WRITE intent) demand order:
-  ``[kb_characters, kb_locations, chapter_outline, word_target]``.
+  ``[kb_characters, kb_locations, chapter_outline, word_target]``
+  (the fourth demand is ``word_target_line`` since the slice-3 template
+  migration).
 * ``interview`` (CHAT intent, CHAT route has no optional_variables) demand
   order: ``[timeline_position, kb_context_warnings, kb_characters,
   kb_locations, kb_factions, kb_other, kb_relationships, kb_suggested,
@@ -198,10 +202,13 @@ class TestWsTurnDegradationPaths:
         await _run_turn(service_fail, "interactive_session")
 
         # Golden pin — KB-blind interactive_session system render
-        # (empty WritingContext values, prompt v1.4.0), captured via the
-        # service seam on the real composer: 3861 UTF-8 bytes / 3851 chars.
+        # (empty WritingContext values, prompt v1.5.0), captured via the
+        # service seam on the real composer: 3847 UTF-8 bytes / 3837 chars.
+        # Re-captured 2026-09-13 (slice-3 word_target migration): 3861 →
+        # 3847 = removal of the dangling "\nWord target: " prefix (14 bytes)
+        # once the empty target renders no label at all (label-in-value).
         golden = len(captured_none["system"].encode("utf-8"))
-        assert golden == 3861
+        assert golden == 3847
         assert captured_empty["system"] == captured_none["system"]
         assert captured_fail["system"] == captured_none["system"]
 
@@ -224,22 +231,36 @@ class TestWsTurnDegradationPaths:
 
 
 class TestWsTurnWordTargetConditional:
-    """word_target is demanded only by interactive_session (probe-proven)."""
+    """word_target_line is demanded only by interactive_session (probe-proven).
 
-    async def test_word_target_renders_for_interactive_session(self) -> None:
+    Slice-3 label-in-value migration: the label lives in the supplied VALUE
+    (public ``word_target_line`` helper), so an empty target renders no
+    label at all instead of a dangling ``Word target: `` line.
+    """
+
+    async def test_word_target_line_renders_once_when_populated(self) -> None:
+        """Populated target → exactly one ``Word target: N`` line."""
         context = WritingContext(word_target=1200)
         service, captured = _make_service(FakeAssembler(context=context))
         await _run_turn(service, "interactive_session")
-        assert "1200" in captured["system"]
+        assert "\nWord target: 1200" in captured["system"]
+        assert captured["system"].count("Word target: 1200") == 1
+
+    async def test_empty_word_target_renders_no_label(self) -> None:
+        """Empty target → label-in-value yields "" — no dangling label."""
+        service, captured = _make_service(FakeAssembler(context=WritingContext()))
+        await _run_turn(service, "interactive_session")
+        assert "Word target" not in captured["system"]
 
     async def test_interview_renders_without_word_target(self) -> None:
-        """interview template has no {{word_target}} slot — supply is absent
-        and the compose still succeeds."""
+        """interview template has no word-target slot — supply is gated to
+        interactive_session and the compose still succeeds."""
         context = WritingContext(word_target=1200)
         service, captured = _make_service(FakeAssembler(context=context))
         chunks = await _run_turn(service, "interview_assisted")
         assert any(c.text for c in chunks)
         assert "1200" not in captured["system"]
+        assert "Word target" not in captured["system"]
 
 
 class TestChatRouteInterviewOptional:

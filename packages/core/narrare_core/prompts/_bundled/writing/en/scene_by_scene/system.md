@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.6.0"
+prompt_version: "1.7.0"
 ---
 
 ## System Prompt
@@ -91,8 +91,7 @@ Generate ONE scene at a time from the chapter outline. Follow these guidelines:
 5. End each scene at a natural break point — never mid-action unless cliffhanger is appropriate
 
 Chapter outline: {{chapter_outline}}
-Author instructions: <user_instructions>{{author_instructions}}</user_instructions>
-Word target per scene: {{word_target}}
+Author instructions: <user_instructions>{{author_instructions}}</user_instructions>{{word_target_line}}
 Tone: {{tone_instructions}}
 
 Scene-by-scene approach:

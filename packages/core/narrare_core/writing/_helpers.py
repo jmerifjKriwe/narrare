@@ -83,6 +83,31 @@ def optional_block(label: str, text: str) -> str:
     return "\n\n" + label + ":\n" + text
 
 
+def word_target_line(value: int | None, *, label: str) -> str:
+    """Build the full word-target prompt line (label-in-value, Item F).
+
+    Root-cause pattern per the Tier-5 / ADR-050 P1-D ``optional_block``
+    precedent: the label lives in the VALUE, not in the template, so an
+    empty target cannot leave a dangling label in the render. The leading
+    newline is the append-to-previous-line convention — the placeholder
+    sits at the end of the previous template line, so:
+
+    - empty value → ``""`` → renders byte-identically to a template without
+      the line at all (no blank line, no dangling label);
+    - populated → ``"\\n<label>N"`` → reproduces the former static-label
+      bullet layout byte-for-byte.
+
+    ``label`` carries the per-template phrasing (review:
+    ``"- Word target: "``, scene_by_scene: ``"Word target per scene: "``).
+    Promoted from ``writing_graph_prompts._word_target_line`` as the shared
+    supplier-side SSOT (slice 1 of the word_target label-in-value
+    migration).
+    """
+    if not value:
+        return ""
+    return f"\n{label}{value}"
+
+
 _KB_CONTEXT_EXTRA_FIELDS: tuple[str, ...] = (
     "kb_characters",
     "kb_locations",

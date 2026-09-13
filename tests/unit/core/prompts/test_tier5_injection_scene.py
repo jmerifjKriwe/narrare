@@ -50,7 +50,7 @@ from narrare_core.prompts.context import PromptContext
 from narrare_core.prompts.registry import PromptRegistry
 from narrare_core.prompts.routes import resolve_prompt_route
 from narrare_core.shared.errors import PromptRouteNotConfiguredError
-from narrare_core.writing._helpers import kb_context_extras
+from narrare_core.writing._helpers import kb_context_extras, word_target_line
 from narrare_core.writing.models import WritingContext
 
 # ---------------------------------------------------------------------------
@@ -80,6 +80,15 @@ from narrare_core.writing.models import WritingContext
 # inputs): 3059 UTF-8 bytes (3055 chars). Empty-tier byte-identity is
 # asserted relative to THIS baseline. Do NOT hand-edit — if the template
 # legitimately changes, recapture mechanically and update this note.
+#
+# VERIFIED BYTE-IDENTICAL 2026-09-13 for the slice-1 word_target migration
+# (prompt_version 1.6.0 → 1.7.0): the static ``Word target per scene:
+# {{word_target}}`` line became the label-in-value
+# ``{{word_target_line}}`` appended to the Author-instructions line; the
+# helper below mirrors the pipeline's new scene mode-branch (populated 400
+# → ``"\nWord target per scene: 400"``, byte-identical populated layout).
+# Re-running the mechanical recapture confirmed the baseline bytes are
+# UNCHANGED — no golden edit was needed.
 # ---------------------------------------------------------------------------
 
 _GOLDEN_EMPTY_TIERS_BASELINE = (
@@ -145,6 +154,7 @@ def _scene_prompt_context(
     kb_pinned: str = "",
     scene_number: str = "1",
     total_scenes: str = "2",
+    word_target: int | None = 400,
 ) -> PromptContext:
     """Build the WRITE/scene_by_scene PromptContext the scene route builds.
 
@@ -154,6 +164,10 @@ def _scene_prompt_context(
     rather than a hand-rolled variable set. Item-3: the scene-position extras
     (``scene_number`` / ``total_scenes``) mirror the pipeline's
     ``extra_overrides`` — first scene of the two-scene outline by default.
+    Slice-1 word_target migration: the extras mirror the pipeline's
+    scene mode-branch — ``word_target_line`` (label-in-value via
+    ``_helpers.word_target_line``) replaces the bare ``word_target`` number
+    the static template label consumed.
     """
     return PromptContext(
         language="en",
@@ -182,7 +196,7 @@ def _scene_prompt_context(
             "character_voice_profiles": "Elena: formal, terse.",
             "author_voice": "Lyrical, close third person.",
             "series_history": "",
-            "word_target": "400",
+            "word_target_line": word_target_line(word_target, label="Word target per scene: "),
             # TONE_INSTRUCTIONS["balanced"] == "" (faithful to the default path)
             "tone_instructions": "",
             "writing_language": "English",

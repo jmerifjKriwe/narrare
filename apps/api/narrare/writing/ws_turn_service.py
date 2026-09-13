@@ -241,11 +241,10 @@ class WritingTurnService:
         to carry assembled KB context into the PromptContext: supplies the
         ``kb_context_extras`` SSOT spread, ``chapter_outline`` /
         ``timeline_position`` / ``recent_chapters`` (empty when KB-blind), and
-        ``word_target`` for interactive_session only (probe-proven demand
-        asymmetry, 2026-09-11).
+        ``word_target_line`` for interactive_session only (slice-3: label-in-value).
         """
         from narrare_core.prompts.context import PromptContext
-        from narrare_core.writing._helpers import kb_context_extras
+        from narrare_core.writing._helpers import kb_context_extras, word_target_line
         from narrare_core.writing.models import WritingContext
 
         kb_source = writing_context if writing_context is not None else WritingContext()
@@ -254,7 +253,9 @@ class WritingTurnService:
         extra["timeline_position"] = kb_source.timeline_position
         extra["recent_chapters"] = kb_source.recent_chapters
         if prompt_mode == "interactive_session":
-            extra["word_target"] = str(kb_source.word_target or "")
+            extra["word_target_line"] = word_target_line(
+                kb_source.word_target, label="Word target: "
+            )
         return PromptContext(
             language="en",
             mode=prompt_mode,

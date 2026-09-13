@@ -89,7 +89,6 @@ class TestComposerNoneFailsFast:
                 composer=None,  # type: ignore[arg-type]
                 deps=_deps(),
                 state=_state(),
-                word_count=0,
             )
 
     @pytest.mark.asyncio

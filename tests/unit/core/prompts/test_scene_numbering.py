@@ -38,10 +38,12 @@ class TestSceneNumberingLine:
                     "chapter_outline": "Bridge chapter in two scenes.",
                     # Route-required registered variables that are not in the
                     # WRITE route's optional set — "" mirrors the KB-empty
-                    # compose the golden helper performs.
+                    # compose the golden helper performs. Slice-1 word_target
+                    # migration: the template renders {{word_target_line}}
+                    # (label-in-value), not the bare {{word_target}} number.
                     "kb_characters": "",
                     "kb_locations": "",
-                    "word_target": "",
+                    "word_target_line": "",
                     "scene_number": "3",
                     "total_scenes": "7",
                 },

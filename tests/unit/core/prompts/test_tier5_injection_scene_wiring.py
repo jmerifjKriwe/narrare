@@ -175,3 +175,88 @@ class TestTier5SceneWiring:
         # Previously-supplied variables keep identical values ("" here).
         assert extra["kb_characters"] == ""
         assert extra["kb_locations"] == ""
+
+
+class TestSceneWordTargetLineWiring:
+    """Slice-1 word_target migration: the pipeline scene mode-branch supplies
+    ``word_target_line`` (label-in-value) — ``""`` when no target is set,
+    ``"\\nWord target per scene: N"`` when populated."""
+
+    async def test_stream_scene_supplies_word_target_line_populated(self) -> None:
+        """A populated context word_target forwards as the full label line.
+
+        Guards ``_build_prompt_context``'s scene mode-branch: without the
+        key, the migrated template's ``{{word_target_line}}`` placeholder
+        would raise PromptVariableError on the real compose path.
+        """
+        composer = MagicMock(spec=PromptComposer)
+        composer.build = AsyncMock(return_value=ComposedPrompt(system="sys", user="usr"))
+        assembler = MagicMock(spec=WritingContextAssembler)
+        assembler.assemble = AsyncMock(
+            return_value=WritingContext(
+                chapter_outline="Single bridge scene outline.",
+                word_target=400,
+            )
+        )
+        registry = MagicMock(spec=["stream", "run"])
+        registry.stream = MagicMock(spec=[], side_effect=lambda **kw: _final_only_stream())
+        processor = MagicMock(spec=DraftProcessor)
+        processor.process = MagicMock(spec=[], side_effect=lambda text, **kw: text)
+        pipeline = WritingPipeline(
+            registry=registry,
+            composer=composer,
+            context_assembler=assembler,
+            draft_processor=processor,
+        )
+        request = GenerationRequest(
+            chapter_id=uuid4(),
+            project_id=uuid4(),
+            user_id=uuid4(),
+            mode=GenerationMode.SCENE_BY_SCENE,
+            outline="Single bridge scene outline.",
+        )
+
+        async for _chunk in pipeline.generate(request, config=_CONFIG):
+            pass
+
+        extra: dict[str, Any] = composer.build.call_args.args[1].extra
+        assert extra["word_target_line"] == "\nWord target per scene: 400"
+
+    async def test_stream_scene_supplies_empty_line_without_target(self) -> None:
+        """An unset context word_target forwards as "" — no dangling label.
+
+        Pre-migration the static template label rendered
+        ``Word target per scene: `` into every target-less scene prompt.
+        """
+        composer = MagicMock(spec=PromptComposer)
+        composer.build = AsyncMock(return_value=ComposedPrompt(system="sys", user="usr"))
+        assembler = MagicMock(spec=WritingContextAssembler)
+        assembler.assemble = AsyncMock(
+            return_value=WritingContext(
+                chapter_outline="Single bridge scene outline.",
+                word_target=None,
+            )
+        )
+        registry = MagicMock(spec=["stream", "run"])
+        registry.stream = MagicMock(spec=[], side_effect=lambda **kw: _final_only_stream())
+        processor = MagicMock(spec=DraftProcessor)
+        processor.process = MagicMock(spec=[], side_effect=lambda text, **kw: text)
+        pipeline = WritingPipeline(
+            registry=registry,
+            composer=composer,
+            context_assembler=assembler,
+            draft_processor=processor,
+        )
+        request = GenerationRequest(
+            chapter_id=uuid4(),
+            project_id=uuid4(),
+            user_id=uuid4(),
+            mode=GenerationMode.SCENE_BY_SCENE,
+            outline="Single bridge scene outline.",
+        )
+
+        async for _chunk in pipeline.generate(request, config=_CONFIG):
+            pass
+
+        extra: dict[str, Any] = composer.build.call_args.args[1].extra
+        assert extra["word_target_line"] == ""

@@ -36,10 +36,17 @@ from narrare_core.shared.errors import PromptVariableError
 from narrare_core.shared.frontmatter import parse_frontmatter
 from tests.unit.core._bundled import bundled_prompts_root
 
-# The WS-follow-up supply set (pre-existing gap, see module docstring):
-# demanded by the bare ws_turn PromptContext in exactly this order
-# (probe A/B demand order, unchanged by the demotion).
-_WS_SUPPLY_VARS = ("kb_characters", "kb_locations", "chapter_outline", "word_target")
+# The WS-follow-up supply set: demanded by the bare ws_turn PromptContext
+# in exactly this order. Slice-3 word_target migration (2026-09-13): the
+# fourth demand is now ``word_target_line`` (label-in-value) — the template's
+# static ``Word target: {{word_target}}`` line was replaced by an appended
+# ``{{word_target_line}}`` placeholder.
+_WS_SUPPLY_VARS = (
+    "kb_characters",
+    "kb_locations",
+    "chapter_outline",
+    "word_target_line",
+)
 
 _PREF_SENTINEL = "PREF: prefers tight third-person limited POV."
 _AVOID_SENTINEL = "AVOID: no dream sequences, no head-hopping."
@@ -101,10 +108,11 @@ class TestInteractiveSessionHeaderDemotion:
         # by extract_section itself).
         assert not [ln for ln in resolved.system_prompt.splitlines() if re.match(r"^## ", ln)]
 
-    def test_prompt_version_bumped_to_1_4_0(self) -> None:
-        """Header demotion bumps the template minor version (1.3.0 → 1.4.0)."""
+    def test_prompt_version_bumped_to_1_5_0(self) -> None:
+        """Slice-3 word_target migration bumps the minor version
+        (1.4.0 → 1.5.0): static label line → {{word_target_line}}."""
         parsed = parse_frontmatter(_prompt_path().read_text(encoding="utf-8"))
-        assert parsed.metadata.get("prompt_version") == "1.4.0"
+        assert parsed.metadata.get("prompt_version") == "1.5.0"
 
 
 class TestInteractiveSessionRender:
