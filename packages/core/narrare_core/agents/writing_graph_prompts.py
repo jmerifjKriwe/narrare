@@ -43,6 +43,30 @@ _COMPOSER_MISSING_MSG = (
 _COMPOSER_MISSING_CODE = "writing_graph_missing_composer"
 
 
+def _word_target_line(value: int | None, *, label: str) -> str:
+    """Build the full word-target prompt line (label-in-value, Item F).
+
+    Root-cause pattern per the Tier-5 / ADR-050 P1-D ``optional_block``
+    precedent: the label lives in the VALUE, not in the template, so an
+    empty target cannot leave a dangling ``"Word target: "`` label in the
+    render. The leading newline is the append-to-previous-line convention —
+    the placeholder sits at the end of the previous template line, so:
+
+    - empty value → ``""`` → renders byte-identically to a template without
+      the line at all (no blank line, no dangling label);
+    - populated → ``"\\n<label>N"`` → reproduces the former static-label
+      bullet layout byte-for-byte.
+
+    ``label`` carries the per-template phrasing (review: ``"- Word target: "``,
+    new_chapter: ``"Word target: "``). Follow-up slices (pipeline / WS) are
+    expected to promote this helper to ``narrare_core.writing._helpers``
+    next to ``optional_block`` when the second supplier lands.
+    """
+    if not value:
+        return ""
+    return f"\n{label}{value}"
+
+
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
@@ -216,10 +240,17 @@ async def get_review_prompt(
 
     context = _base_context(deps, state)
     context.mode = "review"
-    context.extra = {
-        "word_target": str(deps.word_target or ""),
-        "word_count": str(word_count),
-    }
+    # FO-3 pattern (review twin): key-level assignment preserves the
+    # _base_context user/project extras that the previous dict-reassignment
+    # wiped, re-enabling preference auto-injection for the review step.
+    # Item F: the analysis/en/review template renders the word-target line
+    # via {{word_target_line}} (label-in-value, append-to-previous-line) —
+    # supplying the full line, "" when no target is set, so the empty case
+    # cannot leave a dangling "- Word target: " bullet (the bare
+    # {{word_target}} extra is no longer referenced by this route's template
+    # and is not supplied here — no supplied-but-unrendered dead data).
+    context.extra["word_target_line"] = _word_target_line(deps.word_target, label="- Word target: ")
+    context.extra["word_count"] = str(word_count)
 
     # FO-8: the governed composer route for the analysis/en/review template
     # is ANALYSE + mode="review" — BETA_READ does not allow mode="review"

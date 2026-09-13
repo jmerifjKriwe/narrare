@@ -189,7 +189,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
                 feedback=f"Draft too short ({word_count} words, expected ~{target}).",
             )
 
-        await _run_invocation_pipeline(ctx.deps, ctx.state, "review_draft", LLMIntent.BETA_READ)
+        # FO-8 parity: the Mode-2 evidence/budget intent must equal the
+        # intent get_review_prompt actually composes (ANALYSE + mode="review",
+        # a4b846ca) — BETA_READ has no route for mode="review". Budget
+        # semantics are unaffected: both intents resolve to the ANALYSIS
+        # category / "long_texts" profile.
+        await _run_invocation_pipeline(ctx.deps, ctx.state, "review_draft", LLMIntent.ANALYSE)
         model = await get_model(ctx.deps)
         system_prompt, user_prompt, writing_context = await get_review_prompt(
             ctx.deps.composer,

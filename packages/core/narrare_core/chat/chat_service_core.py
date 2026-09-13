@@ -44,10 +44,28 @@ def build_chat_context(
     # FO-7: the governed chat template (writing/en/chat, since CR-04) also
     # demands {{timeline_position}} / {{kb_context_warnings}} / {{kb_other}}
     # / {{kb_suggested}}, while the CHAT route declares only
-    # {{tone_instructions}} optional. The minimal chat tier (ADR-024) holds
-    # none of this data — declare the four slots explicitly empty (the
-    # analysis-seam RULE-11 convention) so compose renders them empty
-    # instead of raising PromptVariableError.
+    # {{tone_instructions}} optional. The minimal chat tier (ADR-024)
+    # cannot reach the upstream data for these slots, so each is declared
+    # explicitly empty with its own degradation reason (the analysis-seam
+    # RULE-11 convention) so compose renders them empty instead of raising
+    # PromptVariableError. Per-slot reachability (FO-7 follow-up audit,
+    # 2026-09-12):
+    #   timeline_position — chapter-scoped (Chapter.timeline_position, fed
+    #     by the writing-seam assembler); chat is project-scoped and holds
+    #     no chapter anchor → empty.
+    #   kb_context_warnings — derived from chapter-frontmatter orphan
+    #     references by the writing assembler; chat carries no frontmatter
+    #     → empty.
+    #   kb_other — requires a KB entity fetch (KBContextProvider /
+    #     KBRepository); ChatService holds no KB repository dependency →
+    #     empty (wiring a provider is a chat/dependencies.py follow-up).
+    #   kb_suggested — the InvocationPipeline's KBSuggestedContextEnricher
+    #     is gated on a non-None AdoptionPolicy; the chat invocation
+    #     context sets none (production default None → enricher dormant)
+    #     → empty (enabling it is an adoption-policy follow-up, needs
+    #     PROVIDE-semantics review against the runtime validator).
+    # project_title / genre ARE reachable and supplied by the API seam
+    # (apps/api/narrare/chat/_context.py) from the owned-novel fetch.
     context.extra["timeline_position"] = ""
     context.extra["kb_context_warnings"] = ""
     context.extra["kb_other"] = ""

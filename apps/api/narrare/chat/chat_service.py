@@ -16,11 +16,14 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
-from narrare.chat._context import build_prompt_context, resolve_effective_message
+from narrare.chat._context import (
+    build_prompt_context,
+    resolve_effective_message,
+    resolve_owned_novel,
+)
 from narrare_core.chat.chat_service_core import new_conversation_id
 from narrare_core.chat.contracts import ChatMessage, ChatRequest, ChatServiceProtocol
 from narrare_core.llm.intents import LLMIntent
-from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
@@ -144,8 +147,14 @@ class ChatService(ChatServiceProtocol):
         # pattern): a non-null ``project_id`` must belong to the caller —
         # BEFORE the conversation is created/referenced and before the id
         # feeds invocation enrichment correlation. Foreign and unknown
-        # novels are indistinguishable (NotFoundError → HTTP 404).
-        await self._validate_project_link(request.project_id, user_id)
+        # novels are indistinguishable (NotFoundError → HTTP 404). The
+        # owned novel feeds the prompt-context metadata (FO-7 follow-up:
+        # the seam no longer holds zero novel data).
+        novel = await resolve_owned_novel(
+            novel_lookup=self._novel_lookup,
+            project_id=request.project_id,
+            user_id=user_id,
+        )
 
         # 1. Create conversation or add message to existing
         if is_new:
@@ -166,7 +175,7 @@ class ChatService(ChatServiceProtocol):
             history = await self._store.get_history(conv_id, user_id)
 
         # 2. Build context + compose prompt
-        context = build_prompt_context(history)
+        context = build_prompt_context(history, novel=novel)
 
         composed = await self._composer.build(
             LLMIntent.CHAT,
@@ -276,22 +285,3 @@ class ChatService(ChatServiceProtocol):
                 another user (mapped to HTTP 404).
         """
         await self._store.clear_history(conversation_id, user_id)
-
-    async def _validate_project_link(
-        self,
-        project_id: UUID | None,
-        user_id: UUID,
-    ) -> None:
-        """A non-null project link must exist AND belong to the caller.
-
-        Notes ``_validate_link`` semantics (NOTES-001 ownership pattern):
-        ``get_owned`` returns the entity only for its owner, so foreign and
-        unknown novels are indistinguishable — both raise NotFoundError
-        (→ HTTP 404, no enumeration oracle). ``lookup is None`` (test
-        contexts only; production wiring always provides it) skips the
-        check.
-        """
-        if project_id is None or self._novel_lookup is None:
-            return
-        if await self._novel_lookup.get_owned(project_id, user_id) is None:
-            raise NotFoundError("Novel", identifier=str(project_id))

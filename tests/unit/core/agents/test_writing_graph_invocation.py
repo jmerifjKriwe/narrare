@@ -177,6 +177,36 @@ class TestReviewDraftWithPipeline:
         assert pipeline.prepare_calls[0].feature_id == "writing_graph_review_draft"
 
     @pytest.mark.asyncio
+    async def test_review_pipeline_intent_matches_compose_intent(self, writing_graph: Any) -> None:
+        """Mode-2 evidence intent equals the Mode-1 compose intent (ANALYSE).
+
+        Regression (a4b846ca follow-up): FO-8 routed ``get_review_prompt`` to
+        ANALYSE + mode="review" (the only governed route — BETA_READ raises
+        PromptRouteNotConfiguredError there). The Mode-2 pipeline intent must
+        not diverge: budget resolution is identical either way (both intents
+        map to the ANALYSIS category / "long_texts" profile), so evidence
+        attribution records the intent actually composed.
+        """
+        node = writing_graph.nodes["review_draft"]
+        pipeline = SpyPipeline()
+        state = make_state(draft=" ".join(["word"] * 800), attempts=0)
+        deps = make_deps(pipeline=pipeline, word_target=1000)
+        mock_output = ReviewOutput(approved=True, feedback="Great.", quality_score=8)
+        with (
+            patch(
+                "narrare_core.agents.writing_graph.get_model",
+                new_callable=AsyncMock,
+                return_value="mock",
+            ),
+            patch("narrare_core.agents.writing_graph.ReviewAgent") as MockAgent,
+        ):
+            MockAgent.return_value = AsyncMock()
+            MockAgent.return_value.run = AsyncMock(return_value=mock_output)
+            ctx = StepContext(state=state, deps=deps, inputs=None)
+            await node.call(ctx)
+        assert pipeline.prepare_calls[0].intent == "analyse"
+
+    @pytest.mark.asyncio
     async def test_skips_pipeline_for_word_count_guard(self, writing_graph: Any) -> None:
         node = writing_graph.nodes["review_draft"]
         pipeline = SpyPipeline()

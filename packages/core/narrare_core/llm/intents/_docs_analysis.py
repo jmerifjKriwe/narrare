@@ -5,7 +5,9 @@ evaluating, and checking intents. Aggregated into
 :data:`narrare_core.llm.intents.INTENT_DOCS`.
 
 Split out of the former monolithic ``intents.py`` per RULE-04. The text
-here is preserved word-for-word from the original member docstrings.
+here is preserved word-for-word from the original member docstrings,
+with one sanctioned correction: the BETA_READ Input line documents the
+BetaReaderDeps user-channel flow instead of placeholder notation.
 """
 
 from __future__ import annotations
@@ -53,8 +55,10 @@ Beta reader simulation — reader-perspective feedback.
 Scope: Evaluates chapter from a reader's perspective across 5
 dimensions: plot, character, prose, pacing, reader experience.
 Genre-sensitive assessment with specific text references.
-Input: {{chapter_text}}, {{chapter_titles}}, KB context,
-{{focus_categories}}, {{genre}}.
+Input: Chapter text, chapter titles, pre-rendered KB
+character/location context, genre, and focus categories — carried
+via BetaReaderDeps into the budgeted user prompt (build_budgeted_prompt),
+not template placeholders.
 Output: JSON with strengths, feedback items, reader questions,
 and dimension scores (1-10).
 NOT: Line-level editing (use ANALYSE). NOT: Consistency checking

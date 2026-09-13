@@ -262,6 +262,35 @@ class TestGetReviewPromptWithContext:
         assert called_ctx.extra["kb_locations"] == "Dark Forest"
         assert called_ctx.extra["recent_chapters"] == "Chapter 1: The hero arrived."
 
+    @pytest.mark.asyncio
+    async def test_review_prompt_preserves_base_context_identity_extras(self) -> None:
+        """Key-level extra assignments preserve _base_context identity extras.
+
+        Regression (FO-3 pattern, review path): the former wholesale
+        ``context.extra = {...}`` reassignment wiped the user_id/project_id
+        extras set by ``_base_context``, defeating preference auto-injection
+        for the review step (CR-04 wiring intent).
+        """
+        mock_composer = AsyncMock()
+        mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="SYS", user="USER"))
+        deps = _make_deps(user_id="user-77", composer=mock_composer)
+        state = _make_state(draft="The hero fights.", novel_id=_NOVEL_ID)
+
+        await get_review_prompt(
+            composer=mock_composer,
+            deps=deps,
+            state=state,
+            word_count=3,
+        )
+        called_ctx = mock_composer.build.call_args.args[1]
+        assert called_ctx.extra["user_id"] == "user-77"
+        assert called_ctx.extra["project_id"] == _NOVEL_ID
+        # Item F: the review template renders the word-target line via
+        # {{word_target_line}} (label-in-value) — the supplier builds the
+        # full line instead of a bare number.
+        assert called_ctx.extra["word_target_line"] == "\n- Word target: 1000"
+        assert called_ctx.extra["word_count"] == "3"
+
 
 # ---------------------------------------------------------------------------
 # E. review_draft step — Full Integration via Graph Node

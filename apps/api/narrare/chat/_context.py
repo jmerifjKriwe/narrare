@@ -3,8 +3,9 @@
 Owns the context steps of the chat flow (RULE-04 extraction from
 ``chat_service``):
 - :func:`build_prompt_context` builds the chat ``PromptContext``: the core
-  chat context (project metadata placeholders) plus the conversation
-  history rendered into ``extra["conversation_history"]``.
+  chat context (project metadata — novel-backed when the conversation is
+  project-linked, placeholders otherwise) plus the conversation history
+  rendered into ``extra["conversation_history"]``.
 - :func:`prepare_effective_context` composes the ADR-048 Mode 2 invocation
   and returns the enriched context that flows to ``ChatDeps`` — skipping
   project-correlated enrichment for project-less conversations (NOTES-001
@@ -14,6 +15,10 @@ Owns the context steps of the chat flow (RULE-04 extraction from
   prepending a requested scratchpad note as a runtime context block
   (NOTES-001 §6b — user-message channel, never a prompt template,
   RULE-02; graceful degradation on missing/unowned notes, RULE-11).
+- :func:`resolve_owned_novel` resolves the caller-owned novel for a
+  project-linked conversation (IDOR-hardened, notes ``_validate_link``
+  semantics) so the context tier carries real novel metadata instead of
+  placeholders (FO-7 follow-up).
 
 Extracted from ``chat_service.py`` for RULE-04 (300-line service limit);
 modularise, never compress. One responsibility (RULE-06): prepare the
@@ -22,21 +27,23 @@ effective chat context.
 See:
     narrare_core.chat.chat_service_core.build_chat_context (core builder),
     ADR-024, ADR-045, ADR-048, NOTES-001 §6b,
-    CONSTRAINTS.md RULE-02/RULE-04/RULE-06/RULE-11.
+    CONSTRAINTS.md RULE-02/RULE-04/RULE-06/RULE-07/RULE-11.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import structlog
 
 from narrare_core.chat.chat_service_core import build_chat_context, format_history
 from narrare_core.notes.contracts import format_note_context_block
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from narrare.notes.contracts import OwnedLinkLookupProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.chat.contracts import ChatMessage
     from narrare_core.notes.contracts import NoteLookupProtocol, NoteSnapshot
@@ -45,22 +52,103 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 
-def build_prompt_context(history: list[ChatMessage]) -> PromptContext:
-    """Build the chat PromptContext with the conversation history attached.
+@runtime_checkable
+class NovelMetadataLike(Protocol):
+    """Structural contract for the metadata the chat seam reads off a novel.
+
+    The chat service resolves the owned novel through
+    ``OwnedLinkLookupProtocol`` (whose ``get_owned`` is deliberately typed
+    ``object | None`` to avoid a notes→novels type dependency). This
+    protocol names the Backend-owned attribute subset (RULE-07) the chat
+    context tier consumes; lookup results that do not provide it degrade
+    to empty placeholders (RULE-11 — warn, never raise).
+    """
+
+    @property
+    def title(self) -> str: ...
+
+    @property
+    def genre(self) -> str: ...
+
+
+def _novel_metadata(novel: object | None) -> tuple[str, str]:
+    """Extract ``(title, genre)`` from a lookup result, degrading to "".
+
+    A ``None`` result (project-less chat or unwired lookup) and a
+    non-novel-shaped result both yield the empty placeholders; the shape
+    mismatch is logged (RULE-11 — never silent, never raised).
+    """
+    if novel is None:
+        return "", ""
+    if not isinstance(novel, NovelMetadataLike):
+        logger.warning(
+            "chat_novel_metadata_unavailable",
+            novel_type=type(novel).__name__,
+        )
+        return "", ""
+    return novel.title, novel.genre
+
+
+def build_prompt_context(
+    history: list[ChatMessage],
+    novel: object | None = None,
+) -> PromptContext:
+    """Build the chat PromptContext with conversation history + novel metadata.
 
     Args:
         history: The conversation messages (oldest first) from the store.
+        novel: The owned novel resolved for a project-linked conversation
+            (single fetch reused from project-link validation), or ``None``
+            for project-less chat / test contexts — the context then keeps
+            the empty project-metadata placeholders (ADR-024 minimal tier).
 
     Returns:
-        A PromptContext with ``extra["conversation_history"]`` populated.
+        A PromptContext with ``extra["conversation_history"]`` populated
+        and ``project_title`` / ``genre`` backed by the novel when available.
     """
+    title, genre = _novel_metadata(novel)
     context = build_chat_context(
-        project_title="",
-        genre="",
+        project_title=title,
+        genre=genre,
         language="en",
     )
     context.extra["conversation_history"] = format_history(history)
     return context
+
+
+async def resolve_owned_novel(
+    *,
+    novel_lookup: OwnedLinkLookupProtocol | None,
+    project_id: UUID | None,
+    user_id: UUID,
+) -> object | None:
+    """Resolve the caller-owned novel for a non-null project link.
+
+    Notes ``_validate_link`` semantics (NOTES-001 ownership pattern):
+    ``get_owned`` returns the entity only for its owner, so foreign and
+    unknown novels are indistinguishable — both raise NotFoundError
+    (→ HTTP 404, no enumeration oracle). ``novel_lookup is None`` (test
+    contexts only; production wiring always provides it) skips the check.
+
+    The returned novel feeds :func:`build_prompt_context` (its
+    ``project_title`` / ``genre`` metadata) — the single ownership fetch
+    is reused for context assembly, no extra query (FO-7 follow-up: the
+    chat seam no longer holds zero novel data).
+
+    Returns:
+        The owned novel, or ``None`` when the check is skipped or the
+        conversation is project-less.
+
+    Raises:
+        NotFoundError: The novel does not exist or is owned by another
+            user.
+    """
+    if project_id is None or novel_lookup is None:
+        return None
+    novel = await novel_lookup.get_owned(project_id, user_id)
+    if novel is None:
+        raise NotFoundError("Novel", identifier=str(project_id))
+    return novel
 
 
 async def prepare_effective_context(

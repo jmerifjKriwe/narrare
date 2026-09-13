@@ -182,3 +182,31 @@ class TestChatSupplyFix:
         prompt = await _compose(_route_context())
         assert "writing craft assistant" in prompt.system
         assert "{{" not in prompt.system, "placeholder residue in render"
+
+
+class TestChatNovelMetadataRender:
+    """FO-7 follow-up (2026-09-12): project-linked chat supplies real metadata.
+
+    Production shape (``apps/api/narrare/chat/_context.py`` +
+    ``chat_service._resolve_owned_novel``): project-linked conversations
+    thread the owned novel's ``title`` / ``genre`` into the chat context;
+    the seam's other FO-7 slots stay documented-empty (chapter-scoped /
+    KB-repository-scoped — see ``build_chat_context``). The real composer
+    must render the metadata into the Project Context section without
+    ``PromptVariableError``.
+    """
+
+    async def test_project_linked_context_composes_with_novel_metadata(self) -> None:
+        """Sentinel title/genre reach the composed system prompt."""
+        context = build_chat_context(
+            project_title="The Ashen Court",
+            genre="Dark Fantasy",
+            language="en",
+        )
+        context.extra["conversation_history"] = "Author: How do I pace my opening chapter?"
+        prompt = await _compose(context)
+
+        assert "The Ashen Court" in prompt.system
+        assert "Dark Fantasy" in prompt.system
+        assert "### Project Context" in prompt.system
+        assert "{{" not in prompt.system, "placeholder residue in render"

@@ -205,6 +205,20 @@ def _make_request(
 # ---------------------------------------------------------------------------
 
 
+class _OwnedNovel:
+    """Novel-shaped stand-in returned by ``FakeNovelLookup``.
+
+    Carries the metadata fields the chat seam reads (``title`` / ``genre``)
+    so context-enrichment tests can assert on sentinel values. Unseeded
+    ids still resolve to a bare ``object()`` (non-novel shape) so the
+    metadata degradation path stays exercisable.
+    """
+
+    def __init__(self, title: str, genre: str) -> None:
+        self.title = title
+        self.genre = genre
+
+
 class FakeNovelLookup:
     """In-memory Fake for OwnedLinkLookupProtocol (ADR-030).
 
@@ -215,16 +229,25 @@ class FakeNovelLookup:
 
     def __init__(self) -> None:
         self._owned: dict[UUID, UUID] = {}
+        self._novels: dict[UUID, _OwnedNovel] = {}
         self.calls: list[tuple[UUID, UUID]] = []
 
-    def seed_owned(self, novel_id: UUID, owner_id: UUID) -> None:
-        """Register a novel as owned by ``owner_id``."""
+    def seed_owned(
+        self,
+        novel_id: UUID,
+        owner_id: UUID,
+        *,
+        title: str = "",
+        genre: str = "",
+    ) -> None:
+        """Register a novel as owned by ``owner_id`` (with seam metadata)."""
         self._owned[novel_id] = owner_id
+        self._novels[novel_id] = _OwnedNovel(title=title, genre=genre)
 
     async def get_owned(self, entity_id: UUID, user_id: UUID) -> object | None:
         self.calls.append((entity_id, user_id))
         if self._owned.get(entity_id) == user_id:
-            return object()
+            return self._novels.get(entity_id, object())
         return None
 
 
