@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.5.0"
+prompt_version: "1.6.0"
 ---
 
 ## System Prompt
@@ -21,9 +21,7 @@ Analyze the draft across these dimensions:
 
 ### Context
 
-- Project: {{project_title}}
-- Genre: {{genre}}
-- Language: {{writing_language}}{{word_target_line}}
+{{project_title}}{{genre}}- Language: {{writing_language}}{{word_target_line}}
 
 ### Knowledge Base
 

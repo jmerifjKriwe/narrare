@@ -232,7 +232,6 @@ class TestGetReviewPromptWithContext:
             composer=mock_composer,
             deps=deps,
             state=state,
-            word_count=5,
         )
         assert sys_prompt == "SYS"
         assert user_prompt == "USER"
@@ -253,7 +252,6 @@ class TestGetReviewPromptWithContext:
             composer=mock_composer,
             deps=deps,
             state=state,
-            word_count=3,
         )
         assert returned_ctx is writing_ctx
         # Verify PromptContext.extra was enriched with KB data
@@ -280,7 +278,6 @@ class TestGetReviewPromptWithContext:
             composer=mock_composer,
             deps=deps,
             state=state,
-            word_count=3,
         )
         called_ctx = mock_composer.build.call_args.args[1]
         assert called_ctx.extra["user_id"] == "user-77"
@@ -289,7 +286,9 @@ class TestGetReviewPromptWithContext:
         # {{word_target_line}} (label-in-value) — the supplier builds the
         # full line instead of a bare number.
         assert called_ctx.extra["word_target_line"] == "\n- Word target: 1000"
-        assert called_ctx.extra["word_count"] == "3"
+        # Review-dangles fix: the word_count extra is gone — the template
+        # has no {{word_count}} placeholder, so supplying it was dead data.
+        assert "word_count" not in called_ctx.extra
 
 
 # ---------------------------------------------------------------------------

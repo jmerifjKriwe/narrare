@@ -95,7 +95,6 @@ class TestReviewPromptRealCompose:
             composer=_deps().composer,
             deps=_deps(),
             state=_state(),
-            word_count=6,
         )
         assert writing_ctx is None
         assert _REVIEW_TEMPLATE_MARKER in system, "governed review template not routed"
@@ -110,7 +109,6 @@ class TestReviewPromptRealCompose:
             composer=_deps().composer,
             deps=_deps(),
             state=_state(),
-            word_count=6,
         )
         assert "### Knowledge Base" in system
         assert "{{kb_" not in system
@@ -130,7 +128,6 @@ class TestReviewPromptRealCompose:
             composer=deps.composer,
             deps=deps,
             state=state,
-            word_count=6,
         )
         assert returned_ctx is writing_ctx
         assert "### Character: Elena" in system
@@ -147,7 +144,6 @@ class TestReviewPromptRealCompose:
             composer=deps.composer,
             deps=deps,
             state=state,
-            word_count=6,
         )
         assert writing_ctx is None
         assert _REVIEW_TEMPLATE_MARKER in system

@@ -63,26 +63,31 @@ def _prompt_path():
 
 def _route_context(kb_relationships: str = "") -> PromptContext:
     """Route-exact context mirroring get_review_prompt enrichment:
-    word_target_line/word_count extras, user_preferences, and the ten KB
-    extras from ``kb_context_extras`` (populated variant probed via
-    ``kb_relationships`` — the caller-supplied production shape).
+    word_target_line extra, label-in-value Context bullets, user_preferences,
+    and the ten KB extras from ``kb_context_extras`` (populated variant probed
+    via ``kb_relationships`` — the caller-supplied production shape).
 
     Item F (2026-09-12): the word-target label moved into the value
     ({{word_target_line}}, label-in-value / append-to-previous-line) — the
     supplier builds the full line "\n- Word target: N" instead of supplying
-    a bare number against a static template label."""
+    a bare number against a static template label.
+
+    Review-dangles fix (2026-09-13): the leading Context bullets
+    ({{project_title}} / {{genre}}) follow the same label-in-value pattern —
+    the supplier builds the full bullet ("…\n") or "" when unset, so an
+    empty value renders the line away instead of dangling a label. The dead
+    word_count extra (no template placeholder) is no longer supplied."""
     ctx = PromptContext(
         language="en",
         writing_language="en",
-        genre="Fantasy",
+        genre="- Genre: Fantasy\n",
         tone="",
-        project_title="The Thornwall Echoes",
+        project_title="- Project: The Thornwall Echoes\n",
         chapter_title="Chapter 1",
     )
     ctx.mode = "review"
     ctx.extra = {
         "word_target_line": "\n- Word target: 2000",
-        "word_count": "1800",
         "user_preferences": "- Prefers concise sentences",
         "kb_characters": "",
         "kb_locations": "",
@@ -122,11 +127,12 @@ class TestReviewHeaderSurgery:
         for section in _ALREADY_LIVE_SECTIONS:
             assert section in resolved.system_prompt, f"regression: {section!r} dropped"
 
-    def test_prompt_version_bumped_to_1_5_0(self) -> None:
+    def test_prompt_version_bumped_to_1_6_0(self) -> None:
         """Header surgery bumped 1.3.1 → 1.4.0 (R2 Batch D); Item F
-        (word-target label-in-value) bumps 1.4.0 → 1.5.0."""
+        (word-target label-in-value) bumps 1.4.0 → 1.5.0; the Context-bullet
+        label-in-value migration (Project/Genre) bumps 1.5.0 → 1.6.0."""
         parsed = parse_frontmatter(_prompt_path().read_text(encoding="utf-8"))
-        assert parsed.metadata.get("prompt_version") == "1.5.0"
+        assert parsed.metadata.get("prompt_version") == "1.6.0"
 
 
 class TestReviewTailActivation:
@@ -160,3 +166,15 @@ class TestReviewTailActivation:
         """rg-style containment: the render leaks no ``{{...}}`` token."""
         prompt = await _compose(_route_context())
         assert "{{" not in prompt.system, "placeholder residue in render"
+
+    async def test_composed_system_renders_context_bullets_once(self) -> None:
+        """Label-in-value Context bullets (review-dangles fix): the populated
+        Project/Genre values render the full bullet exactly once each, in the
+        former static-label layout."""
+        prompt = await _compose(_route_context())
+        assert prompt.system.count("- Project: The Thornwall Echoes") == 1
+        assert prompt.system.count("- Genre: Fantasy") == 1
+        assert (
+            "- Project: The Thornwall Echoes\n- Genre: Fantasy\n"
+            "- Language: en\n- Word target: 2000" in prompt.system
+        )

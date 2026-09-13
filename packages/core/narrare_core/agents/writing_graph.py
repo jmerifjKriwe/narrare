@@ -200,7 +200,6 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             ctx.deps.composer,
             ctx.deps,
             ctx.state,
-            word_count,
         )
         agent = await get_or_create_agent(
             ctx.deps,
