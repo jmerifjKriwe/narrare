@@ -299,12 +299,14 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (34):**
+**Open (32):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
        SSE pre-header call)*
-7. [ ] `analysis/dependencies_coreference.py` — `get_coreference_service`
+7. [x] `analysis/dependencies_coreference.py` — `get_coreference_service`
+       *(A2/L07 — landed 2026-09-13: lazy wiring + first-use resolve +
+       SSE pre-header call)*
 8. [ ] `analysis/dependencies_voice_check.py` — `get_voice_check_service`
 9. [ ] `analysis/dependencies_author_voice.py` — `get_author_voice_service`
 10. [ ] `analysis/dependencies_author_voice_drift.py` — `get_author_voice_drift_service` (SSE)

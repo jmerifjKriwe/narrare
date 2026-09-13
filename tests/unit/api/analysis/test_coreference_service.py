@@ -32,6 +32,7 @@ from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.model_config import ResolvedModelConfig
 from tests.unit.api.analysis._coreference_test_helpers import (
     FakeComposer,
+    _CountingResolution,
     consume,
     make_agent_output,
     make_chapter,
@@ -79,7 +80,7 @@ class TestComposeInvocationMode1:
             mock_agent.run = AsyncMock(return_value=make_agent_output())
             MockAgent.return_value = mock_agent
 
-            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))  # type: ignore[arg-type]
+            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))
 
         mock_compose.assert_awaited_once()
         kwargs = mock_compose.call_args.kwargs
@@ -119,7 +120,7 @@ class TestComposeInvocationMode1:
             mock_agent.run = AsyncMock(return_value=make_agent_output())
             MockAgent.return_value = mock_agent
 
-            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))  # type: ignore[arg-type]
+            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))
 
         ctx = mock_compose.call_args.kwargs.get("prompt_context")
         assert ctx is not None, "prompt_context must be supplied to compose_invocation."
@@ -158,7 +159,7 @@ class TestComposedPromptReachesAgent:
             mock_agent.run = AsyncMock(return_value=make_agent_output())
             MockAgent.return_value = mock_agent
 
-            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))  # type: ignore[arg-type]
+            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))
 
         construct_kwargs = MockAgent.call_args.kwargs
         assert construct_kwargs.get("system_prompt") == "COMPOSED-COREFERENCE-SYSTEM", (
@@ -194,7 +195,7 @@ class TestComposedPromptReachesAgent:
             mock_agent.run = capture_run
             MockAgent.return_value = mock_agent
 
-            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))  # type: ignore[arg-type]
+            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))
 
         run_prompt = captured.get("prompt", "")
         assert chapter_text in run_prompt, (
@@ -226,7 +227,7 @@ class TestSSEEvents:
             mock_agent.run = AsyncMock(return_value=make_agent_output())
             MockAgent.return_value = mock_agent
 
-            events = await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))  # type: ignore[arg-type]
+            events = await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))
 
         assert len(events) == 2
         assert events[0].event == "result"
@@ -235,3 +236,85 @@ class TestSSEEvents:
         assert events[0].is_final is False
         assert events[1].event == "done"
         assert events[1].is_final is True
+
+
+# ---------------------------------------------------------------------------
+# ADR-086: lazy model resolution at the service boundary
+# ---------------------------------------------------------------------------
+
+
+class TestLazyModelResolution:
+    """ADR-086 lazy semantics at the service boundary.
+
+    The DI factory runs pre-body-validation (FastAPI solves all
+    sub-dependencies first), so the service must NOT resolve at
+    construction. The first ``ensure_resolved()`` / ``analyze()`` resolves
+    exactly once; repeat calls reuse the cached triple.
+    """
+
+    @pytest.mark.asyncio
+    async def test_no_resolution_at_construction(
+        self,
+        composer: FakeComposer,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        make_service(composer, config, model_resolution=resolution)
+        assert resolution.calls == 0
+
+    @pytest.mark.asyncio
+    async def test_ensure_resolved_resolves_once_and_is_idempotent(
+        self,
+        composer: FakeComposer,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        service = make_service(composer, config, model_resolution=resolution)
+
+        first = await service.ensure_resolved()
+        second = await service.ensure_resolved()
+
+        assert resolution.calls == 1
+        assert first is second
+
+    @pytest.mark.asyncio
+    async def test_analyze_resolves_lazily_on_first_use(
+        self,
+        composer: FakeComposer,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        service = make_service(composer, config, model_resolution=resolution)
+        service._chapter_repo.get = AsyncMock(return_value=make_chapter())
+        service._novel_repo.get_by_id = AsyncMock(return_value=make_novel())
+
+        with patch_mode1() as (MockAgent, _MockDeps, _mc):
+            mock_agent = MagicMock(spec=["run"])
+            mock_agent.run = AsyncMock(return_value=make_agent_output())
+            MockAgent.return_value = mock_agent
+
+            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))
+
+        assert resolution.calls == 1
+
+    @pytest.mark.asyncio
+    async def test_analyze_after_ensure_resolved_reuses_cache(
+        self,
+        composer: FakeComposer,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        service = make_service(composer, config, model_resolution=resolution)
+        service._chapter_repo.get = AsyncMock(return_value=make_chapter())
+        service._novel_repo.get_by_id = AsyncMock(return_value=make_novel())
+
+        await service.ensure_resolved()
+
+        with patch_mode1() as (MockAgent, _MockDeps, _mc):
+            mock_agent = MagicMock(spec=["run"])
+            mock_agent.run = AsyncMock(return_value=make_agent_output())
+            MockAgent.return_value = mock_agent
+
+            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))
+
+        assert resolution.calls == 1

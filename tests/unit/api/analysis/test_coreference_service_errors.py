@@ -12,6 +12,7 @@ See:
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -25,6 +26,9 @@ from tests.unit.api.analysis._coreference_test_helpers import (
     make_service,
     patch_mode1,
 )
+
+if TYPE_CHECKING:
+    from narrare_core.llm.model_routing import ResolvedModel
 
 
 @pytest.fixture
@@ -52,7 +56,7 @@ class TestErrorHandling:
         service._chapter_repo.get.return_value = None  # type: ignore[attr-defined]
 
         with pytest.raises(NotFoundError):
-            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))  # type: ignore[arg-type]
+            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))
 
     @pytest.mark.asyncio
     async def test_novel_not_found_raises_not_found_error(
@@ -67,7 +71,7 @@ class TestErrorHandling:
         service._novel_repo.get_by_id.return_value = None  # type: ignore[attr-defined]
 
         with pytest.raises(NotFoundError):
-            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))  # type: ignore[arg-type]
+            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))
 
     @pytest.mark.asyncio
     async def test_no_composer_raises_configuration_error(
@@ -77,27 +81,39 @@ class TestErrorHandling:
         from narrare_core.shared.errors import ConfigurationError
 
         service = make_service(FakeComposer(), config)
-        service._composer = None  # type: ignore[assignment]
+        service._composer = None
         service._chapter_repo.get.return_value = make_chapter()  # type: ignore[attr-defined]
         service._novel_repo.get_by_id.return_value = make_novel()  # type: ignore[attr-defined]
 
         with pytest.raises(ConfigurationError):
-            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))  # type: ignore[arg-type]
+            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))
 
     @pytest.mark.asyncio
-    async def test_no_model_config_raises_not_found_error(
+    async def test_resolver_configuration_error_propagates_un_swallowed(
         self,
         composer: FakeComposer,
+        config: ResolvedModelConfig,
     ) -> None:
-        from narrare_core.shared.errors import NotFoundError
+        """RULE-11 / ADR-086: the routing cascade's ConfigurationError
+        (unconfigured provider) propagates from the entry point — the
+        service never swallows it (AI-mandatory endpoint)."""
+        from narrare_core.shared.errors import ConfigurationError
 
-        service = make_service(composer, ResolvedModelConfig(provider_name="t", model_id="t"))
-        service._config = None  # type: ignore[assignment]
-        service._chapter_repo.get.return_value = make_chapter()  # type: ignore[attr-defined]
-        service._novel_repo.get_by_id.return_value = make_novel()  # type: ignore[attr-defined]
+        class _RaisingResolution:
+            async def resolve(self) -> ResolvedModel:
+                raise ConfigurationError(
+                    "No AI provider configured.",
+                    code="NO_AI_PROVIDER",
+                )
 
-        with pytest.raises(NotFoundError):
-            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))  # type: ignore[arg-type]
+        service = make_service(
+            composer,
+            config,
+            model_resolution=_RaisingResolution(),
+        )
+
+        with pytest.raises(ConfigurationError):
+            await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))
 
     @pytest.mark.asyncio
     async def test_agent_failure_propagates(
@@ -116,4 +132,4 @@ class TestErrorHandling:
             MockAgent.return_value = mock_agent
 
             with pytest.raises(RuntimeError, match="LLM blew up"):
-                await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))  # type: ignore[arg-type]
+                await consume(service.analyze(uuid.uuid4(), uuid.uuid4()))

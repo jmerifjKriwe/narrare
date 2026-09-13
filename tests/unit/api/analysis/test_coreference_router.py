@@ -9,7 +9,7 @@ JSON event, a ``"done"`` JSON event, and the ``[DONE]`` sentinel.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -19,9 +19,16 @@ from narrare.analysis.schemas_coreference import (
     CoreferenceResponse,
     CoreferenceStreamEvent,
 )
+from narrare_core.shared.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+#: The route's ``SessionDep`` is unused in direct calls (the service factory
+#: is patched); a seam cast types the deliberate ``None`` without suppression.
+_no_session = cast("AsyncSession", None)
 
 
 class FakeCoreferenceService:
@@ -29,6 +36,10 @@ class FakeCoreferenceService:
 
     def __init__(self, response: CoreferenceResponse) -> None:
         self._response = response
+
+    async def ensure_resolved(self) -> None:
+        """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+        return None
 
     async def analyze(
         self,
@@ -64,7 +75,7 @@ async def test_analyze_coreference_serializes_result_done_and_sentinel() -> None
         stream_response = await analyze_coreference(
             chapter_id=chapter_id,
             user_id=str(uuid4()),
-            session=None,  # type: ignore[arg-type]
+            session=_no_session,
         )
 
     chunks = [
@@ -90,6 +101,10 @@ async def test_analyze_coreference_emits_error_event_on_failure() -> None:
     """A service failure is surfaced as an in-band ``"error"`` event (RULE-11)."""
 
     class FailingService:
+        async def ensure_resolved(self) -> None:
+            """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+            return None
+
         async def analyze(
             self, chapter_id: UUID, user_id: UUID
         ) -> AsyncIterator[CoreferenceStreamEvent]:
@@ -105,12 +120,12 @@ async def test_analyze_coreference_emits_error_event_on_failure() -> None:
 
         mp.setattr(
             "narrare.analysis.router_coreference.get_coreference_service",
-            _failing_factory,  # type: ignore[arg-type]
+            _failing_factory,
         )
         stream_response = await analyze_coreference(
             chapter_id=uuid4(),
             user_id=str(uuid4()),
-            session=None,  # type: ignore[arg-type]
+            session=_no_session,
         )
 
     chunks = [
@@ -124,3 +139,42 @@ async def test_analyze_coreference_emits_error_event_on_failure() -> None:
     assert error_payload["is_final"] is True
     assert error_payload["error"]
     assert payloads[-1] == "[DONE]"
+
+
+@pytest.mark.asyncio
+async def test_analyze_coreference_raises_configuration_error_pre_header() -> None:
+    """ADR-086 Decision 3: ensure_resolved runs BEFORE the StreamingResponse.
+
+    An unconfigured provider (``ConfigurationError`` from the cascade)
+    must surface as a pre-header 400 via the NarrareError handler —
+    never as an in-band SSE error event. Direct route-call proof: the
+    route function itself raises before constructing the response.
+    """
+
+    class UnconfiguredService:
+        async def ensure_resolved(self) -> None:
+            raise ConfigurationError("No AI provider configured.", code="NO_AI_PROVIDER")
+
+        async def analyze(
+            self,
+            chapter_id: UUID,
+            user_id: UUID,
+        ) -> AsyncIterator[CoreferenceStreamEvent]:
+            raise AssertionError("analyze must not run when resolution fails")
+            yield  # pragma: no cover - make this an async generator
+
+    with pytest.MonkeyPatch.context() as mp:
+
+        async def _unconfigured_factory(**_kwargs: object) -> UnconfiguredService:
+            return UnconfiguredService()
+
+        mp.setattr(
+            "narrare.analysis.router_coreference.get_coreference_service",
+            _unconfigured_factory,
+        )
+        with pytest.raises(ConfigurationError):
+            await analyze_coreference(
+                chapter_id=uuid4(),
+                user_id=str(uuid4()),
+                session=_no_session,
+            )

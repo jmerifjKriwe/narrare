@@ -237,7 +237,9 @@ class TestCoreferenceServiceConstructor:
         composer: FakeComposer,
         config: ResolvedModelConfig,
     ) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.analysis.coreference_service import CoreferenceService
+        from narrare_core.llm.model_routing import ResolvedModel
         from tests.unit.api.analysis._coreference_test_helpers import FakeModelRegistry
 
         provider = KBContextProvider(kb_repo=None, relationship_repo=None)
@@ -246,7 +248,9 @@ class TestCoreferenceServiceConstructor:
             novel_repo=AsyncMock(),  # type: ignore[arg-type]
             chapter_repo=AsyncMock(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            model_config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, source="unit-test")
+            ),
             composer=composer,  # type: ignore[arg-type]
             kb_context_provider=provider,
         )
@@ -260,14 +264,18 @@ class TestCoreferenceServiceConstructor:
         composer: FakeComposer,
         config: ResolvedModelConfig,
     ) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.analysis.coreference_service import CoreferenceService
+        from narrare_core.llm.model_routing import ResolvedModel
         from tests.unit.api.analysis._coreference_test_helpers import FakeModelRegistry
 
         service = CoreferenceService(
             novel_repo=AsyncMock(),  # type: ignore[arg-type]
             chapter_repo=AsyncMock(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            model_config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, source="unit-test")
+            ),
             composer=composer,  # type: ignore[arg-type]
         )
 

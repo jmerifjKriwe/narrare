@@ -234,6 +234,7 @@ class TestCredentialsReachResolutionPoint:
         ]
 
     async def test_coreference_service_threads_credentials_into_get_model(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.analysis.coreference_service import CoreferenceService
 
         config = _user_config()
@@ -255,12 +256,13 @@ class TestCredentialsReachResolutionPoint:
             novel_repo=novel_repo,
             chapter_repo=chapter_repo,
             model_registry=cast("ModelRegistry", registry),
-            model_config=config,
+            # ADR-086: credentials ride the lazy resolution triple.
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
             composer=composer,
             kb_context_provider=None,
             invocation_pipeline=None,
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
 
         with pytest.raises(_StopResolution):

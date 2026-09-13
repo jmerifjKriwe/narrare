@@ -134,7 +134,9 @@ class TestAnalyseServicePrepareWiring:
     """The ANALYSE services assemble via prepare() and forward the triple."""
 
     async def test_coreference_service_prepares_and_forwards_triple(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.analysis.coreference_service import CoreferenceService
+        from narrare_core.llm import ResolvedModel
 
         config = _user_config()
         registry = _RecordingPrepareRegistry()
@@ -156,12 +158,13 @@ class TestAnalyseServicePrepareWiring:
             novel_repo=novel_repo,
             chapter_repo=chapter_repo,
             model_registry=cast("ModelRegistry", registry),
-            model_config=config,
+            # ADR-086: first-use resolution pinned via StaticModelResolution.
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
             composer=cast("PromptComposer", composer),
             kb_context_provider=None,
             invocation_pipeline=None,
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
 
         with patch("narrare_core.agents.coreference_agent.CoreferenceAgent") as MockAgent:

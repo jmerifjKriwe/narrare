@@ -9,7 +9,7 @@ config + credentials reach the service:
 - ``get_beta_reader_service`` (BETA_READ — novel-scoped query param)
 - ``get_character_voice_service`` (VOICE — novel-scoped path param)
 - ``get_coreference_service`` (ANALYSE — chapter-scoped, resolves WITHOUT
-  the project tier, per the plan's novel_id threading rule)
+  the project tier at first use, per the plan's novel_id threading rule)
 
 Task 2b's four voice factories live in
 ``test_deps_user_routing_voice_factories.py`` (RULE-04 split when Task 2b
@@ -223,14 +223,14 @@ class TestCharacterVoiceFactoryUserRouting:
 
 
 class TestCoreferenceFactoryUserRouting:
-    """get_coreference_service resolves via the cascade (ANALYSE, no novel).
+    """get_coreference_service wires the ANALYSE cascade lazily (no novel tier).
 
     The coreference router is chapter-scoped — the novel is only known after
     the service loads the chapter, so the cascade resolves without the
     project tier (plan: "Where not, resolve without it").
     """
 
-    async def test_resolves_analyse_for_user_without_novel(self) -> None:
+    async def test_resolves_analyse_for_user_without_novel_at_first_use(self) -> None:
         from narrare.analysis.coreference_service import CoreferenceService
         from narrare.analysis.dependencies_coreference import get_coreference_service
 
@@ -261,8 +261,21 @@ class TestCoreferenceFactoryUserRouting:
                 user_id=user_id,
             )
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.ANALYSE, UUID(user_id), None)
+        # ADR-086 lazy wiring: the factory runs pre-body-validation, so
+        # it must NOT resolve — the cascade is deferred to first use.
+        assert resolver.resolve.await_args_list == []
+
         assert isinstance(service, CoreferenceService)
-        assert service._config is resolved.config
-        assert service._api_key == _USER_KEY
-        assert service._base_url == _USER_BASE_URL
+        resolved_model = await service.ensure_resolved()
+
+        # The REAL intent (ANALYSE), for THIS user, WITHOUT the novel
+        # (project) tier — invoked at first use, not at construction:
+        assert resolver.resolve.await_args_list == [call(LLMIntent.ANALYSE, UUID(user_id), None)]
+
+        # The cascade result lands on the service (threaded onwards to
+        # the run-limit resolver + registry.prepare at consumption time).
+        assert resolved_model.config is resolved.config
+        assert resolved_model.config.model_id == "glm-4.7"
+        assert resolved_model.config.provider_name == "zai"
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL

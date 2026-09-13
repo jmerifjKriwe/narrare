@@ -47,12 +47,13 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -76,27 +77,24 @@ class CoreferenceService:
             and access control.
         chapter_repo: For fetching the chapter content.
         model_registry: Shared LLM model registry.
-        model_config: Resolved model config (provider + model ID).
+        model_resolution: Lazy model-routing source (ADR-086), resolved
+            and cached on first use (Lazy/StaticModelResolution).
         composer: PromptComposer for resolving the governed
             coreference system prompt via the cascade (RULE-02b /
             ADR-054 D1). Required for ``analyze``.
-        kb_context_provider: Canonical KB-context provider (ADR-067) for
-            the ``kb_characters`` / ``kb_locations`` / ``kb_factions`` /
-            ``kb_relationships`` prompt variables. The provider is the
-            single fetch+render source for all four KB-context slots
-            (the ADR-050 envelope, with provenance annotated so analysis
-            gets the same honest rendering as writing — FIND-017).
-            Coreference resolution needs the character name list to map
+        kb_context_provider: Canonical KB-context provider (ADR-067) —
+            the single fetch+render source for the ``kb_characters`` /
+            ``kb_locations`` / ``kb_factions`` / ``kb_relationships``
+            prompt variables (ADR-050 envelope, provenance-annotated so
+            analysis gets the same honest rendering as writing,
+            FIND-017). Coreference needs the character names to map
             pronouns → characters, plus locations/factions/relationships
-            for disambiguation context. When ``None`` or when the KB is
-            empty, all four degrade to empty strings (RULE-11) — the
-            analysis still runs, just less accurately.
+            for disambiguation. When ``None`` or the KB is empty, all
+            four degrade to empty strings (RULE-11) — the analysis
+            still runs, just less accurately.
         invocation_pipeline: Optional pipeline for invocation evidence
             (Mode 1 prepare/finalize). Retained for DI-contract
             stability.
-        api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.prepare``.
-        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -104,25 +102,28 @@ class CoreferenceService:
         novel_repo: NovelRepository,
         chapter_repo: ChapterRepository,
         model_registry: ModelRegistry,
-        model_config: ResolvedModelConfig | None = None,
+        model_resolution: ModelResolution,
         composer: PromptComposer | None = None,
         kb_context_provider: KBContextProviderProtocol | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
         self._registry = model_registry
-        self._config = model_config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._composer = composer
         self._kb_context_provider = kb_context_provider
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086)."""
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def analyze(
         self,
@@ -146,9 +147,13 @@ class CoreferenceService:
 
         Raises:
             NotFoundError: If the chapter or its novel does not exist or
-                is not accessible, or no model config is configured.
+                is not accessible.
             ConfigurationError: If no ``PromptComposer`` is configured.
         """
+        # ADR-086: first-use lazy resolve, post-validation (see
+        # ensure_resolved); ahead of the gates — eager-world precedence.
+        resolved_model = await self.ensure_resolved()
+
         # 1. Fetch chapter (novel_id-free lookup) then resolve novel
         #    metadata + access control.
         chapter = await self._chapter_repo.get(chapter_id)
@@ -158,9 +163,6 @@ class CoreferenceService:
         novel = await self._novel_repo.get_by_id(chapter.novel_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(chapter.novel_id))
-
-        if self._config is None:
-            raise NotFoundError("Model config", identifier="no_model_config")
 
         if self._composer is None:
             # Defensive: the factory always wires a composer, but fail
@@ -174,15 +176,13 @@ class CoreferenceService:
         language = novel.writing_language or "en"
         chapter_text = chapter.content or ""
 
-        # 1b. Canonical KB context (ADR-067): characters/locations/factions/
-        #     relationships are fetched+rendered through the reusable provider
-        #     (the ADR-050 envelope, with provenance annotated so analysis
-        #     gets the same honest rendering as writing — FIND-017). This
-        #     succeeds the fragmented ``fetch_kb_characters`` +
-        #     ``fetch_formatted_relationships`` helpers: the provider is now
-        #     the single fetch+render source for all four KB-context slots.
-        #     Degrades to empty strings when no provider is wired or the KB
-        #     is empty (RULE-11) — the provider never raises.
+        # 1b. Canonical KB context (ADR-067): all four kb_* slots are
+        #     fetched+rendered through the reusable provider (ADR-050
+        #     envelope, provenance-annotated — FIND-017), succeeding the
+        #     fragmented ``fetch_kb_characters`` /
+        #     ``fetch_formatted_relationships`` helpers. Degrades to
+        #     empty strings when no provider is wired or the KB is empty
+        #     (RULE-11) — the provider never raises.
         from narrare_core.context._render_options import RenderOptions
 
         if self._kb_context_provider is None:
@@ -216,14 +216,14 @@ class CoreferenceService:
         # intent-aware runtime settings + usage limits as one coherent
         # triple, so the thinking policy actually reaches this call.
         resolved = self._run_limit_resolver.resolve(
-            config=self._config, budget=None, invocation_id=uuid4()
+            config=resolved_model.config, budget=None, invocation_id=uuid4()
         )
         prepared = await self._registry.prepare(
-            self._config,
+            resolved_model.config,
             intent=LLMIntent.ANALYSE,
             usage_limits=resolved.usage_limits,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            api_key=resolved_model.api_key,
+            base_url=resolved_model.base_url,
         )
 
         # 3. Build agent dependencies — structured project/chapter context.
