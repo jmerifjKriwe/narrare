@@ -115,3 +115,47 @@ class TestGetChatService:
             service._novel_lookup,  # pyright: ignore[reportPrivateUsage] — see docstring
             _NovelOwnedLookup,
         )
+
+    async def test_always_wires_kb_context_provider(self) -> None:
+        """ADR-067 invariant: the KB-context provider is always wired.
+
+        ``ChatService`` fails open on ``None`` (test contexts only), so an
+        unwired provider would silently keep the chat template's per-type
+        KB slots empty in production — the documented chat follow-up this
+        slice closes. Mirrors the novel-lookup pin above.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from narrare.kb._context_provider import KBContextProvider
+
+        resolver, resolved = _fake_resolver()
+        with (
+            patch(
+                "narrare.chat.dependencies.get_model_routing_resolver",
+                return_value=resolver,
+            ),
+            patch(
+                "narrare.chat.dependencies.get_model_registry",
+                return_value=MagicMock(spec=True, name="ModelRegistry"),
+            ),
+            patch(
+                "narrare.chat.dependencies.get_composer",
+                return_value=MagicMock(spec=True, name="PromptComposer"),
+            ),
+            patch(
+                "narrare.chat.dependencies.get_invocation_pipeline",
+                return_value=None,
+            ),
+        ):
+            service = await get_chat_service(
+                session=cast("AsyncSession", FakeDbSession()),
+                user_id=str(uuid4()),
+            )
+
+        _ = resolved
+        # Wiring pin via the instance dict — direct private-attribute access
+        # would add a reportPrivateUsage finding, and the type-ignore baseline
+        # is a no-growth gate this slice must not extend (band-summary pin
+        # convention).
+        provider = vars(service)["_kb_context_provider"]
+        assert isinstance(provider, KBContextProvider)

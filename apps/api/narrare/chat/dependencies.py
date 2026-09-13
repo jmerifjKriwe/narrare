@@ -78,6 +78,11 @@ async def get_chat_service(
       ownership validation (P-SEC, notes pattern). ALWAYS wired — the
       service fails open on ``None`` (test contexts only), so a missing
       lookup would silently skip validation (notes T7-review invariant).
+    - KBContextProvider as KBContextProviderProtocol (ADR-067) for the
+      chat template's per-type KB slots (kb_characters / kb_locations /
+      kb_factions / kb_other / kb_relationships). ALWAYS wired — an
+      unwired provider would silently keep the slots empty in production;
+      per-fetch degradation stays inside the provider (RULE-11).
 
     Args:
         session: SQLAlchemy async session for DB access.
@@ -88,6 +93,9 @@ async def get_chat_service(
     """
     from narrare.chat.chat_service import ChatService
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
+    from narrare.kb._context_provider import KBContextProvider
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.repository import KBRepository
     from narrare.notes.dependencies import get_note_service
     from narrare.novels.repository import NovelRepository
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
@@ -97,6 +105,14 @@ async def get_chat_service(
 
     registry = get_model_registry()
     composer = get_composer()
+
+    # Canonical KB-context provider (ADR-067): single fetch+render source
+    # for the chat template's per-type KB slots. Degrades gracefully
+    # (RULE-11) — empty bundle on an unavailable repository or empty KB.
+    kb_context_provider = KBContextProvider(
+        kb_repo=KBRepository(session),
+        relationship_repo=RelationshipRepository(session),
+    )
 
     return ChatService(
         prompt_composer=composer,
@@ -109,4 +125,5 @@ async def get_chat_service(
         base_url=resolved.base_url,
         note_lookup=get_note_service(session),
         novel_lookup=_NovelOwnedLookup(NovelRepository(session)),
+        kb_context_provider=kb_context_provider,
     )

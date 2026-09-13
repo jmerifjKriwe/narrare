@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 from narrare.chat._context import (
     build_prompt_context,
+    resolve_chat_kb_vars,
     resolve_effective_message,
     resolve_owned_novel,
 )
@@ -27,6 +28,7 @@ from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.notes.contracts import OwnedLinkLookupProtocol
     from narrare_core.agents.process_history import ProcessHistory
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -63,6 +65,7 @@ class ChatService(ChatServiceProtocol):
         base_url: str | None = None,
         note_lookup: NoteLookupProtocol | None = None,
         novel_lookup: OwnedLinkLookupProtocol | None = None,
+        kb_context_provider: KBContextProviderProtocol | None = None,
     ) -> None:
         """Initialize the chat service with injected dependencies.
 
@@ -91,6 +94,9 @@ class ChatService(ChatServiceProtocol):
                 correlation (IDOR hardening). ``None`` (default) skips the
                 check; production wiring (``chat.dependencies``) always
                 provides it, mirroring the notes T7-review invariant.
+            kb_context_provider: Canonical ``KBContextProviderProtocol``
+                (ADR-067) for the chat template's per-type KB slots;
+                ``None`` (default, test contexts) keeps them empty.
         """
         self._composer = prompt_composer
         self._registry = model_registry
@@ -102,6 +108,7 @@ class ChatService(ChatServiceProtocol):
         self._base_url = base_url
         self._note_lookup = note_lookup
         self._novel_lookup = novel_lookup
+        self._kb_context_provider = kb_context_provider
         self._histories: dict[UUID, ProcessHistory] = {}
 
     async def ask(
@@ -174,8 +181,14 @@ class ChatService(ChatServiceProtocol):
             await self._store.add_message(conv_id, "user", message)
             history = await self._store.get_history(conv_id, user_id)
 
+        # 1.5 Canonical KB context (ADR-067) — RULE-11 degradation inside.
+        kb_vars = await resolve_chat_kb_vars(
+            kb_context_provider=self._kb_context_provider,
+            novel_id=request.project_id,
+        )
+
         # 2. Build context + compose prompt
-        context = build_prompt_context(history, novel=novel)
+        context = build_prompt_context(history, novel=novel, kb_vars=kb_vars)
 
         composed = await self._composer.build(
             LLMIntent.CHAT,
