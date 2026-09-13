@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from narrare.settings.token_limits.contracts import TokenLimitOverrides
     from narrare.writing.ws_active_turn_registry import ActiveTurnRegistry
     from narrare.writing.ws_handler import WritingSessionHandler
     from narrare.writing.ws_session_control_service import WritingSessionControlService
@@ -39,6 +40,7 @@ def build_writing_session_handler(
     base_url: str | None = None,
     mode: str = "interactive_session",
     ws_idle_timeout: int = 1800,
+    limits: TokenLimitOverrides | None = None,
 ) -> WritingSessionHandler:
     """Build a WebSocket writing session handler and focused collaborators.
 
@@ -56,16 +58,40 @@ def build_writing_session_handler(
         base_url: Optional provider base URL override.
         mode: Session mode for the handler.
         ws_idle_timeout: Idle timeout in seconds.
+        limits: Resolved handshake token limits (``resolve_ws_session_config``
+            output). When given, the WS context assembler budgets with the
+            SAME tier allocations as the HTTP writing paths (item E):
+            ``limits.tier_percentages`` (FIND-012) plus the ADR-082
+            model-capped ``writing_tier_base`` resolved via
+            :func:`resolve_context_budgets`. ``None`` (tests / legacy call
+            sites) keeps the Core defaults (RULE-11).
 
     Returns:
         A fully wired :class:`WritingSessionHandler`.
     """
+    from narrare.settings.token_limits.context_budgets import resolve_context_budgets
     from narrare.writing.ws_context_assembler import WsWritingContextAssembler
     from narrare.writing.ws_direction_dispatch import WritingDirectionDispatcher
     from narrare.writing.ws_handler import WritingSessionHandler
     from narrare.writing.ws_message_router import WritingSessionMessageRouter
     from narrare.writing.ws_turn_service import WritingTurnService
 
+    # Item E: budgets resolved at handler build from the route's handshake
+    # limits (a WebSocket connection has no request-scoped DI). WS assembly
+    # never injects {{series_history}} (no SeriesHistoryProvider on this
+    # path) → standalone tier-base semantics (ADR-082 Decision 6), mirroring
+    # deps_extend. The resolver degrades gracefully (unknown window →
+    # uncapped configured total, ``cascade:window_unknown``); with
+    # ``limits=None`` the assembler falls back to Core defaults as before.
+    budgets = (
+        resolve_context_budgets(
+            limits=limits,
+            config=config,
+            series_in_scope=False,
+        )
+        if limits is not None
+        else None
+    )
     turn_service = WritingTurnService(
         composer=composer,
         invocation_pipeline=invocation_pipeline,
@@ -75,7 +101,10 @@ def build_writing_session_handler(
         # FO-4: data-fetching assembler so WS turns are KB-enriched.
         # Constructed here (not injected) to keep the route handshake
         # unchanged; it acquires its own per-turn session.
-        context_assembler=WsWritingContextAssembler(),
+        context_assembler=WsWritingContextAssembler(
+            tier_overrides=limits.tier_percentages if limits is not None else None,
+            total_budget=budgets.writing_tier_base if budgets is not None else None,
+        ),
     )
     direction_dispatcher = WritingDirectionDispatcher(
         session_manager=session_manager,

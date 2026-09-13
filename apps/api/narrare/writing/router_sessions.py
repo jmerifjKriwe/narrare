@@ -144,5 +144,6 @@ async def interactive_session(
         run_limit_resolver=DefaultRunLimitResolver(),
         mode=mode,
         ws_idle_timeout=limits.ws_timeout,
+        limits=limits,
     )
     await handler.handle(websocket, chapter_id, user_id, project_id, session_id=session_id)

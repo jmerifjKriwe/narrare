@@ -189,6 +189,9 @@ async def test_success_path_calls_handler_handle(
     _call_kwargs = mock_build_handler.call_args.kwargs
     assert _call_kwargs["mode"] == "interactive_session"
     assert _call_kwargs["ws_idle_timeout"] == 900
+    # Item E: the resolved handshake limits reach the handler factory so
+    # WS turns budget with the same tier allocations as the HTTP paths.
+    assert _call_kwargs["limits"] is mock_token_limits
 
     # Assert handler.handle() was invoked with the DERIVED identity
     mock_handler.handle.assert_awaited_once_with(

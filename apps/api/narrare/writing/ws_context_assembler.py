@@ -61,11 +61,15 @@ class WsWritingContextAssembler(WritingContextAssembler):
     Args:
         tier_overrides: Optional per-tier percentage overrides forwarded
             to the core :class:`TokenBudgetManager`. ``None`` (default)
-            keeps the mode-specific allocations.
+            keeps the mode-specific allocations. Production wiring
+            sources this from the handshake's resolved
+            ``TokenLimitsService.get_resolved_limits().tier_percentages``
+            (FIND-012, threaded by ``ws_factory`` — item E).
         total_budget: Optional total input-context budget (ADR-082).
-            ``None`` (default) keeps the Core default — the WS factory
-            does not hold a resolved model-window budget (RULE-11:
-            pass what exists).
+            ``None`` (default) keeps the Core default. Production wiring
+            passes the model-capped ``writing_tier_base`` resolved at
+            handler build via ``resolve_context_budgets`` (threaded by
+            ``ws_factory`` — item E).
     """
 
     def __init__(
