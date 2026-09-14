@@ -23,14 +23,16 @@ See:
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
 from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 from tests.unit.api.kb._extraction_helpers import permissive_novel_gate
 
 if TYPE_CHECKING:
@@ -103,7 +105,14 @@ class TestExtractionInvocationWiring:
 
         service = ExtractionService(
             registry=mock_registry,
-            config=MagicMock(spec=["model_id", "provider_name"]),
+            model_resolution=StaticModelResolution(
+                ResolvedModel(
+                    config=cast(
+                        "ResolvedModelConfig", MagicMock(spec=["model_id", "provider_name"])
+                    ),
+                    source="unit-test",
+                )
+            ),
             chapter_repo=mock_chapter_repo,
             kb_repo=mock_kb_repo,
             composer=mock_composer,

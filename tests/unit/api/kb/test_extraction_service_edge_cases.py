@@ -100,11 +100,11 @@ def make_service(
     kb_repo: Any,
     composer: Any,
 ) -> ExtractionService:
-    from ._extraction_helpers import permissive_novel_gate
+    from ._extraction_helpers import permissive_novel_gate, static_resolution
 
     return ExtractionService(
         registry=registry,
-        config=config,
+        model_resolution=static_resolution(config),
         chapter_repo=chapter_repo,
         kb_repo=kb_repo,
         composer=composer,

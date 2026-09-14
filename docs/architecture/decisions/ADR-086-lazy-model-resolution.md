@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (26):**
+**Open (25):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -327,7 +327,11 @@ at construction (2026-09-09; factory function names verified):
        dedup helpers split to `name_dedup.py` for the RULE-04 size
        limit the `ensure_resolved` addition crossed)*
 15. [ ] `kb/_consistency_deps.py` — `get_consistency_service` (two eager resolves: consistency + worldbuild)
-16. [ ] `kb/dependencies_extraction.py` — `get_extraction_service`
+16. [x] `kb/dependencies_extraction.py` — `get_extraction_service`
+       *(C1/L16 — landed 2026-09-14: lazy wiring + first-use resolve
+       after the ownership gate (REST — no SSE pre-header needed);
+       extract route re-raises `NarrareError` past its broad 500 so the
+       first-use `ConfigurationError` stays a loud 400)*
 17. [ ] `kb/dependencies_improve.py` — `get_kb_improve_service`
 18. [ ] `kb/dependencies_session.py` — `get_kb_session_service`
 19. [ ] `kb/dependencies_worldbuilding.py` — `get_worldbuilding_service`

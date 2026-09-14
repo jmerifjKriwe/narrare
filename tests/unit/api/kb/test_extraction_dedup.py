@@ -107,11 +107,11 @@ def _make_service(
     composer: MagicMock,
 ) -> ExtractionService:
     """Create an ExtractionService with test dependencies."""
-    from ._extraction_helpers import permissive_novel_gate
+    from ._extraction_helpers import permissive_novel_gate, static_resolution
 
     return ExtractionService(
         registry=registry,
-        config=config,
+        model_resolution=static_resolution(config),
         chapter_repo=chapter_repo,
         kb_repo=kb_repo,
         composer=composer,

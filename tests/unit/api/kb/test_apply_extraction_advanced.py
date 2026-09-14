@@ -41,7 +41,7 @@ from ._apply_extraction_helpers import (
     _FakeKBService,
     _FakeRelationshipRepo,
 )
-from ._extraction_helpers import permissive_novel_gate
+from ._extraction_helpers import permissive_novel_gate, static_resolution
 
 
 def _item(
@@ -221,7 +221,7 @@ async def test_extraction_service_delegates_to_apply_service() -> None:
 
     service = ExtractionService(
         registry=cast("ModelRegistry", registry),
-        config=config,
+        model_resolution=static_resolution(config),
         chapter_repo=cast("ChapterRepositoryProtocol", chapter_repo),
         kb_repo=cast("KBRepositoryProtocol", kb_repo),
         composer=cast("PromptComposer", composer),
@@ -263,7 +263,7 @@ async def test_extraction_service_apply_without_deps_raises() -> None:
     # kb_service and rel_repo are NOT provided
     service = ExtractionService(
         registry=cast("ModelRegistry", registry),
-        config=config,
+        model_resolution=static_resolution(config),
         chapter_repo=cast("ChapterRepositoryProtocol", chapter_repo),
         kb_repo=cast("KBRepositoryProtocol", kb_repo),
         composer=cast("PromptComposer", composer),

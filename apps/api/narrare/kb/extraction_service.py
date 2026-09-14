@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.relationship_repository import RelationshipRepository
@@ -37,8 +38,8 @@ if TYPE_CHECKING:
     from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.agents.extraction_types import ExtractionOutput
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts.composer import PromptComposer
 
@@ -50,7 +51,8 @@ class ExtractionService:
 
     Args:
         registry: ModelRegistry for LLM model resolution.
-        config: ResolvedModelConfig for model selection.
+        model_resolution: Lazy per-user model resolution (ADR-086) — the
+            routing cascade resolves on first use, never at construction.
         chapter_repo: Chapter repository for reading chapter content.
         kb_repo: KB repository for fetching existing entity names (dedup).
         composer: PromptComposer for bundled system prompts (RULE-02).
@@ -63,9 +65,6 @@ class ExtractionService:
             needed for apply — ExtractionApplyService wraps each item in a
             SAVEPOINT on this session).
         invocation_pipeline: Optional pipeline for invocation evidence.
-        api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.prepare``.
-        base_url: Optional per-user provider base URL override.
         run_limit_resolver: Optional run-limit resolver (ADR-045 Decision 4).
             When wired (production DI), ``usage_limits`` and
             ``model_settings["max_tokens"]`` are enforced at the
@@ -81,7 +80,7 @@ class ExtractionService:
     def __init__(
         self,
         registry: ModelRegistry,
-        config: ResolvedModelConfig,
+        model_resolution: ModelResolution,
         chapter_repo: ChapterRepositoryProtocol,
         kb_repo: KBRepositoryProtocol,
         composer: PromptComposer,
@@ -90,13 +89,12 @@ class ExtractionService:
         rel_repo: RelationshipRepository | None = None,
         session: AsyncSession | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
         retries: int = 3,
     ) -> None:
         self._registry = registry
-        self._config = config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._chapter_repo = chapter_repo
         self._kb_repo = kb_repo
         self._composer = composer
@@ -105,10 +103,21 @@ class ExtractionService:
         self._rel_repo = rel_repo
         self._session = session
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
         self._run_limit_resolver = run_limit_resolver
         self._retries = retries
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086).
+
+        First call resolves via the injected ``ModelResolution`` and
+        caches the triple; repeat calls return the cached value without
+        re-running the cascade. Errors propagate loudly and are never
+        cached (RULE-11): ``ConfigurationError`` (``NO_AI_PROVIDER``)
+        surfaces as a 400 on this AI-mandatory endpoint.
+        """
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def extract_from_chapter(
         self,
@@ -133,9 +142,20 @@ class ExtractionService:
 
         Raises:
             NotFoundError: Novel unknown or owned by another user.
+            ConfigurationError: The per-user routing cascade finds no
+                configured provider (ADR-086 first-use resolution, RULE-11
+                loud propagation — AI-mandatory endpoint).
             ValueError: Chapter not found in the novel or has no content.
         """
         await verify_novel_owned(self._novel_repo, novel_id, user_id)
+
+        # ADR-086 L16: first-use lazy resolve — the ownership gate above
+        # stays ahead of resolution (eager-world precedence), and the
+        # resolved triple flows into the invocation assembly exactly as
+        # the eager factory passed it (timing-only migration: WHAT
+        # unchanged — no sampling overrides exist for KB_EXTRACT — only
+        # WHEN).
+        resolved_model = await self.ensure_resolved()
 
         # 1. Get chapter content — chapter∈novel linkage (data integrity);
         #    the user scope was enforced by the ownership gate above.
@@ -179,9 +199,9 @@ class ExtractionService:
             composer=self._composer,
             invocation_pipeline=self._invocation_pipeline,
             registry=self._registry,
-            config=self._config,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            config=resolved_model.config,
+            api_key=resolved_model.api_key,
+            base_url=resolved_model.base_url,
             run_limit_resolver=self._run_limit_resolver,
             novel_id=novel_id,
             user_id=user_id,

@@ -34,6 +34,7 @@ from ._extraction_helpers import (
     make_chapter,
     make_extraction_output,
     permissive_novel_gate,
+    static_resolution,
 )
 
 if TYPE_CHECKING:
@@ -64,7 +65,7 @@ def _make_service(
     registry = FakeModelRegistry()
     return ExtractionService(
         registry=cast("ModelRegistry", registry),
-        config=config,
+        model_resolution=static_resolution(config),
         chapter_repo=cast("ChapterRepositoryProtocol", chapter_repo),
         kb_repo=cast("KBRepositoryProtocol", kb_repo),
         composer=cast("PromptComposer", composer),

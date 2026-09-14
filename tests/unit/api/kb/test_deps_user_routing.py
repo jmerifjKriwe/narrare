@@ -1,14 +1,16 @@
 """User-routing migration tests for kb dependency factories (Task 1a).
 
-Regression-first proof that the kb extraction/improve factories resolve the
-model via the per-user ``ModelRoutingResolver`` cascade (instead of the legacy
-``build_system_default_config``) with the correct intent + user_id + novel_id,
-and that the resolved config + api_key/base_url reach the ACTUAL resolution
-point inside the services (``ModelRegistry.prepare`` for extraction,
-``ModelRegistry.get_model`` for the improve analyzer until its Task 6
-migration).
+Regression-first proof that the kb extraction factory wires the per-user
+``ModelRoutingResolver`` cascade (instead of the legacy
+``build_system_default_config``) with the correct intent + user_id +
+novel_id — invoked LAZILY at the service's first use, never at
+construction (ADR-086 L16) — and that the resolved config +
+api_key/base_url reach the ACTUAL resolution point inside the services
+(``ModelRegistry.prepare`` for extraction, ``ModelRegistry.get_model``
+for the improve analyzer until its Task 6 migration).
 
-Pattern reference: ``tests/unit/api/writing/test_deps_factories_summary.py``.
+Pattern reference: ``tests/unit/api/generation/test_generation_router_factory.py``
+(ADR-086 L14 convention).
 """
 
 from __future__ import annotations
@@ -16,12 +18,13 @@ from __future__ import annotations
 import inspect
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm._prepared_call import PreparedModelCall
@@ -155,9 +158,9 @@ class TestFactoryStructure:
 
 
 class TestExtractionFactoryUserRouting:
-    """get_extraction_service resolves via the cascade (KB_EXTRACT)."""
+    """get_extraction_service wires the KB_EXTRACT cascade lazily."""
 
-    async def test_resolves_kb_extract_for_user_and_novel(self) -> None:
+    async def test_wires_kb_extract_cascade_lazily_for_user_and_novel(self) -> None:
         from narrare.kb.dependencies_extraction import get_extraction_service
         from narrare.kb.extraction_service import ExtractionService
 
@@ -190,11 +193,24 @@ class TestExtractionFactoryUserRouting:
                 user_id=user_id,
             )
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.KB_EXTRACT, UUID(user_id), novel_id)
+        # ADR-086 lazy wiring: construction resolves nothing.
+        assert resolver.resolve.await_args_list == []
+
         assert isinstance(service, ExtractionService)
-        assert service._config is resolved.config
-        assert service._api_key == _USER_KEY
-        assert service._base_url == _USER_BASE_URL
+        resolved_model = await service.ensure_resolved()
+
+        # The REAL intent (KB_EXTRACT), for THIS user, WITH the novel
+        # tier — invoked at first use, not at construction:
+        assert resolver.resolve.await_args_list == [
+            call(LLMIntent.KB_EXTRACT, UUID(user_id), novel_id)
+        ]
+
+        # The cascade result lands on the service (threaded onwards to
+        # ModelRegistry.prepare with the credentials).
+        assert resolved_model.config is resolved.config
+        assert resolved_model.config.model_id == "glm-4.7"
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL
 
 
 class TestImproveFactoryUserRouting:
@@ -271,13 +287,13 @@ class TestCredentialsReachResolutionPoint:
 
         service = ExtractionService(
             registry=cast("ModelRegistry", registry),
-            config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
             chapter_repo=chapter_repo,
             kb_repo=kb_repo,
             composer=composer,
             novel_repo=cast("NovelRepositoryProtocol", novel_repo),
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
 
         with pytest.raises(_StopResolution):

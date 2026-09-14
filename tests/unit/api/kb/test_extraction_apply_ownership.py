@@ -38,6 +38,7 @@ from narrare.kb.dependencies_extraction import get_extraction_service
 from narrare.kb.extraction_service import ExtractionService
 from narrare.kb.schemas_extraction import ApplyExtractionItem
 from narrare_core.shared.errors import NotFoundError
+from tests.unit.api.kb._extraction_helpers import static_resolution
 from tests.unit.api.kb._test_fakes import FakeNovelRepo
 
 if TYPE_CHECKING:
@@ -141,7 +142,7 @@ def _make_service() -> tuple[
     session.begin_nested.return_value = AsyncMock()  # async context manager (SAVEPOINT)
     service = ExtractionService(
         registry=cast("ModelRegistry", object()),
-        config=config,
+        model_resolution=static_resolution(config),
         chapter_repo=cast("ChapterRepositoryProtocol", _NullChapterRepo()),
         kb_repo=cast("KBRepositoryProtocol", _NullKBRepo()),
         composer=cast("PromptComposer", object()),

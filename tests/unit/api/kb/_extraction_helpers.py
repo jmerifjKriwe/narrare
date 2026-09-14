@@ -9,10 +9,12 @@ from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.kb.extraction_service import ExtractionService
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
 from narrare_core.llm._model_settings import build_runtime_model_settings
 from narrare_core.llm._prepared_call import PreparedModelCall
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
 
 from ._test_fakes import FakeNovelRepo
@@ -103,6 +105,22 @@ class FakeKBRepo:
 # ---------------------------------------------------------------------------
 
 
+def static_resolution(
+    config: ResolvedModelConfig,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> StaticModelResolution:
+    """Fixed ModelResolution around a known triple (ADR-086 test harness).
+
+    Single definition site for the mechanical ctor migration of the kb
+    extraction unit tests (RULE-06): production wires
+    ``LazyModelResolution``, tests wire ``StaticModelResolution``.
+    """
+    return StaticModelResolution(
+        ResolvedModel(config=config, api_key=api_key, base_url=base_url, source="unit-test")
+    )
+
+
 def make_service(
     registry: FakeModelRegistry | object,
     config: ResolvedModelConfig,
@@ -114,7 +132,7 @@ def make_service(
     """Build an ExtractionService with the given (mocked) dependencies."""
     return ExtractionService(
         registry=registry,  # type: ignore[arg-type]
-        config=config,
+        model_resolution=static_resolution(config),
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
         kb_repo=kb_repo,  # type: ignore[arg-type]
         composer=composer,  # type: ignore[arg-type]

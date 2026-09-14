@@ -302,6 +302,8 @@ def make_extraction_ownership_service(
     """Build an ExtractionService over recording fakes + an ownership map."""
     from narrare.kb.extraction_service import ExtractionService
 
+    from ._extraction_helpers import static_resolution
+
     novel_repo = FakeNovelRepo(ownership)
     chapter_repo = RecordingExtractionChapterRepo(chapter)
     kb_repo = RecordingExtractionKBRepo()
@@ -309,7 +311,7 @@ def make_extraction_ownership_service(
     composer = CountingComposer()
     service = ExtractionService(
         registry=cast("ModelRegistry", registry),
-        config=config,
+        model_resolution=static_resolution(config),
         chapter_repo=cast("ChapterRepositoryProtocol", chapter_repo),
         kb_repo=cast("KBRepositoryProtocol", kb_repo),
         composer=cast("PromptComposer", composer),

@@ -20,7 +20,7 @@ from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.kb.dependencies import get_extraction_service
 from narrare.kb.extraction_service import ExtractionService
 from narrare.kb.schemas_extraction import ApplyExtractionRequest, ApplyExtractionResponse
-from narrare_core.shared.errors import NotFoundError
+from narrare_core.shared.errors import NarrareError, NotFoundError
 
 logger = structlog.get_logger(__name__)
 
@@ -85,6 +85,14 @@ async def extract_chapter(
         )
     except NotFoundError:
         # Ownership gate (IDOR S10): foreign ≡ unknown → global 404 handler.
+        raise
+    except NarrareError:
+        # ADR-086 L16: first-use model resolution now happens INSIDE the
+        # service call — ``ConfigurationError`` (unconfigured provider)
+        # must stay a loud 400 via the global NarrareError handler, not
+        # degrade into this route's broad 500 (RULE-11; pre-migration the
+        # eager factory raised it as a dependency error → 400, so this
+        # preserves the status-code semantics of the timing-only move).
         raise
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
