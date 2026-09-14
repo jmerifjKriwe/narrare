@@ -15,11 +15,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.kb.context_contracts import KBContextBundle
 from narrare_core.agents.kb_assist_agent import KBAssistDeps
 from narrare_core.agents.kb_assist_types import KBAssistOutput
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm._prepared_call import PreparedModelCall
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
@@ -95,7 +97,7 @@ def make_service(
 
     return KBAssistService(
         registry=registry,  # type: ignore[arg-type]
-        config=config,
+        model_resolution=StaticModelResolution(ResolvedModel(config=config)),
         kb_context_provider=kb_context_provider,  # type: ignore[arg-type]
         prompt_composer=composer,  # type: ignore[arg-type]
     )

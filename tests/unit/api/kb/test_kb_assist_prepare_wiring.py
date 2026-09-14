@@ -26,9 +26,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.model_routing import ResolvedModel
 
 if TYPE_CHECKING:
     from pydantic_ai.usage import UsageLimits
@@ -116,11 +118,11 @@ class TestAssistPrepareWiring:
         provider.fetch_entities = AsyncMock(return_value=[])
         service = KBAssistService(
             registry=cast("ModelRegistry", registry),
-            config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
             kb_context_provider=cast("KBContextProviderProtocol", provider),
             prompt_composer=cast("PromptComposer", _FakeComposer()),
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
         output = MagicMock(spec=["field_key", "question", "reasoning"])
         output.field_key = "backstory"

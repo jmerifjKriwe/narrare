@@ -1,10 +1,13 @@
 """User-routing migration tests for kb dependency factories (Task 1b).
 
 Regression-first proof that the kb session/worldbuilding/consistency
-factories resolve the model via the per-user ``ModelRoutingResolver``
-cascade (instead of the legacy ``build_system_default_config``) with the
-correct intent + user_id + novel_id, and that the resolved config lands
-on the services that own the actual ``get_model``/``run`` calls.
+factories wire the per-user ``ModelRoutingResolver`` cascade (instead of
+the legacy ``build_system_default_config``) with the correct intent +
+user_id + novel_id, and that the resolved config lands on the services
+that own the actual ``get_model``/``run`` calls. The session factory
+wires the cascade LAZILY — resolved at the assist service's first use,
+never at construction (ADR-086 L18); the worldbuilding/consistency
+entries are still eager until their ledger slices land.
 
 Credential flow into those resolution points is proven in the companion
 ``test_deps_user_routing_1b_credentials.py`` (split off for the RULE-04
@@ -106,9 +109,9 @@ class TestFactoryStructure:
 
 
 class TestSessionFactoryUserRouting:
-    """get_kb_session_service resolves via the cascade (KB_INTERVIEW)."""
+    """get_kb_session_service wires the KB_INTERVIEW cascade lazily."""
 
-    async def test_resolves_kb_interview_for_user_and_novel(self) -> None:
+    async def test_wires_kb_interview_cascade_lazily_for_user_and_novel(self) -> None:
         from narrare.kb.assist_service import KBAssistService
         from narrare.kb.dependencies_session import get_kb_session_service
         from narrare.kb.session_service import KBSessionService
@@ -147,12 +150,24 @@ class TestSessionFactoryUserRouting:
                 user_id=user_id,
             )
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.KB_INTERVIEW, UUID(user_id), novel_id)
+        # ADR-086 lazy wiring: construction resolves nothing.
+        assert resolver.resolve.await_args_list == []
+
         assert isinstance(service, KBSessionService)
         assert isinstance(service._assist, KBAssistService)
-        assert service._assist._config is resolved.config
-        assert service._assist._api_key == _USER_KEY
-        assert service._assist._base_url == _USER_BASE_URL
+        resolved_model = await service._assist.ensure_resolved()
+
+        # The REAL intent (KB_INTERVIEW), for THIS user, WITH the novel
+        # tier — invoked at first use, not at construction:
+        assert resolver.resolve.await_args_list == [
+            call(LLMIntent.KB_INTERVIEW, UUID(user_id), novel_id)
+        ]
+
+        # The cascade result lands on the assist service (threaded onwards
+        # to ModelRegistry.prepare with the credentials).
+        assert resolved_model.config is resolved.config
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL
 
 
 class TestWorldbuildingFactoryUserRouting:

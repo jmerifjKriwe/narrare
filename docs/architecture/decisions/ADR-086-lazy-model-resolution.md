@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (24):**
+**Open (23):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -337,7 +337,13 @@ at construction (2026-09-09; factory function names verified):
        in the analyzer (the config consumer; REST — no SSE pre-header
        needed; resolve precedes the analysis-cache lookup so an
        unconfigured provider stays a loud 400 even warm))*
-18. [ ] `kb/dependencies_session.py` — `get_kb_session_service`
+18. [x] `kb/dependencies_session.py` — `get_kb_session_service`
+       *(C3/L18 — landed 2026-09-14: lazy wiring + first-use resolve
+       in the assist service (the config consumer; REST — no SSE
+       pre-header needed); non-AI session endpoints no longer resolve
+       at all, and the routes' narrow ``ValueError`` handlers cannot
+       swallow the loud 400 — ``ConfigurationError`` is a
+       ``NarrareError``, so it reaches the global handler)*
 19. [ ] `kb/dependencies_worldbuilding.py` — `get_worldbuilding_service`
 20. [ ] `planning/_character_arc_factory.py` — `get_character_arc_service`
 21. [ ] `planning/_service_factory.py` — `get_storyboard_service`

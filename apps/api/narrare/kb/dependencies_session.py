@@ -1,9 +1,10 @@
 """KB dependency injection — session service factory.
 
 Model acquisition follows the per-user model-routing cascade: the factory
-resolves ``LLMIntent.KB_INTERVIEW`` for the authenticated user (+ novel for
-project-level overrides) and passes the resolved config + credentials into
-the assist service. No business logic lives here — only wiring.
+wires the ``LLMIntent.KB_INTERVIEW`` cascade for the authenticated user (+
+novel for project-level overrides) as a ``LazyModelResolution`` and passes
+it into the assist service, which resolves it on first use (ADR-086) —
+never at construction. No business logic lives here — only wiring.
 """
 
 from __future__ import annotations
@@ -17,7 +18,10 @@ from narrare._app.dependencies import (
     SessionDep,
     get_current_user_id,
 )
-from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.dependencies_services import (
+    LazyModelResolution,
+    get_model_routing_resolver,
+)
 from narrare.events.publisher import (
     WikiEventPublisherDep,  # noqa: TC001 - needed at runtime for FastAPI DI
 )
@@ -33,12 +37,19 @@ async def get_kb_session_service(
     event_publisher: WikiEventPublisherDep,
     user_id: str = Depends(get_current_user_id),
 ) -> KBSessionService:
-    """Create a KBSessionService with per-user resolved model routing.
+    """Create a KBSessionService with per-user lazy model routing.
 
     FastAPI dependency: novel_id comes from the route path, user_id and
-    session are resolved via Depends. The model is resolved through the
-    per-user cascade; ``ConfigurationError`` propagates when the user has
-    no provider configured (kb routers are auth-mandatory).
+    session are resolved via Depends. The model is NOT resolved here —
+    the per-user cascade (project intent → project category → user
+    intent → user category → user default) is wired as a
+    ``LazyModelResolution`` and resolves on the assist service's first
+    use (ADR-086), so request validation errors surface as 422 before
+    any routing cascade runs, and non-AI session endpoints (create /
+    get / answer / complete / abandon) never resolve at all.
+    ``ConfigurationError`` propagates loudly from the assist entry
+    points when the user has no provider configured (kb routers are
+    auth-mandatory; RULE-11).
 
     The assist service serves three modes (interview/suggest/enhance) via
     one injected config; the cascade resolves with ``KB_INTERVIEW`` — the
@@ -66,10 +77,8 @@ async def get_kb_session_service(
     from narrare_core.cache import InMemorySessionCache
 
     resolver = get_model_routing_resolver(session)
-    resolved = await resolver.resolve(
-        LLMIntent.KB_INTERVIEW,
-        UUID(user_id),
-        novel_id,
+    model_resolution = LazyModelResolution(
+        lambda: resolver.resolve(LLMIntent.KB_INTERVIEW, UUID(user_id), novel_id)
     )
 
     # Session storage: in-memory cache with 30min TTL (ADR-080).
@@ -78,7 +87,9 @@ async def get_kb_session_service(
 
     # KBAssistService with real ModelRegistry + PromptComposer. World context
     # is sourced from the canonical KBContextProvider (ADR-067), the single
-    # source for KB prompt context across kb features.
+    # source for KB prompt context across kb features. The model routing
+    # cascade resolves on the assist service's first use (ADR-086), never
+    # here.
     registry = get_model_registry()
     composer = get_composer()
 
@@ -87,12 +98,10 @@ async def get_kb_session_service(
 
     assist_service = KBAssistService(
         registry=registry,
-        config=resolved.config,
+        model_resolution=model_resolution,
         kb_context_provider=kb_context_provider,
         prompt_composer=composer,
         invocation_pipeline=get_invocation_pipeline(),
-        api_key=resolved.api_key,
-        base_url=resolved.base_url,
     )
 
     kb_service = get_kb_service(session, event_publisher=event_publisher)

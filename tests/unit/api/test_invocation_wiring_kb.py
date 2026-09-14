@@ -227,7 +227,9 @@ class TestAssistInvocationWiring:
 
         service = KBAssistService(
             registry=MagicMock(spec=["prepare"]),
-            config=MagicMock(spec=["model_id", "provider_name"]),
+            model_resolution=StaticModelResolution(
+                MagicMock(spec=["config", "api_key", "base_url"])
+            ),
             kb_context_provider=mock_provider,
             prompt_composer=mock_composer,
             invocation_pipeline=pipeline,

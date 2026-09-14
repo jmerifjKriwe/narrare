@@ -123,17 +123,19 @@ class TestCredentialsReachResolutionPoint:
     """The resolved key must flow into the ACTUAL resolution call (setup bug)."""
 
     async def test_assist_service_threads_credentials_into_prepare(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.kb.assist_service import KBAssistService
+        from narrare_core.llm.model_routing import ResolvedModel
 
         config = _user_config()
         registry = _RecordingRegistry()
         service = KBAssistService(
             registry=cast("ModelRegistry", registry),
-            config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
             kb_context_provider=MagicMock(spec=True, name="KBContextProvider"),
             prompt_composer=MagicMock(spec=True, name="PromptComposer"),
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
 
         prepared = await service._prepare(LLMIntent.KB_INTERVIEW)

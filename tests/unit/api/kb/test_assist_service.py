@@ -19,8 +19,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.kb.assist_service import KBAssistService
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.model_routing import ResolvedModel
 
 if TYPE_CHECKING:
     from narrare_core.agents.kb_assist_agent import KBAssistDeps
@@ -55,7 +57,7 @@ async def test_run_agent_calls_compose_invocation_mode1(
     """
     service = KBAssistService(
         registry=registry,  # type: ignore[arg-type]
-        config=config,
+        model_resolution=StaticModelResolution(ResolvedModel(config=config)),
         kb_context_provider=kb_context_provider,  # type: ignore[arg-type]
         prompt_composer=composer,  # type: ignore[arg-type]
     )

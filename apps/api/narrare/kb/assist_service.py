@@ -3,6 +3,9 @@
 Builds agent deps from session state + world context, runs the agent
 in the requested mode, and maps output to response schemas. Uses
 PromptComposer for system prompts (RULE-02).
+
+The per-user model routing cascade is wired as a ``LazyModelResolution``
+and resolves on first use (ADR-086) — never at construction.
 """
 
 from __future__ import annotations
@@ -31,12 +34,13 @@ from .assist_contracts import (
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare_core.agents.kb_assist_types import KBAssistOutput
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -51,46 +55,54 @@ class KBAssistService:
     - KB template registry (field structure)
     - PromptComposer (bundled system prompts via RULE-02)
 
-    Uses ModelRegistry + ResolvedModelConfig for lazy model resolution,
-    following the new gateway pattern (ADR-015).
+    Uses ModelRegistry + the ADR-086 lazy ``ModelResolution`` seam for
+    model access, following the new gateway pattern (ADR-015).
 
     Args:
         registry: ModelRegistry for lazy model resolution.
-        config: Resolved model configuration (provider, model, params).
+        model_resolution: Lazy per-user model resolution (ADR-086) — the
+            routing cascade resolves on first use, never at construction.
         kb_context_provider: Single source for curated world context
             (ADR-067). Renders existing KB entries of the entity type as
             ``- name (type): brief`` and degrades to empty (RULE-11).
         prompt_composer: PromptComposer for bundling system prompts.
         kb_agent: Optional KBAgent for toolset composition.
         invocation_pipeline: Optional invocation evidence pipeline (ADR-040).
-        api_key: Optional per-user provider API key (model-routing cascade),
-            injected into ``ModelRegistry.prepare``.
-        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
         self,
         registry: ModelRegistry,
-        config: ResolvedModelConfig,
+        model_resolution: ModelResolution,
         kb_context_provider: KBContextProviderProtocol,
         prompt_composer: PromptComposer,
         kb_agent: object | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         from narrare_core.agents.kb_agent import KBAgent
 
         self._registry = registry
-        self._config = config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._kb_context_provider = kb_context_provider
         self._prompt_composer = prompt_composer
         self._kb_agent = kb_agent if isinstance(kb_agent, KBAgent) else None
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086).
+
+        First call resolves via the injected ``ModelResolution`` and
+        caches the triple; repeat calls return the cached value without
+        re-running the cascade. Errors propagate loudly and are never
+        cached (RULE-11): ``ConfigurationError`` (``NO_AI_PROVIDER``)
+        surfaces as a 400 on this AI-mandatory endpoint.
+        """
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def _prepare(self, intent: LLMIntent) -> PreparedModelCall:
         """Resolve the coherent call triple lazily from the registry.
@@ -99,18 +111,20 @@ class KBAssistService:
         intent-aware runtime settings + usage limits as one result. The
         intent is dynamic — each public assist method passes its own
         (KB_INTERVIEW / KB_SUGGEST / KB_ENHANCE). Per-user credentials
-        (model-routing cascade) are forwarded so the user's
-        wizard-configured provider is used, not the operator env.
+        come from the (cached) ADR-086 first-use routing resolution so
+        the user's wizard-configured provider is used, not the operator
+        env.
         """
-        resolved = self._run_limit_resolver.resolve(
-            config=self._config, budget=None, invocation_id=uuid4()
+        resolved = await self.ensure_resolved()
+        limits = self._run_limit_resolver.resolve(
+            config=resolved.config, budget=None, invocation_id=uuid4()
         )
         return await self._registry.prepare(
-            self._config,
+            resolved.config,
             intent=intent,
-            usage_limits=resolved.usage_limits,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            usage_limits=limits.usage_limits,
+            api_key=resolved.api_key,
+            base_url=resolved.base_url,
         )
 
     async def _run_agent(
