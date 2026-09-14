@@ -1,9 +1,11 @@
-"""Tests for planning/_helpers.py — uncovered branches and error paths.
+"""Tests for planning/_helpers.py and planning/_remap_helpers.py — uncovered
+branches and error paths.
 
 Covers:
-1. find_position when chapter_id is not found (line 106)
-2. ensure_outlines with non-StructureAdapter (line 163)
-3. ai_suggest_stage with non-StructureAdapter fallback (lines 215, 234)
+1. find_position when chapter_id is not found (line 105)
+2. ensure_outlines with non-StructureAdapter (line 127)
+3. ai_suggest_stage with non-StructureAdapter fallback
+   (_remap_helpers.py lines 88, 109)
 """
 
 from __future__ import annotations
@@ -14,10 +16,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 from narrare.chapters.models import Chapter
 from narrare.planning._helpers import (
-    ai_suggest_stage,
     ensure_outlines,
     find_position,
 )
+from narrare.planning._remap_helpers import ai_suggest_stage
 
 
 class TestFindPosition:

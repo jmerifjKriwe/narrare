@@ -10,10 +10,16 @@ Test-Strategie:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, cast
+from unittest.mock import AsyncMock
 
 import pytest
+from pydantic_ai.models.test import TestModel
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.usage import UsageLimits
 
+from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
 from narrare_core.agents.summary_types import SummaryOutput
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
 from narrare_core.llm.intents import LLMIntent
@@ -32,10 +38,26 @@ class _FakeAgent:
 
     def __init__(self, output: SummaryOutput) -> None:
         self.prompts: list[str] = []
+        self.runs: list[dict[str, object]] = []
         self._output = output
 
-    async def run(self, *, prompt: str, deps: object) -> SummaryOutput:
+    async def run(
+        self,
+        *,
+        prompt: str,
+        deps: object,
+        model_settings: object = None,
+        usage_limits: object = None,
+    ) -> SummaryOutput:
         self.prompts.append(prompt)
+        self.runs.append(
+            {
+                "prompt": prompt,
+                "deps": deps,
+                "model_settings": model_settings,
+                "usage_limits": usage_limits,
+            }
+        )
         return self._output
 
 
@@ -173,7 +195,14 @@ class TestAnalyzeChapterRole:
         """Bei Agent-Fehler wird "" retourniert (Graceful Degradation)."""
 
         class _FailingAgent(_FakeAgent):
-            async def run(self, *, prompt: str, deps: object) -> SummaryOutput:
+            async def run(
+                self,
+                *,
+                prompt: str,
+                deps: object,
+                model_settings: object = None,
+                usage_limits: object = None,
+            ) -> SummaryOutput:
                 self.prompts.append(prompt)
                 raise RuntimeError("LLM unavailable")
 
@@ -184,6 +213,85 @@ class TestAnalyzeChapterRole:
             agent=agent,
         )
         assert result == ""
+
+
+# =====================================================================
+# Prepared triple pass-through (model_settings + usage_limits)
+# =====================================================================
+
+
+class TestPreparedTriplePassThrough:
+    """analyze_chapter_role forwards the prepared-triple halves to agent.run.
+
+    Mirrors the 19009e17 boundary tests (wiki/beta-reader/worldbuilding):
+    the settings/limits kwargs cross the core service boundary instead
+    of stopping at it.
+    """
+
+    @pytest.mark.asyncio
+    async def test_forwards_settings_and_limits_to_agent_run(self, remap: AIRemapService) -> None:
+        agent = _FakeAgent(SummaryOutput(summary="act-1"))
+        sentinel_settings = ModelSettings(max_tokens=12_345)
+        sentinel_limits = UsageLimits(request_limit=7)
+
+        result = await remap.analyze_chapter_role(
+            summary="The hero begins their journey.",
+            structure_type="three_act",
+            agent=agent,
+            model_settings=sentinel_settings,
+            usage_limits=sentinel_limits,
+        )
+
+        assert result == "act-1"
+        assert len(agent.runs) == 1
+        assert agent.runs[0]["model_settings"] is sentinel_settings
+        assert agent.runs[0]["usage_limits"] is sentinel_limits
+
+    @pytest.mark.asyncio
+    async def test_defaults_to_none_settings_and_limits(self, remap: AIRemapService) -> None:
+        """Backward compat: without the kwargs the agent run receives None."""
+        agent = _FakeAgent(SummaryOutput(summary="act-2"))
+
+        await remap.analyze_chapter_role(
+            summary="The hero begins.",
+            structure_type="three_act",
+            agent=agent,
+        )
+
+        assert agent.runs[0]["model_settings"] is None
+        assert agent.runs[0]["usage_limits"] is None
+
+
+class TestChapterSummaryAgentSeam:
+    """The production agent seam carries the kwargs to the pydantic-ai run.
+
+    ``ChapterSummaryAgent.run`` inherits the NarrareAgent ``**kwargs``
+    pass-through (the 19009e17 convention for ``run()`` overrides) — this
+    pins that the agent the remap path really wires accepts and forwards
+    the prepared-triple kwargs to the internal pydantic-ai run.
+    """
+
+    @pytest.mark.asyncio
+    async def test_run_forwards_settings_and_limits_to_inner_run(self) -> None:
+        agent = ChapterSummaryAgent(model=TestModel())
+        expected = SummaryOutput(summary="act-1")
+        stub_agent = AsyncMock(name="inner_agent")
+        stub_agent.run = AsyncMock(return_value=SimpleNamespace(output=expected))
+        cast("Any", agent)._agent = stub_agent
+        sentinel_settings = ModelSettings(max_tokens=12_345)
+        sentinel_limits = UsageLimits(request_limit=7)
+
+        result = await agent.run(
+            "Stage the chapter.",
+            SummaryDeps(language="en"),
+            model_settings=sentinel_settings,
+            usage_limits=sentinel_limits,
+        )
+
+        assert result is expected
+        kwargs = stub_agent.run.call_args.kwargs
+        assert kwargs["model_settings"] is sentinel_settings
+        assert kwargs["usage_limits"] is sentinel_limits
 
 
 # =====================================================================

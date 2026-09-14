@@ -7,10 +7,13 @@ Pins the wiring that lifts the two dormancy gates:
 
 Task 6b follow-up: model resolution goes through the single assembly
 point ``ModelRegistry.prepare()`` (PLAN — the intent the storyboard
-factory routes the config for). The ``(model_settings, usage_limits)``
-halves of the triple stop at the core ``AIRemapService.analyze_chapter_role``
-boundary (no forwarding surface there — documented in-code in
-``_helpers.build_remap_agent``); only ``prepared.model`` crosses.
+factory routes the config for). The prepared triple now crosses the
+core ``AIRemapService.analyze_chapter_role`` boundary IN FULL: the
+model half at agent construction, the ``model_settings`` /
+``usage_limits`` halves threaded through ``ai_suggest_stage`` into
+``analyze_chapter_role`` and on to ``agent.run`` — the 19009e17
+kwargs pass-through convention (gap formerly documented in
+``_remap_helpers.build_remap_agent``; now closed).
 
 The factory-side injection pins live in ``test_service_factory_wiring.py``.
 """
@@ -24,7 +27,7 @@ from unittest.mock import patch
 
 import pytest
 
-from narrare.planning._helpers import ai_suggest_stage, build_remap_items
+from narrare.planning._remap_helpers import ai_suggest_stage, build_remap_items
 from narrare.planning.service import StoryboardService
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm._prepared_call import PreparedModelCall
@@ -37,10 +40,13 @@ from tests.unit.api.planning.test_storyboard_ai_remap import _seed_chapters, _se
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
+    from pydantic_ai.settings import ModelSettings
     from pydantic_ai.usage import UsageLimits
 
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
+
+_SENTINEL_SETTINGS: ModelSettings = {"max_tokens": 12_345}
 
 
 class TestAISuggestStageAgentForwarding:
@@ -120,7 +126,9 @@ class _RecordingModelRegistry:
         if self._error is not None:
             raise self._error
         prepared = PreparedModelCall(
-            model=cast("Model", object()), model_settings=None, usage_limits=usage_limits
+            model=cast("Model", object()),
+            model_settings=_SENTINEL_SETTINGS,
+            usage_limits=usage_limits,
         )
         self.prepare_calls[-1]["prepared"] = prepared
         return prepared
@@ -140,8 +148,22 @@ class _FakeRemapAgent:
         self._stage = stage
         self.run_calls: list[dict[str, object]] = []
 
-    async def run(self, *, prompt: str, deps: object) -> object:
-        self.run_calls.append({"prompt": prompt, "deps": deps})
+    async def run(
+        self,
+        *,
+        prompt: str,
+        deps: object,
+        model_settings: object = None,
+        usage_limits: object = None,
+    ) -> object:
+        self.run_calls.append(
+            {
+                "prompt": prompt,
+                "deps": deps,
+                "model_settings": model_settings,
+                "usage_limits": usage_limits,
+            }
+        )
         return SimpleNamespace(summary=self._stage)
 
 
@@ -190,10 +212,13 @@ class TestBuildRemapItems:
         assert call["usage_limits"] is not None
         assert call["api_key"] == "sk-test"
         assert call["base_url"] == "https://example.test/v1"
-        # Only the model half of the triple crosses the AIRemapService
-        # boundary (settings/limits stop there — see module docstring).
+        # The FULL prepared triple crosses the AIRemapService boundary:
+        # the model half at construction, settings + limits halves at
+        # every agent.run (kwargs pass-through, 19009e17 convention).
         prepared = cast("PreparedModelCall", call["prepared"])
         assert mock_agent_cls.call_args.kwargs["model"] is prepared.model
+        assert all(run["model_settings"] is prepared.model_settings for run in agent.run_calls)
+        assert all(run["usage_limits"] is prepared.usage_limits for run in agent.run_calls)
 
     async def test_summaryless_chapters_fall_back_to_heuristic(self) -> None:
         novel_id = uuid.uuid4()

@@ -12,7 +12,7 @@ import uuid
 
 import pytest
 
-from narrare.planning._helpers import ai_suggest_stage, should_use_ai_remap
+from narrare.planning._remap_helpers import ai_suggest_stage, should_use_ai_remap
 from narrare.planning.service import StoryboardService
 from narrare_core.planning.remap import AIRemapService
 from narrare_core.prompts.composer import PromptComposer

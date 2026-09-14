@@ -1,7 +1,8 @@
 """Storyboard service — business logic for the planning domain.
 
 Orchestrates outline CRUD, storyboard assembly, sync status calculation,
-and structure remap. Delegates mapping helpers to ``_helpers.py``.
+and structure remap. Delegates mapping helpers to ``_helpers.py`` and
+AI remap helpers (WRITE-012) to ``_remap_helpers.py``.
 
 AI Enhancement (WRITE-012): When chapter summaries exist and an
 AIRemapService is injected, structure remap uses AI analysis of summaries
@@ -15,13 +16,13 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.planning._helpers import (
-    build_remap_items,
     chapter_in_storyboard,
     compute_sync,
     ensure_outlines,
     find_position,
     to_outline_response,
 )
+from narrare.planning._remap_helpers import build_remap_items
 from narrare.planning.schemas import (
     OutlineResponse,
     OutlineUpdateRequest,

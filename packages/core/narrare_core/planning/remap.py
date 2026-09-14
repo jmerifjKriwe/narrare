@@ -14,6 +14,11 @@ is passed to ``agent.run()`` as the runtime prompt. When
 prompt is composed directly via ``composer.build()`` without pipeline
 evidence.
 
+Prepared triple (19009e17 kwargs pass-through): ``analyze_chapter_role()``
+also accepts ``model_settings`` / ``usage_limits`` and forwards them to
+``agent.run()`` so the ``ModelRegistry.prepare()`` triple crosses this
+boundary in full.
+
 See ADR-015 Phase 5 — Storyboard AI Enhancement.
 """
 
@@ -32,6 +37,9 @@ from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:
+    from pydantic_ai.settings import ModelSettings
+    from pydantic_ai.usage import UsageLimits
+
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.prompts.composer import PromptComposer
 
@@ -124,6 +132,9 @@ class AIRemapService:
         structure_type: str,
         agent: Any | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        *,
+        model_settings: ModelSettings | None = None,
+        usage_limits: UsageLimits | None = None,
     ) -> str:
         """Analyze a chapter summary to determine its likely stage.
 
@@ -135,6 +146,12 @@ class AIRemapService:
                 and evidence recording (ADR-048 Mode 1). When ``None``,
                 the prompt is composed directly without pipeline evidence
                 (backward-compatible default).
+            model_settings: Settings half of the ``ModelRegistry.prepare()``
+                triple — forwarded to the agent run (kwargs pass-through,
+                19009e17 convention). ``None`` when no settings apply.
+            usage_limits: Usage limits from the prepared triple —
+                forwarded to the agent run. ``None`` when the caller
+                provided none.
 
         Returns:
             A stage ID string (e.g. "act-1", "act-2").
@@ -157,7 +174,12 @@ class AIRemapService:
         deps_type = type("Deps", (), {"language": "en"})()
         try:
             # narrare: allow-agent reason="injected agent, not instantiated here"
-            result = await agent.run(prompt=prompt, deps=deps_type)
+            result = await agent.run(
+                prompt=prompt,
+                deps=deps_type,
+                model_settings=model_settings,
+                usage_limits=usage_limits,
+            )
             stage = result.summary.strip().lower()
             if stage:
                 return stage
