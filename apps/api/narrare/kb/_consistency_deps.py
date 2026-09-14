@@ -1,22 +1,16 @@
 """KB consistency service dependency factory.
 
 Model acquisition follows the per-user model-routing cascade: the factory
-resolves TWO configs for the authenticated user (+ novel for project-level
+wires TWO cascades for the authenticated user (+ novel for project-level
 overrides) — ``LLMIntent.KB_CONSISTENCY`` for the entry-internal analyzer
 and ``LLMIntent.KB_WORLDBUILD`` for the reused cross-entity worldbuilding
-analyzer — and passes the resolved configs + credentials into them. No
-business logic lives here — only wiring.
+analyzer — as ``LazyModelResolution``s (dual lazy wiring, ADR-086) and
+passes them into the analyzers, which resolve on first use — never at
+construction. No business logic lives here — only wiring.
 
 Note: the legacy wiring set no temperature override on either config
 (unlike ``consistency/deps.py``), so none is preserved here — the resolved
 cascade config is passed through as-is.
-
-Note (ADR-086): both cascades here still resolve EAGERLY at construction
-(ledger entry 15 — 400-before-422 retained, visible debt until its slice).
-Since L19 the worldbuilding analyzer's constructor takes a
-``ModelResolution`` instead of a pre-split triple, so the eagerly resolved
-worldbuild triple is wrapped in a ``StaticModelResolution`` — WHAT is
-unchanged, only the constructor shape.
 """
 
 from __future__ import annotations
@@ -31,7 +25,7 @@ from narrare._app.dependencies import (
     get_current_user_id,
 )
 from narrare._app.dependencies_services import (
-    StaticModelResolution,
+    LazyModelResolution,
     get_model_routing_resolver,
 )
 from narrare_core.llm.intents import LLMIntent
@@ -45,12 +39,17 @@ async def get_consistency_service(
     session: SessionDep,
     user_id: str = Depends(get_current_user_id),
 ) -> KBConsistencyService:
-    """Create a KBConsistencyService with per-user resolved model routing.
+    """Create a KBConsistencyService with per-user lazy model routing.
 
     FastAPI dependency: novel_id comes from the route path, user_id and
-    session are resolved via Depends. The models are resolved through the
-    per-user cascade; ``ConfigurationError`` propagates when the user has
-    no provider configured (kb routers are auth-mandatory).
+    session are resolved via Depends. The models are NOT resolved here —
+    both cascades (KB_CONSISTENCY and KB_WORLDBUILD) are wired as
+    ``LazyModelResolution``s and resolve at the service's first use
+    (ADR-086), after the novel ownership gate, so request validation
+    errors surface as 422 before any routing cascade runs.
+    ``ConfigurationError`` propagates loudly from the entry point when
+    the user has no provider configured (kb routers are auth-mandatory;
+    RULE-11).
 
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
     for system prompts, PromptRegistry for prompt resolution, and
@@ -80,15 +79,14 @@ async def get_consistency_service(
     from narrare_core.cache import InMemorySessionCache
 
     resolver = get_model_routing_resolver(session)
-    consistency_resolved = await resolver.resolve(
-        LLMIntent.KB_CONSISTENCY,
-        UUID(user_id),
-        novel_id,
+    # Dual lazy wiring (ADR-086): one LazyModelResolution per intent —
+    # neither cascade runs at construction; the service resolves both at
+    # its first use, after the ownership gate.
+    consistency_resolution = LazyModelResolution(
+        lambda: resolver.resolve(LLMIntent.KB_CONSISTENCY, UUID(user_id), novel_id)
     )
-    worldbuild_resolved = await resolver.resolve(
-        LLMIntent.KB_WORLDBUILD,
-        UUID(user_id),
-        novel_id,
+    worldbuild_resolution = LazyModelResolution(
+        lambda: resolver.resolve(LLMIntent.KB_WORLDBUILD, UUID(user_id), novel_id)
     )
 
     registry = get_model_registry()
@@ -107,10 +105,8 @@ async def get_consistency_service(
     consistency_analyzer = KBConsistencyAnalyzer(
         kb_repo=kb_repo,
         registry=registry,
-        config=consistency_resolved.config,
+        model_resolution=consistency_resolution,
         composer=composer,
-        api_key=consistency_resolved.api_key,
-        base_url=consistency_resolved.base_url,
     )
 
     # Relationship asymmetry checker (algorithmic, no LLM)
@@ -120,17 +116,16 @@ async def get_consistency_service(
         rel_service=rel_service,
     )
 
-    # Worldbuilding analyzer (reused for cross-entity Phase 2). The
-    # worldbuild triple was resolved eagerly above (entry 15 stays eager,
-    # ADR-086); StaticModelResolution adapts it to the L19 constructor
-    # shape without changing timing.
+    # Worldbuilding analyzer (reused for cross-entity Phase 2); its
+    # KB_WORLDBUILD cascade is wired lazily above — resolve happens at
+    # the service's first use (ADR-086), never here.
     worldbuilding_cache = WorldbuildingCache(cache)
     worldbuilding_analyzer = WorldbuildingAnalyzer(
         kb_repo=kb_repo,
         rel_repo=rel_repo,
         cache=worldbuilding_cache,
         registry=registry,
-        model_resolution=StaticModelResolution(worldbuild_resolved),
+        model_resolution=worldbuild_resolution,
         composer=composer,
     )
 

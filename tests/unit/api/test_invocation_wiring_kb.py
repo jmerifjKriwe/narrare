@@ -156,18 +156,24 @@ class TestConsistencyInvocationWiring:
 
         novel_id = uuid4()
 
-        mock_analyzer = MagicMock(spec=["analyze_entries"])
+        mock_analyzer = MagicMock(spec=["analyze_entries", "ensure_resolved"])
         mock_analyzer.analyze_entries = AsyncMock(return_value=([], 0))
+        # ADR-086 L15: the service ensure-resolves both cascades after
+        # the ownership gate, before the cache probe.
+        mock_analyzer.ensure_resolved = AsyncMock()
 
         # Permissive ownership gate (IDOR fix S9) — the gate is the caller's
         # novel; ownership behavior is covered by the kb ownership matrix.
         mock_novel_repo = MagicMock(spec=["get_by_id"])
         mock_novel_repo.get_by_id = AsyncMock(return_value=object())
 
+        mock_worldbuilding = MagicMock(spec=["analyze", "ensure_resolved"])
+        mock_worldbuilding.ensure_resolved = AsyncMock()
+
         service = KBConsistencyService(
             analyzer=mock_analyzer,
             asymmetry_checker=MagicMock(spec=["check"]),
-            worldbuilding_analyzer=MagicMock(spec=["analyze"]),
+            worldbuilding_analyzer=mock_worldbuilding,
             kb_repo=MagicMock(spec=["list_entries"]),
             rel_repo=MagicMock(spec=["get_by_id"]),
             cache=MagicMock(spec=["get", "set", "hash_entity_types"]),

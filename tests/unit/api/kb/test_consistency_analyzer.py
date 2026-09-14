@@ -12,6 +12,7 @@ from uuid import uuid4
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.kb.consistency_analyzer import (
     KBConsistencyAnalyzer,
     _build_entry_content,
@@ -24,6 +25,7 @@ from narrare.kb.worldbuilding_contracts import (
 )
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.gateway import ModelRegistry
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.writing._token_utils import default_token_counter
 
 if TYPE_CHECKING:
@@ -120,7 +122,11 @@ def _make_analyzer(
     analyzer = KBConsistencyAnalyzer(
         kb_repo=cast("KBRepositoryProtocol", kb_repo),
         registry=registry,
-        config=config,
+        # StaticModelResolution per the ADR-086 lazy constructor shape
+        # (L15) — the resolved triple is fixed, no cascade runs.
+        model_resolution=StaticModelResolution(
+            ResolvedModel(config=cast("ResolvedModelConfig", config))
+        ),
         composer=cast("PromptComposer", composer),
     )
 
@@ -256,7 +262,9 @@ class TestAnalyzerMaxBodyTokens:
         analyzer = KBConsistencyAnalyzer(
             kb_repo=cast("KBRepositoryProtocol", kb_repo),
             registry=registry,
-            config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=cast("ResolvedModelConfig", config))
+            ),
             composer=cast("PromptComposer", composer),
             max_body_tokens=800,
         )

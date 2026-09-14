@@ -4,12 +4,9 @@ Regression-first proof that the kb session/worldbuilding/consistency
 factories wire the per-user ``ModelRoutingResolver`` cascade (instead of
 the legacy ``build_system_default_config``) with the correct intent +
 user_id + novel_id, and that the resolved config lands on the services
-that own the actual ``get_model``/``run`` calls. The session factory
-wires the cascade LAZILY — resolved at the assist service's first use,
-never at construction (ADR-086 L18); the worldbuilding factory follows
-the same lazy shape, resolved at the analyzer's first use (ADR-086 L19).
-The consistency factory (entry 15) is still eager until its ledger slice
-lands.
+that own the actual ``get_model``/``run`` calls. All three factories
+wire the cascade LAZILY — resolved at the consuming service/analyzer's
+first use, never at construction (ADR-086 L18/L19/L15).
 
 Credential flow into those resolution points is proven in the companion
 ``test_deps_user_routing_1b_credentials.py`` (split off for the RULE-04
@@ -230,9 +227,9 @@ class TestWorldbuildingFactoryUserRouting:
 
 
 class TestConsistencyDepsUserRouting:
-    """get_consistency_service resolves TWO configs: consistency + worldbuild."""
+    """get_consistency_service wires TWO cascades lazily: consistency + worldbuild."""
 
-    async def test_resolves_kb_consistency_and_kb_worldbuild_for_user_and_novel(self) -> None:
+    async def test_wires_kb_consistency_and_kb_worldbuild_lazily_for_user_and_novel(self) -> None:
         from narrare.kb._consistency_deps import get_consistency_service
         from narrare.kb.consistency_service import KBConsistencyService
 
@@ -276,15 +273,23 @@ class TestConsistencyDepsUserRouting:
                 user_id=user_id,
             )
 
-        assert resolver.resolve.await_count == 2
+        # ADR-086 dual lazy wiring: construction resolves nothing.
+        assert resolver.resolve.await_args_list == []
+
+        assert isinstance(service, KBConsistencyService)
+        consistency_triple = await service._analyzer.ensure_resolved()
+        worldbuild_triple = await service._worldbuilding_analyzer.ensure_resolved()
+
+        # The REAL intents, in factory wiring order, for THIS user, WITH
+        # the novel tier — invoked at first use, not at construction:
         assert resolver.resolve.await_args_list == [
             call(LLMIntent.KB_CONSISTENCY, UUID(user_id), novel_id),
             call(LLMIntent.KB_WORLDBUILD, UUID(user_id), novel_id),
         ]
-        assert isinstance(service, KBConsistencyService)
-        assert service._analyzer._config is resolved_consistency.config
-        assert service._analyzer._api_key == _USER_KEY
-        # Entry 15 stays eager: the factory resolved KB_WORLDBUILD above
-        # and wraps the triple in a StaticModelResolution (L19 ctor shape).
-        worldbuild_triple = await service._worldbuilding_analyzer.ensure_resolved()
+
+        # Each cascade lands on ITS consumer: KB_CONSISTENCY on the
+        # entry-internal analyzer, KB_WORLDBUILD on the reused
+        # WorldbuildingAnalyzer (Phase 3) — a crossed wire would
+        # silently swap intents.
+        assert consistency_triple is resolved_consistency
         assert worldbuild_triple is resolved_worldbuild

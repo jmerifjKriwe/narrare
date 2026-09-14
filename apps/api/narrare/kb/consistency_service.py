@@ -30,7 +30,7 @@ from narrare.kb._consistency_helpers import (
     asymmetry_to_issue,
     generate_candidate_pairs,
 )
-from narrare.kb._consistency_invocation import CONSISTENCY_MANUAL_INJECTION
+from narrare.kb._consistency_invocation import compose_consistency_invocation
 from narrare.kb._consistency_suppress import suppress_dismissed_issues
 from narrare.kb._novel_gate import verify_novel_owned
 from narrare.kb.consistency_contracts import (
@@ -127,10 +127,24 @@ class KBConsistencyService:
 
         Raises:
             NotFoundError: If the novel is unknown or not owned by the caller.
+            ConfigurationError: If the user has no AI provider configured —
+                raised loudly at the dual first-use resolve (ADR-086 L15),
+                before the cache probe, so a warm cache never masks it.
         """
         # 0. Ownership gate — before the cache probe and every phase
-        # (RULE-11: authorization gates RAISE, never degrade).
+        # (RULE-11: authorization gates RAISE, never degrade). It also
+        # stays AHEAD of resolution (ADR-086): the routing cascades'
+        # DB reads must not run for a caller who does not own the novel.
         await verify_novel_owned(self._novel_repo, novel_id, UUID(user_id))
+
+        # 0a. Dual first-use resolve (ADR-086 L15): BOTH cascades resolve
+        # here — after the gate, BEFORE the cache probe — so an
+        # unconfigured provider stays a loud 400 even with a warm cache
+        # (the eager factory resolved before any cache access; semantics
+        # preserved, timing moved past validation). Idempotent: the
+        # analyzers cache their triples, later phase calls re-read them.
+        await self._analyzer.ensure_resolved()
+        await self._worldbuilding_analyzer.ensure_resolved()
 
         novel_str = str(novel_id)
         types_hash = self._cache.hash_entity_types(request.entity_types)
@@ -150,31 +164,15 @@ class KBConsistencyService:
             all_issues.extend(asymmetry_issues)
 
         # 2a. Compose invocation (Mode 2 — agent-internal) and record evidence
-        # for LLM phases (ADR-048). Replaces the former placeholder-evidence
-        # path. Covers both Phase 2 (entry-internal) and Phase 3 (cross-entity).
+        # for LLM phases (ADR-048). Covers both Phase 2 (entry-internal) and
+        # Phase 3 (cross-entity); best-effort — see
+        # compose_consistency_invocation.
         has_llm_phase = request.include_entry_internal or request.include_cross_entity
         if has_llm_phase:
-            from narrare._app.invocation_context import build_invocation_context
-            from narrare_core.ai_invocation import compose_invocation
-            from narrare_core.llm.intents import LLMIntent
-
-            invocation_context = build_invocation_context(
-                feature_id="kb_consistency",
-                intent=LLMIntent.KB_CONSISTENCY,
-                project_id=novel_id,
+            await compose_consistency_invocation(
+                invocation_pipeline=self._invocation_pipeline,
+                novel_id=novel_id,
             )
-            try:
-                await compose_invocation(
-                    invocation_pipeline=self._invocation_pipeline,
-                    invocation_context=invocation_context,
-                    manual_injection=CONSISTENCY_MANUAL_INJECTION,
-                )
-            except Exception:
-                logger.warning(
-                    "invocation_composition_failed",
-                    feature_id="kb_consistency",
-                    exc_info=True,
-                )
 
         # 3. Phase 2: Entry-internal check (LLM per entry)
         if request.include_entry_internal:

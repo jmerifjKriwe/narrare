@@ -253,6 +253,12 @@ class CountingConsistencyAnalyzer:
     def __init__(self) -> None:
         self.analyze_calls: list[UUID] = []
 
+    async def ensure_resolved(self) -> None:
+        """ADR-086 L15: the service ensure-resolves before the cache probe.
+
+        No-op here — the ownership matrix never configures a cascade.
+        """
+
     async def analyze_entries(
         self,
         novel_id: UUID,
@@ -260,6 +266,18 @@ class CountingConsistencyAnalyzer:
     ) -> tuple[list[object], int]:
         self.analyze_calls.append(novel_id)
         return [], 0
+
+
+class StubWorldbuildingAnalyzer:
+    """Resolution-only worldbuilding stub for the ownership matrix.
+
+    The service ensure-resolves BOTH cascades after the ownership gate
+    (ADR-086 L15); the ownership tests drive ``include_cross_entity=``
+    False paths, so Phase 3 itself never runs and only this seam exists.
+    """
+
+    async def ensure_resolved(self) -> None:
+        return None
 
 
 class CountingAsymmetryChecker:
@@ -317,7 +335,7 @@ def make_consistency_ownership_service(
     service = KBConsistencyService(
         analyzer=cast("KBConsistencyAnalyzer", analyzer),
         asymmetry_checker=cast("RelationshipAsymmetryChecker", asymmetry_checker),
-        worldbuilding_analyzer=cast("WorldbuildingAnalyzer", object()),
+        worldbuilding_analyzer=cast("WorldbuildingAnalyzer", StubWorldbuildingAnalyzer()),
         kb_repo=cast("KBRepositoryProtocol", object()),
         rel_repo=cast("RelationshipRepositoryProtocol", object()),
         cache=cast("ConsistencyCache", cache),
@@ -338,6 +356,7 @@ __all__ = [
     "RecordingGraphKBRepo",
     "RecordingGraphRelRepo",
     "RecordingSuggestKBRepo",
+    "StubWorldbuildingAnalyzer",
     "make_consistency_ownership_service",
     "make_graph_ownership_service",
     "make_suggest_ownership_service",

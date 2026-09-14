@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (22):**
+**Open (21):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -326,7 +326,16 @@ at construction (2026-09-09; factory function names verified):
        after the ownership gates (REST — no SSE pre-header needed);
        dedup helpers split to `name_dedup.py` for the RULE-04 size
        limit the `ensure_resolved` addition crossed)*
-15. [ ] `kb/_consistency_deps.py` — `get_consistency_service` (two eager resolves: consistency + worldbuild)
+15. [x] `kb/_consistency_deps.py` — `get_consistency_service`
+        *(C5/L15 — landed 2026-09-14: dual lazy wiring — one
+        ``LazyModelResolution`` per intent (KB_CONSISTENCY +
+        KB_WORLDBUILD) — + first-use resolve of BOTH cascades at the
+        service entry point, after the novel ownership gate and before
+        the cache probe so an unconfigured provider stays a loud 400
+        even warm (REST — no SSE pre-header needed); the entry-internal
+        analyzer gained the L19 analyzer shape; the invocation-evidence
+        composition moved to ``_consistency_invocation.py`` for the
+        RULE-04 size limit the resolve addition crossed)*
 16. [x] `kb/dependencies_extraction.py` — `get_extraction_service`
        *(C1/L16 — landed 2026-09-14: lazy wiring + first-use resolve
        after the ownership gate (REST — no SSE pre-header needed);

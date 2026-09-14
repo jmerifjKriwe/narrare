@@ -194,7 +194,9 @@ class TestCredentialsReachResolutionPoint:
         assert getattr(prepared.model, "sentinel_model", False) is True
 
     async def test_consistency_analyzer_threads_credentials_into_run(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.kb.consistency_analyzer import KBConsistencyAnalyzer
+        from narrare_core.llm.model_routing import ResolvedModel
 
         config = _user_config()
         registry = _RecordingRegistry(stop_after_record=_StopResolution())
@@ -205,10 +207,14 @@ class TestCredentialsReachResolutionPoint:
         analyzer = KBConsistencyAnalyzer(
             kb_repo=MagicMock(spec=True, name="KBRepository"),
             registry=cast("ModelRegistry", registry),
-            config=config,
+            # StaticModelResolution per the ADR-086 lazy constructor shape
+            # (L15); _analyze_entry ensure-resolves on demand, so the
+            # triple flows into run() exactly as the eager factory passed
+            # it.
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
             composer=composer,
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
         entity = SimpleNamespace(
             id=uuid4(),

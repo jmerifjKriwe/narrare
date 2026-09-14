@@ -7,6 +7,9 @@ Returns a list of :class:`ConsistencyIssue` objects.
 Uses PromptComposer (RULE-02).  No dedicated pydantic-ai Agent —
 single-shot ``registry.run()`` with structured output.
 
+The per-user model routing cascade is wired as a ``LazyModelResolution``
+and resolves on first use (ADR-086) — never at construction.
+
 See:
     :class:`narrare.kb.consistency_service.KBConsistencyService`
 """
@@ -32,10 +35,11 @@ from narrare_core.writing._token_utils import cap_to_budget
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.models import KBEntry
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -76,36 +80,47 @@ class KBConsistencyAnalyzer:
     structure, calls the LLM via ``ModelRegistry.run()``, and maps
     results to :class:`ConsistencyIssue` objects.
 
+    The per-user model routing cascade is wired as a ``LazyModelResolution``
+    and resolves on first use (ADR-086) — never at construction.
+
     Args:
         kb_repo: KB entry repository for listing entities.
         registry: Model registry for LLM calls (RULE-01b).
-        config: Resolved model configuration.
+        model_resolution: Lazy per-user model resolution (ADR-086) — the
+            routing cascade resolves on first use, never at construction.
         composer: PromptComposer for building system prompts (RULE-02).
         max_body_tokens: Maximum tokens for entity body truncation in
             consistency prompts.  Default 1500 (~5000 chars).  Token-aware
             truncation replaces the previous hardcoded 5000-char limit.
-        api_key: Optional per-user provider API key (model-routing cascade),
-            injected into ``ModelRegistry.run``.
-        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
         self,
         kb_repo: KBRepositoryProtocol,
         registry: ModelRegistry,
-        config: ResolvedModelConfig,
+        model_resolution: ModelResolution,
         composer: PromptComposer,
         max_body_tokens: int = 1500,
-        api_key: str | None = None,
-        base_url: str | None = None,
     ) -> None:
         self._kb_repo = kb_repo
         self._registry = registry
-        self._config = config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._composer = composer
         self._max_body_tokens = max_body_tokens
-        self._api_key = api_key
-        self._base_url = base_url
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086).
+
+        First call resolves via the injected ``ModelResolution`` and
+        caches the triple; repeat calls return the cached value without
+        re-running the cascade. Errors propagate loudly and are never
+        cached (RULE-11): ``ConfigurationError`` (``NO_AI_PROVIDER``)
+        surfaces as a 400 on this AI-mandatory endpoint.
+        """
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def analyze_entries(
         self,
@@ -121,6 +136,12 @@ class KBConsistencyAnalyzer:
         Returns:
             Tuple of (issues found, entity count analyzed).
         """
+        # ADR-086: resolve at the entry-point top — before any entity
+        # listing — so an unconfigured provider surfaces immediately and
+        # unconditionally (the eager factory resolved before any data
+        # access; semantics preserved).
+        await self.ensure_resolved()
+
         entities = await list_entities(self._kb_repo, novel_id, entity_types)
         if not entities:
             return [], 0
@@ -173,6 +194,7 @@ class KBConsistencyAnalyzer:
         Builds the prompt context, resolves the system prompt via
         PromptComposer, and calls the LLM with structured output.
         """
+        resolved = await self.ensure_resolved()
         entry_content = _build_entry_content(entity, self._max_body_tokens)
         template_structure = _build_template_structure(entity.entity_type)
 
@@ -191,11 +213,11 @@ class KBConsistencyAnalyzer:
         result: _EntryInternalOutput = await self._registry.run(
             intent=LLMIntent.KB_CONSISTENCY,
             prompt=composed.user,
-            config=self._config,
+            config=resolved.config,
             system_prompt=composed.system,
             output_type=_EntryInternalOutput,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            api_key=resolved.api_key,
+            base_url=resolved.base_url,
         )
         return result.issues
 
