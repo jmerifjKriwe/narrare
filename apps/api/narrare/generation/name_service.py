@@ -12,11 +12,17 @@ foreign and unknown projects are indistinguishable (``NotFoundError`` → 404).
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import structlog
 
 from narrare.generation._name_invocation import compose_name_invocation
+from narrare.generation.name_dedup import (
+    DEFAULT_NAME_DEDUP_PAGE_SIZE,
+    fetch_existing_names,
+    flag_duplicates,
+)
 from narrare.generation.name_parsing import parse_generated_names
 from narrare.generation.schemas import (
     GeneratedName,
@@ -24,40 +30,19 @@ from narrare.generation.schemas import (
     NameGenerateResponse,
 )
 from narrare_core.shared.errors import NotFoundError
-from narrare_core.writing.budget import cap_to_budget
 
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
-
-# Maximum token budget for existing-name dedup context sent to the LLM.
-# At ~1.3 tokens/word this allows roughly 350 short entity names.
-MAX_EXISTING_NAMES_TOKENS: int = 500
-
-# Page size used when listing KB entries for name-dedup context — CR-AUFG-08-13.
-# Single definition site (RULE-06): _fetch_existing_names imports this rather
-# than hardcoding the literal, so there is one place to review when the
-# default changes. See the Governed Defaults Manifest §4.2 for rationale and
-# review triggers.
-DEFAULT_NAME_DEDUP_PAGE_SIZE: int = 1000
-
-# Mapping from NameType enum values to KB entity_type values.
-# NameType uses "place"/"organization"/"item" while the KB CHECK constraint
-# uses "location"/"faction"/"object".
-_NAME_TYPE_TO_KB_ENTITY: dict[str, str] = {
-    "character": "character",
-    "place": "location",
-    "organization": "faction",
-    "item": "object",
-}
 
 
 class NameGeneratorService:
@@ -71,10 +56,9 @@ class NameGeneratorService:
     Args:
         registry: ModelRegistry for LLM execution.
         composer: PromptComposer for prompt assembly.
-        config: Resolved model configuration.
+        model_resolution: Lazy per-user model resolution (ADR-086) — the
+            routing cascade resolves on first use, never at construction.
         novel_repo: Novel repository — the project ownership gate (IDOR S12b).
-        api_key: Optional per-user API key override.
-        base_url: Optional per-user base URL override.
         kb_repo: Optional KB repository for name dedup.
         invocation_pipeline: Optional pipeline for invocation evidence.
     """
@@ -83,21 +67,31 @@ class NameGeneratorService:
         self,
         registry: ModelRegistry,
         composer: PromptComposer,
-        config: ResolvedModelConfig,
+        model_resolution: ModelResolution,
         novel_repo: NovelRepositoryProtocol,
-        api_key: str | None = None,
-        base_url: str | None = None,
         kb_repo: KBRepositoryProtocol | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._registry = registry
         self._composer = composer
-        self._config = config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._novel_repo = novel_repo
-        self._api_key = api_key
-        self._base_url = base_url
         self._kb_repo = kb_repo
         self._invocation_pipeline = invocation_pipeline
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086).
+
+        First call resolves via the injected ``ModelResolution`` and
+        caches the triple; repeat calls return the cached value without
+        re-running the cascade. Errors propagate loudly and are never
+        cached (RULE-11): ``ConfigurationError`` (``NO_AI_PROVIDER``)
+        surfaces as a 400 on this AI-mandatory endpoint.
+        """
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def generate_names(
         self, request: NameGenerateRequest, user_id: UUID
@@ -120,6 +114,9 @@ class NameGeneratorService:
         Raises:
             NotFoundError: The project is unknown or owned by another user —
                 both cases are indistinguishable by design (→ 404).
+            ConfigurationError: The per-user routing cascade finds no
+                configured provider (ADR-086 first-use resolution, RULE-11
+                loud propagation — AI-mandatory endpoint).
         """
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext
@@ -129,6 +126,13 @@ class NameGeneratorService:
         novel = await self._novel_repo.get_by_id(request.project_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(request.project_id))
+
+        # ADR-086 L14: first-use lazy resolve — the ownership gates above
+        # stay ahead of resolution (eager-world precedence), and the
+        # generation sampling overrides layer onto the resolved config
+        # exactly as the eager factory did (timing-only migration).
+        resolved_model = await self.ensure_resolved()
+        config = replace(resolved_model.config, temperature=0.8, max_tokens=2000)
 
         # Fetch existing KB names BEFORE the LLM call for proactive dedup.
         existing_names = await self._fetch_existing_names(
@@ -166,13 +170,13 @@ class NameGeneratorService:
             user_prompt=self._build_user_prompt(request),
         )
 
-        result: str = await self._registry.run(  # pyright: ignore[reportUnknownVariableType]
+        result: str = await self._registry.run(
             LLMIntent.NAME_GENERATE,
             prompt=prompt.user,
-            config=self._config,
+            config=config,
             system_prompt=prompt.system,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            api_key=resolved_model.api_key,
+            base_url=resolved_model.base_url,
         )
 
         names = parse_generated_names(result, request)
@@ -210,51 +214,23 @@ class NameGeneratorService:
     ) -> list[str]:
         """Fetch existing entity names from the project's KB.
 
-        Queries the KB repository filtered by the mapped entity type.
-        Returns an empty list when no KB repository is configured.
+        Delegates to :func:`narrare.generation.name_dedup.fetch_existing_names`,
+        wiring the governed page size by name (single definition site —
+        the defaults structural pin inspects this seam).
 
         Args:
             project_id: The project (novel) ID to query names for.
             name_type: The NameType value (e.g. "character", "place").
 
         Returns:
-            List of entity names from the KB.
+            List of entity names from the KB, capped to the token budget.
         """
-        if self._kb_repo is None:
-            return []
-
-        entity_type = _NAME_TYPE_TO_KB_ENTITY.get(name_type)
-        entries, total = await self._kb_repo.list_entries(
-            novel_id=project_id,
-            entity_type=entity_type,
+        return await fetch_existing_names(
+            self._kb_repo,
+            project_id,
+            name_type,
             page_size=DEFAULT_NAME_DEDUP_PAGE_SIZE,
         )
-
-        if total > len(entries):
-            logger.warning(
-                "kb_names_truncated",
-                total=total,
-                returned=len(entries),
-                hint="Consider pagination if this occurs frequently",
-            )
-
-        names = [entry.name for entry in entries]
-
-        # Enforce token budget — truncate the list when the joined
-        # string exceeds the allowed budget so prompts never overflow.
-        joined = ", ".join(names)
-        capped = cap_to_budget(joined, MAX_EXISTING_NAMES_TOKENS)
-        result = [n.strip() for n in capped.split(",") if n.strip()]
-
-        if len(result) < len(names):
-            logger.info(
-                "existing_names_capped",
-                original=len(names),
-                capped=len(result),
-                budget=MAX_EXISTING_NAMES_TOKENS,
-            )
-
-        return result
 
     def _check_duplicates(
         self,
@@ -263,18 +239,6 @@ class NameGeneratorService:
     ) -> list[GeneratedName]:
         """Flag generated names that match existing KB entries.
 
-        Compares case-insensitively with trimmed whitespace.
-        Does NOT remove duplicates — only sets is_duplicate=True.
-
-        Args:
-            names: Generated names to check.
-            existing_names: KB entity names to compare against.
-
-        Returns:
-            The same list with is_duplicate flags set where applicable.
+        Delegates to :func:`narrare.generation.name_dedup.flag_duplicates`.
         """
-        existing_lower = {n.strip().lower() for n in existing_names}
-        for name_obj in names:
-            if name_obj.name.strip().lower() in existing_lower:
-                name_obj.is_duplicate = True
-        return names
+        return flag_duplicates(names, existing_names)

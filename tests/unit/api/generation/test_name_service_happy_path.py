@@ -19,6 +19,7 @@ from .conftest import (
     SAMPLE_ARRAY_RESPONSE,
     _default_request,
     _json_names_response,
+    _static_resolution,
 )
 
 # ---------------------------------------------------------------------------
@@ -105,10 +106,12 @@ class TestGenerateNamesHappyPath:
         svc = NameGeneratorService(
             registry=fake_reg,
             composer=mock_composer,
-            config=config,
+            model_resolution=_static_resolution(
+                config,
+                api_key="sk-test-key",
+                base_url="https://custom.llm.api/v1",
+            ),
             novel_repo=permissive_novel_repo(),
-            api_key="sk-test-key",
-            base_url="https://custom.llm.api/v1",
         )
 
         await svc.generate_names(_default_request(), user_id=uuid4())

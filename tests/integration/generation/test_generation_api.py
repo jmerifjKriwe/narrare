@@ -9,8 +9,10 @@ from uuid import uuid4
 import pytest
 
 from narrare._app.dependencies import _get_composer_instance
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.generation.name_service import NameGeneratorService
 from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
 if TYPE_CHECKING:
@@ -26,6 +28,15 @@ _MOCK_NAMES_JSON = (
     '{"name": "Zephyra", "pronunciation": "zeh-FEER-ah", "meaning": "west wind"}'
     "]}"
 )
+
+
+def _static_resolution(config: ResolvedModelConfig) -> StaticModelResolution:
+    """Fixed ModelResolution around a known triple (ADR-086 test harness).
+
+    Integration-local mirror of the generation unit conftest helper
+    (integration suites do not import unit conftests).
+    """
+    return StaticModelResolution(ResolvedModel(config=config, source="integration-test"))
 
 
 class _PermissiveNovelRepo:
@@ -66,7 +77,7 @@ class TestGenerateNames:
         mock_service = NameGeneratorService(
             registry=mock_registry,
             composer=_get_composer_instance(),
-            config=mock_config,
+            model_resolution=_static_resolution(mock_config),
             # Minimal fake — cast at the construction seam (house pattern).
             novel_repo=cast("NovelRepositoryProtocol", _PermissiveNovelRepo()),
         )
@@ -169,3 +180,40 @@ class TestGenerateNames:
             headers=auth_headers,
         )
         assert response.status_code == 422
+
+    async def test_generate_names_400_when_provider_unconfigured(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Valid body + unconfigured provider → 400 (RULE-11 loud, ADR-086).
+
+        Real chain, NO factory patch: the routing cascade resolves at the
+        service's first use — after body validation and the ownership
+        gates — so a fresh user without a provider gets a loud typed 400,
+        never a swallowed result, a degradation, or a 500. The novel is
+        created first so the factory's S12b ownership gate passes and the
+        cascade is what fails.
+        """
+        novel_resp = await client.post(
+            "/api/v1/novels",
+            json={"title": "Generation 400 Novel", "writing_language": "en"},
+            headers=auth_headers,
+        )
+        assert novel_resp.status_code == 201
+        novel_id = novel_resp.json()["id"]
+
+        response = await client.post(
+            "/api/v1/generation/names",
+            json={
+                "project_id": novel_id,
+                "name_type": "character",
+                "name_style": "fantasy",
+                "count": 3,
+                "gender": "any",
+                "explanation_language": "en",
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 400

@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
 from ._ownership_fakes import permissive_novel_repo
-from .conftest import SAMPLE_ARRAY_RESPONSE, _default_request
+from .conftest import SAMPLE_ARRAY_RESPONSE, _default_request, _static_resolution
 
 # ---------------------------------------------------------------------------
 # Invocation composition — verifies compose_name_invocation (ADR-048 Mode 2)
@@ -146,10 +146,8 @@ class TestInvocationComposition:
         svc = NameGeneratorService(
             registry=fake_registry,
             composer=mock_composer,
-            config=config,
+            model_resolution=_static_resolution(config),
             novel_repo=permissive_novel_repo(),
-            api_key=None,
-            base_url=None,
             kb_repo=None,
             invocation_pipeline=pipeline,
         )

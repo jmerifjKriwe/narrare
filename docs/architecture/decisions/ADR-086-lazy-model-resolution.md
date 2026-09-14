@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (28):**
+**Open (27):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -321,7 +321,11 @@ at construction (2026-09-09; factory function names verified):
        SSE pre-header call)*
 12. [ ] `chat/dependencies.py` — `get_chat_service` (SSE)
 13. [ ] `consistency/deps.py` — `get_consistency_service` (two eager resolves: fact-extraction + consistency)
-14. [ ] `generation/router.py` — `_get_service` (NameGeneratorService factory)
+14. [x] `generation/router.py` — `_get_service` (NameGeneratorService factory)
+       *(B1/L14 — landed 2026-09-14: lazy wiring + first-use resolve
+       after the ownership gates (REST — no SSE pre-header needed);
+       dedup helpers split to `name_dedup.py` for the RULE-04 size
+       limit the `ensure_resolved` addition crossed)*
 15. [ ] `kb/_consistency_deps.py` — `get_consistency_service` (two eager resolves: consistency + worldbuild)
 16. [ ] `kb/dependencies_extraction.py` — `get_extraction_service`
 17. [ ] `kb/dependencies_improve.py` — `get_kb_improve_service`

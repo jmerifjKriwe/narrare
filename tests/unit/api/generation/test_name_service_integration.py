@@ -20,6 +20,7 @@ from .conftest import (
     SAMPLE_ARRAY_RESPONSE,
     _default_request,
     _make_config,
+    _static_resolution,
 )
 
 # ---------------------------------------------------------------------------
@@ -36,7 +37,7 @@ class TestBuildUserPrompt:
         return NameGeneratorService(
             registry=MagicMock(spec=ModelRegistry),
             composer=MagicMock(spec=PromptComposer),
-            config=_make_config(),
+            model_resolution=_static_resolution(_make_config()),
             novel_repo=permissive_novel_repo(),
         )
 

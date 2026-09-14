@@ -30,6 +30,7 @@ from tests.unit.api.generation._dedup_fakes import (
 )
 
 from ._ownership_fakes import permissive_novel_repo
+from .conftest import _static_resolution
 
 
 def _default_request(**overrides: Any) -> NameGenerateRequest:
@@ -75,7 +76,7 @@ class TestNameServiceTokenBudget:
         service = NameGeneratorService(
             registry=fake_registry,
             composer=mock_composer,
-            config=config,
+            model_resolution=_static_resolution(config),
             novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo(_long_names(200)),
         )
@@ -105,7 +106,7 @@ class TestNameServiceTokenBudget:
         service = NameGeneratorService(
             registry=fake_registry,
             composer=mock_composer,
-            config=config,
+            model_resolution=_static_resolution(config),
             novel_repo=permissive_novel_repo(),
             kb_repo=kb_repo(entries),
         )
@@ -129,7 +130,7 @@ class TestNameServiceTokenBudget:
         service = NameGeneratorService(
             registry=fake_registry,
             composer=mock_composer,
-            config=config,
+            model_resolution=_static_resolution(config),
             novel_repo=permissive_novel_repo(),
         )
         await service.generate_names(_default_request(), user_id=uuid.uuid4())

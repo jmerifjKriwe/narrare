@@ -35,6 +35,7 @@ from narrare_core.shared.errors import NotFoundError
 from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
 from ._ownership_fakes import RecordingNovelRepo
+from .conftest import _static_resolution
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -101,8 +102,10 @@ def _make_service(
     service = NameGeneratorService(
         registry=registry,
         composer=composer,
-        config=ResolvedModelConfig(
-            provider_name="test", model_id="test", temperature=0.8, max_tokens=2000
+        model_resolution=_static_resolution(
+            ResolvedModelConfig(
+                provider_name="test", model_id="test", temperature=0.8, max_tokens=2000
+            )
         ),
         # Minimal recording fakes — cast at the construction seam asserts
         # they stand in for the full repository protocols (house pattern).

@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.generation.name_service import NameGeneratorService
 from narrare.generation.schemas import (
     GenderEnum,
@@ -16,6 +17,7 @@ from narrare.generation.schemas import (
     NameType,
 )
 from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
 from ._ownership_fakes import permissive_novel_repo
@@ -46,6 +48,22 @@ def _make_config() -> ResolvedModelConfig:
         model_id="claude-sonnet-4-5-20251020",
         temperature=0.8,
         max_tokens=2000,
+    )
+
+
+def _static_resolution(
+    config: ResolvedModelConfig,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> StaticModelResolution:
+    """Fixed ModelResolution around a known triple (ADR-086 test harness).
+
+    Single definition site for the mechanical ctor migration of the
+    generation unit tests (RULE-06): production wires
+    ``LazyModelResolution``, tests wire ``StaticModelResolution``.
+    """
+    return StaticModelResolution(
+        ResolvedModel(config=config, api_key=api_key, base_url=base_url, source="unit-test")
     )
 
 
@@ -138,9 +156,7 @@ def service(
     return NameGeneratorService(
         registry=fake_registry,
         composer=mock_composer,
-        config=config,
+        model_resolution=_static_resolution(config),
         novel_repo=permissive_novel_repo(),
-        api_key=None,
-        base_url=None,
         kb_repo=None,
     )

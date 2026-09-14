@@ -4,9 +4,11 @@ Fail-if-changed-without-review tests for name generation dedup
 defaults listed in the Governed Defaults Manifest §4.2.
 
 REAL CONTROL: These tests IMPORT the governed defaults from their source
-module (``narrare.generation.name_service``) and assert that (1) the source
-value matches the manifest, and (2) the service actually passes the page
-size to the KB repository. The constants are NOT redefined locally.
+module (``narrare.generation.name_dedup`` — the constants' single
+definition site, RULE-06 split out of ``name_service`` in ADR-086 L14)
+and assert that (1) the source value matches the manifest, and (2) the
+service actually passes the page size to the KB repository. The constants
+are NOT redefined locally.
 
 See: docs/architecture/governance/cr-08-p3-governed-defaults-manifest.md §4.2
 """
@@ -16,7 +18,7 @@ from uuid import uuid4
 
 import pytest
 
-from narrare.generation.name_service import (
+from narrare.generation.name_dedup import (
     DEFAULT_NAME_DEDUP_PAGE_SIZE,
     MAX_EXISTING_NAMES_TOKENS,
 )
@@ -31,7 +33,7 @@ class TestNameDedupGovernedDefaults:
         """500 tokens — caps existing-name dedup context for name generation.
 
         Value layer: the IMPORTED source constant equals the manifest value.
-        If someone changes ``MAX_EXISTING_NAMES_TOKENS`` in name_service.py,
+        If someone changes ``MAX_EXISTING_NAMES_TOKENS`` in name_dedup.py,
         this assertion fails until the manifest rationale and review trigger
         are updated here.
 
@@ -53,7 +55,7 @@ class TestNameDedupGovernedDefaults:
 
         Value layer: the IMPORTED source constant equals the manifest value.
         If someone changes ``DEFAULT_NAME_DEDUP_PAGE_SIZE`` in
-        name_service.py, this assertion fails until the manifest rationale
+        name_dedup.py, this assertion fails until the manifest rationale
         and review trigger are updated here.
 
         Rationale: 1000 entries per page covers >99% of projects.
@@ -105,7 +107,7 @@ class TestNameDedupGovernedDefaults:
         service = NameGeneratorService(
             registry=MagicMock(spec=["get_model"]),
             composer=MagicMock(spec=["build"]),
-            config=MagicMock(spec=[]),
+            model_resolution=MagicMock(spec=["resolve"]),
             novel_repo=permissive_novel_repo(),
             kb_repo=mock_repo,
         )
@@ -143,7 +145,7 @@ class TestNameDedupGovernedDefaults:
         service = NameGeneratorService(
             registry=MagicMock(spec=["get_model"]),
             composer=MagicMock(spec=["build"]),
-            config=MagicMock(spec=[]),
+            model_resolution=MagicMock(spec=["resolve"]),
             novel_repo=permissive_novel_repo(),
             kb_repo=mock_repo,
         )
