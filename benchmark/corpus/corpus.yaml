@@ -1,6 +1,7 @@
 name: benchmark-corpus
 version: 1
 language: de
+genre: "Literary Fiction"
 description: German test novel with ground truth for the KB infrastructure benchmark (spec 2026-08-20 section 4)
 chapters: [ch-01, ch-02, ch-03, ch-04, ch-05, ch-06, ch-07, ch-08, ch-09, ch-10, ch-11, ch-12]
 variants:
