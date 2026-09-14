@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (25):**
+**Open (24):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -332,7 +332,11 @@ at construction (2026-09-09; factory function names verified):
        after the ownership gate (REST — no SSE pre-header needed);
        extract route re-raises `NarrareError` past its broad 500 so the
        first-use `ConfigurationError` stays a loud 400)*
-17. [ ] `kb/dependencies_improve.py` — `get_kb_improve_service`
+17. [x] `kb/dependencies_improve.py` — `get_kb_improve_service`
+       *(C2/L17 — landed 2026-09-14: lazy wiring + first-use resolve
+       in the analyzer (the config consumer; REST — no SSE pre-header
+       needed; resolve precedes the analysis-cache lookup so an
+       unconfigured provider stays a loud 400 even warm))*
 18. [ ] `kb/dependencies_session.py` — `get_kb_session_service`
 19. [ ] `kb/dependencies_worldbuilding.py` — `get_worldbuilding_service`
 20. [ ] `planning/_character_arc_factory.py` — `get_character_arc_service`

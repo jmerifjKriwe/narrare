@@ -54,7 +54,9 @@ class TestImprovePrepareWiring:
     """KBImproveAgent resolves via prepare(KB_IMPROVE) with user credentials."""
 
     async def test_analyze_resolves_via_prepare_with_kb_improve_intent(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.kb.improve_analyzer import KBImproveAnalyzer
+        from narrare_core.llm.model_routing import ResolvedModel
 
         config = _user_config()
         registry = _RecordingPrepareRegistry()
@@ -64,7 +66,7 @@ class TestImprovePrepareWiring:
         provider.fetch_entities = AsyncMock(return_value=[])
         analyzer = KBImproveAnalyzer(
             registry=cast("ModelRegistry", registry),
-            config=config,
+            model_resolution=StaticModelResolution(ResolvedModel(config=config)),
             kb_context_provider=cast("Any", provider),
             prompt_composer=cast("PromptComposer", _FakeComposer()),
             kb_repo=cast("KBRepository", MagicMock(spec=True, name="KBRepository")),

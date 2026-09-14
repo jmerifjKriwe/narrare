@@ -5,6 +5,9 @@ Handles the agent interaction side of KB improvement: builds deps,
 builds system prompt via PromptComposer, runs KBImproveAgent,
 and caches results via KBImproveCache.
 
+The per-user model routing cascade is wired as a ``LazyModelResolution``
+and resolves on first use (ADR-086) — never at construction.
+
 See:
     :class:`narrare.kb.improve_service.KBImproveService`
 """
@@ -30,14 +33,15 @@ from .template_fields import get_template_fields
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.kb.improve_cache import KBImproveCache
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.prompts.context import PromptContext
 
@@ -53,7 +57,8 @@ class KBImproveAnalyzer:
 
     Args:
         registry: Model registry for resolving LLM models.
-        config: Resolved model configuration.
+        model_resolution: Lazy per-user model resolution (ADR-086) — the
+            routing cascade resolves on first use, never at construction.
         kb_context_provider: Single source for curated world context
             (ADR-067). Renders existing entries of the entity type as
             ``- name (type): brief`` and degrades to empty (RULE-11).
@@ -62,15 +67,13 @@ class KBImproveAnalyzer:
         rel_repo: Relationship repository.
         improve_cache: Optional in-memory cache for 10min TTL (ADR-080).
         kb_agent: Optional KBAgent for cross-agent tool access.
-        api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.prepare``.
-        base_url: Optional per-user provider base URL override.
+        invocation_pipeline: Optional pipeline for invocation evidence.
     """
 
     def __init__(
         self,
         registry: ModelRegistry,
-        config: ResolvedModelConfig,
+        model_resolution: ModelResolution,
         kb_context_provider: KBContextProviderProtocol,
         prompt_composer: PromptComposer,
         kb_repo: KBRepository,
@@ -78,14 +81,13 @@ class KBImproveAnalyzer:
         improve_cache: KBImproveCache | None = None,
         kb_agent: object | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         from narrare_core.agents.kb_agent import KBAgent
 
         self._registry = registry
-        self._config = config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._kb_context_provider = kb_context_provider
         self._prompt_composer = prompt_composer
         self._kb_repo = kb_repo
@@ -93,9 +95,20 @@ class KBImproveAnalyzer:
         self._improve_cache = improve_cache
         self._kb_agent = kb_agent if isinstance(kb_agent, KBAgent) else None
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086).
+
+        First call resolves via the injected ``ModelResolution`` and
+        caches the triple; repeat calls return the cached value without
+        re-running the cascade. Errors propagate loudly and are never
+        cached (RULE-11): ``ConfigurationError`` (``NO_AI_PROVIDER``)
+        surfaces as a 400 on this AI-mandatory endpoint.
+        """
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def _build_deps(
         self,
@@ -187,19 +200,20 @@ class KBImproveAnalyzer:
 
         Single assembly point (Task 6c — Task 4/5 pattern): model +
         intent-aware runtime settings + usage limits as one result.
-        Per-user credentials are injected so the user's
-        wizard-configured provider is used (model-routing cascade), not
-        the operator env.
+        Per-user credentials come from the (cached) ADR-086 first-use
+        routing resolution so the user's wizard-configured provider is
+        used (model-routing cascade), not the operator env.
         """
-        resolved = self._run_limit_resolver.resolve(
-            config=self._config, budget=None, invocation_id=uuid4()
+        resolved = await self.ensure_resolved()
+        limits = self._run_limit_resolver.resolve(
+            config=resolved.config, budget=None, invocation_id=uuid4()
         )
         return await self._registry.prepare(
-            self._config,
+            resolved.config,
             intent=LLMIntent.KB_IMPROVE,
-            usage_limits=resolved.usage_limits,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            usage_limits=limits.usage_limits,
+            api_key=resolved.api_key,
+            base_url=resolved.base_url,
         )
 
     async def has_cached_analysis(self, entry_id: UUID) -> bool:
@@ -240,7 +254,23 @@ class KBImproveAnalyzer:
 
         Checks the cache first (10min TTL).  On a cache miss, runs the
         KBImproveAgent and stores the result for subsequent calls.
+
+        Raises:
+            ConfigurationError: The per-user routing cascade finds no
+                configured provider (ADR-086 first-use resolution, RULE-11
+                loud propagation — AI-mandatory endpoint). Resolves BEFORE
+                the cache lookup, mirroring the eager factory that resolved
+                at wiring time (unconfigured provider stays a loud 400 even
+                with a warm cache).
         """
+        # ADR-086 L17: first-use lazy resolve — the analyzer is entered
+        # only after KBImproveService's ownership + entry gates (gate-
+        # before-resolution ordering preserved), and the resolved triple
+        # flows into _prepare() exactly as the eager factory passed it
+        # (timing-only migration: WHAT unchanged — no sampling overrides
+        # exist for KB_IMPROVE — only WHEN).
+        await self.ensure_resolved()
+
         entry_id_str = str(entry_id)
 
         # Check cache first

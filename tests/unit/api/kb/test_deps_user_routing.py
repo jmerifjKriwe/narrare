@@ -3,11 +3,10 @@
 Regression-first proof that the kb extraction factory wires the per-user
 ``ModelRoutingResolver`` cascade (instead of the legacy
 ``build_system_default_config``) with the correct intent + user_id +
-novel_id — invoked LAZILY at the service's first use, never at
-construction (ADR-086 L16) — and that the resolved config +
-api_key/base_url reach the ACTUAL resolution point inside the services
-(``ModelRegistry.prepare`` for extraction, ``ModelRegistry.get_model``
-for the improve analyzer until its Task 6 migration).
+novel_id — invoked LAZILY at first use, never at construction (ADR-086
+L16/L17) — and that the resolved config + api_key/base_url reach the
+ACTUAL resolution point inside the services (``ModelRegistry.prepare``
+for extraction and the improve analyzer alike).
 
 Pattern reference: ``tests/unit/api/generation/test_generation_router_factory.py``
 (ADR-086 L14 convention).
@@ -214,9 +213,9 @@ class TestExtractionFactoryUserRouting:
 
 
 class TestImproveFactoryUserRouting:
-    """get_kb_improve_service resolves via the cascade (KB_IMPROVE)."""
+    """get_kb_improve_service wires the KB_IMPROVE cascade lazily."""
 
-    async def test_resolves_kb_improve_for_user_and_novel(self) -> None:
+    async def test_wires_kb_improve_cascade_lazily_for_user_and_novel(self) -> None:
         from narrare.kb.dependencies_improve import get_kb_improve_service
         from narrare.kb.improve_service import KBImproveService
 
@@ -254,11 +253,24 @@ class TestImproveFactoryUserRouting:
                 user_id=user_id,
             )
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.KB_IMPROVE, UUID(user_id), novel_id)
+        # ADR-086 lazy wiring: construction resolves nothing.
+        assert resolver.resolve.await_args_list == []
+
         assert isinstance(service, KBImproveService)
-        assert service._analyzer._config is resolved.config
-        assert service._analyzer._api_key == _USER_KEY
-        assert service._analyzer._base_url == _USER_BASE_URL
+        resolved_model = await service._analyzer.ensure_resolved()
+
+        # The REAL intent (KB_IMPROVE), for THIS user, WITH the novel
+        # tier — invoked at first use, not at construction:
+        assert resolver.resolve.await_args_list == [
+            call(LLMIntent.KB_IMPROVE, UUID(user_id), novel_id)
+        ]
+
+        # The cascade result lands on the analyzer (threaded onwards to
+        # ModelRegistry.prepare with the credentials).
+        assert resolved_model.config is resolved.config
+        assert resolved_model.config.model_id == "glm-4.7"
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL
 
 
 # ===========================================================================
@@ -324,13 +336,13 @@ class TestCredentialsReachResolutionPoint:
         registry = _RecordingRegistry()
         analyzer = KBImproveAnalyzer(
             registry=cast("ModelRegistry", registry),
-            config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
             kb_context_provider=MagicMock(spec=True, name="KBContextProvider"),
             prompt_composer=MagicMock(spec=True, name="PromptComposer"),
             kb_repo=MagicMock(spec=True, name="KBRepository"),
             rel_repo=MagicMock(spec=True, name="RelationshipRepository"),
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
 
         prepared = await analyzer._prepare()

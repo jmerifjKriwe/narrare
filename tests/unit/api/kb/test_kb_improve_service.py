@@ -156,9 +156,12 @@ def _make_service(
         provider_name="default", model_id="default", temperature=0.7, max_tokens=4096
     )
 
+    from narrare._app.dependencies_services import StaticModelResolution
+    from narrare_core.llm.model_routing import ResolvedModel
+
     analyzer = KBImproveAnalyzer(
         registry=registry,
-        config=config,
+        model_resolution=StaticModelResolution(ResolvedModel(config=config)),
         kb_context_provider=kb_context_provider,
         prompt_composer=prompt_composer,
         kb_repo=kb_repo,

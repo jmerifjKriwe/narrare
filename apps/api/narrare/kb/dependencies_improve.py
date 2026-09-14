@@ -1,9 +1,10 @@
 """KB dependency injection — improve service factory.
 
 Model acquisition follows the per-user model-routing cascade: the factory
-resolves ``LLMIntent.KB_IMPROVE`` for the authenticated user (+ novel for
-project-level overrides) and passes the resolved config + credentials into
-the analyzer. No business logic lives here — only wiring.
+wires the ``LLMIntent.KB_IMPROVE`` cascade for the authenticated user (+
+novel for project-level overrides) as a ``LazyModelResolution`` and passes
+it into the analyzer, which resolves it on first use (ADR-086) — never at
+construction. No business logic lives here — only wiring.
 """
 
 from __future__ import annotations
@@ -17,7 +18,10 @@ from narrare._app.dependencies import (
     SessionDep,
     get_current_user_id,
 )
-from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.dependencies_services import (
+    LazyModelResolution,
+    get_model_routing_resolver,
+)
 from narrare.events.publisher import (
     WikiEventPublisherDep,  # noqa: TC001 - needed at runtime for FastAPI DI
 )
@@ -33,12 +37,17 @@ async def get_kb_improve_service(
     event_publisher: WikiEventPublisherDep,
     user_id: str = Depends(get_current_user_id),
 ) -> KBImproveService:
-    """Create a KBImproveService with per-user resolved model routing.
+    """Create a KBImproveService with per-user lazy model routing.
 
     FastAPI dependency: novel_id comes from the route path, user_id and
-    session are resolved via Depends. The model is resolved through the
-    per-user cascade; ``ConfigurationError`` propagates when the user has
-    no provider configured (kb routers are auth-mandatory).
+    session are resolved via Depends. The model is NOT resolved here —
+    the per-user cascade (project intent → project category → user
+    intent → user category → user default) is wired as a
+    ``LazyModelResolution`` and resolves on the analyzer's first use
+    (ADR-086), so request validation errors surface as 422 before any
+    routing cascade runs. ``ConfigurationError`` propagates loudly from
+    the entry point when the user has no provider configured (kb routers
+    are auth-mandatory; RULE-11).
 
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
     for system prompts, KBContextProvider for curated world context
@@ -63,10 +72,8 @@ async def get_kb_improve_service(
     from narrare_core.cache import InMemorySessionCache
 
     resolver = get_model_routing_resolver(session)
-    resolved = await resolver.resolve(
-        LLMIntent.KB_IMPROVE,
-        UUID(user_id),
-        novel_id,
+    model_resolution = LazyModelResolution(
+        lambda: resolver.resolve(LLMIntent.KB_IMPROVE, UUID(user_id), novel_id)
     )
 
     registry = get_model_registry()
@@ -86,18 +93,17 @@ async def get_kb_improve_service(
     cache = InMemorySessionCache()
     improve_cache = KBImproveCache(cache)
 
-    # Analyzer handles all LLM interaction + caching
+    # Analyzer handles all LLM interaction + caching; the model routing
+    # cascade resolves on the analyzer's first use (ADR-086), never here.
     analyzer = KBImproveAnalyzer(
         registry=registry,
-        config=resolved.config,
+        model_resolution=model_resolution,
         kb_context_provider=kb_context_provider,
         prompt_composer=composer,
         kb_repo=kb_repo,
         rel_repo=rel_repo,
         improve_cache=improve_cache,
         invocation_pipeline=get_invocation_pipeline(),
-        api_key=resolved.api_key,
-        base_url=resolved.base_url,
     )
 
     return KBImproveService(

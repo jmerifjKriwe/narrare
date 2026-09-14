@@ -132,15 +132,17 @@ def _make_analyzer(
     kb_agent: object | None = None,
     world_context: str = "",
 ) -> tuple[Any, dict[str, Any]]:
+    from narrare._app.dependencies_services import StaticModelResolution
     from narrare.kb.improve_analyzer import KBImproveAnalyzer
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm.model_routing import ResolvedModel
 
     cache = _FakeImproveCache(data=cache_data)
     provider = _FakeKBContextProvider(world_context=world_context)
     config = ResolvedModelConfig(provider_name="test", model_id="test-model")
     analyzer = KBImproveAnalyzer(
         registry=cast("ModelRegistry", _FakeRegistry()),
-        config=config,
+        model_resolution=StaticModelResolution(ResolvedModel(config=config)),
         kb_context_provider=cast("KBContextProviderProtocol", provider),
         prompt_composer=cast("PromptComposer", _FakeComposer()),
         kb_repo=cast("KBRepository", _FakeKBRepo(entry=entry)),
@@ -168,13 +170,15 @@ def _make_cached_response(entry_id: object | None = None) -> str:
 class TestHasCachedAnalysis:
     @pytest.mark.asyncio
     async def test_returns_false_when_no_cache(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.kb.improve_analyzer import KBImproveAnalyzer
         from narrare_core.llm import ResolvedModelConfig
+        from narrare_core.llm.model_routing import ResolvedModel
 
         config = ResolvedModelConfig(provider_name="test", model_id="test")
         analyzer = KBImproveAnalyzer(
             registry=cast("ModelRegistry", _FakeRegistry()),
-            config=config,
+            model_resolution=StaticModelResolution(ResolvedModel(config=config)),
             kb_context_provider=cast("KBContextProviderProtocol", _FakeKBContextProvider()),
             prompt_composer=cast("PromptComposer", _FakeComposer()),
             kb_repo=cast("KBRepository", _FakeKBRepo()),
@@ -198,13 +202,15 @@ class TestHasCachedAnalysis:
 class TestGetCachedAnalysis:
     @pytest.mark.asyncio
     async def test_returns_none_when_no_cache(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.kb.improve_analyzer import KBImproveAnalyzer
         from narrare_core.llm import ResolvedModelConfig
+        from narrare_core.llm.model_routing import ResolvedModel
 
         config = ResolvedModelConfig(provider_name="test", model_id="test")
         analyzer = KBImproveAnalyzer(
             registry=cast("ModelRegistry", _FakeRegistry()),
-            config=config,
+            model_resolution=StaticModelResolution(ResolvedModel(config=config)),
             kb_context_provider=cast("KBContextProviderProtocol", _FakeKBContextProvider()),
             prompt_composer=cast("PromptComposer", _FakeComposer()),
             kb_repo=cast("KBRepository", _FakeKBRepo()),
@@ -225,13 +231,15 @@ class TestGetCachedAnalysis:
 class TestInvalidateCache:
     @pytest.mark.asyncio
     async def test_noop_when_no_cache(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.kb.improve_analyzer import KBImproveAnalyzer
         from narrare_core.llm import ResolvedModelConfig
+        from narrare_core.llm.model_routing import ResolvedModel
 
         config = ResolvedModelConfig(provider_name="test", model_id="test")
         analyzer = KBImproveAnalyzer(
             registry=cast("ModelRegistry", _FakeRegistry()),
-            config=config,
+            model_resolution=StaticModelResolution(ResolvedModel(config=config)),
             kb_context_provider=cast("KBContextProviderProtocol", _FakeKBContextProvider()),
             prompt_composer=cast("PromptComposer", _FakeComposer()),
             kb_repo=cast("KBRepository", _FakeKBRepo()),
