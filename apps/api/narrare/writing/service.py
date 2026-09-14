@@ -5,6 +5,7 @@ This is the main business logic layer for chapter generation.  It delegates:
 - LLM calls to :class:`WritingPipeline` (via gateway — RULE-01b)
 - Post-processing to :class:`DraftProcessor`
 - Feedback recording to :class:`FeedbackCollector`
+- Stream iteration/finalization to :func:`stream_pipeline_chunks` (``_stream_service``)
 - Scene operations to :class:`SceneService`
 - Stats to :class:`StatsService`
 - Tone resolution to :func:`resolve_tone_instructions` (tone_resolver module)
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
+from uuid import UUID
 
 import structlog
 
@@ -24,9 +26,9 @@ from narrare.writing._helpers import (
     get_validated_request,
     prepare_generation_context,
     record_feedback,
-    record_session_memory,
     start_generation_request,
 )
+from narrare.writing._stream_service import stream_pipeline_chunks
 from narrare.writing.schemas import (
     AcceptResponse,
     GenerateRequest,
@@ -39,7 +41,6 @@ from narrare.writing.schemas import (
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
-    from uuid import UUID
 
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
@@ -167,52 +168,48 @@ class WritingService:
             series_history_budget=self._series_history_budget,
         )
 
-        accumulated: list[str] = []
+        # Ownership-aware novel supply for title/genre prompt context
+        # (sibling-service resolution: ``get_by_id(novel_id, user)``).
+        # RULE-11: any fetch failure degrades to empty strings — logged,
+        # and the draft proceeds without novel context.
+        project_title = ""
+        genre = ""
         try:
-            async for chunk in self._pipeline.generate(
-                pipeline_request,
-                config=self._config,
-                api_key=self._api_key,
-                base_url=self._base_url,
-                custom_tone_instructions=custom_tone_instructions,
-                kb_relationships=kb_text,
-                cross_session_context=cross_session_context,
-                series_history=series_history,
-                **cast("dict[str, Any]", context_kwargs),
-            ):
-                if chunk.is_final:
-                    raw_text = "".join(accumulated) + chunk.text
-                    cleaned = self._draft_processor.process(raw_text)
-                    word_count = len(cleaned.split())
-                    await self._repo.update_status(
-                        request_id,
-                        "completed",
-                        tokens_used=chunk.usage.total_tokens if chunk.usage else 0,
-                        word_count=word_count,
-                        completed_at=datetime.now(UTC),
-                    )
-                    # Record writing session to mem0 (best-effort)
-                    await record_session_memory(
-                        self._session_memory,
-                        request_model,
-                        mode.value,
-                        word_count,
-                    )
-                    yield chunk
-                    return
-                accumulated.append(chunk.text)
-                yield chunk
-        except Exception as e:
-            partial = self._draft_processor.process("".join(accumulated), is_partial=True)
-            partial_words = len(partial.split()) if partial else 0
-            await self._repo.update_status(
-                request_id,
-                "failed",
-                error_message=str(e),
-                word_count=partial_words,
-                completed_at=datetime.now(UTC),
+            novel = await self._novel_repo.get_by_id(request_model.novel_id, UUID(user_id))
+        except Exception as exc:
+            logger.warning(
+                "novel_context_fetch_failed",
+                novel_id=str(request_model.novel_id),
+                error=str(exc),
             )
-            logger.error("generation_stream_failed", request_id=str(request_id), error=str(e))
+        else:
+            if novel is not None:
+                project_title = novel.title or ""
+                genre = novel.genre or ""
+
+        # Stream the pipeline and finalize the request row (RULE-04
+        # extraction — iteration mechanics live in ``_stream_service``).
+        async for chunk in stream_pipeline_chunks(
+            repo=self._repo,
+            pipeline=self._pipeline,
+            draft_processor=self._draft_processor,
+            session_memory=self._session_memory,
+            request_model=request_model,
+            request_id=request_id,
+            mode=mode,
+            pipeline_request=pipeline_request,
+            config=self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+            custom_tone_instructions=custom_tone_instructions,
+            kb_relationships=kb_text,
+            cross_session_context=cross_session_context,
+            series_history=series_history,
+            project_title=project_title,
+            genre=genre,
+            context_kwargs=cast("dict[str, Any]", context_kwargs),
+        ):
+            yield chunk
 
     async def stop_generation(self, request_id: UUID, user_id: str) -> StopResponse:
         """Stop an in-progress generation."""
