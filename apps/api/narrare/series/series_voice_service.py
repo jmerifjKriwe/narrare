@@ -7,12 +7,16 @@ Business logic only (RULE-06): no SQL, no HTTP. Reuses the EXISTING
 of ``ProjectSettings.author_voice``. No new agent is created (RULE-01b: agents
 are the LLM surface; this service orchestrates the existing one).
 
-Reused helpers (all in ``narrare.analysis`` — the author-voice pipeline):
-    :func:`resolve_author_voice_prompt`  — Mode-1 governed ``author_voice``
-        system prompt via :class:`PromptComposer` (RULE-02/02b).
-    :func:`run_author_voice_agent`       — one ``AuthorVoiceAgent`` LLM call.
-    :func:`assemble_author_voice_profile`— assembles the persisted profile
-        (descriptive + metric groups, ADR-074 binding).
+Model acquisition is LAZY (ADR-086): the factory wires a
+``LazyModelResolution`` (VOICE cascade, ``project_id=None``); the service
+resolves it on first use — :meth:`ensure_resolved` at the top of
+:meth:`profile_from_novel`, after the ownership gates and BEFORE the chapter
+fetch / graceful no-chapters exit, so an unconfigured provider stays a loud
+400 on every path.
+
+Invocation assembly (metrics → governed prompt → one agent call → profile)
+lives in :mod:`narrare.series._series_voice_invocation` (RULE-04/RULE-06;
+extracted for the size limit the ``ensure_resolved`` addition crossed).
 
 The chapter-prose + precomputed metrics flow as runtime content in the agent
 run prompt (user channel, RULE-02a category 3). No inline f-string feature
@@ -27,7 +31,9 @@ Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b)
 
 See:
     :mod:`narrare.series.series_voice_contracts` — the Protocol.
+    :mod:`narrare.series._series_voice_invocation` — the invocation assembly.
     :mod:`narrare.analysis.author_voice_service` — the novel-level parallel.
+    ADR-086 — lazy model resolution (this slice: L28).
     ADR-078 — Series Voice Hierarchy (Delta model).
     ADR-074 — Author Voice Storage Contract (the pipeline reused).
 """
@@ -38,26 +44,24 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.analysis.author_voice_agent_runner import run_author_voice_agent
-from narrare.analysis.author_voice_profile_assembler import assemble_author_voice_profile
-from narrare.analysis.author_voice_prompt import resolve_author_voice_prompt
+from narrare.series._series_voice_invocation import run_series_voice_invocation
 from narrare_core.profiles.author_voice import AuthorVoiceProfile
 from narrare_core.shared.errors import (
     ConfigurationError,
     ForbiddenError,
-    NotFoundError,
     ValidationError,
 )
 
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare.series.contracts import SeriesRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.series.schemas import Series
 
@@ -92,12 +96,10 @@ class SeriesVoiceService:
         novel_repo: NovelRepositoryProtocol,
         chapter_repo: ChapterRepositoryProtocol,
         model_registry: ModelRegistry,
-        model_config: ResolvedModelConfig | None = None,
+        model_resolution: ModelResolution,
         composer: PromptComposer | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
     ) -> None:
         """Initialise the service with all dependencies injected (RULE-07).
 
@@ -107,23 +109,34 @@ class SeriesVoiceService:
             novel_repo: Novel lookup (verify membership + resolve metadata).
             chapter_repo: Chapter prose fetch (``list_by_novel``).
             model_registry: Model registry for the AuthorVoiceAgent.
-            model_config: Resolved analysis model config (None → NotFoundError
-                at profile time, mirroring AuthorVoiceService).
+            model_resolution: Lazy per-user model resolution (ADR-086) —
+                the routing cascade (VOICE, ``project_id=None``) resolves
+                on first use, never at construction.
             composer: PromptComposer for the governed author_voice prompt
                 (None → ConfigurationError at profile time).
             invocation_pipeline: Optional InvocationPipeline for evidence.
-            api_key: Per-user provider API key override (model-routing cascade).
-            base_url: Optional per-user provider base URL override.
         """
         self._series_repo = series_repo
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
         self._registry = model_registry
-        self._config = model_config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._composer = composer
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086).
+
+        First call resolves via the injected ``ModelResolution`` and
+        caches the triple; repeat calls return the cached value without
+        re-running the cascade. Errors propagate loudly and are never
+        cached (RULE-11): ``ConfigurationError`` (``NO_AI_PROVIDER``)
+        surfaces as a 400 on this AI-mandatory endpoint.
+        """
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def profile_from_novel(
         self,
@@ -145,8 +158,19 @@ class SeriesVoiceService:
         if novel is None or novel.series_id != series_id:
             raise ForbiddenError("You do not have access to this series")
 
-        if self._config is None:
-            raise NotFoundError("Model config", identifier="no_model_config")
+        # ADR-086 L28: first-use lazy resolve — the ownership gates above
+        # stay ahead of resolution, and resolution precedes the chapter
+        # fetch and the graceful no-chapters early exit, so an unconfigured
+        # provider stays a loud 400 even when the profile would fail fast
+        # below. The resolved triple flows into the invocation assembly
+        # exactly as the eager factory passed it (timing-only migration:
+        # WHAT unchanged — the eager resolve applied no sampling overrides
+        # — only WHEN). The eager world's dead ``config=None →
+        # NotFoundError`` branch is gone with the ctor swap: the required
+        # ``ModelResolution`` makes an unresolvable cascade a loud
+        # ``ConfigurationError`` at this line instead.
+        resolved_model = await self.ensure_resolved()
+
         if self._composer is None:
             raise ConfigurationError(
                 "PromptComposer is not configured for series-voice analysis.",
@@ -177,52 +201,24 @@ class SeriesVoiceService:
                 minimum=MIN_CHAPTERS_FOR_SERIES_PROFILE,
             )
 
-        # 4-5. Compute deterministic metrics over the full prose (narration +
-        #    dialogue together — the author-voice input shape, ADR-074). The
-        #    analyzers are deterministic Core code; the LLM seam is the agent
-        #    (step 7), so no override hook is needed here (unlike the
-        #    streaming AuthorVoiceService, which exposes one for its tests).
-        from narrare_core.analysis.author_metrics import AuthorMetricsAnalyzer
-        from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
-
-        chapter_prose_list = [(c.content or "") for c in chapters]
-        combined_prose = "\n\n".join(chapter_prose_list)
-        voice_metrics = VoiceMetricsAnalyzer(language=language).analyze_text(chapter_prose_list)
-        author_metrics = AuthorMetricsAnalyzer().analyze(chapter_prose_list)
-
-        # 6. Resolve the governed author_voice system prompt (RULE-02 / ADR-054
-        #    Mode 1). Reused verbatim from the novel-level pipeline.
-        composed_prompt = await resolve_author_voice_prompt(
-            self._composer,
-            self._invocation_pipeline,
+        # 4-8. Metrics → governed prompt → one agent call → profile
+        #    assembly (the reused ADR-074 pipeline, verbatim order). The
+        #    invocation assembly lives in the dedicated module (RULE-04/
+        #    RULE-06; moved for the size limit the ADR-086 ensure_resolved
+        #    addition crossed).
+        profile = await run_series_voice_invocation(
+            registry=self._registry,
+            composer=self._composer,
+            invocation_pipeline=self._invocation_pipeline,
+            resolved_model=resolved_model,
             novel=novel,
+            chapters=chapters,
             language=language,
             novel_id=novel_id,
             user_id=user_id,
         )
 
-        # 7. Run the existing AuthorVoiceAgent (one LLM call).
-        output = await run_author_voice_agent(
-            chapter_prose=combined_prose,
-            voice_metrics=voice_metrics,
-            author_metrics=author_metrics,
-            novel_title=novel.title,
-            novel_genre=novel.genre or "",
-            novel_id=novel_id,
-            language=language,
-            model_registry=self._registry,
-            model_config=self._config,
-            composed_prompt=composed_prompt,
-            api_key=self._api_key,
-            base_url=self._base_url,
-        )
-
-        # 8. Assemble + persist the profile (RULE-07: via the repository).
-        profile = assemble_author_voice_profile(
-            descriptive=output,
-            voice_metrics=voice_metrics,
-            author_metrics=author_metrics,
-        )
+        # Persist the profile (RULE-07: via the repository).
         await self._series_repo.update_settings(
             series_id, {"author_voice": profile.model_dump(mode="json")}
         )

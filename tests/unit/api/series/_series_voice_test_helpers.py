@@ -130,10 +130,16 @@ def make_service(
 ) -> tuple[SeriesVoiceService, FakeSeriesRepository, FakeNovelRepository, FakeChapterRepository]:
     """Build a SeriesVoiceService wired with fakes (agent patched per-test).
 
-    Returns ``(service, series_repo, novel_repo, chapter_repo)`` so tests can
+    The lazy model-resolution seam (ADR-086) is pinned with a
+    ``StaticModelResolution`` carrying the default test config — the same
+    resolved triple the eager factory used to pass (ctor migration only;
+    outcomes unchanged). Returns
+    ``(service, series_repo, novel_repo, chapter_repo)`` so tests can
     seed data and assert interactions.
     """
+    from narrare._app.dependencies_services import StaticModelResolution
     from narrare.series.series_voice_service import SeriesVoiceService
+    from narrare_core.llm.model_routing import ResolvedModel
 
     series_repo = series_repo or FakeSeriesRepository()
     novel_repo = novel_repo or FakeNovelRepository()
@@ -144,7 +150,9 @@ def make_service(
         novel_repo=novel_repo,  # type: ignore[arg-type]
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
         model_registry=_FakeModelRegistry(),  # type: ignore[arg-type]
-        model_config=make_config(),
+        model_resolution=StaticModelResolution(
+            ResolvedModel(config=make_config(), api_key=None, base_url=None, source="unit-test")
+        ),
         composer=_FakeComposer(),  # type: ignore[arg-type]
     )
     return service, series_repo, novel_repo, chapter_repo

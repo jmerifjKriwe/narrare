@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (20):**
+**Open (19):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -378,7 +378,15 @@ at construction (2026-09-09; factory function names verified):
        voice-drift factory — its eager resolve keeps the endpoint at
        400-before-422 for unconfigured users until L29 lands)*
 27. [ ] `series/dependencies_context_preview.py` — `get_series_history_preview_service` (+ eager `get_resolved_limits`)
-28. [ ] `series/dependencies_voice.py` — `get_series_voice_service`
+28. [x] `series/dependencies_voice.py` — `get_series_voice_service`
+       *(D2/L28 — landed 2026-09-14: lazy wiring + first-use resolve after the
+       series-ownership + novel-membership gates and BEFORE the chapter
+       fetch / no-chapters graceful early exit, so an unconfigured provider
+       stays a loud 400 even on the degradation path (REST — no SSE
+       pre-header needed); the dead ``config=None → NotFoundError`` branch
+       was removed with the ctor swap; the profile invocation assembly
+       split to ``_series_voice_invocation.py`` for the RULE-04 size limit
+       the ``ensure_resolved`` addition crossed)*
 29. [ ] `series/dependencies_voice_drift.py` — `get_series_voice_drift_service`
 30. [x] `wiki/dependencies.py` — `get_wiki_service`
        *(B2/L30 — landed 2026-09-14: lazy wiring + first-use core-service
