@@ -102,8 +102,7 @@ class CharacterVoiceCheckerServiceProtocol(Protocol):
 
         Raises:
             narrare_core.shared.errors.NotFoundError: If the chapter or its
-                novel does not exist or is not accessible, or no model
-                config is configured.
+                novel does not exist or is not accessible.
             narrare_core.shared.errors.ConfigurationError: If no
                 ``PromptComposer`` is configured.
         """

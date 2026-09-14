@@ -15,6 +15,7 @@ from narrare.analysis.schemas_voice_check import (
     VoiceCheckResult,
     VoiceCheckStreamEvent,
 )
+from narrare_core.shared.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterable, AsyncIterator, Callable
@@ -26,6 +27,10 @@ class FakeVoiceCheckService:
     def __init__(self, result: VoiceCheckResult) -> None:
         self._result = result
         self.calls: list[tuple[UUID, UUID]] = []
+
+    async def ensure_resolved(self) -> None:
+        """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+        return None
 
     async def check(
         self,
@@ -115,6 +120,10 @@ async def test_analyze_voice_check_emits_error_event_on_failure() -> None:
     """A service failure is surfaced as an in-band ``error`` event (RULE-11)."""
 
     class FailingService:
+        async def ensure_resolved(self) -> None:
+            """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+            return None
+
         async def check(
             self,
             chapter_id: UUID,
@@ -146,6 +155,45 @@ async def test_analyze_voice_check_emits_error_event_on_failure() -> None:
     assert error_payload["is_final"] is True
     assert error_payload["error"] == "Voice-check analysis failed."
     assert payloads[-1] == "[DONE]"
+
+
+@pytest.mark.asyncio
+async def test_analyze_voice_check_raises_configuration_error_pre_header() -> None:
+    """ADR-086 Decision 3: ensure_resolved runs BEFORE the StreamingResponse.
+
+    An unconfigured provider (``ConfigurationError`` from the cascade)
+    must surface as a pre-header 400 via the NarrareError handler —
+    never as an in-band SSE error event. Direct route-call proof: the
+    route function itself raises before constructing the response.
+    """
+
+    class UnconfiguredService:
+        async def ensure_resolved(self) -> None:
+            raise ConfigurationError("No AI provider configured.", code="NO_AI_PROVIDER")
+
+        async def check(
+            self,
+            chapter_id: UUID,
+            user_id: UUID,
+        ) -> AsyncIterator[VoiceCheckStreamEvent]:
+            raise AssertionError("check must not run when resolution fails")
+            yield  # pragma: no cover - makes this an async generator
+
+    with pytest.MonkeyPatch.context() as mp:
+
+        async def _unconfigured_factory(**_kwargs: object) -> UnconfiguredService:
+            return UnconfiguredService()
+
+        mp.setattr(
+            "narrare.analysis.router_voice_check.get_voice_check_service",
+            _unconfigured_factory,
+        )
+        with pytest.raises(ConfigurationError):
+            await analyze_voice_check(
+                chapter_id=uuid4(),
+                user_id=str(uuid4()),
+                session=_fake_session(),
+            )
 
 
 def test_voice_check_route_uses_analysis_rate_limiter() -> None:

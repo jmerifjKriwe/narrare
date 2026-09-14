@@ -26,14 +26,15 @@ from narrare_core.profiles.contracts import VoiceProfileConsumer
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.analysis.dialogue_parser import DialogueParser
     from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.composer import PromptComposer
 
 VoiceProfileConsumerProvider = Callable[[UUID], Awaitable[VoiceProfileConsumer]]
@@ -53,16 +54,14 @@ class CharacterVoiceCheckerService:
         chapter_repo: Repository used to load the checked chapter.
         model_registry: Shared LLM model registry.
         consumer_provider: Factory for a request-scoped voice-profile consumer.
-        model_config: Resolved model configuration for the agent call.
+        model_resolution: Lazy per-user model resolution (ADR-086) — the
+            routing cascade resolves on first use, never at construction.
         composer: PromptComposer for governed Mode-1 prompt resolution.
         relationship_repo: Optional relationship repository for populating
             ``kb_relationships`` (character relationships help the checker
             evaluate dialogue-tone consistency). When ``None``, degrades
             gracefully to an empty string (RULE-11).
         invocation_pipeline: Optional invocation governance pipeline.
-        api_key: Optional per-user provider API key override (model-routing
-            cascade) — injected into ``ModelRegistry.get_model``.
-        base_url: Optional per-user provider base URL override.
     """
 
     def __init__(
@@ -71,24 +70,27 @@ class CharacterVoiceCheckerService:
         chapter_repo: ChapterRepository,
         model_registry: ModelRegistry,
         consumer_provider: VoiceProfileConsumerProvider,
-        model_config: ResolvedModelConfig | None = None,
+        model_resolution: ModelResolution,
         composer: PromptComposer | None = None,
         relationship_repo: RelationshipRepository | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
         self._registry = model_registry
         self._consumer_provider = consumer_provider
-        self._config = model_config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._composer = composer
         self._relationship_repo = relationship_repo
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086)."""
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def check(
         self,
@@ -106,9 +108,16 @@ class CharacterVoiceCheckerService:
             then a terminal ``done`` event.
 
         Raises:
-            NotFoundError: If the chapter, novel, or model config is missing.
-            ConfigurationError: If no PromptComposer is configured.
+            NotFoundError: If the chapter or its novel does not exist or is
+                not accessible.
+            ConfigurationError: If no PromptComposer is configured, or the
+                per-user routing cascade finds no configured provider
+                (ADR-086 lazy resolution — propagates loudly, RULE-11).
         """
+        # ADR-086: first-use lazy resolve, post-validation (see ensure_resolved);
+        # ahead of the gates — eager-world precedence (L06/L07/L09 landed shape).
+        resolved_model = await self.ensure_resolved()
+
         chapter = await self._chapter_repo.get(chapter_id)
         if chapter is None:
             raise NotFoundError("Chapter", identifier=str(chapter_id))
@@ -116,10 +125,6 @@ class CharacterVoiceCheckerService:
         novel = await self._novel_repo.get_by_id(chapter.novel_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(chapter.novel_id))
-
-        config = self._config
-        if config is None:
-            raise NotFoundError("Model config", identifier="no_model_config")
 
         composer = self._composer
         if composer is None:
@@ -174,12 +179,12 @@ class CharacterVoiceCheckerService:
                 novel_id=chapter.novel_id,
                 user_id=user_id,
                 model_registry=self._registry,
-                model_config=config,
+                model_config=resolved_model.config,
                 composer=composer,
                 invocation_pipeline=self._invocation_pipeline,
                 relationship_repo=self._relationship_repo,
-                api_key=self._api_key,
-                base_url=self._base_url,
+                api_key=resolved_model.api_key,
+                base_url=resolved_model.base_url,
             )
 
         for name in speaking:

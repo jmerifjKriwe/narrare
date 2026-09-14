@@ -1,13 +1,24 @@
-"""Error-handling tests for CharacterVoiceCheckerService."""
+"""Error-handling tests for CharacterVoiceCheckerService.
+
+Covers the failure modes the happy-path file does not:
+
+- Chapter/novel not found → NotFoundError.
+- Unconfigured provider (routing cascade) → ConfigurationError propagates
+  un-swallowed from the entry point (ADR-086 lazy resolution).
+- No PromptComposer → ConfigurationError.
+- Agent failure propagates (no silent swallow).
+"""
 
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from narrare_core.llm.model_config import ResolvedModelConfig
+from narrare_core.shared.errors import ConfigurationError
 from tests.unit.api.analysis._voice_check_test_helpers import (
     FakeComposer,
     FakeVoiceProfileConsumer,
@@ -18,6 +29,9 @@ from tests.unit.api.analysis._voice_check_test_helpers import (
     make_service,
     patch_mode1,
 )
+
+if TYPE_CHECKING:
+    from narrare_core.llm.model_routing import ResolvedModel
 
 
 @pytest.fixture
@@ -73,16 +87,33 @@ class TestVoiceCheckErrors:
             await consume(service.check(chapter.id, uuid.uuid4()))
 
     @pytest.mark.asyncio
-    async def test_missing_model_config_raises_not_found(self, config: ResolvedModelConfig) -> None:
-        from narrare_core.shared.errors import NotFoundError
+    async def test_resolver_configuration_error_propagates_un_swallowed(
+        self,
+        config: ResolvedModelConfig,
+    ) -> None:
+        """RULE-11 / ADR-086: the routing cascade's ConfigurationError
+        (unconfigured provider) propagates from the entry point — the
+        service never swallows it (AI-mandatory endpoint)."""
+
+        class _RaisingResolution:
+            async def resolve(self) -> ResolvedModel:
+                raise ConfigurationError(
+                    "No AI provider configured.",
+                    code="NO_AI_PROVIDER",
+                )
 
         novel = make_novel()
         chapter = make_chapter(novel_id=novel.id)
         consumer = FakeVoiceProfileConsumer([make_profile("Elena")])
-        service = make_service(novel=novel, chapter=chapter, consumer=consumer, config=config)
-        service._config = None
+        service = make_service(
+            novel=novel,
+            chapter=chapter,
+            consumer=consumer,
+            config=config,
+            model_resolution=_RaisingResolution(),
+        )
 
-        with pytest.raises(NotFoundError):
+        with pytest.raises(ConfigurationError):
             await consume(service.check(chapter.id, uuid.uuid4()))
 
     @pytest.mark.asyncio

@@ -21,14 +21,18 @@ See:
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.kb.relationship_repository import RelationshipEdgeRow
 from narrare_core.llm.model_config import ResolvedModelConfig
 from tests.unit.api.analysis._voice_check_test_helpers import (
+    FakeModelRegistry,
     FakeVoiceProfileConsumer,
+    _resolved_model,
     consume,
     make_agent_output,
     make_chapter,
@@ -37,6 +41,13 @@ from tests.unit.api.analysis._voice_check_test_helpers import (
     make_service,
     patch_mode1,
 )
+
+if TYPE_CHECKING:
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.novels.repository import NovelRepository
+    from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.profiles.contracts import VoiceProfileConsumer
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -48,11 +59,16 @@ def config() -> ResolvedModelConfig:
     return ResolvedModelConfig(provider_name="test", model_id="test-model")
 
 
-def _make_relationship_repo(edges: list[RelationshipEdgeRow]) -> AsyncMock:
-    """Build a mock RelationshipRepository returning the given edges."""
+def _make_relationship_repo(edges: list[RelationshipEdgeRow]) -> RelationshipRepository:
+    """Build a mock RelationshipRepository returning the given edges.
+
+    The cast is confined to the test composition boundary: the AsyncMock
+    implements the repo surface the service exercises but does not
+    subclass the concrete repository (ADR-086 seam-cast convention).
+    """
     repo = AsyncMock()
     repo.get_relationships_with_names.return_value = edges
-    return repo
+    return cast("RelationshipRepository", repo)
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +115,7 @@ class TestKBRelationshipsPopulation:
             chapter=chapter,
             consumer=consumer,
             config=config,
-            relationship_repo=relationship_repo,  # type: ignore[arg-type]
+            relationship_repo=relationship_repo,
         )
 
         with patch_mode1() as (MockAgent, mock_compose):
@@ -162,18 +178,18 @@ class TestVoiceCheckRelationshipsConstructor:
         config: ResolvedModelConfig,
     ) -> None:
         from narrare.analysis.voice_check_service import CharacterVoiceCheckerService
-        from tests.unit.api.analysis._voice_check_test_helpers import FakeModelRegistry
 
-        async def _provider(project_id: uuid.UUID) -> object:
-            return None
+        async def _provider(project_id: uuid.UUID) -> VoiceProfileConsumer:
+            """Never called — the test only asserts constructor storage."""
+            return cast("VoiceProfileConsumer", object())
 
         service = CharacterVoiceCheckerService(
-            novel_repo=AsyncMock(),  # type: ignore[arg-type]
-            chapter_repo=AsyncMock(),  # type: ignore[arg-type]
-            model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            consumer_provider=_provider,  # type: ignore[arg-type]
-            model_config=config,
-            relationship_repo=AsyncMock(),  # type: ignore[arg-type]
+            novel_repo=cast("NovelRepository", AsyncMock()),
+            chapter_repo=cast("ChapterRepository", AsyncMock()),
+            model_registry=cast("ModelRegistry", FakeModelRegistry()),
+            consumer_provider=_provider,
+            model_resolution=StaticModelResolution(_resolved_model(config)),
+            relationship_repo=cast("RelationshipRepository", AsyncMock()),
         )
 
         assert service._relationship_repo is not None, "Constructor must store relationship_repo."
@@ -183,17 +199,17 @@ class TestVoiceCheckRelationshipsConstructor:
         config: ResolvedModelConfig,
     ) -> None:
         from narrare.analysis.voice_check_service import CharacterVoiceCheckerService
-        from tests.unit.api.analysis._voice_check_test_helpers import FakeModelRegistry
 
-        async def _provider(project_id: uuid.UUID) -> object:
-            return None
+        async def _provider(project_id: uuid.UUID) -> VoiceProfileConsumer:
+            """Never called — the test only asserts constructor storage."""
+            return cast("VoiceProfileConsumer", object())
 
         service = CharacterVoiceCheckerService(
-            novel_repo=AsyncMock(),  # type: ignore[arg-type]
-            chapter_repo=AsyncMock(),  # type: ignore[arg-type]
-            model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            consumer_provider=_provider,  # type: ignore[arg-type]
-            model_config=config,
+            novel_repo=cast("NovelRepository", AsyncMock()),
+            chapter_repo=cast("ChapterRepository", AsyncMock()),
+            model_registry=cast("ModelRegistry", FakeModelRegistry()),
+            consumer_provider=_provider,
+            model_resolution=StaticModelResolution(_resolved_model(config)),
         )
 
         assert service._relationship_repo is None, (

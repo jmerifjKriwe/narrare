@@ -20,6 +20,10 @@ if TYPE_CHECKING:
 class FakeVoiceCheckService:
     """Fake service for app-level SSE routing tests."""
 
+    async def ensure_resolved(self) -> None:
+        """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+        return None
+
     async def check(
         self,
         chapter_id: UUID,
@@ -92,6 +96,29 @@ class TestVoiceCheckAPI:
         )
 
         assert resp.status_code == 422
+
+    async def test_voice_check_400_pre_header_when_provider_unconfigured(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Valid path + unconfigured provider → 400 with NO SSE headers.
+
+        ADR-086 Decision 3 (real chain): the routing cascade resolves in
+        the router BEFORE the StreamingResponse is constructed, so
+        ``ConfigurationError`` (fresh user, no provider) surfaces as a
+        pre-header 400 — the response is JSON, never ``text/event-stream``.
+        No novel setup is needed: the voice-check cascade resolves WITHOUT
+        the project tier (``novel_id=None``), so the resolver's internal
+        P2 existence guard never runs and cannot preempt with a 404.
+        """
+        resp = await client.post(
+            f"/api/v1/analysis/voice-check/{uuid4()}",
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 400
+        assert not resp.headers["content-type"].startswith("text/event-stream")
 
     async def test_voice_check_route_is_registered_on_app(self, app: FastAPI) -> None:
         """The voice-check router is included under the API v1 analysis prefix."""

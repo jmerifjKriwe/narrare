@@ -10,6 +10,7 @@ import pytest
 from narrare_core.llm.model_config import ResolvedModelConfig
 from tests.unit.api.analysis._voice_check_test_helpers import (
     FakeVoiceProfileConsumer,
+    _CountingResolution,
     consume,
     make_agent_output,
     make_chapter,
@@ -146,3 +147,102 @@ class TestVoiceCheckGracefulPaths:
         assert events[0].progress == "No attributed dialogue found in the chapter."
         assert events[-1].is_final is True
         MockAgent.assert_not_called()
+
+
+class TestLazyModelResolution:
+    """ADR-086 lazy semantics at the service boundary.
+
+    The DI factory runs pre-body-validation (FastAPI solves all
+    sub-dependencies first), so the service must NOT resolve at
+    construction. The first ``ensure_resolved()`` / ``check()`` resolves
+    exactly once; repeat calls reuse the cached triple.
+    """
+
+    @pytest.mark.asyncio
+    async def test_no_resolution_at_construction(
+        self,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        make_service(
+            novel=make_novel(),
+            chapter=make_chapter(),
+            consumer=FakeVoiceProfileConsumer([]),
+            config=config,
+            model_resolution=resolution,
+        )
+        assert resolution.calls == 0
+
+    @pytest.mark.asyncio
+    async def test_ensure_resolved_resolves_once_and_is_idempotent(
+        self,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        service = make_service(
+            novel=make_novel(),
+            chapter=make_chapter(),
+            consumer=FakeVoiceProfileConsumer([]),
+            config=config,
+            model_resolution=resolution,
+        )
+
+        first = await service.ensure_resolved()
+        second = await service.ensure_resolved()
+
+        assert resolution.calls == 1
+        assert first is second
+
+    @pytest.mark.asyncio
+    async def test_check_resolves_lazily_on_first_use(
+        self,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        novel = make_novel()
+        chapter = make_chapter(novel_id=novel.id)
+        consumer = FakeVoiceProfileConsumer([make_profile("Elena"), make_profile("Marc")])
+        service = make_service(
+            novel=novel,
+            chapter=chapter,
+            consumer=consumer,
+            config=config,
+            model_resolution=resolution,
+        )
+
+        with patch_mode1() as (MockAgent, _mock_compose):
+            mock_agent = MagicMock(spec=["run"])
+            mock_agent.run = AsyncMock(return_value=make_agent_output())
+            MockAgent.return_value = mock_agent
+
+            await consume(service.check(chapter.id, uuid.uuid4()))
+
+        assert resolution.calls == 1
+
+    @pytest.mark.asyncio
+    async def test_check_after_ensure_resolved_reuses_cache(
+        self,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        novel = make_novel()
+        chapter = make_chapter(novel_id=novel.id)
+        consumer = FakeVoiceProfileConsumer([make_profile("Elena"), make_profile("Marc")])
+        service = make_service(
+            novel=novel,
+            chapter=chapter,
+            consumer=consumer,
+            config=config,
+            model_resolution=resolution,
+        )
+
+        await service.ensure_resolved()
+
+        with patch_mode1() as (MockAgent, _mock_compose):
+            mock_agent = MagicMock(spec=["run"])
+            mock_agent.run = AsyncMock(return_value=make_agent_output())
+            MockAgent.return_value = mock_agent
+
+            await consume(service.check(chapter.id, uuid.uuid4()))
+
+        assert resolution.calls == 1

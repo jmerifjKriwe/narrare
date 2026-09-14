@@ -46,6 +46,12 @@ async def analyze_voice_check(
     """
     service = await get_voice_check_service(session=session, user_id=user_id)
 
+    # ADR-086 Decision 3: resolve the per-user model routing BEFORE the
+    # StreamingResponse is constructed, so ConfigurationError surfaces as
+    # a proper pre-header 400 instead of an in-band SSE error. Idempotent
+    # one-line lifecycle call — RULE-06-compatible service delegation.
+    await service.ensure_resolved()
+
     async def event_stream() -> AsyncIterator[str]:
         try:
             async for event in service.check(chapter_id, uuid.UUID(user_id)):
