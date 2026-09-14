@@ -14,6 +14,7 @@ from uuid import uuid4
 import pytest
 from pydantic_ai.models import Model
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.kb.worldbuilding_analyzer import (
     WorldbuildingAnalyzer,
     _safe_category,
@@ -28,6 +29,7 @@ from narrare.kb.worldbuilding_contracts import (
 )
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.gateway import ModelRegistry
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
@@ -113,14 +115,17 @@ def _make_analyzer(
     cache = FakeCache(data=cache_data)
     registry = MagicMock(spec=ModelRegistry)
     # Real config value object — the ADR-045 run-limit resolver (Task 3)
-    # reads resolve_output_limit()/token_limit_profile from it.
+    # reads resolve_output_limit()/token_limit_profile from it. Wrapped in
+    # StaticModelResolution per the ADR-086 lazy constructor shape (L19).
     config = ResolvedModelConfig(provider_name="test", model_id="test-model")
     analyzer = WorldbuildingAnalyzer(
         kb_repo=cast("KBRepository", kb_repo),
         rel_repo=cast("RelationshipRepository", FakeRelRepo()),
         cache=cast("WorldbuildingCache", cache),
         registry=registry,
-        config=config,
+        model_resolution=StaticModelResolution(
+            ResolvedModel(config=config, api_key=None, base_url=None)
+        ),
         composer=cast("PromptComposer", FakeComposer()),
     )
     return analyzer, {"kb_repo": kb_repo, "cache": cache, "registry": registry}

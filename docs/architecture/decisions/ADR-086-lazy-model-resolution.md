@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (23):**
+**Open (22):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -344,7 +344,14 @@ at construction (2026-09-09; factory function names verified):
        at all, and the routes' narrow ``ValueError`` handlers cannot
        swallow the loud 400 — ``ConfigurationError`` is a
        ``NarrareError``, so it reaches the global handler)*
-19. [ ] `kb/dependencies_worldbuilding.py` — `get_worldbuilding_service`
+19. [x] `kb/dependencies_worldbuilding.py` — `get_worldbuilding_service`
+        *(C4/L19 — landed 2026-09-14: lazy wiring + first-use resolve
+        in the analyzer (the config consumer; REST — no SSE pre-header
+        needed; resolve precedes the analysis-cache lookup so an
+        unconfigured provider stays a loud 400 even warm; the apply
+        endpoint consumes no resolution at all; integration probe:
+        pre-migration invalid body yielded the dependency-time novel-guard
+        404, not 400)*
 20. [ ] `planning/_character_arc_factory.py` — `get_character_arc_service`
 21. [ ] `planning/_service_factory.py` — `get_storyboard_service`
 22. [ ] `planning/_timeline_analysis_factory.py` — `get_timeline_analysis_service`

@@ -4,6 +4,9 @@ Assembles entity data from KB repositories into WorldbuildingDeps,
 manages token budgets for large projects (100+ entities), and orchestrates
 Phase 1 (gaps + connections) and Phase 2 (consistency) via WorldbuildingAgent.
 
+The per-user model routing cascade is wired as a ``LazyModelResolution``
+and resolves on first use (ADR-086) — never at construction.
+
 Entity assembly helpers live in :mod:`narrare.kb.worldbuilding_entity_assembly`.
 
 See:
@@ -42,11 +45,12 @@ from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -64,12 +68,11 @@ class WorldbuildingAnalyzer:
         rel_repo: Relationship repository.
         cache: In-memory worldbuilding cache (ADR-080).
         registry: Model registry for LLM access.
-        config: Resolved model configuration.
+        model_resolution: Lazy per-user model resolution (ADR-086) — the
+            routing cascade resolves on first use, never at construction.
         composer: Prompt composer for building prompts (both phases).
         max_phase2_pairs: Maximum number of entity pairs for Phase 2 consistency check.
-        api_key: Optional per-user provider API key (model-routing cascade),
-            injected into ``ModelRegistry.prepare``.
-        base_url: Optional per-user provider base URL override.
+        invocation_pipeline: Optional pipeline for invocation evidence (ADR-040).
     """
 
     def __init__(
@@ -78,44 +81,55 @@ class WorldbuildingAnalyzer:
         rel_repo: RelationshipRepositoryProtocol,
         cache: WorldbuildingCache,
         registry: ModelRegistry,
-        config: ResolvedModelConfig,
+        model_resolution: ModelResolution,
         composer: PromptComposer,
         *,
         max_phase2_pairs: int = 15,
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._kb_repo = kb_repo
         self._rel_repo = rel_repo
         self._cache = cache
         self._registry = registry
-        self._config = config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._composer = composer
         self._max_phase2_pairs = max_phase2_pairs
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086).
+
+        First call resolves via the injected ``ModelResolution`` and
+        caches the triple; repeat calls return the cached value without
+        re-running the cascade. Errors propagate loudly and are never
+        cached (RULE-11): ``ConfigurationError`` (``NO_AI_PROVIDER``)
+        surfaces as a 400 on this AI-mandatory endpoint.
+        """
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def _prepare(self) -> PreparedModelCall:
         """Resolve the coherent call triple lazily from the registry.
 
         Single assembly point (Task 6c — Task 4/5 pattern): model +
         intent-aware runtime settings + usage limits as one result.
-        Forwards the injected per-user provider credentials
-        (model-routing cascade).
+        Forwards the per-user provider credentials from the resolved
+        cascade triple (model-routing cascade, ADR-086).
         """
-        resolved = self._run_limit_resolver.resolve(
-            config=self._config, budget=None, invocation_id=uuid4()
+        resolved = await self.ensure_resolved()
+        limit_resolved = self._run_limit_resolver.resolve(
+            config=resolved.config, budget=None, invocation_id=uuid4()
         )
         return await self._registry.prepare(
-            self._config,
+            resolved.config,
             intent=LLMIntent.KB_WORLDBUILD,
-            usage_limits=resolved.usage_limits,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            usage_limits=limit_resolved.usage_limits,
+            api_key=resolved.api_key,
+            base_url=resolved.base_url,
         )
 
     async def analyze(
@@ -124,6 +138,11 @@ class WorldbuildingAnalyzer:
         request: WorldbuildingAnalysisRequest,
     ) -> WorldbuildingAnalysisResponse:
         """Full analysis: cache → build deps → phase 1 → phase 2 → cache store."""
+        # ADR-086: resolve BEFORE the cache lookup so an unconfigured
+        # provider stays a loud 400 even with a warm cache (the eager
+        # factory resolved before any cache access — semantics preserved).
+        await self.ensure_resolved()
+
         novel_str = str(novel_id)
         types_hash = WorldbuildingCache.hash_entity_types(request.entity_types)
 

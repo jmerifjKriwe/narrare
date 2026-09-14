@@ -156,7 +156,9 @@ class TestCredentialsReachResolutionPoint:
         assert getattr(prepared.model, "sentinel_model", False) is True
 
     async def test_worldbuilding_analyzer_threads_credentials_into_prepare(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
+        from narrare_core.llm.model_routing import ResolvedModel
 
         config = _user_config()
         registry = _RecordingRegistry()
@@ -165,10 +167,13 @@ class TestCredentialsReachResolutionPoint:
             rel_repo=MagicMock(spec=True, name="RelationshipRepository"),
             cache=MagicMock(spec=True, name="WorldbuildingCache"),
             registry=cast("ModelRegistry", registry),
-            config=config,
+            # StaticModelResolution per the ADR-086 lazy constructor shape
+            # (L19); _prepare() ensure-resolves on demand, so the triple
+            # flows into prepare() exactly as the eager factory passed it.
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+            ),
             composer=MagicMock(spec=True, name="PromptComposer"),
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
 
         prepared = await analyzer._prepare()

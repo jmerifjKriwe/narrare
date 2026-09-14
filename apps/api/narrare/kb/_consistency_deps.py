@@ -10,6 +10,13 @@ business logic lives here — only wiring.
 Note: the legacy wiring set no temperature override on either config
 (unlike ``consistency/deps.py``), so none is preserved here — the resolved
 cascade config is passed through as-is.
+
+Note (ADR-086): both cascades here still resolve EAGERLY at construction
+(ledger entry 15 — 400-before-422 retained, visible debt until its slice).
+Since L19 the worldbuilding analyzer's constructor takes a
+``ModelResolution`` instead of a pre-split triple, so the eagerly resolved
+worldbuild triple is wrapped in a ``StaticModelResolution`` — WHAT is
+unchanged, only the constructor shape.
 """
 
 from __future__ import annotations
@@ -23,7 +30,10 @@ from narrare._app.dependencies import (
     SessionDep,
     get_current_user_id,
 )
-from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.dependencies_services import (
+    StaticModelResolution,
+    get_model_routing_resolver,
+)
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
@@ -110,17 +120,18 @@ async def get_consistency_service(
         rel_service=rel_service,
     )
 
-    # Worldbuilding analyzer (reused for cross-entity Phase 2)
+    # Worldbuilding analyzer (reused for cross-entity Phase 2). The
+    # worldbuild triple was resolved eagerly above (entry 15 stays eager,
+    # ADR-086); StaticModelResolution adapts it to the L19 constructor
+    # shape without changing timing.
     worldbuilding_cache = WorldbuildingCache(cache)
     worldbuilding_analyzer = WorldbuildingAnalyzer(
         kb_repo=kb_repo,
         rel_repo=rel_repo,
         cache=worldbuilding_cache,
         registry=registry,
-        config=worldbuild_resolved.config,
+        model_resolution=StaticModelResolution(worldbuild_resolved),
         composer=composer,
-        api_key=worldbuild_resolved.api_key,
-        base_url=worldbuild_resolved.base_url,
     )
 
     return KBConsistencyService(

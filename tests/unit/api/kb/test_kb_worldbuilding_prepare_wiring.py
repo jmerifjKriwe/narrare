@@ -112,17 +112,21 @@ def _make_wb_analyzer(
     registry: _RecordingPrepareRegistry,
     config: Any,
 ) -> Any:
+    from narrare._app.dependencies_services import StaticModelResolution
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
+    from narrare_core.llm.model_routing import ResolvedModel
 
     return WorldbuildingAnalyzer(
         kb_repo=cast("KBRepository", _FakeKBRepo([_FakeKBEntry()])),
         rel_repo=cast("RelationshipRepository", _FakeRelRepo()),
         cache=cast("WorldbuildingCache", _FakeCache()),
         registry=cast("ModelRegistry", registry),
-        config=config,
+        # StaticModelResolution per the ADR-086 lazy constructor shape
+        # (L19); the credentials still flow into prepare() unchanged.
+        model_resolution=StaticModelResolution(
+            ResolvedModel(config=config, api_key=_USER_KEY, base_url=_USER_BASE_URL)
+        ),
         composer=cast("PromptComposer", _FakeComposer()),
-        api_key=_USER_KEY,
-        base_url=_USER_BASE_URL,
     )
 
 
