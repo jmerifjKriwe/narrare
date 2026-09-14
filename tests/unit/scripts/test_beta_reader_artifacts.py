@@ -326,7 +326,7 @@ class TestPromptVersions:
     def test_reads_bundled_template_frontmatter(self) -> None:
         versions = prompt_versions(("beta_reader", "beta_reader_deepdive"))
 
-        assert versions == {"beta_reader": "1.1.0", "beta_reader_deepdive": "1.1.0"}
+        assert versions == {"beta_reader": "1.1.0", "beta_reader_deepdive": "1.2.0"}
 
 
 def _write_rendered_run(

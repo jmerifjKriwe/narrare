@@ -95,7 +95,15 @@ PHASE2_MODE: str = "beta_reader_deepdive"
 
 DEFAULT_TEMPERATURE: float = 0.0
 DEFAULT_DEEPDIVE_CATEGORY: str = "plot"
-DEFAULT_MAX_TOKENS: int = 4096
+# Raw pin (``_model_config`` sets no token-limit profile) — and pydantic-ai
+# counts ``output_tokens_limit`` cumulatively across validation-retry
+# attempts (hazard precedent: the extraction preset raises in
+# ``token_profiles.py`` PROFILE_OUTPUT_LIMITS). The verbose deep-dive payload
+# is ~4k tokens/response, so the previous 4096 suffocated on the first
+# retry (observed 2026-09-14: run exit 1 at output_tokens=8000). Production
+# BETA_READ is unaffected — the routing resolver seeds the ``long_texts``
+# intent-default profile (64000) on every cascade level.
+DEFAULT_MAX_TOKENS: int = 16384
 
 #: Benchmark config the instrument reads (spec §3 data dependency — file via
 #: path, ``llm`` section only; never imported as code).
@@ -392,7 +400,7 @@ class BetaReaderEvalRunner:
 
     def _model_config(self) -> ResolvedModelConfig:
         """Chain step 5 (spec §4): pinned config — CLI temperature (default
-        0.0), 4096 output tokens, no streaming."""
+        0.0), ``DEFAULT_MAX_TOKENS`` raw output tokens, no streaming."""
         return ResolvedModelConfig(
             provider_name=self._llm_config.provider,
             model_id=self._llm_config.model,

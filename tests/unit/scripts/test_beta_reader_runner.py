@@ -374,3 +374,20 @@ class TestE2eModeGuard:
 
         assert factory.configs == []
         assert result.dry_run is True
+
+
+class TestDefaultMaxTokensFloor:
+    """The eval pins a RAW output limit (``_model_config`` sets no
+    ``token_limit_profile``), and pydantic-ai counts ``output_tokens_limit``
+    cumulatively across validation-retry attempts — the same hazard that
+    forced the extraction preset raises in ``token_profiles.py`` (see
+    ``PROFILE_OUTPUT_LIMITS`` rationale). Production BETA_READ never hits it:
+    the routing resolver seeds the ``long_texts`` intent-default profile
+    (64000). The verbose deep-dive payload is ~4k tokens/response, so the
+    previous 4096 pin suffocated on the first retry (observed 2026-09-14:
+    run exit 1 with ``output_tokens=8000`` > limit 4096)."""
+
+    def test_default_max_tokens_fits_verbose_payload_plus_retry_headroom(self) -> None:
+        # 16384 ≈ 4 verbose responses (payload + >=2 retries across both
+        # phases' worst case), mirroring the extraction-raise rationale.
+        assert DEFAULT_MAX_TOKENS == 16384
