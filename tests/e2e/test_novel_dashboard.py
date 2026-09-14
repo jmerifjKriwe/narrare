@@ -13,7 +13,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.e2e.mocks.llm_responses import setup_llm_mocks
-from tests.e2e.test_helpers import _click_next, _wait_for_wizard_ready, setup_dashboard_api_mocks
+from tests.e2e.test_helpers import (
+    _click_next,
+    _wait_for_wizard_ready,
+    goto_with_retry,
+    setup_dashboard_api_mocks,
+)
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -153,7 +158,7 @@ class TestNovelDashboard:
         # hang during page load.  Auth mocks match first (Playwright route order).
         setup_dashboard_api_mocks(page)
         _setup_auth_proxy(page, user_info["access_token"])
-        page.goto(f"{base_url}/", timeout=15000, wait_until="domcontentloaded")
+        goto_with_retry(page, f"{base_url}/", timeout=15000)
         page.wait_for_timeout(3000)
 
         # Look for the novel title on the dashboard
@@ -181,7 +186,7 @@ class TestNovelDashboard:
 
         setup_dashboard_api_mocks(page)
         _setup_auth_proxy(page, user_info["access_token"])
-        page.goto(f"{base_url}/", timeout=15000, wait_until="domcontentloaded")
+        goto_with_retry(page, f"{base_url}/", timeout=15000)
         page.wait_for_timeout(3000)
 
         # Look for new novel button / link
@@ -216,7 +221,7 @@ class TestNovelDashboard:
 
         setup_dashboard_api_mocks(page)
         _setup_auth_proxy(page, user_info["access_token"])
-        page.goto(f"{base_url}/", timeout=15000, wait_until="domcontentloaded")
+        goto_with_retry(page, f"{base_url}/", timeout=15000)
         page.wait_for_timeout(3000)
 
         # Find the novel link/button and click it
@@ -275,7 +280,7 @@ class TestNovelDashboard:
         _setup_auth_proxy(page, result["access_token"])
 
         # Go to dashboard, click a novel card
-        page.goto(f"{base_url}/", wait_until="domcontentloaded")
+        goto_with_retry(page, f"{base_url}/")
         page.wait_for_timeout(3000)
 
         # Use data-testid selectors matching DashboardView.tsx
@@ -307,7 +312,7 @@ class TestNovelDashboard:
         setup_dashboard_api_mocks(page)
         _setup_auth_proxy(page, result["access_token"])
 
-        page.goto(f"{base_url}/", wait_until="domcontentloaded")
+        goto_with_retry(page, f"{base_url}/")
         page.wait_for_timeout(3000)
 
         # Find novel card and hover to reveal delete button

@@ -17,6 +17,7 @@ import pytest
 from tests.e2e.test_helpers import (
     _complete_wizard_to_editor,
     _setup_auth_proxy,
+    goto_with_retry,
 )
 
 if TYPE_CHECKING:
@@ -39,7 +40,7 @@ class TestSettingsPersistence:
         novel_id = result["novel_id"]
 
         # Navigate to settings
-        page.goto(f"{base_url}/novel/{novel_id}/settings")
+        goto_with_retry(page, f"{base_url}/novel/{novel_id}/settings")
         page.wait_for_timeout(2000)
 
         # The default tab is "novel-details" so the title input should
@@ -130,7 +131,7 @@ class TestSettingsPersistence:
         _setup_auth_proxy(page, result["access_token"])
         novel_id = result["novel_id"]
 
-        page.goto(f"{base_url}/novel/{novel_id}/settings")
+        goto_with_retry(page, f"{base_url}/novel/{novel_id}/settings")
         page.wait_for_timeout(2000)
 
         # Verify settings page loaded (not redirected to login)

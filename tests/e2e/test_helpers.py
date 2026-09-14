@@ -210,25 +210,41 @@ def _setup_auth_proxy(page: Page, access_token: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+def goto_with_retry(page: Page, url: str, timeout: int = 30000) -> None:
+    """Navigate to ``url`` with ``domcontentloaded`` and one retry on timeout.
+
+    Uses ``wait_until="domcontentloaded"``: the flake class hangs on the
+    ``load`` event (a stalled subresource keeps it from firing), while
+    DOM-ready suffices because callers wait on explicit selectors afterward.
+
+    Forensic signature of the underlying stall: a 30s ``goto`` timeout while
+    the Next dev server never proxied the request — the API saw zero requests
+    during the whole window (dev-proxy stall, not app slowness; see
+    tests/e2e/conftest.py "KNOWN ISSUES / WORKAROUNDS" and the
+    ``route.fetch()`` shields in this module). One retry after a brief
+    backoff absorbs the transient stall; a second timeout still raises so
+    real regressions are not masked.
+    """
+    try:
+        page.goto(url, timeout=timeout, wait_until="domcontentloaded")
+    except PlaywrightTimeoutError:
+        page.wait_for_timeout(2000)
+        page.goto(url, timeout=timeout, wait_until="domcontentloaded")
+
+
 def reload_page(page: Page, timeout: int = 30000) -> None:
     """Reload the current page with one retry on goto timeout.
 
-    Mitigates the documented page-load hang class of the Next.js dev proxy
-    (see tests/e2e/conftest.py "KNOWN ISSUES / WORKAROUNDS" and the
-    ``route.fetch()`` shields in this module): a bare ``page.goto(page.url)``
-    reload intermittently never reaches the ``load`` event although the app
-    itself is healthy — the CI flake in
-    ``test_delete_chapter_via_api_and_sidebar_updates`` showed exactly this
-    signature (30s goto timeout on a mid-test reload while all sibling tests
-    stayed green). One retry after a brief backoff absorbs the transient
-    proxy stall; a second timeout still raises so real regressions are not
-    masked.
+    Same mitigation as :func:`goto_with_retry` (``domcontentloaded`` + one
+    retry + 2s backoff) applied to a mid-test reload of the current URL.
+    Forensic signature of the stall this absorbs: a 30s ``goto`` timeout on
+    a mid-test reload while the API saw zero requests during the whole
+    window = dev-proxy stall (round 1: ``test_delete_chapter_via_api_and_
+    sidebar_updates``; round 2: the variable-form ``page.goto(current_url)``
+    in ``test_chapter_management.py``). A second timeout still raises so
+    real regressions are not masked.
     """
-    try:
-        page.goto(page.url, timeout=timeout)
-    except PlaywrightTimeoutError:
-        page.wait_for_timeout(2000)
-        page.goto(page.url, timeout=timeout)
+    goto_with_retry(page, page.url, timeout=timeout)
 
 
 # ---------------------------------------------------------------------------

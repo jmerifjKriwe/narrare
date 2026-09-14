@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.e2e.mocks.llm_responses import setup_llm_mocks
+from tests.e2e.test_helpers import goto_with_retry
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -239,7 +240,7 @@ class TestAuthFlow:
         page.route("**/api/v1/**", _proxy_with_auth)
 
         # Now logged in, navigate to dashboard to find logout button
-        page.goto(f"{base_url}/", timeout=30000, wait_until="domcontentloaded")
+        goto_with_retry(page, f"{base_url}/", timeout=30000)
         page.wait_for_timeout(2000)
 
         # Remove the refresh mock so the /login page after logout does NOT

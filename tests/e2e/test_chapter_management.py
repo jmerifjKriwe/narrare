@@ -152,8 +152,7 @@ class TestChapterManagement:
             raise
 
         # Reload and verify persistence
-        current_url = page.url
-        page.goto(current_url)
+        reload_page(page)
         page.wait_for_timeout(3000)
 
         # Re-find the title input
