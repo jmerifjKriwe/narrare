@@ -136,10 +136,12 @@ class TestResolveAuthorVoicePromptHelper:
     @pytest.mark.asyncio
     async def test_uses_voice_intent_and_author_voice_mode(self) -> None:
         """The helper builds a PromptContext with mode=author_voice + VOICE intent."""
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.analysis.author_voice_service import AuthorVoiceService
         from tests.unit.api.analysis._author_voice_test_helpers import (
             FakeAuthorVoiceRepository,
             FakeModelRegistry,
+            _resolved_model,
         )
 
         # Wire a real service so the FakeComposer is exercised via a real
@@ -152,7 +154,9 @@ class TestResolveAuthorVoicePromptHelper:
             chapter_repo=AsyncMock(spec=["list_by_novel"]),  # type: ignore[arg-type]
             repository=FakeAuthorVoiceRepository(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            model_config=ResolvedModelConfig(provider_name="test", model_id="m"),
+            model_resolution=StaticModelResolution(
+                _resolved_model(ResolvedModelConfig(provider_name="test", model_id="m"))
+            ),
             composer=FakeComposer(),  # type: ignore[arg-type]
         )
         # Drive the helper directly via the service's composer slot.

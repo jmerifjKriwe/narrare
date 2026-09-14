@@ -3,7 +3,8 @@
 Covers the failure modes the happy-path file does not:
 
 - Novel not found / inaccessible → NotFoundError.
-- No model config → NotFoundError.
+- Unconfigured provider (routing cascade) → ConfigurationError propagates
+  un-swallowed from the entry point (ADR-086 lazy resolution).
 - No PromptComposer → ConfigurationError.
 - Agent failure propagates (no silent swallow).
 - get_profile / clear_profile enforce novel access control.
@@ -18,21 +19,27 @@ See:
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 from tests.unit.api.analysis._author_voice_test_helpers import (
     FakeAuthorVoiceRepository,
     FakeComposer,
+    _resolved_model,
     consume,
     make_chapter,
     make_novel,
     make_service,
     patch_mode1,
 )
+
+if TYPE_CHECKING:
+    from narrare_core.llm.model_routing import ResolvedModel
 
 
 @pytest.fixture
@@ -58,19 +65,35 @@ class TestAnalyzeErrorPaths:
         service._novel_repo.get_by_id = AsyncMock(return_value=None)  # type: ignore[attr-defined]
 
         with pytest.raises(NotFoundError):
-            await consume(service.analyze(uuid.uuid4(), None, uuid.uuid4()))  # type: ignore[arg-type]
+            await consume(service.analyze(uuid.uuid4(), None, uuid.uuid4()))
 
     @pytest.mark.asyncio
-    async def test_raises_not_found_when_no_model_config(
+    async def test_resolver_configuration_error_propagates_un_swallowed(
         self,
         composer: FakeComposer,
+        config: ResolvedModelConfig,
     ) -> None:
+        """RULE-11 / ADR-086: the routing cascade's ConfigurationError
+        (unconfigured provider) propagates from the entry point — the
+        service never swallows it (AI-mandatory endpoint)."""
+
+        class _RaisingResolution:
+            async def resolve(self) -> ResolvedModel:
+                raise ConfigurationError(
+                    "No AI provider configured.",
+                    code="NO_AI_PROVIDER",
+                )
+
         novel = make_novel()
-        service = make_service(composer, config=None)  # type: ignore[arg-type]
+        service = make_service(
+            composer,
+            config,
+            model_resolution=_RaisingResolution(),
+        )
         service._novel_repo.get_by_id = AsyncMock(return_value=novel)  # type: ignore[attr-defined]
 
-        with pytest.raises(NotFoundError):
-            await consume(service.analyze(novel.id, None, uuid.uuid4()))  # type: ignore[arg-type]
+        with pytest.raises(ConfigurationError):
+            await consume(service.analyze(novel.id, None, uuid.uuid4()))
 
     @pytest.mark.asyncio
     async def test_raises_configuration_error_when_no_composer(
@@ -80,8 +103,8 @@ class TestAnalyzeErrorPaths:
         """No PromptComposer → ConfigurationError (config is set so it's the
         next guard that fires)."""
         novel = make_novel()
-        # Build the service with config set but composer=None — the composer
-        # guard is the one that should fire.
+        # Build the service with resolution set but composer=None — the
+        # composer guard is the one that should fire.
         from unittest.mock import AsyncMock
 
         from narrare.analysis.author_voice_service import AuthorVoiceService
@@ -95,13 +118,13 @@ class TestAnalyzeErrorPaths:
             chapter_repo=AsyncMock(),  # type: ignore[arg-type]
             repository=FakeAuthorVoiceRepository(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            model_config=config,
+            model_resolution=StaticModelResolution(_resolved_model(config)),
             composer=None,
         )
         service._novel_repo.get_by_id = AsyncMock(return_value=novel)  # type: ignore[attr-defined]
 
         with pytest.raises(ConfigurationError):
-            await consume(service.analyze(novel.id, None, uuid.uuid4()))  # type: ignore[arg-type]
+            await consume(service.analyze(novel.id, None, uuid.uuid4()))
 
     @pytest.mark.asyncio
     async def test_agent_failure_propagates(
@@ -125,7 +148,7 @@ class TestAnalyzeErrorPaths:
             mock_agent.run = AsyncMock(side_effect=RuntimeError("agent boom"))
             MockAgent.return_value = mock_agent
 
-            await consume(service.analyze(novel.id, None, uuid.uuid4()))  # type: ignore[arg-type]
+            await consume(service.analyze(novel.id, None, uuid.uuid4()))
 
 
 class TestGetProfileAccessControl:

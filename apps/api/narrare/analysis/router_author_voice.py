@@ -74,6 +74,12 @@ async def analyze_author_voice(
     service = await get_author_voice_service(novel_id=novel_id, session=session, user_id=user_id)
     chapter_ids = [uuid.UUID(cid) for cid in request.chapter_ids] if request.chapter_ids else None
 
+    # ADR-086 Decision 3: resolve the per-user model routing BEFORE the
+    # StreamingResponse is constructed, so ConfigurationError surfaces as
+    # a proper pre-header 400 instead of an in-band SSE error. Idempotent
+    # one-line lifecycle call — RULE-06-compatible service delegation.
+    await service.ensure_resolved()
+
     async def event_stream() -> AsyncIterator[str]:
         try:
             async for event in service.analyze(novel_id, chapter_ids, uuid.UUID(user_id)):

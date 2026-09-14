@@ -40,6 +40,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.analysis.author_voice_agent_runner import run_author_voice_agent
+from narrare.analysis.author_voice_metrics import compute_author_voice_metrics
 from narrare.analysis.author_voice_profile_assembler import assemble_author_voice_profile
 from narrare.analysis.author_voice_prompt import resolve_author_voice_prompt
 from narrare.analysis.schemas_author_voice import (
@@ -52,14 +53,13 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.analysis.author_voice_repository import AuthorVoiceRepository
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.analysis.author_metrics import AuthorMetricsAnalyzer
-    from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.profiles.author_voice import AuthorVoiceProfile
     from narrare_core.prompts.composer import PromptComposer
 
@@ -99,22 +99,25 @@ class AuthorVoiceService:
         chapter_repo: ChapterRepository,
         repository: AuthorVoiceRepository,
         model_registry: ModelRegistry,
-        model_config: ResolvedModelConfig | None = None,
+        model_resolution: ModelResolution,
         composer: PromptComposer | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
         self._repository = repository
         self._registry = model_registry
-        self._config = model_config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._composer = composer
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086)."""
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def analyze(
         self,
@@ -130,13 +133,14 @@ class AuthorVoiceService:
         ``"done"`` event. Full contract (Args/Yields/Raises) lives on
         :class:`AuthorVoiceServiceProtocol` (RULE-03 SSOT).
         """
+        # ADR-086: first-use lazy resolve, post-validation (see ensure_resolved);
+        # ahead of the gates — eager-world precedence (L06/L07 landed shape).
+        resolved_model = await self.ensure_resolved()
+
         # 1. Resolve novel (access control + metadata).
         novel = await self._novel_repo.get_by_id(novel_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(novel_id))
-
-        if self._config is None:
-            raise NotFoundError("Model config", identifier="no_model_config")
 
         if self._composer is None:
             raise ConfigurationError(
@@ -191,10 +195,7 @@ class AuthorVoiceService:
         combined_prose = "\n\n".join(chapter_prose)
 
         # 4-5. Compute deterministic metrics over the full prose.
-        voice_analyzer = self._make_voice_metrics_analyzer(language)
-        author_analyzer = self._make_author_metrics_analyzer()
-        voice_metrics = voice_analyzer.analyze_text(chapter_prose)
-        author_metrics = author_analyzer.analyze(chapter_prose)
+        voice_metrics, author_metrics = compute_author_voice_metrics(chapter_prose, language)
 
         # 6. Resolve the governed author_voice system prompt via PromptComposer
         #    (RULE-02 / ADR-054 D1). The template
@@ -221,10 +222,10 @@ class AuthorVoiceService:
             novel_id=novel_id,
             language=language,
             model_registry=self._registry,
-            model_config=self._config,
+            model_config=resolved_model.config,
             composed_prompt=composed_prompt,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            api_key=resolved_model.api_key,
+            base_url=resolved_model.base_url,
         )
 
         # 8. Assemble + persist the profile (descriptive + metric groups).
@@ -280,17 +281,3 @@ class AuthorVoiceService:
         novel = await self._novel_repo.get_by_id(novel_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(novel_id))
-
-    # ------------------------------------------------------------------
-    # Analyzer construction (overridable for tests)
-    # ------------------------------------------------------------------
-
-    def _make_voice_metrics_analyzer(self, language: str) -> VoiceMetricsAnalyzer:
-        from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
-
-        return VoiceMetricsAnalyzer(language=language)
-
-    def _make_author_metrics_analyzer(self) -> AuthorMetricsAnalyzer:
-        from narrare_core.analysis.author_metrics import AuthorMetricsAnalyzer
-
-        return AuthorMetricsAnalyzer()

@@ -82,8 +82,7 @@ class CharacterVoiceServiceProtocol(Protocol):
 
         Raises:
             narrare_core.shared.errors.NotFoundError: If the novel or any
-                selected chapter does not exist or is not accessible, or no
-                model config is configured.
+                selected chapter does not exist or is not accessible.
             narrare_core.shared.errors.ConfigurationError: If no
                 ``PromptComposer`` is configured.
         """

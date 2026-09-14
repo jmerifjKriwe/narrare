@@ -14,8 +14,16 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from narrare_core.agents.author_voice_types import AuthorVoiceOutput
+from narrare._app.dependencies_services import StaticModelResolution
+from narrare_core.agents.author_voice_types import (
+    AuthorVoiceOutput,
+    EmotionalRange,
+    SentenceProfile,
+    VocabularyLevel,
+)
 from narrare_core.llm._prepared_call import PreparedModelCall
+from narrare_core.llm.model_config import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
@@ -23,10 +31,10 @@ if TYPE_CHECKING:
 
     from pydantic_ai.usage import UsageLimits
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.analysis.author_voice_service import AuthorVoiceService
     from narrare.analysis.schemas_author_voice import AuthorVoiceStreamEvent
     from narrare_core.llm.intents import LLMIntent
-    from narrare_core.llm.model_config import ResolvedModelConfig
 
 # ---------------------------------------------------------------------------
 # Fakes (avoid bare MagicMock for domain contracts — RULE-TEST-01)
@@ -173,9 +181,9 @@ def make_chapter(**overrides: object) -> MagicMock:
 def make_agent_output(
     *,
     formality: float = 0.6,
-    vocabulary_level: str = "complex",
-    sentence_profile: str = "varied",
-    emotional_range: str = "expressive",
+    vocabulary_level: VocabularyLevel = "complex",
+    sentence_profile: SentenceProfile = "varied",
+    emotional_range: EmotionalRange = "expressive",
     cultural_regional_markers: str | None = "literary register",
     author_examples: list[str] | None = None,
 ) -> AuthorVoiceOutput:
@@ -187,11 +195,35 @@ def make_agent_output(
         ]
     return AuthorVoiceOutput(
         formality=formality,
-        vocabulary_level=vocabulary_level,  # type: ignore[arg-type]
-        sentence_profile=sentence_profile,  # type: ignore[arg-type]
-        emotional_range=emotional_range,  # type: ignore[arg-type]
+        vocabulary_level=vocabulary_level,
+        sentence_profile=sentence_profile,
+        emotional_range=emotional_range,
         cultural_regional_markers=cultural_regional_markers,
         author_examples=author_examples,
+    )
+
+
+class _CountingResolution:
+    """Fake ModelResolution — counts resolve() calls, never caches.
+
+    Exposes the service-level lazy seam (ADR-086): the service must call
+    ``resolve()`` exactly once (first use), never at construction.
+    """
+
+    def __init__(self, model: ResolvedModel | None = None) -> None:
+        self._model = model if model is not None else _resolved_model()
+        self.calls = 0
+
+    async def resolve(self) -> ResolvedModel:
+        self.calls += 1
+        return self._model
+
+
+def _resolved_model(config: ResolvedModelConfig | None = None) -> ResolvedModel:
+    """A fixed model triple, as the routing cascade would return it."""
+    return ResolvedModel(
+        config=config or ResolvedModelConfig(provider_name="test", model_id="test-model"),
+        source="unit-test",
     )
 
 
@@ -200,15 +232,20 @@ def make_service(
     config: ResolvedModelConfig,
     *,
     repository: FakeAuthorVoiceRepository | None = None,
+    model_resolution: ModelResolution | None = None,
 ) -> AuthorVoiceService:
     """Build an AuthorVoiceService wired for Mode 1 prompt resolution.
 
     Args:
         composer: Fake PromptComposer for DI wiring.
-        config: Resolved model config.
+        config: Resolved model config (wrapped in a ``StaticModelResolution``
+            — ADR-086 unit-test harness).
         repository: Optional AuthorVoiceRepository fake. When ``None``
             (default), a fresh :class:`FakeAuthorVoiceRepository` is created
             so each test asserts against its own save/clear call list.
+        model_resolution: Optional resolution override (e.g.
+            ``_CountingResolution`` for lazy-semantics tests); defaults
+            to the static resolution around ``config``.
     """
     from narrare.analysis.author_voice_service import AuthorVoiceService
 
@@ -219,7 +256,7 @@ def make_service(
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
         repository=repository or FakeAuthorVoiceRepository(),  # type: ignore[arg-type]
         model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-        model_config=config,
+        model_resolution=model_resolution or StaticModelResolution(_resolved_model(config)),
         composer=composer,  # type: ignore[arg-type]
     )
 

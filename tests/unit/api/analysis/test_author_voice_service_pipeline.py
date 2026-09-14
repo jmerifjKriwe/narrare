@@ -65,8 +65,8 @@ class TestProfileAssembly:
         repository = FakeAuthorVoiceRepository()
 
         service = make_service(composer, config, repository=repository)
-        service._novel_repo.get_by_id = AsyncMock(return_value=novel)  # type: ignore[attr-defined]
-        service._chapter_repo.list_by_novel = AsyncMock(return_value=chapters)  # type: ignore[attr-defined]
+        service._novel_repo.get_by_id = AsyncMock(return_value=novel)
+        service._chapter_repo.list_by_novel = AsyncMock(return_value=chapters)
 
         agent_output = make_agent_output(
             formality=0.3,
@@ -81,7 +81,7 @@ class TestProfileAssembly:
             mock_agent.run = AsyncMock(return_value=agent_output)
             MockAgent.return_value = mock_agent
 
-            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))  # type: ignore[arg-type]
+            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))
 
         result_event = next(e for e in events if e.event == "result")
         assert result_event.result is not None
@@ -115,15 +115,15 @@ class TestMinChapterWarning:
         chapters = [make_chapter(novel_id=novel.id) for _ in range(1)]
 
         service = make_service(composer, config)
-        service._novel_repo.get_by_id = AsyncMock(return_value=novel)  # type: ignore[attr-defined]
-        service._chapter_repo.list_by_novel = AsyncMock(return_value=chapters)  # type: ignore[attr-defined]
+        service._novel_repo.get_by_id = AsyncMock(return_value=novel)
+        service._chapter_repo.list_by_novel = AsyncMock(return_value=chapters)
 
         with patch_mode1() as (MockAgent, _MockDeps, _mc):
             mock_agent = MagicMock(spec=["run"])
             mock_agent.run = AsyncMock(return_value=make_agent_output())
             MockAgent.return_value = mock_agent
 
-            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))  # type: ignore[arg-type]
+            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))
 
         progress_events = [e for e in events if e.event == "progress"]
         # The first progress event is the soft warning.
@@ -151,11 +151,11 @@ class TestGracefulDegradation:
         novel = make_novel()
 
         service = make_service(composer, config)
-        service._novel_repo.get_by_id = AsyncMock(return_value=novel)  # type: ignore[attr-defined]
-        service._chapter_repo.list_by_novel = AsyncMock(return_value=[])  # type: ignore[attr-defined]
+        service._novel_repo.get_by_id = AsyncMock(return_value=novel)
+        service._chapter_repo.list_by_novel = AsyncMock(return_value=[])
 
         with patch_mode1() as (MockAgent, _MockDeps, _mc):
-            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))  # type: ignore[arg-type]
+            events = await consume(service.analyze(novel.id, None, uuid.uuid4()))
 
             # Agent must NOT be called when there are no chapters.
             MockAgent.assert_not_called()

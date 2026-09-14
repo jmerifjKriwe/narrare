@@ -21,6 +21,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.analysis.contracts_author_voice import AuthorVoiceServiceProtocol
 from narrare.analysis.schemas_author_voice import (
     AuthorVoiceRequest,
@@ -66,6 +67,7 @@ class TestAuthorVoiceServiceProtocol:
         from tests.unit.api.analysis._author_voice_test_helpers import (
             FakeAuthorVoiceRepository,
             FakeModelRegistry,
+            _resolved_model,
         )
 
         service = AuthorVoiceService(
@@ -73,7 +75,7 @@ class TestAuthorVoiceServiceProtocol:
             chapter_repo=AsyncMock(),  # type: ignore[arg-type]
             repository=FakeAuthorVoiceRepository(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            model_config=None,
+            model_resolution=StaticModelResolution(_resolved_model()),
             composer=None,
         )
         assert isinstance(service, AuthorVoiceServiceProtocol)
