@@ -21,6 +21,7 @@ from tests.e2e.test_helpers import (
     _insert_editor_text,
     _save_editor,
     _setup_auth_proxy,
+    reload_page,
 )
 
 if TYPE_CHECKING:
@@ -205,7 +206,7 @@ class TestChapterManagement:
         print(f"\n=== Created chapter {chapter_id} ===")
 
         # Reload page to see new chapter
-        page.goto(page.url)
+        reload_page(page)
         page.wait_for_timeout(3000)
 
         # Count chapters (should be 2)
@@ -225,7 +226,7 @@ class TestChapterManagement:
         )
 
         # Reload and verify chapter count decreased
-        page.goto(page.url)
+        reload_page(page)
         page.wait_for_timeout(3000)
 
         count_after = _get_chapter_count_in_sidebar(page)
@@ -278,7 +279,7 @@ class TestChapterManagement:
         assert create_resp.status_code in (200, 201)
 
         # Reload to see both chapters
-        page.goto(page.url)
+        reload_page(page)
         page.wait_for_timeout(3000)
 
         # Wait for editor

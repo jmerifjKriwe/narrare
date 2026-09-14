@@ -10,6 +10,10 @@ catalog, provider listing), while the bundled SDKs (``openai`` ≥3, ``anthropic
    exceptions.  Rule 1 asserts that no module importing ``openai``/``anthropic``/
    ``pydantic_ai`` contains a bare-module ``except httpx.`` clause
    (``httpx2.`` references are fine and excluded by the ``\\bhttpx\\.`` pattern).
+   Both bind forms are covered: attribute access (``except httpx.HTTPError:``)
+   and from-import aliases (``from httpx import HTTPError`` followed by
+   ``except HTTPError:`` / ``except (HTTPError, …):``), since the from-import
+   form hides the module qualifier from the catch line.
 2. **Cross-injection**: an ``http_client=`` argument fed with a client constructed
    from ``httpx`` (0.x) would hand a 0.x client to an SDK expecting httpx2.
    Rule 2 sweeps ``http_client=`` call sites and flags any file where a bare-module
@@ -39,6 +43,13 @@ _SDK_IMPORT_RE = re.compile(r"\bimport openai\b|\bfrom anthropic\b|\bpydantic_ai
 # Rule 1: bare-module httpx exception clauses. `\bhttpx\.` cannot match inside
 # `httpx2.` (the char after `httpx` there is `2`, not `.`).
 _BARE_HTTPX_EXCEPT_RE = re.compile(r"^\s*except\b[^\n:]*\bhttpx\.", re.MULTILINE)
+
+# Rule 1b (from-import variant): `from httpx import HTTPError` binds exception
+# names as bare locals, so the catch line no longer contains `httpx.` and the
+# attribute-access regex above misses it.  The guard resolves such aliases
+# module-locally instead.  `\bfrom httpx import\b` cannot match inside
+# `from httpx2 import …` (the char after `httpx` there is `2`, not a space).
+_HTTPX_FROM_IMPORT_RE = re.compile(r"\bfrom httpx import\b")
 
 # Rule 2: http_client= call sites + bare-module client construction.
 _HTTP_CLIENT_ARG_RE = re.compile(r"http_client\s*=")
@@ -93,16 +104,54 @@ def _find_sdk_modules(root: Path, scan_roots: tuple[str, ...] = _RULE1_ROOTS) ->
     }
 
 
+def _aliases_imported_from_httpx(text: str) -> set[str]:
+    """Local names bound by ``from httpx import …`` statements (alias-aware).
+
+    Sound approximation: single-line imports and same-line parenthesized
+    lists; multi-line parenthesized lists are out of heuristic scope (same
+    documented-approximation style as Rule 2's same-file heuristic).
+    Non-identifier bindings (``import *``) are ignored.
+    """
+    aliases: set[str] = set()
+    for match in _HTTPX_FROM_IMPORT_RE.finditer(text):
+        line = text[match.end() :].split("\n", 1)[0]
+        for part in line.split(","):
+            part = part.split("#", 1)[0].strip().strip("()").strip()
+            if not part:
+                continue
+            # `HTTPError as HxError` binds the local name HxError.
+            name = part.split()[-1] if " as " in part else part
+            if name.isidentifier():
+                aliases.add(name)
+    return aliases
+
+
 def _find_cross_catch_violations(root: Path) -> list[str]:
-    """Rule 1: bare-httpx exception clauses inside SDK-importing modules."""
+    """Rule 1: bare-httpx exception clauses inside SDK-importing modules.
+
+    Covers both bind forms: attribute access (``except httpx.HTTPError:``)
+    and from-import aliases (``except HTTPError:`` / ``except (HTTPError, …):``).
+    """
     sdk_modules = _find_sdk_modules(root)
-    return _module_violations(
+    findings = _module_violations(
         sorted(sdk_modules),
         root,
         _BARE_HTTPX_EXCEPT_RE,
         _SDK_IMPORT_RE,
         "cross-catch",
     )
+    for path in sorted(sdk_modules):
+        text = path.read_text(encoding="utf-8")
+        for alias in sorted(_aliases_imported_from_httpx(text)):
+            # Bare-name and tuple catch forms both name the alias before the
+            # colon, so one line regex covers `except A:` / `except (A, B):`.
+            alias_except_re = re.compile(
+                rf"^\s*except\b[^:\n]*\b{re.escape(alias)}\b", re.MULTILINE
+            )
+            for match in alias_except_re.finditer(text):
+                line_no = text.count("\n", 0, match.start()) + 1
+                findings.append(f"cross-catch: {path.relative_to(root)}:{line_no}")
+    return findings
 
 
 def _find_http_client_violations(root: Path, *, exclude: tuple[Path, ...] = ()) -> list[str]:
@@ -190,6 +239,47 @@ def test_rule1_ignores_httpx2_catches(tmp_path: Path) -> None:
     module.write_text(
         "import openai\nimport httpx2\n\n\ndef call() -> None:\n    try:\n        pass\n"
         "    except httpx2.HTTPError:\n        pass\n",
+        encoding="utf-8",
+    )
+    assert _find_cross_catch_violations(tmp_path) == []
+
+
+def test_rule1_detects_from_import_cross_catch(tmp_path: Path) -> None:
+    """``from httpx import HTTPError`` + bare-name catch must be flagged too."""
+    module = tmp_path / "packages/core/fake_sdk_from_import.py"
+    module.parent.mkdir(parents=True)
+    module.write_text(
+        "import openai\nfrom httpx import HTTPError\n\n\ndef call() -> None:\n"
+        "    try:\n        pass\n    except HTTPError:\n        pass\n",
+        encoding="utf-8",
+    )
+    assert _find_cross_catch_violations(tmp_path) == [
+        "cross-catch: packages/core/fake_sdk_from_import.py:8"
+    ]
+
+
+def test_rule1_detects_from_import_tuple_catch(tmp_path: Path) -> None:
+    """``except (HTTPError, ValueError):`` after a from-import must be flagged."""
+    module = tmp_path / "packages/core/fake_sdk_tuple_catch.py"
+    module.parent.mkdir(parents=True)
+    module.write_text(
+        "import openai\nfrom httpx import HTTPError, RequestError\n\n\n"
+        "def call() -> None:\n    try:\n        pass\n"
+        "    except (HTTPError, ValueError):\n        pass\n",
+        encoding="utf-8",
+    )
+    assert _find_cross_catch_violations(tmp_path) == [
+        "cross-catch: packages/core/fake_sdk_tuple_catch.py:8"
+    ]
+
+
+def test_rule1_ignores_httpx2_from_import_catches(tmp_path: Path) -> None:
+    """``from httpx2 import HTTPError`` + bare-name catch is CORRECT — stays clean."""
+    module = tmp_path / "packages/core/fake_sdk_httpx2_from_import.py"
+    module.parent.mkdir(parents=True)
+    module.write_text(
+        "import openai\nfrom httpx2 import HTTPError\n\n\ndef call() -> None:\n"
+        "    try:\n        pass\n    except HTTPError:\n        pass\n",
         encoding="utf-8",
     )
     assert _find_cross_catch_violations(tmp_path) == []

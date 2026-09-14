@@ -10,6 +10,8 @@ import json
 import re
 from typing import TYPE_CHECKING
 
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
 from tests.e2e.test_helpers_wizard import (  # re-export for backward compat
     _complete_wizard_to_editor as _complete_wizard_to_editor,
 )
@@ -201,6 +203,32 @@ def _setup_auth_proxy(page: Page, access_token: str) -> None:
             route.continue_(headers=headers)
 
     page.route("**/api/v1/**", _proxy_with_auth)
+
+
+# ---------------------------------------------------------------------------
+# Page reload helper
+# ---------------------------------------------------------------------------
+
+
+def reload_page(page: Page, timeout: int = 30000) -> None:
+    """Reload the current page with one retry on goto timeout.
+
+    Mitigates the documented page-load hang class of the Next.js dev proxy
+    (see tests/e2e/conftest.py "KNOWN ISSUES / WORKAROUNDS" and the
+    ``route.fetch()`` shields in this module): a bare ``page.goto(page.url)``
+    reload intermittently never reaches the ``load`` event although the app
+    itself is healthy — the CI flake in
+    ``test_delete_chapter_via_api_and_sidebar_updates`` showed exactly this
+    signature (30s goto timeout on a mid-test reload while all sibling tests
+    stayed green). One retry after a brief backoff absorbs the transient
+    proxy stall; a second timeout still raises so real regressions are not
+    masked.
+    """
+    try:
+        page.goto(page.url, timeout=timeout)
+    except PlaywrightTimeoutError:
+        page.wait_for_timeout(2000)
+        page.goto(page.url, timeout=timeout)
 
 
 # ---------------------------------------------------------------------------
