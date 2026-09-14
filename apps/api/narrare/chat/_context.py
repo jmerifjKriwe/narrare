@@ -193,7 +193,9 @@ async def resolve_chat_kb_vars(
 
     # kb_other catch-all: fetch the raw entries and render every type the
     # bundle does not carry (mirrors the writing seam's tier-3 ``other``
-    # bucket, without chat-irrelevant tier budgets).
+    # bucket). Chat adds no seam-side budget; the render is bounded at the
+    # core formatter's DEFAULT_MAX_ENTITIES count cap with an LLM-visible
+    # omission marker (never a silent drop — CR-AUFG-04-04).
     entries = await kb_context_provider.fetch_entities(novel_id)
     other_entities = [
         kb_entry_to_kb_entity(entry)

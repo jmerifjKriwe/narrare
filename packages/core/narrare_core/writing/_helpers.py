@@ -8,7 +8,7 @@ These are pure data transformations — no I/O, no DB, no LLM calls.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from narrare_core.context._kb_envelope import OmissionReason, ProvenanceField, RenderedKBContext
 from narrare_core.context._provenance_annotation import (
@@ -157,8 +157,25 @@ _COMPACT_ENTITY_OMISSIONS: tuple[tuple[ProvenanceField, OmissionReason], ...] = 
 )
 
 
+#: Hard cap on rendered entities — chat ``kb_other`` budget follow-up,
+#: mirroring the R1 relationship-cap precedent
+#: (:data:`~narrare_core.writing._relationship_format.DEFAULT_MAX_RELATIONSHIP_EDGES`):
+#: count-based cap at the core formatter so every caller (writing seams,
+#: ADR-067 provider slots, chat ``kb_other``) inherits it uniformly.
+#: 50 (not 100): an entity block renders ``### Type: Name`` plus the full
+#: KB body — several times a one-line relationship edge — so the same
+#: unbudgeted-context token ceiling is reached at roughly half the count.
+#: RULE-18: ``Final`` marks this as a pinned domain ceiling, not
+#: configuration; no settings key this slice — callers override via
+#: ``format_entities(max_entities=...)``.
+DEFAULT_MAX_ENTITIES: Final[int] = 50
+
+
 def format_entities(
-    entities: list[KBEntity], *, options: RenderOptions | None = None
+    entities: list[KBEntity],
+    *,
+    options: RenderOptions | None = None,
+    max_entities: int | None = None,
 ) -> RenderedKBContext:
     """Format entities as a readable text block with provenance accounting.
 
@@ -172,6 +189,14 @@ def format_entities(
     ``omitted_fields`` to ``preserved_fields`` (RULE-22). When ``options``
     is ``None`` (default) the output is byte-for-byte identical to the
     pre-annotation behaviour.
+
+    Output is capped at :data:`DEFAULT_MAX_ENTITIES` rendered entity
+    blocks (overridable per call via ``max_entities``), mirroring
+    :func:`~narrare_core.writing._relationship_format.format_relationships`.
+    Above the cap, a deterministic first-N slice in caller order is
+    rendered plus an omission marker block; ``entry_count`` always reports
+    the TOTAL pre-cap entity count (metadata = KB truth). The cap and
+    marker never raise (RULE-11).
     """
     render_path = "narrare_core.writing._helpers.format_entities"
     if not entities:
@@ -183,10 +208,14 @@ def format_entities(
             render_path=render_path,
         )
 
+    cap = DEFAULT_MAX_ENTITIES if max_entities is None else max_entities
+    total = len(entities)
+    rendered_entities = entities[:cap]
+
     annotate = options is not None and options.annotate_provenance
     parts: list[str] = []
     annotations: list[ProvenanceAnnotation] = []
-    for entity in entities:
+    for entity in rendered_entities:
         header = f"### {entity.entity_type.title()}: {entity.name}"
         if annotate:
             ann = compute_provenance_annotation(
@@ -200,16 +229,20 @@ def format_entities(
                 header = f"{header} {ann.bracket}"
         parts.append(f"{header}\n{entity.content}")
 
+    omitted = total - len(rendered_entities)
+    if omitted > 0:
+        parts.append(f"[… {omitted} more entities omitted]")
+
     if annotate:
         return _build_accounted_result(
-            parts, annotations, _COMPACT_ENTITY_OMISSIONS, len(entities), render_path
+            parts, annotations, _COMPACT_ENTITY_OMISSIONS, total, render_path
         )
 
     return RenderedKBContext(
         text="\n\n".join(parts),
         preserved_fields=frozenset(),
         omitted_fields=_COMPACT_ENTITY_OMISSIONS,
-        entry_count=len(entities),
+        entry_count=total,
         render_path=render_path,
     )
 

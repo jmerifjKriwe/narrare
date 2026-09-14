@@ -210,6 +210,29 @@ class TestResolveChatKbVars:
         assert set(kb_vars) == CHAT_KB_VARS_KEYS
         assert all(value == "" for value in kb_vars.values())
 
+    async def test_kb_other_inherits_formatter_count_cap(self) -> None:
+        """kb_other renders through the capped formatter: >cap → marker.
+
+        The seam passes no override, so the formatter default applies —
+        chat's kb_other catch-all is no longer uncapped (budget follow-up).
+        """
+        from narrare.chat._context import resolve_chat_kb_vars
+
+        provider = FakeKbContextProvider(
+            bundle=sentinel_bundle(),
+            entries=[entry("system", f"System {i:03d}", f"Body {i:03d}.") for i in range(55)],
+        )
+
+        kb_vars = await resolve_chat_kb_vars(
+            kb_context_provider=provider,
+            novel_id=uuid4(),
+        )
+
+        assert kb_vars is not None
+        assert "[… 5 more entities omitted]" in kb_vars["kb_other"]
+        assert "System 049" in kb_vars["kb_other"]
+        assert "System 050" not in kb_vars["kb_other"]
+
     async def test_no_provider_returns_none(self) -> None:
         """Unwired provider (test contexts) → ``None`` → or-{} no-op spread."""
         from narrare.chat._context import resolve_chat_kb_vars
