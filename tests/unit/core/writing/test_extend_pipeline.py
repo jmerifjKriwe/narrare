@@ -155,7 +155,10 @@ class TestWordTarget:
         _setup_stream(mock_registry)
         await _collect(pipeline.generate(_req(word_target=200), config=CONFIG))
         ctx = mock_composer.build.call_args.args[1]
-        assert ctx.extra["word_target"] == "200"
+        # Word-target migration: the extend template renders its target via
+        # {{extend_length}} — the bare {{word_target}} extra is no longer
+        # referenced and is not supplied (no supplied-but-unrendered data).
+        assert "word_target" not in ctx.extra
         assert ctx.extra["extend_length"] == "200"
 
     @pytest.mark.asyncio
@@ -165,7 +168,7 @@ class TestWordTarget:
         _setup_stream(mock_registry)
         await _collect(pipeline.generate(_req(), config=CONFIG))
         ctx = mock_composer.build.call_args.args[1]
-        assert ctx.extra["word_target"] == "400"
+        assert "word_target" not in ctx.extra
         assert ctx.extra["extend_length"] == "400"
 
 

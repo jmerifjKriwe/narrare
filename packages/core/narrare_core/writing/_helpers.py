@@ -108,6 +108,20 @@ def word_target_line(value: int | None, *, label: str) -> str:
     return f"\n{label}{value}"
 
 
+def context_bullet(value: str, label: str) -> str:
+    """Build a full leading Context bullet (label-in-value).
+
+    The template placeholder starts a line, so a populated value carries
+    the bullet label plus a trailing newline (``"- Genre: Fantasy\\n"``)
+    and an empty value renders ``""`` — byte-identical to a template
+    without the bullet, so an unset value can never leave a dangling
+    label. Label phrasing is per-template.
+    """
+    if not value:
+        return ""
+    return f"{label}{value}\n"
+
+
 _KB_CONTEXT_EXTRA_FIELDS: tuple[str, ...] = (
     "kb_characters",
     "kb_locations",

@@ -25,7 +25,7 @@ from narrare_core.agents.writing_graph_types import Approved, NeedsRevision
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import ConfigurationError
-from narrare_core.writing._helpers import word_target_line
+from narrare_core.writing._helpers import context_bullet, word_target_line
 from narrare_core.writing.models import WritingContext
 
 if TYPE_CHECKING:
@@ -89,21 +89,6 @@ async def get_or_create_agent(
 # ---------------------------------------------------------------------------
 # Prompt context builder
 # ---------------------------------------------------------------------------
-
-
-def _context_bullet(value: str, label: str) -> str:
-    """Build a full leading Context bullet (label-in-value).
-
-    Leading-line twin of ``writing._helpers.word_target_line``: the template
-    placeholder starts a line, so a populated value carries the bullet label
-    plus a trailing newline (``"- Genre: Fantasy\\n"``) and an empty value
-    renders ``""`` — byte-identical to a template without the bullet, so an
-    unset value can never leave a dangling label. Label phrasing is
-    per-template, exactly as ``word_target_line`` carries its own.
-    """
-    if not value:
-        return ""
-    return f"{label}{value}\n"
 
 
 def _base_context(deps: WritingDeps, state: WritingState) -> PromptContext:
@@ -253,11 +238,11 @@ async def get_review_prompt(
     # unset → the line renders away, no dangling "- Project: " / "- Genre: "
     # label). Genre comes from deps ("" by default); the title is
     # best-effort from the assembled WritingContext metadata tier.
-    context.project_title = _context_bullet(
+    context.project_title = context_bullet(
         writing_context.project_title if writing_context else "",
         "- Project: ",
     )
-    context.genre = _context_bullet(deps.genre, "- Genre: ")
+    context.genre = context_bullet(deps.genre, "- Genre: ")
 
     # FO-8: the governed composer route for the analysis/en/review template
     # is ANALYSE + mode="review" — BETA_READ does not allow mode="review"

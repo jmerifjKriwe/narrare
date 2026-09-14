@@ -67,7 +67,6 @@ async def stream_extend(
         **kb_context_extras(context),
         "recent_chapters": context.recent_chapters,
         "character_voice_profiles": context.character_voice_profiles,
-        "word_target": str(word_target),
         "tone_instructions": tone_instr,
         "writing_language": context.writing_language,
         "extend_length": str(word_target),

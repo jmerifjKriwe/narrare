@@ -73,7 +73,6 @@ class TestWritingContextPromptVariables:
             "genre",
             "tone",
             "writing_language",
-            "word_target",
             "user_preferences",
             "avoidance_patterns",
             "cross_session_context",

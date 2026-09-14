@@ -184,7 +184,6 @@ class WritingContext:
             "genre": self.genre,
             "tone": self.tone,
             "writing_language": self.writing_language,
-            "word_target": str(self.word_target) if self.word_target else "",
             "user_preferences": self.user_preferences,
             "avoidance_patterns": self.avoidance_patterns,
             "cross_session_context": self.cross_session_context,
