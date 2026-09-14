@@ -3,12 +3,16 @@
 Tests the session-to-repository wiring, the system-mode factory
 closure, and the async factory functions that wire core wiki deps.
 
-Task 6 user-routing migration: ``get_wiki_service`` resolves via the
+Task 6 user-routing migration: ``get_wiki_service`` routes via the
 per-user ``ModelRoutingResolver`` cascade (real intent SUMMARIZE, with
 the novel_id project tier — all wiki routes are novel-scoped), and
 ``build_core_wiki_service`` serves two planes: user plane (resolved
 config + credentials) and operator plane (system default, reserved for
 the startup wiki listener in ``_app/lifespan.py``).
+
+ADR-086 L30: the user plane's resolve + core-service assembly are
+LAZY — the factory threads a ``core_service_factory`` closure into
+``APIWikiService`` and performs no resolution at construction.
 """
 
 from __future__ import annotations
@@ -248,14 +252,16 @@ class TestBuildCoreWikiService:
 
 
 class TestGetWikiServiceUserRouting:
-    """get_wiki_service resolves via the cascade (SUMMARIZE, project tier)."""
+    """get_wiki_service wires LAZY resolution (SUMMARIZE, project tier)."""
 
-    async def test_resolves_summarize_for_user_with_project_tier(self) -> None:
-        """The user-facing factory resolves SUMMARIZE for user + novel.
+    async def test_wires_lazy_resolution_and_resolves_verbatim_on_first_use(self) -> None:
+        """The factory defers: 0 resolves at construction (ADR-086).
 
-        All wiki routes are novel-scoped, so the novel_id path parameter
-        IS available at dependency-wiring time and threads into resolve()
-        as the cascade's project tier.
+        FastAPI solves sub-dependencies before body validation, so the
+        cascade must NOT run here. The threaded ``core_service_factory``
+        closure resolves SUMMARIZE with the user + novel project tier
+        (args verbatim vs the eager world) and assembles the core
+        service with the resolved credentials — on FIRST use only.
         """
         mock_session = AsyncMock(spec=AsyncSession)
         user_id = str(uuid4())
@@ -280,10 +286,17 @@ class TestGetWikiServiceUserRouting:
             patch("narrare.kb.repository.KBRepository"),
             patch("narrare.kb.relationship_repository.RelationshipRepository"),
             patch("narrare.wiki.repository.WikiRepository"),
-            patch("narrare.wiki.chapter_service.ChapterWikiService"),
-            patch("narrare.wiki.service.APIWikiService"),
+            patch("narrare.wiki.service.APIWikiService") as mock_api_svc_cls,
         ):
             await get_wiki_service(novel_id=novel_id, session=mock_session, user_id=user_id)
+
+            # ADR-086: nothing resolves or assembles at construction.
+            resolver.resolve.assert_not_awaited()
+            mock_build_core.assert_not_awaited()
+
+            # First use: the threaded closure resolves verbatim + builds.
+            factory_fn = mock_api_svc_cls.call_args.kwargs["core_service_factory"]
+            await factory_fn()
 
         resolver.resolve.assert_awaited_once_with(LLMIntent.SUMMARIZE, UUID(user_id), novel_id)
         mock_build_core.assert_awaited_once_with(
@@ -300,11 +313,12 @@ class TestGetWikiService:
     async def test_wires_all_dependencies_and_returns_api_service(self) -> None:
         """get_wiki_service creates APIWikiService with all deps wired.
 
-        Tests that all repositories, chapter service, and core
-        service are created and passed to APIWikiService correctly.
+        Tests that all repositories and the lazy core-service factory
+        are created and passed to APIWikiService correctly. The chapter
+        service is NOT built here — it composes at first chapter AI use
+        (ADR-086 L30), so the factory passes ``chapter_wiki_service=None``.
         """
         mock_session = AsyncMock(spec=AsyncSession)
-        mock_core_service = MagicMock(spec=FakeCoreWikiService)
         resolver, _resolved = _fake_resolver()
 
         with (
@@ -315,8 +329,7 @@ class TestGetWikiService:
             patch(
                 "narrare.wiki.dependencies.build_core_wiki_service",
                 new_callable=AsyncMock,
-                return_value=mock_core_service,
-            ),
+            ) as mock_build_core,
             patch(
                 "narrare._app.dependencies.get_invocation_pipeline",
                 return_value=MagicMock(spec=True, name="InvocationPipeline"),
@@ -326,37 +339,33 @@ class TestGetWikiService:
             patch("narrare.kb.repository.KBRepository") as mock_kb_repo_cls,
             patch("narrare.kb.relationship_repository.RelationshipRepository") as mock_rel_repo_cls,
             patch("narrare.wiki.repository.WikiRepository") as mock_wiki_repo_cls,
-            patch("narrare.wiki.chapter_service.ChapterWikiService") as mock_chapter_svc_cls,
             patch("narrare.wiki.service.APIWikiService") as mock_api_svc_cls,
         ):
-            mock_chapter_svc = mock_chapter_svc_cls.return_value
             mock_api_svc = mock_api_svc_cls.return_value
 
             result = await get_wiki_service(
                 novel_id=uuid4(), session=mock_session, user_id=str(uuid4())
             )
 
-            # Verify ChapterWikiService constructed with correct deps
-            mock_chapter_svc_cls.assert_called_once_with(
-                wiki_repo=mock_wiki_repo_cls.return_value,
-                novel_repo=mock_novel_repo_cls.return_value,
-                chapter_repo=mock_chapter_repo_cls.return_value,
-                core_wiki_service=mock_core_service,
-            )
+            # Verify APIWikiService constructed with all deps + the lazy
+            # core-service factory (eager core and chapter service must
+            # both be absent — ADR-086 L30).
+            mock_api_svc_cls.assert_called_once()
+            kwargs = mock_api_svc_cls.call_args.kwargs
+            assert kwargs["session"] is mock_session
+            assert kwargs["wiki_repo"] is mock_wiki_repo_cls.return_value
+            assert kwargs["kb_repo"] is mock_kb_repo_cls.return_value
+            assert kwargs["novel_repo"] is mock_novel_repo_cls.return_value
+            assert kwargs["relationship_repo"] is mock_rel_repo_cls.return_value
+            assert kwargs["chapter_wiki_service"] is None
+            assert kwargs["chapter_repo"] is mock_chapter_repo_cls.return_value
+            assert kwargs["model_registry"] is None
+            assert kwargs["model_routing_resolver"] is None
+            assert kwargs["system_mode"] is False
+            assert callable(kwargs["core_service_factory"])
+            assert "core_wiki_service" not in kwargs
 
-            # Verify APIWikiService constructed with all deps
-            mock_api_svc_cls.assert_called_once_with(
-                session=mock_session,
-                wiki_repo=mock_wiki_repo_cls.return_value,
-                kb_repo=mock_kb_repo_cls.return_value,
-                novel_repo=mock_novel_repo_cls.return_value,
-                relationship_repo=mock_rel_repo_cls.return_value,
-                core_wiki_service=mock_core_service,
-                chapter_wiki_service=mock_chapter_svc,
-                chapter_repo=mock_chapter_repo_cls.return_value,
-                model_registry=None,
-                model_routing_resolver=None,
-                system_mode=False,
-            )
+            # Nothing eager happened behind the factory's back.
+            mock_build_core.assert_not_awaited()
 
             assert result is mock_api_svc

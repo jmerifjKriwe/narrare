@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (27):**
+**Open (26):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -341,7 +341,12 @@ at construction (2026-09-09; factory function names verified):
 27. [ ] `series/dependencies_context_preview.py` — `get_series_history_preview_service` (+ eager `get_resolved_limits`)
 28. [ ] `series/dependencies_voice.py` — `get_series_voice_service`
 29. [ ] `series/dependencies_voice_drift.py` — `get_series_voice_drift_service`
-30. [ ] `wiki/dependencies.py` — `get_wiki_service`
+30. [x] `wiki/dependencies.py` — `get_wiki_service`
+       *(B2/L30 — landed 2026-09-14: lazy wiring + first-use core-service
+       composition (REST — no SSE pre-header needed);
+       ChapterWikiService construction deferred to first chapter AI use;
+       generation helpers split to `generation_support.py` for the
+       RULE-04 size limit the lazy seam crossed)*
 31. [ ] `writing/deps_coauthor.py` — `get_coauthor_service` (+ eager `get_resolved_limits`)
 32. [ ] `writing/deps_extend.py` — `get_extend_service` (+ eager `get_resolved_limits`)
 33. [ ] `writing/deps_rewrite.py` — `get_rewrite_service` (+ eager `get_resolved_limits`)

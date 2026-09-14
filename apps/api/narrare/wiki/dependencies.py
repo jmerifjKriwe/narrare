@@ -5,10 +5,15 @@ required dependencies wired up following the pattern from kb/dependencies.py.
 Two factories: user-facing (normal ownership checks) and system (bypassed).
 
 Model planes (Task 6 user-routing migration):
-- ``get_wiki_service`` (user-facing refresh path) resolves via the
+- ``get_wiki_service`` (user-facing refresh path) routes via the
   per-user model-routing cascade — real intent SUMMARIZE (the intent
   core ``WikiService`` composes with at both call sites) — with the
-  novel_id project tier (all wiki routes are novel-scoped).
+  novel_id project tier (all wiki routes are novel-scoped). ADR-086
+  L30: the cascade resolve + core-service assembly are LAZY — the
+  factory threads a ``core_service_factory`` closure into the service
+  and performs NO resolution at construction (FastAPI solves all
+  sub-dependencies BEFORE body validation, so an eager resolve here
+  would preempt legitimate 422s).
 - ``build_core_wiki_service`` with ``config=None`` stays on the operator
   plane (system-default config): it serves the STARTUP wiki listener in
   ``_app/lifespan.py``, where no user context exists. Plan-sanctioned
@@ -29,7 +34,10 @@ from narrare._app.dependencies import (
     get_current_user_id,
     get_invocation_pipeline,
 )
-from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.dependencies_services import (
+    LazyModelResolution,
+    get_model_routing_resolver,
+)
 from narrare.wiki.dependencies_core import build_core_wiki_service
 from narrare_core.llm.intents import LLMIntent
 
@@ -66,39 +74,39 @@ async def get_wiki_service(
     intent core ``WikiService`` composes with) via the per-user cascade
     WITH the novel_id project tier — every wiki route is novel-scoped, so
     the path parameter is available at dependency-wiring time.
-    ``ConfigurationError`` propagates when the user has no provider
-    configured (wiki routers are auth-mandatory).
+    ADR-086: the cascade resolves on the service's FIRST AI use via the
+    threaded ``core_service_factory`` closure — NOT here (construction
+    happens pre-body-validation). ``ConfigurationError`` still propagates
+    loudly at first use (wiki routers are auth-mandatory).
 
-    Production wiring: WikiGenerationAgent for core WikiService,
-    NullEventBus for event publishing, invocation pipeline for
-    evidence recording (ADR-048), and all repositories
-    for data access.  Uses normal ownership checks (system_mode=False).
+    Production wiring: a lazily composed core service (WikiGenerationAgent
+    via PreparedWikiAgent, NullEventBus, invocation pipeline for evidence
+    recording — ADR-048), and all repositories for data access. Uses
+    normal ownership checks (system_mode=False). The chapter wiki
+    service composes at first chapter AI use (service-side).
     """
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
-    from narrare.wiki.chapter_service import ChapterWikiService
     from narrare.wiki.repository import WikiRepository
     from narrare.wiki.service import APIWikiService
 
     resolver = get_model_routing_resolver(session)
-    resolved = await resolver.resolve(LLMIntent.SUMMARIZE, UUID(user_id), novel_id)
-
+    model_resolution = LazyModelResolution(
+        lambda: resolver.resolve(LLMIntent.SUMMARIZE, UUID(user_id), novel_id)
+    )
     pipeline = get_invocation_pipeline()
-    core_service = await build_core_wiki_service(
-        invocation_pipeline=pipeline,
-        config=resolved.config,
-        api_key=resolved.api_key,
-        base_url=resolved.base_url,
-    )
 
-    chapter_wiki_svc = ChapterWikiService(
-        wiki_repo=WikiRepository(session),
-        novel_repo=NovelRepository(session),
-        chapter_repo=ChapterRepository(session),
-        core_wiki_service=core_service,
-    )
+    async def compose_core_service() -> WikiServiceProtocol:
+        """Resolve + assemble the core WikiService on first use (ADR-086)."""
+        resolved = await model_resolution.resolve()
+        return await build_core_wiki_service(
+            invocation_pipeline=pipeline,
+            config=resolved.config,
+            api_key=resolved.api_key,
+            base_url=resolved.base_url,
+        )
 
     return APIWikiService(
         session=session,
@@ -106,8 +114,8 @@ async def get_wiki_service(
         kb_repo=KBRepository(session),
         novel_repo=NovelRepository(session),
         relationship_repo=RelationshipRepository(session),
-        core_wiki_service=core_service,
-        chapter_wiki_service=chapter_wiki_svc,
+        core_service_factory=compose_core_service,
+        chapter_wiki_service=None,
         chapter_repo=ChapterRepository(session),
         model_registry=None,
         model_routing_resolver=None,
