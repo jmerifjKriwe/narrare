@@ -58,6 +58,8 @@ class WritingDeps:
         chapter_content: Vorhandener Kapitel-Content.
         chapter_outline: Outline.
         genre: Genre.
+        project_title: Project/novel title (prompt context; supplied by
+            the API seam from the owned novel, mirroring ``genre``).
         word_target: Zielwortzahl.
         tone: Tonfall.
         language: Sprache.
@@ -78,6 +80,7 @@ class WritingDeps:
     chapter_content: str = ""
     chapter_outline: str = ""
     genre: str = ""
+    project_title: str = ""
     word_target: int | None = None
     tone: str = "balanced"
     language: str = "en"

@@ -176,6 +176,7 @@ class TestStreamViaWritingGraph:
         assert deps.chapter_content == context.chapter_content
         assert deps.chapter_outline == context.chapter_outline
         assert deps.genre == context.genre
+        assert deps.project_title == context.project_title
         assert deps.word_target == request.word_target
         assert deps.tone == context.tone
         assert deps.writing_language == context.writing_language
@@ -231,6 +232,10 @@ class TestRunWithPersistence:
         assert len(chunks) == 1
         assert chunks[0].text == "Final output"
         assert chunks[0].is_final is True
+        # project_title supply pin (genre mirror): the persistence path
+        # must thread WritingContext.project_title into WritingDeps too.
+        deps: WritingDeps = graph.run.call_args.kwargs["deps"]
+        assert deps.project_title == "Test Novel"
 
     @pytest.mark.asyncio
     async def test_with_store_and_run_id_loads_state(

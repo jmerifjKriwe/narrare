@@ -98,7 +98,13 @@ def _base_context(deps: WritingDeps, state: WritingState) -> PromptContext:
         writing_language=deps.writing_language,
         genre=deps.genre,
         tone=deps.tone,
-        project_title="",
+        # Genre-mirror supply (project_title follow-up): the title rides
+        # the same deps rail as genre — API seam → pipeline context →
+        # WritingDeps — carried plainly here because template-owned
+        # labels (e.g. new_chapter's ``- Project: {{project_title}}``
+        # line) render the raw value; only the review supplier wraps it
+        # in a label-in-value bullet below.
+        project_title=deps.project_title,
         chapter_title=state.outline[:100] if state.outline else "",
     )
     # Enable preference auto-injection via PromptComposer
@@ -236,10 +242,13 @@ async def get_review_prompt(
     # Review-dangles fix (2026-09-13): the leading Context bullets are
     # label-in-value too — the supplier builds the full bullet ("" when
     # unset → the line renders away, no dangling "- Project: " / "- Genre: "
-    # label). Genre comes from deps ("" by default); the title is
-    # best-effort from the assembled WritingContext metadata tier.
+    # label). Genre comes from deps ("" by default). The title prefers
+    # deps (genre mirror — populated from the owned novel where deps are
+    # constructed) with the assembled WritingContext metadata tier as the
+    # best-effort fallback (data-fetching assemblers, ws_context_assembler
+    # precedent).
     context.project_title = context_bullet(
-        writing_context.project_title if writing_context else "",
+        deps.project_title or (writing_context.project_title if writing_context else ""),
         "- Project: ",
     )
     context.genre = context_bullet(deps.genre, "- Genre: ")
