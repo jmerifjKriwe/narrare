@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (21):**
+**Open (20):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -367,7 +367,16 @@ at construction (2026-09-09; factory function names verified):
 23. [ ] `planning/_timeline_consistency_factory.py` — `get_timeline_consistency_service`
 24. [ ] `planning/_timeline_extraction_factory.py` — `get_timeline_extraction_service`
 25. [ ] `series/dependencies.py` — `build_band_summary_service` (+ eager `get_resolved_limits`)
-26. [ ] `series/dependencies_consistency.py` — `get_series_consistency_service`
+26. [x] `series/dependencies_consistency.py` — `get_series_consistency_service`
+       *(D1/L26 — landed 2026-09-14: lazy wiring + first-use resolve after the
+       series-ownership + novel-membership gates and BEFORE the
+       no-canon/no-prose graceful early exit, so an unconfigured provider
+       stays a loud 400 even on the degradation path (REST — no SSE
+       pre-header needed); the dead ``config=None → NotFoundError`` branch
+       was removed with the ctor swap; shared-chain caveat: the check
+       endpoint's drift-persistence factory chains the still-eager
+       voice-drift factory — its eager resolve keeps the endpoint at
+       400-before-422 for unconfigured users until L29 lands)*
 27. [ ] `series/dependencies_context_preview.py` — `get_series_history_preview_service` (+ eager `get_resolved_limits`)
 28. [ ] `series/dependencies_voice.py` — `get_series_voice_service`
 29. [ ] `series/dependencies_voice_drift.py` — `get_series_voice_drift_service`

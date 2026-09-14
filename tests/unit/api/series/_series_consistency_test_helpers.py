@@ -21,12 +21,14 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.series.series_consistency_service import SeriesConsistencyService
 from narrare_core.agents.series_consistency_types import (
     CanonConflict,
     SeriesConsistencyOutput,
 )
 from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
 from tests.fakes.fake_chapter_repo import FakeChapterRepository
 from tests.fakes.fake_kb_scope_repo import FakeScopeKBRepo
@@ -174,9 +176,11 @@ def make_service(
 ]:
     """Build a SeriesConsistencyService wired with fakes + a fake agent factory.
 
-    Task 6d-2: ``config`` / ``api_key`` / ``base_url`` overrides let wiring
-    tests inject the recorded prepare() registry + per-user credentials.
-    The agent factory records the resolved model on ``agent.last_model``.
+    ADR-086 L26: ``config`` / ``api_key`` / ``base_url`` overrides feed a
+    ``StaticModelResolution`` (the fixed-resolution test adapter) — the
+    service resolves the triple from it on first use, exactly as it would
+    from the production ``LazyModelResolution``. The agent factory records
+    the resolved model on ``agent.last_model``.
 
     Returns ``(service, agent, kb_repo, series_repo, novel_repo, chapter_repo)``
     so tests can seed data and assert interactions.
@@ -200,9 +204,14 @@ def make_service(
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
         kb_repo=kb_repo,  # type: ignore[arg-type]
         registry=registry,  # type: ignore[arg-type]
-        config=config or make_config(),
-        api_key=api_key,
-        base_url=base_url,
+        model_resolution=StaticModelResolution(
+            ResolvedModel(
+                config=config or make_config(),
+                api_key=api_key,
+                base_url=base_url,
+                source="unit-test",
+            )
+        ),
         composer=composer,  # type: ignore[arg-type]
         agent_factory=_agent_factory,  # type: ignore[arg-type]
     )

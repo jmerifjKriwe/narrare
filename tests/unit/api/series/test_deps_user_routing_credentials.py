@@ -29,7 +29,9 @@ from uuid import uuid4
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 
 if TYPE_CHECKING:
     from narrare.chapters.contracts import ChapterRepositoryProtocol
@@ -197,10 +199,15 @@ class TestSeriesCredentialsReachResolutionPoint:
             chapter_repo=cast("ChapterRepositoryProtocol", chapter_repo),
             kb_repo=cast("KBRepositoryProtocol", kb_repo),
             registry=cast("ModelRegistry", registry),
-            config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(
+                    config=config,
+                    api_key=_USER_KEY,
+                    base_url=_USER_BASE_URL,
+                    source="unit-test",
+                )
+            ),
             composer=cast("PromptComposer", FakeSeriesConsistencyComposer()),
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
 
         # The sentinel escapes the service's broad RULE-11 error wrapper

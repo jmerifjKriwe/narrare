@@ -27,9 +27,11 @@ from __future__ import annotations
 import uuid
 from unittest.mock import AsyncMock, patch
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.series.series_consistency_service import SeriesConsistencyService
 from narrare_core.agents.series_consistency_types import SeriesConsistencyOutput
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
 from tests.fakes.fake_chapter_repo import FakeChapterRepository
 from tests.fakes.fake_kb_scope_repo import FakeScopeKBRepo
@@ -75,7 +77,9 @@ def _make_service(
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
         kb_repo=kb_repo,  # type: ignore[arg-type]
         registry=FakeSeriesConsistencyRegistry(),  # type: ignore[arg-type]
-        config=make_config(),
+        model_resolution=StaticModelResolution(
+            ResolvedModel(config=make_config(), source="unit-test")
+        ),
         composer=composer,  # type: ignore[arg-type]
     )
 

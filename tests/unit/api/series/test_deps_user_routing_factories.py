@@ -30,7 +30,7 @@ ids). Same documented caveat as ``dependencies_context_preview.py``
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -117,9 +117,9 @@ class TestSeriesVoiceFactoryUserRouting:
 
 
 class TestSeriesConsistencyFactoryUserRouting:
-    """get_series_consistency_service resolves via the cascade (ANALYSE)."""
+    """get_series_consistency_service wires the ANALYSE cascade lazily."""
 
-    async def test_resolves_analyse_for_user_without_project_tier(self) -> None:
+    async def test_wires_analyse_cascade_lazily_for_user_without_project_tier(self) -> None:
         from narrare.series.dependencies_consistency import get_series_consistency_service
         from narrare.series.series_consistency_service import SeriesConsistencyService
 
@@ -150,11 +150,23 @@ class TestSeriesConsistencyFactoryUserRouting:
                 user_id=user_id,
             )
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.ANALYSE, UUID(user_id), None)
+        # ADR-086 lazy wiring: construction resolves nothing.
+        assert resolver.resolve.await_args_list == []
+
         assert isinstance(service, SeriesConsistencyService)
-        assert service._config is resolved.config
-        assert service._api_key == _USER_KEY
-        assert service._base_url == _USER_BASE_URL
+        resolved_model = await service.ensure_resolved()
+
+        # The REAL intent (ANALYSE), for THIS user, WITHOUT a project tier
+        # (the novel id arrives only in the request BODY) — invoked at
+        # first use, not at construction:
+        assert resolver.resolve.await_args_list == [call(LLMIntent.ANALYSE, UUID(user_id), None)]
+
+        # The cascade result lands on the service (threaded onwards to
+        # ModelRegistry.prepare with the credentials).
+        assert resolved_model.config is resolved.config
+        assert resolved_model.config.model_id == "glm-4.7"
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL
 
 
 class TestSeriesVoiceDriftFactoryUserRouting:

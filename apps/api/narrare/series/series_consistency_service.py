@@ -2,14 +2,21 @@
 
 Business logic only (RULE-06): no SQL, no HTTP. Delegates the Canon fetch to
 ``KBRepository.find_canon_for_series`` (Spec 1), the chapter fetch to
-``ChapterRepository.list_by_novel``, the governed system prompt to
-:mod:`narrare.series.series_consistency_prompt`, the runtime-content formatting
-to :mod:`narrare.series.series_consistency_runtime_content`, and the LLM call
-to the :class:`~narrare_core.agents.series_consistency_agent.SeriesConsistencyAgent`
-(Task 1) — agents are the primary LLM surface (RULE-01b). The Canon entries +
+``ChapterRepository.list_by_novel``, and the compose-prepare-run invocation
+assembly to
+:mod:`narrare.series._series_consistency_invocation` (governed prompt via
+:mod:`narrare.series.series_consistency_prompt`, runtime-content formatting
+via :mod:`narrare.series.series_consistency_runtime_content`, LLM call via
+the :class:`~narrare_core.agents.series_consistency_agent.SeriesConsistencyAgent`
+— Task 1; agents are the primary LLM surface, RULE-01b). The Canon entries +
 chapter texts flow as runtime content in the agent run prompt (user channel,
 RULE-02a category 3 — mirroring how analysis agents receive the analysed
 passage and how ``BandSummaryAgent`` receives chapter summaries).
+
+Model acquisition (ADR-086 L26): the per-user routing cascade is injected
+as a ``ModelResolution`` and resolved on first use inside :meth:`check_novel`
+— after the ownership gates, before the graceful early exit — never at
+construction (422-before-400 ordering for invalid request bodies).
 
 This is the *novel-vs-series-Canon* check (cross-novel). It is distinct from
 the per-novel :class:`~narrare.kb.consistency_service.KBConsistencyService`
@@ -31,27 +38,20 @@ Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b)
 See:
     :mod:`narrare.series.series_consistency_contracts` — the Protocol.
     :mod:`narrare.series.series_consistency_schemas` — request/response DTOs.
-    :mod:`narrare.series.series_consistency_prompt` — governed prompt resolution.
-    :mod:`narrare.series.series_consistency_runtime_content` — runtime formatting.
+    :mod:`narrare.series._series_consistency_invocation` — invocation assembly.
     ADR-075 — Series Foundation (Canon KB scope).
+    ADR-086 — lazy model resolution (L26).
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
 
 import structlog
 
-from narrare.series.series_consistency_prompt import resolve_series_consistency_prompt
-from narrare.series.series_consistency_runtime_content import (
-    format_canon_entries,
-    format_run_prompt,
-)
+from narrare.series._series_consistency_invocation import run_series_consistency_invocation
 from narrare.series.series_consistency_schemas import SeriesConsistencyCheckResponse
 from narrare_core.agents.series_consistency_agent import SeriesConsistencyAgent
-from narrare_core.agents.series_consistency_types import SeriesConsistencyDeps
-from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import (
     ConfigurationError,
@@ -64,13 +64,14 @@ if TYPE_CHECKING:
     import uuid
     from collections.abc import Callable
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare.series.contracts import SeriesRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.series.schemas import Series
 
@@ -103,12 +104,10 @@ class SeriesConsistencyService:
         chapter_repo: ChapterRepositoryProtocol,
         kb_repo: KBRepositoryProtocol,
         registry: ModelRegistry,
-        config: ResolvedModelConfig | None = None,
+        model_resolution: ModelResolution,
         composer: PromptComposer | None = None,
         agent_factory: Callable[..., SeriesConsistencyAgent] | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         """Initialise the service with all dependencies injected (RULE-07).
@@ -119,16 +118,14 @@ class SeriesConsistencyService:
             chapter_repo: Chapter prose fetch (``list_by_novel``).
             kb_repo: Canon fetch (``find_canon_for_series`` — Spec 1).
             registry: Model registry for resolving the LLM model instance.
-            config: Resolved analysis model config (None → NotFoundError at
-                check time, mirroring the analysis siblings).
+            model_resolution: Lazy per-user model resolution (ADR-086) —
+                the routing cascade (ANALYSE, ``project_id=None``) resolves
+                on first use, never at construction.
             composer: PromptComposer for the governed series_consistency system
                 prompt (None → ConfigurationError at check time).
             agent_factory: Callable ``(model, system_prompt) -> Agent``.
                 Defaults to the real constructor; tests inject a Fake.
             invocation_pipeline: Optional InvocationPipeline for evidence.
-            api_key: Optional per-user provider API key override (model-routing
-                cascade) — injected into ``ModelRegistry.get_model``.
-            base_url: Optional per-user provider base URL override.
             run_limit_resolver: Optional ADR-045 run-limit resolver; defaults to
                 ``DefaultRunLimitResolver`` (Task 3 wiring).
         """
@@ -137,13 +134,25 @@ class SeriesConsistencyService:
         self._chapter_repo = chapter_repo
         self._kb_repo = kb_repo
         self._registry = registry
-        self._config = config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._composer = composer
         self._agent_factory = agent_factory or _default_agent_factory
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086).
+
+        First call resolves via the injected ``ModelResolution`` and
+        caches the triple; repeat calls return the cached value without
+        re-running the cascade. Errors propagate loudly and are never
+        cached (RULE-11): ``ConfigurationError`` (``NO_AI_PROVIDER``)
+        surfaces as a 400 on this AI-mandatory endpoint.
+        """
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def check_novel(
         self,
@@ -164,6 +173,16 @@ class SeriesConsistencyService:
         novel = await self._novel_repo.get(novel_id)
         if novel is None or novel.series_id != series_id:
             raise ForbiddenError("You do not have access to this series")
+
+        # ADR-086 L26: first-use lazy resolve — the ownership gates above
+        # stay ahead of resolution (eager-world precedence), and resolution
+        # precedes the Canon/chapter fetches and the graceful no-input early
+        # exit, so an unconfigured provider stays a loud 400 even when the
+        # check would degrade to an empty result. The resolved triple flows
+        # into the invocation assembly exactly as the eager factory passed
+        # it (timing-only migration: WHAT unchanged — the eager resolve
+        # applied no sampling overrides — only WHEN).
+        resolved_model = await self.ensure_resolved()
 
         # 3. Fetch Canon entries (Spec 1 — novel_id IS NULL series rows).
         canon_entries = await self._kb_repo.find_canon_for_series(series_id)
@@ -194,8 +213,6 @@ class SeriesConsistencyService:
                 chapter_count=len(chapter_texts),
             )
 
-        if self._config is None:
-            raise NotFoundError("Model config", identifier="no_model_config")
         if self._composer is None:
             raise ConfigurationError(
                 "PromptComposer is not configured for series-consistency analysis.",
@@ -205,50 +222,25 @@ class SeriesConsistencyService:
         language = novel.writing_language or series.writing_language or "en"
 
         try:
-            # 6. Resolve the governed series_consistency system prompt (RULE-02b)
-            #    + format the runtime content (Canon + chapters, user channel).
-            system_prompt = await resolve_series_consistency_prompt(
-                self._composer,
-                self._invocation_pipeline,
+            # 6-8. Compose the governed prompt (Mode 1), prepare the
+            # coherent model triple, and run the agent exactly once —
+            # the invocation assembly lives in the dedicated module
+            # (RULE-04/RULE-06; moved for the size limit the ADR-086
+            # ensure_resolved addition crossed).
+            result = await run_series_consistency_invocation(
+                registry=self._registry,
+                agent_factory=self._agent_factory,
+                composer=self._composer,
+                invocation_pipeline=self._invocation_pipeline,
+                run_limit_resolver=self._run_limit_resolver,
+                resolved_model=resolved_model,
                 novel_title=novel.title,
                 genre=novel.genre,
                 language=language,
                 novel_id=novel_id,
                 user_id=user_id,
-            )
-            formatted_canon = format_canon_entries(canon_entries)
-
-            # 7. Resolve model + instantiate agent (RULE-01b: agents-first).
-            #    Single assembly point (Task 6d — Task 4/5 pattern): model +
-            #    intent-aware runtime settings + usage limits as one
-            #    coherent triple. The per-user provider credentials
-            #    (model-routing cascade) are injected into the resolution
-            #    call.
-            resolved = self._run_limit_resolver.resolve(
-                config=self._config, budget=None, invocation_id=uuid4()
-            )
-            prepared = await self._registry.prepare(
-                self._config,
-                intent=LLMIntent.ANALYSE,
-                usage_limits=resolved.usage_limits,
-                api_key=self._api_key,
-                base_url=self._base_url,
-            )
-            agent = self._agent_factory(prepared.model, system_prompt)
-
-            # 8. Run the agent. Canon entries + chapter texts flow as runtime
-            #    content in the user-channel prompt (RULE-02a category 3);
-            #    SeriesConsistencyDeps carries the same data for validators.
-            deps = SeriesConsistencyDeps(
-                canon_entries=formatted_canon,
+                canon_entries=canon_entries,
                 chapter_texts=chapter_texts,
-                novel_title=novel.title,
-            )
-            result = await agent.run(
-                prompt=format_run_prompt(formatted_canon, chapter_texts),
-                deps=deps,
-                model_settings=prepared.model_settings,
-                usage_limits=prepared.usage_limits,
             )
             logger.info(
                 "series_consistency_complete",
