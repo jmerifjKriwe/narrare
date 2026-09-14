@@ -16,9 +16,11 @@ composition per ``beta_reader_service.py`` with only the data source swapped
   — immaterial at single-chapter scale, spec §4 step 4).
 * **Model** — the service's ``_prepare_model`` replica (ADR-086):
   ``DefaultRunLimitResolver().resolve(...)`` → ``ModelRegistry().prepare(...)``
-  with ``intent=LLMIntent.BETA_READ`` and ``base_url=None``. v1 restriction:
-  ``zai_endpoint`` must be ``general``; ``coding`` is a hard configuration
-  error (spec §4 step 5 / §11-1).
+  with ``intent=LLMIntent.BETA_READ``. Any ``zai_endpoint`` is accepted
+  (PO ruling 2026-09-14) and routed production-faithfully: ``coding`` →
+  the Z.AI coding URL (the literal production stores, ``setup/service.py``),
+  else the provider default general endpoint. Results reflect the model as
+  served by the configured endpoint (spec §11-1).
 * **Execution** — ``run_phase1`` / ``run_phase2`` from
   ``beta_reader_agent_run.py`` (real RULE-11 error wrapping); temperature is
   pinned into the ``ResolvedModelConfig`` AND merged into the run-time
@@ -27,7 +29,9 @@ composition per ``beta_reader_service.py`` with only the data source swapped
 
 Injectable seam: ``model_factory`` replaces the real prepare path so unit
 tests drive the chain with ``TestModel`` (no LLM, spec §6/D8). Dry-run
-composes all prompts with **zero** model calls (spec §6/D8).
+composes all prompts with **zero** model calls (spec §6/D8). Real runs
+refuse e2e_test mode (the provider registry would silently serve
+``TestModel``).
 """
 
 from __future__ import annotations
@@ -58,6 +62,7 @@ from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 from narrare_core.prompts.context import PromptContext
 from narrare_core.prompts.registry import PromptRegistry
+from narrare_core.settings import get_core_settings
 
 if TYPE_CHECKING:
     from pydantic_ai.settings import ModelSettings
@@ -79,6 +84,7 @@ __all__ = [
     "build_deepdive_deps",
     "compose_system_prompt",
     "load_llm_config",
+    "resolve_base_url",
     "with_temperature",
 ]
 
@@ -100,9 +106,26 @@ DEFAULT_LLM_CONFIG_PATH: Path = (
 #: Seam type: prepares the ADR-086 triple for a pinned model config.
 MODEL_FACTORY = Callable[[ResolvedModelConfig], Awaitable[PreparedModelCall]]
 
+#: Z.AI coding-endpoint base URL — the exact literal production stores for
+#: ``zai_endpoint="coding"`` (``apps/api/narrare/setup/service.py``), so eval
+#: runs are production-faithful (PO ruling 2026-09-14, spec §11-1).
+ZAI_CODING_BASE_URL: str = "https://api.z.ai/api/coding/paas/v4"
+
+
+def resolve_base_url(zai_endpoint: str | None) -> str | None:
+    """Production-parity endpoint routing (spec §11-1, PO ruling 2026-09-14).
+
+    ``coding`` → the Z.AI coding URL (a coding-plan key is rejected by the
+    general endpoint); everything else → ``None`` (provider default =
+    general endpoint).
+    """
+    if zai_endpoint == "coding":
+        return ZAI_CODING_BASE_URL
+    return None
+
 
 class EvalConfigError(ValueError):
-    """Raised when the LLM config is unreadable, invalid, or misused."""
+    """Raised when the LLM config is unreadable or invalid."""
 
 
 class EvalLlmConfig(BaseModel):
@@ -118,20 +141,6 @@ class EvalLlmConfig(BaseModel):
     api_key: str = Field(repr=False)
     model: str = Field(min_length=1)
     zai_endpoint: str | None = None
-
-    def validate_endpoint(self) -> None:
-        """Enforce the v1 restriction: zai ``coding`` endpoint is unsupported.
-
-        ``base_url`` stays ``None`` in v1 (spec §4 step 5); supporting the
-        coding URL is backlog (spec §11-1).
-        """
-        if self.provider != "zai":
-            return
-        if self.zai_endpoint not in (None, "", "general"):
-            raise EvalConfigError(
-                f"zai_endpoint={self.zai_endpoint!r} unsupported in v1 — "
-                "only 'general' is supported (spec §4 step 5 / §11-1)"
-            )
 
 
 class EvalCaseResult(BaseModel):
@@ -257,7 +266,7 @@ async def _prepare_model_replica(
         intent=LLMIntent.BETA_READ,
         usage_limits=resolved.usage_limits,
         api_key=llm_config.api_key,
-        base_url=None,
+        base_url=resolve_base_url(llm_config.zai_endpoint),
     )
 
 
@@ -275,9 +284,8 @@ class BetaReaderEvalRunner:
 
     Args:
         manifest: Loaded eval corpus (S1 ``load_eval_corpus``).
-        llm_config: The benchmark config ``llm`` section view. The endpoint
-            restriction is enforced at construction (fail fast — the run
-            must never record a config that cannot execute).
+        llm_config: The benchmark config ``llm`` section view (any
+            ``zai_endpoint`` accepted — PO ruling 2026-09-14, spec §11-1).
         temperature: CLI-pinned temperature (default 0.0, spec §6/D8).
         deepdive_category: Phase-2 deep-dive category (default ``plot``).
         model_factory: Injectable prepare seam for TestModel tests; the
@@ -293,7 +301,6 @@ class BetaReaderEvalRunner:
         deepdive_category: str = DEFAULT_DEEPDIVE_CATEGORY,
         model_factory: MODEL_FACTORY | None = None,
     ) -> None:
-        llm_config.validate_endpoint()
         self._manifest = manifest
         self._llm_config = llm_config
         self._temperature = temperature
@@ -339,6 +346,18 @@ class BetaReaderEvalRunner:
             )
             logger.info("eval_case_dry_run_complete", stem=chapter.stem)
             return result
+
+        if get_core_settings().e2e_test:
+            # Fail fast before any model call: under E2E mode the provider
+            # registry silently substitutes TestModel for every provider, so
+            # a "real" run would record model garbage as a measurement
+            # (observed 2026-09-14 with NARRARE_E2E_TEST=1: instant
+            # TestModel-generated output, zero network). Dry-run is unaffected.
+            raise EvalConfigError(
+                "e2e_test mode is enabled (NARRARE_E2E_TEST): the provider "
+                "registry serves TestModel — real eval runs require "
+                "NARRARE_E2E_TEST=0"
+            )
 
         phase1 = await self._run_phase1(deps, phase1_composed, user_prompt)
         deepdive_deps = build_deepdive_deps(deps, phase1, self._deepdive_category)

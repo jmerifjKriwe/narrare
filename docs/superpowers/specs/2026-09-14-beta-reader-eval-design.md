@@ -129,8 +129,13 @@ cache, DB) is absent.
    replica: `DefaultRunLimitResolver().resolve(...)` → `ModelRegistry().
    prepare(config, intent=BETA_READ, usage_limits=..., api_key=...,
    base_url=None)` (ADR-086 prepared triple). `api_key` lives in-process only.
-   *v1 restriction:* `zai_endpoint` must be `general` (`base_url=None`);
-   `coding` → hard CLI error (open point §11).
+   *Endpoint policy (PO ruling 2026-09-14):* any `zai_endpoint` is accepted
+   and routed production-faithfully — `coding` → the Z.AI coding URL (the
+   literal `setup/service.py` stores), else the provider default general
+   endpoint (rationale + caveat in §11-1). Real runs additionally refuse
+   `e2e_test` mode (`NARRARE_E2E_TEST`): the provider registry serves
+   `TestModel` there, which would record garbage as a measurement
+   (first-run forensics 2026-09-14).
 6. **Phase 1 run** — `BetaReaderAgent(model=prepared.model,
    system_prompt=composed.system)` + `run_phase1(...)` from
    `beta_reader_agent_run.py` (real error wrapping, RULE-11), with
@@ -382,8 +387,14 @@ one real chapter against `config.local.yaml`.
 
 ## 11. Open Points (explicitly undecided)
 
-1. `zai_endpoint=coding` unsupported in v1 (hard error); support = pass the
-   coding URL as `base_url` — backlog.
+1. `zai_endpoint=coding` — **RESOLVED (PO ruling 2026-09-14):** the v1 hard
+   error is lifted; any endpoint is accepted and routed production-faithfully
+   (`coding` → the Z.AI coding URL, the literal `setup/service.py` stores;
+   first real run proved a coding key is rejected by the general endpoint
+   when unrouted). Rationale: the coding plan is the PO's only subscription
+   and production Narrare runs on the same endpoint, so coding-endpoint evals
+   are the production-faithful measurement. Caveat: results reflect the model
+   as served by the coding endpoint.
 2. KB-channel fidelity (kb envelopes, previous-chapter summaries): out of
    scope v1, recorded per-run in `manifest.known_gaps`; revisit if
    header-governance findings implicate the context channels.

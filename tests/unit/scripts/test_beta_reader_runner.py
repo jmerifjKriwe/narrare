@@ -16,10 +16,13 @@ import pytest
 from pydantic_ai.models.test import TestModel
 from scripts.evals.beta_reader_runner import (
     DEFAULT_MAX_TOKENS,
+    ZAI_CODING_BASE_URL,
     BetaReaderEvalRunner,
     EvalLlmConfig,
+    ModelRegistry,
     build_case_deps,
     load_llm_config,
+    resolve_base_url,
     with_temperature,
 )
 from scripts.evals.corpus_source import load_eval_corpus
@@ -255,19 +258,21 @@ class TestTemperatureMerge:
 
 
 class TestEvalLlmConfig:
-    def test_zai_with_coding_endpoint_rejected(self) -> None:
+    def test_zai_with_coding_endpoint_accepted(self) -> None:
+        # PO ruling 2026-09-14: any endpoint accepted (spec §11-1).
         config = make_llm_config(zai_endpoint="coding")
 
-        with pytest.raises(ValueError, match="general"):
-            config.validate_endpoint()
+        assert config.zai_endpoint == "coding"
 
     def test_zai_with_general_endpoint_accepted(self) -> None:
-        make_llm_config(zai_endpoint="general").validate_endpoint()
+        config = make_llm_config(zai_endpoint="general")
 
-    def test_non_zai_ignores_endpoint(self) -> None:
-        config = make_llm_config(provider="openai", zai_endpoint="coding")
+        assert config.zai_endpoint == "general"
 
-        config.validate_endpoint()  # must not raise
+    def test_zai_with_missing_endpoint_accepted(self) -> None:
+        config = make_llm_config(zai_endpoint=None)
+
+        assert config.zai_endpoint is None
 
 
 class TestLoadLlmConfig:
@@ -281,6 +286,14 @@ class TestLoadLlmConfig:
         assert config.model == "glm-5.3-flash"
         assert config.zai_endpoint == "general"
 
+    def test_loads_coding_endpoint_config(self, tmp_path: Path) -> None:
+        path = tmp_path / "config.local.yaml"
+        path.write_text(LLM_YAML.replace("general", "coding"), encoding="utf-8")
+
+        config = load_llm_config(path)
+
+        assert config.zai_endpoint == "coding"
+
     def test_missing_file_raises(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match=r"unreadable|missing"):
             load_llm_config(tmp_path / "nope.yaml")
@@ -293,7 +306,71 @@ class TestLoadLlmConfig:
             load_llm_config(path)
 
 
-class TestEndpointRestrictionAtConstruction:
-    def test_runner_construction_rejects_coding_endpoint(self, manifest: Any) -> None:
-        with pytest.raises(ValueError, match="general"):
-            make_runner(manifest, llm_overrides={"zai_endpoint": "coding"})
+class TestEndpointAtConstruction:
+    def test_runner_construction_accepts_coding_endpoint(self, manifest: Any) -> None:
+        # PO ruling 2026-09-14: any zai_endpoint accepted (spec §11-1).
+        runner, _ = make_runner(manifest, llm_overrides={"zai_endpoint": "coding"})
+
+        assert runner is not None
+
+
+class TestResolveBaseUrl:
+    def test_coding_endpoint_maps_to_production_coding_url(self) -> None:
+        # The literal production stores (apps/api/narrare/setup/service.py).
+        assert resolve_base_url("coding") == "https://api.z.ai/api/coding/paas/v4"
+
+    def test_general_and_missing_endpoint_use_provider_default(self) -> None:
+        assert resolve_base_url("general") is None
+        assert resolve_base_url(None) is None
+
+    @pytest.mark.asyncio
+    async def test_default_factory_routes_coding_endpoint(
+        self, manifest: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        captured: list[dict[str, Any]] = []
+        prepared_queue = [make_prepared(make_phase1_args()), make_prepared(make_phase2_args())]
+
+        async def fake_prepare(self: Any, config: Any, **kwargs: Any) -> Any:
+            captured.append(kwargs)
+            return prepared_queue.pop(0)
+
+        monkeypatch.setattr(ModelRegistry, "prepare", fake_prepare)
+        runner = BetaReaderEvalRunner(
+            manifest=manifest,
+            llm_config=make_llm_config(zai_endpoint="coding"),
+        )
+
+        await runner.run_case(manifest.chapters[0])
+
+        assert captured
+        assert all(kw["base_url"] == ZAI_CODING_BASE_URL for kw in captured)
+
+
+class TestE2eModeGuard:
+    """Real runs must refuse e2e_test mode — the registry serves TestModel
+    there, silently recording garbage as a measurement (observed 2026-09-14)."""
+
+    @pytest.fixture
+    def e2e_mode(self, monkeypatch: pytest.MonkeyPatch):
+        from narrare_core.settings import get_core_settings
+
+        monkeypatch.setenv("NARRARE_E2E_TEST", "1")
+        get_core_settings.cache_clear()
+        yield
+        get_core_settings.cache_clear()
+
+    @pytest.mark.asyncio
+    async def test_real_run_refuses_e2e_mode(self, manifest: Any, e2e_mode: None) -> None:
+        runner, _ = make_runner(manifest)
+
+        with pytest.raises(ValueError, match="NARRARE_E2E_TEST"):
+            await runner.run_case(manifest.chapters[0])
+
+    @pytest.mark.asyncio
+    async def test_dry_run_stays_usable_in_e2e_mode(self, manifest: Any, e2e_mode: None) -> None:
+        runner, factory = make_runner(manifest)
+
+        result = await runner.run_case(manifest.chapters[0], dry_run=True)
+
+        assert factory.configs == []
+        assert result.dry_run is True
