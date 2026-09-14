@@ -98,7 +98,12 @@ def _valid_phase2(**overrides: object) -> BetaReaderPhase2Output:
                 description="Bob lacks depth.",
             ),
         ],
-        "revision_suggestions": ["Add more backstory for Bob."],
+        # 3 suggestions — the output model enforces the 3-6 contract.
+        "revision_suggestions": [
+            "Add more backstory for Bob.",
+            "Clarify Bob's motivation in the confrontation.",
+            "Give Bob a distinct voice in dialogue.",
+        ],
         "category_score": 6,
     }
     defaults.update(overrides)

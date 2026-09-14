@@ -6,10 +6,12 @@ P2 enums + count bounds (5-10 / 3-6) + non-empty + category_score + soft
 grounding. Violations are measurements, never crashes; soft checks are
 reported, never fail anything.
 
-Synthetic outputs only (no LLM). Out-of-range scores are built via
-``model_construct`` — the post-validator output models pin those fields, so
-the scorer's own range check is defense in depth against validator
-regressions (spec: "model-enforced; recorded for artifact completeness").
+Synthetic outputs only (no LLM). Out-of-range scores, invalid severities,
+and out-of-bounds suggestion counts are built via ``model_construct`` —
+the post-validator output models pin those fields (score ranges, the
+severity Literal, and the 3-6 suggestion-count field_validator), so the
+scorer's own checks are defense in depth against validator regressions
+(spec: "model-enforced; recorded for artifact completeness").
 """
 
 from __future__ import annotations
@@ -212,9 +214,12 @@ class TestCheckPhase1:
         assert "questions[0]='world'" in violation.detail
 
     def test_invalid_severity_flagged(self) -> None:
+        """Severity is Literal-pinned on the model — built via
+        ``model_construct`` so the scorer check stays measurable (defense
+        in depth, same convention as the score-range tests)."""
         args = make_phase1_args(feedback=[_feedback(severity="huge"), *_feedback_list(4)])
 
-        report = check_phase1(build_phase1(args), CHAPTER_TEXT)
+        report = check_phase1(build_phase1(args, raw=True), CHAPTER_TEXT)
 
         violation = next(v for v in report.violations if v.check_id == "L1-P1-enum-severity")
         assert "huge" in violation.detail
@@ -317,11 +322,13 @@ class TestCheckPhase2:
         assert report.passed is True
 
     def test_invalid_category_and_severity_flagged(self) -> None:
+        """Severity is Literal-pinned on the model — built via
+        ``model_construct`` so both enum checks stay measurable."""
         args = make_phase2_args(
             feedback=[_feedback(category="tone", severity="huge"), *_feedback_list(4)]
         )
 
-        report = check_phase2(build_phase2(args), CHAPTER_TEXT)
+        report = check_phase2(build_phase2(args, raw=True), CHAPTER_TEXT)
 
         assert any(v.check_id == "L1-P2-enum-category" for v in report.violations)
         assert any(v.check_id == "L1-P2-enum-severity" for v in report.violations)
@@ -333,13 +340,18 @@ class TestCheckPhase2:
         )
         assert any(v.check_id == "L1-P2-count-feedback" for v in under.violations)
 
+        # Suggestion count is field-validated on the model (3-6) — the
+        # over-count measurement is built via ``model_construct`` (defense
+        # in depth).
         over = check_phase2(
-            build_phase2(make_phase2_args(suggestions=["only one"])),
+            build_phase2(make_phase2_args(suggestions=["only one"]), raw=True),
             CHAPTER_TEXT,
         )
         assert any(v.check_id == "L1-P2-count-suggestions" for v in over.violations)
 
     def test_blank_items_and_suggestions_flagged(self) -> None:
+        """Two suggestions violate the 3-6 model contract — built via
+        ``model_construct`` so the blank-string check stays measurable."""
         args = make_phase2_args(
             feedback=[
                 _feedback(),
@@ -348,7 +360,7 @@ class TestCheckPhase2:
             suggestions=["Keep the pace.", "   "],
         )
 
-        report = check_phase2(build_phase2(args), CHAPTER_TEXT)
+        report = check_phase2(build_phase2(args, raw=True), CHAPTER_TEXT)
 
         violation = next(v for v in report.violations if v.check_id == "L1-P2-nonempty")
         assert "detailed_feedback[1]" in violation.detail

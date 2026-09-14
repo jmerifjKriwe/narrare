@@ -241,7 +241,8 @@ class TestInvocationComposition:
         mock_agent_instance.run_phase2 = AsyncMock(
             return_value=BetaReaderPhase2Output(
                 detailed_feedback=[],
-                revision_suggestions=[],
+                # 3 suggestions — the output model enforces the 3-6 contract.
+                revision_suggestions=["First step.", "Second step.", "Third step."],
                 category_score=5,
             )
         )

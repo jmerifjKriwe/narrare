@@ -138,10 +138,46 @@ class TestDeepdiveHeaderSurgery:
         ):
             assert section in resolved.system_prompt, f"missing {section!r}"
 
-    def test_prompt_version_bumped_to_1_1_0(self) -> None:
-        """Header surgery bumps the template minor version (1.0.0 → 1.1.0)."""
+    def test_prompt_version_bumped_to_1_2_0(self) -> None:
+        """1.1.0 → 1.2.0: enum/count discipline pins (eval run
+        2026-09-14-168945f4-1 found German severity drift + 8 suggestions)."""
         parsed = parse_frontmatter(_prompt_path().read_text(encoding="utf-8"))
-        assert parsed.metadata.get("prompt_version") == "1.1.0"
+        assert parsed.metadata.get("prompt_version") == "1.2.0"
+
+
+class TestDeepdiveContractPins:
+    """2026-09-14 eval follow-up: severity enum + suggestion-count pins.
+
+    Real run ``2026-09-14-168945f4-1`` (German chapter) measured German
+    severity drift ("mittel"/"hoch"/"niedrig") and 8 revision_suggestions.
+    The template now pins the English enum literals and the 3-6 count —
+    the schema-side enforcement (Literal + field_validator) lives in
+    ``beta_reader_types.py`` (``test_beta_reader_types.py``).
+    """
+
+    async def test_composed_system_pins_english_severity_literals(self) -> None:
+        prompt = await _compose()
+        for fragment in (
+            "### Severity Guidelines",
+            "MUST be exactly one of the English words",
+            "`critical`, `moderate`, or `minor`",
+            "never translate these words",
+        ):
+            assert fragment in prompt.system, f"missing {fragment!r}"
+
+    async def test_severity_pin_references_writing_language(self) -> None:
+        """The pin explicitly overrides the analysis language for the enum."""
+        prompt = await _compose()
+        assert "even when you write the analysis in {{writing_language}}" not in prompt.system
+        assert "even when you write the analysis in en." in prompt.system
+
+    async def test_composed_system_pins_suggestion_count_contract(self) -> None:
+        prompt = await _compose()
+        for fragment in (
+            "MUST contain exactly 3 to 6 suggestions",
+            "never more than 6",
+        ):
+            assert fragment in prompt.system, f"missing {fragment!r}"
 
 
 class TestDeepdiveContextBlockDeletion:

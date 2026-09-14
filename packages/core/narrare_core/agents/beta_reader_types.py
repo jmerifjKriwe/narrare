@@ -9,7 +9,22 @@ Follows the same pattern as worldbuilding_types.py.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
+
+#: Severity vocabulary for beta-reader feedback — mirrors the public
+#: ``FeedbackSeverity`` contract (``narrare.analysis.contracts``) by value;
+#: core must not import the API-layer enum. Pinning the Literal makes
+#: pydantic-ai retry translated/invalid severities (e.g. German "mittel",
+#: eval run 2026-09-14-168945f4-1) instead of shipping them.
+type BetaSeverity = Literal["critical", "moderate", "minor"]
+
+#: Revision-suggestion count contract (deepdive template Quality Rules;
+#: eval instrument spec 2026-09-14 §5). Enforced by a field_validator on
+#: :class:`BetaReaderPhase2Output`.
+MIN_REVISION_SUGGESTIONS: int = 3
+MAX_REVISION_SUGGESTIONS: int = 6
 
 # ---------------------------------------------------------------------------
 # Phase 1: Full Chapter Analysis
@@ -23,7 +38,7 @@ class AgentFeedbackItem(BaseModel):
     """
 
     category: str  # plot, character, prose, pacing, experience
-    severity: str  # critical, moderate, minor
+    severity: BetaSeverity
     location: str | None = None
     title: str
     description: str
@@ -79,7 +94,7 @@ class AgentDeepDiveFeedback(BaseModel):
     """Detailed feedback item for a specific category."""
 
     category: str
-    severity: str
+    severity: BetaSeverity
     location: str | None = None
     title: str
     description: str
@@ -93,6 +108,24 @@ class BetaReaderPhase2Output(BaseModel):
     detailed_feedback: list[AgentDeepDiveFeedback]
     revision_suggestions: list[str]
     category_score: int = Field(ge=1, le=10)
+
+    @field_validator("revision_suggestions")
+    @classmethod
+    def _enforce_suggestion_count(cls, value: list[str]) -> list[str]:
+        """Enforce the 3-6 revision-suggestions contract.
+
+        Raises ValueError (ADR-035 convention) so pydantic wraps it into a
+        ValidationError and pydantic-ai retries the output with the contract
+        message — out-of-bounds counts (e.g. 8, eval run
+        2026-09-14-168945f4-1) never reach services or the eval instrument.
+        """
+        if not MIN_REVISION_SUGGESTIONS <= len(value) <= MAX_REVISION_SUGGESTIONS:
+            raise ValueError(
+                f"revision_suggestions must contain "
+                f"{MIN_REVISION_SUGGESTIONS} to {MAX_REVISION_SUGGESTIONS} "
+                f"suggestions, got {len(value)}"
+            )
+        return value
 
 
 # ---------------------------------------------------------------------------

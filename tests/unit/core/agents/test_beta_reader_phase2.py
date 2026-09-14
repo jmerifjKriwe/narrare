@@ -32,9 +32,10 @@ _SENTINEL_LIMITS = UsageLimits(request_limit=7)
 
 
 def _phase2_output() -> BetaReaderPhase2Output:
+    # 3 suggestions — the output model enforces the 3-6 contract.
     return BetaReaderPhase2Output(
         detailed_feedback=[],
-        revision_suggestions=[],
+        revision_suggestions=["First revision step.", "Second revision step.", "Third step."],
         category_score=5,
     )
 

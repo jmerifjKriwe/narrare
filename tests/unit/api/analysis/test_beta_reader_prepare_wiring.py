@@ -250,7 +250,8 @@ class TestBetaReaderPrepareWiring:
         agent.run_phase2 = AsyncMock(
             return_value=BetaReaderPhase2Output(
                 detailed_feedback=[],
-                revision_suggestions=[],
+                # 3 suggestions — the output model enforces the 3-6 contract.
+                revision_suggestions=["First step.", "Second step.", "Third step."],
                 category_score=5,
             )
         )
@@ -301,7 +302,8 @@ class TestBetaReaderPrepareWiring:
         deps = BetaReaderDeps(chapter_text="Test chapter content.")
         expected = BetaReaderPhase2Output(
             detailed_feedback=[],
-            revision_suggestions=[],
+            # 3 suggestions — the output model enforces the 3-6 contract.
+            revision_suggestions=["First step.", "Second step.", "Third step."],
             category_score=5,
         )
         sentinel_settings: ModelSettings = ModelSettings(max_tokens=12_345)
