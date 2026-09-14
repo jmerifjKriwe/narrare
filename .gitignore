@@ -111,6 +111,9 @@ clawpatch-report.md
 benchmark/config.local.yaml
 # Benchmark run artifacts (Task 15 default --out root; manual run output)
 benchmark/runs/
+# Beta-reader eval run artifacts (manual instrument output; spec
+# 2026-09-14-beta-reader-eval-design.md D4 — run trees + diff reports)
+scripts/evals/runs/
 
 # Evidence store (CI artifacts)
 .evidence/*.jsonl
