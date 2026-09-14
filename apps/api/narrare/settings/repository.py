@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import structlog
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from narrare._app.base_repository import BaseRepository
 from narrare.settings.models import ProjectSettings, UserSettings
@@ -20,32 +19,43 @@ if TYPE_CHECKING:
 
     from narrare.settings.schemas import UpdateProjectSettingsRequest, UpdateUserSettingsRequest
 
-logger = structlog.get_logger(__name__)
-
 
 class UserSettingsRepository(BaseRepository):
     async def get(self, user_id: uuid.UUID) -> UserSettings:
+        """Get settings for a user. Auto-creates if missing.
+
+        Race-safe: the INSERT carries ``ON CONFLICT (user_id) DO NOTHING``
+        so a concurrent request winning the insert does not raise
+        IntegrityError — the loser re-selects the winner's committed row
+        (READ COMMITTED snapshot). Without this, a racing request hit a
+        UniqueViolation on ``user_settings_pkey`` → HTTP 500 (same
+        defect class as ``UserAiSettingsRepository``, benchmark
+        2026-09-07-clean-failed-1).
+
+        Args:
+            user_id: The user's UUID.
+
+        Returns:
+            The user's settings (never None).
+        """
         result = await self._session.execute(
             select(UserSettings).where(UserSettings.user_id == user_id)
         )
         settings = result.scalar_one_or_none()
-        if settings is not None:
-            return settings
-        # Race-safe insert: concurrent requests may both see None and
-        # attempt INSERT — catch IntegrityError and re-select the winner.
-        settings = UserSettings(user_id=user_id)
-        self._session.add(settings)
-        try:
-            await self._flush_and_refresh(settings)
-        except IntegrityError:
-            logger.debug("user_settings_concurrent_create", user_id=str(user_id))
-            await self._session.rollback()
+        if not settings:
+            stmt = (
+                pg_insert(UserSettings)
+                .values(user_id=user_id)
+                .on_conflict_do_nothing(index_elements=["user_id"])
+            )
+            await self._session.execute(stmt)
             result = await self._session.execute(
                 select(UserSettings).where(UserSettings.user_id == user_id)
             )
             settings = result.scalar_one_or_none()
-            if settings is None:
-                raise
+            # Post-upsert the row always exists: either our INSERT landed or
+            # the concurrent winner's row is committed and visible.
+            assert settings is not None
         return settings
 
     async def update(self, user_id: uuid.UUID, request: UpdateUserSettingsRequest) -> UserSettings:
@@ -58,27 +68,40 @@ class UserSettingsRepository(BaseRepository):
 
 class ProjectSettingsRepository(BaseRepository):
     async def get(self, novel_id: uuid.UUID) -> ProjectSettings:
+        """Get settings for a novel. Auto-creates if missing.
+
+        Race-safe: the INSERT carries ``ON CONFLICT (novel_id) DO NOTHING``
+        so a concurrent request winning the insert does not raise
+        IntegrityError — the loser re-selects the winner's committed row
+        (READ COMMITTED snapshot). Without this, a racing request hit a
+        UniqueViolation on ``project_settings_pkey`` → HTTP 500 (same
+        defect class as ``UserAiSettingsRepository``, benchmark
+        2026-09-07-clean-failed-1).
+
+        Args:
+            novel_id: The novel's UUID.
+
+        Returns:
+            The novel's settings (never None).
+        """
         result = await self._session.execute(
             select(ProjectSettings).where(ProjectSettings.novel_id == novel_id)
         )
         settings = result.scalar_one_or_none()
-        if settings is not None:
-            return settings
-        # Race-safe insert: concurrent requests may both see None and
-        # attempt INSERT — catch IntegrityError and re-select the winner.
-        settings = ProjectSettings(novel_id=novel_id)
-        self._session.add(settings)
-        try:
-            await self._flush_and_refresh(settings)
-        except IntegrityError:
-            logger.debug("project_settings_concurrent_create", novel_id=str(novel_id))
-            await self._session.rollback()
+        if not settings:
+            stmt = (
+                pg_insert(ProjectSettings)
+                .values(novel_id=novel_id)
+                .on_conflict_do_nothing(index_elements=["novel_id"])
+            )
+            await self._session.execute(stmt)
             result = await self._session.execute(
                 select(ProjectSettings).where(ProjectSettings.novel_id == novel_id)
             )
             settings = result.scalar_one_or_none()
-            if settings is None:
-                raise
+            # Post-upsert the row always exists: either our INSERT landed or
+            # the concurrent winner's row is committed and visible.
+            assert settings is not None
         return settings
 
     async def update(

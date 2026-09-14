@@ -1,11 +1,20 @@
-"""Regression tests for settings repository race condition (Bug 1).
+"""Race-safety regression tests for ``UserSettingsRepository.get()`` and
+``ProjectSettingsRepository.get()``.
 
-Simulates the IntegrityError that occurs when two concurrent requests
-both call get() for the same user_id / novel_id, both see None, and
-both attempt INSERT — the second should recover gracefully.
+Same defect class as ``UserAiSettingsRepository`` (fixed benchmark
+``2026-09-07-clean-failed-1``): the old get-or-create (SELECT, then
+``add()`` + flush) raised ``IntegrityError`` (UniqueViolation on
+``user_settings_pkey`` / ``project_settings_pkey``) when a concurrent
+request inserted the same row between our SELECT and our INSERT.
+Observed as duplicate-key 500s on ``user_settings_pkey`` in the e2e
+suite; the ``rollback()`` recovery also wiped callers' uncommitted
+writes in the same transaction.
 
-The fake session below simulates this by raising IntegrityError on the
-first flush, then returning a pre-existing row on re-select.
+Fix: PostgreSQL ``INSERT ... ON CONFLICT (<key>) DO NOTHING`` followed by
+a re-SELECT — under READ COMMITTED the second snapshot sees the concurrent
+winner's committed row. Mirrors ``test_user_ai_settings_repository_race.py``
+(ADR-030 fake-based testing; the statement shape is pinned by compiling the
+captured INSERT against the PostgreSQL dialect).
 """
 
 from __future__ import annotations
@@ -13,125 +22,129 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
+from sqlalchemy import Select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
 
 from narrare.settings.models import ProjectSettings, UserSettings
+from tests.fakes.fake_db_session import FakeResult
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-# ======================================================================
-# Minimal fake for SQLAlchemy Result proxy
-# ======================================================================
-
-
-class _FakeResult:
-    """Minimal fake for SQLAlchemy Result — only scalar_one_or_none()."""
-
-    def __init__(self, value: Any) -> None:
-        self._value = value
-
-    def scalar_one_or_none(self) -> Any:
-        return self._value
-
 
 # ======================================================================
-# Fake async session that simulates the race condition
+# Fakes simulating the concurrent-insert race at DB level
 # ======================================================================
 
 
-class _RaceConditionSession:
-    """Fake session that raises IntegrityError on first flush.
+class _ConcurrentWinnerSession:
+    """A concurrent transaction INSERTs the row between our SELECT (which
+    still sees no row) and our INSERT.
 
-    After rollback() is called, subsequent execute() calls return
-    the pre-existing settings object (simulating the "winner" of
-    the race).
+    Old code path: ``add()`` + ``flush()`` → the DB rejects the duplicate
+    INSERT with UniqueViolation → modeled by raising ``IntegrityError``
+    from ``flush()``.
+    Upsert code path: the INSERT carries ``ON CONFLICT DO NOTHING`` so the
+    DB does not raise; the re-SELECT returns the winner's row.
     """
 
     def __init__(self, winner: UserSettings | ProjectSettings) -> None:
         self._winner = winner
-        self._flush_count = 0
-        self._rolled_back = False
+        self._select_count = 0
+        self.statements: list[Any] = []
         self.added: list[Any] = []
+        self.flush_count = 0
 
     def add(self, entity: Any) -> None:
         self.added.append(entity)
 
     async def flush(self) -> None:
-        self._flush_count += 1
-        if self._flush_count == 1 and not self._rolled_back:
-            # First flush attempt — simulate concurrent INSERT
-            raise IntegrityError("statement", "params", Exception("duplicate key"))
+        self.flush_count += 1
+        raise IntegrityError(
+            "INSERT INTO settings (key) VALUES (...) RETURNING ...",
+            None,
+            Exception('duplicate key value violates unique constraint "settings_pkey"'),
+        )
 
     async def refresh(self, entity: Any) -> None:
-        # Only called after a successful flush (second attempt)
         pass
 
-    async def execute(self, stmt: Any) -> _FakeResult:
-        if self._rolled_back:
-            return _FakeResult(self._winner)
-        return _FakeResult(None)
-
-    async def rollback(self) -> None:
-        self._rolled_back = True
-
-
-# ======================================================================
-# Normal session (no race)
-# ======================================================================
+    async def execute(self, stmt: Any) -> FakeResult:
+        self.statements.append(stmt)
+        if isinstance(stmt, Select):
+            self._select_count += 1
+            if self._select_count == 1:
+                return FakeResult(value=None)  # snapshot: row not yet visible
+            return FakeResult(value=self._winner)  # re-select: winner's row
+        return FakeResult(value=None)  # INSERT ... ON CONFLICT DO NOTHING
 
 
-class _NormalSession:
-    """Fake session where no race occurs — first select returns None,
-    flush succeeds, entity is created normally.
+class _FreshCreateSession:
+    """No race: the row does not exist yet.
+
+    The upsert INSERT succeeds and the re-SELECT reads back the row this
+    session just inserted. ``add()``/``flush()`` must never be reached.
     """
 
     def __init__(self) -> None:
-        self.added: list[Any] = []
+        self._created: UserSettings | ProjectSettings | None = None
+        self._select_count = 0
+        self.statements: list[Any] = []
+
+    def arm_created(self, created: UserSettings | ProjectSettings) -> None:
+        """Provide the row the re-SELECT will read back after the INSERT."""
+        self._created = created
 
     def add(self, entity: Any) -> None:
-        self.added.append(entity)
+        raise AssertionError("add() must not be called in the upsert path")
 
     async def flush(self) -> None:
-        pass
+        raise AssertionError("flush() must not be called in the upsert path")
 
     async def refresh(self, entity: Any) -> None:
         pass
 
-    async def execute(self, stmt: Any) -> _FakeResult:
-        return _FakeResult(None)
-
-    async def rollback(self) -> None:
-        pass
-
-
-# ======================================================================
-# Existing-row session (no insert needed)
-# ======================================================================
+    async def execute(self, stmt: Any) -> FakeResult:
+        self.statements.append(stmt)
+        if isinstance(stmt, Select):
+            self._select_count += 1
+            if self._select_count == 1:
+                return FakeResult(value=None)
+            assert self._created is not None
+            return FakeResult(value=self._created)
+        return FakeResult(value=None)
 
 
 class _ExistingRowSession:
-    """Fake session where the row already exists — select returns it,
-    so no INSERT is attempted.
-    """
+    """The row already exists — the first SELECT returns it, so no INSERT
+    is attempted at all."""
 
     def __init__(self, existing: UserSettings | ProjectSettings) -> None:
         self._existing = existing
+        self.statements: list[Any] = []
 
     def add(self, entity: Any) -> None:
-        raise AssertionError("add() should not be called when row exists")
+        raise AssertionError("add() must not be called when row exists")
 
     async def flush(self) -> None:
-        pass
+        raise AssertionError("flush() must not be called when row exists")
 
     async def refresh(self, entity: Any) -> None:
         pass
 
-    async def execute(self, stmt: Any) -> _FakeResult:
-        return _FakeResult(self._existing)
+    async def execute(self, stmt: Any) -> FakeResult:
+        self.statements.append(stmt)
+        return FakeResult(value=self._existing)
 
-    async def rollback(self) -> None:
-        pass
+
+def _split_statements(
+    statements: list[Any],
+) -> tuple[list[Any], list[Any]]:
+    """Split captured statements into (selects, others)."""
+    selects = [stmt for stmt in statements if isinstance(stmt, Select)]
+    others = [stmt for stmt in statements if not isinstance(stmt, Select)]
+    return selects, others
 
 
 # ======================================================================
@@ -139,37 +152,57 @@ class _ExistingRowSession:
 # ======================================================================
 
 
-class TestUserSettingsRepositoryRaceCondition:
-    """Regression tests for IntegrityError on concurrent get()."""
-
-    async def test_get_recovers_from_integrity_error(self) -> None:
-        """When two concurrent get() calls race, the loser recovers."""
+class TestUserSettingsRepositoryRace:
+    async def test_get_race_loser_returns_winner_row_without_integrity_error(self) -> None:
+        """The INSERT-race loser gets the winner's row instead of a 500."""
         from narrare.settings.repository import UserSettingsRepository
 
         user_id = uuid4()
         winner = UserSettings(user_id=user_id)
-        session = _RaceConditionSession(winner)
+        session = _ConcurrentWinnerSession(winner)
         repo = UserSettingsRepository(cast("AsyncSession", session))
 
         result = await repo.get(user_id)
 
         assert result is winner
         assert result.user_id == user_id
-        assert session._rolled_back is True
+        # The old IntegrityError source (add + flush) must be gone.
+        assert session.added == []
+        assert session.flush_count == 0
 
-    async def test_get_creates_new_when_no_race(self) -> None:
-        """Normal case — no existing row, flush succeeds."""
+    async def test_get_race_upsert_uses_on_conflict_do_nothing_on_user_id(self) -> None:
+        """The INSERT is postgres-dialect with ON CONFLICT (user_id) DO NOTHING."""
         from narrare.settings.repository import UserSettingsRepository
 
         user_id = uuid4()
-        session = _NormalSession()
+        session = _ConcurrentWinnerSession(UserSettings(user_id=user_id))
+        repo = UserSettingsRepository(cast("AsyncSession", session))
+
+        await repo.get(user_id)
+
+        selects, inserts = _split_statements(session.statements)
+        assert len(inserts) == 1
+        assert len(selects) == 2  # initial miss + re-select of the winner's row
+        compiled = str(inserts[0].compile(dialect=postgresql.dialect()))
+        assert "INSERT INTO user_settings" in compiled
+        assert "ON CONFLICT (user_id) DO NOTHING" in compiled
+
+    async def test_get_without_race_creates_row_via_upsert_and_reselect(self) -> None:
+        """Happy path: miss → upsert INSERT → re-SELECT returns the new row."""
+        from narrare.settings.repository import UserSettingsRepository
+
+        user_id = uuid4()
+        created = UserSettings(user_id=user_id)
+        session = _FreshCreateSession()
+        session.arm_created(created)
         repo = UserSettingsRepository(cast("AsyncSession", session))
 
         result = await repo.get(user_id)
 
-        assert result.user_id == user_id
-        assert len(session.added) == 1
-        assert isinstance(session.added[0], UserSettings)
+        assert result is created
+        selects, inserts = _split_statements(session.statements)
+        assert len(selects) == 2
+        assert len(inserts) == 1
 
     async def test_get_returns_existing_without_insert(self) -> None:
         """When row exists, no INSERT is attempted."""
@@ -183,6 +216,9 @@ class TestUserSettingsRepositoryRaceCondition:
         result = await repo.get(user_id)
 
         assert result is existing
+        selects, inserts = _split_statements(session.statements)
+        assert len(selects) == 1
+        assert len(inserts) == 0
 
 
 # ======================================================================
@@ -190,37 +226,57 @@ class TestUserSettingsRepositoryRaceCondition:
 # ======================================================================
 
 
-class TestProjectSettingsRepositoryRaceCondition:
-    """Regression tests for IntegrityError on concurrent get()."""
-
-    async def test_get_recovers_from_integrity_error(self) -> None:
-        """When two concurrent get() calls race, the loser recovers."""
+class TestProjectSettingsRepositoryRace:
+    async def test_get_race_loser_returns_winner_row_without_integrity_error(self) -> None:
+        """The INSERT-race loser gets the winner's row instead of a 500."""
         from narrare.settings.repository import ProjectSettingsRepository
 
         novel_id = uuid4()
         winner = ProjectSettings(novel_id=novel_id)
-        session = _RaceConditionSession(winner)
+        session = _ConcurrentWinnerSession(winner)
         repo = ProjectSettingsRepository(cast("AsyncSession", session))
 
         result = await repo.get(novel_id)
 
         assert result is winner
         assert result.novel_id == novel_id
-        assert session._rolled_back is True
+        # The old IntegrityError source (add + flush) must be gone.
+        assert session.added == []
+        assert session.flush_count == 0
 
-    async def test_get_creates_new_when_no_race(self) -> None:
-        """Normal case — no existing row, flush succeeds."""
+    async def test_get_race_upsert_uses_on_conflict_do_nothing_on_novel_id(self) -> None:
+        """The INSERT is postgres-dialect with ON CONFLICT (novel_id) DO NOTHING."""
         from narrare.settings.repository import ProjectSettingsRepository
 
         novel_id = uuid4()
-        session = _NormalSession()
+        session = _ConcurrentWinnerSession(ProjectSettings(novel_id=novel_id))
+        repo = ProjectSettingsRepository(cast("AsyncSession", session))
+
+        await repo.get(novel_id)
+
+        selects, inserts = _split_statements(session.statements)
+        assert len(inserts) == 1
+        assert len(selects) == 2  # initial miss + re-select of the winner's row
+        compiled = str(inserts[0].compile(dialect=postgresql.dialect()))
+        assert "INSERT INTO project_settings" in compiled
+        assert "ON CONFLICT (novel_id) DO NOTHING" in compiled
+
+    async def test_get_without_race_creates_row_via_upsert_and_reselect(self) -> None:
+        """Happy path: miss → upsert INSERT → re-SELECT returns the new row."""
+        from narrare.settings.repository import ProjectSettingsRepository
+
+        novel_id = uuid4()
+        created = ProjectSettings(novel_id=novel_id)
+        session = _FreshCreateSession()
+        session.arm_created(created)
         repo = ProjectSettingsRepository(cast("AsyncSession", session))
 
         result = await repo.get(novel_id)
 
-        assert result.novel_id == novel_id
-        assert len(session.added) == 1
-        assert isinstance(session.added[0], ProjectSettings)
+        assert result is created
+        selects, inserts = _split_statements(session.statements)
+        assert len(selects) == 2
+        assert len(inserts) == 1
 
     async def test_get_returns_existing_without_insert(self) -> None:
         """When row exists, no INSERT is attempted."""
@@ -234,3 +290,6 @@ class TestProjectSettingsRepositoryRaceCondition:
         result = await repo.get(novel_id)
 
         assert result is existing
+        selects, inserts = _split_statements(session.statements)
+        assert len(selects) == 1
+        assert len(inserts) == 0
