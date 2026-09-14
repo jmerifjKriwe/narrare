@@ -259,10 +259,15 @@ class TestSeriesCredentialsReachResolutionPoint:
             novel_repo=cast("NovelRepositoryProtocol", novel_repo),
             chapter_repo=cast("ChapterRepository", chapter_repo),
             model_registry=cast("ModelRegistry", registry),
-            model_config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(
+                    config=config,
+                    api_key=_USER_KEY,
+                    base_url=_USER_BASE_URL,
+                    source="unit-test",
+                )
+            ),
             composer=cast("PromptComposer", MagicMock(spec=["build"], name="PromptComposer")),
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
 
         with patch_mode1(), pytest.raises(_StopResolution):

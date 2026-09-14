@@ -15,6 +15,13 @@ Verifies the Spec 4 contract:
 - REGRESSION: the novel-level ``AuthorVoiceDriftService`` is unchanged (a
   structural smoke check that the standalone path still imports + its protocol
   is intact).
+
+ADR-086 L29 note: the former ``TestCheckConfig.test_no_model_config_raises_not_found``
+node asserted the eager world's ``config=None → NotFoundError`` dead branch;
+that branch was removed with the ctor swap (the required ``ModelResolution``
+makes an unresolvable cascade a loud ``ConfigurationError`` at the service's
+first use instead) — the replacement loudness proofs live in
+``test_series_voice_drift_service_lazy_resolution.py``.
 """
 
 from __future__ import annotations
@@ -28,7 +35,7 @@ from narrare.analysis.schemas_author_voice_drift import (
     AuthorVoiceDriftRequest,
     AuthorVoiceDriftResponse,
 )
-from narrare_core.shared.errors import ForbiddenError, NotFoundError
+from narrare_core.shared.errors import ForbiddenError
 from tests.factories import make_chapter, make_novel
 
 from ._series_voice_drift_test_helpers import (
@@ -215,38 +222,6 @@ class TestCheckOwnership:
 
         with pytest.raises(ForbiddenError):
             await service.check(series_id, uuid.uuid4(), user_id, AuthorVoiceDriftRequest())
-
-
-# ---------------------------------------------------------------------------
-# check() — missing config
-# ---------------------------------------------------------------------------
-
-
-class TestCheckConfig:
-    """No model config / no composer → typed errors (RULE-11)."""
-
-    async def test_no_model_config_raises_not_found(self) -> None:
-
-        user_id = uuid.uuid4()
-        service, series_repo, novel_repo, chapter_repo = make_service()
-        series_id, novel_id = seed_owned_series(
-            series_repo, novel_repo, chapter_repo, user_id=user_id
-        )
-        await seed_series_voice(series_repo, series_id, make_author_profile())
-        # Rebuild the service with config=None.
-        from narrare.series.series_voice_drift_service import SeriesVoiceDriftService as SVD
-
-        service = SVD(
-            series_repo=series_repo,  # type: ignore[arg-type]
-            novel_repo=novel_repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
-            model_registry=service._registry,  # type: ignore[attr-defined]
-            model_config=None,
-            composer=service._composer,  # type: ignore[attr-defined]
-        )
-
-        with pytest.raises(NotFoundError, match="Model config"):
-            await service.check(series_id, novel_id, user_id, AuthorVoiceDriftRequest())
 
 
 # ---------------------------------------------------------------------------

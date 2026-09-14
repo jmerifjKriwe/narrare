@@ -183,9 +183,9 @@ class TestSeriesConsistencyFactoryUserRouting:
 
 
 class TestSeriesVoiceDriftFactoryUserRouting:
-    """get_series_voice_drift_service resolves via the cascade (VOICE)."""
+    """get_series_voice_drift_service wires the VOICE cascade lazily."""
 
-    async def test_resolves_voice_for_user_without_project_tier(self) -> None:
+    async def test_wires_voice_drift_cascade_lazily_for_user_without_project_tier(self) -> None:
         from narrare.series.dependencies_voice_drift import get_series_voice_drift_service
         from narrare.series.series_voice_drift_service import SeriesVoiceDriftService
 
@@ -216,8 +216,20 @@ class TestSeriesVoiceDriftFactoryUserRouting:
                 user_id=user_id,
             )
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.VOICE, UUID(user_id), None)
+        # ADR-086 lazy wiring: construction resolves nothing.
+        assert resolver.resolve.await_args_list == []
+
         assert isinstance(service, SeriesVoiceDriftService)
-        assert service._config is resolved.config
-        assert service._api_key == _USER_KEY
-        assert service._base_url == _USER_BASE_URL
+        resolved_model = await service.ensure_resolved()
+
+        # The REAL intent (VOICE), for THIS user, WITHOUT a project tier
+        # (the novel id arrives only in the request BODY of the check
+        # endpoint) — invoked at first use, not at construction:
+        assert resolver.resolve.await_args_list == [call(LLMIntent.VOICE, UUID(user_id), None)]
+
+        # The cascade result lands on the service (threaded onwards to
+        # ModelRegistry.prepare with the credentials).
+        assert resolved_model.config is resolved.config
+        assert resolved_model.config.model_id == "glm-4.7"
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL

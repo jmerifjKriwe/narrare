@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (19):**
+**Open (18):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -376,7 +376,8 @@ at construction (2026-09-09; factory function names verified):
        was removed with the ctor swap; shared-chain caveat: the check
        endpoint's drift-persistence factory chains the still-eager
        voice-drift factory — its eager resolve keeps the endpoint at
-       400-before-422 for unconfigured users until L29 lands)*
+       400-before-422 for unconfigured users until L29 lands — caveat
+       resolved by L29)*
 27. [ ] `series/dependencies_context_preview.py` — `get_series_history_preview_service` (+ eager `get_resolved_limits`)
 28. [x] `series/dependencies_voice.py` — `get_series_voice_service`
        *(D2/L28 — landed 2026-09-14: lazy wiring + first-use resolve after the
@@ -387,7 +388,18 @@ at construction (2026-09-09; factory function names verified):
        was removed with the ctor swap; the profile invocation assembly
        split to ``_series_voice_invocation.py`` for the RULE-04 size limit
        the ``ensure_resolved`` addition crossed)*
-29. [ ] `series/dependencies_voice_drift.py` — `get_series_voice_drift_service`
+29. [x] `series/dependencies_voice_drift.py` — `get_series_voice_drift_service`
+       *(D3/L29 — landed 2026-09-14: lazy wiring + first-use resolve after the
+       series-ownership + novel-membership gates and BEFORE the profile-read /
+       no_profile graceful early exits, so an unconfigured provider stays a
+       loud 400 even on the degradation path (REST — no SSE pre-header
+       needed); the dead ``config=None → NotFoundError`` branch was removed
+       with the ctor swap; the drift invocation assembly split to
+       ``_series_voice_drift_invocation.py`` for the RULE-04 size limit the
+       ``ensure_resolved`` addition crossed; this closes the L26
+       shared-chain caveat — both factories in the drift-persistence chain
+       are now lazy, so no wiring-time resolve remains on the series
+       drift/consistency endpoints)*
 30. [x] `wiki/dependencies.py` — `get_wiki_service`
        *(B2/L30 — landed 2026-09-14: lazy wiring + first-use core-service
        composition (REST — no SSE pre-header needed);

@@ -4,16 +4,16 @@ Real-chain proofs for the lazy ``get_series_consistency_service`` wiring (no
 factory patch): request validation precedes the CONSISTENCY cascade's
 resolution.
 
-Shared-chain caveat (documented, ledger-tracked): the check endpoint's
-route chains ``get_series_drift_persistence_service``, which Depends-chains
-BOTH run-service factories — consistency (lazy as of L26) AND voice-drift
-(still eager until L29 lands). Until L29, the voice-drift factory's eager
-resolve runs at wiring time for every request on this endpoint; the 422 pin
-therefore seeds a provider so that eager resolve succeeds and validation is
-free to reject the invalid body (it stays green after L29 defers that
-resolve too). The unconfigured-provider pin surfaces the typed 400 from the
-shared chain — post-L29 the consistency first-use resolve (after the
-ownership gates) becomes its only source.
+Shared-chain caveat (L26 → RESOLVED by L29): the check endpoint's route
+chains ``get_series_drift_persistence_service``, which Depends-chains BOTH
+run-service factories. Until L29 landed, the voice-drift sibling was still
+eager and its wiring-time resolve forced this file's 422 pin to seed a
+provider. With BOTH factories lazy (L29), no wiring-time resolve remains on
+any series drift/consistency endpoint, so the 422 pin now proves the stronger
+fact — validation precedes ANY routing cascade, unseeded — and the 400 pin's
+error provably originates at the consistency service's first-use resolve
+after the ownership gates (hence the member-novel join flow, which keeps the
+gates green).
 
 Mirrors ``tests/integration/kb/test_kb_extraction_lazy_resolution.py``
 (ADR-086 L16 convention). New file: the additions would cross the size
@@ -30,32 +30,6 @@ if TYPE_CHECKING:
     from httpx import AsyncClient
 
 
-async def _seed_provider(
-    client: AsyncClient,
-    auth_headers: dict[str, str],
-) -> None:
-    """Configure a provider + user-default model via the settings API.
-
-    Makes the per-user routing cascade resolvable, so the (still eager)
-    voice-drift sibling factory in the shared dependency chain succeeds
-    instead of preempting validation with 400.
-    """
-    provider_resp = await client.post(
-        "/api/v1/settings/ai/providers",
-        json={"provider_name": "anthropic", "api_key": "sk-ant-test-key-12345678"},
-        headers=auth_headers,
-    )
-    assert provider_resp.status_code == 201
-    provider_id = provider_resp.json()["id"]
-
-    settings_resp = await client.patch(
-        "/api/v1/settings/ai",
-        json={"default_provider_id": provider_id, "default_model": "test-model"},
-        headers=auth_headers,
-    )
-    assert settings_resp.status_code == 200
-
-
 class TestSeriesConsistencyLazyResolutionIntegration:
     """ADR-086 L26: validation → 422 first; unconfigured provider → 400."""
 
@@ -66,14 +40,15 @@ class TestSeriesConsistencyLazyResolutionIntegration:
     ) -> None:
         """Invalid body → 422 with the REAL factory (no override).
 
-        The consistency cascade is wired lazily, so an invalid ``novel_id``
-        in the body is rejected by validation BEFORE the model-routing
-        resolve runs. Pre-migration this same request surfaced as the
-        eager factory's 400. The provider is seeded so the still-eager
-        voice-drift sibling (L29 debt) does not preempt validation first.
+        Both factories in the drift-persistence chain wire their cascades
+        lazily (consistency since L26, voice-drift since L29), so an
+        invalid ``novel_id`` in the body is rejected by validation BEFORE
+        any routing cascade runs — with NO provider seeded. Pre-L26 this
+        same request surfaced as the eager consistency factory's 400;
+        while the voice-drift sibling was still eager (L26-L28) the pin
+        needed a provider seed to keep that sibling's wiring-time resolve
+        from preempting validation first.
         """
-        await _seed_provider(client, auth_headers)
-
         resp = await client.post(
             f"/api/v1/series/{uuid4()}/consistency/check",
             json={"novel_id": "not-a-uuid"},
@@ -91,11 +66,13 @@ class TestSeriesConsistencyLazyResolutionIntegration:
         Real chain, NO factory patch, provider NOT seeded: the routing
         cascade cannot resolve, and the endpoint surfaces the typed
         ``NO_AI_PROVIDER`` 400 — never a swallowed or degraded result.
-        While the voice-drift sibling factory is still eager (L29) the
-        400 fires at wiring time; once L29 lands it fires at the
+        Since L29 (both chain factories lazy) the 400 fires at the
         consistency service's first use — after the series-ownership +
-        novel-membership gates — with identical status. Post-L29 this
-        pin is the endpoint-level loudness proof for THIS slice.
+        novel-membership gates (hence the member-novel join flow below,
+        which keeps the gates green so the error provably originates at
+        resolution, not at a gate). While the voice-drift sibling was
+        still eager, the 400 fired at wiring time instead (same status,
+        earlier timing — the L26 caveat, now closed).
         """
         series_resp = await client.post(
             "/api/v1/series",
@@ -111,10 +88,26 @@ class TestSeriesConsistencyLazyResolutionIntegration:
             headers=auth_headers,
         )
         assert novel_resp.status_code == 201
+        novel_id = novel_resp.json()["id"]
+
+        # Join the novel into the series so the membership gate passes
+        # and the request reaches the first-use resolve.
+        preview_resp = await client.post(
+            f"/api/v1/series/{series_id}/novels",
+            json={"novel_id": novel_id},
+            headers=auth_headers,
+        )
+        assert preview_resp.status_code == 200
+        apply_resp = await client.post(
+            f"/api/v1/series/{series_id}/novels/{novel_id}/apply",
+            json={"position": 1},
+            headers=auth_headers,
+        )
+        assert apply_resp.status_code == 200
 
         response = await client.post(
             f"/api/v1/series/{series_id}/consistency/check",
-            json={"novel_id": novel_resp.json()["id"]},
+            json={"novel_id": novel_id},
             headers=auth_headers,
         )
 

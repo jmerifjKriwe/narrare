@@ -25,8 +25,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm._prepared_call import PreparedModelCall
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
 from tests.fakes.fake_chapter_repo import FakeChapterRepository
 from tests.fakes.fake_novel_repo import FakeNovelRepository
@@ -142,6 +144,23 @@ def make_config() -> ResolvedModelConfig:
     return ResolvedModelConfig(provider_name="test", model_id="test-model")
 
 
+def make_composer() -> _FakeComposer:
+    """A minimal PromptComposer fake for SeriesVoiceDriftService tests."""
+    return _FakeComposer()
+
+
+def make_resolved_model(
+    config: ResolvedModelConfig | None = None,
+) -> ResolvedModel:
+    """A fixed model triple wrapping ``make_config`` (ADR-086 seam)."""
+    return ResolvedModel(
+        config=config or make_config(),
+        api_key=None,
+        base_url=None,
+        source="unit-test",
+    )
+
+
 def make_service(
     *,
     series_repo: FakeSeriesRepository | None = None,
@@ -158,7 +177,9 @@ def make_service(
     Returns ``(service, series_repo, novel_repo, chapter_repo)`` so tests can
     seed data and assert interactions. ``chapter_repo`` is cast to the concrete
     :class:`ChapterRepository` at the boundary (the service types it concretely
-    to match the novel-level parallel + ``load_selected_chapters``).
+    to match the novel-level parallel + ``load_selected_chapters``). The model
+    triple is injected pre-resolved via ``StaticModelResolution`` (ADR-086:
+    mechanical ctor migration — outcomes unchanged).
     """
     from narrare.series.series_voice_drift_service import SeriesVoiceDriftService
 
@@ -171,7 +192,7 @@ def make_service(
         novel_repo=novel_repo,  # type: ignore[arg-type]
         chapter_repo=cast("ChapterRepository", chapter_repo),  # type: ignore[arg-type]
         model_registry=_FakeModelRegistry(),  # type: ignore[arg-type]
-        model_config=make_config(),
+        model_resolution=StaticModelResolution(make_resolved_model()),
         composer=_FakeComposer(),  # type: ignore[arg-type]
     )
     return service, series_repo, novel_repo, chapter_repo

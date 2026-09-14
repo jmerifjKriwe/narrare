@@ -7,14 +7,11 @@ narrator metrics against the **novel's** stored profile, this service compares
 them against the **series voice** (``SeriesSettings.author_voice``, Spec 3 /
 ADR-078) — the cross-novel drift signal.
 
-The service REUSES the existing analysis pipeline helpers verbatim:
-    :func:`compute_author_voice_per_chapter` — deterministic per-chapter
-        narrator metrics (voice + author, ADR-021).
-    :func:`analyse_author_voice_drift` — trend + jumps + agent (1 LLM call) +
-        result assembly.
-    :func:`resolve_author_voice_drift_prompt` — Mode-1 governed
-        ``author_voice_drift`` system prompt.
-    :func:`load_selected_chapters` — chapter loading + chapter_ids validation.
+The service REUSES the existing analysis pipeline helpers via the invocation
+assembly in :mod:`narrare.series._series_voice_drift_invocation`
+(compute → prompt → agent → aggregate; RULE-04/RULE-06; extracted for the size
+limit the ADR-086 ``ensure_resolved`` addition crossed) and loads chapters via
+the established :func:`load_selected_chapters` helper (chapter_ids validation).
 
 The ONLY difference from the novel-level service is the SOURCE of the reference
 profile + metric group: ``SeriesRepository.get_settings`` →
@@ -25,6 +22,11 @@ profile + metric group: ``SeriesRepository.get_settings`` →
 :class:`AuthorVoiceDriftService` is 100% unchanged — this is a separate
 series-scoped service behind its own endpoint.
 
+Model acquisition (ADR-086 L29): the per-user routing cascade is injected
+as a ``ModelResolution`` and resolved on first use inside :meth:`check` —
+after the ownership gates, before the graceful early exits — never at
+construction (422-before-400 ordering for invalid request bodies).
+
 RULE-11 graceful degradation: no stored series voice, a profile missing the
 metric blocks, or no chapter with prose yields a graceful ``no_profile``
 response (never a crash) — mirroring the novel-level service.
@@ -34,9 +36,11 @@ Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b)
 
 See:
     :mod:`narrare.series.series_voice_drift_contracts` — the Protocol.
+    :mod:`narrare.series._series_voice_drift_invocation` — invocation assembly.
     :mod:`narrare.analysis.author_voice_drift_service` — the novel-level parallel.
     ADR-078 — Series Voice Hierarchy (Delta model).
     ADR-074 — Author Voice Storage Contract (the pipeline reused).
+    ADR-086 — lazy model resolution (this slice: L29).
 """
 
 from __future__ import annotations
@@ -46,32 +50,26 @@ from uuid import UUID
 
 import structlog
 
-from narrare.analysis.author_voice_drift_pipeline import (
-    analyse_author_voice_drift,
-    compute_author_voice_per_chapter,
-)
-from narrare.analysis.author_voice_drift_prompt import (
-    resolve_author_voice_drift_prompt,
-)
 from narrare.analysis.schemas_author_voice_drift import (
     AuthorVoiceDriftNoProfile,
     AuthorVoiceDriftResponse,
 )
+from narrare.series._series_voice_drift_invocation import run_series_voice_drift_invocation
 from narrare.series.series_voice_profile_reader import read_series_voice_profile
 from narrare_core.shared.errors import (
     ConfigurationError,
     ForbiddenError,
-    NotFoundError,
 )
 
 if TYPE_CHECKING:
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.analysis.schemas_author_voice_drift import AuthorVoiceDriftRequest
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare.series.contracts import SeriesRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.series.schemas import Series
 
@@ -99,12 +97,10 @@ class SeriesVoiceDriftService:
         novel_repo: NovelRepositoryProtocol,
         chapter_repo: ChapterRepository,
         model_registry: ModelRegistry,
-        model_config: ResolvedModelConfig | None = None,
+        model_resolution: ModelResolution,
         composer: PromptComposer | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
     ) -> None:
         """Initialise the service with all dependencies injected (RULE-07).
 
@@ -114,25 +110,34 @@ class SeriesVoiceDriftService:
             novel_repo: Novel lookup (verify membership + resolve metadata).
             chapter_repo: Chapter prose fetch (``list_by_novel``).
             model_registry: Model registry for the AuthorVoiceDriftAgent.
-            model_config: Resolved analysis model config (None → NotFoundError
-                at check time, mirroring AuthorVoiceDriftService).
+            model_resolution: Lazy per-user model resolution (ADR-086) —
+                the routing cascade (VOICE, ``project_id=None``) resolves
+                on first use, never at construction.
             composer: PromptComposer for the governed author_voice_drift prompt
                 (None → ConfigurationError at check time).
             invocation_pipeline: Optional InvocationPipeline for evidence.
-            api_key: Optional per-user provider API key override (model-routing
-                cascade) — forwarded to the drift pipeline's ``get_model``
-                call.
-            base_url: Optional per-user provider base URL override.
         """
         self._series_repo = series_repo
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
         self._registry = model_registry
-        self._config = model_config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._composer = composer
         self._invocation_pipeline = invocation_pipeline
-        self._api_key = api_key
-        self._base_url = base_url
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user model routing once; idempotent (ADR-086).
+
+        First call resolves via the injected ``ModelResolution`` and
+        caches the triple; repeat calls return the cached value without
+        re-running the cascade. Errors propagate loudly and are never
+        cached (RULE-11): ``ConfigurationError`` (``NO_AI_PROVIDER``)
+        surfaces as a 400 on this AI-mandatory endpoint.
+        """
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def check(
         self,
@@ -151,9 +156,19 @@ class SeriesVoiceDriftService:
         if novel is None or novel.series_id != series_id:
             raise ForbiddenError("You do not have access to this series")
 
-        config = self._config
-        if config is None:
-            raise NotFoundError("Model config", identifier="no_model_config")
+        # ADR-086 L29: first-use lazy resolve — the ownership gates above
+        # stay ahead of resolution (eager-world precedence), and resolution
+        # precedes the profile read / graceful no_profile early exits, so an
+        # unconfigured provider stays a loud 400 even on the degradation
+        # path. The resolved triple flows into the invocation assembly
+        # exactly as the eager factory passed it (timing-only migration:
+        # WHAT unchanged — the eager resolve applied no sampling overrides —
+        # only WHEN). The eager world's dead ``config=None → NotFoundError``
+        # branch is gone with the ctor swap: the required ``ModelResolution``
+        # makes an unresolvable cascade a loud ``ConfigurationError`` at
+        # this line instead.
+        resolved_model = await self.ensure_resolved()
+
         composer = self._composer
         if composer is None:
             raise ConfigurationError(
@@ -209,58 +224,25 @@ class SeriesVoiceDriftService:
             )
             return AuthorVoiceDriftResponse(novel_id=str(novel_id))
 
-        # 6. Deterministic per-chapter narrator metrics (ADR-021). No chapter
-        #    with prose → graceful no_profile (mirrors the novel-level service).
-        per_chapter = compute_author_voice_per_chapter(chapters, language)
-        if not per_chapter:
-            logger.info(
-                "series_voice_drift_no_profile",
-                feature_id="series_voice_drift",
-                series_id=str(series_id),
-                novel_id=str(novel_id),
-                reason="no_chapters_with_prose",
-            )
-            return _no_profile_response(novel_id, "no_chapters_with_prose")
-
-        # 7. Resolve the governed author_voice_drift system prompt (Mode 1,
-        #    ADR-054) — one composition per check (only after prose confirmed).
-        composed_prompt = await resolve_author_voice_drift_prompt(
-            composer,
-            self._invocation_pipeline,
+        # 6-8. Per-chapter metrics → prose guard → governed prompt → agent
+        #    (1 LLM call) → aggregate assembly against the SERIES baseline —
+        #    the invocation assembly lives in the dedicated module (RULE-04/
+        #    RULE-06; moved for the size limit the ADR-086 ensure_resolved
+        #    addition crossed).
+        return await run_series_voice_drift_invocation(
+            registry=self._registry,
+            composer=composer,
+            invocation_pipeline=self._invocation_pipeline,
+            resolved_model=resolved_model,
+            chapters=chapters,
+            profile=profile,
+            profile_voice_metrics=series_voice_metrics,
+            profile_author_metrics=series_author_metrics,
             novel=novel,
             language=language,
             novel_id=novel_id,
             user_id=user_id,
         )
-
-        # 8. Trend (signal i) + jumps (signal iii) + agent (1 LLM call) +
-        #    result assembly against the SERIES baseline. The descriptive
-        #    profile + precomputed trend + jumps + chapter metadata flow as
-        #    runtime content (user channel, RULE-02a category 3); metrics never
-        #    reach the LLM as raw numbers (ADR-074 binding preserved).
-        result = await analyse_author_voice_drift(
-            chapters=chapters,
-            per_chapter=per_chapter,
-            profile=profile,
-            profile_voice_metrics=series_voice_metrics,
-            profile_author_metrics=series_author_metrics,
-            composed_prompt=composed_prompt,
-            novel=novel,
-            language=language,
-            novel_id=novel_id,
-            model_registry=self._registry,
-            model_config=config,
-            api_key=self._api_key,
-            base_url=self._base_url,
-        )
-        logger.info(
-            "series_voice_drift_complete",
-            feature_id="series_voice_drift",
-            series_id=str(series_id),
-            novel_id=str(novel_id),
-            chapter_count=len(chapters),
-        )
-        return AuthorVoiceDriftResponse(novel_id=str(novel_id), result=result)
 
     # ------------------------------------------------------------------
     # Ownership + series-voice helpers
