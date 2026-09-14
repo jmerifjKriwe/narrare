@@ -117,7 +117,7 @@ class AuthorVoiceDriftServiceProtocol(Protocol):
 
         Raises:
             narrare_core.shared.errors.NotFoundError: If the novel does not
-                exist or is not accessible, or no model config is configured.
+                exist or is not accessible.
             narrare_core.shared.errors.ConfigurationError: If no
                 ``PromptComposer`` is configured.
         """
@@ -156,7 +156,7 @@ class AuthorVoiceDriftServiceProtocol(Protocol):
 
         Raises:
             narrare_core.shared.errors.NotFoundError: If the novel does not
-                exist or is not accessible, or no model config is configured.
+                exist or is not accessible.
             narrare_core.shared.errors.ConfigurationError: If no
                 ``PromptComposer`` is configured.
         """

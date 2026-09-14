@@ -18,9 +18,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.analysis.author_voice_drift_service import AuthorVoiceDriftService
-from narrare_core.agents.character_voice_drift_types import VoiceDriftResult
+from narrare_core.agents.character_voice_drift_types import DriftType, VoiceDriftResult
 from narrare_core.llm._prepared_call import PreparedModelCall
+from narrare_core.llm.model_config import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
@@ -28,13 +31,13 @@ if TYPE_CHECKING:
 
     from pydantic_ai.usage import UsageLimits
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.analysis.author_voice_repository import AuthorVoiceRepository
     from narrare.analysis.schemas_author_voice_drift import AuthorVoiceDriftEvent
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.intents import LLMIntent
-    from narrare_core.llm.model_config import ResolvedModelConfig
     from narrare_core.profiles.author_voice import AuthorVoiceProfile
     from narrare_core.prompts.composer import PromptComposer
 
@@ -260,16 +263,40 @@ def make_author_profile(
 
 
 def make_drift_result(
-    drift_type: str = "evolution",
+    drift_type: DriftType = "evolution",
     confidence: float = 0.7,
 ) -> VoiceDriftResult:
     """Build a fake AuthorVoiceDriftAgent output (reused VoiceDriftResult)."""
     return VoiceDriftResult(
-        drift_type=drift_type,  # type: ignore[arg-type]
+        drift_type=drift_type,
         confidence=confidence,
         longitudinal_reasons=["Formality declines steadily across chapters."],
         per_chapter_notes=[],
         suggested_attention=[],
+    )
+
+
+class _CountingResolution:
+    """Fake ModelResolution — counts resolve() calls, never caches.
+
+    Exposes the service-level lazy seam (ADR-086): the service must call
+    ``resolve()`` exactly once (first use), never at construction.
+    """
+
+    def __init__(self, model: ResolvedModel | None = None) -> None:
+        self._model = model if model is not None else _resolved_model()
+        self.calls = 0
+
+    async def resolve(self) -> ResolvedModel:
+        self.calls += 1
+        return self._model
+
+
+def _resolved_model(config: ResolvedModelConfig | None = None) -> ResolvedModel:
+    """A fixed model triple, as the routing cascade would return it."""
+    return ResolvedModel(
+        config=config or ResolvedModelConfig(provider_name="test", model_id="test-model"),
+        source="unit-test",
     )
 
 
@@ -280,18 +307,34 @@ def make_service(
     profile: AuthorVoiceProfile | None,
     config: ResolvedModelConfig,
     composer: FakeComposer | None = None,
+    author_voice_repo: FakeAuthorVoiceRepository | None = None,
+    model_resolution: ModelResolution | None = None,
 ) -> AuthorVoiceDriftService:
-    """Build an AuthorVoiceDriftService with fakes and casts at the boundary."""
+    """Build an AuthorVoiceDriftService with fakes and casts at the boundary.
+
+    Args:
+        config: Resolved model config (wrapped in a ``StaticModelResolution``
+            — ADR-086 unit-test harness).
+        composer: Optional fake composer; a fresh :class:`FakeComposer` is
+            created when ``None``.
+        author_voice_repo: Optional repository fake; when ``None`` (default)
+            a fresh :class:`FakeAuthorVoiceRepository` seeded with
+            ``profile`` is created so each test asserts against its own
+            load/save/clear call list.
+        model_resolution: Optional resolution override (e.g.
+            ``_CountingResolution`` for lazy-semantics tests); defaults
+            to the static resolution around ``config``.
+    """
     novel_repo = FakeNovelRepository(novel)
     chapter_repo = FakeChapterRepository(chapters)
-    author_voice_repo = FakeAuthorVoiceRepository(profile)
+    resolved_repo = author_voice_repo or FakeAuthorVoiceRepository(profile)
 
     return AuthorVoiceDriftService(
         novel_repo=cast("NovelRepository", novel_repo),
-        chapter_repo=cast("ChapterRepository", chapter_repo),  # type: ignore[arg-type]
-        author_voice_repo=cast("AuthorVoiceRepository", author_voice_repo),
+        chapter_repo=cast("ChapterRepository", chapter_repo),
+        author_voice_repo=cast("AuthorVoiceRepository", resolved_repo),
         model_registry=cast("ModelRegistry", FakeModelRegistry()),
-        model_config=config,
+        model_resolution=model_resolution or StaticModelResolution(_resolved_model(config)),
         composer=cast("PromptComposer", composer or FakeComposer()),
     )
 

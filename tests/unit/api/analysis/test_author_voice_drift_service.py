@@ -32,6 +32,7 @@ from narrare_core.llm.model_config import ResolvedModelConfig
 from tests.unit.api.analysis._author_voice_drift_test_helpers import (
     FakeAuthorVoiceRepository,
     FakeChapter,
+    _CountingResolution,
     consume,
     make_author_profile,
     make_chapter,
@@ -120,7 +121,14 @@ class TestAuthorVoiceDriftPipeline:
         novel = make_novel()
         chapters = _two_chapters(novel.id)
         profile = make_author_profile()
-        service = make_service(novel=novel, chapters=chapters, profile=profile, config=config)
+        repository = FakeAuthorVoiceRepository(profile)
+        service = make_service(
+            novel=novel,
+            chapters=chapters,
+            profile=profile,
+            config=config,
+            author_voice_repo=repository,
+        )
 
         with patch_mode1() as (MockAgent, _mock_compose):
             mock_agent = MagicMock(spec=["run"])
@@ -130,7 +138,7 @@ class TestAuthorVoiceDriftPipeline:
             await consume(service.run_stream(novel.id, uuid.uuid4(), AuthorVoiceDriftRequest()))
 
         # The repository's load was called once for the novel.
-        assert service._author_voice_repo.load_calls == [novel.id]  # type: ignore[reportPrivateUsage]
+        assert repository.load_calls == [novel.id]
         # One narrator → exactly one agent call.
         mock_agent.run.assert_awaited_once()
 
@@ -143,9 +151,14 @@ class TestAuthorVoiceDriftPipeline:
         novel = make_novel()
         chapters = _two_chapters(novel.id)
         profile = make_author_profile()
-        service = make_service(novel=novel, chapters=chapters, profile=profile, config=config)
-        repo = service._author_voice_repo  # type: ignore[reportPrivateUsage]
-        assert isinstance(repo, FakeAuthorVoiceRepository)
+        repository = FakeAuthorVoiceRepository(profile)
+        service = make_service(
+            novel=novel,
+            chapters=chapters,
+            profile=profile,
+            config=config,
+            author_voice_repo=repository,
+        )
 
         with patch_mode1() as (MockAgent, _mock_compose):
             mock_agent = MagicMock(spec=["run"])
@@ -154,8 +167,8 @@ class TestAuthorVoiceDriftPipeline:
 
             await consume(service.run_stream(novel.id, uuid.uuid4(), AuthorVoiceDriftRequest()))
 
-        assert repo.save_calls == []
-        assert repo.clear_calls == []
+        assert repository.save_calls == []
+        assert repository.clear_calls == []
 
 
 class TestAuthorVoiceDriftNonStreamingRun:
@@ -194,3 +207,107 @@ class TestAuthorVoiceDriftNonStreamingRun:
         assert response.result is None
         assert response.no_profile is not None
         assert response.no_profile.reason == "no_stored_profile"
+
+
+# ---------------------------------------------------------------------------
+# ADR-086: lazy model resolution at the service boundary
+# ---------------------------------------------------------------------------
+
+
+class TestLazyModelResolution:
+    """ADR-086 lazy semantics at the service boundary.
+
+    The DI factory runs pre-body-validation (FastAPI solves all
+    sub-dependencies first), so the service must NOT resolve at
+    construction. The first ``ensure_resolved()`` / ``run_stream()``
+    resolves exactly once; repeat calls reuse the cached triple.
+    """
+
+    @pytest.mark.asyncio
+    async def test_no_resolution_at_construction(
+        self,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        make_service(
+            novel=make_novel(),
+            chapters=[],
+            profile=None,
+            config=config,
+            model_resolution=resolution,
+        )
+        assert resolution.calls == 0
+
+    @pytest.mark.asyncio
+    async def test_ensure_resolved_resolves_once_and_is_idempotent(
+        self,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        service = make_service(
+            novel=make_novel(),
+            chapters=[],
+            profile=None,
+            config=config,
+            model_resolution=resolution,
+        )
+
+        first = await service.ensure_resolved()
+        second = await service.ensure_resolved()
+
+        assert resolution.calls == 1
+        assert first is second
+
+    @pytest.mark.asyncio
+    async def test_run_stream_resolves_lazily_on_first_use(
+        self,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        novel = make_novel()
+        chapters = _two_chapters(novel.id)
+        profile = make_author_profile()
+        service = make_service(
+            novel=novel,
+            chapters=chapters,
+            profile=profile,
+            config=config,
+            model_resolution=resolution,
+        )
+
+        with patch_mode1() as (MockAgent, _mock_compose):
+            mock_agent = MagicMock(spec=["run"])
+            mock_agent.run = AsyncMock(return_value=make_drift_result())
+            MockAgent.return_value = mock_agent
+
+            await consume(service.run_stream(novel.id, uuid.uuid4(), AuthorVoiceDriftRequest()))
+
+        assert resolution.calls == 1
+
+    @pytest.mark.asyncio
+    async def test_run_stream_after_ensure_resolved_reuses_cache(
+        self,
+        config: ResolvedModelConfig,
+    ) -> None:
+        resolution = _CountingResolution()
+        novel = make_novel()
+        chapters = _two_chapters(novel.id)
+        profile = make_author_profile()
+        service = make_service(
+            novel=novel,
+            chapters=chapters,
+            profile=profile,
+            config=config,
+            model_resolution=resolution,
+        )
+
+        await service.ensure_resolved()
+
+        with patch_mode1() as (MockAgent, _mock_compose):
+            mock_agent = MagicMock(spec=["run"])
+            mock_agent.run = AsyncMock(return_value=make_drift_result())
+            MockAgent.return_value = mock_agent
+
+            await consume(service.run_stream(novel.id, uuid.uuid4(), AuthorVoiceDriftRequest()))
+
+        assert resolution.calls == 1

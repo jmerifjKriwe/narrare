@@ -55,6 +55,10 @@ def _fake_service_factory(service: Any) -> Any:
 class FakeAuthorVoiceDriftService:
     """Fake service for app-level SSE routing tests."""
 
+    async def ensure_resolved(self) -> None:
+        """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+        return None
+
     async def run_stream(
         self,
         novel_id: UUID,
@@ -80,6 +84,25 @@ class FakeAuthorVoiceDriftService:
 
 def _sse_payloads(text: str) -> list[str]:
     return [line.removeprefix("data: ") for line in text.splitlines() if line.startswith("data: ")]
+
+
+async def _create_novel(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> str:
+    """Create a novel; return the novel_id.
+
+    Needed for the 400-pre-header node: the routing resolver's internal
+    P2 novel-existence guard runs inside the cascade and would preempt
+    the ``ConfigurationError`` with a 404 for a nonexistent novel.
+    """
+    novel_resp = await client.post(
+        "/api/v1/novels",
+        json={"title": "Author Voice Drift Test Novel", "writing_language": "en"},
+        headers=auth_headers,
+    )
+    assert novel_resp.status_code == 201
+    return novel_resp.json()["id"]
 
 
 class TestAuthorVoiceDriftAPI:
@@ -126,6 +149,10 @@ class TestAuthorVoiceDriftAPI:
         """The RULE-11 graceful no_profile skip flows through the SSE route."""
 
         class NoProfileService:
+            async def ensure_resolved(self) -> None:
+                """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+                return None
+
             async def run_stream(
                 self,
                 novel_id: UUID,
@@ -202,6 +229,10 @@ class TestAuthorVoiceDriftAPI:
         captured: dict[str, AuthorVoiceDriftRequest | None] = {"request": None}
 
         class CapturingService:
+            async def ensure_resolved(self) -> None:
+                """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+                return None
+
             async def run_stream(
                 self,
                 novel_id: UUID,
@@ -227,3 +258,28 @@ class TestAuthorVoiceDriftAPI:
         assert request is not None
         assert request.chapter_ids is not None
         assert len(request.chapter_ids) == 2
+
+    async def test_author_voice_drift_400_pre_header_when_provider_unconfigured(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Valid body + unconfigured provider → 400 with NO SSE headers.
+
+        ADR-086 Decision 3 (real chain): the routing cascade resolves in
+        the router BEFORE the StreamingResponse is constructed, so
+        ``ConfigurationError`` (fresh user, no provider) surfaces as a
+        pre-header 400 — the response is JSON, never ``text/event-stream``.
+        The novel is created first so the resolver's internal P2
+        existence guard does not preempt the cascade error with a 404.
+        """
+        novel_id = await _create_novel(client, auth_headers)
+
+        resp = await client.post(
+            f"/api/v1/analysis/author-voice-drift/{novel_id}",
+            headers=auth_headers,
+            json={},
+        )
+
+        assert resp.status_code == 400
+        assert not resp.headers["content-type"].startswith("text/event-stream")

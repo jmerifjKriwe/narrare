@@ -24,6 +24,7 @@ from narrare.analysis.schemas_author_voice_drift import (
     AuthorVoiceDriftResult,
 )
 from narrare_core.agents.character_voice_drift_types import VoiceDriftResult
+from narrare_core.shared.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterable, AsyncIterator, Callable
@@ -50,6 +51,10 @@ class FakeAuthorVoiceDriftService:
     def __init__(self, result: AuthorVoiceDriftResult) -> None:
         self._result = result
         self.calls: list[tuple[UUID, UUID, AuthorVoiceDriftRequest]] = []
+
+    async def ensure_resolved(self) -> None:
+        """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+        return None
 
     async def run_stream(
         self,
@@ -132,6 +137,10 @@ async def test_route_serializes_no_profile_event() -> None:
     """The no_profile graceful skip serializes through the SSE route."""
 
     class NoProfileService:
+        async def ensure_resolved(self) -> None:
+            """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+            return None
+
         async def run_stream(
             self,
             novel_id: UUID,
@@ -175,6 +184,10 @@ async def test_route_emits_error_event_on_failure() -> None:
     """A service failure is surfaced as an in-band ``error`` event (RULE-11)."""
 
     class FailingService:
+        async def ensure_resolved(self) -> None:
+            """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+            return None
+
         async def run_stream(
             self,
             novel_id: UUID,
@@ -208,6 +221,47 @@ async def test_route_emits_error_event_on_failure() -> None:
     assert error_payload["is_final"] is True
     assert error_payload["error"] == "Author-voice-drift analysis failed."
     assert payloads[-1] == "[DONE]"
+
+
+@pytest.mark.asyncio
+async def test_analyze_author_voice_drift_raises_configuration_error_pre_header() -> None:
+    """ADR-086 Decision 3: ensure_resolved runs BEFORE the StreamingResponse.
+
+    An unconfigured provider (``ConfigurationError`` from the cascade)
+    must surface as a pre-header 400 via the NarrareError handler —
+    never as an in-band SSE error event. Direct route-call proof: the
+    route function itself raises before constructing the response.
+    """
+
+    class UnconfiguredService:
+        async def ensure_resolved(self) -> None:
+            raise ConfigurationError("No AI provider configured.", code="NO_AI_PROVIDER")
+
+        async def run_stream(
+            self,
+            novel_id: UUID,
+            user_id: UUID,
+            request: AuthorVoiceDriftRequest,
+        ) -> AsyncIterator[AuthorVoiceDriftEvent]:
+            raise AssertionError("run_stream must not run when resolution fails")
+            yield  # pragma: no cover - make this an async generator
+
+    with pytest.MonkeyPatch.context() as mp:
+
+        async def _unconfigured_factory(**_kwargs: object) -> UnconfiguredService:
+            return UnconfiguredService()
+
+        mp.setattr(
+            "narrare.analysis.router_author_voice_drift.get_author_voice_drift_service",
+            _unconfigured_factory,
+        )
+        with pytest.raises(ConfigurationError):
+            await analyze_author_voice_drift(
+                novel_id=uuid4(),
+                request=AuthorVoiceDriftRequest(),
+                user_id=str(uuid4()),
+                session=_fake_session(),
+            )
 
 
 def test_route_uses_analysis_rate_limiter() -> None:
