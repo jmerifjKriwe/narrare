@@ -26,6 +26,10 @@ if TYPE_CHECKING:
 class FakeVoiceDriftService:
     """Fake service for app-level SSE routing tests."""
 
+    async def ensure_resolved(self) -> None:
+        """No-op lifecycle call — the router resolves pre-header (ADR-086)."""
+        return None
+
     async def run_stream(
         self,
         novel_id: UUID,
@@ -56,6 +60,25 @@ class FakeVoiceDriftService:
 
 def _sse_payloads(text: str) -> list[str]:
     return [line.removeprefix("data: ") for line in text.splitlines() if line.startswith("data: ")]
+
+
+async def _create_novel(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> str:
+    """Create a novel; return the novel_id.
+
+    Needed for the 400-pre-header node: the routing resolver's internal
+    P2 novel-existence guard runs inside the cascade and would preempt
+    the ``ConfigurationError`` with a 404 for a nonexistent novel.
+    """
+    novel_resp = await client.post(
+        "/api/v1/novels",
+        json={"title": "Voice Drift Test Novel", "writing_language": "en"},
+        headers=auth_headers,
+    )
+    assert novel_resp.status_code == 201
+    return novel_resp.json()["id"]
 
 
 class TestVoiceDriftAPI:
@@ -132,3 +155,28 @@ class TestVoiceDriftAPI:
                 registered_paths.add(f"{prefix}{getattr(child_route, 'path', '')}")
 
         assert "/api/v1/analysis/voice-drift/{novel_id}" in registered_paths
+
+    async def test_voice_drift_400_pre_header_when_provider_unconfigured(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Valid body + unconfigured provider → 400 with NO SSE headers.
+
+        ADR-086 Decision 3 (real chain): the routing cascade resolves in
+        the router BEFORE the StreamingResponse is constructed, so
+        ``ConfigurationError`` (fresh user, no provider) surfaces as a
+        pre-header 400 — the response is JSON, never ``text/event-stream``.
+        The novel is created first so the resolver's internal P2
+        existence guard does not preempt the cascade error with a 404.
+        """
+        novel_id = await _create_novel(client, auth_headers)
+
+        resp = await client.post(
+            f"/api/v1/analysis/voice-drift/{novel_id}",
+            headers=auth_headers,
+            json={},
+        )
+
+        assert resp.status_code == 400
+        assert not resp.headers["content-type"].startswith("text/event-stream")

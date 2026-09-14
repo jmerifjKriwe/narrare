@@ -4,10 +4,16 @@ Production wiring for :class:`CharacterVoiceDriftService`. Mirrors
 ``dependencies_voice_check`` — the drift service is a read-only consumer of
 the same ``VoiceProfileConsumer`` contract (ADR-050 — no SSOT bypass).
 
-Model acquisition follows the per-user model-routing cascade: the factory
-resolves ``LLMIntent.VOICE`` for the authenticated user (+ novel for
-project-level overrides) and passes the resolved config + credentials into
-the service. No business logic lives here — only wiring.
+Model acquisition follows the per-user model-routing cascade with LAZY
+first-use resolution (ADR-086): the factory wires a
+``LazyModelResolution`` around ``resolver.resolve(LLMIntent.VOICE,
+user_id, novel_id)`` and passes it into the service — no resolution at
+construction (FastAPI solves all sub-dependencies BEFORE body
+validation, so an eager resolve here would preempt legitimate 422s with
+400/500s). The cascade resolves on the service's first
+``ensure_resolved()``; the router keeps pre-header 400 semantics by
+calling it before the SSE stream starts. No business logic lives here —
+only wiring.
 """
 
 from __future__ import annotations
@@ -21,7 +27,10 @@ from narrare._app.dependencies import (
     SessionDep,
     get_current_user_id,
 )
-from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.dependencies_services import (
+    LazyModelResolution,
+    get_model_routing_resolver,
+)
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
@@ -39,18 +48,22 @@ async def get_voice_drift_service(
     """Create a CharacterVoiceDriftService with per-user resolved model routing.
 
     FastAPI dependency: novel_id comes from the route path, user_id and
-    session are resolved via Depends. The model is resolved through the
+    session are resolved via Depends. The model resolves through the
     per-user cascade (project intent → project category → user intent →
-    user category → user default); ``ConfigurationError`` propagates when
-    the user has no provider configured (analysis routers are
-    auth-mandatory).
+    user category → user default) on the service's first
+    ``ensure_resolved()`` — NOT here (ADR-086): construction happens
+    pre-body-validation, and eager resolution would preempt 422s.
+    ``ConfigurationError`` still propagates loudly at first use (analysis
+    routers are auth-mandatory).
 
     Production wiring:
     - NovelRepository for novel access control + language/metadata resolution.
     - ChapterRepository for chapter content fetching (novel-scoped list).
     - KBRepository-backed VoiceProfileConsumer provider for stored profiles
       (the same consumer contract WRITE-010 uses — ADR-050, no SSOT bypass).
-    - ModelRegistry + ResolvedModelConfig for the drift agent.
+    - ModelRegistry + lazy model resolution (ADR-086) for the drift agent.
+      The resolved credentials reach the ``registry.prepare`` resolution
+      point at consumption time.
     - PromptComposer for governed ``voice_drift`` prompt resolution (Mode 1).
     - RelationshipRepository for populating ``kb_relationships`` (character
       relationships help the classifier distinguish ``context`` drift from
@@ -70,10 +83,12 @@ async def get_voice_drift_service(
     from narrare.writing.voice_profile_adapter import make_voice_profile_consumer
 
     resolver = get_model_routing_resolver(session)
-    resolved = await resolver.resolve(
-        LLMIntent.VOICE,
-        UUID(user_id),
-        novel_id,
+    model_resolution = LazyModelResolution(
+        lambda: resolver.resolve(
+            LLMIntent.VOICE,
+            UUID(user_id),
+            novel_id,
+        )
     )
 
     registry = get_model_registry()
@@ -99,12 +114,10 @@ async def get_voice_drift_service(
         chapter_repo=chapter_repo,
         model_registry=registry,
         consumer_provider=consumer_provider,
-        model_config=resolved.config,
+        model_resolution=model_resolution,
         composer=composer,
         relationship_repo=relationship_repo,
         invocation_pipeline=get_invocation_pipeline(),
-        api_key=resolved.api_key,
-        base_url=resolved.base_url,
     )
 
 

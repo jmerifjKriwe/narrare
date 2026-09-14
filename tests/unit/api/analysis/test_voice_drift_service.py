@@ -1,4 +1,8 @@
-"""Behavioural tests for CharacterVoiceDriftService (ANAL-009)."""
+"""Behavioural tests for CharacterVoiceDriftService (ANAL-009).
+
+Error + lazy-resolution coverage lives in
+``test_voice_drift_service_errors.py`` (RULE-04 split, L11).
+"""
 
 from __future__ import annotations
 
@@ -220,53 +224,3 @@ class TestVoiceDriftNonStreamingRun:
         assert response.results[0].character_name == "Elena"
         assert len(response.no_profile) == 1
         assert response.no_profile[0].character_name == "Marc"
-
-
-class TestVoiceDriftErrors:
-    """Missing novel / config / composer raise typed errors (RULE-11)."""
-
-    @pytest.mark.asyncio
-    async def test_missing_novel_raises_not_found(
-        self,
-        config: ResolvedModelConfig,
-    ) -> None:
-        from narrare_core.shared.errors import NotFoundError
-
-        novel = make_novel()
-        consumer = FakeVoiceProfileConsumer([])
-        service = make_service(novel=None, chapters=[], consumer=consumer, config=config)
-
-        with pytest.raises(NotFoundError):
-            await consume(service.run_stream(novel.id, uuid.uuid4(), VoiceDriftRequest()))
-
-    @pytest.mark.asyncio
-    async def test_missing_model_config_raises_not_found(self) -> None:
-        from narrare_core.shared.errors import NotFoundError
-
-        novel = make_novel()
-        consumer = FakeVoiceProfileConsumer([])
-        service = make_service(
-            novel=novel,
-            chapters=[],
-            consumer=consumer,
-            config=ResolvedModelConfig(provider_name="test", model_id="m"),
-        )
-        service._config = None  # type: ignore[reportPrivateUsage]
-
-        with pytest.raises(NotFoundError):
-            await consume(service.run_stream(novel.id, uuid.uuid4(), VoiceDriftRequest()))
-
-    @pytest.mark.asyncio
-    async def test_missing_composer_raises_configuration_error(
-        self,
-        config: ResolvedModelConfig,
-    ) -> None:
-        from narrare_core.shared.errors import ConfigurationError
-
-        novel = make_novel()
-        consumer = FakeVoiceProfileConsumer([])
-        service = make_service(novel=novel, chapters=[], consumer=consumer, config=config)
-        service._composer = None  # type: ignore[reportPrivateUsage]
-
-        with pytest.raises(ConfigurationError):
-            await consume(service.run_stream(novel.id, uuid.uuid4(), VoiceDriftRequest()))

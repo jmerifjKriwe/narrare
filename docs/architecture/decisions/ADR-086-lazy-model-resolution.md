@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (29):**
+**Open (28):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -316,7 +316,9 @@ at construction (2026-09-09; factory function names verified):
 10. [x] `analysis/dependencies_author_voice_drift.py` — `get_author_voice_drift_service`
        *(A5/L10 — landed 2026-09-14: lazy wiring + first-use resolve +
        SSE pre-header call)*
-11. [ ] `analysis/dependencies_voice_drift.py` — `get_voice_drift_service` (SSE)
+11. [x] `analysis/dependencies_voice_drift.py` — `get_voice_drift_service` (SSE)
+       *(A6/L11 — landed 2026-09-14: lazy wiring + first-use resolve +
+       SSE pre-header call)*
 12. [ ] `chat/dependencies.py` — `get_chat_service` (SSE)
 13. [ ] `consistency/deps.py` — `get_consistency_service` (two eager resolves: fact-extraction + consistency)
 14. [ ] `generation/router.py` — `_get_service` (NameGeneratorService factory)

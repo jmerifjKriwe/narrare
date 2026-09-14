@@ -5,7 +5,7 @@ limit) when Task 2b added the four voice factories. Proves that each factory
 resolves via the per-user ``ModelRoutingResolver`` cascade with the correct
 intent + user_id (+ novel_id where the router provides one) and that the
 resolved config + credentials reach the service. ADR-086-migrated factories
-(character_voice, coreference, voice_check, author_voice,
+(character_voice, coreference, voice_check, voice_drift, author_voice,
 author_voice_drift) prove the cascade wiring is LAZY — no resolution at
 construction, exactly one resolve at first use:
 
@@ -129,9 +129,13 @@ class TestVoiceCheckFactoryUserRouting:
 
 
 class TestVoiceDriftFactoryUserRouting:
-    """get_voice_drift_service resolves via the cascade (VOICE + novel)."""
+    """get_voice_drift_service wires the VOICE cascade lazily (novel tier).
 
-    async def test_resolves_voice_for_user_and_novel(self) -> None:
+    The voice-drift router is novel-scoped — the cascade resolves WITH
+    the project tier at the service's first ``ensure_resolved()``.
+    """
+
+    async def test_resolves_voice_for_user_and_novel_at_first_use(self) -> None:
         from narrare.analysis.dependencies_voice_drift import get_voice_drift_service
         from narrare.analysis.voice_drift_service import CharacterVoiceDriftService
 
@@ -164,11 +168,24 @@ class TestVoiceDriftFactoryUserRouting:
                 user_id=user_id,
             )
 
-        resolver.resolve.assert_awaited_once_with(LLMIntent.VOICE, UUID(user_id), novel_id)
+        # ADR-086 lazy wiring: the factory runs pre-body-validation, so
+        # it must NOT resolve — the cascade is deferred to first use.
+        assert resolver.resolve.await_args_list == []
+
         assert isinstance(service, CharacterVoiceDriftService)
-        assert service._config is resolved.config
-        assert service._api_key == _USER_KEY
-        assert service._base_url == _USER_BASE_URL
+        resolved_model = await service.ensure_resolved()
+
+        # The REAL intent (VOICE), for THIS user, WITH the novel
+        # (project) tier — invoked at first use, not at construction:
+        assert resolver.resolve.await_args_list == [call(LLMIntent.VOICE, UUID(user_id), novel_id)]
+
+        # The cascade result lands on the service (threaded onwards to
+        # the registry.prepare resolution point at consumption time).
+        assert resolved_model.config is resolved.config
+        assert resolved_model.config.model_id == "glm-4.7"
+        assert resolved_model.config.provider_name == "zai"
+        assert resolved_model.api_key == _USER_KEY
+        assert resolved_model.base_url == _USER_BASE_URL
 
 
 class TestAuthorVoiceFactoryUserRouting:
