@@ -20,6 +20,51 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ---
 
+## [0.2.0](https://github.com/jmerifjKriwe/narrare/compare/v0.1.0...v0.2.0) (2026-09-14)
+
+
+### Features
+
+* **api:** populate project_title/genre on generation + stream extraction ([b2faa85](https://github.com/jmerifjKriwe/narrare/commit/b2faa8511e9ab6f0ea7eafd8abae66de94bd1526))
+* **chat+core:** cap chat kb_other entity rendering ([0baf3da](https://github.com/jmerifjKriwe/narrare/commit/0baf3da988f45a53c993db735752247742bd9c6a))
+* **chat:** KB context provider at the chat seam ([f2f694e](https://github.com/jmerifjKriwe/narrare/commit/f2f694e0632710e2a72340fcbd4499e6527118cb))
+* **chat:** thread project context through chat + writing graph ([059d4db](https://github.com/jmerifjKriwe/narrare/commit/059d4dbeaae3f1aeb698fdc54cdb69fba6236182))
+* **core:** thread project_title through the writing graph ([14ef96e](https://github.com/jmerifjKriwe/narrare/commit/14ef96e052bfe5ec50e9674fe1c80d0023d3250a))
+* **evals:** add beta-reader runner and Layer-1 automatic scoring (S2) ([a196e94](https://github.com/jmerifjKriwe/narrare/commit/a196e94197515c8be8870373fb0dcccd3be0b73a))
+* **evals:** add corpus genre field and eval corpus loader (S1) ([dfd620b](https://github.com/jmerifjKriwe/narrare/commit/dfd620b0572b38302689a737d623d114e5789e36))
+* **evals:** artifacts, CLI, and run diffing (S3) ([9b48fa0](https://github.com/jmerifjKriwe/narrare/commit/9b48fa06906bdf20994ab0d0dfca77e772441e3e))
+* **planning:** activate production AI remap ([a165dc8](https://github.com/jmerifjKriwe/narrare/commit/a165dc8a1d54b5b8930d53fea31b584a554680ac))
+* **planning:** thread prepared triple to remap agent + split remap helpers ([631cae2](https://github.com/jmerifjKriwe/narrare/commit/631cae2660e304c3472fd460833726ae4abc2348))
+* **prompts:** conditional word-target line in review template ([73aca18](https://github.com/jmerifjKriwe/narrare/commit/73aca18c2f80f1686b692752580c61431af7cb2b))
+
+
+### Bug Fixes
+
+* **analysis:** enforce deepdive output contract (enum + count) ([ed7d168](https://github.com/jmerifjKriwe/narrare/commit/ed7d168d3f53ac5dbaed85c458e5eccf567afbb5))
+* **core:** review context bullets label-in-value ([ff0d57a](https://github.com/jmerifjKriwe/narrare/commit/ff0d57a3dacb6e776b488cddeace3eb9ec6aa843))
+* **core:** word_target label-in-value across writing routes ([d2628ad](https://github.com/jmerifjKriwe/narrare/commit/d2628ad16f49f6fddf34b6436fbeda92b56f3aea))
+* **evals:** accept coding endpoint + production-parity routing ([3d8d858](https://github.com/jmerifjKriwe/narrare/commit/3d8d8582eb71bb40818a623939bf10f6546f80e5))
+* **evals:** raise output-token pin for validation retries ([61a1ad6](https://github.com/jmerifjKriwe/narrare/commit/61a1ad68178fa23639ff20535f10cab22b700e94))
+* **planning:** govern the AI remap path (FO-9) ([09de64e](https://github.com/jmerifjKriwe/narrare/commit/09de64e036099c8bfd6dc72a8ba870343f3fca9b))
+* **prompts:** forbid invented mappings in remap prompt (4th do-NOT) ([ae47fff](https://github.com/jmerifjKriwe/narrare/commit/ae47fff2b3fcf01a50a59654e348af99cbb47cb1))
+* **settings:** on-conflict first-access upsert for user+project settings ([e7fcc51](https://github.com/jmerifjKriwe/narrare/commit/e7fcc513e944ec8fd6e7de27bd45c4bb43a89647))
+* **writing:** thread resolved token limits through the WS factory ([1ad5846](https://github.com/jmerifjKriwe/narrare/commit/1ad5846ee54e6f93dccbf350ed73f537b43b094c))
+
+
+### Performance Improvements
+
+* **scripts:** prune excluded dirs during scanner traversal ([92bf4b0](https://github.com/jmerifjKriwe/narrare/commit/92bf4b016fb6a2b0ce78475be752a94cea136737))
+
+
+### Documentation
+
+* **adr:** add ADR-088 kb_suggested dormancy ([d1dba0f](https://github.com/jmerifjKriwe/narrare/commit/d1dba0fd0be09d5612618c7854ab6099c12fd28c))
+* **plans:** add ADR-086 ledger migration plan ([bd0d542](https://github.com/jmerifjKriwe/narrare/commit/bd0d542c2accb65d13c2bfc0a4419a13475ef40c))
+* **specs:** beta-reader eval instrument design (Option B) ([e9a45a2](https://github.com/jmerifjKriwe/narrare/commit/e9a45a26277b10c126c359c503b7bc97521e0e2b))
+* **state:** 2026-09-12 - next-steps wave complete, v0.1.0 released ([cc3d5c7](https://github.com/jmerifjKriwe/narrare/commit/cc3d5c7a182b09ba00eaa7b0e16b63997ab73889))
+* **state:** 2026-09-13 - rest-backlog wave complete ([e9e8f86](https://github.com/jmerifjKriwe/narrare/commit/e9e8f86d670b2fcf9bcc486173bfea53f4f787bf))
+* update coverage badge ([73a2b1a](https://github.com/jmerifjKriwe/narrare/commit/73a2b1afae343d54d3421a457f19762b0ffcec28))
+
 ## 0.1.0 (2026-09-12)
 
 
