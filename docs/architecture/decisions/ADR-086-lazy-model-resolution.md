@@ -422,7 +422,17 @@ at construction (2026-09-09; factory function names verified):
        RULE-04 size limit the lazy seam crossed)*
 31. [ ] `writing/deps_coauthor.py` — `get_coauthor_service` (+ eager `get_resolved_limits`)
 32. [ ] `writing/deps_extend.py` — `get_extend_service` (+ eager `get_resolved_limits`)
-33. [ ] `writing/deps_rewrite.py` — `get_rewrite_service` (+ eager `get_resolved_limits`)
+33. [x] `writing/deps_rewrite.py` — `get_rewrite_service` (+ eager `get_resolved_limits`)
+      *(E2/L33 — landed 2026-09-15: lazy wiring + deferred M-budget
+      composition at first use — ``ensure_resolved`` at the end of
+      ``validate_rewrite`` (the router's pre-stream seam) and via
+      ``start_rewrite`` for direct callers — so validation, the IDOR S6
+      gate, and the conflict check stay ahead of BOTH cascades
+      (routing + ``get_resolved_limits``, deferred budget/pipeline
+      composition per the beta-reader S4b shape) and an unconfigured
+      provider stays a loud pre-header 400 (SSE); the composed runtime
+      split to ``_rewrite_support.py`` for the RULE-04 size limit the
+      lazy seam crossed)*
 34. [ ] `writing/deps_story_suggest.py` — `get_story_suggest_service`
        (graceful-degradation variant: swallows `ConfigurationError` —
        AI-optional feature; migration must preserve that degradation

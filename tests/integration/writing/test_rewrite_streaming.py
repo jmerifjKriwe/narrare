@@ -309,11 +309,25 @@ class TestRewriteStreamErrors:
                 context_assembler=WritingContextAssembler(),
                 draft_processor=DraftProcessor(),
             )
+            # ADR-086: the service composes its runtime at first use; the
+            # fake chain pins a fixed failing-runtime (outcome-inert ctor
+            # migration — same config/pipeline the eager factory passed).
+            from narrare.writing._rewrite_support import RewriteRuntime
+
+            runtime = RewriteRuntime(
+                config=config,
+                api_key=None,
+                base_url=None,
+                pipeline=pipeline,
+            )
+
+            async def _static_runtime() -> RewriteRuntime:
+                return runtime
+
             return RewriteService(
                 repo=repo,
-                pipeline=pipeline,
+                runtime_factory=_static_runtime,
                 draft_processor=DraftProcessor(),
-                config=config,
                 chapter_repo=ChapterRepository(session),
                 novel_repo=NovelRepository(session),
             )

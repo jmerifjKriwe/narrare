@@ -22,6 +22,7 @@ from narrare.writing.rewrite_service import RewriteService
 from narrare.writing.schemas_rewrite import RewriteMode, RewriteRequest
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
+from tests.unit.api.writing._rewrite_factories import make_static_runtime_factory
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -116,9 +117,8 @@ def service(
     novel_repo.get_by_id = AsyncMock(return_value=make_novel())
     return RewriteService(
         repo=mock_repo,
-        pipeline=mock_pipeline,
+        runtime_factory=make_static_runtime_factory(mock_pipeline, CONFIG),
         draft_processor=mock_draft_processor,
-        config=CONFIG,
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
     )

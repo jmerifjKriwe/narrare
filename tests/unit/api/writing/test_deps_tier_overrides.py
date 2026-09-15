@@ -232,6 +232,19 @@ def _factory_patch_context(module_path: str, tier_percentages: dict[str, float] 
     return ctx, pipeline_spy
 
 
+async def _compose_at_first_use(service: object) -> None:
+    """Run the service's first-use composition if the factory is lazy.
+
+    ADR-086: migrated factories (currently ``deps_rewrite``) build their
+    pipeline inside a deferred composition invoked at the service's
+    first use — NOT at factory time. Eager factories (still to be
+    migrated) have no ``ensure_resolved`` seam and are no-ops here.
+    """
+    ensure_resolved = getattr(service, "ensure_resolved", None)
+    if ensure_resolved is not None:
+        await ensure_resolved()
+
+
 @pytest.mark.parametrize(("module_path", "factory_name"), PIPELINE_FACTORIES)
 class TestFactoriesWireTierOverrides:
     """Every pipeline-based writing factory wires resolved tier_percentages."""
@@ -245,11 +258,12 @@ class TestFactoriesWireTierOverrides:
 
         ctx, pipeline_spy = _factory_patch_context(module_path, CUSTOM_TIERS)
         with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5]:
-            await factory(
+            service = await factory(
                 session=_fake_session(),
                 user_id=str(uuid4()),
                 project_id=uuid4(),
             )
+            await _compose_at_first_use(service)
 
         assert pipeline_spy.call_count == 1, "factory must build exactly one pipeline"
         assert pipeline_spy.call_args.kwargs["tier_overrides"] == CUSTOM_TIERS, (
@@ -269,11 +283,12 @@ class TestFactoriesWireTierOverrides:
 
         ctx, pipeline_spy = _factory_patch_context(module_path, None)
         with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5]:
-            await factory(
+            service = await factory(
                 session=_fake_session(),
                 user_id=str(uuid4()),
                 project_id=uuid4(),
             )
+            await _compose_at_first_use(service)
 
         assert pipeline_spy.call_args.kwargs["tier_overrides"] is None
 
@@ -290,11 +305,12 @@ class TestFactoriesWireTierOverrides:
 
         ctx, pipeline_spy = _factory_patch_context(module_path, ALT_TIERS)
         with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5]:
-            await factory(
+            service = await factory(
                 session=_fake_session(),
                 user_id=str(uuid4()),
                 project_id=uuid4(),
             )
+            await _compose_at_first_use(service)
 
         assert pipeline_spy.call_args.kwargs["tier_overrides"] == ALT_TIERS
 

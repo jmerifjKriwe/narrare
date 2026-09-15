@@ -158,6 +158,8 @@ async def _make_rewrite_service(
     project_id: object = None,
 ) -> RewriteService:
     """Build a RewriteService with real repo + fake pipeline (no LLM calls)."""
+    from narrare.writing._rewrite_support import RewriteRuntime
+
     repo = GenerationRepository(session)
     fake_registry = FakeModelRegistry()
     # Queue a default stream response with <alternative> tags for rewrite tests.
@@ -183,11 +185,23 @@ async def _make_rewrite_service(
         draft_processor=_processor,
     )
 
+    # ADR-086: the service composes its runtime at first use; the fake
+    # chain pins a fixed runtime (render- and outcome-inert — same
+    # config/pipeline the eager factory passed).
+    runtime = RewriteRuntime(
+        config=config,
+        api_key=None,
+        base_url=None,
+        pipeline=pipeline,
+    )
+
+    async def _static_runtime() -> RewriteRuntime:
+        return runtime
+
     return RewriteService(
         repo=repo,
-        pipeline=pipeline,
+        runtime_factory=_static_runtime,
         draft_processor=_processor,
-        config=config,
         chapter_repo=ChapterRepository(session),
         novel_repo=NovelRepository(session),
     )

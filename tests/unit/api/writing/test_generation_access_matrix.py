@@ -35,7 +35,6 @@ import pytest
 
 from narrare.writing.coauthor_service import CoAuthorService
 from narrare.writing.extend_service import ExtendService
-from narrare.writing.rewrite_service import RewriteService
 from narrare.writing.style_variant_service import StyleVariantService
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import ConflictError, NotFoundError
@@ -145,10 +144,9 @@ def _pipeline(*, working: bool) -> MagicMock:
     return pipeline
 
 
-# The five pipeline-backed services share one constructor shape.
+# The remaining pipeline-backed services (rewrite has a lazy-runtime branch below).
 _PIPELINE_SERVICES: dict[str, type[Any]] = {
     "extend": ExtendService,
-    "rewrite": RewriteService,
     "coauthor": CoAuthorService,
     "style_variant": StyleVariantService,
 }
@@ -231,6 +229,18 @@ def _make_service(
             model_resolution=StaticModelResolution(ResolvedModel(config=CONFIG)),
             chapter_repo=cr,
             novel_repo=nr,
+        )
+
+    if kind == "rewrite":
+        from tests.unit.api.writing._rewrite_factories import make_matrix_rewrite_service
+
+        return make_matrix_rewrite_service(
+            repo=cast("GenerationRepository", gen_repo),
+            pipeline=_pipeline(working=working_llm),
+            chapter_repo=cr,
+            novel_repo=nr,
+            draft_processor=_processor(),
+            config=CONFIG,
         )
 
     from narrare.writing.service import WritingService
