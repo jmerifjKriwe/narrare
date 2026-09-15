@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (17):**
+**Open (16):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -428,7 +428,17 @@ at construction (2026-09-09; factory function names verified):
        AI-optional feature; migration must preserve that degradation
        behavior, moved past validation)
 35. [ ] `writing/deps_style_variants.py` — `get_style_variant_service` (+ eager `get_resolved_limits`)
-36. [ ] `writing/deps_suggest.py` — `get_suggest_service`
+36. [x] `writing/deps_suggest.py` — `get_suggest_service`
+       *(E1/L36 — landed 2026-09-15: lazy wiring + first-use resolve at the
+       end of ``validate_suggest`` — the router's pre-stream seam — and
+       after the ownership gate in ``suggest_inline``, so text validation
+       and the IDOR gate stay ahead of resolution and an unconfigured
+       provider stays a loud pre-header 400 (SSE); the eager factory's
+       sampling composition (``temperature=0.3``/``SUGGEST_MAX_TOKENS``)
+       is reproduced exactly once at first use — timing-only;
+       rate-limiting + chapter-context helpers split to
+       ``_suggest_support.py`` for the RULE-04 size limit the
+       ``ensure_resolved`` addition crossed)*
 37. [ ] `writing/deps_writing.py` — `get_writing_service` (+ eager `get_resolved_limits`)
 38. [ ] `writing/summary_deps.py` — `get_summary_service` (+ eager `get_resolved_limits`)
 39. [ ] `writing/router_sessions.py` — `interactive_session` (inline eager

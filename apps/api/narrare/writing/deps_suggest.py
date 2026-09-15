@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 from uuid import UUID
 
 from narrare._app.dependencies import get_composer, get_model_registry
-from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.dependencies_services import (
+    LazyModelResolution,
+    get_model_routing_resolver,
+)
 from narrare.writing.deps_ownership import ensure_novel_owned
 from narrare_core.llm.intents import LLMIntent
-from narrare_core.llm.run_limits import SUGGEST_MAX_TOKENS
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,15 +24,24 @@ async def get_suggest_service(
     user_id: str,
     project_id: UUID | None = None,
 ) -> InlineSuggestService:
-    """Factory for InlineSuggestService — resolves model config for SUGGEST.
+    """Factory for InlineSuggestService — lazily wires the SUGGEST cascade.
+
+    The per-user model-routing cascade
+    (``resolver.resolve(LLMIntent.SUGGEST, user_id, project_id)``) is
+    wired as a ``LazyModelResolution`` and resolves on the service's
+    first use (ADR-086) — never at construction. The service composes
+    the suggest sampling overrides (temperature 0.3, SUGGEST_MAX_TOKENS)
+    at that same first use, exactly as this factory previously did
+    eagerly (timing-only migration — WHAT unchanged, only WHEN).
 
     Raises:
         NotFoundError: If ``project_id`` is given but unknown or not
             owned by ``user_id`` (fix-wave N1, consistency close: gated
             BEFORE the resolver's auto-creating project-settings read —
             foreign ≡ unknown → 404, never a 500 FK oracle). The only
-            production caller passes ``project_id=None`` (user scope);
-            the gate protects any future project-scoped wiring.
+            production caller passes ``project_id=None`` (user scope;
+            the gate passes without a query); the gate protects any
+            future project-scoped wiring.
     """
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
@@ -45,12 +55,9 @@ async def get_suggest_service(
 
     resolver = get_model_routing_resolver(session)
     assert isinstance(resolver, ModelRoutingResolverImpl)
-    resolved = await resolver.resolve(
-        LLMIntent.SUGGEST,
-        UUID(user_id),
-        project_id,
+    model_resolution = LazyModelResolution(
+        lambda: resolver.resolve(LLMIntent.SUGGEST, UUID(user_id), project_id)
     )
-    config = replace(resolved.config, temperature=0.3, max_tokens=SUGGEST_MAX_TOKENS)
 
     registry = get_model_registry()
     composer = get_composer()
@@ -61,9 +68,7 @@ async def get_suggest_service(
     return InlineSuggestService(
         registry=registry,
         composer=composer,
-        config=config,
+        model_resolution=model_resolution,
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
-        api_key=resolved.api_key,
-        base_url=resolved.base_url,
     )

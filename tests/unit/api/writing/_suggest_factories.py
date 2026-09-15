@@ -12,6 +12,7 @@ from uuid import uuid4
 from narrare.chapters.repository import ChapterRepository
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.gateway import ModelRegistry
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 
@@ -53,6 +54,20 @@ def make_suggest_config() -> ResolvedModelConfig:
         model_id="claude-sonnet-4-5-20251020",
         temperature=0.3,
         max_tokens=60,
+    )
+
+
+def make_suggest_resolved() -> ResolvedModel:
+    """Fixed model triple wrapping :func:`make_suggest_config`.
+
+    Post-ADR-086 the service takes a ``ModelResolution`` instead of a
+    bare config; tests feed it via ``StaticModelResolution``.
+    """
+    return ResolvedModel(
+        config=make_suggest_config(),
+        api_key=None,
+        base_url=None,
+        source="unit-test",
     )
 
 

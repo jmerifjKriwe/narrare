@@ -9,42 +9,52 @@ multi-step generation.  It directly:
 - Validates chapter access before streaming
 - Assembles minimal chapter context (title, POV) for prompt enrichment
 
+Model acquisition is LAZY (ADR-086): the factory wires a
+``LazyModelResolution`` (SUGGEST cascade, user scope); the service
+resolves it on first use — :meth:`ensure_resolved` at the end of
+:meth:`validate_suggest` (the router's pre-stream seam) and after the
+ownership gate in :meth:`suggest_inline` — so request validation and the
+IDOR gate stay ahead of resolution and an unconfigured provider surfaces
+as a loud 400 before any SSE headers exist. The eager factory's sampling
+composition (``replace(config, temperature=0.3,
+max_tokens=SUGGEST_MAX_TOKENS)``) is reproduced exactly once at first
+use — WHAT unchanged, only WHEN.
+
 Implements :class:`SuggestServiceProtocol` from ``contracts.py`` (RULE-03).
 """
 
 from __future__ import annotations
 
-import time
+from dataclasses import replace
 from typing import TYPE_CHECKING
 from uuid import UUID
 
 import structlog
 
+from narrare.writing._suggest_support import build_chapter_context, track_request
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import SUGGEST_MAX_TOKENS
 from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import NotFoundError, ValidationError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.models import Chapter
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
     from narrare.writing.schemas import InlineSuggestRequest
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.llm.result import StreamChunk
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
 
-# Soft rate limiting: minimum interval between requests per chapter.
-# Non-blocking — logs a warning but still processes the request.
-_MIN_SUGGEST_INTERVAL_S: float = 0.5
-
-# Module-level dict for in-memory rate tracking.
-# Key: "{chapter_id}:{user_id}", Value: monotonic timestamp of last request.
-_last_request_time: dict[str, float] = {}
+# Eager-factory sampling overrides for the SUGGEST intent, now composed
+# at the service's first use (ADR-086 L36 — timing-only migration).
+_SUGGEST_TEMPERATURE: float = 0.3
 
 
 class InlineSuggestService:
@@ -56,30 +66,52 @@ class InlineSuggestService:
     Args:
         registry: LLM model registry for streaming completions.
         composer: Prompt composer for SUGGEST intent prompts.
-        config: Resolved model configuration (temperature, max_tokens).
+        model_resolution: Lazy per-user model resolution (ADR-086) —
+            the SUGGEST routing cascade resolves on first use, never
+            at construction; the suggest sampling overrides are
+            composed onto the resolved config at that same first use.
         chapter_repo: Chapter repository for access validation and context.
         novel_repo: Novel repository for the chapter-ownership gate (IDOR S6).
-        api_key: Optional API key override for the LLM provider.
-        base_url: Optional base URL override for the LLM provider.
     """
 
     def __init__(
         self,
         registry: ModelRegistry,
         composer: PromptComposer,
-        config: ResolvedModelConfig,
+        model_resolution: ModelResolution,
         chapter_repo: ChapterRepository,
         novel_repo: NovelRepository,
-        api_key: str | None = None,
-        base_url: str | None = None,
     ) -> None:
         self._registry = registry
         self._composer = composer
-        self._config = config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
-        self._api_key = api_key
-        self._base_url = base_url
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user SUGGEST routing once; idempotent (ADR-086).
+
+        First call resolves via the injected ``ModelResolution`` and
+        composes the effective suggest config — the eager factory's
+        ``replace(resolved.config, temperature=0.3,
+        max_tokens=SUGGEST_MAX_TOKENS)`` — caching the composed triple;
+        repeat calls return the cache without re-running the cascade.
+        Errors propagate uncached (RULE-11): ``ConfigurationError``
+        (``NO_AI_PROVIDER``) surfaces as a pre-header 400 on this SSE
+        endpoint.
+        """
+        if self._resolved is None:
+            resolved = await self._model_resolution.resolve()
+            self._resolved = replace(
+                resolved,
+                config=replace(
+                    resolved.config,
+                    temperature=_SUGGEST_TEMPERATURE,
+                    max_tokens=SUGGEST_MAX_TOKENS,
+                ),
+            )
+        return self._resolved
 
     # -- Ownership gate (IDOR S6, chapter-only path) ------------------------
 
@@ -117,12 +149,17 @@ class InlineSuggestService:
         Called by the router BEFORE creating the StreamingResponse to
         ensure validation errors (422, 404) are returned with proper HTTP
         status codes instead of causing RuntimeError after headers are
-        sent.  Ownership runs FIRST (IDOR S6).
+        sent.  Ownership runs FIRST (IDOR S6), the lazy routing cascade
+        resolves LAST (ADR-086) — so validation and ownership failures
+        keep precedence over an unconfigured provider's 400, and that
+        400 itself still fires before any SSE headers are sent.
 
         Raises:
             ValidationError: If text_before is empty or whitespace-only.
             NotFoundError: If the chapter does not exist or its novel
                 belongs to another user.
+            narrare_core.shared.errors.ConfigurationError: If the user
+                has no AI provider configured (first-use resolve).
         """
         if not request.text_before.strip():
             raise ValidationError(
@@ -131,6 +168,12 @@ class InlineSuggestService:
             )
 
         await self._verify_chapter_ownership(chapter_id, user_id)
+
+        # ADR-086 L36: first-use lazy resolve — AFTER text validation and
+        # the ownership gate (gates stay ahead of resolution) and BEFORE
+        # the router constructs the StreamingResponse, so an unconfigured
+        # provider stays a loud pre-header 400, never a mid-stream error.
+        await self.ensure_resolved()
 
     # -- Public API --------------------------------------------------------
 
@@ -188,12 +231,19 @@ class InlineSuggestService:
                 not exist or its novel belongs to another user (IDOR S6).
             narrare_core.shared.errors.PromptNotFoundError: If no prompt
                 file exists for ``LLMIntent.SUGGEST``.
+            narrare_core.shared.errors.ConfigurationError: If the user
+                has no AI provider configured (first-use resolve).
         """
         # Ownership gate FIRST (IDOR S6): foreign ≡ unknown 404s before
         # rate-limit tracking, prompt building, or chapter-metadata
         # enrichment — a foreign chapter's title/POV must never reach
         # the prompt (GAP-MINOR metadata leak).
         await self._verify_chapter_ownership(chapter_id, user_id)
+
+        # ADR-086 L36: first-use lazy resolve (idempotent — the router's
+        # pre-stream validate_suggest call already resolved on this
+        # request; direct callers resolve here, after the gate).
+        resolved = await self.ensure_resolved()
 
         # Lightweight evidence — invocation tracked via log event (ADR-045
         # Decision 3 Option C exception for low-latency inline suggest).
@@ -207,10 +257,10 @@ class InlineSuggestService:
         )
 
         # Soft rate-limit check (non-blocking).
-        _track_request(chapter_id, user_id)
+        track_request(chapter_id, user_id)
 
         # Load minimal chapter context for prompt enrichment.
-        chapter_context = await self._build_chapter_context(chapter_id)
+        chapter_context = await build_chapter_context(self._chapter_repo, chapter_id)
 
         ctx = PromptContext(
             language=request.language,
@@ -240,47 +290,8 @@ class InlineSuggestService:
             intent=LLMIntent.SUGGEST,
             system_prompt=prompt.system,
             user_prompt=prompt.user,
-            config=self._config,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            config=resolved.config,
+            api_key=resolved.api_key,
+            base_url=resolved.base_url,
         ):
             yield chunk
-
-    # -- Private helpers ---------------------------------------------------
-
-    async def _build_chapter_context(self, chapter_id: UUID) -> str:
-        """Assemble minimal chapter context for prompt enrichment.
-
-        Returns a short string with chapter title and POV (if set).
-        Intentionally minimal — the full ContextAssembler is too slow
-        for the <500ms latency target of inline suggestions.
-        """
-        chapter = await self._chapter_repo.get(chapter_id)
-        if chapter is None:
-            return ""
-
-        parts: list[str] = []
-        if chapter.title:
-            parts.append(f"Chapter: {chapter.title}")
-        if chapter.pov_character_id:
-            parts.append(f"POV: {chapter.pov_character_id}")
-        return "\n".join(parts)
-
-
-def _track_request(chapter_id: UUID, user_id: str) -> None:
-    """Track request timing for soft rate limiting (non-blocking).
-
-    Logs a warning if requests are coming too fast but does NOT
-    reject the request.  This keeps the UX responsive during
-    rapid typing while providing observability for abuse detection.
-    """
-    now = time.monotonic()
-    key = f"{chapter_id}:{user_id}"
-    last = _last_request_time.get(key, 0.0)
-    if last and (now - last) < _MIN_SUGGEST_INTERVAL_S:
-        logger.debug(
-            "suggest_rate_throttled",
-            chapter_id=str(chapter_id),
-            elapsed_ms=round((now - last) * 1000),
-        )
-    _last_request_time[key] = now

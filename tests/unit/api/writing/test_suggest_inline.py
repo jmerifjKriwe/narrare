@@ -18,11 +18,11 @@ from tests.unit.api.writing._suggest_factories import (
     make_mock_chapter_repo,
     make_mock_composer,
     make_mock_registry,
-    make_suggest_config,
+    make_suggest_resolved,
 )
 
 if TYPE_CHECKING:
-    from narrare_core.llm import ResolvedModelConfig
+    from narrare._app.dependencies_services import StaticModelResolution
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -40,8 +40,11 @@ def mock_registry() -> MagicMock:
 
 
 @pytest.fixture
-def suggest_config() -> ResolvedModelConfig:
-    return make_suggest_config()
+def suggest_resolution() -> StaticModelResolution:
+    """Fixed resolution wrapping the low-temperature suggest config."""
+    from narrare._app.dependencies_services import StaticModelResolution
+
+    return StaticModelResolution(make_suggest_resolved())
 
 
 @pytest.fixture
@@ -54,7 +57,7 @@ def suggest_service(
     mock_composer: MagicMock,
     mock_registry: MagicMock,
     mock_chapter_repo: MagicMock,
-    suggest_config: ResolvedModelConfig,
+    suggest_resolution: StaticModelResolution,
 ) -> InlineSuggestService:
     """InlineSuggestService with mocked dependencies."""
     from tests.unit.api.writing._suggest_factories import make_mock_novel_repo
@@ -62,7 +65,7 @@ def suggest_service(
     return InlineSuggestService(
         registry=mock_registry,
         composer=mock_composer,
-        config=suggest_config,
+        model_resolution=suggest_resolution,
         chapter_repo=mock_chapter_repo,
         novel_repo=make_mock_novel_repo(),
     )
@@ -304,7 +307,7 @@ class TestSuggestInline:
         mock_chapter_repo: MagicMock,
         mock_composer: MagicMock,
     ) -> None:
-        """_build_chapter_context includes POV when set (line 188)."""
+        """build_chapter_context includes POV when set."""
 
         chapter = MagicMock(spec=["title", "pov_character_id", "novel_id"])
         chapter.title = "Test Chapter"

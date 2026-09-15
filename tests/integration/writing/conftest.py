@@ -199,6 +199,9 @@ async def _make_suggest_service(
     project_id: object = None,
 ) -> InlineSuggestService:
     """Build an InlineSuggestService with real chapter repo + fake registry."""
+    from narrare._app.dependencies_services import StaticModelResolution
+    from narrare_core.llm.model_routing import ResolvedModel
+
     fake_registry = FakeModelRegistry()
     # Queue a default short stream response for suggest tests.
     fake_registry.returns_stream(
@@ -218,7 +221,10 @@ async def _make_suggest_service(
     return InlineSuggestService(
         registry=fake_registry,
         composer=get_composer(),
-        config=config,
+        # ADR-086: the service resolves a ModelResolution at first use;
+        # the integration fake chain pins a fixed resolution (render- and
+        # outcome-inert — same config the eager factory passed).
+        model_resolution=StaticModelResolution(ResolvedModel(config=config)),
         chapter_repo=chapter_repo,
         novel_repo=NovelRepository(session),
     )

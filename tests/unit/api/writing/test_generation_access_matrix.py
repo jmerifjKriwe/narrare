@@ -210,7 +210,9 @@ def _make_service(
     nr = cast("NovelRepository", novel_repo)
 
     if kind == "suggest":
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.writing.suggest_service import InlineSuggestService
+        from narrare_core.llm.model_routing import ResolvedModel
         from tests.unit.api.writing._suggest_factories import (
             make_mock_composer,
             make_mock_registry,
@@ -226,7 +228,7 @@ def _make_service(
         return InlineSuggestService(
             registry=registry,
             composer=make_mock_composer(),
-            config=CONFIG,
+            model_resolution=StaticModelResolution(ResolvedModel(config=CONFIG)),
             chapter_repo=cr,
             novel_repo=nr,
         )
