@@ -3,9 +3,10 @@
 Domain fakes (ADR-030): FakeSeriesRepository for ownership + settings;
 the REAL SeriesHistoryProvider over FakeSeriesRepository /
 FakeBandSummaryRepository (its collect_series_band_data landed in this
-same task); the REAL Core tier; a canned budgets_provider returning a
-frozen EffectiveContextBudgets (the factory's ADR-082 resolution is
-pinned by wiring tests, not duplicated here).
+same task); the REAL Core tier; a canned async budgets_factory returning
+a frozen EffectiveContextBudgets (the factory's ADR-082 resolution is
+pinned by wiring tests, not duplicated here; its ADR-086 lazy timing is
+pinned by test_series_history_preview_service_lazy_resolution.py).
 """
 
 from __future__ import annotations
@@ -57,10 +58,14 @@ def _make_service(
         series_repo=series_repo,
         band_summary_repo=band_repo or FakeBandSummaryRepository(),
     )
+
+    async def budgets_factory() -> EffectiveContextBudgets:
+        return _budgets(series_history)
+
     return SeriesHistoryPreviewService(
         series_repo=series_repo,
         provider=provider,
-        budgets_provider=lambda: _budgets(series_history),
+        budgets_factory=budgets_factory,
     )
 
 

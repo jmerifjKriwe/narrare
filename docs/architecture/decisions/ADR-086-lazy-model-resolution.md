@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (18):**
+**Open (17):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -378,7 +378,21 @@ at construction (2026-09-09; factory function names verified):
        voice-drift factory — its eager resolve keeps the endpoint at
        400-before-422 for unconfigured users until L29 lands — caveat
        resolved by L29)*
-27. [ ] `series/dependencies_context_preview.py` — `get_series_history_preview_service` (+ eager `get_resolved_limits`)
+27. [x] `series/dependencies_context_preview.py` — `get_series_history_preview_service` (+ eager `get_resolved_limits`)
+       *(D4/L27 — landed 2026-09-14: lazy wiring + deferred budgets
+       composition (M-budget, S4b shape — ``dependencies_beta_reader.py``
+       precedent): a ``LazyModelResolution`` around the WRITE-intent
+       routing cascade plus an async ``compose_budgets`` closure awaiting
+       BOTH cascades (routing + token-limits — RULE-18b: sources
+       unchanged, only timing moves) and
+       ``resolve_context_budgets(series_in_scope=True)``; first-use
+       composition via the service's idempotent ``ensure_resolved()``
+       after the series-ownership gate and BEFORE the settings/band
+       reads (REST — no SSE pre-header needed); the service's sync
+       ``budgets_provider`` seam became the cached async
+       ``budgets_factory``; integration probe: pre-migration an invalid
+       path id surfaced the eager factory's 400, not the path-validation
+       422)*
 28. [x] `series/dependencies_voice.py` — `get_series_voice_service`
        *(D2/L28 — landed 2026-09-14: lazy wiring + first-use resolve after the
        series-ownership + novel-membership gates and BEFORE the chapter

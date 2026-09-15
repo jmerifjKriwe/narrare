@@ -7,12 +7,15 @@ budgets. Honest by construction — no fabricated estimates:
 
 * band data comes from the real ``BandSummary`` rows (via the provider's
   ``collect_series_band_data``, next-band semantics);
-* budgets come from the injected ``budgets_provider``, which the DI
+* budgets come from the injected ``budgets_factory``, which the DI
   factory builds over the exact production resolution chain
   (``TokenLimitsService`` cascade → model routing →
   ``resolve_context_budgets(series_in_scope=True)``) — the same
   ``EffectiveContextBudgets`` the writing pipeline consumes, never a
-  second computation path;
+  second computation path. Per ADR-086 the composition is LAZY: both
+  cascades run once at the service's first use (:meth:`ensure_resolved`,
+  after the ownership gate), never at construction — request-validation
+  errors surface as 422 before any cascade runs;
 * the prediction itself is the Core tier's ``preview`` (same greedy fit
   as real assembly).
 
@@ -40,7 +43,7 @@ from narrare_core.shared.errors import ForbiddenError
 
 if TYPE_CHECKING:
     import uuid
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
     from narrare.series.contracts import SeriesRepositoryProtocol
     from narrare.series.series_history_provider import SeriesHistoryProvider
@@ -61,7 +64,7 @@ class SeriesHistoryPreviewService:
         *,
         series_repo: SeriesRepositoryProtocol,
         provider: SeriesHistoryProvider,
-        budgets_provider: Callable[[], EffectiveContextBudgets],
+        budgets_factory: Callable[[], Awaitable[EffectiveContextBudgets]],
         tier: SeriesHistoryTier | None = None,
         slider_max: int = 10,
     ) -> None:
@@ -70,9 +73,11 @@ class SeriesHistoryPreviewService:
         Args:
             series_repo: Ownership check + settings read (window default).
             provider: Band-data fetch (next-band semantics).
-            budgets_provider: Zero-arg callable returning the frozen
+            budgets_factory: Zero-arg async callable returning the frozen
                 :class:`EffectiveContextBudgets` — built by the DI factory
-                over the ADR-082 resolution chain.
+                over the ADR-082 resolution chain and invoked once at the
+                service's first use (ADR-086 lazy resolution; see
+                :meth:`ensure_resolved`).
             tier: Optional Core tier override (default → real).
             slider_max: Slider upper bound (design §4: 1-10). Function
                 default, not a module constant, by the
@@ -82,9 +87,24 @@ class SeriesHistoryPreviewService:
         """
         self._series_repo = series_repo
         self._provider = provider
-        self._budgets_provider = budgets_provider
+        self._budgets_factory = budgets_factory
+        self._budgets: EffectiveContextBudgets | None = None
         self._tier = tier or SeriesHistoryTier()
         self._slider_max = slider_max
+
+    async def ensure_resolved(self) -> EffectiveContextBudgets:
+        """Compose the effective budgets at first use (ADR-086, idempotent).
+
+        Invokes the factory's deferred composition — the WRITE-intent
+        routing cascade AND the token-limits cascade, then
+        ``resolve_context_budgets(series_in_scope=True)`` — exactly once;
+        the frozen result is cached for the service's lifetime.
+        ``ConfigurationError`` (unconfigured provider) propagates
+        un-swallowed (RULE-11 — AI-mandatory endpoint).
+        """
+        if self._budgets is None:
+            self._budgets = await self._budgets_factory()
+        return self._budgets
 
     async def get_preview(
         self, series_id: uuid.UUID, user_id: uuid.UUID
@@ -94,10 +114,19 @@ class SeriesHistoryPreviewService:
         Raises:
             ForbiddenError: If the series is missing or not owned by
                 ``user_id`` (anti-enumeration — 403, never 404).
+            ConfigurationError: If the user has no AI provider
+                configured — resolved lazily at first use, AFTER the
+                ownership gate (ADR-086; RULE-11 loud 400).
         """
         series = await self._series_repo.get(series_id)
         if series is None or series.user_id != user_id:
             raise ForbiddenError("You do not have access to this series")
+
+        # ADR-086: first-use lazy composition of both cascades (routing +
+        # token limits), post-validation and post-gate — an unconfigured
+        # provider stays a loud 400 (RULE-11), never a preempting
+        # factory-time error.
+        budgets = await self.ensure_resolved()
 
         settings = await self._series_repo.get_settings(series_id)
         if settings is None:
@@ -107,7 +136,6 @@ class SeriesHistoryPreviewService:
             current = int(value) if value is not None else _DEFAULT_WINDOW_SIZE
 
         bands = await self._provider.collect_series_band_data(series_id)
-        budgets = self._budgets_provider()
 
         top = max(self._slider_max, current)
         previews = [
