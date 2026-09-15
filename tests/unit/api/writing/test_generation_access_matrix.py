@@ -34,7 +34,6 @@ from uuid import UUID, uuid4
 import pytest
 
 from narrare.writing.coauthor_service import CoAuthorService
-from narrare.writing.extend_service import ExtendService
 from narrare.writing.style_variant_service import StyleVariantService
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import ConflictError, NotFoundError
@@ -144,9 +143,9 @@ def _pipeline(*, working: bool) -> MagicMock:
     return pipeline
 
 
-# The remaining pipeline-backed services (rewrite has a lazy-runtime branch below).
+# The remaining pipeline-backed services (rewrite and extend have
+# lazy-runtime branches in ``_make_service`` — ADR-086 L33/L32).
 _PIPELINE_SERVICES: dict[str, type[Any]] = {
-    "extend": ExtendService,
     "coauthor": CoAuthorService,
     "style_variant": StyleVariantService,
 }
@@ -208,33 +207,34 @@ def _make_service(
     nr = cast("NovelRepository", novel_repo)
 
     if kind == "suggest":
-        from narrare._app.dependencies_services import StaticModelResolution
-        from narrare.writing.suggest_service import InlineSuggestService
-        from narrare_core.llm.model_routing import ResolvedModel
-        from tests.unit.api.writing._suggest_factories import (
-            make_mock_composer,
-            make_mock_registry,
-        )
+        # Builder lives in _suggest_factories (RULE-04 split, L32 ratchet).
+        from tests.unit.api.writing._suggest_factories import make_matrix_suggest_service
 
-        registry = make_mock_registry()
-        if not working_llm:
-
-            def _must_not_stream(**kwargs: object) -> Any:
-                raise AssertionError("registry invoked — LLM call despite the gate")
-
-            registry.stream = _must_not_stream
-        return InlineSuggestService(
-            registry=registry,
-            composer=make_mock_composer(),
-            model_resolution=StaticModelResolution(ResolvedModel(config=CONFIG)),
+        return make_matrix_suggest_service(
+            registry_guarded=not working_llm,
             chapter_repo=cr,
             novel_repo=nr,
+            config=CONFIG,
         )
 
     if kind == "rewrite":
         from tests.unit.api.writing._rewrite_factories import make_matrix_rewrite_service
 
         return make_matrix_rewrite_service(
+            repo=cast("GenerationRepository", gen_repo),
+            pipeline=_pipeline(working=working_llm),
+            chapter_repo=cr,
+            novel_repo=nr,
+            draft_processor=_processor(),
+            config=CONFIG,
+        )
+
+    if kind == "extend":
+        # ADR-086 L32: lazy-runtime ctor — pins the matrix pipeline verbatim,
+        # so the guard/working-mock semantics are unchanged.
+        from tests.unit.api.writing._extend_factories import make_matrix_extend_service
+
+        return make_matrix_extend_service(
             repo=cast("GenerationRepository", gen_repo),
             pipeline=_pipeline(working=working_llm),
             chapter_repo=cr,

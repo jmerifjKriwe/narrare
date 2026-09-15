@@ -21,6 +21,7 @@ from narrare.writing.extend_service import ExtendService
 from narrare.writing.schemas import ExtendLength, ExtendRequest
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
+from tests.unit.api.writing._extend_factories import make_static_runtime_factory
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -105,9 +106,11 @@ def service(
     novel_repo.get_by_id = AsyncMock(return_value=make_novel())
     return ExtendService(
         repo=mock_repo,
-        pipeline=mock_pipeline,
+        # ADR-086 L32: the service composes its runtime at first use; the
+        # test chain pins a fixed runtime (render- and outcome-inert —
+        # same config/pipeline the eager factory passed).
+        runtime_factory=make_static_runtime_factory(mock_pipeline, CONFIG),
         draft_processor=mock_draft_processor,
-        config=CONFIG,
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
     )

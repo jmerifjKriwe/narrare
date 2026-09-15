@@ -23,6 +23,7 @@ from narrare.writing.extend_service import _EXTEND_WORD_TARGETS, ExtendService
 from narrare.writing.schemas import ExtendLength, ExtendRequest, GenerateResponse
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
+from tests.unit.api.writing._extend_factories import make_static_runtime_factory
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -94,9 +95,10 @@ def service(
     proc.process = MagicMock(spec=[], side_effect=lambda text, **kw: text)
     return ExtendService(
         repo=mock_repo,
-        pipeline=pipeline,
+        # ADR-086 L32: fixed-runtime pin (render- and outcome-inert —
+        # same config/pipeline the eager factory passed).
+        runtime_factory=make_static_runtime_factory(pipeline, CONFIG),
         draft_processor=proc,
-        config=CONFIG,
         chapter_repo=mock_chapter_repo,
         novel_repo=mock_novel_repo,
     )

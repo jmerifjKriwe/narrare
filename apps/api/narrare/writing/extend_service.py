@@ -18,23 +18,22 @@ from uuid import UUID
 
 import structlog
 
+from narrare.writing._extend_support import build_extend_stream_inputs, mark_extend_failed
 from narrare.writing._helpers import create_request_row, verify_chapter_access
 from narrare.writing.schemas import ExtendLength, ExtendRequest, GenerateResponse
-from narrare.writing.tone_resolver import resolve_tone_instructions
 from narrare_core.shared.errors import ConflictError, ValidationError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Awaitable, Callable
 
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.novels.repository import NovelRepository
     from narrare.settings.custom_tone_service import CustomToneService
+    from narrare.writing._extend_support import ExtendRuntime
     from narrare.writing.repository import GenerationRepository
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.result import StreamChunk
     from narrare_core.writing.draft_processor import DraftProcessor
-    from narrare_core.writing.pipeline import WritingPipeline
 
 logger = structlog.get_logger(__name__)
 
@@ -58,26 +57,38 @@ class ExtendService:
     def __init__(
         self,
         repo: GenerationRepository,
-        pipeline: WritingPipeline,
+        runtime_factory: Callable[[], Awaitable[ExtendRuntime]],
         draft_processor: DraftProcessor,
-        config: ResolvedModelConfig,
         chapter_repo: ChapterRepository,
         novel_repo: NovelRepository,
-        api_key: str | None = None,
-        base_url: str | None = None,
         tone_service: CustomToneService | None = None,
         relationship_repo: RelationshipRepository | None = None,
     ) -> None:
         self._repo = repo
-        self._pipeline = pipeline
+        self._runtime_factory = runtime_factory
+        self._runtime: ExtendRuntime | None = None
         self._draft_processor = draft_processor
-        self._config = config
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
-        self._api_key = api_key
-        self._base_url = base_url
         self._tone_service = tone_service
         self._relationship_repo = relationship_repo
+
+    # -- Lazy runtime (ADR-086) --------------------------------------------
+
+    async def ensure_resolved(self) -> ExtendRuntime:
+        """Compose the effective extend runtime at first use; idempotent.
+
+        Invokes the factory's deferred composition — the EXTEND routing
+        cascade AND the token-limits cascade, the sampling overrides,
+        the ADR-082 budgets, and the tier-wired pipeline — exactly once;
+        the frozen result is cached for the service's lifetime.  Errors
+        propagate uncached (RULE-11): ``ConfigurationError``
+        (``NO_AI_PROVIDER``) surfaces as a pre-header 400 on this SSE
+        endpoint.
+        """
+        if self._runtime is None:
+            self._runtime = await self._runtime_factory()
+        return self._runtime
 
     # -- Public API --------------------------------------------------------
 
@@ -100,6 +111,10 @@ class ExtendService:
         :func:`verify_chapter_access` runs FIRST — foreign and unknown
         chapter ids are indistinguishable 404s raised before any input
         validation, active-generation check, or request-row creation.
+        The lazy runtime composition (ADR-086) runs LAST — after all
+        gates — so gate failures keep precedence over an unconfigured
+        provider's 400, and that 400 itself still fires before any SSE
+        headers are sent.
 
         Raises:
             NotFoundError: If the chapter does not exist, does not belong
@@ -107,6 +122,8 @@ class ExtendService:
                 user.
             ValidationError: If text_before is empty.
             ConflictError: If another generation is active for the chapter.
+            narrare_core.shared.errors.ConfigurationError: If the user
+                has no AI provider configured (first-use composition).
         """
         await verify_chapter_access(
             self._chapter_repo, self._novel_repo, chapter_id, novel_id, user_id
@@ -121,6 +138,13 @@ class ExtendService:
         active = await self._repo.get_active_for_chapter(chapter_id)
         if active is not None:
             raise ConflictError(f"Generation already active for chapter {chapter_id}")
+
+        # ADR-086 L32: first-use lazy composition of BOTH cascades
+        # (routing + token limits, incl. the tier-wired pipeline) —
+        # post-validation and post-gate — so an unconfigured provider
+        # stays a loud pre-header 400 (RULE-11), never a preempting
+        # factory-time error.
+        await self.ensure_resolved()
 
     async def start_extend(
         self,
@@ -195,13 +219,17 @@ class ExtendService:
         response = await self.start_extend(chapter_id, novel_id, user_id, request)
         request_id = response.request_id
 
-        # Step 2: Transition to streaming.
+        # Step 2: Transition to streaming.  The runtime is already
+        # composed (ADR-086): the pre-stream validate_extend — called by
+        # start_extend below — ran the first-use composition on this
+        # service instance, so ensure_resolved here is a cached read.
+        runtime = await self.ensure_resolved()
         await self._repo.update_status(
             request_id,
             "streaming",
             started_at=datetime.now(UTC),
-            model_id=self._config.model_id,
-            provider_name=self._config.provider_name,
+            model_id=runtime.config.model_id,
+            provider_name=runtime.config.provider_name,
         )
 
         # Step 3: Build pipeline request with extend-specific parameters.
@@ -217,39 +245,28 @@ class ExtendService:
             writing_language=request.language,
         )
 
-        # Step 4: Build chapter_content for extend: pre-text + marker + post-text.
-        chapter_content = request.text_before
-        if request.text_after:
-            chapter_content += "\n[CONTINUE FROM HERE]\n" + request.text_after
-        else:
-            chapter_content += "\n[CONTINUE FROM HERE]\n"
-
-        # Step 5: Resolve custom tone instructions.
-        custom_tone_instructions = await resolve_tone_instructions(
-            tone=request.tone,
+        # Steps 4-5b: prompt inputs — content block with the continuation
+        # marker, resolved custom tone instructions, and the formatted KB
+        # relationships (FIND-009); extracted to _extend_support (RULE-04).
+        stream_inputs = await build_extend_stream_inputs(
+            request=request,
             user_id=UUID(user_id),
             tone_service=self._tone_service,
-        )
-
-        # Step 5b: Fetch and format KB relationships for prompt context (FIND-009)
-        from narrare.writing._relationship_helpers import fetch_formatted_relationships
-
-        kb_relationships = await fetch_formatted_relationships(
-            self._relationship_repo,
-            novel_id,
+            relationship_repo=self._relationship_repo,
+            novel_id=novel_id,
         )
 
         # Step 6: Stream via pipeline (RULE-01b, RULE-02).
         accumulated: list[str] = []
         try:
-            async for chunk in self._pipeline.generate(
+            async for chunk in runtime.pipeline.generate(
                 pipeline_request,
-                config=self._config,
-                api_key=self._api_key,
-                base_url=self._base_url,
-                chapter_content=chapter_content,
-                custom_tone_instructions=custom_tone_instructions,
-                kb_relationships=kb_relationships.text,
+                config=runtime.config,
+                api_key=runtime.api_key,
+                base_url=runtime.base_url,
+                chapter_content=stream_inputs.chapter_content,
+                custom_tone_instructions=stream_inputs.custom_tone_instructions,
+                kb_relationships=stream_inputs.kb_relationships,
             ):
                 if chunk.is_final:
                     raw_text = "".join(accumulated) + chunk.text
@@ -267,20 +284,10 @@ class ExtendService:
                 accumulated.append(chunk.text)
                 yield chunk
         except Exception as e:
-            partial = self._draft_processor.process(
-                "".join(accumulated),
-                is_partial=True,
-            )
-            partial_words = len(partial.split()) if partial else 0
-            await self._repo.update_status(
+            await mark_extend_failed(
+                self._repo,
+                self._draft_processor,
                 request_id,
-                "failed",
-                error_message=str(e),
-                word_count=partial_words,
-                completed_at=datetime.now(UTC),
-            )
-            logger.error(
-                "extend_stream_failed",
-                request_id=str(request_id),
-                error=str(e),
+                accumulated,
+                e,
             )

@@ -6,6 +6,7 @@ to avoid fixture duplication while keeping each file within RULE-04 limits.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -15,6 +16,10 @@ from narrare_core.llm.gateway import ModelRegistry
 from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
+
+if TYPE_CHECKING:
+    from narrare.novels.repository import NovelRepository
+    from narrare.writing.suggest_service import InlineSuggestService
 
 
 def make_mock_composer() -> MagicMock:
@@ -90,3 +95,39 @@ def make_mock_novel_repo() -> MagicMock:
     repo = MagicMock(spec=NovelRepository)
     repo.get_by_id = AsyncMock(return_value=make_novel())
     return repo
+
+
+def make_matrix_suggest_service(
+    *,
+    registry_guarded: bool,
+    chapter_repo: ChapterRepository,
+    novel_repo: NovelRepository,
+    config: ResolvedModelConfig,
+) -> InlineSuggestService:
+    """Build the access-matrix InlineSuggestService over its fakes.
+
+    Extracted from ``test_generation_access_matrix.py`` per RULE-04 (the
+    ADR-086 L32 extend branch pushed the matrix file over its 400-line
+    limit); behavior is unchanged — only the location moved.
+
+    ``registry_guarded=True`` (the matrix's ``working_llm=False``) arms a
+    guard that fails the test the moment ``registry.stream`` (the real
+    LLM boundary) is reached.
+    """
+    from narrare._app.dependencies_services import StaticModelResolution
+    from narrare.writing.suggest_service import InlineSuggestService
+
+    registry = make_mock_registry()
+    if registry_guarded:
+
+        def _must_not_stream(**kwargs: object) -> Any:
+            raise AssertionError("registry invoked — LLM call despite the gate")
+
+        registry.stream = _must_not_stream
+    return InlineSuggestService(
+        registry=registry,
+        composer=make_mock_composer(),
+        model_resolution=StaticModelResolution(ResolvedModel(config=config)),
+        chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
+    )

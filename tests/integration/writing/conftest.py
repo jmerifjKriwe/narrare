@@ -124,6 +124,8 @@ async def _make_extend_service(
     project_id: object = None,
 ) -> ExtendService:
     """Build an ExtendService with real repo + fake pipeline (no LLM calls)."""
+    from narrare.writing._extend_support import ExtendRuntime
+
     repo = GenerationRepository(session)
     fake_registry = FakeModelRegistry()
     # Queue a default stream response for extend tests.
@@ -142,11 +144,23 @@ async def _make_extend_service(
         draft_processor=_processor,
     )
 
+    # ADR-086: the service composes its runtime at first use; the fake
+    # chain pins a fixed runtime (render- and outcome-inert — same
+    # config/pipeline the eager factory passed).
+    runtime = ExtendRuntime(
+        config=config,
+        api_key=None,
+        base_url=None,
+        pipeline=pipeline,
+    )
+
+    async def _static_runtime() -> ExtendRuntime:
+        return runtime
+
     return ExtendService(
         repo=repo,
-        pipeline=pipeline,
+        runtime_factory=_static_runtime,
         draft_processor=_processor,
-        config=config,
         chapter_repo=ChapterRepository(session),
         novel_repo=NovelRepository(session),
     )

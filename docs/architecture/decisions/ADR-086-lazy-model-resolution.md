@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (16):**
+**Open (14):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -421,7 +421,17 @@ at construction (2026-09-09; factory function names verified):
        generation helpers split to `generation_support.py` for the
        RULE-04 size limit the lazy seam crossed)*
 31. [ ] `writing/deps_coauthor.py` — `get_coauthor_service` (+ eager `get_resolved_limits`)
-32. [ ] `writing/deps_extend.py` — `get_extend_service` (+ eager `get_resolved_limits`)
+32. [x] `writing/deps_extend.py` — `get_extend_service` (+ eager `get_resolved_limits`)
+      *(E3/L32 — landed 2026-09-15: lazy wiring + deferred M-budget
+      composition at first use — ``ensure_resolved`` at the end of
+      ``validate_extend`` (the router's pre-stream seam) and via
+      ``start_extend`` for direct callers — so validation, the IDOR S6
+      gate, and the conflict check stay ahead of BOTH cascades
+      (routing + ``get_resolved_limits``, deferred budget/pipeline
+      composition per the beta-reader S4b shape) and an unconfigured
+      provider stays a loud pre-header 400 (SSE); the composed runtime
+      and the stream-failure recorder split to ``_extend_support.py``
+      for the RULE-04 size limit the lazy seam crossed)*
 33. [x] `writing/deps_rewrite.py` — `get_rewrite_service` (+ eager `get_resolved_limits`)
       *(E2/L33 — landed 2026-09-15: lazy wiring + deferred M-budget
       composition at first use — ``ensure_resolved`` at the end of
