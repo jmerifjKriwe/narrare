@@ -19,6 +19,7 @@ from narrare_core.prompts.composer import PromptComposer
 from narrare_core.prompts.registry import PromptRegistry
 from tests.factories import make_chapter, make_chapter_outline, make_novel
 from tests.fakes import FakeChapterRepository, FakeNovelRepository, FakeOutlineRepository
+from tests.unit.api.planning._storyboard_test_helpers import make_static_resolution
 
 
 def make_ai_remap_service() -> AIRemapService:
@@ -63,6 +64,7 @@ def service(
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
         ai_remap_service=ai_remap_service,
+        model_resolution=make_static_resolution(),
     )
 
 

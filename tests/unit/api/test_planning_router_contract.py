@@ -36,13 +36,20 @@ class TestPlanningRouterUsesSettings:
     """Planning DI should resolve models via settings, not hardcoded values."""
 
     def test_get_service_uses_user_settings(self) -> None:
-        """Service factory should resolve provider/model from user settings."""
+        """Service factory should resolve provider/model from user settings.
+
+        Migrated for ADR-086 L21: the factory wires the settings-driven
+        model-routing resolver behind a ``LazyModelResolution`` instead of
+        resolving at construction — the routing source is unchanged
+        (RULE-18), only the timing moved. The no-hardcode pins above keep
+        guarding against literal model/provider strings.
+        """
         from narrare.planning._service_factory import get_storyboard_service
 
         source = inspect.getsource(get_storyboard_service)
-        # Should reference user settings or planning config, not hardcoded strings
-        assert "settings" in source.lower() or "config" in source.lower(), (
-            "service factory should resolve from settings/config, not hardcode"
+        # Should route through the resolver / lazy resolution, not hardcode
+        assert "resolver" in source.lower() or "resolution" in source.lower(), (
+            "service factory should resolve from the routing cascade, not hardcode"
         )
 
     def test_get_service_uses_llm_gateway(self) -> None:

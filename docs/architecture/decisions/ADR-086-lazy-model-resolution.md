@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (10):**
+**Open (9):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -371,7 +371,20 @@ at construction (2026-09-09; factory function names verified):
        policy: ``no_ai_provider_configured`` log + the preserved
        ``no_model_config`` degraded outcome, moved past validation
        (REST — no SSE pre-header needed))*
-21. [ ] `planning/_service_factory.py` — `get_storyboard_service`
+21. [x] `planning/_service_factory.py` — `get_storyboard_service`
+       *(G2/L21 — landed 2026-09-16: lazy wiring + graceful first-use
+       resolve (Pattern M-graceful) — ``ensure_resolved`` runs inside
+       the remap execution immediately after the service's uid-scoped
+       novel guard (``_get_novel`` — the eager factory's wiring-time
+       guard relocated per the planning guard ruling,
+       gate-before-resolution preserved), and the factory's
+       ``except ConfigurationError`` swallow became entry-point policy:
+       ``no_ai_provider_configured`` log + the preserved heuristic-remap
+       degraded outcome (``model_config=None`` semantics); non-AI
+       endpoints (storyboard view, sync status, outline CRUD) no longer
+       resolve at all; remap execution + resolution state split to
+       ``_storyboard_support.py`` for the RULE-04 size limit the lazy
+       seam crossed; REST — no SSE pre-header needed)*
 22. [ ] `planning/_timeline_analysis_factory.py` — `get_timeline_analysis_service`
 23. [ ] `planning/_timeline_consistency_factory.py` — `get_timeline_consistency_service`
 24. [ ] `planning/_timeline_extraction_factory.py` — `get_timeline_extraction_service`

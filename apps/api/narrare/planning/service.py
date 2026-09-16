@@ -1,12 +1,21 @@
 """Storyboard service — business logic for the planning domain.
 
 Orchestrates outline CRUD, storyboard assembly, sync status calculation,
-and structure remap. Delegates mapping helpers to ``_helpers.py`` and
-AI remap helpers (WRITE-012) to ``_remap_helpers.py``.
+and structure remap. Delegates mapping helpers to ``_helpers.py``, AI
+remap helpers (WRITE-012) to ``_remap_helpers.py``, and remap execution
++ lazy resolution state to ``_storyboard_support.py``.
 
 AI Enhancement (WRITE-012): When chapter summaries exist and an
 AIRemapService is injected, structure remap uses AI analysis of summaries
 for intelligent stage suggestions instead of position-ratio heuristic.
+
+Model acquisition (ADR-086 L21): the per-user PLAN routing cascade is
+injected as a ``ModelResolution`` and resolved on first remap use —
+after the uid-scoped novel guard, never at construction (the eager
+factory resolved — and ran its wiring-time guard — at wiring time).
+Graceful degradation (AI-optional feature) is service policy: a missing
+provider is logged and degrades to the preserved heuristic-remap
+outcome (the eager ``model_config=None`` semantics).
 """
 
 from __future__ import annotations
@@ -22,7 +31,7 @@ from narrare.planning._helpers import (
     find_position,
     to_outline_response,
 )
-from narrare.planning._remap_helpers import build_remap_items
+from narrare.planning._storyboard_support import StoryboardResolution, execute_remap
 from narrare.planning.schemas import (
     OutlineResponse,
     OutlineUpdateRequest,
@@ -37,13 +46,13 @@ from narrare_core.shared.errors import NotFoundError
 if TYPE_CHECKING:
     import uuid
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.chapters.models import Chapter
     from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare.novels.models import Novel
     from narrare.planning.contracts import OutlineRepositoryProtocol
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.planning.remap import AIRemapService
 
@@ -64,10 +73,8 @@ class StoryboardService:
         novel_repo: NovelRepositoryProtocol,
         ai_remap_service: AIRemapService | None = None,
         model_registry: ModelRegistry | None = None,
-        model_config: ResolvedModelConfig | None = None,
         *,
-        api_key: str | None = None,
-        base_url: str | None = None,
+        model_resolution: ModelResolution,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._outline_repo = outline_repo
@@ -75,9 +82,9 @@ class StoryboardService:
         self._novel_repo = novel_repo
         self._ai_remap_service = ai_remap_service
         self._model_registry = model_registry
-        self._model_config = model_config
-        self._api_key = api_key
-        self._base_url = base_url
+        # Lazy per-user PLAN cascade (ADR-086 L21) — resolved on first
+        # remap use, never at construction.
+        self._resolution = StoryboardResolution(model_resolution)
         self._invocation_pipeline = invocation_pipeline
 
     # ------------------------------------------------------------------
@@ -232,51 +239,27 @@ class StoryboardService:
         *,
         confirm: bool,
     ) -> RemapResponse:
-        """Shared logic for preview and confirm remap.
+        """Validate the remap request, then delegate execution.
 
-        Uses AI-powered stage suggestions when AIRemapService is available
-        and enough chapters have summaries. Falls back to position-ratio
-        heuristic otherwise (see WRITE-012).
+        The uid-scoped novel guard (``_get_novel`` — the eager factory's
+        wiring-time guard, relocated per the ADR-086 planning guard
+        ruling) stays immediately ahead of the first-use resolve inside
+        ``execute_remap`` (gate-before-resolution ordering).
         """
         adapter_registry.get(new_structure)  # validate early
         novel = await self._get_novel(novel_id, user_id)
-        chapters = await self._list_chapters(novel_id)
-        outlines = await self._outline_repo.get_all_for_novel(novel_id)
-        outline_map = {o.chapter_id: o for o in outlines}
-        new_adapter = adapter_registry.get(new_structure)
-
-        # AI-powered stage suggestions when service + coverage + model allow;
-        # degrades to the position-ratio heuristic per chapter (WRITE-012).
-        items = await build_remap_items(
-            chapters,
-            outline_map,
-            new_adapter,
-            new_structure,
-            self._ai_remap_service,
-            self._model_registry,
-            self._model_config,
-            api_key=self._api_key,
-            base_url=self._base_url,
+        return await execute_remap(
+            outline_repo=self._outline_repo,
+            chapter_repo=self._chapter_repo,
+            novel_repo=self._novel_repo,
+            novel=novel,
+            resolution=self._resolution,
+            ai_remap_service=self._ai_remap_service,
+            model_registry=self._model_registry,
             invocation_pipeline=self._invocation_pipeline,
+            new_structure=new_structure,
+            confirm=confirm,
         )
-
-        if confirm:
-            for item in items:
-                outline = outline_map.get(item.chapter_id)
-                if outline:
-                    await self._outline_repo.update(
-                        item.chapter_id, stage_assignment=item.new_stage
-                    )
-                else:
-                    await self._outline_repo.create(
-                        chapter_id=item.chapter_id,
-                        stage_assignment=item.new_stage,
-                    )
-            from narrare.novels.schemas import UpdateNovelRequest
-
-            await self._novel_repo.update(novel, UpdateNovelRequest(story_structure=new_structure))
-
-        return RemapResponse(new_structure=new_structure, remapped=items, confirmed=confirm)
 
     async def _get_novel(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> Novel:
         """Fetch a novel by ID or raise NotFoundError."""

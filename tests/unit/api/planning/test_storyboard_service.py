@@ -15,6 +15,7 @@ from narrare.planning.service import StoryboardService
 from narrare_core.shared.errors import NotFoundError
 from tests.factories import make_chapter, make_chapter_outline, make_novel
 from tests.fakes import FakeChapterRepository, FakeNovelRepository, FakeOutlineRepository
+from tests.unit.api.planning._storyboard_test_helpers import make_static_resolution
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -46,6 +47,7 @@ def service(
         outline_repo=outline_repo,
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
+        model_resolution=make_static_resolution(),
     )
 
 

@@ -27,6 +27,7 @@ from unittest.mock import patch
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.planning._remap_helpers import ai_suggest_stage, build_remap_items
 from narrare.planning.service import StoryboardService
 from narrare_core.llm import ResolvedModelConfig
@@ -36,6 +37,10 @@ from narrare_core.planning.remap import AIRemapService
 from narrare_core.prompts.composer import ComposedPrompt
 from tests.factories import make_chapter
 from tests.fakes import FakeChapterRepository, FakeNovelRepository, FakeOutlineRepository
+from tests.unit.api.planning._storyboard_test_helpers import (
+    make_resolved_model,
+    make_static_resolution,
+)
 from tests.unit.api.planning.test_storyboard_ai_remap import _seed_chapters, _seed_novel
 
 if TYPE_CHECKING:
@@ -333,23 +338,21 @@ class TestServiceRemapAgentWiring:
         novel_id, user_id = _seed_novel(novel_repo, story_structure="three_act")
         _seed_chapters(chapter_repo, novel_id, 3, with_summaries=True)
         registry = _RecordingModelRegistry()
-        config = _user_config()
+        resolved = make_resolved_model(api_key="sk-user-key", base_url="https://user.example/v1")
         service = StoryboardService(
             outline_repo=FakeOutlineRepository(),
             chapter_repo=chapter_repo,
             novel_repo=novel_repo,
             ai_remap_service=_fake_composer_service(),
             model_registry=cast("ModelRegistry", registry),
-            model_config=config,
-            api_key="sk-user-key",
-            base_url="https://user.example/v1",
+            model_resolution=StaticModelResolution(resolved),
         )
 
         await service.preview_remap(novel_id, "five_act", user_id)
 
         assert len(registry.prepare_calls) == 1
         call = registry.prepare_calls[0]
-        assert call["config"] is config
+        assert call["config"] is resolved.config
         assert call["intent"] is LLMIntent.PLAN
         assert call["usage_limits"] is not None
         assert call["api_key"] == "sk-user-key"
@@ -368,7 +371,7 @@ class TestServiceRemapAgentWiring:
             chapter_repo=chapter_repo,
             novel_repo=novel_repo,
             model_registry=cast("ModelRegistry", registry),
-            model_config=_user_config(),
+            model_resolution=make_static_resolution(),
         )
 
         await service.preview_remap(novel_id, "five_act", user_id)
