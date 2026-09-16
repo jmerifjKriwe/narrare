@@ -19,9 +19,11 @@ from uuid import uuid4
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.planning.timeline_consistency_service import TimelineConsistencyService
 from narrare_core.agents.timeline_types import TimelineOutput
 from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 
 if TYPE_CHECKING:
     from narrare.planning.models import TimelineEvent
@@ -98,7 +100,9 @@ def _make_service(
         novel_repo=MagicMock(spec=["get_by_id"]),
         character_age_service=None,
         model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-        model_config=config,
+        model_resolution=StaticModelResolution(
+            ResolvedModel(config=config, api_key=None, base_url=None, source="unit-test")
+        ),
         invocation_pipeline=None,
         composer=composer,  # type: ignore[arg-type]
     )
@@ -163,6 +167,7 @@ async def test_timeline_consistency_uses_prompt_composer(
     cascade, variable validation, and override support.
     """
     service = _make_service(composer, config)
+    await service.ensure_resolved()  # ADR-086 L23: resolve precedes the LLM checks
     novel = _make_novel()
     events = cast("list[TimelineEvent]", [_make_event()])
 
@@ -210,6 +215,7 @@ async def test_event_context_in_user_prompt_not_system(
     not contain event data.
     """
     service = _make_service(composer, config)
+    await service.ensure_resolved()  # ADR-086 L23: resolve precedes the LLM checks
     novel = _make_novel()
     events = cast(
         "list[TimelineEvent]",

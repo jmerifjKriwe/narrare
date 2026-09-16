@@ -27,12 +27,12 @@ import pytest
 from narrare.kb._context_provider import KBContextProvider
 from narrare.kb.relationship_repository import RelationshipEdgeRow
 from narrare.planning.timeline_analysis_service import TimelineAnalysisService
-from narrare_core.llm.model_config import ResolvedModelConfig
 from tests.unit.planning._timeline_test_helpers import (
     FakeComposer,
     make_chapter,
     make_mock_agent,
     make_novel_model,
+    make_static_resolution,
 )
 
 # ---------------------------------------------------------------------------
@@ -68,11 +68,6 @@ def mock_registry() -> AsyncMock:
 @pytest.fixture
 def composer() -> FakeComposer:
     return FakeComposer()
-
-
-@pytest.fixture
-def model_config() -> ResolvedModelConfig:
-    return ResolvedModelConfig(provider_name="test", model_id="test-model")
 
 
 def _make_relationship_repo(edges: list[RelationshipEdgeRow]) -> AsyncMock:
@@ -111,7 +106,6 @@ class TestKBRelationshipsPopulation:
         mock_chapter_repo: AsyncMock,
         mock_registry: AsyncMock,
         composer: FakeComposer,
-        model_config: ResolvedModelConfig,
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
     ) -> None:
@@ -154,7 +148,7 @@ class TestKBRelationshipsPopulation:
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
-            model_config=model_config,
+            model_resolution=make_static_resolution(),
             composer=composer,  # type: ignore[arg-type]
             kb_context_provider=kb_context_provider,  # type: ignore[arg-type]
         )
@@ -183,7 +177,6 @@ class TestKBRelationshipsPopulation:
         mock_chapter_repo: AsyncMock,
         mock_registry: AsyncMock,
         composer: FakeComposer,
-        model_config: ResolvedModelConfig,
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
     ) -> None:
@@ -205,7 +198,7 @@ class TestKBRelationshipsPopulation:
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
-            model_config=model_config,
+            model_resolution=make_static_resolution(),
             composer=composer,  # type: ignore[arg-type]
         )
 
@@ -243,6 +236,7 @@ class TestTimelineKbContextConstructor:
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
+            model_resolution=make_static_resolution(),
             composer=composer,  # type: ignore[arg-type]
             kb_context_provider=provider,
         )
@@ -261,6 +255,7 @@ class TestTimelineKbContextConstructor:
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
+            model_resolution=make_static_resolution(),
             composer=composer,  # type: ignore[arg-type]
         )
         assert service._kb_context_provider is None, (

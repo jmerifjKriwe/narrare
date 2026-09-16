@@ -16,9 +16,9 @@ import pytest
 
 from narrare.planning.timeline_analysis_service import TimelineAnalysisService
 from narrare_core.agents.temporal_extraction_types import ExtractedTemporalExpression
-from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 from tests.unit.planning._extraction_confirm_helpers import make_event, make_novel
+from tests.unit.planning._timeline_test_helpers import make_static_resolution
 
 
 @pytest.fixture
@@ -52,24 +52,18 @@ def mock_registry() -> AsyncMock:
 
 
 @pytest.fixture
-def model_config() -> ResolvedModelConfig:
-    return ResolvedModelConfig(provider_name="test", model_id="test-model")
-
-
-@pytest.fixture
 def service_with_config(
     mock_novel_repo: AsyncMock,
     mock_chapter_repo: AsyncMock,
     mock_registry: AsyncMock,
     mock_event_repo: AsyncMock,
-    model_config: ResolvedModelConfig,
 ) -> TimelineAnalysisService:
-    """Service with model config and event repo for confirm tests."""
+    """Service with a resolved model and event repo for confirm tests."""
     return TimelineAnalysisService(
         novel_repo=mock_novel_repo,
         chapter_repo=mock_chapter_repo,
         model_registry=mock_registry,
-        model_config=model_config,
+        model_resolution=make_static_resolution(),
         event_repo=mock_event_repo,
     )
 
@@ -145,14 +139,13 @@ class TestConfirmExtractedEvent:
         mock_novel_repo: AsyncMock,
         mock_chapter_repo: AsyncMock,
         mock_registry: AsyncMock,
-        model_config: ResolvedModelConfig,
     ) -> None:
         """ConfigurationError raised when no event_repo is available."""
         service = TimelineAnalysisService(
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
-            model_config=model_config,
+            model_resolution=make_static_resolution(),
             event_repo=None,  # No event repo
         )
 

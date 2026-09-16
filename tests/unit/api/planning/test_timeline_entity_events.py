@@ -29,12 +29,12 @@ import pytest
 
 from narrare.planning.models import TimelineEvent
 from narrare.planning.timeline_analysis_service import TimelineAnalysisService
-from narrare_core.llm.model_config import ResolvedModelConfig
 from tests.unit.planning._timeline_test_helpers import (
     FakeComposer,
     make_chapter,
     make_mock_agent,
     make_novel_model,
+    make_static_resolution,
 )
 
 # ---------------------------------------------------------------------------
@@ -129,11 +129,6 @@ def composer() -> FakeComposer:
     return FakeComposer()
 
 
-@pytest.fixture
-def model_config() -> ResolvedModelConfig:
-    return ResolvedModelConfig(provider_name="test", model_id="test-model")
-
-
 def _wire_common(
     mock_novel_repo: AsyncMock,
     mock_chapter_repo: AsyncMock,
@@ -164,7 +159,6 @@ class TestTimelineEntityEventsFedAtRuntime:
         mock_chapter_repo: AsyncMock,
         mock_registry: AsyncMock,
         composer: FakeComposer,
-        model_config: ResolvedModelConfig,
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
     ) -> None:
@@ -184,7 +178,7 @@ class TestTimelineEntityEventsFedAtRuntime:
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
-            model_config=model_config,
+            model_resolution=make_static_resolution(),
             composer=composer,  # type: ignore[arg-type]
             event_repo=_FakeEventRepo(events),  # type: ignore[arg-type]
         )
@@ -225,7 +219,6 @@ class TestTimelineEntityEventsGracefulDegradation:
         mock_chapter_repo: AsyncMock,
         mock_registry: AsyncMock,
         composer: FakeComposer,
-        model_config: ResolvedModelConfig,
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
     ) -> None:
@@ -234,7 +227,7 @@ class TestTimelineEntityEventsGracefulDegradation:
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
-            model_config=model_config,
+            model_resolution=make_static_resolution(),
             composer=composer,  # type: ignore[arg-type]
             event_repo=_FakeEventRepo([]),  # type: ignore[arg-type]
         )
@@ -255,7 +248,6 @@ class TestTimelineEntityEventsGracefulDegradation:
         mock_chapter_repo: AsyncMock,
         mock_registry: AsyncMock,
         composer: FakeComposer,
-        model_config: ResolvedModelConfig,
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
     ) -> None:
@@ -265,7 +257,7 @@ class TestTimelineEntityEventsGracefulDegradation:
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
-            model_config=model_config,
+            model_resolution=make_static_resolution(),
             composer=composer,  # type: ignore[arg-type]
             # event_repo intentionally omitted → None (RULE-11).
         )

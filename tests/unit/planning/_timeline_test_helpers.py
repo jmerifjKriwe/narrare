@@ -3,6 +3,19 @@
 Provides the FakeComposer, model fixtures, and agent-mock helpers used by
 both ``test_timeline_analysis_service.py`` (behavioural) and
 ``test_timeline_analysis_prompt_path.py`` (prompt-path compliance).
+
+Since ADR-086 L22/L23 the timeline services consume model routing as a
+``ModelResolution`` instead of a pre-resolved ``model_config``; the
+resolution shims below mirror ``_storyboard_test_helpers.py`` (L21
+convention):
+
+- ``make_resolved_model`` builds the canned triple the routing cascade
+  would return, used by both static and counting resolutions.
+- ``make_static_resolution`` covers the mechanical ctor migration of the
+  existing fixtures to ``StaticModelResolution`` (ADR-086 regression
+  contract #4 — outcomes unchanged).
+- ``NoProviderResolution`` simulates the no-provider cascade outcome
+  (``ConfigurationError``) for the graceful-degradation nodes.
 """
 
 from __future__ import annotations
@@ -11,8 +24,47 @@ import uuid
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
+from narrare._app.dependencies_services import StaticModelResolution
+from narrare_core.llm.model_config import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
+from narrare_core.shared.errors import ConfigurationError
+
 if TYPE_CHECKING:
     from narrare_core.prompts.composer import ComposedPrompt
+
+_CASCADE_CONFIG = ResolvedModelConfig(
+    provider_name="zai",
+    model_id="glm-4.7",
+    temperature=0.7,
+)
+
+
+def make_resolved_model(**kw: str | None) -> ResolvedModel:
+    """A fixed model triple, as the routing cascade would return it."""
+    return ResolvedModel(
+        config=_CASCADE_CONFIG,
+        api_key=kw.get("api_key"),
+        base_url=kw.get("base_url"),
+        source="unit-test",
+    )
+
+
+def make_static_resolution(**kw: str | None) -> StaticModelResolution:
+    """A ``StaticModelResolution`` over a canned triple — fixture shim."""
+    return StaticModelResolution(make_resolved_model(**kw))
+
+
+class NoProviderResolution:
+    """Fake ``ModelResolution`` — the cascade finds no provider configured.
+
+    Stands in for the eager factory's wiring-time ``except
+    ConfigurationError`` swallow, which is first-use service policy after
+    ADR-086 L22/L23 (the graceful degradation nodes assert the preserved
+    outcomes against this fake).
+    """
+
+    async def resolve(self) -> ResolvedModel:
+        raise ConfigurationError("No AI provider configured.", code="NO_AI_PROVIDER")
 
 
 class FakeComposer:

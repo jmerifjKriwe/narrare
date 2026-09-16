@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from narrare.planning.timeline_consistency_service import TimelineConsistencyService
-from narrare_core.llm import ResolvedModelConfig
+from tests.unit.planning._timeline_test_helpers import make_static_resolution
 
 
 def _make_novel(**overrides: object) -> MagicMock:
@@ -95,9 +95,6 @@ def service_with_llm(
     from narrare_core.prompts.composer import ComposedPrompt
 
     mock_registry = AsyncMock()
-    # Real config value object — the ADR-045 run-limit resolver (Task 3)
-    # reads resolve_output_limit()/provider_name/model_id from it.
-    mock_config = ResolvedModelConfig(provider_name="test", model_id="test-model")
     # PromptComposer is required by the production guard (_run_llm_checks skips
     # when _composer is None). The service calls ``await composer.build(...)``
     # and reads ``.system``, so return a real ComposedPrompt.
@@ -110,7 +107,7 @@ def service_with_llm(
         event_repo=mock_event_repo,
         novel_repo=mock_novel_repo,
         model_registry=mock_registry,
-        model_config=mock_config,
+        model_resolution=make_static_resolution(),
         composer=mock_composer,
     )
 
@@ -125,12 +122,11 @@ class TestLLMChecks:
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
     ) -> None:
-        """LLM checks should be skipped when no model_config is set."""
+        """LLM checks should be skipped when no provider is configured."""
         service = TimelineConsistencyService(
             event_repo=mock_event_repo,
             novel_repo=mock_novel_repo,
             model_registry=None,
-            model_config=None,
         )
         mock_novel_repo.get_by_id.return_value = _make_novel(id=novel_id)
         mock_event_repo.list_by_novel.return_value = [

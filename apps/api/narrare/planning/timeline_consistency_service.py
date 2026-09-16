@@ -7,6 +7,15 @@ report. Phase 3 delegates character age logic to CharacterAgeService.
 Follows ADR-021: deterministic where possible, LLM where not.
 Follows ADR-046: system prompt resolved via PromptComposer (RULE-02b).
 
+Model acquisition (ADR-086 L23): the per-user PLAN routing cascade is
+injected as a ``ModelResolution`` and resolved on first use inside
+``check_consistency`` — after the uid-scoped novel guard, never at
+construction (the eager factory resolved at wiring time). Graceful
+degradation is entry-point policy: a missing provider is logged
+(``no_ai_provider_configured``) and LLM checks skip, preserving the
+deterministic-only outcome the eager factory's wiring-time swallow
+produced. The non-AI ``get_character_ages`` path never resolves.
+
 Pattern: service → core/analysis (deterministic) + core/agents (LLM).
 """
 
@@ -24,11 +33,12 @@ from narrare.planning.timeline_schemas import (
     TemporalIssueResponse,
 )
 from narrare_core.analysis.temporal import run_deterministic_checks
-from narrare_core.shared.errors import NotFoundError
+from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
     import uuid
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.novels.repository import NovelRepository
     from narrare.planning.character_age_service import CharacterAgeService
     from narrare.planning.models import TimelineEvent
@@ -54,7 +64,10 @@ class TimelineConsistencyService:
         character_age_service: For character birth date data.
         model_registry: Shared LLM model registry (optional — LLM
             checks are skipped when not configured).
-        model_config: Resolved model config for LLM checks.
+        model_resolution: Lazy per-user model resolution (ADR-086 L23) —
+            the PLAN routing cascade resolves on first use, never at
+            construction. A ``ConfigurationError`` (no AI provider) is
+            degraded at the entry point (LLM checks skip).
         invocation_pipeline: For ADR-048 invocation evidence recording.
         composer: PromptComposer for resolving the temporal consistency
             system prompt via the governed cascade (RULE-02b). Required
@@ -67,7 +80,7 @@ class TimelineConsistencyService:
         novel_repo: NovelRepository,
         character_age_service: CharacterAgeService | None = None,
         model_registry: ModelRegistry | None = None,
-        model_config: ResolvedModelConfig | None = None,
+        model_resolution: ModelResolution | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
         composer: PromptComposer | None = None,
     ) -> None:
@@ -75,9 +88,30 @@ class TimelineConsistencyService:
         self._novel_repo = novel_repo
         self._character_age_service = character_age_service
         self._registry = model_registry
-        self._config = model_config
+        self._model_resolution = model_resolution
+        # Resolved config — unset until first use; a failed (graceful)
+        # resolve leaves it unset for the instance's lifetime.
+        self._config: ResolvedModelConfig | None = None
+        self._resolve_attempted = False
         self._invocation_pipeline = invocation_pipeline
         self._composer = composer
+
+    async def ensure_resolved(self) -> None:
+        """Resolve the per-user PLAN routing cascade once (ADR-086 L23).
+
+        First call awaits the injected ``ModelResolution`` and caches the
+        resolved config into ``_config``; repeat calls are idempotent —
+        the cascade runs at most once per instance, success or failure
+        (eager-world timing also resolved exactly once per request).
+        ``ConfigurationError`` propagates UNCHANGED: the graceful swallow
+        is entry-point policy (see :meth:`check_consistency`), so this
+        method stays honest about what happened (RULE-11).
+        """
+        if self._resolve_attempted or self._model_resolution is None:
+            return
+        self._resolve_attempted = True
+        resolved = await self._model_resolution.resolve()
+        self._config = resolved.config
 
     async def check_consistency(
         self,
@@ -106,6 +140,20 @@ class TimelineConsistencyService:
         novel = await self._novel_repo.get_by_id(novel_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(novel_id))
+
+        # ADR-086 L23: first-use lazy resolve — the uid-scoped novel guard
+        # above stays ahead of the cascade (eager-world precedence; the
+        # ADR-086 planning guard ruling). Degradation is entry-point
+        # policy: a missing AI provider is logged (the eager factory's
+        # event, byte-identical) and leaves the config unset, so LLM
+        # checks skip and the deterministic-only outcome below fires
+        # exactly as it did when the eager factory swallowed this error
+        # at wiring time — timing only. The resolve is attempted at most
+        # once per instance.
+        try:
+            await self.ensure_resolved()
+        except ConfigurationError:
+            logger.info("no_ai_provider_configured", novel_id=str(novel_id))
 
         # Step 1: Load all events for the novel
         events = await self._event_repo.list_by_novel(novel_id)

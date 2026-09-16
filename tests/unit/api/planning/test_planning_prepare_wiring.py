@@ -42,6 +42,7 @@ from tests.unit.api.planning._prepare_wiring_helpers import (
     composer,
     novel,
     novel_repo_with,
+    static_resolution,
     user_config,
 )
 
@@ -79,10 +80,8 @@ class TestTimelineAnalysisPrepareWiring:
             novel_repo=novel_repo_with(novel()),
             chapter_repo=cast("ChapterRepository", chapter_repo),
             model_registry=as_model_registry(registry),
-            model_config=config,
+            model_resolution=static_resolution(config),
             composer=composer(),
-            api_key=USER_KEY,
-            base_url=USER_BASE_URL,
         )
         agent = AsyncMock(
             run=AsyncMock(

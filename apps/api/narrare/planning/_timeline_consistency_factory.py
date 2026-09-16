@@ -1,12 +1,25 @@
-"""Service factory for timeline consistency — wires TimelineConsistencyService.
+"""Service factory for timeline consistency — wires TimelineConsistencyService lazily.
 
-Follows the same pattern as ``_timeline_analysis_factory.py``: resolves the
-user's configured provider/model for the PLAN intent, validates novel existence,
-and builds the consistency service with proper DI.
+Follows the same pattern as ``_timeline_analysis_factory.py`` (ADR-086
+L22): model routing is wired as a ``LazyModelResolution`` (ADR-086 L23) —
+the per-user PLAN cascade resolves on the service's first AI use, never
+at construction, so request validation errors surface as 422 before any
+routing work (the eager factory resolved — and ran its uid-scoped novel
+guard — at wiring time).
 
-Phase 3 adds CharacterAgeService wiring for character age integration.
-LLM checks are optional — the service gracefully degrades when no AI provider
-is configured (deterministic-only mode).
+Planning guard ruling (ADR-086 plan §3): the eager factory's uid-scoped
+novel guard (``get_by_id(novel_id, uid)`` → 404, preventing resolver
+auto-creation of ``project_settings`` for foreign novels) is preserved —
+NOT dropped — in the service's first-use paths: the ``check_consistency``
+entry point's existing uid-scoped guard runs immediately BEFORE the
+first-use resolve (gate-before-resolution ordering), and the non-AI
+``get_character_ages`` path keeps its guard inside ``CharacterAgeService``.
+
+Graceful degradation is entry-point policy, not wiring (Pattern
+M-graceful): the eager factory's wiring-time ``except ConfigurationError``
+swallow moved into the service's first-use path, which logs
+``no_ai_provider_configured`` and preserves the deterministic-only
+outcome (LLM checks skip).
 """
 
 from __future__ import annotations
@@ -14,25 +27,20 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-import structlog
-
 from narrare._app.dependencies import (
     get_composer,
     get_invocation_pipeline,
     get_model_registry,
 )
-from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.dependencies_services import LazyModelResolution, get_model_routing_resolver
 from narrare.kb.repository import KBRepository
 from narrare.novels.repository import NovelRepository
 from narrare.planning.character_age_service import CharacterAgeService
 from narrare.planning.timeline_consistency_service import TimelineConsistencyService
 from narrare.planning.timeline_repository import TimelineEventRepository
-from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-logger = structlog.get_logger(__name__)
 
 
 async def get_timeline_consistency_service(
@@ -40,14 +48,15 @@ async def get_timeline_consistency_service(
     user_id: str,
     novel_id: uuid.UUID,
 ) -> TimelineConsistencyService:
-    """Wire up TimelineConsistencyService with model routing from user settings.
+    """Wire up TimelineConsistencyService with LAZY model routing (ADR-086 L23).
 
-    Resolves the user's configured provider/model for the PLAN intent,
-    validates novel existence before calling the resolver to prevent
-    auto-creation of project_settings for nonexistent novels.
-
-    Gracefully degrades when no AI provider is configured — the service
-    will run deterministic checks only.
+    The per-user PLAN cascade is wired as a ``LazyModelResolution`` with
+    the same args the eager factory resolved verbatim (intent, uid,
+    novel_id — timing-only migration, RULE-18). Repos, registry, composer,
+    pipeline, and the CharacterAgeService wiring (KB character metadata
+    reads) still wire eagerly. The uid-scoped novel guard and the graceful
+    no-provider degradation live in the service's first-use paths (see
+    module docstring).
 
     Args:
         session: DB session.
@@ -55,30 +64,16 @@ async def get_timeline_consistency_service(
         novel_id: Target novel UUID.
 
     Returns:
-        Fully wired TimelineConsistencyService.
-
-    Raises:
-        NotFoundError: If the novel does not exist.
+        Fully wired TimelineConsistencyService (model unresolved).
     """
     from narrare_core.llm.intents import LLMIntent
 
     uid = uuid.UUID(user_id)
 
-    # Validate novel exists BEFORE resolver auto-creates project_settings.
     novel_repo = NovelRepository(session)
-    novel = await novel_repo.get_by_id(novel_id, uid)
-    if novel is None:
-        raise NotFoundError("Novel", identifier=str(novel_id))
 
-    # Resolve model config — gracefully handle missing AI provider.
-    registry = get_model_registry()
-    model_config = None
-    try:
-        resolver = get_model_routing_resolver(session)
-        resolved = await resolver.resolve(LLMIntent.PLAN, uid, novel_id)
-        model_config = resolved.config
-    except ConfigurationError:
-        logger.info("no_ai_provider_configured", novel_id=str(novel_id))
+    resolver = get_model_routing_resolver(session)
+    model_resolution = LazyModelResolution(lambda: resolver.resolve(LLMIntent.PLAN, uid, novel_id))
 
     # Wire CharacterAgeService for KB character metadata reads.
     character_age_service = CharacterAgeService(
@@ -90,8 +85,8 @@ async def get_timeline_consistency_service(
         event_repo=TimelineEventRepository(session),
         novel_repo=novel_repo,
         character_age_service=character_age_service,
-        model_registry=registry,
-        model_config=model_config,
+        model_registry=get_model_registry(),
+        model_resolution=model_resolution,
         invocation_pipeline=get_invocation_pipeline(),
         composer=get_composer(),
     )

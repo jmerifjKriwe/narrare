@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (9):**
+**Open (7):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -385,8 +385,34 @@ at construction (2026-09-09; factory function names verified):
        resolve at all; remap execution + resolution state split to
        ``_storyboard_support.py`` for the RULE-04 size limit the lazy
        seam crossed; REST — no SSE pre-header needed)*
-22. [ ] `planning/_timeline_analysis_factory.py` — `get_timeline_analysis_service`
-23. [ ] `planning/_timeline_consistency_factory.py` — `get_timeline_consistency_service`
+22. [x] `planning/_timeline_analysis_factory.py` — `get_timeline_analysis_service`
+       *(G3/L22 — landed 2026-09-16: lazy wiring + graceful first-use
+       resolve (Pattern M-graceful) — ``ensure_resolved`` runs in
+       ``generate_timeline`` immediately after the service's uid-scoped
+       novel guard (the eager factory's wiring-time guard relocated per
+       the planning guard ruling, gate-before-resolution preserved), and
+       the factory's ``except ConfigurationError`` swallow became
+       entry-point policy: ``no_ai_provider_configured`` log + the
+       preserved ``NO_AI_PROVIDER`` outcome (the service's existing
+       ``model_config is None`` raise); the non-AI confirm endpoint
+       (``confirm_extracted_event``) no longer resolves at all;
+       prompt-context assembly split to
+       ``_timeline_analysis_support.py`` for the RULE-04 size limit the
+       ``ensure_resolved`` addition crossed; REST — no SSE pre-header
+       needed)*
+23. [x] `planning/_timeline_consistency_factory.py` — `get_timeline_consistency_service`
+       *(G3/L23 — landed 2026-09-16: lazy wiring + graceful first-use
+       resolve (Pattern M-graceful) — ``ensure_resolved`` runs in
+       ``check_consistency`` immediately after the service's uid-scoped
+       novel guard (the eager factory's wiring-time guard relocated per
+       the planning guard ruling, gate-before-resolution preserved), and
+       the factory's ``except ConfigurationError`` swallow became
+       entry-point policy: ``no_ai_provider_configured`` log + the
+       preserved deterministic-only outcome (LLM checks skip);
+       ``model_resolution`` is optional like ``model_registry``, mirroring
+       the service's deterministic-first AI-optionality; the non-AI
+       character-ages endpoint no longer resolves at all; REST — no SSE
+       pre-header needed)*
 24. [ ] `planning/_timeline_extraction_factory.py` — `get_timeline_extraction_service`
 25. [ ] `series/dependencies.py` — `build_band_summary_service` (+ eager `get_resolved_limits`)
 26. [x] `series/dependencies_consistency.py` — `get_series_consistency_service`

@@ -19,8 +19,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm._prepared_call import PreparedModelCall
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
@@ -42,6 +44,25 @@ def user_config() -> ResolvedModelConfig:
         model_id="glm-4.7",
         temperature=0.7,
         max_tokens=4096,
+    )
+
+
+def static_resolution(config: ResolvedModelConfig | None = None) -> StaticModelResolution:
+    """A ``StaticModelResolution`` over the canned user triple — fixture shim.
+
+    The ADR-086 lazy-migration ctor shape: the resolved triple the eager
+    factories used to accept as ``model_config``/``api_key``/``base_url``
+    params now arrives pre-resolved (ADR-086 regression contract #4 —
+    outcomes unchanged). Pass ``config`` explicitly when the test asserts
+    identity (``is``) against the config reaching ``prepare``.
+    """
+    return StaticModelResolution(
+        ResolvedModel(
+            config=config or user_config(),
+            api_key=USER_KEY,
+            base_url=USER_BASE_URL,
+            source="unit-test",
+        )
     )
 
 

@@ -16,6 +16,17 @@ inline f-string feature prompt and the premature ADR-048 Mode 2
 ``_TIMELINE_ANALYSIS_INJECTION`` declaration were removed (ADR-049 D10).
 
 Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b).
+
+Model acquisition (ADR-086 L22): the per-user PLAN routing cascade is
+injected as a ``ModelResolution`` and resolved on first use inside
+``generate_timeline`` — after the uid-scoped novel guard, never at
+construction (the eager factory resolved at wiring time). Graceful
+degradation is entry-point policy: a missing provider is logged
+(``no_ai_provider_configured``) and the preserved ``NO_AI_PROVIDER``
+outcome fires exactly as it did when the eager factory swallowed this
+error at wiring time. The non-AI ``confirm_extracted_event`` path never
+resolves. Prompt-context assembly lives in
+``_timeline_analysis_support.py`` (RULE-04 split for this slice).
 """
 
 from __future__ import annotations
@@ -25,7 +36,7 @@ from uuid import uuid4
 
 import structlog
 
-from narrare.planning._event_render import render_confirmed_events
+from narrare.planning._timeline_analysis_support import build_prompt_context
 from narrare.planning._timeline_chapter_context import format_chapter_context
 from narrare.planning._timeline_extraction_helpers import persist_extracted_event
 from narrare.planning.schemas import TimelineEventResponse, TimelineResponse
@@ -35,6 +46,7 @@ from narrare_core.shared.errors import ConfigurationError, NotFoundError
 if TYPE_CHECKING:
     import uuid
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.novels.repository import NovelRepository
@@ -68,7 +80,10 @@ class TimelineAnalysisService:
         novel_repo: For novel metadata (genre, language).
         chapter_repo: For listing chapters and their summaries.
         model_registry: Shared LLM model registry.
-        model_config: Resolved model config (provider + model ID).
+        model_resolution: Lazy per-user model resolution (ADR-086 L22) —
+            the PLAN routing cascade resolves on first use, never at
+            construction. A ``ConfigurationError`` (no AI provider) is
+            degraded at the entry point (AI-optional policy).
         composer: PromptComposer for resolving the governed timeline system
             prompt via the cascade (RULE-02b / ADR-049 D9). Required for
             ``generate_timeline``.
@@ -80,8 +95,6 @@ class TimelineAnalysisService:
             template still composes. Provenance is rendered inline
             (``RenderOptions(annotate_provenance=True)``) so planning gets the
             same honest KB rendering as writing (FIND-017).
-        api_key: Optional API key override.
-        base_url: Optional base URL override.
         invocation_pipeline: Retained for DI-contract stability. Per ADR-049
             D10 the premature ADR-048 Mode 2 ``ManualInjectionDeclaration``
             was removed; Mode 1 evidence adoption is deferred (the sibling
@@ -94,27 +107,49 @@ class TimelineAnalysisService:
         novel_repo: NovelRepository,
         chapter_repo: ChapterRepository,
         model_registry: ModelRegistry,
-        model_config: ResolvedModelConfig | None = None,
+        model_resolution: ModelResolution,
         composer: PromptComposer | None = None,
         event_repo: TimelineEventRepository | None = None,
         kb_context_provider: KBContextProviderProtocol | None = None,
         *,
-        api_key: str | None = None,
-        base_url: str | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
         self._registry = model_registry
-        self._config = model_config
+        self._model_resolution = model_resolution
+        # Resolved triple — unset until first use; a failed (graceful)
+        # resolve leaves it unset for the instance's lifetime.
+        self._config: ResolvedModelConfig | None = None
+        self._api_key: str | None = None
+        self._base_url: str | None = None
+        self._resolve_attempted = False
         self._composer = composer
         self._event_repo = event_repo
         self._kb_context_provider = kb_context_provider
-        self._api_key = api_key
-        self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+
+    async def ensure_resolved(self) -> None:
+        """Resolve the per-user PLAN routing cascade once (ADR-086 L22).
+
+        First call awaits the injected ``ModelResolution`` and caches the
+        resolved triple into ``_config``/``_api_key``/``_base_url``; repeat
+        calls are idempotent — the cascade runs at most once per instance,
+        success or failure (eager-world timing also resolved exactly once
+        per request). ``ConfigurationError`` propagates UNCHANGED: the
+        graceful swallow is entry-point policy (see
+        :meth:`generate_timeline`), so this method stays honest about
+        what happened (RULE-11).
+        """
+        if self._resolve_attempted:
+            return
+        self._resolve_attempted = True
+        resolved = await self._model_resolution.resolve()
+        self._config = resolved.config
+        self._api_key = resolved.api_key
+        self._base_url = resolved.base_url
 
     async def generate_timeline(
         self,
@@ -135,10 +170,27 @@ class TimelineAnalysisService:
 
         Raises:
             NotFoundError: If the novel does not exist.
+            ConfigurationError: If no AI provider is configured (the
+                preserved degraded outcome; ADR-086 L22 graceful entry
+                policy), the PromptComposer is missing, or prompt
+                composition fails (RULE-11).
         """
         novel = await self._novel_repo.get_by_id(novel_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(novel_id))
+
+        # ADR-086 L22: first-use lazy resolve — the uid-scoped novel guard
+        # above stays ahead of the cascade (eager-world precedence; the
+        # ADR-086 planning guard ruling). Degradation is entry-point
+        # policy: a missing AI provider is logged (the eager factory's
+        # event, byte-identical) and leaves the triple unset, so the
+        # preserved ``NO_AI_PROVIDER`` outcome below fires exactly as it
+        # did when the eager factory swallowed this error at wiring time —
+        # timing only. The resolve is attempted at most once per instance.
+        try:
+            await self.ensure_resolved()
+        except ConfigurationError:
+            logger.info("no_ai_provider_configured", novel_id=str(novel_id))
 
         # Guard: no AI provider configured — cannot generate timeline
         if self._config is None:
@@ -158,66 +210,23 @@ class TimelineAnalysisService:
         # Gather chapters with summaries
         chapters = await self._chapter_repo.list_by_novel(novel_id)
 
-        # Compact chapter-summary context — runtime data (RULE-02a category 3)
-        # that fills ``{{chapter_summaries}}`` + the agent run prompt below.
-        chapter_context = format_chapter_context(chapters)
-
         language = novel.writing_language or "en"
 
         # Runtime imports kept local to match this module's existing import
         # convention (see TimelineAgent import below) and avoid any module-load
         # circular-import risk.
-        from narrare_core.context._render_options import RenderOptions
         from narrare_core.llm.intents import LLMIntent
-        from narrare_core.prompts.context import PromptContext
 
-        # Canonical KB context (ADR-067): characters/locations/factions/
-        # relationships are fetched+rendered through the reusable provider
-        # (the ADR-050 envelope, with provenance annotated so planning gets the
-        # same honest rendering as writing — FIND-017). Degrades to empty
-        # strings when no provider is wired or the KB is empty (RULE-11).
-        if self._kb_context_provider is None:
-            from narrare.kb.context_contracts import KBContextBundle
-
-            kb_bundle = KBContextBundle.empty(RenderOptions(annotate_provenance=True))
-        else:
-            kb_bundle = await self._kb_context_provider.fetch_context(
-                novel_id,
-                entity_types=["character", "location", "faction"],
-                options=RenderOptions(annotate_provenance=True),
-            )
-        kb_vars = kb_bundle.to_prompt_variables()
-
-        # Resolve the governed timeline system prompt via PromptComposer
-        # (RULE-02 / ADR-049 D9). The template
-        # ``_bundled/planning/en/timeline/system.md`` carries the task framing,
-        # project metadata, and KB context variables.
-        #
-        # KB context variables (kb_characters, kb_locations, kb_factions,
-        # kb_relationships) flow from the provider above (ADR-067).
-        # ``entity_events`` is wired from the already-injected event_repo
-        # (confirmed events rendered compactly; §7 closed). Corrects the
-        # prior stale "ADR-049 D8 notes" comment (D8 governs the timeline
-        # template, not this slot).
-        # ``culture_guidelines`` is NOT set here: it is unconditionally
-        # auto-injected by the PromptComposer (resolved from ``name_style``
-        # or empty string — see composer.py).
-        ctx = PromptContext(
+        # Prompt-context assembly (chapter summaries, canonical KB context
+        # ADR-067, confirmed events) — extracted to
+        # ``_timeline_analysis_support.py`` (RULE-04 split, ADR-086 L22).
+        ctx = await build_prompt_context(
+            novel=novel,
+            chapters=chapters,
             language=language,
-            writing_language=language,
-            project_title=novel.title,
-            genre=novel.genre or "",
-            mode="timeline",
-            extra={
-                "chapter_summaries": chapter_context,
-                # Confirmed entity events, rendered from the event_repo;
-                # empty-but-valid when none exist or no repo is wired (RULE-11).
-                "entity_events": await render_confirmed_events(self._event_repo, novel_id),
-                # kb_* spread from the provider — non-empty when the KB has
-                # those entities, empty on degradation (RULE-11). Spread (not
-                # a literal) so the §7 stub guard treats the slots as fed.
-                **kb_vars,
-            },
+            novel_id=novel_id,
+            event_repo=self._event_repo,
+            kb_context_provider=self._kb_context_provider,
         )
         composed = await self._composer.build(LLMIntent.PLAN, ctx)
 
@@ -243,10 +252,13 @@ class TimelineAnalysisService:
 
         # pydantic-ai binds ``system_prompt`` at agent construction, so the
         # composed system prompt is supplied to the constructor (not to
-        # ``run()``). Chapter data flows as the run prompt (user channel).
+        # ``run()``). Chapter data flows as the run prompt (user channel);
+        # when the template has no "## First Message" the compact chapter
+        # summary context IS the run prompt (same derivation the context
+        # assembly in ``_timeline_analysis_support`` performs).
         agent = TimelineAgent(model=prepared.model, system_prompt=composed.system)
         result = await agent.run(
-            prompt=composed.user or chapter_context,
+            prompt=composed.user or format_chapter_context(chapters),
             deps=deps,
             model_settings=prepared.model_settings,
             usage_limits=prepared.usage_limits,

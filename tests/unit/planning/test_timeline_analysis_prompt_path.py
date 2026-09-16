@@ -25,12 +25,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from narrare.planning.timeline_analysis_service import TimelineAnalysisService
-from narrare_core.llm.model_config import ResolvedModelConfig
 from tests.unit.planning._timeline_test_helpers import (
     FakeComposer,
     fake_agent_result,
     make_chapter,
     make_novel_model,
+    make_static_resolution,
 )
 
 # ---------------------------------------------------------------------------
@@ -38,14 +38,14 @@ from tests.unit.planning._timeline_test_helpers import (
 # ---------------------------------------------------------------------------
 
 
-def _make_service(composer: FakeComposer, config: ResolvedModelConfig) -> TimelineAnalysisService:
+def _make_service(composer: FakeComposer) -> TimelineAnalysisService:
     from unittest.mock import AsyncMock
 
     return TimelineAnalysisService(
         novel_repo=AsyncMock(),
         chapter_repo=AsyncMock(),
         model_registry=AsyncMock(),
-        model_config=config,
+        model_resolution=make_static_resolution(),
         composer=composer,  # type: ignore[arg-type]
     )
 
@@ -53,11 +53,6 @@ def _make_service(composer: FakeComposer, config: ResolvedModelConfig) -> Timeli
 @pytest.fixture
 def composer() -> FakeComposer:
     return FakeComposer()
-
-
-@pytest.fixture
-def config() -> ResolvedModelConfig:
-    return ResolvedModelConfig(provider_name="test", model_id="test-model")
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +64,6 @@ class TestComposedPromptReachesAgent:
     async def test_composed_system_prompt_reaches_agent_constructor(
         self,
         composer: FakeComposer,
-        config: ResolvedModelConfig,
     ) -> None:
         """The composed system prompt must reach the TimelineAgent via its
         CONSTRUCTOR (``system_prompt=``), not via a run-time kwarg.
@@ -78,7 +72,7 @@ class TestComposedPromptReachesAgent:
         to ``run()`` is ineffective. The composed system prompt must therefore
         be supplied to ``TimelineAgent(model=..., system_prompt=...)``.
         """
-        service = _make_service(composer, config)
+        service = _make_service(composer)
         service._novel_repo.get_by_id.return_value = make_novel_model(id=uuid.uuid4())  # type: ignore[attr-defined]
         service._chapter_repo.list_by_novel.return_value = [make_chapter()]  # type: ignore[attr-defined]
         service._registry.get_model.return_value = MagicMock(spec=[])  # type: ignore[attr-defined]
@@ -106,12 +100,11 @@ class TestComposedPromptReachesAgent:
     async def test_run_prompt_carries_chapter_data_not_feature_framing(
         self,
         composer: FakeComposer,
-        config: ResolvedModelConfig,
     ) -> None:
         """The agent run prompt must carry chapter data (runtime input,
         RULE-02a category 3) and must NOT contain the old inline feature
         framing ("Analyze the timeline for ...")."""
-        service = _make_service(composer, config)
+        service = _make_service(composer)
         service._novel_repo.get_by_id.return_value = make_novel_model(  # type: ignore[attr-defined]
             id=uuid.uuid4(), title="My Epic"
         )

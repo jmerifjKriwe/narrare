@@ -90,12 +90,12 @@ def service(
     mock_event_repo: AsyncMock,
     mock_novel_repo: AsyncMock,
 ) -> TimelineConsistencyService:
-    """Service without LLM (deterministic-only mode)."""
+    """Service without LLM (deterministic-only mode — no resolution wired,
+    ADR-086 L23: the lazy resolve only runs when a cascade is injected)."""
     return TimelineConsistencyService(
         event_repo=mock_event_repo,
         novel_repo=mock_novel_repo,
         model_registry=None,
-        model_config=None,
     )
 
 

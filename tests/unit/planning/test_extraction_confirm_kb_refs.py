@@ -32,8 +32,8 @@ import pytest
 from narrare.kb._context_provider import KBContextProvider
 from narrare.planning.timeline_analysis_service import TimelineAnalysisService
 from narrare_core.agents.temporal_extraction_types import ExtractedTemporalExpression
-from narrare_core.llm.model_config import ResolvedModelConfig
 from tests.unit.planning._extraction_confirm_helpers import make_event, make_novel
+from tests.unit.planning._timeline_test_helpers import make_static_resolution
 
 
 def _kb_entry(name: str, entity_type: str) -> SimpleNamespace:
@@ -96,11 +96,6 @@ def mock_registry() -> AsyncMock:
 
 
 @pytest.fixture
-def model_config() -> ResolvedModelConfig:
-    return ResolvedModelConfig(provider_name="test", model_id="test-model")
-
-
-@pytest.fixture
 def extracted_with_names() -> ExtractedTemporalExpression:
     return ExtractedTemporalExpression(
         expression="three days later",
@@ -129,7 +124,6 @@ class TestConfirmExtractedEventKbRefs:
         mock_chapter_repo: AsyncMock,
         mock_registry: AsyncMock,
         mock_event_repo: AsyncMock,
-        model_config: ResolvedModelConfig,
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
         extracted_with_names: ExtractedTemporalExpression,
@@ -149,7 +143,7 @@ class TestConfirmExtractedEventKbRefs:
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
-            model_config=model_config,
+            model_resolution=make_static_resolution(),
             event_repo=mock_event_repo,
             kb_context_provider=kb_provider,  # type: ignore[arg-type]
         )
@@ -170,7 +164,6 @@ class TestConfirmExtractedEventKbRefs:
         mock_chapter_repo: AsyncMock,
         mock_registry: AsyncMock,
         mock_event_repo: AsyncMock,
-        model_config: ResolvedModelConfig,
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
         extracted_with_names: ExtractedTemporalExpression,
@@ -190,7 +183,7 @@ class TestConfirmExtractedEventKbRefs:
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
-            model_config=model_config,
+            model_resolution=make_static_resolution(),
             event_repo=mock_event_repo,
             kb_context_provider=kb_provider,  # type: ignore[arg-type]
         )
@@ -207,7 +200,6 @@ class TestConfirmExtractedEventKbRefs:
         mock_chapter_repo: AsyncMock,
         mock_registry: AsyncMock,
         mock_event_repo: AsyncMock,
-        model_config: ResolvedModelConfig,
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
         extracted_with_names: ExtractedTemporalExpression,
@@ -219,7 +211,7 @@ class TestConfirmExtractedEventKbRefs:
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
-            model_config=model_config,
+            model_resolution=make_static_resolution(),
             event_repo=mock_event_repo,
         )
 
@@ -237,7 +229,6 @@ class TestConfirmExtractedEventKbRefs:
         mock_chapter_repo: AsyncMock,
         mock_registry: AsyncMock,
         mock_event_repo: AsyncMock,
-        model_config: ResolvedModelConfig,
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
         extracted_with_names: ExtractedTemporalExpression,
@@ -254,7 +245,7 @@ class TestConfirmExtractedEventKbRefs:
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
-            model_config=model_config,
+            model_resolution=make_static_resolution(),
             event_repo=mock_event_repo,
             kb_context_provider=kb_provider,  # type: ignore[arg-type]
         )

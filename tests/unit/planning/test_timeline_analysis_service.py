@@ -20,13 +20,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from narrare.planning.timeline_analysis_service import TimelineAnalysisService
-from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 from tests.unit.planning._timeline_test_helpers import (
     FakeComposer,
+    NoProviderResolution,
     make_chapter,
     make_mock_agent,
     make_novel_model,
+    make_static_resolution,
 )
 
 # ---------------------------------------------------------------------------
@@ -71,9 +72,9 @@ def composer() -> FakeComposer:
 
 
 @pytest.fixture
-def model_config() -> ResolvedModelConfig:
-    """Provide a resolved model config for tests that call generate_timeline."""
-    return ResolvedModelConfig(provider_name="test", model_id="test-model")
+def model_resolution() -> NoProviderResolution:
+    """A resolution whose cascade finds no provider — the degraded state."""
+    return NoProviderResolution()
 
 
 @pytest.fixture
@@ -82,12 +83,13 @@ def service(
     mock_chapter_repo: MagicMock,
     mock_registry: MagicMock,
     composer: FakeComposer,
+    model_resolution: NoProviderResolution,
 ) -> TimelineAnalysisService:
     return TimelineAnalysisService(
         novel_repo=mock_novel_repo,
         chapter_repo=mock_chapter_repo,
         model_registry=mock_registry,
-        model_config=None,
+        model_resolution=model_resolution,
         composer=composer,  # type: ignore[arg-type]
     )
 
@@ -98,14 +100,13 @@ def service_with_config(
     mock_chapter_repo: MagicMock,
     mock_registry: MagicMock,
     composer: FakeComposer,
-    model_config: ResolvedModelConfig,
 ) -> TimelineAnalysisService:
-    """Service with a real model config — needed for generate_timeline."""
+    """Service with a resolved model config — needed for generate_timeline."""
     return TimelineAnalysisService(
         novel_repo=mock_novel_repo,
         chapter_repo=mock_chapter_repo,
         model_registry=mock_registry,
-        model_config=model_config,
+        model_resolution=make_static_resolution(),
         composer=composer,  # type: ignore[arg-type]
     )
 
@@ -218,7 +219,8 @@ class TestGenerateTimeline:
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
     ) -> None:
-        """Service with None model_config should raise ConfigurationError."""
+        """Service with a no-provider resolution should raise the preserved
+        ConfigurationError (ADR-086 L22 graceful entry-point policy)."""
         novel = make_novel_model(id=novel_id)
         mock_novel_repo.get_by_id.return_value = novel
 
@@ -230,7 +232,6 @@ class TestGenerateTimeline:
         mock_novel_repo: MagicMock,
         mock_chapter_repo: MagicMock,
         mock_registry: MagicMock,
-        model_config: ResolvedModelConfig,
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
     ) -> None:
@@ -243,7 +244,7 @@ class TestGenerateTimeline:
             novel_repo=mock_novel_repo,
             chapter_repo=mock_chapter_repo,
             model_registry=mock_registry,
-            model_config=model_config,
+            model_resolution=make_static_resolution(),
             composer=None,
         )
 
