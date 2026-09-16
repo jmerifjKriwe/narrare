@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (14):**
+**Open (12):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -461,7 +461,19 @@ at construction (2026-09-09; factory function names verified):
        (graceful-degradation variant: swallows `ConfigurationError` —
        AI-optional feature; migration must preserve that degradation
        behavior, moved past validation)
-35. [ ] `writing/deps_style_variants.py` — `get_style_variant_service` (+ eager `get_resolved_limits`)
+35. [x] `writing/deps_style_variants.py` — `get_style_variant_service` (+ eager `get_resolved_limits`)
+       *(F1/L35 — landed 2026-09-16: lazy wiring + deferred M-budget
+       composition at the end of ``validate_variant`` — the router's
+       pre-stream seam — after the ownership gate, text validation, and
+       the active-generation check, so an unconfigured provider stays a
+       loud pre-header 400 (SSE); the eager factory's composition
+       (``replace(config, temperature=0.7, max_tokens=output_limit)``,
+       ``series_in_scope=False`` budgets, tier-wired pipeline, REWRITE
+       intent — the variant never changes providers) is reproduced
+       exactly once at first use — timing-only; ``source_mode``
+       branching untouched. ``StyleVariantRuntime`` + content/failure
+       helpers split to ``_style_variants_support.py`` for the RULE-04
+       size limit the ``ensure_resolved`` addition crossed)*
 36. [x] `writing/deps_suggest.py` — `get_suggest_service`
        *(E1/L36 — landed 2026-09-15: lazy wiring + first-use resolve at the
        end of ``validate_suggest`` — the router's pre-stream seam — and

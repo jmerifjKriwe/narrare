@@ -26,19 +26,19 @@ from uuid import UUID
 import structlog
 
 from narrare.writing._helpers import create_request_row, verify_chapter_access
+from narrare.writing._style_variants_support import build_variant_content, mark_variant_failed
 from narrare_core.shared.errors import ConflictError, ValidationError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Awaitable, Callable
 
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
+    from narrare.writing._style_variants_support import StyleVariantRuntime
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.schemas_style_variants import StyleVariantRegenerateRequest
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.result import StreamChunk
     from narrare_core.writing.draft_processor import DraftProcessor
-    from narrare_core.writing.pipeline import WritingPipeline
 
 logger = structlog.get_logger(__name__)
 
@@ -57,22 +57,34 @@ class StyleVariantService:
     def __init__(
         self,
         repo: GenerationRepository,
-        pipeline: WritingPipeline,
+        runtime_factory: Callable[[], Awaitable[StyleVariantRuntime]],
         draft_processor: DraftProcessor,
-        config: ResolvedModelConfig,
         chapter_repo: ChapterRepository,
         novel_repo: NovelRepository,
-        api_key: str | None = None,
-        base_url: str | None = None,
     ) -> None:
         self._repo = repo
-        self._pipeline = pipeline
+        self._runtime_factory = runtime_factory
+        self._runtime: StyleVariantRuntime | None = None
         self._draft_processor = draft_processor
-        self._config = config
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
-        self._api_key = api_key
-        self._base_url = base_url
+
+    # -- Lazy runtime (ADR-086) --------------------------------------------
+
+    async def ensure_resolved(self) -> StyleVariantRuntime:
+        """Compose the effective style-variant runtime at first use; idempotent.
+
+        Invokes the factory's deferred composition — the REWRITE routing
+        cascade AND the token-limits cascade, the sampling overrides,
+        the ADR-082 budgets, and the tier-wired pipeline — exactly once;
+        the frozen result is cached for the service's lifetime.  Errors
+        propagate uncached (RULE-11): ``ConfigurationError``
+        (``NO_AI_PROVIDER``) surfaces as a pre-header 400 on this SSE
+        endpoint.
+        """
+        if self._runtime is None:
+            self._runtime = await self._runtime_factory()
+        return self._runtime
 
     # -- Public API --------------------------------------------------------
 
@@ -88,13 +100,18 @@ class StyleVariantService:
 
         Ownership gate (IDOR S6): ``verify_chapter_access`` runs FIRST —
         foreign ≡ unknown 404s precede input validation, the conflict
-        check, and any request-row creation.
+        check, and any request-row creation.  The lazy runtime
+        composition (ADR-086) runs LAST — after all gates — so gate
+        failures keep precedence over an unconfigured provider's 400,
+        and that 400 itself still fires before any SSE headers are sent.
 
         Raises:
             NotFoundError: Chapter unknown, not in the addressed novel,
                 or novel owned by another user.
             ValidationError: If source_text is empty.
             ConflictError: If another generation is active for the chapter.
+            narrare_core.shared.errors.ConfigurationError: If the user
+                has no AI provider configured (first-use composition).
         """
         await verify_chapter_access(
             self._chapter_repo, self._novel_repo, chapter_id, novel_id, user_id
@@ -111,6 +128,13 @@ class StyleVariantService:
             raise ConflictError(
                 f"Generation already active for chapter {chapter_id}",
             )
+
+        # ADR-086 L35: first-use lazy composition of BOTH cascades
+        # (routing + token limits, incl. the tier-wired pipeline) —
+        # post-validation and post-gate — so an unconfigured provider
+        # stays a loud pre-header 400 (RULE-11), never a preempting
+        # factory-time error.
+        await self.ensure_resolved()
 
     async def stream_variant(
         self,
@@ -152,18 +176,24 @@ class StyleVariantService:
         mode_enum = GenerationMode.CO_AUTHOR if is_co_author else GenerationMode.REWRITE
 
         # Step 1: Validate (ownership gate first) + create request row.
+        # validate_variant is the pre-stream seam: its trailing first-use
+        # composition (ADR-086) has the runtime ready when we get here.
         await self.validate_variant(chapter_id, novel_id, request, user_id=user_id)
         request_id = await create_request_row(
             self._repo, chapter_id, novel_id, user_id, request.source_mode, request.tone
         )
 
-        # Step 2: Transition to streaming.
+        # Step 2: Transition to streaming.  The runtime is already
+        # composed (ADR-086): the pre-stream validate_variant above ran
+        # the first-use composition on this service instance, so
+        # ensure_resolved here is a cached read.
+        runtime = await self.ensure_resolved()
         await self._repo.update_status(
             request_id,
             "streaming",
             started_at=datetime.now(UTC),
-            model_id=self._config.model_id,
-            provider_name=self._config.provider_name,
+            model_id=runtime.config.model_id,
+            provider_name=runtime.config.provider_name,
         )
 
         logger.info(
@@ -186,18 +216,9 @@ class StyleVariantService:
             writing_language=request.language,
         )
 
-        # Step 4: Build chapter_content with context markers.
-        chapter_content = request.source_text
-        if request.context_before or request.context_after:
-            parts: list[str] = []
-            if request.context_before:
-                parts.append(request.context_before)
-            parts.append("[SELECTION START]")
-            parts.append(request.source_text)
-            parts.append("[SELECTION END]")
-            if request.context_after:
-                parts.append(request.context_after)
-            chapter_content = "\n".join(parts)
+        # Step 4: Build chapter_content with context markers
+        # (_style_variants_support, RULE-04 extraction).
+        chapter_content = build_variant_content(request)
 
         # Step 5: Stream via pipeline with style_variant (RULE-01b, RULE-02).
         # The invocation is branched by source_mode so that rewrite-specific
@@ -209,11 +230,11 @@ class StyleVariantService:
         if is_co_author:
             # co_author_focus=[] -> no area focus; the variant direction is
             # the sole creative signal (CR-AUFG-07-22 Increment B).
-            stream: AsyncIterator[StreamChunk] = self._pipeline.generate(
+            stream: AsyncIterator[StreamChunk] = runtime.pipeline.generate(
                 pipeline_request,
-                config=self._config,
-                api_key=self._api_key,
-                base_url=self._base_url,
+                config=runtime.config,
+                api_key=runtime.api_key,
+                base_url=runtime.base_url,
                 chapter_content=chapter_content,
                 selection_text=request.source_text,
                 context_before=request.context_before or "",
@@ -222,11 +243,11 @@ class StyleVariantService:
                 style_variant=request.style_variant,
             )
         else:
-            stream = self._pipeline.generate(
+            stream = runtime.pipeline.generate(
                 pipeline_request,
-                config=self._config,
-                api_key=self._api_key,
-                base_url=self._base_url,
+                config=runtime.config,
+                api_key=runtime.api_key,
+                base_url=runtime.base_url,
                 chapter_content=chapter_content,
                 selection_text=request.source_text,
                 context_before=request.context_before or "",
@@ -260,21 +281,11 @@ class StyleVariantService:
                 accumulated.append(chunk.text)
                 yield chunk
         except Exception as e:
-            partial = self._draft_processor.process(
-                "".join(accumulated),
-                is_partial=True,
-            )
-            partial_words = len(partial.split()) if partial else 0
-            await self._repo.update_status(
+            await mark_variant_failed(
+                self._repo,
+                self._draft_processor,
                 request_id,
-                "failed",
-                error_message=str(e),
-                word_count=partial_words,
-                completed_at=datetime.now(UTC),
-            )
-            logger.error(
-                "style_variant_stream_failed",
-                request_id=str(request_id),
-                error=str(e),
+                accumulated,
+                e,
             )
             raise

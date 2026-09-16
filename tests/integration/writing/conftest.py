@@ -41,6 +41,7 @@ from narrare_core.writing.context_assembler import WritingContextAssembler
 from narrare_core.writing.draft_processor import DraftProcessor
 from narrare_core.writing.pipeline import WritingPipeline
 from tests.fakes.fake_llm_gateway import FakeModelRegistry
+from tests.unit.api.writing._style_variant_factories import make_static_runtime_factory
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -292,9 +293,11 @@ async def _make_style_variant_service(
 
     return StyleVariantService(
         repo=repo,
-        pipeline=pipeline,
+        # ADR-086: the service composes its runtime at first use; the
+        # integration fake chain pins a fixed runtime (render- and
+        # outcome-inert — same pipeline/config the eager factory passed).
+        runtime_factory=make_static_runtime_factory(pipeline, config),
         draft_processor=_processor,
-        config=config,
         chapter_repo=ChapterRepository(session),
         novel_repo=NovelRepository(session),
     )

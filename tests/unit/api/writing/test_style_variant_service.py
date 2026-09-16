@@ -65,12 +65,19 @@ def _gate_open_repos() -> tuple[Any, Any]:
 
 
 def _make_service(pipeline: Any, repo: Any) -> StyleVariantService:
+    """A service over a pinned static runtime (ADR-086 L35 lazy ctor).
+
+    The runtime factory pins ``pipeline`` verbatim so the guard/working
+    mock semantics are unchanged; the lazy composition contract itself
+    is pinned in ``test_style_variant_service_lazy_resolution.py``.
+    """
+    from tests.unit.api.writing._style_variant_factories import make_static_runtime_factory
+
     chapter_repo, novel_repo = _gate_open_repos()
     return StyleVariantService(
         repo=repo,
-        pipeline=pipeline,
+        runtime_factory=make_static_runtime_factory(pipeline, CONFIG),
         draft_processor=_make_draft_processor(),
-        config=CONFIG,
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
     )
@@ -108,13 +115,14 @@ class TestStyleVariantServiceValidate:
 
     @pytest.mark.asyncio
     async def test_validate_raises_when_chapter_missing(self, mock_repo: Any) -> None:
+        from tests.unit.api.writing._style_variant_factories import make_static_runtime_factory
+
         chapter_repo, novel_repo = _gate_open_repos()
         chapter_repo.get = AsyncMock(return_value=None)  # unknown chapter
         svc = StyleVariantService(
             repo=mock_repo,
-            pipeline=_dummy_pipeline(),
+            runtime_factory=make_static_runtime_factory(_dummy_pipeline(), CONFIG),
             draft_processor=_make_draft_processor(),
-            config=CONFIG,
             chapter_repo=chapter_repo,
             novel_repo=novel_repo,
         )

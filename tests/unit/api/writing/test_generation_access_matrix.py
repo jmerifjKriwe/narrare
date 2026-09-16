@@ -33,7 +33,6 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from narrare.writing.style_variant_service import StyleVariantService
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import ConflictError, NotFoundError
 from tests.factories import make_chapter, make_novel
@@ -137,12 +136,8 @@ def _pipeline(*, working: bool) -> MagicMock:
     return pipeline
 
 
-# The remaining pipeline-backed service (style_variant) — rewrite,
-# extend, and coauthor have lazy-runtime branches in ``_make_service``
-# (ADR-086 L33/L32/L31).
-_PIPELINE_SERVICES: dict[str, type[Any]] = {
-    "style_variant": StyleVariantService,
-}
+# Style-variant has a lazy-runtime branch in ``_make_service`` too
+# (ADR-086 L35, pinned via ``_style_variant_factories``).
 
 
 def _requests(kind: str) -> Any:
@@ -218,9 +213,25 @@ def _make_service(
             config=CONFIG,
         )
 
+    if kind == "style_variant":
+        # ADR-086 L35: lazy-runtime ctor — pins the matrix pipeline
+        # verbatim, so the guard/working-mock semantics are unchanged.
+        from tests.unit.api.writing._style_variant_factories import (
+            make_matrix_style_variant_service,
+        )
+
+        return make_matrix_style_variant_service(
+            repo=cast("GenerationRepository", gen_repo),
+            pipeline=_pipeline(working=working_llm),
+            chapter_repo=cr,
+            novel_repo=nr,
+            draft_processor=_processor(),
+            config=CONFIG,
+        )
+
     from narrare.writing.service import WritingService
 
-    services: dict[str, type[Any]] = {**_PIPELINE_SERVICES, "generate": WritingService}
+    services: dict[str, type[Any]] = {"generate": WritingService}
     return services[kind](
         repo=cast("GenerationRepository", gen_repo),
         pipeline=_pipeline(working=working_llm),
