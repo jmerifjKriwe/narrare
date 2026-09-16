@@ -12,6 +12,14 @@ The previous inline f-string feature prompt and the false ADR-048 Mode 2
 errors now propagate (RULE-11) instead of being silently swallowed.
 
 Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b).
+
+Model acquisition (ADR-086 L20): the per-user PLAN routing cascade is
+injected as a ``ModelResolution`` and resolved on first use inside
+``generate_character_arc`` — after the uid-scoped novel guard, never at
+construction (the eager factory resolved at wiring time). Graceful
+degradation (AI-optional feature) is service policy: a missing provider
+is logged and degrades to the preserved ``no_model_config`` outcome —
+the eager factory's wiring-time swallow, moved past validation.
 """
 
 from __future__ import annotations
@@ -29,6 +37,7 @@ from narrare_core.shared.errors import ConfigurationError, NotFoundError
 if TYPE_CHECKING:
     import uuid
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -54,7 +63,10 @@ class CharacterArcService:
     Args:
         novel_repo: For novel existence + metadata (genre, language).
         model_registry: Shared LLM model registry.
-        model_config: Resolved model config (provider + model ID).
+        model_resolution: Lazy per-user model resolution (ADR-086 L20) —
+            the PLAN routing cascade resolves on first use, never at
+            construction. A ``ConfigurationError`` (no AI provider)
+            degrades gracefully (AI-optional feature) at the entry point.
         composer: PromptComposer for resolving the governed character-arc
             system prompt via the cascade (RULE-02b / ADR-054 D1). Required
             for ``generate_character_arc``.
@@ -62,8 +74,6 @@ class CharacterArcService:
             into the ``existing_plot_points`` prompt slot (§7 closed). When
             ``None`` or the novel has no such events the slot degrades to an
             empty string (RULE-11).
-        api_key: Optional API key override.
-        base_url: Optional base URL override.
         invocation_pipeline: Optional pipeline for invocation evidence
             (Mode 1 prepare/finalize). Retained for DI-contract stability.
     """
@@ -72,24 +82,46 @@ class CharacterArcService:
         self,
         novel_repo: NovelRepository,
         model_registry: ModelRegistry,
-        model_config: ResolvedModelConfig | None = None,
+        model_resolution: ModelResolution,
         composer: PromptComposer | None = None,
         event_repo: TimelineEventRepository | None = None,
         *,
-        api_key: str | None = None,
-        base_url: str | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._registry = model_registry
-        self._config = model_config
+        self._model_resolution = model_resolution
+        # Resolved triple — unset until first use; a failed (graceful)
+        # resolve leaves it unset for the instance's lifetime.
+        self._config: ResolvedModelConfig | None = None
+        self._api_key: str | None = None
+        self._base_url: str | None = None
+        self._resolve_attempted = False
         self._composer = composer
         self._event_repo = event_repo
-        self._api_key = api_key
-        self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+
+    async def ensure_resolved(self) -> None:
+        """Resolve the per-user PLAN routing cascade once (ADR-086 L20).
+
+        First call awaits the injected ``ModelResolution`` and caches the
+        resolved triple into ``_config``/``_api_key``/``_base_url``; repeat
+        calls are idempotent — the cascade runs at most once per instance,
+        success or failure (eager-world timing also resolved exactly once
+        per request). ``ConfigurationError`` propagates UNCHANGED: the
+        graceful swallow is entry-point policy (see
+        :meth:`generate_character_arc`), so this method stays honest about
+        what happened (RULE-11).
+        """
+        if self._resolve_attempted:
+            return
+        self._resolve_attempted = True
+        resolved = await self._model_resolution.resolve()
+        self._config = resolved.config
+        self._api_key = resolved.api_key
+        self._base_url = resolved.base_url
 
     async def generate_character_arc(
         self,
@@ -108,14 +140,33 @@ class CharacterArcService:
             Full character arc analysis with phases and relationships.
 
         Raises:
-            NotFoundError: If the novel does not exist.
-            ConfigurationError: If no AI provider or PromptComposer is configured.
+            NotFoundError: If the novel does not exist, or — the preserved
+                degraded outcome — if no AI provider is configured
+                (``no_model_config``; AI-optional feature, ADR-086 L20).
+            ConfigurationError: If the PromptComposer is missing or prompt
+                composition yields no system prompt (RULE-11).
         """
         novel = await self._novel_repo.get_by_id(novel_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(novel_id))
 
+        # ADR-086 L20: first-use lazy resolve — the uid-scoped novel guard
+        # above stays ahead of the cascade (eager-world precedence; the
+        # ADR-086 planning guard ruling). Degradation is service policy
+        # (Pattern M-graceful): a missing AI provider is logged (the eager
+        # factory's event, byte-identical) and leaves the triple unset, so
+        # the ``no_model_config`` outcome below fires exactly as it did when
+        # the eager factory swallowed this error at wiring time — timing
+        # only. The resolve is attempted at most once per instance.
+        try:
+            await self.ensure_resolved()
+        except ConfigurationError:
+            logger.info("no_ai_provider_configured", novel_id=str(novel_id))
+
         if self._config is None:
+            # Sanctioned degraded state (AI-optional feature): the graceful
+            # resolve above found no provider configured (RULE-11 — loud
+            # about it via the log, deterministic via this outcome).
             raise NotFoundError("Model config", identifier="no_model_config")
 
         if self._composer is None:

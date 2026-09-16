@@ -22,6 +22,7 @@ See:
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -36,6 +37,13 @@ from tests.unit.api.planning._character_arc_test_helpers import (
     make_novel,
     make_request,
 )
+
+if TYPE_CHECKING:
+    from narrare.novels.repository import NovelRepository
+    from narrare.planning.character_arc_service import CharacterArcService
+    from narrare.planning.timeline_repository import TimelineEventRepository
+    from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.prompts.composer import PromptComposer
 
 # ---------------------------------------------------------------------------
 # Test doubles — only the event repository is faked; the render path is real.
@@ -88,25 +96,30 @@ class _FakeEventRepo:
         return result
 
 
-def _build_service(events: list[TimelineEvent] | None) -> object:
+def _build_service(events: list[TimelineEvent] | None) -> CharacterArcService:
     """Build a CharacterArcService wired with the given fake event repo.
 
     ``events=None`` leaves the event_repo unwired (RULE-11 degradation path).
     """
+    from narrare._app.dependencies_services import StaticModelResolution
     from narrare.planning.character_arc_service import CharacterArcService
+    from narrare_core.llm.model_routing import ResolvedModel
 
     novel_repo = AsyncMock()
     novel_repo.get_by_id.return_value = make_novel()
+    event_repo = _FakeEventRepo(events) if events is not None else None
     return CharacterArcService(
-        novel_repo=novel_repo,  # type: ignore[arg-type]
-        model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-        model_config=ResolvedModelConfig(provider_name="test", model_id="test-model"),
-        composer=FakeComposer(),  # type: ignore[arg-type]
-        event_repo=_FakeEventRepo(events) if events is not None else None,  # type: ignore[arg-type]
+        novel_repo=cast("NovelRepository", novel_repo),
+        model_registry=cast("ModelRegistry", FakeModelRegistry()),
+        model_resolution=StaticModelResolution(
+            ResolvedModel(config=ResolvedModelConfig(provider_name="test", model_id="test-model"))
+        ),
+        composer=cast("PromptComposer", FakeComposer()),
+        event_repo=cast("TimelineEventRepository | None", event_repo),
     )
 
 
-async def _existing_plot_points(service: object) -> str:
+async def _existing_plot_points(service: CharacterArcService) -> str:
     """Run generate_character_arc and return the rendered slot value."""
     captured: dict[str, object] = {}
 
@@ -125,7 +138,7 @@ async def _existing_plot_points(service: object) -> str:
         mock_agent = MagicMock(spec=["run"])
         mock_agent.run = AsyncMock(return_value=make_agent_output())
         MockAgent.return_value = mock_agent
-        await service.generate_character_arc(uuid.uuid4(), uuid.uuid4(), make_request())  # type: ignore[arg-type]
+        await service.generate_character_arc(uuid.uuid4(), uuid.uuid4(), make_request())
 
     extra = getattr(captured["ctx"], "extra", {})
     return str(extra.get("existing_plot_points", ""))

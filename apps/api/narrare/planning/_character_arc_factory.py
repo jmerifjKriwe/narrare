@@ -1,8 +1,24 @@
-"""Service factory for character arc — wires CharacterArcService with model routing.
+"""Service factory for character arc — wires CharacterArcService lazily.
 
-Follows the same pattern as ``_service_factory.py``: resolves the user's
-configured provider/model for the PLAN intent, validates novel existence,
-and builds the service with proper DI.
+Follows the same pattern as ``_service_factory.py``: wires the service
+with proper DI for the PLAN intent. Model routing is wired as a
+``LazyModelResolution`` (ADR-086 L20) — the per-user cascade resolves on
+the service's first use, never at construction, so request-body
+validation errors surface as 422 before any routing work (the eager
+factory resolved — and ran its uid-scoped novel guard — at wiring time).
+
+Planning guard ruling (ADR-086 plan §3): the eager factory's uid-scoped
+novel guard (``get_by_id(novel_id, uid)`` → 404, preventing resolver
+auto-creation of ``project_settings`` for foreign novels) is preserved —
+NOT dropped — as the service entry point's existing uid-scoped guard
+(same repo, same session), which runs immediately BEFORE the first-use
+resolve (gate-before-resolution ordering).
+
+Graceful degradation (AI-optional feature) is service policy, not wiring
+(Pattern M-graceful): the eager factory's wiring-time
+``except ConfigurationError`` swallow moved into the service's first-use
+path, which logs ``no_ai_provider_configured`` and degrades to the
+preserved ``no_model_config`` outcome.
 """
 
 from __future__ import annotations
@@ -10,23 +26,18 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-import structlog
-
 from narrare._app.dependencies import (
     get_composer,
     get_invocation_pipeline,
     get_model_registry,
 )
-from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.dependencies_services import LazyModelResolution, get_model_routing_resolver
 from narrare.novels.repository import NovelRepository
 from narrare.planning.character_arc_service import CharacterArcService
 from narrare.planning.timeline_repository import TimelineEventRepository
-from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-logger = structlog.get_logger(__name__)
 
 
 async def get_character_arc_service(
@@ -34,14 +45,14 @@ async def get_character_arc_service(
     user_id: str,
     novel_id: uuid.UUID,
 ) -> CharacterArcService:
-    """Wire up CharacterArcService with model routing from user settings.
+    """Wire up CharacterArcService with LAZY model routing (ADR-086 L20).
 
-    Resolves the user's configured provider/model for the PLAN intent,
-    validates novel existence before calling the resolver to prevent
-    auto-creation of project_settings for nonexistent novels.
-
-    Gracefully degrades when no AI provider is configured — the service
-    will use the fallback model from ModelRegistry.
+    The per-user PLAN cascade is wired as a ``LazyModelResolution`` with
+    the same args the eager factory resolved verbatim (intent, uid,
+    novel_id — timing-only migration, RULE-18). Repos, registry, composer,
+    and pipeline still wire eagerly. The uid-scoped novel guard lives in
+    the service's first-use path (see module docstring); graceful
+    no-provider degradation is service policy there too.
 
     Args:
         session: DB session.
@@ -49,45 +60,22 @@ async def get_character_arc_service(
         novel_id: Target novel UUID.
 
     Returns:
-        Fully wired CharacterArcService.
-
-    Raises:
-        NotFoundError: If the novel does not exist.
+        Fully wired CharacterArcService (model unresolved).
     """
     from narrare_core.llm.intents import LLMIntent
 
     uid = uuid.UUID(user_id)
 
-    # Validate novel exists BEFORE resolver auto-creates project_settings.
-    novel_repo = NovelRepository(session)
-    novel = await novel_repo.get_by_id(novel_id, uid)
-    if novel is None:
-        raise NotFoundError("Novel", identifier=str(novel_id))
-
-    # Resolve model config — gracefully handle missing AI provider.
-    registry = get_model_registry()
-    # PromptComposer for governed character-arc system-prompt resolution
-    # (RULE-02 / ADR-054 D1). Same source as the timeline-analysis factory.
-    composer = get_composer()
-    model_config = None
-    api_key = None
-    base_url = None
-    try:
-        resolver = get_model_routing_resolver(session)
-        resolved = await resolver.resolve(LLMIntent.PLAN, uid, novel_id)
-        model_config = resolved.config
-        api_key = resolved.api_key
-        base_url = resolved.base_url
-    except ConfigurationError:
-        logger.info("no_ai_provider_configured", novel_id=str(novel_id))
+    resolver = get_model_routing_resolver(session)
+    model_resolution = LazyModelResolution(lambda: resolver.resolve(LLMIntent.PLAN, uid, novel_id))
 
     return CharacterArcService(
-        novel_repo=novel_repo,
-        model_registry=registry,
-        model_config=model_config,
-        composer=composer,
+        novel_repo=NovelRepository(session),
+        model_registry=get_model_registry(),
+        model_resolution=model_resolution,
+        # PromptComposer for governed character-arc system-prompt resolution
+        # (RULE-02 / ADR-054 D1). Same source as the timeline-analysis factory.
+        composer=get_composer(),
         event_repo=TimelineEventRepository(session),
-        api_key=api_key,
-        base_url=base_url,
         invocation_pipeline=get_invocation_pipeline(),
     )

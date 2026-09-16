@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (11):**
+**Open (10):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -361,7 +361,16 @@ at construction (2026-09-09; factory function names verified):
         endpoint consumes no resolution at all; integration probe:
         pre-migration invalid body yielded the dependency-time novel-guard
         404, not 400)*
-20. [ ] `planning/_character_arc_factory.py` — `get_character_arc_service`
+20. [x] `planning/_character_arc_factory.py` — `get_character_arc_service`
+       *(G1/L20 — landed 2026-09-16: lazy wiring + graceful first-use
+       resolve (Pattern M-graceful, no new adapter primitive) —
+       ``ensure_resolved`` runs after the service's uid-scoped novel
+       guard, the eager factory's wiring-time guard relocated per the
+       planning guard ruling (gate-before-resolution preserved), and the
+       factory's ``except ConfigurationError`` swallow became entry-point
+       policy: ``no_ai_provider_configured`` log + the preserved
+       ``no_model_config`` degraded outcome, moved past validation
+       (REST — no SSE pre-header needed))*
 21. [ ] `planning/_service_factory.py` — `get_storyboard_service`
 22. [ ] `planning/_timeline_analysis_factory.py` — `get_timeline_analysis_service`
 23. [ ] `planning/_timeline_consistency_factory.py` — `get_timeline_consistency_service`

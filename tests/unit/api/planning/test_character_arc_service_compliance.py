@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import inspect
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -38,7 +38,9 @@ from tests.unit.api.planning._character_arc_test_helpers import (
 )
 
 if TYPE_CHECKING:
+    from narrare.novels.repository import NovelRepository
     from narrare.planning.schemas import CharacterArcRequest
+    from narrare_core.llm.gateway import ModelRegistry
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -155,13 +157,15 @@ class TestDefensiveGuards:
         config: ResolvedModelConfig,
         request_body: CharacterArcRequest,
     ) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.planning.character_arc_service import CharacterArcService
+        from narrare_core.llm.model_routing import ResolvedModel
         from narrare_core.shared.errors import ConfigurationError
 
         service = CharacterArcService(
-            novel_repo=AsyncMock(),  # type: ignore[arg-type]
-            model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            model_config=config,
+            novel_repo=cast("NovelRepository", AsyncMock()),
+            model_registry=cast("ModelRegistry", FakeModelRegistry()),
+            model_resolution=StaticModelResolution(ResolvedModel(config=config)),
             composer=None,
         )
         service._novel_repo.get_by_id.return_value = make_novel()  # type: ignore[attr-defined]

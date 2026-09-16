@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import uuid
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock
 
 from narrare.planning.schemas import CharacterArcRequest
@@ -20,8 +20,11 @@ from narrare_core.agents.character_arc_types import CharacterArcOutput
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
+    from narrare.novels.repository import NovelRepository
     from narrare.planning.character_arc_service import CharacterArcService
+    from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.model_config import ResolvedModelConfig
+    from narrare_core.prompts.composer import PromptComposer
 
 # ---------------------------------------------------------------------------
 # Fakes (avoid bare MagicMock for domain contracts — RULE-TEST-01)
@@ -123,13 +126,19 @@ def make_request() -> CharacterArcRequest:
 
 
 def make_service(composer: FakeComposer, config: ResolvedModelConfig) -> CharacterArcService:
-    """Build a CharacterArcService wired for Mode 1 prompt resolution."""
+    """Build a CharacterArcService wired for Mode 1 prompt resolution.
+
+    ADR-086 L20: the model triple is injected as a ``StaticModelResolution``
+    (pre-resolved — the test equivalent of the production lazy wiring).
+    """
+    from narrare._app.dependencies_services import StaticModelResolution
     from narrare.planning.character_arc_service import CharacterArcService
+    from narrare_core.llm.model_routing import ResolvedModel
 
     novel_repo = AsyncMock()
     return CharacterArcService(
-        novel_repo=novel_repo,  # type: ignore[arg-type]
-        model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-        model_config=config,
-        composer=composer,  # type: ignore[arg-type]
+        novel_repo=cast("NovelRepository", novel_repo),
+        model_registry=cast("ModelRegistry", FakeModelRegistry()),
+        model_resolution=StaticModelResolution(ResolvedModel(config=config)),
+        composer=cast("PromptComposer", composer),
     )
