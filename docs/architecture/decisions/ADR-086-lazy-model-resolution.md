@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (12):**
+**Open (11):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -485,7 +485,21 @@ at construction (2026-09-09; factory function names verified):
        rate-limiting + chapter-context helpers split to
        ``_suggest_support.py`` for the RULE-04 size limit the
        ``ensure_resolved`` addition crossed)*
-37. [ ] `writing/deps_writing.py` — `get_writing_service` (+ eager `get_resolved_limits`)
+37. [x] `writing/deps_writing.py` — `get_writing_service` (+ eager `get_resolved_limits`)
+       *(F2/L37 — landed 2026-09-16: lazy wiring + deferred M-budget
+       composition at first use — ``ensure_resolved`` at the end of
+       ``validate_request_access`` (the router's pre-stream seam) and via
+       ``stream_generation`` for direct callers, with ``stop_generation``
+       resolving idempotently for the pipeline stop — so the request-row
+       IDOR gate stays ahead of BOTH cascades (routing +
+       ``get_resolved_limits``, deferred budget/pipeline composition per
+       the beta-reader S4b shape, series-scope novel lookup moved with
+       them, SUGGEST sampling override preserved) and an unconfigured
+       provider stays a loud pre-header 400 (SSE) while non-AI endpoints
+       (stats, accept/reject, POST row creation) no longer resolve at
+       all; the runtime composite, the stream-inputs builder, and the
+       stats/``novel_context`` helpers split to ``_writing_support.py``
+       for the RULE-04 size limits the lazy seam crossed)*
 38. [ ] `writing/summary_deps.py` — `get_summary_service` (+ eager `get_resolved_limits`)
 39. [ ] `writing/router_sessions.py` — `interactive_session` (inline eager
        resolve + `get_resolved_limits` in session bootstrap)

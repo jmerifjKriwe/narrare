@@ -112,11 +112,13 @@ def service(
     mock_draft_processor: MagicMock,
     config: ResolvedModelConfig,
 ) -> WritingService:
+    from tests.unit.api.writing._writing_factories import make_static_runtime_factory
+
     return WritingService(
         repo=mock_repo,
-        pipeline=mock_pipeline,
+        # ADR-086 L37: fixed-runtime pin (render- and outcome-inert).
+        runtime_factory=make_static_runtime_factory(mock_pipeline, config),
         draft_processor=mock_draft_processor,
-        config=config,
         chapter_repo=_gate_open_chapter_repo(),
         novel_repo=_gate_open_novel_repo(),
     )

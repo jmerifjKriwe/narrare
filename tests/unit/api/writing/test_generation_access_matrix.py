@@ -232,11 +232,14 @@ def _make_service(
     from narrare.writing.service import WritingService
 
     services: dict[str, type[Any]] = {"generate": WritingService}
+    # ADR-086 L37: lazy-runtime ctor — pins the matrix pipeline
+    # verbatim, so the guard/working-mock semantics are unchanged.
+    from tests.unit.api.writing._writing_factories import make_static_runtime_factory
+
     return services[kind](
         repo=cast("GenerationRepository", gen_repo),
-        pipeline=_pipeline(working=working_llm),
+        runtime_factory=make_static_runtime_factory(_pipeline(working=working_llm), CONFIG),
         draft_processor=_processor(),
-        config=CONFIG,
         chapter_repo=cr,
         novel_repo=nr,
     )

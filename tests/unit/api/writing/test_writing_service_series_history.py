@@ -84,6 +84,20 @@ def _make_draft_processor() -> MagicMock:
     return processor
 
 
+def _static_runtime_factory(
+    pipeline: MagicMock,
+    config: ResolvedModelConfig,
+    *,
+    series_history_budget: int | None = None,
+) -> Any:
+    """Fixed-runtime pin over ``make_static_runtime_factory`` (ADR-086 L37)."""
+    from tests.unit.api.writing._writing_factories import make_static_runtime_factory
+
+    return make_static_runtime_factory(
+        pipeline, config, series_history_budget=series_history_budget
+    )
+
+
 class TestWritingServiceSeriesHistoryConstructor:
     def test_accepts_and_stores_provider(
         self,
@@ -93,9 +107,8 @@ class TestWritingServiceSeriesHistoryConstructor:
         provider = AsyncMock()
         service = WritingService(
             repo=mock_repo,
-            pipeline=MagicMock(spec=WritingPipeline),
+            runtime_factory=_static_runtime_factory(MagicMock(spec=WritingPipeline), config),
             draft_processor=MagicMock(spec=DraftProcessor),
-            config=config,
             chapter_repo=_gate_open_chapter_repo(),
             novel_repo=_gate_open_novel_repo(),
             series_history_provider=provider,
@@ -109,9 +122,8 @@ class TestWritingServiceSeriesHistoryConstructor:
     ) -> None:
         service = WritingService(
             repo=mock_repo,
-            pipeline=MagicMock(spec=WritingPipeline),
+            runtime_factory=_static_runtime_factory(MagicMock(spec=WritingPipeline), config),
             draft_processor=MagicMock(spec=DraftProcessor),
-            config=config,
             chapter_repo=_gate_open_chapter_repo(),
             novel_repo=_gate_open_novel_repo(),
         )
@@ -137,9 +149,8 @@ class TestStreamGenerationSeriesHistory:
 
         service = WritingService(
             repo=mock_repo,
-            pipeline=pipeline,
+            runtime_factory=_static_runtime_factory(pipeline, config),
             draft_processor=_make_draft_processor(),
-            config=config,
             chapter_repo=_gate_open_chapter_repo(),
             novel_repo=_gate_open_novel_repo(),
             series_history_provider=provider,
@@ -165,9 +176,8 @@ class TestStreamGenerationSeriesHistory:
 
         service = WritingService(
             repo=mock_repo,
-            pipeline=pipeline,
+            runtime_factory=_static_runtime_factory(pipeline, config),
             draft_processor=_make_draft_processor(),
-            config=config,
             chapter_repo=_gate_open_chapter_repo(),
             novel_repo=_gate_open_novel_repo(),
         )
@@ -195,13 +205,11 @@ class TestStreamGenerationSeriesHistoryBudget:
 
         service = WritingService(
             repo=mock_repo,
-            pipeline=pipeline,
+            runtime_factory=_static_runtime_factory(pipeline, config, series_history_budget=12_000),
             draft_processor=_make_draft_processor(),
-            config=config,
             chapter_repo=_gate_open_chapter_repo(),
             novel_repo=_gate_open_novel_repo(),
             series_history_provider=provider,
-            series_history_budget=12_000,
         )
 
         _ = [chunk async for chunk in service.stream_generation(request_model.id, str(user_id))]

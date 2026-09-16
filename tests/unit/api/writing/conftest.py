@@ -97,11 +97,15 @@ def service(
     mock_novel_repo: AsyncMock,
 ) -> WritingService:
     """WritingService with mocked dependencies (no tone service by default)."""
+    from tests.unit.api.writing._writing_factories import make_static_runtime_factory
+
     return WritingService(
         repo=mock_repo,
-        pipeline=mock_pipeline,
+        # ADR-086 L37: the service composes its runtime at first use; the
+        # fake chain pins a fixed runtime (render- and outcome-inert —
+        # same config/pipeline the eager factory passed).
+        runtime_factory=make_static_runtime_factory(mock_pipeline, config),
         draft_processor=mock_draft_processor,
-        config=config,
         chapter_repo=mock_chapter_repo,
         novel_repo=mock_novel_repo,
     )

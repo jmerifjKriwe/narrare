@@ -3,12 +3,18 @@
 This is the main business logic layer for chapter generation.  It delegates:
 - DB operations to :class:`GenerationRepository`
 - LLM calls to :class:`WritingPipeline` (via gateway — RULE-01b)
-- Post-processing to :class:`DraftProcessor`
-- Feedback recording to :class:`FeedbackCollector`
+- Post-processing to :class:`DraftProcessor`; feedback to :class:`FeedbackCollector`
 - Stream iteration/finalization to :func:`stream_pipeline_chunks` (``_stream_service``)
-- Scene operations to :class:`SceneService`
-- Stats to :class:`StatsService`
-- Tone resolution to :func:`resolve_tone_instructions` (tone_resolver module)
+- Context assembly (tone / KB / session memory / series history / novel
+  supply) to :func:`build_stream_inputs` (``_writing_support``)
+- Scene operations to :class:`SceneService`; stats to :class:`StatsService`
+
+Model acquisition is LAZY (ADR-086, M-budget): the factory wires a
+``LazyModelResolution`` plus a deferred runtime composition; the service
+resolves at first use — :meth:`ensure_resolved` at the end of
+:meth:`validate_request_access` (the router's pre-stream seam) and via
+``stream_generation`` for direct callers — so gates stay ahead of the
+cascades and an unconfigured provider surfaces as a loud pre-header 400.
 
 Implements :class:`WritingServiceProtocol` from ``contracts.py`` (RULE-03).
 """
@@ -17,18 +23,21 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
-from uuid import UUID
 
 import structlog
 
 from narrare.writing._helpers import (
     build_pipeline_request,
     get_validated_request,
-    prepare_generation_context,
     record_feedback,
     start_generation_request,
 )
 from narrare.writing._stream_service import stream_pipeline_chunks
+from narrare.writing._writing_support import (
+    WritingRuntime,
+    build_generation_stats_response,
+    build_stream_inputs,
+)
 from narrare.writing.schemas import (
     AcceptResponse,
     GenerateRequest,
@@ -40,7 +49,8 @@ from narrare.writing.schemas import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Awaitable, Callable
+    from uuid import UUID
 
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
@@ -50,28 +60,30 @@ if TYPE_CHECKING:
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.scene_service import SceneService
     from narrare.writing.stats_service import StatsService
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.result import StreamChunk
     from narrare_core.memory.protocols import FeedbackCollector, SessionMemoryCollector
     from narrare_core.writing.draft_processor import DraftProcessor
-    from narrare_core.writing.pipeline import WritingPipeline
 
 logger = structlog.get_logger(__name__)
 
 
 class WritingService:
-    """Orchestrates chapter generation via pipeline + repository (DI, RULE-07)."""
+    """Orchestrates chapter generation via pipeline + repository (DI, RULE-07).
+
+    Args:
+        repo: Generation request repository (status lifecycle + rows).
+        runtime_factory: Zero-arg async callable returning the
+            :class:`WritingRuntime` — deferred composition over both
+            cascades (ADR-086: first use only, never construction).
+    """
 
     def __init__(
         self,
         repo: GenerationRepository,
-        pipeline: WritingPipeline,
+        runtime_factory: Callable[[], Awaitable[WritingRuntime]],
         draft_processor: DraftProcessor,
-        config: ResolvedModelConfig,
         chapter_repo: ChapterRepository,
         novel_repo: NovelRepository,
-        api_key: str | None = None,
-        base_url: str | None = None,
         feedback_service: FeedbackCollector | None = None,
         scene_service: SceneService | None = None,
         stats_service: StatsService | None = None,
@@ -79,16 +91,13 @@ class WritingService:
         relationship_repo: RelationshipRepository | None = None,
         session_memory: SessionMemoryCollector | None = None,
         series_history_provider: SeriesHistoryProvider | None = None,
-        series_history_budget: int | None = None,
     ) -> None:
         self._repo = repo
-        self._pipeline = pipeline
+        self._runtime_factory = runtime_factory
+        self._runtime: WritingRuntime | None = None
         self._draft_processor = draft_processor
-        self._config = config
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
-        self._api_key = api_key
-        self._base_url = base_url
         self._feedback = feedback_service
         self._scene_service = scene_service
         self._stats_service = stats_service
@@ -96,7 +105,20 @@ class WritingService:
         self._relationship_repo = relationship_repo
         self._session_memory = session_memory
         self._series_history_provider = series_history_provider
-        self._series_history_budget = series_history_budget
+
+    # -- Lazy runtime (ADR-086) -------------------------------------------
+
+    async def ensure_resolved(self) -> WritingRuntime:
+        """Compose the effective writing runtime at first use; idempotent.
+
+        Runs the deferred composition — both cascades, the sampling
+        overrides, the ADR-082 budgets, the tier-wired pipeline — exactly
+        once, cached.  Errors propagate uncached (RULE-11):
+        ``ConfigurationError`` surfaces as a pre-header 400 (SSE).
+        """
+        if self._runtime is None:
+            self._runtime = await self._runtime_factory()
+        return self._runtime
 
     # -- Generation lifecycle -------------------------------------------
 
@@ -141,72 +163,51 @@ class WritingService:
         from narrare_core.writing._enums import GenerationMode
 
         request_model = await get_validated_request(self._repo, request_id, user_id)
+        # ADR-086 L37: first-use lazy runtime (idempotent; post-gate).
+        runtime = await self.ensure_resolved()
         await self._repo.update_status(
             request_id,
             "streaming",
             started_at=datetime.now(UTC),
-            model_id=self._config.model_id,
-            provider_name=self._config.provider_name,
+            model_id=runtime.config.model_id,
+            provider_name=runtime.config.provider_name,
         )
 
         mode = GenerationMode(request_model.mode)
         pipeline_request = build_pipeline_request(request_model, mode)
 
-        # Resolve tone, KB relationships, cross-session + series-history context
-        # (RULE-04 helper).
-        (
-            custom_tone_instructions,
-            kb_text,
-            cross_session_context,
-            series_history,
-        ) = await prepare_generation_context(
+        # Context + novel supply (RULE-04 builder; cascade-output budget).
+        inputs = await build_stream_inputs(
             request_model,
             tone_service=self._tone_service,
             relationship_repo=self._relationship_repo,
             session_memory=self._session_memory,
             series_history_provider=self._series_history_provider,
-            series_history_budget=self._series_history_budget,
+            series_history_budget=runtime.series_history_budget,
+            novel_repo=self._novel_repo,
+            user_id=user_id,
         )
-
-        # Ownership-aware novel supply for title/genre prompt context
-        # (sibling-service resolution: ``get_by_id(novel_id, user)``).
-        # RULE-11: any fetch failure degrades to empty strings — logged,
-        # and the draft proceeds without novel context.
-        project_title = ""
-        genre = ""
-        try:
-            novel = await self._novel_repo.get_by_id(request_model.novel_id, UUID(user_id))
-        except Exception as exc:
-            logger.warning(
-                "novel_context_fetch_failed",
-                novel_id=str(request_model.novel_id),
-                error=str(exc),
-            )
-        else:
-            if novel is not None:
-                project_title = novel.title or ""
-                genre = novel.genre or ""
 
         # Stream the pipeline and finalize the request row (RULE-04
         # extraction — iteration mechanics live in ``_stream_service``).
         async for chunk in stream_pipeline_chunks(
             repo=self._repo,
-            pipeline=self._pipeline,
+            pipeline=runtime.pipeline,
             draft_processor=self._draft_processor,
             session_memory=self._session_memory,
             request_model=request_model,
             request_id=request_id,
             mode=mode,
             pipeline_request=pipeline_request,
-            config=self._config,
-            api_key=self._api_key,
-            base_url=self._base_url,
-            custom_tone_instructions=custom_tone_instructions,
-            kb_relationships=kb_text,
-            cross_session_context=cross_session_context,
-            series_history=series_history,
-            project_title=project_title,
-            genre=genre,
+            config=runtime.config,
+            api_key=runtime.api_key,
+            base_url=runtime.base_url,
+            custom_tone_instructions=inputs.custom_tone_instructions,
+            kb_relationships=inputs.kb_relationships,
+            cross_session_context=inputs.cross_session_context,
+            series_history=inputs.series_history,
+            project_title=inputs.project_title,
+            genre=inputs.genre,
             context_kwargs=cast("dict[str, Any]", context_kwargs),
         ):
             yield chunk
@@ -214,7 +215,9 @@ class WritingService:
     async def stop_generation(self, request_id: UUID, user_id: str) -> StopResponse:
         """Stop an in-progress generation."""
         request_model = await get_validated_request(self._repo, request_id, user_id)
-        await self._pipeline.stop(request_id)
+        # ADR-086 L37: the pipeline is a cascade-composed runtime member.
+        runtime = await self.ensure_resolved()
+        await runtime.pipeline.stop(request_id)
         word_count = request_model.word_count
         await self._repo.update_status(request_id, "stopped", completed_at=datetime.now(UTC))
         logger.info("generation_stopped", request_id=str(request_id), word_count=word_count)
@@ -273,16 +276,7 @@ class WritingService:
         """Aggregate generation statistics for a novel."""
         if self._stats_service is not None:
             return await self._stats_service.get_stats(novel_id)
-        stats = await self._repo.get_stats_for_novel(novel_id)
-        return GenerationStatsResponse(
-            total_generations=int(stats["total_generations"]),
-            success_rate=float(stats["success_rate"]),
-            avg_tokens=float(stats["avg_tokens"]),
-            avg_word_count=float(stats["avg_word_count"]),
-            most_used_model=stats.get("most_used_model"),
-        )
-
-    # -- Private helpers ------------------------------------------------
+        return build_generation_stats_response(await self._repo.get_stats_for_novel(novel_id))
 
     async def validate_request_access(
         self,
@@ -293,5 +287,13 @@ class WritingService:
 
         Raises NotFoundError if not found or access denied.
         Used by router to validate before starting SSE response.
+
+        Raises:
+            narrare_core.shared.errors.ConfigurationError: If the user
+                has no AI provider configured (first-use composition).
         """
         await get_validated_request(self._repo, request_id, user_id)
+        # ADR-086 L37: first-use composition — post-IDOR-gate and
+        # pre-SSE-headers — so an unconfigured provider stays a loud
+        # pre-header 400 (RULE-11), never a preempting factory error.
+        await self.ensure_resolved()

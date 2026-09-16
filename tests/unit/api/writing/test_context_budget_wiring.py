@@ -211,9 +211,12 @@ class TestDepsWritingFactoryWiring:
                 user_id=str(uuid.uuid4()),
                 project_id=None,
             )
+            # ADR-086 L37: the budget/pipeline wiring happens at the
+            # service's first use, not at factory time.
+            runtime = await service.ensure_resolved()
 
         assert pipeline_spy.call_args.kwargs["total_budget"] == 16_000
-        assert service._series_history_budget == 16_000
+        assert runtime.series_history_budget == 16_000
         assert adapter_spy.call_args.kwargs["series_in_scope"] is False
 
     async def test_series_novel_marks_series_in_scope(self) -> None:
@@ -240,11 +243,14 @@ class TestDepsWritingFactoryWiring:
             novel_repo_cls.return_value.get = AsyncMock(return_value=series_novel)
             # N1 gate: entry lookup must report the novel as owned.
             novel_repo_cls.return_value.get_by_id = AsyncMock(return_value=series_novel)
-            await module.get_writing_service(
+            service = await module.get_writing_service(
                 session=_fake_session(),
                 user_id=str(uuid.uuid4()),
                 project_id=uuid.uuid4(),
             )
+            # ADR-086 L37: first-use composition (series scope resolved
+            # there too — Decision 6, same I/O order as the eager factory).
+            await service.ensure_resolved()
 
         assert adapter_spy.call_args.kwargs["series_in_scope"] is True
 

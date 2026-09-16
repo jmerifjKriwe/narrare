@@ -64,10 +64,13 @@ class TestStreamFactoryRequestScopedWiring:
                 user_id=str(user_id),
                 request_id=row.id,
             )
+            # ADR-086 L37: the budget/pipeline wiring happens at the
+            # service's first use, not at factory time.
+            runtime = await service.ensure_resolved()
 
         assert adapter_spy.call_args.kwargs["series_in_scope"] is True
         assert pipeline_spy.call_args.kwargs["total_budget"] == 20_000
-        assert service._series_history_budget == 12_000
+        assert runtime.series_history_budget == 12_000
 
     async def test_standalone_novel_request_resolves_full_total(self) -> None:
         import importlib
@@ -101,10 +104,13 @@ class TestStreamFactoryRequestScopedWiring:
                 user_id=str(user_id),
                 request_id=row.id,
             )
+            # ADR-086 L37: the budget/pipeline wiring happens at the
+            # service's first use, not at factory time.
+            runtime = await service.ensure_resolved()
 
         assert adapter_spy.call_args.kwargs["series_in_scope"] is False
         assert pipeline_spy.call_args.kwargs["total_budget"] == 32_000
-        assert service._series_history_budget == 0
+        assert runtime.series_history_budget == 0
 
     async def test_foreign_user_request_raises_not_found(self) -> None:
         """Ownership is enforced before any budget resolution runs."""

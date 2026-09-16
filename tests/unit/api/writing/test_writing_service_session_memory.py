@@ -98,6 +98,13 @@ def _make_draft_processor() -> MagicMock:
     return processor
 
 
+def _static_runtime_factory(pipeline: MagicMock, config: ResolvedModelConfig) -> Any:
+    """Fixed-runtime pin over ``make_static_runtime_factory`` (ADR-086 L37)."""
+    from tests.unit.api.writing._writing_factories import make_static_runtime_factory
+
+    return make_static_runtime_factory(pipeline, config)
+
+
 @pytest.fixture
 def mock_session_memory() -> AsyncMock:
     """Mock SessionMemoryCollector protocol."""
@@ -121,9 +128,8 @@ class TestWritingServiceSessionMemoryConstructor:
         memory = AsyncMock(spec=SessionMemoryCollector)
         service = WritingService(
             repo=mock_repo,
-            pipeline=MagicMock(spec=WritingPipeline),
+            runtime_factory=_static_runtime_factory(MagicMock(spec=WritingPipeline), config),
             draft_processor=MagicMock(spec=DraftProcessor),
-            config=config,
             chapter_repo=_gate_open_chapter_repo(),
             novel_repo=_gate_open_novel_repo(),
             session_memory=memory,
@@ -138,9 +144,8 @@ class TestWritingServiceSessionMemoryConstructor:
         """WritingService defaults session_memory to None when not provided."""
         service = WritingService(
             repo=mock_repo,
-            pipeline=MagicMock(spec=WritingPipeline),
+            runtime_factory=_static_runtime_factory(MagicMock(spec=WritingPipeline), config),
             draft_processor=MagicMock(spec=DraftProcessor),
-            config=config,
             chapter_repo=_gate_open_chapter_repo(),
             novel_repo=_gate_open_novel_repo(),
         )
@@ -171,15 +176,13 @@ class TestStreamGenerationSessionMemory:
 
         service = WritingService(
             repo=mock_repo,
-            pipeline=pipeline,
+            runtime_factory=_static_runtime_factory(pipeline, config),
             draft_processor=_make_draft_processor(),
-            config=config,
             chapter_repo=_gate_open_chapter_repo(),
             novel_repo=_gate_open_novel_repo(),
             session_memory=mock_session_memory,
         )
 
-        # Consume the entire stream
         _chunks = [
             chunk
             async for chunk in service.stream_generation(
@@ -211,9 +214,8 @@ class TestStreamGenerationSessionMemory:
 
         service = WritingService(
             repo=mock_repo,
-            pipeline=pipeline,
+            runtime_factory=_static_runtime_factory(pipeline, config),
             draft_processor=_make_draft_processor(),
-            config=config,
             chapter_repo=_gate_open_chapter_repo(),
             novel_repo=_gate_open_novel_repo(),
             session_memory=mock_session_memory,
@@ -250,9 +252,8 @@ class TestStreamGenerationSessionMemory:
 
         service = WritingService(
             repo=mock_repo,
-            pipeline=pipeline,
+            runtime_factory=_static_runtime_factory(pipeline, config),
             draft_processor=_make_draft_processor(),
-            config=config,
             chapter_repo=_gate_open_chapter_repo(),
             novel_repo=_gate_open_novel_repo(),
             # session_memory not provided — defaults to None
