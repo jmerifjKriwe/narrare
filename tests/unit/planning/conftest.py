@@ -11,9 +11,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.planning.timeline_extraction_service import TimelineExtractionService
 from narrare_core.llm.model_config import ResolvedModelConfig
-from tests.unit.planning._timeline_test_helpers import FakeComposer
+from narrare_core.llm.model_routing import ResolvedModel
+from tests.unit.planning._timeline_test_helpers import FakeComposer, NoProviderResolution
 
 
 @pytest.fixture
@@ -73,12 +75,18 @@ def service_with_config(
     model_config: ResolvedModelConfig,
     composer: FakeComposer,
 ) -> TimelineExtractionService:
-    """Service with model config and event repo for extraction tests."""
+    """Service with model config and event repo for extraction tests.
+
+    ADR-086 L24: the config arrives pre-resolved as a
+    ``StaticModelResolution`` (lazy ctor shape; outcomes unchanged).
+    """
     return TimelineExtractionService(
         novel_repo=mock_novel_repo,
         chapter_repo=mock_chapter_repo,
         model_registry=mock_registry,
-        model_config=model_config,
+        model_resolution=StaticModelResolution(
+            ResolvedModel(config=model_config, api_key=None, base_url=None, source="unit-test")
+        ),
         composer=composer,  # type: ignore[arg-type]
         event_repo=mock_event_repo,
     )
@@ -90,10 +98,16 @@ def service_no_config(
     mock_chapter_repo: AsyncMock,
     mock_registry: AsyncMock,
 ) -> TimelineExtractionService:
-    """Service without model config — should raise ConfigurationError."""
+    """Service whose cascade finds no AI provider — must raise ConfigurationError.
+
+    ADR-086 L24: the no-provider outcome comes from the resolution raising
+    at first use (the eager factory's wiring-time swallow moved into the
+    service's entry-point policy); the preserved ``NO_AI_PROVIDER`` guard
+    then fires exactly as before.
+    """
     return TimelineExtractionService(
         novel_repo=mock_novel_repo,
         chapter_repo=mock_chapter_repo,
         model_registry=mock_registry,
-        model_config=None,
+        model_resolution=NoProviderResolution(),
     )

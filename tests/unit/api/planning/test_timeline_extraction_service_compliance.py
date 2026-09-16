@@ -29,7 +29,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare_core.llm.model_config import ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 from tests.unit.api.planning._timeline_extraction_test_helpers import (
     FakeComposedInvocation,
     FakeComposer,
@@ -158,7 +160,9 @@ class TestDefensiveGuards:
             novel_repo=AsyncMock(),  # type: ignore[arg-type]
             chapter_repo=AsyncMock(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            model_config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=None, base_url=None, source="unit-test")
+            ),
             composer=None,
         )
         service._novel_repo.get_by_id.return_value = make_novel()  # type: ignore[attr-defined]

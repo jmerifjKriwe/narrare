@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (7):**
+**Open (6):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -413,7 +413,24 @@ at construction (2026-09-09; factory function names verified):
        the service's deterministic-first AI-optionality; the non-AI
        character-ages endpoint no longer resolves at all; REST — no SSE
        pre-header needed)*
-24. [ ] `planning/_timeline_extraction_factory.py` — `get_timeline_extraction_service`
+24. [x] `planning/_timeline_extraction_factory.py` — `get_timeline_extraction_service`
+       *(G5/L24 — landed 2026-09-16: lazy wiring + graceful first-use
+       resolve (Pattern M-graceful) — ``ensure_resolved`` runs in
+       ``stream_extraction`` immediately after the service's uid-scoped
+       novel guard (the eager factory's wiring-time guard relocated per
+       the planning guard ruling, gate-before-resolution preserved), and
+       the factory's ``except ConfigurationError`` swallow became
+       entry-point policy: ``no_ai_provider_configured`` log + the
+       preserved ``NO_AI_PROVIDER`` outcome (the service's existing
+       ``model_config is None`` raise); the extraction service has NO
+       non-AI entry point (the REST variant delegates to the stream), so
+       every entry resolves at most once, and the SSE endpoint's in-band
+       ``CONFIG_ERROR`` event is unchanged; the resolved credential triple
+       now threads into ``registry.prepare`` matching the L20-L22 family
+       shape; prompt acquisition split to
+       ``_timeline_extraction_support.py`` for the RULE-04 size limit the
+       lazy seam crossed; SSE endpoint — errors surface in-band, no SSE
+       pre-header needed)*
 25. [ ] `series/dependencies.py` — `build_band_summary_service` (+ eager `get_resolved_limits`)
 26. [x] `series/dependencies_consistency.py` — `get_series_consistency_service`
        *(D1/L26 — landed 2026-09-14: lazy wiring + first-use resolve after the

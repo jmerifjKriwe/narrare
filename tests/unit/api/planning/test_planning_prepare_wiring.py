@@ -116,8 +116,8 @@ class TestTimelineAnalysisPrepareWiring:
 
 
 class TestTimelineExtractionPrepareWiring:
-    """TemporalExtractionAgent resolves via prepare(PLAN) — no credential
-    overrides exist on this service (they default to None)."""
+    """TemporalExtractionAgent resolves via prepare(PLAN) with user credentials
+    (ADR-086 L24: the resolved triple threads through the lazy seam)."""
 
     async def test_timeline_extraction_resolves_via_prepare_with_plan_intent(self) -> None:
         from narrare.planning.timeline_extraction_service import TimelineExtractionService
@@ -129,7 +129,7 @@ class TestTimelineExtractionPrepareWiring:
             novel_repo=novel_repo_with(novel()),
             chapter_repo=cast("ChapterRepository", chapter_repo),
             model_registry=as_model_registry(registry),
-            model_config=config,
+            model_resolution=static_resolution(config),
             composer=composer(),
         )
         agent = AsyncMock(
@@ -160,8 +160,8 @@ class TestTimelineExtractionPrepareWiring:
             config,
             mock_agent_cls=MockAgent,
             intent=LLMIntent.PLAN,
-            api_key=None,
-            base_url=None,
+            api_key=USER_KEY,
+            base_url=USER_BASE_URL,
         )
         # The single chapter produced no expressions — nothing streamed.
         assert yielded == []

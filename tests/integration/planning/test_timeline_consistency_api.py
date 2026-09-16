@@ -187,10 +187,14 @@ class TestExtractionEndpoint:
     ) -> None:
         """Extract for nonexistent novel should return SSE with error event.
 
-        Since the factory validates novel existence before creating the
-        service, missing novels are caught as 404 during service creation
-        (before the SSE stream starts).
+        Since ADR-086 L24 the factory wires the service lazily (no
+        wiring-time novel guard — the eager-world 404-before-stream is
+        gone); the uid-scoped novel guard runs at first use inside the
+        stream, so the SSE endpoint answers 200 and reports the missing
+        novel in-band as a ``NOT_FOUND`` error event (the endpoint's
+        designed in-band error contract).
         """
+        import json
         import uuid
 
         resp = await client.post(
@@ -198,8 +202,17 @@ class TestExtractionEndpoint:
             json={"chapter_ids": []},
             headers=auth_headers,
         )
-        # Novel not found is caught during factory wiring → 404
-        assert resp.status_code == 404
+        # Lazy wiring: SSE headers are already sent — the error is in-band.
+        assert resp.status_code == 200
+        assert resp.headers.get("content-type", "").startswith("text/event-stream")
+        error_events = [
+            json.loads(line.removeprefix("data: "))
+            for line in resp.text.splitlines()
+            if line.startswith("data: ") and '"code"' in line
+        ]
+        assert any(e.get("code") == "NOT_FOUND" for e in error_events), (
+            "missing novel must surface as an in-band NOT_FOUND SSE error event"
+        )
 
     async def test_extract_unauthenticated_returns_401(
         self,

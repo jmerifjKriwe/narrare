@@ -1,8 +1,26 @@
-"""Service factory for timeline extraction — wires TimelineExtractionService.
+"""Service factory for timeline extraction — wires TimelineExtractionService lazily.
 
-Follows the same pattern as ``_timeline_analysis_factory.py``: resolves
-the user's configured provider/model for the PLAN intent, validates novel
-existence, and builds the extraction service with proper DI.
+Follows the same pattern as ``_timeline_analysis_factory.py`` (ADR-086
+L22): model routing is wired as a ``LazyModelResolution`` (ADR-086 L24)
+— the per-user PLAN cascade resolves on the service's first AI use,
+never at construction, so request validation errors surface as 422
+before any routing work (the eager factory resolved — and ran its
+uid-scoped novel guard — at wiring time).
+
+Planning guard ruling (ADR-086 plan §3): the eager factory's uid-scoped
+novel guard (``get_by_id(novel_id, uid)`` → 404, preventing resolver
+auto-creation of ``project_settings`` for foreign novels) is preserved —
+NOT dropped — in the service's first-use path: the ``stream_extraction``
+entry point's existing uid-scoped guard runs immediately BEFORE the
+first-use resolve (gate-before-resolution ordering). The extraction
+service has no non-AI entry point (the REST variant delegates to the
+stream), so every entry resolves at most once.
+
+Graceful degradation is entry-point policy, not wiring (Pattern
+M-graceful): the eager factory's wiring-time ``except ConfigurationError``
+swallow moved into the service's first-use path, which logs
+``no_ai_provider_configured`` and preserves the ``NO_AI_PROVIDER``
+outcome.
 
 Extraction is split from analysis to keep file sizes under the 300-line
 limit (RULE-04).
@@ -13,24 +31,15 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-import structlog
-
-from narrare._app.dependencies import (
-    get_composer,
-    get_invocation_pipeline,
-    get_model_registry,
-)
-from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.dependencies import get_composer, get_invocation_pipeline, get_model_registry
+from narrare._app.dependencies_services import LazyModelResolution, get_model_routing_resolver
 from narrare.chapters.repository import ChapterRepository
 from narrare.novels.repository import NovelRepository
 from narrare.planning.timeline_extraction_service import TimelineExtractionService
 from narrare.planning.timeline_repository import TimelineEventRepository
-from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-logger = structlog.get_logger(__name__)
 
 
 async def get_timeline_extraction_service(
@@ -38,14 +47,14 @@ async def get_timeline_extraction_service(
     user_id: str,
     novel_id: uuid.UUID,
 ) -> TimelineExtractionService:
-    """Wire up TimelineExtractionService with model routing from user settings.
+    """Wire up TimelineExtractionService with LAZY model routing (ADR-086 L24).
 
-    Resolves the user's configured provider/model for the PLAN intent,
-    validates novel existence before calling the resolver to prevent
-    auto-creation of project_settings for nonexistent novels.
-
-    Gracefully degrades when no AI provider is configured — the service
-    will raise ConfigurationError when extraction is attempted.
+    The per-user PLAN cascade is wired as a ``LazyModelResolution`` with
+    the same args the eager factory resolved verbatim (intent, uid,
+    novel_id — timing-only migration, RULE-18). Repos, registry, composer,
+    and pipeline still wire eagerly. The uid-scoped novel guard and the
+    graceful no-provider degradation live in the service's first-use
+    path (see module docstring).
 
     Args:
         session: DB session.
@@ -53,40 +62,24 @@ async def get_timeline_extraction_service(
         novel_id: Target novel UUID.
 
     Returns:
-        Fully wired TimelineExtractionService.
-
-    Raises:
-        NotFoundError: If the novel does not exist.
+        Fully wired TimelineExtractionService (model unresolved).
     """
     from narrare_core.llm.intents import LLMIntent
 
     uid = uuid.UUID(user_id)
 
-    # Validate novel exists BEFORE resolver auto-creates project_settings.
-    novel_repo = NovelRepository(session)
-    novel = await novel_repo.get_by_id(novel_id, uid)
-    if novel is None:
-        raise NotFoundError("Novel", identifier=str(novel_id))
-
-    # Resolve model config — gracefully handle missing AI provider.
-    registry = get_model_registry()
-    # PromptComposer for governed timeline-extraction system-prompt resolution
-    # (RULE-02 / ADR-054 D2). Same source as the timeline-analysis factory.
-    composer = get_composer()
-    model_config = None
-    try:
-        resolver = get_model_routing_resolver(session)
-        resolved = await resolver.resolve(LLMIntent.PLAN, uid, novel_id)
-        model_config = resolved.config
-    except ConfigurationError:
-        logger.info("no_ai_provider_configured", novel_id=str(novel_id))
+    resolver = get_model_routing_resolver(session)
+    model_resolution = LazyModelResolution(lambda: resolver.resolve(LLMIntent.PLAN, uid, novel_id))
 
     return TimelineExtractionService(
-        novel_repo=novel_repo,
+        novel_repo=NovelRepository(session),
         chapter_repo=ChapterRepository(session),
-        model_registry=registry,
-        model_config=model_config,
-        composer=composer,
+        model_registry=get_model_registry(),
+        model_resolution=model_resolution,
+        # PromptComposer for governed timeline-extraction system-prompt
+        # resolution (RULE-02 / ADR-054 D2). Same source as the
+        # timeline-analysis factory.
+        composer=get_composer(),
         event_repo=TimelineEventRepository(session),
         invocation_pipeline=get_invocation_pipeline(),
     )

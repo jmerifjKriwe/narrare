@@ -6,6 +6,12 @@ Provides fakes and fixtures used by both
 RULE-11).
 
 Mirrors the ``_character_arc_test_helpers.py`` pattern (ADR-054 precedent).
+
+Since ADR-086 L24 the service consumes model routing as a
+``ModelResolution`` instead of a pre-resolved ``model_config``;
+``make_service`` wraps the supplied config into a
+``StaticModelResolution`` (the mechanical ctor migration — outcomes
+unchanged, mirroring ``_timeline_test_helpers.py`` L22 convention).
 """
 
 from __future__ import annotations
@@ -15,10 +21,12 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare_core.agents.temporal_extraction_types import (
     ExtractedTemporalExpression,
     TemporalExtractionOutput,
 )
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
@@ -161,7 +169,8 @@ def make_service(
     The ``chapter_repo`` is an ``AsyncMock`` whose ``list_by_novel`` returns
     the supplied chapters (default: one chapter). The ``event_repo`` is an
     ``AsyncMock`` whose ``list_by_novel`` returns the supplied existing events
-    (default: empty).
+    (default: empty). Since ADR-086 L24 the model routing arrives as a
+    ``StaticModelResolution`` over the supplied config (lazy ctor shape).
     """
     from narrare.planning.timeline_extraction_service import TimelineExtractionService
 
@@ -174,7 +183,9 @@ def make_service(
         novel_repo=novel_repo,  # type: ignore[arg-type]
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
         model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-        model_config=config,
+        model_resolution=StaticModelResolution(
+            ResolvedModel(config=config, api_key=None, base_url=None, source="unit-test")
+        ),
         composer=composer,  # type: ignore[arg-type]
         event_repo=event_repo,  # type: ignore[arg-type]
     )

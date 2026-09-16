@@ -5,16 +5,23 @@ the 300-line limit (RULE-04). Handles the per-chapter extraction of temporal
 expressions via ``TemporalExtractionAgent``.
 
 Prompt resolution is Mode 1 (composer-driven) per ADR-054 D2/D7/D8: the
-service resolves its system prompt ONCE via
-``compose_invocation(composer=..., prompt_context=PromptContext(mode="timeline_extraction"),
-intent=LLMIntent.PLAN)``
+composed prompt and the prepared agent are acquired ONCE via
+:func:`narrare.planning._timeline_extraction_support.prepare_extraction_invocation`
 before the per-chapter loop (the framing does not vary per chapter), then
-reuses ``composed_prompt.system`` for each chapter's agent. The per-chapter
-content is runtime data (RULE-02a category 3) and flows as the run prompt.
+the loop reuses ``composed_prompt.system`` for each chapter's agent. The
+per-chapter content is runtime data (RULE-02a category 3) and flows as
+the run prompt.
 
 The previous inline f-string feature prompt and the false ADR-048 Mode 2
 ``_TIMELINE_EXTRACTION_INJECTION`` declaration were removed.
 Invocation-composition errors now propagate (RULE-11).
+
+Since ADR-086 L24 model routing is consumed lazily: the per-user PLAN
+cascade resolves on first use (``ensure_resolved`` — after the uid-scoped
+novel guard, per the planning guard ruling), and the eager factory's
+wiring-time ``except ConfigurationError`` swallow is entry-point policy
+(``no_ai_provider_configured`` log + the preserved ``NO_AI_PROVIDER``
+raise).
 
 Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b).
 """
@@ -23,21 +30,20 @@ from __future__ import annotations
 
 import asyncio
 from typing import TYPE_CHECKING
-from uuid import uuid4
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
 
 import structlog
 
 from narrare.planning._timeline_extraction_helpers import load_chapters
+from narrare.planning._timeline_extraction_support import prepare_extraction_invocation
 from narrare.planning.timeline_schemas import ExtractedEventResponse
 from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import AsyncGenerator
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
@@ -61,7 +67,10 @@ class TimelineExtractionService:
         novel_repo: For novel metadata (genre, language).
         chapter_repo: For listing chapters and their summaries.
         model_registry: Shared LLM model registry.
-        model_config: Resolved model config (provider + model ID).
+        model_resolution: Lazy per-user model resolution (ADR-086 L24) —
+            the PLAN routing cascade resolves on first use, never at
+            construction. A ``ConfigurationError`` (no AI provider) is
+            degraded at the entry point (AI-optional policy).
         composer: PromptComposer for resolving the governed timeline-extraction
             system prompt via the cascade (RULE-02b / ADR-054 D2). Required for
             ``stream_extraction``.
@@ -76,7 +85,7 @@ class TimelineExtractionService:
         novel_repo: NovelRepository,
         chapter_repo: ChapterRepository,
         model_registry: ModelRegistry,
-        model_config: ResolvedModelConfig | None = None,
+        model_resolution: ModelResolution,
         composer: PromptComposer | None = None,
         event_repo: TimelineEventRepository | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
@@ -85,11 +94,36 @@ class TimelineExtractionService:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
         self._registry = model_registry
-        self._config = model_config
+        self._model_resolution = model_resolution
+        # Resolved triple — unset until first use; a failed (graceful)
+        # resolve leaves it unset for the instance's lifetime.
+        self._config: ResolvedModelConfig | None = None
+        self._api_key: str | None = None
+        self._base_url: str | None = None
+        self._resolve_attempted = False
         self._composer = composer
         self._event_repo = event_repo
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+
+    async def ensure_resolved(self) -> None:
+        """Resolve the per-user PLAN routing cascade once (ADR-086 L24).
+
+        First call awaits the injected ``ModelResolution`` and caches the
+        resolved triple into ``_config``/``_api_key``/``_base_url``; repeat
+        calls are idempotent — the cascade runs at most once per instance,
+        success or failure (eager-world timing also resolved exactly once
+        per request). ``ConfigurationError`` propagates UNCHANGED: the
+        graceful swallow is entry-point policy (see :meth:`stream_extraction`),
+        so this method stays honest about what happened (RULE-11).
+        """
+        if self._resolve_attempted:
+            return
+        self._resolve_attempted = True
+        resolved = await self._model_resolution.resolve()
+        self._config = resolved.config
+        self._api_key = resolved.api_key
+        self._base_url = resolved.base_url
 
     async def stream_extraction(
         self,
@@ -113,17 +147,29 @@ class TimelineExtractionService:
 
         Raises:
             NotFoundError: If the novel does not exist.
-            ConfigurationError: If no AI provider or PromptComposer is configured.
+            ConfigurationError: If no AI provider is configured (the
+                preserved degraded outcome; ADR-086 L24 graceful entry
+                policy), the PromptComposer is missing, or prompt
+                composition fails (RULE-11).
         """
-        from narrare_core.agents.temporal_extraction_agent import (
-            TemporalExtractionAgent,
-            TemporalExtractionDeps,
-        )
-
         novel = await self._novel_repo.get_by_id(novel_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(novel_id))
 
+        # ADR-086 L24: first-use lazy resolve — the uid-scoped novel guard
+        # above stays ahead of the cascade (eager-world precedence; the
+        # ADR-086 planning guard ruling). Degradation is entry-point
+        # policy: a missing AI provider is logged (the eager factory's
+        # event, byte-identical) and leaves the triple unset, so the
+        # preserved ``NO_AI_PROVIDER`` outcome below fires exactly as it
+        # did when the eager factory swallowed this error at wiring time —
+        # timing only. The resolve is attempted at most once per instance.
+        try:
+            await self.ensure_resolved()
+        except ConfigurationError:
+            logger.info("no_ai_provider_configured", novel_id=str(novel_id))
+
+        # Guard: no AI provider configured — cannot extract
         if self._config is None:
             raise ConfigurationError(
                 "No AI provider configured. Configure one in Settings to use temporal extraction.",
@@ -148,62 +194,22 @@ class TimelineExtractionService:
 
         language = novel.writing_language or "en"
 
-        # Resolve the governed timeline-extraction system prompt ONCE before the
-        # per-chapter loop (RULE-02 / ADR-054 D2). The framing does not vary per
-        # chapter; only the chapter content (runtime data) does.
-        from narrare._app.invocation_context import build_invocation_context
-        from narrare_core.ai_invocation import compose_invocation
-        from narrare_core.llm.intents import LLMIntent
-        from narrare_core.prompts.context import PromptContext
-
-        ctx = PromptContext(
-            language=language,
-            writing_language=language,
-            project_title=novel.title,
-            genre=novel.genre or "",
-            mode="timeline_extraction",
-            extra={
-                "existing_events": (
-                    "\n".join(existing_event_names) if existing_event_names else ""
-                ),
-            },
-        )
-
-        invocation_context = build_invocation_context(
-            feature_id="planning_timeline_extraction",
-            intent=LLMIntent.PLAN,
-            project_id=novel_id,
-        )
-        invocation = await compose_invocation(
-            invocation_pipeline=self._invocation_pipeline,
-            invocation_context=invocation_context,
+        # Prompt acquisition + agent assembly (Mode 1 composition, Task 6b
+        # prepare assembly point, one agent for the whole loop) — extracted
+        # to ``_timeline_extraction_support.py`` (RULE-04 split, ADR-086 L24).
+        invocation = await prepare_extraction_invocation(
             composer=self._composer,
-            prompt_context=ctx,
-            intent=LLMIntent.PLAN,
-        )
-        composed_prompt = invocation.composed_prompt
-        # Mode 1 guarantees composed_prompt is set; the guard documents the
-        # invariant and satisfies the type-checker (RULE-11: no silent None).
-        if composed_prompt is None:  # pragma: no cover - Mode 1 invariant
-            raise ConfigurationError(
-                "Prompt composition produced no system prompt for timeline extraction.",
-                code="COMPOSITION_EMPTY",
-            )
-
-        # Task 6b single assembly point: coherent (model, model_settings, usage_limits) triple.
-        resolved = self._run_limit_resolver.resolve(
-            config=self._config, budget=None, invocation_id=uuid4()
-        )
-        prepared = await self._registry.prepare(
-            self._config, intent=LLMIntent.PLAN, usage_limits=resolved.usage_limits
-        )
-        deps = TemporalExtractionDeps(
-            genre=novel.genre or "",
+            invocation_pipeline=self._invocation_pipeline,
+            registry=self._registry,
+            config=self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+            run_limit_resolver=self._run_limit_resolver,
+            novel=novel,
+            novel_id=novel_id,
             language=language,
-            existing_events=existing_event_names,
+            existing_event_names=existing_event_names,
         )
-        # Same model + composed system prompt for every chapter — build the agent once.
-        agent = TemporalExtractionAgent(model=prepared.model, system_prompt=composed_prompt.system)
 
         for chapter in chapters:
             content = getattr(chapter, "summary", "") or ""
@@ -218,11 +224,11 @@ class TimelineExtractionService:
                     f"{getattr(chapter, 'title', '')}\n"
                     f"Content: {content}"
                 )
-                result = await agent.run(
-                    prompt=composed_prompt.user or chapter_run_prompt,
-                    deps=deps,
-                    model_settings=prepared.model_settings,
-                    usage_limits=prepared.usage_limits,
+                result = await invocation.agent.run(
+                    prompt=invocation.composed_prompt.user or chapter_run_prompt,
+                    deps=invocation.deps,
+                    model_settings=invocation.prepared.model_settings,
+                    usage_limits=invocation.prepared.usage_limits,
                 )
 
                 for expr in result.extracted:
