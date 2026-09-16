@@ -420,7 +420,21 @@ at construction (2026-09-09; factory function names verified):
        ChapterWikiService construction deferred to first chapter AI use;
        generation helpers split to `generation_support.py` for the
        RULE-04 size limit the lazy seam crossed)*
-31. [ ] `writing/deps_coauthor.py` — `get_coauthor_service` (+ eager `get_resolved_limits`)
+31. [x] `writing/deps_coauthor.py` — `get_coauthor_service` (+ eager `get_resolved_limits`)
+      *(E4/L31 — landed 2026-09-16: lazy wiring + deferred M-budget
+      composition at first use — ``ensure_resolved`` at the end of
+      ``validate_coauthor`` (the router's pre-stream seam) and via
+      ``stream_coauthor`` for direct callers — so validation, the IDOR
+      S6 gate, and the conflict check stay ahead of BOTH cascades
+      (routing + ``get_resolved_limits``, deferred budget/pipeline
+      composition per the beta-reader S4b shape) and an unconfigured
+      provider stays a loud pre-header 400 (SSE); the SET-005
+      word-limit check reads ``max_selection_words`` from the composed
+      runtime (a cascade output — necessarily at first use, still
+      pre-header and pre-row); the runtime composite, the stream-input
+      builder, and the completion/failure recorders split to
+      ``_coauthor_support.py`` for the RULE-04 size limit the lazy seam
+      crossed)*
 32. [x] `writing/deps_extend.py` — `get_extend_service` (+ eager `get_resolved_limits`)
       *(E3/L32 — landed 2026-09-15: lazy wiring + deferred M-budget
       composition at first use — ``ensure_resolved`` at the end of

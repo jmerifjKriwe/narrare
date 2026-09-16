@@ -4,6 +4,12 @@ Tests that the word-limit validation in validate_coauthor uses the
 resolved max_selection_words from the SET-005 cascade rather than a
 hardcoded value.
 
+ADR-086 L31: the service takes a ``runtime_factory`` (lazy first-use
+composition); these tests pin a FIXED runtime via
+``_coauthor_factories.make_static_runtime_factory`` — the SET-005 limit
+now reads from the composed runtime (same values the eager factory
+passed).
+
 Covers:
 1. User-level override takes priority (cascade: user > project > env > code)
 2. Project-level override applies when no user override exists
@@ -23,6 +29,7 @@ from narrare.writing.coauthor_service import CoAuthorService
 from narrare.writing.schemas_coauthor import CoAuthorFocus, CoAuthorRequest
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
+from tests.unit.api.writing._coauthor_factories import make_static_runtime_factory
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -76,12 +83,12 @@ def _make_service(max_selection_words: int = 2000) -> CoAuthorService:
 
     return CoAuthorService(
         repo=repo,
-        pipeline=pipeline,
+        runtime_factory=make_static_runtime_factory(
+            pipeline, CONFIG, max_selection_words=max_selection_words
+        ),
         draft_processor=proc,
-        config=CONFIG,
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
-        max_selection_words=max_selection_words,
     )
 
 
@@ -248,9 +255,8 @@ class TestBasicValidation:
 
         service = CoAuthorService(
             repo=repo,
-            pipeline=pipeline,
+            runtime_factory=make_static_runtime_factory(pipeline, CONFIG),
             draft_processor=proc,
-            config=CONFIG,
             chapter_repo=chapter_repo,
             novel_repo=novel_repo,
         )
@@ -272,9 +278,8 @@ class TestBasicValidation:
 
         service = CoAuthorService(
             repo=repo,
-            pipeline=pipeline,
+            runtime_factory=make_static_runtime_factory(pipeline, CONFIG),
             draft_processor=proc,
-            config=CONFIG,
             chapter_repo=chapter_repo,
             novel_repo=novel_repo,
         )

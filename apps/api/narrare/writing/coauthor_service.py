@@ -12,6 +12,15 @@ Implements :class:`CoAuthorServiceProtocol` from ``contracts_coauthor.py``
 (:mod:`narrare_core.writing.pipeline_coauthor`) via the change engine
 (:mod:`narrare_core.writing.change_engine`).  The service does NOT compute
 diffs itself — it orchestrates the pipeline and passes through results.
+
+Model acquisition is LAZY (ADR-086, M-budget): the factory wires a
+``LazyModelResolution`` plus a deferred runtime composition; the service
+resolves at first use — :meth:`ensure_resolved` at the end of
+:meth:`validate_coauthor` (the router's pre-stream seam) and via
+``stream_coauthor`` for direct callers — so request validation, the
+chapter-ownership gate (IDOR S6), and the conflict check stay ahead of
+BOTH cascades (model routing + token limits) and an unconfigured
+provider surfaces as a loud 400 before any SSE headers exist.
 """
 
 from __future__ import annotations
@@ -23,22 +32,27 @@ from uuid import UUID
 import structlog
 from sqlalchemy.exc import IntegrityError
 
-from narrare.writing._helpers import record_feedback, verify_chapter_access
+from narrare.writing._coauthor_support import (
+    CoAuthorRuntime,
+    build_coauthor_stream_inputs,
+    build_pipeline_request,
+    mark_coauthor_completed,
+    mark_coauthor_failed,
+)
+from narrare.writing._helpers import verify_chapter_access
 from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Awaitable, Callable
 
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.novels.repository import NovelRepository
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.schemas_coauthor import CoAuthorRequest
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.result import StreamChunk
     from narrare_core.memory.protocols import FeedbackCollector
     from narrare_core.writing.draft_processor import DraftProcessor
-    from narrare_core.writing.pipeline import WritingPipeline
 
 logger = structlog.get_logger(__name__)
 
@@ -50,34 +64,55 @@ class CoAuthorService:
     row AND streams the result.  The frontend receives SSE events directly,
     including change metadata in the final event.
 
-    Dependencies are injected via constructor (DI pattern, RULE-07).
+    Args:
+        repo: Generation request repository (status lifecycle + rows).
+        runtime_factory: Zero-arg async callable returning the
+            :class:`CoAuthorRuntime` — the DI factory's deferred
+            composition over the CO_AUTHOR routing cascade and the
+            token-limits cascade (ADR-086: invoked once at first use,
+            never at construction).
+        draft_processor: Draft post-processor (shared with the pipeline).
+        chapter_repo: Chapter repository for the access gate (IDOR S6).
+        novel_repo: Novel repository for the access gate (IDOR S6).
+        feedback_service: Optional feedback collector (LEARN-001).
+        relationship_repo: Optional KB relationship source (FIND-009).
     """
 
     def __init__(
         self,
         repo: GenerationRepository,
-        pipeline: WritingPipeline,
+        runtime_factory: Callable[[], Awaitable[CoAuthorRuntime]],
         draft_processor: DraftProcessor,
-        config: ResolvedModelConfig,
         chapter_repo: ChapterRepository,
         novel_repo: NovelRepository,
         feedback_service: FeedbackCollector | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
         relationship_repo: RelationshipRepository | None = None,
-        max_selection_words: int = 2000,
     ) -> None:
         self._repo = repo
-        self._pipeline = pipeline
+        self._runtime_factory = runtime_factory
+        self._runtime: CoAuthorRuntime | None = None
         self._draft_processor = draft_processor
-        self._config = config
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
         self._feedback = feedback_service
-        self._api_key = api_key
-        self._base_url = base_url
         self._relationship_repo = relationship_repo
-        self._max_selection_words = max_selection_words
+
+    # -- Lazy runtime (ADR-086) --------------------------------------------
+
+    async def ensure_resolved(self) -> CoAuthorRuntime:
+        """Compose the effective co-author runtime at first use; idempotent.
+
+        Invokes the factory's deferred composition — the CO_AUTHOR
+        routing cascade AND the token-limits cascade, the sampling
+        overrides, the ADR-082 budgets, the tier-wired pipeline, and the
+        SET-005 selection-word limit — exactly once; the frozen result
+        is cached for the service's lifetime.  Errors propagate
+        uncached (RULE-11): ``ConfigurationError`` (``NO_AI_PROVIDER``)
+        surfaces as a pre-header 400 on this SSE endpoint.
+        """
+        if self._runtime is None:
+            self._runtime = await self._runtime_factory()
+        return self._runtime
 
     # -- Public API ------------------------------------------------------------
 
@@ -98,8 +133,11 @@ class CoAuthorService:
         Raises:
             NotFoundError: Chapter unknown, not in the addressed novel,
                 or novel owned by another user.
-            ValidationError: If selection_text is empty or focus is empty.
+            ValidationError: If selection_text is empty, focus is empty,
+                or the selection exceeds the SET-005 word limit.
             ConflictError: If another generation is active for the chapter.
+            narrare_core.shared.errors.ConfigurationError: If the user
+                has no AI provider configured (first-use composition).
         """
         await verify_chapter_access(
             self._chapter_repo, self._novel_repo, chapter_id, novel_id, user_id
@@ -121,12 +159,21 @@ class CoAuthorService:
         if active is not None:
             raise ConflictError(f"Generation already active for chapter {chapter_id}")
 
-        # SET-005 Cascade: user → project → env → code default (2000 words)
+        # ADR-086 L31: first-use lazy composition of BOTH cascades
+        # (routing + token limits, incl. the tier-wired pipeline) —
+        # post-validation and post-gate — so an unconfigured provider
+        # stays a loud pre-header 400 (RULE-11), never a preempting
+        # factory-time error.
+        runtime = await self.ensure_resolved()
+
+        # SET-005 Cascade: user → project → env → code default (2000
+        # words).  The limit is a token-limits-cascade output, so under
+        # the lazy wiring this check necessarily runs AT first use —
+        # still pre-header and before any request-row creation.
         word_count = len(request.selection_text.split())
-        max_words = self._max_selection_words
-        if word_count > max_words:
+        if word_count > runtime.max_selection_words:
             raise ValidationError(
-                f"Selection exceeds {max_words} words (got {word_count})",
+                f"Selection exceeds {runtime.max_selection_words} words (got {word_count})",
                 code="SELECTION_TOO_LONG",
             )
 
@@ -157,11 +204,6 @@ class CoAuthorService:
             chunk has ``is_final=True``, ``usage``, and diff data in
             ``context_meta`` (changes, total_changes, has_changes).
         """
-        from narrare_core.writing._enums import GenerationMode
-        from narrare_core.writing.models import (
-            GenerationRequest as CoreGenerationRequest,
-        )
-
         # Step 1: Validate (ownership gate first) and create the request row.
         await self.validate_coauthor(chapter_id, novel_id, request, user_id=user_id)
         try:
@@ -182,114 +224,73 @@ class CoAuthorService:
             focus=[f.value for f in request.focus],
         )
 
+        # ADR-086 L31: first-use lazy runtime (idempotent — the router's
+        # pre-stream validate_coauthor already composed it on this
+        # request; direct callers compose here, after validation).
+        runtime = await self.ensure_resolved()
+
         # Step 2: Transition to streaming.
         await self._repo.update_status(
             request_id,
             "streaming",
             started_at=datetime.now(UTC),
-            model_id=self._config.model_id,
-            provider_name=self._config.provider_name,
+            model_id=runtime.config.model_id,
+            provider_name=runtime.config.provider_name,
         )
 
-        # Step 3: Build pipeline request with co-author-specific parameters.
-        pipeline_request = CoreGenerationRequest(
-            id=request_id,
-            chapter_id=chapter_id,
-            project_id=novel_id,
-            user_id=UUID(user_id),
-            mode=GenerationMode.CO_AUTHOR,
-            tone=request.tone,
-            word_target=0,  # Co-author doesn't use word targets
-            writing_language=request.language,
+        # Step 3: Build pipeline request with co-author-specific
+        # parameters, plus the selection-marker content block and the
+        # formatted KB relationships (FIND-009) — support module
+        # (RULE-04 split).
+        pipeline_request = build_pipeline_request(
+            request_id, chapter_id, novel_id, user_id, request
         )
-
-        # Step 4: Build chapter_content for co-author: the selection text
-        # is the primary content.  Context markers provide surrounding text.
-        chapter_content = request.selection_text
-        if request.context_before or request.context_after:
-            parts: list[str] = []
-            if request.context_before:
-                parts.append(request.context_before)
-            parts.append("[SELECTION START]")
-            parts.append(request.selection_text)
-            parts.append("[SELECTION END]")
-            if request.context_after:
-                parts.append(request.context_after)
-            chapter_content = "\n".join(parts)
+        inputs = await build_coauthor_stream_inputs(
+            request=request,
+            relationship_repo=self._relationship_repo,
+            novel_id=novel_id,
+        )
 
         # Step 5: Convert focus areas to string list for the pipeline.
         focus_list = [f.value for f in request.focus]
-
-        # Step 5b: Fetch and format KB relationships for prompt context (FIND-009)
-        from narrare.writing._relationship_helpers import fetch_formatted_relationships
-
-        kb_relationships = await fetch_formatted_relationships(
-            self._relationship_repo,
-            novel_id,
-        )
 
         # Step 6: Stream via pipeline (RULE-01b, RULE-02).
         # The pipeline_coauthor module handles diff computation internally
         # and sends change metadata in the final chunk's context_meta.
         accumulated: list[str] = []
         try:
-            async for chunk in self._pipeline.generate(
+            async for chunk in runtime.pipeline.generate(
                 pipeline_request,
-                config=self._config,
-                api_key=self._api_key,
-                base_url=self._base_url,
-                chapter_content=chapter_content,
+                config=runtime.config,
+                api_key=runtime.api_key,
+                base_url=runtime.base_url,
+                chapter_content=inputs.chapter_content,
                 selection_text=request.selection_text,
                 context_before=request.context_before or "",
                 context_after=request.context_after or "",
                 co_author_focus=focus_list,
-                kb_relationships=kb_relationships.text,
+                kb_relationships=inputs.kb_relationships,
             ):
                 if chunk.is_final:
                     # Inject request_id into context_meta for feedback
                     # correlation (LEARN-001).
                     if chunk.context_meta:
                         chunk.context_meta["request_id"] = str(request_id)
-                    raw_text = "".join(accumulated) + chunk.text
-                    cleaned = self._draft_processor.process(raw_text)
-                    word_count = len(cleaned.split())
-                    await self._repo.update_status(
+                    await mark_coauthor_completed(
+                        self._repo,
+                        self._draft_processor,
                         request_id,
-                        "completed",
-                        tokens_used=chunk.usage.total_tokens if chunk.usage else 0,
-                        word_count=word_count,
-                        completed_at=datetime.now(UTC),
+                        accumulated,
+                        chunk.text,
+                        chunk.usage,
+                        self._feedback,
                     )
-
-                    # Record feedback (LEARN-001 integration)
-                    request_model = await self._repo.get_by_id(request_id)
-                    if request_model is not None:
-                        await record_feedback(
-                            self._feedback,
-                            request_model,
-                            "accept",
-                        )
 
                     yield chunk
                     return
                 accumulated.append(chunk.text)
                 yield chunk
         except Exception as e:
-            partial = self._draft_processor.process(
-                "".join(accumulated),
-                is_partial=True,
-            )
-            partial_words = len(partial.split()) if partial else 0
-            await self._repo.update_status(
-                request_id,
-                "failed",
-                error_message=str(e),
-                word_count=partial_words,
-                completed_at=datetime.now(UTC),
-            )
-            logger.error(
-                "coauthor_stream_failed",
-                request_id=str(request_id),
-                chapter_id=str(chapter_id),
-                error=str(e),
+            await mark_coauthor_failed(
+                self._repo, self._draft_processor, request_id, accumulated, e, chapter_id
             )

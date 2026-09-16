@@ -18,6 +18,7 @@ from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.writing.draft_processor import DraftProcessor
 from narrare_core.writing.pipeline import WritingPipeline
+from tests.unit.api.writing._coauthor_factories import make_static_runtime_factory
 
 if TYPE_CHECKING:
     from narrare.chapters.repository import ChapterRepository
@@ -98,9 +99,8 @@ class TestStreamCoauthorErrors:
         cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
-            pipeline=cast("WritingPipeline", pipeline),
+            runtime_factory=make_static_runtime_factory(cast("WritingPipeline", pipeline), _CONFIG),
             draft_processor=cast("DraftProcessor", proc),
-            config=_CONFIG,
             chapter_repo=cast("ChapterRepository", cr),
             novel_repo=cast("NovelRepository", nr),
         )
@@ -154,9 +154,8 @@ class TestStreamCoauthorContext:
         cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
-            pipeline=cast("WritingPipeline", pipeline),
+            runtime_factory=make_static_runtime_factory(cast("WritingPipeline", pipeline), _CONFIG),
             draft_processor=cast("DraftProcessor", proc),
-            config=_CONFIG,
             chapter_repo=cast("ChapterRepository", cr),
             novel_repo=cast("NovelRepository", nr),
         )
@@ -204,9 +203,8 @@ class TestStreamCoauthorContext:
         cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
-            pipeline=cast("WritingPipeline", pipeline),
+            runtime_factory=make_static_runtime_factory(cast("WritingPipeline", pipeline), _CONFIG),
             draft_processor=cast("DraftProcessor", proc),
-            config=_CONFIG,
             chapter_repo=cast("ChapterRepository", cr),
             novel_repo=cast("NovelRepository", nr),
         )

@@ -33,11 +33,11 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from narrare.writing.coauthor_service import CoAuthorService
 from narrare.writing.style_variant_service import StyleVariantService
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import ConflictError, NotFoundError
 from tests.factories import make_chapter, make_novel
+from tests.unit.api.writing._matrix_requests import request_for_kind
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -56,12 +56,6 @@ CONFIG = ResolvedModelConfig(
     model_id="test-model",
     temperature=0.7,
     max_tokens=4000,
-)
-
-_SELECTION = (
-    "This is a sufficiently long selection text that demonstrates the "
-    "access-gate matrix flow. It needs to exceed fifty characters to "
-    "satisfy Pydantic's min_length constraint on the request schemas."
 )
 
 # The S6a slice wires generate/extend/rewrite; S6b adds co-author,
@@ -143,50 +137,17 @@ def _pipeline(*, working: bool) -> MagicMock:
     return pipeline
 
 
-# The remaining pipeline-backed services (rewrite and extend have
-# lazy-runtime branches in ``_make_service`` — ADR-086 L33/L32).
+# The remaining pipeline-backed service (style_variant) — rewrite,
+# extend, and coauthor have lazy-runtime branches in ``_make_service``
+# (ADR-086 L33/L32/L31).
 _PIPELINE_SERVICES: dict[str, type[Any]] = {
-    "coauthor": CoAuthorService,
     "style_variant": StyleVariantService,
 }
 
 
 def _requests(kind: str) -> Any:
-    """Valid request payload per endpoint kind."""
-    from narrare.writing.schemas import (
-        ExtendRequest,
-        GenerateRequest,
-        GenerationModeEnum,
-        InlineSuggestRequest,
-    )
-    from narrare.writing.schemas_coauthor import CoAuthorFocus, CoAuthorRequest
-    from narrare.writing.schemas_rewrite import RewriteMode, RewriteRequest
-    from narrare.writing.schemas_style_variants import StyleVariantRegenerateRequest
-    from narrare_core.writing.style_variants import StyleVariant
-
-    match kind:
-        case "generate":
-            return GenerateRequest(
-                mode=GenerationModeEnum.FULL_DRAFT,
-                prompt="A storm approaches.",
-                word_target=None,
-                tone="balanced",
-                language="en",
-            )
-        case "extend":
-            return ExtendRequest(text_before="The night was dark. ", tone="balanced", language="en")
-        case "rewrite":
-            return RewriteRequest(selection_text=_SELECTION, mode=RewriteMode.TONE)
-        case "coauthor":
-            return CoAuthorRequest(selection_text=_SELECTION, focus=[CoAuthorFocus.SENTENCE])
-        case "style_variant":
-            return StyleVariantRegenerateRequest(
-                source_text=_SELECTION, style_variant=StyleVariant.LEANER
-            )
-        case "suggest":
-            return InlineSuggestRequest(text_before="The old house ")
-        case _:
-            raise ValueError(kind)
+    """Valid request payload per endpoint kind (builder moved per RULE-04)."""
+    return request_for_kind(kind)
 
 
 def _make_service(
@@ -235,6 +196,20 @@ def _make_service(
         from tests.unit.api.writing._extend_factories import make_matrix_extend_service
 
         return make_matrix_extend_service(
+            repo=cast("GenerationRepository", gen_repo),
+            pipeline=_pipeline(working=working_llm),
+            chapter_repo=cr,
+            novel_repo=nr,
+            draft_processor=_processor(),
+            config=CONFIG,
+        )
+
+    if kind == "coauthor":
+        # ADR-086 L31: lazy-runtime ctor — pins the matrix pipeline
+        # verbatim, so the guard/working-mock semantics are unchanged.
+        from tests.unit.api.writing._coauthor_factories import make_matrix_coauthor_service
+
+        return make_matrix_coauthor_service(
             repo=cast("GenerationRepository", gen_repo),
             pipeline=_pipeline(working=working_llm),
             chapter_repo=cr,

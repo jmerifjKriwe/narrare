@@ -27,6 +27,7 @@ from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.memory.protocols import FeedbackCollector
 from narrare_core.writing.draft_processor import DraftProcessor
 from narrare_core.writing.pipeline import WritingPipeline
+from tests.unit.api.writing._coauthor_factories import make_static_runtime_factory
 from tests.unit.api.writing._test_coauthor_helpers import _make_generation_request
 
 if TYPE_CHECKING:
@@ -123,9 +124,8 @@ class TestStreamCoauthorHappyPath:
         cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
-            pipeline=cast("WritingPipeline", pipeline),
+            runtime_factory=make_static_runtime_factory(cast("WritingPipeline", pipeline), CONFIG),
             draft_processor=cast("DraftProcessor", proc),
-            config=CONFIG,
             chapter_repo=cast("ChapterRepository", cr),
             novel_repo=cast("NovelRepository", nr),
         )
@@ -183,9 +183,8 @@ class TestStreamCoauthorHappyPath:
         cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
-            pipeline=cast("WritingPipeline", pipeline),
+            runtime_factory=make_static_runtime_factory(cast("WritingPipeline", pipeline), CONFIG),
             draft_processor=cast("DraftProcessor", proc),
-            config=CONFIG,
             chapter_repo=cast("ChapterRepository", cr),
             novel_repo=cast("NovelRepository", nr),
         )
@@ -233,9 +232,8 @@ class TestStreamCoauthorHappyPath:
         cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
-            pipeline=cast("WritingPipeline", pipeline),
+            runtime_factory=make_static_runtime_factory(cast("WritingPipeline", pipeline), CONFIG),
             draft_processor=cast("DraftProcessor", proc),
-            config=CONFIG,
             chapter_repo=cast("ChapterRepository", cr),
             novel_repo=cast("NovelRepository", nr),
         )
@@ -282,9 +280,8 @@ class TestStreamCoauthorHappyPath:
         cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
-            pipeline=cast("WritingPipeline", pipeline),
+            runtime_factory=make_static_runtime_factory(cast("WritingPipeline", pipeline), CONFIG),
             draft_processor=cast("DraftProcessor", proc),
-            config=CONFIG,
             chapter_repo=cast("ChapterRepository", cr),
             novel_repo=cast("NovelRepository", nr),
             feedback_service=cast("FeedbackCollector", feedback_service),
@@ -332,9 +329,8 @@ class TestStreamCoauthorErrors:
         cr, nr = _gate_open_repos()
         service = CoAuthorService(
             repo=cast("GenerationRepository", repo),
-            pipeline=cast("WritingPipeline", pipeline),
+            runtime_factory=make_static_runtime_factory(cast("WritingPipeline", pipeline), CONFIG),
             draft_processor=cast("DraftProcessor", proc),
-            config=CONFIG,
             chapter_repo=cast("ChapterRepository", cr),
             novel_repo=cast("NovelRepository", nr),
         )

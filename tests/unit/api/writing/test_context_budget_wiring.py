@@ -310,11 +310,14 @@ class TestRemainingWritingFactoriesWiring:
         module = importlib.import_module("narrare.writing.deps_coauthor")
 
         with ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5]:
-            await module.get_coauthor_service(
+            # ADR-086: the factory wires the composition lazily; the
+            # budget/pipeline wiring happens at the service's first use.
+            service = await module.get_coauthor_service(
                 session=_fake_session(),
                 user_id=str(uuid.uuid4()),
                 project_id=uuid.uuid4(),
             )
+            await service.ensure_resolved()
 
         assert adapter_spy.call_args.kwargs["series_in_scope"] is False
         assert pipeline_spy.call_args.kwargs["total_budget"] == 24_000
