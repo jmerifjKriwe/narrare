@@ -1,4 +1,4 @@
-"""Interview-draft prompt/invocation-context builders + novel supply.
+"""Interview-draft prompt/invocation-context builders.
 
 Pure assembly extracted from ``InterviewDraftGenerator`` static helpers
 when the draft prompt gained the novel title/genre supply (#10 re-slice)
@@ -6,32 +6,23 @@ when the draft prompt gained the novel title/genre supply (#10 re-slice)
 to a support module (family precedent: ``_ws_turn_support`` — the
 service orchestrates; the support module assembles).
 
-``build_prompt_context`` threads the ownership-resolved novel metadata
-into the first-class ``PromptContext`` fields (``project_title`` /
-``genre``) — HTTP parity with the b2faa851 generation supply and the #10
-WS-turn seam — and supplies the ``new_chapter`` route-required extras
-(``chapter_outline`` / ``kb_characters`` / ``kb_locations`` /
-``word_target_line``) as RULE-11 empty degrades: on the real composer a
-bare context RAISES ``PromptVariableError`` at message time (probe-proven;
-the unit suite's stub composers masked it). This path is KB-blind — it
-does not run the WS turn assembler — so the KB-derived slots stay empty.
-
-``resolve_draft_novel_context`` fetches the title/genre the dispatch
-owns: the draft flow holds no repository (transport-agnostic generator,
-message-time dispatch), so the fetch follows the WS short-lived-session
-precedent (``ws_session_config`` / ``WsWritingContextAssembler``) and
-reuses :func:`narrare.writing._writing_support.resolve_novel_context`
-(HTTP shape — the row is re-scoped by user as defense in depth; any
-failure degrades to empty strings, RULE-11).
+``build_prompt_context`` mirrors ``_ws_turn_support.build_prompt_context``:
+an assembled :class:`~narrare_core.writing.models.WritingContext` (from
+the production ``WsWritingContextAssembler`` at the dispatch seam) is
+spread into the PromptContext via the ``kb_context_extras`` SSOT plus
+``chapter_outline`` / ``timeline_position`` / ``recent_chapters`` and the
+``new_chapter`` route-required ``word_target_line`` (label-in-value);
+``project_title`` / ``genre`` feed the first-class fields — HTTP parity
+with the b2faa851 generation supply. ``writing_context=None`` (assembly
+failure degrade, RULE-11) yields the KB-blind render — byte-identical to
+the pre-slice R3 baseline (pinned in ``test_interview_draft_kb_context``).
 
 See: ADR-045, CONSTRAINTS.md RULE-02a/RULE-04/RULE-06/RULE-11.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
-
-import structlog
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -39,44 +30,40 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.models import PromptInvocationContext
     from narrare_core.llm.intents import LLMIntent
     from narrare_core.prompts.context import PromptContext
-
-logger = structlog.get_logger(__name__)
+    from narrare_core.writing.models import WritingContext
 
 #: Feature identifier for interview-assisted draft generation. Distinct from
 #: interactive turns (``writing_interactive_turn``) so adoption evidence can
 #: correlate each production path independently (ADR-045 Decision 2).
-#: Moved here with ``build_invocation_context`` (its only consumer).
 INTERVIEW_DRAFT_FEATURE_ID: str = "writing_interview_draft"
-
-#: ``new_chapter`` route-required extras this KB-blind path degrades to
-#: empty (probe-enumerated against the real composer; optional template
-#: variables render empty without supply, required ones raise — hence the
-#: explicit keys). Built per call so no mutable dict is shared.
-_DRAFT_EMPTY_EXTRA_KEYS: Final[tuple[str, ...]] = (
-    "chapter_outline",
-    "kb_characters",
-    "kb_locations",
-    "word_target_line",
-)
 
 
 def build_prompt_context(
     transcript: str,
     *,
-    project_title: str = "",
-    genre: str = "",
+    writing_context: WritingContext | None = None,
 ) -> PromptContext:
     """Build the PromptContext for draft generation (mode ``new_chapter``).
 
     The transcript becomes ``author_instructions`` — the
     runtime-input channel (RULE-02a). System/task prompts are built
-    by the PromptComposer cascade, not here. The novel metadata
-    feeds the first-class ``project_title`` / ``genre`` fields so the
-    governed template renders ``- Project:`` / ``- Genre:`` populated;
-    missing metadata renders empty (RULE-11).
+    by the PromptComposer cascade, not here. The assembled KB context
+    supplies the ``kb_context_extras`` SSOT spread, ``chapter_outline``
+    / ``timeline_position`` / ``recent_chapters``, and the
+    route-required ``word_target_line`` (label-in-value; the draft
+    carries no word target, so it renders empty). ``None`` context →
+    every KB slot empty (RULE-11 — the KB-blind R3 floor).
     """
     from narrare_core.prompts.context import PromptContext
+    from narrare_core.writing._helpers import kb_context_extras, word_target_line
+    from narrare_core.writing.models import WritingContext
 
+    kb_source = writing_context if writing_context is not None else WritingContext()
+    extra: dict[str, str] = kb_context_extras(kb_source)
+    extra["chapter_outline"] = kb_source.chapter_outline
+    extra["timeline_position"] = kb_source.timeline_position
+    extra["recent_chapters"] = kb_source.recent_chapters
+    extra["word_target_line"] = word_target_line(kb_source.word_target, label="Word target: ")
     return PromptContext(
         language="en",
         mode="new_chapter",
@@ -85,9 +72,9 @@ def build_prompt_context(
             "write a complete chapter draft:\n\n"
             f"{transcript}"
         ),
-        project_title=project_title,
-        genre=genre,
-        extra=dict.fromkeys(_DRAFT_EMPTY_EXTRA_KEYS, ""),
+        project_title=kb_source.project_title,
+        genre=kb_source.genre,
+        extra=extra,
     )
 
 
@@ -124,44 +111,3 @@ def build_invocation_context(
         },
         prompt_context=prompt_ctx,
     )
-
-
-async def resolve_draft_novel_context(
-    *,
-    user_id: UUID,
-    project_id: UUID,
-) -> tuple[str, str]:
-    """Ownership-aware novel title/genre supply for the WS draft prompt.
-
-    Session handling follows the WS-handshake precedent
-    (``ws_session_config`` / ``WsWritingContextAssembler``): a
-    short-lived session per fetch — a WebSocket connection has no
-    request-scoped session. Ownership was already gated at the
-    handshake; :func:`resolve_novel_context` re-scopes the row by user
-    (defense in depth, HTTP shape) and degrades to empty strings on any
-    fetch failure (RULE-11) — the draft proceeds without novel context.
-    A session-acquisition failure degrades the same way (logged), so a
-    DB outage never blocks drafting.
-    """
-    from narrare._app.database import get_async_session
-    from narrare.novels.repository import NovelRepository
-    from narrare.writing._writing_support import resolve_novel_context
-
-    try:
-        session_gen = get_async_session()
-        session = await session_gen.__anext__()
-    except Exception as exc:
-        logger.warning(
-            "draft_novel_session_failed",
-            project_id=str(project_id),
-            error=str(exc),
-        )
-        return "", ""
-    try:
-        return await resolve_novel_context(
-            NovelRepository(session),
-            project_id,
-            str(user_id),
-        )
-    finally:
-        await session_gen.aclose()

@@ -9,7 +9,7 @@ ADR-045 Decision 6: WebSocket-specific orchestration lives outside the
 transport-agnostic generator and outside the message-routing handler,
 keeping each module focused on one responsibility (RULE-04/RULE-06).
 
-See: CONSTRAINTS.md RULE-04/RULE-06/RULE-12.
+See: CONSTRAINTS.md RULE-04/RULE-06/RULE-11/RULE-12.
 """
 
 from __future__ import annotations
@@ -27,9 +27,45 @@ if TYPE_CHECKING:
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts.composer import PromptComposer
+    from narrare_core.writing.models import WritingContext
     from narrare_core.writing.session_manager import SessionManager
 
 logger = structlog.get_logger(__name__)
+
+
+async def _assemble_draft_context(
+    *,
+    project_id: UUID,
+    chapter_id: UUID,
+) -> WritingContext | None:
+    """Assemble the draft's KB context graceful-None (RULE-11).
+
+    Uses the production :class:`WsWritingContextAssembler` — the same
+    data-fetching assembler as WS turns (chapter-optional: a missing
+    chapter degrades tier-1/tier-2 to empty while novel/KB fetches still
+    deliver; the short-lived-session handling is internal). ``None``
+    → KB-blind draft render, byte-identical to the pre-slice baseline.
+
+    Mirrors ``WritingTurnService._assemble_writing_context``: an
+    assembly failure (DB outage, repository error) degrades with a
+    warning — never blocks drafting.
+    """
+    from narrare.writing.ws_context_assembler import WsWritingContextAssembler
+
+    try:
+        return await WsWritingContextAssembler().assemble(
+            chapter_id=chapter_id,
+            project_id=project_id,
+            mode="new_chapter",
+        )
+    except Exception as exc:
+        logger.warning(
+            "ws_draft_context_assembly_failed",
+            project_id=str(project_id),
+            chapter_id=str(chapter_id),
+            error=str(exc),
+        )
+        return None
 
 
 async def dispatch_interview_draft(
@@ -50,13 +86,12 @@ async def dispatch_interview_draft(
 ) -> None:
     """Orchestrate interview draft generation over a WebSocket transport.
 
-    Fetches the ownership-gated novel title/genre for the draft prompt
-    (``resolve_draft_novel_context`` — WS short-lived-session precedent;
-    RULE-11 degrade to empty), constructs the transport-agnostic
-    :class:`InterviewDraftGenerator`, streams chunks to DTOs via
-    :func:`send_stream_chunks`, persists the completed draft, and sends
-    the ``draft_done`` message. Errors from the invocation contract or
-    the LLM are mapped to ``error`` DTOs.
+    Assembles the KB context via the production WS assembler
+    (:func:`_assemble_draft_context` — RULE-11 degrade to KB-blind),
+    constructs the transport-agnostic :class:`InterviewDraftGenerator`,
+    streams chunks to DTOs via :func:`send_stream_chunks`, persists the
+    completed draft, and sends the ``draft_done`` message. Errors from
+    the invocation contract or the LLM are mapped to ``error`` DTOs.
 
     Args:
         websocket: A :class:`StreamSender` (any object with an async
@@ -77,13 +112,12 @@ async def dispatch_interview_draft(
         base_url: Optional provider base URL override.
     """
     from narrare.writing._interview_draft import InterviewDraftGenerator
-    from narrare.writing._interview_draft_support import resolve_draft_novel_context
     from narrare.writing.ws_streaming import send_stream_chunks
     from narrare_core.shared.errors import WritingError
 
-    project_title, genre = await resolve_draft_novel_context(
-        user_id=user_id,
+    writing_context = await _assemble_draft_context(
         project_id=project_id,
+        chapter_id=chapter_id,
     )
 
     generator = InterviewDraftGenerator(
@@ -105,8 +139,7 @@ async def dispatch_interview_draft(
                 user_id=user_id,
                 project_id=project_id,
                 chapter_id=chapter_id,
-                project_title=project_title,
-                genre=genre,
+                writing_context=writing_context,
             ),
         )
     except WritingError as e:

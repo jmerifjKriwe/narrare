@@ -17,10 +17,12 @@ Uses:
 - :class:`DefaultRunLimitResolver` for output-budget enforcement
   (ADR-045 Decision 4)
 
-The prompt/invocation-context builders and the draft novel-metadata
-supply live in ``_interview_draft_support`` (RULE-04/RULE-06: the
-generator orchestrates; the support module assembles — ``_ws_turn_support``
-precedent).
+The prompt/invocation-context builders live in ``_interview_draft_support``
+(RULE-04/RULE-06: the generator orchestrates; the support module assembles
+— ``_ws_turn_support`` precedent). The assembled KB context
+(``WritingContext`` from the WS assembler at the dispatch seam) threads
+through ``stream_draft`` into the PromptContext; ``None`` degrades
+KB-blind (RULE-11).
 
 See: ADR-045, CONSTRAINTS.md RULE-02/RULE-03/RULE-06/RULE-12/RULE-13.
 """
@@ -50,6 +52,7 @@ if TYPE_CHECKING:
     from narrare_core.llm.result import StreamChunk
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts.composer import PromptComposer
+    from narrare_core.writing.models import WritingContext
     from narrare_core.writing.session_manager import SessionManager
 
 logger = structlog.get_logger(__name__)
@@ -100,15 +103,14 @@ class InterviewDraftGenerator:
         user_id: UUID,
         project_id: UUID,
         chapter_id: UUID,
-        project_title: str = "",
-        genre: str = "",
+        writing_context: WritingContext | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Yield ``StreamChunk`` instances for a draft from the transcript.
 
         Runs the full invocation contract:
             1. Look up the session and format the interview transcript.
-            2. Build :class:`PromptContext` (mode ``new_chapter``) with
-               the novel metadata (``project_title`` / ``genre``).
+            2. Build :class:`PromptContext` (mode ``new_chapter``) from
+               the assembled KB context (``None`` → KB-blind, RULE-11).
             3. Build :class:`PromptInvocationContext` with all identifiers.
             4. ``build_and_validate_prompt`` — prepare → merge → compose
                → finalize (enrichment, budget, validation, evidence).
@@ -120,8 +122,9 @@ class InterviewDraftGenerator:
             user_id: The authenticated user's identifier (ADR-045).
             project_id: The project identifier for enrichment.
             chapter_id: The chapter being written.
-            project_title: Novel title for prompt context (degraded: "").
-            genre: Novel genre for prompt context (degraded: "").
+            writing_context: Assembled KB context (novel metadata, KB
+                entities, relationships, recent chapters) from the
+                dispatch seam's assembler; ``None`` degrades KB-blind.
 
         Yields:
             :class:`StreamChunk` instances. The final chunk has
@@ -135,11 +138,7 @@ class InterviewDraftGenerator:
 
         transcript = await self._prepare_transcript(session_id)
         invocation_id = uuid4()
-        prompt_ctx = build_prompt_context(
-            transcript,
-            project_title=project_title,
-            genre=genre,
-        )
+        prompt_ctx = build_prompt_context(transcript, writing_context=writing_context)
         invocation_ctx = build_invocation_context(
             intent=LLMIntent.WRITE,
             prompt_ctx=prompt_ctx,

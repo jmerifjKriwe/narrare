@@ -10,25 +10,31 @@ Probe-corrected premise: on the REAL composer the bare context does not
 merely render empty metadata — composition RAISES ``PromptVariableError``
 (required extras ``chapter_outline`` / ``kb_characters`` /
 ``kb_locations`` / ``word_target_line`` are unsupplied); the unit
-suite's stub composers masked it. The seam therefore supplies the
-route-required extras as RULE-11 degrades plus the ownership-resolved
-title/genre fetched at the dispatch seam (WS short-lived-session
-precedent, ``resolve_novel_context`` HTTP shape).
+suite's stub composers masked it.
+
+R3 supplied the route-required extras as empty degrades plus an
+ownership-resolved title/genre fetch at the dispatch seam. The
+WS-draft-KB slice replaced that standalone fetch with the production
+``WsWritingContextAssembler`` (chapter-optional; novel metadata comes
+from the assembled ``WritingContext``, exactly like the WS-turn seam),
+so the metadata now threads via ``writing_context`` and the dispatch
+fetch runs through the assembler doubles.
 
 Pinned at three levels:
 
-1. Seam level — ``stream_draft`` threads supplied metadata into the
-   first-class ``PromptContext`` fields; the default degrades to empty.
+1. Seam level — ``stream_draft`` threads the supplied ``WritingContext``
+   metadata into the first-class ``PromptContext`` fields; the default
+   degrades to empty.
 2. Real-composer render — populated/degraded label lines render through
    the genuine composer cascade (no stub masking).
-3. Production wiring — ``dispatch_interview_draft`` fetches the novel
-   and feeds the generator; a missing row and a session failure both
-   degrade to empty metadata with the draft still completing (RULE-11).
+3. Production wiring — ``dispatch_interview_draft`` assembles the
+   context and feeds the generator; a missing novel row and a session
+   failure both degrade to empty metadata with the draft still
+   completing (RULE-11).
 """
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from unittest.mock import Mock
 
@@ -39,16 +45,20 @@ from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.prompts.composer import PromptComposer
 from narrare_core.prompts.registry import PromptRegistry
+from narrare_core.writing.models import WritingContext
 from narrare_core.writing.session_manager import SessionManager
 from tests.unit.api.writing._interview_draft_fakes import (
     RecordingComposer,
     identifiers,
+    install_ws_fetch,
     make_config,
     make_generator,
+    make_ws_novel,
 )
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+    from types import SimpleNamespace
     from uuid import UUID
 
     import pytest
@@ -85,23 +95,13 @@ def _install_novel_fetch(
     novel: SimpleNamespace | None,
     session_fails: bool = False,
 ) -> None:
-    """Patch the WS short-lived session + ``NovelRepository`` (assembler precedent)."""
+    """Patch the WS assembler fetch bundle (WS-draft-KB seam).
 
-    async def _session_gen() -> AsyncIterator[object]:
-        if session_fails:
-            raise RuntimeError("session factory down")
-        yield object()
-
-    monkeypatch.setattr("narrare._app.database.get_async_session", _session_gen)
-
-    class _FakeNovelRepo:
-        def __init__(self, _session: object) -> None:
-            pass
-
-        async def get_by_id(self, novel_id: UUID, user_id: UUID) -> SimpleNamespace | None:
-            return novel
-
-    monkeypatch.setattr("narrare.novels.repository.NovelRepository", _FakeNovelRepo)
+    Kept as the import-compat name for ``test_ws_draft_regression``;
+    the mechanics moved to the assembler doubles when the dispatch
+    fetch site switched to ``WsWritingContextAssembler``.
+    """
+    install_ws_fetch(monkeypatch, novel=novel, session_fails=session_fails)
 
 
 def _capturing_gateway() -> tuple[Mock, dict[str, str]]:
@@ -167,8 +167,7 @@ class TestStreamDraftMetadataThreading:
                 user_id=user_id,
                 project_id=project_id,
                 chapter_id=chapter_id,
-                project_title=_NOVEL_TITLE,
-                genre="fantasy",
+                writing_context=WritingContext(project_title=_NOVEL_TITLE, genre="fantasy"),
             )
         ]
 
@@ -220,8 +219,7 @@ class TestDraftRenderOnRealComposer:
                 user_id=user_id,
                 project_id=project_id,
                 chapter_id=chapter_id,
-                project_title=_NOVEL_TITLE,
-                genre="fantasy",
+                writing_context=WritingContext(project_title=_NOVEL_TITLE, genre="fantasy"),
             )
         ]
 
@@ -250,12 +248,12 @@ class TestDraftRenderOnRealComposer:
 
 
 # ---------------------------------------------------------------------------
-# 3. Production wiring — dispatch fetch
+# 3. Production wiring — dispatch context assembly
 # ---------------------------------------------------------------------------
 
 
 class TestDispatchNovelSupply:
-    """dispatch_interview_draft fetches and feeds the novel metadata."""
+    """dispatch_interview_draft assembles and feeds the novel metadata."""
 
     @staticmethod
     async def _run_dispatch(
@@ -297,7 +295,7 @@ class TestDispatchNovelSupply:
         """Novel row present → populated metadata reaches the composer."""
         socket, composer = await self._run_dispatch(
             monkeypatch,
-            novel=SimpleNamespace(title=_NOVEL_TITLE, genre="fantasy"),
+            novel=make_ws_novel(title=_NOVEL_TITLE, genre="fantasy"),
         )
         assert any(m["type"] == "draft_done" for m in socket.sent)
         assert composer.last_context is not None
