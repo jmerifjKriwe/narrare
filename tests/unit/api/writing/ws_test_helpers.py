@@ -19,6 +19,7 @@ from uuid import UUID
 from fastapi import WebSocketDisconnect
 
 from narrare._app.config import Settings as AppSettings
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.auth import ws_tickets
 from narrare.writing._ws_cache import InMemorySessionCache
 from narrare.writing.router_sessions import interactive_session
@@ -27,6 +28,7 @@ from narrare.writing.ws_factory import build_writing_session_handler
 from narrare.writing.ws_session_control_service import WritingSessionControlService
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
 from narrare_core.llm import LLMIntent, ResolvedModelConfig
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.prompts.composer import ComposedPrompt
@@ -190,7 +192,9 @@ def _make_handler(
     # Use Mock (not AsyncMock) for stream — code does `async for` directly
     model_registry.stream = Mock(side_effect=_fake_stream_hello)
     composer = _FakeComposer()
-    config = _make_config()
+    # ADR-086 L39: the factory wires lazily — tests pin a static
+    # resolution (same config the ctor seam passed; render/outcome-inert).
+    model_resolution = StaticModelResolution(ResolvedModel(config=_make_config()))
     handler = build_writing_session_handler(
         session_manager=session_manager,
         registry=active_turn_registry,
@@ -198,7 +202,7 @@ def _make_handler(
         control_service=control_service,
         model_registry=model_registry,
         composer=cast("PromptComposer", composer),
-        config=config,
+        model_resolution=model_resolution,
         invocation_pipeline=InvocationPipeline(),
         run_limit_resolver=DefaultRunLimitResolver(),
         mode=mode,

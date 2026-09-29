@@ -4,7 +4,14 @@ Keeps FastAPI routes and ``WritingSessionHandler`` free of turn-service and
 streaming-adapter construction details while preserving constructor injection
 for each focused component.
 
-See: ADR-045, ADR-052, CONSTRAINTS.md RULE-04/RULE-06/RULE-12.
+ADR-086 (L39): the factory wires LAZILY — it consumes a ``ModelResolution``
+and builds the deferred runtime/config-provider compositions
+(``_ws_turn_support``); no routing cascade or budget composition runs at
+handler build. The frozen config and the ADR-082 budgets compose at the
+first turn (``WritingTurnService.ensure_resolved``); the interview-draft
+path resolves via the config provider at message time.
+
+See: ADR-045, ADR-052, ADR-086, CONSTRAINTS.md RULE-04/RULE-06/RULE-12.
 """
 
 from __future__ import annotations
@@ -12,12 +19,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.settings.token_limits.contracts import TokenLimitOverrides
     from narrare.writing.ws_active_turn_registry import ActiveTurnRegistry
     from narrare.writing.ws_handler import WritingSessionHandler
     from narrare.writing.ws_session_control_service import WritingSessionControlService
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts.composer import PromptComposer
@@ -33,7 +40,7 @@ def build_writing_session_handler(
     control_service: WritingSessionControlService,
     model_registry: ModelRegistry,
     composer: PromptComposer,
-    config: ResolvedModelConfig,
+    model_resolution: ModelResolution,
     invocation_pipeline: InvocationPipeline | None,
     run_limit_resolver: DefaultRunLimitResolver,
     api_key: str | None = None,
@@ -51,7 +58,10 @@ def build_writing_session_handler(
         control_service: Session control service for stop/reattach.
         model_registry: Model registry for turn and draft streaming.
         composer: Prompt composer used by invocation-contract services.
-        config: Resolved model configuration.
+        model_resolution: Lazily-wired WRITE-intent resolution (ADR-086
+            L39, ``resolve_ws_session_config`` output). Shared by the turn
+            runtime and the interview-draft config provider — the routing
+            cascade runs at most once per connection.
         invocation_pipeline: Invocation pipeline for prepare/finalize.
         run_limit_resolver: Runtime output-budget resolver.
         api_key: Optional provider API key override.
@@ -62,49 +72,30 @@ def build_writing_session_handler(
             output). When given, the WS context assembler budgets with the
             SAME tier allocations as the HTTP writing paths (item E):
             ``limits.tier_percentages`` (FIND-012) plus the ADR-082
-            model-capped ``writing_tier_base`` resolved via
-            :func:`resolve_context_budgets`. ``None`` (tests / legacy call
-            sites) keeps the Core defaults (RULE-11).
+            model-capped ``writing_tier_base`` — composed at first use via
+            :func:`build_turn_runtime_factory`. ``None`` (tests / legacy
+            call sites) keeps the Core defaults (RULE-11).
 
     Returns:
         A fully wired :class:`WritingSessionHandler`.
     """
-    from narrare.settings.token_limits.context_budgets import resolve_context_budgets
-    from narrare.writing.ws_context_assembler import WsWritingContextAssembler
+    from narrare.writing._ws_turn_support import (
+        build_config_provider,
+        build_turn_runtime_factory,
+    )
     from narrare.writing.ws_direction_dispatch import WritingDirectionDispatcher
     from narrare.writing.ws_handler import WritingSessionHandler
     from narrare.writing.ws_message_router import WritingSessionMessageRouter
     from narrare.writing.ws_turn_service import WritingTurnService
 
-    # Item E: budgets resolved at handler build from the route's handshake
-    # limits (a WebSocket connection has no request-scoped DI). WS assembly
-    # never injects {{series_history}} (no SeriesHistoryProvider on this
-    # path) → standalone tier-base semantics (ADR-082 Decision 6), mirroring
-    # deps_extend. The resolver degrades gracefully (unknown window →
-    # uncapped configured total, ``cascade:window_unknown``); with
-    # ``limits=None`` the assembler falls back to Core defaults as before.
-    budgets = (
-        resolve_context_budgets(
-            limits=limits,
-            config=config,
-            series_in_scope=False,
-        )
-        if limits is not None
-        else None
-    )
+    # ADR-086 L39: both closures share the connection's one resolution.
+    config_provider = build_config_provider(model_resolution, limits)
     turn_service = WritingTurnService(
         composer=composer,
         invocation_pipeline=invocation_pipeline,
         registry=model_registry,
-        config=config,
+        runtime_factory=build_turn_runtime_factory(model_resolution, limits),
         run_limit_resolver=run_limit_resolver,
-        # FO-4: data-fetching assembler so WS turns are KB-enriched.
-        # Constructed here (not injected) to keep the route handshake
-        # unchanged; it acquires its own per-turn session.
-        context_assembler=WsWritingContextAssembler(
-            tier_overrides=limits.tier_percentages if limits is not None else None,
-            total_budget=budgets.writing_tier_base if budgets is not None else None,
-        ),
     )
     direction_dispatcher = WritingDirectionDispatcher(
         session_manager=session_manager,
@@ -120,7 +111,7 @@ def build_writing_session_handler(
         control_service=control_service,
         registry=model_registry,
         composer=composer,
-        config=config,
+        config_provider=config_provider,
         invocation_pipeline=invocation_pipeline,
         run_limit_resolver=run_limit_resolver,
         api_key=api_key,

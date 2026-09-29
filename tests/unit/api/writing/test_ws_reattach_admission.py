@@ -80,8 +80,10 @@ class TestReattachAdmission:
         assert run.websocket.close.await_args.kwargs["code"] == RECOVERY_FAILED_CLOSE_CODE
         run.build.assert_not_called()
 
-    async def test_admission_passing_still_runs_gate_and_builds_handler(self) -> None:
-        """A passing probe does not bypass the ownership gate or resolution."""
+    async def test_admission_passing_still_runs_gate_and_wires_resolution(self) -> None:
+        """A passing probe does not bypass the ownership gate or the
+        (lazily wired) resolution (ADR-086 L39: the routing cascade
+        defers to first use — the handshake only wires it)."""
         project, chapter, session_id = uuid4(), uuid4(), uuid4()
         run = await run_handshake(
             chapter,
@@ -92,7 +94,9 @@ class TestReattachAdmission:
             reattach_outcome={"kind": "recovered", "session_id": str(session_id)},
         )
         run.control_service.return_value.reattach_session.assert_awaited_once()
-        run.resolver.resolve.assert_awaited_once()
+        run.resolver.resolve.assert_not_awaited()
+        # The handler build received the lazily-wired resolution.
+        assert run.build.call_args.kwargs["model_resolution"] is not None
         run.handler.handle.assert_awaited_once_with(
             run.websocket, chapter, str(TICKET_USER), project, session_id=session_id
         )

@@ -3,8 +3,8 @@
 > **Status:** ✅ Implemented (design approved by the Architecture layer 2026-09-09;
 > implementation slices S1–S4 landed 2026-09-09 — Gate 12 criteria met
 > (S1–S4 wired + regression-contract-verified, ledger entries 1–5 checked
-> off); remaining ledger entries 6–39 open (migration backlog) — see
-> Implementation Notes)
+> off); migration ledger COMPLETE — all entries 1–39 checked off
+> (final entry L39a/b landed 2026-09-29) — see Implementation Notes)
 > **Date:** 2026-09-09
 > **Deciders:** Architecture Agent
 > **Related:** ADR-082 (token-budget governance — `get_resolved_limits` cascade is
@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (1):**
+**Backlog entries (6–39 — all landed, ledger complete):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -634,8 +634,36 @@ at construction (2026-09-09; factory function names verified):
        prompt-composition + prepare/agent-run assembly moved to
        ``_summary_invocation.py`` for the RULE-04 size limit the lazy
        seam crossed)*
-39. [ ] `writing/router_sessions.py` — `interactive_session` (inline eager
-       resolve + `get_resolved_limits` in session bootstrap)
+39. [x] `writing/router_sessions.py` — `interactive_session` (inline eager
+        resolve + `get_resolved_limits` in session bootstrap)
+       *(L39a/b — landed 2026-09-29: lazy wiring + first-use resolve —
+       ``resolve_ws_session_config`` returns a ``LazyModelResolution``
+       instead of the frozen config; the WRITE routing cascade runs at
+       the first turn / first interview draft (``ensure_resolved`` /
+       config provider), AFTER the handshake's ownership gate
+       (gate-before-resolution preserved) and on a short-lived session
+       of its own — the handshake session is already closed by then (WS
+       has no request-scoped session; the WsWritingContextAssembler
+       precedent). The eager freeze (``temperature=0.7``,
+       ``max_tokens=limits.output_limit``) and the ADR-082 budget +
+       assembler composition moved verbatim into the shared
+       ``_ws_turn_support`` closures (``build_turn_runtime_factory`` /
+       ``build_config_provider`` — one resolution per connection);
+       budget composition is therefore first-use too (it reads the
+       resolved model window). ACCEPTED RESIDUAL (plan-ratified): the
+       token-limits cascade STAYS at WS bootstrap — ``ws_timeout`` feeds
+       the handler idle timeout before the message loop starts. First
+       use of an unconfigured provider surfaces as a loud in-band error
+       frame (direction-stream / draft-dispatch generic branch) instead
+       of the old abnormal handshake close (RULE-11); ``WritingTurnService``
+       ctor swapped to ``runtime_factory`` (+ idempotent
+       ``ensure_resolved``) and the message router to ``config_provider``
+       (interview draft); the freeze/budget/invocation-context assembly
+       split to ``_ws_turn_support.py`` for the RULE-04 size limits the
+       lazy seam crossed; WS endpoint — no request body, so the 422
+       preemption class never applied here)*
+
+Migration ledger complete (39/39 checked off).
 
 Migration rule per entry: wire `LazyModelResolution`, resolve at first use in
 the service, apply the SSE pre-header line where the endpoint streams, and

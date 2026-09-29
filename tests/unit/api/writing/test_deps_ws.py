@@ -72,8 +72,10 @@ def test_get_writing_turn_service_wires_dependencies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """get_writing_turn_service creates WritingTurnService with wired deps."""
+    from narrare._app.dependencies_services import StaticModelResolution
     from narrare.writing.deps_ws import get_writing_turn_service
     from narrare.writing.ws_turn_service import WritingTurnService
+    from narrare_core.llm.model_routing import ResolvedModel
 
     config = ResolvedModelConfig(
         provider_name="anthropic",
@@ -89,13 +91,13 @@ def test_get_writing_turn_service_wires_dependencies(
     monkeypatch.setattr("narrare.writing.deps_ws.get_invocation_pipeline", lambda: pipeline)
     monkeypatch.setattr("narrare.writing.deps_ws.get_model_registry", lambda: registry)
 
-    service = get_writing_turn_service(config)
+    service = get_writing_turn_service(StaticModelResolution(ResolvedModel(config=config)))
 
     assert isinstance(service, WritingTurnService)
     assert service._composer is composer
     assert service._invocation_pipeline is pipeline
     assert service._registry is registry
-    assert service._config is config
+    assert service._runtime_factory is not None
     assert service._run_limit_resolver is not None
 
 

@@ -18,6 +18,8 @@ from narrare.writing.ws_payloads import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from fastapi import WebSocket
 
     from narrare.writing.contracts import WritingSessionControlProtocol
@@ -41,7 +43,9 @@ class WritingSessionMessageRouter:
         control_service: Session control service for stop/reattach (ADR-052).
         registry: Model registry used by interview draft generation.
         composer: Prompt composer used by interview draft generation.
-        config: Resolved model configuration.
+        config_provider: Deferred frozen-config provider (ADR-086 L39) —
+            awaited when an interview draft is generated, so the routing
+            cascade resolves at message time, not at connection build.
         invocation_pipeline: Invocation pipeline for draft generation.
         run_limit_resolver: Runtime output-budget resolver.
         api_key: Optional provider API key override.
@@ -55,7 +59,7 @@ class WritingSessionMessageRouter:
         control_service: WritingSessionControlProtocol,
         registry: ModelRegistry,
         composer: PromptComposer,
-        config: ResolvedModelConfig,
+        config_provider: Callable[[], Awaitable[ResolvedModelConfig]],
         invocation_pipeline: InvocationPipeline | None,
         run_limit_resolver: DefaultRunLimitResolver,
         api_key: str | None = None,
@@ -66,7 +70,7 @@ class WritingSessionMessageRouter:
         self._control_service = control_service
         self._registry = registry
         self._composer = composer
-        self._config = config
+        self._config_provider = config_provider
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver
         self._api_key = api_key
@@ -240,7 +244,12 @@ class WritingSessionMessageRouter:
         websocket: WebSocket,
         context: WritingSessionContext,
     ) -> None:
-        """Dispatch interview draft generation for the active context."""
+        """Dispatch interview draft generation for the active context.
+
+        ADR-086 L39: the frozen config resolves here (message time) via
+        the shared config provider — the first draft generation pays the
+        routing cascade.
+        """
         from narrare.writing._ws_draft_dispatch import dispatch_interview_draft
 
         await dispatch_interview_draft(
@@ -252,7 +261,7 @@ class WritingSessionMessageRouter:
             session_manager=self._session_manager,
             registry=self._registry,
             composer=self._composer,
-            config=self._config,
+            config=await self._config_provider(),
             invocation_pipeline=self._invocation_pipeline,
             run_limit_resolver=self._run_limit_resolver,
             api_key=self._api_key,

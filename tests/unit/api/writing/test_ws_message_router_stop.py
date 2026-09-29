@@ -77,7 +77,7 @@ def _make_router(control: _StubControl) -> WritingSessionMessageRouter:
         control_service=control,  # type: ignore[arg-type]
         registry=object(),  # type: ignore[arg-type]
         composer=object(),  # type: ignore[arg-type]
-        config=object(),  # type: ignore[arg-type]
+        config_provider=object(),  # type: ignore[arg-type]
         invocation_pipeline=None,
         run_limit_resolver=object(),  # type: ignore[arg-type]
     )

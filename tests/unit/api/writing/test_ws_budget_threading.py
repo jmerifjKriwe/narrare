@@ -26,7 +26,7 @@ moved verbatim, not compressed.
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -200,9 +200,15 @@ def _handler_collaborators() -> tuple[
 
 
 def _turn_service_assembler(handler: WritingSessionHandler) -> WritingContextAssembler:
-    """Dig the assembler out of the built handler's turn service."""
+    """Dig the assembler out of the built handler's turn service.
+
+    ADR-086 L39: the assembler composes at first use — callers must
+    ``ensure_resolved()`` on the turn service before digging.
+    """
     turn_service = handler._message_router._direction_dispatcher._turn_service
-    assembler = turn_service._context_assembler
+    runtime = turn_service._runtime
+    assert runtime is not None
+    assembler = runtime.context_assembler
     assert isinstance(assembler, WritingContextAssembler)
     return assembler
 
@@ -213,8 +219,14 @@ def _build(
     config: ResolvedModelConfig,
     limits: TokenLimitOverrides | None = None,
 ) -> WritingSessionHandler:
-    """Call ``build_writing_session_handler`` with the shared collaborators."""
+    """Call ``build_writing_session_handler`` with the shared collaborators.
+
+    ADR-086 L39: the factory wires lazily — the config reaches it as a
+    static resolution; nothing resolves or composes at build time.
+    """
+    from narrare._app.dependencies_services import StaticModelResolution
     from narrare.writing.ws_factory import build_writing_session_handler
+    from narrare_core.llm.model_routing import ResolvedModel
 
     session_manager, active_registry, turn_state, control_service = _handler_collaborators()
     return build_writing_session_handler(
@@ -224,7 +236,7 @@ def _build(
         control_service=control_service,
         model_registry=MagicMock(spec=ModelRegistry),
         composer=MagicMock(spec=PromptComposer),
-        config=config,
+        model_resolution=StaticModelResolution(ResolvedModel(config=config)),
         invocation_pipeline=MagicMock(spec=InvocationPipeline),
         run_limit_resolver=DefaultRunLimitResolver(),
         limits=limits,
@@ -232,12 +244,13 @@ def _build(
 
 
 class TestWsFactoryBudgetWiring:
-    """The factory resolves ADR-082 budgets and threads them (item E)."""
+    """The factory defers budget composition to first use (ADR-086 L39)."""
 
-    def test_threads_resolved_tier_budgets(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Resolved budgets reach the WS assembler — the same tier
-        allocations the HTTP factories hand to ``create_pipeline``
-        (FIND-012 overrides + writing_tier_base)."""
+    async def test_threads_resolved_tier_budgets(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Resolved budgets reach the WS assembler at first use — the
+        same tier allocations the HTTP factories hand to
+        ``create_pipeline`` (FIND-012 overrides + writing_tier_base);
+        nothing composes at handler build."""
         from narrare.settings.token_limits.contracts import TokenLimitOverrides
         from narrare.writing.ws_context_assembler import WsWritingContextAssembler
         from narrare_core.context.contracts import EffectiveContextBudgets
@@ -272,13 +285,19 @@ class TestWsFactoryBudgetWiring:
             fake_resolve,
         )
 
-        assembler = _turn_service_assembler(_build(monkeypatch, config=config, limits=limits))
+        handler = _build(monkeypatch, config=config, limits=limits)
+        assert captured == {}  # lazy: no composition at handler build
 
+        turn_service = handler._message_router._direction_dispatcher._turn_service
+        runtime = await turn_service.ensure_resolved()
+        assembler = runtime.context_assembler
         assert isinstance(assembler, WsWritingContextAssembler)
-        # Resolution ran at handler build with the handshake's exact inputs;
+        # Composition ran at first use with the handshake's exact inputs;
         # WS never injects {{series_history}} → standalone carve-out semantics.
         assert captured["limits"] is limits
-        assert captured["config"] is config
+        frozen = cast("ResolvedModelConfig", captured["config"])
+        assert frozen.temperature == 0.7  # the frozen config
+        assert frozen.max_tokens == 2048
         assert captured["series_in_scope"] is False
         # The resolved tier base + FIND-012 overrides govern WS allocation.
         assert assembler.total_budget == 48_000
@@ -286,7 +305,7 @@ class TestWsFactoryBudgetWiring:
         assert allocation["immediate"].percentage == pytest.approx(0.60)
         assert allocation["immediate"].token_limit == 28_800
 
-    def test_unconfigured_tiers_degrade_to_core_allocations(
+    async def test_unconfigured_tiers_degrade_to_core_allocations(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """RULE-11: ``tier_percentages`` unset (the common cascade
@@ -308,18 +327,19 @@ class TestWsFactoryBudgetWiring:
             ),
         )
 
-        assembler = _turn_service_assembler(
-            _build(
-                monkeypatch,
-                config=ResolvedModelConfig(
-                    provider_name="test",
-                    model_id="test-model",
-                    temperature=0.7,
-                    max_tokens=2048,
-                ),
-                limits=TokenLimitOverrides(output_limit=2048, context_total_budget=20_000),
-            )
+        handler = _build(
+            monkeypatch,
+            config=ResolvedModelConfig(
+                provider_name="test",
+                model_id="test-model",
+                temperature=0.7,
+                max_tokens=2048,
+            ),
+            limits=TokenLimitOverrides(output_limit=2048, context_total_budget=20_000),
         )
+        turn_service = handler._message_router._direction_dispatcher._turn_service
+        runtime = await turn_service.ensure_resolved()
+        assembler = runtime.context_assembler
 
         assert isinstance(assembler, WsWritingContextAssembler)
         assert assembler.total_budget == 20_000
@@ -327,7 +347,9 @@ class TestWsFactoryBudgetWiring:
         assert allocation["immediate"].percentage == pytest.approx(0.30)
         assert allocation["immediate"].token_limit == 6_000
 
-    def test_without_limits_keeps_core_defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_without_limits_keeps_core_defaults(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """No handshake limits (legacy/test call sites) → bare assembler,
         exactly the pre-item-E wiring (RULE-11 baseline)."""
 
@@ -339,19 +361,22 @@ class TestWsFactoryBudgetWiring:
             forbidden,
         )
 
-        assembler = _turn_service_assembler(
-            _build(
-                monkeypatch,
-                config=ResolvedModelConfig(
-                    provider_name="test",
-                    model_id="test-model",
-                    temperature=0.7,
-                    max_tokens=2000,
-                ),
-            )
+        handler = _build(
+            monkeypatch,
+            config=ResolvedModelConfig(
+                provider_name="test",
+                model_id="test-model",
+                temperature=0.7,
+                max_tokens=2000,
+            ),
         )
+        turn_service = handler._message_router._direction_dispatcher._turn_service
+        runtime = await turn_service.ensure_resolved()
+        assembler = runtime.context_assembler
 
-        assert isinstance(assembler, WritingContextAssembler)
+        from narrare.writing.ws_context_assembler import WsWritingContextAssembler
+
+        assert isinstance(assembler, WsWritingContextAssembler)
         assert assembler.total_budget == TokenBudgetManager.DEFAULT_TOTAL_BUDGET
         allocation = assembler.get_tier_allocation(first_chapter=False)
         assert allocation["immediate"].percentage == pytest.approx(0.30)

@@ -1,4 +1,4 @@
-"""Writing-WS handshake — DB-backed ownership gate + runtime resolution.
+"""Writing-WS handshake — DB-backed ownership gate + lazy resolution wiring.
 
 Extracted from ``router_sessions.py`` per RULE-04 when the IDOR-remediation
 S3 ownership gate joined the handshake's DB block (the router sits at the
@@ -23,8 +23,13 @@ order below is SECURITY-PINNED — do not reorder:
    (cross-tenant exfiltration). ``NotFoundError`` propagates to the
    router → close 4001; foreign ≡ unknown by construction
    (anti-enumeration).
-3. **Token limits** — project → user → config cascade.
-4. **Model routing** — WRITE-intent resolution (RULE-18).
+3. **Token limits** — project → user → config cascade (accepted ADR-086
+   residual: ``ws_timeout`` feeds the handler idle timeout and the tier
+   overrides thread into the assembler, both needed at bootstrap).
+4. **Model routing** — WRITE-intent resolution wired LAZILY (ADR-086
+   L39): the handshake returns a ``LazyModelResolution``; the routing
+   cascade runs at first use (first turn / first interview draft), after
+   validation-relevant gates, on a short-lived session of its own.
 
 The deliberate double novel lookup (``ensure_novel_owned`` plus the S5
 helper's internal check) mirrors the factory N1 pattern: the project
@@ -43,10 +48,11 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 if TYPE_CHECKING:
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.settings.token_limits.contracts import TokenLimitOverrides
     from narrare.writing.contracts import WritingSessionControlProtocol
     from narrare.writing.session_control_contracts import ReattachSessionResult
-    from narrare_core.llm.model_config import ResolvedModelConfig
+    from narrare_core.llm.model_routing import ResolvedModel
 
 
 class ReattachRejectedError(Exception):
@@ -71,8 +77,8 @@ async def resolve_ws_session_config(
     *,
     session_id: UUID | None = None,
     control_service: WritingSessionControlProtocol | None = None,
-) -> tuple[ResolvedModelConfig, TokenLimitOverrides]:
-    """Gate access, then resolve handler config + limits for one WS session.
+) -> tuple[ModelResolution, TokenLimitOverrides]:
+    """Gate access, then wire the lazy model resolution + resolve limits.
 
     Args:
         user_id: Ticket-derived caller identity (ADR-084; ``str`` at the
@@ -94,15 +100,15 @@ async def resolve_ws_session_config(
             another user — indistinguishable by design (anti-enumeration).
 
     Returns:
-        ``(config, limits)``: the WRITE-intent model config with the
-        handshake temperature and output-limit cap, and the resolved
-        token-limit overrides (``ws_timeout`` feeds the idle timeout).
+        ``(model_resolution, limits)``: the lazily-wired WRITE-intent
+        resolution (ADR-086 L39 — the routing cascade runs at first use,
+        with the handshake freeze applied by ``_ws_turn_support``) and the
+        resolved token-limit overrides (``ws_timeout`` feeds the idle
+        timeout).
     """
-    from dataclasses import replace as dataclass_replace
-
     from narrare._app.config import get_settings
     from narrare._app.database import get_async_session
-    from narrare._app.dependencies_services import get_model_routing_resolver
+    from narrare._app.dependencies_services import LazyModelResolution
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
     from narrare.settings.token_limits.repository import (
@@ -134,7 +140,7 @@ async def resolve_ws_session_config(
     _session_gen = get_async_session()
     session = await _session_gen.__anext__()
     try:
-        # 1. Ownership gate — BEFORE any project-keyed settings/routing
+        # 2. Ownership gate — BEFORE any project-keyed settings/routing
         #    read (foreign → transient settings row; unknown → FK oracle).
         await ensure_novel_owned(session, user_id, project_id)
         await verify_chapter_access(
@@ -144,7 +150,8 @@ async def resolve_ws_session_config(
             project_id,
             user_id,
         )
-        # 2. Token limits (project → user → config cascade).
+        # 3. Token limits (project → user → config cascade) — accepted
+        #    ADR-086 residual at bootstrap (ws_timeout feeds the handler).
         token_limits_service = TokenLimitsService(
             user_repo=UserTokenLimitsRepository(session),
             project_repo=ProjectTokenLimitsRepository(session),
@@ -154,18 +161,27 @@ async def resolve_ws_session_config(
             user_id=user_id,
             project_id=str(project_id),
         )
-        # 3. Model config per-user via routing resolver (RULE-18).
-        resolver = get_model_routing_resolver(session)
-        resolved = await resolver.resolve(
-            LLMIntent.WRITE,
-            UUID(user_id),
-            project_id,
-        )
-        config = dataclass_replace(
-            resolved.config,
-            temperature=0.7,
-            max_tokens=limits.output_limit,
-        )
     finally:
         await _session_gen.aclose()
-    return config, limits
+
+    # 4. Model routing per-user (RULE-18) — wired LAZILY (ADR-086 L39).
+    #    The handshake session is closed by first use (a WebSocket
+    #    connection has no request-scoped session), so the factory
+    #    sources its OWN short-lived session at resolve time — the
+    #    WsWritingContextAssembler session precedent.
+    user_uuid = UUID(user_id)
+
+    async def resolve_write_intent() -> ResolvedModel:
+        from narrare._app.database import get_async_session
+        from narrare._app.dependencies_services import get_model_routing_resolver
+
+        resolve_gen = get_async_session()
+        resolve_session = await resolve_gen.__anext__()
+        try:
+            resolver = get_model_routing_resolver(resolve_session)
+            return await resolver.resolve(LLMIntent.WRITE, user_uuid, project_id)
+        finally:
+            await resolve_gen.aclose()
+
+    model_resolution = LazyModelResolution(resolve_write_intent)
+    return model_resolution, limits

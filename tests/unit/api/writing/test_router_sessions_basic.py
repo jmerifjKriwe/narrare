@@ -64,7 +64,7 @@ async def test_success_path_calls_handler_handle(
     - Rate limit check passes
     - All app.state services are resolved
     - Token limits are resolved from DB
-    - Model routing resolves a ResolvedModelConfig
+    - Model routing is wired lazily (ADR-086 L39 — no resolve at handshake)
     - A handler is built and invoked with the correct arguments
     """
     # Create a realistic ResolvedModelConfig for the resolver to return

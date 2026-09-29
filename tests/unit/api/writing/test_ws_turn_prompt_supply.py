@@ -112,23 +112,38 @@ def _capturing_registry() -> tuple[Mock, dict[str, str]]:
 def _make_service(
     context_assembler: WritingContextAssembler | FakeAssembler | None = None,
 ) -> tuple[WritingTurnService, dict[str, str]]:
-    """Build a WritingTurnService with a REAL composer + capturing stream."""
+    """Build a WritingTurnService with a REAL composer + capturing stream.
+
+    ADR-086 L39: the service consumes the deferred runtime composition;
+    the fake chain pins a static runtime carrying the assembler under
+    test (render- and outcome-inert).
+    """
+    from narrare.writing._ws_turn_support import WritingTurnRuntime
+
     composer = PromptComposer(PromptRegistry())
     registry, captured = _capturing_registry()
+    config = ResolvedModelConfig(
+        provider_name="test",
+        model_id="test-model",
+        temperature=0.7,
+        max_tokens=2000,
+    )
+
+    async def static_runtime() -> WritingTurnRuntime:
+        return WritingTurnRuntime(
+            config=config,
+            # ADR-085 seam cast: FakeAssembler is duck-type-conformant
+            # (async assemble(...) -> WritingContext) but not a nominal
+            # subclass.
+            context_assembler=cast("WritingContextAssembler | None", context_assembler),
+        )
+
     service = WritingTurnService(
         composer=composer,
         invocation_pipeline=InvocationPipeline(),
         registry=registry,
-        config=ResolvedModelConfig(
-            provider_name="test",
-            model_id="test-model",
-            temperature=0.7,
-            max_tokens=2000,
-        ),
+        runtime_factory=static_runtime,
         run_limit_resolver=DefaultRunLimitResolver(),
-        # ADR-085 seam cast: FakeAssembler is duck-type-conformant
-        # (async assemble(...) -> WritingContext) but not a nominal subclass.
-        context_assembler=cast("WritingContextAssembler | None", context_assembler),
     )
     return service, captured
 
@@ -278,13 +293,20 @@ class TestProductionWiring:
 
     The core ``WritingContextAssembler`` is a pure data transformation —
     the wiring pin therefore asserts the API-layer data-fetching subclass
-    (``WsWritingContextAssembler``), not just ``is not None``.
+    (``WsWritingContextAssembler``), not just ``is not None``. ADR-086
+    L39: the assembler composes at first use, so the pins run
+    ``ensure_resolved()`` first.
     """
 
-    def test_deps_ws_wires_real_context_assembler(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """get_writing_turn_service constructs the fetching assembler."""
+    async def test_deps_ws_wires_real_context_assembler(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """get_writing_turn_service composes the fetching assembler at
+        first use."""
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.writing.deps_ws import get_writing_turn_service
         from narrare.writing.ws_context_assembler import WsWritingContextAssembler
+        from narrare_core.llm.model_routing import ResolvedModel
 
         monkeypatch.setattr(
             "narrare.writing.deps_ws.get_composer",
@@ -305,13 +327,15 @@ class TestProductionWiring:
             max_tokens=2000,
         )
 
-        service = get_writing_turn_service(config)
+        service = get_writing_turn_service(StaticModelResolution(ResolvedModel(config=config)))
+        runtime = await service.ensure_resolved()
 
-        assert isinstance(service._context_assembler, WsWritingContextAssembler)
+        assert isinstance(runtime.context_assembler, WsWritingContextAssembler)
 
-    def test_ws_factory_wires_real_context_assembler(self) -> None:
+    async def test_ws_factory_wires_real_context_assembler(self) -> None:
         """build_writing_session_handler hands the fetching assembler to
         the turn service shared by dispatcher and message router."""
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.writing._ws_cache import InMemorySessionCache
         from narrare.writing.ws_active_turn_registry import ActiveTurnRegistry
         from narrare.writing.ws_context_assembler import WsWritingContextAssembler
@@ -319,6 +343,7 @@ class TestProductionWiring:
         from narrare.writing.ws_session_control_service import (
             WritingSessionControlService,
         )
+        from narrare_core.llm.model_routing import ResolvedModel
         from narrare_core.writing.session_manager import SessionManager
         from narrare_core.writing.session_turn_state import SessionTurnStateStore
 
@@ -339,18 +364,23 @@ class TestProductionWiring:
             control_service=control_service,
             model_registry=MagicMock(spec=ModelRegistry),
             composer=MagicMock(spec=PromptComposer),
-            config=ResolvedModelConfig(
-                provider_name="test",
-                model_id="test-model",
-                temperature=0.7,
-                max_tokens=2000,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(
+                    config=ResolvedModelConfig(
+                        provider_name="test",
+                        model_id="test-model",
+                        temperature=0.7,
+                        max_tokens=2000,
+                    )
+                )
             ),
             invocation_pipeline=MagicMock(spec=InvocationPipeline),
             run_limit_resolver=DefaultRunLimitResolver(),
         )
 
         turn_service = handler._message_router._direction_dispatcher._turn_service
-        assert isinstance(turn_service._context_assembler, WsWritingContextAssembler)
+        runtime = await turn_service.ensure_resolved()
+        assert isinstance(runtime.context_assembler, WsWritingContextAssembler)
 
 
 @pytest.mark.parametrize("session_mode", ["interactive_session", "interview_assisted"])

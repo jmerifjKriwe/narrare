@@ -72,15 +72,24 @@ def make_service(
 ) -> tuple[WritingTurnService, RecordingComposer, Mock, InvocationPipeline]:
     """Create a WritingTurnService with recording fakes.
 
+    ADR-086 L39: the service consumes the deferred runtime composition;
+    the fake chain pins a static runtime (same config the eager ctor
+    seam passed — render- and outcome-inert).
+
     Returns:
         Tuple of (service, composer, registry_mock, pipeline).
     """
+    from narrare.writing._ws_turn_support import WritingTurnRuntime
+
     composer = RecordingComposer()
     pipeline = make_pipeline()
     registry = Mock()
     registry.stream = Mock(side_effect=fake_stream)
     config = make_config(token_profile)
     resolver = DefaultRunLimitResolver()
+
+    async def static_runtime() -> WritingTurnRuntime:
+        return WritingTurnRuntime(config=config, context_assembler=None)
 
     # Cast is safe: RecordingComposer implements the build() surface used
     # by WritingTurnService (established codebase pattern for composer
@@ -89,7 +98,7 @@ def make_service(
         composer=cast("PromptComposer", composer),
         invocation_pipeline=pipeline,
         registry=registry,
-        config=config,
+        runtime_factory=static_runtime,
         run_limit_resolver=resolver,
     )
     return service, composer, registry, pipeline

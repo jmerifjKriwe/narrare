@@ -118,7 +118,7 @@ async def interactive_session(
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
     try:
-        config, limits = await resolve_ws_session_config(
+        model_resolution, limits = await resolve_ws_session_config(
             user_id,
             chapter_id,
             project_id,
@@ -139,7 +139,7 @@ async def interactive_session(
         control_service=control_service,
         model_registry=model_registry,
         composer=composer,
-        config=config,
+        model_resolution=model_resolution,
         invocation_pipeline=get_invocation_pipeline(),
         run_limit_resolver=DefaultRunLimitResolver(),
         mode=mode,

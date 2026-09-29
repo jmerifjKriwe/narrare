@@ -12,6 +12,14 @@ same service (RULE-12/RULE-13).
 ADR-045 Decision 6: WebSocket writing sessions are writing invocations
 and must use the same runtime adoption contract as other writing modes.
 
+ADR-086 (L39): the model config resolves at FIRST USE — the constructor
+wires a ``runtime_factory`` (the deferred composition from
+``_ws_turn_support``) and :meth:`ensure_resolved` composes the runtime
+idempotently at the top of :meth:`stream_turn`; an unconfigured provider
+surfaces as a loud in-band error frame at turn time instead of an
+abnormal handshake close (RULE-11). Prompt/invocation-context assembly
+lives in ``_ws_turn_support`` (RULE-04 size limit the lazy seam crossed).
+
 See: ADR-045, CONSTRAINTS.md RULE-02/RULE-03/RULE-06/RULE-12/RULE-13.
 """
 
@@ -22,21 +30,25 @@ from uuid import uuid4
 
 import structlog
 
+from narrare.writing._ws_turn_support import (
+    build_invocation_context,
+    build_prompt_context,
+    resolve_prompt_mode,
+    resolve_turn_intent,
+)
 from narrare_core.writing._invocation_adapter import build_and_validate_prompt
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Awaitable, Callable
     from uuid import UUID
 
-    from narrare_core.ai_invocation.models import PromptInvocationContext
+    from narrare.writing._ws_turn_support import WritingTurnRuntime
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.llm.intents import LLMIntent
     from narrare_core.llm.result import StreamChunk
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts.composer import PromptComposer
-    from narrare_core.prompts.context import PromptContext
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.models import WritingContext
 
@@ -58,11 +70,11 @@ class WritingTurnService:
         invocation_pipeline: Optional InvocationPipeline for enrichment,
             validation, budget resolution, and evidence recording.
         registry: ModelRegistry for streaming LLM calls (RULE-01b).
-        config: Fully resolved model configuration.
+        runtime_factory: Deferred runtime composition (ADR-086 L39) —
+            resolves the model config, freezes the handshake overrides,
+            and builds the KB assembler at first use.
         run_limit_resolver: Resolves output budgets into pydantic-ai
             runtime limits (ADR-045 Decision 4).
-        context_assembler: Optional WritingContextAssembler for KB-enriched
-            supply; ``None`` or failure → KB-blind turn (RULE-11, ac55a094).
     """
 
     def __init__(
@@ -70,16 +82,27 @@ class WritingTurnService:
         composer: PromptComposer,
         invocation_pipeline: InvocationPipeline | None,
         registry: ModelRegistry,
-        config: ResolvedModelConfig,
+        runtime_factory: Callable[[], Awaitable[WritingTurnRuntime]],
         run_limit_resolver: DefaultRunLimitResolver,
-        context_assembler: WritingContextAssembler | None = None,
     ) -> None:
         self._composer = composer
         self._invocation_pipeline = invocation_pipeline
         self._registry = registry
-        self._config = config
+        self._runtime_factory = runtime_factory
         self._run_limit_resolver = run_limit_resolver
-        self._context_assembler = context_assembler
+        self._runtime: WritingTurnRuntime | None = None
+
+    async def ensure_resolved(self) -> WritingTurnRuntime:
+        """Compose and cache the turn runtime (idempotent, ADR-086 L39).
+
+        The first call runs the deferred composition (routing cascade +
+        config freeze + budgets + assembler); subsequent calls return the
+        cached runtime. Composition errors propagate uncached — the next
+        call retries (RULE-11 loud, never swallowed).
+        """
+        if self._runtime is None:
+            self._runtime = await self._runtime_factory()
+        return self._runtime
 
     async def stream_turn(
         self,
@@ -96,12 +119,14 @@ class WritingTurnService:
         """Stream one writing turn as :class:`StreamChunk` instances.
 
         Runs the full invocation contract:
-            1. Build :class:`PromptContext` from the user's direction.
-            2. Build :class:`PromptInvocationContext` with identifiers.
-            3. ``build_and_validate_prompt`` — prepare → merge → compose
+            1. Resolve the runtime at first use (ADR-086 L39 — the lazy
+               model resolution happens here, before any other work).
+            2. Build :class:`PromptContext` from the user's direction.
+            3. Build :class:`PromptInvocationContext` with identifiers.
+            4. ``build_and_validate_prompt`` — prepare → merge → compose
                → finalize (enrichment, budget, validation, evidence).
-            4. Resolve run limits with the same ``invocation_id``.
-            5. Stream via :meth:`ModelRegistry.stream` with enforced
+            5. Resolve run limits with the same ``invocation_id``.
+            6. Stream via :meth:`ModelRegistry.stream` with enforced
                limits.
 
         Args:
@@ -122,18 +147,20 @@ class WritingTurnService:
         Raises:
             WritingError: If pre-composition or final validation fails.
         """
-        intent = self._resolve_intent(session_mode)
-        prompt_mode = self._resolve_prompt_mode(session_mode)
+        runtime = await self.ensure_resolved()
+        intent = resolve_turn_intent(session_mode)
+        prompt_mode = resolve_prompt_mode(session_mode)
 
         # KB assembly graceful-None — see _assemble_writing_context (RULE-11).
         writing_context = await self._assemble_writing_context(
+            context_assembler=runtime.context_assembler,
             project_id=project_id,
             chapter_id=chapter_id,
             prompt_mode=prompt_mode,
         )
-        prompt_ctx = self._build_prompt_context(content, prompt_mode, writing_context)
+        prompt_ctx = build_prompt_context(content, prompt_mode, writing_context)
         invocation_id = uuid4()
-        invocation_ctx = self._build_invocation_context(
+        invocation_ctx = build_invocation_context(
             intent=intent,
             prompt_ctx=prompt_ctx,
             session_mode=prompt_mode,
@@ -154,8 +181,9 @@ class WritingTurnService:
             project_id=project_id,
         )
 
+        config: ResolvedModelConfig = runtime.config
         resolved_limits = self._run_limit_resolver.resolve(
-            config=self._config,
+            config=config,
             budget=None,
             invocation_id=invocation_id,
         )
@@ -172,7 +200,7 @@ class WritingTurnService:
             intent=intent,
             system_prompt=prompt.system,
             user_prompt=prompt.user,
-            config=self._config,
+            config=config,
             usage_limits=resolved_limits.usage_limits,
             api_key=api_key,
             base_url=base_url,
@@ -183,25 +211,10 @@ class WritingTurnService:
     # Private helpers
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _resolve_intent(session_mode: str) -> LLMIntent:
-        """Map session mode to LLM intent."""
-        from narrare_core.llm.intents import LLMIntent
-
-        if session_mode == "interview_assisted":
-            return LLMIntent.CHAT
-        return LLMIntent.WRITE
-
-    @staticmethod
-    def _resolve_prompt_mode(session_mode: str) -> str:
-        """Map session mode to prompt mode."""
-        if session_mode == "interview_assisted":
-            return "interview"
-        return "interactive_session"
-
     async def _assemble_writing_context(
         self,
         *,
+        context_assembler: WritingContextAssembler | None,
         project_id: UUID,
         chapter_id: UUID,
         prompt_mode: str,
@@ -211,10 +224,10 @@ class WritingTurnService:
         Mirrors the writing-graph helper (ac55a094): ``None`` assembler or
         assembly failure → KB-blind turn (kb_* render empty); never silent.
         """
-        if self._context_assembler is None:
+        if context_assembler is None:
             return None
         try:
-            return await self._context_assembler.assemble(
+            return await context_assembler.assemble(
                 chapter_id=chapter_id,
                 project_id=project_id,
                 mode=prompt_mode,
@@ -227,74 +240,3 @@ class WritingTurnService:
                 session_mode=prompt_mode,
             )
             return None
-
-    @staticmethod
-    def _build_prompt_context(
-        content: str,
-        prompt_mode: str,
-        writing_context: WritingContext | None,
-    ) -> PromptContext:
-        """Build the PromptContext from the user's direction + KB context.
-
-        The direction becomes ``author_instructions`` (RULE-02a). The
-        composition contract (build_and_validate_prompt) requires the caller
-        to carry assembled KB context into the PromptContext: supplies the
-        ``kb_context_extras`` SSOT spread, ``chapter_outline`` /
-        ``timeline_position`` / ``recent_chapters`` (empty when KB-blind), and
-        ``word_target_line`` for interactive_session only (slice-3: label-in-value).
-        """
-        from narrare_core.prompts.context import PromptContext
-        from narrare_core.writing._helpers import kb_context_extras, word_target_line
-        from narrare_core.writing.models import WritingContext
-
-        kb_source = writing_context if writing_context is not None else WritingContext()
-        extra: dict[str, str] = kb_context_extras(kb_source)
-        extra["chapter_outline"] = kb_source.chapter_outline
-        extra["timeline_position"] = kb_source.timeline_position
-        extra["recent_chapters"] = kb_source.recent_chapters
-        if prompt_mode == "interactive_session":
-            extra["word_target_line"] = word_target_line(
-                kb_source.word_target, label="Word target: "
-            )
-        return PromptContext(
-            language="en",
-            mode=prompt_mode,
-            author_instructions=content,
-            extra=extra,
-        )
-
-    @staticmethod
-    def _build_invocation_context(
-        *,
-        intent: LLMIntent,
-        prompt_ctx: PromptContext,
-        session_mode: str,
-        user_id: UUID,
-        project_id: UUID,
-        chapter_id: UUID,
-        session_id: UUID,
-        invocation_id: UUID,
-    ) -> PromptInvocationContext:
-        """Build the PromptInvocationContext with all identifiers.
-
-        ADR-045 Decision 6: user and project IDs are mandatory in the
-        invocation context. Chapter and session IDs are carried as
-        dynamic inputs so enrichers and evidence can correlate them.
-        """
-        from narrare_core.ai_invocation.models import PromptInvocationContext
-
-        return PromptInvocationContext(
-            feature_id=f"writing_{intent.value}",
-            intent=intent,
-            mode=session_mode,
-            invocation_id=invocation_id,
-            user_id=user_id,
-            project_id=project_id,
-            language=prompt_ctx.language,
-            streaming=True,
-            dynamic_inputs={
-                "chapter_id": str(chapter_id),
-                "session_id": str(session_id),
-            },
-            prompt_context=prompt_ctx,
-        )

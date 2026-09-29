@@ -20,10 +20,11 @@ from narrare._app.dependencies import (
 )
 
 if TYPE_CHECKING:
+    from narrare._app.dependencies_services import ModelResolution
+    from narrare.settings.token_limits.contracts import TokenLimitOverrides
     from narrare.writing.ws_active_turn_registry import ActiveTurnRegistry
     from narrare.writing.ws_session_control_service import WritingSessionControlService
     from narrare.writing.ws_turn_service import WritingTurnService
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.writing.session_manager import SessionManager
     from narrare_core.writing.session_turn_state import SessionTurnStateStore
 
@@ -35,23 +36,28 @@ class _StatefulApp(Protocol):
 
 
 def get_writing_turn_service(
-    config: ResolvedModelConfig,
+    model_resolution: ModelResolution,
+    *,
+    limits: TokenLimitOverrides | None = None,
 ) -> WritingTurnService:
     """Create a WritingTurnService for a WebSocket session.
 
     Wires the shared invocation pipeline, model registry, a fresh
     run-limit resolver for per-connection streaming turns, and the
-    data-fetching context assembler (FO-4 — KB-enriched turns; the
-    assembler acquires its own per-turn session, so no app state is
-    needed here).
+    deferred runtime composition (ADR-086 L39): the routing cascade and
+    the ADR-082 budgets resolve at first use (``ensure_resolved``), on
+    the shared ``build_turn_runtime_factory`` closure — the same
+    composition the session factory wires.
 
     Args:
-        config: The per-request resolved model configuration.
+        model_resolution: The lazily-wired model resolution.
+        limits: Optional handshake token limits (``None`` keeps the Core
+            default assembler budgets).
 
     Returns:
         Configured :class:`WritingTurnService`.
     """
-    from narrare.writing.ws_context_assembler import WsWritingContextAssembler
+    from narrare.writing._ws_turn_support import build_turn_runtime_factory
     from narrare.writing.ws_turn_service import WritingTurnService
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
@@ -59,9 +65,8 @@ def get_writing_turn_service(
         composer=get_composer(),
         invocation_pipeline=get_invocation_pipeline(),
         registry=get_model_registry(),
-        config=config,
+        runtime_factory=build_turn_runtime_factory(model_resolution, limits),
         run_limit_resolver=DefaultRunLimitResolver(),
-        context_assembler=WsWritingContextAssembler(),
     )
 
 

@@ -332,18 +332,27 @@ class TestWsAssemblerFeedsTurn:
         registry = Mock()
         registry.stream = Mock(side_effect=fake_stream)
 
+        config = ResolvedModelConfig(
+            provider_name="test",
+            model_id="test-model",
+            temperature=0.7,
+            max_tokens=2000,
+        )
+
+        async def static_runtime() -> WritingTurnRuntime:
+            return WritingTurnRuntime(
+                config=config,
+                context_assembler=WsWritingContextAssembler(),
+            )
+
+        from narrare.writing._ws_turn_support import WritingTurnRuntime
+
         service = WritingTurnService(
             composer=PromptComposer(PromptRegistry()),
             invocation_pipeline=InvocationPipeline(),
             registry=registry,
-            config=ResolvedModelConfig(
-                provider_name="test",
-                model_id="test-model",
-                temperature=0.7,
-                max_tokens=2000,
-            ),
+            runtime_factory=static_runtime,
             run_limit_resolver=DefaultRunLimitResolver(),
-            context_assembler=WsWritingContextAssembler(),
         )
         chunks = [
             chunk
@@ -360,4 +369,5 @@ class TestWsAssemblerFeedsTurn:
         assert any(c.text for c in chunks)
         # The turn is no longer KB-blind: fetched KB data reaches the prompt
         assert captured["system"] != ""
-        assert isinstance(service._context_assembler, WsWritingContextAssembler)
+        runtime = await service.ensure_resolved()
+        assert isinstance(runtime.context_assembler, WsWritingContextAssembler)

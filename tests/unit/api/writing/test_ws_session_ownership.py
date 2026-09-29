@@ -230,8 +230,10 @@ class TestOwnerStillConnects:
         run.handler.handle.assert_awaited_once_with(
             run.websocket, chapter, str(TICKET_USER), project, session_id=None
         )
-        # Post-gate resolution did run (and only once).
-        run.resolver.resolve.assert_awaited_once()
+        # Token limits stay at bootstrap (ADR-086 accepted residual) and
+        # the model routing is WIRED, not run (L39: first-use deferral).
+        run.resolver.resolve.assert_not_awaited()
+        assert run.build.call_args.kwargs["model_resolution"] is not None
         run.token_limits_cls.return_value.get_resolved_limits.assert_awaited_once()
         run.db_gen.aclose.assert_awaited_once()
         run.websocket.send_json.assert_not_called()
