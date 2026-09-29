@@ -67,8 +67,8 @@ the graph does not have the answer. `sed -n` is allowed to read specific lines.
 ### Git & escalation
 
 - Git/gh writes (add, commit, push, tag, rebase, `gh *`) **only via NarrarePlatformSpecialist**.
-- Command blocked? Coordinator routes to Platform (NOT to `general`).
-- `general` is the last-resort escape hatch on `ask` (user approval), not a default path.
+- Command blocked? Coordinator routes to Platform (NOT to `General`).
+- `General` is the last-resort escape hatch on `ask` (user approval), not a default path.
 
 ## Subagents (via `task`)
 

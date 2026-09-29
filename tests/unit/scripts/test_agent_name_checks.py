@@ -53,10 +53,10 @@ class TestExtractFrontmatter:
     """YAML frontmatter block extraction."""
 
     def test_standard_frontmatter(self, checker) -> None:
-        content = "---\nname: Foo\ndescription: bar\n---\n# Body\n"
+        content = "---\nmode: subagent\ndescription: bar\n---\n# Body\n"
         fm = checker._extract_frontmatter(content)
         assert fm is not None
-        assert "name: Foo" in fm
+        assert "mode: subagent" in fm
 
     def test_no_frontmatter(self, checker) -> None:
         content = "# Just a heading\n\nNo frontmatter.\n"
@@ -73,7 +73,7 @@ class TestExtractFrontmatter:
 
 
 class TestGetRealNames:
-    """Subagent name extraction from frontmatter definitions."""
+    """Subagent name extraction from agent definition file names."""
 
     def test_real_names_from_repo(self, checker) -> None:
         """The real repo should yield all six specialists."""
@@ -85,24 +85,45 @@ class TestGetRealNames:
         assert "NarrarePlatformSpecialist" in names
         assert "NarrareDocsSpecialist" in names
 
+    def test_coordinator_primary_excluded(self, checker) -> None:
+        """The coordinator is a primary agent, not a dispatchable subagent."""
+        names = checker.get_real_subagent_names()
+        assert "NarrareDevCoordinator" not in names
+
     def test_names_from_temp_dir(self, checker, tmp_path: Path) -> None:
+        """Names come from the file name (path minus .md), not frontmatter."""
         sub = tmp_path / "subs"
         sub.mkdir()
-        (sub / "arch.md").write_text(
-            "---\nname: NarrareArchSpecialist\n---\nBody\n", encoding="utf-8"
+        (sub / "NarrareArchSpecialist.md").write_text(
+            "---\nmode: subagent\ndescription: Arch\n---\nBody\n", encoding="utf-8"
         )
-        (sub / "core.md").write_text(
-            "---\nname: NarrareCoreSpecialist\n---\nBody\n", encoding="utf-8"
+        (sub / "NarrareCoreSpecialist.md").write_text(
+            "---\nmode: subagent\ndescription: Core\n---\nBody\n", encoding="utf-8"
         )
         names = checker.get_real_subagent_names(sub)
-        assert "NarrareArchSpecialist" in names
-        assert "NarrareCoreSpecialist" in names
+        assert names == {"NarrareArchSpecialist", "NarrareCoreSpecialist"}
 
-    def test_template_placeholder_skipped(self, checker, tmp_path: Path) -> None:
-        """``name: [Feature Name]`` is a placeholder, not a real name."""
+    def test_nested_dir_yields_relative_path_id(self, checker, tmp_path: Path) -> None:
+        """OpenCode keeps the relative sub-path in the agent id."""
+        sub = tmp_path / "subs"
+        (sub / "narrare-dev").mkdir(parents=True)
+        (sub / "narrare-dev" / "NarrareDocsSpecialist.md").write_text(
+            "---\nmode: subagent\n---\nBody\n", encoding="utf-8"
+        )
+        names = checker.get_real_subagent_names(sub)
+        assert names == {"narrare-dev/NarrareDocsSpecialist"}
+
+    def test_primary_mode_excluded_from_temp_dir(self, checker, tmp_path: Path) -> None:
         sub = tmp_path / "subs"
         sub.mkdir()
-        (sub / "tmpl.md").write_text("---\nname: [Feature Name]\n---\nBody\n", encoding="utf-8")
+        (sub / "Coordinator.md").write_text("---\nmode: primary\n---\nBody\n", encoding="utf-8")
+        assert checker.get_real_subagent_names(sub) == frozenset()
+
+    def test_template_placeholder_skipped(self, checker, tmp_path: Path) -> None:
+        """A ``[Feature Name].md`` placeholder file is not a real agent id."""
+        sub = tmp_path / "subs"
+        sub.mkdir()
+        (sub / "[Feature Name].md").write_text("---\nmode: subagent\n---\nBody\n", encoding="utf-8")
         names = checker.get_real_subagent_names(sub)
         assert len(names) == 0
 

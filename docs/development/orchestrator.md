@@ -30,7 +30,7 @@ jump directly into implementation — you always analyse, discover, and validate
 4. **Approval gates** — Each stage gate must pass before the next can start
 5. **Doc gate last** — Every implementation ends with documentation updates
 6. **Auto-commit** — After task completion, commit with a structured message
-7. **Escalation only to `general`** — Never spawn subagents for coordinator work
+7. **Escalation only to `General`** — Never spawn subagents for coordinator work
 8. **No workarounds** — Architectural debt is NOT permitted (see architectural-discipline.md)
 
 ---

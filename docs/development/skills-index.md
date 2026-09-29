@@ -37,7 +37,7 @@ Beide werden von opencode einheitlich via `skill`-Tool on-demand geladen. Dritte
 | `web-design-guidelines` | Frontend | UI/A11y/UX-Review gegen Web Interface Guidelines. |
 
 > **Frontend-Trigger-Abgrenzung**: siehe Routing-Tabelle in
-> `.opencode/agents/subagents/narrare-dev/frontend.md` (genau EIN Skill je Anlass).
+> `.opencode/agents/NarrareFrontendSpecialist.md` (genau EIN Skill je Anlass).
 
 ---
 

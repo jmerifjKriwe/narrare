@@ -2,13 +2,19 @@
 
 Prevents the recurring structural pattern where documentation references
 subagent names that do not match the real definitions in
-``.opencode/agents/subagents/narrare-dev/*.md`` (review-04 AUFG-04-15
+``.opencode/agents/*.md`` (review-04 AUFG-04-15
 root cause: invented ``subagent_type`` values cause silent routing
 failures when a coordinator follows stale docs).
 
 Approach:
-    1. Parse the real subagent names from the frontmatter of every
-       ``.opencode/agents/subagents/narrare-dev/*.md`` file.
+    1. Derive the real subagent names from the **file names** of every
+       ``.opencode/agents/*.md`` file. OpenCode derives the agent id from
+       the file path, *not* from a frontmatter field — there is no
+       ``name:`` key in the v2 agent schema. A file named
+       ``NarrareBackendSpecialist.md`` registers as exactly
+       ``NarrareBackendSpecialist``. Files with ``mode: primary`` (the
+       coordinator) are excluded because they are not ``subagent_type``
+       values.
     2. Scan ``AGENTS.md`` and ``docs/**/*.md`` for:
        a. ``subagent_type="..."`` — any value not in the real set is flagged.
        b. Backtick-wrapped `` `narrare-<word>` `` identifiers — kebab-case
@@ -38,42 +44,53 @@ from doc_drift import safe_relative
 from doc_drift.adr_checks import DocDriftFinding
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_SUBAGENTS_DIR = REPO_ROOT / ".opencode" / "agents" / "subagents" / "narrare-dev"
+_AGENTS_DIR = REPO_ROOT / ".opencode" / "agents"
 _DOCS_DIR = REPO_ROOT / "docs"
 _AGENTS_MD = REPO_ROOT / "AGENTS.md"
 
+# Human-readable location of the agent definitions, for finding messages.
+_AGENTS_DIR_DISPLAY = ".opencode/agents/"
+
 # ── Real subagent name extraction ───────────────────────────────
 
-# Frontmatter ``name:`` field. Matches the first YAML ``name:`` key in the
-# frontmatter block (between ``---`` delimiters).
-_FRONTMATTER_NAME_RE = re.compile(r"^name:\s*(\S+)", re.MULTILINE)
+# Frontmatter ``mode:`` field, used to exclude primary agents (the
+# coordinator) — only ``mode: subagent`` agents are valid ``subagent_type``
+# values.
+_FRONTMATTER_MODE_RE = re.compile(r"^mode:\s*(\S+)", re.MULTILINE)
 
 
-def get_real_subagent_names(subagents_dir: Path | None = None) -> frozenset[str]:
-    """Extract real subagent names from frontmatter definitions.
+def get_real_subagent_names(agents_dir: Path | None = None) -> frozenset[str]:
+    """Extract real subagent names from agent definition file names.
 
-    Reads the ``name:`` field from each ``.md`` file under
-    *subagents_dir* (default: ``.opencode/agents/subagents/narrare-dev/``).
+    OpenCode derives the agent id from the file path (relative to the agent
+    directory, minus the ``.md`` suffix) — it does **not** read a frontmatter
+    ``name:`` field, which no longer exists in the v2 agent schema. This
+    function mirrors that resolution so the check validates names the
+    runtime can actually resolve.
+
+    Files declaring ``mode: primary`` are skipped: they are primary agents,
+    not dispatchable ``subagent_type`` values.
+
+    *agents_dir* defaults to ``.opencode/agents/``.
     """
-    effective_dir = subagents_dir or _SUBAGENTS_DIR
+    effective_dir = agents_dir or _AGENTS_DIR
     names: set[str] = set()
     if not effective_dir.is_dir():
         return frozenset()
-    for md_file in sorted(effective_dir.glob("*.md")):
+    for md_file in sorted(effective_dir.rglob("*.md")):
+        name = md_file.relative_to(effective_dir).with_suffix("").as_posix()
+        # Skip example/template placeholders like "[Feature Name]".
+        if not name or name.startswith("["):
+            continue
         try:
             content = md_file.read_text(encoding="utf-8")
         except OSError:
             continue
-        # Only look in the frontmatter (between the first two ``---`` lines).
         frontmatter = _extract_frontmatter(content)
-        if frontmatter is None:
+        mode_match = _FRONTMATTER_MODE_RE.search(frontmatter) if frontmatter else None
+        if mode_match and mode_match.group(1).strip() == "primary":
             continue
-        m = _FRONTMATTER_NAME_RE.search(frontmatter)
-        if m:
-            name = m.group(1).strip()
-            # Skip example/template placeholders like "[Feature Name]".
-            if name and not name.startswith("["):
-                names.add(name)
+        names.add(name)
     return frozenset(names)
 
 
@@ -234,8 +251,7 @@ def _scan_file(
                             f"definition. Real names: "
                             f"{', '.join(sorted(real_names))}. "
                             f"Fix the reference to match a real subagent "
-                            f"definition in "
-                            f".opencode/agents/subagents/narrare-dev/."
+                            f"definition in {_AGENTS_DIR_DISPLAY}."
                         ),
                     )
                 )
@@ -256,7 +272,7 @@ def _scan_file(
                             f"`{name}`, which is a kebab-case identifier. "
                             f"Real subagent names are PascalCase (e.g. "
                             f"NarrareArchitectureSpecialist) defined in "
-                            f".opencode/agents/subagents/narrare-dev/. "
+                            f"{_AGENTS_DIR_DISPLAY}. "
                             f"Replace with the correct subagent_type value."
                         ),
                     )
@@ -275,8 +291,7 @@ def check_agent_name_drift(
 
     Scans ``AGENTS.md`` and all ``*.md`` files under *docs_dir*
     (default: ``docs/``) for references to subagent names that do not
-    match the real definitions in
-    ``.opencode/agents/subagents/narrare-dev/*.md``.
+    match the real definitions in ``.opencode/agents/*.md``.
 
     Returns an empty list when every scanned file is clean. Critical
     findings fail CI via ``check_doc_drift.py``.
@@ -288,10 +303,10 @@ def check_agent_name_drift(
         return [
             DocDriftFinding(
                 severity="warning",
-                file=str(_SUBAGENTS_DIR),
+                file=str(_AGENTS_DIR),
                 message=(
                     "[AGENT-NAME-DRIFT] Could not extract real subagent "
-                    "names from .opencode/agents/subagents/narrare-dev/ "
+                    f"names from {_AGENTS_DIR_DISPLAY} "
                     "— skipping check."
                 ),
             )
