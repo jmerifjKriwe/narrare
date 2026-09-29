@@ -220,13 +220,15 @@ STUB_ALLOWLIST: tuple[tuple[str, str, str], ...] = (
     ),
     # ── writing/* — RULE-11 confirmed-optional ──
     (
-        "apps/api/narrare/writing/story_suggest_service.py",
+        "apps/api/narrare/writing/_story_suggest_support.py",
         "chapter_outline",
         "RULE-11: the chapter outline is wired from the OutlineRepository "
         "when a chapter_id is set (§7 closed); empty when no chapter_id is "
         "targeted — story-suggest is a project-level tool and a chapter "
         "need not be selected (confirmed-optional var, declared explicitly "
-        "so template substitution always succeeds).",
+        "so template substitution always succeeds). Entry relocated from "
+        "story_suggest_service.py by the ADR-086 L34 RULE-04 split — "
+        "path-only change, rationale unchanged.",
     ),
 )
 

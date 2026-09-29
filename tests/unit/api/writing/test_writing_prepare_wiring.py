@@ -255,10 +255,15 @@ class TestStorySuggestPrepareWiring:
         config = _user_config()
         registry = _RecordingPrepareRegistry()
         novel_repo = AsyncMock(get_by_id=AsyncMock(return_value=_novel()))
+        from narrare._app.dependencies_services import StaticModelResolution
+        from narrare_core.llm.model_routing import ResolvedModel
+
         service = StorySuggestService(
             novel_repo=cast("NovelRepository", novel_repo),
             model_registry=cast("ModelRegistry", registry),
-            model_config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=None, base_url=None, source="unit-test")
+            ),
             composer=cast("PromptComposer", _FakeComposer()),
         )
         agent = AsyncMock(run=AsyncMock(return_value=_story_suggest_output()))

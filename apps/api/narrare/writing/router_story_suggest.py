@@ -49,9 +49,11 @@ async def story_suggest(
     Uses ``LLMIntent.SUGGEST`` with ``context_mode="story_suggest"`` for
     model routing and prompt resolution.
 
-    The factory pre-validates novel existence before the SSE stream
-    starts, so :class:`NotFoundError` fires during dependency resolution
-    (before headers are sent).
+    The pre-stream ``validate_suggest`` seam (ADR-086 L34) runs the
+    uid-scoped novel-ownership gate (404) and the graceful first-use
+    model resolution BEFORE the SSE stream starts, so the 404 fires with
+    proper HTTP semantics instead of the RuntimeError that occurs when
+    validation errors fire after headers.
 
     **SSE Event Stream:**
 
@@ -64,6 +66,13 @@ async def story_suggest(
         user_id=user_id,
         novel_id=novel_id,
     )
+
+    # ADR-086 L34: pre-stream seam — the uid-scoped novel gate (404) and
+    # the graceful first-use resolve run BEFORE the StreamingResponse is
+    # constructed (pure delegation, RULE-06). Graceful (AI-optional): a
+    # missing AI provider never raises here; the preserved no_model_config
+    # outcome stays in-band exactly as before.
+    await service.validate_suggest(novel_id, uuid.UUID(user_id))
 
     async def event_stream() -> AsyncIterator[str]:
         async for event in service.suggest(novel_id, uuid.UUID(user_id), request):

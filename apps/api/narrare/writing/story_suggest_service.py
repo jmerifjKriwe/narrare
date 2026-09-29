@@ -5,17 +5,25 @@ moments, dialogue options, world details, stylistic alternatives) to
 help writers who are stuck.  Each suggestion explains how it connects
 to established plot threads.
 
+Model routing is lazy (ADR-086 L34, Pattern M-graceful): the per-user
+SUGGEST cascade resolves on first use — ``ensure_resolved`` — never at
+construction. The eager factory's wiring-time ``except
+ConfigurationError`` swallow is entry-point policy (``no_ai_provider_
+configured`` log + the preserved ``no_model_config`` degraded outcome);
+the eager wiring-time uid-scoped novel guard lives in the first-use
+paths, immediately BEFORE the resolve (gate-before-resolution ordering,
+planning guard ruling). The router calls the ``validate_suggest``
+pre-stream seam so the novel gate's 404 stays a pre-header status.
+
 Prompt resolution is Mode 1 (composer-driven) per ADR-054 D1/D7/D8: the
 service resolves its system prompt via
 ``compose_invocation(composer=..., prompt_context=PromptContext(mode="story_suggest"),
 intent=LLMIntent.SUGGEST)``
 and passes the composed system prompt to the ``StorySuggestAgent``
 constructor (pydantic-ai binds ``system_prompt`` at construction, not
-at run-time).
-
-The previous inline f-string feature prompt pattern is prohibited
-(RULE-02 / RULE-02a).  Invocation-composition errors propagate
-(RULE-11) instead of being silently swallowed.
+at run-time). The previous inline f-string feature prompt pattern is
+prohibited (RULE-02 / RULE-02a). Invocation-composition errors
+propagate (RULE-11) instead of being silently swallowed.
 
 Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b).
 
@@ -28,7 +36,10 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.writing._outline_render import render_chapter_outline
+from narrare.writing._story_suggest_support import (
+    compose_story_suggest_prompt,
+    run_story_suggest_agent,
+)
 from narrare.writing.schemas_story_suggest import (
     StorySuggestionResponse,
     StorySuggestStreamEvent,
@@ -40,6 +51,8 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+    from narrare._app.dependencies_services import ModelResolution
+    from narrare.novels.models import Novel
     from narrare.novels.repository import NovelRepository
     from narrare.planning.contracts import OutlineRepositoryProtocol
     from narrare.writing.schemas_story_suggest import StorySuggestRequest
@@ -69,7 +82,12 @@ class StorySuggestService:
         novel_repo: For novel existence + metadata (genre, language,
             story structure).
         model_registry: Shared LLM model registry.
-        model_config: Resolved model config (provider + model ID).
+        model_resolution: Lazy per-user model resolution (ADR-086 L34) —
+            the SUGGEST routing cascade resolves at first use, never at
+            construction. A ``ConfigurationError`` (no AI provider) is
+            graceful here: the entry-point policy logs
+            ``no_ai_provider_configured`` and the preserved
+            ``no_model_config`` outcome fires (AI-optional feature).
         composer: PromptComposer for resolving the governed
             story-suggest system prompt via the cascade (RULE-02b /
             ADR-054 D1).  Required for ``suggest``.
@@ -87,7 +105,7 @@ class StorySuggestService:
         self,
         novel_repo: NovelRepository,
         model_registry: ModelRegistry,
-        model_config: ResolvedModelConfig | None = None,
+        model_resolution: ModelResolution,
         composer: PromptComposer | None = None,
         outline_repo: OutlineRepositoryProtocol | None = None,
         *,
@@ -96,11 +114,67 @@ class StorySuggestService:
     ) -> None:
         self._novel_repo = novel_repo
         self._registry = model_registry
-        self._config = model_config
+        self._model_resolution = model_resolution
+        self._config: ResolvedModelConfig | None = None
+        self._resolve_attempted = False
         self._composer = composer
         self._outline_repo = outline_repo
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+
+    async def ensure_resolved(self) -> None:
+        """Resolve the per-user SUGGEST routing cascade once (ADR-086 L34).
+
+        First call awaits the injected ``ModelResolution`` and caches the
+        resolved config; repeat calls are idempotent — the cascade runs
+        at most once per instance, success or failure (eager-world
+        timing also resolved exactly once per request).
+        ``ConfigurationError`` propagates UNCHANGED: the graceful
+        swallow is entry-point policy (see :meth:`validate_suggest` and
+        :meth:`suggest`), so this method stays honest about what
+        happened (RULE-11).
+        """
+        if self._resolve_attempted:
+            return
+        self._resolve_attempted = True
+        resolved = await self._model_resolution.resolve()
+        self._config = resolved.config
+
+    async def _get_novel_or_raise(self, novel_id: UUID, user_id: UUID) -> Novel:
+        """Load the novel uid-scoped or raise the ownership ``NotFoundError``.
+
+        The eager factory's wiring-time uid-scoped novel guard, relocated
+        into the first-use paths (ADR-086 L34, planning guard ruling):
+        foreign ≡ unknown (anti-enumeration) → 404, BEFORE the routing
+        cascade can auto-create ``project_settings`` for a foreign novel.
+        """
+        novel = await self._novel_repo.get_by_id(novel_id, user_id)
+        if novel is None:
+            raise NotFoundError("Novel", identifier=str(novel_id))
+        return novel
+
+    async def validate_suggest(self, novel_id: UUID, user_id: UUID) -> None:
+        """Pre-stream seam: gate the novel, then resolve gracefully.
+
+        Called by the router BEFORE the ``StreamingResponse`` is
+        constructed so the uid-scoped novel gate (``NotFoundError`` →
+        404) stays a pre-header status and the first-use cascade runs
+        post-validation (ADR-086 L34). Graceful (AI-optional feature):
+        a missing AI provider never raises here — it logs
+        ``no_ai_provider_configured`` and lets the preserved
+        ``no_model_config`` degraded outcome fire in-band in
+        :meth:`suggest`, exactly as the eager factory's wiring-time
+        swallow did.
+
+        Raises:
+            NotFoundError: If the novel is unknown or owned by another
+                user (foreign ≡ unknown, anti-enumeration).
+        """
+        await self._get_novel_or_raise(novel_id, user_id)
+        try:
+            await self.ensure_resolved()
+        except ConfigurationError:
+            logger.info("no_ai_provider_configured", novel_id=str(novel_id))
 
     async def suggest(
         self,
@@ -125,15 +199,32 @@ class StorySuggestService:
             event has ``is_final=True``.
 
         Raises:
-            NotFoundError: If the novel does not exist.
-            ConfigurationError: If no model config or PromptComposer
-                is configured.
+            NotFoundError: If the novel does not exist, or — the
+                preserved degraded outcome — if no AI provider is
+                configured (``no_model_config``; AI-optional feature,
+                ADR-086 L34).
+            ConfigurationError: If the PromptComposer is missing or
+                prompt composition yields no system prompt (RULE-11).
         """
-        novel = await self._novel_repo.get_by_id(novel_id, user_id)
-        if novel is None:
-            raise NotFoundError("Novel", identifier=str(novel_id))
+        novel = await self._get_novel_or_raise(novel_id, user_id)
+
+        # ADR-086 L34: first-use lazy resolve — the uid-scoped novel guard
+        # above stays ahead of the cascade (eager-world precedence; the
+        # ADR-086 planning guard ruling). Degradation is service policy
+        # (Pattern M-graceful): a missing AI provider is logged (the eager
+        # factory's event, byte-identical) and leaves the config unset, so
+        # the ``no_model_config`` outcome below fires exactly as it did
+        # when the eager factory swallowed this error at wiring time —
+        # timing only. The resolve is attempted at most once per instance.
+        try:
+            await self.ensure_resolved()
+        except ConfigurationError:
+            logger.info("no_ai_provider_configured", novel_id=str(novel_id))
 
         if self._config is None:
+            # Sanctioned degraded state (AI-optional feature): the graceful
+            # resolve found no provider configured (RULE-11 — loud about
+            # it via the log, deterministic via this outcome).
             raise NotFoundError("Model config", identifier="no_model_config")
 
         if self._composer is None:
@@ -148,104 +239,27 @@ class StorySuggestService:
         language = novel.writing_language or "en"
 
         # Resolve the governed story-suggest system prompt via
-        # PromptComposer (RULE-02 / ADR-054 D1).  The template
-        # ``_bundled/writing/{locale}/story_suggest/system.md`` carries
-        # the task framing and project metadata variables.
-        from uuid import uuid4
-
-        from narrare._app.invocation_context import build_invocation_context
-        from narrare_core.agents.story_suggest_agent import StorySuggestAgent
-        from narrare_core.agents.story_suggest_types import StorySuggestDeps
-        from narrare_core.ai_invocation import compose_invocation
-        from narrare_core.llm.intents import LLMIntent
-        from narrare_core.prompts.context import PromptContext
-
-        ctx = PromptContext(
-            language=language,
-            writing_language=language,
-            project_title=novel.title,
-            genre=novel.genre or "",
-            story_structure=novel.story_structure or "",
-            mode="story_suggest",
-            author_instructions=request.author_instructions or "",
-            extra={
-                "chapter_id": str(request.chapter_id) if request.chapter_id else "",
-                # Declared explicitly so template substitution always
-                # succeeds; populated below when a chapter is targeted.
-                # Empty when no chapter_id is set (legitimate RULE-11 —
-                # story-suggest is a project-level tool and a chapter need
-                # not be selected; allowlisted as a confirmed-optional var).
-                "chapter_outline": "",
-            },
-        )
-
-        # Wire the chapter outline (stage + beats + notes) when a chapter is
-        # targeted (§7 closed). Skipped when there is no chapter_id or no
-        # outline repo — the slot stays empty (RULE-11, allowlisted).
-        if request.chapter_id is not None and self._outline_repo is not None:
-            outline = await self._outline_repo.get_by_chapter_id(request.chapter_id)
-            if outline is not None:
-                ctx.extra["chapter_outline"] = render_chapter_outline(outline)
-
-        invocation_context = build_invocation_context(
-            feature_id="writing_story_suggest",
-            intent=LLMIntent.SUGGEST,
-            project_id=novel_id,
-            user_id=user_id,
-            language=language,
-        )
-        invocation = await compose_invocation(
-            invocation_pipeline=self._invocation_pipeline,
-            invocation_context=invocation_context,
+        # PromptComposer (RULE-02 / ADR-054 D1) and run the agent with
+        # the prepared triple — assembly split to
+        # ``_story_suggest_support.py`` (RULE-04).
+        composed_prompt = await compose_story_suggest_prompt(
             composer=self._composer,
-            prompt_context=ctx,
-            intent=LLMIntent.SUGGEST,
+            outline_repo=self._outline_repo,
+            invocation_pipeline=self._invocation_pipeline,
+            novel=novel,
+            novel_id=novel_id,
+            user_id=user_id,
+            request=request,
+            language=language,
         )
-        composed_prompt = invocation.composed_prompt
-        # Mode 1 guarantees composed_prompt is set; the guard documents
-        # the invariant and satisfies the type-checker (RULE-11: no
-        # silent None).
-        if composed_prompt is None:  # pragma: no cover - Mode 1 invariant
-            raise ConfigurationError(
-                "Prompt composition produced no system prompt for story suggestions.",
-                code="COMPOSITION_EMPTY",
-            )
-
-        # Task 6c single assembly point: coherent (model, model_settings,
-        # usage_limits) triple. No credential overrides exist on this
-        # service (defaults to None).
-        resolved = self._run_limit_resolver.resolve(
-            config=self._config, budget=None, invocation_id=uuid4()
-        )
-        prepared = await self._registry.prepare(
-            self._config, intent=LLMIntent.SUGGEST, usage_limits=resolved.usage_limits
-        )
-
-        # Build agent dependencies — minimal runtime data per
-        # StorySuggestDeps (project-level fields only).
-        deps = StorySuggestDeps(
-            project_title=novel.title,
-            genre=novel.genre or "",
-            writing_language=language,
-        )
-
-        # pydantic-ai binds ``system_prompt`` at agent construction, so
-        # the composed system prompt is supplied to the constructor
-        # (not to ``run()``).  The project data additionally flows as
-        # the run prompt (runtime data, RULE-02a category 3) when the
-        # template has no "## First Message".
-        agent = StorySuggestAgent(model=prepared.model, system_prompt=composed_prompt.system)
-        result = await agent.run(
-            prompt=composed_prompt.user
-            or (
-                f"Project: {novel.title}\n"
-                f"Genre: {novel.genre or ''}\n"
-                f"Story structure: {novel.story_structure or ''}\n"
-                f"Author instructions: {request.author_instructions or ''}"
-            ),
-            deps=deps,
-            model_settings=prepared.model_settings,
-            usage_limits=prepared.usage_limits,
+        result = await run_story_suggest_agent(
+            registry=self._registry,
+            config=self._config,
+            run_limit_resolver=self._run_limit_resolver,
+            composed_prompt=composed_prompt,
+            novel=novel,
+            request=request,
+            language=language,
         )
 
         # Map core output to API response schemas.

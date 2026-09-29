@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (5):**
+**Open (4):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -536,10 +536,22 @@ at construction (2026-09-09; factory function names verified):
       provider stays a loud pre-header 400 (SSE); the composed runtime
       split to ``_rewrite_support.py`` for the RULE-04 size limit the
       lazy seam crossed)*
-34. [ ] `writing/deps_story_suggest.py` — `get_story_suggest_service`
-       (graceful-degradation variant: swallows `ConfigurationError` —
-       AI-optional feature; migration must preserve that degradation
-       behavior, moved past validation)
+34. [x] `writing/deps_story_suggest.py` — `get_story_suggest_service`
+       *(G6/L34 — landed 2026-09-29: lazy wiring + graceful first-use
+       resolve (Pattern M-graceful) — the eager factory's wiring-time
+       uid-scoped novel guard relocated into the service's first-use
+       paths per the planning guard ruling (gate-before-resolution
+       preserved): the router's NEW pre-stream ``validate_suggest`` seam
+       runs guard + graceful resolve BEFORE the ``StreamingResponse`` so
+       the 404 stays a pre-header status, and ``suggest`` re-runs both
+       idempotently for direct callers; the factory's ``except
+       ConfigurationError`` swallow became entry-point policy:
+       ``no_ai_provider_configured`` log + the preserved
+       ``no_model_config`` degraded outcome (in-band, as before — the
+       service's no-credential ``prepare`` wiring is untouched); prompt
+       + prepare/run assembly split to ``_story_suggest_support.py`` for
+       the RULE-04 size limit the lazy seam crossed; SSE endpoint —
+       graceful path never 400s, so no pre-header 400 applies)*
 35. [x] `writing/deps_style_variants.py` — `get_style_variant_service` (+ eager `get_resolved_limits`)
        *(F1/L35 — landed 2026-09-16: lazy wiring + deferred M-budget
        composition at the end of ``validate_variant`` — the router's

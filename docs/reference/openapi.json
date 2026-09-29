@@ -11656,7 +11656,7 @@
           "writing"
         ],
         "summary": "Story Suggest",
-        "description": "SSE stream for story direction suggestions (Writer's Unblock).\n\nAccepts a novel ID and optional author instructions, then runs the\n:class:`StorySuggestAgent` to produce 3-5 distinct story suggestions.\nUses ``LLMIntent.SUGGEST`` with ``context_mode=\"story_suggest\"`` for\nmodel routing and prompt resolution.\n\nThe factory pre-validates novel existence before the SSE stream\nstarts, so :class:`NotFoundError` fires during dependency resolution\n(before headers are sent).\n\n**SSE Event Stream:**\n\n1. ``\"suggestions\"`` event with the full suggestion list.\n2. ``\"done\"`` event (``is_final=True``).\n3. ``data: [DONE]`` termination signal.",
+        "description": "SSE stream for story direction suggestions (Writer's Unblock).\n\nAccepts a novel ID and optional author instructions, then runs the\n:class:`StorySuggestAgent` to produce 3-5 distinct story suggestions.\nUses ``LLMIntent.SUGGEST`` with ``context_mode=\"story_suggest\"`` for\nmodel routing and prompt resolution.\n\nThe pre-stream ``validate_suggest`` seam (ADR-086 L34) runs the\nuid-scoped novel-ownership gate (404) and the graceful first-use\nmodel resolution BEFORE the SSE stream starts, so the 404 fires with\nproper HTTP semantics instead of the RuntimeError that occurs when\nvalidation errors fire after headers.\n\n**SSE Event Stream:**\n\n1. ``\"suggestions\"`` event with the full suggestion list.\n2. ``\"done\"`` event (``is_final=True``).\n3. ``data: [DONE]`` termination signal.",
         "operationId": "story_suggest_api_v1_writing_story_suggest__novel_id__post",
         "security": [
           {

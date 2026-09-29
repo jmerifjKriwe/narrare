@@ -12,6 +12,7 @@ import uuid
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
+from narrare._app.dependencies_services import StaticModelResolution
 from narrare.writing.schemas_story_suggest import StorySuggestRequest
 from narrare_core.agents.story_suggest_types import (
     StorySuggestion,
@@ -19,7 +20,9 @@ from narrare_core.agents.story_suggest_types import (
     StorySuggestOutput,
 )
 from narrare_core.llm._prepared_call import PreparedModelCall
+from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
+from narrare_core.shared.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from pydantic_ai.usage import UsageLimits
@@ -92,6 +95,21 @@ class FakeComposedInvocation:
         self.composed_prompt: ComposedPrompt = ComposedPrompt(system=system, user=user)
 
 
+class NoProviderResolution:
+    """Fake ModelResolution — no AI provider configured (ADR-086 L34).
+
+    Raises the cascade's ``ConfigurationError`` on ``resolve()``, driving
+    the service's graceful degradation policy (``no_ai_provider_
+    configured`` log + the preserved ``no_model_config`` outcome).
+    """
+
+    async def resolve(self) -> ResolvedModel:
+        raise ConfigurationError(
+            "No AI provider configured.",
+            code="NO_AI_PROVIDER",
+        )
+
+
 def make_novel(**overrides: object) -> MagicMock:
     """Create a mock novel with the attributes the service reads."""
     from narrare.novels.models import Novel
@@ -142,15 +160,27 @@ def make_request(**overrides: object) -> StorySuggestRequest:
 
 def make_service(
     composer: FakeComposer,
-    config: ResolvedModelConfig,
+    config: ResolvedModelConfig | None,
 ) -> StorySuggestService:
-    """Build a StorySuggestService wired for Mode 1 prompt resolution."""
+    """Build a StorySuggestService wired for Mode 1 prompt resolution.
+
+    ADR-086 L34: ``config`` is wired as a ``StaticModelResolution`` (the
+    test equivalent of the production lazy cascade); ``config=None``
+    wires ``NoProviderResolution`` so the graceful degradation path is
+    exercised.
+    """
     from narrare.writing.story_suggest_service import StorySuggestService
 
     novel_repo = AsyncMock()
+    if config is None:
+        resolution: NoProviderResolution | StaticModelResolution = NoProviderResolution()
+    else:
+        resolution = StaticModelResolution(
+            ResolvedModel(config=config, api_key=None, base_url=None, source="unit-test")
+        )
     return StorySuggestService(
         novel_repo=novel_repo,  # type: ignore[arg-type]
         model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-        model_config=config,
+        model_resolution=resolution,
         composer=composer,  # type: ignore[arg-type]
     )

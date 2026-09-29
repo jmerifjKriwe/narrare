@@ -139,6 +139,10 @@ class TestStorySuggest:
         content = await response.aread()
         assert b"[DONE]" in content
 
+        # ADR-086 L34: the router delegates to the pre-stream seam before
+        # constructing the StreamingResponse.
+        mock_service.validate_suggest.assert_awaited_once_with(novel_id, UUID(TEST_USER_ID))
+
     async def test_story_suggest_returns_422_with_missing_novel_id_in_body(
         self,
         client: AsyncClient,
@@ -173,7 +177,8 @@ class TestStorySuggest:
     # client captures as an error.  This is an inherent SSE limitation —
     # the other SSE routes (rewrite, extend, suggest, co-author) handle
     # this via pre-validation (validate_*() before the StreamingResponse).
-    # story_suggest pre-validates novel existence in the factory instead.
+    # story_suggest runs its novel gate + graceful resolve in the
+    # pre-stream ``validate_suggest`` seam instead (ADR-086 L34).
 
     async def test_story_suggest_context_meta_event(
         self,

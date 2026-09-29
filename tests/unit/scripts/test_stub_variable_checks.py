@@ -199,10 +199,12 @@ def test_allowlisted_pair_is_absorbed(checker, tmp_path: Path) -> None:
     # Reconstruct an allowlisted repo-relative path under tmp so the
     # computed rel path matches the baseline entry exactly. Uses the
     # story-suggest chapter_outline pair (RULE-11: legitimately empty when
-    # no chapter_id is targeted — a confirmed-optional var, not a §7 GAP).
+    # no chapter_id is targeted — a confirmed-optional var, not a §7 GAP;
+    # path follows the ADR-086 L34 RULE-04 split into
+    # _story_suggest_support.py).
     _write(
         tmp_path,
-        "apps/api/narrare/writing/story_suggest_service.py",
+        "apps/api/narrare/writing/_story_suggest_support.py",
         'ctx = PromptContext(extra={"chapter_outline": ""})\n',
     )
     findings = [

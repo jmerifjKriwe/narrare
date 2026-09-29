@@ -59,14 +59,23 @@ def _make_outline(chapter_id: uuid.UUID) -> ChapterOutline:
 
 def _build_service(outline_repo: object | None) -> object:
     """Build a StorySuggestService wired with the given outline repo."""
+    from narrare._app.dependencies_services import StaticModelResolution
     from narrare.writing.story_suggest_service import StorySuggestService
+    from narrare_core.llm.model_routing import ResolvedModel
 
     novel_repo = AsyncMock()
     novel_repo.get_by_id.return_value = make_novel()
     return StorySuggestService(
         novel_repo=novel_repo,  # type: ignore[arg-type]
         model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-        model_config=ResolvedModelConfig(provider_name="test", model_id="test-model"),
+        model_resolution=StaticModelResolution(
+            ResolvedModel(
+                config=ResolvedModelConfig(provider_name="test", model_id="test-model"),
+                api_key=None,
+                base_url=None,
+                source="unit-test",
+            )
+        ),
         composer=FakeComposer(),  # type: ignore[arg-type]
         outline_repo=outline_repo,  # type: ignore[arg-type]
     )

@@ -5,7 +5,8 @@ Verifies that errors propagate (RULE-11) instead of being silently swallowed:
 - Invocation-composition failures propagate (D8).
 - Missing novel raises NotFoundError.
 - Missing composer raises ConfigurationError (defensive guard).
-- Missing model config raises NotFoundError.
+- No AI provider configured → the preserved ``no_model_config``
+  degraded outcome (ADR-086 L34 graceful entry-point policy).
 
 Behavioural Mode 1 + SSE tests live in ``test_story_suggest_service.py``
 (RULE-04 split).
@@ -108,13 +109,17 @@ class TestErrorHandling:
         config: ResolvedModelConfig,
         request_body: StorySuggestRequest,
     ) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.writing.story_suggest_service import StorySuggestService
+        from narrare_core.llm.model_routing import ResolvedModel
         from narrare_core.shared.errors import ConfigurationError
 
         service = StorySuggestService(
             novel_repo=AsyncMock(),  # type: ignore[arg-type]
             model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
-            model_config=config,
+            model_resolution=StaticModelResolution(
+                ResolvedModel(config=config, api_key=None, base_url=None, source="unit-test")
+            ),
             composer=None,
         )
         service._novel_repo.get_by_id.return_value = make_novel()  # type: ignore[attr-defined]
@@ -129,13 +134,17 @@ class TestErrorHandling:
         composer: FakeComposer,
         request_body: StorySuggestRequest,
     ) -> None:
+        """No AI provider configured → the preserved degraded outcome.
+
+        ADR-086 L34: the resolution raises ``ConfigurationError``; the
+        service's graceful entry-point policy swallows it (logged) and
+        the ``no_model_config`` NotFoundError fires exactly as it did
+        when the eager factory swallowed at wiring time.
+        """
         from narrare_core.shared.errors import NotFoundError
 
         service = make_service(composer, config=None)  # type: ignore[arg-type]
         service._novel_repo.get_by_id.return_value = make_novel()  # type: ignore[attr-defined]
-        # Override registry to a fake (make_service already sets one, but
-        # model_config=None is the trigger here).
-        service._registry = FakeModelRegistry()  # type: ignore[assignment]
 
         with pytest.raises(NotFoundError, match="Model config"):
             async for _ in service.suggest(uuid.uuid4(), uuid.uuid4(), request_body):  # type: ignore[arg-type]

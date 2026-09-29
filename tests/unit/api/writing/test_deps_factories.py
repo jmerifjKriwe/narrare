@@ -6,10 +6,13 @@ For each factory we verify:
 1. The module imports cleanly (class-level import test).
 2. The factory function exists and is an async callable.
 
-For ``deps_story_suggest.py`` we additionally test:
-- Novel not found → raises ``NotFoundError``
-- ConfigurationError during resolve → graceful degradation
-- Success path with mocked dependencies
+For ``deps_story_suggest.py`` we additionally test the ADR-086 L34 lazy
+wiring contract (detailed graceful first-use nodes live in
+``test_story_suggest_lazy_resolution.py``):
+- ZERO cascades and ZERO novel queries at construction (guard + resolve
+  moved to the service's first-use paths)
+- the LazyModelResolution closure carries the eager factory's verbatim
+  SUGGEST cascade args
 
 Uses ``MagicMock(spec=...)`` / ``AsyncMock(spec=...)`` for type-safe mocking
 (RULE-TEST-01, per test_deps_ws.py / test_deps_tier_overrides.py patterns).
@@ -21,11 +24,9 @@ import inspect
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from narrare_core.context.contracts import EffectiveContextBudgets
-from narrare_core.shared.errors import NotFoundError
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -188,86 +189,17 @@ class TestStorySuggestFactory:
         assert "novel_id" in params
 
     # ------------------------------------------------------------------
-    # Error path: novel not found
+    # ADR-086 L34: lazy wiring — nothing at construction
     # ------------------------------------------------------------------
 
-    async def test_raises_not_found_when_novel_missing(self) -> None:
-        """Raises NotFoundError when the novel repository returns None."""
-        from narrare.writing.deps_story_suggest import get_story_suggest_service
+    async def test_no_resolution_or_novel_query_at_construction(self) -> None:
+        """Factory runs ZERO cascades and issues ZERO novel queries.
 
-        session = _fake_session()
-        novel_id = uuid4()
-        user_id = str(uuid4())
-
-        # Mock NovelRepository to return None (novel not found)
-        fake_repo = MagicMock(spec=["get_by_id"], name="NovelRepository")
-        fake_repo.get_by_id = AsyncMock(return_value=None)
-
-        with (
-            patch(
-                "narrare.writing.deps_story_suggest.NovelRepository",
-                return_value=fake_repo,
-            ),
-            pytest.raises(NotFoundError, match=str(novel_id)),
-        ):
-            await get_story_suggest_service(
-                session=session,
-                user_id=user_id,
-                novel_id=novel_id,
-            )
-
-    # ------------------------------------------------------------------
-    # Error path: ConfigurationError → graceful degradation
-    # ------------------------------------------------------------------
-
-    async def test_graceful_degradation_when_no_ai_provider(self) -> None:
-        """ConfigurationError from resolver results in model_config=None."""
-        from narrare.writing.deps_story_suggest import get_story_suggest_service
-
-        session = _fake_session()
-        novel_id = uuid4()
-        user_id = str(uuid4())
-
-        # Novel exists
-        fake_novel = MagicMock(spec=True, name="novel")
-        fake_novel_repo = MagicMock(spec=["get_by_id"], name="NovelRepository")
-        fake_novel_repo.get_by_id = AsyncMock(return_value=fake_novel)
-
-        # Resolver raises ConfigurationError
-        from narrare_core.shared.errors import ConfigurationError
-
-        fake_resolver = MagicMock(spec=["resolve"], name="resolver")
-        fake_resolver.resolve = AsyncMock(side_effect=ConfigurationError("No provider"))
-
-        # Stub out the other dependencies so we get a service back
-        with (
-            patch(
-                "narrare.writing.deps_story_suggest.NovelRepository",
-                return_value=fake_novel_repo,
-            ),
-            patch(
-                "narrare.writing.deps_story_suggest.get_model_routing_resolver",
-                return_value=fake_resolver,
-            ),
-            patch("narrare.writing.deps_story_suggest.get_model_registry"),
-            patch("narrare.writing.deps_story_suggest.get_composer"),
-            patch("narrare.writing.deps_story_suggest.get_invocation_pipeline"),
-        ):
-            service = await get_story_suggest_service(
-                session=session,
-                user_id=user_id,
-                novel_id=novel_id,
-            )
-
-        # Graceful degradation means model_config is None
-        assert service._config is None
-
-    # ------------------------------------------------------------------
-    # Success path (smoke test)
-    # ------------------------------------------------------------------
-
-    async def test_success_path_returns_service(self) -> None:
-        """Happy path returns a fully wired StorySuggestService."""
+        The eager factory ran the uid-scoped novel guard + the SUGGEST
+        cascade at wiring time; both moved to the service's first-use
+        paths (``validate_suggest`` / ``suggest`` — planning guard
+        ruling, gate-before-resolution preserved).
+        """
         from narrare.writing.deps_story_suggest import get_story_suggest_service
         from narrare.writing.story_suggest_service import StorySuggestService
 
@@ -275,17 +207,10 @@ class TestStorySuggestFactory:
         novel_id = uuid4()
         user_id = str(uuid4())
 
-        # Novel exists
-        fake_novel = MagicMock(spec=True, name="novel")
-        fake_novel_repo = MagicMock(spec=["get_by_id"], name="NovelRepository")
-        fake_novel_repo.get_by_id = AsyncMock(return_value=fake_novel)
-
-        # Successful model resolution
-        fake_resolved = MagicMock(spec=["config"], name="resolved")
-        fake_resolved.config = MagicMock(spec=True, name="config")
-
         fake_resolver = MagicMock(spec=["resolve"], name="resolver")
-        fake_resolver.resolve = AsyncMock(return_value=fake_resolved)
+        fake_resolver.resolve = AsyncMock(return_value=MagicMock(spec=["config"]))
+        fake_novel_repo = MagicMock(spec=["get_by_id"], name="NovelRepository")
+        fake_novel_repo.get_by_id = AsyncMock(return_value=MagicMock(spec=True, name="novel"))
 
         with (
             patch(
@@ -306,8 +231,54 @@ class TestStorySuggestFactory:
                 novel_id=novel_id,
             )
 
+        assert fake_resolver.resolve.await_count == 0, (
+            "routing cascade must not run at construction"
+        )
+        assert fake_novel_repo.get_by_id.await_count == 0, (
+            "uid-scoped novel guard must not run at construction"
+        )
         assert isinstance(service, StorySuggestService)
-        assert service._config is not None
+        assert service._config is None, "no config may be cached at wiring"
+
+    async def test_factory_wires_lazy_resolution_with_eager_args(self) -> None:
+        """The wired seam resolves with the eager factory's verbatim
+        SUGGEST cascade args (intent, uid, novel_id) on first use."""
+        from narrare.writing.deps_story_suggest import get_story_suggest_service
+        from narrare_core.llm.intents import LLMIntent
+
+        session = _fake_session()
+        novel_id = uuid4()
+        uid = uuid4()
+
+        fake_resolved = MagicMock(spec=["config"], name="resolved")
+        fake_resolved.config = MagicMock(spec=True, name="config")
+        fake_resolver = MagicMock(spec=["resolve"], name="resolver")
+        fake_resolver.resolve = AsyncMock(return_value=fake_resolved)
+        fake_novel_repo = MagicMock(spec=["get_by_id"], name="NovelRepository")
+        fake_novel_repo.get_by_id = AsyncMock(return_value=MagicMock(spec=True, name="novel"))
+
+        with (
+            patch(
+                "narrare.writing.deps_story_suggest.NovelRepository",
+                return_value=fake_novel_repo,
+            ),
+            patch(
+                "narrare.writing.deps_story_suggest.get_model_routing_resolver",
+                return_value=fake_resolver,
+            ),
+            patch("narrare.writing.deps_story_suggest.get_model_registry"),
+            patch("narrare.writing.deps_story_suggest.get_composer"),
+            patch("narrare.writing.deps_story_suggest.get_invocation_pipeline"),
+        ):
+            service = await get_story_suggest_service(
+                session=session,
+                user_id=str(uid),
+                novel_id=novel_id,
+            )
+            assert service._model_resolution is not None
+            await service._model_resolution.resolve()
+
+        fake_resolver.resolve.assert_awaited_once_with(LLMIntent.SUGGEST, uid, novel_id)
 
 
 # ===========================================================================

@@ -1,8 +1,25 @@
-"""Service factory for story suggest — wires StorySuggestService with model routing.
+"""Service factory for story suggest — wires StorySuggestService lazily.
 
-Follows the same pattern as ``planning/_character_arc_factory.py``: resolves
-the user's configured provider/model for the SUGGEST intent, validates novel
-existence, and builds the service with proper DI.
+Follows the same graceful pattern as ``planning/_character_arc_factory.py``
+(ADR-086 L20, Pattern M-graceful): model routing is wired as a
+``LazyModelResolution`` (ADR-086 L34) — the per-user SUGGEST cascade
+resolves on the service's first use, never at construction, so request
+validation errors surface as 422 before any routing work.
+
+Planning guard ruling (ADR-086 plan §3): the eager factory's uid-scoped
+novel guard (``verify_novel_owned`` → 404, preventing resolver
+auto-creation of ``project_settings`` for foreign novels) is preserved —
+NOT dropped — in the service's first-use paths: the router's pre-stream
+``validate_suggest`` seam runs it immediately BEFORE the first-use
+resolve (gate-before-resolution ordering), keeping the 404 a pre-header
+status on the SSE endpoint, and the ``suggest`` entry point re-runs both
+idempotently for direct callers.
+
+Graceful degradation is entry-point policy, not wiring (Pattern
+M-graceful): the eager factory's wiring-time ``except ConfigurationError``
+swallow moved into the service's first-use paths, which log
+``no_ai_provider_configured`` and preserve the ``no_model_config``
+degraded outcome (AI-optional feature).
 
 See WRITE-009 (Writer's Unblock Tools).
 """
@@ -12,24 +29,19 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-import structlog
-
 from narrare._app.dependencies import (
     get_composer,
     get_invocation_pipeline,
     get_model_registry,
 )
-from narrare._app.dependencies_services import get_model_routing_resolver
-from narrare.novels.ownership import verify_novel_owned
+from narrare._app.dependencies_services import LazyModelResolution, get_model_routing_resolver
 from narrare.novels.repository import NovelRepository
 from narrare.planning.repository import OutlineRepository
 from narrare.writing.story_suggest_service import StorySuggestService
-from narrare_core.shared.errors import ConfigurationError
+from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-logger = structlog.get_logger(__name__)
 
 
 async def get_story_suggest_service(
@@ -37,18 +49,14 @@ async def get_story_suggest_service(
     user_id: str,
     novel_id: uuid.UUID,
 ) -> StorySuggestService:
-    """Wire up StorySuggestService with model routing from user settings.
+    """Wire up StorySuggestService with LAZY model routing (ADR-086 L34).
 
-    Resolves the user's configured provider/model for the SUGGEST intent,
-    validates novel existence before calling the resolver to prevent
-    auto-creation of project_settings for nonexistent novels.
-
-    Gracefully degrades when no AI provider is configured — the service
-    will use the fallback model from ModelRegistry.
-
-    Pre-validates novel existence so :class:`NotFoundError` fires during
-    dependency resolution (before SSE headers are sent), avoiding the
-    RuntimeError that occurs when validation errors fire after headers.
+    The per-user SUGGEST cascade is wired as a ``LazyModelResolution``
+    with the same args the eager factory resolved verbatim (intent, uid,
+    novel_id — timing-only migration, RULE-18). Repos, registry,
+    composer, and pipeline still wire eagerly. The uid-scoped novel
+    guard and the graceful no-provider degradation live in the service's
+    first-use paths (see module docstring).
 
     Args:
         session: DB session.
@@ -56,36 +64,21 @@ async def get_story_suggest_service(
         novel_id: Target novel UUID.
 
     Returns:
-        Fully wired StorySuggestService.
-
-    Raises:
-        NotFoundError: If the novel does not exist.
+        Fully wired StorySuggestService (model unresolved).
     """
-    from narrare_core.llm.intents import LLMIntent
-
     uid = uuid.UUID(user_id)
 
-    # Validate novel exists BEFORE resolver auto-creates project_settings
-    # (canonical gate — narrare.novels.ownership, consolidated W3).
     novel_repo = NovelRepository(session)
-    await verify_novel_owned(novel_repo, novel_id, uid)
-
-    # Resolve model config — gracefully handle missing AI provider.
-    registry = get_model_registry()
-    composer = get_composer()
-    model_config = None
-    try:
-        resolver = get_model_routing_resolver(session)
-        resolved = await resolver.resolve(LLMIntent.SUGGEST, uid, novel_id)
-        model_config = resolved.config
-    except ConfigurationError:
-        logger.info("no_ai_provider_configured", novel_id=str(novel_id))
+    resolver = get_model_routing_resolver(session)
+    model_resolution = LazyModelResolution(
+        lambda: resolver.resolve(LLMIntent.SUGGEST, uid, novel_id)
+    )
 
     return StorySuggestService(
         novel_repo=novel_repo,
-        model_registry=registry,
-        model_config=model_config,
-        composer=composer,
+        model_registry=get_model_registry(),
+        model_resolution=model_resolution,
+        composer=get_composer(),
         outline_repo=OutlineRepository(session),
         invocation_pipeline=get_invocation_pipeline(),
     )
