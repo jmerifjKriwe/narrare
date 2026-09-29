@@ -57,7 +57,8 @@ async def get_consistency_service(
     - PromptComposer for system prompt assembly
     - ConsistencyOrchestrator for staged pipeline (ADR-044), carrying
       the lazy cascades for both stages
-    - Repositories for data access
+    - Repositories for data access (chapters, novel, KB entities, KB
+      relationships for relationship-aware checking (FIND-001), timeline)
     - TokenLimitsService for dynamic context cap resolution
 
     FastAPI resolves ``novel_id`` from the endpoints' declared
@@ -73,6 +74,7 @@ async def get_consistency_service(
     from narrare.chapters.repository import ChapterRepository
     from narrare.consistency.checker_service import ConsistencyCheckerService
     from narrare.consistency.consistency_orchestrator import ConsistencyOrchestrator
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
@@ -103,6 +105,8 @@ async def get_consistency_service(
     novel_repo = NovelRepository(session)
     kb_repo = KBRepository(session)
     timeline_repo = TimelineEventRepository(session)
+    # KB relationships for relationship-aware consistency checking (FIND-001).
+    relationship_repo = RelationshipRepository(session)
 
     # Orchestrator for staged pipeline — carries the lazy cascades for
     # BOTH stages (extractor + checker); credentials thread through at
@@ -128,6 +132,7 @@ async def get_consistency_service(
         novel_repo=novel_repo,
         kb_repo=kb_repo,
         timeline_repo=timeline_repo,
+        relationship_repo=relationship_repo,
         registry=registry,
         consistency_resolution=consistency_resolution,
         composer=composer,
