@@ -16,36 +16,37 @@ fake agent whose ``.run()`` returns a controlled ``BandSummaryOutput``, instead
 of ``unittest.mock.patch``-ing the class. This mirrors how
 ``FakeLLMGateway`` makes ``ChapterSummaryService`` testable, but at the agent
 boundary because that is the LLM surface here.
+
+Model acquisition (ADR-086 L25): the service receives a deferred
+``model_runtime_factory`` (composed by the DI factory from the SUMMARIZE
+routing cascade + token-limits cascade) and resolves it ONCE at first use
+(:meth:`ensure_resolved`, the top of ``generate``) — never at construction.
+``get`` / ``update_override`` consume no resolution at all.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
 
 import structlog
 
-from narrare.series.band_summary_prompt import (
-    compose_band_summary_system_prompt,
-    format_chapter_summaries,
-)
+from narrare.series._band_summary_support import run_band_summary_invocation
+from narrare.series.band_summary_prompt import compose_band_summary_system_prompt
 from narrare_core.agents.band_summary_agent import BandSummaryAgent
-from narrare_core.agents.band_summary_types import BandSummaryDeps
-from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.shared.errors import NotFoundError, ValidationError, WritingError
 
 if TYPE_CHECKING:
     import uuid
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.novels.contracts import NovelRepositoryProtocol
+    from narrare.series._band_summary_support import BandSummaryModelRuntime
     from narrare.series.band_summary_contracts import BandSummaryRepositoryProtocol
     from narrare.series.band_summary_models import BandSummary
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
@@ -82,11 +83,9 @@ class BandSummaryService:
         novel_repo: NovelRepositoryProtocol,
         chapter_repo: ChapterRepositoryProtocol,
         registry: ModelRegistry,
-        config: ResolvedModelConfig,
+        model_runtime_factory: Callable[[], Awaitable[BandSummaryModelRuntime]],
         composer: PromptComposer,
         agent_factory: Callable[..., BandSummaryAgent] | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
         kb_context_provider: KBContextProviderProtocol | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
@@ -98,12 +97,12 @@ class BandSummaryService:
             novel_repo: Novel metadata (title, genre, writing_language).
             chapter_repo: Chapter summaries (``list_by_novel`` → ``.summary``).
             registry: Model registry for resolving the LLM model instance.
-            config: Resolved model config (provider, model, params).
+            model_runtime_factory: Zero-arg async callable returning the frozen
+                :class:`BandSummaryModelRuntime` (composed by the DI factory
+                from BOTH cascades at first use — ADR-086 M-budget).
             composer: PromptComposer for the governed band_summary system prompt.
             agent_factory: Callable ``(model, system_prompt) -> BandSummaryAgent``.
                 Defaults to the real constructor; tests inject a Fake.
-            api_key: Optional per-user API key override.
-            base_url: Optional per-user base URL override.
             invocation_pipeline: Optional InvocationPipeline for evidence.
             kb_context_provider: Optional canonical KB-context provider
                 (ADR-067) for the kb_characters / kb_locations / kb_factions /
@@ -116,14 +115,26 @@ class BandSummaryService:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
         self._registry = registry
-        self._config = config
+        self._model_runtime_factory = model_runtime_factory
+        self._model_runtime: BandSummaryModelRuntime | None = None
         self._composer = composer
         self._agent_factory = agent_factory or _default_agent_factory
-        self._api_key = api_key
-        self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
         self._kb_context_provider = kb_context_provider
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+
+    async def ensure_resolved(self) -> BandSummaryModelRuntime:
+        """Resolve BOTH cascades once and cache the runtime; idempotent.
+
+        First call runs the deferred factory composition (SUMMARIZE routing
+        + token limits, ADR-086 M-budget); repeat calls return the cached
+        runtime. Errors propagate loudly and are never cached (RULE-11):
+        ``ConfigurationError`` (``NO_AI_PROVIDER``) surfaces as a 400 —
+        the eager factory's wiring-time error, now at first use.
+        """
+        if self._model_runtime is None:
+            self._model_runtime = await self._model_runtime_factory()
+        return self._model_runtime
 
     async def get(self, novel_id: uuid.UUID) -> BandSummary:
         """Return the existing band summary (no generation).
@@ -152,8 +163,18 @@ class BandSummaryService:
         Raises:
             NotFoundError: The novel does not exist.
             ValidationError: The novel has no chapter summaries to aggregate.
+            ConfigurationError: No AI provider is configured for the owner
+                (RULE-11 — propagates loudly, un-wrapped).
             WritingError: The LLM call or persistence failed.
         """
+        # 0. Resolve BOTH cascades once at first use (ADR-086 L25). This
+        #    deliberately runs BEFORE the try-wrapper below and before the
+        #    novel/summaries guards, preserving the eager world's ordering
+        #    (the factory resolved pre-entry) AND keeping ConfigurationError
+        #    OUT of the broad ``except Exception`` → WritingError wrapper —
+        #    an unconfigured provider stays a loud 400, never a 500.
+        runtime = await self.ensure_resolved()
+
         # 1. Load novel metadata (title, genre, writing_language).
         novel = await self._novel_repo.get(novel_id)
         if novel is None:
@@ -183,35 +204,18 @@ class BandSummaryService:
         )
 
         try:
-            # 4. Resolve model + instantiate agent (RULE-01b: agents-first).
-            #    Single assembly point (Task 6d — Task 4/5 pattern): model +
-            #    intent-aware runtime settings + usage limits as one
-            #    coherent triple.
-            resolved = self._run_limit_resolver.resolve(
-                config=self._config, budget=None, invocation_id=uuid4()
-            )
-            prepared = await self._registry.prepare(
-                self._config,
-                intent=LLMIntent.SUMMARIZE,
-                usage_limits=resolved.usage_limits,
-                api_key=self._api_key,
-                base_url=self._base_url,
-            )
-            agent = self._agent_factory(prepared.model, system_prompt)
-
-            # 5. Run the agent. Chapter summaries flow as runtime content in
-            #    the user-channel prompt (RULE-02a category 3); BandSummaryDeps
-            #    carries the same data for validators/tools.
-            deps = BandSummaryDeps(
+            # 4-5. Resolve model + run the agent (RULE-01b agents-first) —
+            #      invocation assembly delegated to the support module
+            #      (RULE-04 split; same behavior, only relocated).
+            result = await run_band_summary_invocation(
+                run_limit_resolver=self._run_limit_resolver,
+                runtime=runtime,
+                registry=self._registry,
+                agent_factory=self._agent_factory,
+                system_prompt=system_prompt,
                 novel_title=novel.title,
                 genre=novel.genre,
                 chapter_summaries=chapter_summaries,
-            )
-            result = await agent.run(
-                prompt=_format_chapter_summaries(chapter_summaries),
-                deps=deps,
-                model_settings=prepared.model_settings,
-                usage_limits=prepared.usage_limits,
             )
 
             # 6. Upsert generated summaries (override preserved by the repo).
@@ -287,8 +291,3 @@ class BandSummaryService:
             novel_id=novel_id,
             kb_context_provider=self._kb_context_provider,
         )
-
-
-def _format_chapter_summaries(chapter_summaries: list[str]) -> str:
-    """Delegate to the prompt module (RULE-04 split); kept for call-site brevity."""
-    return format_chapter_summaries(chapter_summaries)

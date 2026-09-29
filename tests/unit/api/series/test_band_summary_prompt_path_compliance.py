@@ -36,6 +36,7 @@ from ._band_summary_test_helpers import (
     FakeBandSummaryComposer,
     FakeBandSummaryRegistry,
     make_band_summary_config,
+    make_static_runtime_factory,
 )
 
 _COMPOSED_SYSTEM = "COMPOSED-BAND-SUMMARY-SYSTEM"
@@ -67,7 +68,7 @@ def _make_service(
         novel_repo=novel_repo,
         chapter_repo=chapter_repo,
         registry=FakeBandSummaryRegistry(),  # type: ignore[arg-type]
-        config=make_band_summary_config(),
+        model_runtime_factory=make_static_runtime_factory(make_band_summary_config(), None, None),
         composer=composer,  # type: ignore[arg-type]
     )
 

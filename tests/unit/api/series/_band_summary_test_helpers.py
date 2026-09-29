@@ -12,8 +12,11 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
+from narrare.series._band_summary_support import BandSummaryModelRuntime
 from narrare.series.band_summary_service import BandSummaryService
+from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
 from narrare_core.agents.band_summary_types import BandSummaryOutput
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.prompts.composer import ComposedPrompt
@@ -119,6 +122,118 @@ def make_band_summary_config() -> ResolvedModelConfig:
     )
 
 
+def make_static_runtime_factory(
+    config: ResolvedModelConfig,
+    api_key: str | None,
+    base_url: str | None,
+) -> Callable[[], Any]:
+    """A zero-arg async factory returning a fixed ``BandSummaryModelRuntime``.
+
+    Test-side stand-in for the DI factory's deferred composition (ADR-086
+    L25): injects the pre-resolved triple without touching either cascade.
+    """
+
+    async def _factory() -> BandSummaryModelRuntime:
+        return BandSummaryModelRuntime(config=config, api_key=api_key, base_url=base_url)
+
+    return _factory
+
+
+# ---------------------------------------------------------------------------
+# ADR-086 L25 lazy-wiring harness (shared by the lazy-resolution test files)
+# ---------------------------------------------------------------------------
+
+
+def make_user_routing_config() -> ResolvedModelConfig:
+    """The config the eager factory's routing cascade would return (0.7 base
+    temperature — deliberately different from the 0.3 overlay so overlay
+    assertions are meaningful)."""
+    return ResolvedModelConfig(
+        provider_name="zai",
+        model_id="glm-4.7",
+        temperature=0.7,
+        max_tokens=4096,
+    )
+
+
+def make_resolved_model(
+    config: ResolvedModelConfig | None = None,
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> Any:
+    """A ``ResolvedModel`` as the routing cascade would return it."""
+    from narrare_core.llm.model_routing import ResolvedModel
+
+    return ResolvedModel(
+        config=config or make_user_routing_config(),
+        api_key=api_key,
+        base_url=base_url,
+        source="unit-test",
+    )
+
+
+class FakeTokenLimitsService:
+    """Fake TokenLimitsService — records cascade calls, fixed output limit."""
+
+    def __init__(self, output_limit: int = 4096) -> None:
+        self.output_limit = output_limit
+        self.calls: list[dict[str, str | None]] = []
+
+    async def get_resolved_limits(self, *, user_id: str, project_id: str | None) -> Any:
+        self.calls.append({"user_id": user_id, "project_id": project_id})
+        return SimpleNamespace(output_limit=self.output_limit, tier_percentages=None)
+
+
+class BandSummaryLazyWiringHarness:
+    """Patches the band-summary factory's wiring surface (ADR-086 L25).
+
+    Exposes cascade-counting fakes: ``resolver.resolve`` (spec'd MagicMock,
+    replaceable via ``resolver``) and ``limits_service``. ``async with``
+    starts/stops the patches.
+    """
+
+    def __init__(self, resolver: Any | None = None) -> None:
+        import narrare.series.dependencies_band_summary as deps_module
+
+        self._deps_module = deps_module
+        self.resolved = make_resolved_model(api_key="sk-user-key", base_url="https://u.example/v1")
+        self.resolver = (
+            resolver
+            if resolver is not None
+            else MagicMock(spec=ModelRoutingResolverImpl, name="ModelRoutingResolver")
+        )
+        if resolver is None:
+            self.resolver.resolve = AsyncMock(return_value=self.resolved)
+        self.limits_service = FakeTokenLimitsService(output_limit=2048)
+        self.registry = MagicMock(spec=["get_model", "prepare"], name="ModelRegistry")
+        self.composer = MagicMock(spec=["build"], name="PromptComposer")
+        self.pipeline = MagicMock(spec=["generate"], name="InvocationPipeline")
+        self._patches = [
+            patch.object(deps_module, "get_model_routing_resolver", return_value=self.resolver),
+            patch(
+                "narrare.settings.token_limits.service.TokenLimitsService",
+                return_value=self.limits_service,
+            ),
+            patch(
+                "narrare._app.config.get_settings",
+                return_value=MagicMock(spec=True, name="Settings"),
+            ),
+            patch.object(deps_module, "get_model_registry", return_value=self.registry),
+            patch.object(deps_module, "get_composer", return_value=self.composer),
+            patch.object(deps_module, "get_invocation_pipeline", return_value=self.pipeline),
+        ]
+
+    async def __aenter__(self) -> BandSummaryLazyWiringHarness:
+        for p in self._patches:
+            p.start()
+        return self
+
+    async def __aexit__(self, *exc: object) -> None:
+        for p in self._patches:
+            p.stop()
+
+
 def make_band_summary_service(
     *,
     novel_repo: FakeNovelRepository | None = None,
@@ -163,9 +278,9 @@ def make_band_summary_service(
         novel_repo=novel_repo,  # type: ignore[arg-type]
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
         registry=registry,  # type: ignore[arg-type]
-        config=config or make_band_summary_config(),
-        api_key=api_key,
-        base_url=base_url,
+        model_runtime_factory=make_static_runtime_factory(
+            config or make_band_summary_config(), api_key, base_url
+        ),
         composer=composer,  # type: ignore[arg-type]
         agent_factory=agent_factory or _agent_factory,  # type: ignore[arg-type]
         kb_context_provider=kb_context_provider,

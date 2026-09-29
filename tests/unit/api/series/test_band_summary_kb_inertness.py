@@ -291,7 +291,7 @@ class TestBandSummaryDepsWiring:
         from sqlalchemy.ext.asyncio import AsyncSession
 
         from narrare.kb._context_provider import KBContextProvider
-        from narrare.series.dependencies import build_band_summary_service
+        from narrare.series.dependencies_band_summary import build_band_summary_service
         from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
 
         session = MagicMock(spec=AsyncSession, name="session")
@@ -313,7 +313,7 @@ class TestBandSummaryDepsWiring:
 
         with (
             patch(
-                "narrare.series.dependencies.get_model_routing_resolver",
+                "narrare.series.dependencies_band_summary.get_model_routing_resolver",
                 return_value=fake_resolver,
             ),
             patch(
@@ -322,15 +322,15 @@ class TestBandSummaryDepsWiring:
             ),
             patch("narrare._app.config.get_settings", return_value=fake_settings),
             patch(
-                "narrare.series.dependencies.get_model_registry",
+                "narrare.series.dependencies_band_summary.get_model_registry",
                 return_value=fake_registry,
             ),
             patch(
-                "narrare.series.dependencies.get_composer",
+                "narrare.series.dependencies_band_summary.get_composer",
                 return_value=fake_composer,
             ),
             patch(
-                "narrare.series.dependencies.get_invocation_pipeline",
+                "narrare.series.dependencies_band_summary.get_invocation_pipeline",
                 return_value=fake_pipeline,
             ),
         ):

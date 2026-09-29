@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, status
 
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare.series.band_summary_service import BandSummaryService
-from narrare.series.dependencies import (
+from narrare.series.dependencies_band_summary import (
     get_band_summary_service,
     verify_novel_in_owned_series,
 )

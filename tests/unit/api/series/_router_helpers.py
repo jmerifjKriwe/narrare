@@ -89,7 +89,7 @@ def mock_band_summary_service() -> AsyncMock:
 
 def use_band_summary_service(app: FastAPI, service: AsyncMock) -> None:
     """Override ``get_band_summary_service`` with a mock."""
-    from narrare.series.dependencies import get_band_summary_service
+    from narrare.series.dependencies_band_summary import get_band_summary_service
 
     app.dependency_overrides[get_band_summary_service] = lambda: service
 
@@ -111,7 +111,7 @@ def use_series_voice_service(app: FastAPI, service: AsyncMock) -> None:
 
 def bypass_novel_ownership(app: FastAPI) -> None:
     """Override ``verify_novel_in_owned_series`` with a no-op (happy-path tests)."""
-    from narrare.series.dependencies import verify_novel_in_owned_series
+    from narrare.series.dependencies_band_summary import verify_novel_in_owned_series
 
     app.dependency_overrides[verify_novel_in_owned_series] = lambda: None
 
@@ -123,7 +123,7 @@ def deny_novel_ownership(app: FastAPI) -> None:
     async def _deny() -> None:
         raise ForbiddenError("You do not have access to this series")
 
-    from narrare.series.dependencies import verify_novel_in_owned_series
+    from narrare.series.dependencies_band_summary import verify_novel_in_owned_series
 
     app.dependency_overrides[verify_novel_in_owned_series] = _deny
 

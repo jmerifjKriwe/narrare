@@ -445,7 +445,23 @@ at construction (2026-09-09; factory function names verified):
        ``_timeline_extraction_support.py`` for the RULE-04 size limit the
        lazy seam crossed; SSE endpoint — errors surface in-band, no SSE
        pre-header needed)*
-25. [ ] `series/dependencies.py` — `build_band_summary_service` (+ eager `get_resolved_limits`)
+25. [x] `series/dependencies.py` — `build_band_summary_service` (+ eager `get_resolved_limits`)
+       *(F4/L25 — landed 2026-09-29: lazy wiring + deferred M-budget
+       composition at first use — ``ensure_resolved`` at the top of
+       ``generate`` (the only AI entry point), BEFORE the generation
+       try-wrapper so the cascades' ``ConfigurationError`` stays a loud
+       400 (RULE-11, never wrapped into the 500-class ``WritingError``)
+       and the eager world's status ordering (resolve ahead of the
+       novel/no-summaries guards) is preserved; ``get`` /
+       ``update_override`` / cache-hit ``get_or_generate`` no longer
+       resolve at all; the L25 background-task invariant is pinned by
+       tests — the lazy closure captures the in-process task's own
+       session-bound resolver and first use happens at task runtime
+       while that session is still open; band-summary DI (guard +
+       builder + factory) relocated to
+       ``dependencies_band_summary.py`` and the invocation assembly to
+       ``_band_summary_support.py`` for the RULE-04 size limits the
+       lazy seam crossed; REST — no SSE pre-header needed)*
 26. [x] `series/dependencies_consistency.py` — `get_series_consistency_service`
        *(D1/L26 — landed 2026-09-14: lazy wiring + first-use resolve after the
        series-ownership + novel-membership gates and BEFORE the

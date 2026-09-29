@@ -82,7 +82,7 @@ async def generate_band_summary_inprocess(novel_id: uuid.UUID) -> None:
     """
     from narrare._app.database import get_session_factory
     from narrare.novels.repository import NovelRepository
-    from narrare.series.dependencies import build_band_summary_service
+    from narrare.series.dependencies_band_summary import build_band_summary_service
 
     session_factory = get_session_factory()
     async with session_factory() as session:
