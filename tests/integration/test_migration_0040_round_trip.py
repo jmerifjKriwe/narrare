@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import uuid as _uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -49,7 +50,7 @@ def _run_alembic(*args: str) -> None:
     env = {**os.environ, "DATABASE_URL": db_url, "PGOPTIONS": "-c lock_timeout=10s"}
     subprocess.run(
         [
-            "python",
+            sys.executable,
             "-m",
             "alembic",
             "-c",
