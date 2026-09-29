@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from narrare.writing._summary_invocation import SummaryModelRuntime
 from narrare.writing._writing_support import WritingRuntime
 
 if TYPE_CHECKING:
@@ -46,6 +47,26 @@ def make_static_runtime_factory(
     )
 
     async def _static_runtime() -> WritingRuntime:
+        return runtime
+
+    return _static_runtime
+
+
+def make_static_summary_runtime_factory(
+    config: ResolvedModelConfig,
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> Callable[[], Awaitable[SummaryModelRuntime]]:
+    """A runtime factory returning a fixed summary runtime (render-inert pin).
+
+    ADR-086 L38 mirror of :func:`make_static_runtime_factory`: the summary
+    service composes this at first use; the frozen ``SummaryModelRuntime``
+    is pre-built here (same config/credentials the eager factory passed).
+    """
+    runtime = SummaryModelRuntime(config=config, api_key=api_key, base_url=base_url)
+
+    async def _static_runtime() -> SummaryModelRuntime:
         return runtime
 
     return _static_runtime

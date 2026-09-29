@@ -49,7 +49,13 @@ class TestSummaryDepsFactory:
         assert "session" in params
 
     async def test_execution_returns_chapter_summary_service(self) -> None:
-        """Smoke test: factory wires up and returns a ChapterSummaryService."""
+        """Smoke test: factory wires up lazily and returns a ChapterSummaryService.
+
+        ADR-086 L38 contract: construction touches NEITHER cascade — the
+        SUMMARIZE routing resolve and the token-limits resolve are deferred
+        behind the service's ``ensure_resolved`` (first use; pinned in
+        ``test_summary_lazy_resolution.py``).
+        """
         from narrare.writing.summary_deps import get_summary_service
         from narrare.writing.summary_service import ChapterSummaryService
         from narrare_core.llm import ResolvedModelConfig
@@ -116,6 +122,10 @@ class TestSummaryDepsFactory:
             )
 
         assert isinstance(service, ChapterSummaryService)
+        # ADR-086 L38 lazy contract: construction defers BOTH cascades —
+        # zero routing resolves, zero token-limits resolves at wiring time.
+        fake_resolver.resolve.assert_not_awaited()
+        fake_limits_service.get_resolved_limits.assert_not_awaited()
         # Slice 3 wiring pin: the canonical KB-context provider (ADR-067) is
         # wired for the kb_characters / kb_locations / kb_factions /
         # kb_relationships prompt slots (render-live since the Slice 4

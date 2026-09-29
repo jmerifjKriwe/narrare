@@ -167,8 +167,10 @@ class TestSummaryPrepareWiring:
         from narrare.writing.summary_service import ChapterSummaryService
         from narrare_core.agents.summary_types import SummaryOutput
         from tests.factories import make_chapter
+        from tests.unit.api.writing._writing_factories import (
+            make_static_summary_runtime_factory,
+        )
 
-        config = _user_config()
         registry = _RecordingPrepareRegistry()
         chapter = make_chapter(content="Once upon a time in a faraway land...", title="Chapter 1")
         chapter_repo = AsyncMock(get=AsyncMock(return_value=chapter), update_summary=AsyncMock())
@@ -177,12 +179,14 @@ class TestSummaryPrepareWiring:
         )
         service = ChapterSummaryService(
             registry=cast("ModelRegistry", registry),
-            config=config,
+            # ADR-086 L38: the user credential triple arrives through the
+            # frozen first-use runtime (verbatim values pinned below).
+            runtime_factory=make_static_summary_runtime_factory(
+                _user_config(), api_key=_USER_KEY, base_url=_USER_BASE_URL
+            ),
             chapter_repo=cast("ChapterRepository", chapter_repo),
             novel_repo=cast("NovelRepository", novel_repo),
             composer=cast("PromptComposer", _FakeComposer()),
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
         )
         output = MagicMock(spec=SummaryOutput)
         output.summary = "A hero begins their journey."
@@ -192,11 +196,11 @@ class TestSummaryPrepareWiring:
 
         with (
             patch(
-                "narrare.writing.summary_service.ChapterSummaryAgent",
+                "narrare.writing._summary_invocation.ChapterSummaryAgent",
                 return_value=agent,
             ) as MockAgent,
             patch(
-                "narrare.writing.summary_service.compose_invocation",
+                "narrare.writing._summary_invocation.compose_invocation",
                 new=AsyncMock(return_value=_ComposedInvocation()),
             ),
         ):
@@ -204,9 +208,12 @@ class TestSummaryPrepareWiring:
                 chapter_id=chapter.id, max_sentences=3, user_id=str(uuid4())
             )
 
+        # The config triple is the frozen runtime's (ADR-086 L38) — pinned
+        # by identity, the exact object prepare() received.
+        runtime = await service.ensure_resolved()
         _assert_prepare_wiring(
             registry,
-            config,
+            runtime.config,
             mock_agent_cls=MockAgent,
             intent=LLMIntent.SUMMARIZE,
             api_key=_USER_KEY,

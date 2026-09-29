@@ -108,9 +108,14 @@ def service(
     mock_novel_repo: AsyncMock,
     mock_composer: AsyncMock,
 ) -> ChapterSummaryService:
+    from tests.unit.api.writing._writing_factories import make_static_summary_runtime_factory
+
     return ChapterSummaryService(
         registry=mock_registry,
-        config=config,
+        # ADR-086 L38: the service composes its runtime at first use; the
+        # fake chain pins a fixed runtime (render- and outcome-inert —
+        # same config/credentials the eager factory passed).
+        runtime_factory=make_static_summary_runtime_factory(config),
         chapter_repo=mock_chapter_repo,
         novel_repo=mock_novel_repo,
         composer=mock_composer,
@@ -147,7 +152,7 @@ class TestSummarize:
         mock_agent.run = AsyncMock(return_value=mock_output)
 
         with patch(
-            "narrare.writing.summary_service.ChapterSummaryAgent",
+            "narrare.writing._summary_invocation.ChapterSummaryAgent",
             return_value=mock_agent,
         ):
             result = await service.summarize(
@@ -216,7 +221,7 @@ class TestSummarize:
 
         with (
             patch(
-                "narrare.writing.summary_service.ChapterSummaryAgent",
+                "narrare.writing._summary_invocation.ChapterSummaryAgent",
                 return_value=mock_agent,
             ),
             pytest.raises(WritingError, match="Chapter summarization failed"),
@@ -244,7 +249,7 @@ class TestSummarize:
 
         with (
             patch(
-                "narrare.writing.summary_service.ChapterSummaryAgent",
+                "narrare.writing._summary_invocation.ChapterSummaryAgent",
                 return_value=mock_agent,
             ),
             pytest.raises(NotFoundError, match="Chapter"),
@@ -274,7 +279,7 @@ class TestSummarize:
         mock_agent.run = AsyncMock(return_value=mock_output)
 
         with patch(
-            "narrare.writing.summary_service.ChapterSummaryAgent",
+            "narrare.writing._summary_invocation.ChapterSummaryAgent",
             return_value=mock_agent,
         ):
             await service.summarize(
@@ -290,9 +295,11 @@ class TestSummarize:
         assert call_args[0][0] == LLMIntent.SUMMARIZE
 
         # Verify the registry resolved via the prepare() assembly point
-        # with the SUMMARIZE intent (Task 6c wiring)
+        # with the SUMMARIZE intent (Task 6c wiring). The config triple now
+        # arrives through the frozen first-use runtime (ADR-086 L38).
+        runtime = await service.ensure_resolved()
         mock_registry.prepare.assert_awaited_once_with(
-            service._config,
+            runtime.config,
             intent=LLMIntent.SUMMARIZE,
             # Task 3: the ADR-045 run-limit resolver applies the config's
             # output cap (max_tokens=1000) at the agent boundary.

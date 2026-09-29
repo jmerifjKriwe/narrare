@@ -128,13 +128,18 @@ def _make_service(
     composer.build = AsyncMock(
         return_value=ComposedPrompt(system="You are a summarizer.", user="Summarize.")
     )
+    from tests.unit.api.writing._writing_factories import make_static_summary_runtime_factory
+
     return ChapterSummaryService(
         registry=registry,
-        config=ResolvedModelConfig(
-            provider_name="anthropic",
-            model_id="claude-sonnet-4-5-20251020",
-            temperature=0.3,
-            max_tokens=1000,
+        # ADR-086 L38: fixed first-use runtime (render- and outcome-inert).
+        runtime_factory=make_static_summary_runtime_factory(
+            ResolvedModelConfig(
+                provider_name="anthropic",
+                model_id="claude-sonnet-4-5-20251020",
+                temperature=0.3,
+                max_tokens=1000,
+            )
         ),
         chapter_repo=cast("ChapterRepository", chapter_repo),
         novel_repo=cast("NovelRepository", novel_repo),
@@ -162,7 +167,7 @@ class TestSummarizeOwnership:
         )
 
         with patch(
-            "narrare.writing.summary_service.ChapterSummaryAgent",
+            "narrare.writing._summary_invocation.ChapterSummaryAgent",
             return_value=fake_agent,
         ):
             result = await service.summarize(chapter.id, user_id=str(USER_A))
@@ -184,7 +189,7 @@ class TestSummarizeOwnership:
 
         with (
             patch(
-                "narrare.writing.summary_service.ChapterSummaryAgent",
+                "narrare.writing._summary_invocation.ChapterSummaryAgent",
                 return_value=fake_agent,
             ),
             pytest.raises(NotFoundError, match="Chapter"),

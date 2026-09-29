@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (2):**
+**Open (1):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -616,7 +616,24 @@ at construction (2026-09-09; factory function names verified):
        all; the runtime composite, the stream-inputs builder, and the
        stats/``novel_context`` helpers split to ``_writing_support.py``
        for the RULE-04 size limits the lazy seam crossed)*
-38. [ ] `writing/summary_deps.py` — `get_summary_service` (+ eager `get_resolved_limits`)
+38. [x] `writing/summary_deps.py` — `get_summary_service` (+ eager `get_resolved_limits`)
+       *(L38 — landed 2026-09-29: lazy wiring + deferred dual-cascade
+       composition at first use (M-budget / S4b shape) — a
+       ``LazyModelResolution`` around the SUMMARIZE routing cascade plus a
+       ``compose_runtime`` closure awaiting BOTH cascades (routing +
+       token-limits — RULE-18b: sources unchanged, only timing moves) and
+       freezing the effective config (``temperature=0.3``,
+       ``max_tokens=limits.output_limit`` + verbatim per-user
+       credentials); first-use resolve runs in the service's idempotent
+       ``ensure_resolved`` after the chapter→novel ownership gate
+       (gate-before-resolution) but BEFORE the empty-content early return
+       and outside the generation ``try``-wrapper, so an unconfigured
+       provider stays a loud 400 even on the degradation path and is
+       never wrapped into the 500-class ``WritingError`` (RULE-11; REST —
+       no SSE pre-header needed); the KB-context fetch +
+       prompt-composition + prepare/agent-run assembly moved to
+       ``_summary_invocation.py`` for the RULE-04 size limit the lazy
+       seam crossed)*
 39. [ ] `writing/router_sessions.py` — `interactive_session` (inline eager
        resolve + `get_resolved_limits` in session bootstrap)
 

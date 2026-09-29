@@ -161,9 +161,13 @@ def _make_service(
     novel_repo: AsyncMock,
 ) -> ChapterSummaryService:
     """Build the service under test with the real bundled prompt cascade."""
+    from tests.unit.api.writing._writing_factories import make_static_summary_runtime_factory
+
     return ChapterSummaryService(
         registry=_make_registry(),
-        config=_config(),
+        # ADR-086 L38: fixed first-use runtime (render-inert — the golden
+        # prompts depend on the composer + KB bundle, not the config).
+        runtime_factory=make_static_summary_runtime_factory(_config()),
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
         composer=composer,
@@ -225,7 +229,7 @@ class TestSummarizeKBRenderActivation:
         )
         agent_cls = _mock_summary_agent()
 
-        with patch("narrare.writing.summary_service.ChapterSummaryAgent", agent_cls):
+        with patch("narrare.writing._summary_invocation.ChapterSummaryAgent", agent_cls):
             await service.summarize(chapter_id=chapter.id, user_id=TEST_USER_ID)
 
         system_prompt = agent_cls.call_args.kwargs["system_prompt"]
@@ -245,7 +249,7 @@ class TestSummarizeKBRenderActivation:
         )
         agent_cls = _mock_summary_agent()
 
-        with patch("narrare.writing.summary_service.ChapterSummaryAgent", agent_cls):
+        with patch("narrare.writing._summary_invocation.ChapterSummaryAgent", agent_cls):
             await service.summarize(chapter_id=chapter.id, user_id=TEST_USER_ID)
 
         system_prompt = agent_cls.call_args.kwargs["system_prompt"]
@@ -260,7 +264,7 @@ class TestSummarizeKBRenderActivation:
         service = _make_service(PromptComposer(PromptRegistry()), None, chapter_repo, novel_repo)
         agent_cls = _mock_summary_agent()
 
-        with patch("narrare.writing.summary_service.ChapterSummaryAgent", agent_cls):
+        with patch("narrare.writing._summary_invocation.ChapterSummaryAgent", agent_cls):
             await service.summarize(chapter_id=chapter.id, user_id=TEST_USER_ID)
 
         system_prompt = agent_cls.call_args.kwargs["system_prompt"]
@@ -279,7 +283,7 @@ class TestSummarizeKBRenderActivation:
         service = _make_service(composer, provider, chapter_repo, novel_repo)
         agent_cls = _mock_summary_agent()
 
-        with patch("narrare.writing.summary_service.ChapterSummaryAgent", agent_cls):
+        with patch("narrare.writing._summary_invocation.ChapterSummaryAgent", agent_cls):
             await service.summarize(chapter_id=chapter.id, max_sentences=3, user_id=TEST_USER_ID)
 
         context = composer.build.call_args[0][1]
@@ -300,7 +304,7 @@ class TestSummarizeKBRenderActivation:
         service = _make_service(composer, provider, chapter_repo, novel_repo)
         agent_cls = _mock_summary_agent()
 
-        with patch("narrare.writing.summary_service.ChapterSummaryAgent", agent_cls):
+        with patch("narrare.writing._summary_invocation.ChapterSummaryAgent", agent_cls):
             await service.summarize(chapter_id=chapter.id, user_id=TEST_USER_ID)
 
         assert provider.fetch_context_calls == [
