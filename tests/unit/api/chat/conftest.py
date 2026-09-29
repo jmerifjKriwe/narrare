@@ -15,12 +15,14 @@ if TYPE_CHECKING:
 
     from pydantic_ai.usage import UsageLimits
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chat.chat_service import ChatService
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
     from narrare.notes.contracts import OwnedLinkLookupProtocol
     from narrare_core.agents.base import StreamEvent
     from narrare_core.chat.contracts import ChatMessage
     from narrare_core.chat.conversation_store import InMemoryConversationStore
+    from narrare_core.llm import ResolvedModelConfig
 
 from narrare_core.chat.contracts import ChatRequest
 from narrare_core.shared.errors import NotFoundError
@@ -186,6 +188,26 @@ def _make_config() -> MagicMock:
     return config
 
 
+def _static_resolution(config: object) -> ModelResolution:
+    """``StaticModelResolution`` over a fixed config (ADR-086 L12 seam).
+
+    The eager factory passed ``config``/``api_key``/``base_url`` into the
+    service; since ADR-086 L12 the service takes a ``ModelResolution`` —
+    unit tests migrate mechanically to ``StaticModelResolution`` with a
+    fixed triple (outcomes unchanged).
+    """
+    from narrare._app.dependencies_services import StaticModelResolution
+    from narrare_core.llm.model_routing import ResolvedModel
+
+    return StaticModelResolution(
+        ResolvedModel(
+            config=cast("ResolvedModelConfig", config),
+            api_key="sk-test-key",
+            base_url=None,
+        )
+    )
+
+
 def _make_request(
     message: str = "Hello!",
     conversation_id: UUID | None = None,
@@ -288,7 +310,7 @@ def service(
         prompt_composer=mock_composer,
         model_registry=mock_registry,
         conversation_store=cast("SQLAlchemyConversationStore", in_memory_store),
-        config=mock_config,
+        model_resolution=_static_resolution(mock_config),
     )
 
 
@@ -313,6 +335,6 @@ def service_with_novel_lookup(
         prompt_composer=mock_composer,
         model_registry=mock_registry,
         conversation_store=cast("SQLAlchemyConversationStore", in_memory_store),
-        config=mock_config,
+        model_resolution=_static_resolution(mock_config),
         novel_lookup=cast("OwnedLinkLookupProtocol", novel_lookup),
     )

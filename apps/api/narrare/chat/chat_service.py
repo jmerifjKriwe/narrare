@@ -6,6 +6,12 @@ Wires core chat logic (narrare_core.chat) to FastAPI infrastructure:
 - ChatAgent via ModelRegistry for agent-based LLM streaming
 
 Follows ChatServiceProtocol from core contracts.py.
+
+Model acquisition is lazy (ADR-086): the DI factory wires the per-user
+CHAT routing cascade as a ``ModelResolution``; it resolves once at first
+use (``ask()``) — never at construction — so body-validation errors
+surface as 422 first, and an unconfigured provider stays a loud
+pre-header 400 (the router awaits ``ask()`` before the ``StreamingResponse``).
 """
 
 from __future__ import annotations
@@ -27,17 +33,16 @@ from narrare_core.chat.contracts import ChatMessage, ChatRequest, ChatServicePro
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
     from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.notes.contracts import OwnedLinkLookupProtocol
     from narrare_core.agents.process_history import ProcessHistory
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ModelRegistry, ResolvedModelConfig
+    from narrare_core.llm import ModelRegistry, ResolvedModel
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.notes.contracts import NoteLookupProtocol
     from narrare_core.prompts import PromptComposer
-    from narrare_core.prompts.composer import ComposedPrompt
-    from narrare_core.prompts.context import PromptContext
 
 
 class ChatService(ChatServiceProtocol):
@@ -58,11 +63,9 @@ class ChatService(ChatServiceProtocol):
         prompt_composer: PromptComposer,
         model_registry: ModelRegistry,
         conversation_store: SQLAlchemyConversationStore,
-        config: ResolvedModelConfig,
+        model_resolution: ModelResolution,
         invocation_pipeline: InvocationPipeline | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
         note_lookup: NoteLookupProtocol | None = None,
         novel_lookup: OwnedLinkLookupProtocol | None = None,
         kb_context_provider: KBContextProviderProtocol | None = None,
@@ -73,17 +76,13 @@ class ChatService(ChatServiceProtocol):
             prompt_composer: For assembling system + user prompts.
             model_registry: For LLM model resolution and agent creation.
             conversation_store: For message persistence.
-            config: Resolved model configuration (provider, model, params).
+            model_resolution: Lazy per-user model resolution (ADR-086) —
+                the CHAT routing cascade resolves on first use, never at
+                construction; the resolved triple feeds the agent stream.
             invocation_pipeline: Optional pipeline for chat-invocation evidence
                 and enrichment (ADR-045/ADR-048); ``None`` (default) is a no-op.
             run_limit_resolver: Optional run-limit resolver (ADR-045 Decision 4);
                 ``None`` (default) applies no limits to the stream.
-            api_key: Resolved per-user credential for the model registry call
-                (model-routing cascade). ``None`` only in the unit-test
-                harness; production wiring always supplies it via the DI
-                factory.
-            base_url: Resolved base-URL override for OpenAI-compatible
-                providers. ``None`` uses the provider default endpoint.
             note_lookup: Optional ``NoteLookupProtocol`` (NOTES-001 §6b) —
                 resolves ``note_id`` requests into a note whose context
                 block is prepended to the user message (runtime input,
@@ -101,15 +100,29 @@ class ChatService(ChatServiceProtocol):
         self._composer = prompt_composer
         self._registry = model_registry
         self._store = conversation_store
-        self._config = config
+        self._model_resolution = model_resolution
+        self._resolved: ResolvedModel | None = None
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver
-        self._api_key = api_key
-        self._base_url = base_url
         self._note_lookup = note_lookup
         self._novel_lookup = novel_lookup
         self._kb_context_provider = kb_context_provider
         self._histories: dict[UUID, ProcessHistory] = {}
+
+    async def ensure_resolved(self) -> ResolvedModel:
+        """Resolve the per-user CHAT routing once; idempotent (ADR-086).
+
+        First call resolves via the injected ``ModelResolution`` and
+        caches the triple; repeat calls return the cached value without
+        re-running the cascade. Errors propagate loudly and are never
+        cached (RULE-11): ``ConfigurationError`` (``NO_AI_PROVIDER``)
+        surfaces as a pre-header 400 on this AI-mandatory SSE endpoint —
+        the router awaits ``ask()`` before constructing the
+        ``StreamingResponse``.
+        """
+        if self._resolved is None:
+            self._resolved = await self._model_resolution.resolve()
+        return self._resolved
 
     async def ask(
         self,
@@ -163,6 +176,12 @@ class ChatService(ChatServiceProtocol):
             user_id=user_id,
         )
 
+        # 0.7 ADR-086 L12: first-use lazy resolve — AFTER the ownership
+        # gate (gates-ahead-of-resolution, L15 ordering), BEFORE any
+        # persistence: an unconfigured provider stays a loud pre-header
+        # 400 (`ask()` runs before the StreamingResponse), no orphan writes.
+        resolved = await self.ensure_resolved()
+
         # 1. Create conversation or add message to existing
         if is_new:
             conv_id = await self._store.create_conversation(
@@ -197,33 +216,14 @@ class ChatService(ChatServiceProtocol):
         )
 
         # 3. Return the async generator that streams events via ChatAgent
-        return self._stream_agent_response(
-            conv_id=conv_id,
-            composed=composed,
-            context=context,
-            user_prompt=message,
-            user_id=user_id,
-            project_id=request.project_id,
-        )
-
-    async def _stream_agent_response(
-        self,
-        conv_id: UUID,
-        composed: ComposedPrompt,
-        context: PromptContext,
-        user_prompt: str,
-        *,
-        user_id: UUID,
-        project_id: UUID | None,
-    ) -> AsyncIterator[dict[str, object]]:
-        """Stream one turn — thin delegation (RULE-04) to ``chat._agent_stream``."""
+        # (thin delegation to the RULE-04 stream module; ADR-086 L12 seam).
         from narrare.chat._agent_stream import stream_agent_response
 
-        async for event in stream_agent_response(
+        return stream_agent_response(
             registry=self._registry,
-            config=self._config,
-            api_key=self._api_key,
-            base_url=self._base_url,
+            config=resolved.config,
+            api_key=resolved.api_key,
+            base_url=resolved.base_url,
             composer=self._composer,
             store=self._store,
             histories=self._histories,
@@ -232,11 +232,10 @@ class ChatService(ChatServiceProtocol):
             conv_id=conv_id,
             composed=composed,
             context=context,
-            user_prompt=user_prompt,
+            user_prompt=message,
             user_id=user_id,
-            project_id=project_id,
-        ):
-            yield event
+            project_id=request.project_id,
+        )
 
     async def get_history(
         self,

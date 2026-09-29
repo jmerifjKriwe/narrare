@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from narrare.chat.chat_service import ChatService
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
     from narrare_core.chat.conversation_store import InMemoryConversationStore
-    from narrare_core.llm import ModelRegistry, ResolvedModelConfig
+    from narrare_core.llm import ModelRegistry
     from narrare_core.notes.contracts import NoteLookupProtocol
     from narrare_core.prompts import PromptComposer
 
@@ -117,13 +117,15 @@ def _make_service(
     mock_config: object,
     lookup: FakeNoteLookup | NoteLookupProtocol | None,
 ) -> ChatService:
+    from tests.unit.api.chat.conftest import _static_resolution
+
     from narrare.chat.chat_service import ChatService
 
     return ChatService(
         prompt_composer=cast("PromptComposer", mock_composer),
         model_registry=cast("ModelRegistry", mock_registry),
         conversation_store=cast("SQLAlchemyConversationStore", in_memory_store),
-        config=cast("ResolvedModelConfig", mock_config),
+        model_resolution=_static_resolution(mock_config),
         note_lookup=lookup,
     )
 

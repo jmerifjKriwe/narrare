@@ -156,6 +156,8 @@ class TestProjectlessEnrichmentSkip:
         mock_config: MagicMock,
         spy: _SpyEnricher,
     ) -> ChatService:
+        from tests.unit.api.chat.conftest import _static_resolution
+
         from narrare.chat.chat_service import ChatService
         from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
@@ -163,7 +165,7 @@ class TestProjectlessEnrichmentSkip:
             prompt_composer=mock_composer,
             model_registry=mock_registry,
             conversation_store=cast("SQLAlchemyConversationStore", in_memory_store),
-            config=mock_config,
+            model_resolution=_static_resolution(mock_config),
             invocation_pipeline=InvocationPipeline(enrichers=[spy]),
         )
 

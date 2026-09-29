@@ -73,7 +73,11 @@ def _make_service(
     novel_lookup: FakeNovelLookup | None = None,
 ) -> tuple[ChatService, AsyncMock]:
     """Build a ChatService with optional KB provider + novel lookup wired."""
-    from tests.unit.api.chat.conftest import _make_config, _make_mock_registry
+    from tests.unit.api.chat.conftest import (
+        _make_config,
+        _make_mock_registry,
+        _static_resolution,
+    )
 
     from narrare.chat.chat_service import ChatService
     from narrare_core.chat.conversation_store import InMemoryConversationStore
@@ -87,7 +91,7 @@ def _make_service(
             "SQLAlchemyConversationStore",
             InMemoryConversationStore(),
         ),
-        config=_make_config(),
+        model_resolution=_static_resolution(_make_config()),
         kb_context_provider=kb_context_provider,
         novel_lookup=novel_lookup,
     )

@@ -50,7 +50,7 @@ def _make_chat_service(system: str, user: str) -> tuple[ChatService, AsyncMock]:
     Returns the service and the mocked composer so tests can assert on
     ``composer.build`` call arguments.
     """
-    from tests.unit.api.chat.conftest import _make_config, _make_mock_registry
+    from tests.unit.api.chat.conftest import _make_config, _make_mock_registry, _static_resolution
 
     from narrare.chat.chat_service import ChatService
     from narrare_core.chat.conversation_store import InMemoryConversationStore
@@ -66,7 +66,7 @@ def _make_chat_service(system: str, user: str) -> tuple[ChatService, AsyncMock]:
             "SQLAlchemyConversationStore",
             InMemoryConversationStore(),
         ),
-        config=_make_config(),
+        model_resolution=_static_resolution(_make_config()),
     )
     return service, composer
 

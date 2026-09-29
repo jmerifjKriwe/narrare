@@ -1,6 +1,6 @@
 """User-routing migration tests for the chat dependency factory (Task 4).
 
-Regression-first proof that ``chat/dependencies.get_chat_service`` resolves
+Regression-first proof that ``chat/dependencies.get_chat_service`` wires
 the chat model via the per-user ``ModelRoutingResolver`` cascade (instead
 of the legacy ``build_system_default_config``) with the correct intent +
 user_id, and that the resolved config + credentials land on the service
@@ -9,6 +9,13 @@ that owns the actual ``get_model`` call:
 - Chat model — ``LLMIntent.CHAT`` (the intent ChatService composes its
   prompt with, ``chat_service.py`` ``self._composer.build(LLMIntent.CHAT,
   ...)``)
+
+ADR-086 L12 (lazy migration): the factory no longer resolves — it wires
+the cascade as a ``LazyModelResolution`` (zero resolve calls at
+construction) and the SERVICE's first use (``ensure_resolved``) triggers
+exactly one resolve with the verbatim eager args
+(``(LLMIntent.CHAT, user_id, None)``); the returned triple is cached on
+the service and threaded onwards to the ``get_model`` resolution point.
 
 Auth posture (plan Task 4 verification): ALL chat router endpoints declare
 ``CurrentUserIdDep`` — JWT-mandatory (401 on missing/invalid token, see
@@ -174,10 +181,53 @@ class TestFactoryStructure:
 
 
 class TestChatDepsUserRouting:
-    """get_chat_service resolves CHAT for THIS user (auth-mandatory router)."""
+    """get_chat_service lazily wires CHAT for THIS user (auth-mandatory router)."""
 
-    async def test_resolves_intent_and_threads_results_into_wiring(self) -> None:
+    async def test_no_resolution_at_construction(self) -> None:
+        """ADR-086 L12: the factory wires the cascade — it never resolves."""
         from narrare.chat.chat_service import ChatService
+        from narrare.chat.dependencies import get_chat_service
+
+        session = MagicMock(spec=AsyncSession, name="session")
+        user_id = str(uuid4())
+        resolver, _resolved = _fake_resolver()
+
+        with (
+            patch(
+                "narrare.chat.dependencies.get_model_routing_resolver",
+                return_value=resolver,
+            ),
+            patch(
+                "narrare.chat.dependencies.get_model_registry",
+                return_value=MagicMock(spec=True, name="ModelRegistry"),
+            ),
+            patch(
+                "narrare.chat.dependencies.get_composer",
+                return_value=MagicMock(spec=True, name="PromptComposer"),
+            ),
+            patch(
+                "narrare.chat.dependencies.get_invocation_pipeline",
+                return_value=None,
+            ),
+        ):
+            service = await get_chat_service(
+                session=session,
+                user_id=user_id,
+            )
+
+        assert isinstance(service, ChatService)
+        assert resolver.resolve.await_count == 0
+
+    async def test_first_use_resolves_verbatim_args_and_caches_triple(self) -> None:
+        """First use resolves once with the eager factory's verbatim args.
+
+        The cascade runs ``(LLMIntent.CHAT, user_id, None)`` — the SAME
+        intent (ChatService composes with CHAT), for THIS user, WITHOUT
+        the project tier (project_id arrives in the request body — the
+        router has no novel path parameter). The resolved triple is
+        cached on the service and threaded onwards to the ``get_model``
+        resolution point in ``_agent_stream``.
+        """
         from narrare.chat.dependencies import get_chat_service
 
         session = MagicMock(spec=AsyncSession, name="session")
@@ -207,22 +257,20 @@ class TestChatDepsUserRouting:
                 user_id=user_id,
             )
 
-        # The REAL intent (ChatService composes with LLMIntent.CHAT), for
-        # THIS user, WITHOUT the project tier (project_id arrives in the
-        # request body — the router has no novel path parameter).
-        assert resolver.resolve.await_args_list == [call(LLMIntent.CHAT, UUID(user_id), None)]
+        first = await service.ensure_resolved()
+        second = await service.ensure_resolved()
 
-        assert isinstance(service, ChatService)
-        config = service._config
+        assert resolver.resolve.await_args_list == [call(LLMIntent.CHAT, UUID(user_id), None)]
+        assert first is second is resolved
+
+        config = first.config
         assert isinstance(config, ResolvedModelConfig)
-        assert config is resolved.config
         assert config.model_id == "glm-4.7"
         assert config.provider_name == "zai"
-
-        # Resolved user credentials land on the service (threaded onwards to
-        # the get_model resolution point in _stream_agent_response).
-        assert service._api_key == _USER_KEY
-        assert service._base_url == _USER_BASE_URL
+        # Resolved user credentials ride the cached triple (threaded
+        # onwards to the get_model resolution point in _agent_stream).
+        assert first.api_key == _USER_KEY
+        assert first.base_url == _USER_BASE_URL
 
 
 # ===========================================================================
@@ -239,6 +287,7 @@ class TestCredentialsReachResolutionPoint:
         return InMemoryConversationStore()
 
     async def test_ask_threads_credentials_into_get_model(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.chat.chat_service import ChatService
 
         config = _user_config()
@@ -247,9 +296,7 @@ class TestCredentialsReachResolutionPoint:
             prompt_composer=_mock_composer(),
             model_registry=cast("ModelRegistry", registry),
             conversation_store=cast("SQLAlchemyConversationStore", self._in_memory_store()),
-            config=config,
-            api_key=_USER_KEY,
-            base_url=_USER_BASE_URL,
+            model_resolution=StaticModelResolution(_resolved()),
         )
         request = ChatRequest(project_id=uuid4(), message="Hello!")
 

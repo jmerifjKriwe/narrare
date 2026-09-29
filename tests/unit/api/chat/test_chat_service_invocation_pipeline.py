@@ -59,11 +59,13 @@ class TestChatServiceWithPipeline:
         # Wire a real pipeline (no-op enrichers — always PASS).
         pipeline = InvocationPipeline()
 
+        from tests.unit.api.chat.conftest import _static_resolution
+
         service = ChatService(
             prompt_composer=mock_composer,
             model_registry=mock_registry,
             conversation_store=cast("SQLAlchemyConversationStore", in_memory_store),
-            config=mock_config,
+            model_resolution=_static_resolution(mock_config),
             invocation_pipeline=pipeline,
         )
 
@@ -126,11 +128,13 @@ class TestChatServiceWithPipeline:
         pipeline = InvocationPipeline()
         resolver = DefaultRunLimitResolver()
 
+        from tests.unit.api.chat.conftest import _static_resolution
+
         service = ChatService(
             prompt_composer=mock_composer,
             model_registry=mock_registry,
             conversation_store=cast("SQLAlchemyConversationStore", in_memory_store),
-            config=config,
+            model_resolution=_static_resolution(config),
             invocation_pipeline=pipeline,
             run_limit_resolver=resolver,
         )
@@ -188,11 +192,13 @@ class TestChatServiceWithPipeline:
 
         pipeline = InvocationPipeline()
 
+        from tests.unit.api.chat.conftest import _static_resolution
+
         service = ChatService(
             prompt_composer=mock_composer,
             model_registry=mock_registry,
             conversation_store=cast("SQLAlchemyConversationStore", in_memory_store),
-            config=mock_config,
+            model_resolution=_static_resolution(mock_config),
             invocation_pipeline=pipeline,
         )
 

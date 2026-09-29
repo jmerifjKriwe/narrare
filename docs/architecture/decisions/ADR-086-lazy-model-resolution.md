@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (4):**
+**Open (2):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -319,7 +319,16 @@ at construction (2026-09-09; factory function names verified):
 11. [x] `analysis/dependencies_voice_drift.py` — `get_voice_drift_service` (SSE)
        *(A6/L11 — landed 2026-09-14: lazy wiring + first-use resolve +
        SSE pre-header call)*
-12. [ ] `chat/dependencies.py` — `get_chat_service` (SSE)
+12. [x] `chat/dependencies.py` — `get_chat_service` (SSE)
+       *(I1/L12 — landed 2026-09-29: lazy wiring + first-use resolve
+       (``ensure_resolved``) at the top of ``ChatService.ask()`` AFTER the
+       novel-ownership gate (L15 ordering) and BEFORE any message
+       persistence; the SSE router already awaits ``ask()`` before the
+       ``StreamingResponse``, so the 400 stays pre-header with no router
+       change; the pass-through ``_stream_agent_response`` wrapper (eager
+       field capture) was removed — ``ask()`` delegates directly to
+       ``_agent_stream.stream_agent_response`` with the resolved triple
+       threaded)*
 13. [x] `consistency/deps.py` — `get_consistency_service`
        *(H1/L13 — landed 2026-09-16: dual lazy wiring (S4b-dual shape)
        — one ``LazyModelResolution`` per intent (FACT_EXTRACT +

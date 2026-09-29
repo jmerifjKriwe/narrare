@@ -7,7 +7,7 @@ chat call site — the model is resolved via the SINGLE assembly point
 stream kwargs (the ADR-045 resolver's per-turn ``max_tokens`` cap is
 layered on top via ``resolve_chat_run_limits``):
 
-- ``ChatService._stream_agent_response`` (CHAT)
+- ``chat_service.ask`` → ``_agent_stream.stream_agent_response`` (CHAT)
 
 Root cause pinned here (structural audit, "Pipeline 3 — nothing at
 all"): the site resolved the model via bare ``get_model``, so the
@@ -140,8 +140,10 @@ def _make_service(
     resolver: _StubRunLimitResolver | None,
 ) -> ChatService:
     """Build a ChatService with the recording registry (+optional resolver)."""
+    from narrare._app.dependencies_services import StaticModelResolution
     from narrare.chat.chat_service import ChatService
     from narrare_core.chat.conversation_store import InMemoryConversationStore
+    from narrare_core.llm.model_routing import ResolvedModel
     from narrare_core.prompts import PromptComposer
 
     composer = AsyncMock(spec=PromptComposer)
@@ -152,10 +154,14 @@ def _make_service(
         prompt_composer=cast("PromptComposer", composer),
         model_registry=cast("ModelRegistry", registry),
         conversation_store=cast("SQLAlchemyConversationStore", InMemoryConversationStore()),
-        config=_user_config(),
+        model_resolution=StaticModelResolution(
+            ResolvedModel(
+                config=_user_config(),
+                api_key=_USER_KEY,
+                base_url=_USER_BASE_URL,
+            )
+        ),
         run_limit_resolver=cast("DefaultRunLimitResolver | None", resolver),
-        api_key=_USER_KEY,
-        base_url=_USER_BASE_URL,
     )
 
 

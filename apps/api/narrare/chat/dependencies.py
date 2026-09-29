@@ -4,9 +4,12 @@ All dependencies are injected via __init__ (DI pattern).
 No business logic lives here — only wiring.
 
 Model acquisition follows the per-user model-routing cascade: the factory
-resolves ``LLMIntent.CHAT`` (the intent ChatService composes its prompt
-with) for the authenticated user and passes the resolved config +
-credentials into the service that owns the actual ``get_model`` call.
+wires ``LLMIntent.CHAT`` (the intent ChatService composes its prompt
+with) for the authenticated user as a ``LazyModelResolution`` and passes
+it into the service that owns the actual ``get_model`` call. Per ADR-086
+the cascade resolves on the service's first use (``ChatService.ask()``),
+never at construction — so request-body validation errors surface as 422
+before any routing cascade runs.
 
 Auth posture (plan Task 4 verification): ALL chat router endpoints declare
 ``CurrentUserIdDep`` — JWT-mandatory (401 on missing/invalid token, see
@@ -29,7 +32,10 @@ from narrare._app.dependencies import (
     get_invocation_pipeline,
     get_model_registry,
 )
-from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.dependencies_services import (
+    LazyModelResolution,
+    get_model_routing_resolver,
+)
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
@@ -61,9 +67,11 @@ async def get_chat_service(
     """Create a ChatService with per-user resolved model routing.
 
     Production wiring:
-    - ModelRoutingResolver for the per-user model cascade (CHAT intent);
-      ``ConfigurationError`` propagates when the user has no provider
-      configured (chat routers are auth-mandatory).
+    - LazyModelResolution over the per-user model cascade (CHAT intent,
+      ADR-086): zero resolution at construction — the cascade resolves
+      at the service's first use, so body-validation errors surface as
+      422 and an unconfigured provider stays a loud 400 at the service
+      entry point (chat routers are auth-mandatory).
     - ModelRegistry for LLM model resolution
     - PromptComposer for system prompt assembly
     - SQLAlchemyConversationStore for message persistence
@@ -101,7 +109,9 @@ async def get_chat_service(
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
     resolver = get_model_routing_resolver(session)
-    resolved = await resolver.resolve(LLMIntent.CHAT, UUID(user_id), None)
+    model_resolution = LazyModelResolution(
+        lambda: resolver.resolve(LLMIntent.CHAT, UUID(user_id), None)
+    )
 
     registry = get_model_registry()
     composer = get_composer()
@@ -118,11 +128,9 @@ async def get_chat_service(
         prompt_composer=composer,
         model_registry=registry,
         conversation_store=SQLAlchemyConversationStore(session),
-        config=resolved.config,
+        model_resolution=model_resolution,
         invocation_pipeline=get_invocation_pipeline(),
         run_limit_resolver=DefaultRunLimitResolver(),
-        api_key=resolved.api_key,
-        base_url=resolved.base_url,
         note_lookup=get_note_service(session),
         novel_lookup=_NovelOwnedLookup(NovelRepository(session)),
         kb_context_provider=kb_context_provider,
