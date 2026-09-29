@@ -19,8 +19,8 @@ The RESPONSE schema is REUSED verbatim from the novel-level analysis module
 series-specific (:class:`SeriesVoiceDriftCheckRequest`).
 
 Errors map via the global ``NarrareError`` handler in ``_app/main.py``
-(``ForbiddenError`` → 403, ``NotFoundError`` → 404, ``ConfigurationError`` →
-500).
+(``ForbiddenError`` → 403, ``NotFoundError`` → 404; any other
+``NarrareError`` subclass falls back to the handler default 400).
 """
 
 from __future__ import annotations

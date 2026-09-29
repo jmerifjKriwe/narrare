@@ -104,19 +104,37 @@ def _find_sdk_modules(root: Path, scan_roots: tuple[str, ...] = _RULE1_ROOTS) ->
     }
 
 
+def _logical_line(text: str, start: int) -> str:
+    """Return the logical line starting at ``start``, joining paren continuations.
+
+    Sweep-style folder: consumes lines until parentheses balance (or a non-
+    parenthesized line ends), stripping ``#`` comments per line.  String
+    literals containing parens are out of heuristic scope (import statements
+    bind identifiers, not strings — same documented-approximation style as
+    Rule 2's same-file heuristic).
+    """
+    parts: list[str] = []
+    depth = 0
+    for line in text[start:].split("\n"):
+        code = line.split("#", 1)[0]
+        parts.append(code)
+        depth += code.count("(") - code.count(")")
+        if depth <= 0:
+            break
+    return " ".join(parts)
+
+
 def _aliases_imported_from_httpx(text: str) -> set[str]:
     """Local names bound by ``from httpx import …`` statements (alias-aware).
 
-    Sound approximation: single-line imports and same-line parenthesized
-    lists; multi-line parenthesized lists are out of heuristic scope (same
-    documented-approximation style as Rule 2's same-file heuristic).
-    Non-identifier bindings (``import *``) are ignored.
+    Covers single-line imports and parenthesized lists — single-line and
+    multi-line.  Non-identifier bindings (``import *``) are ignored.
     """
     aliases: set[str] = set()
     for match in _HTTPX_FROM_IMPORT_RE.finditer(text):
-        line = text[match.end() :].split("\n", 1)[0]
+        line = _logical_line(text, match.end())
         for part in line.split(","):
-            part = part.split("#", 1)[0].strip().strip("()").strip()
+            part = part.strip().strip("()").strip()
             if not part:
                 continue
             # `HTTPError as HxError` binds the local name HxError.
@@ -271,6 +289,32 @@ def test_rule1_detects_from_import_tuple_catch(tmp_path: Path) -> None:
     assert _find_cross_catch_violations(tmp_path) == [
         "cross-catch: packages/core/fake_sdk_tuple_catch.py:8"
     ]
+
+
+def test_rule1_detects_multiline_from_import_cross_catch(tmp_path: Path) -> None:
+    """Multi-line parenthesized ``from httpx import (…)`` + catch must be flagged."""
+    module = tmp_path / "packages/core/fake_sdk_multiline_import.py"
+    module.parent.mkdir(parents=True)
+    module.write_text(
+        "import openai\nfrom httpx import (\n    HTTPError,\n    RequestError,\n)\n\n\n"
+        "def call() -> None:\n    try:\n        pass\n    except HTTPError:\n        pass\n",
+        encoding="utf-8",
+    )
+    assert _find_cross_catch_violations(tmp_path) == [
+        "cross-catch: packages/core/fake_sdk_multiline_import.py:11"
+    ]
+
+
+def test_rule1_ignores_httpx2_multiline_from_import_catches(tmp_path: Path) -> None:
+    """Multi-line ``from httpx2 import (…)`` + catch is CORRECT — stays clean."""
+    module = tmp_path / "packages/core/fake_sdk_httpx2_multiline_import.py"
+    module.parent.mkdir(parents=True)
+    module.write_text(
+        "import openai\nfrom httpx2 import (\n    HTTPError,\n    RequestError,\n)\n\n\n"
+        "def call() -> None:\n    try:\n        pass\n    except HTTPError:\n        pass\n",
+        encoding="utf-8",
+    )
+    assert _find_cross_catch_violations(tmp_path) == []
 
 
 def test_rule1_ignores_httpx2_from_import_catches(tmp_path: Path) -> None:

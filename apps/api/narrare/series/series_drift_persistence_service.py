@@ -2,10 +2,10 @@
 (SERIES-004 Slice 6, C2 — design §5).
 
 Business logic only (RULE-06): no SQL, no HTTP. This service WRAPS the two
-UNCHANGED run services (``SeriesConsistencyService`` /
-``SeriesVoiceDriftService`` — both at their RULE-04 file-size ceilings and
-kept byte-identical for zero regression, the ADR-079 Decision-4 wrapper
-pattern): each ``check_and_store_*`` runs the check, then persists the
+run services (``SeriesConsistencyService`` /
+``SeriesVoiceDriftService`` — the ADR-079 Decision-4 wrapper pattern:
+store-on-run composition without altering the run services' behavior):
+each ``check_and_store_*`` runs the check, then persists the
 result as its section of the composite ``series_drift_results`` document,
 then returns the result verbatim.
 

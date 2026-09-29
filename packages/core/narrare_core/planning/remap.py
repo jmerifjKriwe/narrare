@@ -90,8 +90,17 @@ async def _compose_remap_system_prompt(
                 prompt_context=context,
                 intent=LLMIntent.EXTRACT,
             )
-            assert result.composed_prompt is not None  # Mode 1 always composes
-            return result.composed_prompt.system
+            composed = result.composed_prompt
+            if composed is None:
+                # ComposedInvocation.composed_prompt is ComposedPrompt | None.
+                # Never assert (stripped under python -O) — log and fall through
+                # to the composer.build fallback below (RULE-11: logged).
+                _remap_structlog.warning(
+                    "remap_invocation_compose_failed",
+                    feature_id="planning_remap",
+                )
+            else:
+                return composed.system
         except Exception:
             _remap_structlog.warning(
                 "remap_invocation_compose_failed",

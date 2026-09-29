@@ -149,13 +149,14 @@ async def check_db_available() -> None:
     # The alembic env.py uses asyncio.run() which would clash with our session loop.
     # On CI this is idempotent (migrations already ran in the CI step before tests).
     import subprocess
+    import sys
     from pathlib import Path
 
     alembic_dir = Path(__file__).resolve().parent.parent.parent / "apps" / "api" / "alembic"
     alembic_ini = alembic_dir.parent / "alembic.ini"
     subprocess.run(
         [
-            "python",
+            sys.executable,
             "-m",
             "alembic",
             "-c",
