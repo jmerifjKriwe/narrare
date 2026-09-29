@@ -217,11 +217,10 @@ class TestSummaryApiIntegration:
         The ownership gate precedes the first-use resolution: a 400
         (NO_AI_PROVIDER) here would mean the gate fired after the
         cascade — the 404 proves gate-before-resolution (foreign ≡
-        unknown, anti-enumeration). The ROUTER converts the service's
-        ``NotFoundError`` into a bare ``HTTPException(404)`` (summary_router
-        try/except), so the body carries ``detail`` only — the ``code``
-        field exists solely on errors that reach the app-level
-        ``NarrareError`` handler (e.g. the loud-400 node below).
+        unknown, anti-enumeration). The service's ``NotFoundError``
+        propagates to the app-level ``NarrareError`` handler (no router
+        try/except — same convention as chat), so the body carries
+        ``code: "NOT_FOUND"`` alongside ``detail``.
         """
         import uuid
         from datetime import UTC, datetime
@@ -258,7 +257,9 @@ class TestSummaryApiIntegration:
         )
 
         assert response.status_code == 404
-        assert "detail" in response.json()
+        body = response.json()
+        assert body["code"] == "NOT_FOUND"
+        assert "detail" in body
 
     async def test_summarize_with_invalid_body_returns_422_with_real_lazy_factory(
         self,

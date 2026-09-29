@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from narrare._app.dependencies_auth import CurrentUserIdDep
 from narrare.writing.summary_contracts import SummaryResult
 from narrare.writing.summary_deps import get_summary_service
-from narrare_core.shared.errors import NotFoundError, WritingError
+from narrare_core.shared.errors import WritingError
 
 
 class SummarizeRequest(BaseModel):
@@ -60,7 +60,10 @@ async def summarize_chapter(
             user_id=user_id,
         )
         return result
-    except NotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WritingError as exc:
+        # NotFoundError deliberately propagates to the global NarrareError
+        # handler (404 with `code` in the body — consistent error shape).
+        # WritingError stays a manual conversion: it is a plain NarrareError
+        # the global handler would map to its 400 default, so the 500 status
+        # for LLM failures depends on this clause.
         raise HTTPException(status_code=500, detail=str(exc)) from exc

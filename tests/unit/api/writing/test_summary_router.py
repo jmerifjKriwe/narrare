@@ -113,7 +113,13 @@ class TestSummarizeChapter:
         app,
         client: AsyncClient,
     ) -> None:
-        """Error: non-existent chapter returns 404."""
+        """Error: non-existent chapter returns 404 via the global handler.
+
+        The service's ``NotFoundError`` propagates to the app-level
+        ``NarrareError`` handler (no router conversion), so the body
+        carries ``code: "NOT_FOUND"`` alongside ``detail`` — consistent
+        with the chat router's 404s.
+        """
         from narrare_core.shared.errors import NotFoundError
 
         chapter_id = "00000000-0000-0000-0000-000000000001"
@@ -131,6 +137,9 @@ class TestSummarizeChapter:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+        body = response.json()
+        assert body["code"] == "NOT_FOUND"
+        assert "detail" in body
 
     async def test_summarize_returns_500_when_service_fails(
         self,
