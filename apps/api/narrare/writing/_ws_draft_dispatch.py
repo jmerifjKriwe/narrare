@@ -50,10 +50,13 @@ async def dispatch_interview_draft(
 ) -> None:
     """Orchestrate interview draft generation over a WebSocket transport.
 
-    Constructs the transport-agnostic :class:`InterviewDraftGenerator`,
-    streams chunks to DTOs via :func:`send_stream_chunks`, persists the
-    completed draft, and sends the ``draft_done`` message. Errors from
-    the invocation contract or the LLM are mapped to ``error`` DTOs.
+    Fetches the ownership-gated novel title/genre for the draft prompt
+    (``resolve_draft_novel_context`` — WS short-lived-session precedent;
+    RULE-11 degrade to empty), constructs the transport-agnostic
+    :class:`InterviewDraftGenerator`, streams chunks to DTOs via
+    :func:`send_stream_chunks`, persists the completed draft, and sends
+    the ``draft_done`` message. Errors from the invocation contract or
+    the LLM are mapped to ``error`` DTOs.
 
     Args:
         websocket: A :class:`StreamSender` (any object with an async
@@ -74,8 +77,14 @@ async def dispatch_interview_draft(
         base_url: Optional provider base URL override.
     """
     from narrare.writing._interview_draft import InterviewDraftGenerator
+    from narrare.writing._interview_draft_support import resolve_draft_novel_context
     from narrare.writing.ws_streaming import send_stream_chunks
     from narrare_core.shared.errors import WritingError
+
+    project_title, genre = await resolve_draft_novel_context(
+        user_id=user_id,
+        project_id=project_id,
+    )
 
     generator = InterviewDraftGenerator(
         session_manager=session_manager,
@@ -96,6 +105,8 @@ async def dispatch_interview_draft(
                 user_id=user_id,
                 project_id=project_id,
                 chapter_id=chapter_id,
+                project_title=project_title,
+                genre=genre,
             ),
         )
     except WritingError as e:

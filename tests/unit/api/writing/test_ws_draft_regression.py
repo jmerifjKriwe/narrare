@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import Mock
 from uuid import uuid4
 
+from tests.unit.api.writing.test_interview_draft_title_supply import _install_novel_fetch
 from tests.unit.api.writing.test_ws_handler import (
     MockWebSocket,
     _fake_stream_hello,
@@ -26,13 +27,16 @@ from tests.unit.api.writing.ws_test_helpers import (
 )
 
 if TYPE_CHECKING:
+    import pytest
     from fastapi import WebSocket
 
 
 class TestGenerateDraftContractRegression:
     """Regression: generate_draft must use the invocation contract."""
 
-    async def test_generate_draft_enforces_usage_limits(self) -> None:
+    async def test_generate_draft_enforces_usage_limits(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Regression: draft generation must pass usage_limits (ADR-045 D4).
 
         Before migration, ``_handle_generate_draft`` called
@@ -40,6 +44,7 @@ class TestGenerateDraftContractRegression:
         output-budget enforcement. The draft path must now resolve and
         enforce limits like the interactive-turn path.
         """
+        _install_novel_fetch(monkeypatch, novel=None)
         handler, _, gateway, _ = _make_handler(mode="interview_assisted")
         gateway.stream = Mock(side_effect=_fake_stream_hello)
         ws = MockWebSocket()
@@ -56,7 +61,9 @@ class TestGenerateDraftContractRegression:
         # Usage limits MUST be present — proves budget enforcement.
         assert draft_kwargs["usage_limits"] is not None
 
-    async def test_generate_draft_threads_identifiers_to_invocation(self) -> None:
+    async def test_generate_draft_threads_identifiers_to_invocation(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Regression: draft generation must complete the invocation contract.
 
         Before migration, ``_handle_generate_draft`` bypassed the
@@ -65,6 +72,7 @@ class TestGenerateDraftContractRegression:
         full prepare → compose → finalize → stream path ran with the
         connection-scoped user/project/chapter identifiers.
         """
+        _install_novel_fetch(monkeypatch, novel=None)
         handler, _, gateway, _ = _make_handler(mode="interview_assisted")
         gateway.stream = Mock(side_effect=_fake_stream_hello)
         ws = MockWebSocket()

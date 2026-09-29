@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, Mock
 from uuid import UUID, uuid4
 
+from tests.unit.api.writing.test_interview_draft_title_supply import _install_novel_fetch
 from tests.unit.api.writing.ws_test_helpers import (
     MockWebSocket,
     _fake_stream_empty,
@@ -30,6 +31,7 @@ from tests.unit.api.writing.ws_test_helpers import (
 )
 
 if TYPE_CHECKING:
+    import pytest
     from fastapi import WebSocket
 
 
@@ -205,8 +207,11 @@ class TestGenerateDraft:
         assert len(errors) == 1
         assert "unknown" in errors[0]["message"].lower()
 
-    async def test_generate_draft_with_no_history_returns_error(self) -> None:
+    async def test_generate_draft_with_no_history_returns_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """generate_draft with empty conversation history returns error."""
+        _install_novel_fetch(monkeypatch, novel=None)
         handler, _, gateway, _ = _make_handler(mode="interview_assisted")
         # Override stream to avoid issues
         gateway.stream = Mock(side_effect=_fake_stream_empty)
@@ -221,8 +226,11 @@ class TestGenerateDraft:
         errors = [m for m in ws.sent if m["type"] == "error"]
         assert any("no interview answers" in e["message"].lower() for e in errors)
 
-    async def test_generate_draft_with_history_streams_draft(self) -> None:
+    async def test_generate_draft_with_history_streams_draft(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """generate_draft with prior Q&A streams a complete draft."""
+        _install_novel_fetch(monkeypatch, novel=None)
         handler, _, gateway, _ = _make_handler(mode="interview_assisted")
         # First call: interview question (from user_direction)
         # Second call: draft generation (from generate_draft)
@@ -242,8 +250,9 @@ class TestGenerateDraft:
         assert len(draft_done) == 1
         assert draft_done[0]["word_count"] > 0
 
-    async def test_generate_draft_uses_write_intent(self) -> None:
+    async def test_generate_draft_uses_write_intent(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """generate_draft calls LLM with WRITE intent and enforced limits."""
+        _install_novel_fetch(monkeypatch, novel=None)
         handler, _, gateway, _ = _make_handler(mode="interview_assisted")
         gateway.stream = Mock(side_effect=_fake_stream_hello)
         ws = MockWebSocket()

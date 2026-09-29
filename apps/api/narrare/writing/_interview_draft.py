@@ -17,6 +17,11 @@ Uses:
 - :class:`DefaultRunLimitResolver` for output-budget enforcement
   (ADR-045 Decision 4)
 
+The prompt/invocation-context builders and the draft novel-metadata
+supply live in ``_interview_draft_support`` (RULE-04/RULE-06: the
+generator orchestrates; the support module assembles — ``_ws_turn_support``
+precedent).
+
 See: ADR-045, CONSTRAINTS.md RULE-02/RULE-03/RULE-06/RULE-12/RULE-13.
 """
 
@@ -27,6 +32,10 @@ from uuid import uuid4
 
 import structlog
 
+from narrare.writing._interview_draft_support import (
+    build_invocation_context,
+    build_prompt_context,
+)
 from narrare_core.shared.errors import WritingError
 from narrare_core.writing._invocation_adapter import build_and_validate_prompt
 from narrare_core.writing.budget import cap_to_budget
@@ -35,15 +44,12 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
-    from narrare_core.ai_invocation.models import PromptInvocationContext
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.llm.intents import LLMIntent
     from narrare_core.llm.result import StreamChunk
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts.composer import PromptComposer
-    from narrare_core.prompts.context import PromptContext
     from narrare_core.writing.session_manager import SessionManager
 
 logger = structlog.get_logger(__name__)
@@ -51,11 +57,6 @@ logger = structlog.get_logger(__name__)
 # Maximum token budget for the interview transcript fed into the prompt.
 # Prevents "context length exceeded" crashes on long interviews (20+ Q&A pairs).
 MAX_TRANSCRIPT_TOKENS: int = 4000
-
-#: Feature identifier for interview-assisted draft generation. Distinct from
-#: interactive turns (``writing_interactive_turn``) so adoption evidence can
-#: correlate each production path independently (ADR-045 Decision 2).
-INTERVIEW_DRAFT_FEATURE_ID: str = "writing_interview_draft"
 
 
 class InterviewDraftGenerator:
@@ -99,12 +100,15 @@ class InterviewDraftGenerator:
         user_id: UUID,
         project_id: UUID,
         chapter_id: UUID,
+        project_title: str = "",
+        genre: str = "",
     ) -> AsyncIterator[StreamChunk]:
         """Yield ``StreamChunk`` instances for a draft from the transcript.
 
         Runs the full invocation contract:
             1. Look up the session and format the interview transcript.
-            2. Build :class:`PromptContext` (mode ``new_chapter``).
+            2. Build :class:`PromptContext` (mode ``new_chapter``) with
+               the novel metadata (``project_title`` / ``genre``).
             3. Build :class:`PromptInvocationContext` with all identifiers.
             4. ``build_and_validate_prompt`` — prepare → merge → compose
                → finalize (enrichment, budget, validation, evidence).
@@ -116,6 +120,8 @@ class InterviewDraftGenerator:
             user_id: The authenticated user's identifier (ADR-045).
             project_id: The project identifier for enrichment.
             chapter_id: The chapter being written.
+            project_title: Novel title for prompt context (degraded: "").
+            genre: Novel genre for prompt context (degraded: "").
 
         Yields:
             :class:`StreamChunk` instances. The final chunk has
@@ -129,8 +135,12 @@ class InterviewDraftGenerator:
 
         transcript = await self._prepare_transcript(session_id)
         invocation_id = uuid4()
-        prompt_ctx = self._build_prompt_context(transcript)
-        invocation_ctx = self._build_invocation_context(
+        prompt_ctx = build_prompt_context(
+            transcript,
+            project_title=project_title,
+            genre=genre,
+        )
+        invocation_ctx = build_invocation_context(
             intent=LLMIntent.WRITE,
             prompt_ctx=prompt_ctx,
             user_id=user_id,
@@ -216,61 +226,6 @@ class InterviewDraftGenerator:
                 code="EMPTY_TRANSCRIPT",
             )
         return transcript
-
-    @staticmethod
-    def _build_prompt_context(transcript: str) -> PromptContext:
-        """Build the PromptContext for draft generation.
-
-        The transcript becomes ``author_instructions`` — the
-        runtime-input channel (RULE-02a). System/task prompts are built
-        by the PromptComposer cascade, not here.
-        """
-        from narrare_core.prompts.context import PromptContext
-
-        return PromptContext(
-            language="en",
-            mode="new_chapter",
-            author_instructions=(
-                "Based on the following interview transcript, "
-                "write a complete chapter draft:\n\n"
-                f"{transcript}"
-            ),
-        )
-
-    @staticmethod
-    def _build_invocation_context(
-        *,
-        intent: LLMIntent,
-        prompt_ctx: PromptContext,
-        user_id: UUID,
-        project_id: UUID,
-        chapter_id: UUID,
-        session_id: UUID,
-        invocation_id: UUID,
-    ) -> PromptInvocationContext:
-        """Build the PromptInvocationContext with all identifiers.
-
-        ADR-045 Decision 6: user and project IDs are mandatory in the
-        invocation context. Chapter and session IDs are carried as
-        dynamic inputs so enrichers and evidence can correlate them.
-        """
-        from narrare_core.ai_invocation.models import PromptInvocationContext
-
-        return PromptInvocationContext(
-            feature_id=INTERVIEW_DRAFT_FEATURE_ID,
-            intent=intent,
-            mode="new_chapter",
-            invocation_id=invocation_id,
-            user_id=user_id,
-            project_id=project_id,
-            language=prompt_ctx.language,
-            streaming=True,
-            dynamic_inputs={
-                "chapter_id": str(chapter_id),
-                "session_id": str(session_id),
-            },
-            prompt_context=prompt_ctx,
-        )
 
     @staticmethod
     def _format_transcript(
