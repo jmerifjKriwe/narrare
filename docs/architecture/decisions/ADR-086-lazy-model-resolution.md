@@ -4,7 +4,9 @@
 > implementation slices S1–S4 landed 2026-09-09 — Gate 12 criteria met
 > (S1–S4 wired + regression-contract-verified, ledger entries 1–5 checked
 > off); migration ledger COMPLETE — all entries 1–39 checked off
-> (final entry L39a/b landed 2026-09-29) — see Implementation Notes)
+> (final entry L39a/b landed 2026-09-29); ledger entries 6–39 migrated
+> (2026-09-29); prevention check landed 2026-09-29 (Review Trigger #1
+> ticked — see Review Trigger) — see Implementation Notes)
 > **Date:** 2026-09-09
 > **Deciders:** Architecture Agent
 > **Related:** ADR-082 (token-budget governance — `get_resolved_limits` cascade is
@@ -683,6 +685,31 @@ service-layer); `chat/_invocation.py` and `wiki/dependencies_core.py`
 settings endpoint); `build_system_default_config` (settings-only, no DB, no
 user context).
 
+**Post-migration sweep 2026-09-29 (J1 whole-ledger gate):** the factory
+sweep (`= await resolver.resolve` / `= await .*get_resolved_limits`, plus a
+broader awaited-`resolve` anchor) over `apps/api/` confirms every remaining
+hit is one of: inside a `LazyModelResolution`-sanctioned closure
+(`compose_runtime` / `compose_budgets` / `compose_budget_assembler` /
+`compose_model_runtime` / `compose_core_service` / `resolve_write_intent`);
+service-layer (`consistency/checker_context.py`); product-of-the-endpoint
+delegation (`settings/token_limits/router.py`); or the adjudicated survivor
+`kb/entity_resolution/dependencies_adjudicator.py:48` — the resolve is
+deferred behind the `merge_service_factory` closure, invoked only by
+`UncertainBandAdjudicator.adjudicate()` after the empty-pairs short-circuit
+(never at DI wiring time; RULE-11 degradation at the call site), matching
+its "Explicitly NOT in the ledger" entry above. Adjudication: EXEMPT — a
+rider migration was rejected because `KBMergeService` is consumed
+immediately per factory invocation (no constructed-but-unused window to
+defer into), so deferral would touch 3+ files with zero behavior change.
+Mechanical enforcement: `check_lazy_model_resolution` (Review Trigger #1),
+with the survivor ratcheted in baseline section `adr086_factory_resolution`.
+Scope note: the gate's basename scope follows the plan
+(`deps*` / `dependencies*` / `router*`); the accepted L39 bootstrap
+token-limits residual in `writing/ws_session_config.py` therefore sits
+OUTSIDE the mechanical check (compensating controls: L39 ledger annotation
++ on-site code comment); its would-be baseline key was proven dead by
+mutation (empty baseline flags only the adjudicator) and is not seeded.
+
 ### Regression contract
 
 - **Green after S2+S3:** `test_dialogue_coach_sse` invalid-body → 422 (×2
@@ -703,9 +730,14 @@ debt with their own per-entry check-offs.
 
 ## Review Trigger
 
-- [ ] When the migration ledger reaches zero: add an architecture check
+- [x] When the migration ledger reaches zero: add an architecture check
       forbidding `resolver.resolve(`/`get_resolved_limits(` inside `Depends`
-      factories (prevention, mirroring this ADR).
+      factories (prevention, mirroring this ADR)
+      *(landed 2026-09-29, J1 gate: `check_lazy_model_resolution` in
+      `scripts/architecture/_checkers/lazy_resolution.py`, wired into
+      `scan_file`; allowlists the inside-a-`LazyModelResolution` closure
+      idiom; ratcheted survivor section `adr086_factory_resolution` in
+      `scripts/architecture/ai-gate-baseline.json`)*
 - [ ] When FastAPI changes dependency solving/body-validation ordering
       (watch `solve_dependencies` changelogs): re-evaluate whether the eager
       pattern becomes safe again (it may never — lazy stays simpler).

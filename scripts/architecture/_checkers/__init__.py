@@ -20,6 +20,7 @@ from scripts.architecture._checkers.file_size import check_file_size
 from scripts.architecture._checkers.hardcoded_values import check_hardcoded_constants
 from scripts.architecture._checkers.import_direction import check_import_direction
 from scripts.architecture._checkers.inline_prompts import check_inline_prompts
+from scripts.architecture._checkers.lazy_resolution import check_lazy_model_resolution
 from scripts.architecture._checkers.llm import check_llm_imports, check_llm_urls
 from scripts.architecture._checkers.model_config import check_hardcoded_model_config
 from scripts.architecture._checkers.prompt_channel import check_prompt_channel_injection
@@ -63,6 +64,7 @@ __all__ = [
     "check_hardcoded_model_config",
     "check_import_direction",
     "check_inline_prompts",
+    "check_lazy_model_resolution",
     "check_llm_imports",
     "check_llm_urls",
     "check_prompt_building",
@@ -189,6 +191,7 @@ def scan_file(
         + check_router_queries(rel_path, tree, source_lines)
         + check_hardcoded_model_config(rel_path, tree, source_lines)
         + check_hardcoded_constants(rel_path, tree, source_lines, hardcoded_config)
+        + check_lazy_model_resolution(rel_path, tree, source_lines)
         + check_import_direction(rel_path, tree, source_lines)
         + check_export_binary_confinement(rel_path, tree, source_lines, allowed_export)
     )
