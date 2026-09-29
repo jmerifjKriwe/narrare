@@ -14,12 +14,13 @@
 #
 # Malformed entries will be reported as errors by the checker.
 #
-# Current baseline (2026-06-19):
+# Current baseline (2026-06-19; re-evaluated 2026-09-29 — all three exit
+# criteria re-verified as unmet, entries remain required):
 # Obsolete migration-in-progress entries removed (NameGenerator.tsx,
 # ConsistencyCheckPanel.tsx, ExtractionPanel.tsx — all now use useAIOperation
 # or no longer import SSE API values directly; Check 8 stale-exclude gate
 # confirmed they were migration-in-progress without AUFG links).
 
-packages/web/__tests__/connection-lost.test.tsx  owner=Platform gate=check_5_no_use_connection_lost reason="central-test-helper: integration test for useConnectionLost deprecation behavior" exit="useConnectionLost fully removed and test updated or deleted" added=2026-06-08 re_evaluated=2026-06-19
-packages/web/components/studio/editor/extensions/ghost-text-helpers.ts  owner=Frontend gate=check_2_no_raw_abort reason="non-react-extension: TipTap extensions run outside React lifecycle; AbortController managed via Extension storage, no React hook possible" exit="GhostText receives AbortSignal from React controller via Extension options" added=2026-06-12 re_evaluated=2026-06-19
-packages/web/lib/hooks/useTimelineExtraction.ts  owner=Frontend gate=check_2_no_raw_abort reason="non-react-transport: callback-based SSE accumulation with onEvent/onComplete/onError; useAIOperation does not support callback-based SSE — partial migration applied (§16.5 errors, §16.2 cancel)" exit="useAIOperation supports callback-based SSE or adapter exists (tracked in CR-AUFG-07-09)" added=2026-06-12 re_evaluated=2026-06-19
+packages/web/__tests__/connection-lost.test.tsx  owner=Platform gate=check_5_no_use_connection_lost reason="central-test-helper: integration test for useConnectionLost deprecation behavior" exit="useConnectionLost fully removed and test updated or deleted" added=2026-06-08 re_evaluated=2026-09-29
+packages/web/components/studio/editor/extensions/ghost-text-helpers.ts  owner=Frontend gate=check_2_no_raw_abort reason="non-react-extension: TipTap extensions run outside React lifecycle; AbortController managed via Extension storage, no React hook possible" exit="GhostText receives AbortSignal from React controller via Extension options" added=2026-06-12 re_evaluated=2026-09-29
+packages/web/lib/hooks/useTimelineExtraction.ts  owner=Frontend gate=check_2_no_raw_abort reason="non-react-transport: callback-based SSE accumulation with onEvent/onComplete/onError; useAIOperation does not support callback-based SSE — partial migration applied (§16.5 errors, §16.2 cancel)" exit="useAIOperation supports callback-based SSE or adapter exists (tracked in CR-AUFG-07-09)" added=2026-06-12 re_evaluated=2026-09-29
