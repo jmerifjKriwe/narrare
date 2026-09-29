@@ -25,6 +25,10 @@ class FakeConsistencyService:
     def __init__(self, response: ConsistencyResponse) -> None:
         self._response = response
 
+    async def ensure_resolved(self) -> None:
+        """ADR-086 L13: the SSE route resolves before streaming."""
+        return None
+
     async def stream_check(
         self,
         *,

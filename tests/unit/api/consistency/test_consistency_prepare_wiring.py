@@ -128,7 +128,10 @@ def _assert_prepare_wiring(
     """Assert the full Task-6a wiring contract for one agent invocation."""
     assert len(registry.prepare_calls) == 1
     call = registry.prepare_calls[0]
-    assert call["config"] is config
+    # Value equality: the orchestrator composes the override config
+    # (dataclasses.replace at first use), so identity does not hold for
+    # the staged sites — the legacy/runner sites pass the same object.
+    assert call["config"] == config
     assert call["intent"] is intent
     assert call["api_key"] == api_key
     assert call["base_url"] == base_url
@@ -148,19 +151,26 @@ class TestFactExtractionStagePrepareWiring:
     """Stage 1 (FactExtractorAgent) resolves via prepare(FACT_EXTRACT)."""
 
     async def test_fact_extraction_resolves_via_prepare_with_fact_extract_intent(self) -> None:
-        from narrare.consistency.consistency_orchestrator import ConsistencyOrchestrator
+        from dataclasses import replace
 
-        fact_config = _user_config()
+        from narrare._app.dependencies_services import StaticModelResolution
+        from narrare.consistency.consistency_orchestrator import ConsistencyOrchestrator
+        from narrare_core.llm.model_routing import ResolvedModel
+
+        fact_resolved = ResolvedModel(
+            config=_user_config(),
+            api_key=_USER_KEY,
+            base_url=_USER_BASE_URL,
+            source="unit-test",
+        )
         registry = _RecordingPrepareRegistry()
         orchestrator = ConsistencyOrchestrator(
             registry=cast("ModelRegistry", registry),
-            fact_extractor_config=fact_config,
-            consistency_config=_user_config(),
+            # ADR-086 L13: the orchestrator consumes ModelResolution
+            # seams and composes the 0.2/0.3 overrides at first use.
+            fact_extractor_resolution=StaticModelResolution(fact_resolved),
+            consistency_resolution=StaticModelResolution(fact_resolved),
             composer=cast("PromptComposer", _FakeComposer()),
-            fact_extractor_api_key=_USER_KEY,
-            fact_extractor_base_url=_USER_BASE_URL,
-            consistency_api_key=_USER_KEY,
-            consistency_base_url=_USER_BASE_URL,
         )
         agent = AsyncMock(run=AsyncMock(return_value=_fact_output()))
 
@@ -172,11 +182,12 @@ class TestFactExtractionStagePrepareWiring:
                 kb_summaries=[],
                 timeline_envelopes=[],
                 language="en",
+                configs=await orchestrator.ensure_resolved(),
             )
 
         _assert_prepare_wiring(
             registry,
-            fact_config,
+            replace(_user_config(), temperature=0.2),
             mock_agent_cls=MockAgent,
             intent=LLMIntent.FACT_EXTRACT,
             api_key=_USER_KEY,

@@ -62,7 +62,9 @@ def _service(
     composer=None,
     rel=None,
 ) -> ConsistencyCheckerService:
+    from narrare._app.dependencies_services import StaticModelResolution
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm.model_routing import ResolvedModel
 
     kb = kb or AsyncMock(list_entries=AsyncMock(return_value=([], 0)))
     registry = MagicMock(spec=_RegistryProto)
@@ -82,15 +84,24 @@ def _service(
     timeline_repo = AsyncMock()
     timeline_repo.list_by_novel = AsyncMock(return_value=[])
 
+    # ADR-086 L13: the service consumes a ModelResolution seam; the
+    # fixed resolution stands in for the (lazily-wired) cascade.
+    resolved = ResolvedModel(
+        config=ResolvedModelConfig(
+            provider_name="test", model_id="test", temperature=0.5, max_tokens=2048
+        ),
+        api_key=None,
+        base_url=None,
+        source="unit-test",
+    )
+
     return ConsistencyCheckerService(
         chapter_repo=cr or FakeChapterRepository(),
         novel_repo=nr or FakeNovelRepository(),
         kb_repo=kb,
         timeline_repo=timeline_repo,
         registry=registry,
-        config=ResolvedModelConfig(
-            provider_name="test", model_id="test", temperature=0.5, max_tokens=2048
-        ),
+        consistency_resolution=StaticModelResolution(resolved),
         composer=composer,
         relationship_repo=rel,
     )

@@ -182,16 +182,28 @@ def _make_orchestrator(
     consistency_output: ConsistencyOutput | None = None,
 ) -> tuple[ConsistencyOrchestrator, FakeFactExtractorAgent, FakeConsistencyAgent]:
     """Create orchestrator with fake agents for testing."""
+    from narrare._app.dependencies_services import StaticModelResolution
+    from narrare_core.llm.model_routing import ResolvedModel
+
     registry = FakeRegistry()
     composer = FakeComposer()
     fact_agent = FakeFactExtractorAgent(output=fact_output)
     consistency_agent = FakeConsistencyAgent(output=consistency_output)
 
+    resolved = ResolvedModel(
+        config=_make_config(),
+        api_key=None,
+        base_url=None,
+        source="unit-test",
+    )
     orchestrator = ConsistencyOrchestrator(
         # Cast is safe here: FakeRegistry implements the get_model method used.
         registry=cast("ModelRegistry", registry),
-        fact_extractor_config=_make_config(),
-        consistency_config=_make_config(),
+        # ADR-086 L13: the orchestrator consumes ModelResolution seams;
+        # the staged configs compose (with the 0.2/0.3 overrides) at
+        # first use from these fixed resolutions.
+        fact_extractor_resolution=StaticModelResolution(resolved),
+        consistency_resolution=StaticModelResolution(resolved),
         # Cast is safe here: FakeComposer implements the build method used.
         composer=cast("PromptComposer", composer),
     )

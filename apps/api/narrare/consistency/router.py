@@ -80,6 +80,11 @@ async def stream_consistency_check(
     Errors are communicated in-band as JSON error events since SSE
     cannot change status codes after headers are sent.
     """
+    # ADR-086 Decision 3 (L13): resolve BOTH routing cascades BEFORE the
+    # StreamingResponse is constructed, so ConfigurationError surfaces
+    # as a proper pre-header 400 instead of an in-band SSE error.
+    # Idempotent one-line lifecycle call — RULE-06-compatible delegation.
+    await service.ensure_resolved()
 
     async def event_stream() -> AsyncIterator[str]:
         try:

@@ -1,12 +1,14 @@
 """User-routing migration tests for the consistency dependency factory (Task 3).
 
-Regression-first proof that ``consistency/deps.get_consistency_service``
-resolves BOTH staged-pipeline models via the per-user
-``ModelRoutingResolver`` cascade (instead of the legacy
-``build_system_default_config``) with the correct intents + user_id +
-novel_id, and that the resolved configs + credentials land on the
-orchestrator/service that own the actual ``ModelRegistry.prepare``
-resolution calls (Task-6b: resolution flows prepare → get_model):
+Lazy-wiring proof (ADR-086 L13, S4b-dual) that
+``consistency/deps.get_consistency_service`` wires BOTH staged-pipeline
+cascades as ``LazyModelResolution``s via the per-user
+``ModelRoutingResolver`` cascade — with NO resolution at construction —
+and that first use resolves both intents with the correct args in the
+eager factory's verbatim order, threading the resolved configs +
+credentials into the orchestrator/service that own the actual
+``ModelRegistry.prepare`` resolution calls (Task-6b: resolution flows
+prepare → get_model):
 
 - FactExtractor model — ``LLMIntent.FACT_EXTRACT`` (ADR-044 stage 1,
   feature ``consistency_fact_extraction``)
@@ -15,11 +17,12 @@ resolution calls (Task-6b: resolution flows prepare → get_model):
   fallback, feature ``consistency_check``)
 
 The legacy temperature overrides (0.2 extractor / 0.3 checker) are
-preserved via ``dataclasses.replace`` on the RESOLVED cascade configs.
-Credential flow into the three real resolution points is proven in
-``TestCredentialsReachResolutionPoint`` (setup-bug shape). Sibling of
-``tests/unit/api/kb/test_deps_user_routing_1b.py`` (Task 1b, TWO-config
-shape) — same conventions: fake resolver, cast-pattern registry fakes.
+applied at first use via ``dataclasses.replace`` on the RESOLVED
+cascade configs. Credential flow into the three real resolution points
+is proven in ``TestCredentialsReachResolutionPoint`` (setup-bug shape).
+Sibling of ``tests/unit/api/kb/test_deps_user_routing_1b.py`` (Task 1b,
+TWO-config shape) — same conventions: fake resolver, cast-pattern
+registry fakes.
 """
 
 from __future__ import annotations
@@ -162,11 +165,12 @@ class TestFactoryStructure:
 
 
 class TestConsistencyDepsUserRouting:
-    """get_consistency_service resolves TWO configs: FACT_EXTRACT + CONSISTENCY."""
+    """get_consistency_service lazily wires TWO cascades: FACT_EXTRACT + CONSISTENCY."""
 
-    async def test_resolves_both_intents_and_threads_results_into_wiring(self) -> None:
+    async def test_wires_lazily_and_resolves_both_intents_on_first_use(self) -> None:
         from dataclasses import replace
 
+        from narrare._app.dependencies_services import LazyModelResolution
         from narrare.consistency.checker_service import ConsistencyCheckerService
         from narrare.consistency.consistency_orchestrator import ConsistencyOrchestrator
         from narrare.consistency.deps import get_consistency_service
@@ -208,33 +212,44 @@ class TestConsistencyDepsUserRouting:
                 novel_id=novel_id,
             )
 
-        # Both staged-pipeline intents resolved for THIS user + novel, in
+        # Construction neutrality (ADR-086 L13): NO cascade runs at
+        # wiring time — both intents are wired as LazyModelResolutions.
+        assert resolver.resolve.await_count == 0
+        assert isinstance(service, ConsistencyCheckerService)
+        assert isinstance(service._consistency_resolution, LazyModelResolution)
+
+        # First use resolves BOTH intents for THIS user + novel, in
         # stage order (extractor first, checker second).
+        await service.ensure_resolved()
         assert resolver.resolve.await_args_list == [
             call(LLMIntent.FACT_EXTRACT, UUID(user_id), novel_id),
             call(LLMIntent.CONSISTENCY, UUID(user_id), novel_id),
         ]
 
-        assert isinstance(service, ConsistencyCheckerService)
         orchestrator = service._orchestrator
         assert isinstance(orchestrator, ConsistencyOrchestrator)
 
-        # Legacy temperature overrides preserved on the RESOLVED configs:
-        # 0.2 extractor / 0.3 checker; cascade routing fields untouched.
-        assert orchestrator._fact_extractor_config == replace(fact_resolved.config, temperature=0.2)
-        assert orchestrator._consistency_config == replace(
+        # Legacy temperature overrides applied at first use on the
+        # RESOLVED configs: 0.2 extractor / 0.3 checker; cascade
+        # routing fields untouched.
+        assert orchestrator._configs is not None
+        assert orchestrator._configs.fact_extractor_config == replace(
+            fact_resolved.config, temperature=0.2
+        )
+        assert orchestrator._configs.consistency_config == replace(
             consistency_resolved.config, temperature=0.3
         )
         assert service._config == replace(consistency_resolved.config, temperature=0.3)
+        assert service._config is not None
         assert service._config.model_id == "glm-4.7"
         assert service._config.provider_name == "zai"
 
         # Resolved user credentials land on the orchestrator (both stages)
         # and on the service (legacy single-pass fallback path).
-        assert orchestrator._fact_extractor_api_key == _USER_KEY
-        assert orchestrator._fact_extractor_base_url == _USER_BASE_URL
-        assert orchestrator._consistency_api_key == _USER_KEY
-        assert orchestrator._consistency_base_url == _USER_BASE_URL
+        assert orchestrator._configs.fact_extractor_api_key == _USER_KEY
+        assert orchestrator._configs.fact_extractor_base_url == _USER_BASE_URL
+        assert orchestrator._configs.consistency_api_key == _USER_KEY
+        assert orchestrator._configs.consistency_base_url == _USER_BASE_URL
         assert service._api_key == _USER_KEY
         assert service._base_url == _USER_BASE_URL
 
@@ -278,32 +293,34 @@ class TestCredentialsReachResolutionPoint:
         return FactExtractorOutput(facts=[], assessment_summary="")
 
     async def test_fact_extractor_stage_threads_credentials_into_get_model(self) -> None:
+        from narrare._app.dependencies_services import StaticModelResolution
         from narrare.consistency.consistency_orchestrator import ConsistencyOrchestrator
 
-        fact_config = replace(_user_config(), temperature=0.2)
-        consistency_config = replace(_user_config(), temperature=0.3)
+        fact_resolved = _resolved()
         registry = _RecordingRegistry(stop_after_record=_StopResolution())
         orchestrator = ConsistencyOrchestrator(
             registry=cast("ModelRegistry", registry),
-            fact_extractor_config=fact_config,
-            consistency_config=consistency_config,
+            fact_extractor_resolution=StaticModelResolution(fact_resolved),
+            consistency_resolution=StaticModelResolution(_resolved()),
             composer=cast("PromptComposer", self._composer()),
-            fact_extractor_api_key=_USER_KEY,
-            fact_extractor_base_url=_USER_BASE_URL,
-            consistency_api_key=_USER_KEY,
-            consistency_base_url=_USER_BASE_URL,
         )
 
         with pytest.raises(_StopResolution):
-            await orchestrator._run_fact_extraction(
+            await orchestrator.run_staged_check(
+                novel_id=uuid4(),
                 deps=self._deps(),
                 kb_summaries=[],
                 timeline_envelopes=[],
                 language="en",
+                max_chapter_tokens=2000,
             )
 
         assert registry.calls == [
-            {"config": fact_config, "api_key": _USER_KEY, "base_url": _USER_BASE_URL}
+            {
+                "config": replace(fact_resolved.config, temperature=0.2),
+                "api_key": _USER_KEY,
+                "base_url": _USER_BASE_URL,
+            }
         ]
 
     async def test_staged_consistency_stage_threads_credentials_into_get_model(self) -> None:

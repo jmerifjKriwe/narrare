@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+    from narrare.consistency.consistency_orchestrator import StagedModelConfigs
     from narrare.consistency.schemas import (
         ConsistencyRequest,
         ConsistencyResponse,
@@ -112,7 +113,15 @@ class ConsistencyOrchestratorProtocol(Protocol):
     The orchestrator is internal to the consistency service. It preserves
     the external ``ConsistencyCheckerProtocol`` response type while splitting
     work into fact extraction and consistency analysis stages.
+
+    ADR-086 L13: the orchestrator owns the lazy per-stage model
+    resolution — ``ensure_resolved`` resolves BOTH cascades at first
+    use and is the service's first-use resolution path on staged runs.
     """
+
+    async def ensure_resolved(self) -> StagedModelConfigs:
+        """Resolve both routing cascades at first use (idempotent)."""
+        ...
 
     async def run_staged_check(
         self,

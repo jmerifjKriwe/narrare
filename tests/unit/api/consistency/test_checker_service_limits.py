@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from narrare.consistency._checker_support import resolve_system_prompt
 from narrare.consistency.checker_service import ConsistencyCheckerService
 from narrare.consistency.schemas import ConsistencyRequest
 from narrare_core.agents.consistency_types import (
@@ -62,7 +63,9 @@ def _service(
     kb=None,
     composer=None,
 ) -> ConsistencyCheckerService:
+    from narrare._app.dependencies_services import StaticModelResolution
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm.model_routing import ResolvedModel
 
     kb = kb or AsyncMock(list_entries=AsyncMock(return_value=([], 0)))
     registry = MagicMock(spec=_RegistryProto)
@@ -81,15 +84,24 @@ def _service(
     timeline_repo = AsyncMock()
     timeline_repo.list_by_novel = AsyncMock(return_value=[])
 
+    # ADR-086 L13: the service consumes a ModelResolution seam; the
+    # fixed resolution stands in for the (lazily-wired) cascade.
+    resolved = ResolvedModel(
+        config=ResolvedModelConfig(
+            provider_name="test", model_id="test", temperature=0.5, max_tokens=2048
+        ),
+        api_key=None,
+        base_url=None,
+        source="unit-test",
+    )
+
     return ConsistencyCheckerService(
         chapter_repo=cr or FakeChapterRepository(),
         novel_repo=nr or FakeNovelRepository(),
         kb_repo=kb,
         timeline_repo=timeline_repo,
         registry=registry,
-        config=ResolvedModelConfig(
-            provider_name="test", model_id="test", temperature=0.5, max_tokens=2048
-        ),
+        consistency_resolution=StaticModelResolution(resolved),
         composer=composer,
     )
 
@@ -109,42 +121,44 @@ def _setup(novel=None, chapters=None):
 class TestResolveSystemPrompt:
     @pytest.mark.asyncio
     async def test_resolve_system_prompt_uses_composer(self) -> None:
-        """_resolve_system_prompt returns PromptComposer output, not fallback."""
+        """resolve_system_prompt returns PromptComposer output, not fallback."""
         _, _, svc = _setup()
 
         svc._composer.build = AsyncMock(
             return_value=MagicMock(spec=["system"], system="Bundled consistency prompt"),
         )
 
-        result = await svc._resolve_system_prompt("en")
+        # ADR-086 L13 RULE-04 split: prompt resolution lives in
+        # _checker_support (relocated from the service unchanged).
+        result = await resolve_system_prompt(svc._composer, "en")
 
         assert result == "Bundled consistency prompt"
         svc._composer.build.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_resolve_system_prompt_correct_intent(self) -> None:
-        """_resolve_system_prompt calls composer.build with CONSISTENCY intent."""
+        """resolve_system_prompt calls composer.build with CONSISTENCY intent."""
         _, _, svc = _setup()
 
         svc._composer.build = AsyncMock(
             return_value=MagicMock(spec=["system"], system="prompt"),
         )
 
-        await svc._resolve_system_prompt("en")
+        await resolve_system_prompt(svc._composer, "en")
 
         intent_arg = svc._composer.build.call_args[0][0]
         assert intent_arg.name == "CONSISTENCY"
 
     @pytest.mark.asyncio
     async def test_resolve_system_prompt_passes_language(self) -> None:
-        """_resolve_system_prompt passes the language to PromptContext."""
+        """resolve_system_prompt passes the language to PromptContext."""
         _, _, svc = _setup()
 
         svc._composer.build = AsyncMock(
             return_value=MagicMock(spec=["system"], system="prompt"),
         )
 
-        await svc._resolve_system_prompt("de")
+        await resolve_system_prompt(svc._composer, "de")
 
         ctx_arg = svc._composer.build.call_args[0][1]
         assert ctx_arg.language == "de"

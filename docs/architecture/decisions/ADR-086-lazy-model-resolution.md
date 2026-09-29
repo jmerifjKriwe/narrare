@@ -299,7 +299,7 @@ at construction (2026-09-09; factory function names verified):
        landed 2026-09-09: lazy wiring, first-use resolve at the top of
        `POVService.analyze()`)*
 
-**Open (6):**
+**Open (5):**
 
 6. [x] `analysis/dependencies_character_voice.py` — `get_character_voice_service`
        *(A1/L06 — landed 2026-09-13: lazy wiring + first-use resolve +
@@ -320,7 +320,21 @@ at construction (2026-09-09; factory function names verified):
        *(A6/L11 — landed 2026-09-14: lazy wiring + first-use resolve +
        SSE pre-header call)*
 12. [ ] `chat/dependencies.py` — `get_chat_service` (SSE)
-13. [ ] `consistency/deps.py` — `get_consistency_service` (two eager resolves: fact-extraction + consistency)
+13. [x] `consistency/deps.py` — `get_consistency_service`
+       *(H1/L13 — landed 2026-09-16: dual lazy wiring (S4b-dual shape)
+       — one ``LazyModelResolution`` per intent (FACT_EXTRACT +
+       CONSISTENCY, the eager factory's verbatim order and args) —
+       with the legacy temperature overrides (0.2/0.3) composed exactly
+       once at first use onto the RESOLVED cascade configs; first-use
+       resolve runs in the service's ``ensure_resolved`` after the
+       uid-scoped novel ownership gate in ``collect_check_context``
+       (gate-before-resolution, L15 ordering) and the SSE router calls
+       it before the ``StreamingResponse`` (pre-header 400, Decision
+       3); the orchestrator + service ctor config/credential plumbing
+       swapped for ``ModelResolution`` seams (orchestrator protocol
+       gained ``ensure_resolved``); prompt-resolution seam relocated to
+       ``_checker_support.py`` for the RULE-04 size limit the lazy seam
+       crossed)*
 14. [x] `generation/router.py` — `_get_service` (NameGeneratorService factory)
        *(B1/L14 — landed 2026-09-14: lazy wiring + first-use resolve
        after the ownership gates (REST — no SSE pre-header needed);

@@ -6,10 +6,17 @@ Orchestrates the two-stage consistency pipeline:
 
 The external ``ConsistencyCheckerProtocol`` remains unchanged; this class is an
 internal collaborator injected into ``ConsistencyCheckerService``.
+
+ADR-086 L13: the per-stage model wiring is consumed as ``ModelResolution``
+sems — one per intent (FACT_EXTRACT + CONSISTENCY, the S4b-dual shape) —
+and resolves on first use (``ensure_resolved``), never at construction,
+with the legacy temperature overrides (0.2 extractor / 0.3 checker)
+composed once onto the RESOLVED cascade configs.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -27,6 +34,7 @@ if TYPE_CHECKING:
     import uuid
     from collections.abc import AsyncIterator
 
+    from narrare._app.dependencies_services import ModelResolution
     from narrare.consistency.schemas import ConsistencyResponse
     from narrare_core.agents.consistency_types import ConsistencyDeps
     from narrare_core.agents.fact_extractor_types import FactExtractorOutput
@@ -37,48 +45,77 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 
+@dataclass(frozen=True)
+class StagedModelConfigs:
+    """Composed per-stage model wiring (ADR-086 L13).
+
+    Both routing cascades resolve at the orchestrator's first use; the
+    legacy temperature overrides (0.2 extractor / 0.3 checker) are
+    applied exactly once here, on the RESOLVED cascade configs
+    (``dataclasses.replace`` — model/provider routing stays intact).
+    """
+
+    fact_extractor_config: ResolvedModelConfig
+    consistency_config: ResolvedModelConfig
+    fact_extractor_api_key: str | None
+    fact_extractor_base_url: str | None
+    consistency_api_key: str | None
+    consistency_base_url: str | None
+
+
 class ConsistencyOrchestrator:
     """Orchestrate FactExtractorAgent → ConsistencyAgent.
 
     Args:
         registry: ModelRegistry for LLM model resolution.
-        fact_extractor_config: ResolvedModelConfig for FACT_EXTRACT intent.
-        consistency_config: ResolvedModelConfig for CONSISTENCY intent.
+        fact_extractor_resolution: Lazy FACT_EXTRACT cascade (ADR-086
+            L13) — resolves at first use, never at construction.
+        consistency_resolution: Lazy CONSISTENCY cascade (ADR-086 L13)
+            for stage 2 (and the service's legacy fallback mirror).
         composer: PromptComposer for prompt cascade resolution.
         invocation_pipeline: Optional InvocationPipeline for evidence recording.
-        fact_extractor_api_key: Optional per-user provider API key for the
-            FACT_EXTRACT stage (model-routing cascade).
-        fact_extractor_base_url: Optional per-user provider base URL for the
-            FACT_EXTRACT stage.
-        consistency_api_key: Optional per-user provider API key for the
-            CONSISTENCY stage (model-routing cascade).
-        consistency_base_url: Optional per-user provider base URL for the
-            CONSISTENCY stage.
     """
 
     def __init__(
         self,
         registry: ModelRegistry,
-        fact_extractor_config: ResolvedModelConfig,
-        consistency_config: ResolvedModelConfig,
+        fact_extractor_resolution: ModelResolution,
+        consistency_resolution: ModelResolution,
         composer: PromptComposer,
         invocation_pipeline: InvocationPipeline | None = None,
-        fact_extractor_api_key: str | None = None,
-        fact_extractor_base_url: str | None = None,
-        consistency_api_key: str | None = None,
-        consistency_base_url: str | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         self._registry = registry
-        self._fact_extractor_config = fact_extractor_config
-        self._consistency_config = consistency_config
+        self._fact_extractor_resolution = fact_extractor_resolution
+        self._consistency_resolution = consistency_resolution
         self._composer = composer
         self._invocation_pipeline = invocation_pipeline
-        self._fact_extractor_api_key = fact_extractor_api_key
-        self._fact_extractor_base_url = fact_extractor_base_url
-        self._consistency_api_key = consistency_api_key
-        self._consistency_base_url = consistency_base_url
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
+        self._configs: StagedModelConfigs | None = None
+
+    async def ensure_resolved(self) -> StagedModelConfigs:
+        """Resolve BOTH routing cascades at first use (ADR-086 L13).
+
+        Idempotent: the composed configs are cached and the underlying
+        ``LazyModelResolution``s cache their cascade results. The eager
+        factory's cascade call order is preserved verbatim: FACT_EXTRACT
+        first, CONSISTENCY second. ``ConfigurationError`` propagates
+        loudly (RULE-11 — consistency endpoints are AI-mandatory).
+        """
+        if self._configs is None:
+            fact_resolved = await self._fact_extractor_resolution.resolve()
+            consistency_resolved = await self._consistency_resolution.resolve()
+            # Legacy temperature overrides preserved on the RESOLVED
+            # cascade configs (dataclasses.replace — routing intact).
+            self._configs = StagedModelConfigs(
+                fact_extractor_config=replace(fact_resolved.config, temperature=0.2),
+                consistency_config=replace(consistency_resolved.config, temperature=0.3),
+                fact_extractor_api_key=fact_resolved.api_key,
+                fact_extractor_base_url=fact_resolved.base_url,
+                consistency_api_key=consistency_resolved.api_key,
+                consistency_base_url=consistency_resolved.base_url,
+            )
+        return self._configs
 
     async def run_staged_check(
         self,
@@ -103,11 +140,13 @@ class ConsistencyOrchestrator:
         Returns:
             Consistency response with issues grouped by severity and type.
         """
+        configs = await self.ensure_resolved()
         fact_output = await self._run_fact_extraction(
             deps=deps,
             kb_summaries=kb_summaries,
             timeline_envelopes=timeline_envelopes,
             language=language,
+            configs=configs,
         )
         logger.info(
             "consistency_stage1_complete",
@@ -116,7 +155,7 @@ class ConsistencyOrchestrator:
         )
         return await run_consistency_stage(
             registry=self._registry,
-            consistency_config=self._consistency_config,
+            consistency_config=configs.consistency_config,
             composer=self._composer,
             novel_id=novel_id,
             deps=deps,
@@ -126,8 +165,8 @@ class ConsistencyOrchestrator:
             max_chapter_tokens=max_chapter_tokens,
             fact_output=fact_output,
             invocation_pipeline=self._invocation_pipeline,
-            api_key=self._consistency_api_key,
-            base_url=self._consistency_base_url,
+            api_key=configs.consistency_api_key,
+            base_url=configs.consistency_base_url,
         )
 
     async def stream_staged_check(
@@ -153,6 +192,7 @@ class ConsistencyOrchestrator:
         Yields:
             Stage events during processing, then final ConsistencyResponse.
         """
+        configs = await self.ensure_resolved()
         yield ConsistencyStageEvent(
             stage="extracting_facts",
             status="start",
@@ -164,6 +204,7 @@ class ConsistencyOrchestrator:
             kb_summaries=kb_summaries,
             timeline_envelopes=timeline_envelopes,
             language=language,
+            configs=configs,
         )
         yield ConsistencyStageEvent(
             stage="extracting_facts",
@@ -181,7 +222,7 @@ class ConsistencyOrchestrator:
         )
         response = await run_consistency_stage(
             registry=self._registry,
-            consistency_config=self._consistency_config,
+            consistency_config=configs.consistency_config,
             composer=self._composer,
             novel_id=novel_id,
             deps=deps,
@@ -191,8 +232,8 @@ class ConsistencyOrchestrator:
             max_chapter_tokens=max_chapter_tokens,
             fact_output=fact_output,
             invocation_pipeline=self._invocation_pipeline,
-            api_key=self._consistency_api_key,
-            base_url=self._consistency_base_url,
+            api_key=configs.consistency_api_key,
+            base_url=configs.consistency_base_url,
         )
         for index, issue in enumerate(response.issues, start=1):
             yield ConsistencyStageEvent(
@@ -228,6 +269,7 @@ class ConsistencyOrchestrator:
         kb_summaries: list[dict[str, object]],
         timeline_envelopes: list[TimelineEventEnvelope],
         language: str,
+        configs: StagedModelConfigs,
     ) -> FactExtractorOutput:
         """Run Stage 1: FactExtractorAgent.
 
@@ -236,6 +278,8 @@ class ConsistencyOrchestrator:
             kb_summaries: KB entity summaries.
             timeline_envelopes: Enriched timeline events.
             language: Output language.
+            configs: Composed per-stage model wiring (resolved at the
+                orchestrator's first use — ADR-086 L13).
 
         Returns:
             Structured fact extraction output with provenance-traced facts.
@@ -293,14 +337,14 @@ class ConsistencyOrchestrator:
         # runtime settings + usage limits as one coherent triple, so the thinking
         # policy actually reaches this call.
         resolved = self._run_limit_resolver.resolve(
-            config=self._fact_extractor_config, budget=None, invocation_id=uuid4()
+            config=configs.fact_extractor_config, budget=None, invocation_id=uuid4()
         )
         prepared = await self._registry.prepare(
-            self._fact_extractor_config,
+            configs.fact_extractor_config,
             intent=LLMIntent.FACT_EXTRACT,
             usage_limits=resolved.usage_limits,
-            api_key=self._fact_extractor_api_key,
-            base_url=self._fact_extractor_base_url,
+            api_key=configs.fact_extractor_api_key,
+            base_url=configs.fact_extractor_base_url,
         )
         agent = FactExtractorAgent(model=prepared.model, system_prompt=system_prompt)
         return await agent.run(
