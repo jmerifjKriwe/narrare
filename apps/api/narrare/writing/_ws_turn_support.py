@@ -169,9 +169,14 @@ def build_prompt_context(
     composition contract (build_and_validate_prompt) requires the caller
     to carry assembled KB context into the PromptContext: supplies the
     ``kb_context_extras`` SSOT spread, ``chapter_outline`` /
-    ``timeline_position`` / ``recent_chapters`` (empty when KB-blind), and
+    ``timeline_position`` / ``recent_chapters`` (empty when KB-blind),
     ``word_target_line`` for interactive_session only (slice-3:
-    label-in-value).
+    label-in-value), and the novel metadata (``project_title`` /
+    ``genre``) from the assembled context into the first-class
+    PromptContext fields — HTTP parity with the b2faa851 generation-path
+    supply, so the governed interactive_session / interview templates
+    render ``- Project:`` / ``- Genre:`` populated. Missing novel
+    metadata renders empty (RULE-11).
     """
     from narrare_core.prompts.context import PromptContext
     from narrare_core.writing._helpers import kb_context_extras, word_target_line
@@ -188,6 +193,8 @@ def build_prompt_context(
         language="en",
         mode=prompt_mode,
         author_instructions=content,
+        project_title=kb_source.project_title,
+        genre=kb_source.genre,
         extra=extra,
     )
 

@@ -22,8 +22,10 @@ Owns the context steps of the chat flow (RULE-04 extraction from
 - :func:`resolve_chat_kb_vars` resolves the chat template's per-type KB
   prompt variables (``kb_characters`` / ``kb_locations`` / ``kb_factions`` /
   ``kb_relationships`` bundle slots + the ``kb_other`` catch-all) through
-  the canonical ``KBContextProviderProtocol`` (ADR-067) — the chat follow-up
-  documented in ``build_chat_context``. Degrades to ``None`` (→ or-{} no-op
+  the canonical ``KBContextProviderProtocol`` (ADR-067) in a single
+  unfiltered fetch per turn (#11): the provider partitions the fetch into
+  the bundle's slots AND its ``other`` render, which the seam reads instead
+  of a second ``fetch_entities`` call. Degrades to ``None`` (→ or-{} no-op
   spread, baseline placeholders stand) for unwired providers / project-less
   chat (RULE-11); the provider itself never raises.
 
@@ -43,12 +45,10 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import structlog
 
-from narrare.kb._context_provider import kb_entry_to_kb_entity
 from narrare_core.chat.chat_service_core import build_chat_context, format_history
 from narrare_core.context._render_options import RenderOptions
 from narrare_core.notes.contracts import format_note_context_block
 from narrare_core.shared.errors import NotFoundError
-from narrare_core.writing._helpers import format_entities
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -61,13 +61,6 @@ if TYPE_CHECKING:
     from narrare_core.prompts.context import PromptContext
 
 logger = structlog.get_logger(__name__)
-
-#: Entity types rendered into the provider bundle's named slots. Every other
-#: entity type (system, timeline, …) is chat's ``kb_other`` catch-all: the
-#: chat template has no dedicated per-type vars beyond characters /
-#: locations / factions, so unrecognised types must stay visible there
-#: (CR-AUFG-04-04 — no silent drops).
-_CHAT_KB_SLOT_TYPES: frozenset[str] = frozenset({"character", "location", "faction"})
 
 
 @runtime_checkable
@@ -154,9 +147,11 @@ async def resolve_chat_kb_vars(
     Single fetch+render source for the slots the governed chat template
     carries: ``kb_characters`` / ``kb_locations`` / ``kb_factions`` /
     ``kb_relationships`` (the bundle's :meth:`~KBContextBundle.to_prompt_variables`
-    mapping) plus ``kb_other`` — the catch-all render of every entity type
-    outside the bundle's named slots (chat has no systems/timelines template
-    vars, so those types must stay visible in ``kb_other``, CR-AUFG-04-04).
+    mapping) plus ``kb_other`` — read from the bundle's partitioned ``other``
+    render (single unfiltered fetch per turn, #11). Chat has no
+    systems/timelines template vars, so those types must stay visible in
+    ``kb_other`` (CR-AUFG-04-04); a pre-partition provider (``other is
+    None``) degrades the catch-all to ``""`` (backward compatible).
     ``kb_suggested`` is deliberately NOT resolved here: its enricher is
     gated on a non-``None`` AdoptionPolicy (ruling pending), and the slot
     stays documented-empty.
@@ -184,25 +179,16 @@ async def resolve_chat_kb_vars(
         return None
 
     options = RenderOptions(annotate_provenance=True)
-    bundle = await kb_context_provider.fetch_context(
-        novel_id,
-        entity_types=["character", "location", "faction"],
-        options=options,
-    )
-    kb_vars = bundle.to_prompt_variables()
-
-    # kb_other catch-all: fetch the raw entries and render every type the
-    # bundle does not carry (mirrors the writing seam's tier-3 ``other``
-    # bucket). Chat adds no seam-side budget; the render is bounded at the
+    # Single fetch per turn (#11): the provider fetches unfiltered once and
+    # partitions — the bundle slots carry the per-type renders, ``other`` the
+    # catch-all. Chat adds no seam-side budget; the render is bounded at the
     # core formatter's DEFAULT_MAX_ENTITIES count cap with an LLM-visible
-    # omission marker (never a silent drop — CR-AUFG-04-04).
-    entries = await kb_context_provider.fetch_entities(novel_id)
-    other_entities = [
-        kb_entry_to_kb_entity(entry)
-        for entry in entries
-        if entry.entity_type not in _CHAT_KB_SLOT_TYPES
-    ]
-    kb_vars["kb_other"] = format_entities(other_entities, options=options).text
+    # omission marker at the provider's render (never a silent drop —
+    # CR-AUFG-04-04). A pre-partition provider (``other is None``) degrades
+    # ``kb_other`` to "" (backward compatible, RULE-11).
+    bundle = await kb_context_provider.fetch_context(novel_id, options=options)
+    kb_vars = bundle.to_prompt_variables()
+    kb_vars["kb_other"] = bundle.other.text if bundle.other is not None else ""
     return kb_vars
 
 

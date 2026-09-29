@@ -51,6 +51,13 @@ class KBContextBundle:
     Core owns the vocabulary (``RenderedKBContext`` / ``RenderOptions``); this
     value type lives in Backend because it groups Backend-owned per-type slots
     (RULE-07).
+
+    ``other`` is the optional catch-all render of every entity type outside
+    the named slots (chat's ``kb_other`` source). It is ``None`` when the
+    non-slot types were not part of the fetch scope: degradation bundles,
+    ``fetch_context`` calls with an explicit ``entity_types`` filter, or
+    providers predating the single-fetch partition. ``None`` means absent,
+    not empty.
     """
 
     characters: RenderedKBContext
@@ -58,6 +65,7 @@ class KBContextBundle:
     factions: RenderedKBContext
     relationships: RenderedKBContext
     render_options: RenderOptions
+    other: RenderedKBContext | None = None
 
     @staticmethod
     def empty(options: RenderOptions | None = None) -> KBContextBundle:
@@ -117,11 +125,21 @@ class KBContextProviderProtocol(Protocol):
         entity_types: list[str] | None = None,
         options: RenderOptions | None = None,
     ) -> KBContextBundle:
-        """Fetch KB entities and render them per-type into a bundle.
+        """Fetch KB entities once and render them per-type into a bundle.
+
+        Single unfiltered fetch per call: the novel's KB entities are fetched
+        once and partitioned — the named slot types (character/location/
+        faction) render into the bundle's slots (relationships render from
+        the relationship repository), every other entity type renders into
+        :attr:`KBContextBundle.other`, the catch-all for consumers without
+        dedicated per-type template vars (e.g. chat's ``kb_other``).
 
         Args:
             novel_id: Novel whose KB entities are rendered.
-            entity_types: Optional filter (default: character/location/faction).
+            entity_types: Optional filter. When given, the fetch is restricted
+                to these types and ``other`` stays ``None`` — the caller owns
+                the type scope (pre-partition behavior). Omit it to get slots
+                + ``other`` from the one fetch.
             options: Per-invocation render controls; pass
                 ``RenderOptions(annotate_provenance=True)`` to carry
                 provenance accounting onto the bundle.

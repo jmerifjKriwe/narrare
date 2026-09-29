@@ -13,16 +13,23 @@ sibling test module.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from narrare.kb._context_provider import kb_entry_to_kb_entity
 from narrare.kb.context_contracts import KBContextBundle
 from narrare.kb.models import KBEntry
 from narrare_core.context._kb_envelope import RenderedKBContext
 from narrare_core.context._render_options import RenderOptions
+from narrare_core.writing._helpers import format_entities
 
 if TYPE_CHECKING:
     from uuid import UUID
+
+#: Slot types the bundle carries — every other entity type partitions into
+#: ``other`` (mirrors the real provider's single-fetch partition, #11).
+_SLOT_TYPES: frozenset[str] = frozenset({"character", "location", "faction"})
 
 # ---------------------------------------------------------------------------
 # Sentinels — one per bundle slot; kb_other flows through the real renderer,
@@ -106,9 +113,20 @@ class FakeKbContextProvider:
         options: RenderOptions | None = None,
     ) -> KBContextBundle:
         self.fetch_context_calls.append(novel_id)
-        if self._bundle is None:
-            return KBContextBundle.empty(options)
-        return self._bundle
+        bundle = self._bundle if self._bundle is not None else KBContextBundle.empty(options)
+        if entity_types is not None:
+            # Caller-scoped fetch: the caller owns the type scope, ``other``
+            # stays ``None`` (real-provider contract, backward compatible).
+            return bundle
+        # Single-fetch partition (#11): non-slot entries render into
+        # ``bundle.other`` through the real capped formatter — exactly like
+        # the production provider.
+        other_entities = [
+            kb_entry_to_kb_entity(kb_entry)
+            for kb_entry in self._entries
+            if kb_entry.entity_type not in _SLOT_TYPES
+        ]
+        return replace(bundle, other=format_entities(other_entities, options=options))
 
     async def fetch_entities(
         self,

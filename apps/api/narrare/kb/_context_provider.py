@@ -50,9 +50,10 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-#: Entity types rendered into the bundle's three slots. Types outside this set
-#: are fetched-but-ignored by ``fetch_context`` (timeline only reasons over
-#: characters/locations/factions; other types reach prompts via other vars).
+#: Entity types rendered into the bundle's three named slots. On an
+#: unfiltered ``fetch_context`` call every type outside this set renders into
+#: the bundle's ``other`` catch-all (single-fetch partition, #11); filtered
+#: calls keep the caller's type scope and leave ``other`` as ``None``.
 _ENTITY_SLOTS: dict[str, str] = {
     "character": "characters",
     "location": "locations",
@@ -108,10 +109,12 @@ class KBContextProvider:
 
     Implements :class:`~narrare.kb.context_contracts.KBContextProviderProtocol`.
     Fetches KB entities via ``list_entities``, maps them via
-    :func:`kb_entry_to_kb_entity`, splits by entity type, and renders each
-    slot through the ADR-050 envelope (:func:`format_entities`). Relationships
-    are rendered through :func:`format_relationships`. ``fetch_world_context``
-    delegates to the existing kb merge/extract aggregate.
+    :func:`kb_entry_to_kb_entity`, partitions the fetch into the bundle's
+    named slots and the ``other`` catch-all (unfiltered calls; filtered calls
+    leave ``other`` as ``None``), and renders each through the ADR-050
+    envelope (:func:`format_entities`). Relationships are rendered through
+    :func:`format_relationships`. ``fetch_world_context`` delegates to the
+    existing kb merge/extract aggregate.
 
     Args:
         kb_repo: KB entry repository (scoped read). ``None`` → empty bundle.
@@ -135,7 +138,12 @@ class KBContextProvider:
         entity_types: list[str] | None = None,
         options: RenderOptions | None = None,
     ) -> KBContextBundle:
-        """Fetch KB entities and render them per-type into a bundle.
+        """Fetch KB entities once and render them per-type into a bundle.
+
+        Single unfiltered fetch: slots render as before, every non-slot
+        entity type renders into ``bundle.other`` (single-fetch partition,
+        #11). An explicit ``entity_types`` filter keeps the caller's type
+        scope and leaves ``other`` as ``None`` (backward compatible).
 
         See :meth:`KBContextProviderProtocol.fetch_context` for the contract.
         Never raises: repository failure degrades to an empty bundle (RULE-11).
@@ -155,12 +163,21 @@ class KBContextProvider:
             logger.warning("kb_context_fetch_unavailable", exc_info=True)
             return KBContextBundle.empty(render_options)
 
-        # Partition into the bundle's three rendered slots.
+        # Partition the single fetch: named slot types into their rendered
+        # slots; on an unfiltered call the remaining types render into the
+        # ``other`` catch-all through the same capped formatter (chat's
+        # ``kb_other`` source, CR-AUFG-04-04 — no silent drops). With an
+        # explicit ``entity_types`` filter the caller owns the type scope:
+        # non-listed types never arrive, ``other`` stays ``None``.
+        unfiltered = entity_types is None
         by_slot: dict[str, list[KBEntity]] = {slot: [] for slot in _ENTITY_SLOTS.values()}
+        other_entities: list[KBEntity] = []
         for entry in entries:
             slot = _ENTITY_SLOTS.get(entry.entity_type)
             if slot is not None:
                 by_slot[slot].append(kb_entry_to_kb_entity(entry))
+            elif unfiltered:
+                other_entities.append(kb_entry_to_kb_entity(entry))
 
         characters = format_entities(by_slot["characters"], options=render_options)
         locations = format_entities(by_slot["locations"], options=render_options)
@@ -173,6 +190,7 @@ class KBContextProvider:
             factions=factions,
             relationships=relationships,
             render_options=render_options,
+            other=format_entities(other_entities, options=render_options) if unfiltered else None,
         )
 
     async def fetch_entities(

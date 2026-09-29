@@ -6,7 +6,8 @@ the fetch + render path:
 
 * ``kb_entry_to_kb_entity`` — the canonical KBEntry→KBEntity mapper;
 * populated KB → non-empty per-type renderings (characters/locations/factions
-  + relationships);
+  + relationships) and the single-fetch partition into ``bundle.other``
+  (non-slot entity types; filtered fetches leave ``other`` None);
 * RULE-11 graceful degradation (``None`` repo / failing repo / empty KB →
   empty bundle, never an exception);
 * ``fetch_world_context`` delegation.
@@ -106,8 +107,8 @@ class TestFetchContextPopulated:
         assert bundle.relationships.entry_count == 1
 
     @pytest.mark.asyncio
-    async def test_non_slot_entity_types_are_fetched_but_ignored(self) -> None:
-        """A ``system`` entry is fetched but not routed to any bundle slot."""
+    async def test_non_slot_entity_types_partition_into_other(self) -> None:
+        """Unfiltered fetch: a ``system`` entry renders into ``bundle.other``."""
         entries = [make_entry("The Calendar", "system"), make_entry("Elara", "character")]
         provider = make_provider(FakeKBRepo(entries))
 
@@ -117,6 +118,69 @@ class TestFetchContextPopulated:
         assert "Calendar" not in bundle.characters.text
         assert bundle.locations.text == ""
         assert bundle.factions.text == ""
+        # Single-fetch partition: the non-slot type lands in ``other``.
+        assert bundle.other is not None
+        assert "Calendar" in bundle.other.text
+
+    @pytest.mark.asyncio
+    async def test_slot_entities_do_not_leak_into_other(self) -> None:
+        """Slot types render into their slots only — never into ``other``."""
+        entries = [
+            *populated_entries(),
+            make_entry("The Calendar", "system", body="How time is kept."),
+        ]
+        provider = make_provider(FakeKBRepo(entries))
+
+        bundle = await provider.fetch_context(uuid4())
+
+        assert bundle.other is not None
+        assert "Calendar" in bundle.other.text
+        assert "Elara" not in bundle.other.text
+        assert "Shimmering Keep" not in bundle.other.text
+        assert "Night Watch" not in bundle.other.text
+
+    @pytest.mark.asyncio
+    async def test_unfiltered_fetch_without_non_slot_types_yields_empty_other(
+        self,
+    ) -> None:
+        """Only slot types in the KB → ``other`` present but empty."""
+        provider = make_provider(FakeKBRepo(populated_entries()))
+
+        bundle = await provider.fetch_context(uuid4())
+
+        assert bundle.other is not None
+        assert bundle.other.text == ""
+
+    @pytest.mark.asyncio
+    async def test_filtered_fetch_leaves_other_none(self) -> None:
+        """Explicit ``entity_types`` filter: caller owns the type scope —
+        ``other`` stays ``None`` (pre-partition backward compatibility)."""
+        entries = [
+            *populated_entries(),
+            make_entry("The Calendar", "system"),
+        ]
+        provider = make_provider(FakeKBRepo(entries))
+
+        bundle = await provider.fetch_context(uuid4(), entity_types=["character"])
+
+        assert bundle.other is None
+        assert bundle.characters.text != ""
+
+    @pytest.mark.asyncio
+    async def test_other_render_inherits_formatter_count_cap(self) -> None:
+        """``other`` renders through the capped formatter: >cap → marker."""
+        entries = [
+            *populated_entries(),
+            *[make_entry(f"System {i:03d}", "system", body=f"Body {i:03d}.") for i in range(55)],
+        ]
+        provider = make_provider(FakeKBRepo(entries))
+
+        bundle = await provider.fetch_context(uuid4())
+
+        assert bundle.other is not None
+        assert "[… 5 more entities omitted]" in bundle.other.text
+        assert "System 049" in bundle.other.text
+        assert "System 050" not in bundle.other.text
 
     @pytest.mark.asyncio
     async def test_entity_types_filter_restricts_rendered_slots(self) -> None:
@@ -146,6 +210,8 @@ class TestFetchContextDegradation:
         assert bundle.locations.text == ""
         assert bundle.factions.text == ""
         assert bundle.relationships.text == ""
+        # Degradation carries no fetch scope → ``other`` absent (None).
+        assert bundle.other is None
 
     @pytest.mark.asyncio
     async def test_failing_kb_repo_yields_empty_bundle_without_raising(self) -> None:
@@ -155,6 +221,7 @@ class TestFetchContextDegradation:
 
         assert bundle.characters.text == ""
         assert bundle.locations.text == ""
+        assert bundle.other is None
 
     @pytest.mark.asyncio
     async def test_empty_kb_yields_empty_bundle_without_raising(self) -> None:
