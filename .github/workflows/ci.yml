@@ -46,6 +46,10 @@ name: CI
 
 on:
   workflow_dispatch:
+  schedule:
+    # Nightly FULL run (default branch): PRs are the gate; this is the
+    # post-merge safety net (spec 2026-09-29 §3). 02:30 UTC.
+    - cron: "30 2 * * *"
   pull_request:
     paths:
       - "apps/**"
@@ -79,7 +83,7 @@ on:
     branches: [main, develop]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -96,6 +100,10 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # schedule runs have no diff base — expensive jobs bypass the filter
+    # via `github.event_name == 'schedule' ||` first, so outputs are unused.
+    if: github.event_name != 'schedule'
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -145,6 +153,7 @@ jobs:
   architecture:
     name: Architecture Constraints
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Deliberately NOT gated on `changes` — this job is cheap (~3min) and
     # covers cross-cutting drift checks (docs, ADRs, eval smoke, registry)
     # that don't map cleanly to a single path. Keep it as the universal
@@ -265,6 +274,7 @@ jobs:
   lint:
     name: Lint & Format
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: architecture
     steps:
       - uses: actions/checkout@v7
@@ -288,6 +298,7 @@ jobs:
   typecheck:
     name: Type Check (pyright)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: architecture
     steps:
       - uses: actions/checkout@v7
@@ -326,6 +337,7 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: architecture
     steps:
       # fetch-depth: 0 is only needed to scan full git history — reserve
@@ -382,7 +394,13 @@ jobs:
   test-unit:
     name: Unit Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [lint, typecheck]
+    # PR-gated full suite; nightly/dispatch run everything (spec §3).
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request'
     permissions:
       contents: read
       pull-requests: write
@@ -503,13 +521,17 @@ jobs:
   test-integration:
     name: Integration Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [lint, typecheck, changes]
-    # Skip on draft PRs (WIP iteration doesn't need the Docker+spaCy path
-    # yet — it reruns once marked ready-for-review) and on PRs where the
-    # diff never touched backend code. Always runs on push to main/develop.
+    # PR path: skip on draft PRs (WIP iteration doesn't need the
+    # Docker+spaCy path — it reruns once marked ready-for-review) and on
+    # PRs whose diff never touched backend code. Nightly/dispatch run all.
     if: >-
-      github.event_name == 'push' ||
-      (needs.changes.outputs.backend == 'true' && github.event.pull_request.draft != true)
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       needs.changes.outputs.backend == 'true' &&
+       github.event.pull_request.draft != true)
 
     services:
       postgres:
@@ -582,6 +604,7 @@ jobs:
   update-coverage-badge:
     name: Update Coverage Badge
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: test-unit
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
@@ -666,10 +689,15 @@ jobs:
     # baselines are font-rendering-sensitive. ubuntu-latest silently
     # rotates OS versions and would drift baselines without warning.
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     needs: [architecture, changes]
     if: >-
-      github.event_name == 'push' ||
-      (needs.changes.outputs.frontend == 'true' && github.event.pull_request.draft != true)
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       (needs.changes.outputs.frontend == 'true' ||
+        needs.changes.outputs.workflows == 'true') &&
+       github.event.pull_request.draft != true)
 
     steps:
       - uses: actions/checkout@v7
@@ -853,7 +881,7 @@ jobs:
           fi
 
   # -------------------------------------------------------------------------
-  # E2E tests (main branch only, full stack)
+  # E2E tests (nightly + manual dispatch, full stack)
   # -------------------------------------------------------------------------
   test-e2e:
     name: E2E Tests
@@ -861,8 +889,13 @@ jobs:
     # Playwright, keeping them on the same OS version avoids environment
     # divergence between the two browser-driven jobs.
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     needs: [lint, typecheck]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Full-stack E2E moved from every main-push to nightly + manual
+    # dispatch (spec §3; was 192 min of the Sept 1-14 burn).
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
 
     services:
       postgres:
@@ -1010,9 +1043,13 @@ jobs:
   # Warning summary — aggregates ::warning:: annotations across all jobs
   # -------------------------------------------------------------------------
   warnings-summary:
-    if: always()
+    if: >-
+      always() && !cancelled() &&
+      (needs.test-unit.result != 'skipped' ||
+       needs.frontend.result != 'skipped')
     needs: [architecture, test-unit, frontend]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Download warning artifacts
         continue-on-error: true
