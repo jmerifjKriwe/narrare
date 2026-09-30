@@ -1,8 +1,8 @@
 # ADR-089 — Dynamic Tier Routing Pilot: per-step CHAT → ANALYSE escalation via the pydantic-ai `SelectModel` capability
 
-> **Status:** 🔄 Proposed — binding design for Tasks 7–8 of the
-> pydantic-ai 2.52 upgrade plan (feature F3). Flips to ✅ when Task 8 lands
-> (Gate 12: wired, tested, consumed, documented).
+> **Status:** ✅ Implemented — Tasks 7–8 of the pydantic-ai 2.52 upgrade
+> plan (feature F3) landed 2026-09-30 (Gate 12: wired, tested, consumed,
+> documented).
 > **Date:** 2026-09-30
 > **Deciders:** Architecture Agent; binding user decisions 2026-09-30
 > (escalation target = `LLMIntent.ANALYSE`; escape hatch pre-authorized, §Escape Hatch)
@@ -500,6 +500,12 @@ accepts sync or async).
 (`ensure_resolved` extension, degradation per Decision 5); capability
 attach in `_agent_stream.stream_agent_response` (flag-gated;
 `registry.get_model` for the escalation instance); escalation logging.
+
+**Status change (2026-09-30, Task 8 review finding):** with per-request DI
+scope, the escalation resolution and the `dynamic_tier_attached` info event
+fire per request — symmetric with the per-turn base-model prepare. The
+Rationale's "one object construction per conversation" wording describes the
+memoized resolution, not the attach cadence.
 
 **Test Contract (binding, incl. RULE-18b evidence):**
 
