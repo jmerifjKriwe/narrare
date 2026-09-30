@@ -507,6 +507,14 @@ fire per request — symmetric with the per-turn base-model prepare. The
 Rationale's "one object construction per conversation" wording describes the
 memoized resolution, not the attach cadence.
 
+**Guard cross-reference (2026-09-30, phase-gate ruling):** the escalation
+`registry.get_model` site (`chat/_tiering.py`) is the single sanctioned
+entry in the prepare-coverage guard's `_SANCTIONED_BARE_GET_MODEL`
+(`tests/unit/core/agents/test_prepare_coverage_guard.py`) — sanctioned
+because D4 keeps run-level settings base-composed, so a `prepare()` triple
+would be built and discarded at this site (the selector consumes the Model
+instance only).
+
 **Test Contract (binding, incl. RULE-18b evidence):**
 
 - Pure policy: both triggers, boundaries (`>` vs `>=`, off-by-one),
