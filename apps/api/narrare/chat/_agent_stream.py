@@ -23,11 +23,12 @@ from uuid import uuid4
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+    from typing import Any
     from uuid import UUID
 
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
-    from narrare_core.llm import ModelRegistry, ResolvedModelConfig
+    from narrare_core.llm import ModelRegistry, ResolvedModel, ResolvedModelConfig
     from narrare_core.llm._prepared_call import PreparedModelCall
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
@@ -54,6 +55,7 @@ async def stream_agent_response(
     user_prompt: str,
     user_id: UUID,
     project_id: UUID | None,
+    escalation: ResolvedModel | None = None,
 ) -> AsyncIterator[dict[str, object]]:
     """Stream one chat turn via ``ChatAgent.run_stream()`` (ADR-024).
 
@@ -91,6 +93,10 @@ async def stream_agent_response(
         user_id: The authenticated user's UUID (ADR-045 Decision 6).
         project_id: The project UUID for enrichment correlation, or
             ``None`` for project-less chat (NOTES-001 §6b).
+        escalation: Optional resolved escalation (ANALYSE) triple
+            (ADR-089) — ``None`` unless the pilot flag was on at DI time,
+            so the default-off path stays byte-identical to the
+            pre-ADR-089 wiring.
 
     Yields:
         Dict-based SSE events for the streaming response.
@@ -120,10 +126,25 @@ async def stream_agent_response(
         invocation_id=invocation_id,
     )
 
+    # ADR-089 Decision 7: flag-gated tier-escalation capability build —
+    # delegated to chat._tiering (RULE-04); ``escalation`` is None unless
+    # the pilot flag was on at DI time (default-off → no behavior change).
+    capabilities: list[Any] | None = None
+    if escalation is not None:
+        from narrare.chat._tiering import build_tier_capabilities
+
+        capabilities = await build_tier_capabilities(registry, prepared.model, config, escalation)
+
     # Create ChatAgent (HistoryPolicy.CONVERSATIONAL). ADR-046: inject the
     # feature system prompt into the SYSTEM channel via the constructor,
-    # never concatenated into the user prompt.
-    agent = ChatAgent(model=prepared.model, system_prompt=composed.system or None)
+    # never concatenated into the user prompt. ADR-089: the SelectModel
+    # capability rides ``capabilities=``; the base model stays the
+    # constructor model (upstream ``model_is_explicit`` authoritative).
+    agent = ChatAgent(
+        model=prepared.model,
+        system_prompt=composed.system or None,
+        capabilities=capabilities,
+    )
 
     # ChatDeps carries the enriched context to the agent (ADR-048 Mode 2).
     deps = ChatDeps(

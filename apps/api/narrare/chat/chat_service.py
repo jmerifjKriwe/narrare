@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+from narrare.chat._chat_history import ChatHistoryMixin
 from narrare.chat._context import (
     build_prompt_context,
     resolve_chat_kb_vars,
@@ -31,6 +32,7 @@ from narrare.chat._context import (
 from narrare_core.chat.chat_service_core import new_conversation_id
 from narrare_core.chat.contracts import ChatMessage, ChatRequest, ChatServiceProtocol
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.settings import get_core_settings
 
 if TYPE_CHECKING:
     from narrare._app.dependencies_services import ModelResolution
@@ -45,7 +47,7 @@ if TYPE_CHECKING:
     from narrare_core.prompts import PromptComposer
 
 
-class ChatService(ChatServiceProtocol):
+class ChatService(ChatHistoryMixin, ChatServiceProtocol):
     """Backend chat service — wires core logic to API infrastructure.
 
     Handles the full chat lifecycle:
@@ -56,6 +58,10 @@ class ChatService(ChatServiceProtocol):
     4. Agent-based LLM streaming via ChatAgent (ADR-024)
     5. ProcessHistory tracking for conversational continuity (ADR-034)
     6. Message persistence via SQLAlchemyConversationStore
+
+    History read/maintenance lives on ``ChatHistoryMixin`` (RULE-04
+    extraction); dynamic tier escalation wiring on ``chat._tiering``
+    (ADR-089).
     """
 
     def __init__(
@@ -69,6 +75,7 @@ class ChatService(ChatServiceProtocol):
         note_lookup: NoteLookupProtocol | None = None,
         novel_lookup: OwnedLinkLookupProtocol | None = None,
         kb_context_provider: KBContextProviderProtocol | None = None,
+        escalation_resolution: ModelResolution | None = None,
     ) -> None:
         """Initialize the chat service with injected dependencies.
 
@@ -96,12 +103,20 @@ class ChatService(ChatServiceProtocol):
             kb_context_provider: Canonical ``KBContextProviderProtocol``
                 (ADR-067) for the chat template's per-type KB slots;
                 ``None`` (default, test contexts) keeps them empty.
+            escalation_resolution: Optional lazy ANALYSE routing cascade
+                (ADR-089 Decision 7) for the dynamic tier escalation pilot
+                — wired by ``chat/dependencies.py`` only when
+                ``CoreSettings.llm_dynamic_tiering_enabled`` is on; ``None``
+                (default) keeps the DI shape byte-identical to the
+                pre-ADR-089 wiring and skips all escalation work.
         """
         self._composer = prompt_composer
         self._registry = model_registry
         self._store = conversation_store
         self._model_resolution = model_resolution
         self._resolved: ResolvedModel | None = None
+        self._escalation_resolution = escalation_resolution
+        self._escalation: ResolvedModel | None = None
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver
         self._note_lookup = note_lookup
@@ -119,9 +134,26 @@ class ChatService(ChatServiceProtocol):
         surfaces as a pre-header 400 on this AI-mandatory SSE endpoint —
         the router awaits ``ask()`` before constructing the
         ``StreamingResponse``.
+
+        ADR-089 Decision 7: when the escalation cascade is wired (pilot
+        flag on), it is consumed idempotently at this same first-use seam
+        via ``chat._tiering.resolve_tier_escalation`` — its
+        ``ConfigurationError`` degrades to base-only (loud warning), chat
+        never hard-fails on the opt-in path.
         """
         if self._resolved is None:
             self._resolved = await self._model_resolution.resolve()
+            # ADR-089 D5/D7: the escalation cascade is consumed at the
+            # same first-use seam, ONLY when the pilot flag is on (flag
+            # off → nothing happens); ConfigurationError degrades loudly
+            # to base-only (RULE-11).
+            if (
+                self._escalation_resolution is not None
+                and get_core_settings().llm_dynamic_tiering_enabled
+            ):
+                from narrare.chat._tiering import resolve_tier_escalation
+
+                self._escalation = await resolve_tier_escalation(self._escalation_resolution)
         return self._resolved
 
     async def ask(
@@ -235,65 +267,5 @@ class ChatService(ChatServiceProtocol):
             user_prompt=message,
             user_id=user_id,
             project_id=request.project_id,
+            escalation=self._escalation,
         )
-
-    async def get_history(
-        self,
-        conversation_id: UUID,
-        user_id: UUID,
-        *,
-        limit: int = 50,
-    ) -> list[ChatMessage]:
-        """Get conversation history for its owner.
-
-        Args:
-            conversation_id: The conversation to retrieve.
-            user_id: The authenticated user — must own the conversation.
-            limit: Maximum number of messages (newest first). Defaults to 50.
-
-        Returns:
-            List of ChatMessage dataclasses ordered by creation time.
-
-        Raises:
-            NotFoundError: The conversation does not exist or is owned by
-                another user (mapped to HTTP 404).
-        """
-        return await self._store.get_history(conversation_id, user_id, limit=limit)
-
-    async def get_project_id_for_conversation(
-        self,
-        conversation_id: UUID,
-        user_id: UUID,
-    ) -> UUID | None:
-        """Get the project_id associated with a conversation.
-
-        Args:
-            conversation_id: The conversation to look up.
-            user_id: The authenticated user — must own the conversation.
-
-        Returns:
-            The project UUID, or ``None`` for a project-less conversation
-            (NOTES-001 §6b).
-
-        Raises:
-            NotFoundError: The conversation does not exist or is owned by
-                another user (mapped to HTTP 404).
-        """
-        return await self._store.get_conversation_project_id(conversation_id, user_id)
-
-    async def clear_history(
-        self,
-        conversation_id: UUID,
-        user_id: UUID,
-    ) -> None:
-        """Clear conversation history (deletes all messages).
-
-        Args:
-            conversation_id: The conversation to clear.
-            user_id: The authenticated user — must own the conversation.
-
-        Raises:
-            NotFoundError: The conversation does not exist or is owned by
-                another user (mapped to HTTP 404).
-        """
-        await self._store.clear_history(conversation_id, user_id)

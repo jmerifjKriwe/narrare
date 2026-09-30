@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Iterator
     from uuid import UUID
 
     from pydantic_ai.usage import UsageLimits
@@ -338,3 +338,30 @@ def service_with_novel_lookup(
         model_resolution=_static_resolution(mock_config),
         novel_lookup=cast("OwnedLinkLookupProtocol", novel_lookup),
     )
+
+
+# ---------------------------------------------------------------------------
+# ADR-089 dynamic tiering pilot — CoreSettings flag control (ADR-071 §8)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def tiering_on(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Enable the ADR-089 pilot flag (ADR-071 §8 env + cache-clear pattern)."""
+    from narrare_core.settings import get_core_settings
+
+    monkeypatch.setenv("NARRARE_LLM_DYNAMIC_TIERING", "true")
+    get_core_settings.cache_clear()
+    yield
+    get_core_settings.cache_clear()
+
+
+@pytest.fixture
+def tiering_off(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Pin the pilot flag OFF (the shipped default) regardless of env."""
+    from narrare_core.settings import get_core_settings
+
+    monkeypatch.delenv("NARRARE_LLM_DYNAMIC_TIERING", raising=False)
+    get_core_settings.cache_clear()
+    yield
+    get_core_settings.cache_clear()

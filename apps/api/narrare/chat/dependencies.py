@@ -37,6 +37,7 @@ from narrare._app.dependencies_services import (
     get_model_routing_resolver,
 )
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.settings import get_core_settings
 
 if TYPE_CHECKING:
     import uuid
@@ -113,6 +114,18 @@ async def get_chat_service(
         lambda: resolver.resolve(LLMIntent.CHAT, UUID(user_id), None)
     )
 
+    # ADR-089 Decision 7: the escalation route reuses the SAME resolver
+    # instance and user (ANALYSE intent, no project tier — chat has no
+    # novel path parameter). Wired ONLY when the pilot flag is on — the
+    # default-off DI shape stays byte-identical to the pre-ADR-089 wiring.
+    # Nothing resolves here either way (ADR-086: first-use consumption in
+    # ChatService.ensure_resolved).
+    escalation_resolution: LazyModelResolution | None = None
+    if get_core_settings().llm_dynamic_tiering_enabled:
+        escalation_resolution = LazyModelResolution(
+            lambda: resolver.resolve(LLMIntent.ANALYSE, UUID(user_id), None)
+        )
+
     registry = get_model_registry()
     composer = get_composer()
 
@@ -134,4 +147,5 @@ async def get_chat_service(
         note_lookup=get_note_service(session),
         novel_lookup=_NovelOwnedLookup(NovelRepository(session)),
         kb_context_provider=kb_context_provider,
+        escalation_resolution=escalation_resolution,
     )
