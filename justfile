@@ -312,8 +312,8 @@ test:
     #!/usr/bin/env bash
     set -euo pipefail
     workers=$(just _xdist-workers)
-    uv run pytest tests/ -v -n "$workers" -m "not schema_mutating"
-    uv run pytest tests/integration/ -v -m schema_mutating
+    uv run --all-packages pytest tests/ -v -n "$workers" -m "not schema_mutating"
+    uv run --all-packages pytest tests/integration/ -v -m schema_mutating
 
 # Run all tests with forced `-n 2` (explicit override; rarely needed now).
 # The default `just test` is RAM-aware: it auto-selects `-n 2` on machines with
@@ -322,8 +322,8 @@ test:
 # reduced parallelism, or if detection misfires).
 # See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
 test-lowmem:
-    uv run pytest tests/ -v -n 2 -m "not schema_mutating"
-    uv run pytest tests/integration/ -v -m schema_mutating
+    uv run --all-packages pytest tests/ -v -n 2 -m "not schema_mutating"
+    uv run --all-packages pytest tests/integration/ -v -m schema_mutating
 
 # Run unit tests only (fast, no Docker needed). Parallelism is RAM-aware via
 # `_xdist-workers` — same guard as `just test` (Q-019: `-n auto` on < 12 GB
@@ -332,26 +332,26 @@ test-unit:
     #!/usr/bin/env bash
     set -euo pipefail
     workers=$(just _xdist-workers)
-    uv run pytest tests/unit/ -v -n "$workers" --dist loadfile
+    uv run --all-packages pytest tests/unit/ -v -n "$workers" --dist loadfile
 
 # Run tests single-threaded for debugging (disables the `randomly` plugin).
 # NOTE: the name means "single-threaded", NOT "single file" — use `test-file` for scoped files.
 test-single file="tests/":
-    uv run pytest {{file}} -v -p no:randomly
+    uv run --all-packages pytest {{file}} -v -p no:randomly
 
 # Run integration tests (requires Docker services)
 test-integration:
     just _ensure-services
-    uv run pytest tests/integration/ -v
+    uv run --all-packages pytest tests/integration/ -v
 
 # Run with coverage report
 test-cov:
-    uv run pytest tests/ --cov --cov-report=term-missing --cov-report=html
+    uv run --all-packages pytest tests/ --cov --cov-report=term-missing --cov-report=html
     @echo "Coverage report: htmlcov/index.html"
 
 # Run unit tests with coverage report
 test-unit-cov:
-    uv run pytest tests/unit/ --cov --cov-report=term-missing
+    uv run --all-packages pytest tests/unit/ --cov --cov-report=term-missing
     @echo "Unit coverage complete."
 
 # Run one or more specific test files. Everything after the recipe name is
@@ -363,18 +363,18 @@ test-unit-cov:
 # `test-unit` recipes (RAM-aware: `-n 2` or `-n auto`), so `-p no:xdist`
 # is optional here.)
 test-file +files:
-    uv run pytest {{files}} -v
+    uv run --all-packages pytest {{files}} -v
 
 # Run tests matching a pattern
 # Usage: just test-match "test_gateway"
 test-match pattern:
-    uv run pytest tests/ -v -k "{{pattern}}"
+    uv run --all-packages pytest tests/ -v -k "{{pattern}}"
 
 # Run E2E tests directly against an already-running stack (60s per-test timeout).
 # For the CI-faithful wrapper (starts services, ENVIRONMENT=test, --timeout=300),
 # prefer:  just e2e
 test-e2e:
-    uv run pytest tests/e2e/ -v -m e2e --timeout=60
+    uv run --all-packages pytest tests/e2e/ -v -m e2e --timeout=60
 
 # Run E2E tests against full stack — CI-faithful (starts API+frontend with ENVIRONMENT=test, narrare_test DB on :5433, --timeout=300; cleans up on exit). Requires: docker compose -f docker-compose.dev.yml up -d postgres_test. Frontend mode override: E2E_FRONTEND_MODE=build just e2e. See scripts/run_e2e.sh, .github/workflows/ci.yml (test-e2e job), tests/AGENTS.md.
 e2e:
@@ -416,13 +416,23 @@ test-all: test test-frontend
 # Code quality
 # ---------------------------------------------------------------------------
 
+# WHY `uv run --all-packages` in gate recipes: the repo root is a virtual uv
+# workspace (package = false), so a plain `uv run` only syncs the root
+# dev-group closure — workspace-member dependencies (e.g. pyjwt, pinned in
+# apps/api/pyproject.toml) can silently stay stale in the venv, and the local
+# gate then audits outdated deps (false green). `--all-packages` makes every
+# gate run guarantee the CI-equivalent closure (CI: one explicit
+# `uv sync --frozen --all-packages --group dev`, then `uv run --no-sync`), so
+# the venv self-heals after manual `uv lock` changes. Non-gate recipes (dev
+# servers, db-*, setup, clean, shell, golden-update) keep plain `uv run`.
+
 # Run all checks with compact summary (architecture + lint + typecheck + security + frontend)
 check:
-    uv run python scripts/run_checks.py
+    uv run --all-packages python scripts/run_checks.py
 
 # Run all checks with full tool output
 check-verbose:
-    uv run python scripts/run_checks.py --verbose
+    uv run --all-packages python scripts/run_checks.py --verbose
 
 # Full local gate after every slice/step: all checks (`check`) + full test
 # suite (backend + frontend). `check` must stay in the gate — some of its
@@ -438,31 +448,31 @@ verify-quick: test-unit test-frontend
 # Run architecture constraint checker
 check-architecture:
     @echo "🏛️  Checking architecture constraints..."
-    uv run python scripts/check_architecture.py --prompt-integrity
-    uv run python scripts/check_exception_baseline.py
-    uv run python scripts/check_prompt_surface_contract.py
-    uv run python scripts/check_empty_kb_vars.py
-    uv run python scripts/check_frontmatter_schema.py
+    uv run --all-packages python scripts/check_architecture.py --prompt-integrity
+    uv run --all-packages python scripts/check_exception_baseline.py
+    uv run --all-packages python scripts/check_prompt_surface_contract.py
+    uv run --all-packages python scripts/check_empty_kb_vars.py
+    uv run --all-packages python scripts/check_frontmatter_schema.py
 
 # Run ruff linter (with auto-fix)
 lint:
-    uv run ruff check --fix apps/ packages/ scripts/ tests/ evals/
-    uv run ruff format apps/ packages/ scripts/ tests/ evals/
+    uv run --all-packages ruff check --fix apps/ packages/ scripts/ tests/ evals/
+    uv run --all-packages ruff format apps/ packages/ scripts/ tests/ evals/
 
 # Run ruff without fixing (for CI)
 lint-check:
-    uv run ruff check apps/ packages/ scripts/ tests/ evals/
-    uv run ruff format --check apps/ packages/ scripts/ tests/ evals/
+    uv run --all-packages ruff check apps/ packages/ scripts/ tests/ evals/
+    uv run --all-packages ruff format --check apps/ packages/ scripts/ tests/ evals/
 
 # Fast scoped ruff check (lint + format --check) for iterating on specific files/dirs.
 # Whole-repo gate is `just lint-check`.
 lint-file +files:
-    uv run ruff check {{files}}
-    uv run ruff format --check {{files}}
+    uv run --all-packages ruff check {{files}}
+    uv run --all-packages ruff format --check {{files}}
 
 # Run pyright type checker
 typecheck:
-    uv run pyright
+    uv run --all-packages pyright
 
 # Fast scoped pyright for specific files. Whole-project gates are `just
 # typecheck` (strict) and `just typecheck-tests` (basic).
@@ -483,29 +493,29 @@ typecheck-file +files:
         esac
     done
     if [ "${#prod[@]}" -gt 0 ]; then
-        uv run pyright "${prod[@]}"
+        uv run --all-packages pyright "${prod[@]}"
     fi
     if [ "${#tests[@]}" -gt 0 ]; then
-        uv run pyright --project tests/pyrightconfig.json "${tests[@]}"
+        uv run --all-packages pyright --project tests/pyrightconfig.json "${tests[@]}"
     fi
 
 # Run pyright on test files (basic mode, tests/pyrightconfig.json). Closes the
 # gate gap: the main pyright config excludes tests/ for performance, so test-
 # file type errors surface here and in `just check` — not only at commit time.
 typecheck-tests:
-    uv run pyright --project tests/pyrightconfig.json
+    uv run --all-packages pyright --project tests/pyrightconfig.json
 
 # Run secret-scanning gate (Gitleaks) — AUFG-05-09
 # Blocks on new unapproved secrets; returns 127 with install guidance if the
 # gitleaks binary is missing locally.
 check-secrets:
     @echo "🔐 Checking for leaked secrets (Gitleaks)..."
-    uv run python scripts/check_secrets.py
+    uv run --all-packages python scripts/check_secrets.py
 
 # Run security checks
 security: check-secrets
-    uv run bandit -c pyproject.toml -r apps/api/narrare packages/core/narrare_core scripts evals
-    uv run pip-audit
+    uv run --all-packages bandit -c pyproject.toml -r apps/api/narrare packages/core/narrare_core scripts evals
+    uv run --all-packages pip-audit
 
 # Run non-mutating frontend lint and format checks
 lint-frontend:
@@ -530,7 +540,7 @@ build-frontend:
 # Run all frontend checks (lint + typecheck + test)
 check-frontend:
     @echo "🔍 Running frontend checks..."
-    uv run python scripts/check_frontend_file_size.py
+    uv run --all-packages python scripts/check_frontend_file_size.py
     just lint-frontend
     just typecheck-frontend
     just test-frontend
@@ -550,57 +560,57 @@ check-vrt-contract:
 # Check feature adoption score (>= 0.85 PASS, 0.70-0.85 WARN, < 0.70 FAIL)
 check-adoption:
     @echo "📈 Checking feature adoption score..."
-    uv run python scripts/check_adoption.py --evidence-dir .evidence
+    uv run --all-packages python scripts/check_adoption.py --evidence-dir .evidence
 
 # Check approved architecture exceptions do not grow without ADR/user approval
 check-exceptions:
     @echo "🧾 Checking approved exception baseline..."
-    uv run python scripts/check_exception_baseline.py
+    uv run --all-packages python scripts/check_exception_baseline.py
 
 # Check TS/TSX file-size hard limits with no-growth baseline
 check-frontend-size:
     @echo "📏 Checking frontend file-size limits..."
-    uv run python scripts/check_frontend_file_size.py
+    uv run --all-packages python scripts/check_frontend_file_size.py
 
 # Check feature-file frontmatter paths exist on disk (prevents phantom paths)
 check-feature-paths:
     @echo "🛣️  Checking feature-file path accuracy..."
-    uv run python scripts/check_feature_path_accuracy.py
+    uv run --all-packages python scripts/check_feature_path_accuracy.py
 
 # Check Python file-size hard limits (RULE-04) with no-growth baseline
 check-python-size:
     @echo "📏 Checking Python file-size limits..."
-    uv run python scripts/check_python_file_size.py
+    uv run --all-packages python scripts/check_python_file_size.py
 
 # Check SSOT consistency — CURRENT_STATE.md claims vs reality (blocking; matches CI)
 check-ssot:
     @echo "📋 Checking CURRENT_STATE.md SSOT consistency..."
-    uv run python scripts/check_current_state_facts.py
+    uv run --all-packages python scripts/check_current_state_facts.py
 
 # Check model registry against models.dev
 check-models:
     @echo "🤖 Checking model registry..."
-    uv run python scripts/check_model_registry.py
+    uv run --all-packages python scripts/check_model_registry.py
 
 # Check RULE-20 streaming compliance (SSE endpoints must use connectSSE in frontend)
 check-streaming:
     @echo "📡 Checking RULE-20 streaming compliance..."
-    uv run python scripts/check_streaming_compliance.py
+    uv run --all-packages python scripts/check_streaming_compliance.py
 
 # Check ADR-043 / §16 AI interaction compliance (5 machine-checkable rules)
 check-ai-ux:
     @echo "🤖 Checking ADR-043 AI interaction compliance..."
-    uv run python scripts/checks/check_ai_interaction_compliance.py
+    uv run --all-packages python scripts/checks/check_ai_interaction_compliance.py
 
 # Validate a commit message (for hook/CI use)
 # Usage: just check-commit-msg "feat(core): add new prompt mode"
 check-commit-msg msg:
-    @echo "$$msg" | uv run python scripts/check_commit_message.py
+    @echo "$$msg" | uv run --all-packages python scripts/check_commit_message.py
 
 # Export OpenAPI schema to docs/
 export-openapi:
     @echo "📤 Exporting OpenAPI schema..."
-    uv run --no-sync python scripts/export_openapi.py
+    uv run --all-packages --no-sync python scripts/export_openapi.py
 
 # ---------------------------------------------------------------------------
 # Prompts
@@ -609,32 +619,32 @@ export-openapi:
 # Validate prompt file structure (frontmatter, variables, security, size)
 check-prompts:
     @echo "📝 Checking prompt structure..."
-    uv run python scripts/check_prompt_structure.py
+    uv run --all-packages python scripts/check_prompt_structure.py
 
 # Same, but treat warnings as failures (CI mode)
 check-prompts-strict:
     @echo "📝 Checking prompt structure (strict)..."
-    uv run python scripts/check_prompt_structure.py --strict
+    uv run --all-packages python scripts/check_prompt_structure.py --strict
 
 # Check locale sync between EN/DE/FR prompt variants
 check-locale-sync:
     @echo "🌍 Checking locale sync..."
-    uv run python scripts/check_locale_sync.py
+    uv run --all-packages python scripts/check_locale_sync.py
 
 # Show locale sync with full details (all groups, including synced)
 check-locale-sync-verbose:
     @echo "🌍 Checking locale sync (verbose)..."
-    uv run python scripts/check_locale_sync.py --verbose
+    uv run --all-packages python scripts/check_locale_sync.py --verbose
 
 # Check DE prompt translations for common quality issues (compounds, anglicisms)
 check-prompts-de:
     @echo "🇩🇪 Checking DE prompt quality..."
-    uv run python scripts/prompt_quality_de.py
+    uv run --all-packages python scripts/prompt_quality_de.py
 
 # Check aggregated system health score (HEALTHY >= 0.85, DEGRADED 0.70-0.85, CRITICAL < 0.70)
 check-health:
     @echo "🏥 Checking system health..."
-    uv run python scripts/check_system_health.py
+    uv run --all-packages python scripts/check_system_health.py
 
 # List all bundled prompt modes with locale coverage
 prompt-list:
@@ -751,7 +761,7 @@ hooks-update:
 # regex false-positive fix, commit 41efa086), so a non-zero exit is a real
 # regression and must block the merge.
 check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health check-feature-paths
-    uv run python scripts/check_current_state_facts.py
+    uv run --all-packages python scripts/check_current_state_facts.py
     @echo "✅ All checks passed — ready to merge"
 
 # ---------------------------------------------------------------------------

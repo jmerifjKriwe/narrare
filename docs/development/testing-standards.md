@@ -837,6 +837,13 @@ just test-unit     # RAM-aware parallel unit tests only (same worker selection a
 just test-single   # Single-threaded for debugging (disables randomly)
 ```
 
+> **Gate sync note (virtual workspace root):** The repo root is a virtual uv
+> workspace, so a plain `uv run` syncs only the root dev-group closure. Gate
+> recipes (`just check`, `just test*`, lint/typecheck/security) therefore use
+> `uv run --all-packages` — matching CI's explicit
+> `uv sync --frozen --all-packages --group dev` — so the venv self-heals after
+> manual `uv lock` changes instead of auditing stale member deps (false green).
+
 #### Running tests on low-memory machines (< 12 GB available RAM)
 
 `just test` is **RAM-aware**: it detects system memory at runtime and

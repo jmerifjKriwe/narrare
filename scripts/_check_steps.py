@@ -32,16 +32,73 @@ class Step:
 
 def build_steps() -> list[Step]:
     web = ROOT / "packages" / "web"
+    # Every command uses `uv run --all-packages`: the repo root is a virtual
+    # uv workspace, so a plain `uv run` only syncs the root dev-group closure
+    # and can leave workspace-member deps stale (see justfile gate note).
     steps: list[Step] = [
         Step(
             "Architecture",
             [
-                (["uv", "run", "python", "scripts/check_architecture.py"], None),
-                (["uv", "run", "python", "scripts/check_exception_baseline.py"], None),
-                (["uv", "run", "python", "scripts/check_python_file_size.py"], None),
-                (["uv", "run", "python", "scripts/check_prompt_surface_contract.py"], None),
-                (["uv", "run", "python", "scripts/check_empty_kb_vars.py"], None),
-                (["uv", "run", "python", "scripts/check_frontmatter_schema.py"], None),
+                (
+                    [
+                        "uv",
+                        "run",
+                        "--all-packages",
+                        "python",
+                        "scripts/check_architecture.py",
+                    ],
+                    None,
+                ),
+                (
+                    [
+                        "uv",
+                        "run",
+                        "--all-packages",
+                        "python",
+                        "scripts/check_exception_baseline.py",
+                    ],
+                    None,
+                ),
+                (
+                    [
+                        "uv",
+                        "run",
+                        "--all-packages",
+                        "python",
+                        "scripts/check_python_file_size.py",
+                    ],
+                    None,
+                ),
+                (
+                    [
+                        "uv",
+                        "run",
+                        "--all-packages",
+                        "python",
+                        "scripts/check_prompt_surface_contract.py",
+                    ],
+                    None,
+                ),
+                (
+                    [
+                        "uv",
+                        "run",
+                        "--all-packages",
+                        "python",
+                        "scripts/check_empty_kb_vars.py",
+                    ],
+                    None,
+                ),
+                (
+                    [
+                        "uv",
+                        "run",
+                        "--all-packages",
+                        "python",
+                        "scripts/check_frontmatter_schema.py",
+                    ],
+                    None,
+                ),
                 # Mutation-inert convention — prevents the MutMut sandbox crash
                 # class documented in issue #146 (asset-reading tests reached
                 # via parents[N] must carry @pytest.mark.mutation_inert).
@@ -49,6 +106,7 @@ def build_steps() -> list[Step]:
                     [
                         "uv",
                         "run",
+                        "--all-packages",
                         "python",
                         "scripts/checks/check_mutation_inert_assets.py",
                     ],
@@ -63,6 +121,7 @@ def build_steps() -> list[Step]:
                     [
                         "uv",
                         "run",
+                        "--all-packages",
                         "ruff",
                         "check",
                         "apps/",
@@ -77,6 +136,7 @@ def build_steps() -> list[Step]:
                     [
                         "uv",
                         "run",
+                        "--all-packages",
                         "ruff",
                         "format",
                         "--check",
@@ -93,7 +153,7 @@ def build_steps() -> list[Step]:
         Step(
             "Typecheck",
             [
-                (["uv", "run", "pyright"], None),
+                (["uv", "run", "--all-packages", "pyright"], None),
             ],
         ),
         Step(
@@ -106,7 +166,14 @@ def build_steps() -> list[Step]:
                 # before commit — not only by the pre-commit `pyright-tests`
                 # hook (Q-015-Q-019 gate-coverage follow-up).
                 (
-                    ["uv", "run", "pyright", "--project", "tests/pyrightconfig.json"],
+                    [
+                        "uv",
+                        "run",
+                        "--all-packages",
+                        "pyright",
+                        "--project",
+                        "tests/pyrightconfig.json",
+                    ],
                     None,
                 ),
             ],
@@ -118,6 +185,7 @@ def build_steps() -> list[Step]:
                     [
                         "uv",
                         "run",
+                        "--all-packages",
                         "bandit",
                         "-c",
                         "pyproject.toml",
@@ -127,25 +195,44 @@ def build_steps() -> list[Step]:
                     ],
                     None,
                 ),
-                (["uv", "run", "pip-audit"], None),
+                (["uv", "run", "--all-packages", "pip-audit"], None),
             ],
         ),
         Step(
             "Model Registry",
             [
-                (["uv", "run", "python", "scripts/check_model_registry.py"], None),
+                (
+                    [
+                        "uv",
+                        "run",
+                        "--all-packages",
+                        "python",
+                        "scripts/check_model_registry.py",
+                    ],
+                    None,
+                ),
             ],
         ),
         Step(
             "Prompts",
             [
-                (["uv", "run", "python", "scripts/check_prompt_structure.py"], None),
+                (
+                    [
+                        "uv",
+                        "run",
+                        "--all-packages",
+                        "python",
+                        "scripts/check_prompt_structure.py",
+                    ],
+                    None,
+                ),
                 # ADR-056 — runtime-evidence-aware adoption gate (matches
                 # `just check-adoption` and CI). Reads committed .evidence markers.
                 (
                     [
                         "uv",
                         "run",
+                        "--all-packages",
                         "python",
                         "scripts/check_adoption.py",
                         "--evidence-dir",
@@ -153,7 +240,16 @@ def build_steps() -> list[Step]:
                     ],
                     None,
                 ),
-                (["uv", "run", "python", "scripts/check_streaming_compliance.py"], None),
+                (
+                    [
+                        "uv",
+                        "run",
+                        "--all-packages",
+                        "python",
+                        "scripts/check_streaming_compliance.py",
+                    ],
+                    None,
+                ),
             ],
         ),
     ]
@@ -164,7 +260,16 @@ def build_steps() -> list[Step]:
                 Step(
                     "Frontend Lint",
                     [
-                        (["uv", "run", "python", "scripts/check_frontend_file_size.py"], None),
+                        (
+                            [
+                                "uv",
+                                "run",
+                                "--all-packages",
+                                "python",
+                                "scripts/check_frontend_file_size.py",
+                            ],
+                            None,
+                        ),
                         (["pnpm", "lint:check"], web),
                     ],
                 ),
