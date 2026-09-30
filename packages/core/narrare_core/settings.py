@@ -82,6 +82,28 @@ class CoreSettings(BaseSettings):
     :func:`narrare_core.llm._transport_retry.get_transport_max_retries` remains
     the authoritative accessor with validation and the RULE-18b effect test."""
 
+    # --- Dynamic tier routing pilot (ADR-089) ---
+    llm_dynamic_tiering_enabled: bool = Field(
+        default=False, validation_alias="NARRARE_LLM_DYNAMIC_TIERING"
+    )
+    """ADR-089 pilot: opt-in per-step dynamic tier selection (chat path only).
+
+    Default ``False`` — static intent routing stays the shipped behavior;
+    the ``SelectModel`` capability is not constructed when off.
+    """
+
+    llm_dynamic_tiering_max_prompt_chars: int = Field(
+        default=2000, validation_alias="NARRARE_LLM_DYNAMIC_TIERING_MAX_PROMPT_CHARS"
+    )
+    """Escalate to the capable tier when the latest user prompt exceeds
+    this many characters (strictly greater; ADR-089 Decision 3)."""
+
+    llm_dynamic_tiering_min_turns: int = Field(
+        default=6, validation_alias="NARRARE_LLM_DYNAMIC_TIERING_MIN_TURNS"
+    )
+    """Escalate to the capable tier from this user turn onward
+    (``turn_count >= min_turns``; ADR-089 Decision 3)."""
+
     default_embedding_model: str = "text-embedding-3-small"
     """Default embedding model for the pgvector write/search paths (ADR-071 §3).
 

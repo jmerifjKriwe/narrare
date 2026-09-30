@@ -11,6 +11,11 @@
 > first-class, RULE-01b), ADR-071 (`CoreSettings`), ADR-072 (adoption
 > strategy — per-capability decisions), ADR-086 (lazy model resolution —
 > the first-use seam this feature builds on)
+> **Amendment (2026-09-30, Task 6 review follow-up):** Decision 3 clarified —
+> sequence-prompt text extraction (single-space join), `None`-prompt
+> length-trigger semantics, and the repo-path base for Narrare-side
+> citations — plus Decision 7's observability event pinned to the
+> `Model` ABC surface. See the amendment notes under Decisions 3 and 7.
 
 ---
 
@@ -305,6 +310,21 @@ deterministic):
   current request are added only after selection, so they never inflate
   the count). With the default `min_turns=6`, turn 6 onward escalates.
 
+Amendment notes (2026-09-30, Task 6 review follow-up):
+
+- When `ctx.prompt` is a `Sequence[UserContent]`, `latest_user_prompt`
+  takes the text-bearing items — plain strings and `TextContent` parts —
+  and joins them with a single space (multi-modal items and cache
+  points contribute nothing).
+- When no prompt text exists at all (`ctx.prompt` is `None` and the
+  last-`ModelRequest` fallback yields no text parts either), the length
+  trigger is **false** — only `turn_count` can escalate.
+- Narrare-side file citations in this ADR are repo-relative:
+  LLM-module paths (`gateway.py`, `_providers/cache_settings.py`) are
+  relative to `packages/core/narrare_core/llm/`, other core paths
+  (`agents/base.py`, `shared/errors.py`) to `packages/core/narrare_core/`,
+  and backend paths (`chat/dependencies.py`) to `apps/api/narrare/`.
+
 ### 4. Escalation target: `LLMIntent.ANALYSE` through the existing cascade
 
 The escalation model is resolved **through the existing
@@ -387,6 +407,12 @@ data, not a default.
 {`prompt_chars`, `min_turns`}, `prompt_chars`, `turn_count`, both
 thresholds, base/escalation provider+model ids) — the pilot's evaluation
 signal; no message content is logged.
+
+Amendment note (2026-09-30, implementation pin): the per-turn event
+carries the model ids via `Model.model_name`; provider attribution stays
+with the Task 8 wiring layer, which holds the `ResolvedModelConfig`s —
+the pydantic-ai `Model` ABC exposes no provider name (verified against
+2.52).
 
 ---
 
