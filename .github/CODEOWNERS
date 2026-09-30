@@ -1,0 +1,5 @@
+# CODEOWNERS — review ownership for CI/supply-chain surfaces (spec §5.3).
+# zizmor catches mechanical issues; this routes workflow changes through
+# human review.
+.github/              @jmerifjKriwe
+.github/zizmor.yml    @jmerifjKriwe
