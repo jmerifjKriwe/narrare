@@ -117,6 +117,61 @@ class TestChatAgentSystemPromptForwarding:
         assert not any(_SYSTEM_MARKER in body for body in system_bodies)
 
 
+class TestChatAgentCapabilitiesPassthrough:
+    """ADR-089 Decision 7 prerequisite: ChatAgent forwards caller capabilities.
+
+    The service layer (Task 8, ChatService wiring) constructs ``ChatAgent``
+    with ``capabilities=[select_model_capability]`` for dynamic tier routing;
+    ``ChatAgent`` must forward that kwarg to ``NarrareAgent`` so it reaches
+    the pydantic-ai ``Agent`` alongside the guaranteed ADR-026 capabilities.
+    Capture technique mirrors ``TestChatAgentCapabilities`` above and
+    ``tests/unit/core/agents/test_base.py``.
+    """
+
+    def test_extra_capability_forwarded_to_pydantic_ai_agent(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A capability passed to ChatAgent lands in the Agent capabilities list."""
+        from dataclasses import dataclass
+
+        from pydantic_ai.capabilities import AbstractCapability
+
+        import narrare_core.agents.base as base_module
+        from narrare_core.agents.capabilities import NarrareMeta, NarrareUniversalRules
+
+        @dataclass
+        class FakeSelectModelCapability(AbstractCapability):
+            def get_instructions(self) -> str | None:
+                return None
+
+        class CapturingPydanticAgent:
+            """Records the kwargs handed to the pydantic-ai ``Agent``."""
+
+            calls: ClassVar[list[dict[str, Any]]] = []
+
+            def __init__(self, **kwargs: Any) -> None:
+                self.calls.append(kwargs)
+
+        monkeypatch.setattr(base_module, "Agent", CapturingPydanticAgent)
+
+        capability = FakeSelectModelCapability()
+        chat_agent_cls: Any = ChatAgent
+        chat_agent_cls(model=object(), capabilities=[capability])
+
+        capabilities = CapturingPydanticAgent.calls[-1]["capabilities"]
+        assert capability in capabilities, (
+            "ChatAgent must forward caller-supplied capabilities to the "
+            f"pydantic-ai Agent; capabilities were: {capabilities!r}"
+        )
+        # Guaranteed ADR-026 capabilities must remain alongside extras.
+        assert {type(cap) for cap in capabilities} >= {
+            FakeSelectModelCapability,
+            NarrareMeta,
+            NarrareUniversalRules,
+        }
+
+
 class TestChatAgentCapabilities:
     """ADR-026 / AC #4 (CR-AUFG-02-04): ChatAgent retains guaranteed capabilities.
 
