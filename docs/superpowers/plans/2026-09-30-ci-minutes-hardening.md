@@ -101,16 +101,23 @@ concurrency:
   cancel-in-progress: true
 ```
 
-3c. `changes` job — dorny/paths-filter has no diff base on `schedule`; skip it there (outputs are only consulted on PRs):
+3c. `changes` job — dorny/paths-filter has no diff base on `schedule`; the JOB must keep running on all events (a skipped `needs` dependency force-skips dependents and would gut the nightly run), so gate only the filter STEP:
 
 ```yaml
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # schedule runs have no diff base — expensive jobs bypass the filter
-    # via `github.event_name == 'schedule' ||` first, so outputs are unused.
-    if: github.event_name != 'schedule'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        # schedule runs have no diff base — skip the filter there; outputs
+        # stay empty and are only consulted on PRs (expensive jobs gate on
+        # `github.event_name == 'schedule' ||` first, so nightly runs full).
+        if: github.event_name != 'schedule'
+        with:
+          ...
 ```
 
 3d. Add `timeout-minutes` (job level, right after `runs-on:`): `architecture: 10`, `lint: 10`, `typecheck: 15`, `security: 15`, `test-unit: 20`, `test-integration: 30`, `update-coverage-badge: 5`, `frontend: 20`, `test-e2e: 30`, `warnings-summary: 5`. (`frontend-standalone` already has `timeout-minutes: 10`.)
