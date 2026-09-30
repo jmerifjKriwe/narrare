@@ -2,11 +2,18 @@
 # Plain CLI in CI, blocking; no SARIF (private repo, Free plan: no GHAS).
 # Docs: https://docs.zizmor.sh/usage/
 #
+# BASELINE POLICY (ratchet): every rule stays armed so NEW violations fail
+# the gate (spec §5.2 "…going forward"). The pre-existing findings present
+# when this check was introduced are frozen below as per-location ignores
+# — the same pattern as the exception/type-ignore baselines. Removing an
+# entry requires fixing its finding first; every entry carries the reason
+# it was accepted and, where applicable, a follow-up note. Line numbers
+# are 1-based and must move with their finding: an edit that shifts a line
+# un-ignores it and fails CI until the baseline is re-triaged (intended).
+#
 # zizmor 1.30.1 semantics: the exit code reflects the HIGHEST finding
 # severity (11=informational … 14=high) — any unsuppressed finding from
-# any enabled rule fails the job. Rules that carry accepted pre-existing
-# findings in the current workflows are therefore disabled below; all
-# other rules stay armed (new findings in them block CI).
+# any rule fails the job.
 rules:
   unpinned-uses:
     # This check's core gate (Task 5): every `uses:` must be SHA-pinned
@@ -17,31 +24,92 @@ rules:
     remap:
       severity: high
 
-  # ── Rules with accepted pre-existing findings (disabled) ─────────────
-  # Re-enable a rule only together with fixing (or explicitly triaging)
-  # its findings in the workflows — a blanket re-enable fails CI today.
   artipacked:
-    # 6 findings: checkouts without persist-credentials: false (changes,
-    # update-coverage-badge, eval-nightly, mutation-testing-monthly,
-    # release-please, vrt-update-baselines jobs).
-    disable: true
+    ignore:
+      # ci.yml:111 `changes` — dorny/paths-filter takes the git path on
+      # push runs (`git fetch origin <sha>`; depth-1 clone lacks the
+      # previous head). Persisted credentials REQUIRED — Task-2
+      # adjudication (report CONCERN 1).
+      - ci.yml:111
+      # ci.yml:676 `update-coverage-badge` — git-auto-commit pushes the
+      # README badge commit. Persisted credentials REQUIRED — Task-2
+      # documented exception ("git-auto-commit needs the token").
+      - ci.yml:676
+      # vrt-update-baselines.yml:65 — the job runs `git commit &&
+      # git push` on regenerated baselines (contents: write, dispatch
+      # only). Persisted credentials REQUIRED.
+      - vrt-update-baselines.yml:65
+      # The three below are trusted-trigger-only workflows (schedule/
+      # dispatch/push-to-main — no PR content executed); the persisted
+      # credentials are in fact UNUSED. Follow-up: add
+      # persist-credentials: false there and drop these entries.
+      - eval-nightly.yml:59
+      - mutation-testing-monthly.yml:52
+      - release-please.yml:36
+
   cache-poisoning:
-    # 1 high finding: release-please.yml setup-uv cache feeding a
-    # published Docker image.
-    disable: true
+    ignore:
+      # release-please.yml:40 — spec §5.5 adjudication: no
+      # pull_request_target anywhere in the repo; publish tokens (GHCR
+      # login, release upload) exist only inside this push-to-main job;
+      # the uv cache is default-branch-scoped and never shared with PR
+      # runs, so no PR-reachable consumer can inherit it.
+      - release-please.yml:40
+
   superfluous-actions:
-    # 1 informational finding: release-please.yml
-    # softprops/action-gh-release (could be `gh release`).
-    disable: true
+    ignore:
+      # release-please.yml:253 — softprops/action-gh-release could be
+      # `gh release` in a script step; the action is SHA-pinned and
+      # Dependabot-tracked, so this is hygiene only. Cosmetic follow-up.
+      - release-please.yml:253
+
   template-injection:
-    # 18 findings (1 high): template expansions of trusted contexts
-    # (step outputs, ref names) in run: blocks across release-please.yml,
-    # vrt-update-baselines.yml, mutation-testing-monthly.yml, ci.yml.
-    disable: true
+    ignore:
+      # All entries below expand trusted contexts (this workflow's own
+      # step outputs / release-please tag names) inside run: blocks —
+      # not attacker-controllable input. zizmor cannot model step-output
+      # provenance statically, hence the findings. Fixing them via env
+      # indirection is a bulk follow-up, not accepted risk per line.
+      - ci.yml:827 # frontend-tests duration (own step output, numeric)
+      - mutation-testing-monthly.yml:100 # scope label (own step output)
+      - release-please.yml:56 # VERSION (release-please tag output)
+      - release-please.yml:86 # IMAGE name:tag (own step outputs)
+      - release-please.yml:151 # bundle README heredoc (own step outputs)
+      - release-please.yml:185 # docker pull docs line (own step outputs)
+      - release-please.yml:241 # cosign verify docs (own step outputs)
+      - release-please.yml:250 # bundle zip name (own step outputs)
+      - release-please.yml:263 # release summary: tag name
+      - release-please.yml:265 # release summary: image:tag (2 findings)
+      - release-please.yml:266 # release summary: image digest
+      - release-please.yml:268 # release summary: bundle zip name
+      # vrt-update-baselines.yml:136-137 — job-summary echo of the
+      # workflow's own git-status outputs (changed, changed_count) and,
+      # at :117, `github.ref_name`. Accepted risk for :117: this
+      # workflow is workflow_dispatch-only (maintainer-triggered, no
+      # pull_request path), so ref_name is a branch name chosen by
+      # someone with push rights in the dispatch picker — not
+      # PR-controllable. Follow-up: env-indirection (REF_NAME env) to
+      # drop both entries.
+      - vrt-update-baselines.yml:136
+      - vrt-update-baselines.yml:137
+
   unpinned-tools:
-    # 3 findings: extractions/setup-just without a pinned just version.
-    disable: true
+    ignore:
+      # setup-just without `just-version:` floats to the latest just at
+      # job time (supply-chain hygiene, not correctness). Follow-up: pin
+      # just-version in ci.yml/test-integration, ci.yml/test-e2e and
+      # mutation-testing-monthly, then drop these entries.
+      - ci.yml:627
+      - ci.yml:1023
+      - mutation-testing-monthly.yml:62
+
   unsound-ternary:
-    # 1 low finding: ci.yml fetch-depth pseudo-ternary (deliberate
-    # push-vs-PR depth switch).
-    disable: true
+    ignore:
+      # ci.yml:363 — fetch-depth: `${{ push && 0 || 1 }}`. KNOWN REAL
+      # BUG (not just style): the true-branch literal 0 is falsy, so the
+      # expression always yields 1 — the full-history gitleaks scan on
+      # push never runs. Baselines the finding only because the behavior
+      # fix belongs to the security job, not this task. Follow-up:
+      # `${{ github.event_name != 'push' && 1 || 0 }}` (non-falsy
+      # true-branch) or a step output, then drop this entry.
+      - ci.yml:363
