@@ -1,0 +1,47 @@
+# zizmor config — GitHub Actions security auditing (spec §5.2).
+# Plain CLI in CI, blocking; no SARIF (private repo, Free plan: no GHAS).
+# Docs: https://docs.zizmor.sh/usage/
+#
+# zizmor 1.30.1 semantics: the exit code reflects the HIGHEST finding
+# severity (11=informational … 14=high) — any unsuppressed finding from
+# any enabled rule fails the job. Rules that carry accepted pre-existing
+# findings in the current workflows are therefore disabled below; all
+# other rules stay armed (new findings in them block CI).
+rules:
+  unpinned-uses:
+    # This check's core gate (Task 5): every `uses:` must be SHA-pinned
+    # (Tasks 4a/4b); Dependabot keeps the pins fresh. Default severity is
+    # medium — remapped to blocking high. (The per-rule `level:` key used
+    # by older zizmor configs was replaced by `remap.severity` in
+    # v1.25.0; this is the v1.30.1 syntax for the same promotion.)
+    remap:
+      severity: high
+
+  # ── Rules with accepted pre-existing findings (disabled) ─────────────
+  # Re-enable a rule only together with fixing (or explicitly triaging)
+  # its findings in the workflows — a blanket re-enable fails CI today.
+  artipacked:
+    # 6 findings: checkouts without persist-credentials: false (changes,
+    # update-coverage-badge, eval-nightly, mutation-testing-monthly,
+    # release-please, vrt-update-baselines jobs).
+    disable: true
+  cache-poisoning:
+    # 1 high finding: release-please.yml setup-uv cache feeding a
+    # published Docker image.
+    disable: true
+  superfluous-actions:
+    # 1 informational finding: release-please.yml
+    # softprops/action-gh-release (could be `gh release`).
+    disable: true
+  template-injection:
+    # 18 findings (1 high): template expansions of trusted contexts
+    # (step outputs, ref names) in run: blocks across release-please.yml,
+    # vrt-update-baselines.yml, mutation-testing-monthly.yml, ci.yml.
+    disable: true
+  unpinned-tools:
+    # 3 findings: extractions/setup-just without a pinned just version.
+    disable: true
+  unsound-ternary:
+    # 1 low finding: ci.yml fetch-depth pseudo-ternary (deliberate
+    # push-vs-PR depth switch).
+    disable: true

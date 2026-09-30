@@ -407,6 +407,37 @@ jobs:
         run: uv run pip-audit --skip-editable
 
   # -------------------------------------------------------------------------
+  # Workflow security audit (zizmor) — blocking PR check when workflows
+  # change + nightly (spec §5.2). Catches: dangerous triggers, template
+  # injection, impostor commits, vulnerable action versions, unpinned uses.
+  # -------------------------------------------------------------------------
+  zizmor:
+    name: Workflow Security (zizmor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [changes]
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       needs.changes.outputs.workflows == 'true')
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor
+        env:
+          # GITHUB_TOKEN enables zizmor's online audits (impostor-commit,
+          # known-vulnerable-actions) against this private repo.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          pipx install "zizmor==1.30.1"
+          zizmor --config .github/zizmor.yml .github/workflows/
+
+  # -------------------------------------------------------------------------
   # Unit tests (< 5 min, no Docker)
   # -------------------------------------------------------------------------
   test-unit:
