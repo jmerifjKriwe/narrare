@@ -35,6 +35,9 @@ class RuntimeTaskFactory:
     model: str
     api_key: str | None = None
     base_url: str | None = None
+    triage_model: str = ""
+    triage_provider: str = "zai"
+    triage_api_key: str | None = None
 
     @classmethod
     def from_env(cls) -> RuntimeTaskFactory:
@@ -47,6 +50,9 @@ class RuntimeTaskFactory:
             model=model,
             api_key=os.environ.get("NARRARE_EVAL_API_KEY") or os.environ.get("OPENAI_API_KEY"),
             base_url=os.environ.get("NARRARE_EVAL_BASE_URL"),
+            triage_model=os.environ.get("NARRARE_EVAL_TRIAGE_MODEL", ""),
+            triage_provider=os.environ.get("NARRARE_EVAL_TRIAGE_PROVIDER", "zai"),
+            triage_api_key=os.environ.get("NARRARE_EVAL_TRIAGE_API_KEY"),
         )
 
     def _task_map(self) -> dict[str, RuntimeTask]:
@@ -113,6 +119,8 @@ class RuntimeTaskFactory:
             config=self._config(),
             api_key=self.api_key,
             base_url=self.base_url,
+            triage_config=self._triage_config(),
+            triage_api_key=self.triage_api_key,
         )
 
     async def dialogue_coach_task(self, inputs: object) -> object:
@@ -359,6 +367,28 @@ class RuntimeTaskFactory:
         return ResolvedModelConfig(
             provider_name=self.provider,
             model_id=self.model,
+            temperature=0.0,
+            max_tokens=1200,
+            streams=False,
+            token_limit_profile="quick",  # nosec B106 — profile name, not a password
+        )
+
+    def _triage_config(self) -> Any | None:
+        """Resolve the optional triage model config (None = triage disabled).
+
+        ``triage_model`` empty (the default) means the ``consistency_staged``
+        runtime task skips the triage stage entirely — default-off behavior
+        is byte-for-byte the pre-triage pipeline.
+        """
+
+        if not self.triage_model:
+            return None
+
+        from narrare_core.llm import ResolvedModelConfig
+
+        return ResolvedModelConfig(
+            provider_name=self.triage_provider,
+            model_id=self.triage_model,
             temperature=0.0,
             max_tokens=1200,
             streams=False,
