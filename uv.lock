@@ -1359,7 +1359,7 @@ wheels = [
 
 [[package]]
 name = "mem0ai"
-version = "2.0.18"
+version = "2.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -1371,9 +1371,9 @@ dependencies = [
     { name = "qdrant-client" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/50/42/00de525fc6a4ec4a6bddb180356e7a1587179cfb12e37953075bc7751328/mem0ai-2.0.18.tar.gz", hash = "sha256:7dfd23b119448fe631f2a20c025eeaee2bb2fb28b155e18b791486d2aa01896f", size = 248611, upload-time = "2026-08-11T18:58:00.363Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/08/28/151a796111f90017ec09b052ac09a55e7b3ae5e976542f38f35c54270f8e/mem0ai-2.2.1.tar.gz", hash = "sha256:099a7d58368908d0a05a633c5da3920f607a57db00d4f168800de05966b2a4a8", size = 256091, upload-time = "2026-09-25T17:36:09.406Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/eb/733a2c405f2890bbdbb32294f9fa9a4b248f0b7e91378821482caf02c5c4/mem0ai-2.0.18-py3-none-any.whl", hash = "sha256:2c20c78dec21c512e1daf6b7c2cacc306cb34eaab7dd24c2edc81b71386b0a10", size = 344386, upload-time = "2026-08-11T18:57:58.616Z" },
+    { url = "https://files.pythonhosted.org/packages/aa/48/7051dd9009232802c11a4c4d9e58ea32968c8e076ea79e2e8a6d243e49b3/mem0ai-2.2.1-py3-none-any.whl", hash = "sha256:fe91bb91ac8926231993a4aa58df00a60c6c74c709e6a338fe399500776eef4d", size = 351907, upload-time = "2026-09-25T17:36:07.48Z" },
 ]
 
 [[package]]
@@ -1542,7 +1542,7 @@ requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.12" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "lxml", specifier = ">=5.0" },
-    { name = "mem0ai", specifier = "==2.0.18" },
+    { name = "mem0ai", specifier = "==2.2.1" },
     { name = "narrare-i18n", editable = "packages/i18n" },
     { name = "prometheus-client", specifier = ">=0.20.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.0" },

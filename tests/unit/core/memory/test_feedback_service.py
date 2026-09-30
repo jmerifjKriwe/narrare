@@ -86,6 +86,40 @@ class TestFeedbackServiceRecord:
         # mem0 was attempted
         mem0.add.assert_awaited_once()
 
+    async def test_record_degrades_gracefully_on_vector_store_error(self) -> None:
+        """record() must not propagate mem0 >=2.2.1 ``VectorStoreError`` from add().
+
+        mem0 2.2.1 changed ``add()`` to raise ``VectorStoreError`` when NONE of
+        the extracted memories could be inserted into the vector store
+        (previously it reported never-stored memories as successful ADD
+        events). Regression pin for the mem0ai 2.0.18 -> 2.2.1 upgrade: the
+        exception must be contained at the service boundary so the request
+        path (DB audit trail) stays intact (RULE-11 graceful degradation).
+
+        Uses a local ``MemoryError`` subclass mirroring the real
+        ``mem0.exceptions.VectorStoreError`` hierarchy. mem0 is not imported
+        here because RULE-08 confines mem0 imports to ``core/memory/``.
+        """
+
+        class _VectorStoreError(MemoryError):
+            """Stub mirroring ``mem0.exceptions.VectorStoreError(MemoryError)``."""
+
+        persist_fn = AsyncMock()
+        mem0 = AsyncMock()
+        mem0.add.side_effect = _VectorStoreError(
+            "Failed to insert any of the 2 extracted memories into the vector store"
+        )
+        service = FeedbackService(mem0_client=mem0, persist_fn=persist_fn)
+
+        event = _make_event()
+        # Must not raise — the vector-store failure is contained as a warning.
+        await service.record(event)
+
+        # DB audit-trail persist still happened (before the mem0 forward)
+        persist_fn.assert_awaited_once_with(event)
+        # The failing mem0 add() was attempted — its error did not leak upward
+        mem0.add.assert_awaited_once()
+
     async def test_record_with_null_memory_client_still_persists(self) -> None:
         """record() with NullMemoryClient must still persist to DB."""
         persist_fn = AsyncMock()
