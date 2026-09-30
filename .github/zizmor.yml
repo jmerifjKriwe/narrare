@@ -26,42 +26,35 @@ rules:
 
   artipacked:
     ignore:
-      # ci.yml:111 `changes` — dorny/paths-filter takes the git path on
+      # ci.yml:113 `changes` — dorny/paths-filter takes the git path on
       # push runs (`git fetch origin <sha>`; depth-1 clone lacks the
       # previous head). Persisted credentials REQUIRED — Task-2
       # adjudication (report CONCERN 1).
-      - ci.yml:111
-      # ci.yml:680 `update-coverage-badge` — git-auto-commit pushes the
+      - ci.yml:113
+      # ci.yml:684 `update-coverage-badge` — git-auto-commit pushes the
       # README badge commit. Persisted credentials REQUIRED — Task-2
       # documented exception ("git-auto-commit needs the token").
-      - ci.yml:680
+      - ci.yml:684
       # vrt-update-baselines.yml:65 — the job runs `git commit &&
       # git push` on regenerated baselines (contents: write, dispatch
       # only). Persisted credentials REQUIRED.
       - vrt-update-baselines.yml:65
-      # The three below are trusted-trigger-only workflows (schedule/
-      # dispatch/push-to-main — no PR content executed); the persisted
-      # credentials are in fact UNUSED. Follow-up: add
-      # persist-credentials: false there and drop these entries.
-      - eval-nightly.yml:59
-      - mutation-testing-monthly.yml:52
-      - release-please.yml:36
 
   cache-poisoning:
     ignore:
-      # release-please.yml:40 — spec §5.5 adjudication: no
+      # release-please.yml:49 — spec §5.5 adjudication: no
       # pull_request_target anywhere in the repo; publish tokens (GHCR
       # login, release upload) exist only inside this push-to-main job;
       # the uv cache is default-branch-scoped and never shared with PR
       # runs, so no PR-reachable consumer can inherit it.
-      - release-please.yml:40
+      - release-please.yml:49
 
   superfluous-actions:
     ignore:
-      # release-please.yml:253 — softprops/action-gh-release could be
+      # release-please.yml:262 — softprops/action-gh-release could be
       # `gh release` in a script step; the action is SHA-pinned and
       # Dependabot-tracked, so this is hygiene only. Cosmetic follow-up.
-      - release-please.yml:253
+      - release-please.yml:262
 
   template-injection:
     ignore:
@@ -70,23 +63,23 @@ rules:
       # not attacker-controllable input. zizmor cannot model step-output
       # provenance statically, hence the findings. Fixing them via env
       # indirection is a bulk follow-up, not accepted risk per line.
-      - ci.yml:831 # frontend-tests duration (own step output, numeric)
-      - mutation-testing-monthly.yml:100 # scope label (own step output)
-      - release-please.yml:56 # VERSION (release-please tag output)
-      - release-please.yml:86 # IMAGE name:tag (own step outputs)
-      - release-please.yml:151 # bundle README heredoc (own step outputs)
-      - release-please.yml:185 # docker pull docs line (own step outputs)
-      - release-please.yml:241 # cosign verify docs (own step outputs)
-      - release-please.yml:250 # bundle zip name (own step outputs)
-      - release-please.yml:263 # release summary: tag name
-      - release-please.yml:265 # release summary: image:tag (2 findings)
-      - release-please.yml:266 # release summary: image digest
-      - release-please.yml:268 # release summary: bundle zip name
+      - ci.yml:835 # frontend-tests duration (own step output, numeric)
+      - mutation-testing-monthly.yml:104 # scope label (own step output)
+      - release-please.yml:65 # VERSION (release-please tag output)
+      - release-please.yml:95 # IMAGE name:tag (own step outputs)
+      - release-please.yml:160 # bundle README heredoc (own step outputs)
+      - release-please.yml:194 # docker pull docs line (own step outputs)
+      - release-please.yml:250 # cosign verify docs (own step outputs)
+      - release-please.yml:259 # bundle zip name (own step outputs)
+      - release-please.yml:272 # release summary: tag name
+      - release-please.yml:274 # release summary: image:tag (2 findings)
+      - release-please.yml:275 # release summary: image digest
+      - release-please.yml:277 # release summary: bundle zip name
       # vrt-update-baselines.yml:136-137 — job-summary echo of the
       # workflow's own git-status outputs (changed, changed_count) and,
-      # at :117, `github.ref_name`. Accepted risk for :117: this
-      # workflow is workflow_dispatch-only (maintainer-triggered, no
-      # pull_request path), so ref_name is a branch name chosen by
+      # at 137 col 117, `github.ref_name`. Accepted risk for line 137:
+      # this workflow is workflow_dispatch-only (maintainer-triggered,
+      # no pull_request path), so ref_name is a branch name chosen by
       # someone with push rights in the dispatch picker — not
       # PR-controllable. Follow-up: env-indirection (REF_NAME env) to
       # drop both entries.
@@ -97,8 +90,10 @@ rules:
     ignore:
       # setup-just without `just-version:` floats to the latest just at
       # job time (supply-chain hygiene, not correctness). Follow-up: pin
-      # just-version in ci.yml/test-integration, ci.yml/test-e2e and
-      # mutation-testing-monthly, then drop these entries.
-      - ci.yml:631
-      - ci.yml:1027
-      - mutation-testing-monthly.yml:62
+      # just-version in ci.yml `test-integration` (:635), ci.yml
+      # `test-e2e` (:1031) and mutation-testing-monthly (:66), then drop
+      # these entries. (`frontend-standalone` has no setup-just step —
+      # verified; nothing to pin there.)
+      - ci.yml:635
+      - ci.yml:1031
+      - mutation-testing-monthly.yml:66

@@ -10,6 +10,8 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    # API-bound release-PR orchestration, no builds — cap the default 360-min hang risk (spec §4.2).
+    timeout-minutes: 10
     permissions:
       contents: write
       pull-requests: write
@@ -29,11 +31,18 @@ jobs:
     needs: release-please
     if: needs.release-please.outputs.release_created
     runs-on: ubuntu-latest
+    # Docker build + GHCR push + SBOM can legitimately run long — bounded, not unbounded (spec §4.2).
+    timeout-minutes: 30
     permissions:
       contents: write
       packages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Push-to-main trusted trigger; no git commands follow (image
+          # push and release upload carry their own tokens), so don't
+          # persist the repo token in the workspace.
+          persist-credentials: false
 
       # ── Setup ────────────────────────────────────────────────────
       - name: Set up uv

@@ -66,6 +66,8 @@ on:
       - ".env.example"
       - ".gitleaks.toml"
       - ".github/workflows/**"
+      - ".github/zizmor.yml"
+      - ".github/CODEOWNERS"
       - "Dockerfile"
       - ".dockerignore"
       - "docker-compose*.yml"
@@ -149,6 +151,8 @@ jobs:
               - 'scripts/testid_baselines.json'
             workflows:
               - '.github/workflows/**'
+              - '.github/zizmor.yml'
+              - '.github/CODEOWNERS'
 
   # -------------------------------------------------------------------------
   # Fast fail: architecture constraints (< 30s)
