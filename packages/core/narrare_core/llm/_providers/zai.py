@@ -158,6 +158,7 @@ for _mid in [
     "glm-z1-32b",
     "glm-4-flash",
     "glm-4-plus",
+    "glm-5.3-flash",
     "chatglm-4",
 ]:
     register_model(_mid, "zai")

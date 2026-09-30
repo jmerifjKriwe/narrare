@@ -68,6 +68,7 @@ _FALLBACK_MODELS: dict[AIProvider, list[ProviderModel]] = {
     AIProvider.ZAI: [
         ProviderModel(id="glm-z1-32b", name="GLM-Z1 32B", context_window=128000),
         ProviderModel(id="glm-4-flash", name="GLM-4 Flash", context_window=128000),
+        ProviderModel(id="glm-5.3-flash", name="GLM-5.3 Flash", context_window=128000),
     ],
     AIProvider.OLLAMA: [
         ProviderModel(id="llama3.2", name="Llama 3.2", context_window=128000),

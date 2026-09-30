@@ -250,3 +250,29 @@ class TestZaiThinkingProfile:
         # pydantic-ai strips the resolved ``thinking`` key from the outgoing
         # settings (a single-key dict strips to ``None`` — nothing else to send).
         assert settings is None or "thinking" not in settings
+
+
+class TestGlm53FlashRegistration:
+    """glm-5.3-flash (pydantic-ai 2.37+) is a registered, thinking-capable z.AI model."""
+
+    def test_factory_builds_model(self) -> None:
+        model = _make_zai("glm-5.3-flash", api_key="zai-key")
+        assert isinstance(model, OpenAIChatModel)
+        assert model.model_name == "glm-5.3-flash"
+
+    def test_infer_provider_maps_to_zai(self) -> None:
+        from narrare_core.llm._providers.registry import infer_provider
+
+        assert infer_provider("glm-5.3-flash") == "zai"
+
+    def test_registered_in_exact_match_map(self) -> None:
+        """Registration must be explicit, not left to ``glm``-prefix inference.
+
+        ``infer_provider`` falls back to the ``("glm", "zai")`` prefix rule, so
+        it alone cannot distinguish a registered ID from an inferred one.
+        ``register_model`` populates the exact-match map consulted *before*
+        prefix inference — that map is the observable registration evidence.
+        """
+        from narrare_core.llm._providers.registry import _MODEL_PROVIDER_MAP
+
+        assert _MODEL_PROVIDER_MAP.get("glm-5.3-flash") == "zai"
