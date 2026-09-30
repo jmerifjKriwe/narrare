@@ -108,8 +108,8 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       workflows: ${{ steps.filter.outputs.workflows }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: dorny/paths-filter@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
         # schedule runs have no diff base — skip the filter there; outputs
         # stay empty and are only consulted on PRs (expensive jobs gate on
@@ -162,13 +162,13 @@ jobs:
     # that don't map cleanly to a single path. Keep it as the universal
     # fast-fail gate; gate only the genuinely expensive jobs below instead.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # Jobs below execute PR-supplied scripts — do not leave the
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -284,13 +284,13 @@ jobs:
     timeout-minutes: 10
     needs: architecture
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # Jobs below execute PR-supplied scripts — do not leave the
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -312,13 +312,13 @@ jobs:
     timeout-minutes: 15
     needs: architecture
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # Jobs below execute PR-supplied scripts — do not leave the
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -326,7 +326,7 @@ jobs:
         run: uv sync --frozen --all-packages --group dev
 
       - name: Cache Pyright
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             .pyright/
@@ -358,14 +358,14 @@ jobs:
       # fetch-depth: 0 is only needed to scan full git history — reserve
       # that expensive checkout for pushes to main; PR diffs are small
       # enough that the default shallow clone covers the changed range.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: ${{ github.event_name == 'push' && 0 || 1 }}
           # Jobs below execute PR-supplied scripts — do not leave the
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -423,13 +423,13 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # Jobs below execute PR-supplied scripts — do not leave the
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -503,7 +503,7 @@ jobs:
 
       - name: Pytest coverage comment
         if: github.event_name == 'pull_request'
-        uses: MishaKav/pytest-coverage-comment@v1.12.2
+        uses: MishaKav/pytest-coverage-comment@432ac90e8d345c93e1d90ee0838b35913abc9c9b # v1.12.2
         with:
           pytest-coverage-path: ./pytest-coverage.txt
           pytest-xml-coverage-path: ./coverage.xml
@@ -521,7 +521,7 @@ jobs:
         # Feeds the nightly badge job (same-run artifact). Schedule-only:
         # test-unit itself is skipped on push, so a push gate here is dead.
         if: github.event_name == 'schedule'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: coverage-artifacts
           path: |
@@ -532,7 +532,7 @@ jobs:
 
       - name: Upload warnings
         if: always() && steps.tests.outcome != 'cancelled'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: warnings-test-unit
           path: /tmp/warnings/
@@ -579,13 +579,13 @@ jobs:
       SECRET_KEY: test-secret-key-not-for-production
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # Jobs below execute PR-supplied scripts — do not leave the
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -593,7 +593,7 @@ jobs:
         run: uv sync --frozen --all-packages --group dev --extra nlp
 
       - name: Install just
-        uses: extractions/setup-just@v4
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
@@ -642,12 +642,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
       - name: Download coverage artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: coverage-artifacts
 
@@ -706,7 +706,7 @@ jobs:
           "
 
       - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v7
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7
         with:
           # [skip ci] prevents the badge commit from re-triggering a full
           # push CI run (spec §4.1 — the amplifier loop).
@@ -734,17 +734,17 @@ jobs:
        github.event.pull_request.draft != true)
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # Jobs below execute PR-supplied scripts — do not leave the
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.5.2
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24"
           cache: "pnpm"
@@ -833,7 +833,7 @@ jobs:
       # failure for diagnosis.
       - name: Upload VRT diffs
         if: failure() && steps.vrt-tests.outcome != 'skipped'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: vrt-test-results
           path: packages/web/test-results/
@@ -844,7 +844,7 @@ jobs:
 
       - name: Upload warnings
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: warnings-frontend
           path: /tmp/warnings/
@@ -871,17 +871,17 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # Jobs below execute PR-supplied scripts — do not leave the
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.5.2
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24"
           cache: "pnpm"
@@ -965,21 +965,21 @@ jobs:
       NARRARE_E2E_TEST: 1
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # Jobs below execute PR-supplied scripts — do not leave the
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.5.2
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24"
           cache: "pnpm"
@@ -989,7 +989,7 @@ jobs:
         run: uv sync --frozen --all-packages --group dev --extra nlp
 
       - name: Install just
-        uses: extractions/setup-just@v4
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
@@ -1078,7 +1078,7 @@ jobs:
 
       - name: Upload E2E screenshots on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: e2e-test-results
           path: test-results/
@@ -1099,7 +1099,7 @@ jobs:
     steps:
       - name: Download warning artifacts
         continue-on-error: true
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: warnings-*
           merge-multiple: true
