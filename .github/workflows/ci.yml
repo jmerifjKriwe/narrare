@@ -101,9 +101,6 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # schedule runs have no diff base — expensive jobs bypass the filter
-    # via `github.event_name == 'schedule' ||` first, so outputs are unused.
-    if: github.event_name != 'schedule'
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -112,6 +109,10 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
         id: filter
+        # schedule runs have no diff base — skip the filter there; outputs
+        # stay empty and are only consulted on PRs (expensive jobs gate on
+        # `github.event_name == 'schedule' ||` first, so nightly runs full).
+        if: github.event_name != 'schedule'
         with:
           filters: |
             backend:
