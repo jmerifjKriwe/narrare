@@ -120,6 +120,29 @@ class TestApplyTriage:
         with pytest.raises(ValueError):
             apply_triage(output, triage)
 
+    def test_too_few_assessments_raises_index_error(self) -> None:
+        """Boundary: fewer assessments than issues — positional application
+        has no assessment left, which must fail loudly (IndexError), not
+        silently skip or mis-apply (deferred minor from Task 10 review)."""
+        output = ConsistencyOutput(issues=[_issue(0), _issue(1)])
+        triage = ConsistencyTriageOutput(
+            assessments=[
+                TriageAssessment(
+                    issue_index=0,
+                    severity=SeverityRubric.MINOR,
+                    evidence=TriageEvidence(
+                        facts_directly_contradict=True,
+                        both_facts_explicitly_stated=True,
+                        contradiction_verifiable_without_external_knowledge=True,
+                        could_be_intentional_stylistic_choice=False,
+                    ),
+                    confidence=ConfidenceBand.LOW,
+                )
+            ]
+        )
+        with pytest.raises(IndexError):
+            apply_triage(output, triage)
+
     def test_negative_issue_index_rejected(self) -> None:
         """Boundary: issue_index is constrained to ge=0 at the model level."""
         with pytest.raises(ValidationError):
