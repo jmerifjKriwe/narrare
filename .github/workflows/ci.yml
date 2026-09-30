@@ -95,7 +95,9 @@ jobs:
   # Change detection: which parts of the tree actually moved?
   # Cheap (~5s), lets expensive jobs skip themselves when irrelevant.
   # Always runs on push (main/develop) so post-merge signal stays complete;
-  # on PRs it narrows scope to what the diff actually touches.
+  # on PRs it narrows scope to what the diff actually touches. Nightly and
+  # dispatch runs execute this job too — on schedule the filter step is
+  # skipped (no diff base); its outputs are only consulted on PRs.
   # -------------------------------------------------------------------------
   changes:
     name: Detect Changes
@@ -161,6 +163,10 @@ jobs:
     # fast-fail gate; gate only the genuinely expensive jobs below instead.
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
       - uses: astral-sh/setup-uv@v7
         with:
@@ -279,6 +285,10 @@ jobs:
     needs: architecture
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
       - uses: astral-sh/setup-uv@v7
         with:
@@ -303,6 +313,10 @@ jobs:
     needs: architecture
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
       - uses: astral-sh/setup-uv@v7
         with:
@@ -347,6 +361,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: ${{ github.event_name == 'push' && 0 || 1 }}
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
       - uses: astral-sh/setup-uv@v7
         with:
@@ -407,6 +424,10 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
       - uses: astral-sh/setup-uv@v7
         with:
@@ -497,7 +518,9 @@ jobs:
           xml-skip-covered: true
 
       - name: Upload coverage artifacts
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        # Feeds the nightly badge job (same-run artifact). Schedule-only:
+        # test-unit itself is skipped on push, so a push gate here is dead.
+        if: github.event_name == 'schedule'
         uses: actions/upload-artifact@v7
         with:
           name: coverage-artifacts
@@ -557,6 +580,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
       - uses: astral-sh/setup-uv@v7
         with:
@@ -600,14 +627,18 @@ jobs:
         run: uv run pytest tests/golden/ -v -m golden_pages --timeout=120
 
   # -------------------------------------------------------------------------
-  # Update coverage badge in README (main push only)
+  # Update coverage badge in README (nightly only — test-unit no longer
+  # runs on push, so push runs produce no coverage artifact)
   # -------------------------------------------------------------------------
   update-coverage-badge:
     name: Update Coverage Badge
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: test-unit
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Nightly-only: test-unit is skipped on push, so no coverage artifact
+    # exists there to download (spec §4.1 — push+schedule collapses to
+    # schedule).
+    if: github.event_name == 'schedule'
     permissions:
       contents: write
     steps:
@@ -677,7 +708,9 @@ jobs:
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "docs: update coverage badge"
+          # [skip ci] prevents the badge commit from re-triggering a full
+          # push CI run (spec §4.1 — the amplifier loop).
+          commit_message: "docs: update coverage badge [skip ci]"
           file_pattern: README.md
 
   # -------------------------------------------------------------------------
@@ -702,6 +735,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v6
         with:
@@ -817,7 +854,7 @@ jobs:
   # -------------------------------------------------------------------------
   # Frontend standalone smoke (PR-only blind-spot guard)
   # -------------------------------------------------------------------------
-  # test-e2e boots the standalone Next server but runs on main pushes only —
+  # test-e2e boots the standalone Next server but runs nightly + on dispatch —
   # the next@16.3.1/@swc/helpers standalone crash (fixed in 5e014943) was
   # invisible on PR CI. This job builds the standalone tree and verifies it
   # boots on PRs, cheaply: no Playwright, no screenshots → ubuntu-latest
@@ -826,7 +863,7 @@ jobs:
     name: Frontend Standalone Smoke
     runs-on: ubuntu-latest
     needs: [changes]
-    # PR-only (main pushes are covered by test-e2e). workflows==true keeps
+    # PR-only (nightly runs are covered by test-e2e). workflows==true keeps
     # the job self-exercising on PRs that modify ci.yml itself.
     if: >-
       github.event_name == 'pull_request' &&
@@ -835,6 +872,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v6
         with:
@@ -925,6 +966,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
       - uses: astral-sh/setup-uv@v7
         with:
