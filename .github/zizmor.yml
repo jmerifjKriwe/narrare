@@ -31,10 +31,10 @@ rules:
       # previous head). Persisted credentials REQUIRED — Task-2
       # adjudication (report CONCERN 1).
       - ci.yml:111
-      # ci.yml:676 `update-coverage-badge` — git-auto-commit pushes the
+      # ci.yml:680 `update-coverage-badge` — git-auto-commit pushes the
       # README badge commit. Persisted credentials REQUIRED — Task-2
       # documented exception ("git-auto-commit needs the token").
-      - ci.yml:676
+      - ci.yml:680
       # vrt-update-baselines.yml:65 — the job runs `git commit &&
       # git push` on regenerated baselines (contents: write, dispatch
       # only). Persisted credentials REQUIRED.
@@ -70,7 +70,7 @@ rules:
       # not attacker-controllable input. zizmor cannot model step-output
       # provenance statically, hence the findings. Fixing them via env
       # indirection is a bulk follow-up, not accepted risk per line.
-      - ci.yml:827 # frontend-tests duration (own step output, numeric)
+      - ci.yml:831 # frontend-tests duration (own step output, numeric)
       - mutation-testing-monthly.yml:100 # scope label (own step output)
       - release-please.yml:56 # VERSION (release-please tag output)
       - release-please.yml:86 # IMAGE name:tag (own step outputs)
@@ -99,17 +99,6 @@ rules:
       # job time (supply-chain hygiene, not correctness). Follow-up: pin
       # just-version in ci.yml/test-integration, ci.yml/test-e2e and
       # mutation-testing-monthly, then drop these entries.
-      - ci.yml:627
-      - ci.yml:1023
+      - ci.yml:631
+      - ci.yml:1027
       - mutation-testing-monthly.yml:62
-
-  unsound-ternary:
-    ignore:
-      # ci.yml:363 — fetch-depth: `${{ push && 0 || 1 }}`. KNOWN REAL
-      # BUG (not just style): the true-branch literal 0 is falsy, so the
-      # expression always yields 1 — the full-history gitleaks scan on
-      # push never runs. Baselines the finding only because the behavior
-      # fix belongs to the security job, not this task. Follow-up:
-      # `${{ github.event_name != 'push' && 1 || 0 }}` (non-falsy
-      # true-branch) or a step output, then drop this entry.
-      - ci.yml:363

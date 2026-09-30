@@ -355,12 +355,16 @@ jobs:
     timeout-minutes: 15
     needs: architecture
     steps:
-      # fetch-depth: 0 is only needed to scan full git history — reserve
-      # that expensive checkout for pushes to main; PR diffs are small
-      # enough that the default shallow clone covers the changed range.
+      # fetch-depth: full history (0) on pushes to main/develop for the
+      # gitleaks full-history scan; shallow (1) otherwise — PR diffs are
+      # small enough that the default clone covers the changed range.
+      # NOTE: must stay in canonical ternary form `!= 'push' && 1 || 0`.
+      # The previous `== 'push' && 0 || 1` silently always yielded 1 (the
+      # true-branch 0 is falsy, so `|| 1` always won) — zizmor's
+      # unsound-ternary rule guards this pattern now.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          fetch-depth: ${{ github.event_name == 'push' && 0 || 1 }}
+          fetch-depth: ${{ github.event_name != 'push' && 1 || 0 }}
           # Jobs below execute PR-supplied scripts — do not leave the
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
