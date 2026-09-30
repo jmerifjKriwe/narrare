@@ -46,6 +46,9 @@ INTENT_CATEGORY_MAP: dict[LLMIntent, IntentCategory] = {
     LLMIntent.CONSISTENCY: IntentCategory.ANALYSIS,
     LLMIntent.BETA_READ: IntentCategory.ANALYSIS,
     LLMIntent.VOICE: IntentCategory.ANALYSIS,
+    # Phase 5 F4: CONSISTENCY_TRIAGE re-scores detected consistency issues
+    # on a cheap model (analysis tier; model-routed, prompt-non-routeable).
+    LLMIntent.CONSISTENCY_TRIAGE: IntentCategory.ANALYSIS,
     # ADR-069 Decision 5: DIALOGUE_COACH is the first AI_ASSIST intent.
     # Phase 1 Task 5 added this as an ANALYSIS stub; Phase 4 Task 7
     # replaces it with the real AI_ASSIST category (this commit).
@@ -95,6 +98,7 @@ _INTENT_PROFILE_DEFAULTS: dict[LLMIntent, str] = {
     LLMIntent.CONSISTENCY: "comprehensive",
     LLMIntent.BETA_READ: "long_texts",
     LLMIntent.VOICE: "balanced",
+    LLMIntent.CONSISTENCY_TRIAGE: "quick",
     # ADR-069 Decision 5: Dialogue Coach output is a structured issues list
     # + alternatives (improve mode). "long_texts" (64000 tokens) fits the
     # structured-output-with-rewrites shape. Tunable via Eval (Phase 6).

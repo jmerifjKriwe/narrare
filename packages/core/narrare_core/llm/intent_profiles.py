@@ -84,6 +84,12 @@ INTENT_PROFILES: dict[LLMIntent, IntentProfile] = {
     LLMIntent.CONSISTENCY: IntentProfile("comprehensive", "reasoning", "Cross-chapter consistency"),
     LLMIntent.BETA_READ: IntentProfile("long_texts", "reasoning", "Reader-perspective feedback"),
     LLMIntent.VOICE: IntentProfile("balanced", "reasoning", "Voice/style analysis"),
+    # Phase 5 F4 (Weg A decision-pattern pilot): cheap-model rubric triage
+    # of already-detected consistency issues. "fast" tier + "quick" output
+    # (per-issue rubric assessments, no long prose).
+    LLMIntent.CONSISTENCY_TRIAGE: IntentProfile(
+        "quick", "fast", "Rubric-based consistency triage (cheap model)"
+    ),
     # ADR-069 Decision 5: Dialogue Coach — analyze + improve modes over
     # selected dialogue. "reasoning" tier (qualitative judgment + voice
     # matching); "long_texts" profile (structured output + alternatives).
