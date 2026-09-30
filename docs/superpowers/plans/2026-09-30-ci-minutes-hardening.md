@@ -258,12 +258,12 @@ Add to EVERY `actions/checkout@v7` step in jobs that execute PR-supplied code: `
           persist-credentials: false
 ```
 
-EXCEPTION: `update-coverage-badge`'s checkout keeps default (git-auto-commit needs the token). Count: 10 checkouts get the flag.
+EXCEPTIONS (keep default credentials): `update-coverage-badge`'s checkout (git-auto-commit needs the token) AND the `changes` job's checkout — `dorny/paths-filter` on push events fetches the before-SHA via the checkout's persisted credentials; flagging it on a private repo would 401 and fail every push smoke run. Count: 9 checkouts get the flag.
 
 - [ ] **Step 4: Verify**
 
 ```bash
-grep -c "persist-credentials: false" .github/workflows/ci.yml  # expect 10
+grep -c "persist-credentials: false" .github/workflows/ci.yml  # expect 9
 python3 -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))" && echo YAML-OK
 uv run --no-sync python scripts/check_gate_drift.py
 ```
