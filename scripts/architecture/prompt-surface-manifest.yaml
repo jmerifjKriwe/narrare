@@ -640,3 +640,13 @@ routes:
     routeable: false
     rationale: "Research synthesis has no bundled PromptComposer route yet."
     fallback_policy: raise_route_not_configured
+
+  # Phase 5 F4 (Weg A decision-pattern pilot): cheap-model rubric triage of
+  # already-detected consistency issues. Model-routed (fast tier) but
+  # prompt-non-routeable — the agent uses deps-driven dynamic instructions
+  # (RULE-02a §3), so there is no PromptComposer cascade prompt to govern.
+
+  - intent: CONSISTENCY_TRIAGE
+    routeable: false
+    rationale: "Triage agent uses deps-driven dynamic instructions (RULE-02a §3); no PromptComposer cascade prompt."
+    fallback_policy: raise_route_not_configured

@@ -140,8 +140,11 @@ class SeriesRepository(BaseRepository):
         )
         # dict(result.all()) would trip C416, but dict() mis-resolves the
         # SQLAlchemy Row[Tuple[...]] overload under pyright — keep the explicit
-        # comprehension (type-safe + readable).
-        return {series_id: count for series_id, count in result.all()}  # noqa: C416
+        # comprehension (type-safe + readable). The INNER JOIN on SeriesModel.id
+        # makes series_id non-null in every result row, but SQLAlchemy 2.1
+        # propagates the nullable column type (Mapped[UUID | None]) through
+        # execute(); the guard keeps the map a ``dict[UUID, int]``.
+        return {series_id: count for series_id, count in result.all() if series_id is not None}
 
     async def delete_canon_for_series(self, series_id: uuid.UUID) -> int:
         """Bulk-delete Canon KB rows for a series (the Canon fate; ADR-075).

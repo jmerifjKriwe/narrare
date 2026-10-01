@@ -13,20 +13,20 @@ dependencies = []
 
 [dependency-groups]
 dev = [
-  "ruff==0.16.5",
-  "pyright==1.1.411",
+  "ruff==0.16.9",
+  "pyright==1.1.414",
   "pytest==9.1.1",
   "pytest-asyncio==1.4.0",
   "pytest-cov==7.1.0",
   "bandit==1.9.4",
   "pip-audit==2.10.1",
   "pytest-xdist>=3.6",
-  "pytest-randomly==4.1.0",
+  "pytest-randomly==5.0.0",
   "pytest-timeout>=2.3",
   "hypothesis>=6.100",
-  "mutmut==3.7.0",
+  "mutmut==3.8.0",
   "pytest-playwright>=0.7",
-   "pydantic-evals==2.35.3",
+   "pydantic-evals==2.52.0",
   "jsonschema>=4.26.0",
   # PyMuPDF — PDF inspection for the Golden-Pages render probes
   # (tests/golden/export/). Pulled forward from Slice 7 for the Slice 5a

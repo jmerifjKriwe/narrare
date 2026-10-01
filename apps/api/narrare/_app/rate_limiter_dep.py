@@ -10,9 +10,10 @@ This module is a drop-in replacement with the same constructor signature and
 call protocol. It derives the rate-limit key from the request identity and
 ``request.url.path`` and never iterates ``request.app.routes``.
 
-It mirrors the pattern already used for WebSocket rate limiting
-(``AI_WS_LIMITER`` in ``rate_limits.py``), which has used a raw
-``pyrate_limiter.Limiter`` directly since AR-05-02 (in-memory, no Redis).
+It is also the home of :class:`SelfPruningLimiter` — the app-wide pyrate
+limiter construction policy (no background sweeper thread; see the class
+docstring) — used by both the FastAPI dependency and the raw WebSocket
+limiter in ``rate_limits.py``.
 
 See ``rate_limits.py`` for the module-level limiter instances.
 """
@@ -20,14 +21,11 @@ See ``rate_limits.py`` for the module-level limiter instances.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING
 
 from fastapi import HTTPException, Request, Response, status
+from pyrate_limiter import AbstractBucket, InMemoryBucket, Limiter, Rate, SingleBucketFactory
 
 from narrare_core.settings import get_core_settings
-
-if TYPE_CHECKING:
-    from pyrate_limiter import Limiter
 
 Identifier = Callable[[Request], str | Awaitable[str]]
 """Callable that derives the rate-limit bucket key from a request.
@@ -37,6 +35,88 @@ awaitable ``str``). Async callables are awaited automatically.
 """
 
 
+class SelfPruningLimiter(Limiter):
+    """In-memory limiter without pyrate_limiter's background sweeper thread.
+
+    pyrate-limiter 4.x's default ``Limiter(Rate(...))`` construction spawns a
+    ``"PyrateLimiter's Leaker"`` daemon thread — each with its own asyncio
+    event loop — **per instance**, at construction time (``SingleBucketFactory``
+    defaults to ``schedule_leak=True``). With the module-level limiters in
+    ``rate_limits.py`` and ``auth/router.py`` that cost 8 threads + 8 event
+    loops + their fds per process, alive from import (so also in every test
+    process).
+
+    This subclass builds the same ``InMemoryBucket`` via
+    ``SingleBucketFactory(schedule_leak=False)`` and instead prunes outdated
+    items at acquire time by calling the bucket's own ``leak(now)`` — the
+    exact method and clock the background sweeper would use. For the
+    sliding-window admit decision this is semantically identical: stale items
+    are never counted by ``InMemoryBucket.put`` (it bisects on item
+    timestamps), so sweeping is purely memory hygiene. Acquire-time pruning
+    keeps the bucket hard-bounded to roughly one rate window of admitted
+    requests and costs one O(log n) bisect per acquire.
+
+    Use this instead of a bare ``Limiter(Rate(...))`` for every in-memory
+    limiter in Narrare. (Only ``try_acquire`` / ``try_acquire_async`` prune —
+    which are the only entry points Narrare uses; pyrate's ``as_decorator``
+    would not.)
+    """
+
+    def __init__(self, rate: Rate, buffer_ms: int = 50) -> None:
+        """Build a single-bucket limiter for ``rate`` without a sweeper thread.
+
+        Args:
+            rate: The (count, window) rate to enforce.
+            buffer_ms: Clock-drift buffer, forwarded to ``Limiter``.
+        """
+        bucket = InMemoryBucket([rate])
+        self._bucket = bucket
+        super().__init__(SingleBucketFactory(bucket, schedule_leak=False), buffer_ms=buffer_ms)
+
+    def _prune(self) -> None:
+        """Drop items older than the largest rate window (sweeper equivalent)."""
+        now = self._bucket.now()
+        # InMemoryBucket's clock (MonotonicClock) is sync — an awaitable here
+        # would be a construction bug, not a runtime condition.
+        assert isinstance(now, int)
+        self._bucket.leak(now)
+
+    def buckets(self) -> list[AbstractBucket]:
+        """The single active bucket — no Leaker registry involved.
+
+        Overrides ``Limiter.buckets()`` because pyrate's default routes
+        through the sweeper's bucket registry (``BucketFactory.get_buckets``
+        returns ``[]`` when the sweeper is disabled), which would silently
+        break callers that enumerate buckets — notably the per-test bucket
+        flush in ``tests/unit/conftest.py``.
+        """
+        return [self._bucket]
+
+    def try_acquire(
+        self,
+        name: str = "pyrate",
+        weight: int = 1,
+        blocking: bool = True,
+        timeout: int | float = -1,
+    ) -> bool | Awaitable[bool]:
+        """Prune expired items, then delegate to ``Limiter.try_acquire``."""
+        self._prune()
+        return super().try_acquire(name=name, weight=weight, blocking=blocking, timeout=timeout)
+
+    async def try_acquire_async(
+        self,
+        name: str = "pyrate",
+        weight: int = 1,
+        blocking: bool = True,
+        timeout: int | float = -1,
+    ) -> bool:
+        """Prune expired items, then delegate to ``Limiter.try_acquire_async``."""
+        self._prune()
+        return await super().try_acquire_async(
+            name=name, weight=weight, blocking=blocking, timeout=timeout
+        )
+
+
 class RateLimiter:
     """FastAPI dependency for rate limiting using ``pyrate_limiter``.
 
@@ -44,8 +124,7 @@ class RateLimiter:
 
     Usage::
 
-        from pyrate_limiter import Duration, Limiter, Rate
-        MY_LIMITER = RateLimiter(Limiter(Rate(3, Duration.MINUTE)))
+        MY_LIMITER = RateLimiter(SelfPruningLimiter(Rate(3, Duration.MINUTE)))
 
         @router.post("/endpoint", dependencies=[Depends(MY_LIMITER)])
         async def my_endpoint(): ...

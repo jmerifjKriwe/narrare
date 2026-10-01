@@ -67,6 +67,9 @@ class LLMIntent(StrEnum):
     VOICE = "voice"
     """Voice and style analysis."""
 
+    CONSISTENCY_TRIAGE = "consistency_triage"
+    """Rubric-based severity/confidence re-scoring of consistency issues (cheap model)."""
+
     # ------------------------------------------------------------------
     # Knowledge base operations — entity creation, improvement, extraction
     # ------------------------------------------------------------------

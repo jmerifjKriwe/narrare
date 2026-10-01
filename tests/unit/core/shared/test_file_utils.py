@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 import pytest
+from filelock import FileLock, Timeout
 
 from narrare_core.shared.file_utils import (
     delete_file,
@@ -16,6 +18,7 @@ from narrare_core.shared.file_utils import (
     read_text,
     read_text_or_none,
     write_text,
+    write_text_locked,
 )
 
 
@@ -67,6 +70,83 @@ class TestWriteText:
         await write_text(file, "new content")
 
         assert file.read_text() == "new content"
+
+
+class TestWriteTextLocked:
+    async def test_writes_content_to_file(self, tmp_path: Path) -> None:
+        file = tmp_path / "locked.txt"
+        content = "locked content — ünïcode ✓"
+
+        await write_text_locked(file, content)
+
+        assert file.read_bytes() == content.encode("utf-8")
+
+    async def test_creates_parent_directories(self, tmp_path: Path) -> None:
+        file = tmp_path / "deep" / "nested" / "locked.txt"
+
+        await write_text_locked(file, "nested locked content")
+
+        assert file.read_text() == "nested locked content"
+
+    async def test_overwrites_existing_file(self, tmp_path: Path) -> None:
+        file = tmp_path / "overwrite.txt"
+        file.write_text("old content")
+
+        await write_text_locked(file, "new content")
+
+        assert file.read_text() == "new content"
+
+    async def test_lock_file_created_and_left_in_place_after_write(self, tmp_path: Path) -> None:
+        # filelock 4.x deliberately leaves the lock file on disk after release
+        # (unlinking a locked file splits waiters across inodes) — assert that
+        # documented behavior, not cleanup.
+        file = tmp_path / "lifecycle.txt"
+        lock_file = tmp_path / "lifecycle.txt.lock"
+        assert not lock_file.exists()
+
+        await write_text_locked(file, "data")
+
+        assert file.read_text() == "data"
+        assert lock_file.exists()
+
+    async def test_raises_timeout_when_lock_already_held(self, tmp_path: Path) -> None:
+        file = tmp_path / "contended.txt"
+        await write_text_locked(file, "original content")
+
+        # A real second FileLock on the exact lock path filelock derives
+        # (<target>.lock), held across the call — no mocks, the real library
+        # must contend and time out.
+        holder = FileLock(str(tmp_path / "contended.txt.lock"), timeout=1.0)
+        holder.acquire()
+        try:
+            with pytest.raises(Timeout):
+                await write_text_locked(file, "blocked content", timeout=0.2)
+        finally:
+            holder.release()
+
+        assert file.read_text() == "original content"
+
+    async def test_concurrent_writers_serialize(self, tmp_path: Path) -> None:
+        file = tmp_path / "concurrent.txt"
+        payload_a = "A" * 8192
+        payload_b = "B" * 8192
+
+        await asyncio.gather(
+            write_text_locked(file, payload_a, timeout=5.0),
+            write_text_locked(file, payload_b, timeout=5.0),
+        )
+
+        assert file.read_text() in (payload_a, payload_b)
+
+    async def test_write_succeeds_after_lock_released(self, tmp_path: Path) -> None:
+        # Regression guard for lock-file lifecycle: the leftover .lock file
+        # from a previous write must not block the next writer.
+        file = tmp_path / "reuse.txt"
+        await write_text_locked(file, "first")
+
+        await write_text_locked(file, "second")
+
+        assert file.read_text() == "second"
 
 
 class TestDeleteFile:

@@ -384,4 +384,8 @@ NON_ROUTEABLE_INTENTS: dict[LLMIntent, str] = {
     LLMIntent.GENERATE: "Generic generation must use a specific routed intent or feature mode.",
     LLMIntent.TITLE_GENERATE: "No title-generation feature prompt is bundled yet.",
     LLMIntent.RESEARCH: "Research synthesis has no bundled PromptComposer route yet.",
+    LLMIntent.CONSISTENCY_TRIAGE: (
+        "Triage agent uses deps-driven dynamic instructions (RULE-02a §3); "
+        "no PromptComposer cascade prompt."
+    ),
 }

@@ -179,7 +179,9 @@ vi.mock("next/navigation", () => ({
 // test issued an unhandled request even when the consumer swallows the
 // rejection — lives in `mocks/unhandledGuard.ts` (see its module docs for the
 // full rationale and probe evidence).
-server.listen({ onUnhandledRequest: "error" });
+// msw 3 renamed the unhandled-request listen option to `onUnhandledFrame`
+// (same strategy values: 'bypass' | 'warn' | 'error' — SharedOptions in msw 3).
+server.listen({ onUnhandledFrame: "error" });
 installUnhandledRequestGuard(server);
 
 // Reset any request handlers that were declared during the tests.

@@ -23,4 +23,7 @@ regexes = [
   # `encryption_key` (secret "encryption_key="), which escapes the default
   # rule-level allowlist. Allowlist the exact doc pattern so real keys remain flagged.
   '''test-key",\n\s*encryption_key="''',
+  # Plan doc "pydantic-ai 2.52 upgrade" leak-probe example code: fake marker
+  # constants (SECRET_INSTRUCTION/SECRET_USER_PROMPT/SECRET_OUTPUT), not credentials.
+  '''SECRET-(INSTRUCTION|USER-PROMPT|OUTPUT)-MARKER-[0-9a-f]+''',
 ]

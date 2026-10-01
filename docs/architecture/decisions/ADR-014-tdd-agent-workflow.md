@@ -68,11 +68,11 @@ TDD is a core engineering standard that cannot be effectively outsourced to a se
 ## Implementation Notes
 
 Updated files:
-- `.opencode/agents/narrare-dev-coordinator.md`
-- `.opencode/agents/subagents/narrare-dev/backend.md`
-- `.opencode/agents/subagents/narrare-dev/core.md`
-- `.opencode/agents/subagents/narrare-dev/frontend.md`
-- `.opencode/agents/subagents/narrare-dev/platform.md`
+- `.opencode/agents/NarrareDevCoordinator.md`
+- `.opencode/agents/NarrareBackendSpecialist.md`
+- `.opencode/agents/NarrareCoreSpecialist.md`
+- `.opencode/agents/NarrareFrontendSpecialist.md`
+- `.opencode/agents/NarrarePlatformSpecialist.md`
 
 ---
 

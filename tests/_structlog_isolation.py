@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -106,12 +107,29 @@ def _unpin_cached_lazy_proxies() -> None:
     ``sys.modules``. Tuple snapshots guard against concurrent mutation.
     Only runs on drift (polluter teardowns), so the sweep cost never lands
     on the common path.
+
+    The scan is warning-suppressed (see the comment at the suppression
+    site): it is diagnostic probing of third-party namespaces, and a
+    warning raised while probing must never fail the teardown.
     """
-    for module in tuple(sys.modules.values()):
-        if module is None:  # import-machinery placeholder
-            continue
-        for value in tuple(vars(module).values()):
-            _unpin_value(value)
+    # Probing third-party namespaces can itself emit warnings: torch 2.13's
+    # deprecated ``torch.distributed.reduce_op`` singleton warns on ANY
+    # attribute access (``__getattribute__`` override) — including the
+    # ``__class__`` fallback read that CPython's ``isinstance()`` performs
+    # on every non-matching candidate here. Under pytest
+    # ``filterwarnings=["error"]`` that escalated 13 teardowns to ERROR on
+    # xdist worker gw1 in the 2026-10-01 gate run (torch imported via the
+    # embeddings-extra local venv; CI never imports torch — hence the local
+    # run's asymmetry). Third-party deprecation noise is not this fixture's
+    # contract: suppress it around the sweep only — the config and
+    # root-logger restore in the teardown keep normal filter rules.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for module in tuple(sys.modules.values()):
+            if module is None:  # import-machinery placeholder
+                continue
+            for value in tuple(vars(module).values()):
+                _unpin_value(value)
 
 
 def _isolate_structlog_config_impl() -> Iterator[None]:

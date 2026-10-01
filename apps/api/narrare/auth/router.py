@@ -6,11 +6,12 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
-from pyrate_limiter import Duration, Limiter, Rate
+from pyrate_limiter import Duration, Rate
 
 from narrare._app.config import Settings, get_settings
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare._app.rate_limiter_dep import RateLimiter as _RateLimiterDep
+from narrare._app.rate_limiter_dep import SelfPruningLimiter
 from narrare.auth.cookie_helpers import clear_refresh_cookie, set_refresh_cookie
 from narrare.auth.repository import AuthRepository
 from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse, WsTicketResponse
@@ -28,7 +29,7 @@ def _get_auth_service(
     return AuthService(repo=AuthRepository(session), settings=settings)
 
 
-_REGISTER_LIMITER = _RateLimiterDep(Limiter(Rate(3, Duration.MINUTE * 1)))
+_REGISTER_LIMITER = _RateLimiterDep(SelfPruningLimiter(Rate(3, Duration.MINUTE * 1)))
 """Module-level rate limiter for registration — 3 requests/minute.
 
 Must be a module-level singleton (not a factory function) so the same
@@ -37,7 +38,7 @@ would create a new ``Limiter`` per request and rate limits would never
 accumulate — see ``narrare._app.rate_limits`` docstring for details.
 """
 
-_LOGIN_LIMITER = _RateLimiterDep(Limiter(Rate(5, Duration.MINUTE * 1)))
+_LOGIN_LIMITER = _RateLimiterDep(SelfPruningLimiter(Rate(5, Duration.MINUTE * 1)))
 """Module-level rate limiter for login — 5 requests/minute.
 
 Same singleton requirement as ``_REGISTER_LIMITER``.

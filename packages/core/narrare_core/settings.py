@@ -21,6 +21,10 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Pinned rerank checkpoint (ADR-090 D5) — single SSOT: the constant is owned
+# by the rerank module and re-used here so settings and wiring cannot drift.
+from narrare_core.embeddings.rerank import DEFAULT_RERANK_MODEL
+
 # Compute the project-root ``.env`` path relative to this file.
 # From packages/core/narrare_core/settings.py, go up 4 levels to reach the
 # project root (mirrors apps/api/narrare/_app/settings_model.py, RULE-07: Core
@@ -82,6 +86,28 @@ class CoreSettings(BaseSettings):
     :func:`narrare_core.llm._transport_retry.get_transport_max_retries` remains
     the authoritative accessor with validation and the RULE-18b effect test."""
 
+    # --- Dynamic tier routing pilot (ADR-089) ---
+    llm_dynamic_tiering_enabled: bool = Field(
+        default=False, validation_alias="NARRARE_LLM_DYNAMIC_TIERING"
+    )
+    """ADR-089 pilot: opt-in per-step dynamic tier selection (chat path only).
+
+    Default ``False`` — static intent routing stays the shipped behavior;
+    the ``SelectModel`` capability is not constructed when off.
+    """
+
+    llm_dynamic_tiering_max_prompt_chars: int = Field(
+        default=2000, validation_alias="NARRARE_LLM_DYNAMIC_TIERING_MAX_PROMPT_CHARS"
+    )
+    """Escalate to the capable tier when the latest user prompt exceeds
+    this many characters (strictly greater; ADR-089 Decision 3)."""
+
+    llm_dynamic_tiering_min_turns: int = Field(
+        default=6, validation_alias="NARRARE_LLM_DYNAMIC_TIERING_MIN_TURNS"
+    )
+    """Escalate to the capable tier from this user turn onward
+    (``turn_count >= min_turns``; ADR-089 Decision 3)."""
+
     default_embedding_model: str = "text-embedding-3-small"
     """Default embedding model for the pgvector write/search paths (ADR-071 §3).
 
@@ -100,6 +126,29 @@ class CoreSettings(BaseSettings):
     ``DEFAULT_EMBEDDING_MODEL``). Does NOT govern mem0's internal memory
     embeddings — those follow the memory cascade (ADR-071 §5 keeps
     ``memory_embedding_model`` in API Settings).
+    """
+
+    # --- Multi-vector rerank tier pilot (ADR-090 D5) ---
+    embedding_rerank_enabled: bool = Field(
+        default=False, validation_alias="NARRARE_EMBEDDING_RERANK"
+    )
+    """ADR-090 pilot: local multi-vector rerank stage on embedding search.
+
+    Default ``False`` — the shipped search path stays byte-identical; the
+    stage only wires when both this flag is on and the ``embeddings``
+    extra is installed (``narrare_core.embeddings.rerank
+    .is_rerank_available``). Rollback = disable the flag (ADR-090 D1).
+    """
+
+    embedding_rerank_model: str = Field(
+        default=DEFAULT_RERANK_MODEL, validation_alias="NARRARE_EMBEDDING_RERANK_MODEL"
+    )
+    """Rerank checkpoint (ADR-090 D5, binding user decision 2026-09-30).
+
+    Defaults to the pinned ``lightonai/LateOn`` checkpoint — exported as
+    ``DEFAULT_RERANK_MODEL`` — NEVER the sentence-transformers library
+    default, which drifts between releases and breaks eval comparability
+    (ADR-083). Consumed by the DI wiring when the flag is on.
     """
 
     e2e_test: bool = Field(default=False, validation_alias="NARRARE_E2E_TEST")

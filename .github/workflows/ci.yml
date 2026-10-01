@@ -84,9 +84,13 @@ on:
   push:
     branches: [main, develop]
 
+# Budget guard: superseded runs on the same PR cancel; main pushes queue
+# instead of cancelling. The group includes the event name so the nightly
+# full run (schedule) can never be cancelled by a same-ref push — PRs are
+# the gate, the nightly is the post-merge safety net (spec 2026-09-29 §3).
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -327,7 +331,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --frozen --all-packages --group dev
+        run: uv sync --frozen --all-packages --group dev --extra embeddings
 
       - name: Cache Pyright
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6

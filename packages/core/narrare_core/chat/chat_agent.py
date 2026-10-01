@@ -35,6 +35,8 @@ from narrare_core.agents.history_policy import HistoryPolicy
 from narrare_core.chat.chat_deps import ChatDeps
 
 if TYPE_CHECKING:
+    from typing import Any
+
     from pydantic_ai.models import Model
 
 
@@ -61,6 +63,7 @@ class ChatAgent(NarrareAgent[ChatDeps, str]):
         model: Model,
         *,
         system_prompt: str | None = None,
+        capabilities: list[Any] | None = None,
     ) -> None:
         """Initialise the ChatAgent.
 
@@ -72,10 +75,16 @@ class ChatAgent(NarrareAgent[ChatDeps, str]):
                 channel** (ADR-046). ``None`` omits the feature system prompt
                 — the guaranteed ``NarrareMeta``/``NarrareUniversalRules``
                 capabilities are always present regardless.
+            capabilities: Additional capabilities beyond the always-injected
+                ``NarrareObservability``, ``NarrareUniversalRules``, and
+                ``NarrareMeta`` — forwarded to ``NarrareAgent`` (same type
+                and default as the base class). Used by the service layer to
+                pass e.g. a ``SelectModel`` capability (ADR-089 Decision 7).
         """
         super().__init__(
             model=model,
             deps_type=ChatDeps,
             system_prompt=system_prompt,
             history_policy=HistoryPolicy.CONVERSATIONAL,
+            capabilities=capabilities,
         )

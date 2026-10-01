@@ -60,9 +60,6 @@ _ENTITY_SLOTS: dict[str, str] = {
     "faction": "factions",
 }
 
-#: Default entity-type filter when the caller omits ``entity_types``.
-_DEFAULT_ENTITY_TYPES: list[str] = ["character", "location", "faction"]
-
 _EMPTY_RENDER_PATH = "narrare.kb._context_provider.KBContextProvider"
 
 

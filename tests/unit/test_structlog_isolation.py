@@ -11,16 +11,25 @@ Covers the three load-bearing contracts of the isolator:
    root-logger mutation are restored on teardown — encoded as the
    order-independent regression for the systemic cross-test chain
    (polluter → proxy pinning → second configure → capture_logs victim).
+5. warning-safe probing: the sys.modules sweep must not let warnings
+   emitted by third-party namespace probing escalate to errors under
+   pytest ``filterwarnings=["error"]`` (torch 2.13 incident).
 """
 
 from __future__ import annotations
 
 import contextlib
 import logging
-from typing import Any
+import sys
+import types
+import warnings
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from structlog.testing import capture_logs
+
+if TYPE_CHECKING:
+    import pytest
 
 from tests._structlog_isolation import (
     _isolate_structlog_config_impl,
@@ -125,6 +134,78 @@ def test_unpin_sweep_unpins_class_attribute_proxy_after_cache_pinning() -> None:
     _unpin_cached_lazy_proxies()
 
     assert "bind" not in vars(_ProxyHolder.class_proxy)
+
+
+def test_unpin_sweep_with_warning_emitting_module_value_does_not_escalate_to_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sweep probing must not escalate third-party deprecation warnings.
+
+    Regression for the 2026-10-01 gate run (13 teardown ERRORs, all on
+    worker gw1): CPython's ``isinstance(value, cls)`` falls back to reading
+    ``value.__class__`` when the fast type check misses. torch 2.13's
+    deprecated ``torch.distributed.reduce_op`` singleton (imported locally
+    via the embeddings-extra venv — CI never imports torch) warns on ANY
+    attribute access through an ``__getattribute__`` override, so the
+    sweep's probe raised ``FutureWarning`` and pytest's
+    ``filterwarnings=["error"]`` escalated it into a teardown ERROR.
+    Fake module only — no torch import.
+    """
+    module_name = "_fake_deprecated_namespace_sweep_regression"
+
+    class _WarnOnAnyAttributeAccess:
+        """Stands in for torch 2.13's deprecated ``reduce_op`` singleton."""
+
+        def __getattribute__(self, name: str) -> Any:
+            warnings.warn(
+                f"`{module_name}.reduce_op` is deprecated, please use `ReduceOp` instead",
+                FutureWarning,
+                stacklevel=2,
+            )
+            return object.__getattribute__(self, name)
+
+    def _module_getattr(name: str) -> Any:
+        """PEP 562 hook — how torch exposes the deprecated name at all."""
+        if name == "reduce_op":
+            warnings.warn(
+                f"`{module_name}.reduce_op` is deprecated, please use `ReduceOp` instead",
+                FutureWarning,
+                stacklevel=2,
+            )
+            return _WarnOnAnyAttributeAccess()
+        raise AttributeError(f"module {module_name!r} has no attribute {name!r}")
+
+    fake_module = types.ModuleType(module_name)
+    # The sweep reads candidates via ``vars(module)``, which BYPASSES the
+    # PEP 562 hook — so the singleton sits as a plain dict entry (torch's
+    # shape) whose ``__getattribute__`` is the path that fired in the
+    # incident. ``__getattr__`` documents the exposure path.
+    fake_module.__dict__["reduce_op"] = _WarnOnAnyAttributeAccess()
+    fake_module.__dict__["__getattr__"] = _module_getattr
+
+    # Mechanism sanity: the exact probing operation the sweep performs on
+    # every namespace value must warn — otherwise this test is vacuous.
+    with warnings.catch_warnings(record=True) as sanity:
+        warnings.simplefilter("always")
+        isinstance(fake_module.reduce_op, int)
+    assert any(issubclass(entry.category, FutureWarning) for entry in sanity), (
+        "fake value did not warn on isinstance probing — test would be vacuous"
+    )
+
+    monkeypatch.setitem(sys.modules, module_name, fake_module)
+
+    # A pinned proxy proves the sweep still COMPLETES (does its job) while
+    # ``simplefilter("error")`` reproduces the gate's
+    # ``filterwarnings=["error"]`` teardown condition.
+    _pollute_like_configure_logging()
+    module_proxy.info("pinning_use")
+    assert "bind" in vars(module_proxy)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _unpin_cached_lazy_proxies()  # must not raise, must still unpin
+
+    assert "bind" not in vars(module_proxy)
 
 
 # ---------------------------------------------------------------------------

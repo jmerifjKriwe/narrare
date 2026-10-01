@@ -6,11 +6,11 @@ Contracts are written before implementation (RULE-03).
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable, Sequence
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from uuid import UUID
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from narrare.embeddings.models import Embedding
     from narrare.embeddings.search_queries import SearchRow
     from narrare_core.embeddings.store import EmbeddingStats
@@ -25,6 +25,15 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 DEFAULT_EMBEDDING_SEARCH_THRESHOLD: float = 0.7
 DEFAULT_EMBEDDING_SEARCH_LIMIT: int = 20
+
+type TextFetcher = Callable[[Sequence[UUID]], Awaitable[dict[UUID, str]]]
+"""Async candidate-text supplier for the rerank stage (ADR-090 Decision 4).
+
+Search rows carry no text, so the DI layer injects this fetcher (a closure
+over the session + KB repository); the rerank stage calls it with the
+candidate source ids and expects ``{source_id: text}`` — ids absent from
+the mapping are treated as textless and keep their first-stage position.
+"""
 
 
 @runtime_checkable

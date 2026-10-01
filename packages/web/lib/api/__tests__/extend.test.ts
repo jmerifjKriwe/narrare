@@ -189,6 +189,8 @@ describe("streamExtend", () => {
     );
 
     expect(chunks).toEqual(["partial"]);
-    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "connection lost" }));
+    // msw 3 surfaces a failing mocked stream as a network abort (message
+    // "aborted", cause ECONNRESET) instead of the handler's error text.
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ kind: "network" }));
   });
 });

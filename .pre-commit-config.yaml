@@ -193,7 +193,7 @@ repos:
         entry: uv run --no-sync python scripts/check_doc_drift.py --governance-only
         language: system
         pass_filenames: false
-        files: ^(docs/|justfile$|AGENTS\.md$|\.opencode/agents/subagents/)
+        files: ^(docs/|justfile$|AGENTS\.md$|\.opencode/agents/)
 
       # §7 Stub-Variable Detector — architectural-discipline §7 ("documented
       # ≠ implemented"): catches a registered prompt variable assigned a

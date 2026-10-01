@@ -11,9 +11,19 @@ Detection is AST-based (not regex over raw text), so docstrings,
 comments, and string literals cannot produce false positives — only
 real ``.get_model(...)`` call expressions are flagged.
 
-Sanctioned exceptions (mechanism kept explicit; the set is currently
-EMPTY):
+Sanctioned exceptions (mechanism kept explicit; one entry):
 
+- ``chat/_tiering.py`` ``build_tier_capabilities``: the dynamic tier
+  routing pilot (ADR-089 D7, 2026-09-30) builds the escalation ``Model``
+  instance via a bare ``registry.get_model(escalation.config, ...)``.
+  Sanctioned because that instance is consumed by the per-step
+  ``SelectModel`` selector, NOT by an ``agent.run()`` site — run-level
+  ``ModelSettings``/usage limits stay base-composed (ADR-089 D4: v1
+  escalates the model instance only; per-tier settings are a Review
+  Trigger), so routing it through ``prepare()`` would build a coherent
+  triple whose settings/limits are then discarded — the exact
+  forget-the-settings gap this guard exists to prevent. RULE-01b is
+  intact: the registry remains the sole model factory.
 - ``setup/provider_service.py`` ``_test_call``: sanctioned leave-as-is
   (6d assessment) — it validates a RAW user-supplied key/model/endpoint
   BEFORE any ``ResolvedModelConfig`` exists, so ``prepare()`` would
@@ -41,9 +51,16 @@ _REPO_ROOT = Path(__file__).resolve().parents[4]
 _API_ROOT = _REPO_ROOT / "apps" / "api" / "narrare"
 
 # Files (relative to apps/api/narrare/) where a bare ``.get_model(``
-# call expression is sanctioned. Currently empty — see module docstring
-# for why setup/_test_call and the wiki core path do NOT need entries.
-_SANCTIONED_BARE_GET_MODEL: frozenset[str] = frozenset()
+# call expression is sanctioned. See the module docstring for each
+# entry's rationale and for why setup/_test_call and the wiki core path
+# do NOT need entries.
+_SANCTIONED_BARE_GET_MODEL: frozenset[str] = frozenset(
+    # ADR-089 D7 (2026-09-30): escalation Model feeds the SelectModel
+    # per-step selector, not an agent.run() site — settings stay
+    # base-composed (D4), so prepare() would yield a discarded triple.
+    # RULE-01b intact: registry is still the sole model factory.
+    {"chat/_tiering.py"},
+)
 
 
 def _bare_get_model_calls(path: Path) -> list[int]:

@@ -1,6 +1,6 @@
 # ADR-087 — Testing Governance Layering: Principles → Preferences → Patterns
 
-> **Status:** 📝 Draft (Proposed) — awaiting per-row decisions on the Keep/Relax/Drop table (§7)
+> **Status:** 🔄 Proposed (draft) — awaiting per-row decisions on the Keep/Relax/Drop table (§7)
 > **Date:** 2026-08-28
 > **Deciders:** Architecture Agent (draft) · User (row-by-row selection pending)
 > **Supersedes:** none (amends the *structure* of `docs/development/testing-standards.md`; changes no RULE-XX)

@@ -51,6 +51,11 @@ from narrare_core.agents.character_voice_types import (
     CharacterVoiceOutput,
 )
 from narrare_core.agents.consistency_agent import ConsistencyAgent
+from narrare_core.agents.consistency_triage_agent import ConsistencyTriageAgent
+from narrare_core.agents.consistency_triage_types import (
+    ConsistencyTriageDeps,
+    ConsistencyTriageOutput,
+)
 from narrare_core.agents.consistency_types import (
     ConsistencyCheckType,
     ConsistencyDeps,
@@ -239,6 +244,9 @@ __all__ = [
     "ConsistencyIssue",
     "ConsistencyOutput",
     "ConsistencySeverity",
+    "ConsistencyTriageAgent",
+    "ConsistencyTriageDeps",
+    "ConsistencyTriageOutput",
     "CoreferenceAgent",
     "CoreferenceDeps",
     "CoreferenceOutput",

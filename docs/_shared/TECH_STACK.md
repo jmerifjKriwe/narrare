@@ -102,7 +102,12 @@ the providers we use); check the manifest for the installed patch version.
 **v2 migration notes:** pydantic-ai v2 changed `result_type` → `output_type` on
 `Agent` construction and requires `OpenAIProvider(...)` around `base_url`/`api_key`.
 The v1.x `result_type` field is no longer accepted. See the pydantic-ai v2
-changelog when upgrading the pin.
+changelog when upgrading the pin. The 2.5x line added the `SelectModel`/
+`DecisionModel` capabilities and z.AI `glm-5.3-flash` support; Narrare adopts
+the capabilities behind opt-in, default-off pilots (`SelectModel` → dynamic
+tier routing, ADR-089; `DecisionModel` output-design patterns → consistency-
+triage pilot in the evals runtime suite) and registers `glm-5.3-flash` in the
+provider live lists (see Supported LLM Providers below).
 
 ### LLM Gateway (`core/llm/gateway.py`) — our own abstraction
 **Why:** pydantic-ai is the runtime, but the gateway is our policy layer.
@@ -118,15 +123,18 @@ No exceptions without a documented ADR and inline `# narrare: allow-direct-llm` 
 | z.ai (GLM family) | Cost-efficient primary workhorse | General API and Coding API endpoints supported via wizard endpoint selector. Concrete model ids (e.g. `glm-4-plus`, `glm-4-flash`, `glm-z1-32b`) are registered in `apps/api/narrare/setup/provider_service.py` and `packages/core/narrare_core/llm/_providers/zai.py` — read those for the live model list rather than relying on a version string here. |
 | OpenAI-compatible (custom) | Future: self-hosted models | Via provider registry |
 
-**Intent → Model routing** is defined in `core/llm/intents.py`, not hardcoded in services.
-Changing the model for an intent requires only one file change.
+**Intent → model tier guidance** lives in `core/llm/intent_profiles.py`
+(advisory tier table `INTENT_PROFILES`); the actual model resolves through the
+user routing cascade (`ModelRoutingResolver`, ADR-086 lazy resolution); dynamic
+per-step tier selection is an opt-in pilot (ADR-089). No model ids are
+hardcoded in services.
 
-### mem0 OSS (2.0.x, compatibility-verified)
+### mem0 OSS (2.x, compatibility-verified)
 **Why:** Persistent memory layer for writing preferences, style patterns,
 rejection feedback, and session history across conversations.
 **Role:** Powers the learning system — user and project-level preference accumulation.
-**Canonical source:** `packages/core/pyproject.toml` pins `mem0ai` (2.0.x line).
-This document records only the major-version commitment (2.0.x); check the manifest
+**Canonical source:** `packages/core/pyproject.toml` pins `mem0ai` (2.x line).
+This document records only the major-version commitment (2.x); check the manifest
 for the installed patch version.
 **Architecture:**
   - Uses `AsyncMemory` with pgvector backend for semantic search over memories
@@ -136,7 +144,7 @@ for the installed patch version.
     - OpenAI → GPT-4.1-nano
     - Ollama → Llama3.2
   - Graceful degradation via `NullMemoryClient` — system works without memory
-  - **mem0 2.0.x** (ADR-033, verified): hybrid search, entity matching/linking,
+  - **mem0 2.x** (ADR-033, verified): hybrid search, entity matching/linking,
     filters-in-search, metadata filtering, and local embedding fallback.
   - Platform-only features (Memory Decay, structured Memory Export) are not core
     product dependencies.
@@ -144,7 +152,7 @@ for the installed patch version.
 **Flow:** Feedback collection (`FeedbackService`) → preference extraction (mem0 AsyncMemory) → prompt injection (`PreferenceService` → `PromptComposer`)
 **Location:** Only used via `core/memory/mem0_client.py` (singleton factory, approved RULE-01b exception).
 **Not:** mem0 Platform as a core dependency; custom memory service. ADR-033
-compatibility gates passed with 2.0.x.
+compatibility gates passed with 2.x.
 **Note:** Graceful degradation is mandatory. If mem0 is unavailable, the system
 continues without memory features. Never a hard dependency at request time.
 
@@ -154,14 +162,28 @@ continues without memory features. Never a hard dependency at request time.
 **Location:** Only via `core/llm/embeddings.py` (approved RULE-01b exception).
 **Future:** Provider-agnostic embedding interface planned — model swappable via config.
 
-### sentence-transformers `all-MiniLM-L6-v2` (optional)
-**Why:** Local embedding fallback for users without OpenAI access (z.ai, Anthropic, Ollama).
-**Role:** Powers the embedding cascade for mem0 memory search when no API-based embeddings are available.
-**Architecture:** Local fallback remains required under ADR-033; exact tiers are
-defined by the compatibility-verified mem0 2.0.x implementation.
-See ADR-033 for full rationale.
-**Location:** Only via `core/memory/embedding_cascade.py`.
-**Not:** A required dependency — optional via `pip install narrare-core[memory]`.
+### sentence-transformers (v6 line via the `embeddings` extra)
+**Why:** Local embedding/reranking workhorse — two distinct consumers:
+(1) the all-MiniLM cascade fallback for users without OpenAI access
+(z.ai, Anthropic, Ollama), (2) the opt-in post-retrieval rerank tier for
+semantic search (ADR-090).
+**Role:** Cascade Tier 3 stays with mem0's own "huggingface" embedder
+(`all-MiniLM-L6-v2`, lazily imported — unchanged); the rerank tier uses the
+v6 `MultiVectorEncoder` with a pinned checkpoint (never the library default).
+**Canonical source:** the `embeddings` extra (`packages/core/pyproject.toml`)
+pins `sentence-transformers>=6.1,<7` (ADR-090 — major-line commitment; a v7
+release is a re-pin decision, never silent drift). This document records only
+the major-version commitment; check the manifest for the installed version.
+**Architecture:** The local cascade fallback remains required under ADR-033;
+exact tiers are defined by the compatibility-verified mem0 2.x implementation.
+See ADR-033 (cascade) and ADR-090 (rerank tier — contract, degradation,
+pilot) for full rationale.
+**Locations:** Cascade only via `core/memory/embedding_cascade.py`; rerank
+only via `core/embeddings/rerank.py` (RULE-08 confinement).
+**Not:** A required dependency — the `embeddings` extra is opt-in
+(`uv sync --all-packages --extra embeddings`); without it, rerank degrades
+loudly to the plain search path (ADR-090 D6) and the cascade falls back per
+ADR-033.
 
 ---
 
@@ -309,9 +331,15 @@ wrapper, which is incompatible with current FastAPI versions).
 **Role:** Rate-limit dependency for the AI cost surface. Currently in-memory only
 (no Redis backend init) — accepted risk AR-05-02 for local-first single-user
 deployment. A Redis backend can be enabled when multi-user deployment requires
-distributed rate tracking.
-**Location:** `apps/api/narrare/_app/rate_limiter_dep.py` (thin async adapter
-around `pyrate_limiter`), consumed via `apps/api/narrare/_app/rate_limits.py`.
+distributed rate tracking. All limiters are `SelfPruningLimiter` instances:
+`SingleBucketFactory(schedule_leak=False)` plus acquire-time pruning via the
+bucket's own `leak(now)` (the same method and clock the default sweeper used),
+so no background "Leaker" threads are started — pyrate's default construction
+costs one daemon thread + event loop per instance (previously 8 per process);
+the sliding-window admit decision is unchanged.
+**Location:** `apps/api/narrare/_app/rate_limiter_dep.py` (`SelfPruningLimiter`,
+thin async adapter around `pyrate_limiter`), consumed via
+`apps/api/narrare/_app/rate_limits.py`.
 **Canonical source:** `apps/api/pyproject.toml` declares `pyrate-limiter>=4.0,<5`.
 **Not:** `fastapi-limiter` (unmaintained, breaks on FastAPI ≥0.116), `slowapi`
 (replaced — async-incompatible).
@@ -510,6 +538,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: 2026-07-05 — Drift fix (review-04 AUFG-04-08): replaced hard version pins with major-version commitments + `pyproject.toml`/`package.json` as canonical source (Strategy: no hard numbers in prose); corrected `fastapi-limiter` → `pyrate-limiter` used directly; clarified `prometheus-client` Do-Not-Use rationale; replaced GLM-5.1 prose with pointer to provider registry; pointed pre-commit section at `.pre-commit-config.yaml` as SSOT for the hook list.
+> Last updated: 2026-10-01 — pyrate-limiter section: production limiters are now `SelfPruningLimiter` (`_app/rate_limiter_dep.py`) — `SingleBucketFactory(schedule_leak=False)` + acquire-time pruning via the bucket's own `leak(now)`; zero background Leaker threads (was 8 daemon threads + 8 event loops per process), sliding-window admit decision unchanged. Previous: 2026-10-01 — pydantic-ai 2.52 upgrade wave (ADR-089/090 plan): noted the adopted 2.5x-line capabilities (SelectModel/DecisionModel behind opt-in pilots, `glm-5.3-flash` in the provider live lists) without patch numbers in prose; fixed the stale intent→model routing claim — advisory `INTENT_PROFILES` in `core/llm/intent_profiles.py` + user cascade via `ModelRoutingResolver` (ADR-086), dynamic per-step tiering is the ADR-089 pilot; sentence-transformers section updated to the v6-pinned `embeddings` extra (ADR-090 rerank tier, all-MiniLM cascade unchanged via mem0's own provider; stale `narrare-core[memory]` install hint removed). Previous: 2026-09-30 drift fix: mem0 version wording "2.0.x" → "2.x" across the mem0 and sentence-transformers sections (prose records only the major-version commitment; manifest is canonical) after a compatibility-verified mem0ai upgrade. Older: 2026-07-05 drift fix (review-04 AUFG-04-08) replaced hard version pins with major-version commitments + `pyproject.toml`/`package.json` as canonical source; corrected `fastapi-limiter` → `pyrate-limiter` used directly; clarified `prometheus-client` Do-Not-Use rationale; replaced GLM-5.1 prose with pointer to provider registry; pointed pre-commit section at `.pre-commit-config.yaml` as SSOT for the hook list.
 > Maintained by: Architecture Agent
 > Changes require ADR

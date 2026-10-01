@@ -73,4 +73,16 @@ Input: Chapter text.
 Output: Voice profile with stylistic markers and patterns.
 NOT: General analysis (use ANALYSE). NOT: Beta reading (use BETA_READ).
 """,
+    LLMIntent.CONSISTENCY_TRIAGE: """\
+Rubric-based severity/confidence triage of
+ConsistencyAgent issues on a cheap model.
+
+Scope: re-score each already-detected ConsistencyIssue with an IntEnum
+severity rubric, evidence booleans and a confidence band (DecisionModel
+output-design patterns, Weg A — no TypeSafe, no logprob calibration).
+Input: issue list (description + conflicting_facts + current severity).
+Output: per-issue rubric assessment.
+NOT: issue detection (that is LLMIntent.CONSISTENCY / FACT_EXTRACT),
+full calibrated probabilities (Weg B — future ADR).
+""",
 }

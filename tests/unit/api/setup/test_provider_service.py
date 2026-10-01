@@ -278,3 +278,12 @@ class TestProviderServiceTestCallCredentialPassthrough:
             await service._test_call(provider, "cred-value", "some-model", "http://ollama:11434")
 
         assert env_var not in os.environ
+
+
+def test_fallback_catalog_contains_glm_53_flash() -> None:
+    """Offline fallback catalog must list glm-5.3-flash (setup wizard availability)."""
+    from narrare.setup.base_schemas import AIProvider
+    from narrare.setup.provider_service import _FALLBACK_MODELS
+
+    ids = {m.id for m in _FALLBACK_MODELS[AIProvider.ZAI]}
+    assert "glm-5.3-flash" in ids

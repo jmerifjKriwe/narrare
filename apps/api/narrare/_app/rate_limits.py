@@ -20,7 +20,7 @@ IMPORTANT — module-level instances vs factory functions:
 
     ✅ Correct (module-level instance)::
 
-        MY_LIMITER = _RateLimiterDep(Limiter(Rate(...)))
+        MY_LIMITER = _RateLimiterDep(SelfPruningLimiter(Rate(...)))
         # Depends(MY_LIMITER) → same Limiter across requests → works!
 
 Operator configuration (governed defaults):
@@ -53,6 +53,15 @@ Architecture decision AR-05-02:
     This is the accepted risk — functional for single-instance, revisit if
     multi-instance deployment is pursued.
 
+No background sweeper:
+    Every limiter below is a :class:`SelfPruningLimiter`, not a bare
+    ``pyrate_limiter.Limiter``: pyrate's default construction spawns a
+    ``"PyrateLimiter's Leaker"`` daemon thread (plus its own asyncio event
+    loop) per instance at import. SelfPruningLimiter disables that sweeper
+    and prunes expired items at acquire time instead — semantically
+    identical for the in-memory sliding-window decision, no background
+    threads (pinned by ``tests/unit/api/_app/test_rate_limiter_leaker.py``).
+
 Per-user vs per-IP:
     The default rate-limit key is client IP (see ``RateLimiter._identifier``
     in ``rate_limiter_dep.py``). Given this is local-first single-user,
@@ -60,8 +69,8 @@ Per-user vs per-IP:
     ``GET /setup/providers/{p}/models`` endpoint has no authentication and
     uses IP-based rate limiting (default behavior).
 
-    Note: with the default in-memory ``Limiter(Rate(...))`` (single shared
-    bucket), the key is informational — isolation between endpoint groups
+    Note: with the default in-memory ``SelfPruningLimiter(Rate(...))``
+    (single shared bucket), the key is informational — isolation between endpoint groups
     comes from using separate ``RateLimiter`` instances (below), not the key.
 """
 
@@ -71,9 +80,10 @@ import os
 from typing import Final
 
 import structlog
-from pyrate_limiter import Duration, Limiter, Rate
+from pyrate_limiter import Duration, Rate
 
 from narrare._app.rate_limiter_dep import RateLimiter as _RateLimiterDep
+from narrare._app.rate_limiter_dep import SelfPruningLimiter
 
 logger = structlog.get_logger(__name__)
 
@@ -131,7 +141,7 @@ RATE_LIMIT_WRITE_DEFAULT: Final[int] = 3
 RATE_LIMIT_WRITE_ENV_VAR: Final[str] = "NARRARE_RATE_LIMIT_WRITE"
 
 AI_WRITE_LIMITER = _RateLimiterDep(
-    Limiter(
+    SelfPruningLimiter(
         Rate(
             _resolve_rate_limit_count(
                 RATE_LIMIT_WRITE_ENV_VAR,
@@ -152,7 +162,7 @@ RATE_LIMIT_ANALYSIS_DEFAULT: Final[int] = 5
 RATE_LIMIT_ANALYSIS_ENV_VAR: Final[str] = "NARRARE_RATE_LIMIT_ANALYSIS"
 
 AI_ANALYSIS_LIMITER = _RateLimiterDep(
-    Limiter(
+    SelfPruningLimiter(
         Rate(
             _resolve_rate_limit_count(
                 RATE_LIMIT_ANALYSIS_ENV_VAR,
@@ -174,7 +184,7 @@ RATE_LIMIT_LIGHT_DEFAULT: Final[int] = 10
 RATE_LIMIT_LIGHT_ENV_VAR: Final[str] = "NARRARE_RATE_LIMIT_LIGHT"
 
 AI_LIGHT_LIMITER = _RateLimiterDep(
-    Limiter(
+    SelfPruningLimiter(
         Rate(
             _resolve_rate_limit_count(
                 RATE_LIMIT_LIGHT_ENV_VAR,
@@ -195,7 +205,7 @@ RATE_LIMIT_SETUP_MODELS_DEFAULT: Final[int] = 10
 RATE_LIMIT_SETUP_MODELS_ENV_VAR: Final[str] = "NARRARE_RATE_LIMIT_SETUP_MODELS"
 
 SETUP_MODELS_LIMITER = _RateLimiterDep(
-    Limiter(
+    SelfPruningLimiter(
         Rate(
             _resolve_rate_limit_count(
                 RATE_LIMIT_SETUP_MODELS_ENV_VAR,
@@ -219,7 +229,7 @@ RATE_LIMIT_PROMPT_LIVE_TEST_DEFAULT: Final[int] = 5
 RATE_LIMIT_PROMPT_LIVE_TEST_ENV_VAR: Final[str] = "NARRARE_RATE_LIMIT_PROMPT_LIVE_TEST"
 
 AI_PROMPT_LIVE_TEST_LIMITER = _RateLimiterDep(
-    Limiter(
+    SelfPruningLimiter(
         Rate(
             _resolve_rate_limit_count(
                 RATE_LIMIT_PROMPT_LIVE_TEST_ENV_VAR,
@@ -242,7 +252,7 @@ Override count via :data:`RATE_LIMIT_PROMPT_LIVE_TEST_ENV_VAR` (restart to apply
 RATE_LIMIT_WS_DEFAULT: Final[int] = 3
 RATE_LIMIT_WS_ENV_VAR: Final[str] = "NARRARE_RATE_LIMIT_WS"
 
-AI_WS_LIMITER = Limiter(
+AI_WS_LIMITER = SelfPruningLimiter(
     Rate(
         _resolve_rate_limit_count(
             RATE_LIMIT_WS_ENV_VAR,
@@ -253,7 +263,8 @@ AI_WS_LIMITER = Limiter(
 )
 """Rate limiter for WebSocket writing sessions — 3 requests/minute.
 
-Returns a raw :class:`pyrate_limiter.Limiter` (not a FastAPI dependency)
+Returns a raw limiter (a :class:`SelfPruningLimiter`, still a
+``pyrate_limiter.Limiter`` — not a FastAPI dependency)
 because it is used directly inside WebSocket handlers (a ``RateLimiter`` dep
 cannot be injected into a WebSocket receive loop).
 

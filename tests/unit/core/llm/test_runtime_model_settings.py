@@ -105,3 +105,21 @@ class TestEmptySettingsContract:
         assert settings == {"cache_control": True}
         assert settings is not None
         assert "thinking" not in settings
+
+
+def test_runtime_settings_omit_max_tokens_without_output_limit() -> None:
+    """pydantic-ai 2.52 raises Anthropic's default max_tokens 4096->16384 (Sonnet 4.5+).
+
+    Narrare deliberately does NOT pin max_tokens unless a UsageLimits
+    output cap is configured — the provider default applies. This test
+    pins that contract so the 2.52 default change stays a conscious,
+    documented behavior (cost is guarded by UsageLimits, which DO set
+    max_tokens when configured).
+    """
+    from narrare_core.llm._model_settings import build_runtime_model_settings
+    from narrare_core.llm.intents import LLMIntent
+    from narrare_core.llm.model_config import ResolvedModelConfig
+
+    config = ResolvedModelConfig(provider_name="anthropic", model_id="claude-sonnet-4-5-20251020")
+    settings = build_runtime_model_settings(config, None, intent=LLMIntent.CHAT)
+    assert settings is None or "max_tokens" not in settings

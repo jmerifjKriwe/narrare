@@ -30,9 +30,9 @@ from typing import TYPE_CHECKING, cast
 
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.testclient import TestClient
-from pyrate_limiter import Duration, Limiter, Rate
+from pyrate_limiter import Duration, Rate
 
-from narrare._app.rate_limiter_dep import RateLimiter
+from narrare._app.rate_limiter_dep import RateLimiter, SelfPruningLimiter
 
 if TYPE_CHECKING:
     from starlette.requests import Request
@@ -51,7 +51,7 @@ def _make_included_router_app(rate_limit: int = 3) -> FastAPI:
     to plain ``Route`` objects. The endpoint is guarded by our custom
     ``RateLimiter``.
     """
-    limiter = RateLimiter(Limiter(Rate(rate_limit, _SHORT_WINDOW)))
+    limiter = RateLimiter(SelfPruningLimiter(Rate(rate_limit, _SHORT_WINDOW)))
 
     app = FastAPI()
     sub = _new_subrouter()
@@ -160,8 +160,8 @@ class TestIdentifier:
         This mirrors the codebase design (``AI_WRITE_LIMITER`` vs
         ``AI_ANALYSIS_LIMITER`` etc.): each concern gets its own instance.
         """
-        limiter_a = RateLimiter(Limiter(Rate(2, _SHORT_WINDOW)))
-        limiter_b = RateLimiter(Limiter(Rate(2, _SHORT_WINDOW)))
+        limiter_a = RateLimiter(SelfPruningLimiter(Rate(2, _SHORT_WINDOW)))
+        limiter_b = RateLimiter(SelfPruningLimiter(Rate(2, _SHORT_WINDOW)))
         app = FastAPI()
         sub = _new_subrouter()
 
@@ -192,7 +192,7 @@ class TestIdentifier:
             return key
 
         limiter = RateLimiter(
-            Limiter(Rate(1, _SHORT_WINDOW)),
+            SelfPruningLimiter(Rate(1, _SHORT_WINDOW)),
             identifier=_by_user,
         )
         app = FastAPI()
@@ -222,7 +222,7 @@ class TestIdentifier:
             return "async-key"
 
         limiter = RateLimiter(
-            Limiter(Rate(1, _SHORT_WINDOW)),
+            SelfPruningLimiter(Rate(1, _SHORT_WINDOW)),
             identifier=_async_id,  # type: ignore[arg-type]
         )
         app = FastAPI()
@@ -276,7 +276,7 @@ class TestIdentifierKeyDerivation:
 
     async def test_x_forwarded_for_first_hop_is_used(self) -> None:
         """When present, the first X-Forwarded-For hop is the client IP."""
-        limiter = RateLimiter(Limiter(Rate(1, _SHORT_WINDOW)))
+        limiter = RateLimiter(SelfPruningLimiter(Rate(1, _SHORT_WINDOW)))
         request = _FakeRequest(
             forwarded_for="203.0.113.1, 198.51.100.2", client=_FakeClient("ignored")
         )
@@ -284,6 +284,6 @@ class TestIdentifierKeyDerivation:
 
     async def test_no_client_falls_back_to_loopback(self) -> None:
         """No X-Forwarded-For and no client -> 127.0.0.1 loopback fallback."""
-        limiter = RateLimiter(Limiter(Rate(1, _SHORT_WINDOW)))
+        limiter = RateLimiter(SelfPruningLimiter(Rate(1, _SHORT_WINDOW)))
         request = _FakeRequest(forwarded_for=None, client=None)
         assert await limiter._identifier(cast("Request", request)) == "127.0.0.1:/api/v1/ping"
