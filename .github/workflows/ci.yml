@@ -78,9 +78,11 @@ on:
   push:
     branches: [main, develop]
 
+# Budget guard: superseded runs on the same PR cancel; main pushes queue
+# instead of cancelling, so post-merge signal on main stays complete.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
