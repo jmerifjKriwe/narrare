@@ -1,4 +1,9 @@
 version: 2
+
+# Budget policy: routine dependency PRs run on a monthly cadence to conserve
+# GitHub Actions minutes. Security detection stays event-driven and schedule-
+# independent — Dependabot alerts and automated security updates still fire
+# immediately on new advisories. Rebases are manual (`@dependabot rebase`).
 updates:
   # =============================================================================
   # Python — root workspace (dev tools only)
@@ -6,11 +11,9 @@ updates:
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Berlin"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    rebase-strategy: disabled
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "python"
@@ -36,11 +39,9 @@ updates:
   - package-ecosystem: "pip"
     directory: "/apps/api"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Berlin"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    rebase-strategy: disabled
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "python"
@@ -60,11 +61,9 @@ updates:
   - package-ecosystem: "pip"
     directory: "/packages/core"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Berlin"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    rebase-strategy: disabled
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "python"
@@ -91,11 +90,9 @@ updates:
   - package-ecosystem: "pip"
     directory: "/packages/i18n"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Berlin"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    rebase-strategy: disabled
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "python"
@@ -115,11 +112,9 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Berlin"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    rebase-strategy: disabled
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "npm"
@@ -138,10 +133,9 @@ updates:
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Berlin"
+      interval: "monthly"
+    rebase-strategy: disabled
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "docker"
@@ -152,10 +146,9 @@ updates:
   - package-ecosystem: "docker"
     directory: "/.devcontainer"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Berlin"
+      interval: "monthly"
+    rebase-strategy: disabled
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "docker"
@@ -166,10 +159,9 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Berlin"
+      interval: "monthly"
+    rebase-strategy: disabled
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "github-actions"
