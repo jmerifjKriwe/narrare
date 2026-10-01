@@ -121,19 +121,50 @@ def get_rel_service(session: SessionDep) -> RelationshipService:
 
 
 def get_kb_suggest_service(session: SessionDep) -> KBSuggestService:
-    """Create a KBSuggestService with injected dependencies."""
+    """Create a KBSuggestService with injected dependencies.
+
+    The embedded ``EmbeddingService`` (the ``EmbeddingStoreProtocol`` behind
+    ``ProactiveContextService`` — the only production caller of
+    ``EmbeddingService.search``) carries the opt-in ADR-090 rerank tier:
+
+    - Flag off (shipped default): constructed exactly as before the tier
+      existed — repo only, the component builder is never consulted.
+    - Flag on: the same ``build_rerank_components`` DI the admin embedding
+      routes use supplies the reranker (pinned settings checkpoint) and the
+      KB text fetcher (``KBRepository.get_bodies_by_ids`` — the right
+      supplier for ``source_type="kb_entry"``). The stage reorders search
+      candidates before the cut; because ``ProactiveContextService``
+      re-scores its candidates in Stage 3, rerank here changes candidate
+      *membership* — which entries reach the prompt context — more than
+      their final order. That is the intended benefit (better candidates
+      in), not a prompt-ordering change.
+    """
     from narrare.chapters.repository import ChapterRepository
+    from narrare.embeddings.dependencies import build_rerank_components
     from narrare.embeddings.repository import EmbeddingRepository
     from narrare.embeddings.service import EmbeddingService
     from narrare.kb.repository import KBRepository
     from narrare.kb.suggest_service import KBSuggestService
     from narrare.novels.repository import NovelRepository
     from narrare_core.context.proactive_service import ProactiveContextService
+    from narrare_core.settings import get_core_settings
 
     # EmbeddingService implements EmbeddingStoreProtocol (takes text, not vectors).
     # LSP flags reprocess() return-type mismatch, but ProactiveContextService
     # never calls reprocess — the four methods it uses are structurally compatible.
-    embedding_service = EmbeddingService(EmbeddingRepository(session))
+    embedding_repo = EmbeddingRepository(session)
+    if get_core_settings().embedding_rerank_enabled:
+        reranker, text_fetcher = build_rerank_components(session)
+        embedding_service = EmbeddingService(
+            embedding_repo,
+            reranker=reranker,
+            text_fetcher=text_fetcher,
+        )
+    else:
+        # Shipped default: byte-identical pre-rerank construction — the
+        # builder is not consulted, no components, no logs (RULE-11: the
+        # stage stays inert until explicitly opted in).
+        embedding_service = EmbeddingService(embedding_repo)
     proactive = ProactiveContextService(
         embedding_store=cast("EmbeddingStoreProtocol", embedding_service)
     )
