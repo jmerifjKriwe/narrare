@@ -333,6 +333,7 @@ jobs:
       # and main pushes (see "Save Pyright cache" below) — cache writes are
       # visible and deliberate, never an implicit post-step side effect.
       - name: Restore Pyright cache
+        id: pyright-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
@@ -392,9 +393,10 @@ jobs:
       # cache writes must be visible, not hidden in a post-step). PRs are
       # restore-only; only the nightly (schedule) and pushes to main write
       # the cache, so PR-supplied code can never poison a cache consumed by
-      # other workflows.
+      # other workflows. The cache-hit guard skips futile re-saves of an
+      # already-existing immutable key (nightly/main noise).
       - name: Save Pyright cache
-        if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        if: (github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && steps.pyright-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
