@@ -1,14 +1,20 @@
 # ADR-090 — Multi-Vector Rerank Tier: post-retrieval MaxSim reranking via sentence-transformers v6 `MultiVectorEncoder`
 
-> **Status:** ✅ Accepted — dependency pin landed with this ADR (Task 13 of the
-> pydantic-ai 2.52 upgrade plan, feature F5); the rerank tier itself is
-> implemented by Tasks 14–16 (update to ✅ Implemented at Gate-12 completion).
+> **Status:** ✅ Implemented — dependency pin landed with this ADR (Task 13 of
+> the pydantic-ai 2.52 upgrade plan, feature F5); the rerank tier implemented
+> by Tasks 14–16 and measured by the Task-16 pilot; flipped 2026-10-01 at
+> Phase-6 gate closure. Wiring is dormant by design until a production search
+> consumer lands (see CURRENT_STATE).
 > **Date:** 2026-10-01
 > **Deciders:** Architecture Agent; binding user decision 2026-09-30 — the
 > rerank default encoder is a **specific pinned checkpoint** (candidate
 > `lightonai/LateOn`, verified below), **never the library default** (drifts
 > between releases, breaks eval comparability).
 > **Supersedes:** none
+> **Amendment (2026-10-01, Task-18 docs pass):** Decision 6's extra-missing
+> degradation wording corrected to the implemented behavior — the stage is
+> **skipped entirely**, not "`NullReranker` wired" (see the amendment note
+> under Decision 6).
 > **Related:** ADR-033 (mem0 OSS memory — cascade gates this ADR must not
 > disturb), ADR-006 (technology choices & explicit exclusions; local-first
 > posture detailed in `docs/_shared/TECH_STACK.md`), ADR-071 (`CoreSettings`),
@@ -298,7 +304,9 @@ All rerank logic lives in one new Core module,
   import time), mirroring `core/memory/availability.py` for mem0.
 - `is_rerank_available() -> bool` — import probe, `is_mem0_available` pattern.
 - `NullReranker` — passthrough (returns `list(candidates)[:top_n]`, input
-  order) for the extra-absent / flag-degraded paths.
+  order) as the always-available contract implementation; production wiring
+  skips the stage entirely instead of wiring it when the extra is absent
+  (see the Decision 6 amendment).
 
 This ADR + the verified API section above are the Task-14 contract; if the
 installed surface disagrees with the ADR, the ADR wins and gets amended.
@@ -330,9 +338,20 @@ stable across releases and would break eval comparability (ADR-083).
 
 ### 6. Graceful degradation (RULE-11) — never break search
 
+> **Amendment (2026-10-01, Task-18 docs pass):** the first bullet below is
+> corrected to the implemented Task-15 behavior: with the extra missing, the
+> rerank stage is **skipped entirely** (byte-identical path) rather than a
+> `NullReranker` being wired. Skip is strictly better: it avoids the 4×
+> overfetch (`min(limit*4, 100)`) and the pointless candidate-text fetch
+> roundtrip that a wired passthrough reranker would still incur.
+> `NullReranker` remains part of the Core contract (passthrough for any
+> consumer that requires a `Reranker` instance); production wiring resolves
+> to "no components" instead.
+
 - Extra absent + flag on → one structured warning (`embedding_rerank_unavailable`,
-  `reason="extra_missing"`) at wiring time, `NullReranker` wired, search
-  returns the pre-rerank order.
+  `reason="extra_missing"`) at wiring time, **no rerank components wired —
+  the stage is skipped and search returns the byte-identical pre-rerank
+  path** (amended 2026-10-01; originally worded as "`NullReranker` wired").
 - Checkpoint load/scoring failure at first rerank use → one structured
   warning (`embedding_rerank_degraded` with the exception class), that
   request returns the pre-rerank top-N. The base pgvector + hybrid path
