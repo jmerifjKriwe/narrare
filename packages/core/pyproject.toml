@@ -25,7 +25,7 @@ dependencies = [
 narrare-i18n = { workspace = true }
 
 [project.optional-dependencies]
-embeddings = ["sentence-transformers>=3.0"]
+embeddings = ["sentence-transformers>=6.1,<7"]
 nlp = [
     "spacy>=3.8",
 ]
