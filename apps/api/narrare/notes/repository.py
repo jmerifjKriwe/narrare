@@ -124,7 +124,7 @@ class NoteRepository(BaseRepository):
         unnested = (
             select(func.unnest(Note.tags).label("tag")).where(Note.user_id == user_id).subquery()
         )
-        stmt = select(unnested.c.tag.distinct()).order_by(unnested.c.tag)
+        stmt = select(unnested.c.tag).distinct().order_by(unnested.c.tag)
         if q:
             stmt = stmt.where(unnested.c.tag.ilike(f"{_escape_like(q)}%", escape="\\"))
         result = await self._session.execute(stmt)
