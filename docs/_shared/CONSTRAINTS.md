@@ -1198,7 +1198,7 @@ the same registry/service.
 | RULE-02b Prompt-Resolution-Path Compliance | `check_architecture.py` — AST scan (direct registry access, app-layer loaders, user-channel injection, inline fallbacks, off-scope MetaPromptLoader) + PR review |
 | RULE-04 File size | `check_architecture.py` — line count |
 | RULE-06 Router purity | `check_architecture.py` — complexity heuristic |
-| RULE-09 Type signatures | `just typecheck` — pyright strict (`uv run pyright`) + CI job "Type Check (pyright)" |
+| RULE-09 Type signatures | `just typecheck` — pyright strict (`uv run pyright`) + CI job "Lint, Typecheck & Security" (quality) |
 | RULE-10 Test coverage | `pytest --cov` with minimum thresholds |
 | RULE-11 Silent failures | `check_architecture.py` — bare except scan |
 | RULE-13 Streaming/non-streaming interface | PR review + signature-shape regression test (ADR-065 Phase D) |

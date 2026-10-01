@@ -16,8 +16,8 @@ name: CI
 # | G3c  | export_openapi.py --check              | ✅ Blocking  | architecture Job                   |
 # | G4   | test_fake_conformance.py               | ✅ Blocking  | test-unit Job (via pytest)         |
 # | G5   | Cross-layer contract tests             | ✅ Blocking  | test-unit Job (via pytest)         |
-# | G6   | pyright (strict; mypy not required)    | ✅ Blocking  | typecheck Job                      |
-# | G7   | ruff check + ruff format --check       | ✅ Blocking  | lint Job                           |
+# | G6   | pyright (strict; mypy not required)    | ✅ Blocking  | quality Job                        |
+# | G7   | ruff check + ruff format --check       | ✅ Blocking  | quality Job                        |
 # | G8   | check_adoption.py                      | ✅ Blocking  | architecture Job                   |
 # | G9   | check_prompt_structure.py              | ✅ Blocking  | architecture Job                   |
 # | G9   | check_streaming_compliance.py (RULE-20)| ✅ Blocking  | architecture Job                   |
@@ -32,8 +32,8 @@ name: CI
 # | --   | check_module_coverage.py (RULE-10)    | ✅ Blocking   | test-unit Job (--fail, ratcheted baselines) |
 # | --   | check-testid.ts (data-testid gate)      | ✅ Blocking  | frontend Job                       |
 # | --   | check-vrt-mock-contract.ts (ADR-059)    | ✅ Blocking  | frontend Job (before VRT run)     |
-# | --   | Gitleaks (secret scanning, AUFG-05-09) | ✅ Blocking  | security Job                       |
-# | --   | bandit + pip-audit                     | ✅ Blocking  | security Job                       |
+# | --   | Gitleaks (secret scanning, AUFG-05-09) | ✅ Blocking  | quality Job                        |
+# | --   | bandit + pip-audit                     | ✅ Blocking  | quality Job                        |
 # | --   | biome check (frontend lint/format)     | ✅ Blocking  | frontend Job                       |
 # | --   | pnpm test (frontend tests)             | ✅ Blocking  | frontend Job                       |
 # | --   | Standalone boot smoke (frontend)       | ✅ Blocking  | frontend-standalone Job (PR-only)  |
@@ -284,84 +284,16 @@ jobs:
         run: uv run --no-sync python scripts/check_current_state_facts.py
 
   # -------------------------------------------------------------------------
-  # Lint & format (< 60s)
+  # Quality gate: lint, typecheck, security in ONE job (spec §8 Phase 2) —
+  # a shared checkout + a single `uv sync` save ~2-3 min per run in setup
+  # and per-job minute rounding. Event-agnostic like its predecessors
+  # (lint / typecheck / security ran on every event too).
   # -------------------------------------------------------------------------
-  lint:
-    name: Lint & Format
+  quality:
+    name: Lint, Typecheck & Security
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: architecture
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          # Jobs below execute PR-supplied scripts — do not leave the
-          # repo token persisted in the workspace (spec §5.4).
-          persist-credentials: false
-
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync --frozen --all-packages --group dev
-
-      - name: Ruff lint
-        run: uv run ruff check apps/ packages/ scripts/ tests/
-
-      - name: Ruff format check
-        run: uv run ruff format --check apps/ packages/ scripts/ tests/
-
-  # -------------------------------------------------------------------------
-  # Type checking (< 2 min)
-  # -------------------------------------------------------------------------
-  typecheck:
-    name: Type Check (pyright)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: architecture
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          # Jobs below execute PR-supplied scripts — do not leave the
-          # repo token persisted in the workspace (spec §5.4).
-          persist-credentials: false
-
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync --frozen --all-packages --group dev --extra embeddings
-
-      - name: Cache Pyright
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: |
-            .pyright/
-            **/.pyc
-          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'tests/pyrightconfig.json') }}
-          restore-keys: |
-            pyright-${{ runner.os }}-
-
-      - name: Pyright
-        run: uv run pyright
-
-      # Mirror the local `just typecheck-tests` gate (and pre-commit
-      # `pyright-tests` hook): the main pyright config (pyproject.toml)
-      # excludes tests/ for performance, so test files are type-checked
-      # separately by tests/pyrightconfig.json (basic mode). Q-015-Q-019
-      # gate-coverage follow-up.
-      - name: Pyright (Tests)
-        run: uv run pyright --project tests/pyrightconfig.json
-
-  # -------------------------------------------------------------------------
-  # Security (< 60s)
-  # -------------------------------------------------------------------------
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: architecture
+    timeout-minutes: 20
+    needs: [architecture]
     steps:
       # fetch-depth: full history (0) on pushes to main/develop for the
       # gitleaks full-history scan; shallow (1) otherwise — PR diffs are
@@ -381,9 +313,48 @@ jobs:
         with:
           enable-cache: true
 
+      # Single sync for all three blocks. The embeddings extra is REQUIRED
+      # (not optional): pyright resolves imports behind the embeddings extra
+      # (the old typecheck job synced it; ruff/bandit don't care, so this
+      # superset serves everyone).
       - name: Install dependencies
-        run: uv sync --frozen --all-packages --group dev
+        run: uv sync --frozen --all-packages --group dev --extra embeddings
 
+      # ── Lint & format ─────────────────────────────────────────────────
+      - name: Ruff lint
+        run: uv run ruff check apps/ packages/ scripts/ tests/
+
+      - name: Ruff format check
+        run: uv run ruff format --check apps/ packages/ scripts/ tests/
+
+      # ── Type checking ─────────────────────────────────────────────────
+      # Pyright cache: RESTORE-only here. The write is a separate, explicit
+      # actions/cache/save step at the END of this job, gated to nightly
+      # and main pushes (see "Save Pyright cache" below) — cache writes are
+      # visible and deliberate, never an implicit post-step side effect.
+      - name: Restore Pyright cache
+        id: pyright-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            .pyright/
+            **/.pyc
+          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'tests/pyrightconfig.json') }}
+          restore-keys: |
+            pyright-${{ runner.os }}-
+
+      - name: Pyright
+        run: uv run pyright
+
+      # Mirror the local `just typecheck-tests` gate (and pre-commit
+      # `pyright-tests` hook): the main pyright config (pyproject.toml)
+      # excludes tests/ for performance, so test files are type-checked
+      # separately by tests/pyrightconfig.json (basic mode). Q-015-Q-019
+      # gate-coverage follow-up.
+      - name: Pyright (Tests)
+        run: uv run pyright --project tests/pyrightconfig.json
+
+      # ── Security ──────────────────────────────────────────────────────
       - name: Install Gitleaks
         env:
           GITLEAKS_VERSION: "8.30.1"
@@ -418,6 +389,20 @@ jobs:
         # --ignore-vuln here with a re-evaluate date and a linked tracking issue.
         run: uv run pip-audit --skip-editable
 
+      # Pyright cache WRITE — explicit, gated, auditable (TanStack lesson:
+      # cache writes must be visible, not hidden in a post-step). PRs are
+      # restore-only; only the nightly (schedule) and pushes to main write
+      # the cache, so PR-supplied code can never poison a cache consumed by
+      # other workflows. The cache-hit guard skips futile re-saves of an
+      # already-existing immutable key (nightly/main noise).
+      - name: Save Pyright cache
+        if: (github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && steps.pyright-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            .pyright/
+            **/.pyc
+          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'tests/pyrightconfig.json') }}
   # -------------------------------------------------------------------------
   # Workflow security audit (zizmor) — blocking PR check when workflows
   # change + nightly (spec §5.2). Catches: dangerous triggers, template
@@ -456,7 +441,7 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [lint, typecheck]
+    needs: [quality]
     # PR-gated full suite; nightly/dispatch run everything (spec §3).
     if: >-
       github.event_name == 'schedule' ||
@@ -589,7 +574,7 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [lint, typecheck, changes]
+    needs: [quality, changes]
     # PR path: skip on draft PRs (WIP iteration doesn't need the
     # Docker+spaCy path — it reruns once marked ready-for-review) and on
     # PRs whose diff never touched backend code. Nightly/dispatch run all.
@@ -637,6 +622,8 @@ jobs:
 
       - name: Install just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0" # pinned — zizmor unpinned-tools
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
@@ -975,7 +962,7 @@ jobs:
     # divergence between the two browser-driven jobs.
     runs-on: ubuntu-22.04
     timeout-minutes: 30
-    needs: [lint, typecheck]
+    needs: [quality]
     # Full-stack E2E moved from every main-push to nightly + manual
     # dispatch (spec §3; was 192 min of the Sept 1-14 burn).
     if: >-
@@ -1033,6 +1020,8 @@ jobs:
 
       - name: Install just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0" # pinned — zizmor unpinned-tools
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
