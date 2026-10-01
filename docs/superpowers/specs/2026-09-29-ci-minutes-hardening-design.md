@@ -68,6 +68,10 @@ jobs (Detect Changes, warnings-summary, badge). Quota was exhausted by Sept 14.
 | `schedule` (new nightly cron) | Full CI incl. E2E + Integration (~13 min) |
 | `workflow_dispatch` | Full CI (manual debugging) |
 
+> Update 2026-10-01 (PR #233): the three smoke jobs lint/typecheck/security
+> are consolidated into the `quality` job ("Lint, Typecheck & Security");
+> push smoke is now Detect Changes + Architecture + quality.
+
 Implementation pattern — remove `github.event_name == 'push' ||` overrides;
 expensive jobs get:
 
