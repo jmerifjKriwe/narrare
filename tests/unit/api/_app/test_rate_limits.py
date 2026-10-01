@@ -32,6 +32,7 @@ from fastapi.testclient import TestClient
 from pyrate_limiter import Duration, Limiter, Rate
 
 from narrare._app.rate_limiter_dep import RateLimiter as _RateLimiterDep
+from narrare._app.rate_limiter_dep import SelfPruningLimiter
 
 if TYPE_CHECKING:
     import pytest
@@ -185,9 +186,10 @@ class TestOperatorOverrideWiring:
 
         Instead, this test exercises the IDENTICAL production code path that
         the module-level singletons use — ``_resolve_rate_limit_count`` →
-        ``Rate(count, LONG_WINDOW_MS)`` → ``Limiter`` — on a LOCAL limiter
-        built from a monkeypatched env. The env override provably changes the
-        effective acquire count without touching any module-level singleton.
+        ``Rate(count, LONG_WINDOW_MS)`` → ``SelfPruningLimiter`` — on a LOCAL
+        limiter built from a monkeypatched env. The env override provably
+        changes the effective acquire count without touching any module-level
+        singleton.
         ``monkeypatch`` auto-reverts the env at test exit, so no other test is
         affected.
     """
@@ -198,7 +200,7 @@ class TestOperatorOverrideWiring:
         count = _resolve_rate_limit_count(RATE_LIMIT_WS_ENV_VAR, RATE_LIMIT_WS_DEFAULT)
         assert count == 2
         # ... and a limiter built from that count admits 2, rejects the 3rd.
-        local_limiter = Limiter(Rate(count, LONG_WINDOW_MS))
+        local_limiter = SelfPruningLimiter(Rate(count, LONG_WINDOW_MS))
         key = "test:operator-override-wiring:ws"
         assert local_limiter.try_acquire(key, blocking=False) is True
         assert local_limiter.try_acquire(key, blocking=False) is True
@@ -229,9 +231,9 @@ def _make_app(
     Each call creates independent ``Limiter`` instances so tests don't
     pollute each other.
     """
-    _write_limiter = _RateLimiterDep(Limiter(Rate(write_rate, _SHORT_WINDOW)))
-    _analysis_limiter = _RateLimiterDep(Limiter(Rate(analysis_rate, _SHORT_WINDOW)))
-    _light_limiter = _RateLimiterDep(Limiter(Rate(light_rate, _SHORT_WINDOW)))
+    _write_limiter = _RateLimiterDep(SelfPruningLimiter(Rate(write_rate, _SHORT_WINDOW)))
+    _analysis_limiter = _RateLimiterDep(SelfPruningLimiter(Rate(analysis_rate, _SHORT_WINDOW)))
+    _light_limiter = _RateLimiterDep(SelfPruningLimiter(Rate(light_rate, _SHORT_WINDOW)))
 
     _app = FastAPI()
 
@@ -329,7 +331,7 @@ class TestWebSocketLimiter:
     """AI_WS_LIMITER is a raw Limiter used inline in WebSocket handlers."""
 
     def test_rejects_after_three(self) -> None:
-        limiter = Limiter(Rate(3, _SHORT_WINDOW))
+        limiter = SelfPruningLimiter(Rate(3, _SHORT_WINDOW))
         key = "ws:writing:user-1:chapter-a"
         for _ in range(3):
             assert limiter.try_acquire(key, blocking=False) is True
