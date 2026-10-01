@@ -637,6 +637,8 @@ jobs:
 
       - name: Install just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0" # pinned — zizmor unpinned-tools
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
@@ -1033,6 +1035,8 @@ jobs:
 
       - name: Install just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0" # pinned — zizmor unpinned-tools
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
