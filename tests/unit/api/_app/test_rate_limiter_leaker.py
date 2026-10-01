@@ -23,6 +23,7 @@ from __future__ import annotations
 import asyncio
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Final
@@ -95,6 +96,20 @@ class TestNoBackgroundSweeper:
         With ``schedule_leak=False`` it must stay ``None`` forever."""
         for limiter in _MODULE_LEVEL_LIMITERS:
             assert limiter.bucket_factory._leaker is None  # pyright: ignore[reportPrivateUsage]
+
+    def test_no_leaker_threads_in_this_process(self) -> None:
+        """In-process guard: no Leaker threads exist in this test worker.
+
+        Deterministic because nothing in ``tests/`` (or production code)
+        constructs a bare ``Limiter`` anymore — every limiter goes through
+        ``SelfPruningLimiter``, so no Leaker can be spawned regardless of
+        pytest-randomly shuffle order or xdist worker assignment. The
+        subprocess pin above stays the authoritative fresh-interpreter
+        observable; this one fails fast in-process if a bare ``Limiter``
+        construction is ever reintroduced anywhere in the test tree.
+        """
+        leakers = [t for t in threading.enumerate() if "Leaker" in t.name]
+        assert leakers == []
 
 
 class TestSelfPruningLimiter:
