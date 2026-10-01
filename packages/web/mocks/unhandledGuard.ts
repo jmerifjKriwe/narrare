@@ -7,7 +7,7 @@ import { afterEach, beforeEach } from "vitest";
 // PO directive after the ECONNREFUSED incident (commit 0006ec86): the "all
 // endpoints handled" invariant must be enforced, not assumed. Two layers:
 //
-// 1. `onUnhandledRequest: "error"` (configured at the `server.listen` call
+// 1. `onUnhandledFrame: "error"` (configured at the `server.listen` call
 //    site in setupTests.ts) — the fetch itself REJECTS. Necessary but NOT
 //    sufficient: consumers that catch (React Query puts the rejection into
 //    error state) swallow it, and the test still passes (proven by mutation

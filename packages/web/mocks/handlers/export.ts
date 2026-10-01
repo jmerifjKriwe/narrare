@@ -9,7 +9,7 @@ import type { FormatAvailability } from "@/types";
 // MOUNT by useExportPanel (composed into every EditorView render via
 // EditorOverlays → ExportPanel), so ANY test rendering the editor without a
 // per-test `server.use` override hits this endpoint. Without a default handler
-// the request is unhandled (`onUnhandledRequest: "error"`, setupTests.ts) and
+// the request is unhandled (`onUnhandledFrame: "error"`, setupTests.ts) and
 // the running test FAILS via the mechanical request:unhandled guard — the
 // defect class fixed 2026-08-18 (ECONNREFUSED noise, commit 0006ec86); the
 // error-policy hardening then proved this is the ONLY default-handler gap the
