@@ -42,6 +42,9 @@ preserved from the original brief):
 
 from __future__ import annotations
 
+import asyncio
+import gc
+import warnings
 from typing import TYPE_CHECKING
 
 import pytest
@@ -93,6 +96,72 @@ def _instrumented_agent(
     return agent
 
 
+def _run_agent_sync(agent: Agent[None, _LeakProbeOutput], prompt: str) -> None:
+    """Run ``agent.run_sync`` without leaking pydantic-ai's event loop.
+
+    pydantic-ai's ``run_sync`` drives the agent via
+    ``pydantic_ai._utils.run_until_complete``, whose ``get_event_loop()``
+    plants a NEW event loop in the policy's current-loop slot when the slot
+    is empty (the steady state between pytest-asyncio/``asyncio.run``
+    invocations) — and **never closes it**. The planted loop owns a unix
+    self-pipe socket pair that is only released when the loop is closed or
+    garbage-collected.
+
+    The slot reference keeps the loop alive silently until the NEXT
+    ``asyncio.Runner`` user (``asyncio.run`` in other tests, anyio portals)
+    replaces the slot, dropping the loop's last reference. The loop is then
+    finalized OPEN: its ``__del__`` emits ``ResourceWarning: unclosed event
+    loop`` plus two ``unclosed <socket.socket family=AF_UNIX>`` warnings,
+    which pytest's ``unraisableexception`` plugin escalates into an
+    ``ExceptionGroup`` attributed to whichever test happens to trigger the
+    next ``gc.collect()`` — a random victim (observed across gate runs:
+    ``test_token_limit_migration_safety``, ``test_project_ai_settings``,
+    ``TestConsistencyCheckEndpoint``, ``test_session_stop_and_recovery``,
+    ``TestSaveAndCount``, ``TestMigrationIdempotency``).
+
+    This is the same upstream bug family as ``pydantic_evals``
+    ``Dataset.evaluate_sync`` (fixed in ``evals/runner.py`` via
+    ``_close_pydantic_evals_leaked_event_loop``, commit ``b79433f6``);
+    this helper applies the identical loop hygiene to the ``run_sync``
+    entry point: close the loop pydantic-ai planted, restore the previous
+    slot state.
+    """
+    with warnings.catch_warnings():
+        # get_event_loop_policy is deprecated (slated for removal in 3.16);
+        # there is no non-deprecated way to inspect/restore the slot. Same
+        # narrow suppression as evals/runner.py.
+        warnings.filterwarnings(
+            "ignore", message=r".*get_event_loop_policy.*", category=DeprecationWarning
+        )
+        policy = asyncio.get_event_loop_policy()
+        try:
+            saved = policy.get_event_loop()
+        except RuntimeError:
+            saved = None
+    try:
+        agent.run_sync(prompt)
+    finally:
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message=r".*get_event_loop_policy.*", category=DeprecationWarning
+            )
+            try:
+                planted = policy.get_event_loop()
+            except RuntimeError:
+                planted = None
+        if (
+            planted is not None
+            and planted is not saved
+            and not planted.is_running()
+            and not planted.is_closed()
+        ):
+            planted.close()
+        if saved is not None and not saved.is_closed():
+            asyncio.set_event_loop(saved)
+        else:
+            asyncio.set_event_loop(None)
+
+
 def _spans_for_run(include_content: bool) -> Sequence[ReadableSpan]:
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
@@ -103,7 +172,7 @@ def _spans_for_run(include_content: bool) -> Sequence[ReadableSpan]:
         provider,
         include_content=include_content,
     )
-    agent.run_sync(SECRET_PROMPT)
+    _run_agent_sync(agent, SECRET_PROMPT)
     provider.force_flush()
     return exporter.get_finished_spans()
 
@@ -174,7 +243,7 @@ def test_no_span_exceptions_or_errors_leak(include_content: bool) -> None:
         include_content=include_content,
     )
     with pytest.raises(UnexpectedModelBehavior):
-        agent.run_sync(SECRET_PROMPT)
+        _run_agent_sync(agent, SECRET_PROMPT)
     provider.force_flush()
     spans = exporter.get_finished_spans()
     joined = "\n".join(_all_attribute_values(spans))
@@ -191,3 +260,76 @@ def test_no_span_exceptions_or_errors_leak(include_content: bool) -> None:
     assert all(s.status.description is None for s in error_spans), (
         "error-status description must be redacted when include_content=False"
     )
+
+
+# ---------------------------------------------------------------------------
+# Regression: run_sync must not leak an open asyncio event loop
+# ---------------------------------------------------------------------------
+#
+# Bug history (identical mechanism to the pydantic-evals leak fixed in
+# tests/unit/evals/test_runner_and_drift.py): ``Agent.run_sync`` drives the
+# agent via ``pydantic_ai._utils.run_until_complete`` whose
+# ``get_event_loop()`` creates a new event loop and installs it as the
+# policy's current loop when the slot is empty — but never closes it. The
+# next ``asyncio.Runner`` user replaces the slot, the open loop becomes
+# garbage, and its finalization emits three ResourceWarnings (the loop +
+# its AF_UNIX self-pipe pair). pytest's unraisable plugin escalated these
+# into teardown ``ExceptionGroup`` errors on random victim tests under
+# xdist (gate runs 2026-09/10: token-limit-migration, project-ai-settings,
+# consistency-check-401, session-stop-and-recovery, save-and-count,
+# migration-idempotency victims — all green in isolation).
+#
+# Mirrors ``test_run_suites_does_not_leak_open_event_loop``: promote
+# ResourceWarning to error, force collection of anything the run left
+# behind, and assert nothing fires.
+def test_run_sync_does_not_leak_open_event_loop() -> None:
+    """``_run_agent_sync`` must close the loop pydantic-ai plants in the slot.
+
+    Two layers:
+
+    1. Direct policy-slot assertion: after the helper, no open loop may
+       remain installed as the "current" loop (the helper closes the
+       planted loop and restores the pre-call state — ``None`` here).
+    2. Belt-and-suspenders sweep: drop the slot reference and force
+       collection with ResourceWarning promoted to an error, so an open
+       leftover loop cannot pass unnoticed.
+    """
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    agent = _instrumented_agent(
+        TestModel(custom_output_args={"verdict": SECRET_OUTPUT, "reason": "probe"}),
+        provider,
+        include_content=False,
+    )
+
+    with warnings.catch_warnings():
+        # get_event_loop_policy is deprecated (3.16 removal); same narrow
+        # suppression as _run_agent_sync / evals/runner.py.
+        warnings.filterwarnings(
+            "ignore", message=r".*get_event_loop_policy.*", category=DeprecationWarning
+        )
+        policy = asyncio.get_event_loop_policy()
+
+        # Clean starting state: pydantic-ai must plant a FRESH loop for the
+        # leak to be observable (a pre-existing slot loop would be reused).
+        asyncio.set_event_loop(None)
+
+        _run_agent_sync(agent, SECRET_PROMPT)
+
+        # Layer 1: the slot must NOT hold an open loop after the run.
+        try:
+            leftover = policy.get_event_loop()
+        except RuntimeError:
+            leftover = None
+        assert leftover is None or leftover.is_closed() or leftover.is_running(), (
+            "run_sync left an open, idle event loop in the policy slot — "
+            "this loop is finalized unclosed by the next asyncio.Runner user "
+            "and escalates to an unraisable-exception error on a random test"
+        )
+
+        # Layer 2: drop the reference and force collection; an open leftover
+        # loop's __del__ would emit ResourceWarning → error via the filter.
+        asyncio.set_event_loop(None)
+        warnings.filterwarnings("error", category=ResourceWarning)
+        gc.collect()
