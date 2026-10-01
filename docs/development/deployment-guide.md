@@ -271,7 +271,7 @@ Current hook groups:
 | Frontend quality | pre-commit | Biome, i18n validation, TypeScript type check |
 | File hygiene | pre-commit | Whitespace, EOF, YAML/TOML/JSON, merge-conflict, large-file checks |
 | SSOT consistency | pre-commit | check_current_state_facts.py — CURRENT_STATE.md volatility policy (always_run, ADR-076) |
-| Secret scanning | pre-commit | check_secrets.py --staged (Gitleaks wrapper, AUFG-05-09) — scans staged file contents only (no history); the CI security job runs the full-history audit |
+| Secret scanning | pre-commit | check_secrets.py --staged (Gitleaks wrapper, AUFG-05-09) — scans staged file contents only (no history); the CI quality job ("Lint, Typecheck & Security") runs the full-history audit |
 | Commit message | commit-msg | Conventional commit validation |
 
 Die Hooks `ssot-consistency` und `secrets-gitleaks` laufen mit `always_run: true`
