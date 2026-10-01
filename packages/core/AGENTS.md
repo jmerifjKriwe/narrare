@@ -138,10 +138,15 @@ Capabilities decken nur garantierte Meta-/Universal-Regeln ab; sie ersetzen
 nicht die PromptComposer-Cascade für anpassbare Feature-Prompts.
 
 **Neuen Intent hinzufügen (selten nötig):**
-1. `LLMIntent` in `llm/intents.py` erweitern
-2. `MODEL_ROUTING` Eintrag hinzufügen
-3. `_INTENT_TO_CATEGORY` und `_INTENT_TO_MODE` in `prompts/composer.py` erweitern
+1. `LLMIntent` in `llm/intents/_enums.py` erweitern
+2. Advisory-Profil in `INTENT_PROFILES` (`llm/intent_profiles.py`) pflegen —
+   das konkrete Modell wird zur Laufzeit über die User-Config-Cascade
+   aufgelöst (`ModelRoutingResolver`, `llm/model_routing.py`, ADR-086);
+   eine harte Routing-Tabelle gibt es nicht mehr
+3. `INTENT_TO_CATEGORY` und `INTENT_TO_MODE` in `prompts/route_table.py` erweitern
 4. Prompt-Datei in `prompts/_bundled/{category}/{lang}/{mode}/system.md` erstellen
+5. Route im Manifest `scripts/architecture/prompt-surface-manifest.yaml`
+   eintragen (ADR-037) — `just check-architecture` schlägt sonst fehl
 
 ---
 
