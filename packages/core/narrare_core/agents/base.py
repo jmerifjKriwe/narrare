@@ -86,7 +86,12 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
         self,
         model: Model,
         deps_type: type[DepsT],
-        output_type: OutputSpec[OutputT] | None = None,
+        # Default mirrors pydantic_ai.Agent.__init__ (`output_type: OutputSpec[OutputDataT] = str`)
+        # so text agents may omit it; explicit ``None`` (tool-provider agents such as KBAgent)
+        # falls back to the same pydantic-ai ``str`` default at runtime. Both spellings keep
+        # pyright >=1.1.412 happy: the old ``= None`` default surfaced as ``TypeForm[None]``
+        # at call sites that omit the parameter (PEP 747 TypeForm default-on).
+        output_type: OutputSpec[OutputT] | None = str,
         capabilities: list[Any] | None = None,
         system_prompt: str | None = None,
         instructions: (
@@ -103,7 +108,10 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
         Args:
             model: Pydantic-AI model instance supplied by ``ModelRegistry``.
             deps_type: The dependency type for this agent.
-            output_type: Optional output spec for structured output.
+            output_type: Output spec for structured output. Defaults to
+                ``str`` (same as ``pydantic_ai.Agent``); explicit ``None``
+                is accepted and resolves to that same ``str`` default at
+                runtime (used by tool-provider agents, e.g. ``KBAgent``).
             capabilities: Additional capabilities beyond the always-injected
                 ``NarrareObservability``, ``NarrareUniversalRules``, and
                 ``NarrareMeta``.
@@ -124,8 +132,10 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
                 pydantic-ai default of 1.
         """
         # Build Agent kwargs: pydantic-ai does not accept None for
-        # output_type, system_prompt, or instructions, so only pass when
-        # explicitly set.
+        # output_type, system_prompt, or instructions. output_type now
+        # defaults to `str` (the pydantic-ai default — forwarding it
+        # explicitly is behaviorally identical to omitting it); an explicit
+        # None skips the kwarg, which lands on the same pydantic-ai default.
         agent_kwargs: dict[str, Any] = {
             "model": model,
             "deps_type": deps_type,

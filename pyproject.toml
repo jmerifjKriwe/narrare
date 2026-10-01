@@ -14,7 +14,7 @@ dependencies = []
 [dependency-groups]
 dev = [
   "ruff==0.16.9",
-  "pyright==1.1.411",
+  "pyright==1.1.414",
   "pytest==9.1.1",
   "pytest-asyncio==1.4.0",
   "pytest-cov==7.1.0",
@@ -138,16 +138,6 @@ exclude = [
   # Projekt-spezifisch
   "**/migrations/**",  # Alembic-Migrationen
 ]
-
-# Scoped de-scope for the pyright 1.1.411 hold: 1.1.412+ made PEP 747 TypeForm
-# default-on (3 false positives on the agent base) but also resolves the
-# sqlalchemy 2.1 Column/create_table overload stubs that 1.1.411 flags as
-# Column[Unknown] in these frozen, round-trip-verified migration files. Once
-# the 3 agent call-sites are adapted for pyright >=1.1.412, bump and DELETE
-# this override.
-[[tool.pyright.executionEnvironments]]
-root = "apps/api/alembic/versions"
-reportUnknownArgumentType = "none"
 
 # ---------------------------------------------------------------------------
 # Ruff
