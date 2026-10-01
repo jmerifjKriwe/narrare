@@ -15,6 +15,7 @@ from narrare.kb.scope_repository import KBScopeRepository
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Sequence
 
 
 class KBRepository(KBScopeRepository):
@@ -207,3 +208,29 @@ class KBRepository(KBScopeRepository):
             )
         )
         return set(result.scalars())
+
+    async def get_bodies_by_ids(self, entry_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, str]:
+        """Fetch non-empty bodies for rerank candidates (ADR-090 Decision 4).
+
+        One batch SELECT mirroring ``filter_ids_in_novel`` — the fetcher
+        seam for the optional search rerank stage: search rows carry no
+        text, so the DI wiring closes over this method and supplies fully
+        materialized candidate texts to the Core reranker.
+
+        The body is the exact text the write path embedded
+        (``embedding_hooks`` embeds ``entry.body or ""``), so the reranker
+        scores the same representation the vector was built from. Ids
+        without a row — or with a NULL/empty body — are absent from the
+        mapping; the rerank stage treats them as textless and keeps their
+        first-stage ranking position.
+        """
+        if not entry_ids:
+            return {}
+        result = await self._session.execute(
+            select(KBEntry.id, KBEntry.body).where(
+                KBEntry.id.in_(entry_ids),
+                KBEntry.body.is_not(None),
+                KBEntry.body != "",
+            )
+        )
+        return {row.id: row.body for row in result.all() if row.body is not None}

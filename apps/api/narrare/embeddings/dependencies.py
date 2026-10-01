@@ -6,6 +6,9 @@ RULE-19: Uses SessionDep, not bare AsyncSession.
 from __future__ import annotations
 
 import uuid  # noqa: TC003 — needed at runtime for FastAPI DI resolution
+from typing import TYPE_CHECKING
+
+import structlog
 
 from narrare._app.dependencies import (  # noqa: TC001 - needed at runtime for FastAPI DI
     CurrentUserIdDep,
@@ -13,7 +16,18 @@ from narrare._app.dependencies import (  # noqa: TC001 - needed at runtime for F
 )
 from narrare.embeddings.repository import EmbeddingRepository
 from narrare.embeddings.service import EmbeddingService
+from narrare.kb.repository import KBRepository
 from narrare.novels.ownership import require_owned_novel
+from narrare_core.embeddings.rerank import MultiVectorReranker, is_rerank_available
+from narrare_core.settings import get_core_settings
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from narrare.embeddings.contracts import TextFetcher
+    from narrare_core.embeddings.rerank import Reranker
+
+logger = structlog.get_logger(__name__)
 
 
 def get_embedding_repository(session: SessionDep) -> EmbeddingRepository:
@@ -21,10 +35,50 @@ def get_embedding_repository(session: SessionDep) -> EmbeddingRepository:
     return EmbeddingRepository(session)
 
 
+def _make_kb_text_fetcher(session: SessionDep) -> TextFetcher:
+    """Close over the KB repository for candidate-text supply (ADR-090 D4).
+
+    Search rows carry no text; the fetcher batch-loads the embedded body
+    text (one SELECT via ``KBRepository.get_bodies_by_ids``) so the Core
+    reranker receives fully materialized candidates and stays I/O-free
+    (RULE-07). Ids without a body are absent from the mapping — the rerank
+    stage keeps those candidates in their first-stage position.
+    """
+    kb_repo = KBRepository(session)
+
+    async def fetch(source_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, str]:
+        return await kb_repo.get_bodies_by_ids(source_ids)
+
+    return fetch
+
+
+def build_rerank_components(session: SessionDep) -> tuple[Reranker | None, TextFetcher | None]:
+    """Resolve the opt-in rerank stage wiring (ADR-090 Decisions 5-6).
+
+    - Flag off (shipped default): no components — the service keeps the
+      byte-identical pre-rerank search path.
+    - Flag on, ``embeddings`` extra absent: ONE structured warning
+      (``embedding_rerank_unavailable``, ``reason="extra_missing"``) and no
+      components - the stage stays inert, search returns the pre-rerank
+      order (RULE-11: degradation is loud, search never breaks).
+    - Flag on, extra present: a ``MultiVectorReranker`` on the pinned
+      settings checkpoint (``embedding_rerank_model``, ADR-090 D5) plus the
+      KB text fetcher.
+    """
+    settings = get_core_settings()
+    if not settings.embedding_rerank_enabled:
+        return None, None
+    if not is_rerank_available():
+        logger.warning("embedding_rerank_unavailable", reason="extra_missing")
+        return None, None
+    return MultiVectorReranker(settings.embedding_rerank_model), _make_kb_text_fetcher(session)
+
+
 def get_embedding_service(session: SessionDep) -> EmbeddingService:
     """Create an EmbeddingService with injected dependencies."""
     repo = EmbeddingRepository(session)
-    return EmbeddingService(repo)
+    reranker, text_fetcher = build_rerank_components(session)
+    return EmbeddingService(repo, reranker=reranker, text_fetcher=text_fetcher)
 
 
 async def verify_novel_owned(

@@ -18,9 +18,9 @@ from narrare.embeddings.contracts import (
     DEFAULT_EMBEDDING_SEARCH_LIMIT,
     DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
 )
+from narrare.embeddings.search_rerank import prepare_rerank_stage, rank_and_maybe_rerank
 from narrare_core.embeddings.hash import compute_content_hash
-from narrare_core.embeddings.scoring import ScoredCandidate, ScoringConfig, rank_candidates
-from narrare_core.embeddings.store import EmbeddingStats, SearchResult
+from narrare_core.embeddings.scoring import ScoringConfig
 from narrare_core.llm.embeddings import embed_texts
 from narrare_core.settings import get_core_settings
 from narrare_core.shared.errors import EmbeddingError
@@ -28,7 +28,9 @@ from narrare_core.shared.errors import EmbeddingError
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from narrare.embeddings.contracts import EmbeddingRepositoryProtocol
+    from narrare.embeddings.contracts import EmbeddingRepositoryProtocol, TextFetcher
+    from narrare_core.embeddings.rerank import Reranker
+    from narrare_core.embeddings.store import EmbeddingStats, SearchResult
 
 logger = structlog.get_logger(__name__)
 
@@ -47,6 +49,8 @@ class EmbeddingService:
         dimension: int | None = None,
         provider: str = "openai",
         scoring_config: ScoringConfig | None = None,
+        reranker: Reranker | None = None,
+        text_fetcher: TextFetcher | None = None,
     ) -> None:
         self._repo = repo
         # DEFAULT_EMBEDDING_MODEL is owned by CoreSettings (ADR-071 §3) — read
@@ -58,6 +62,12 @@ class EmbeddingService:
         self._dimension = dimension or get_core_settings().default_embedding_dimension
         self._provider = provider
         self._scoring_config = scoring_config or ScoringConfig()
+        # Opt-in rerank tier (ADR-090 D4/D5): both components are injected by
+        # the DI wiring (``dependencies.build_rerank_components``); default
+        # ``None`` keeps every existing construction site unchanged and the
+        # stage inert. The flag is re-checked per search (see ``search``).
+        self._reranker = reranker
+        self._text_fetcher = text_fetcher
 
     async def generate(
         self,
@@ -126,7 +136,10 @@ class EmbeddingService:
         """Search for similar content using vector similarity.
 
         Generates a query embedding, searches the repository, then
-        applies hybrid scoring from core.
+        applies hybrid scoring from core. When the opt-in rerank tier is
+        wired AND enabled (ADR-090), the first stage overfetches top-K
+        and a local reranker reorders before the cut to ``limit``; the
+        pipeline tail lives in ``search_rerank`` (RULE-04 split).
 
         Args:
             query: Text to search for.
@@ -139,7 +152,8 @@ class EmbeddingService:
             scoring_config: Override scoring weights.
 
         Returns:
-            List of SearchResult sorted by hybrid score descending.
+            List of SearchResult sorted by hybrid score descending
+            (re-ranked when the ADR-090 stage is active).
 
         Raises:
             EmbeddingError: If query embedding generation fails.
@@ -154,45 +168,30 @@ class EmbeddingService:
 
         query_vector = vectors[0]
 
+        # Opt-in rerank tier (ADR-090): inert unless wired AND opted in —
+        # then the first stage overfetches top-K (limit * 4, capped 100)
+        # so the reranker can cut to ``limit``.
+        reranker, text_fetcher, search_limit = prepare_rerank_stage(
+            limit, self._reranker, self._text_fetcher
+        )
+
         raw_results = await self._repo.search(
             query_vector,
             source_type=source_type,
             source_ids=source_ids,
             threshold=threshold,
-            limit=limit,
+            limit=search_limit,
             model=model or self._model,
         )
 
-        if not raw_results:
-            return []
-
-        # Apply hybrid scoring — metadata wired from kb_entries via LEFT JOIN
-        candidates = [
-            ScoredCandidate(
-                source_id=row.embedding.source_id,
-                source_type=row.embedding.source_type,
-                similarity=row.similarity,
-                usage_count=row.usage_count,
-                last_referenced_at=row.last_referenced_at,
-                content_hash=row.embedding.content_hash,
-            )
-            for row in raw_results
-        ]
-
-        ranked = rank_candidates(
-            candidates,
-            config=scoring_config or self._scoring_config,
+        return await rank_and_maybe_rerank(
+            query,
+            raw_results,
+            limit=limit,
+            reranker=reranker,
+            text_fetcher=text_fetcher,
+            scoring_config=scoring_config or self._scoring_config,
         )
-
-        return [
-            SearchResult(
-                source_id=c.source_id,
-                source_type=c.source_type,
-                score=c.similarity,  # Use similarity score from ranking
-                content_hash=c.content_hash,
-            )
-            for c in ranked
-        ]
 
     async def delete(
         self,
