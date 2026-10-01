@@ -75,7 +75,6 @@ from narrare_core.analysis.voice_drift_scoring_types import (
 
 # Runtime import (not TYPE_CHECKING): VoiceMetrics is used at runtime by
 # trend_against_profile's signature + the band mapping docstring cross-ref.
-# noqa: TC001.
 from narrare_core.kb.schemas.character import VoiceMetrics  # noqa: TC001
 
 if TYPE_CHECKING:
