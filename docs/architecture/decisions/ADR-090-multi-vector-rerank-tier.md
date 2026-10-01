@@ -118,7 +118,6 @@ def encode_query(  # likewise encode_document
     pool: dict[Literal["input", "output", "processes"], Any] | None = None,
     chunk_size: int | None = None,
     token_pooling: BaseTokenPooling | None = None,
-    task: str | None = None,          # encode() only
     **kwargs: Any,
 ) -> list[Tensor] | list[np.ndarray] | Tensor | np.ndarray
     | list[dict[str, Tensor]] | dict[str, Tensor]
