@@ -46,6 +46,10 @@ name: CI
 
 on:
   workflow_dispatch:
+  schedule:
+    # Nightly FULL run (default branch): PRs are the gate; this is the
+    # post-merge safety net (spec 2026-09-29 §3). 02:30 UTC.
+    - cron: "30 2 * * *"
   pull_request:
     paths:
       - "apps/**"
@@ -62,6 +66,8 @@ on:
       - ".env.example"
       - ".gitleaks.toml"
       - ".github/workflows/**"
+      - ".github/zizmor.yml"
+      - ".github/CODEOWNERS"
       - "Dockerfile"
       - ".dockerignore"
       - "docker-compose*.yml"
@@ -79,9 +85,11 @@ on:
     branches: [main, develop]
 
 # Budget guard: superseded runs on the same PR cancel; main pushes queue
-# instead of cancelling, so post-merge signal on main stays complete.
+# instead of cancelling. The group includes the event name so the nightly
+# full run (schedule) can never be cancelled by a same-ref push — PRs are
+# the gate, the nightly is the post-merge safety net (spec 2026-09-29 §3).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -93,19 +101,26 @@ jobs:
   # Change detection: which parts of the tree actually moved?
   # Cheap (~5s), lets expensive jobs skip themselves when irrelevant.
   # Always runs on push (main/develop) so post-merge signal stays complete;
-  # on PRs it narrows scope to what the diff actually touches.
+  # on PRs it narrows scope to what the diff actually touches. Nightly and
+  # dispatch runs execute this job too — on schedule the filter step is
+  # skipped (no diff base); its outputs are only consulted on PRs.
   # -------------------------------------------------------------------------
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       workflows: ${{ steps.filter.outputs.workflows }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: dorny/paths-filter@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
+        # schedule runs have no diff base — skip the filter there; outputs
+        # stay empty and are only consulted on PRs (expensive jobs gate on
+        # `github.event_name == 'schedule' ||` first, so nightly runs full).
+        if: github.event_name != 'schedule'
         with:
           filters: |
             backend:
@@ -140,6 +155,8 @@ jobs:
               - 'scripts/testid_baselines.json'
             workflows:
               - '.github/workflows/**'
+              - '.github/zizmor.yml'
+              - '.github/CODEOWNERS'
 
   # -------------------------------------------------------------------------
   # Fast fail: architecture constraints (< 30s)
@@ -147,14 +164,19 @@ jobs:
   architecture:
     name: Architecture Constraints
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Deliberately NOT gated on `changes` — this job is cheap (~3min) and
     # covers cross-cutting drift checks (docs, ADRs, eval smoke, registry)
     # that don't map cleanly to a single path. Keep it as the universal
     # fast-fail gate; gate only the genuinely expensive jobs below instead.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -267,11 +289,16 @@ jobs:
   lint:
     name: Lint & Format
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: architecture
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -290,11 +317,16 @@ jobs:
   typecheck:
     name: Type Check (pyright)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: architecture
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -302,7 +334,7 @@ jobs:
         run: uv sync --frozen --all-packages --group dev --extra embeddings
 
       - name: Cache Pyright
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             .pyright/
@@ -328,16 +360,24 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: architecture
     steps:
-      # fetch-depth: 0 is only needed to scan full git history — reserve
-      # that expensive checkout for pushes to main; PR diffs are small
-      # enough that the default shallow clone covers the changed range.
-      - uses: actions/checkout@v7
+      # fetch-depth: full history (0) on pushes to main/develop for the
+      # gitleaks full-history scan; shallow (1) otherwise — PR diffs are
+      # small enough that the default clone covers the changed range.
+      # NOTE: must stay in canonical ternary form `!= 'push' && 1 || 0`.
+      # The previous `== 'push' && 0 || 1` silently always yielded 1 (the
+      # true-branch 0 is falsy, so `|| 1` always won) — zizmor's
+      # unsound-ternary rule guards this pattern now.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          fetch-depth: ${{ github.event_name == 'push' && 0 || 1 }}
+          fetch-depth: ${{ github.event_name != 'push' && 1 || 0 }}
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -379,19 +419,60 @@ jobs:
         run: uv run pip-audit --skip-editable
 
   # -------------------------------------------------------------------------
+  # Workflow security audit (zizmor) — blocking PR check when workflows
+  # change + nightly (spec §5.2). Catches: dangerous triggers, template
+  # injection, impostor commits, vulnerable action versions, unpinned uses.
+  # -------------------------------------------------------------------------
+  zizmor:
+    name: Workflow Security (zizmor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [changes]
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       needs.changes.outputs.workflows == 'true')
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor
+        env:
+          # GITHUB_TOKEN enables zizmor's online audits (impostor-commit,
+          # known-vulnerable-actions) against this private repo.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          pipx install "zizmor==1.30.1"
+          zizmor --config .github/zizmor.yml .github/workflows/
+
+  # -------------------------------------------------------------------------
   # Unit tests (< 5 min, no Docker)
   # -------------------------------------------------------------------------
   test-unit:
     name: Unit Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [lint, typecheck]
+    # PR-gated full suite; nightly/dispatch run everything (spec §3).
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request'
     permissions:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -465,7 +546,7 @@ jobs:
 
       - name: Pytest coverage comment
         if: github.event_name == 'pull_request'
-        uses: MishaKav/pytest-coverage-comment@v1.12.2
+        uses: MishaKav/pytest-coverage-comment@432ac90e8d345c93e1d90ee0838b35913abc9c9b # v1.12.2
         with:
           pytest-coverage-path: ./pytest-coverage.txt
           pytest-xml-coverage-path: ./coverage.xml
@@ -480,8 +561,10 @@ jobs:
           xml-skip-covered: true
 
       - name: Upload coverage artifacts
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v7
+        # Feeds the nightly badge job (same-run artifact). Schedule-only:
+        # test-unit itself is skipped on push, so a push gate here is dead.
+        if: github.event_name == 'schedule'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: coverage-artifacts
           path: |
@@ -492,7 +575,7 @@ jobs:
 
       - name: Upload warnings
         if: always() && steps.tests.outcome != 'cancelled'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: warnings-test-unit
           path: /tmp/warnings/
@@ -505,13 +588,17 @@ jobs:
   test-integration:
     name: Integration Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [lint, typecheck, changes]
-    # Skip on draft PRs (WIP iteration doesn't need the Docker+spaCy path
-    # yet — it reruns once marked ready-for-review) and on PRs where the
-    # diff never touched backend code. Always runs on push to main/develop.
+    # PR path: skip on draft PRs (WIP iteration doesn't need the
+    # Docker+spaCy path — it reruns once marked ready-for-review) and on
+    # PRs whose diff never touched backend code. Nightly/dispatch run all.
     if: >-
-      github.event_name == 'push' ||
-      (needs.changes.outputs.backend == 'true' && github.event.pull_request.draft != true)
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       needs.changes.outputs.backend == 'true' &&
+       github.event.pull_request.draft != true)
 
     services:
       postgres:
@@ -535,9 +622,13 @@ jobs:
       SECRET_KEY: test-secret-key-not-for-production
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -545,7 +636,7 @@ jobs:
         run: uv sync --frozen --all-packages --group dev --extra nlp
 
       - name: Install just
-        uses: extractions/setup-just@v4
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
@@ -579,22 +670,27 @@ jobs:
         run: uv run pytest tests/golden/ -v -m golden_pages --timeout=120
 
   # -------------------------------------------------------------------------
-  # Update coverage badge in README (main push only)
+  # Update coverage badge in README (nightly only — test-unit no longer
+  # runs on push, so push runs produce no coverage artifact)
   # -------------------------------------------------------------------------
   update-coverage-badge:
     name: Update Coverage Badge
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: test-unit
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Nightly-only: test-unit is skipped on push, so no coverage artifact
+    # exists there to download (spec §4.1 — push+schedule collapses to
+    # schedule).
+    if: github.event_name == 'schedule'
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
       - name: Download coverage artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: coverage-artifacts
 
@@ -653,9 +749,11 @@ jobs:
           "
 
       - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v7
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7
         with:
-          commit_message: "docs: update coverage badge"
+          # [skip ci] prevents the badge commit from re-triggering a full
+          # push CI run (spec §4.1 — the amplifier loop).
+          commit_message: "docs: update coverage badge [skip ci]"
           file_pattern: README.md
 
   # -------------------------------------------------------------------------
@@ -668,19 +766,28 @@ jobs:
     # baselines are font-rendering-sensitive. ubuntu-latest silently
     # rotates OS versions and would drift baselines without warning.
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     needs: [architecture, changes]
     if: >-
-      github.event_name == 'push' ||
-      (needs.changes.outputs.frontend == 'true' && github.event.pull_request.draft != true)
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       (needs.changes.outputs.frontend == 'true' ||
+        needs.changes.outputs.workflows == 'true') &&
+       github.event.pull_request.draft != true)
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.5.2
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24"
           cache: "pnpm"
@@ -769,7 +876,7 @@ jobs:
       # failure for diagnosis.
       - name: Upload VRT diffs
         if: failure() && steps.vrt-tests.outcome != 'skipped'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: vrt-test-results
           path: packages/web/test-results/
@@ -780,7 +887,7 @@ jobs:
 
       - name: Upload warnings
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: warnings-frontend
           path: /tmp/warnings/
@@ -790,7 +897,7 @@ jobs:
   # -------------------------------------------------------------------------
   # Frontend standalone smoke (PR-only blind-spot guard)
   # -------------------------------------------------------------------------
-  # test-e2e boots the standalone Next server but runs on main pushes only —
+  # test-e2e boots the standalone Next server but runs nightly + on dispatch —
   # the next@16.3.1/@swc/helpers standalone crash (fixed in 5e014943) was
   # invisible on PR CI. This job builds the standalone tree and verifies it
   # boots on PRs, cheaply: no Playwright, no screenshots → ubuntu-latest
@@ -799,7 +906,7 @@ jobs:
     name: Frontend Standalone Smoke
     runs-on: ubuntu-latest
     needs: [changes]
-    # PR-only (main pushes are covered by test-e2e). workflows==true keeps
+    # PR-only (nightly runs are covered by test-e2e). workflows==true keeps
     # the job self-exercising on PRs that modify ci.yml itself.
     if: >-
       github.event_name == 'pull_request' &&
@@ -807,13 +914,17 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.5.2
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24"
           cache: "pnpm"
@@ -855,7 +966,7 @@ jobs:
           fi
 
   # -------------------------------------------------------------------------
-  # E2E tests (main branch only, full stack)
+  # E2E tests (nightly + manual dispatch, full stack)
   # -------------------------------------------------------------------------
   test-e2e:
     name: E2E Tests
@@ -863,8 +974,13 @@ jobs:
     # Playwright, keeping them on the same OS version avoids environment
     # divergence between the two browser-driven jobs.
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     needs: [lint, typecheck]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Full-stack E2E moved from every main-push to nightly + manual
+    # dispatch (spec §3; was 192 min of the Sept 1-14 burn).
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
 
     services:
       postgres:
@@ -892,17 +1008,21 @@ jobs:
       NARRARE_E2E_TEST: 1
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Jobs below execute PR-supplied scripts — do not leave the
+          # repo token persisted in the workspace (spec §5.4).
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.5.2
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24"
           cache: "pnpm"
@@ -912,7 +1032,7 @@ jobs:
         run: uv sync --frozen --all-packages --group dev --extra nlp
 
       - name: Install just
-        uses: extractions/setup-just@v4
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
@@ -1001,7 +1121,7 @@ jobs:
 
       - name: Upload E2E screenshots on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: e2e-test-results
           path: test-results/
@@ -1012,13 +1132,17 @@ jobs:
   # Warning summary — aggregates ::warning:: annotations across all jobs
   # -------------------------------------------------------------------------
   warnings-summary:
-    if: always()
+    if: >-
+      always() && !cancelled() &&
+      (needs.test-unit.result != 'skipped' ||
+       needs.frontend.result != 'skipped')
     needs: [architecture, test-unit, frontend]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Download warning artifacts
         continue-on-error: true
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: warnings-*
           merge-multiple: true
@@ -1039,3 +1163,112 @@ jobs:
           else
             echo "✅ No CI warnings across all jobs." >> $GITHUB_STEP_SUMMARY
           fi
+
+  # -------------------------------------------------------------------------
+  # Quota guardrail (spec §4.3): month-to-date Actions minutes vs the
+  # 2000-min GitHub Free quota. Sums per-job wall time — billing counts
+  # each job separately and rounds each job up to the minute, so this
+  # stays ~1-3% low; treat 80% as "act now". Fetching one jobs page per
+  # completed run takes a couple of minutes, hence timeout-minutes 10.
+  # -------------------------------------------------------------------------
+  budget-report:
+    name: Quota Budget Report
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+    steps:
+      - name: Sum month-to-date workflow minutes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, time, urllib.error, urllib.request
+          from datetime import datetime, timezone
+
+          quota = 2000
+          warn_at = 0.80
+          first = datetime.now(timezone.utc).strftime("%Y-%m-01T00:00:00Z")
+          runs_cap = 500  # bound jobs API calls (~1 request per run)
+
+          def fetch(url):
+              # At this request volume (~1 per run) transient 5xx/429s do
+              # happen; retry with backoff so the guardrail never dies on one.
+              for attempt in range(4):
+                  try:
+                      req = urllib.request.Request(url, headers={
+                          "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                          "Accept": "application/vnd.github+json"})
+                      with urllib.request.urlopen(req) as r:
+                          return json.load(r)
+                  except urllib.error.HTTPError as e:
+                      if attempt == 3 or e.code not in (429, 500, 502, 503, 504):
+                          raise
+                      time.sleep(2 * (attempt + 1))
+
+          def job_minutes(started, completed):
+              s = datetime.fromisoformat(started.replace("Z", "+00:00"))
+              c = datetime.fromisoformat(completed.replace("Z", "+00:00"))
+              return (c - s).total_seconds() / 60
+
+          repo = os.environ["REPO"]
+          total = 0.0
+          processed = 0
+          suspect = 0  # runs whose jobs data looks empty vs their own wall time
+          for page in range(1, 11):  # 10 x 100 runs/month is ample
+              data = fetch(f"https://api.github.com/repos/{repo}/actions/runs"
+                           f"?per_page=100&page={page}&created=>={first}")
+              runs = data.get("workflow_runs", [])
+              for run in runs:
+                  if run["event"] == "dynamic":   # Dependabot runs are free
+                      continue
+                  if run.get("status") != "completed":
+                      continue
+                  if processed >= runs_cap:
+                      break
+                  processed += 1
+                  # Billing counts each job separately: sum per-job wall
+                  # time. per_page=100 covers this repo's ~13-job runs.
+                  jobs = fetch(f"https://api.github.com/repos/{repo}/actions"
+                               f"/runs/{run['id']}/jobs?per_page=100")
+                  run_sum = 0.0
+                  for job in jobs.get("jobs", []):
+                      # Skipped jobs carry bogus timestamps (observed:
+                      # completed before started) and are not billed —
+                      # exclude by conclusion; clamp residual negatives.
+                      started, completed = job.get("started_at"), job.get("completed_at")
+                      if (started and completed
+                              and job.get("status") == "completed"
+                              and job.get("conclusion") != "skipped"):
+                          run_sum += max(job_minutes(started, completed), 0.0)
+                  total += run_sum
+                  # Degraded-API guard: a completed run with minutes of wall
+                  # time but almost no job minutes signals missing jobs data
+                  # (observed live alongside 502s) — flag it instead of
+                  # silently undercounting.
+                  wall = 0.0
+                  if run.get("run_started_at") and run.get("updated_at"):
+                      wall = job_minutes(run["run_started_at"], run["updated_at"])
+                  if wall >= 2.0 and run_sum < wall * 0.1:
+                      suspect += 1
+              if len(runs) < 100 or data.get("incomplete_results") or processed >= runs_cap:
+                  break
+          pct = total / quota
+          summary = (f"Month-to-date CI usage: {total:.0f} min of {quota} "
+                     f"({pct:.0%}, per-job sum; billing rounds each job up to the minute).")
+          if suspect:
+              summary += (f" WARNING: jobs data missing for {suspect} of "
+                          f"{processed} run(s) — figure may undercount.")
+          print(summary)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
+              fh.write(summary + "\n")
+          if suspect:
+              print(f"::warning title=Actions quota::Jobs data missing for "
+                    f"{suspect} run(s) — this figure may undercount.")
+          if pct >= warn_at:
+              print(f"::warning title=Actions quota::Quota at {pct:.0%} — "
+                    "activate reserve levers (spec §8: Phase 2 consolidation, "
+                    "weekly nightly).")
+          EOF

@@ -10,6 +10,8 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    # API-bound release-PR orchestration, no builds — cap the default 360-min hang risk (spec §4.2).
+    timeout-minutes: 10
     permissions:
       contents: write
       pull-requests: write
@@ -17,7 +19,7 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@v5
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -29,23 +31,30 @@ jobs:
     needs: release-please
     if: needs.release-please.outputs.release_created
     runs-on: ubuntu-latest
+    # Docker build + GHCR push + SBOM can legitimately run long — bounded, not unbounded (spec §4.2).
+    timeout-minutes: 30
     permissions:
       contents: write
       packages: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Push-to-main trusted trigger; no git commands follow (image
+          # push and release upload carry their own tokens), so don't
+          # persist the repo token in the workspace.
+          persist-credentials: false
 
       # ── Setup ────────────────────────────────────────────────────
       - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
 
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -64,7 +73,7 @@ jobs:
       # ── Docker Build + Push to GHCR ──────────────────────────────
       - name: Build and push Docker image
         id: build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: .
           push: true
@@ -250,7 +259,7 @@ jobs:
           cd /tmp && zip -r /tmp/narrare-${{ steps.meta.outputs.VERSION }}.zip bundle/
 
       - name: Upload release bundle
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: |

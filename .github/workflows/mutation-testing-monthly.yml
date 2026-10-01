@@ -22,6 +22,7 @@ jobs:
   mutmut:
     name: MutMut Mutation Score
     runs-on: ubuntu-latest
+    timeout-minutes: 120
 
     services:
       postgres:
@@ -48,9 +49,13 @@ jobs:
       PYTHONWARNINGS: ignore::DeprecationWarning
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Trusted-trigger-only workflow (schedule/dispatch); no git
+          # operations follow, so don't persist the repo token.
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
 
@@ -58,7 +63,7 @@ jobs:
         run: uv sync --frozen --all-packages --group dev
 
       - name: Install just
-        uses: extractions/setup-just@v4
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
       - name: Run migrations
         run: cd apps/api && uv run alembic upgrade head
@@ -77,7 +82,7 @@ jobs:
 
       - name: Restore MutMut cache
         id: cache-mutmut
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: mutants
           key: mutmut-results-${{ inputs.scope || 'core' }}-${{ hashFiles('pyproject.toml', 'packages/core/narrare_core/**/*.py') }}
@@ -122,14 +127,14 @@ jobs:
 
       - name: Save MutMut cache
         if: always()
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: mutants
           key: mutmut-results-${{ inputs.scope || 'core' }}-${{ hashFiles('pyproject.toml', 'packages/core/narrare_core/**/*.py') }}
 
       - name: Create Issue
         if: always() && github.event_name == 'schedule'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const fs = require('fs');
