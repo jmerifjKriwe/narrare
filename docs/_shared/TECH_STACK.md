@@ -331,9 +331,15 @@ wrapper, which is incompatible with current FastAPI versions).
 **Role:** Rate-limit dependency for the AI cost surface. Currently in-memory only
 (no Redis backend init) — accepted risk AR-05-02 for local-first single-user
 deployment. A Redis backend can be enabled when multi-user deployment requires
-distributed rate tracking.
-**Location:** `apps/api/narrare/_app/rate_limiter_dep.py` (thin async adapter
-around `pyrate_limiter`), consumed via `apps/api/narrare/_app/rate_limits.py`.
+distributed rate tracking. All limiters are `SelfPruningLimiter` instances:
+`SingleBucketFactory(schedule_leak=False)` plus acquire-time pruning via the
+bucket's own `leak(now)` (the same method and clock the default sweeper used),
+so no background "Leaker" threads are started — pyrate's default construction
+costs one daemon thread + event loop per instance (previously 8 per process);
+the sliding-window admit decision is unchanged.
+**Location:** `apps/api/narrare/_app/rate_limiter_dep.py` (`SelfPruningLimiter`,
+thin async adapter around `pyrate_limiter`), consumed via
+`apps/api/narrare/_app/rate_limits.py`.
 **Canonical source:** `apps/api/pyproject.toml` declares `pyrate-limiter>=4.0,<5`.
 **Not:** `fastapi-limiter` (unmaintained, breaks on FastAPI ≥0.116), `slowapi`
 (replaced — async-incompatible).
@@ -532,6 +538,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: 2026-10-01 — pydantic-ai 2.52 upgrade wave (ADR-089/090 plan): noted the adopted 2.5x-line capabilities (SelectModel/DecisionModel behind opt-in pilots, `glm-5.3-flash` in the provider live lists) without patch numbers in prose; fixed the stale intent→model routing claim — advisory `INTENT_PROFILES` in `core/llm/intent_profiles.py` + user cascade via `ModelRoutingResolver` (ADR-086), dynamic per-step tiering is the ADR-089 pilot; sentence-transformers section updated to the v6-pinned `embeddings` extra (ADR-090 rerank tier, all-MiniLM cascade unchanged via mem0's own provider; stale `narrare-core[memory]` install hint removed). Previous: 2026-09-30 drift fix: mem0 version wording "2.0.x" → "2.x" across the mem0 and sentence-transformers sections (prose records only the major-version commitment; manifest is canonical) after a compatibility-verified mem0ai upgrade. Older: 2026-07-05 drift fix (review-04 AUFG-04-08) replaced hard version pins with major-version commitments + `pyproject.toml`/`package.json` as canonical source; corrected `fastapi-limiter` → `pyrate-limiter` used directly; clarified `prometheus-client` Do-Not-Use rationale; replaced GLM-5.1 prose with pointer to provider registry; pointed pre-commit section at `.pre-commit-config.yaml` as SSOT for the hook list.
+> Last updated: 2026-10-01 — pyrate-limiter section: production limiters are now `SelfPruningLimiter` (`_app/rate_limiter_dep.py`) — `SingleBucketFactory(schedule_leak=False)` + acquire-time pruning via the bucket's own `leak(now)`; zero background Leaker threads (was 8 daemon threads + 8 event loops per process), sliding-window admit decision unchanged. Previous: 2026-10-01 — pydantic-ai 2.52 upgrade wave (ADR-089/090 plan): noted the adopted 2.5x-line capabilities (SelectModel/DecisionModel behind opt-in pilots, `glm-5.3-flash` in the provider live lists) without patch numbers in prose; fixed the stale intent→model routing claim — advisory `INTENT_PROFILES` in `core/llm/intent_profiles.py` + user cascade via `ModelRoutingResolver` (ADR-086), dynamic per-step tiering is the ADR-089 pilot; sentence-transformers section updated to the v6-pinned `embeddings` extra (ADR-090 rerank tier, all-MiniLM cascade unchanged via mem0's own provider; stale `narrare-core[memory]` install hint removed). Previous: 2026-09-30 drift fix: mem0 version wording "2.0.x" → "2.x" across the mem0 and sentence-transformers sections (prose records only the major-version commitment; manifest is canonical) after a compatibility-verified mem0ai upgrade. Older: 2026-07-05 drift fix (review-04 AUFG-04-08) replaced hard version pins with major-version commitments + `pyproject.toml`/`package.json` as canonical source; corrected `fastapi-limiter` → `pyrate-limiter` used directly; clarified `prometheus-client` Do-Not-Use rationale; replaced GLM-5.1 prose with pointer to provider registry; pointed pre-commit section at `.pre-commit-config.yaml` as SSOT for the hook list.
 > Maintained by: Architecture Agent
 > Changes require ADR
