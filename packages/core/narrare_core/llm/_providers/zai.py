@@ -52,7 +52,8 @@ only resolves the unified ``ModelSettings['thinking']`` setting (mapped to
 ``openai_chat_thinking_field`` fact) when the model profile declares thinking
 support. Upstream marks only ``glm-5``/``glm-4.7``/``glm-4.6``/``glm-4.5``
 IDs as thinking-capable; Narrare's registered IDs (``glm-z1-32b``, ``glm-4-*``,
-``chatglm-4``) would silently lose the runtime thinking default injected by
+``glm-5.3-flash``, ``chatglm-4``) would silently lose the runtime thinking
+default injected by
 :func:`narrare_core.llm._model_settings.build_runtime_model_settings`.
 """
 

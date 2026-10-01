@@ -417,8 +417,9 @@ ships complete: flag, contract, wiring, degradation, tests, docs).
   degradation boundary (Decision 6). Scoring uses `similarity()` (not
   `similarity_pairwise`) — one query against K documents.
 - **Task 15 (Backend wiring):** inject the async text fetcher at the search
-  service seam; wire `NullReranker` when `is_rerank_available()` is False or
-  the flag is off; structured events per Decision 6.
+  service seam; skip the stage entirely (no components built) when the extra
+  is absent or the flag is off (D6 amendment); structured events per
+  Decision 6.
 - **Task 16 (pilot measurement):** rewrite-selection-derived retrieval
   comparison; report includes rerank-on/off deltas.
 - **Test contract:** pure-contract tests with a fake `Reranker`;
