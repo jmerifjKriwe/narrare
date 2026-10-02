@@ -20,11 +20,12 @@ CAP-IN-01) to build a KB from the materialized corpus chapters:
   ``conflict_description`` have no apply-field counterpart) and endorsed
   via ``POST .../kb/extract/apply`` — deterministic, part of the measured
   pipeline, every decision recorded in the event sink (plan Task 6).
-- Import mode (map §7 import note): NO bulk chapter-import endpoint exists
-  (``StarterContent.IMPORT`` + ``import_path`` is a server-local setup
-  path, unusable over HTTP), so import runs the identical incremental
-  build path WITHOUT inter-chapter waits; the pacing difference itself is
-  part of the measurement (build-time comparison incremental vs import).
+- Import mode (map §7 import note): the backend's ``starter="import"``
+  creates an empty novel and chapters are delivered via
+  ``POST /import/commit`` (ADR-091), so the benchmark's import mode runs
+  the identical incremental build path WITHOUT inter-chapter waits; the
+  pacing difference itself is part of the measurement (build-time
+  comparison incremental vs import).
 - Pacing (map §1): extraction is rate-limited under the AI-analysis
   budget (default 5/min), so incremental mode pauses ``PACING_SECONDS``
   on every inter-chapter boundary (injected ``sleeper``; import never

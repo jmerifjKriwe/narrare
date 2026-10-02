@@ -22,7 +22,7 @@ interface WizardStoreState {
     tone: StoryTone;
     writing_language?: string;
   }) => void;
-  updateStep3: (data: { starter: StarterContent; import_path?: string | null }) => void;
+  updateStep3: (data: { starter: StarterContent }) => void;
   updateStep4: (data: {
     provider: AIProvider;
     api_key: string;
@@ -44,7 +44,6 @@ const defaultState: WizardState = {
   story_structure: "three_act",
   tone: "dramatic",
   starter: "blank",
-  import_path: null,
   provider: "anthropic",
   api_key: "",
   model: "",

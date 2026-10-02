@@ -42,7 +42,6 @@ export function useQuickStart(): UseQuickStartReturn {
         story_structure: "three_act",
         tone: "dramatic",
         starter: starter ?? "blank",
-        import_path: null,
         provider: "anthropic",
         api_key: "",
         model: "",

@@ -52,7 +52,6 @@ export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
   const { updateStep3, state } = useWizardStore();
 
   const [selected, setSelected] = useState<StarterContent>(state.starter);
-  const [importPath, setImportPath] = useState(state.import_path || "");
   const [demoInfo, setDemoInfo] = useState<Record<string, DemoProjectInfo>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,21 +86,15 @@ export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
     } else if (DEMO_OPTIONS.includes(starter) && demoInfo[starter]) {
       prefillFromDemo(demoInfo[starter]);
     }
-    // "blank" and "import": don't overwrite existing store values
+    // "blank": don't overwrite existing store values
   };
 
   const handleNext = async () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await setupApi.validateStep3({
-        starter: selected,
-        import_path: selected === "import" ? importPath : null,
-      });
-      updateStep3({
-        starter: selected,
-        import_path: selected === "import" ? importPath : null,
-      });
+      await setupApi.validateStep3({ starter: selected });
+      updateStep3({ starter: selected });
       onNext();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -142,30 +135,7 @@ export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
             />
           );
         })}
-
-        <StarterCard
-          title={t("wizard.step2.import")}
-          description={t("wizard.step2.importDescription")}
-          selected={selected === "import"}
-          onSelect={() => handleSelectDemo("import")}
-        />
       </div>
-
-      {selected === "import" && (
-        <div>
-          <label htmlFor="import_path" className="block text-sm font-medium mb-1.5">
-            {t("wizard.step2.importPath")}
-          </label>
-          <input
-            id="import_path"
-            type="text"
-            value={importPath}
-            onChange={(e) => setImportPath(e.target.value)}
-            placeholder={t("wizard.step2.importPathPlaceholder")}
-            className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-          />
-        </div>
-      )}
 
       {error && (
         <p className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm">{error}</p>

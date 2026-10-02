@@ -78,7 +78,6 @@ EXPECTED_WIZARD_STATE: Final[dict[str, object]] = {
     "story_structure": "three_act",
     "tone": "dramatic",
     "starter": "blank",
-    "import_path": None,
     "provider": "anthropic",
     "api_key": SECRET_KEY,
     "model": "claude-sonnet-4-5",

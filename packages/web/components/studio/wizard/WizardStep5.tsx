@@ -47,7 +47,6 @@ export function WizardStep5({ onComplete, onBack }: WizardStep5Props) {
     demo_fantasy: "Demo: Echoes of the Thornwall",
     demo_scifi: "Demo: Dead Signal",
     demo_german: "Demo: Im stillen Wald",
-    import: t("wizard.step5.importFrom", { path: state.import_path || "—" }),
   };
 
   return (

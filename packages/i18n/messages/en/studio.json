@@ -647,10 +647,6 @@
       "description": "Choose how to begin your project",
       "blank": "Blank project",
       "blankDescription": "Start with an empty canvas and build from scratch",
-      "import": "Import manuscript",
-      "importDescription": "Import an existing manuscript from a file",
-      "importPath": "File path",
-      "importPathPlaceholder": "/path/to/your/manuscript",
       "validationFailed": "Validation failed"
     },
     "step3": {
@@ -706,8 +702,7 @@
       "tone": "Tone",
       "content": "Content",
       "model": "Model",
-      "blankProject": "Blank project",
-      "importFrom": "Import from {path}"
+      "blankProject": "Blank project"
     },
     "storyStructure": {
       "three_act": "Three-Act Structure",

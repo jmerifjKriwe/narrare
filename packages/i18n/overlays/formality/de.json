@@ -143,8 +143,7 @@
       },
       "step2": {
         "description": "Wählen Sie, wie Sie Ihr Projekt beginnen möchten",
-        "blankDescription": "Beginnen Sie mit einem leeren Blatt und bauen Sie von Grund auf auf",
-        "importDescription": "Importieren Sie ein bestehendes Manuskript aus einer Datei"
+        "blankDescription": "Beginnen Sie mit einem leeren Blatt und bauen Sie von Grund auf auf"
       },
       "step3": {
         "description": "Beschreiben Sie Ihren Roman — die KI nutzt dies für maßgeschneiderte Vorschläge",

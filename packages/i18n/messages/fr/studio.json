@@ -647,10 +647,6 @@
       "description": "Choisissez comment commencer votre projet",
       "blank": "Projet vierge",
       "blankDescription": "Commencez avec une page blanche et construisez à partir de zéro",
-      "import": "Importer un manuscrit",
-      "importDescription": "Importez un manuscrit existant depuis un fichier",
-      "importPath": "Chemin du fichier",
-      "importPathPlaceholder": "/chemin/vers/votre/manuscrit",
       "validationFailed": "Validation échouée"
     },
     "step3": {
@@ -706,8 +702,7 @@
       "tone": "Ton",
       "content": "Contenu",
       "model": "Modèle",
-      "blankProject": "Projet vierge",
-      "importFrom": "Import depuis {path}"
+      "blankProject": "Projet vierge"
     },
     "storyStructure": {
       "three_act": "Structure en trois actes",

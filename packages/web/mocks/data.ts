@@ -145,7 +145,6 @@ export function createWizardState(overrides: Partial<WizardState> = {}): WizardS
     story_structure: "three_act",
     tone: "dramatic",
     starter: "blank",
-    import_path: null,
     provider: "openai",
     api_key: "test-api-key",
     model: "gpt-4o",

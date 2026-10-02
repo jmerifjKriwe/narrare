@@ -647,10 +647,6 @@
       "description": "Wähle, wie du dein Projekt beginnen möchtest",
       "blank": "Leeres Projekt",
       "blankDescription": "Beginne mit einem leeren Blatt und baue von Grund auf auf",
-      "import": "Manuskript importieren",
-      "importDescription": "Importiere ein bestehendes Manuskript aus einer Datei",
-      "importPath": "Dateipfad",
-      "importPathPlaceholder": "/pfad/zum/manuskript",
       "validationFailed": "Validierung fehlgeschlagen"
     },
     "step3": {
@@ -706,8 +702,7 @@
       "tone": "Ton",
       "content": "Inhalt",
       "model": "Modell",
-      "blankProject": "Leeres Projekt",
-      "importFrom": "Import aus {path}"
+      "blankProject": "Leeres Projekt"
     },
     "storyStructure": {
       "three_act": "Drei-Akt-Struktur",
