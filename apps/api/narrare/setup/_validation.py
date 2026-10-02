@@ -6,7 +6,6 @@ for RULE-04 compliance (file size limits).
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from narrare.setup.schemas import (
@@ -81,17 +80,10 @@ async def validate_step3(
     Returns:
         Step3StarterResponse with demo info if applicable.
 
-    Raises:
-        ValidationError: If import path is missing or doesn't exist.
+    ``starter="import"`` is accepted without any server-side path: the
+    wizard creates an empty novel and the frontend commits the imported
+    files afterwards via ``POST /import/commit`` (ADR-091).
     """
-    if request.starter == StarterContent.IMPORT:
-        if not request.import_path:
-            raise ValidationError("Import path is required when starter is 'import'")
-        import_dir = Path(request.import_path)
-        if not import_dir.exists() or not import_dir.is_dir():
-            raise ValidationError(f"Import directory does not exist: {request.import_path}")
-        return Step3StarterResponse(valid=True, starter=request.starter)
-
     demo_info: DemoProjectInfo | None = None
     if request.starter in (
         StarterContent.DEMO_FANTASY,

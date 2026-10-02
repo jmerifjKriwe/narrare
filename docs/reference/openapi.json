@@ -22196,18 +22196,6 @@
           "starter": {
             "$ref": "#/components/schemas/StarterContent",
             "default": "blank"
-          },
-          "import_path": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 500
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Import Path"
           }
         },
         "type": "object",
@@ -25273,17 +25261,6 @@
           "starter": {
             "$ref": "#/components/schemas/StarterContent"
           },
-          "import_path": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Import Path"
-          },
           "provider": {
             "$ref": "#/components/schemas/AIProvider",
             "default": "anthropic"
@@ -25325,8 +25302,7 @@
           "logline",
           "story_structure",
           "tone",
-          "starter",
-          "import_path"
+          "starter"
         ],
         "title": "WizardState",
         "description": "Complete wizard state collected across all 5 steps."

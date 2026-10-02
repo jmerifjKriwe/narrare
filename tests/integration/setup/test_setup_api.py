@@ -152,16 +152,23 @@ class TestValidateStep3:
         assert validated.demo_info is not None
         assert validated.demo_info.title == "Echoes of the Thornwall"
 
-    async def test_import_without_path_rejected(self, client: AsyncClient) -> None:
+    async def test_import_starter_accepted_without_path(self, client: AsyncClient) -> None:
+        # ADR-091: starter="import" no longer requires a server-side path.
+        # The wizard creates an empty novel; the frontend commits files
+        # afterwards via POST /import/commit.
         response = await client.post(
             "/api/v1/setup/validate/step-3",
             json={
                 "starter": "import",
             },
         )
-        assert response.status_code == 422
+        assert response.status_code == 200
+        validated = Step3StarterResponse.model_validate(response.json())
+        assert validated.valid is True
+        assert validated.demo_info is None
 
-    async def test_import_nonexistent_path_rejected(self, client: AsyncClient) -> None:
+    async def test_import_unknown_extra_field_ignored(self, client: AsyncClient) -> None:
+        """Legacy clients may still send ``import_path`` — pydantic ignores it."""
         response = await client.post(
             "/api/v1/setup/validate/step-3",
             json={
@@ -169,7 +176,9 @@ class TestValidateStep3:
                 "import_path": "/path/that/does/not/exist",
             },
         )
-        assert response.status_code == 422
+        assert response.status_code == 200
+        validated = Step3StarterResponse.model_validate(response.json())
+        assert validated.valid is True
 
 
 class TestListProviderModels:
@@ -246,7 +255,6 @@ class TestCompleteSetup:
                     "story_structure": "three_act",
                     "tone": "dramatic",
                     "starter": "blank",
-                    "import_path": None,
                     "provider": "anthropic",
                     "api_key": "test-key",
                     "model": "claude-haiku-3-5-20241022",
@@ -283,7 +291,6 @@ class TestCompleteSetup:
                     "story_structure": "three_act",
                     "tone": "contemplative",
                     "starter": "demo_german",
-                    "import_path": None,
                     "provider": "zai",
                     "api_key": "test-key",
                     "model": "glm-z1-32b",
@@ -321,7 +328,6 @@ class TestCompleteSetup:
                     "story_structure": "three_act",
                     "tone": "dramatic",
                     "starter": "blank",
-                    "import_path": None,
                     "provider": "anthropic",
                     "api_key": "sk-test-key-12345",
                     "model": "claude-haiku",
@@ -368,7 +374,6 @@ class TestCompleteSetup:
                     "story_structure": "three_act",
                     "tone": "dramatic",
                     "starter": "blank",
-                    "import_path": None,
                     "provider": "openai",
                     "api_key": "sk-openai-test",
                     "model": "gpt-4o",

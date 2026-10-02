@@ -99,7 +99,6 @@ class WizardState(BaseModel):
     tone: StoryTone
     # Step 3
     starter: StarterContent
-    import_path: str | None
     # Step 4 (optional — skipped if skip_provider=True)
     provider: AIProvider = AIProvider.ANTHROPIC
     api_key: str = ""
