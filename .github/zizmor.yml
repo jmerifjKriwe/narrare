@@ -26,15 +26,16 @@ rules:
 
   artipacked:
     ignore:
-      # ci.yml:117 `changes` — dorny/paths-filter takes the git path on
+      # (lines re-pinned 2026-10-02 after nightly-cron comment shift, PR #235)
+      # ci.yml:122 `changes` — dorny/paths-filter takes the git path on
       # push runs (`git fetch origin <sha>`; depth-1 clone lacks the
       # previous head). Persisted credentials REQUIRED — Task-2
       # adjudication (report CONCERN 1).
-      - ci.yml:117
-      # ci.yml:675 `update-coverage-badge` — git-auto-commit pushes the
+      - ci.yml:122
+      # ci.yml:680 `update-coverage-badge` — git-auto-commit pushes the
       # README badge commit. Persisted credentials REQUIRED — Task-2
       # documented exception ("git-auto-commit needs the token").
-      - ci.yml:675
+      - ci.yml:680
       # vrt-update-baselines.yml:65 — the job runs `git commit &&
       # git push` on regenerated baselines (contents: write, dispatch
       # only). Persisted credentials REQUIRED.
