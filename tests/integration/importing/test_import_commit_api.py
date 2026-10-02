@@ -124,6 +124,16 @@ class TestCommitEndpoint:
         )
         assert response.status_code == 401
 
+    async def test_commit_malformed_adjustments_without_auth_401(self, client: AsyncClient) -> None:
+        # Dependency ordering pin: the auth dep resolves BEFORE the adjustments
+        # parse dep, so unauthenticated malformed input is 401 — never 422/500.
+        response = await client.post(
+            "/api/v1/import/commit",
+            data={"novel_id": str(uuid.uuid4()), "adjustments": "{not json"},
+            files=_files(),
+        )
+        assert response.status_code == 401
+
     async def test_commit_malformed_adjustments_json_422(
         self, client: AsyncClient, auth_headers: dict[str, str]
     ) -> None:

@@ -175,7 +175,10 @@ class ImportService:
                     f"Excluded index {index} is out of range (0..{chapter_count - 1})."
                 )
         for key, title in adjustments.title_overrides.items():
-            if not key.isdigit() or not 0 <= int(key) < chapter_count:
+            # isdecimal() (not isdigit()): int() accepts exactly the isdecimal
+            # set — digit-like Unicode ("①".isdigit() is True) would crash
+            # int() with an unhandled ValueError on user input.
+            if not key.isdecimal() or not 0 <= int(key) < chapter_count:
                 raise ValidationError(f"Title override key '{key}' is not a valid chapter index.")
             if not 1 <= len(title.strip()) <= 500:
                 raise ValidationError(f"Title override for chapter {key} must be 1-500 characters.")

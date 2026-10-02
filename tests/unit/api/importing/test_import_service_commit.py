@@ -120,6 +120,21 @@ class TestCommitValidation:
         except ValidationError as exc:
             assert "9" in str(exc)
 
+    async def test_non_decimal_unicode_override_key_raises_422(self) -> None:
+        # "①".isdigit() is True but int("①") raises — the guard must use
+        # isdecimal() so digit-like Unicode is rejected as a 422, not a 500.
+        service, _ = _service()
+        try:
+            await service.commit(
+                _files(),
+                NOVEL_ID,
+                USER_ID,
+                ImportCommitAdjustments(title_overrides={"①": "X"}),
+            )
+            raise AssertionError("expected ValidationError")
+        except ValidationError as exc:
+            assert "①" in str(exc)
+
     async def test_overlong_title_override_raises_422(self) -> None:
         service, _ = _service()
         try:
