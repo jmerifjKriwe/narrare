@@ -207,3 +207,25 @@ describe("useWizardStore", () => {
     });
   });
 });
+
+describe("importSelection", () => {
+  it("starts null and is settable", () => {
+    useWizardStore.getState().reset();
+    expect(useWizardStore.getState().importSelection).toBeNull();
+    const file = new File(["# A\nb"], "a.md");
+    const selection = { files: [file], excludedIndices: [], titleOverrides: {}, includedCount: 1 };
+    useWizardStore.getState().setImportSelection(selection);
+    expect(useWizardStore.getState().importSelection).toEqual(selection);
+  });
+
+  it("reset() clears importSelection", () => {
+    useWizardStore.getState().setImportSelection({
+      files: [],
+      excludedIndices: [],
+      titleOverrides: {},
+      includedCount: 0,
+    });
+    useWizardStore.getState().reset();
+    expect(useWizardStore.getState().importSelection).toBeNull();
+  });
+});

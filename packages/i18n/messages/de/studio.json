@@ -648,6 +648,8 @@
       "description": "Wähle, wie du dein Projekt beginnen möchtest",
       "blank": "Leeres Projekt",
       "blankDescription": "Beginne mit einem leeren Blatt und baue von Grund auf auf",
+      "import": "Manuskript importieren",
+      "importDescription": "Lade Markdown-Dateien (.md) oder Textdateien (.txt) von deinem Computer hoch — Kapitel werden automatisch erkannt",
       "validationFailed": "Validierung fehlgeschlagen"
     },
     "step3": {

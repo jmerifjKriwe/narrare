@@ -648,6 +648,8 @@
       "description": "Choisissez comment commencer votre projet",
       "blank": "Projet vierge",
       "blankDescription": "Commencez avec une page blanche et construisez à partir de zéro",
+      "import": "Importer un manuscrit",
+      "importDescription": "Importez des fichiers Markdown (.md) ou texte (.txt) depuis votre ordinateur — les chapitres sont détectés automatiquement",
       "validationFailed": "Validation échouée"
     },
     "step3": {

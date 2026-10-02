@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { setupApi } from "@/lib/api/client";
+import { importApi, setupApi } from "@/lib/api/client";
 import { useWizardStore } from "@/lib/stores/wizardStore";
 import { WizardStep1 } from "./WizardStep1";
 import { WizardStep2 } from "./WizardStep2";
@@ -11,7 +11,6 @@ import { WizardStep5 } from "./WizardStep5";
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
-// Note: next-intl is mocked globally in setupTests.ts
 
 vi.mock("@/lib/api/client", () => ({
   authApi: {
@@ -26,7 +25,44 @@ vi.mock("@/lib/api/client", () => ({
       redirect_to: "/novel/new-novel-id",
     }),
   },
+  importApi: {
+    preview: vi.fn(),
+    commit: vi.fn(),
+  },
 }));
+
+// The global setupTests.ts next-intl mock returns i18n KEY STRINGS, which would
+// make the copy matchers below tautologies on key names. Resolving against the
+// REAL en catalogs instead proves the rendered copy comes from the actual
+// message trees — the per-file pattern used by SidebarChapterList.test.tsx and
+// ImportPreviewPanel.test.tsx. Namespaces outside the two catalogs ("common")
+// fall back to the raw key, which the structural assertions don't depend on.
+// useLocale is pinned because next-intl's real hook needs a provider context.
+vi.mock("next-intl", async () => {
+  const actual = await vi.importActual<typeof import("next-intl")>("next-intl");
+  const { default: studio } = await import("../../../../i18n/messages/en/studio.json");
+  const { default: importing } = await import("../../../../i18n/messages/en/importing.json");
+  const messages: Record<string, unknown> = { studio, importing };
+  return {
+    ...actual,
+    useLocale: () => "en",
+    useTranslations: (namespace: string) => (key: string, params?: Record<string, unknown>) => {
+      let value: unknown = messages;
+      for (const segment of `${namespace}.${key}`.split(".")) {
+        if (value && typeof value === "object") {
+          value = (value as Record<string, unknown>)[segment];
+        }
+      }
+      let text = typeof value === "string" ? value : `${namespace}.${key}`;
+      if (params) {
+        for (const [name, replacement] of Object.entries(params)) {
+          text = text.replace(`{${name}}`, String(replacement));
+        }
+      }
+      return text;
+    },
+  };
+});
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -105,6 +141,7 @@ describe("WizardStep2", () => {
 
     useWizardStore.setState({
       currentStep: 2,
+      importSelection: null,
       state: {
         project_name: "Test Project",
         writing_language: "en",
@@ -134,6 +171,43 @@ describe("WizardStep2", () => {
       await waitFor(() => {
         expect(document.querySelector("div")).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("import starter", () => {
+    it("renders the inline import section with the preview panel when the import card is selected", () => {
+      renderWithProviders(<WizardStep2 onNext={vi.fn()} onBack={vi.fn()} />);
+
+      expect(screen.queryByTestId("wizard-import-section")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: /import manuscript/i }));
+
+      expect(screen.getByTestId("wizard-import-section")).toBeInTheDocument();
+      expect(screen.getByTestId("import-preview-panel")).toBeInTheDocument();
+    });
+
+    it("publishes picked-file selections into the wizard store", async () => {
+      vi.mocked(importApi.preview).mockResolvedValue({
+        items: [{ index: 0, suggested_title: "One", word_count: 12, source_file: "a.md" }],
+        file_count: 1,
+        chapter_count: 1,
+        total_word_count: 12,
+      });
+      renderWithProviders(<WizardStep2 onNext={vi.fn()} onBack={vi.fn()} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /import manuscript/i }));
+      const input = screen.getByLabelText(/choose files/i) as HTMLInputElement;
+      const file = new File(["# One\nbody"], "a.md", { type: "text/markdown" });
+      fireEvent.change(input, { target: { files: [file] } });
+
+      await waitFor(() =>
+        expect(useWizardStore.getState().importSelection).toEqual({
+          files: [file],
+          excludedIndices: [],
+          titleOverrides: {},
+          includedCount: 1,
+        }),
+      );
     });
   });
 });

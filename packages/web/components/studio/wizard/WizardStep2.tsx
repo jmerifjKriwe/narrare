@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { ImportPreviewPanel } from "@/components/studio/importing/ImportPreviewPanel";
 import { setupApi } from "@/lib/api/client";
 import { useWizardStore } from "@/lib/stores/wizardStore";
 import { cn } from "@/lib/utils";
@@ -49,7 +50,7 @@ interface WizardStep2Props {
 export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
   const t = useTranslations("studio");
   const tCommon = useTranslations("common");
-  const { updateStep3, state } = useWizardStore();
+  const { updateStep3, setImportSelection, state } = useWizardStore();
 
   const [selected, setSelected] = useState<StarterContent>(state.starter);
   const [demoInfo, setDemoInfo] = useState<Record<string, DemoProjectInfo>>({});
@@ -122,6 +123,13 @@ export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
           onSelect={() => handleSelectDemo("blank")}
         />
 
+        <StarterCard
+          title={t("wizard.step2.import")}
+          description={t("wizard.step2.importDescription")}
+          selected={selected === "import"}
+          onSelect={() => handleSelectDemo("import")}
+        />
+
         {DEMO_OPTIONS.map((id) => {
           const info = demoInfo[id];
           return (
@@ -136,6 +144,15 @@ export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
           );
         })}
       </div>
+
+      {selected === "import" && (
+        <div
+          className="rounded-lg border border-border bg-background/50 p-4"
+          data-testid="wizard-import-section"
+        >
+          <ImportPreviewPanel onSelectionChange={setImportSelection} />
+        </div>
+      )}
 
       {error && (
         <p className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm">{error}</p>

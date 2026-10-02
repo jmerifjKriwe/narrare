@@ -1,13 +1,23 @@
 import { create } from "zustand";
-import type { AIProvider, StarterContent, StoryStructure, StoryTone, WizardState } from "@/types";
+import type {
+  AIProvider,
+  ImportSelection,
+  StarterContent,
+  StoryStructure,
+  StoryTone,
+  WizardState,
+} from "@/types";
 
 interface WizardStoreState {
   currentStep: number;
   state: WizardState;
+  /** Live pick state of the Step-2 inline import panel (ADR-091); null until files are picked. */
+  importSelection: ImportSelection | null;
 
   setStep: (step: number) => void;
   nextStep: () => void;
   prevStep: () => void;
+  setImportSelection: (selection: ImportSelection | null) => void;
   updateStep1: (data: {
     project_name: string;
     writing_language: string;
@@ -54,10 +64,13 @@ const defaultState: WizardState = {
 export const useWizardStore = create<WizardStoreState>((set) => ({
   currentStep: 1,
   state: { ...defaultState },
+  importSelection: null,
 
   setStep: (step) => set({ currentStep: step }),
   nextStep: () => set((s) => ({ currentStep: Math.min(s.currentStep + 1, 5) })),
   prevStep: () => set((s) => ({ currentStep: Math.max(s.currentStep - 1, 1) })),
+
+  setImportSelection: (selection) => set({ importSelection: selection }),
 
   updateStep1: (data) => set((s) => ({ state: { ...s.state, ...data } })),
 
@@ -67,5 +80,5 @@ export const useWizardStore = create<WizardStoreState>((set) => ({
 
   updateStep4: (data) => set((s) => ({ state: { ...s.state, ...data } })),
 
-  reset: () => set({ currentStep: 1, state: { ...defaultState } }),
+  reset: () => set({ currentStep: 1, state: { ...defaultState }, importSelection: null }),
 }));
