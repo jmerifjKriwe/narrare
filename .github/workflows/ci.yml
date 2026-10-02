@@ -48,8 +48,13 @@ on:
   workflow_dispatch:
   schedule:
     # Nightly FULL run (default branch): PRs are the gate; this is the
-    # post-merge safety net (spec 2026-09-29 §3). 02:30 UTC.
-    - cron: "30 2 * * *"
+    # post-merge safety net (spec 2026-09-29 §3). 02:37 UTC.
+    # Off the :30 minute deliberately: GitHub's scheduler full-skipped the
+    # first two slots at :30 (Oct 1 + Oct 2, 2026; 0 schedule runs in the
+    # workflow's history despite state=active) and its docs warn about
+    # high load at common minutes (our monthly cron saw a 6.8 h delay on
+    # Oct 1). Validated executable via workflow_dispatch run 36972990834.
+    - cron: "37 2 * * *"
   pull_request:
     paths:
       - "apps/**"
