@@ -2,16 +2,42 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
+
+from fastapi import Form
+from pydantic import ValidationError as PydanticValidationError
 
 from narrare._app.dependencies import SessionDep  # noqa: TC001 - needed at runtime for FastAPI DI
 from narrare.importing.contracts import build_import_service
+from narrare.importing.schemas import ImportCommitAdjustments
+from narrare_core.shared.errors import ValidationError
 
 if TYPE_CHECKING:
-    from narrare.importing.contracts import ImportPreviewerProtocol
+    from narrare.importing.contracts import ImportServiceProtocol
 
 
 def get_import_service(
     session: SessionDep,
-) -> ImportPreviewerProtocol:
+) -> ImportServiceProtocol:
     return build_import_service(session)
+
+
+def get_commit_adjustments(
+    adjustments: Annotated[str, Form()],
+) -> ImportCommitAdjustments:
+    """Parse the ``adjustments`` JSON form field into the commit schema.
+
+    Scoped request dependency (coordinator ruling): malformed or wrongly
+    shaped JSON becomes the domain :class:`ValidationError` here, so the
+    global NarrareError handler answers 422 (spec error contract) instead
+    of an unhandled 500 — keeping the router itself free of try/except
+    (RULE-06). Field name ``adjustments`` is the wire contract the frontend
+    client sends (``body.append("adjustments", JSON.stringify(...))``).
+    """
+    try:
+        return ImportCommitAdjustments.model_validate_json(adjustments)
+    except PydanticValidationError as exc:
+        first = exc.errors()[0]
+        location = ".".join(str(part) for part in first["loc"]) or "adjustments"
+        reason = str(first["msg"])[:200]
+        raise ValidationError(f"Invalid adjustments JSON ({location}: {reason}).") from exc

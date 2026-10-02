@@ -10591,6 +10591,53 @@
         ]
       }
     },
+    "/api/v1/import/commit": {
+      "post": {
+        "tags": [
+          "import"
+        ],
+        "summary": "Commit Import",
+        "description": "Re-parse files and append chapters atomically (ADR-091 contract).",
+        "operationId": "commit_import_api_v1_import_commit_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_commit_import_api_v1_import_commit_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportCommitResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/templates/updates": {
       "get": {
         "tags": [
@@ -13995,6 +14042,34 @@
         "title": "BetaReaderStrength",
         "description": "A strength identified by the beta reader.\n\nAttributes:\n    category: Which aspect of writing this strength relates to.\n    title: Short summary of the strength.\n    description: Why this works well.\n    text_excerpt: Supporting text passage (if applicable)."
       },
+      "Body_commit_import_api_v1_import_commit_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "adjustments": {
+            "type": "string",
+            "title": "Adjustments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files",
+          "novel_id",
+          "adjustments"
+        ],
+        "title": "Body_commit_import_api_v1_import_commit_post"
+      },
       "Body_mark_all_stale_api_v1_novels__novel_id__wiki_mark_stale_post": {
         "properties": {
           "prompt_version": {
@@ -16821,6 +16896,73 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "ImportCommitChapterInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "word_count": {
+            "type": "integer",
+            "title": "Word Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "position",
+          "word_count"
+        ],
+        "title": "ImportCommitChapterInfo"
+      },
+      "ImportCommitResponse": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "title": "Novel Id"
+          },
+          "created_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Created Count"
+          },
+          "first_position": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "First Position"
+          },
+          "last_position": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Last Position"
+          },
+          "chapters": {
+            "items": {
+              "$ref": "#/components/schemas/ImportCommitChapterInfo"
+            },
+            "type": "array",
+            "title": "Chapters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id",
+          "created_count",
+          "first_position",
+          "last_position",
+          "chapters"
+        ],
+        "title": "ImportCommitResponse"
       },
       "ImportPreviewItem": {
         "properties": {

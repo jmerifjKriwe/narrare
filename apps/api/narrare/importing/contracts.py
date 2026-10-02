@@ -57,21 +57,14 @@ class ImportServiceProtocol(ImportPreviewerProtocol, ImportCommitterProtocol, Pr
 
 def build_import_service(
     session: AsyncSession,
-) -> ImportPreviewerProtocol:
-    """Default composition root (re-exported seam for tests).
-
-    Task 2 (SETUP-003) composes the preview surface only: the chapter
-    repository arrives with the commit implementation in Task 3 and is
-    wired as ``None`` until then (the preview path never touches it —
-    guard pipeline + detection are pure). Task 3 replaces ``None`` with
-    ``ImportChapterRepository(session)`` and widens the return type to
-    ``ImportServiceProtocol``.
-    """
+) -> ImportServiceProtocol:
+    """Default composition root (re-exported seam for tests)."""
+    from narrare.importing.repository import ImportChapterRepository
     from narrare.importing.service import ImportService
     from narrare.novels.repository import NovelRepository
 
     return ImportService(
         session=session,
-        chapter_repo=None,  # ImportChapterRepository lands in Task 3
+        chapter_repo=ImportChapterRepository(session),
         novel_repo=NovelRepository(session),
     )

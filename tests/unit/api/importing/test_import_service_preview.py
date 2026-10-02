@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from typing import TYPE_CHECKING, cast
 
 from fastapi import UploadFile
 from starlette.datastructures import Headers
@@ -10,6 +11,17 @@ from starlette.datastructures import Headers
 from narrare.importing.constants import MAX_FILES
 from narrare.importing.service import ImportService
 from narrare_core.shared.errors import ValidationError
+from tests.fakes.fake_db_session import FakeDbSession
+from tests.fakes.fake_novel_repo import FakeNovelRepository
+
+if TYPE_CHECKING:
+    import uuid
+    from collections.abc import Sequence
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from narrare.chapters.models import Chapter
+    from narrare_core.importing.models import DetectedChapter
 
 
 def _upload(name: str, data: bytes) -> UploadFile:
@@ -21,9 +33,29 @@ def _upload(name: str, data: bytes) -> UploadFile:
     )
 
 
+class _UnusedChapterRepo:
+    """Satisfies ImportChapterRepositoryProtocol — preview must never call it."""
+
+    async def max_position(self, novel_id: uuid.UUID) -> int:
+        raise AssertionError("preview must not query chapter positions")
+
+    async def append_chapters(
+        self,
+        novel_id: uuid.UUID,
+        chapters: Sequence[DetectedChapter],
+        start_position: int,
+    ) -> list[Chapter]:
+        raise AssertionError("preview must not append chapters")
+
+
 def _service() -> ImportService:
-    # Preview touches no collaborators — none are needed here.
-    return ImportService()
+    # Preview touches no collaborators — canonical fakes satisfy the required
+    # constructor types; the fake chapter repo fails the test if ever reached.
+    return ImportService(
+        session=cast("AsyncSession", FakeDbSession()),
+        chapter_repo=_UnusedChapterRepo(),
+        novel_repo=FakeNovelRepository(),
+    )
 
 
 class TestPreviewGuards:
@@ -71,6 +103,28 @@ class TestPreviewGuards:
             raise AssertionError("expected ValidationError")
         except ValidationError as exc:
             assert "No chapters" in str(exc)
+
+    async def test_preview_over_total_limit_raises_422_naming_total(self) -> None:
+        # 5 x 5 MiB fill the 25 MiB aggregate budget exactly; the 6th file tips
+        # the SUM over the aggregate guard while each single file still passes
+        # the per-file guard — proves the aggregate check, not the per-file one.
+        five_mib = 5 * 1024 * 1024
+        files = [_upload(f"{i}.md", b"# H\n" + b"x" * (five_mib - 4)) for i in range(5)]
+        files.append(_upload("tip.md", b"# H\nx"))
+        try:
+            await _service().preview(files)
+            raise AssertionError("expected ValidationError")
+        except ValidationError as exc:
+            assert "total" in str(exc)
+
+    async def test_preview_with_exactly_total_limit_bytes_passes_size_guard(self) -> None:
+        # Boundary: 5 x 5 MiB = 25 MiB aggregate is allowed (guard is strict
+        # `>`); content is valid markdown so nothing downstream rejects it.
+        five_mib = 5 * 1024 * 1024
+        files = [_upload(f"{i}.md", b"# Heading\n" + b"x" * (five_mib - 10)) for i in range(5)]
+        result = await _service().preview(files)
+        assert result.file_count == 5
+        assert result.chapter_count == 5
 
 
 class TestPreviewHappyPath:

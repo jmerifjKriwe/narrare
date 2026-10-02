@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, UploadFile
+import uuid
+from typing import Annotated
 
-from narrare._app.dependencies import get_current_user_id
-from narrare.importing.contracts import ImportPreviewerProtocol
-from narrare.importing.dependencies import get_import_service
-from narrare.importing.schemas import ImportPreviewResponse
+from fastapi import APIRouter, Depends, File, Form, UploadFile
+
+from narrare._app.dependencies import CurrentUserIdDep, get_current_user_id
+from narrare.importing.contracts import ImportPreviewerProtocol, ImportServiceProtocol
+from narrare.importing.dependencies import get_commit_adjustments, get_import_service
+from narrare.importing.schemas import (
+    ImportCommitAdjustments,
+    ImportCommitResponse,
+    ImportPreviewResponse,
+)
 
 router = APIRouter(prefix="/import", tags=["import"])
 
@@ -23,3 +30,15 @@ async def preview_import(
 ) -> ImportPreviewResponse:
     """Parse uploaded manuscript files — preview only, no DB writes."""
     return await service.preview(files)
+
+
+@router.post("/commit", response_model=ImportCommitResponse)
+async def commit_import(
+    user_id: CurrentUserIdDep,
+    adjustments: Annotated[ImportCommitAdjustments, Depends(get_commit_adjustments)],
+    service: ImportServiceProtocol = Depends(get_import_service),
+    files: list[UploadFile] = File(...),
+    novel_id: uuid.UUID = Form(...),
+) -> ImportCommitResponse:
+    """Re-parse files and append chapters atomically (ADR-091 contract)."""
+    return await service.commit(files, novel_id, uuid.UUID(user_id), adjustments)
