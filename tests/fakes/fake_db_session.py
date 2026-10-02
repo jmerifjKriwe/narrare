@@ -100,6 +100,10 @@ class FakeDbSession:
         """Record an entity added to the session."""
         self.added.append(entity)
 
+    def add_all(self, entities: Sequence[Any]) -> None:
+        """Record entities added to the session (bulk form of :meth:`add`)."""
+        self.added.extend(entities)
+
     async def delete(self, entity: Any) -> None:
         """Record an entity deleted from the session."""
         self.deleted.append(entity)
