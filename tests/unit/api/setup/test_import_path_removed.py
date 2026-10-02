@@ -31,6 +31,9 @@ def test_starter_import_enum_value_remains() -> None:
 
 async def test_validate_step3_accepts_import_without_path() -> None:
     from narrare.setup._validation import validate_step3
+    from narrare.setup.schemas import StarterContent
 
-    result = await validate_step3(Step3StarterRequest(starter="import"), FakeDemoLoader())
+    result = await validate_step3(
+        Step3StarterRequest(starter=StarterContent.IMPORT), FakeDemoLoader()
+    )
     assert result.valid is True
