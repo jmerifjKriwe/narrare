@@ -55,7 +55,9 @@ describe("ImportModal", () => {
       last_position: 1,
       chapters: [],
     });
-    const { onOpenChange } = renderModal();
+    const { onOpenChange, client } = renderModal();
+    // Invalidation contract: the chapters query of THIS novel is refetched.
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
 
     // Select a file through the embedded panel
     const input = screen.getByLabelText(/choose files/i) as HTMLInputElement;
@@ -70,16 +72,21 @@ describe("ImportModal", () => {
       excluded_indices: [],
       title_overrides: {},
     });
+    expect(invalidateSpy.mock.calls[0][0]).toEqual({
+      queryKey: ["novels", "novel-1", "chapters"],
+    });
   });
 
   it("keeps the modal open with the error on commit failure", async () => {
     vi.mocked(importApi.commit).mockRejectedValueOnce(new Error("boom"));
-    renderModal();
+    const { onOpenChange } = renderModal();
 
     const input = screen.getByLabelText(/choose files/i) as HTMLInputElement;
     fireEvent.change(input, { target: { files: [new File(["# A\nb"], "a.md")] } });
 
     fireEvent.click(await screen.findByRole("button", { name: /import/i }));
     expect(await screen.findByText(/boom/)).toBeInTheDocument();
+    // Failure keeps the dialog open for retry — never closes.
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 });

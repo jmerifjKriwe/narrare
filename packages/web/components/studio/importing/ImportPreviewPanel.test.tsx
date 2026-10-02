@@ -61,6 +61,9 @@ describe("ImportPreviewPanel", () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() => expect(screen.getByText("a.md")).toBeInTheDocument());
+    // Word counts render as an explicit number (the catalog "column.words"
+    // key intentionally has no {count} placeholder).
+    expect(screen.getByText("Words: 10")).toBeInTheDocument();
     expect(onSelectionChange).toHaveBeenLastCalledWith({
       files: [file],
       excludedIndices: [],

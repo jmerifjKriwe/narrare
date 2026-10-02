@@ -163,7 +163,7 @@ export function ImportPreviewPanel({ onSelectionChange }: ImportPreviewPanelProp
                     className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-sm"
                   />
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {t("column.words", { count: item.word_count })}
+                    {t("column.words")}: {item.word_count.toLocaleString()}
                   </span>
                   {firstIndexPerFile.get(item.source_file) === item.index && (
                     <span
