@@ -1,6 +1,6 @@
 # ADR-091 — Project Import v1: Stateless Two-Phase Multipart Import (SETUP-003)
 
-> **Status:** ✅ Accepted
+> **Status:** ✅ Implemented (implementation complete 2026-10-02)
 > **Date:** 2026-10-02
 > **Deciders:** Architecture Agent (formalizing the approved SETUP-003 brainstorm session with the project owner — all binding decisions made there; this ADR records and justifies them)
 > **Supersedes:** none (retires the dormant `import_path` stub — no ADR existed for it)

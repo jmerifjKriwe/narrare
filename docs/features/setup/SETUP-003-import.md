@@ -1,7 +1,7 @@
 ---
 id: SETUP-003
 title: "Project Import"
-status: planned
+status: stable
 area: setup
 mvp: false
 
@@ -45,7 +45,8 @@ adr: ADR-091
 
 # SETUP-003 — Project Import
 
-> **Status:** 📋 Planned (v1 specified 2026-10-02) — not yet implemented
+> **Status:** ✅ Stable — v1 implemented 2026-10-02 (ADR-091 ✅ Implemented;
+> branch `feature/project-import`, commits `6f3435b8..c8bf97f2`)
 > **Design spec:** `docs/superpowers/specs/2026-10-02-project-import-design.md`
 > **ADR:** `docs/architecture/decisions/ADR-091-project-import-v1.md`
 
@@ -116,8 +117,12 @@ BOM tolerated; undecodable file → 422.
 (`packages/web/components/studio/importing/`); sidebar action in
 `SidebarChapterList`; wizard holds the selection (File[] + adjustments) in
 `wizardStore` — never serialized into `setup/complete` — and commits it
-after novel creation. `fetchApiUpload` (multipart-aware) in
-`lib/api/core.ts`; `importing` i18n namespace (en/de/fr).
+after novel creation (via `useWizardCompletion`). A commit failure after
+the novel already exists is a documented degrade path: a sessionStorage
+flag (`narrare:importFailed:{novel_id}`) surfaces a retry banner in the
+novel workspace that reopens the sidebar import. `fetchApiUpload`
+(multipart-aware) in `lib/api/core.ts`; `importing` i18n namespace
+(en/de/fr).
 
 **Removed with v1:** the dormant server-side `import_path` mechanism
 (backend schemas + validation branch, wizard input, Step-5 row, i18n keys) —
@@ -137,9 +142,13 @@ that the frontend then populates via `/import/commit`.
 - No undo for import — the preview is the safety gate
 - DOCX support is an explicit follow-up slice (pandoc converter already
   ships with the export pipeline, ADR-081)
-- Multipart bodies traverse the Next.js rewrite (`next.config.ts`); the
-  implementation plan verifies real uploads > 1 MB through the rewrite
-  before merge (spec §7 R1)
+- Multipart bodies traverse the Next.js rewrite (`next.config.ts`);
+  verified live during implementation — Next 16 buffers proxied request
+  bodies behind a 10 MB default cap, so
+  `experimental.proxyClientMaxBodySize: "30mb"` was added with a binding
+  coupling rule (proxy cap ≥ 25 MB total guard + ~1 MiB multipart envelope,
+  floor 26 MiB) pinned by a frontend regression test (ADR-091
+  post-implementation amendment)
 
 ## Related Features
 
@@ -159,3 +168,11 @@ that the frontend then populates via `/import/commit`.
   design spec): MD+TXT only, chapters only, browser multipart upload,
   `import_path` stub removal, wizard-step-2 inline + sidebar-modal entries.
   DOCX, bulk KB extraction, split/merge editing deferred (follow-up slices).
+- `2026-10-02` — **v1 implemented** (branch `feature/project-import`, commits
+  `6f3435b8..c8bf97f2`; ADR-091 → ✅ Implemented): pure-Core chapter detector,
+  preview + commit endpoints, `import_path` removal (backend + frontend +
+  benchmark), multipart `fetchApiUpload` client, `ImportPreviewPanel`/
+  `ImportModal` + `importing` i18n (en/de/fr), sidebar entry + retry banner,
+  wizard Step-2 inline section + completion with degrade path, Next.js proxy
+  amendment (`experimental.proxyClientMaxBodySize: "30mb"` + ≥ 26 MiB
+  coupling regression test). Status → `stable`.
