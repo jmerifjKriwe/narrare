@@ -23,9 +23,12 @@ from narrare.importing.schemas import (
     ImportCommitResponse,
     ImportPreviewItem,
     ImportPreviewResponse,
+    ImportSplitCandidate,
 )
 from narrare.novels.ownership import verify_novel_owned
+from narrare_core.importing.candidates import find_split_candidates
 from narrare_core.importing.detector import detect_chapters
+from narrare_core.importing.operations import apply_operations, build_operation_set
 from narrare_core.shared.errors import ValidationError
 
 if TYPE_CHECKING:
@@ -36,7 +39,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from narrare.importing.contracts import ImportChapterRepositoryProtocol
-    from narrare.importing.schemas import ImportCommitAdjustments
+    from narrare.importing.schemas import ImportCommitAdjustments, ImportSplitOperation
     from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare_core.importing.models import DetectedChapter
 
@@ -68,6 +71,7 @@ class ImportService:
                 suggested_title=c.title,
                 word_count=c.word_count,
                 source_file=c.source_file,
+                split_candidates=self._split_candidates_for(c),
             )
             for i, c in enumerate(detected)
         ]
@@ -77,6 +81,57 @@ class ImportService:
             chapter_count=len(detected),
             total_word_count=sum(c.word_count for c in detected),
         )
+
+    @staticmethod
+    def _is_md_source(chapter: DetectedChapter) -> bool:
+        """D2a (shared predicate): split affordances are .md-only.
+
+        Case-insensitive source-file extension check — the ONE place the
+        .md-only rule lives; preview and commit both consume it.
+        """
+        return chapter.source_file.lower().endswith(".md")
+
+    @staticmethod
+    def _split_candidates_for(chapter: DetectedChapter) -> list[ImportSplitCandidate]:
+        """Split candidates offered for one detected chapter (D2a ruling).
+
+        .txt chapters are merge-only: their preview carries
+        ``split_candidates: []`` even when the content contains ``###``
+        lines — split points are a .md-only affordance. Candidates stay
+        capped in Core.
+        """
+        if not ImportService._is_md_source(chapter):
+            return []
+        return [
+            ImportSplitCandidate(
+                ordinal=candidate.ordinal,
+                heading=candidate.heading,
+                words_before=candidate.words_before,
+            )
+            for candidate in find_split_candidates(chapter.content)
+        ]
+
+    @staticmethod
+    def _reject_non_md_splits(
+        splits: Sequence[ImportSplitOperation], detected: list[DetectedChapter]
+    ) -> None:
+        """D2a on BOTH phases: commit must reject what preview cannot offer.
+
+        Core's op validation is content-pure (``find_split_candidates``
+        sees the `###` lines inside .txt content too), so the source-file
+        policy is enforced here — same rule, same helper as preview.
+        Out-of-range indices fall through to Core's per-op drift errors,
+        which name them precisely. Merges stay allowed (merge-only).
+        """
+        for op in splits:
+            if 0 <= op.index < len(detected) and not ImportService._is_md_source(
+                detected[op.index]
+            ):
+                raise ValidationError(
+                    f"Split for chapter {op.index} is not allowed: source file "
+                    f"'{detected[op.index].source_file}' is not Markdown (.md) — "
+                    f"plain-text chapters are merge-only."
+                )
 
     async def _read_and_validate(self, files: Sequence[UploadFile]) -> list[str]:
         """Guards 1-5 of spec §4.1, then decode utf-8-sig strict."""
@@ -121,22 +176,35 @@ class ImportService:
         user_id: uuid.UUID,
         adjustments: ImportCommitAdjustments,
     ) -> ImportCommitResponse:
-        """Ownership gate → deterministic re-parse → validate → atomic append."""
+        """Ownership gate → re-parse → .md split gate → apply ops → selection → append.
+
+        Splits/merges address ORIGINAL indices and are validated + applied
+        by Core (``apply_operations``); the D2a .md-only split gate runs in
+        this service first (commit rejects what preview cannot offer).
+        Exclusions/rename address FINAL (post-ops) indices. Empty ops ⇒
+        final ≡ original (v1 identity).
+        """
         await verify_novel_owned(self._novel_repo, novel_id, user_id)
 
         texts = await self._read_and_validate(files)
         detected = self._detect_all(files, texts)
         if not detected:
             raise ValidationError("No chapters detected in the uploaded files.")
-        self._validate_adjustments(adjustments, len(detected))
+        self._reject_non_md_splits(adjustments.splits, detected)
+        op_set = build_operation_set(
+            splits=[(op.index, op.at) for op in adjustments.splits],
+            merges=[op.indices for op in adjustments.merges],
+        )
+        materialized = apply_operations(detected, op_set)
+        self._validate_adjustments(adjustments, len(materialized))
 
         selected = [
             dataclasses.replace(
                 chapter,
-                title=adjustments.title_overrides.get(str(index), chapter.title),
+                title=adjustments.title_overrides.get(str(final_index), chapter.title),
             )
-            for index, chapter in enumerate(detected)
-            if index not in adjustments.excluded_indices
+            for final_index, chapter in enumerate(materialized)
+            if final_index not in adjustments.excluded_indices
         ]
         if not selected:
             raise ValidationError("All detected chapters are excluded — nothing to import.")
@@ -149,6 +217,8 @@ class ImportService:
             novel_id=str(novel_id),
             created=len(rows),
             first_position=start_position,
+            splits=len(op_set.splits),
+            merges=len(op_set.merges),
         )
         return ImportCommitResponse(
             novel_id=str(novel_id),
@@ -167,22 +237,26 @@ class ImportService:
         )
 
     @staticmethod
-    def _validate_adjustments(adjustments: ImportCommitAdjustments, chapter_count: int) -> None:
-        """Indices must reference the freshly re-parsed chapter list (0-based)."""
+    def _validate_adjustments(adjustments: ImportCommitAdjustments, final_count: int) -> None:
+        """FINAL-space indices must reference the materialized (post-ops) list."""
         for index in adjustments.excluded_indices:
-            if not 0 <= index < chapter_count:
+            if not 0 <= index < final_count:
                 raise ValidationError(
-                    f"Excluded index {index} is out of range (0..{chapter_count - 1})."
+                    f"Excluded index {index} is out of range (0..{final_count - 1})."
                 )
         for key, title in adjustments.title_overrides.items():
             # isdecimal() (not isdigit()): int() accepts exactly the isdecimal
             # set — digit-like Unicode ("①".isdigit() is True) would crash
             # int() with an unhandled ValueError on user input.
-            if not key.isdecimal() or not 0 <= int(key) < chapter_count:
-                raise ValidationError(f"Title override key '{key}' is not a valid chapter index.")
+            if not key.isdecimal() or not 0 <= int(key) < final_count:
+                raise ValidationError(
+                    f"Title override key '{key}' is not a valid final chapter index."
+                )
             # Stored RAW into Chapter.title String(500): the RAW length must
             # fit the column (stripped-only checks would pass whitespace
             # padding that overflows it); stripped minimum 1 rejects
             # whitespace-only titles.
             if len(title) > 500 or not title.strip():
-                raise ValidationError(f"Title override for chapter {key} must be 1-500 characters.")
+                raise ValidationError(
+                    f"Title override for final chapter {key} must be 1-500 characters."
+                )

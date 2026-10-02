@@ -16985,6 +16985,13 @@
           "source_file": {
             "type": "string",
             "title": "Source File"
+          },
+          "split_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ImportSplitCandidate"
+            },
+            "type": "array",
+            "title": "Split Candidates"
           }
         },
         "type": "object",
@@ -16995,7 +17002,7 @@
           "source_file"
         ],
         "title": "ImportPreviewItem",
-        "description": "One detected chapter in a preview (index = commit adjustment key)."
+        "description": "One detected chapter in a preview (index = ORIGINAL space key)."
       },
       "ImportPreviewResponse": {
         "properties": {
@@ -17030,6 +17037,34 @@
           "total_word_count"
         ],
         "title": "ImportPreviewResponse"
+      },
+      "ImportSplitCandidate": {
+        "properties": {
+          "ordinal": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Ordinal"
+          },
+          "heading": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Heading"
+          },
+          "words_before": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Words Before"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ordinal",
+          "heading",
+          "words_before"
+        ],
+        "title": "ImportSplitCandidate",
+        "description": "One `###`+ subheading offered as a split point (capped, ≤ 200)."
       },
       "ImproveSuggestionResponse": {
         "properties": {
