@@ -31,6 +31,7 @@ export function WizardStep5({ onComplete, onBack }: WizardStep5Props) {
   const t = useTranslations("studio");
   const tCommon = useTranslations("common");
   const { state } = useWizardStore();
+  const importSelection = useWizardStore((s) => s.importSelection);
   const [isCreating, setIsCreating] = useState(false);
 
   const handleComplete = async () => {
@@ -44,6 +45,13 @@ export function WizardStep5({ onComplete, onBack }: WizardStep5Props) {
 
   const starterLabel: Record<string, string> = {
     blank: t("wizard.step5.blankProject"),
+    import:
+      state.starter === "import" && importSelection
+        ? t("wizard.step5.importSummary", {
+            files: importSelection.files.length,
+            chapters: importSelection.includedCount,
+          })
+        : t("wizard.step2.import"),
     demo_fantasy: "Demo: Echoes of the Thornwall",
     demo_scifi: "Demo: Dead Signal",
     demo_german: "Demo: Im stillen Wald",

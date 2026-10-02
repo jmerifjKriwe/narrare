@@ -61,6 +61,11 @@ export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
     setSelected(starter);
     setError(null);
 
+    // Task-9 review rider: leaving the import card discards the picked
+    // selection — a stale importSelection must never survive a card switch
+    // (the shell's `starter === "import"` gate is the second line of defence).
+    if (starter !== "import") setImportSelection(null);
+
     // Prefill wizard store with demo metadata for the next step (Novel Details)
     const prefillFromDemo = (info: DemoProjectInfo) => {
       if (!info.title) return;

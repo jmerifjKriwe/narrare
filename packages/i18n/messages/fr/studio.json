@@ -705,7 +705,8 @@
       "tone": "Ton",
       "content": "Contenu",
       "model": "Modèle",
-      "blankProject": "Projet vierge"
+      "blankProject": "Projet vierge",
+      "importSummary": "{files} fichiers · {chapters} chapitres"
     },
     "storyStructure": {
       "three_act": "Structure en trois actes",
