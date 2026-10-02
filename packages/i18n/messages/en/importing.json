@@ -1,0 +1,21 @@
+{
+  "title": "Import chapters",
+  "description": "Select Markdown (.md) or plain-text (.txt) files. Chapters are detected from frontmatter, headings, and chapter markers.",
+  "chooseFiles": "Choose files",
+  "loading": "Analyzing files…",
+  "column": { "include": "Include", "title": "Chapter title", "words": "Words", "source": "File" },
+  "summary": "{files} files · {chapters} chapters · {words} words",
+  "confirm": "Import {count, plural, one {# chapter} other {# chapters}}",
+  "importing": "Importing…",
+  "cancel": "Cancel",
+  "errors": {
+    "previewFailed": "Could not analyze the files: {message}",
+    "commitFailed": "Import failed: {message}"
+  },
+  "failedBanner": {
+    "title": "Chapter import failed",
+    "body": "Your novel was created, but the chapters could not be imported. You can retry the import here.",
+    "retry": "Retry import",
+    "dismiss": "Dismiss"
+  }
+}

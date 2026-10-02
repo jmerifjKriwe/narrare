@@ -12,6 +12,7 @@ const namespaces = [
   "errors",
   "export",
   "generation",
+  "importing",
   "settings",
   "settings-ai",
   "settings-appearance",
