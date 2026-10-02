@@ -10544,6 +10544,53 @@
         ]
       }
     },
+    "/api/v1/import/preview": {
+      "post": {
+        "tags": [
+          "import"
+        ],
+        "summary": "Preview Import",
+        "description": "Parse uploaded manuscript files — preview only, no DB writes.",
+        "operationId": "preview_import_api_v1_import_preview_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_preview_import_api_v1_import_preview_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportPreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/templates/updates": {
       "get": {
         "tags": [
@@ -13965,6 +14012,23 @@
         "type": "object",
         "title": "Body_mark_all_stale_api_v1_novels__novel_id__wiki_mark_stale_post"
       },
+      "Body_preview_import_api_v1_import_preview_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_preview_import_api_v1_import_preview_post"
+      },
       "CalibrationSourceMetadata": {
         "properties": {
           "provider": {
@@ -16757,6 +16821,73 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "ImportPreviewItem": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Index"
+          },
+          "suggested_title": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Suggested Title"
+          },
+          "word_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Word Count"
+          },
+          "source_file": {
+            "type": "string",
+            "title": "Source File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "suggested_title",
+          "word_count",
+          "source_file"
+        ],
+        "title": "ImportPreviewItem",
+        "description": "One detected chapter in a preview (index = commit adjustment key)."
+      },
+      "ImportPreviewResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ImportPreviewItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "file_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "File Count"
+          },
+          "chapter_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Chapter Count"
+          },
+          "total_word_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Word Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "file_count",
+          "chapter_count",
+          "total_word_count"
+        ],
+        "title": "ImportPreviewResponse"
       },
       "ImproveSuggestionResponse": {
         "properties": {
