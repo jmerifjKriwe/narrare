@@ -261,6 +261,8 @@ precedent).
   only, but the plan must verify a real > 1 MB multipart upload through the
   rewrite (dev) before relying on it; production CORS is closed, so the
   rewrite is the only viable browser→API path in Docker deployments.
+  - **Update 2026-10-02 (post-implementation):** this risk materialized — see
+    the *Post-implementation Amendment* section below.
 - Import is append-only without undo — documented UX contract; users verify
   the preview.
 
@@ -307,8 +309,84 @@ implemented until it is fully wired, tested, consumed, and documented.
 
 ---
 
+## Post-implementation Amendment (2026-10-02) — R1 materialized: Next.js proxy body-size cap
+
+During Plan Task 2 Step 6 (mandatory live multipart verification through the
+Next.js dev rewrite) the "new verification obligation" risk above
+materialized, was root-caused, and is resolved by a config amendment.
+
+**Observed (coordinator-run, live):** a 2 MB body passed (API 200, correct
+preview JSON); a ~6.8 MB single file was correctly rejected by the per-file
+guard (422 naming the file). But 14.4 MB and 28.8 MB bodies (6 files à
+~4.8 MB, each under the 5 MB per-file guard) failed with HTTP 500 after
+exactly 30 s, while the API logged 400 on a *truncated* multipart stream with
+`socket hang up`/`ECONNRESET`. The Next dev log carried the smoking gun:
+`Request body exceeded 10MB for /api/v1/import/preview. Only the first 10MB
+will be available unless configured.` Direct calls against the API (bypassing
+Next) reproduced none of this — the service guard pipeline answered correctly
+in 0.18 s (422, naming the file). The API side is sound; the proxy hop is not.
+
+**Root cause:** Next.js 16 buffers request bodies to make them re-readable
+across the proxy/rewrite hand-off (`getCloneableBody`). The buffer is capped
+at **10 MB by default**, controlled by `experimental.proxyClientMaxBodySize`
+(installed `next@16.3.6` evidence: key declared in `ExperimentalConfig` —
+`dist/server/config-shared.d.ts`; read in `dist/server/next-server.js` and
+`dist/server/lib/router-utils/resolve-routes.js`; default + truncation in
+`dist/server/body-streams.js`). On overflow, both clone streams are cut and
+the warning is logged — the API receives a mutilated multipart body and
+correctly rejects it; Next surfaces the 500. This is a *different* knob from
+Server-Action `experimental.bodySizeLimit`, so the original Consequences text
+above remains true — it simply enumerated the wrong knob as "no limit". The
+warning URL still names `middlewareClientMaxBodySize`: in 16.3.6 that is the
+**deprecated alias** (`@deprecated Use proxyClientMaxBodySize instead`), which
+is auto-mapped by `config.js`; setting both keys throws (E879). Because the
+proxy ceiling (10 MB) sat **below** the API guard `MAX_TOTAL_BYTES` (25 MiB,
+`apps/api/narrare/importing/constants.py`), bodies legal per the API contract
+were truncated by the proxy.
+
+**Fix (amended into the Decision):** `packages/web/next.config.ts` gains
+
+```ts
+experimental: {
+  proxyClientMaxBodySize: "30mb",
+},
+```
+
+**Coupling rule (binding):** `experimental.proxyClientMaxBodySize` MUST stay
+≥ `MAX_TOTAL_BYTES` (25 MiB) + multipart envelope allowance (~1 MiB for
+boundaries, per-part headers, and the commit-phase `adjustments` JSON — real
+worst case ≈ 100 KiB; floor: **26 MiB**). A regression test in `packages/web`
+imports the composed next config and asserts the parsed value is ≥ 26 MiB
+(27,262,976 bytes). Whenever either constant changes, the other MUST be
+reviewed in the same change (see Review Trigger).
+
+**Value/format evidence (installed `next@16.3.6`):** the key lives in
+`ExperimentalConfig` (`dist/server/config-shared.d.ts:1137`) — it must be
+nested under `experimental` (top-level placement is a TypeScript error; the
+`NextConfig` interface does not declare it). The value type is `SizeLimit`
+(`dist/types.d.ts:51`): either a `number` (bytes) or a template string with a
+size suffix (string format is the documented recommendation; units
+`b`/`kb`/`mb`/`gb` — installed doc page
+`dist/docs/01-app/03-api-reference/05-config/01-next-config-js/proxyClientMaxBodySize.md`).
+`'30mb'` = 31,457,280 bytes ≈ 120 % of the 25 MiB guard. The same key governs
+`next dev` and the standalone production server, so one value covers both.
+
+**No interaction with Q-020:** that workaround lives under
+`outputFileTracingIncludes` (build-time output tracing);
+`proxyClientMaxBodySize` lives under `experimental` (runtime request-body
+buffering). Different mechanisms, different subtrees — no conflict, and
+removing the Q-020 block later will not affect this key.
+
+---
+
 ## Review Trigger
 
+- [ ] When `MAX_TOTAL_BYTES` (`apps/api/narrare/importing/constants.py`) or
+      `experimental.proxyClientMaxBodySize`
+      (`packages/web/next.config.ts`) changes: re-align the other side of the
+      coupling rule — proxy cap ≥ API total guard + 1 MiB envelope (floor
+      26 MiB), pinned by the `packages/web` regression test
+      (Post-implementation Amendment, 2026-10-02).
 - [ ] When the DOCX follow-up slice is picked up (pandoc conversion reuses
       this module pair; revisit guardrail sizes for DOCX weight).
 - [ ] When a multi-user / hosted deployment is pursued (guardrails + stateless

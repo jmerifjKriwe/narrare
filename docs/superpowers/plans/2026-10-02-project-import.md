@@ -919,6 +919,17 @@ curl -s -o /tmp/opencode/preview-response.json -w "%{http_code}\n" \
 
 Expected: HTTP `200` or `422` (JSON `{"detail": ...}`) — anything else (`413`, `502`, connection reset, HTML error page) means the rewrite mangles multipart bodies → STOP and escalate to Architecture (RULE-21). Record the observed status in the task's PR description. Repeat once with a ~5 MB file to pin the per-file guard response (expect 422 naming the file).
 
+> **Amendment (2026-10-02, RULE-21 escalation to Architecture):** live
+> execution: 2 MB ✅ (200, correct preview JSON) and ~6.8 MB single file ✅
+> (422 naming the file). Bodies above 10 MB (14.4/28.8 MB, 6 files à ~4.8 MB,
+> each under the per-file guard) → 500 after 30 s; Next truncates proxied
+> bodies above `experimental.proxyClientMaxBodySize` (default 10 MB) — below
+> the 25 MiB API total guard. Config fix + regression test are delegated to
+> **task T2b (Frontend specialist)**; see ADR-091 Post-implementation
+> Amendment. Step 6 is NOT complete until, after T2b lands, a re-run with a
+> ~24 MB multi-file body (e.g. 6 files à 4 MB) returns `200` + preview JSON
+> through the rewrite.
+
 - [ ] **Step 7: Run the architecture gate**
 
 Run: `just check-architecture`
