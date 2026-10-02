@@ -175,7 +175,18 @@ export function SidebarChapterList({ novelId }: { novelId: string }) {
         >
           {t("sidebar.importChapters")}
         </button>
-        <ImportModal novelId={novelId} open={importOpen} onOpenChange={setImportOpen} />
+        <ImportModal
+          novelId={novelId}
+          open={importOpen}
+          // Re-evaluate the flag when the modal closes: a successful commit
+          // clears the sessionStorage key inside the modal, so the banner must
+          // not outlive it (spec §6.2 — banner shows while the key is set).
+          onOpenChange={(open) => {
+            setImportOpen(open);
+            if (!open)
+              setImportFailed(sessionStorage.getItem(`narrare:importFailed:${novelId}`) === "1");
+          }}
+        />
       </div>
     </>
   );

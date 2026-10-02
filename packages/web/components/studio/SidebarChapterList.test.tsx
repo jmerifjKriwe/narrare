@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { importApi } from "@/lib/api/client";
 import enImporting from "../../../i18n/messages/en/importing.json";
 import enStudio from "../../../i18n/messages/en/studio.json";
 import { SidebarChapterList } from "./SidebarChapterList";
@@ -71,6 +72,32 @@ describe("SidebarChapterList import entry", () => {
     renderList();
     fireEvent.click(await screen.findByRole("button", { name: /retry import/i }));
     await waitFor(() => expect(screen.getByText(/detected from frontmatter/i)).toBeInTheDocument());
+  });
+
+  it("re-evaluates the banner when the modal closes after a successful retry", async () => {
+    sessionStorage.setItem("narrare:importFailed:novel-1", "1");
+    vi.mocked(importApi.commit).mockResolvedValueOnce({
+      novel_id: "novel-1",
+      created_count: 2,
+      first_position: 0,
+      last_position: 1,
+      chapters: [],
+    });
+    renderList();
+    fireEvent.click(await screen.findByRole("button", { name: /retry import/i }));
+
+    // Pick a file through the embedded panel — the provisional selection at
+    // pick time enables the commit button before any preview resolves.
+    const input = (await screen.findByLabelText(/choose files/i)) as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(["# A\nb"], "a.md")] } });
+    fireEvent.click(screen.getByTestId("import-commit-btn"));
+
+    // Commit succeeds → the modal clears the key and closes → the banner must
+    // not outlive the flag it mirrors (spec §6.2).
+    await waitFor(() =>
+      expect(screen.queryByTestId("import-failed-banner")).not.toBeInTheDocument(),
+    );
+    expect(sessionStorage.getItem("narrare:importFailed:novel-1")).toBeNull();
   });
 
   it("dismissing clears the banner and the sessionStorage flag", async () => {
