@@ -57,6 +57,12 @@
 | [SETUP-001](setup/SETUP-001-setup-wizard.md) | Setup Wizard (5-step) | ✅ | ✅ |
 | [SETUP-002](setup/SETUP-002-demo-content.md) | Demo Projects | ✅ | ✅ |
 | [SETUP-003](setup/SETUP-003-import.md) | Project Import | 📋 | ❌ |
+
+> **SETUP-003 v1 specified (2026-10-02):** MD+TXT browser-upload import
+> (stateless preview/commit, ADR-091 + design spec
+> `docs/superpowers/specs/2026-10-02-project-import-design.md`); dormant
+> `import_path` stub slated for removal. DOCX / bulk KB extraction / split-merge
+> editing deferred to follow-up slices.
 | [SETUP-004](setup/SETUP-004-provider-config.md) | AI Provider Configuration | ✅ | ✅ |
 | [ONBOARD-001](onboarding-user-guide.md) | Onboarding & AI-Einführung | ✅ | ❌ |
 
