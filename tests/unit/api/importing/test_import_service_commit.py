@@ -148,6 +148,22 @@ class TestCommitValidation:
         except ValidationError:
             pass
 
+    async def test_overlong_untrimmed_title_override_raises_422(self) -> None:
+        # Stored RAW into Chapter.title String(500): padding that survives the
+        # stripped-length check must still be rejected as a 422, not overflow
+        # the column into a DB error (500).
+        service, _ = _service()
+        try:
+            await service.commit(
+                _files(),
+                NOVEL_ID,
+                USER_ID,
+                ImportCommitAdjustments(title_overrides={"0": " " * 600 + "X"}),
+            )
+            raise AssertionError("expected ValidationError")
+        except ValidationError:
+            pass
+
     async def test_empty_title_override_raises_422(self) -> None:
         service, _ = _service()
         try:

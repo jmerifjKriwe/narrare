@@ -180,5 +180,9 @@ class ImportService:
             # int() with an unhandled ValueError on user input.
             if not key.isdecimal() or not 0 <= int(key) < chapter_count:
                 raise ValidationError(f"Title override key '{key}' is not a valid chapter index.")
-            if not 1 <= len(title.strip()) <= 500:
+            # Stored RAW into Chapter.title String(500): the RAW length must
+            # fit the column (stripped-only checks would pass whitespace
+            # padding that overflows it); stripped minimum 1 rejects
+            # whitespace-only titles.
+            if len(title) > 500 or not title.strip():
                 raise ValidationError(f"Title override for chapter {key} must be 1-500 characters.")
