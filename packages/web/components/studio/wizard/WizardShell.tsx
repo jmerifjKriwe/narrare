@@ -1,12 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { authApi, setupApi } from "@/lib/api/client";
+import { authApi } from "@/lib/api/client";
 import { useQuickStart } from "@/lib/hooks/useQuickStart";
 import { useWizardStore } from "@/lib/stores/wizardStore";
 import { cn } from "@/lib/utils";
+import { useWizardCompletion } from "./useWizardCompletion";
 import { WizardStep1 } from "./WizardStep1";
 import { WizardStep2 } from "./WizardStep2";
 import { WizardStep3 } from "./WizardStep3";
@@ -22,8 +22,7 @@ interface StepDef {
 export function WizardShell() {
   const t = useTranslations("studio");
   const tCommon = useTranslations("common");
-  const router = useRouter();
-  const { currentStep, nextStep, prevStep, reset } = useWizardStore();
+  const { currentStep, nextStep, prevStep } = useWizardStore();
 
   const [hasProviders, setHasProviders] = useState(false);
   const [loadingProviders, setLoadingProviders] = useState(true);
@@ -62,23 +61,7 @@ export function WizardShell() {
     }
   };
 
-  const handleComplete = async () => {
-    const currentState = useWizardStore.getState().state;
-    // Tell backend to skip provider creation when already configured
-    if (hasProviders) {
-      useWizardStore.setState({
-        state: { ...currentState, skip_provider: true },
-      });
-    }
-    const { state: updatedState } = useWizardStore.getState();
-    const result = await setupApi.complete(updatedState);
-    reset();
-    // Navigate directly to the novel editor using novel_id.
-    // The API returns redirect_to="/dashboard" for blank starters, but
-    // the dashboard route is at "/" — navigating to "/dashboard" hits a 404.
-    // Using novel_id always lands the user in the editor after setup.
-    router.push(`/novel/${result.novel_id}` as Parameters<typeof router.push>[0]);
-  };
+  const handleComplete = useWizardCompletion(hasProviders);
 
   // Step definitions — Step 4 omitted when providers already configured
   // Display order: 1 → 2(starter=store3) → 3(novel=store2) → 4(provider=store4) → 5(confirm=store5)

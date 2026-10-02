@@ -10,6 +10,7 @@
     "chapters": "CHAPITRES",
     "newChapter": "Nouveau chapitre",
     "newChapterTitle": "Nouveau chapitre",
+    "importChapters": "Importer des chapitres",
     "words": "{count} mots",
     "allNovels": "Tous les romans",
     "logout": "Se déconnecter",
@@ -648,9 +649,7 @@
       "blank": "Projet vierge",
       "blankDescription": "Commencez avec une page blanche et construisez à partir de zéro",
       "import": "Importer un manuscrit",
-      "importDescription": "Importez un manuscrit existant depuis un fichier",
-      "importPath": "Chemin du fichier",
-      "importPathPlaceholder": "/chemin/vers/votre/manuscrit",
+      "importDescription": "Importez des fichiers Markdown (.md) ou texte (.txt) depuis votre ordinateur — les chapitres sont détectés automatiquement",
       "validationFailed": "Validation échouée"
     },
     "step3": {
@@ -707,7 +706,7 @@
       "content": "Contenu",
       "model": "Modèle",
       "blankProject": "Projet vierge",
-      "importFrom": "Import depuis {path}"
+      "importSummary": "{files} fichiers · {chapters} chapitres"
     },
     "storyStructure": {
       "three_act": "Structure en trois actes",

@@ -144,7 +144,7 @@
       "step2": {
         "description": "Choisissez comment commencer votre projet",
         "blankDescription": "Commencez avec une page blanche et construisez à partir de zéro",
-        "importDescription": "Importez un manuscrit existant depuis un fichier"
+        "importDescription": "Importez des fichiers Markdown (.md) ou texte (.txt) depuis votre ordinateur — les chapitres sont détectés automatiquement"
       },
       "step3": {
         "description": "Décrivez votre roman — l'IA utilise ces informations pour des suggestions adaptées",

@@ -111,7 +111,6 @@ class Step2NovelRequest(BaseModel):
 
 class Step3StarterRequest(BaseModel):
     starter: StarterContent = BLANK  # blank|demo_fantasy|demo_scifi|demo_german|import
-    import_path: str | None = Field(default=None, max_length=500)
 
 
 class Step4ProviderRequest(BaseModel):  # ← LLM provider provisioning shape
@@ -133,7 +132,6 @@ class WizardState(BaseModel):  # full state sent to /setup/complete
     story_structure: StoryStructure
     tone: StoryTone
     starter: StarterContent
-    import_path: str | None
     provider: AIProvider = ANTHROPIC
     api_key: str = ""
     model: str = ""
@@ -396,7 +394,7 @@ Auth: Bearer for all except setup models discovery (§3.5) and monitoring. RL = 
 
 **Unmounted (→ `SKIPPED(unavailable)` per plan Task 7):** KB merge router (`kb/router_merge.py`, `POST /novels/{novel_id}/kb/merge`) and chapter↔KB consistency router (`consistency/router.py`, `POST /consistency/check`, `POST /consistency/check/stream`, `POST /consistency/chapters/{chapter_id}/check`) are implemented but never included in `_app/main.py` — all routes 404 at runtime (inventory 01-in Finding 1, 03-check Finding 1).
 
-**Import mode note (plan Task 6):** no bulk chapter-import endpoint exists. `StarterContent.IMPORT` + `import_path` refers to a server-local path in the setup wizard — not usable for corpus upload via HTTP. Import mode = incremental without per-chapter waits; the reference-KB import path is manual entry authoring (CAP-IN-05).
+**Import mode note (plan Task 6):** `starter="import"` creates an empty novel and chapters are delivered via `POST /import/commit` (ADR-091) — not via the setup wizard. Import mode = incremental without per-chapter waits; the reference-KB import path is manual entry authoring (CAP-IN-05).
 
 ## 8. OPEN items
 

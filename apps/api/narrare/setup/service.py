@@ -87,6 +87,9 @@ class SetupService:
 
         Creates: Novel, ProjectSettings, UserProvider, UserAiSettings,
         UserSettings update. If demo starter: loads demo chapters and KB stubs.
+        ``starter="import"`` intentionally creates an empty novel — the
+        frontend then commits the imported files via ``POST /import/commit``
+        (ADR-091).
 
         All in a single transaction — rollback on any failure.
         """

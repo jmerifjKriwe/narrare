@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { ImportPreviewPanel } from "@/components/studio/importing/ImportPreviewPanel";
 import { setupApi } from "@/lib/api/client";
 import { useWizardStore } from "@/lib/stores/wizardStore";
 import { cn } from "@/lib/utils";
@@ -49,10 +50,9 @@ interface WizardStep2Props {
 export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
   const t = useTranslations("studio");
   const tCommon = useTranslations("common");
-  const { updateStep3, state } = useWizardStore();
+  const { updateStep3, setImportSelection, state } = useWizardStore();
 
   const [selected, setSelected] = useState<StarterContent>(state.starter);
-  const [importPath, setImportPath] = useState(state.import_path || "");
   const [demoInfo, setDemoInfo] = useState<Record<string, DemoProjectInfo>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +60,11 @@ export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
   const handleSelectDemo = async (starter: StarterContent) => {
     setSelected(starter);
     setError(null);
+
+    // Task-9 review rider: leaving the import card discards the picked
+    // selection — a stale importSelection must never survive a card switch
+    // (the shell's `starter === "import"` gate is the second line of defence).
+    if (starter !== "import") setImportSelection(null);
 
     // Prefill wizard store with demo metadata for the next step (Novel Details)
     const prefillFromDemo = (info: DemoProjectInfo) => {
@@ -87,21 +92,15 @@ export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
     } else if (DEMO_OPTIONS.includes(starter) && demoInfo[starter]) {
       prefillFromDemo(demoInfo[starter]);
     }
-    // "blank" and "import": don't overwrite existing store values
+    // "blank": don't overwrite existing store values
   };
 
   const handleNext = async () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await setupApi.validateStep3({
-        starter: selected,
-        import_path: selected === "import" ? importPath : null,
-      });
-      updateStep3({
-        starter: selected,
-        import_path: selected === "import" ? importPath : null,
-      });
+      await setupApi.validateStep3({ starter: selected });
+      updateStep3({ starter: selected });
       onNext();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -129,6 +128,13 @@ export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
           onSelect={() => handleSelectDemo("blank")}
         />
 
+        <StarterCard
+          title={t("wizard.step2.import")}
+          description={t("wizard.step2.importDescription")}
+          selected={selected === "import"}
+          onSelect={() => handleSelectDemo("import")}
+        />
+
         {DEMO_OPTIONS.map((id) => {
           const info = demoInfo[id];
           return (
@@ -142,28 +148,14 @@ export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
             />
           );
         })}
-
-        <StarterCard
-          title={t("wizard.step2.import")}
-          description={t("wizard.step2.importDescription")}
-          selected={selected === "import"}
-          onSelect={() => handleSelectDemo("import")}
-        />
       </div>
 
       {selected === "import" && (
-        <div>
-          <label htmlFor="import_path" className="block text-sm font-medium mb-1.5">
-            {t("wizard.step2.importPath")}
-          </label>
-          <input
-            id="import_path"
-            type="text"
-            value={importPath}
-            onChange={(e) => setImportPath(e.target.value)}
-            placeholder={t("wizard.step2.importPathPlaceholder")}
-            className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-          />
+        <div
+          className="rounded-lg border border-border bg-background/50 p-4"
+          data-testid="wizard-import-section"
+        >
+          <ImportPreviewPanel onSelectionChange={setImportSelection} />
         </div>
       )}
 

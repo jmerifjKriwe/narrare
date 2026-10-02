@@ -31,7 +31,6 @@
     "blankDescription": "Start with an empty editor.",
     "import": "Import existing",
     "importDescription": "Import from an existing directory.",
-    "importPath": "Directory path",
     "demoChapters": "{n} chapters",
     "demoCharacters": "{n} characters",
     "demoWords": "{n} words"

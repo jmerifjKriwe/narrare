@@ -194,3 +194,43 @@ export async function fetchApiRaw(endpoint: string, options: RequestInit = {}): 
     throw new Error("Session expired");
   }
 }
+
+/**
+ * Multipart upload wrapper (SETUP-003 import).
+ *
+ * Mirrors fetchApi's auth header + one 401-refresh retry, but intentionally
+ * sets NO Content-Type — the browser must generate the multipart boundary.
+ * FormData bodies are re-usable, so the retry re-sends the same object.
+ */
+export async function fetchApiUpload<T>(endpoint: string, options: { body: FormData }): Promise<T> {
+  const url = `/api/v1${endpoint}`;
+  const headers: Record<string, string> = {};
+  if (_accessToken) headers.Authorization = `Bearer ${_accessToken}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    credentials: "include",
+    body: options.body,
+  });
+
+  if (response.status === 401) {
+    await refreshAccessToken();
+    headers.Authorization = `Bearer ${_accessToken}`;
+    const retry = await fetch(url, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: options.body,
+    });
+    if (!retry.ok) throw new Error(`HTTP ${retry.status}`);
+    return retry.json() as Promise<T>;
+  }
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: response.statusText }));
+    if (typeof err.detail === "string") throw new Error(err.detail);
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.json() as Promise<T>;
+}

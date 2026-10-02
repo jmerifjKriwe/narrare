@@ -31,7 +31,6 @@
     "blankDescription": "Starte mit einem leeren Editor.",
     "import": "Vorhandenes importieren",
     "importDescription": "Aus einem bestehenden Verzeichnis importieren.",
-    "importPath": "Verzeichnispfad",
     "demoChapters": "{n} Kapitel",
     "demoCharacters": "{n} Charaktere",
     "demoWords": "{n} Wörter"

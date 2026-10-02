@@ -29,7 +29,7 @@ export const setupApi = {
       body: JSON.stringify(data),
     }),
 
-  validateStep3: (data: { starter: string; import_path?: string | null }) =>
+  validateStep3: (data: { starter: string }) =>
     fetchApi<{ valid: boolean; starter: string; demo_info: DemoProjectInfo | null }>(
       "/setup/validate/step-3",
       { method: "POST", body: JSON.stringify(data) },

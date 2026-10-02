@@ -31,7 +31,6 @@
     "blankDescription": "Commencez avec un éditeur vide.",
     "import": "Importer l'existant",
     "importDescription": "Importer depuis un répertoire existant.",
-    "importPath": "Chemin du répertoire",
     "demoChapters": "{n} chapitres",
     "demoCharacters": "{n} personnages",
     "demoWords": "{n} mots"

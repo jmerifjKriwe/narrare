@@ -39,7 +39,7 @@ describe("setupApi — validation steps", () => {
 
   it("validateStep3 → POST with body", async () => {
     f.mockResolvedValueOnce({ valid: true, starter: "blank", demo_info: null } as never);
-    const data = { starter: "blank", import_path: null };
+    const data = { starter: "blank" };
     await setupApi.validateStep3(data);
     expect(f).toHaveBeenCalledWith(
       "/setup/validate/step-3",

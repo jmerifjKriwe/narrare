@@ -1,0 +1,21 @@
+{
+  "title": "Importer des chapitres",
+  "description": "Sélectionnez des fichiers Markdown (.md) ou texte (.txt). Les chapitres sont détectés à partir du frontmatter, des titres et des marqueurs de chapitre.",
+  "chooseFiles": "Choisir des fichiers",
+  "loading": "Analyse des fichiers…",
+  "column": { "include": "Inclure", "title": "Titre du chapitre", "words": "Mots", "source": "Fichier" },
+  "summary": "{files} fichiers · {chapters} chapitres · {words} mots",
+  "confirm": "Importer {count, plural, one {# chapitre} other {# chapitres}}",
+  "importing": "Import en cours…",
+  "cancel": "Annuler",
+  "errors": {
+    "previewFailed": "Impossible d'analyser les fichiers : {message}",
+    "commitFailed": "Échec de l'import : {message}"
+  },
+  "failedBanner": {
+    "title": "Échec de l'import des chapitres",
+    "body": "Votre roman a été créé, mais les chapitres n'ont pas pu être importés. Vous pouvez réessayer l'import ici.",
+    "retry": "Réessayer l'import",
+    "dismiss": "Ignorer"
+  }
+}

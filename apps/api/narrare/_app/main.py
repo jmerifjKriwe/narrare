@@ -218,6 +218,7 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.embeddings.router import router as embeddings_router
     from narrare.export.router import router as export_router
     from narrare.generation.router import router as generation_router
+    from narrare.importing.router import router as import_router
     from narrare.kb.entity_resolution.router import router as kb_resolution_router
     from narrare.kb.router import router as kb_router
     from narrare.kb.router_consistency import router as kb_consistency_router
@@ -317,6 +318,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(prompts_prompt_ux_router, prefix=prefix)
     app.include_router(generation_router, prefix=prefix)
     app.include_router(setup_router, prefix=prefix)
+    app.include_router(import_router, prefix=prefix)
     app.include_router(templates_router, prefix=prefix)
     app.include_router(metrics_router)  # No prefix — /health, /ready, /metrics
     app.include_router(writing_router, prefix=prefix)

@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { setupApi } from "@/lib/api/client";
+import { authApi, importApi, setupApi } from "@/lib/api/client";
 import { useWizardStore } from "@/lib/stores/wizardStore";
+import { WizardShell } from "./WizardShell";
 import { WizardStep1 } from "./WizardStep1";
 import { WizardStep2 } from "./WizardStep2";
 import { WizardStep3 } from "./WizardStep3";
@@ -11,7 +12,6 @@ import { WizardStep5 } from "./WizardStep5";
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
-// Note: next-intl is mocked globally in setupTests.ts
 
 vi.mock("@/lib/api/client", () => ({
   authApi: {
@@ -26,11 +26,52 @@ vi.mock("@/lib/api/client", () => ({
       redirect_to: "/novel/new-novel-id",
     }),
   },
+  importApi: {
+    preview: vi.fn(),
+    commit: vi.fn(),
+  },
 }));
+
+// The global setupTests.ts next-intl mock returns i18n KEY STRINGS, which would
+// make the copy matchers below tautologies on key names. Resolving against the
+// REAL en catalogs instead proves the rendered copy comes from the actual
+// message trees — the per-file pattern used by SidebarChapterList.test.tsx and
+// ImportPreviewPanel.test.tsx. Namespaces outside the two catalogs ("common")
+// fall back to the raw key, which the structural assertions don't depend on.
+// useLocale is pinned because next-intl's real hook needs a provider context.
+vi.mock("next-intl", async () => {
+  const actual = await vi.importActual<typeof import("next-intl")>("next-intl");
+  const { default: studio } = await import("../../../../i18n/messages/en/studio.json");
+  const { default: importing } = await import("../../../../i18n/messages/en/importing.json");
+  const messages: Record<string, unknown> = { studio, importing };
+  return {
+    ...actual,
+    useLocale: () => "en",
+    useTranslations: (namespace: string) => (key: string, params?: Record<string, unknown>) => {
+      let value: unknown = messages;
+      for (const segment of `${namespace}.${key}`.split(".")) {
+        if (value && typeof value === "object") {
+          value = (value as Record<string, unknown>)[segment];
+        }
+      }
+      let text = typeof value === "string" ? value : `${namespace}.${key}`;
+      if (params) {
+        for (const [name, replacement] of Object.entries(params)) {
+          text = text.replace(`{${name}}`, String(replacement));
+        }
+      }
+      return text;
+    },
+  };
+});
+
+// Hoisted so tests can assert navigation while WizardShell calls useRouter()
+// internally (a per-call `vi.fn()` would be unreferenceable from tests).
+const routerPush = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: routerPush,
   }),
 }));
 
@@ -74,7 +115,6 @@ describe("WizardStep1", () => {
         story_structure: "three_act",
         tone: "dramatic",
         starter: "blank",
-        import_path: null,
         provider: "openai",
         api_key: "",
         model: "gpt-4o",
@@ -106,6 +146,7 @@ describe("WizardStep2", () => {
 
     useWizardStore.setState({
       currentStep: 2,
+      importSelection: null,
       state: {
         project_name: "Test Project",
         writing_language: "en",
@@ -117,7 +158,6 @@ describe("WizardStep2", () => {
         story_structure: "three_act",
         tone: "dramatic",
         starter: "blank",
-        import_path: null,
         provider: "openai",
         api_key: "",
         model: "gpt-4o",
@@ -136,6 +176,64 @@ describe("WizardStep2", () => {
       await waitFor(() => {
         expect(document.querySelector("div")).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("import starter", () => {
+    it("renders the inline import section with the preview panel when the import card is selected", () => {
+      renderWithProviders(<WizardStep2 onNext={vi.fn()} onBack={vi.fn()} />);
+
+      expect(screen.queryByTestId("wizard-import-section")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: /import manuscript/i }));
+
+      expect(screen.getByTestId("wizard-import-section")).toBeInTheDocument();
+      expect(screen.getByTestId("import-preview-panel")).toBeInTheDocument();
+    });
+
+    it("publishes picked-file selections into the wizard store", async () => {
+      vi.mocked(importApi.preview).mockResolvedValue({
+        items: [{ index: 0, suggested_title: "One", word_count: 12, source_file: "a.md" }],
+        file_count: 1,
+        chapter_count: 1,
+        total_word_count: 12,
+      });
+      renderWithProviders(<WizardStep2 onNext={vi.fn()} onBack={vi.fn()} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /import manuscript/i }));
+      const input = screen.getByLabelText(/choose files/i) as HTMLInputElement;
+      const file = new File(["# One\nbody"], "a.md", { type: "text/markdown" });
+      fireEvent.change(input, { target: { files: [file] } });
+
+      await waitFor(() =>
+        expect(useWizardStore.getState().importSelection).toEqual({
+          files: [file],
+          excludedIndices: [],
+          titleOverrides: {},
+          includedCount: 1,
+        }),
+      );
+    });
+
+    it("clears the import selection when the user toggles away from the import card", async () => {
+      // Task-9 review rider: a stale importSelection must not survive a card
+      // switch — otherwise a later non-import completion could commit files
+      // the user left behind (shell gates on `starter === "import"`, but the
+      // store must not carry the desync in the first place).
+      useWizardStore.setState({
+        state: { ...useWizardStore.getState().state, starter: "import" },
+        importSelection: {
+          files: [new File(["x"], "a.md")],
+          excludedIndices: [],
+          titleOverrides: {},
+          includedCount: 1,
+        },
+      });
+      renderWithProviders(<WizardStep2 onNext={vi.fn()} onBack={vi.fn()} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /blank project/i }));
+
+      await waitFor(() => expect(useWizardStore.getState().importSelection).toBeNull());
     });
   });
 });
@@ -157,7 +255,6 @@ describe("WizardStep3", () => {
         story_structure: "three_act",
         tone: "dramatic",
         starter: "blank",
-        import_path: null,
         provider: "openai",
         api_key: "",
         model: "gpt-4o",
@@ -202,7 +299,6 @@ describe("WizardStep5", () => {
         story_structure: "three_act",
         tone: "dramatic",
         starter: "blank",
-        import_path: null,
         provider: "openai",
         api_key: "test-key",
         model: "gpt-4o",
@@ -223,7 +319,156 @@ describe("WizardStep5", () => {
       });
     });
   });
+
+  describe("import summary", () => {
+    it("shows import summary counts when starter is import", () => {
+      useWizardStore.setState({
+        state: { ...useWizardStore.getState().state, starter: "import" },
+        importSelection: {
+          files: [new File(["x"], "a.md"), new File(["x"], "b.md"), new File(["x"], "c.md")],
+          excludedIndices: [2],
+          titleOverrides: {},
+          includedCount: 2,
+        },
+      });
+      renderWithProviders(<WizardStep5 onComplete={vi.fn()} onBack={vi.fn()} />);
+
+      // Chapters = includedCount (3 picked files, 1 excluded → 2 chapters),
+      // files = raw picked count — the two numbers come from different fields.
+      expect(screen.getByText("3 files · 2 chapters")).toBeInTheDocument();
+    });
+
+    it("falls back to the plain import label when no selection is present", () => {
+      useWizardStore.setState({
+        state: { ...useWizardStore.getState().state, starter: "import" },
+        importSelection: null,
+      });
+      renderWithProviders(<WizardStep5 onComplete={vi.fn()} onBack={vi.fn()} />);
+
+      expect(screen.getByText("Import manuscript")).toBeInTheDocument();
+    });
+  });
 });
 
-// Note: WizardShell is not fully tested because it makes authApi.me call during render
-// which requires more complex mocking. This is a known limitation.
+// WizardShell completion sequence (ADR-091 spec §6.3): complete → (import?)
+// commit → reset → navigate, with the documented degrade path on commit
+// failure. The shell is driven via the store (currentStep: 5) instead of
+// clicking through steps 1–4 — the authApi.me mock below settles the
+// provider check that previously made the shell untestable.
+describe("WizardShell completion", () => {
+  const fullUser = {
+    id: "user-1",
+    email: "writer@example.com",
+    display_name: "Writer",
+    is_active: true,
+    is_verified: true,
+    has_providers: false,
+    created_at: "2026-01-01T00:00:00Z",
+  };
+
+  const importSelectionFor = (files: File[]) => ({
+    files,
+    excludedIndices: [] as number[],
+    titleOverrides: {} as Record<string, string>,
+    includedCount: files.length,
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionStorage.removeItem("narrare:importFailed:novel-9");
+    vi.mocked(authApi.me).mockResolvedValue(fullUser);
+    vi.mocked(setupApi.complete).mockResolvedValue({
+      novel_id: "novel-9",
+      redirect_to: "/dashboard",
+      message: "",
+    });
+
+    useWizardStore.setState({
+      currentStep: 5,
+      importSelection: null,
+      state: {
+        project_name: "Test Project",
+        writing_language: "en",
+        autosave_interval: 30,
+        title: "My Novel",
+        author: "Test Author",
+        genre: "fantasy",
+        logline: "A test story",
+        story_structure: "three_act",
+        tone: "dramatic",
+        starter: "blank",
+        provider: "openai",
+        api_key: "test-key",
+        model: "gpt-4o",
+        ollama_url: "http://localhost:11434",
+      },
+    });
+  });
+
+  it("commits the import after setup completion and navigates to the new novel", async () => {
+    const file = new File(["# A\nb"], "a.md");
+    useWizardStore.setState({
+      state: { ...useWizardStore.getState().state, starter: "import" },
+      importSelection: importSelectionFor([file]),
+    });
+    vi.mocked(importApi.commit).mockResolvedValue({
+      novel_id: "novel-9",
+      created_count: 1,
+      first_position: 0,
+      last_position: 0,
+      chapters: [],
+    });
+
+    renderWithProviders(<WizardShell />);
+    // The shell gates on authApi.me() resolving — wait out the loading state.
+    fireEvent.click(await screen.findByTestId("wizard-complete"));
+
+    // Commit receives the picked files + the novel the backend just created.
+    await waitFor(() =>
+      expect(importApi.commit).toHaveBeenCalledWith([file], "novel-9", {
+        excluded_indices: [],
+        title_overrides: {},
+      }),
+    );
+    // Selection and wizard state are consumed — reset() ran after the commit
+    // (capture-before-reset is proven by commit having received the files).
+    expect(useWizardStore.getState().importSelection).toBeNull();
+    expect(useWizardStore.getState().currentStep).toBe(1);
+    expect(routerPush).toHaveBeenCalledWith("/novel/novel-9");
+    expect(sessionStorage.getItem("narrare:importFailed:novel-9")).toBeNull();
+  });
+
+  it("sets the importFailed flag and still navigates when the commit fails", async () => {
+    useWizardStore.setState({
+      state: { ...useWizardStore.getState().state, starter: "import" },
+      importSelection: importSelectionFor([new File(["x"], "a.md")]),
+    });
+    vi.mocked(importApi.commit).mockRejectedValue(new Error("boom"));
+
+    renderWithProviders(<WizardShell />);
+    // The shell gates on authApi.me() resolving — wait out the loading state.
+    fireEvent.click(await screen.findByTestId("wizard-complete"));
+
+    // Documented degrade path: the user still lands in the (empty) novel;
+    // the sidebar banner offers a retry via the ImportModal.
+    await waitFor(() => expect(sessionStorage.getItem("narrare:importFailed:novel-9")).toBe("1"));
+    expect(routerPush).toHaveBeenCalledWith("/novel/novel-9");
+    expect(useWizardStore.getState().importSelection).toBeNull();
+  });
+
+  it("does not commit when the starter is not import", async () => {
+    // Belt and braces: a stale selection (e.g. left by a card toggle) must
+    // never be committed for a non-import starter.
+    useWizardStore.setState({
+      importSelection: importSelectionFor([new File(["x"], "a.md")]),
+    });
+
+    renderWithProviders(<WizardShell />);
+    // The shell gates on authApi.me() resolving — wait out the loading state.
+    fireEvent.click(await screen.findByTestId("wizard-complete"));
+
+    await waitFor(() => expect(routerPush).toHaveBeenCalledWith("/novel/novel-9"));
+    expect(importApi.commit).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem("narrare:importFailed:novel-9")).toBeNull();
+  });
+});

@@ -10,6 +10,7 @@
     "chapters": "CHAPTERS",
     "newChapter": "New Chapter",
     "newChapterTitle": "New Chapter",
+    "importChapters": "Import chapters",
     "words": "{count} words",
     "allNovels": "All Novels",
     "logout": "Sign out",
@@ -648,9 +649,7 @@
       "blank": "Blank project",
       "blankDescription": "Start with an empty canvas and build from scratch",
       "import": "Import manuscript",
-      "importDescription": "Import an existing manuscript from a file",
-      "importPath": "File path",
-      "importPathPlaceholder": "/path/to/your/manuscript",
+      "importDescription": "Upload Markdown (.md) or text (.txt) files from your computer — chapters are detected automatically",
       "validationFailed": "Validation failed"
     },
     "step3": {
@@ -707,7 +706,7 @@
       "content": "Content",
       "model": "Model",
       "blankProject": "Blank project",
-      "importFrom": "Import from {path}"
+      "importSummary": "{files} files · {chapters} chapters"
     },
     "storyStructure": {
       "three_act": "Three-Act Structure",

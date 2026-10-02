@@ -149,7 +149,6 @@ class TestWizardState:
             story_structure=StoryStructure.THREE_ACT,
             tone=StoryTone.DRAMATIC,
             starter=StarterContent.BLANK,
-            import_path=None,
             provider=AIProvider.ANTHROPIC,
             api_key="test-key",
             model="claude-haiku-3-5-20241022",

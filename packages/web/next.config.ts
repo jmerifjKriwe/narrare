@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/**": ["../../node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers/esm/**"],
   },
+  experimental: {
+    // Proxy body-clone buffer (default 10MB) must stay >= the import API
+    // total guard MAX_TOTAL_BYTES (25 MiB) + multipart envelope.
+    // Coupling rule + evidence: ADR-091 Post-implementation Amendment.
+    proxyClientMaxBodySize: "30mb",
+  },
   typedRoutes: true,
   logging: {
     incomingRequests: {

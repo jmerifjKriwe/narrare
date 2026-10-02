@@ -327,7 +327,6 @@ class TestHasProviders:
                     "story_structure": "three_act",
                     "tone": "dramatic",
                     "starter": "blank",
-                    "import_path": None,
                     "provider": "anthropic",
                     "api_key": "sk-test-key",
                     "model": "claude-haiku",

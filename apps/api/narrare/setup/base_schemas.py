@@ -106,14 +106,9 @@ class Step2NovelResponse(BaseModel):
 
 
 class Step3StarterRequest(BaseModel):
+    # starter == IMPORT creates an empty novel server-side; the frontend
+    # commits imported files afterwards via POST /import/commit (ADR-091).
     starter: StarterContent = StarterContent.BLANK
-    import_path: str | None = Field(default=None, max_length=500)
-
-    @field_validator("import_path")
-    @classmethod
-    def validate_import_path(cls, v: str | None, _info: object) -> str | None:
-        # Only required when starter == IMPORT
-        return v
 
 
 class DemoProjectInfo(BaseModel):

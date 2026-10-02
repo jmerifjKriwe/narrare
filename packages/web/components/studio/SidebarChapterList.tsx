@@ -3,15 +3,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { chaptersApi, volumesApi } from "@/lib/api/client";
 import { useEditorStore } from "@/lib/stores/editorStore";
+import { ImportFailedBanner } from "./importing/ImportFailedBanner";
+import { ImportModal } from "./importing/ImportModal";
 
 /**
  * SidebarChapterList — Chapter list with volume selector for the sidebar.
  *
  * Owns all chapter-related queries, mutations, and localStorage persistence.
- * Extracted from Sidebar.tsx (RULE-04).
+ * Extracted from Sidebar.tsx (RULE-04); the failure banner UI lives in
+ * importing/ImportFailedBanner.tsx (copy single-sourced from the "importing"
+ * namespace, Task 7).
  */
 
 export function SidebarChapterList({ novelId }: { novelId: string }) {
@@ -81,6 +85,19 @@ export function SidebarChapterList({ novelId }: { novelId: string }) {
     localStorage.setItem(`narrare:lastChapter:${novelId}`, activeChapterId);
   }, [novelId, activeChapterId]);
 
+  // Import entry + failure-banner state. The flag lives in sessionStorage
+  // (`narrare:importFailed:{novelId}`, set by the wizard's failed commit and
+  // read defensively here). Read in an effect — not a useState initializer —
+  // because this client component still server-renders: storage access during
+  // render would crash SSR and desync hydration (same reason the chapter
+  // restore above is an effect).
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFailed, setImportFailed] = useState(false);
+
+  useEffect(() => {
+    setImportFailed(sessionStorage.getItem(`narrare:importFailed:${novelId}`) === "1");
+  }, [novelId]);
+
   return (
     <>
       {/* Volume selector — hidden when only default volume exists */}
@@ -141,6 +158,35 @@ export function SidebarChapterList({ novelId }: { novelId: string }) {
           <Plus className="w-4 h-4" />
           <span className="text-sm">{t("sidebar.newChapter")}</span>
         </button>
+        {importFailed && (
+          <ImportFailedBanner
+            onRetry={() => setImportOpen(true)}
+            onDismiss={() => {
+              sessionStorage.removeItem(`narrare:importFailed:${novelId}`);
+              setImportFailed(false);
+            }}
+          />
+        )}
+        <button
+          type="button"
+          data-testid="import-chapters-btn"
+          onClick={() => setImportOpen(true)}
+          className="mt-2 w-full rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition-colors"
+        >
+          {t("sidebar.importChapters")}
+        </button>
+        <ImportModal
+          novelId={novelId}
+          open={importOpen}
+          // Re-evaluate the flag when the modal closes: a successful commit
+          // clears the sessionStorage key inside the modal, so the banner must
+          // not outlive it (spec §6.2 — banner shows while the key is set).
+          onOpenChange={(open) => {
+            setImportOpen(open);
+            if (!open)
+              setImportFailed(sessionStorage.getItem(`narrare:importFailed:${novelId}`) === "1");
+          }}
+        />
       </div>
     </>
   );

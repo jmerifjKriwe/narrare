@@ -135,7 +135,6 @@ def _complete_wizard(client: BenchmarkClient, llm: LlmConfig) -> str:
         "story_structure": _STORY_STRUCTURE,
         "tone": _TONE,
         "starter": _STARTER,
-        "import_path": None,
         **_provider_payload(llm),
         "skip_provider": False,
     }

@@ -1,0 +1,21 @@
+{
+  "title": "Kapitel importieren",
+  "description": "Wähle Markdown- (.md) oder Textdateien (.txt). Kapitel werden aus Frontmatter, Überschriften und Kapitel-Markierungen erkannt.",
+  "chooseFiles": "Dateien auswählen",
+  "loading": "Dateien werden analysiert…",
+  "column": { "include": "Einbinden", "title": "Kapiteltitel", "words": "Wörter", "source": "Datei" },
+  "summary": "{files} Dateien · {chapters} Kapitel · {words} Wörter",
+  "confirm": "{count, plural, one {# Kapitel} other {# Kapitel}} importieren",
+  "importing": "Import läuft…",
+  "cancel": "Abbrechen",
+  "errors": {
+    "previewFailed": "Dateien konnten nicht analysiert werden: {message}",
+    "commitFailed": "Import fehlgeschlagen: {message}"
+  },
+  "failedBanner": {
+    "title": "Kapitel-Import fehlgeschlagen",
+    "body": "Dein Roman wurde erstellt, aber die Kapitel konnten nicht importiert werden. Du kannst den Import hier erneut versuchen.",
+    "retry": "Import erneut versuchen",
+    "dismiss": "Verwerfen"
+  }
+}

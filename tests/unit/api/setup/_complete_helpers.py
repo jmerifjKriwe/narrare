@@ -72,7 +72,6 @@ def _make_wizard_state(**overrides: object) -> WizardState:
         "story_structure": StoryStructure.THREE_ACT,
         "tone": StoryTone.DRAMATIC,
         "starter": StarterContent.BLANK,
-        "import_path": None,
         "provider": AIProvider.ANTHROPIC,
         "api_key": "sk-test-key",
         "model": "claude-haiku",

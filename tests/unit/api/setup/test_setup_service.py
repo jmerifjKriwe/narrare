@@ -104,18 +104,14 @@ class TestValidateStep3:
         assert result.demo_info is not None
         assert result.demo_info.title == "Im stillen Wald"
 
-    async def test_import_without_path_raises_422(self, service: SetupService) -> None:
-        req = Step3StarterRequest(starter=StarterContent.IMPORT, import_path=None)
-        with pytest.raises(ValidationError):
-            await service.validate_step3(req)
-
-    async def test_import_nonexistent_path_raises_422(self, service: SetupService) -> None:
-        req = Step3StarterRequest(
-            starter=StarterContent.IMPORT,
-            import_path="/definitely/does/not/exist",
-        )
-        with pytest.raises(ValidationError):
-            await service.validate_step3(req)
+    async def test_import_starter_accepted_without_path(self, service: SetupService) -> None:
+        # ADR-091: starter="import" creates an empty novel server-side; the
+        # frontend commits files afterwards via POST /import/commit. No path
+        # is required and no filesystem check happens.
+        req = Step3StarterRequest(starter=StarterContent.IMPORT)
+        result = await service.validate_step3(req)
+        assert result.valid is True
+        assert result.demo_info is None
 
 
 class TestValidateStep4:

@@ -61,6 +61,15 @@ export type {
   NameType,
   SaveStatus,
 } from "./generation";
+// Project Import (SETUP-003) — RULE-17 mirror of apps/api/narrare/importing/schemas.py
+export type {
+  ImportCommitAdjustments,
+  ImportCommitChapterInfo,
+  ImportCommitResponse,
+  ImportPreviewItem,
+  ImportPreviewResponse,
+  ImportSelection,
+} from "./importing";
 export type {
   KBTemplate,
   KBTemplateDetail,

@@ -13,7 +13,6 @@ describe("useWizardStore", () => {
     story_structure: "three_act" as const,
     tone: "dramatic" as const,
     starter: "blank" as const,
-    import_path: null,
     provider: "anthropic" as const,
     api_key: "",
     model: "",
@@ -145,23 +144,10 @@ describe("useWizardStore", () => {
     it("should update step 3 fields", () => {
       useWizardStore.getState().updateStep3({
         starter: "demo_fantasy",
-        import_path: "/path/to/file",
       });
 
       const state = useWizardStore.getState().state;
       expect(state.starter).toBe("demo_fantasy");
-      expect(state.import_path).toBe("/path/to/file");
-    });
-
-    it("should allow null import_path", () => {
-      useWizardStore.getState().updateStep3({
-        starter: "blank",
-        import_path: null,
-      });
-
-      const state = useWizardStore.getState().state;
-      expect(state.starter).toBe("blank");
-      expect(state.import_path).toBeNull();
     });
   });
 
@@ -203,7 +189,6 @@ describe("useWizardStore", () => {
           story_structure: "five_act" as const,
           tone: "humorous" as const,
           starter: "demo_scifi" as const,
-          import_path: "/some/path",
           provider: "openai" as const,
           api_key: "some-key",
           model: "gpt-4",
@@ -220,5 +205,27 @@ describe("useWizardStore", () => {
       expect(state.author).toBe("");
       expect(state.provider).toBe("anthropic");
     });
+  });
+});
+
+describe("importSelection", () => {
+  it("starts null and is settable", () => {
+    useWizardStore.getState().reset();
+    expect(useWizardStore.getState().importSelection).toBeNull();
+    const file = new File(["# A\nb"], "a.md");
+    const selection = { files: [file], excludedIndices: [], titleOverrides: {}, includedCount: 1 };
+    useWizardStore.getState().setImportSelection(selection);
+    expect(useWizardStore.getState().importSelection).toEqual(selection);
+  });
+
+  it("reset() clears importSelection", () => {
+    useWizardStore.getState().setImportSelection({
+      files: [],
+      excludedIndices: [],
+      titleOverrides: {},
+      includedCount: 0,
+    });
+    useWizardStore.getState().reset();
+    expect(useWizardStore.getState().importSelection).toBeNull();
   });
 });

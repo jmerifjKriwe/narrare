@@ -12,6 +12,7 @@ export {
   clearAccessToken,
   fetchApi,
   fetchApiRaw,
+  fetchApiUpload,
   getAccessToken,
   logoutApi,
   restoreSession,
@@ -44,6 +45,7 @@ export {
   WritingSessionSocket,
   writingApi,
 } from "./generation";
+export { importApi } from "./importing";
 export { chaptersApi, novelsApi, volumesApi } from "./novels";
 export { promptsApi, streamPromptLiveTest, templatesApi } from "./prompts";
 export { seriesApi } from "./series";

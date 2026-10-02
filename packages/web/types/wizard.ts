@@ -90,7 +90,6 @@ export interface WizardState {
   tone: StoryTone;
   // Step 3
   starter: StarterContent;
-  import_path: string | null;
   // Step 4
   provider: AIProvider;
   api_key: string;
