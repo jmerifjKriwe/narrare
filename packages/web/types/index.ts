@@ -66,9 +66,13 @@ export type {
   ImportCommitAdjustments,
   ImportCommitChapterInfo,
   ImportCommitResponse,
+  ImportMergeOperation,
+  ImportOpsState,
   ImportPreviewItem,
   ImportPreviewResponse,
   ImportSelection,
+  ImportSplitCandidate,
+  ImportSplitOperation,
 } from "./importing";
 export type {
   KBTemplate,
