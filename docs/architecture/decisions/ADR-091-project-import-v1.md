@@ -379,8 +379,166 @@ removing the Q-020 block later will not affect this key.
 
 ---
 
+## Amendment 2 (2026-10-02) — F1 Split/Merge Boundary Editing (adjustments vocabulary v2)
+
+> **Status:** ✅ Decided — spec + plan complete, implementation pending.
+> **Spec:** `docs/superpowers/specs/2026-10-02-import-split-merge-design.md`
+> **Plan:** `docs/superpowers/plans/2026-10-02-import-split-merge.md`
+> **Rulings:** project owner, FINAL — all ★ recommendations of the design
+> exploration accepted (D1a, D2a, D3a, D4a, D5a; Options C/D as recorded below).
+> This amendment **lifts exactly one clause** of Decision 6 ("no split/merge
+> boundary editing"); every other v1 exclusion (DOCX, bulk KB extraction,
+> directory upload, undo, volume assignment) stands.
+
+### Context
+
+The v1 adjustment surface (rename + include/exclude) cannot express two
+frequent correction needs: a detected "chapter" that is really several
+(`# Part` containing `### Scene` sections), and several detected chapters
+that are really one (short scenes the user wants as a single chapter). The
+approved SETUP-003 follow-up program schedules F1 (split/merge boundary
+editing) as the next slice on the same stateless two-phase mechanism.
+
+### Decision
+
+1. **Adjustments vocabulary v2 — two index spaces, one field.** The existing
+   `adjustments` JSON form field gains two operation lists alongside the v1
+   fields; the router and dependencies are **unchanged** (ops ride inside
+   the already-parsed adjustments payload):
+   - `splits: [{index, at: [ordinals]}]` and `merges: [{indices: [...]}]`
+     address **original** detected-chapter indices — the preview
+     `items[].index` space, re-derived identically at commit.
+   - `excluded_indices` and `title_overrides` are re-interpreted in **final**
+     space: the materialized list *after* applying the operation set.
+   - **Identity property (compatibility):** with an empty operation set,
+     final space ≡ original space — v1 payloads keep their exact meaning;
+     the existing v1 test suite is the regression proof.
+   - **Order freedom:** every op is keyed on original indices and op sets
+     are pairwise disjoint, so the declared order of ops never affects the
+     result; canonical materialization order is original chapter order.
+
+2. **Validation rules (enforced in pure Core, re-run at commit):**
+   - *Contiguity:* each merge is an ascending run of original indices with
+     step 1 and length ≥ 2 (cross-file runs allowed — D5a).
+   - *Overlap:* no original index may appear in two merges.
+   - *split ∩ merge = ∅:* a chapter cannot be both split and merged.
+   - *Ordinal ranges:* split `at` values are unique, non-empty, and within
+     `0..len(candidates)−1` of the chapter's **capped** candidate list.
+   - A split whose parts are all empty (chapter would vanish) → 422.
+   - **Per-op drift detection:** every rejection names the offending op
+     (e.g. "Split point 5 for chapter 0 is out of range (0..1)") — a stale
+     preview surfaces as a targeted 422, never a silently wrong import.
+
+3. **Determinism preserved.** Split candidates are derived by a pure
+   function from the re-parsed chapter content at *both* phases; identical
+   file sets therefore yield identical candidate lists, identical op
+   validation, and identical imports. There is still no server-side session
+   state; the deterministic re-parse contract of Decision 2 is untouched.
+
+4. **Preview enrichment (D3a).** Each `ImportPreviewItem` gains
+   `split_candidates: [{ordinal, heading, words_before}]` — the `###`-and-
+   deeper ATX headings inside that chapter's stored content, **capped at
+   200 per chapter** (first 200 in document order; deterministic, so the
+   cap is identical on preview and commit). `.txt` chapters and `.md`
+   chapters without subheadings get `[]` (D2a: `.txt` is merge-only in v1).
+   `words_before` (cumulative word count before the heading line) lets the
+   frontend simulate part word counts exactly without chapter content.
+
+5. **Merge semantics (D5a).** Any contiguous run, cross-file allowed;
+   title/status/source from the **first** constituent (documented coercion —
+   other constituents' statuses are discarded); contents joined with one
+   blank line; word count recomputed from the joined content.
+
+6. **Placement.** `candidates.py` (candidate discovery) and `operations.py`
+   (op-set model + validation + materialization) join
+   `narrare_core/importing/` as pure, I/O-free modules (same RULE-07 test
+   as the v1 parser). The API module changes only `schemas.py` (v2 fields,
+   `extra="forbid"`) and `service.py` (enrichment + op application). The
+   frontend mirrors the semantics in exactly ONE module
+   (`lib/importing/simulateOperations.ts`), pinned to Core outputs by a
+   golden fixture consumed by both pytest and vitest.
+
+### Options Considered
+
+- **D1a — order-free op set in original space (★ chosen)** vs **D1b — ops
+  in final space** (order-dependent: each op shifts downstream indices;
+  client and server would need a shared op-sequencing algebra — rejected)
+  vs **D1c — sequential op log** (explicit ordering solves D1b's ambiguity
+  but makes payloads larger and validation a fold; unnecessary since
+  original-space keys already give order freedom).
+- **D2a — `###`+ headings inside detected `.md` chapters (★ chosen)** vs
+  **D2b — any heading level incl. re-split at `#`/`##`** (re-litigates the
+  v1 detection itself; the preview's chapter rows would no longer match
+  the detector's output) vs **D2c — `.txt` marker splits too** (TXT has no
+  reliable sub-structure below marker lines; v1 stays merge-only for TXT).
+- **D3a — inline `split_candidates[]`, cap 200/chapter (★ chosen)** vs
+  **D3b — uncapped** (a pathological 5 MB `###`-dense chapter would bloat
+  the preview payload and validation cost) vs **D3c — separate candidates
+  endpoint** (second round-trip + a second drift surface for zero benefit
+  at v1 scale).
+- **D4a — ops first, then select/rename in final space (★ chosen)** vs
+  **D4b — all edits in original space** (renaming a merged chapter or
+  excluding a merge run has no coherent original-space meaning).
+- **D5a — any contiguous merge, cross-file, first-constituent title/status
+  (★ chosen)** vs **D5b — same-file merges only** (arbitrary wall; original
+  indices are contiguous across file boundaries by construction) vs
+  **D5c — merge size cap** (no failure mode identified that a cap would
+  prevent; guardrails already bound total content).
+- **Option D — full edited-payload JSON commit (client sends the final
+  chapter list: titles + contents as edited): REJECTED.** It breaks this
+  ADR's core guarantee that the **server owns boundaries**: the browser
+  would author chapter content, the deterministic re-parse contract would
+  be replaced by client trust, and drift between preview and commit could
+  no longer be detected structurally. Recorded as evaluated-and-rejected;
+  do not revisit without superseding this ADR.
+- **Option C — server-side adjusted re-preview (a dry-run endpoint applying
+  adjustments server-side): NOT built; documented as the fallback
+  escalation path only.** If the mirrored-frontend-semantics approach
+  proves too brittle to maintain (golden tests can't keep
+  `simulateOperations.ts` aligned with `operations.py`), the escalation is
+  to add a dry-run re-preview endpoint and let the server compute the final
+  list — accepting a third endpoint and an extra round-trip. Escalating is
+  a RULE-21 material change requiring architecture re-review.
+
+### Version Skew (documented, not shimmed)
+
+Narrare ships FE+BE together in one Docker image to a single-user
+deployment (Q-012 precedent: no compatibility shims while the user base is
+the project owner). Residual skew windows degrade as follows:
+
+- **Old server + new FE** (e.g. stale browser tab across a deploy): the
+  preview lacks `split_candidates`; the frontend capability probe
+  (`"split_candidates" in items[0]`) then suppresses the **entire** ops
+  affordance (split *and* merge) — v1 behavior exactly. The probe is
+  required because a v1 server would silently ignore unknown adjustment
+  fields (Pydantic default), and a merge dropped that way would be a silent
+  boundary loss — the one outcome this ADR forbids.
+- **New server + old FE:** v1 payloads carry no ops → identity property →
+  identical v1 behavior.
+- **Defense in depth:** `ImportCommitAdjustments` sets `extra="forbid"` so
+  any *future* unknown adjustment field fails loudly (422) instead of
+  being ignored.
+
+### Consequences
+
+- **Positive:** split/merge rides the existing two-phase contract — no new
+  endpoint, no session state, no migration; v1 clients keep working by the
+  identity property; per-op errors make stale previews diagnosable.
+- **Negative / tradeoffs:** one deliberately mirrored semantics module
+  (`simulateOperations.ts`) — mitigated by the shared golden fixture and by
+  keeping the mirror surface minimal (display/simulation only; the server
+  re-validates everything at commit); `service.py` lands ~207 lines (soft
+  target 200, hard limit 300 — accepted, see plan sizing note); chapters
+  with > 200 subheadings cannot be split at points beyond the cap
+  (documented limitation).
+
+---
+
 ## Review Trigger
 
+- [ ] When F1 (split/merge editing) ships: flip the feature note in
+      `docs/features/setup/SETUP-003-import.md` to implemented and record
+      the golden-fixture double-pin (pytest + vitest) in CURRENT_STATE.
 - [ ] When `MAX_TOTAL_BYTES` (`apps/api/narrare/importing/constants.py`) or
       `experimental.proxyClientMaxBodySize`
       (`packages/web/next.config.ts`) changes: re-align the other side of the

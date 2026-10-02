@@ -133,8 +133,8 @@ that the frontend then populates via `/import/commit`.
 ## Constraints & Edge Cases
 
 - Detection is heuristic; users verify the preview (title edit +
-  include/exclude are the v1 adjustment surface — split/merge editing is a
-  follow-up)
+  include/exclude were the v1 adjustment surface — split/merge editing is
+  the F1 follow-up, see below)
 - Spelled-out chapter numbers ("Chapter one") are not recognized as markers
 - Files with unknown extensions or non-UTF-8 encodings are rejected with a
   422 naming the file; no charset detection in v1
@@ -176,3 +176,14 @@ that the frontend then populates via `/import/commit`.
   wizard Step-2 inline section + completion with degrade path, Next.js proxy
   amendment (`experimental.proxyClientMaxBodySize: "30mb"` + ≥ 26 MiB
   coupling regression test). Status → `stable`.
+- `2026-10-02` — **Follow-up F1 (split/merge boundary editing) in
+  progress** — specified and planned, not yet implemented:
+  [ADR-091 Amendment 2](../../architecture/decisions/ADR-091-project-import-v1.md)
+  (adjustments vocabulary v2: split/merge ops in original index space,
+  exclusions/renames in final space; preview enrichment `split_candidates[]`
+  capped at 200/chapter; `.txt` merge-only), spec
+  [`docs/superpowers/specs/2026-10-02-import-split-merge-design.md`](../../superpowers/specs/2026-10-02-import-split-merge-design.md),
+  plan
+  [`docs/superpowers/plans/2026-10-02-import-split-merge.md`](../../superpowers/plans/2026-10-02-import-split-merge.md).
+  SETUP-003 v1 itself remains `stable` — F1 extends the same stateless
+  two-phase API additively (empty ops ⇒ v1 behavior unchanged).
