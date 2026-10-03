@@ -41,7 +41,21 @@ export interface SimulatedRow {
   mergedCount: number;
 }
 
-export const EMPTY_OPS: ImportOpsState = { splits: {}, merges: [] };
+/** Recursively freeze a value in place and return it with its static type. */
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    Object.freeze(value);
+    for (const item of Object.values(value)) deepFreeze(item);
+  }
+  return value;
+}
+
+/**
+ * The canonical empty ops state — deep-frozen so it can be shared as a seed
+ * or fallback without defensive copies (opsState helpers return new state
+ * objects and never mutate their input; buildAdjustments only reads).
+ */
+export const EMPTY_OPS: ImportOpsState = deepFreeze({ splits: {}, merges: [] });
 
 function countWords(text: string): number {
   const trimmed = text.trim();
