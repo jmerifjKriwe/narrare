@@ -2,10 +2,11 @@
 
 Background work runs in-process via ``asyncio.create_task`` with
 module-level ``_INFLIGHT_TASKS`` GC-guard sets (see
-``narrare.kb.embedding_hooks``, ``narrare.series.tasks``, and
-``narrare.export.tasks``).  On graceful shutdown these tasks must be
-cancelled and awaited **before** the database engine is disposed, so no
-background coroutine can touch a disposed pool.
+``narrare.kb.embedding_hooks``, ``narrare.series.tasks``,
+``narrare.export.tasks``, and ``narrare.kb.bulk_extraction.runner``).  On
+graceful shutdown these tasks must be cancelled and awaited **before** the
+database engine is disposed, so no background coroutine can touch a
+disposed pool.
 
 The drain is cancel-first (no bounded wait): every tracked task is
 cancelled, then ``asyncio.gather(..., return_exceptions=True)`` waits for
@@ -33,6 +34,7 @@ _DRAIN_SOURCES: tuple[str, ...] = (
     "narrare.kb.embedding_hooks",
     "narrare.series.tasks",
     "narrare.export.tasks",
+    "narrare.kb.bulk_extraction.runner",
 )
 
 

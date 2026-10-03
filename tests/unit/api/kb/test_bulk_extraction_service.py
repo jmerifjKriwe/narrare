@@ -49,11 +49,13 @@ def _ref(position: int) -> BulkChapterRef:
 
 
 def _job_view(
-    status: BulkJobStatus = BulkJobStatus.PENDING, job_id: str = "job-1"
+    status: BulkJobStatus = BulkJobStatus.PENDING,
+    job_id: str = "job-1",
+    novel_id: UUID = NOVEL_ID,
 ) -> BulkExtractionJobView:
     return BulkExtractionJobView(
         job_id=job_id,
-        novel_id=NOVEL_ID,
+        novel_id=novel_id,
         status=status,
         created_at=NOW,
         updated_at=NOW,
@@ -62,10 +64,10 @@ def _job_view(
     )
 
 
-def _status_view() -> BulkExtractionStatusView:
+def _status_view(novel_id: UUID = NOVEL_ID) -> BulkExtractionStatusView:
     return BulkExtractionStatusView(
         job_id="job-1",
-        novel_id=NOVEL_ID,
+        novel_id=novel_id,
         status=BulkJobStatus.RUNNING,
         created_at=NOW,
         updated_at=NOW,
@@ -75,9 +77,9 @@ def _status_view() -> BulkExtractionStatusView:
     )
 
 
-def _results_view() -> BulkExtractionResultsView:
+def _results_view(novel_id: UUID = NOVEL_ID) -> BulkExtractionResultsView:
     return BulkExtractionResultsView(
-        job_id="job-1", novel_id=NOVEL_ID, status=BulkJobStatus.COMPLETED, chapters=[]
+        job_id="job-1", novel_id=novel_id, status=BulkJobStatus.COMPLETED, chapters=[]
     )
 
 
@@ -94,10 +96,15 @@ class _FakeStore:
         active: bool = False,
         cancel_error: ConflictError | None = None,
         resume_error: ConflictError | None = None,
+        bound_novel_id: UUID | None = None,
     ) -> None:
         self.active = active
         self.cancel_error = cancel_error
         self.resume_error = resume_error
+        # Novel every canned view is bound to (defaults to the harness novel).
+        # Overridden by the novel-job-binding tests to simulate operating a
+        # job of another novel under this novel's URL.
+        self.bound_novel_id = bound_novel_id or NOVEL_ID
         self.created_with: tuple[UUID, UUID, list[BulkChapterRef]] | None = None
         self.read_calls: list[tuple[str, str, UUID]] = []
 
@@ -109,23 +116,23 @@ class _FakeStore:
 
     async def get_status(self, job_id: str, user_id: UUID) -> BulkExtractionStatusView:
         self.read_calls.append(("get_status", job_id, user_id))
-        return _status_view()
+        return _status_view(novel_id=self.bound_novel_id)
 
     async def get_results(self, job_id: str, user_id: UUID) -> BulkExtractionResultsView:
         self.read_calls.append(("get_results", job_id, user_id))
-        return _results_view()
+        return _results_view(novel_id=self.bound_novel_id)
 
     async def cancel_job(self, job_id: str, user_id: UUID) -> BulkExtractionJobView:
         self.read_calls.append(("cancel_job", job_id, user_id))
         if self.cancel_error is not None:
             raise self.cancel_error
-        return _job_view(BulkJobStatus.CANCELLING)
+        return _job_view(BulkJobStatus.CANCELLING, novel_id=self.bound_novel_id)
 
     async def resume_job(self, job_id: str, user_id: UUID) -> BulkExtractionJobView:
         self.read_calls.append(("resume_job", job_id, user_id))
         if self.resume_error is not None:
             raise self.resume_error
-        return _job_view(BulkJobStatus.PENDING, job_id=job_id)
+        return _job_view(BulkJobStatus.PENDING, job_id=job_id, novel_id=self.bound_novel_id)
 
     async def has_active_for(self, novel_id: UUID) -> bool:
         return self.active
@@ -320,3 +327,48 @@ class TestResume:
             await harness.service.resume(NOVEL_ID, "job-1", OWNER)
 
         assert harness.dispatcher.dispatched == []
+
+
+class TestNovelJobBinding:
+    """A store hit bound to a DIFFERENT novel than the path is a 404 (rider).
+
+    Owner pinning alone does not bind a job to the novel in the URL: the
+    user owning novels A and B could otherwise operate B's job under A's
+    URL (the gate passes — A is theirs; the store lookup passes — the job
+    is theirs). The service must compare ``view.novel_id`` against the
+    path novel after every store read, with the registry's foreign ≡
+    unknown ``NotFoundError`` (anti-enumeration).
+    """
+
+    OTHER_NOVEL = uuid4()
+
+    def _mismatched_harness(self) -> _Harness:
+        return _Harness(store=_FakeStore(bound_novel_id=self.OTHER_NOVEL))
+
+    async def test_status_of_another_novels_job_is_not_found(self) -> None:
+        harness = self._mismatched_harness()
+
+        with pytest.raises(NotFoundError, match="job-1"):
+            await harness.service.status(NOVEL_ID, "job-1", OWNER)
+
+    async def test_results_of_another_novels_job_is_not_found(self) -> None:
+        harness = self._mismatched_harness()
+
+        with pytest.raises(NotFoundError, match="job-1"):
+            await harness.service.results(NOVEL_ID, "job-1", OWNER)
+
+    async def test_cancel_of_another_novels_job_is_not_found(self) -> None:
+        harness = self._mismatched_harness()
+
+        with pytest.raises(NotFoundError, match="job-1"):
+            await harness.service.cancel(NOVEL_ID, "job-1", OWNER)
+
+    async def test_resume_of_another_novels_job_is_not_found_and_never_dispatches(
+        self,
+    ) -> None:
+        harness = self._mismatched_harness()
+
+        with pytest.raises(NotFoundError, match="job-1"):
+            await harness.service.resume(NOVEL_ID, "job-1", OWNER)
+
+        assert harness.dispatcher.dispatched == []  # no runner for a foreign binding

@@ -5,9 +5,8 @@ Mirrors :mod:`narrare.export.tasks` (ADR-080 in-process pattern):
 - ``_INFLIGHT_TASKS`` — the GC-guard set of strong references to in-flight
   bulk coroutines (``asyncio.create_task`` results would otherwise be
   garbage-collected mid-flight). Entries auto-remove via ``_on_done``.
-  NOTE: registration in ``narrare._app.inflight._DRAIN_SOURCES`` is the
-  router/DI task's scope (F2 T4) — until it lands, graceful shutdown does
-  not cancel bulk tasks.
+  Registered in ``narrare._app.inflight._DRAIN_SOURCES``, so graceful
+  shutdown cancels bulk tasks before the engine is disposed.
 - ``dispatch(job_id, novel_id, owner_id)`` — the production enqueuer the
   service DI-injects; launches the runner fire-and-forget, task named
   ``job_id``.
@@ -22,11 +21,12 @@ Mirrors :mod:`narrare.export.tasks` (ADR-080 in-process pattern):
   so a poller sees a terminal state, never a hang (RULE-11).
 
 Failure semantics: ``ConfigurationError`` fast-fails the whole job (no
-point burning N-1 more calls on an unconfigured provider); any other
-chapter failure is isolated (chapter → failed, job continues); an
-infrastructure failure outside the per-chapter handling fails the job
-instead of leaving it RUNNING. ``CancelledError`` is a ``BaseException``
-and propagates past every ``except Exception``.
+point burning N-1 more calls on an unconfigured provider) — the in-flight
+chapter is recorded FAILED first, so a terminal job never strands a
+RUNNING row; any other chapter failure is isolated (chapter → failed, job
+continues); an infrastructure failure outside the per-chapter handling
+fails the job instead of leaving it RUNNING. ``CancelledError`` is a
+``BaseException`` and propagates past every ``except Exception``.
 
 Test seams (module attributes, monkeypatch style of ``export/tasks.py``):
 ``_service_factory`` (defaults to the real wiring below) and
@@ -213,6 +213,12 @@ async def run_bulk_extraction(job_id: str, novel_id: UUID, owner_id: UUID) -> No
                         error=str(exc),
                         exc_info=exc,
                     )
+                    # Heal the in-flight row BEFORE failing the job: it was
+                    # marked RUNNING above, and a job-level FAILURE alone
+                    # would strand a RUNNING chapter inside a terminal job
+                    # forever (T3-review rider — reset_for_resume re-pends
+                    # it, but a terminal job must not carry RUNNING rows).
+                    registry.mark_chapter_failed(job_id, chapter_id, str(exc))
                     registry.mark_job_failed(job_id, str(exc))
                     return
                 except Exception as exc:

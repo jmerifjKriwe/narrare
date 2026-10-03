@@ -18,7 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from narrare.kb._novel_gate import verify_novel_owned
-from narrare_core.shared.errors import ConflictError
+from narrare_core.shared.errors import ConflictError, NotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -77,26 +77,48 @@ class BulkExtractionService:
     async def status(self, novel_id: UUID, job_id: str, user_id: UUID) -> BulkExtractionStatusView:
         """Poll one job (owner-only, enforced again by the store)."""
         await self._gate(novel_id, user_id)
-        return await self._store.get_status(job_id, user_id)
+        view = await self._store.get_status(job_id, user_id)
+        self._ensure_novel_binding(novel_id, job_id, view.novel_id)
+        return view
 
     async def results(
         self, novel_id: UUID, job_id: str, user_id: UUID
     ) -> BulkExtractionResultsView:
         """Full outputs for the review panel (owner-only)."""
         await self._gate(novel_id, user_id)
-        return await self._store.get_results(job_id, user_id)
+        view = await self._store.get_results(job_id, user_id)
+        self._ensure_novel_binding(novel_id, job_id, view.novel_id)
+        return view
 
     async def cancel(self, novel_id: UUID, job_id: str, user_id: UUID) -> BulkExtractionJobView:
         """Cooperative cancel; terminal jobs conflict (409 from the store)."""
         await self._gate(novel_id, user_id)
-        return await self._store.cancel_job(job_id, user_id)
+        view = await self._store.cancel_job(job_id, user_id)
+        self._ensure_novel_binding(novel_id, job_id, view.novel_id)
+        return view
 
     async def resume(self, novel_id: UUID, job_id: str, user_id: UUID) -> BulkExtractionJobView:
         """Reset a cancelled/failed job and dispatch a fresh runner (spec §4.5)."""
         await self._gate(novel_id, user_id)
         view = await self._store.resume_job(job_id, user_id)
+        self._ensure_novel_binding(novel_id, job_id, view.novel_id)
         await self._dispatcher.dispatch(view.job_id, view.novel_id, user_id)
         return view
+
+    @staticmethod
+    def _ensure_novel_binding(path_novel_id: UUID, job_id: str, view_novel_id: UUID) -> None:
+        """Reject a store hit bound to a DIFFERENT novel than the path (rider).
+
+        Owner pinning alone does not bind a job to the novel in the URL:
+        a user owning novels A and B could otherwise operate B's job under
+        A's URL (the gate passes — A is theirs; the store lookup passes —
+        the job is theirs). The mismatch is answered with the registry's
+        foreign ≡ unknown ``NotFoundError`` (anti-enumeration, same
+        message). Runs after every store read — on ``resume`` strictly
+        BEFORE the re-dispatch, so a mis-bound job never launches a runner.
+        """
+        if view_novel_id != path_novel_id:
+            raise NotFoundError(f"Bulk extraction job '{job_id}'")
 
     async def _gate(self, novel_id: UUID, user_id: UUID) -> None:
         """Novel ownership gate — foreign ≡ unknown (404), always first."""

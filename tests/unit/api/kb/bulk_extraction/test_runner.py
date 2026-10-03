@@ -134,6 +134,51 @@ class TestConfigurationFastFail:
         assert [chapter_id for chapter_id, _ in factory.extract_calls] == [ids[0]]
         assert job.chapters[1].state is BulkChapterState.PENDING  # never attempted
 
+    async def test_fast_fail_records_chapter_failed_before_job_failed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The fast-failed chapter must be recorded FAILED before the job.
+
+        The chapter was marked RUNNING when the agent call started; a
+        job-level FAILURE without the chapter-level record would strand a
+        RUNNING row inside a terminal job forever (the heal from the T3
+        review). Order matters: heal the row, then fail the job.
+        """
+        job_id, ids = _make_job(0, 1)
+        recorder = _RecordingRegistry()
+        monkeypatch.setattr(runner, "registry", recorder)
+        monkeypatch.setattr(runner, "_pacer_acquire", _noop_pacer)
+        monkeypatch.setattr(
+            runner,
+            "_service_factory",
+            _ScriptedServiceFactory(
+                {ids[0]: ConfigurationError("NO_AI_PROVIDER"), ids[1]: _output(1)}
+            ),
+        )
+
+        await runner.run_bulk_extraction(job_id, NOVEL_ID, OWNER)
+
+        assert recorder.calls.index("mark_chapter_failed") < recorder.calls.index("mark_job_failed")
+        job = registry.status(job_id, OWNER)
+        assert job.status is BulkJobStatus.FAILED
+        assert job.chapters[0].state is BulkChapterState.FAILED  # no stranded RUNNING row
+        assert job.chapters[0].error == "NO_AI_PROVIDER"
+        assert job.chapters[0].item_count is None
+
+
+class TestDrainRegistration:
+    def test_runner_module_is_a_registered_drain_source(self) -> None:
+        """The bulk runner's GC-guard set is drained on graceful shutdown.
+
+        Without the ``_DRAIN_SOURCES`` entry a shutdown would dispose the DB
+        engine under in-flight bulk coroutines (ADR-080); the registration is
+        what makes the done-callback's ``cancelled (server shutdown)`` flip
+        reachable (RULE-11).
+        """
+        from narrare._app import inflight
+
+        assert "narrare.kb.bulk_extraction.runner" in inflight._DRAIN_SOURCES
+
 
 class TestCooperativeCancel:
     async def test_cancel_between_chapters_keeps_done_and_pends_rest(
