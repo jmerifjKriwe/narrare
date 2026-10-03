@@ -274,8 +274,10 @@ class TestDelegation:
 
         assert isinstance(results, BulkExtractionResultsView)
         assert job.status is BulkJobStatus.CANCELLING
+        # cancel pre-reads the binding (mutating op), results does not.
         assert harness.store.read_calls == [
             ("get_results", "job-1", OWNER),
+            ("get_status", "job-1", OWNER),
             ("cancel_job", "job-1", OWNER),
         ]
 
@@ -311,7 +313,11 @@ class TestResume:
         view = await harness.service.resume(NOVEL_ID, "job-9", OWNER)
 
         assert view.status is BulkJobStatus.PENDING
-        assert harness.store.read_calls == [("resume_job", "job-9", OWNER)]
+        # Pre-read binding guard, then the reset (mutating op).
+        assert harness.store.read_calls == [
+            ("get_status", "job-9", OWNER),
+            ("resume_job", "job-9", OWNER),
+        ]
         assert harness.dispatcher.dispatched == [("job-9", NOVEL_ID, OWNER)]  # spec §4.5
 
     async def test_resume_conflict_skips_dispatch(self) -> None:
@@ -338,6 +344,12 @@ class TestNovelJobBinding:
     is theirs). The service must compare ``view.novel_id`` against the
     path novel after every store read, with the registry's foreign ≡
     unknown ``NotFoundError`` (anti-enumeration).
+
+    The MUTATING paths (cancel/resume) pre-read the binding BEFORE the
+    store write (fix round 1): a check only after the write would let a
+    misrouted resume reset B's job to PENDING and then block the runner
+    launch — a stranded PENDING job that ``find_active_for_novel`` counts
+    active, locking the novel until restart.
     """
 
     OTHER_NOVEL = uuid4()
@@ -351,24 +363,31 @@ class TestNovelJobBinding:
         with pytest.raises(NotFoundError, match="job-1"):
             await harness.service.status(NOVEL_ID, "job-1", OWNER)
 
+        assert harness.store.read_calls == [("get_status", "job-1", OWNER)]  # reads only
+
     async def test_results_of_another_novels_job_is_not_found(self) -> None:
         harness = self._mismatched_harness()
 
         with pytest.raises(NotFoundError, match="job-1"):
             await harness.service.results(NOVEL_ID, "job-1", OWNER)
 
-    async def test_cancel_of_another_novels_job_is_not_found(self) -> None:
+        assert harness.store.read_calls == [("get_results", "job-1", OWNER)]  # reads only
+
+    async def test_cancel_of_another_novels_job_is_rejected_before_the_flip(self) -> None:
         harness = self._mismatched_harness()
 
         with pytest.raises(NotFoundError, match="job-1"):
             await harness.service.cancel(NOVEL_ID, "job-1", OWNER)
 
-    async def test_resume_of_another_novels_job_is_not_found_and_never_dispatches(
-        self,
-    ) -> None:
+        # Rejected BEFORE the mutating store call — no cancelling flip.
+        assert harness.store.read_calls == [("get_status", "job-1", OWNER)]
+
+    async def test_resume_of_another_novels_job_is_rejected_before_the_reset(self) -> None:
         harness = self._mismatched_harness()
 
         with pytest.raises(NotFoundError, match="job-1"):
             await harness.service.resume(NOVEL_ID, "job-1", OWNER)
 
-        assert harness.dispatcher.dispatched == []  # no runner for a foreign binding
+        # Rejected BEFORE the mutating store call — no reset, no runner.
+        assert harness.store.read_calls == [("get_status", "job-1", OWNER)]
+        assert harness.dispatcher.dispatched == []

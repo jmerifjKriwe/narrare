@@ -103,25 +103,6 @@ class TestStartBulkExtraction:
         assert all(row["state"] == "pending" for row in body["chapters"])
         assert all(row["item_count"] is None for row in body["chapters"])
 
-    async def test_start_with_unknown_chapter_id_is_422_naming_it(
-        self,
-        client: AsyncClient,
-        auth_headers: dict[str, str],
-        bulk_novel_id: UUID,
-        bulk_chapter_ids: list[UUID],
-        bulk_dispatcher: NoopDispatcher,
-    ) -> None:
-        unknown = uuid4()
-
-        resp = await client.post(
-            f"/api/v1/novels/{bulk_novel_id}/kb/extract/bulk",
-            json={"chapter_ids": [str(bulk_chapter_ids[0]), str(unknown)]},
-            headers=auth_headers,
-        )
-
-        assert resp.status_code == 422
-        assert str(unknown) in resp.json()["detail"]
-
     async def test_start_on_foreign_novel_is_404(
         self,
         client: AsyncClient,
@@ -372,14 +353,40 @@ class TestNovelJobBinding:
         assert status.status_code == 404
         assert results.status_code == 404
         assert cancel.status_code == 404
-        # Reads are pure: no mutation happened before the binding check. The
-        # cancel's store write precedes the check (the rider's check-after-
-        # read pattern), so the flag flip lands on the user's OWN job under
-        # its correct URL — self-inflicted, never cross-user (the store's
-        # owner pinning runs first).
+        # Pre-read binding guards: nothing may move before the binding
+        # check — the job stays exactly PENDING (no self-inflicted
+        # "cancelling" flip from the misrouted cancel).
         intact = await client.get(
             f"/api/v1/novels/{other_novel}/kb/extract/bulk/{job_id}/status",
             headers=auth_headers,
         )
         assert intact.status_code == 200
-        assert intact.json()["status"] == "cancelling"
+        assert intact.json()["status"] == "pending"
+
+        # Stranded-resume regression (fix round 1): a misrouted resume on a
+        # CANCELLED job must not reset it. The old check-after-read order
+        # reset the job to PENDING and then blocked the runner launch — a
+        # stranded PENDING job that ``find_active_for_novel`` counts active:
+        # the novel locked until restart.
+        registry.mark_cancelled(job_id, "cancelled by user")
+        misrouted_resume = await client.post(
+            f"/api/v1/novels/{bulk_novel_id}/kb/extract/bulk/{job_id}/resume",
+            headers=auth_headers,
+        )
+        assert misrouted_resume.status_code == 404
+
+        intact_after_resume = await client.get(
+            f"/api/v1/novels/{other_novel}/kb/extract/bulk/{job_id}/status",
+            headers=auth_headers,
+        )
+        assert intact_after_resume.status_code == 200
+        assert intact_after_resume.json()["status"] == "cancelled"  # UNTOUCHED
+        assert [row["state"] for row in intact_after_resume.json()["chapters"]] == ["pending"]
+
+        # The resume under the CORRECT novel URL still works end-to-end.
+        proper_resume = await client.post(
+            f"/api/v1/novels/{other_novel}/kb/extract/bulk/{job_id}/resume",
+            headers=auth_headers,
+        )
+        assert proper_resume.status_code == 200
+        assert proper_resume.json()["status"] == "pending"

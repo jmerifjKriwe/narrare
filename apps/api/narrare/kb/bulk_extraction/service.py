@@ -93,15 +93,28 @@ class BulkExtractionService:
     async def cancel(self, novel_id: UUID, job_id: str, user_id: UUID) -> BulkExtractionJobView:
         """Cooperative cancel; terminal jobs conflict (409 from the store)."""
         await self._gate(novel_id, user_id)
+        # Pre-read binding guard: ``cancel_job`` MUTATES, so a job bound to a
+        # different novel must be rejected BEFORE the flip — the check after
+        # the write alone would leave a self-inflicted "cancelling" flag on
+        # the caller's own job under its correct URL.
+        bound = await self._store.get_status(job_id, user_id)
+        self._ensure_novel_binding(novel_id, job_id, bound.novel_id)
         view = await self._store.cancel_job(job_id, user_id)
-        self._ensure_novel_binding(novel_id, job_id, view.novel_id)
+        self._ensure_novel_binding(novel_id, job_id, view.novel_id)  # belt-and-braces
         return view
 
     async def resume(self, novel_id: UUID, job_id: str, user_id: UUID) -> BulkExtractionJobView:
         """Reset a cancelled/failed job and dispatch a fresh runner (spec §4.5)."""
         await self._gate(novel_id, user_id)
+        # Pre-read binding guard (fix round 1): ``resume_job`` MUTATES. With
+        # only the check after the write, a misrouted resume reset the job to
+        # PENDING and the check-before-dispatch then blocked the runner — a
+        # stranded PENDING job that ``find_active_for_novel`` counts active:
+        # the novel locked until restart.
+        bound = await self._store.get_status(job_id, user_id)
+        self._ensure_novel_binding(novel_id, job_id, bound.novel_id)
         view = await self._store.resume_job(job_id, user_id)
-        self._ensure_novel_binding(novel_id, job_id, view.novel_id)
+        self._ensure_novel_binding(novel_id, job_id, view.novel_id)  # belt-and-braces
         await self._dispatcher.dispatch(view.job_id, view.novel_id, user_id)
         return view
 
@@ -114,8 +127,10 @@ class BulkExtractionService:
         A's URL (the gate passes — A is theirs; the store lookup passes —
         the job is theirs). The mismatch is answered with the registry's
         foreign ≡ unknown ``NotFoundError`` (anti-enumeration, same
-        message). Runs after every store read — on ``resume`` strictly
-        BEFORE the re-dispatch, so a mis-bound job never launches a runner.
+        message). The MUTATING paths (cancel/resume) run this guard on a
+        pre-read BEFORE the store write, so a mis-bound job is never
+        mutated; the pure reads check after their read; the post-write
+        re-check is belt-and-braces.
         """
         if view_novel_id != path_novel_id:
             raise NotFoundError(f"Bulk extraction job '{job_id}'")
