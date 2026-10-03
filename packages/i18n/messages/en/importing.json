@@ -17,5 +17,19 @@
     "body": "Your novel was created, but the chapters could not be imported. You can retry the import here.",
     "retry": "Retry import",
     "dismiss": "Dismiss"
+  },
+  "ops": {
+    "split": "Split…",
+    "undoSplit": "Undo split",
+    "splitPoints": "Split points",
+    "splitHint": "Create new chapters at the selected subheadings.",
+    "applySplit": "Split chapter",
+    "cancel": "Cancel",
+    "noSplitPoints": "This chapter has no subheadings to split at.",
+    "mergeWithNext": "Merge with next",
+    "mergeWithPrevious": "Merge with previous",
+    "undoMerge": "Undo merge",
+    "mergedBadge": "Merged {count, plural, one {# chapter} other {# chapters}}",
+    "partBadge": "Part {part}"
   }
 }

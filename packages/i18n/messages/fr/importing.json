@@ -17,5 +17,19 @@
     "body": "Votre roman a été créé, mais les chapitres n'ont pas pu être importés. Vous pouvez réessayer l'import ici.",
     "retry": "Réessayer l'import",
     "dismiss": "Ignorer"
+  },
+  "ops": {
+    "split": "Diviser…",
+    "undoSplit": "Annuler la division",
+    "splitPoints": "Points de découpe",
+    "splitHint": "Crée de nouveaux chapitres aux sous-titres sélectionnés.",
+    "applySplit": "Diviser le chapitre",
+    "cancel": "Annuler",
+    "noSplitPoints": "Ce chapitre n'a aucun sous-titre où diviser.",
+    "mergeWithNext": "Fusionner avec le suivant",
+    "mergeWithPrevious": "Fusionner avec le précédent",
+    "undoMerge": "Annuler la fusion",
+    "mergedBadge": "{count, plural, one {# chapitre} other {# chapitres}} fusionnés",
+    "partBadge": "Partie {part}"
   }
 }
