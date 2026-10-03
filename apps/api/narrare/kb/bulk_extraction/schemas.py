@@ -92,7 +92,8 @@ class BulkChapterStatusView(BaseModel):
     """Extracted item count — set (≥ 0) iff ``state = done``, else ``None``."""
 
     error: str | None = None
-    """Chapter-level failure reason — set iff ``state = failed`` (spec §5/§9)."""
+    """Chapter-level failure reason — expected on ``failed`` rows (spec §5/§9);
+    cleared when the chapter is re-pended for resume."""
 
     @model_validator(mode="after")
     def _item_count_iff_done(self) -> Self:
@@ -126,8 +127,8 @@ class BulkExtractionJobView(BaseModel):
     """Aggregated per-state counts."""
 
     error: str | None = None
-    """Job-level failure reason (set iff ``status = failed``); chapter-level
-    failures live in the status view's chapter rows."""
+    """Job-level failure reason — expected on ``failed`` rows; a cancelled job
+    carries its terminal reason (e.g. "cancelled (server shutdown)")."""
 
 
 class BulkExtractionStatusView(BulkExtractionJobView):
