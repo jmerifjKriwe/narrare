@@ -59,7 +59,8 @@
 ```
 apps/api/narrare/kb/bulk_extraction/          ← NEW sub-package (kb/entity_resolution precedent)
     contracts.py      Protocols FIRST (RULE-03): BulkExtractionJobStore,
-                      BulkExtractionRunner, BulkExtractionPacer
+                      BulkExtractionDispatcher, BulkChapterReader,
+                      BulkExtractionPacer
     schemas.py        Pydantic request/response models (RULE-17 mirror target)
     registry.py       in-memory job records: owner pinning, per-chapter
                       states, cancel flag, resume reset, TTL sweep

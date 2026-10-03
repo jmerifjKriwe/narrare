@@ -12,9 +12,10 @@ from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003 — needed at runtime for Pydantic model resolution
 from enum import StrEnum
+from typing import Self
 from uuid import UUID  # noqa: TC003 — needed at runtime for Pydantic model resolution
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from narrare.kb.bulk_extraction.contracts import BULK_EXTRACT_MAX_CHAPTERS
 from narrare_core.agents.extraction_types import (
@@ -90,6 +91,16 @@ class BulkChapterStatusView(BaseModel):
     item_count: int | None = None
     """Extracted item count — set (≥ 0) iff ``state = done``, else ``None``."""
 
+    error: str | None = None
+    """Chapter-level failure reason — set iff ``state = failed`` (spec §5/§9)."""
+
+    @model_validator(mode="after")
+    def _item_count_iff_done(self) -> Self:
+        """Self-defending invariant: ``item_count`` present ⟺ ``state = done``."""
+        if (self.state is BulkChapterState.DONE) != (self.item_count is not None):
+            raise ValueError("item_count must be set if and only if state is 'done'")
+        return self
+
 
 class BulkExtractionJobView(BaseModel):
     """Job summary returned by start/cancel/resume (spec §4.1/§4.4/§4.5)."""
@@ -148,6 +159,13 @@ class BulkExtractionResultChapter(BaseModel):
     output: ExtractionOutput | None = None
     """Full extraction output — present iff ``state = done``, else ``None``;
     partial results of a cancelled job stay readable (resume baseline)."""
+
+    @model_validator(mode="after")
+    def _output_iff_done(self) -> Self:
+        """Self-defending invariant: ``output`` present ⟺ ``state = done``."""
+        if (self.state is BulkChapterState.DONE) != (self.output is not None):
+            raise ValueError("output must be present if and only if state is 'done'")
+        return self
 
 
 class BulkExtractionResultsView(BaseModel):
