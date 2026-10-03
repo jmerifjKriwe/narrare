@@ -334,7 +334,7 @@
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
 | [IO-001](io/IO-001-export.md) | Manuscript Export | ✅ | ❌ |
-| [IO-002](io/IO-002-import.md) | Project Import & Analysis | 📋 | ❌ |
+| [IO-002](io/IO-002-import.md) | Corpus Analysis Pass *(re-scoped 2026-10-03 from "Project Import & Analysis" — D12a–D21a)* | 📋 | ❌ |
 | [IO-003](io/IO-003-sync.md) | External Sync | 📋 | ❌ |
 
 ### Internationalization & UI Copy
