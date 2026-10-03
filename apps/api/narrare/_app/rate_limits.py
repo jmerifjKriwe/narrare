@@ -161,21 +161,32 @@ Override count via :data:`RATE_LIMIT_WRITE_ENV_VAR` (restart to apply).
 RATE_LIMIT_ANALYSIS_DEFAULT: Final[int] = 5
 RATE_LIMIT_ANALYSIS_ENV_VAR: Final[str] = "NARRARE_RATE_LIMIT_ANALYSIS"
 
-AI_ANALYSIS_LIMITER = _RateLimiterDep(
-    SelfPruningLimiter(
-        Rate(
-            _resolve_rate_limit_count(
-                RATE_LIMIT_ANALYSIS_ENV_VAR,
-                RATE_LIMIT_ANALYSIS_DEFAULT,
-            ),
-            LONG_WINDOW_MS,
-        ),
+#: The ONE analysis budget (count, window) — built once so the interactive
+#: dep and the in-process bulk pacer resolve the identical rate (ADR-092 D7a).
+ANALYSIS_RATE: Final[Rate] = Rate(
+    _resolve_rate_limit_count(
+        RATE_LIMIT_ANALYSIS_ENV_VAR,
+        RATE_LIMIT_ANALYSIS_DEFAULT,
     ),
+    LONG_WINDOW_MS,
 )
+
+#: Raw handle on the ONE analysis bucket — the SAME instance the interactive
+#: dep (``AI_ANALYSIS_LIMITER``) wraps and the bulk-extraction pacer
+#: (``narrare.kb.bulk_extraction.pacer``) acquires on, so interactive and
+#: batch analysis share one budget: ``NARRARE_RATE_LIMIT_ANALYSIS`` governs
+#: both (RULE-18b — no new settings surface). Same non-dep handle shape as
+#: :data:`AI_WS_LIMITER`. While a bulk pass runs, interactive analysis calls
+#: contend for this bucket and may see 429 (accepted, ADR-092 D7a).
+AI_ANALYSIS_LIMITER_RAW: Final[SelfPruningLimiter] = SelfPruningLimiter(ANALYSIS_RATE)
+
+AI_ANALYSIS_LIMITER: Final[_RateLimiterDep] = _RateLimiterDep(AI_ANALYSIS_LIMITER_RAW)
 """Per-user rate limit for AI analysis/chat endpoints — 5 requests/minute.
 
 Applies to: chat, consistency checks, beta-reader, POV analysis,
 readability analysis, timeline extraction, KB extraction/improve/sessions.
+Wraps :data:`AI_ANALYSIS_LIMITER_RAW` — the SAME limiter instance the bulk
+extraction pacer acquires on (shared budget, ADR-092 D7a).
 Override count via :data:`RATE_LIMIT_ANALYSIS_ENV_VAR` (restart to apply).
 """
 
