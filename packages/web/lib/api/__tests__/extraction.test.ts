@@ -191,5 +191,38 @@ describe("extractionApi", () => {
       await extractionApi.applyExtraction("other-novel", []);
       expect(capturedUrl).toContain("/novels/other-novel/kb/extract/apply");
     });
+
+    // F2 Task 6 — ADR-085 apply provenance: an optional chapter id is added
+    // to the apply body so KB entries can record their source chapter.
+    it("should include chapter_id in the body when a chapterId is given", async () => {
+      let capturedBody: Record<string, unknown> = {};
+
+      server.use(
+        http.post("*/api/v1/novels/novel-1/kb/extract/apply", async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(mockApplyResponse);
+        }),
+      );
+
+      await extractionApi.applyExtraction("novel-1", [], "ch-7");
+
+      expect(capturedBody.items).toHaveLength(0);
+      expect(capturedBody.chapter_id).toBe("ch-7");
+    });
+
+    it("should omit chapter_id from the body when no chapterId is given", async () => {
+      let capturedBody: Record<string, unknown> = {};
+
+      server.use(
+        http.post("*/api/v1/novels/novel-1/kb/extract/apply", async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(mockApplyResponse);
+        }),
+      );
+
+      await extractionApi.applyExtraction("novel-1", []);
+
+      expect(capturedBody).not.toHaveProperty("chapter_id");
+    });
   });
 });

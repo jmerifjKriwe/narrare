@@ -95,7 +95,9 @@ export function useApplyExtraction(novelId: string) {
     execute: async (signal) => {
       const items = itemsRef.current;
       if (!items) throw new Error("No items to apply");
-      return extractionApi.applyExtraction(novelId, items, signal);
+      // applyExtraction's 3rd arg is the chapter id (ADR-085 provenance);
+      // the abort signal moved to 4th position in F2 Task 6.
+      return extractionApi.applyExtraction(novelId, items, undefined, signal);
     },
     errorMapper: createAbortAwareErrorMapper(resolveRef, rejectRef, mapRestApiError),
     onSuccess: (data) => {

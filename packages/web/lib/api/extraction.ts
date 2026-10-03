@@ -65,11 +65,22 @@ export const extractionApi = {
       signal,
     }),
 
-  /** Apply selected extraction items to the Knowledge Base. */
-  applyExtraction: (novelId: string, items: ApplyExtractionItem[], signal?: AbortSignal) =>
+  /**
+   * Apply selected extraction items to the Knowledge Base.
+   *
+   * `chapterId` (optional, F2 Task 6 / ADR-085 provenance) records the
+   * source chapter on the written KB entries; existing two-arg callers
+   * stay unchanged. Note the signature: `chapterId` precedes `signal`.
+   */
+  applyExtraction: (
+    novelId: string,
+    items: ApplyExtractionItem[],
+    chapterId?: string,
+    signal?: AbortSignal,
+  ) =>
     fetchApi<ApplyExtractionResponse>(`/novels/${novelId}/kb/extract/apply`, {
       method: "POST",
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({ items, ...(chapterId ? { chapter_id: chapterId } : {}) }),
       signal,
     }),
 };
