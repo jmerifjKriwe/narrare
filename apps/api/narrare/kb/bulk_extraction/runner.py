@@ -1,0 +1,238 @@
+"""Bulk extraction runner — in-process dispatch + the per-chapter loop (ADR-092 §5).
+
+Mirrors :mod:`narrare.export.tasks` (ADR-080 in-process pattern):
+
+- ``_INFLIGHT_TASKS`` — the GC-guard set of strong references to in-flight
+  bulk coroutines (``asyncio.create_task`` results would otherwise be
+  garbage-collected mid-flight). Entries auto-remove via ``_on_done``.
+  NOTE: registration in ``narrare._app.inflight._DRAIN_SOURCES`` is the
+  router/DI task's scope (F2 T4) — until it lands, graceful shutdown does
+  not cancel bulk tasks.
+- ``dispatch(job_id, novel_id, owner_id)`` — the production enqueuer the
+  service DI-injects; launches the runner fire-and-forget, task named
+  ``job_id``.
+- ``run_bulk_extraction(...)`` — the §5 loop: ``mark_job_running``, then
+  per pending chapter (position-order snapshot): cooperative cancel check
+  BETWEEN chapters → one pacer acquire → ``mark_chapter_running`` → OWN
+  DB session (``get_session_factory()``, never a request session) → the
+  REAL ``ExtractionService`` → record done/failed. Ends
+  ``mark_job_completed``.
+- ``_on_done`` — done-callback: GC discard; a cancelled task (shutdown
+  drain) flips the job to ``cancelled ("cancelled (server shutdown)")``
+  so a poller sees a terminal state, never a hang (RULE-11).
+
+Failure semantics: ``ConfigurationError`` fast-fails the whole job (no
+point burning N-1 more calls on an unconfigured provider); any other
+chapter failure is isolated (chapter → failed, job continues); an
+infrastructure failure outside the per-chapter handling fails the job
+instead of leaving it RUNNING. ``CancelledError`` is a ``BaseException``
+and propagates past every ``except Exception``.
+
+Test seams (module attributes, monkeypatch style of ``export/tasks.py``):
+``_service_factory`` (defaults to the real wiring below) and
+``_pacer_acquire`` (lazily binds the shared-budget pacer — F2 T5 lands
+``pacer.py``; kept lazy so this module imports cleanly before that).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import importlib
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, cast
+
+import structlog
+
+from narrare.kb.bulk_extraction import registry
+from narrare_core.shared.errors import ConfigurationError
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from narrare.kb.extraction_service import ExtractionService
+
+logger = structlog.get_logger(__name__)
+
+#: Signature of the per-chapter service factory seam: (own session,
+#: novel owner, novel) → the real ExtractionService (no request context
+#: exists; the owner is passed IN — the service gated it before dispatch).
+_ServiceFactory = Callable[["AsyncSession", "UUID", "UUID"], "ExtractionService"]
+
+#: Strong references to in-flight bulk coroutines (ADR-080 GC guard).
+_INFLIGHT_TASKS: set[asyncio.Task[None]] = set()
+
+_service_factory: _ServiceFactory | None = None
+_pacer_acquire: Callable[[], Awaitable[None]] | None = None
+
+
+def _resolve_service_factory() -> _ServiceFactory:
+    """Bind the default (real) service factory on first use."""
+    global _service_factory
+    if _service_factory is None:
+        _service_factory = _build_extraction_service
+    return _service_factory
+
+
+def _resolve_pacer_acquire() -> Callable[[], Awaitable[None]]:
+    """Bind the shared-budget pacer on first use (F2 T5 wires ``pacer.py``).
+
+    Resolved via ``importlib`` + ``getattr`` — the same dynamic-module
+    pattern as ``narrare._app.inflight._snapshot_tasks`` — because the
+    pacer module is a later task in the re-sliced plan and a static import
+    here cannot resolve yet. Until it lands, the default path raises
+    ``ModuleNotFoundError`` INSIDE the runner's outer guard: the job fails
+    loudly and queryably instead of hanging (RULE-11); nothing dispatches
+    before the DI wiring anyway. Tests inject the seam directly.
+    """
+    global _pacer_acquire
+    if _pacer_acquire is None:
+        module = importlib.import_module("narrare.kb.bulk_extraction.pacer")
+        _pacer_acquire = cast(
+            "Callable[[], Awaitable[None]]",
+            module.acquire_analysis_pacer_slot,
+        )
+    return _pacer_acquire
+
+
+def _build_extraction_service(
+    session: AsyncSession, owner_id: UUID, novel_id: UUID
+) -> ExtractionService:
+    """The REAL ExtractionService wiring for a runner-owned session.
+
+    Mirrors ``kb/dependencies_extraction.py`` exactly minus the apply-only
+    deps (KBService/RelationshipRepository/request session — apply stays a
+    request-path concern, spec §5). Model routing stays lazy (ADR-086):
+    the ``LLMIntent.KB_EXTRACT`` cascade resolves on the service's first
+    use per chapter; ``ConfigurationError`` then fast-fails the job.
+    No ``pydantic_ai`` / LLM-gateway imports here (RULE-01b) — the
+    service owns the agent boundary.
+    """
+    from narrare._app.dependencies import (
+        get_composer,
+        get_invocation_pipeline,
+        get_model_registry,
+    )
+    from narrare._app.dependencies_services import (
+        LazyModelResolution,
+        get_model_routing_resolver,
+    )
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.extraction_service import ExtractionService
+    from narrare.kb.repository import KBRepository
+    from narrare.novels.repository import NovelRepository
+    from narrare_core.llm.intents import LLMIntent
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
+
+    resolver = get_model_routing_resolver(session)
+    return ExtractionService(
+        registry=get_model_registry(),
+        model_resolution=LazyModelResolution(
+            lambda: resolver.resolve(LLMIntent.KB_EXTRACT, owner_id, novel_id)
+        ),
+        chapter_repo=ChapterRepository(session),
+        kb_repo=KBRepository(session),
+        composer=get_composer(),
+        novel_repo=NovelRepository(session),
+        invocation_pipeline=get_invocation_pipeline(),
+        run_limit_resolver=DefaultRunLimitResolver(),
+    )
+
+
+def _on_done(task: asyncio.Task[None]) -> None:
+    """Done-callback: GC-guard discard + cancellation → CANCELLED (RULE-11).
+
+    On cancellation (graceful-shutdown drain) the job is flipped to
+    CANCELLED with the canonical reason so a client polling status sees a
+    terminal state instead of a job hung in RUNNING. The runner's own
+    ``except Exception`` blocks do NOT swallow ``CancelledError``, so a
+    drain cancellation always reaches this callback as ``task.cancelled()``.
+    """
+    _INFLIGHT_TASKS.discard(task)
+    if task.cancelled():
+        registry.mark_cancelled(task.get_name(), "cancelled (server shutdown)")
+        return
+    exc = task.exception()
+    if exc is not None:
+        # Defensive: the runner converts its own failures to registry state,
+        # so a surfaced exception comes from outside its guards (e.g. the
+        # dispatch bookkeeping). Logged so it is never silent (RULE-11).
+        logger.error(
+            "bulk_background_task_failed",
+            job_id=task.get_name(),
+            error=str(exc),
+            exc_info=exc,
+        )
+
+
+async def dispatch(job_id: str, novel_id: UUID, owner_id: UUID) -> None:
+    """Production enqueuer: launch the bulk runner in-process (ADR-080).
+
+    Fire-and-forget — the caller does not await the runner's outcome; the
+    done-callback keeps the GC guard and the drain story intact.
+    """
+    task = asyncio.create_task(run_bulk_extraction(job_id, novel_id, owner_id), name=job_id)
+    _INFLIGHT_TASKS.add(task)
+    task.add_done_callback(_on_done)
+    logger.info("bulk_extraction_dispatched", job_id=job_id, novel_id=str(novel_id))
+
+
+async def run_bulk_extraction(job_id: str, novel_id: UUID, owner_id: UUID) -> None:
+    """The §5 loop over the job's pending chapters, in position order.
+
+    Session hygiene: the session FACTORY is resolved once per job, but one
+    OWN session is opened and closed PER CHAPTER (a chapter's agent call
+    must not hold the previous chapter's connection). Cancel is honored
+    only BETWEEN chapters — the in-flight agent call always finishes and
+    its output is recorded (spec §4.4/§5).
+    """
+    from narrare._app.database import get_session_factory
+
+    try:
+        registry.mark_job_running(job_id)
+        session_factory = get_session_factory()
+        pacer_acquire = _resolve_pacer_acquire()
+        service_factory = _resolve_service_factory()
+
+        for chapter_id in registry.pending_chapter_ids(job_id):
+            if registry.cancel_requested(job_id):
+                registry.mark_cancelled(job_id, "cancelled by user")
+                return
+            await pacer_acquire()  # shared analysis budget, one slot per agent call
+            registry.mark_chapter_running(job_id, chapter_id)
+            async with session_factory() as session:
+                service = service_factory(session, owner_id, novel_id)
+                try:
+                    output = await service.extract_from_chapter(novel_id, chapter_id, owner_id)
+                except ConfigurationError as exc:
+                    logger.error(
+                        "bulk_configuration_fast_fail",
+                        job_id=job_id,
+                        chapter_id=str(chapter_id),
+                        error=str(exc),
+                        exc_info=exc,
+                    )
+                    registry.mark_job_failed(job_id, str(exc))
+                    return
+                except Exception as exc:
+                    # Per-chapter isolation (spec §5): record + continue.
+                    logger.warning(
+                        "bulk_chapter_extraction_failed",
+                        job_id=job_id,
+                        chapter_id=str(chapter_id),
+                        error=str(exc),
+                        exc_info=exc,
+                    )
+                    registry.mark_chapter_failed(job_id, chapter_id, str(exc))
+                    continue
+            registry.mark_chapter_done(job_id, chapter_id, output)
+
+        registry.mark_job_completed(job_id)
+    except Exception as exc:
+        # CancelledError is a BaseException (3.8+) → NOT caught here → it
+        # reaches _on_done, which records the canonical shutdown cancellation.
+        # Any other infrastructure failure (pacer, session factory, registry)
+        # fails the JOB — a hung RUNNING job is never acceptable (RULE-11).
+        logger.error("bulk_run_failed", job_id=job_id, error=str(exc), exc_info=exc)
+        registry.mark_job_failed(job_id, f"{type(exc).__name__}: {exc}")
