@@ -21,6 +21,12 @@ import { useSelectionPublish } from "./useSelectionPublish";
  * each simulated row renders via PreviewRow.
  */
 interface ImportPreviewPanelProps {
+  /**
+   * REFERENTIALLY STABLE callback (a state setter or store action — the
+   * wizard passes `setImportSelection`, the modal a `useState` setter):
+   * forwarded into the publish effect, so a per-render identity would
+   * re-publish the selection on every render.
+   */
   readonly onSelectionChange: (selection: ImportSelection | null) => void;
 }
 
@@ -54,7 +60,6 @@ export function ImportPreviewPanel({ onSelectionChange }: ImportPreviewPanelProp
     files,
     preview,
     ops,
-    opsEnabled,
     excludedKeys,
     titleByKey,
     rows,

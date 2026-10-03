@@ -248,14 +248,13 @@ export function simulateOperations(
  * The ONE place mapping stable-key edit state to the wire payload:
  * excluded/renames land in FINAL space; ops are canonicalized (sorted) —
  * Core would canonicalize anyway, but sending the canonical form keeps the
- * payload reviewable. TRANSITION: tolerates selections without v2 members
- * (identity adjustments) until the panel produces them (plan T5/T6).
+ * payload reviewable. Since F1 T7, ImportSelection is v2-complete by
+ * construction (the panel publishes it), so no legacy tolerance remains.
  */
 export function buildAdjustments(selection: ImportSelection): ImportCommitAdjustments {
-  const ops = selection.ops ?? EMPTY_OPS;
-  const rows = simulateOperations(selection.items ?? [], ops);
-  const excludedKeys = new Set(selection.excludedKeys ?? []);
-  const titleByKey = selection.titleByKey ?? {};
+  const rows = simulateOperations(selection.items, selection.ops);
+  const excludedKeys = new Set(selection.excludedKeys);
+  const titleByKey = selection.titleByKey;
   const excluded_indices: number[] = [];
   const title_overrides: Record<string, string> = {};
   for (const row of rows) {
@@ -263,10 +262,10 @@ export function buildAdjustments(selection: ImportSelection): ImportCommitAdjust
     const title = titleByKey[row.key];
     if (title !== undefined) title_overrides[String(row.finalIndex)] = title;
   }
-  const splits = Object.entries(ops.splits)
+  const splits = Object.entries(selection.ops.splits)
     .map(([key, at]) => ({ index: Number(key), at: [...at].sort((a, b) => a - b) }))
     .sort((a, b) => a.index - b.index);
-  const merges = ops.merges
+  const merges = selection.ops.merges
     .map((run) => ({ indices: canonicalRun(run) }))
     .sort((a, b) => a.indices[0] - b.indices[0]);
   return { splits, merges, excluded_indices, title_overrides };

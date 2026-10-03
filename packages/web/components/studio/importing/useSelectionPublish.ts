@@ -1,70 +1,44 @@
 import { useEffect } from "react";
-import type { SimulatedRow } from "@/lib/importing/simulateOperations";
+import { EMPTY_OPS, type SimulatedRow } from "@/lib/importing/simulateOperations";
 import type { ImportOpsState, ImportPreviewResponse, ImportSelection } from "@/types";
-
-/**
- * Legacy (v1) projection of the stable-key edit state. ImportModal and the
- * wizard completion still commit through the v1 members until T7 migrates
- * them to buildAdjustments. The projection is EXACT while no ops are set
- * (final == original space); with ops, only what v1 space can represent is
- * projected — originals whose every part is excluded (never a partial drop:
- * that would silently delete content) and head-part renames. Part-level
- * edits live on in excludedKeys/titleByKey for buildAdjustments.
- */
-function legacyProjection(
-  rows: readonly SimulatedRow[],
-  excludedKeys: ReadonlySet<string>,
-  titleByKey: Readonly<Record<string, string>>,
-): Pick<ImportSelection, "excludedIndices" | "titleOverrides"> {
-  const partCount = new Map<number, number>();
-  const excludedCount = new Map<number, number>();
-  for (const row of rows) {
-    partCount.set(row.origIndex, (partCount.get(row.origIndex) ?? 0) + 1);
-    if (excludedKeys.has(row.key)) {
-      excludedCount.set(row.origIndex, (excludedCount.get(row.origIndex) ?? 0) + 1);
-    }
-  }
-  const excludedIndices = [...partCount]
-    .filter(([origIndex, count]) => excludedCount.get(origIndex) === count)
-    .map(([origIndex]) => origIndex)
-    .sort((a, b) => a - b);
-  const titleOverrides: Record<string, string> = {};
-  for (const row of rows) {
-    const title = titleByKey[row.key];
-    if (row.part === 0 && title !== undefined) titleOverrides[String(row.origIndex)] = title;
-  }
-  return { excludedIndices, titleOverrides };
-}
 
 interface SelectionPublishParams {
   /** Mutable to mirror ImportSelection.files (published verbatim). */
   readonly files: File[];
   readonly preview: ImportPreviewResponse | null;
   readonly ops: ImportOpsState;
-  readonly opsEnabled: boolean;
   readonly excludedKeys: ReadonlySet<string>;
   readonly titleByKey: Readonly<Record<string, string>>;
   readonly rows: readonly SimulatedRow[];
+  /**
+   * REFERENTIALLY STABLE callback (state setter or store action — never an
+   * inline closure): it is an effect dependency, so a per-render identity
+   * would tear down and re-run the publish effect on every render.
+   */
   readonly onSelectionChange: (selection: ImportSelection | null) => void;
 }
 
 /**
  * Publishes the selection upward; the panel performs NO commit itself — the
- * modal commits for existing novels, the wizard commits at Step-5 completion
- * (T7 migrates both to buildAdjustments). The server re-validates everything
- * at commit.
+ * modal commits for existing novels, the wizard commits at Step-5 completion.
+ * Both route the published selection through buildAdjustments (F1 T7), so the
+ * publish is v2-complete in EVERY state:
  *
- * Selection lifecycle: a provisional v1-shaped selection is published at
- * pick time and refined once the preview resolves; a preview failure
- * retracts it (null), so nothing can be committed off an unanalyzed
- * preview. The commit endpoint re-parses and re-validates the raw files
- * server-side, so the provisional window is safe.
+ * - Provisional (pick time, preview pending): empty items + EMPTY_OPS —
+ *   buildAdjustments yields the identity payload; safe because the commit
+ *   endpoint re-parses and re-validates the raw files server-side.
+ * - Preview resolved (v2 AND v1 servers): the simulated rows bind the stable
+ *   keys. On a v1 server the ops UI is gated off, so ops stay EMPTY_OPS and
+ *   rows are one `#0` part per chapter — final == original space, i.e. exact
+ *   v1 semantics, expressed in the same v2 vocabulary.
+ *
+ * A preview failure retracts the selection (null), so nothing can be
+ * committed off an unanalyzed preview.
  */
 export function useSelectionPublish({
   files,
   preview,
   ops,
-  opsEnabled,
   excludedKeys,
   titleByKey,
   rows,
@@ -76,31 +50,24 @@ export function useSelectionPublish({
       return;
     }
     if (!preview) {
-      // Provisional pick-time publish (v1 parity): server re-parses at commit.
+      // Provisional pick-time publish: identity adjustments at commit.
       onSelectionChange({
         files,
-        excludedIndices: [],
-        titleOverrides: {},
+        items: [],
+        ops: EMPTY_OPS,
+        excludedKeys: [],
+        titleByKey: {},
         includedCount: files.length,
       });
       return;
     }
-    const included = rows.filter((row) => !excludedKeys.has(row.key)).length;
-    const legacy = legacyProjection(rows, excludedKeys, titleByKey);
-    onSelectionChange(
-      opsEnabled
-        ? {
-            files,
-            ...legacy,
-            items: preview.items,
-            ops,
-            excludedKeys: [...excludedKeys],
-            titleByKey,
-            includedCount: included,
-          }
-        : // v1 server: publish the pure v1 shape (no ops UI exists to produce
-          // v2 state — and v1-shaped consumers assert exactly this shape).
-          { files, ...legacy, includedCount: included },
-    );
-  }, [files, preview, opsEnabled, ops, excludedKeys, titleByKey, rows, onSelectionChange]);
+    onSelectionChange({
+      files,
+      items: preview.items,
+      ops,
+      excludedKeys: [...excludedKeys],
+      titleByKey,
+      includedCount: rows.filter((row) => !excludedKeys.has(row.key)).length,
+    });
+  }, [files, preview, ops, excludedKeys, titleByKey, rows, onSelectionChange]);
 }

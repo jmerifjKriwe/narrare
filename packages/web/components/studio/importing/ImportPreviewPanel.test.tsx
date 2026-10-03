@@ -208,26 +208,32 @@ describe("ImportPreviewPanel (F1 ops)", () => {
     expect(screen.queryByRole("button", { name: /merge with next/i })).not.toBeInTheDocument();
   });
 
-  it("publishes the pure v1 selection shape when the server lacks the v2 field", async () => {
-    // v1 parity for the unchanged consumers (ImportModal + wizard completion):
-    // the legacy projection is EXACT without ops, and no v2 members leak into
-    // the payload (the wizard store test pins this shape with strict toEqual).
+  it("publishes the v2 shape even when the server lacks the v2 field", async () => {
+    // v1-server parity AFTER T7: the publish is v2-complete in every state —
+    // with the ops UI gated off, ops stay EMPTY_OPS and rows are one `#0`
+    // part per chapter, so stable-key edits map to v1 semantics (final ==
+    // original space) through the same buildAdjustments path.
     const onSelectionChange = await pickFiles(V1_PREVIEW);
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     fireEvent.change(screen.getByDisplayValue("A"), { target: { value: "Renamed" } });
 
     const last = onSelectionChange.mock.lastCall?.[0];
     expect(last).not.toBeNull();
+    // Pin the exact v2 member set — no v1 transition members may resurface.
     expect(Object.keys(last as object).sort()).toEqual([
-      "excludedIndices",
+      "excludedKeys",
       "files",
       "includedCount",
-      "titleOverrides",
+      "items",
+      "ops",
+      "titleByKey",
     ]);
     expect(last).toEqual({
       files: expect.any(Array),
-      excludedIndices: [0],
-      titleOverrides: { "0": "Renamed" },
+      items: V1_PREVIEW.items,
+      ops: { splits: {}, merges: [] },
+      excludedKeys: ["0#0"],
+      titleByKey: { "0#0": "Renamed" },
       includedCount: 0,
     });
   });

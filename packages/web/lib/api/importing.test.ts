@@ -44,12 +44,19 @@ describe("importApi", () => {
       ),
     );
     const file = new File(["Chapter 1\nx"], "a.txt", { type: "text/plain" });
-    await importApi.commit([file], "novel-uuid", { excluded_indices: [], title_overrides: {} });
+    await importApi.commit([file], "novel-uuid", {
+      splits: [],
+      merges: [],
+      excluded_indices: [],
+      title_overrides: {},
+    });
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const body = init.body as FormData;
     expect(body.getAll("files")).toHaveLength(1);
     expect(body.get("novel_id")).toBe("novel-uuid");
     expect(JSON.parse(body.get("adjustments") as string)).toEqual({
+      splits: [],
+      merges: [],
       excluded_indices: [],
       title_overrides: {},
     });

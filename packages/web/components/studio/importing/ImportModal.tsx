@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { importApi } from "@/lib/api/client";
+import { buildAdjustments } from "@/lib/importing/simulateOperations";
 import type { ImportSelection } from "@/types";
 import { ImportPreviewPanel } from "./ImportPreviewPanel";
 
@@ -32,10 +33,7 @@ export function ImportModal({ novelId, open, onOpenChange }: ImportModalProps) {
     setIsCommitting(true);
     setError(null);
     try {
-      await importApi.commit(selection.files, novelId, {
-        excluded_indices: selection.excludedIndices,
-        title_overrides: selection.titleOverrides,
-      });
+      await importApi.commit(selection.files, novelId, buildAdjustments(selection));
       sessionStorage.removeItem(`narrare:importFailed:${novelId}`);
       await queryClient.invalidateQueries({ queryKey: ["novels", novelId, "chapters"] });
       onOpenChange(false);

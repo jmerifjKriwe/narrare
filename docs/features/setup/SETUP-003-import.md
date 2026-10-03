@@ -132,9 +132,9 @@ that the frontend then populates via `/import/commit`.
 
 ## Constraints & Edge Cases
 
-- Detection is heuristic; users verify the preview (title edit +
-  include/exclude were the v1 adjustment surface — split/merge editing is
-  the F1 follow-up, see below)
+- Detection is heuristic; users verify the preview (title edit, include/exclude
+  and split/merge boundary editing are the adjustment surface — the latter
+  via F1 / ADR-091 Amendment 2, see History)
 - Spelled-out chapter numbers ("Chapter one") are not recognized as markers
 - Files with unknown extensions or non-UTF-8 encodings are rejected with a
   422 naming the file; no charset detection in v1
@@ -176,14 +176,21 @@ that the frontend then populates via `/import/commit`.
   wizard Step-2 inline section + completion with degrade path, Next.js proxy
   amendment (`experimental.proxyClientMaxBodySize: "30mb"` + ≥ 26 MiB
   coupling regression test). Status → `stable`.
-- `2026-10-02` — **Follow-up F1 (split/merge boundary editing) in
-  progress** — specified and planned, not yet implemented:
+- `2026-10-02` — **Follow-up F1 (split/merge boundary editing) implemented**
+  (commits `0e8a1610..64faccd5` for tasks 1–6 + the T7 closure commit;
   [ADR-091 Amendment 2](../../architecture/decisions/ADR-091-project-import-v1.md)
-  (adjustments vocabulary v2: split/merge ops in original index space,
-  exclusions/renames in final space; preview enrichment `split_candidates[]`
-  capped at 200/chapter; `.txt` merge-only), spec
+  → implemented): adjustments vocabulary v2 — split/merge ops in original
+  index space, exclusions/renames in final space; preview enrichment
+  `split_candidates[]` capped at 200/chapter; `.txt` merge-only; mirrored FE
+  semantics in `lib/importing/simulateOperations.ts` (one module, + `opsState.ts`)
+  pinned to Core by the shared golden fixture `__fixtures__/operations-golden.json`
+  (pytest `test_operations.py` + vitest `simulateOperations.test.ts`); panel ops
+  UI (`ImportPreviewPanel` + `SplitCandidatePicker`, stable row keys
+  `{origIndex}#{part}`, version-skew probe `serverSupportsOps`); commit via
+  `buildAdjustments` at both call sites (`ImportModal`, `useWizardCompletion`).
+  Spec
   [`docs/superpowers/specs/2026-10-02-import-split-merge-design.md`](../../superpowers/specs/2026-10-02-import-split-merge-design.md),
   plan
   [`docs/superpowers/plans/2026-10-02-import-split-merge.md`](../../superpowers/plans/2026-10-02-import-split-merge.md).
-  SETUP-003 v1 itself remains `stable` — F1 extends the same stateless
+  SETUP-003 v1 itself remains `stable` — F1 extended the same stateless
   two-phase API additively (empty ops ⇒ v1 behavior unchanged).

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { importApi, setupApi } from "@/lib/api/client";
+import { buildAdjustments } from "@/lib/importing/simulateOperations";
 import { useWizardStore } from "@/lib/stores/wizardStore";
 
 /**
@@ -32,10 +33,11 @@ export function useWizardCompletion(hasProviders: boolean): () => Promise<void> 
 
     if (updatedState.starter === "import" && importSelection) {
       try {
-        await importApi.commit(importSelection.files, result.novel_id, {
-          excluded_indices: importSelection.excludedIndices,
-          title_overrides: importSelection.titleOverrides,
-        });
+        await importApi.commit(
+          importSelection.files,
+          result.novel_id,
+          buildAdjustments(importSelection),
+        );
       } catch {
         sessionStorage.setItem(`narrare:importFailed:${result.novel_id}`, "1");
       }

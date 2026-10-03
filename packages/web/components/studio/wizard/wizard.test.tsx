@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { authApi, importApi, setupApi } from "@/lib/api/client";
 import { useWizardStore } from "@/lib/stores/wizardStore";
+import type { ImportPreviewItem } from "@/types";
 import { WizardShell } from "./WizardShell";
 import { WizardStep1 } from "./WizardStep1";
 import { WizardStep2 } from "./WizardStep2";
@@ -208,8 +209,10 @@ describe("WizardStep2", () => {
       await waitFor(() =>
         expect(useWizardStore.getState().importSelection).toEqual({
           files: [file],
-          excludedIndices: [],
-          titleOverrides: {},
+          items: [{ index: 0, suggested_title: "One", word_count: 12, source_file: "a.md" }],
+          ops: { splits: {}, merges: [] },
+          excludedKeys: [],
+          titleByKey: {},
           includedCount: 1,
         }),
       );
@@ -224,8 +227,10 @@ describe("WizardStep2", () => {
         state: { ...useWizardStore.getState().state, starter: "import" },
         importSelection: {
           files: [new File(["x"], "a.md")],
-          excludedIndices: [],
-          titleOverrides: {},
+          items: [],
+          ops: { splits: {}, merges: [] },
+          excludedKeys: [],
+          titleByKey: {},
           includedCount: 1,
         },
       });
@@ -326,8 +331,10 @@ describe("WizardStep5", () => {
         state: { ...useWizardStore.getState().state, starter: "import" },
         importSelection: {
           files: [new File(["x"], "a.md"), new File(["x"], "b.md"), new File(["x"], "c.md")],
-          excludedIndices: [2],
-          titleOverrides: {},
+          items: [],
+          ops: { splits: {}, merges: [] },
+          excludedKeys: ["2#0"],
+          titleByKey: {},
           includedCount: 2,
         },
       });
@@ -368,8 +375,10 @@ describe("WizardShell completion", () => {
 
   const importSelectionFor = (files: File[]) => ({
     files,
-    excludedIndices: [] as number[],
-    titleOverrides: {} as Record<string, string>,
+    items: [] as ImportPreviewItem[],
+    ops: { splits: {}, merges: [] },
+    excludedKeys: [] as string[],
+    titleByKey: {} as Record<string, string>,
     includedCount: files.length,
   });
 
@@ -426,6 +435,8 @@ describe("WizardShell completion", () => {
     // Commit receives the picked files + the novel the backend just created.
     await waitFor(() =>
       expect(importApi.commit).toHaveBeenCalledWith([file], "novel-9", {
+        splits: [],
+        merges: [],
         excluded_indices: [],
         title_overrides: {},
       }),

@@ -1,13 +1,9 @@
 // Project Import types — RULE-17 mirror of apps/api/narrare/importing/schemas.py
 // (vocabulary v2, ADR-091 Amendment 2). ImportSelection / ImportOpsState are
 // frontend-only (File objects and stable keys never cross the wire as JSON).
-//
-// TRANSITION (F1 plan): ImportSelection and ImportCommitAdjustments keep
-// their v1 members next to the new v2 members so the live panel/Modal/wizard
-// keep compiling unchanged. The panel ops UI starts producing the v2 members
-// (plan T5/T6); the v1 members are removed when commit migrates to
-// buildAdjustments (plan T7 "final sweep": no excludedIndices/titleOverrides
-// left anywhere).
+// The v1→v2 transition members (excludedIndices/titleOverrides, optional
+// splits/merges) were removed with F1 T7: commit goes through
+// buildAdjustments everywhere, so selections are v2-complete by construction.
 
 /** Mirror of schemas.ImportSplitCandidate (cap ≤ 200 candidates). */
 export interface ImportSplitCandidate {
@@ -49,14 +45,13 @@ export interface ImportMergeOperation {
 
 export interface ImportCommitAdjustments {
   /**
-   * Vocabulary v2 (schemas.ImportCommitAdjustments, extra="forbid"):
+   * Mirror of schemas.ImportCommitAdjustments (vocabulary v2, extra="forbid"):
    * splits/merges address ORIGINAL indices; excluded_indices/title_overrides
-   * address FINAL (post-ops) indices. splits/merges are optional during the
-   * v1→v2 transition — current callers send v1 payloads, which the server
-   * accepts and defaults to [].
+   * address FINAL (post-ops) indices. The server defaults absent ops to [],
+   * but v2-complete payloads are built exclusively via buildAdjustments.
    */
-  splits?: ImportSplitOperation[];
-  merges?: ImportMergeOperation[];
+  splits: ImportSplitOperation[];
+  merges: ImportMergeOperation[];
   excluded_indices: number[];
   title_overrides: Record<string, string>;
 }
@@ -86,24 +81,20 @@ export interface ImportOpsState {
 
 /**
  * Current pick state of the shared import panel (frontend-only).
- * TRANSITION: the v2 members (items/ops/excludedKeys/titleByKey) are optional
- * until the panel produces them (plan T5/T6); the v1 members
- * (excludedIndices/titleOverrides) disappear once commit goes through
- * buildAdjustments (plan T7).
+ * v2-complete since F1 T7: the panel publishes items/ops/excludedKeys/
+ * titleByKey from pick time on (a provisional publish before the preview
+ * resolves carries empty items and EMPTY_OPS — commit then sends the
+ * identity payload and the server re-parses the raw files anyway).
  */
 export interface ImportSelection {
   files: File[];
-  /** v1 (until T7): exclusions keyed by ORIGINAL index — with no ops, final == original. */
-  excludedIndices: number[];
-  /** v1 (until T7): renames keyed by ORIGINAL index as string. */
-  titleOverrides: Record<string, string>;
-  /** v2: preview rows the stable keys bind to (simulation input). */
-  items?: ImportPreviewItem[];
-  /** v2: split/merge operations in ORIGINAL index space. */
-  ops?: ImportOpsState;
-  /** v2: excluded rows by stable key `${origIndex}#${part}`. */
-  excludedKeys?: string[];
-  /** v2: renames by stable key `${origIndex}#${part}`. */
-  titleByKey?: Record<string, string>;
+  /** Preview rows the stable keys bind to (simulation input). */
+  items: ImportPreviewItem[];
+  /** Split/merge operations in ORIGINAL index space. */
+  ops: ImportOpsState;
+  /** Excluded rows by stable key `${origIndex}#${part}`. */
+  excludedKeys: string[];
+  /** Renames by stable key `${origIndex}#${part}`. */
+  titleByKey: Record<string, string>;
   includedCount: number;
 }

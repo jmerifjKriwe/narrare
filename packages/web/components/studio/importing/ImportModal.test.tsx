@@ -69,6 +69,8 @@ describe("ImportModal", () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(sessionStorage.getItem("narrare:importFailed:novel-1")).toBeNull();
     expect(importApi.commit).toHaveBeenCalledWith([expect.any(File)], "novel-1", {
+      splits: [],
+      merges: [],
       excluded_indices: [],
       title_overrides: {},
     });

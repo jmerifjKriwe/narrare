@@ -221,8 +221,6 @@ describe("buildAdjustments", () => {
       files: [file],
       items,
       ops: { splits: { 0: [0] }, merges: [] },
-      excludedIndices: [],
-      titleOverrides: {},
       excludedKeys: ["0#1"],
       titleByKey: { "0#0": "Intro" },
       includedCount: 2,
@@ -245,8 +243,6 @@ describe("buildAdjustments", () => {
       files: [],
       items,
       ops: { splits: {}, merges: [[2, 1]] },
-      excludedIndices: [],
-      titleOverrides: {},
       excludedKeys: [],
       titleByKey: {},
       includedCount: 3,
@@ -283,8 +279,6 @@ describe("buildAdjustments", () => {
       files: [],
       items,
       ops: { splits: { 4: [0], 1: [0] }, merges: [[3, 2]] },
-      excludedIndices: [],
-      titleOverrides: {},
       excludedKeys: [],
       titleByKey: {},
       includedCount: 5,
@@ -317,8 +311,6 @@ describe("buildAdjustments", () => {
           [0, 1],
         ],
       },
-      excludedIndices: [],
-      titleOverrides: {},
       excludedKeys: [],
       titleByKey: {},
       includedCount: 4,
@@ -334,28 +326,8 @@ describe("buildAdjustments", () => {
       files: [],
       items,
       ops: { splits: {}, merges: [] },
-      excludedIndices: [],
-      titleOverrides: {},
       excludedKeys: [],
       titleByKey: {},
-      includedCount: 1,
-    };
-    expect(buildAdjustments(selection)).toEqual({
-      splits: [],
-      merges: [],
-      excluded_indices: [],
-      title_overrides: {},
-    });
-  });
-
-  it("maps a v1-shaped selection (no v2 members) to identity adjustments (transition)", () => {
-    // TRANSITION: until the panel produces v2 members (plan T5/T6), a legacy
-    // selection must not crash buildAdjustments — empty ops ⇒ final space
-    // == original space, i.e. exact v1 behavior (identity property).
-    const selection: ImportSelection = {
-      files: [new File(["x"], "a.md")],
-      excludedIndices: [],
-      titleOverrides: {},
       includedCount: 1,
     };
     expect(buildAdjustments(selection)).toEqual({
