@@ -85,7 +85,7 @@ export function useExtractChapter(novelId: string, chapterId: string) {
 }
 
 /** Apply selected extraction items to the KB. Invalidates KB cache on success. */
-export function useApplyExtraction(novelId: string) {
+export function useApplyExtraction(novelId: string, chapterId?: string) {
   const queryClient = useQueryClient();
   const itemsRef = useRef<ApplyExtractionItem[] | null>(null);
   const resolveRef = useRef<((value: ApplyExtractionResponse) => void) | null>(null);
@@ -96,8 +96,10 @@ export function useApplyExtraction(novelId: string) {
       const items = itemsRef.current;
       if (!items) throw new Error("No items to apply");
       // applyExtraction's 3rd arg is the chapter id (ADR-085 provenance);
-      // the abort signal moved to 4th position in F2 Task 6.
-      return extractionApi.applyExtraction(novelId, items, undefined, signal);
+      // the abort signal moved to 4th position in F2 Task 6. The id is
+      // undefined for the single-chapter panel (no provenance change) and
+      // set by the bulk panel's per-chapter review (F2 Task 7).
+      return extractionApi.applyExtraction(novelId, items, chapterId, signal);
     },
     errorMapper: createAbortAwareErrorMapper(resolveRef, rejectRef, mapRestApiError),
     onSuccess: (data) => {
