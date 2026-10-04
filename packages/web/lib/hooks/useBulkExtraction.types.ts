@@ -37,6 +37,11 @@ export interface UseBulkExtractionResult {
   error: string | null;
   /** Start a job over the given chapters; resolves null on failure. */
   start: (chapterIds: string[]) => Promise<BulkExtractionJobView | null>;
+  /**
+   * Adopt a PRE-started job id (F3 corpus pass) without a start call —
+   * clears state and begins polling the adopted job immediately.
+   */
+  adopt: (jobId: string) => void;
   /** Cooperatively cancel the adopted job (spec §4.4). */
   cancel: () => Promise<void>;
   /** Resume a cancelled/failed job on the same id and re-poll (spec §4.5). */

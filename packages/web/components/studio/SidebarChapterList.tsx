@@ -3,10 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { chaptersApi, volumesApi } from "@/lib/api/client";
 import { useEditorStore } from "@/lib/stores/editorStore";
+import { BulkExtractionPanel } from "./extraction/BulkExtractionPanel";
 import { ImportLaunchSection } from "./importing/ImportLaunchSection";
+import { CorpusEstimateDialog } from "./kb/CorpusEstimateDialog";
 
 /**
  * SidebarChapterList — Chapter list with volume selector for the sidebar.
@@ -15,7 +17,9 @@ import { ImportLaunchSection } from "./importing/ImportLaunchSection";
  * Extracted from Sidebar.tsx (RULE-04); the import→extraction launch pipeline
  * (modal, failure/suggestion banners, bulk panel host) lives in
  * importing/ImportLaunchSection.tsx (F2 T8) — copy single-sourced from the
- * "importing" namespace.
+ * "importing" namespace. The corpus-pass chain (F3 T4, D19a) is hosted here:
+ * sidebar entry → CorpusEstimateDialog → BulkExtractionPanel with the
+ * pre-started corpus job id.
  */
 
 export function SidebarChapterList({ novelId }: { novelId: string }) {
@@ -85,6 +89,19 @@ export function SidebarChapterList({ novelId }: { novelId: string }) {
     localStorage.setItem(`narrare:lastChapter:${novelId}`, activeChapterId);
   }, [novelId, activeChapterId]);
 
+  // Corpus pass chain (F3 T4, D19a): entry → estimate confirm dialog → the
+  // F2 panel hosting the PRE-started corpus job (adopted via initialJobId —
+  // the job exists server-side before the panel mounts).
+  const [corpusDialogOpen, setCorpusDialogOpen] = useState(false);
+  const [corpusJobId, setCorpusJobId] = useState<string | null>(null);
+  const [corpusPanelOpen, setCorpusPanelOpen] = useState(false);
+
+  const startCorpusPanel = (jobId: string) => {
+    setCorpusJobId(jobId);
+    setCorpusDialogOpen(false);
+    setCorpusPanelOpen(true);
+  };
+
   return (
     <>
       {/* Volume selector — hidden when only default volume exists */}
@@ -149,6 +166,32 @@ export function SidebarChapterList({ novelId }: { novelId: string }) {
             suggestion banners, ImportModal, and the BulkExtractionPanel host —
             composed in importing/ImportLaunchSection (RULE-04). */}
         <ImportLaunchSection novelId={novelId} />
+        {/* Corpus pass entry (F3 T4, D19a) below the import button — hidden
+            for a zero-chapter novel (an honest zero estimate can't run). */}
+        {chapters.length > 0 && (
+          <button
+            type="button"
+            data-testid="corpus-pass-btn"
+            onClick={() => setCorpusDialogOpen(true)}
+            className="mt-2 w-full rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition-colors"
+          >
+            {t("kb.corpusPass.entry")}
+          </button>
+        )}
+        <CorpusEstimateDialog
+          novelId={novelId}
+          open={corpusDialogOpen}
+          onOpenChange={setCorpusDialogOpen}
+          onStart={startCorpusPanel}
+        />
+        {corpusPanelOpen && corpusJobId !== null && (
+          <BulkExtractionPanel
+            novelId={novelId}
+            chapterIds={[]}
+            initialJobId={corpusJobId}
+            onClose={() => setCorpusPanelOpen(false)}
+          />
+        )}
       </div>
     </>
   );

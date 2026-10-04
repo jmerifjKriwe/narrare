@@ -58,6 +58,7 @@ const handle = vi.hoisted(() => ({
   cancel: vi.fn(),
   resume: vi.fn(),
   apply: vi.fn(),
+  corpusStart: vi.fn(),
 }));
 
 vi.mock("@/lib/api/bulkExtraction", async (importOriginal) => {
@@ -70,6 +71,7 @@ vi.mock("@/lib/api/bulkExtraction", async (importOriginal) => {
       bulkJobResults: handle.results,
       cancelBulkJob: handle.cancel,
       resumeBulkJob: handle.resume,
+      startCorpusPass: handle.corpusStart,
     },
   };
 });
@@ -564,5 +566,84 @@ describe("BulkExtractionPanel", () => {
 
     expect(screen.getByText("Loading results…")).toBeInTheDocument();
     expect(screen.queryByText("Starting extraction…")).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F3 corpus pass (plan Task 4): the panel hosts a PRE-started corpus job via
+// the optional initialJobId prop — adopted instead of started, restarted via
+// the corpus endpoint, and the cost note never lies about an unknown count.
+// ---------------------------------------------------------------------------
+
+describe("BulkExtractionPanel corpus adoption (F3 T4)", () => {
+  /** Render the panel in corpus mode (adopted job, empty explicit seed). */
+  function renderCorpusPanel(initialJobId = "job-corpus") {
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <BulkExtractionPanel
+          novelId={NOVEL}
+          chapterIds={[]}
+          initialJobId={initialJobId}
+          onClose={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("adopts the corpus job on mount WITHOUT starting an explicit job", async () => {
+    handle.status.mockResolvedValue(statusView("running", fourChapters(), "job-corpus"));
+    renderCorpusPanel();
+
+    // Before the first poll resolves: no totals, and the cost note must NOT
+    // render a fallback count for an adopted job (there is no seed — "0 AI
+    // calls" would be a lie).
+    expect(screen.queryByText(/AI calls, one per chapter/)).not.toBeInTheDocument();
+
+    await settle();
+    expect(handle.start).not.toHaveBeenCalled();
+    expect(handle.status).toHaveBeenCalledWith(NOVEL, "job-corpus");
+    // Totals arrived → the D7a cost note renders with the POLLED count.
+    expect(screen.getByText(/4 AI calls, one per chapter/)).toBeInTheDocument();
+  });
+
+  it("restarts an interrupted corpus job via the corpus endpoint, not an explicit start", async () => {
+    handle.status
+      .mockRejectedValueOnce(new BulkExtractionApiError(404, "Bulk extraction job not found"))
+      .mockResolvedValue(statusView("running", fourChapters(), "job-corpus-2"));
+    handle.corpusStart.mockResolvedValue(jobView("pending", "job-corpus-2"));
+    renderCorpusPanel();
+    await settle();
+    expect(screen.getByText("Extraction job interrupted")).toBeInTheDocument();
+
+    handle.corpusStart.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Start over" }));
+    await settle();
+
+    // A FRESH corpus job (new start-time prefix) — never an explicit start
+    // over the empty chapterIds seed.
+    expect(handle.corpusStart).toHaveBeenCalledTimes(1);
+    expect(handle.corpusStart).toHaveBeenCalledWith(NOVEL);
+    expect(handle.start).not.toHaveBeenCalled();
+    expect(handle.status).toHaveBeenLastCalledWith(NOVEL, "job-corpus-2");
+    expect(screen.getByText("1 of 4 chapters")).toBeInTheDocument(); // progress again
+  });
+
+  it("surfaces a failed corpus restart as an alert (visible, not silent)", async () => {
+    handle.status.mockRejectedValue(
+      new BulkExtractionApiError(404, "Bulk extraction job not found"),
+    );
+    handle.corpusStart.mockRejectedValue(
+      new BulkExtractionApiError(409, "A bulk extraction job is already active for this novel"),
+    );
+    renderCorpusPanel();
+    await settle();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start over" }));
+    await settle();
+
+    // ADR-043 §16.5: catalog copy, never the raw server detail.
+    expect(screen.getByTestId("bulk-restart-error")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/could not be restarted/i);
+    expect(screen.getByRole("alert")).not.toHaveTextContent(/already active/);
   });
 });

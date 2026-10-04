@@ -52,6 +52,15 @@ export function isTerminalJobStatus(status: BulkJobStatus): boolean {
   return TERMINAL_JOB_STATUSES.includes(status);
 }
 
+/**
+ * A 404 poll error means the job is GONE (registry lost to a restart, or a
+ * foreign/unknown id) — interrupted per spec §8.2. Single classification
+ * for the loop's halt decision AND the owner's interrupted flag.
+ */
+export function isLostJobPollError(err: unknown): boolean {
+  return err instanceof BulkExtractionApiError && err.status === 404;
+}
+
 /** The poll loop target: an adopted job plus its restart epoch. */
 export interface BulkExtractionPollTarget {
   /** Adopted job id. */
@@ -110,7 +119,7 @@ export function useBulkExtractionPoll(
         // 404 = job gone (restart/foreign job) — interrupted per spec §8.2:
         // halt the loop instead of polling forever; the owner reads the
         // typed error from onPollError. Everything else stays transient.
-        if (err instanceof BulkExtractionApiError && err.status === 404) stop();
+        if (isLostJobPollError(err)) stop();
         callbacksRef.current.onPollError(err);
       } finally {
         inFlight = false;

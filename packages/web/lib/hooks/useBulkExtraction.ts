@@ -22,21 +22,21 @@
  * @module useBulkExtraction
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import {
-  BulkExtractionApiError,
   type BulkExtractionJobView,
   type BulkExtractionStatusView,
   bulkExtractionApi,
+  getBulkErrorMessage,
 } from "@/lib/api/bulkExtraction";
 import type { UseBulkExtractionResult } from "@/lib/hooks/useBulkExtraction.types";
-import { isTerminalJobStatus, useBulkExtractionPoll } from "@/lib/hooks/useBulkExtractionPoll";
+import {
+  isLostJobPollError,
+  isTerminalJobStatus,
+  useBulkExtractionPoll,
+} from "@/lib/hooks/useBulkExtractionPoll";
 
 export type { UseBulkExtractionResult } from "@/lib/hooks/useBulkExtraction.types";
-
-function toErrorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
 
 export function useBulkExtraction(novelId: string): UseBulkExtractionResult {
   // The epoch bumps on resume so the poll effect re-runs for the SAME job id
@@ -47,8 +47,6 @@ export function useBulkExtraction(novelId: string): UseBulkExtractionResult {
   const [error, setError] = useState<string | null>(null);
   const [isInterrupted, setIsInterrupted] = useState(false);
   const jobId = job?.id ?? null;
-  const jobIdRef = useRef<string | null>(null);
-  jobIdRef.current = jobId;
 
   /** Merge a job-view response (start/cancel/resume) into the status view. */
   const mergeJobView = useCallback((view: BulkExtractionJobView) => {
@@ -66,7 +64,7 @@ export function useBulkExtraction(novelId: string): UseBulkExtractionResult {
         setJob({ id: view.job_id, epoch: 0 });
         return view;
       } catch (err) {
-        setError(toErrorMessage(err));
+        setError(getBulkErrorMessage(err));
         return null;
       } finally {
         setIsStarting(false);
@@ -75,29 +73,39 @@ export function useBulkExtraction(novelId: string): UseBulkExtractionResult {
     [novelId],
   );
 
+  /**
+   * Adopt a PRE-started job id (F3 corpus pass): the job already exists
+   * server-side, so no start call is made — state is cleared and the poll
+   * loop begins immediately for the adopted id.
+   */
+  const adopt = useCallback((adoptedId: string) => {
+    setJob({ id: adoptedId, epoch: 0 });
+    setStatus(null);
+    setError(null);
+    setIsInterrupted(false);
+  }, []);
+
   const cancel = useCallback(async () => {
-    const currentJobId = jobIdRef.current;
-    if (!currentJobId) return;
+    if (!jobId) return;
     try {
-      mergeJobView(await bulkExtractionApi.cancelBulkJob(novelId, currentJobId));
+      mergeJobView(await bulkExtractionApi.cancelBulkJob(novelId, jobId));
       setError(null);
     } catch (err) {
-      setError(toErrorMessage(err));
+      setError(getBulkErrorMessage(err));
     }
-  }, [mergeJobView, novelId]);
+  }, [jobId, mergeJobView, novelId]);
 
   const resume = useCallback(async () => {
-    const currentJobId = jobIdRef.current;
-    if (!currentJobId) return;
+    if (!jobId) return;
     try {
-      mergeJobView(await bulkExtractionApi.resumeBulkJob(novelId, currentJobId));
+      mergeJobView(await bulkExtractionApi.resumeBulkJob(novelId, jobId));
       setError(null);
       setIsInterrupted(false);
       setJob((prev) => (prev === null ? prev : { ...prev, epoch: prev.epoch + 1 }));
     } catch (err) {
-      setError(toErrorMessage(err));
+      setError(getBulkErrorMessage(err));
     }
-  }, [mergeJobView, novelId]);
+  }, [jobId, mergeJobView, novelId]);
 
   /** Halt polling deliberately and drop all job state (spec §8.2 restart). */
   const reset = useCallback(() => {
@@ -113,16 +121,12 @@ export function useBulkExtraction(novelId: string): UseBulkExtractionResult {
       setError(null);
     },
     onPollError: (err) => {
-      setError(toErrorMessage(err));
+      setError(getBulkErrorMessage(err));
       // A 404 means the job is gone (interrupted, spec §8.2); the poll loop
       // has already halted itself for that case.
-      if (err instanceof BulkExtractionApiError && err.status === 404) {
-        setIsInterrupted(true);
-      }
+      if (isLostJobPollError(err)) setIsInterrupted(true);
     },
   });
-
-  const isTerminal = status !== null && isTerminalJobStatus(status.status);
 
   return {
     jobId,
@@ -130,10 +134,12 @@ export function useBulkExtraction(novelId: string): UseBulkExtractionResult {
     chapters: status?.chapters ?? [],
     totals: status?.totals ?? null,
     isStarting,
-    isActive: jobId !== null && !isTerminal && !isInterrupted,
+    isActive:
+      jobId !== null && status !== null && !isTerminalJobStatus(status.status) && !isInterrupted,
     isInterrupted,
     error,
     start,
+    adopt,
     cancel,
     resume,
     reset,

@@ -1487,6 +1487,7 @@
       "interruptedTitle": "Extraktion unterbrochen",
       "interruptedBody": "Der Extraktionsauftrag ging verloren, höchstwahrscheinlich weil der Server neu gestartet wurde. Es wurde nichts in deine Wissensdatenbank geschrieben – bereits übernommene Kapitel bleiben übernommen. Du kannst gefahrlos von vorn beginnen.",
       "restart": "Von vorn beginnen",
+      "restartFailed": "Die Extraktion konnte nicht neu gestartet werden. Versuche es gleich noch einmal.",
       "resume": "Fortsetzen",
       "reviewTitle": "Extrahiertes Wissen prüfen",
       "nextChapter": "Nächstes Kapitel",
@@ -1498,6 +1499,22 @@
       "allReviewed": "Alle Kapitel geprüft",
       "resultsLoading": "Ergebnisse werden geladen…",
       "resultsError": "Die Extraktionsergebnisse konnten nicht geladen werden."
+    },
+    "corpusPass": {
+      "entry": "Roman-Korpus analysieren",
+      "title": "Roman-Korpus analysieren",
+      "estimateLine": "{chapterCount} Kapitel{ofTotal} · {wordCount} Wörter · {aiCalls} KI-Aufrufe",
+      "ofTotal": " (von {total})",
+      "cappedChapters": "Limit pro Durchlauf: maximal {max} Kapitel passen in einen Durchlauf – die verbleibenden {remaining} Kapitel bleiben für einen Folgedurchlauf übrig.",
+      "cappedWords": "Limit pro Durchlauf: Der Durchlauf endet beim letzten Kapitel, das in {max} Wörter passt – die verbleibenden {remaining} Kapitel bleiben für einen Folgedurchlauf übrig.",
+      "pacingNote": "Läuft im Hintergrund mit deiner Analysier-Rate (Standard: 5 KI-Aufrufe pro Minute). Ein Aufruf pro Kapitel, mit demselben Budget wie die interaktive Extraktion.",
+      "start": "Korpus-Analyse starten",
+      "cancel": "Abbrechen",
+      "splitFirstError": "Der Durchlauf kann nicht starten: Das erste Kapitel allein überschreitet das Wortlimit pro Durchlauf. Teile zuerst das größte Kapitel in kleinere auf und starte den Durchlauf erneut.",
+      "startFailed": "Der Korpus-Durchlauf konnte nicht gestartet werden. Versuche es gleich noch einmal.",
+      "loading": "Schätzung wird geladen…",
+      "loadFailed": "Die Schätzung konnte nicht geladen werden.",
+      "retry": "Erneut versuchen"
     },
     "interview": {
       "resumeTitle": "Unterbrochenes Interview gefunden",

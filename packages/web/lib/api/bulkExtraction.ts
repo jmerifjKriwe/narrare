@@ -89,6 +89,36 @@ export interface BulkExtractionResultsView {
   chapters: BulkExtractionResultChapter[];
 }
 
+// --- Corpus pass types (F3, plan Task 4 — RULE-17 mirror of schemas_corpus.py) ---
+
+/** Which D20a cap truncated the corpus selection (`corpus.py` `CapReason`). */
+export type CapReason = "chapters" | "words";
+
+/**
+ * Honest pre-run estimate — EXACT mirror of `CorpusEstimateView`
+ * (`apps/api/narrare/kb/bulk_extraction/schemas_corpus.py`, 8 fields).
+ * `ai_calls === chapter_count` (D14a: one call per chapter); totals cover ALL
+ * enumerated chapters; truncation is explicit via `capped`/`cap_reason`.
+ */
+export interface CorpusEstimate {
+  /** All chapters enumerated for the novel (not just the selected prefix). */
+  total_chapters: number;
+  /** Word sum over ALL enumerated chapters. */
+  total_word_count: number;
+  /** The selected prefix's ids, in position order (what the run will cover). */
+  selected_chapter_ids: string[];
+  /** Length of the selected prefix. */
+  chapter_count: number;
+  /** Word sum of the selected prefix (what the run will actually cost). */
+  word_count: number;
+  /** Extraction calls the run will make — exactly `chapter_count` (D14a). */
+  ai_calls: number;
+  /** Whether a D20a cap truncated the selection (never silent). */
+  capped: boolean;
+  /** Which cap truncated the selection — "chapters" | "words" | null. */
+  cap_reason: CapReason | null;
+}
+
 // --- Status-carrying error + response parsing ---
 
 /** Error from a bulk endpoint carrying the HTTP status (404 = job gone). */
@@ -101,6 +131,22 @@ export class BulkExtractionApiError extends Error {
     this.name = "BulkExtractionApiError";
     this.status = status;
   }
+}
+
+/**
+ * User-displayable message for a bulk client error. The message is the
+ * server-AUTHORED job-lifecycle detail (HTTP status text / FastAPI detail,
+ * e.g. "A bulk extraction job is already active for this novel") — never
+ * raw backend internals (ADR-043 §16.5). Lifecycle/error display hooks use
+ * this single mapping so the seam stays consistent.
+ */
+export function getBulkErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** True when the typed client error reports HTTP 422 — the corpus pass's split-first degrade. */
+export function isSplitFirstBulkError(err: unknown): boolean {
+  return err instanceof BulkExtractionApiError && err.status === 422;
 }
 
 /**
@@ -159,6 +205,26 @@ export const bulkExtractionApi = {
   /** Reset a cancelled/failed job and re-dispatch its runner (spec §4.5). */
   resumeBulkJob: (novelId: string, jobId: string, signal?: AbortSignal) =>
     fetchApiRaw(`/novels/${novelId}/kb/extract/bulk/${jobId}/resume`, {
+      method: "POST",
+      signal,
+    }).then(parseBulkResponse<BulkExtractionJobView>),
+
+  /**
+   * Honest pre-run corpus-pass estimate (F3 §4.3). 200 → `CorpusEstimate`;
+   * 422 when the first chapter alone exceeds the word cap (split-first).
+   */
+  corpusEstimate: (novelId: string, signal?: AbortSignal) =>
+    fetchApiRaw(`/novels/${novelId}/kb/extract/bulk/corpus/estimate`, { signal }).then(
+      parseBulkResponse<CorpusEstimate>,
+    ),
+
+  /**
+   * Start a corpus pass over the START-time prefix (F3 §4.4, no body).
+   * 201 → job view (kind "corpus"); 409 while another job is active; 422
+   * with honest counts when no prefix fits.
+   */
+  startCorpusPass: (novelId: string, signal?: AbortSignal) =>
+    fetchApiRaw(`/novels/${novelId}/kb/extract/bulk/corpus`, {
       method: "POST",
       signal,
     }).then(parseBulkResponse<BulkExtractionJobView>),

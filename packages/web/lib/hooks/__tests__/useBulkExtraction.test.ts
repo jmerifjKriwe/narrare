@@ -442,4 +442,44 @@ describe("useBulkExtraction", () => {
     expect(result.current.error).toBe("A bulk extraction job is already active for this novel");
     expect(handle.status).not.toHaveBeenCalled();
   });
+
+  // --- F3 corpus pass (plan Task 4): adopt a PRE-started corpus job --------
+
+  it("adopt() attaches a pre-started job id and polls immediately without calling start", async () => {
+    const { result } = renderHook(() => useBulkExtraction(NOVEL));
+
+    await act(async () => {
+      result.current.adopt("job-corpus");
+    });
+    await flush();
+
+    expect(result.current.jobId).toBe("job-corpus");
+    // The corpus job already exists server-side — adopt must NOT start one.
+    expect(handle.start).not.toHaveBeenCalled();
+    // Immediate first poll, then the cadence — the adopted job is live.
+    expect(handle.status).toHaveBeenCalledTimes(1);
+    expect(handle.status).toHaveBeenCalledWith(NOVEL, "job-corpus");
+    expect(result.current.isActive).toBe(true);
+
+    await tick();
+    expect(handle.status).toHaveBeenCalledTimes(2);
+  });
+
+  it("adopt() replaces a previous job's state (no stale status bleed-through)", async () => {
+    const { result } = renderHook(() => useBulkExtraction(NOVEL));
+    await startJob(result);
+    await flush();
+    expect(result.current.status?.job_id).toBe("job-1");
+
+    // The adopted job's own poll results (fixture carries its id).
+    handle.status.mockResolvedValue(statusView("running", [chapterRow()], "job-corpus"));
+    await act(async () => {
+      result.current.adopt("job-corpus");
+    });
+    await flush();
+
+    expect(result.current.jobId).toBe("job-corpus");
+    expect(result.current.status?.job_id).toBe("job-corpus");
+    expect(result.current.isInterrupted).toBe(false);
+  });
 });

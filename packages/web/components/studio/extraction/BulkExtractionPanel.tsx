@@ -4,115 +4,51 @@
  * BulkExtractionPanel — modal panel for the bulk KB extraction job (F2 T7,
  * ADR-092 spec §8.2), in the visual family of `ExtractionPanel`.
  *
- * Owns one job lifecycle via `useBulkExtraction`: starts on mount, routes by
- * mode — PROGRESS while active (totals + per-chapter state chips + cancel),
- * INTERRUPTED degrade on a 404 poll (explanation + restart via reset+start),
- * and REVIEW once terminal (chapter rail with applied/skipped badges,
- * `BulkChapterReview` reusing the single-chapter review stack, and
- * next-unreviewed walking). Resume is offered for cancelled/failed jobs;
- * done outputs stay reviewable across the resume.
- *
- * The mode views live in `BulkProgressView`, `BulkInterruptedView` and
- * `BulkReviewView` — same shell/sub-view split as `ExtractionPanel` /
- * `ExtractionContent` (RULE-04).
+ * SHELL ONLY (RULE-04): job lifecycle, restart/resume semantics, review
+ * walking and results fetching are orchestrated by
+ * `useBulkExtractionController`; the mode views live in `BulkProgressView`,
+ * `BulkInterruptedView` and `BulkReviewView` — same shell/sub-view split as
+ * `ExtractionPanel` / `ExtractionContent`. This component maps mode → view.
  *
  * D7a honesty: the cost note states the shared analysis budget — one AI
- * call per chapter, same budget as interactive extraction.
+ * call per chapter, same budget as interactive extraction. The count is
+ * only rendered once it is KNOWN — an adopted corpus job has no seed to
+ * fall back to, and "0 AI calls" would be a lie (F3 T4).
  *
  * @module BulkExtractionPanel
  */
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
-import { bulkExtractionApi } from "@/lib/api/bulkExtraction";
-import { useBulkExtraction } from "@/lib/hooks/useBulkExtraction";
 import { dialogVariants, overlayVariants } from "@/lib/motion-variants";
 import { BulkInterruptedView } from "./BulkInterruptedView";
 import { BulkProgressView } from "./BulkProgressView";
 import { BulkReviewView } from "./BulkReviewView";
-import { isUnreviewedDone, nextUnreviewedAfter } from "./bulkReviewWalk";
 import { ExtractionHeader } from "./ExtractionHeader";
+import { useBulkExtractionController } from "./useBulkExtractionController";
 
 interface BulkExtractionPanelProps {
   readonly novelId: string;
   /** Seed chapters — the job is started over exactly this list on mount. */
   readonly chapterIds: string[];
+  /**
+   * Pre-started job id (F3 corpus pass): adopted and polled on mount instead
+   * of starting an explicit job over `chapterIds`; restart re-runs the corpus
+   * start, never an explicit start over an empty seed.
+   */
+  readonly initialJobId?: string;
   readonly onClose: () => void;
 }
 
-/** Query key root for the results endpoint (full outputs, done chapters). */
-const RESULTS_QUERY_KEY = "bulk-extraction-results";
-
-export function BulkExtractionPanel({ novelId, chapterIds, onClose }: BulkExtractionPanelProps) {
+export function BulkExtractionPanel({
+  novelId,
+  chapterIds,
+  initialJobId,
+  onClose,
+}: BulkExtractionPanelProps) {
   const t = useTranslations("studio");
-  const queryClient = useQueryClient();
-  const bulk = useBulkExtraction(novelId);
-
-  // Review-walking state (spec §8.2): marks are keyed by chapter id and kept
-  // across resume; a restart (new job) starts with a clean slate.
-  const [appliedIds, setAppliedIds] = useState<ReadonlySet<string>>(() => new Set());
-  const [skippedIds, setSkippedIds] = useState<ReadonlySet<string>>(() => new Set());
-  const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
-
-  // Mount-only job start (chapterIds is the seed captured at open).
-  const startedRef = useRef(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Runs once on mount — intentional mount-trigger pattern
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    void bulk.start(chapterIds);
-  }, []);
-
-  const { status, chapters, totals } = bulk;
-  const jobStatus = status?.status ?? null;
-  const unreviewedDone = chapters.filter((c) => isUnreviewedDone(c, appliedIds, skippedIds));
-  const activeChapter =
-    chapters.find((c) => c.chapter_id === activeChapterId) ?? unreviewedDone[0] ?? null;
-  const nextChapter =
-    activeChapter !== null
-      ? nextUnreviewedAfter(chapters, activeChapter, appliedIds, skippedIds)
-      : null;
-
-  const mode: "progress" | "interrupted" | "review" = bulk.isInterrupted
-    ? "interrupted"
-    : bulk.isActive || status === null
-      ? "progress"
-      : "review";
-
-  // Full outputs for done chapters (results endpoint). Done outputs are
-  // immutable → cached for the job; invalidated on resume (new done chapters).
-  const resultsQuery = useQuery({
-    queryKey: [RESULTS_QUERY_KEY, novelId, bulk.jobId],
-    queryFn: ({ signal }) => bulkExtractionApi.bulkJobResults(novelId, bulk.jobId ?? "", signal),
-    enabled: mode === "review" && bulk.jobId !== null,
-    staleTime: Number.POSITIVE_INFINITY,
-  });
-  const activeOutput =
-    activeChapter !== null
-      ? (resultsQuery.data?.chapters.find((c) => c.chapter_id === activeChapter.chapter_id)
-          ?.output ?? null)
-      : null;
-
-  const handleResume = () => {
-    if (bulk.jobId !== null) {
-      void queryClient.invalidateQueries({ queryKey: [RESULTS_QUERY_KEY, novelId, bulk.jobId] });
-    }
-    void bulk.resume();
-  };
-
-  const handleRestart = () => {
-    setAppliedIds(new Set());
-    setSkippedIds(new Set());
-    setActiveChapterId(null);
-    bulk.reset();
-    void bulk.start(chapterIds);
-  };
-
-  const markReviewed =
-    (setter: React.Dispatch<React.SetStateAction<ReadonlySet<string>>>) => (chapterId: string) =>
-      setter((prev) => new Set(prev).add(chapterId));
+  const ctl = useBulkExtractionController({ novelId, chapterIds, initialJobId });
+  const { mode, walk } = ctl;
 
   const title =
     mode === "interrupted"
@@ -142,49 +78,59 @@ export function BulkExtractionPanel({ novelId, chapterIds, onClose }: BulkExtrac
         <ExtractionHeader title={title} closeLabel={t("kb.extractionCancel")} onClose={onClose} />
 
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Shared-budget honesty (D7a): one AI call per chapter, same budget
-              as interactive extraction. Stated in every mode. */}
-          <p className="mb-4 text-sm text-muted-foreground">
-            {t("kb.bulkExtraction.costNote", { count: totals?.total ?? chapterIds.length })}
-          </p>
+          {(ctl.totals !== null || !ctl.isCorpus) && (
+            <p className="mb-4 text-sm text-muted-foreground">
+              {t("kb.bulkExtraction.costNote", { count: ctl.totals?.total ?? chapterIds.length })}
+            </p>
+          )}
+          {/* Corpus restart failure (rare: the re-created job was rejected) —
+              surfaced as catalog copy in progress mode (RULE-11: visible,
+              never silent; ADR-043 §16.5: no raw server text). */}
+          {ctl.hasRestartError && (
+            <p
+              role="alert"
+              className="mb-4 text-sm text-destructive"
+              data-testid="bulk-restart-error"
+            >
+              {t("kb.bulkExtraction.restartFailed")}
+            </p>
+          )}
 
           {mode === "progress" && (
             <BulkProgressView
               title={title}
-              totals={totals}
-              chapters={chapters}
-              jobStatus={jobStatus}
-              error={bulk.error}
-              isStarting={bulk.isStarting}
-              onCancel={() => void bulk.cancel()}
-              onRetryStart={() => void bulk.start(chapterIds)}
+              totals={ctl.totals}
+              chapters={ctl.chapters}
+              jobStatus={ctl.bulk.status?.status ?? null}
+              error={ctl.bulk.error}
+              isStarting={ctl.bulk.isStarting}
+              onCancel={() => void ctl.bulk.cancel()}
+              onRetryStart={() => void ctl.bulk.start(chapterIds)}
             />
           )}
 
-          {mode === "interrupted" && (
-            <BulkInterruptedView title={title} onRestart={handleRestart} />
-          )}
+          {mode === "interrupted" && <BulkInterruptedView title={title} onRestart={ctl.restart} />}
 
           {mode === "review" && (
             <BulkReviewView
               novelId={novelId}
               title={title}
-              jobStatus={jobStatus}
-              statusError={status?.error ?? null}
-              chapters={chapters}
-              activeChapter={activeChapter}
-              appliedIds={appliedIds}
-              skippedIds={skippedIds}
-              unreviewedCount={unreviewedDone.length}
-              nextChapter={nextChapter}
-              resultsPending={resultsQuery.isPending}
-              resultsFailed={resultsQuery.isError || activeOutput === null}
-              activeOutput={activeOutput}
-              onSelectChapter={setActiveChapterId}
-              onApplied={markReviewed(setAppliedIds)}
-              onSkipped={markReviewed(setSkippedIds)}
-              onRetryResults={() => void resultsQuery.refetch()}
-              onResume={handleResume}
+              jobStatus={ctl.bulk.status?.status ?? null}
+              statusError={ctl.bulk.status?.error ?? null}
+              chapters={ctl.chapters}
+              activeChapter={walk.activeChapter}
+              appliedIds={walk.appliedIds}
+              skippedIds={walk.skippedIds}
+              unreviewedCount={walk.unreviewedDone.length}
+              nextChapter={walk.nextChapter}
+              resultsPending={ctl.resultsPending}
+              resultsFailed={ctl.resultsFailed}
+              activeOutput={ctl.activeOutput}
+              onSelectChapter={walk.setActiveChapterId}
+              onApplied={walk.markApplied}
+              onSkipped={walk.markSkipped}
+              onRetryResults={ctl.retryResults}
+              onResume={ctl.resume}
             />
           )}
         </div>
