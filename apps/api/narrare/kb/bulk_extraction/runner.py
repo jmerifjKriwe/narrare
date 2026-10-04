@@ -30,8 +30,8 @@ fails the job instead of leaving it RUNNING. ``CancelledError`` is a
 
 Test seams (module attributes, monkeypatch style of ``export/tasks.py``):
 ``_service_factory`` (defaults to the real wiring below) and
-``_pacer_acquire`` (lazily binds the shared-budget pacer — F2 T5 lands
-``pacer.py``; kept lazy so this module imports cleanly before that).
+``_pacer_acquire`` (lazily binds the shared-budget pacer from
+``pacer.py`` — kept lazy so tests can inject the seam directly).
 """
 
 from __future__ import annotations
@@ -76,15 +76,15 @@ def _resolve_service_factory() -> _ServiceFactory:
 
 
 def _resolve_pacer_acquire() -> Callable[[], Awaitable[None]]:
-    """Bind the shared-budget pacer on first use (F2 T5 wires ``pacer.py``).
+    """Bind the shared-budget pacer on first use (``pacer.py``, ADR-092 D7a).
 
     Resolved via ``importlib`` + ``getattr`` — the same dynamic-module
-    pattern as ``narrare._app.inflight._snapshot_tasks`` — because the
-    pacer module is a later task in the re-sliced plan and a static import
-    here cannot resolve yet. Until it lands, the default path raises
-    ``ModuleNotFoundError`` INSIDE the runner's outer guard: the job fails
-    loudly and queryably instead of hanging (RULE-11); nothing dispatches
-    before the DI wiring anyway. Tests inject the seam directly.
+    pattern as ``narrare._app.inflight._snapshot_tasks`` — binding
+    :func:`narrare.kb.bulk_extraction.pacer.acquire_analysis_pacer_slot`
+    (one shared analysis-budget slot per chapter, spec §7). The indirection
+    keeps the runner importable without the pacer's import-time settings/
+    limiter wiring and lets tests inject the ``_pacer_acquire`` seam
+    directly instead of going through the resolver.
     """
     global _pacer_acquire
     if _pacer_acquire is None:

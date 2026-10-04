@@ -3,33 +3,35 @@
 Covers: owner pinning (foreign ≡ unknown → 404), the pending→running→done
 lifecycle with derived totals, cooperative cancel + drain cancellation,
 resume reset (done retained, failure reasons cleared), per-chapter failure
-isolation, TTL sweep of terminal jobs, and the single-active-job scan.
+isolation, and the single-active-job scan. TTL sweep semantics live in
+``test_registry_sweep.py`` (split along the request-path vs background-GC
+axis for RULE-04); shared factories/clock come from ``_registry_helpers``.
 """
 
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import pytest
 
-from narrare.kb.bulk_extraction import registry, registry_store
-from narrare.kb.bulk_extraction.contracts import BULK_JOB_TTL, BulkChapterRef
+from narrare.kb.bulk_extraction import registry
 from narrare.kb.bulk_extraction.schemas import BulkChapterState, BulkJobStatus
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
 from narrare_core.shared.errors import ConflictError, NotFoundError
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-OWNER = uuid4()
-FOREIGN = uuid4()
-NOVEL_ID = uuid4()
-
-#: The terminal statuses (sweepable, cancel/resume conflict).
-_TERMINAL = [BulkJobStatus.COMPLETED, BulkJobStatus.CANCELLED, BulkJobStatus.FAILED]
+from tests.unit.api.kb.bulk_extraction._registry_helpers import FOREIGN, NOVEL_ID, OWNER
+from tests.unit.api.kb.bulk_extraction._registry_helpers import (
+    TERMINAL as _TERMINAL,
+)
+from tests.unit.api.kb.bulk_extraction._registry_helpers import (
+    drive_to as _drive_to,
+)
+from tests.unit.api.kb.bulk_extraction._registry_helpers import (
+    make_job as _make_job,
+)
+from tests.unit.api.kb.bulk_extraction._registry_helpers import (
+    make_ref as _ref,
+)
 
 #: Statuses resume is forbidden from (spec §4.5).
 _NOT_RESUMABLE = [
@@ -38,12 +40,6 @@ _NOT_RESUMABLE = [
     BulkJobStatus.CANCELLING,
     BulkJobStatus.COMPLETED,
 ]
-
-_FROZEN_NOW = datetime(2026, 10, 3, 12, 0, tzinfo=UTC)
-
-
-def _ref(position: int) -> BulkChapterRef:
-    return BulkChapterRef(uuid4(), "T", position)
 
 
 def _output(n_items: int) -> ExtractionOutput:
@@ -57,33 +53,9 @@ def _output(n_items: int) -> ExtractionOutput:
     )
 
 
-def _make_job(*positions: int, owner: UUID = OWNER, novel_id: UUID = NOVEL_ID) -> str:
-    return registry.create(novel_id, owner, [_ref(p) for p in positions]).job_id
-
-
 def _chapter_id(job_id: str, position_index: int) -> UUID:
     """The id of the chapter at the given index of the position-sorted list."""
     return registry.status(job_id, OWNER).chapters[position_index].chapter_id
-
-
-def _drive_to(job_id: str, status: BulkJobStatus) -> None:
-    """Drive a fresh single-chapter job into the given job status."""
-    if status is BulkJobStatus.PENDING:
-        return
-    registry.mark_job_running(job_id)
-    if status is BulkJobStatus.RUNNING:
-        return
-    if status is BulkJobStatus.CANCELLING:
-        registry.request_cancel(job_id, OWNER)
-        return
-    if status is BulkJobStatus.COMPLETED:
-        registry.mark_job_completed(job_id)
-        return
-    if status is BulkJobStatus.FAILED:
-        registry.mark_job_failed(job_id, "boom")
-        return
-    registry.request_cancel(job_id, OWNER)
-    registry.mark_cancelled(job_id, "cancelled by user")
 
 
 @pytest.fixture(autouse=True)
@@ -315,42 +287,6 @@ class TestFailureIsolation:
         assert job.status is BulkJobStatus.FAILED
         assert job.error == "NO_AI_PROVIDER"
         assert job.totals.remaining == 1
-
-
-class TestSweep:
-    @pytest.fixture(autouse=True)
-    def _frozen_now(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Free time in BOTH modules (each binds its own ``_now``/``utc_now`` name)."""
-        monkeypatch.setattr(registry, "_now", lambda: _FROZEN_NOW)
-        monkeypatch.setattr(registry_store, "utc_now", lambda: _FROZEN_NOW)
-
-    @staticmethod
-    def _sweeper(hours_after_now: float) -> Callable[[], datetime]:
-        return lambda: _FROZEN_NOW + timedelta(hours=hours_after_now)
-
-    @pytest.mark.parametrize("terminal", _TERMINAL)
-    def test_terminal_job_swept_only_after_ttl(self, terminal: BulkJobStatus) -> None:
-        job_id = _make_job(0)
-        _drive_to(job_id, terminal)
-        assert registry.sweep_expired(now=self._sweeper(1)) == 0  # inside the 24 h TTL
-        assert registry.status(job_id, OWNER).job_id == job_id
-        assert registry.sweep_expired(now=self._sweeper(25)) == 1  # BULK_JOB_TTL elapsed
-        with pytest.raises(NotFoundError):
-            registry.status(job_id, OWNER)
-
-    def test_running_job_never_swept(self) -> None:
-        job_id = _make_job(0)
-        registry.mark_job_running(job_id)
-        assert registry.sweep_expired(now=self._sweeper(10_000)) == 0
-        assert registry.status(job_id, OWNER).status is BulkJobStatus.RUNNING
-
-    def test_pending_job_never_swept(self) -> None:
-        job_id = _make_job(0)
-        assert registry.sweep_expired(now=self._sweeper(10_000)) == 0
-        assert registry.status(job_id, OWNER).status is BulkJobStatus.PENDING
-
-    def test_ttl_is_the_contract_constant(self) -> None:
-        assert BULK_JOB_TTL.total_seconds() == 24 * 3600
 
 
 class TestActiveScan:

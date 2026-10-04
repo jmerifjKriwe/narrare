@@ -58,6 +58,27 @@ ACTIVE: Final[frozenset[BulkJobStatus]] = frozenset(
     }
 )
 
+#: Job statuses that end the lifecycle — cancel/resume conflict on them.
+#: Single definition point for the terminal partition; ``registry`` imports
+#: it under its private ``_TERMINAL`` name (usage sites unchanged).
+TERMINAL: Final[frozenset[BulkJobStatus]] = frozenset(
+    {
+        BulkJobStatus.COMPLETED,
+        BulkJobStatus.CANCELLED,
+        BulkJobStatus.FAILED,
+    }
+)
+
+#: Job statuses a resume may start from (spec §4.5). Single definition point
+#: for the resumable partition; ``registry`` imports it under its private
+#: ``_RESUMABLE`` name (usage sites unchanged).
+RESUMABLE: Final[frozenset[BulkJobStatus]] = frozenset(
+    {
+        BulkJobStatus.CANCELLED,
+        BulkJobStatus.FAILED,
+    }
+)
+
 
 def utc_now() -> datetime:
     """Timezone-aware "now" (mirrors the tz-aware DB columns)."""
@@ -251,7 +272,7 @@ def cancel_requested(job_id: str) -> bool:
     """Whether the user asked to cancel (checked between chapters)."""
     record = JOBS.get(job_id)
     if record is None:
-        logger.warning("bulk_mark_unknown_job", job_id=job_id, action="cancel_requested")
+        logger.warning("bulk_unknown_job", job_id=job_id, action="cancel_requested")
         return False
     return record.cancel_requested
 
@@ -267,7 +288,7 @@ def pending_chapter_ids(job_id: str) -> list[UUID]:
     """
     record = JOBS.get(job_id)
     if record is None:
-        logger.warning("bulk_mark_unknown_job", job_id=job_id, action="pending_chapter_ids")
+        logger.warning("bulk_unknown_job", job_id=job_id, action="pending_chapter_ids")
         return []
     return [c.chapter_id for c in record.chapters if c.state is BulkChapterState.PENDING]
 

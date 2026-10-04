@@ -214,6 +214,23 @@ Allowed only when `status ∈ cancelled | failed`. Chapters in state
 `job_id`. 409 while `pending|running|cancelling|completed`. Response: job
 view with `status: "pending"`.
 
+> **Amendment (2026-10-04, post-implementation — the shipped
+> `reset_for_resume` is correct and broader than the letter above; the
+> original text is retained as the design record):** resume re-pends
+> **every** non-`done` chapter — including rows stranded in `running` by the
+> graceful-shutdown drain (a drain-cancelled job can carry `running` rows;
+> leaving them out of the reset would silently drop them from the runner's
+> `pending_chapter_ids` worklist) — and clears each re-pended row's stale
+> `error` (a re-pended row must not carry a failure reason from the previous
+> attempt). It also clears the job-level `error`, the `cancel_requested`
+> flag (a resumed job must not immediately re-cancel itself), and the
+> `expires_hint` sweep hint (the job is non-terminal again, so the TTL sweep
+> must not collect it mid-run). `done` outputs and `item_count`s are
+> retained unchanged. Implementation:
+> `apps/api/narrare/kb/bulk_extraction/registry.py::reset_for_resume`;
+> pinned by `tests/unit/api/kb/bulk_extraction/test_registry.py` and
+> `test_registry_sweep.py::test_resumed_job_is_withdrawn_from_sweep`.
+
 ### 4.6 Validation rules (normative)
 
 1. `chapter_ids` non-empty, ≤ 200, no duplicates (422, names the id).

@@ -37,6 +37,12 @@ from narrare.kb.bulk_extraction.registry_store import (
     JOBS as _JOBS,
 )
 from narrare.kb.bulk_extraction.registry_store import (
+    RESUMABLE as _RESUMABLE,
+)
+from narrare.kb.bulk_extraction.registry_store import (
+    TERMINAL as _TERMINAL,
+)
+from narrare.kb.bulk_extraction.registry_store import (
     BulkJobRecord as _BulkJobRecord,
 )
 from narrare.kb.bulk_extraction.registry_store import (
@@ -80,23 +86,6 @@ if TYPE_CHECKING:
     from narrare.kb.bulk_extraction.contracts import BulkChapterRef
 
 logger = structlog.get_logger(__name__)
-
-#: Job statuses that end the lifecycle — cancel/resume conflict on them.
-_TERMINAL: frozenset[BulkJobStatus] = frozenset(
-    {
-        BulkJobStatus.COMPLETED,
-        BulkJobStatus.CANCELLED,
-        BulkJobStatus.FAILED,
-    }
-)
-
-#: Job statuses a resume may start from (spec §4.5).
-_RESUMABLE: frozenset[BulkJobStatus] = frozenset(
-    {
-        BulkJobStatus.CANCELLED,
-        BulkJobStatus.FAILED,
-    }
-)
 
 
 def _get_owned(job_id: str, user_id: UUID) -> _BulkJobRecord:
