@@ -4,7 +4,9 @@
  * useBulkExtractionPoll — interval poll loop for one bulk extraction job
  * (F2, ADR-092). Extracted from `useBulkExtraction` (RULE-04 hook size
  * limit): this module owns *when* to poll, the lifecycle hook owns *what*
- * happens with the results.
+ * happens with the results. The pure decision logic (cadence, grace bound,
+ * terminal/lost-job classification, per-poll stop decision) lives in
+ * `bulkExtractionPollPolicy`.
  *
  * Scheduling contract:
  *
@@ -12,7 +14,12 @@
  *   cadence),
  * - polls never overlap — a cadence tick is skipped while a status request
  *   is still in flight,
- * - polling stops on terminal job statuses (completed | cancelled | failed)
+ * - polling stops per the policy stop decision: terminal job statuses stop
+ *   the loop EXCEPT a `completed` corpus job whose post-pass dedup block is
+ *   still `{analyzed: false}` — the analysis may still be running (the
+ *   runner marks the job completed before it lands, and the wire cannot
+ *   tell pending from failed), so the loop keeps polling until `analyzed`
+ *   flips or the `DEDUP_PENDING_GRACE_MS` bound expires (F3 fix round 1),
  *   and keeps running through `cancelling` (the cooperative cancel is only
  *   observed via polling, spec §4.4),
  * - a 404 poll error means the job is GONE (in-memory registry lost to a
@@ -20,9 +27,7 @@
  *   and the typed `BulkExtractionApiError` is reported via `onPollError`
  *   (interrupted degrade, spec §8.2); every other error is transient and
  *   only reported,
- * - the interval is cleared on unmount and on job/epoch changes,
- * - failed polls are reported via `onPollError` with the RAW error; only a
- *   404 kills the loop (interrupted), every other failure stays transient.
+ * - the interval is cleared on unmount and on job/epoch changes.
  *
  * Callbacks are read through a ref, so inline closures never restart the
  * loop; it restarts only on `job` (id/epoch) or `novelId` change.
@@ -31,35 +36,21 @@
  */
 
 import { useEffect, useRef } from "react";
+import { type BulkExtractionStatusView, bulkExtractionApi } from "@/lib/api/bulkExtraction";
 import {
-  BulkExtractionApiError,
-  type BulkExtractionStatusView,
-  type BulkJobStatus,
-  bulkExtractionApi,
-} from "@/lib/api/bulkExtraction";
+  BULK_EXTRACTION_POLL_INTERVAL_MS,
+  createPollStopDecider,
+  isLostJobPollError,
+} from "@/lib/hooks/bulkExtractionPollPolicy";
 
-/** Poll cadence while a bulk job is active (spec §8.2 poll cadence). */
-export const BULK_EXTRACTION_POLL_INTERVAL_MS = 3000;
-
-const TERMINAL_JOB_STATUSES: readonly BulkJobStatus[] = [
-  "completed",
-  "cancelled",
-  "failed",
-] as const;
-
-/** Terminal job statuses — polling stops once one is observed. */
-export function isTerminalJobStatus(status: BulkJobStatus): boolean {
-  return TERMINAL_JOB_STATUSES.includes(status);
-}
-
-/**
- * A 404 poll error means the job is GONE (registry lost to a restart, or a
- * foreign/unknown id) — interrupted per spec §8.2. Single classification
- * for the loop's halt decision AND the owner's interrupted flag.
- */
-export function isLostJobPollError(err: unknown): boolean {
-  return err instanceof BulkExtractionApiError && err.status === 404;
-}
+// Re-exported policy names (backward-compatible public surface: the hook
+// tests import them from this module).
+export {
+  BULK_EXTRACTION_POLL_INTERVAL_MS,
+  DEDUP_PENDING_GRACE_MS,
+  isLostJobPollError,
+  isTerminalJobStatus,
+} from "@/lib/hooks/bulkExtractionPollPolicy";
 
 /** The poll loop target: an adopted job plus its restart epoch. */
 export interface BulkExtractionPollTarget {
@@ -98,6 +89,9 @@ export function useBulkExtractionPoll(
     let stopped = false;
     let inFlight = false;
     let timer: ReturnType<typeof setInterval> | null = null;
+    // Fresh per (re)start: the dedup grace bound is measured from when
+    // `completed` was FIRST observed in THIS loop run.
+    const stopDecider = createPollStopDecider();
 
     const stop = () => {
       if (timer !== null) {
@@ -113,7 +107,7 @@ export function useBulkExtractionPoll(
         const view = await bulkExtractionApi.bulkJobStatus(novelId, job.id);
         if (stopped) return;
         callbacksRef.current.onStatus(view);
-        if (isTerminalJobStatus(view.status)) stop();
+        if (stopDecider.shouldStopAfter(view)) stop();
       } catch (err) {
         if (stopped) return;
         // 404 = job gone (restart/foreign job) — interrupted per spec §8.2:

@@ -1534,13 +1534,15 @@
       "rejected": "The duplicate was dismissed.",
       "actionFailed": "The action failed — the pair is back in the list.",
       "staleError": "This pair was already resolved elsewhere.",
-      "dedupFound": "{count} possible duplicates were flagged at pass completion — before items were applied.",
+      "dedupFound": "{count, plural, one {1 possible duplicate was flagged at pass completion — before items were applied.} other {# possible duplicates were flagged at pass completion — before items were applied.}}",
       "dedupClean": "The duplicate check at pass completion found no duplicates (before items were applied).",
-      "dedupRefreshed": "Fresh check on the current Knowledge Base: {count} possible duplicates.",
+      "dedupRefreshed": "{count, plural, one {Fresh check on the current Knowledge Base: 1 possible duplicate.} other {Fresh check on the current Knowledge Base: # possible duplicates.}}",
+      "dedupPending": "The duplicate check is running after the pass — this can take a moment.",
       "dedupUnavailable": "Duplicate check unavailable — the automatic check after the pass could not run. Nothing was merged.",
       "review": "Review duplicates",
       "recheck": "Re-check duplicates",
       "rechecking": "Re-checking…",
+      "recheckHint": "Re-checking runs a fresh duplicate analysis on your current Knowledge Base — this uses AI calls.",
       "recheckFailed": "The duplicate check could not be re-run. Try again in a moment."
     },
     "interview": {

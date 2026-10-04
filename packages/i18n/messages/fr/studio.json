@@ -1534,13 +1534,15 @@
       "rejected": "Le doublon a été ignoré.",
       "actionFailed": "L'action a échoué — la paire est de retour dans la liste.",
       "staleError": "Cette paire a déjà été traitée ailleurs.",
-      "dedupFound": "{count} doublons possibles ont été signalés à la fin du passage — avant l'application des éléments.",
+      "dedupFound": "{count, plural, one {1 doublon possible a été signalé à la fin du passage — avant l'application des éléments.} other {# doublons possibles ont été signalés à la fin du passage — avant l'application des éléments.}}",
       "dedupClean": "La vérification des doublons à la fin du passage n'a détecté aucun doublon (avant l'application des éléments).",
-      "dedupRefreshed": "Nouvelle vérification de la base de connaissances actuelle : {count} doublons possibles.",
+      "dedupRefreshed": "{count, plural, one {Nouvelle vérification de la base de connaissances actuelle : 1 doublon possible.} other {Nouvelle vérification de la base de connaissances actuelle : # doublons possibles.}}",
+      "dedupPending": "La vérification des doublons s'exécute après le passage — cela peut prendre un instant.",
       "dedupUnavailable": "Vérification des doublons indisponible — la vérification automatique après le passage n'a pas pu s'exécuter. Rien n'a été fusionné.",
       "review": "Examiner les doublons",
       "recheck": "Revérifier les doublons",
       "rechecking": "Nouvelle vérification…",
+      "recheckHint": "La revérification lance une nouvelle analyse des doublons sur votre base de connaissances actuelle — cela utilise des appels IA.",
       "recheckFailed": "La vérification des doublons n'a pas pu être relancée. Réessayez dans un instant."
     },
     "interview": {

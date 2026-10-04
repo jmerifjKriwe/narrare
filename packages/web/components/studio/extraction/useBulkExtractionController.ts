@@ -114,6 +114,7 @@ export function useBulkExtractionController({
     isCorpus: initialJobId !== undefined,
     totals: bulk.totals,
     chapters: bulk.chapters,
+    dedupPending: bulk.dedupPending,
     walk,
     activeOutput,
     resultsPending: resultsQuery.isPending,

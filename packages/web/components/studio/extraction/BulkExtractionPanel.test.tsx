@@ -790,11 +790,57 @@ describe("BulkExtractionPanel dedup card (F3 T5)", () => {
     expect(screen.queryByRole("button", { name: "Review duplicates" })).not.toBeInTheDocument();
   });
 
-  it("renders the muted unavailable variant when the automatic analysis failed", async () => {
+  it("keeps polling after completion while the post-pass check is pending and shows the count once it lands", async () => {
+    // Race (review Important): the runner marks the job completed BEFORE the
+    // post-pass dedup analysis lands; {analyzed:false} cannot distinguish
+    // pending from failed. The panel must keep polling (bounded) and never
+    // show the false "could not run" claim inside the window.
     await renderCompletedCorpus({ analyzed: false, suggestion_count: null });
+
+    // Inside the window: pending copy — NOT the false unavailable claim —
+    // and the Re-check recovery is offered.
+    expect(screen.getByText(/duplicate check is running after the pass/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Duplicate check unavailable/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Re-check duplicates" })).toBeInTheDocument();
+
+    // The poll loop did NOT stop on the terminal status inside the window…
+    const callsAfterFirst = handle.status.mock.calls.length;
+    handle.status.mockResolvedValue(
+      statusView("completed", twoDoneChapters(), "job-corpus", null, {
+        analyzed: true,
+        suggestion_count: 5,
+      }),
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(handle.status.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+
+    // …and the late-landing analysis flips the card to the honest count.
+    expect(screen.getByText(/5 possible duplicates/)).toBeInTheDocument();
+    expect(screen.queryByText(/running after the pass/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Duplicate check unavailable/)).not.toBeInTheDocument();
+  });
+
+  it("expires the pending bound into the honest unavailable copy with a Re-check recovery", async () => {
+    await renderCompletedCorpus({ analyzed: false, suggestion_count: null });
+    expect(screen.getByText(/running after the pass/i)).toBeInTheDocument();
+
+    // Bound (~60s) expires → polling stops, the unavailable claim is now
+    // TRUE, and the Re-check affordance remains as recovery (fix 1b).
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(63_000);
+    });
     expect(screen.getByText(/Duplicate check unavailable/)).toBeInTheDocument();
-    // Non-blocking: no review affordance is offered for a check that never ran.
-    expect(screen.queryByRole("button", { name: "Review duplicates" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Re-check duplicates" })).toBeInTheDocument();
+    expect(screen.getByText(/this uses AI calls/)).toBeInTheDocument();
+
+    // …and the loop really stopped.
+    const calls = handle.status.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(handle.status.mock.calls.length).toBe(calls);
   });
 
   it("states the pre-apply timing honestly and lazily opens the suggestions list", async () => {
@@ -803,6 +849,10 @@ describe("BulkExtractionPanel dedup card (F3 T5)", () => {
     // Honest copy: the count is flagged at completion, NOT a static fact.
     const line = screen.getByText(/7 possible duplicates/);
     expect(line).toHaveTextContent("before items were applied");
+
+    // Cost transparency (D14a posture): the Re-check route is the adjudicated
+    // (LLM) analyzer — the card says so, muted, next to the action.
+    expect(screen.getByText(/this uses AI calls/)).toBeInTheDocument();
 
     // Lazy: the list is NOT fetched until the user opens the review.
     expect(handle.resolutionList).not.toHaveBeenCalled();
@@ -828,9 +878,10 @@ describe("BulkExtractionPanel dedup card (F3 T5)", () => {
     await settle();
 
     expect(handle.resolutionAnalyze).toHaveBeenCalledWith(NOVEL);
-    // Fresh line replaces the stale registry count (1 live pair in the fixture).
+    // Fresh line replaces the stale registry count — ICU plural, singular pin
+    // (round-1 minor: "1 possible duplicates" was ungrammatical).
     expect(
-      screen.getByText(/Fresh check on the current Knowledge Base: 1 possible duplicates/),
+      screen.getByText(/Fresh check on the current Knowledge Base: 1 possible duplicate\./),
     ).toBeInTheDocument();
     // The fresh result opens the list with the authoritative data.
     expect(screen.getByText("Elena Varo ↔ Elena Maren")).toBeInTheDocument();

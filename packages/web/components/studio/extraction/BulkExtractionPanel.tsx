@@ -111,10 +111,13 @@ export function BulkExtractionPanel({
           )}
 
           {/* Dedup card (F3 §6.3, review mode only): hidden for explicit
-              jobs (dedup null); the card owns the honest pre-apply count,
-              the lazy suggestions review and the on-demand Re-check
-              semantics (see DedupCard, copy ruling T3). */}
-          {mode === "review" && dedup !== null && <DedupCard novelId={novelId} dedup={dedup} />}
+              jobs (dedup null). The card owns the honest pre-apply count,
+              the pending/unavailable ambiguity handling, the lazy suggestions
+              review and the on-demand Re-check semantics (copy ruling T3,
+              fix round 1 — see DedupCard). */}
+          {mode === "review" && dedup !== null && (
+            <DedupCard novelId={novelId} dedup={dedup} pending={ctl.dedupPending} />
+          )}
 
           {mode === "progress" && (
             <BulkProgressView

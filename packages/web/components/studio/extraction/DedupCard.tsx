@@ -9,9 +9,14 @@
  * cache self-heals (entries-hash keyed), so the card invites the on-demand
  * Re-check and swaps to the fresh count once one has run.
  *
- * A failed automatic analysis degrades to the muted unavailable copy —
- * visible, non-blocking, with no review affordance for a check that never
- * ran (RULE-11).
+ * An `analyzed: false` block is AMBIGUOUS on the wire — the runner marks the
+ * job completed BEFORE the post-pass analysis lands, so pending and failed
+ * are indistinguishable (`{analyzed: false, suggestion_count: null}` both).
+ * While the poll grace window is live (`pending`, fix round 1) the card
+ * shows a running copy — never the false "could not run" claim; only after
+ * the bound expires is the unavailable copy honest. The Re-check recovery
+ * (user-initiated adjudicated analyzer — hence the AI-cost hint) is offered
+ * in every non-analyzed state.
  *
  * @module DedupCard
  */
@@ -27,9 +32,14 @@ interface DedupCardProps {
   readonly novelId: string;
   /** Completion-time dedup block from the job status (non-null here). */
   readonly dedup: BulkDedupInfo;
+  /**
+   * True while the completed-with-unanalyzed window is live (poll loop still
+   * waiting for the post-pass analysis, bounded by DEDUP_PENDING_GRACE_MS).
+   */
+  readonly pending: boolean;
 }
 
-export function DedupCard({ novelId, dedup }: DedupCardProps) {
+export function DedupCard({ novelId, dedup, pending }: DedupCardProps) {
   const t = useTranslations("studio");
   const queryClient = useQueryClient();
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -82,6 +92,7 @@ export function DedupCard({ novelId, dedup }: DedupCardProps) {
               {recheck.isPending ? t("kb.resolution.rechecking") : t("kb.resolution.recheck")}
             </button>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">{t("kb.resolution.recheckHint")}</p>
           {recheck.isError && (
             <p role="alert" className="mt-2 text-sm text-destructive">
               {t("kb.resolution.recheckFailed")}
@@ -94,7 +105,27 @@ export function DedupCard({ novelId, dedup }: DedupCardProps) {
           )}
         </div>
       ) : (
-        <p className="mb-4 text-sm text-muted-foreground">{t("kb.resolution.dedupUnavailable")}</p>
+        <div className="mb-4 rounded-md border border-border p-3">
+          <p className="text-sm text-muted-foreground">
+            {pending ? t("kb.resolution.dedupPending") : t("kb.resolution.dedupUnavailable")}
+          </p>
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => recheck.mutate()}
+              disabled={recheck.isPending}
+              className="text-sm text-primary hover:underline disabled:opacity-50"
+            >
+              {recheck.isPending ? t("kb.resolution.rechecking") : t("kb.resolution.recheck")}
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">{t("kb.resolution.recheckHint")}</p>
+          {recheck.isError && (
+            <p role="alert" className="mt-2 text-sm text-destructive">
+              {t("kb.resolution.recheckFailed")}
+            </p>
+          )}
+        </div>
       )}
     </>
   );

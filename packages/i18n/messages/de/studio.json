@@ -1534,13 +1534,15 @@
       "rejected": "Das Duplikat wurde verworfen.",
       "actionFailed": "Die Aktion ist fehlgeschlagen – das Paar ist wieder in der Liste.",
       "staleError": "Dieses Paar wurde bereits an anderer Stelle aufgelöst.",
-      "dedupFound": "{count} mögliche Duplikate wurden beim Abschluss des Durchgangs markiert – bevor Elemente übernommen wurden.",
+      "dedupFound": "{count, plural, one {1 mögliches Duplikat wurde beim Abschluss des Durchgangs markiert – bevor Elemente übernommen wurden.} other {# mögliche Duplikate wurden beim Abschluss des Durchgangs markiert – bevor Elemente übernommen wurden.}}",
       "dedupClean": "Die Duplikatprüfung beim Abschluss des Durchgangs fand keine Duplikate (vor der Übernahme von Elementen).",
-      "dedupRefreshed": "Neue Prüfung der aktuellen Wissensbasis: {count} mögliche Duplikate.",
+      "dedupRefreshed": "{count, plural, one {Neue Prüfung der aktuellen Wissensbasis: 1 mögliches Duplikat.} other {Neue Prüfung der aktuellen Wissensbasis: # mögliche Duplikate.}}",
+      "dedupPending": "Die Duplikatprüfung läuft nach dem Durchgang – das kann einen Moment dauern.",
       "dedupUnavailable": "Duplikatprüfung nicht verfügbar – die automatische Prüfung nach dem Durchgang konnte nicht ausgeführt werden. Es wurde nichts zusammengeführt.",
       "review": "Duplikate prüfen",
       "recheck": "Duplikate neu prüfen",
       "rechecking": "Neue Prüfung läuft…",
+      "recheckHint": "Die Neuprüfung führt eine frische Duplikat-Analyse auf deiner aktuellen Wissensbasis aus – dabei werden KI-Aufrufe verwendet.",
       "recheckFailed": "Die Duplikatprüfung konnte nicht erneut ausgeführt werden. Versuche es gleich noch einmal."
     },
     "interview": {

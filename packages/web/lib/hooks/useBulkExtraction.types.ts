@@ -33,6 +33,15 @@ export interface UseBulkExtractionResult {
    * spec §8.2. The poll loop has halted; recover via a new `start()`.
    */
   isInterrupted: boolean;
+  /**
+   * True while a COMPLETED corpus job's post-pass dedup block is still
+   * `{analyzed: false}` inside the `DEDUP_PENDING_GRACE_MS` window (F3 fix
+   * round 1): the analysis may still be running — the wire cannot tell
+   * pending from failed. The dedup card shows a pending copy (never the
+   * false "could not run") while this is true; after the bound expires the
+   * unavailable copy is honest.
+   */
+  dedupPending: boolean;
   /** Latest start/poll/cancel/resume error message, or null. */
   error: string | null;
   /** Start a job over the given chapters; resolves null on failure. */
