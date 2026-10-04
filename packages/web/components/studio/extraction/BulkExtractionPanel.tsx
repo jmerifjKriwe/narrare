@@ -24,6 +24,7 @@ import { dialogVariants, overlayVariants } from "@/lib/motion-variants";
 import { BulkInterruptedView } from "./BulkInterruptedView";
 import { BulkProgressView } from "./BulkProgressView";
 import { BulkReviewView } from "./BulkReviewView";
+import { DedupCard } from "./DedupCard";
 import { ExtractionHeader } from "./ExtractionHeader";
 import { useBulkExtractionController } from "./useBulkExtractionController";
 
@@ -49,6 +50,7 @@ export function BulkExtractionPanel({
   const t = useTranslations("studio");
   const ctl = useBulkExtractionController({ novelId, chapterIds, initialJobId });
   const { mode, walk } = ctl;
+  const dedup = ctl.bulk.status?.dedup ?? null;
 
   const title =
     mode === "interrupted"
@@ -107,6 +109,12 @@ export function BulkExtractionPanel({
               </button>
             </>
           )}
+
+          {/* Dedup card (F3 §6.3, review mode only): hidden for explicit
+              jobs (dedup null); the card owns the honest pre-apply count,
+              the lazy suggestions review and the on-demand Re-check
+              semantics (see DedupCard, copy ruling T3). */}
+          {mode === "review" && dedup !== null && <DedupCard novelId={novelId} dedup={dedup} />}
 
           {mode === "progress" && (
             <BulkProgressView

@@ -25,6 +25,7 @@ vi.mock("@/lib/api/core", () => ({ fetchApiRaw: vi.fn() }));
 import {
   type BulkChapterState,
   type BulkChapterStatusView,
+  type BulkDedupInfo,
   BulkExtractionApiError,
   type BulkExtractionJobView,
   type BulkExtractionResultChapter,
@@ -86,6 +87,7 @@ const JOB_VIEW_FIELDS: Record<keyof BulkExtractionJobView, true> = {
 const STATUS_VIEW_FIELDS: Record<keyof BulkExtractionStatusView, true> = {
   ...JOB_VIEW_FIELDS,
   chapters: true,
+  dedup: true,
 };
 
 const RESULT_CHAPTER_FIELDS: Record<keyof BulkExtractionResultChapter, true> = {
@@ -101,6 +103,15 @@ const RESULTS_VIEW_FIELDS: Record<keyof BulkExtractionResultsView, true> = {
   novel_id: true,
   status: true,
   chapters: true,
+  dedup: true,
+};
+
+// F3 corpus pass (plan Task 5): RULE-17 mirror of `BulkDedupInfo`
+// (`apps/api/narrare/kb/bulk_extraction/schemas_corpus.py`) — EXACTLY 2
+// fields; `suggestion_count` is set iff `analyzed` (server-side invariant).
+const BULK_DEDUP_INFO_FIELDS: Record<keyof BulkDedupInfo, true> = {
+  analyzed: true,
+  suggestion_count: true,
 };
 
 // F3 corpus pass (plan Task 4): RULE-17 mirror of `CorpusEstimateView`
@@ -278,7 +289,7 @@ describe("RULE-17 mirror parity — schemas.py field lists", () => {
     expect(Object.keys(jobView).sort()).toEqual(Object.keys(JOB_VIEW_FIELDS).sort());
   });
 
-  it("BulkExtractionStatusView = job view + chapters", () => {
+  it("BulkExtractionStatusView = job view + chapters + dedup block", () => {
     const statusView: BulkExtractionStatusView = {
       ...jobView,
       chapters: [
@@ -299,6 +310,7 @@ describe("RULE-17 mirror parity — schemas.py field lists", () => {
           error: "agent timeout",
         },
       ],
+      dedup: { analyzed: true, suggestion_count: 2 },
     };
     expect(Object.keys(statusView).sort()).toEqual(Object.keys(STATUS_VIEW_FIELDS).sort());
     // Row mirror re-asserted on the failed row: item_count null + error set —
@@ -306,6 +318,17 @@ describe("RULE-17 mirror parity — schemas.py field lists", () => {
     expect(Object.keys(statusView.chapters[1]).sort()).toEqual(
       Object.keys(CHAPTER_STATUS_FIELDS).sort(),
     );
+  });
+
+  it("BulkDedupInfo mirrors BulkDedupInfo exactly (count iff analyzed)", () => {
+    const corpusDone: BulkDedupInfo = { analyzed: true, suggestion_count: 0 };
+    const corpusPending: BulkDedupInfo = { analyzed: false, suggestion_count: null };
+    expect(Object.keys(corpusDone).sort()).toEqual(Object.keys(BULK_DEDUP_INFO_FIELDS).sort());
+    expect(Object.keys(corpusPending).sort()).toEqual(Object.keys(BULK_DEDUP_INFO_FIELDS).sort());
+    // The server-side `_count_iff_analyzed` invariant, pinned on the mirror:
+    // a count exists ⟺ the analysis ran.
+    expect((corpusDone.suggestion_count !== null) === corpusDone.analyzed).toBe(true);
+    expect((corpusPending.suggestion_count !== null) === corpusPending.analyzed).toBe(true);
   });
 
   it("BulkExtractionResultsView mirrors exactly; output present iff done", () => {
@@ -328,6 +351,7 @@ describe("RULE-17 mirror parity — schemas.py field lists", () => {
       novel_id: "n1",
       status: "completed",
       chapters: [done, failed],
+      dedup: null,
     };
     expect(Object.keys(view).sort()).toEqual(Object.keys(RESULTS_VIEW_FIELDS).sort());
     expect(Object.keys(done).sort()).toEqual(Object.keys(RESULT_CHAPTER_FIELDS).sort());

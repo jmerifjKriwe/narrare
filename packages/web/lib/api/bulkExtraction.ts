@@ -71,6 +71,24 @@ export interface BulkExtractionJobView {
 export interface BulkExtractionStatusView extends BulkExtractionJobView {
   /** Every job chapter in position (server-sorted) order. */
   chapters: BulkChapterStatusView[];
+  /** Post-pass duplicate-analysis block (F3 §6.3) — null for explicit jobs. */
+  dedup: BulkDedupInfo | null;
+}
+
+/**
+ * Post-pass duplicate-analysis block (F3 §6.3) — RULE-17 mirror of
+ * `BulkDedupInfo` (`apps/api/narrare/kb/bulk_extraction/schemas_corpus.py`).
+ * Null on explicit jobs (the trigger is corpus-only); on corpus jobs
+ * `{analyzed: false, suggestion_count: null}` until the runner's post-pass
+ * lands or gives up. `suggestion_count` is set iff `analyzed` (server-side
+ * invariant) — and the count reflects the PRE-APPLY roster at completion
+ * time; it is never a static duplicate fact (T3 copy ruling).
+ */
+export interface BulkDedupInfo {
+  /** Whether the automatic ADR-085 analysis ran after the pass completed. */
+  analyzed: boolean;
+  /** Detected duplicate suggestions — set (≥ 0) iff analyzed is true. */
+  suggestion_count: number | null;
 }
 
 export interface BulkExtractionResultChapter {
@@ -87,6 +105,8 @@ export interface BulkExtractionResultsView {
   novel_id: string;
   status: BulkJobStatus;
   chapters: BulkExtractionResultChapter[];
+  /** Post-pass duplicate-analysis block (F3 §6.3) — null for explicit jobs. */
+  dedup: BulkDedupInfo | null;
 }
 
 // --- Corpus pass types (F3, plan Task 4 — RULE-17 mirror of schemas_corpus.py) ---

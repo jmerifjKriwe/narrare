@@ -59,6 +59,10 @@ const handle = vi.hoisted(() => ({
   resume: vi.fn(),
   apply: vi.fn(),
   corpusStart: vi.fn(),
+  resolutionList: vi.fn(),
+  resolutionAnalyze: vi.fn(),
+  resolutionEndorse: vi.fn(),
+  resolutionReject: vi.fn(),
 }));
 
 vi.mock("@/lib/api/bulkExtraction", async (importOriginal) => {
@@ -87,14 +91,29 @@ vi.mock("@/lib/api/extraction", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/api/kbResolution", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/kbResolution")>();
+  return {
+    ...actual,
+    kbResolutionApi: {
+      listSuggestions: handle.resolutionList,
+      analyzeSuggestions: handle.resolutionAnalyze,
+      endorseSuggestion: handle.resolutionEndorse,
+      rejectSuggestion: handle.resolutionReject,
+    },
+  };
+});
+
 import {
   type BulkChapterStatusView,
+  type BulkDedupInfo,
   BulkExtractionApiError,
   type BulkExtractionResultsView,
   type BulkExtractionStatusView,
   type BulkJobStatus,
 } from "@/lib/api/bulkExtraction";
 import type { ExtractionOutput } from "@/lib/api/extraction";
+import type { ResolutionAnalysisResponse } from "@/lib/api/kbResolution";
 
 // ---------------------------------------------------------------------------
 // Fixtures (same shapes as the useBulkExtraction hook test)
@@ -210,6 +229,7 @@ function statusView(
   chapters: BulkChapterStatusView[],
   jobId = "job-1",
   error: string | null = null,
+  dedup: BulkDedupInfo | null = null,
 ): BulkExtractionStatusView {
   const done = chapters.filter((c) => c.state === "done").length;
   const failed = chapters.filter((c) => c.state === "failed").length;
@@ -222,6 +242,7 @@ function statusView(
       remaining: chapters.length - done - failed,
     },
     chapters,
+    dedup,
   };
 }
 
@@ -260,6 +281,7 @@ function resultsView(
     job_id: "job-1",
     novel_id: NOVEL,
     status,
+    dedup: null,
     chapters: chapters.map((c) => ({
       chapter_id: c.chapter_id,
       title: c.title,
@@ -695,5 +717,122 @@ describe("BulkExtractionPanel corpus adoption (F3 T4)", () => {
     expect(handle.corpusStart).toHaveBeenCalledTimes(2);
     expect(handle.start).not.toHaveBeenCalled();
     expect(screen.getByText("1 of 4 chapters")).toBeInTheDocument(); // progress again
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F3 corpus pass (plan Task 5): the dedup card in review mode + the minimal
+// ADR-085 suggestions review. Copy ruling (T3 review, BINDING): the
+// completion-time analysis ran over the PRE-APPLY roster — the card states
+// that timing honestly, never "found N duplicates" as a static fact, and
+// invites an on-demand re-check after applies.
+// ---------------------------------------------------------------------------
+
+describe("BulkExtractionPanel dedup card (F3 T5)", () => {
+  /** One live suggestion pair served by the resolution endpoints. */
+  function resolutionPair(): ResolutionAnalysisResponse {
+    return {
+      suggestions: [
+        {
+          suggestion_id: "sug-aaa",
+          entry_a_id: "10000000-0000-0000-0000-000000000001",
+          entry_b_id: "20000000-0000-0000-0000-000000000002",
+          name_a: "Elena Varo",
+          name_b: "Elena Maren",
+          confidence: 0.82,
+          band: "REVIEW",
+          auto_merge_eligible: false,
+          signals: [],
+          adjudication_note: null,
+        },
+      ],
+      stats: { review: 1, auto_eligible: 0, suppressed: 0 },
+      cache_hit: false,
+    };
+  }
+
+  /** Completed corpus job in review mode with the given dedup block. */
+  async function renderCompletedCorpus(dedup: BulkDedupInfo | null) {
+    handle.status.mockResolvedValue(
+      statusView("completed", twoDoneChapters(), "job-corpus", null, dedup),
+    );
+    handle.results.mockResolvedValue(resultsView("completed", twoDoneChapters()));
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <BulkExtractionPanel
+          novelId={NOVEL}
+          chapterIds={[]}
+          initialJobId="job-corpus"
+          onClose={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+    await settle();
+  }
+
+  beforeEach(() => {
+    handle.resolutionList.mockResolvedValue(resolutionPair());
+    handle.resolutionAnalyze.mockResolvedValue(resolutionPair());
+    handle.resolutionEndorse.mockResolvedValue({
+      survivor_id: "10000000-0000-0000-0000-000000000001",
+      loser_id: "20000000-0000-0000-0000-000000000002",
+      merged_fact_keys: [],
+      repointed_relationships: 0,
+      skipped_relationships: 0,
+      conflicts: [],
+    });
+  });
+
+  it("hides the dedup card entirely for a job without a dedup block", async () => {
+    await renderCompletedCorpus(null);
+    expect(screen.queryByText(/possible duplicates/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Duplicate check unavailable/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Review duplicates" })).not.toBeInTheDocument();
+  });
+
+  it("renders the muted unavailable variant when the automatic analysis failed", async () => {
+    await renderCompletedCorpus({ analyzed: false, suggestion_count: null });
+    expect(screen.getByText(/Duplicate check unavailable/)).toBeInTheDocument();
+    // Non-blocking: no review affordance is offered for a check that never ran.
+    expect(screen.queryByRole("button", { name: "Review duplicates" })).not.toBeInTheDocument();
+  });
+
+  it("states the pre-apply timing honestly and lazily opens the suggestions list", async () => {
+    await renderCompletedCorpus({ analyzed: true, suggestion_count: 7 });
+
+    // Honest copy: the count is flagged at completion, NOT a static fact.
+    const line = screen.getByText(/7 possible duplicates/);
+    expect(line).toHaveTextContent("before items were applied");
+
+    // Lazy: the list is NOT fetched until the user opens the review.
+    expect(handle.resolutionList).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Review duplicates" }));
+    await settle();
+
+    expect(handle.resolutionList).toHaveBeenCalledWith(NOVEL, expect.anything());
+    expect(screen.getByText("Elena Varo ↔ Elena Maren")).toBeInTheDocument();
+  });
+
+  it("uses the clean copy for a zero count instead of '0 possible duplicates'", async () => {
+    await renderCompletedCorpus({ analyzed: true, suggestion_count: 0 });
+    expect(screen.getByText(/found no duplicates/)).toHaveTextContent("before items were applied");
+    expect(screen.queryByText(/0 possible duplicates/)).not.toBeInTheDocument();
+    // Re-check stays available: applies change the KB after the pass.
+    expect(screen.getByRole("button", { name: "Re-check duplicates" })).toBeInTheDocument();
+  });
+
+  it("re-check runs an on-demand analysis and swaps the card to the fresh count", async () => {
+    await renderCompletedCorpus({ analyzed: true, suggestion_count: 2 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Re-check duplicates" }));
+    await settle();
+
+    expect(handle.resolutionAnalyze).toHaveBeenCalledWith(NOVEL);
+    // Fresh line replaces the stale registry count (1 live pair in the fixture).
+    expect(
+      screen.getByText(/Fresh check on the current Knowledge Base: 1 possible duplicates/),
+    ).toBeInTheDocument();
+    // The fresh result opens the list with the authoritative data.
+    expect(screen.getByText("Elena Varo ↔ Elena Maren")).toBeInTheDocument();
   });
 });

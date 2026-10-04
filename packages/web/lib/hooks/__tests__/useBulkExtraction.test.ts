@@ -97,7 +97,7 @@ function statusView(
   chapters: BulkChapterStatusView[] = [chapterRow()],
   jobId = "job-1",
 ): BulkExtractionStatusView {
-  return { ...jobView(status, jobId), chapters };
+  return { ...jobView(status, jobId), chapters, dedup: null };
 }
 
 /** Deferred promise for the in-flight (no-overlap) test. */
