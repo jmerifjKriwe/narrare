@@ -385,6 +385,7 @@ describe("WizardShell completion", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.removeItem("narrare:importFailed:novel-9");
+    sessionStorage.removeItem("narrare:importSuggestExtract:novel-9");
     vi.mocked(authApi.me).mockResolvedValue(fullUser);
     vi.mocked(setupApi.complete).mockResolvedValue({
       novel_id: "novel-9",
@@ -465,6 +466,93 @@ describe("WizardShell completion", () => {
     await waitFor(() => expect(sessionStorage.getItem("narrare:importFailed:novel-9")).toBe("1"));
     expect(routerPush).toHaveBeenCalledWith("/novel/novel-9");
     expect(useWizardStore.getState().importSelection).toBeNull();
+    // A failed commit must never suggest extraction (F2 T8 flag contract).
+    expect(sessionStorage.getItem("narrare:importSuggestExtract:novel-9")).toBeNull();
+  });
+
+  it("sets the importSuggestExtract flag with the committed ids + word count on success", async () => {
+    const file = new File(["# A\nb"], "a.md");
+    useWizardStore.setState({
+      state: { ...useWizardStore.getState().state, starter: "import" },
+      importSelection: importSelectionFor([file]),
+    });
+    vi.mocked(importApi.commit).mockResolvedValue({
+      novel_id: "novel-9",
+      created_count: 2,
+      first_position: 0,
+      last_position: 1,
+      chapters: [
+        { id: "c1", title: "One", position: 1, word_count: 20 },
+        { id: "c2", title: "Two", position: 2, word_count: 14 },
+      ],
+    });
+
+    renderWithProviders(<WizardShell />);
+    fireEvent.click(await screen.findByTestId("wizard-complete"));
+
+    // Self-contained payload (spec §8.1): the sidebar CTA needs no extra fetch.
+    await waitFor(() =>
+      expect(sessionStorage.getItem("narrare:importSuggestExtract:novel-9")).toBe(
+        JSON.stringify({ chapter_ids: ["c1", "c2"], word_count: 34 }),
+      ),
+    );
+    expect(sessionStorage.getItem("narrare:importFailed:novel-9")).toBeNull();
+    expect(routerPush).toHaveBeenCalledWith("/novel/novel-9");
+  });
+
+  it("does not set the suggestion flag for an empty commit result", async () => {
+    useWizardStore.setState({
+      state: { ...useWizardStore.getState().state, starter: "import" },
+      importSelection: importSelectionFor([new File(["x"], "a.md")]),
+    });
+    vi.mocked(importApi.commit).mockResolvedValue({
+      novel_id: "novel-9",
+      created_count: 0,
+      first_position: 0,
+      last_position: 0,
+      chapters: [],
+    });
+
+    renderWithProviders(<WizardShell />);
+    fireEvent.click(await screen.findByTestId("wizard-complete"));
+
+    await waitFor(() => expect(routerPush).toHaveBeenCalledWith("/novel/novel-9"));
+    // Nothing was imported → there is nothing to suggest extracting.
+    expect(sessionStorage.getItem("narrare:importSuggestExtract:novel-9")).toBeNull();
+  });
+
+  it("bounds the suggestion payload at 100 chapter ids", async () => {
+    useWizardStore.setState({
+      state: { ...useWizardStore.getState().state, starter: "import" },
+      importSelection: importSelectionFor([new File(["x"], "a.md")]),
+    });
+    const chapters = Array.from({ length: 101 }, (_, i) => ({
+      id: `c${i}`,
+      title: `Chapter ${i}`,
+      position: i,
+      word_count: 1,
+    }));
+    vi.mocked(importApi.commit).mockResolvedValue({
+      novel_id: "novel-9",
+      created_count: 101,
+      first_position: 0,
+      last_position: 100,
+      chapters,
+    });
+
+    renderWithProviders(<WizardShell />);
+    fireEvent.click(await screen.findByTestId("wizard-complete"));
+
+    await waitFor(() =>
+      expect(sessionStorage.getItem("narrare:importSuggestExtract:novel-9")).not.toBeNull(),
+    );
+    const parsed = JSON.parse(
+      sessionStorage.getItem("narrare:importSuggestExtract:novel-9") ?? "",
+    ) as { chapter_ids: string[]; word_count: number };
+    expect(parsed.chapter_ids).toHaveLength(100);
+    expect(parsed.chapter_ids[0]).toBe("c0");
+    expect(parsed.chapter_ids[99]).toBe("c99");
+    expect(parsed.word_count).toBe(100); // summed over the BOUNDED id list
   });
 
   it("does not commit when the starter is not import", async () => {

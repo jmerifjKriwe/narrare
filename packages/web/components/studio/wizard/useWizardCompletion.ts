@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { importApi, setupApi } from "@/lib/api/client";
 import { buildAdjustments } from "@/lib/importing/simulateOperations";
+import { writeSuggestExtractFlag } from "@/lib/importing/suggestExtractFlag";
 import { useWizardStore } from "@/lib/stores/wizardStore";
 
 /**
@@ -13,6 +14,12 @@ import { useWizardStore } from "@/lib/stores/wizardStore";
  * blocking: the user still lands in the empty novel, and the sidebar banner
  * (flag `narrare:importFailed:{novel_id}`, read by SidebarChapterList) offers
  * a retry via the ImportModal.
+ *
+ * On commit SUCCESS the mirror flag `narrare:importSuggestExtract:{novel_id}`
+ * is set (F2 T8, ADR-092 spec §8.1, D9a): the sidebar offers a bulk KB
+ * extraction of the freshly imported chapters. The payload is self-contained
+ * (chapter ids + word count, bounded — see suggestExtractFlag.ts), so the CTA
+ * needs no extra fetch.
  */
 export function useWizardCompletion(hasProviders: boolean): () => Promise<void> {
   const router = useRouter();
@@ -33,11 +40,12 @@ export function useWizardCompletion(hasProviders: boolean): () => Promise<void> 
 
     if (updatedState.starter === "import" && importSelection) {
       try {
-        await importApi.commit(
+        const commitResult = await importApi.commit(
           importSelection.files,
           result.novel_id,
           buildAdjustments(importSelection),
         );
+        writeSuggestExtractFlag(result.novel_id, commitResult.chapters);
       } catch {
         sessionStorage.setItem(`narrare:importFailed:${result.novel_id}`, "1");
       }

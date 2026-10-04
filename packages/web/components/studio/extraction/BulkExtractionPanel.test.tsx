@@ -175,6 +175,34 @@ function twoDoneChapters(): BulkChapterStatusView[] {
   ];
 }
 
+/** Three done + one pending row (walking-path fixture — T8 rider a). */
+function threeDoneChapters(): BulkChapterStatusView[] {
+  return [
+    chapterRow(),
+    chapterRow({
+      chapter_id: "c2",
+      title: "Aftermath",
+      position: 13,
+      state: "done",
+      item_count: 2,
+    }),
+    chapterRow({
+      chapter_id: "c3",
+      title: "Coda",
+      position: 14,
+      state: "done",
+      item_count: 3,
+    }),
+    chapterRow({
+      chapter_id: "c4",
+      title: "Echoes",
+      position: 15,
+      state: "pending",
+      item_count: null,
+    }),
+  ];
+}
+
 function statusView(
   status: BulkJobStatus,
   chapters: BulkChapterStatusView[],
@@ -219,6 +247,13 @@ function resultsView(
   status: BulkJobStatus,
   chapters: BulkChapterStatusView[],
 ): BulkExtractionResultsView {
+  // One distinguishable entity name per done chapter, so tests can assert
+  // WHICH chapter's review body is mounted.
+  const names: Record<string, string> = {
+    c1: "Anna Schmidt",
+    c2: "Dr. Viktor Stein",
+    c3: "Marcus Weber",
+  };
   return {
     job_id: "job-1",
     novel_id: NOVEL,
@@ -231,8 +266,8 @@ function resultsView(
       output:
         c.state === "done"
           ? outputFor(
-              c.chapter_id === "c1" ? "Anna Schmidt" : "Dr. Viktor Stein",
-              c.chapter_id === "c1" ? "new_entity" : "update_entity",
+              names[c.chapter_id] ?? "Dr. Viktor Stein",
+              c.chapter_id === "c2" ? "update_entity" : "new_entity",
             )
           : null,
     })),
@@ -464,5 +499,70 @@ describe("BulkExtractionPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next chapter" }));
     await settle();
     expect(screen.getByText("Dr. Viktor Stein")).toBeInTheDocument();
+  });
+
+  // -- T8 review riders -----------------------------------------------------
+
+  it("walking path over ≥3 done chapters: rail-click mid-list, next-unreviewed, Next disabled at the end", async () => {
+    await renderStarted(statusView("completed", threeDoneChapters()));
+    await settle();
+
+    // First done chapter is active on entry.
+    expect(screen.getByRole("button", { name: /Storm/ })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByText("Anna Schmidt")).toBeInTheDocument();
+
+    // Rail-click mid-list → that chapter's review body mounts (c2, not c1).
+    fireEvent.click(screen.getByRole("button", { name: /Aftermath/ }));
+    await settle();
+    expect(screen.getByRole("button", { name: /Aftermath/ })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    expect(screen.getByText("Dr. Viktor Stein")).toBeInTheDocument();
+
+    // Apply c2 → reviewed; Next walks FORWARD to the next unreviewed done (c3).
+    fireEvent.click(screen.getByRole("button", { name: "Apply to Knowledge Base" }));
+    await settle();
+    expect(screen.getByText("Applied")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next chapter" }));
+    await settle();
+    expect(screen.getByText("Marcus Weber")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Coda/ })).toHaveAttribute("aria-current", "true");
+
+    // Apply c3 → nothing unreviewed remains after it → Next disabled.
+    fireEvent.click(screen.getByRole("button", { name: "Apply to Knowledge Base" }));
+    await settle();
+    expect(screen.getAllByText("Applied")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Next chapter" })).toBeDisabled();
+  });
+
+  it("clears a failed apply's error when switching chapters (per-chapter remount)", async () => {
+    await renderStarted(statusView("completed", twoDoneChapters()));
+    await settle();
+
+    // The apply path routes failures through useAIOperation's error mapper,
+    // which rewrites the message — assert the ALERT, not its wording.
+    handle.apply.mockRejectedValueOnce(new Error("provider down"));
+    fireEvent.click(screen.getByRole("button", { name: "Apply to Knowledge Base" }));
+    await settle();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    // Rail-click to another chapter — the stale error must NOT follow the user.
+    fireEvent.click(screen.getByRole("button", { name: /Aftermath/ }));
+    await settle();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // Fresh review body: apply is enabled again with the new chapter's items.
+    expect(screen.getByRole("button", { name: "Apply to Knowledge Base" })).toBeEnabled();
+  });
+
+  it("shows a dedicated loading state while results load (not the job-start copy)", async () => {
+    handle.status.mockResolvedValue(statusView("completed", twoDoneChapters()));
+    handle.results.mockReturnValue(new Promise(() => {}));
+    renderPanel();
+    await settle();
+
+    expect(screen.getByText("Loading results…")).toBeInTheDocument();
+    expect(screen.queryByText("Starting extraction…")).not.toBeInTheDocument();
   });
 });

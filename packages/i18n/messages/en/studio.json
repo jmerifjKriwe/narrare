@@ -1496,6 +1496,7 @@
       "skip": "Skip",
       "costNote": "Runs in the background at your analysis rate: {count} AI calls, one per chapter, sharing the same budget as interactive extraction.",
       "allReviewed": "All chapters reviewed",
+      "resultsLoading": "Loading results…",
       "resultsError": "Could not load the extraction results."
     },
     "interview": {

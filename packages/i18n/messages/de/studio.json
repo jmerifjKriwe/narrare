@@ -1496,6 +1496,7 @@
       "skip": "Überspringen",
       "costNote": "Läuft im Hintergrund mit deiner Analysier-Rate: {count} KI-Aufrufe, eines pro Kapitel, mit demselben Budget wie die interaktive Extraktion.",
       "allReviewed": "Alle Kapitel geprüft",
+      "resultsLoading": "Ergebnisse werden geladen…",
       "resultsError": "Die Extraktionsergebnisse konnten nicht geladen werden."
     },
     "interview": {

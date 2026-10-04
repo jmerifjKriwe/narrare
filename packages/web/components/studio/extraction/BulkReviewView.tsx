@@ -123,7 +123,7 @@ export function BulkReviewView({
       {/* Active chapter review body (reused single-chapter stack) */}
       {activeChapter !== null &&
         (resultsPending ? (
-          <p className="text-sm text-muted-foreground">{t("kb.bulkExtraction.starting")}</p>
+          <p className="text-sm text-muted-foreground">{t("kb.bulkExtraction.resultsLoading")}</p>
         ) : resultsFailed || activeOutput === null ? (
           <div className="space-y-2">
             <p role="alert" className="text-sm text-destructive">
@@ -139,6 +139,9 @@ export function BulkReviewView({
           </div>
         ) : (
           <BulkChapterReview
+            // Remount per chapter (T8 rider): wipes per-chapter local state —
+            // selection AND a failed apply's error — on chapter switch.
+            key={activeChapter.chapter_id}
             novelId={novelId}
             chapterId={activeChapter.chapter_id}
             output={activeOutput}

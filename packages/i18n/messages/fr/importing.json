@@ -18,6 +18,15 @@
     "retry": "Réessayer l'import",
     "dismiss": "Ignorer"
   },
+  "suggestExtract": {
+    "successTitle": "{count, plural, one {# chapitre importé} other {# chapitres importés}}",
+    "costLine": "{chapters} chapitres · {words} mots · {calls} appels IA",
+    "pacingNote": "S'exécute en arrière-plan à votre rythme d'analyse.",
+    "start": "Extraire vers la base de connaissances",
+    "notNow": "Pas maintenant",
+    "bannerTitle": "Analyser vos chapitres importés",
+    "bannerBody": "Analyser les chapitres importés à la recherche d'entités ? {calls} appels IA, un par chapitre · {words} mots."
+  },
   "ops": {
     "split": "Diviser…",
     "undoSplit": "Annuler la division",

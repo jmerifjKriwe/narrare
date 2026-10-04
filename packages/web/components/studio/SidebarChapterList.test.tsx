@@ -12,6 +12,28 @@ vi.mock("@/lib/api/client", () => ({
   importApi: { preview: vi.fn(), commit: vi.fn() },
 }));
 
+// The bulk panel is the T7 component under its own test suite; here it is the
+// mount target of the sidebar's lifted bulk state. A stub asserts the WIRING
+// (seeded chapter ids + close callback) without re-running a job lifecycle —
+// and without firing real bulk requests against the msw unhandled-request
+// guard.
+vi.mock("./extraction/BulkExtractionPanel", () => ({
+  BulkExtractionPanel: ({
+    chapterIds,
+    onClose,
+  }: {
+    chapterIds: readonly string[];
+    onClose: () => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="bulk-extraction-panel"
+      data-chapter-ids={chapterIds.join(",")}
+      onClick={onClose}
+    />
+  ),
+}));
+
 // The global next-intl mock (setupTests.ts) returns raw keys, which would turn
 // the matchers below into tautologies on key names. Resolving against the REAL
 // en catalogs instead proves the rendered copy comes from the actual message
@@ -92,12 +114,16 @@ describe("SidebarChapterList import entry", () => {
     fireEvent.change(input, { target: { files: [new File(["# A\nb"], "a.md")] } });
     fireEvent.click(screen.getByTestId("import-commit-btn"));
 
-    // Commit succeeds → the modal clears the key and closes → the banner must
-    // not outlive the flag it mirrors (spec §6.2).
+    // Commit succeeds → the success card shows (F2 T8); the user closes via
+    // "Not now" → the modal clears the key and closes → the banner must not
+    // outlive the flag it mirrors (spec §6.2).
+    await screen.findByTestId("import-success-card");
+    expect(sessionStorage.getItem("narrare:importFailed:novel-1")).toBeNull();
+    fireEvent.click(screen.getByTestId("import-notnow-btn"));
+
     await waitFor(() =>
       expect(screen.queryByTestId("import-failed-banner")).not.toBeInTheDocument(),
     );
-    expect(sessionStorage.getItem("narrare:importFailed:novel-1")).toBeNull();
   });
 
   it("dismissing clears the banner and the sessionStorage flag", async () => {
@@ -108,5 +134,73 @@ describe("SidebarChapterList import entry", () => {
       expect(screen.queryByText(/chapters could not be imported/i)).not.toBeInTheDocument(),
     );
     expect(sessionStorage.getItem("narrare:importFailed:novel-1")).toBeNull();
+  });
+});
+
+describe("SidebarChapterList extraction suggestion", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  const SUGGESTION = JSON.stringify({
+    chapter_ids: ["c1", "c2"],
+    word_count: 34,
+  });
+
+  it("renders the suggestion banner when the flag is set", async () => {
+    sessionStorage.setItem("narrare:importSuggestExtract:novel-1", SUGGESTION);
+    renderList();
+    expect(await screen.findByTestId("import-suggest-banner")).toBeInTheDocument();
+  });
+
+  it("renders no suggestion banner when the flag is unset", async () => {
+    renderList();
+    // Chapters query settles first — the banner never appears at any point.
+    await screen.findByTestId("new-chapter-btn");
+    expect(screen.queryByTestId("import-suggest-banner")).not.toBeInTheDocument();
+  });
+
+  it("treats a corrupt flag payload as absent", async () => {
+    sessionStorage.setItem("narrare:importSuggestExtract:novel-1", "not-json");
+    renderList();
+    await screen.findByTestId("new-chapter-btn");
+    expect(screen.queryByTestId("import-suggest-banner")).not.toBeInTheDocument();
+  });
+
+  it("start clears the flag + banner and mounts the panel seeded with the stored ids", async () => {
+    sessionStorage.setItem("narrare:importSuggestExtract:novel-1", SUGGESTION);
+    renderList();
+    fireEvent.click(await screen.findByTestId("import-suggest-start-btn"));
+
+    const panel = await screen.findByTestId("bulk-extraction-panel");
+    expect(panel).toHaveAttribute("data-chapter-ids", "c1,c2");
+    await waitFor(() =>
+      expect(screen.queryByTestId("import-suggest-banner")).not.toBeInTheDocument(),
+    );
+    expect(sessionStorage.getItem("narrare:importSuggestExtract:novel-1")).toBeNull();
+  });
+
+  it("closing the panel unmounts it (state lifted in the sidebar)", async () => {
+    sessionStorage.setItem("narrare:importSuggestExtract:novel-1", SUGGESTION);
+    renderList();
+    fireEvent.click(await screen.findByTestId("import-suggest-start-btn"));
+    await screen.findByTestId("bulk-extraction-panel");
+
+    fireEvent.click(screen.getByTestId("bulk-extraction-panel"));
+    await waitFor(() =>
+      expect(screen.queryByTestId("bulk-extraction-panel")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("dismissing clears the suggestion banner and the sessionStorage flag", async () => {
+    sessionStorage.setItem("narrare:importSuggestExtract:novel-1", SUGGESTION);
+    renderList();
+    fireEvent.click(await screen.findByTestId("import-suggest-dismiss-btn"));
+    await waitFor(() =>
+      expect(screen.queryByTestId("import-suggest-banner")).not.toBeInTheDocument(),
+    );
+    expect(sessionStorage.getItem("narrare:importSuggestExtract:novel-1")).toBeNull();
+    expect(screen.queryByTestId("bulk-extraction-panel")).not.toBeInTheDocument();
   });
 });

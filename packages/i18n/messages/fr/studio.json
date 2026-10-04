@@ -1496,6 +1496,7 @@
       "skip": "Ignorer",
       "costNote": "S'exécute en arrière-plan à votre rythme d'analyse : {count} appels IA, un par chapitre, partageant le même budget que l'extraction interactive.",
       "allReviewed": "Tous les chapitres ont été vérifiés",
+      "resultsLoading": "Chargement des résultats…",
       "resultsError": "Impossible de charger les résultats de l'extraction."
     },
     "interview": {
