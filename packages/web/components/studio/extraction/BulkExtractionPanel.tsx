@@ -85,15 +85,27 @@ export function BulkExtractionPanel({
           )}
           {/* Corpus restart failure (rare: the re-created job was rejected) —
               surfaced as catalog copy in progress mode (RULE-11: visible,
-              never silent; ADR-043 §16.5: no raw server text). */}
+              never silent; ADR-043 §16.5: no raw server text). Without a
+              retry affordance the progress view's "Starting…" would be a
+              dead end — the failure leaves no job to poll. */}
           {ctl.hasRestartError && (
-            <p
-              role="alert"
-              className="mb-4 text-sm text-destructive"
-              data-testid="bulk-restart-error"
-            >
-              {t("kb.bulkExtraction.restartFailed")}
-            </p>
+            <>
+              <p
+                role="alert"
+                className="mb-2 text-sm text-destructive"
+                data-testid="bulk-restart-error"
+              >
+                {t("kb.bulkExtraction.restartFailed")}
+              </p>
+              <button
+                type="button"
+                onClick={ctl.restart}
+                data-testid="bulk-restart-retry"
+                className="mb-4 block text-sm text-primary hover:underline"
+              >
+                {t("kb.extractionRetry")}
+              </button>
+            </>
           )}
 
           {mode === "progress" && (
@@ -105,7 +117,13 @@ export function BulkExtractionPanel({
               error={ctl.bulk.error}
               isStarting={ctl.bulk.isStarting}
               onCancel={() => void ctl.bulk.cancel()}
-              onRetryStart={() => void ctl.bulk.start(chapterIds)}
+              onRetryStart={
+                // Corpus mode retries through the corpus restart/adopt path —
+                // an explicit start over the empty seed would 422 (the adopted
+                // job's transient poll failure must not offer the wrong
+                // domain). Explicit jobs retry over their seed as before.
+                ctl.isCorpus ? ctl.restart : () => void ctl.bulk.start(chapterIds)
+              }
             />
           )}
 

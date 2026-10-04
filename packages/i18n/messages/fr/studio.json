@@ -1487,7 +1487,7 @@
       "interruptedTitle": "Tâche d'extraction interrompue",
       "interruptedBody": "La tâche d'extraction a été perdue, probablement parce que le serveur a redémarré. Rien n'a été écrit dans votre base de connaissances — les chapitres déjà appliqués le restent. Vous pouvez recommencer sans risque.",
       "restart": "Recommencer",
-      "restartFailed": "L'extraction n'a pas pu être relancée. Réessaie dans un instant.",
+      "restartFailed": "L'extraction n'a pas pu être relancée. Réessayez dans un instant.",
       "resume": "Reprendre",
       "reviewTitle": "Vérifier les connaissances extraites",
       "nextChapter": "Chapitre suivant",
@@ -1511,7 +1511,7 @@
       "start": "Lancer l'analyse du corpus",
       "cancel": "Annuler",
       "splitFirstError": "Le passage ne peut pas démarrer : le premier chapitre dépasse à lui seul la limite de mots par passage. Divisez d'abord le chapitre le plus long, puis relancez le passage.",
-      "startFailed": "Le passage de corpus n'a pas pu être lancé. Réessaie dans un instant.",
+      "startFailed": "Le passage de corpus n'a pas pu être lancé. Réessayez dans un instant.",
       "loading": "Estimation…",
       "loadFailed": "Impossible de charger l'estimation.",
       "retry": "Réessayer"

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { chaptersApi, importApi } from "@/lib/api/client";
+import { useEditorStore } from "@/lib/stores/editorStore";
 import enImporting from "../../../i18n/messages/en/importing.json";
 import enStudio from "../../../i18n/messages/en/studio.json";
 import { SidebarChapterList } from "./SidebarChapterList";
@@ -311,5 +312,20 @@ describe("SidebarChapterList corpus pass entry", () => {
     await waitFor(() =>
       expect(screen.queryByTestId("corpus-estimate-line")).not.toBeInTheDocument(),
     );
+  });
+
+  it("shows the corpus entry when the active volume is empty but the novel has chapters", async () => {
+    // The estimate and the start are NOVEL-wide: an empty ACTIVE VOLUME must
+    // not hide the entry (the volume-filtered list is the wrong signal).
+    useEditorStore.setState({ activeVolumeId: "vol-1" });
+    try {
+      chaptersApiList().mockImplementation(async (_novelId: string, volumeId?: string | null) =>
+        volumeId ? [] : [chapterSummary("c1", "Storm", 1000)],
+      );
+      renderList();
+      expect(await screen.findByTestId("corpus-pass-btn")).toBeInTheDocument();
+    } finally {
+      useEditorStore.setState({ activeVolumeId: null });
+    }
   });
 });

@@ -646,4 +646,54 @@ describe("BulkExtractionPanel corpus adoption (F3 T4)", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/could not be restarted/i);
     expect(screen.getByRole("alert")).not.toHaveTextContent(/already active/);
   });
+
+  it("routes a transient first-poll failure's retry through the corpus restart, never an explicit start", async () => {
+    // Transient (non-404) first poll: progress mode + surfaced error, and the
+    // job never yielded a status (jobStatus null) → the retry affordance shows.
+    handle.status
+      .mockRejectedValueOnce(new BulkExtractionApiError(500, "analysis gateway unavailable"))
+      .mockResolvedValue(statusView("running", fourChapters(), "job-corpus-2"));
+    handle.corpusStart.mockResolvedValue(jobView("pending", "job-corpus-2"));
+    renderCorpusPanel();
+    await settle();
+    expect(screen.getByRole("alert")).toHaveTextContent(/analysis gateway unavailable/i);
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await settle();
+
+    // Invariant: corpus mode NEVER starts an explicit job over the empty
+    // seed — the retry re-runs the CORPUS start and adopts the fresh job.
+    expect(handle.start).not.toHaveBeenCalled();
+    expect(handle.corpusStart).toHaveBeenCalledTimes(1);
+    expect(handle.corpusStart).toHaveBeenCalledWith(NOVEL);
+    expect(handle.status).toHaveBeenLastCalledWith(NOVEL, "job-corpus-2");
+    expect(screen.getByText("1 of 4 chapters")).toBeInTheDocument(); // progress again
+  });
+
+  it("offers a retry after a failed corpus restart (no dead Starting… end state)", async () => {
+    handle.status.mockRejectedValue(
+      new BulkExtractionApiError(404, "Bulk extraction job not found"),
+    );
+    handle.corpusStart
+      .mockRejectedValueOnce(
+        new BulkExtractionApiError(409, "A bulk extraction job is already active for this novel"),
+      )
+      .mockResolvedValue(jobView("pending", "job-corpus-3"));
+    renderCorpusPanel();
+    await settle();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start over" }));
+    await settle();
+    expect(screen.getByTestId("bulk-restart-error")).toBeInTheDocument();
+
+    // The restart failure must leave a retry affordance (the progress view's
+    // "Starting…" is not a dead end) — and it re-runs the corpus start.
+    handle.status.mockResolvedValue(statusView("running", fourChapters(), "job-corpus-3"));
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await settle();
+
+    expect(handle.corpusStart).toHaveBeenCalledTimes(2);
+    expect(handle.start).not.toHaveBeenCalled();
+    expect(screen.getByText("1 of 4 chapters")).toBeInTheDocument(); // progress again
+  });
 });
