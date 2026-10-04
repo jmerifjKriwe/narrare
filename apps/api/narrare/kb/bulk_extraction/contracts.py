@@ -39,11 +39,35 @@ class BulkChapterRef:
     position: int
 
 
+@dataclass(frozen=True, slots=True)
+class CorpusChapterRow(BulkChapterRef):
+    """Corpus enumeration unit: :class:`BulkChapterRef` + word count.
+
+    The corpus pass (F3, spec §4) enumerates the whole novel in ``position``
+    order and needs each chapter's word count for the D20a cap math; the
+    explicit-ids engine path (:class:`BulkChapterRef`) stays word-agnostic.
+    """
+
+    word_count: int
+
+
 @runtime_checkable
 class BulkChapterReader(Protocol):
     """Load + validate chapters for a novel (raises ValidationError on bad ids)."""
 
     async def load(self, novel_id: UUID, chapter_ids: Sequence[UUID]) -> list[BulkChapterRef]: ...
+
+
+@runtime_checkable
+class CorpusChapterSource(Protocol):
+    """Enumerate ALL chapters of a novel in ``position`` order with word counts.
+
+    Backed by ``ChapterRepository.list_by_novel`` (T2 wires it); the corpus
+    scope module consumes the rows purely. Raises ``NotFoundError`` for
+    unknown/foreign novels (owner gate happens in the service first).
+    """
+
+    async def load_all(self, novel_id: UUID) -> list[CorpusChapterRow]: ...
 
 
 @runtime_checkable
@@ -87,4 +111,6 @@ __all__ = [
     "BulkExtractionDispatcher",
     "BulkExtractionJobStore",
     "BulkExtractionPacer",
+    "CorpusChapterRow",
+    "CorpusChapterSource",
 ]
