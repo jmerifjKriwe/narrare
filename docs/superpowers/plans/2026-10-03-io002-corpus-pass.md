@@ -33,7 +33,7 @@
 | Caps | `CORPUS_PASS_MAX_CHAPTERS = 120`, `CORPUS_PASS_MAX_WORDS = 200_000` | T1 `corpus.py` | T1 selection, T2 service, T4 dialog copy |
 | Selection | `select_corpus_prefix(chapters: Sequence[CorpusChapterRow]]) -> CorpusSelection` — longest position-order prefix fitting both caps; empty → `ValidationError` with counts | T1 | T2 estimate/start |
 | Estimate view | `CorpusEstimateView{total_chapters, total_word_count, selected_chapter_ids, chapter_count, word_count, ai_calls, capped, cap_reason}` | T2 schemas | T4 FE mirror |
-| Reader Protocol | `CorpusChapterSource` (`async def load_all(self, novel_id: UUID) -> list[BulkChapterRefWithWords]`) | T1 contracts | T2 service |
+| Reader Protocol | `CorpusChapterSource` (`async def load_all(self, novel_id: UUID) -> list[CorpusChapterRow]`) | T1 contracts | T2 service |
 | Job kind | `registry.create(..., kind: Literal["explicit", "corpus"] = "explicit")` + `kind_of(job_id)` | T2 registry mod | T3 runner trigger |
 | Dedup block | `dedup: {analyzed: bool, suggestion_count: int | None} | None` on status/results views (`None` for explicit jobs) | T2 schemas/registry | T3 runner writes, T5 FE card |
 | Post-pass seam | `runner._run_post_pass_analysis(novel_id: UUID, owner_id: UUID) -> tuple[bool, int | None]` | T3 runner | T3 tests fake it |
@@ -41,6 +41,13 @@
 | Surfaces | sidebar entry + `CorpusEstimateDialog` (T4); dedup card + `ResolutionSuggestionsList` (T5) — all inside existing `BulkExtractionPanel`/sidebar hosts | T4/T5 | — |
 
 **Invariants:** (1) the prefix rule is deterministic — same chapter list ⇒ same selection; (2) the estimate never understates (`ai_calls == chapter_count`, capped messaging when truncating); (3) `dedup` is `None` on explicit jobs and `{analyzed: false, suggestion_count: null}` until the post-pass ran; (4) the post-pass analyzer is the NON-adjudicated one (deterministic only — no silent LLM spend); (5) endorse/reject call the existing ADR-085 endpoints verbatim.
+
+> **Correction note (2026-10-04, appended post-T1 review — history intact):**
+> the implemented `CorpusSelection` (`corpus.py`) additionally carries
+> `selected_word_count` — the word sum of the selected prefix — which the
+> Task-1 interface list above omitted; `CorpusEstimateData.word_count` (and
+> the wire view's `word_count`) maps from it. Readers should treat
+> `selected_word_count` as part of the T1 contract from T2 onward.
 
 ## Task sizing deviations (deliberate)
 

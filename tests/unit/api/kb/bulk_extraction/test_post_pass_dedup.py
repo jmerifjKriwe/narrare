@@ -5,9 +5,12 @@ deterministic post-pass ADR-085 analysis (novel + owner passed through,
 count → ``mark_dedup``), explicit jobs never trigger, a hook failure is
 visible (``corpus_post_pass_dedup_failed`` warning) and non-fatal (the job
 stays completed, the dedup block degrades to ``analyzed: false`` — RULE-11),
-a shutdown drain cancellation skips the trigger entirely, and the real hook
-builds its OWN session and calls ``analyze(..., refresh=True)`` (no stale
-cache read — the post-pass must see the pass's just-recorded state).
+a degenerate NON-exception hook result (``(False, None)``/``(True, None)``)
+degrades the same way (``mark_dedup_unavailable``, never ``mark_dedup`` —
+there is no count to record), a shutdown drain cancellation skips the
+trigger entirely, and the real hook builds its OWN session and calls
+``analyze(..., refresh=True)`` (no stale cache read — the post-pass must
+see the pass's just-recorded state).
 
 Fakes reuse ``_runner_fakes.py`` (the F2 runner seams); the hook seam
 (``runner._run_post_pass_analysis``) and the analyzer-construction seam
@@ -145,6 +148,44 @@ class TestHookFailure:
         assert job.dedup is not None
         assert (job.dedup.analyzed, job.dedup.suggestion_count) == (False, None)
         assert recorder.calls[-2:] == ["mark_job_completed", "mark_dedup_unavailable"]
+
+
+class TestDegradedOutcome:
+    """Degenerate hook results WITHOUT an exception — the closing branch.
+
+    ``_maybe_run_post_pass_dedup`` must route a degraded ``analyzed`` /
+    count tuple to the same unavailable mark as a raised failure: there is
+    no count to record, so ``mark_dedup`` is never reached.
+    """
+
+    @pytest.mark.parametrize(
+        "outcome",
+        [(False, None), (True, None)],
+        ids=["analyzed-false", "analyzed-true-without-count"],
+    )
+    async def test_degenerate_hook_result_marks_unavailable_not_dedup(
+        self, monkeypatch: pytest.MonkeyPatch, outcome: tuple[bool, int | None]
+    ) -> None:
+        job_id, ids = _make_corpus_job(0, 1)
+        recorder = _RecordingRegistry()
+        _hook_recorder(monkeypatch, outcome)
+        monkeypatch.setattr(runner, "registry", recorder)
+        monkeypatch.setattr(runner, "_pacer_acquire", _noop_pacer)
+        monkeypatch.setattr(
+            runner,
+            "_service_factory",
+            _ScriptedServiceFactory({ids[0]: _output(1), ids[1]: _output(1)}),
+        )
+
+        await runner.run_bulk_extraction(job_id, NOVEL_ID, OWNER)
+
+        # Degraded without an exception → mark_dedup_unavailable (which logs
+        # its own warning, RULE-11), never mark_dedup with a fabricated count.
+        assert recorder.calls[-2:] == ["mark_job_completed", "mark_dedup_unavailable"]
+        assert "mark_dedup" not in recorder.calls
+        job = registry.status(job_id, OWNER)
+        assert job.status is BulkJobStatus.COMPLETED  # still non-fatal
+        assert (job.dedup.analyzed, job.dedup.suggestion_count) == (False, None)
 
 
 class TestDrainCancellation:

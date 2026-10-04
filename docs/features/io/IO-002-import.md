@@ -46,7 +46,10 @@ requires: [KB-007, KB-008]
 # IO-002 — Corpus Analysis Pass
 
 > **Status:** 📋 Planned — re-scoped 2026-10-03 (SETUP-003 follow-up F3).
-> Engine: [ADR-092](../../architecture/decisions/ADR-092-bulk-extraction-job.md)
+> Corpus-pass v1 implemented 2026-10-04 (commits `99dbe9e6..4b59a212`);
+> the status stays planned for the re-scope's deferred slices
+> (D18a, D16a, D17a, D21a — see Status & History). Engine:
+> [ADR-092](../../architecture/decisions/ADR-092-bulk-extraction-job.md)
 > bulk extraction job. Design:
 > [corpus-pass spec](../../superpowers/specs/2026-10-03-io002-corpus-pass-design.md).
 > All PO rulings FINAL (D12a, D13b, D14a, D15a, D16a, D17a, D18a, D19a,
@@ -120,6 +123,9 @@ apply flow; they populate the KB-008 graph.
 
 - One AI call per chapter; a chapter far beyond normal length should be split
   first (F1 split tools) — the pass never re-chunks prose
+- A zero-word chapter inside the selected prefix stays in scope and fails
+  deterministically at run time ("chapter has no content") as an isolated
+  failed row — no LLM call is spent; prefix integrity is preserved
 - Per-run cap 120 chapters / 200,000 words; larger novels run in multiple
   passes (start-of-book prefix first) — never silently
 - Runs share the analysis rate budget with every interactive AI feature
@@ -145,6 +151,17 @@ apply flow; they populate the KB-008 graph.
 
 ## Status & History
 
+- `2026-10-04` — **Corpus pass v1 implemented** (commits `99dbe9e6..4b59a212`
+  on `feature/import-followups`, each task through its per-task review gate).
+  Backend: corpus estimate/start endpoints + `kind="corpus"` job + post-pass
+  ADR-085 dedup trigger; frontend: sidebar entry + honest estimate dialog +
+  dedup card + minimal suggestions review; i18n en/de/fr. Spec:
+  [2026-10-03-io002-corpus-pass-design.md](../../superpowers/specs/2026-10-03-io002-corpus-pass-design.md)
+  · Plan:
+  [2026-10-03-io002-corpus-pass.md](../../superpowers/plans/2026-10-03-io002-corpus-pass.md).
+  Status stays `planned` (frontmatter) — deferred re-scope slices: folder
+  upload (D18a), structure detection (D16a), reference docs (D17a), DOCX
+  import (D21a — SETUP-003 follow-up).
 - `2026-10-03` — **Re-scoped** from "Project Import & Analysis" to "Corpus
   Analysis Pass" (SETUP-003 follow-up F3; PO rulings D12a–D21a FINAL).
   Superseded identity below.
