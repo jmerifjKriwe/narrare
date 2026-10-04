@@ -32,6 +32,17 @@ Test seams (module attributes, monkeypatch style of ``export/tasks.py``):
 ``_service_factory`` (defaults to the real wiring below) and
 ``_pacer_acquire`` (lazily binds the shared-budget pacer from
 ``pacer.py`` — kept lazy so tests can inject the seam directly).
+
+F3 post-pass (spec §6.2, D15a): after ``mark_job_completed``, a ``corpus``
+job fires ONE deterministic ADR-085 duplicate analysis —
+``_maybe_run_post_pass_dedup`` (kind gate + RULE-11 failure handling) →
+``_run_post_pass_analysis`` (own session via ``get_session_factory``,
+module attribute so tests fake it) → ``_analyzer_factory`` (lazily binds
+``_build_post_pass_analyzer``, which calls ``get_resolution_analyzer``
+ITSELF over the canonical kb factories — the exact request-path wiring,
+zero drift by construction; NO adjudicator, zero LLM calls). Explicit
+jobs never trigger; a drain cancellation skips it; a failure is visible
+(``corpus_post_pass_dedup_failed`` warning) and never fails the job.
 """
 
 from __future__ import annotations
@@ -51,6 +62,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from narrare.kb.entity_resolution.analysis_service import ResolutionAnalysisService
     from narrare.kb.extraction_service import ExtractionService
 
 logger = structlog.get_logger(__name__)
@@ -60,11 +72,17 @@ logger = structlog.get_logger(__name__)
 #: exists; the owner is passed IN — the service gated it before dispatch).
 _ServiceFactory = Callable[["AsyncSession", "UUID", "UUID"], "ExtractionService"]
 
+#: Signature of the post-pass analyzer factory seam: (own session) → the
+#: DETERMINISTIC ``ResolutionAnalysisService`` (ADR-085 non-adjudicated
+#: wiring — the auto-trigger never spends LLM tokens, spec §6.2).
+_AnalyzerFactory = Callable[["AsyncSession"], "ResolutionAnalysisService"]
+
 #: Strong references to in-flight bulk coroutines (ADR-080 GC guard).
 _INFLIGHT_TASKS: set[asyncio.Task[None]] = set()
 
 _service_factory: _ServiceFactory | None = None
 _pacer_acquire: Callable[[], Awaitable[None]] | None = None
+_analyzer_factory: _AnalyzerFactory | None = None
 
 
 def _resolve_service_factory() -> _ServiceFactory:
@@ -94,6 +112,37 @@ def _resolve_pacer_acquire() -> Callable[[], Awaitable[None]]:
             module.acquire_analysis_pacer_slot,
         )
     return _pacer_acquire
+
+
+def _resolve_analyzer_factory() -> _AnalyzerFactory:
+    """Bind the default (real) post-pass analyzer factory on first use."""
+    global _analyzer_factory
+    if _analyzer_factory is None:
+        _analyzer_factory = _build_post_pass_analyzer
+    return _analyzer_factory
+
+
+def _build_post_pass_analyzer(session: AsyncSession) -> ResolutionAnalysisService:
+    """The REAL deterministic ADR-085 analyzer over a runner-owned session.
+
+    Calls ``get_resolution_analyzer`` ITSELF over the canonical kb factories
+    — the exact wiring the request-path DI performs, so the post-pass cannot
+    drift from it (plan T3 pins this as an interface dependency): KBRepository
+    + RelationshipRepository + the dismissal ledger, assembled inside that
+    factory by the shared builder (snapshot builder + pure engine + the
+    shared analysis-cache singleton). NO adjudicator → zero LLM calls
+    (spec §6.2: the auto-trigger never spends tokens silently).
+    """
+    from narrare.kb.dependencies_core import get_kb_repository, get_rel_repository
+    from narrare.kb.entity_resolution.dependencies import (
+        get_resolution_analyzer,
+        get_resolution_dismissal_store,
+    )
+
+    kb_repo = get_kb_repository(session)
+    rel_repo = get_rel_repository(session)
+    dismissed = get_resolution_dismissal_store(session)
+    return get_resolution_analyzer(kb_repo, rel_repo, dismissed)
 
 
 def _build_extraction_service(
@@ -138,6 +187,56 @@ def _build_extraction_service(
         invocation_pipeline=get_invocation_pipeline(),
         run_limit_resolver=DefaultRunLimitResolver(),
     )
+
+
+async def _run_post_pass_analysis(novel_id: UUID, owner_id: UUID) -> tuple[bool, int | None]:
+    """ONE deterministic ADR-085 analysis over the novel's KB roster (F3 §6.2).
+
+    Own session via the session factory (a request session does not exist in
+    background context); ``refresh=True`` forces a recompute so the analysis
+    reflects the pass's just-recorded KB state instead of a stale cache read.
+    Returns ``(analyzed, suggestion_count)`` — module attribute so tests
+    monkeypatch it (``test_post_pass_dedup.py``).
+    """
+    from narrare._app.database import get_session_factory
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        analyzer = _resolve_analyzer_factory()(session)
+        response = await analyzer.analyze(novel_id, owner_id, refresh=True)
+        return (True, len(response.suggestions))
+
+
+async def _maybe_run_post_pass_dedup(job_id: str, novel_id: UUID, owner_id: UUID) -> None:
+    """Kind-gated post-completion dedup trigger (F3 §6.2, D15a).
+
+    ``corpus`` jobs only — explicit jobs never trigger. Failure is VISIBLE
+    and NON-FATAL (RULE-11): the warning is logged, the job's dedup block
+    degrades to ``analyzed: false``, and the job itself stays completed —
+    the pass succeeded, only the duplicate check is out. A 0-word chapter
+    that failed deterministically ("chapter is empty") needs no special
+    casing here: it is an isolated failed row; the job still completes and
+    the analysis runs over whatever roster state exists.
+    """
+    if registry.kind_of(job_id) != "corpus":
+        return
+    try:
+        analyzed, suggestion_count = await _run_post_pass_analysis(novel_id, owner_id)
+    except Exception as exc:
+        logger.warning(
+            "corpus_post_pass_dedup_failed",
+            job_id=job_id,
+            error=str(exc),
+            exc_info=exc,
+        )
+        registry.mark_dedup_unavailable(job_id)
+        return
+    if analyzed and suggestion_count is not None:
+        registry.mark_dedup(job_id, suggestion_count)
+    else:
+        # Degraded outcome without an exception — still unavailable, and
+        # mark_dedup_unavailable logs its own warning (never silent).
+        registry.mark_dedup_unavailable(job_id)
 
 
 def _on_done(task: asyncio.Task[None]) -> None:
@@ -242,3 +341,10 @@ async def run_bulk_extraction(job_id: str, novel_id: UUID, owner_id: UUID) -> No
         # fails the JOB — a hung RUNNING job is never acceptable (RULE-11).
         logger.error("bulk_run_failed", job_id=job_id, error=str(exc), exc_info=exc)
         registry.mark_job_failed(job_id, f"{type(exc).__name__}: {exc}")
+        return
+    # F3 §6.2 — the corpus post-pass dedup trigger. Deliberately AFTER the
+    # infrastructure guard: a dedup failure must never clobber a COMPLETED
+    # job. The cooperative-cancel and fast-fail returns above skip it, and a
+    # drain cancellation propagates before this line — only a job that truly
+    # reached completed arms the trigger (dedup stays {analyzed: false} else).
+    await _maybe_run_post_pass_dedup(job_id, novel_id, owner_id)

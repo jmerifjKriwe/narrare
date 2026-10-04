@@ -25,6 +25,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from uuid import UUID
 
+    from narrare.kb.bulk_extraction.contracts import BulkJobKind
+
 NOVEL_ID = uuid4()
 OWNER = uuid4()
 
@@ -99,6 +101,17 @@ class _RecordingRegistry:
     def mark_cancelled(self, job_id: str, reason: str) -> None:
         self.calls.append("mark_cancelled")
         registry.mark_cancelled(job_id, reason)
+
+    def kind_of(self, job_id: str) -> BulkJobKind:
+        return registry.kind_of(job_id)
+
+    def mark_dedup(self, job_id: str, suggestion_count: int) -> None:
+        self.calls.append("mark_dedup")
+        registry.mark_dedup(job_id, suggestion_count)
+
+    def mark_dedup_unavailable(self, job_id: str) -> None:
+        self.calls.append("mark_dedup_unavailable")
+        registry.mark_dedup_unavailable(job_id)
 
     def cancel_requested(self, job_id: str) -> bool:
         return registry.cancel_requested(job_id)
