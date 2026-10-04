@@ -36,13 +36,15 @@ from narrare.kb.bulk_extraction import registry, runner
 from narrare.kb.bulk_extraction.contracts import (
     BulkExtractionDispatcher,
     BulkExtractionJobStore,
+    CorpusChapterRow,
 )
 from narrare.kb.bulk_extraction.service import BulkExtractionService
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from narrare.kb.bulk_extraction.contracts import BulkChapterRef
+    from narrare.chapters.contracts import ChapterRepositoryProtocol
+    from narrare.kb.bulk_extraction.contracts import BulkChapterRef, BulkJobKind
     from narrare.kb.bulk_extraction.schemas import (
         BulkExtractionJobView,
         BulkExtractionResultsView,
@@ -54,9 +56,13 @@ class RegistryJobStore:
     """``BulkExtractionJobStore`` façade over the in-memory registry."""
 
     async def create_job(
-        self, novel_id: UUID, owner_user_id: UUID, chapters: Sequence[BulkChapterRef]
+        self,
+        novel_id: UUID,
+        owner_user_id: UUID,
+        chapters: Sequence[BulkChapterRef],
+        kind: BulkJobKind = "explicit",
     ) -> BulkExtractionJobView:
-        return registry.create(novel_id, owner_user_id, chapters)
+        return registry.create(novel_id, owner_user_id, chapters, kind=kind)
 
     async def get_status(self, job_id: str, user_id: UUID) -> BulkExtractionStatusView:
         return registry.status(job_id, user_id)
@@ -79,6 +85,31 @@ class RunnerDispatcher:
 
     async def dispatch(self, job_id: str, novel_id: UUID, owner_id: UUID) -> None:
         await runner.dispatch(job_id, novel_id, owner_id)
+
+
+class RepositoryCorpusSource:
+    """``CorpusChapterSource`` façade over ``ChapterRepository.list_by_novel``.
+
+    Enumerates ALL chapters of the novel in ``position`` order with their
+    persisted word counts — exactly the rows the pure corpus selection
+    consumes (F3 §4.2, rider a: ``CorpusChapterRow``). Session-scoped and
+    stateless like :class:`RegistryJobStore` (RULE-19); constructed per
+    request by the factory below.
+    """
+
+    def __init__(self, chapter_repo: ChapterRepositoryProtocol) -> None:
+        self._chapter_repo = chapter_repo
+
+    async def load_all(self, novel_id: UUID) -> list[CorpusChapterRow]:
+        return [
+            CorpusChapterRow(
+                chapter_id=chapter.id,
+                title=chapter.title,
+                position=chapter.position,
+                word_count=chapter.word_count,
+            )
+            for chapter in await self._chapter_repo.list_by_novel(novel_id)
+        ]
 
 
 def get_bulk_job_store() -> BulkExtractionJobStore:
@@ -118,9 +149,11 @@ async def get_bulk_extraction_service(
     from narrare.kb.bulk_extraction.reader import ChapterReader
     from narrare.novels.repository import NovelRepository
 
+    chapter_repo = ChapterRepository(session)
     return BulkExtractionService(
         store=store,
-        reader=ChapterReader(ChapterRepository(session)),
+        reader=ChapterReader(chapter_repo),
+        corpus_source=RepositoryCorpusSource(chapter_repo),
         dispatcher=dispatcher,
         novel_repo=NovelRepository(session),
     )

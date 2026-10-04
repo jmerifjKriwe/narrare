@@ -2,15 +2,19 @@
 
 The service consumes four seams (store/reader/dispatcher via the service,
 pacer via the runner); unit tests substitute Protocol-conformant fakes.
-Protocol constants (engine cap, TTL) live here so schemas and registry share
-one definition.
+Protocol constants (engine cap, TTL) and the NORMATIVE STATE ENUMS (spec
+§4.1/§4.2) live here so schemas and registry share one definition — the
+enums moved from ``schemas.py`` in F3 T2 because that file sat exactly at
+its RULE-04 hard limit and the enums are contract vocabulary ("normative
+set"); ``schemas.py`` re-exports them so the import seam is unchanged.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import TYPE_CHECKING, Final, Protocol, runtime_checkable
+from enum import StrEnum
+from typing import TYPE_CHECKING, Final, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -28,6 +32,31 @@ BULK_EXTRACT_MAX_CHAPTERS: Final[int] = 200
 
 #: Terminal jobs are swept from the in-memory registry after this TTL.
 BULK_JOB_TTL: Final[timedelta] = timedelta(hours=24)
+
+
+class BulkChapterState(StrEnum):
+    """Per-chapter state inside a bulk job (spec §4.2 — normative set)."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+
+
+class BulkJobStatus(StrEnum):
+    """Job-level lifecycle status (spec §4.1 — normative set)."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    CANCELLING = "cancelling"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    FAILED = "failed"
+
+
+#: Job kind discriminator (F3 §3): ``corpus`` marks jobs that arm the
+#: automatic post-pass ADR-085 dedup analysis; ``explicit`` never triggers it.
+BulkJobKind = Literal["explicit", "corpus"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,7 +118,11 @@ class BulkExtractionJobStore(Protocol):
     """Registry operations consumed by the service (T2 implements)."""
 
     async def create_job(
-        self, novel_id: UUID, owner_user_id: UUID, chapters: Sequence[BulkChapterRef]
+        self,
+        novel_id: UUID,
+        owner_user_id: UUID,
+        chapters: Sequence[BulkChapterRef],
+        kind: BulkJobKind = "explicit",
     ) -> BulkExtractionJobView: ...
 
     async def get_status(self, job_id: str, user_id: UUID) -> BulkExtractionStatusView: ...
@@ -108,9 +141,12 @@ __all__ = [
     "BULK_JOB_TTL",
     "BulkChapterReader",
     "BulkChapterRef",
+    "BulkChapterState",
     "BulkExtractionDispatcher",
     "BulkExtractionJobStore",
     "BulkExtractionPacer",
+    "BulkJobKind",
+    "BulkJobStatus",
     "CorpusChapterRow",
     "CorpusChapterSource",
 ]

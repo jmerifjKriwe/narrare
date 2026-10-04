@@ -1,4 +1,4 @@
-"""Bulk extraction wire schemas (F2, ADR-092, spec §4).
+"""Bulk extraction wire schemas (F2, ADR-092, spec §4; F3 §6 dedup block).
 
 Pydantic request/response models for the bulk extraction job surface
 (``POST/GET …/kb/extract/bulk…``). Field names and shapes are the spec §4
@@ -6,41 +6,48 @@ contract; every model forbids extra fields so FE/BE drift fails loudly at
 the seam (RULE-17 mirror target). Item counts live in the status view;
 full ``ExtractionOutput`` payloads appear only in the results view
 (payload-size boundary, spec §4.2/§4.3).
+
+Module split (F3 T2, RULE-04 — this file sat exactly at its 200-line hard
+limit): the corpus-pass wire models (``CorpusEstimateView``) and the dedup
+block (``BulkDedupInfo``) live in ``schemas_corpus.py``; the normative
+state enums moved to ``contracts.py``. Both are re-exported/named here so
+consumers keep one import seam.
 """
 
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003 — needed at runtime for Pydantic model resolution
-from enum import StrEnum
 from typing import Self
 from uuid import UUID  # noqa: TC003 — needed at runtime for Pydantic model resolution
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from narrare.kb.bulk_extraction.contracts import BULK_EXTRACT_MAX_CHAPTERS
+from narrare.kb.bulk_extraction.contracts import (
+    BULK_EXTRACT_MAX_CHAPTERS,
+    BulkChapterState,
+    BulkJobStatus,
+)
+from narrare.kb.bulk_extraction.schemas_corpus import (
+    BulkDedupInfo,  # noqa: TC001 — runtime Pydantic resolution
+)
 from narrare_core.agents.extraction_types import (
     ExtractionOutput,  # noqa: TC001 — runtime Pydantic resolution
 )
 
-
-class BulkChapterState(StrEnum):
-    """Per-chapter state inside a bulk job (spec §4.2 — normative set)."""
-
-    PENDING = "pending"
-    RUNNING = "running"
-    DONE = "done"
-    FAILED = "failed"
-
-
-class BulkJobStatus(StrEnum):
-    """Job-level lifecycle status (spec §4.1 — normative set)."""
-
-    PENDING = "pending"
-    RUNNING = "running"
-    CANCELLING = "cancelling"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
-    FAILED = "failed"
+# The normative state enums moved to ``contracts.py`` (F3 T2 — RULE-04 split,
+# contracts is the shared-vocabulary home); re-exported here so every
+# consumer keeps its single ``schemas`` import seam.
+__all__ = [
+    "BulkChapterState",
+    "BulkChapterStatusView",
+    "BulkExtractionJobView",
+    "BulkExtractionResultChapter",
+    "BulkExtractionResultsView",
+    "BulkExtractionStartRequest",
+    "BulkExtractionStatusView",
+    "BulkExtractionTotals",
+    "BulkJobStatus",
+]
 
 
 class BulkExtractionStartRequest(BaseModel):
@@ -139,6 +146,9 @@ class BulkExtractionStatusView(BulkExtractionJobView):
     chapters: list[BulkChapterStatusView]
     """Every job chapter in position order with its state + item count."""
 
+    dedup: BulkDedupInfo | None = None
+    """Post-pass duplicate-analysis block (F3 §6.3) — ``None`` for explicit jobs."""
+
 
 class BulkExtractionResultChapter(BaseModel):
     """One chapter in the results response (spec §4.3)."""
@@ -186,15 +196,5 @@ class BulkExtractionResultsView(BaseModel):
     chapters: list[BulkExtractionResultChapter]
     """Every job chapter in position order; done chapters carry ``output``."""
 
-
-__all__ = [
-    "BulkChapterState",
-    "BulkChapterStatusView",
-    "BulkExtractionJobView",
-    "BulkExtractionResultChapter",
-    "BulkExtractionResultsView",
-    "BulkExtractionStartRequest",
-    "BulkExtractionStatusView",
-    "BulkExtractionTotals",
-    "BulkJobStatus",
-]
+    dedup: BulkDedupInfo | None = None
+    """Post-pass duplicate-analysis block (F3 §6.3) — ``None`` for explicit jobs."""

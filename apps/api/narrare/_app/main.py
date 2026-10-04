@@ -224,6 +224,7 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.kb.router_consistency import router as kb_consistency_router
     from narrare.kb.router_extraction import router as kb_extraction_router
     from narrare.kb.router_extraction_batch import router as kb_extraction_batch_router
+    from narrare.kb.router_extraction_corpus import router as kb_extraction_corpus_router
     from narrare.kb.router_graph import router as kb_graph_router
     from narrare.kb.router_improve import router as kb_improve_router
     from narrare.kb.router_relationships import router as kb_relationships_router
@@ -306,8 +307,11 @@ def _register_routers(app: FastAPI) -> None:
     # ``…/kb/extract/bulk`` prefix would otherwise be captured by the older
     # ``…/kb/extract/{chapter_id}`` route (path-greedy ordering — "bulk" is
     # not a UUID → spurious 422), the same hazard as the prompts history
-    # catch-all below (CR-AUFG-07-19).
+    # catch-all below (CR-AUFG-07-19). The corpus routes (F3, static
+    # ``…/kb/extract/bulk/corpus…``) sit under the same greedy prefix and
+    # ride the same ordering guarantee.
     app.include_router(kb_extraction_batch_router, prefix=prefix)
+    app.include_router(kb_extraction_corpus_router, prefix=prefix)
     app.include_router(kb_extraction_router, prefix=prefix)
     app.include_router(kb_sessions_router, prefix=prefix)
     app.include_router(kb_sessions_complete_router, prefix=prefix)

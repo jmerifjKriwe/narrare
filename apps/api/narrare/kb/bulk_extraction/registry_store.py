@@ -1,25 +1,12 @@
-"""Bulk-extraction registry store: shared state + runner-side mutations.
+"""Bulk-extraction registry store: runner-side mutations + maintenance.
 
-The state half of the in-memory bulk extraction registry (ADR-092 §6). The
-user-facing, owner-checked operations live in :mod:`narrare.kb.bulk_extraction.registry`,
-which re-exports the runner-facing names defined here — T4/T5 keep coding
-against ``registry.*`` only. Split reason: RULE-04 (the combined module
-exceeded the 400-line hard limit), along the module's real axis: request-path
-ops vs background-runner mutations.
-
-Process-local by design — the ``JOBS`` dict lives in memory for the API
-process's lifetime and is lost on restart; a polled job id then surfaces as
-:class:`~narrare_core.shared.errors.NotFoundError` and the FE degrades to its
-"interrupted" state (spec §9). Nothing of value is lost: extraction results
-are re-runnable proposals until explicitly endorsed (ADR-092 decision 2).
-
-This module is **data, not a task** — it is NOT drained on shutdown. The
-in-flight runner coroutines live in ``narrare.kb.bulk_extraction.runner``
-(``_INFLIGHT_TASKS`` with a done-callback GC guard, mirroring
-``export/tasks.py:188-212``); the drain cancels those tasks and their
-done-callback flips the job to CANCELLED via :func:`mark_cancelled`
-(``"cancelled (server shutdown)"``). The registry is just the state those
-coroutines mutate.
+The mutation half of the in-memory bulk extraction registry (ADR-092 §6).
+The user-facing, owner-checked operations live in :mod:`narrare.kb.bulk_extraction.registry`;
+the pure STATE (records, :data:`JOBS`, lifecycle partitions, clock) lives in
+:mod:`narrare.kb.bulk_extraction.registry_records` — split off in F3 T2
+(RULE-04: this module crossed its 400-line hard limit when the post-pass
+dedup mutations landed). This module re-exports every state name, so the
+one-import-seam rule holds: T4/T5/T6 keep coding against ``registry.*`` only.
 
 Runner-time ``mark_*`` mutations are job-id-keyed: they only run for jobs the
 service gate already admitted, and an unknown/swept id degrades to a logged
@@ -32,109 +19,59 @@ write), safe under the single-threaded asyncio loop.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.kb.bulk_extraction.contracts import BULK_JOB_TTL
-from narrare.kb.bulk_extraction.schemas import BulkChapterState, BulkJobStatus
+from narrare.kb.bulk_extraction.contracts import BULK_JOB_TTL, BulkJobKind
+from narrare.kb.bulk_extraction.registry_records import (
+    ACTIVE,
+    JOBS,
+    RESUMABLE,
+    TERMINAL,
+    BulkChapterState,
+    BulkJobRecord,
+    BulkJobStatus,
+    ChapterRecord,
+    touch_record,
+    utc_now,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from datetime import datetime
     from uuid import UUID
 
     from narrare_core.agents.extraction_types import ExtractionOutput
 
 logger = structlog.get_logger(__name__)
 
-#: Job statuses that block a new job for the same novel (spec §4.1: 409).
-ACTIVE: Final[frozenset[BulkJobStatus]] = frozenset(
-    {
-        BulkJobStatus.PENDING,
-        BulkJobStatus.RUNNING,
-        BulkJobStatus.CANCELLING,
-    }
-)
-
-#: Job statuses that end the lifecycle — cancel/resume conflict on them.
-#: Single definition point for the terminal partition; ``registry`` imports
-#: it under its private ``_TERMINAL`` name (usage sites unchanged).
-TERMINAL: Final[frozenset[BulkJobStatus]] = frozenset(
-    {
-        BulkJobStatus.COMPLETED,
-        BulkJobStatus.CANCELLED,
-        BulkJobStatus.FAILED,
-    }
-)
-
-#: Job statuses a resume may start from (spec §4.5). Single definition point
-#: for the resumable partition; ``registry`` imports it under its private
-#: ``_RESUMABLE`` name (usage sites unchanged).
-RESUMABLE: Final[frozenset[BulkJobStatus]] = frozenset(
-    {
-        BulkJobStatus.CANCELLED,
-        BulkJobStatus.FAILED,
-    }
-)
-
-
-def utc_now() -> datetime:
-    """Timezone-aware "now" (mirrors the tz-aware DB columns)."""
-    return datetime.now(UTC)
-
-
-@dataclass
-class ChapterRecord:
-    """Mutable per-chapter state (position-sorted, one row per job chapter).
-
-    ``output`` is the full :class:`ExtractionOutput`, stored only by
-    :func:`mark_chapter_done` — so ``output is not None ⟺ state = done``
-    holds by construction and the wire validators can never trip.
-    """
-
-    chapter_id: UUID
-    title: str
-    position: int
-    state: BulkChapterState = BulkChapterState.PENDING
-    item_count: int | None = None
-    error: str | None = None  # expected on failed rows; cleared on reset
-    output: ExtractionOutput | None = None
-
-
-@dataclass
-class BulkJobRecord:
-    """Mutable in-memory state for one bulk extraction job.
-
-    ``owner_user_id`` is pinned at create time (after the owned-novel gate —
-    see :mod:`narrare.kb.bulk_extraction.registry`); user-facing ops treat any
-    other user as if the job did not exist. ``expires_hint`` is set only when
-    the job reaches a terminal status (``utc_now() + BULK_JOB_TTL``) — it is the
-    sole basis of :func:`sweep_expired`, so non-terminal jobs are never swept.
-    """
-
-    job_id: str
-    novel_id: UUID
-    owner_user_id: UUID
-    created_at: datetime
-    updated_at: datetime
-    chapters: list[ChapterRecord]
-    status: BulkJobStatus = BulkJobStatus.PENDING
-    error: str | None = None  # expected on failed rows; cancelled jobs carry the terminal reason
-    cancel_requested: bool = False
-    expires_hint: datetime | None = None
-
-
-#: ``job_id`` → record. Process-local (ADR-092). Accessed from the request
-#: path (user-facing ops in ``registry.py``) and the background runner
-#: (``mark_*``). Safe under the single-threaded asyncio loop: every mutation
-#: is synchronous.
-JOBS: dict[str, BulkJobRecord] = {}
-
-
-def touch_record(record: BulkJobRecord) -> None:
-    record.updated_at = utc_now()
+__all__ = [
+    "ACTIVE",
+    "JOBS",
+    "RESUMABLE",
+    "TERMINAL",
+    "BulkChapterState",
+    "BulkJobRecord",
+    "BulkJobStatus",
+    "ChapterRecord",
+    "cancel_requested",
+    "find_active_for_novel",
+    "kind_of",
+    "mark_cancelled",
+    "mark_chapter_done",
+    "mark_chapter_failed",
+    "mark_chapter_running",
+    "mark_dedup",
+    "mark_dedup_unavailable",
+    "mark_job_completed",
+    "mark_job_failed",
+    "mark_job_running",
+    "pending_chapter_ids",
+    "sweep_expired",
+    "touch_record",
+    "utc_now",
+]
 
 
 def _get_unchecked(job_id: str, action: str) -> BulkJobRecord | None:
@@ -265,6 +202,36 @@ def mark_cancelled(job_id: str, reason: str) -> None:
     logger.warning("bulk_job_cancelled", job_id=job_id, reason=reason)
 
 
+def mark_dedup(job_id: str, suggestion_count: int) -> None:
+    """Record a finished post-pass dedup analysis (corpus jobs; no-op if swept).
+
+    Sets ``analyzed: true`` + the count in one flip — the wire invariant is
+    ``suggestion_count`` present ⟺ ``analyzed`` (:class:`BulkDedupInfo`).
+    """
+    record = _get_unchecked(job_id, "mark_dedup")
+    if record is None:
+        return
+    record.dedup_analyzed = True
+    record.dedup_suggestion_count = suggestion_count
+    touch_record(record)
+    logger.info("bulk_dedup_analyzed", job_id=job_id, suggestion_count=suggestion_count)
+
+
+def mark_dedup_unavailable(job_id: str) -> None:
+    """Record a FAILED post-pass analysis — visible, non-fatal (RULE-11).
+
+    Resets the block to its default (``analyzed: false``); the job itself
+    stays completed — the pass succeeded, only the duplicate check is out.
+    """
+    record = _get_unchecked(job_id, "mark_dedup_unavailable")
+    if record is None:
+        return
+    record.dedup_analyzed = False
+    record.dedup_suggestion_count = None
+    touch_record(record)
+    logger.warning("bulk_dedup_unavailable", job_id=job_id)
+
+
 # ── Runner helpers / maintenance (job-id- or novel-keyed) ──────────────────
 
 
@@ -291,6 +258,20 @@ def pending_chapter_ids(job_id: str) -> list[UUID]:
         logger.warning("bulk_unknown_job", job_id=job_id, action="pending_chapter_ids")
         return []
     return [c.chapter_id for c in record.chapters if c.state is BulkChapterState.PENDING]
+
+
+def kind_of(job_id: str) -> BulkJobKind:
+    """The job's kind — ``"corpus"`` arms the post-pass dedup trigger (F3 §6).
+
+    Runner-side lookup: an unknown/swept id degrades to ``"explicit"`` (the
+    no-trigger kind) with a logged trace — a background callback must never
+    arm a trigger on state it cannot see.
+    """
+    record = JOBS.get(job_id)
+    if record is None:
+        logger.warning("bulk_unknown_job", job_id=job_id, action="kind_of")
+        return "explicit"
+    return record.kind
 
 
 def find_active_for_novel(novel_id: UUID) -> str | None:
@@ -322,20 +303,3 @@ def sweep_expired(now: Callable[[], datetime] = utc_now) -> int:
         dropped += 1
         logger.info("bulk_job_swept", job_id=job_id)
     return dropped
-
-
-__all__ = [
-    "JOBS",
-    "BulkJobRecord",
-    "cancel_requested",
-    "find_active_for_novel",
-    "mark_cancelled",
-    "mark_chapter_done",
-    "mark_chapter_failed",
-    "mark_chapter_running",
-    "mark_job_completed",
-    "mark_job_failed",
-    "mark_job_running",
-    "pending_chapter_ids",
-    "sweep_expired",
-]

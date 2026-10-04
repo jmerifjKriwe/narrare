@@ -12,159 +12,42 @@ no mocks); the novel-gate fake backs ``verify_novel_owned``.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import TYPE_CHECKING
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
 from narrare.kb.bulk_extraction.contracts import (
     BulkChapterReader,
-    BulkChapterRef,
     BulkExtractionDispatcher,
     BulkExtractionJobStore,
 )
 from narrare.kb.bulk_extraction.schemas import (
-    BulkExtractionJobView,
     BulkExtractionResultsView,
-    BulkExtractionStatusView,
-    BulkExtractionTotals,
     BulkJobStatus,
 )
 from narrare.kb.bulk_extraction.service import BulkExtractionService
 from narrare.novels.models import Novel
 from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
 from tests.fakes.fake_novel_repo import FakeNovelRepository
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-OWNER = uuid4()
-NOVEL_ID = uuid4()
-NOW = datetime(2026, 10, 3, 12, 0, tzinfo=UTC)
-
-
-def _ref(position: int) -> BulkChapterRef:
-    return BulkChapterRef(uuid4(), f"Chapter {position}", position)
-
-
-def _job_view(
-    status: BulkJobStatus = BulkJobStatus.PENDING,
-    job_id: str = "job-1",
-    novel_id: UUID = NOVEL_ID,
-) -> BulkExtractionJobView:
-    return BulkExtractionJobView(
-        job_id=job_id,
-        novel_id=novel_id,
-        status=status,
-        created_at=NOW,
-        updated_at=NOW,
-        totals=BulkExtractionTotals(total=2, done=0, failed=0, remaining=2),
-        error=None,
-    )
-
-
-def _status_view(novel_id: UUID = NOVEL_ID) -> BulkExtractionStatusView:
-    return BulkExtractionStatusView(
-        job_id="job-1",
-        novel_id=novel_id,
-        status=BulkJobStatus.RUNNING,
-        created_at=NOW,
-        updated_at=NOW,
-        totals=BulkExtractionTotals(total=2, done=1, failed=0, remaining=1),
-        error=None,
-        chapters=[],
-    )
-
-
-def _results_view(novel_id: UUID = NOVEL_ID) -> BulkExtractionResultsView:
-    return BulkExtractionResultsView(
-        job_id="job-1", novel_id=novel_id, status=BulkJobStatus.COMPLETED, chapters=[]
-    )
-
-
-class _FakeStore:
-    """BulkExtractionJobStore fake: records calls, returns canned views.
-
-    ``active`` drives ``has_active_for``; ``cancel_error``/``resume_error``
-    script the store-side ConflictError paths.
-    """
-
-    def __init__(
-        self,
-        *,
-        active: bool = False,
-        cancel_error: ConflictError | None = None,
-        resume_error: ConflictError | None = None,
-        bound_novel_id: UUID | None = None,
-    ) -> None:
-        self.active = active
-        self.cancel_error = cancel_error
-        self.resume_error = resume_error
-        # Novel every canned view is bound to (defaults to the harness novel).
-        # Overridden by the novel-job-binding tests to simulate operating a
-        # job of another novel under this novel's URL.
-        self.bound_novel_id = bound_novel_id or NOVEL_ID
-        self.created_with: tuple[UUID, UUID, list[BulkChapterRef]] | None = None
-        self.read_calls: list[tuple[str, str, UUID]] = []
-
-    async def create_job(
-        self, novel_id: UUID, owner_user_id: UUID, chapters: Sequence[BulkChapterRef]
-    ) -> BulkExtractionJobView:
-        self.created_with = (novel_id, owner_user_id, list(chapters))
-        return _job_view()
-
-    async def get_status(self, job_id: str, user_id: UUID) -> BulkExtractionStatusView:
-        self.read_calls.append(("get_status", job_id, user_id))
-        return _status_view(novel_id=self.bound_novel_id)
-
-    async def get_results(self, job_id: str, user_id: UUID) -> BulkExtractionResultsView:
-        self.read_calls.append(("get_results", job_id, user_id))
-        return _results_view(novel_id=self.bound_novel_id)
-
-    async def cancel_job(self, job_id: str, user_id: UUID) -> BulkExtractionJobView:
-        self.read_calls.append(("cancel_job", job_id, user_id))
-        if self.cancel_error is not None:
-            raise self.cancel_error
-        return _job_view(BulkJobStatus.CANCELLING, novel_id=self.bound_novel_id)
-
-    async def resume_job(self, job_id: str, user_id: UUID) -> BulkExtractionJobView:
-        self.read_calls.append(("resume_job", job_id, user_id))
-        if self.resume_error is not None:
-            raise self.resume_error
-        return _job_view(BulkJobStatus.PENDING, job_id=job_id, novel_id=self.bound_novel_id)
-
-    async def has_active_for(self, novel_id: UUID) -> bool:
-        return self.active
-
-
-class _FakeReader:
-    """BulkChapterReader fake: canned refs or a scripted ValidationError."""
-
-    def __init__(
-        self,
-        refs: list[BulkChapterRef] | None = None,
-        error: ValidationError | None = None,
-    ) -> None:
-        self.refs = refs or []
-        self.error = error
-        self.load_calls: list[tuple[UUID, tuple[UUID, ...]]] = []
-
-    async def load(self, novel_id: UUID, chapter_ids: Sequence[UUID]) -> list[BulkChapterRef]:
-        self.load_calls.append((novel_id, tuple(chapter_ids)))
-        if self.error is not None:
-            raise self.error
-        return self.refs
-
-
-class _FakeDispatcher:
-    """BulkExtractionDispatcher fake: records every dispatch."""
-
-    def __init__(self) -> None:
-        self.dispatched: list[tuple[str, UUID, UUID]] = []
-
-    async def dispatch(self, job_id: str, novel_id: UUID, owner_id: UUID) -> None:
-        self.dispatched.append((job_id, novel_id, owner_id))
+from tests.unit.api.kb._bulk_extraction_fakes import (
+    NOVEL_ID,
+    OWNER,
+)
+from tests.unit.api.kb._bulk_extraction_fakes import (
+    FakeCorpusSource as _FakeCorpusSource,
+)
+from tests.unit.api.kb._bulk_extraction_fakes import (
+    FakeDispatcher as _FakeDispatcher,
+)
+from tests.unit.api.kb._bulk_extraction_fakes import (
+    FakeReader as _FakeReader,
+)
+from tests.unit.api.kb._bulk_extraction_fakes import (
+    FakeStore as _FakeStore,
+)
+from tests.unit.api.kb._bulk_extraction_fakes import (
+    make_ref as _ref,
+)
 
 
 def _owned_novel_repo() -> FakeNovelRepository:
@@ -191,11 +74,13 @@ class _Harness:
     ) -> None:
         self.store = store or _FakeStore()
         self.reader = reader or _FakeReader()
+        self.corpus_source = _FakeCorpusSource()
         self.dispatcher = _FakeDispatcher()
         self.novel_repo = novel_repo or _owned_novel_repo()
         self.service = BulkExtractionService(
             store=self.store,
             reader=self.reader,
+            corpus_source=self.corpus_source,
             dispatcher=self.dispatcher,
             novel_repo=self.novel_repo,
         )

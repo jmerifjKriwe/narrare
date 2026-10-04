@@ -51,10 +51,13 @@ from narrare.kb.bulk_extraction.registry_store import (
 from narrare.kb.bulk_extraction.registry_store import (
     cancel_requested,
     find_active_for_novel,
+    kind_of,
     mark_cancelled,
     mark_chapter_done,
     mark_chapter_failed,
     mark_chapter_running,
+    mark_dedup,
+    mark_dedup_unavailable,
     mark_job_completed,
     mark_job_failed,
     mark_job_running,
@@ -77,13 +80,14 @@ from narrare.kb.bulk_extraction.schemas import (
     BulkExtractionTotals,
     BulkJobStatus,
 )
+from narrare.kb.bulk_extraction.schemas_corpus import BulkDedupInfo
 from narrare_core.shared.errors import ConflictError, NotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from uuid import UUID
 
-    from narrare.kb.bulk_extraction.contracts import BulkChapterRef
+    from narrare.kb.bulk_extraction.contracts import BulkChapterRef, BulkJobKind
 
 logger = structlog.get_logger(__name__)
 
@@ -125,11 +129,29 @@ def _job_view(record: _BulkJobRecord) -> BulkExtractionJobView:
     )
 
 
+def _dedup_view(record: _BulkJobRecord) -> BulkDedupInfo | None:
+    """Dedup block for the status/results views (F3 §6.3, invariant 3).
+
+    ``None`` for explicit jobs (the post-pass trigger is corpus-only); the
+    record's analysis state otherwise — ``{analyzed: false}`` until the
+    runner's post-pass lands or gives up (RULE-11: visible, never silent).
+    """
+    if record.kind == "explicit":
+        return None
+    return BulkDedupInfo(
+        analyzed=record.dedup_analyzed,
+        suggestion_count=record.dedup_suggestion_count,
+    )
+
+
 # ── User-facing operations (owner-checked) ─────────────────────────────────
 
 
 def create(
-    novel_id: UUID, owner_user_id: UUID, chapters: Sequence[BulkChapterRef]
+    novel_id: UUID,
+    owner_user_id: UUID,
+    chapters: Sequence[BulkChapterRef],
+    kind: BulkJobKind = "explicit",
 ) -> BulkExtractionJobView:
     """Register a PENDING job owned by ``owner_user_id`` and return its view.
 
@@ -137,7 +159,8 @@ def create(
     owner binding is trustworthy by construction. The job id is an opaque
     ``secrets.token_urlsafe(16)`` token. Chapters are stored in position
     order (the job's canonical order — spec §4.1), regardless of request
-    order.
+    order. ``kind`` (F3): ``"explicit"`` engine job or ``"corpus"`` pass
+    job — the latter arms the post-pass dedup trigger on completion.
     """
     record = _BulkJobRecord(
         job_id=secrets.token_urlsafe(16),
@@ -149,6 +172,7 @@ def create(
             _ChapterRecord(chapter_id=c.chapter_id, title=c.title, position=c.position)
             for c in sorted(chapters, key=lambda ref: ref.position)
         ],
+        kind=kind,
     )
     _JOBS[record.job_id] = record
     logger.info(
@@ -156,6 +180,7 @@ def create(
         job_id=record.job_id,
         novel_id=str(novel_id),
         chapter_count=len(record.chapters),
+        kind=kind,
     )
     return _job_view(record)
 
@@ -183,6 +208,7 @@ def status(job_id: str, user_id: UUID) -> BulkExtractionStatusView:
         totals=_totals(record),
         error=record.error,
         chapters=chapters,
+        dedup=_dedup_view(record),
     )
 
 
@@ -205,7 +231,11 @@ def results(job_id: str, user_id: UUID) -> BulkExtractionResultsView:
         for c in record.chapters
     ]
     return BulkExtractionResultsView(
-        job_id=record.job_id, novel_id=record.novel_id, status=record.status, chapters=chapters
+        job_id=record.job_id,
+        novel_id=record.novel_id,
+        status=record.status,
+        chapters=chapters,
+        dedup=_dedup_view(record),
     )
 
 
@@ -268,10 +298,13 @@ __all__ = [
     "cancel_requested",
     "create",
     "find_active_for_novel",
+    "kind_of",
     "mark_cancelled",
     "mark_chapter_done",
     "mark_chapter_failed",
     "mark_chapter_running",
+    "mark_dedup",
+    "mark_dedup_unavailable",
     "mark_job_completed",
     "mark_job_failed",
     "mark_job_running",

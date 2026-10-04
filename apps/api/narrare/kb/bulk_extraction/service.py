@@ -18,7 +18,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from narrare.kb._novel_gate import verify_novel_owned
-from narrare_core.shared.errors import ConflictError, NotFoundError
+from narrare.kb.bulk_extraction.corpus import build_estimate, select_corpus_prefix
+from narrare.kb.bulk_extraction.schemas_corpus import CorpusEstimateView
+from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -29,6 +31,7 @@ if TYPE_CHECKING:
         BulkChapterRef,
         BulkExtractionDispatcher,
         BulkExtractionJobStore,
+        CorpusChapterSource,
     )
     from narrare.kb.bulk_extraction.schemas import (
         BulkExtractionJobView,
@@ -45,11 +48,13 @@ class BulkExtractionService:
         self,
         store: BulkExtractionJobStore,
         reader: BulkChapterReader,
+        corpus_source: CorpusChapterSource,
         dispatcher: BulkExtractionDispatcher,
         novel_repo: NovelRepositoryProtocol,
     ) -> None:
         self._store = store
         self._reader = reader
+        self._corpus_source = corpus_source
         self._dispatcher = dispatcher
         self._novel_repo = novel_repo
 
@@ -71,6 +76,47 @@ class BulkExtractionService:
         if await self._store.has_active_for(novel_id):
             raise ConflictError("A bulk extraction job is already active for this novel")
         view = await self._store.create_job(novel_id, user_id, refs)
+        await self._dispatcher.dispatch(view.job_id, novel_id, user_id)
+        return view
+
+    async def corpus_estimate(self, novel_id: UUID, user_id: UUID) -> CorpusEstimateView:
+        """Honest pre-run estimate over the novel's position-order prefix (F3 §4.3).
+
+        Gate → enumerate ALL rows (``CorpusChapterSource``, position order)
+        → pure prefix selection → wire view. A zero-chapter novel is an
+        HONEST zero here (the FE hides the sidebar entry for empty novels);
+        only :meth:`start_corpus` turns an empty selection into a 422
+        (rider b — the estimate endpoint never lies, the start endpoint
+        never runs nothing silently).
+        """
+        await self._gate(novel_id, user_id)
+        rows = await self._corpus_source.load_all(novel_id)
+        selection = select_corpus_prefix(rows)
+        return CorpusEstimateView.model_validate(build_estimate(selection), from_attributes=True)
+
+    async def start_corpus(self, novel_id: UUID, user_id: UUID) -> BulkExtractionJobView:
+        """Start a corpus pass over the START-time prefix (F3 §4.4).
+
+        Mirrors ``start``'s normative check order: ownership gate → scope
+        selection → single-active-job 409 → create → dispatch. The scope is
+        RE-selected at start time — the estimate may be stale (chapters
+        added/removed since the confirm dialog) and the job runs over what
+        exists NOW, never a silent superset of what was shown (spec R3/R4,
+        rider d). An empty selection (a novel without chapters —
+        ``select_corpus_prefix`` itself already 422s a first-chapter-over-cap
+        novel) is rejected with honest counts (rider b).
+        """
+        await self._gate(novel_id, user_id)
+        rows = await self._corpus_source.load_all(novel_id)
+        selection = select_corpus_prefix(rows)
+        if not selection.selected:
+            raise ValidationError(
+                f"Corpus pass cannot start: the novel has {selection.total_chapters} "
+                f"chapters — import or write chapters first."
+            )
+        if await self._store.has_active_for(novel_id):
+            raise ConflictError("A bulk extraction job is already active for this novel")
+        view = await self._store.create_job(novel_id, user_id, selection.selected, kind="corpus")
         await self._dispatcher.dispatch(view.job_id, novel_id, user_id)
         return view
 
