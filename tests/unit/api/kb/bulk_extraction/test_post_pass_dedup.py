@@ -185,6 +185,7 @@ class TestDegradedOutcome:
         assert "mark_dedup" not in recorder.calls
         job = registry.status(job_id, OWNER)
         assert job.status is BulkJobStatus.COMPLETED  # still non-fatal
+        assert job.dedup is not None
         assert (job.dedup.analyzed, job.dedup.suggestion_count) == (False, None)
 
 
