@@ -125,6 +125,30 @@ describe("ImportModal", () => {
     expect(onExtract).not.toHaveBeenCalled();
   });
 
+  it("hides the Extract CTA for a 0-chapter commit result (plain close only)", async () => {
+    vi.mocked(importApi.commit).mockResolvedValueOnce({
+      novel_id: "novel-1",
+      created_count: 0,
+      first_position: 0,
+      last_position: 0,
+      chapters: [],
+    });
+    const onExtract = vi.fn();
+    const { onOpenChange } = renderModal(onExtract);
+
+    await commitThroughUi();
+
+    // Success card still confirms the (empty) import, but there is nothing
+    // to extract — only the plain close remains.
+    expect(await screen.findByTestId("import-success-card")).toBeInTheDocument();
+    expect(screen.queryByTestId("import-extract-btn")).not.toBeInTheDocument();
+    expect(screen.getByTestId("import-notnow-btn")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("import-notnow-btn"));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onExtract).not.toHaveBeenCalled();
+  });
+
   it("keeps the modal open with the error on commit failure", async () => {
     vi.mocked(importApi.commit).mockRejectedValueOnce(new Error("boom"));
     const { onOpenChange } = renderModal();

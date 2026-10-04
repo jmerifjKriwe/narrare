@@ -5,6 +5,7 @@ import { importApi, setupApi } from "@/lib/api/client";
 import { buildAdjustments } from "@/lib/importing/simulateOperations";
 import { writeSuggestExtractFlag } from "@/lib/importing/suggestExtractFlag";
 import { useWizardStore } from "@/lib/stores/wizardStore";
+import type { ImportCommitResponse } from "@/types";
 
 /**
  * Runs wizard completion: `setup.complete`, optional import commit, navigation.
@@ -39,15 +40,28 @@ export function useWizardCompletion(hasProviders: boolean): () => Promise<void> 
     const result = await setupApi.complete(updatedState);
 
     if (updatedState.starter === "import" && importSelection) {
+      let importedChapters: ImportCommitResponse["chapters"] | null = null;
       try {
         const commitResult = await importApi.commit(
           importSelection.files,
           result.novel_id,
           buildAdjustments(importSelection),
         );
-        writeSuggestExtractFlag(result.novel_id, commitResult.chapters);
+        importedChapters = commitResult.chapters;
       } catch {
         sessionStorage.setItem(`narrare:importFailed:${result.novel_id}`, "1");
+      }
+      // AFTER the failure semantics (T8 fix round): a failed suggestion-write
+      // (e.g. sessionStorage quota) must never flip the failure flag above —
+      // the import itself succeeded, and "Retry import" would re-commit and
+      // duplicate chapters. The banner is a convenience (D9a), not a
+      // guarantee, so the error is swallowed deliberately.
+      if (importedChapters !== null) {
+        try {
+          writeSuggestExtractFlag(result.novel_id, importedChapters);
+        } catch {
+          // best-effort only
+        }
       }
     }
 

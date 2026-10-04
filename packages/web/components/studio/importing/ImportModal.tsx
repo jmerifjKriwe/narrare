@@ -104,14 +104,17 @@ export function ImportModal({ novelId, open, onOpenChange, onExtract }: ImportMo
                 >
                   {t("suggestExtract.notNow")}
                 </button>
-                <button
-                  type="button"
-                  data-testid="import-extract-btn"
-                  onClick={handleExtract}
-                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-                >
-                  {t("suggestExtract.start")}
-                </button>
+                {/* Nothing imported → nothing to extract: plain close only. */}
+                {success.chapters.length > 0 && (
+                  <button
+                    type="button"
+                    data-testid="import-extract-btn"
+                    onClick={handleExtract}
+                    className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                  >
+                    {t("suggestExtract.start")}
+                  </button>
+                )}
               </div>
               <p className="mt-3 text-xs text-muted-foreground">{t("suggestExtract.pacingNote")}</p>
             </>

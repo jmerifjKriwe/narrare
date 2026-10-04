@@ -500,6 +500,50 @@ describe("WizardShell completion", () => {
     expect(routerPush).toHaveBeenCalledWith("/novel/novel-9");
   });
 
+  it("does not flip the failure flag when the suggestion write throws after a successful commit", async () => {
+    const file = new File(["# A\nb"], "a.md");
+    useWizardStore.setState({
+      state: { ...useWizardStore.getState().state, starter: "import" },
+      importSelection: importSelectionFor([file]),
+    });
+    vi.mocked(importApi.commit).mockResolvedValue({
+      novel_id: "novel-9",
+      created_count: 2,
+      first_position: 0,
+      last_position: 1,
+      chapters: [
+        { id: "c1", title: "One", position: 1, word_count: 20 },
+        { id: "c2", title: "Two", position: 2, word_count: 14 },
+      ],
+    });
+
+    // Storage refuses the SUGGESTION write (e.g. quota) — the import itself
+    // has already succeeded at that point.
+    const realSetItem = sessionStorage.setItem.bind(sessionStorage);
+    const setItemSpy = vi
+      .spyOn(sessionStorage, "setItem")
+      .mockImplementation((key: string, value: string) => {
+        if (key === "narrare:importSuggestExtract:novel-9") {
+          throw new Error("quota exceeded");
+        }
+        realSetItem(key, value);
+      });
+
+    try {
+      renderWithProviders(<WizardShell />);
+      fireEvent.click(await screen.findByTestId("wizard-complete"));
+
+      await waitFor(() => expect(routerPush).toHaveBeenCalledWith("/novel/novel-9"));
+      // A failed suggestion-write is best-effort: it must NEVER flip the
+      // failure flag for a commit that succeeded (that would offer a retry
+      // and re-commit → duplicate chapters).
+      expect(sessionStorage.getItem("narrare:importFailed:novel-9")).toBeNull();
+      expect(useWizardStore.getState().importSelection).toBeNull();
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
+
   it("does not set the suggestion flag for an empty commit result", async () => {
     useWizardStore.setState({
       state: { ...useWizardStore.getState().state, starter: "import" },
