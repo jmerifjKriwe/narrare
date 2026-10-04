@@ -1,11 +1,15 @@
 /**
  * Bulk extraction API client tests (F2, ADR-092, plan Task 6).
  *
- * Two concerns:
+ * Three concerns:
  * 1. Wire paths + bodies: the five client methods must hit the exact REST
  *    paths of spec §4 (`/novels/{id}/kb/extract/bulk…`) with the exact
  *    request bodies.
- * 2. RULE-17 mirror parity: every TS type must mirror the field list of its
+ * 2. Status-carrying errors: non-OK responses reject with
+ *    `BulkExtractionApiError` carrying the HTTP status (fetchApi flattens
+ *    errors to strings — the poll loop needs the status to detect a 404
+ *    interrupted job, spec §8.2).
+ * 3. RULE-17 mirror parity: every TS type must mirror the field list of its
  *    `apps/api/narrare/kb/bulk_extraction/schemas.py` counterpart EXACTLY.
  *    Enforced twice — exhaustive compile-time field tables (drift fails
  *    `pnpm type-check`) and runtime fixture key-set assertions (drift fails
@@ -16,11 +20,12 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/api/core", () => ({ fetchApi: vi.fn() }));
+vi.mock("@/lib/api/core", () => ({ fetchApiRaw: vi.fn() }));
 
 import {
   type BulkChapterState,
   type BulkChapterStatusView,
+  BulkExtractionApiError,
   type BulkExtractionJobView,
   type BulkExtractionResultChapter,
   type BulkExtractionResultsView,
@@ -29,10 +34,18 @@ import {
   type BulkJobStatus,
   bulkExtractionApi,
 } from "@/lib/api/bulkExtraction";
-import { fetchApi } from "@/lib/api/core";
+import { fetchApiRaw } from "@/lib/api/core";
 import type { ExtractionItem, ExtractionOutput } from "@/lib/api/extraction";
 
-const f = vi.mocked(fetchApi);
+const raw = vi.mocked(fetchApiRaw);
+
+/** JSON Response fixture (real Response — the client reads .ok/.status/.json). */
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(body === undefined ? undefined : JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -88,17 +101,24 @@ const RESULTS_VIEW_FIELDS: Record<keyof BulkExtractionResultsView, true> = {
   chapters: true,
 };
 
-// Normative enum sets (spec §4.1/§4.2). A widened/narrowed TS union breaks the
-// assignment below at type-check; the runtime toEqual pins the exact sets.
-const ALL_JOB_STATUSES: readonly BulkJobStatus[] = [
-  "pending",
-  "running",
-  "cancelling",
-  "completed",
-  "cancelled",
-  "failed",
-];
-const ALL_CHAPTER_STATES: readonly BulkChapterState[] = ["pending", "running", "done", "failed"];
+// Normative enum sets (spec §4.1/§4.2) — exhaustive BOTH ways: dropping a
+// union member leaves a missing key (type-check error), adding one leaves an
+// excess key (also a type-check error). The runtime assertion pins the exact
+// key lists against the spec.
+const JOB_STATUS_PIN: Record<BulkJobStatus, true> = {
+  pending: true,
+  running: true,
+  cancelling: true,
+  completed: true,
+  cancelled: true,
+  failed: true,
+};
+const CHAPTER_STATE_PIN: Record<BulkChapterState, true> = {
+  pending: true,
+  running: true,
+  done: true,
+  failed: true,
+};
 
 const extractionItem: ExtractionItem = {
   item_type: "new_entity",
@@ -117,9 +137,9 @@ const output: ExtractionOutput = { results: [extractionItem], analysis_notes: "S
 
 describe("bulkExtractionApi — wire paths (spec §4)", () => {
   it("startBulkExtraction POSTs chapter_ids to …/kb/extract/bulk", async () => {
-    f.mockResolvedValueOnce({} as never);
+    raw.mockResolvedValueOnce(jsonResponse({}));
     await bulkExtractionApi.startBulkExtraction("n1", ["c1", "c2"]);
-    expect(f).toHaveBeenCalledWith("/novels/n1/kb/extract/bulk", {
+    expect(raw).toHaveBeenCalledWith("/novels/n1/kb/extract/bulk", {
       method: "POST",
       body: JSON.stringify({ chapter_ids: ["c1", "c2"] }),
       signal: undefined,
@@ -127,46 +147,77 @@ describe("bulkExtractionApi — wire paths (spec §4)", () => {
   });
 
   it("bulkJobStatus GETs …/kb/extract/bulk/{jobId}/status", async () => {
-    f.mockResolvedValueOnce({} as never);
+    raw.mockResolvedValueOnce(jsonResponse({}));
     await bulkExtractionApi.bulkJobStatus("n1", "job-9");
-    expect(f).toHaveBeenCalledWith("/novels/n1/kb/extract/bulk/job-9/status", {
+    expect(raw).toHaveBeenCalledWith("/novels/n1/kb/extract/bulk/job-9/status", {
       signal: undefined,
     });
   });
 
   it("bulkJobResults GETs …/kb/extract/bulk/{jobId}/results", async () => {
-    f.mockResolvedValueOnce({} as never);
+    raw.mockResolvedValueOnce(jsonResponse({}));
     await bulkExtractionApi.bulkJobResults("n1", "job-9");
-    expect(f).toHaveBeenCalledWith("/novels/n1/kb/extract/bulk/job-9/results", {
+    expect(raw).toHaveBeenCalledWith("/novels/n1/kb/extract/bulk/job-9/results", {
       signal: undefined,
     });
   });
 
   it("cancelBulkJob POSTs …/kb/extract/bulk/{jobId}/cancel (no body)", async () => {
-    f.mockResolvedValueOnce({} as never);
+    raw.mockResolvedValueOnce(jsonResponse({}));
     await bulkExtractionApi.cancelBulkJob("n1", "job-9");
-    expect(f).toHaveBeenCalledWith("/novels/n1/kb/extract/bulk/job-9/cancel", {
+    expect(raw).toHaveBeenCalledWith("/novels/n1/kb/extract/bulk/job-9/cancel", {
       method: "POST",
       signal: undefined,
     });
   });
 
   it("resumeBulkJob POSTs …/kb/extract/bulk/{jobId}/resume (no body)", async () => {
-    f.mockResolvedValueOnce({} as never);
+    raw.mockResolvedValueOnce(jsonResponse({}));
     await bulkExtractionApi.resumeBulkJob("n1", "job-9");
-    expect(f).toHaveBeenCalledWith("/novels/n1/kb/extract/bulk/job-9/resume", {
+    expect(raw).toHaveBeenCalledWith("/novels/n1/kb/extract/bulk/job-9/resume", {
       method: "POST",
       signal: undefined,
     });
   });
 
   it("forwards the AbortSignal when given", async () => {
-    f.mockResolvedValueOnce({} as never);
+    raw.mockResolvedValueOnce(jsonResponse({}));
     const controller = new AbortController();
     await bulkExtractionApi.bulkJobStatus("n1", "job-9", controller.signal);
-    expect(f).toHaveBeenCalledWith("/novels/n1/kb/extract/bulk/job-9/status", {
+    expect(raw).toHaveBeenCalledWith("/novels/n1/kb/extract/bulk/job-9/status", {
       signal: controller.signal,
     });
+  });
+
+  it("parses the JSON body of a successful response", async () => {
+    raw.mockResolvedValueOnce(jsonResponse({ job_id: "job-9", novel_id: "n1", status: "pending" }));
+    const view = await bulkExtractionApi.startBulkExtraction("n1", ["c1"]);
+    expect(view.job_id).toBe("job-9");
+  });
+});
+
+describe("bulkExtractionApi — status-carrying typed errors", () => {
+  it("404 with a detail string → BulkExtractionApiError with status 404", async () => {
+    raw.mockResolvedValueOnce(jsonResponse({ detail: "Bulk extraction job not found" }, 404));
+    const err = await bulkExtractionApi.bulkJobStatus("n1", "gone").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BulkExtractionApiError);
+    expect(err).toMatchObject({ status: 404, message: "Bulk extraction job not found" });
+  });
+
+  it("409 conflict keeps its status so callers can distinguish it from 404", async () => {
+    raw.mockResolvedValueOnce(
+      jsonResponse({ detail: "A bulk extraction job is already active for this novel" }, 409),
+    );
+    const err = await bulkExtractionApi.startBulkExtraction("n1", ["c1"]).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BulkExtractionApiError);
+    expect(err).toMatchObject({ status: 409 });
+  });
+
+  it("a non-JSON error body degrades to 'HTTP <status>' instead of crashing", async () => {
+    raw.mockResolvedValueOnce(new Response("Bad Gateway", { status: 502 }));
+    const err = await bulkExtractionApi.bulkJobStatus("n1", "j").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BulkExtractionApiError);
+    expect(err).toMatchObject({ status: 502, message: "HTTP 502" });
   });
 });
 
@@ -263,8 +314,8 @@ describe("RULE-17 mirror parity — schemas.py field lists", () => {
     expect(failed.output).toBeNull();
   });
 
-  it("job status + chapter state unions match the normative sets", () => {
-    expect(ALL_JOB_STATUSES).toEqual([
+  it("job status + chapter state unions match the normative sets exactly", () => {
+    expect(Object.keys(JOB_STATUS_PIN)).toEqual([
       "pending",
       "running",
       "cancelling",
@@ -272,6 +323,6 @@ describe("RULE-17 mirror parity — schemas.py field lists", () => {
       "cancelled",
       "failed",
     ]);
-    expect(ALL_CHAPTER_STATES).toEqual(["pending", "running", "done", "failed"]);
+    expect(Object.keys(CHAPTER_STATE_PIN)).toEqual(["pending", "running", "done", "failed"]);
   });
 });

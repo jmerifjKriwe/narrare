@@ -8,45 +8,31 @@
  * `useBulkExtractionPoll`). Resume bumps the job epoch, which restarts the
  * poll loop on the SAME job id (start would create a new job — spec §4.5).
  *
+ * Interrupted degrade (spec §8.2): a 404 poll (job lost to a server restart
+ * or foreign/unknown id) flips `isInterrupted`, halts the loop, and
+ * `isActive` goes false — recover via a new `start()`. `reset()` halts
+ * polling deliberately and clears all job state.
+ *
  * The status view is the single source of truth: cancel/resume responses
  * (job views without chapter rows, spec §4.4/§4.5) are merged into it, so
  * the last polled chapter rows survive.
+ *
+ * Public result types live in {@link useBulkExtraction.types}.
  *
  * @module useBulkExtraction
  */
 
 import { useCallback, useRef, useState } from "react";
 import {
-  type BulkChapterStatusView,
+  BulkExtractionApiError,
   type BulkExtractionJobView,
   type BulkExtractionStatusView,
-  type BulkExtractionTotals,
   bulkExtractionApi,
 } from "@/lib/api/bulkExtraction";
+import type { UseBulkExtractionResult } from "@/lib/hooks/useBulkExtraction.types";
 import { isTerminalJobStatus, useBulkExtractionPoll } from "@/lib/hooks/useBulkExtractionPoll";
 
-export interface UseBulkExtractionResult {
-  /** Adopted job id, or null before the first successful start. */
-  jobId: string | null;
-  /** Latest polled status view (totals + per-chapter rows), or null. */
-  status: BulkExtractionStatusView | null;
-  /** Per-chapter rows of the latest poll, in position order. */
-  chapters: BulkChapterStatusView[];
-  /** Aggregated counts of the latest poll, or null. */
-  totals: BulkExtractionTotals | null;
-  /** True while the start request is in flight. */
-  isStarting: boolean;
-  /** True while a job is adopted and not yet terminal (poll loop running). */
-  isActive: boolean;
-  /** Latest start/poll/cancel/resume error message, or null. */
-  error: string | null;
-  /** Start a job over the given chapters; resolves null on failure. */
-  start: (chapterIds: string[]) => Promise<BulkExtractionJobView | null>;
-  /** Cooperatively cancel the adopted job (spec §4.4). */
-  cancel: () => Promise<void>;
-  /** Resume a cancelled/failed job on the same id and re-poll (spec §4.5). */
-  resume: () => Promise<void>;
-}
+export type { UseBulkExtractionResult } from "@/lib/hooks/useBulkExtraction.types";
 
 function toErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -59,6 +45,7 @@ export function useBulkExtraction(novelId: string): UseBulkExtractionResult {
   const [status, setStatus] = useState<BulkExtractionStatusView | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isInterrupted, setIsInterrupted] = useState(false);
   const jobId = job?.id ?? null;
   const jobIdRef = useRef<string | null>(null);
   jobIdRef.current = jobId;
@@ -73,6 +60,7 @@ export function useBulkExtraction(novelId: string): UseBulkExtractionResult {
       setIsStarting(true);
       setError(null);
       setStatus(null);
+      setIsInterrupted(false);
       try {
         const view = await bulkExtractionApi.startBulkExtraction(novelId, chapterIds);
         setJob({ id: view.job_id, epoch: 0 });
@@ -104,18 +92,34 @@ export function useBulkExtraction(novelId: string): UseBulkExtractionResult {
     try {
       mergeJobView(await bulkExtractionApi.resumeBulkJob(novelId, currentJobId));
       setError(null);
+      setIsInterrupted(false);
       setJob((prev) => (prev === null ? prev : { ...prev, epoch: prev.epoch + 1 }));
     } catch (err) {
       setError(toErrorMessage(err));
     }
   }, [mergeJobView, novelId]);
 
+  /** Halt polling deliberately and drop all job state (spec §8.2 restart). */
+  const reset = useCallback(() => {
+    setJob(null);
+    setStatus(null);
+    setError(null);
+    setIsInterrupted(false);
+  }, []);
+
   useBulkExtractionPoll(novelId, job, {
     onStatus: (view) => {
       setStatus(view);
       setError(null);
     },
-    onPollError: (err) => setError(toErrorMessage(err)),
+    onPollError: (err) => {
+      setError(toErrorMessage(err));
+      // A 404 means the job is gone (interrupted, spec §8.2); the poll loop
+      // has already halted itself for that case.
+      if (err instanceof BulkExtractionApiError && err.status === 404) {
+        setIsInterrupted(true);
+      }
+    },
   });
 
   const isTerminal = status !== null && isTerminalJobStatus(status.status);
@@ -126,10 +130,12 @@ export function useBulkExtraction(novelId: string): UseBulkExtractionResult {
     chapters: status?.chapters ?? [],
     totals: status?.totals ?? null,
     isStarting,
-    isActive: jobId !== null && !isTerminal,
+    isActive: jobId !== null && !isTerminal && !isInterrupted,
+    isInterrupted,
     error,
     start,
     cancel,
     resume,
+    reset,
   };
 }

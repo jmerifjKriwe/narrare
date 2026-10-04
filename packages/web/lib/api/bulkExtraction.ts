@@ -7,6 +7,12 @@
  * `apps/api/narrare/kb/bulk_extraction/schemas.py` — field-for-field, so
  * FE/BE drift fails loudly at the seam.
  *
+ * Errors: non-OK responses reject with {@link BulkExtractionApiError}
+ * carrying the HTTP status. This client is built on `fetchApiRaw` (scoped
+ * here — `fetchApi` itself is unchanged globally) because `fetchApi`
+ * flattens errors to strings and the poll loop needs the status to detect a
+ * 404 interrupted job (spec §8.2).
+ *
  * Types are declared inline following the `extraction.ts` precedent
  * (documented deviation from the `importing.ts` types/-file pattern, plan
  * Task 6): the bulk surface and its mirror belong to the same seam as the
@@ -18,7 +24,7 @@
  * the results view only (payload-size boundary, spec §4.2/§4.3).
  */
 
-import { fetchApi } from "./client";
+import { fetchApiRaw } from "./client";
 import type { ExtractionOutput } from "./extraction";
 
 // --- Types (RULE-17 mirror of bulk_extraction/schemas.py) ---
@@ -83,40 +89,77 @@ export interface BulkExtractionResultsView {
   chapters: BulkExtractionResultChapter[];
 }
 
+// --- Status-carrying error + response parsing ---
+
+/** Error from a bulk endpoint carrying the HTTP status (404 = job gone). */
+export class BulkExtractionApiError extends Error {
+  /** HTTP status code (404 interrupted / 409 conflict / 422 validation / …). */
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "BulkExtractionApiError";
+    this.status = status;
+  }
+}
+
+/**
+ * Parse a `fetchApiRaw` response: JSON body on success, typed error with the
+ * status otherwise. The detail extraction mirrors `fetchApi`'s error shape
+ * (string detail, or FastAPI validation arrays joined from `msg` fields).
+ */
+async function parseBulkResponse<T>(response: Response): Promise<T> {
+  if (response.ok) {
+    if (response.status === 204) return undefined as T;
+    return (await response.json()) as T;
+  }
+  const body = (await response.json().catch(() => null)) as { detail?: unknown } | null;
+  const detail = body?.detail;
+  const message =
+    typeof detail === "string"
+      ? detail
+      : Array.isArray(detail)
+        ? detail
+            .map((entry) => (typeof entry?.msg === "string" ? entry.msg : String(entry)))
+            .join("; ")
+        : `HTTP ${response.status}`;
+  throw new BulkExtractionApiError(response.status, message);
+}
+
 // --- API functions ---
 
 export const bulkExtractionApi = {
   /** Start a bulk job over the given chapters. 201 → job view (status pending). */
   startBulkExtraction: (novelId: string, chapterIds: string[], signal?: AbortSignal) =>
-    fetchApi<BulkExtractionJobView>(`/novels/${novelId}/kb/extract/bulk`, {
+    fetchApiRaw(`/novels/${novelId}/kb/extract/bulk`, {
       method: "POST",
       body: JSON.stringify({ chapter_ids: chapterIds }),
       signal,
-    }),
+    }).then(parseBulkResponse<BulkExtractionJobView>),
 
   /** Poll one job: totals plus per-chapter states (spec §4.2). */
   bulkJobStatus: (novelId: string, jobId: string, signal?: AbortSignal) =>
-    fetchApi<BulkExtractionStatusView>(`/novels/${novelId}/kb/extract/bulk/${jobId}/status`, {
-      signal,
-    }),
+    fetchApiRaw(`/novels/${novelId}/kb/extract/bulk/${jobId}/status`, { signal }).then(
+      parseBulkResponse<BulkExtractionStatusView>,
+    ),
 
   /** Full outputs for the review panel — readable in ANY job state (spec §4.3). */
   bulkJobResults: (novelId: string, jobId: string, signal?: AbortSignal) =>
-    fetchApi<BulkExtractionResultsView>(`/novels/${novelId}/kb/extract/bulk/${jobId}/results`, {
-      signal,
-    }),
+    fetchApiRaw(`/novels/${novelId}/kb/extract/bulk/${jobId}/results`, { signal }).then(
+      parseBulkResponse<BulkExtractionResultsView>,
+    ),
 
   /** Cooperative cancel; terminal jobs conflict with 409 (spec §4.4). */
   cancelBulkJob: (novelId: string, jobId: string, signal?: AbortSignal) =>
-    fetchApi<BulkExtractionJobView>(`/novels/${novelId}/kb/extract/bulk/${jobId}/cancel`, {
+    fetchApiRaw(`/novels/${novelId}/kb/extract/bulk/${jobId}/cancel`, {
       method: "POST",
       signal,
-    }),
+    }).then(parseBulkResponse<BulkExtractionJobView>),
 
   /** Reset a cancelled/failed job and re-dispatch its runner (spec §4.5). */
   resumeBulkJob: (novelId: string, jobId: string, signal?: AbortSignal) =>
-    fetchApi<BulkExtractionJobView>(`/novels/${novelId}/kb/extract/bulk/${jobId}/resume`, {
+    fetchApiRaw(`/novels/${novelId}/kb/extract/bulk/${jobId}/resume`, {
       method: "POST",
       signal,
-    }),
+    }).then(parseBulkResponse<BulkExtractionJobView>),
 };

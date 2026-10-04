@@ -10,6 +10,10 @@
  * - polls on a fixed interval afterwards,
  * - never overlaps in-flight polls,
  * - stops on terminal job statuses, keeps polling through `cancelling`,
+ * - stops on a 404 poll error (job gone = interrupted, spec §8.2) and
+ *   exposes `isInterrupted`; other errors are transient,
+ * - `reset()` halts the loop deliberately and clears all job state,
+ * - a novelId change with a stale job 404s and halts — no endless polling,
  * - clears the interval on unmount,
  * - cancel/resume flow through the client and keep the status view as the
  *   single source of truth (job-view merge / poll-loop restart).
@@ -20,7 +24,9 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Hoisted mock: the five bulk client methods, driven per-test.
+// Hoisted mock: the five bulk client methods, driven per-test. The real
+// module is spread in so the REAL `BulkExtractionApiError` class flows
+// through — the poll loop's `instanceof` check must match what tests throw.
 const handle = vi.hoisted(() => ({
   start: vi.fn(),
   status: vi.fn(),
@@ -29,21 +35,26 @@ const handle = vi.hoisted(() => ({
   resume: vi.fn(),
 }));
 
-vi.mock("@/lib/api/bulkExtraction", () => ({
-  bulkExtractionApi: {
-    startBulkExtraction: handle.start,
-    bulkJobStatus: handle.status,
-    bulkJobResults: handle.results,
-    cancelBulkJob: handle.cancel,
-    resumeBulkJob: handle.resume,
-  },
-}));
+vi.mock("@/lib/api/bulkExtraction", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/bulkExtraction")>();
+  return {
+    ...actual,
+    bulkExtractionApi: {
+      startBulkExtraction: handle.start,
+      bulkJobStatus: handle.status,
+      bulkJobResults: handle.results,
+      cancelBulkJob: handle.cancel,
+      resumeBulkJob: handle.resume,
+    },
+  };
+});
 
-import type {
-  BulkChapterStatusView,
-  BulkExtractionJobView,
-  BulkExtractionStatusView,
-  BulkJobStatus,
+import {
+  type BulkChapterStatusView,
+  BulkExtractionApiError,
+  type BulkExtractionJobView,
+  type BulkExtractionStatusView,
+  type BulkJobStatus,
 } from "@/lib/api/bulkExtraction";
 import { useBulkExtraction } from "@/lib/hooks/useBulkExtraction";
 import {
@@ -240,6 +251,89 @@ describe("useBulkExtraction", () => {
     expect(handle.status).toHaveBeenCalledTimes(2);
     expect(result.current.error).toBeNull();
     expect(result.current.status?.status).toBe("running");
+  });
+
+  it("keeps polling on non-404 API errors (only a 404 means interrupted)", async () => {
+    handle.status
+      .mockRejectedValueOnce(new BulkExtractionApiError(500, "boom"))
+      .mockResolvedValueOnce(statusView("running"));
+
+    const { result } = renderHook(() => useBulkExtraction(NOVEL));
+    await startJob(result);
+    await flush();
+    expect(result.current.error).toBe("boom");
+    expect(result.current.isInterrupted).toBe(false);
+
+    await tick();
+    expect(handle.status).toHaveBeenCalledTimes(2);
+    expect(result.current.status?.status).toBe("running");
+  });
+
+  it("stops the loop and flags isInterrupted when a poll 404s (job gone)", async () => {
+    handle.status.mockRejectedValue(
+      new BulkExtractionApiError(404, "Bulk extraction job not found"),
+    );
+
+    const { result } = renderHook(() => useBulkExtraction(NOVEL));
+    await startJob(result);
+    await flush();
+    expect(handle.status).toHaveBeenCalledTimes(1);
+    expect(result.current.isInterrupted).toBe(true);
+    expect(result.current.isActive).toBe(false);
+    expect(result.current.error).toBe("Bulk extraction job not found");
+
+    // The loop halted: cadence ticks produce no further polls.
+    await tick();
+    await tick();
+    expect(handle.status).toHaveBeenCalledTimes(1);
+  });
+
+  it("reset() halts polling deliberately and clears all job state", async () => {
+    const { result } = renderHook(() => useBulkExtraction(NOVEL));
+    await startJob(result);
+    await flush();
+    expect(handle.status).toHaveBeenCalledTimes(1);
+    expect(result.current.isActive).toBe(true);
+
+    await act(async () => {
+      result.current.reset();
+    });
+
+    expect(result.current.jobId).toBeNull();
+    expect(result.current.status).toBeNull();
+    expect(result.current.isActive).toBe(false);
+    expect(result.current.isInterrupted).toBe(false);
+
+    // Halted for good: cadence ticks produce no further polls.
+    await tick();
+    await tick();
+    expect(handle.status).toHaveBeenCalledTimes(1);
+  });
+
+  it("a novelId change with a stale job 404s and halts instead of polling forever", async () => {
+    const { result, rerender } = renderHook(
+      ({ novelId }: { novelId: string }) => useBulkExtraction(novelId),
+      { initialProps: { novelId: NOVEL } },
+    );
+    await startJob(result); // job-1 adopted on n1
+    await flush();
+    expect(handle.status).toHaveBeenCalledTimes(1);
+
+    // The job registry is in-memory per backend process — a server restart
+    // (or a novelId change binding the stale job to the wrong novel) 404s.
+    handle.status.mockRejectedValue(
+      new BulkExtractionApiError(404, "Bulk extraction job not found"),
+    );
+    rerender({ novelId: "n2" });
+    await flush();
+    // The re-run polled once with the new novel id, got 404, and stopped.
+    expect(handle.status).toHaveBeenCalledTimes(2);
+    expect(handle.status).toHaveBeenLastCalledWith("n2", "job-1");
+    expect(result.current.isInterrupted).toBe(true);
+
+    await tick();
+    await tick();
+    expect(handle.status).toHaveBeenCalledTimes(2);
   });
 
   it("cancel posts through the client and merges the job view into the status view", async () => {
