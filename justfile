@@ -453,6 +453,11 @@ check-architecture:
     uv run --all-packages python scripts/check_prompt_surface_contract.py
     uv run --all-packages python scripts/check_empty_kb_vars.py
     uv run --all-packages python scripts/check_frontmatter_schema.py
+    # RULE-10 test-existence gate — mirrors the CI architecture job's step
+    # (ci.yml: `check_test_coverage_gaps.py --fail-on-missing`, same flags)
+    # so the local gate can no longer go green while CI goes red on it
+    # (PR #236 run 37032595571). Measured ~0.6s (42 services, 0 missing).
+    uv run --all-packages python scripts/check_test_coverage_gaps.py --fail-on-missing
 
 # Run ruff linter (with auto-fix)
 lint:

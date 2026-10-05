@@ -901,11 +901,13 @@ architecture, lint, typecheck, security, unit + integration + e2e.
 
 > **Test-file type checking:** The main pyright config (`pyproject.toml`,
 > strict) excludes `tests/` for performance (~1k test files). Test files are
-> type-checked separately by `tests/pyrightconfig.json` (basic mode) — in the
-> pre-commit `pyright-tests` hook AND in the standard gate (`just check` →
-> "Typecheck (Tests)" step), so test-file type errors are caught before
-> commit, not only at commit time. Run it in isolation with
-> `just typecheck-tests`.
+> type-checked separately by `tests/pyrightconfig.json` (basic mode) at three
+> enforcement points: the pre-commit `pyright-tests-staged` hook (staged test
+> files only — ~2s scoped run; added after 61f39c9b showed test-file type
+> errors surfacing only at verify/CI), the pre-push `pyright-tests` hook
+> (full test suite — D1 latency decision, 2026-08-13 pre-commit runtime
+> optimization plan), and the standard gate (`just check` →
+> "Typecheck (Tests)" step). Run it in isolation with `just typecheck-tests`.
 
 > **Tip:** The pre-commit fast-path can speed up local commit cycles during
 > test development. See

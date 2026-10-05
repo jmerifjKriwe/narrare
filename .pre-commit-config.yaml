@@ -235,7 +235,11 @@ repos:
         pass_filenames: false
         stages: [pre-push]
 
-      # Pyright — light type check for tests (only when test files change)
+      # Pyright — light type check for tests (FULL test suite, pre-push only:
+      # D1 latency decision in docs/development/plans/
+      # 2026-08-13-pre-commit-runtime-optimization.md — pre-commit keeps only
+      # fast hooks). The commit-time counterpart for test files is the
+      # `pyright-tests-staged` hook below (staged files only).
       # Uses tests/pyrightconfig.json with basic mode (less strict, faster)
       - id: pyright-tests
         name: Pyright Type Check (Tests)
@@ -245,6 +249,23 @@ repos:
         pass_filenames: false
         files: ^tests/
         stages: [pre-push]
+
+      # Pyright — STAGED test files at commit time (cheap subset). Before this
+      # hook, test-file type errors surfaced only at pre-push / verify / CI
+      # (61f39c9b gate-fix). Full-suite pyright is deliberately NOT moved into
+      # pre-commit (D1 latency decision, 2026-08-13 pre-commit runtime plan —
+      # ~1k test files); scoped to the staged paths the run costs ~2s
+      # (measured: single file 2.0s cold and warm — startup dominates), well
+      # inside the 120s pre-commit budget, and the pre-push `pyright-tests`
+      # hook above remains the complete-suite gate.
+      - id: pyright-tests-staged
+        name: Pyright Type Check (Tests, staged)
+        entry: uv run pyright --project tests/pyrightconfig.json
+        language: system
+        types: [python]
+        pass_filenames: true
+        files: ^tests/
+        stages: [pre-commit]
 
       # Security — pass_filenames: false + a fixed -r target set makes the
       # push gate scope-identical to `just security` and the CI security job
