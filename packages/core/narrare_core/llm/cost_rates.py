@@ -50,6 +50,7 @@ __all__ = [
     "get_model_limit_calibration",
     "get_model_limits",
     "get_rates",
+    "get_rates_strict",
     "invalidate_cache",
     "refresh_models",
 ]
@@ -161,6 +162,32 @@ def get_rates(provider: str, model_id: str) -> dict[str, float] | None:
         load_cache=_load_cache,
         fetch_models=_fetch_models,
         save_cache=_save_cache,
+    )
+
+
+def get_rates_strict(provider: str, model_id: str) -> dict[str, float] | None:
+    """Look up exact-model pricing from models.dev; never falls back to defaults.
+
+    Returns the metadata rates for exactly ``model_id`` — including
+    ``cache_read`` / ``cache_write`` (USD per 1M tokens) when models.dev
+    provides them — or ``None`` when the model is unknown or pricing is
+    unavailable (unknown model of a known provider ⇒ ``None``).
+
+    Args:
+        provider: Provider name (e.g. "openai", "anthropic").
+        model_id: Model identifier (e.g. "gpt-4o", "claude-sonnet-4-5-20251020").
+
+    Returns:
+        A dict with ``input`` and ``output`` keys (plus optional cache
+        rates), or ``None`` if no exact-model rates could be determined.
+    """
+    return resolve_model_rates(
+        provider,
+        model_id,
+        load_cache=_load_cache,
+        fetch_models=_fetch_models,
+        save_cache=_save_cache,
+        strict=True,
     )
 
 
