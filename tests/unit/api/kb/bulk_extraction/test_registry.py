@@ -207,6 +207,27 @@ class TestCancel:
         assert job.status is BulkJobStatus.CANCELLED
         assert job.error == "cancelled (server shutdown)"
 
+    @pytest.mark.parametrize("terminal", _TERMINAL)
+    def test_mark_cancelled_on_terminal_job_preserves_state(self, terminal: BulkJobStatus) -> None:
+        """A late shutdown drain must not overwrite a terminal outcome.
+
+        Scenario: the runner completed/failed/cancelled the job and the
+        drain's done-callback fires afterwards (the post-pass dedup window
+        makes this reachable for COMPLETED). ``mark_cancelled`` on an
+        already-terminal job is a logged no-op — first terminal outcome wins.
+        """
+        job_id = _make_job(0)
+        _drive_to(job_id, terminal)
+        registry.mark_cancelled(job_id, "cancelled (server shutdown)")
+        job = registry.status(job_id, OWNER)
+        assert job.status is terminal
+        if terminal is BulkJobStatus.FAILED:
+            assert job.error == "boom"  # failure reason, not the drain reason
+        elif terminal is BulkJobStatus.CANCELLED:
+            assert job.error == "cancelled by user"  # first reason wins
+        else:
+            assert job.error is None  # COMPLETED carries no error
+
 
 class TestResume:
     def test_resume_from_cancelled_resets_non_done_keeps_done(self) -> None:

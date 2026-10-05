@@ -154,10 +154,14 @@ that the frontend then populates via `/import/commit`.
 
 - [SETUP-001](SETUP-001-setup-wizard.md) — Setup Wizard where import first appears (Step 2)
 - [SETUP-002](SETUP-002-demo-content.md) — Alternative to import: load demo content
-- [IO-002](../io/IO-002-import.md) — Full project import & analysis with deeper AI
-  understanding (separate future feature; v1 scope boundary in ADR-091)
-- [KB-007](../kb/KB-007-extraction.md) — Per-chapter entity extraction (remains the
-  only extraction surface in v1)
+- [IO-002](../io/IO-002-import.md) — Corpus Analysis Pass (re-scoped 2026-10-03;
+  corpus-pass v1 shipped on the ADR-092 engine — see IO-002 Status & History
+  for the deferred slices; the original v1 scope boundary in ADR-091 has been
+  superseded by that re-scope)
+- [KB-007](../kb/KB-007-extraction.md) — Per-chapter entity extraction; bulk
+  chapter-range extraction shipped on top of it
+  ([ADR-092](../../architecture/decisions/ADR-092-bulk-extraction-job.md),
+  see History)
 - [WRITE-011](../writing/WRITE-011-volume-management.md) — Volume management (imported
   chapters start unassigned)
 
@@ -194,3 +198,17 @@ that the frontend then populates via `/import/commit`.
   [`docs/superpowers/plans/2026-10-02-import-split-merge.md`](../../superpowers/plans/2026-10-02-import-split-merge.md).
   SETUP-003 v1 itself remains `stable` — F1 extended the same stateless
   two-phase API additively (empty ops ⇒ v1 behavior unchanged).
+- `2026-10-04` — **Follow-ups F2 + F3 (bulk KB extraction) implemented**
+  (commits `528f2c77..61f39c9b`;
+  [ADR-092](../../architecture/decisions/ADR-092-bulk-extraction-job.md) →
+  implemented): bulk KB extraction shipped — the in-process extraction job
+  (`POST /novels/{id}/kb/extract/bulk`: start/status/results/cancel/resume,
+  `BulkExtractionPanel`) runs KB-007's extraction + review flow over an
+  explicit chapter list, closing the imported-manuscript gap (v1 imported
+  the chapters but left the KB empty). On the same engine, IO-002's
+  re-scoped **Corpus Analysis Pass v1** shipped (paced whole-novel pass with
+  post-pass ADR-085 dedup suggestions) — IO-002 now carries its new
+  identity, with further slices deferred (see
+  [IO-002](../io/IO-002-import.md) Status & History). SETUP-003 itself
+  remains `stable`/unchanged — both follow-ups consume imported chapters
+  additively.

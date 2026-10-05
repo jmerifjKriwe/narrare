@@ -191,9 +191,22 @@ def mark_cancelled(job_id: str, reason: str) -> None:
 
     Used by the runner's cooperative-cancel stop and by the drain done-callback
     (``"cancelled (server shutdown)"``, mirroring ``export/tasks.py:188-212``).
+
+    Terminal-state guard: a job that already reached a terminal status is left
+    untouched — a shutdown drain arriving after ``mark_job_completed`` (the
+    post-pass dedup window makes this reachable) or after a user cancel/failed
+    run must not overwrite the real outcome. The no-op is logged (RULE-11).
     """
     record = _get_unchecked(job_id, "mark_cancelled")
     if record is None:
+        return
+    if record.status in TERMINAL:
+        logger.info(
+            "bulk_cancel_skipped_terminal",
+            job_id=job_id,
+            status=record.status.value,
+            requested_reason=reason,
+        )
         return
     record.status = BulkJobStatus.CANCELLED
     record.error = reason

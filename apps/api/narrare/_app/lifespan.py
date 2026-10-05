@@ -152,7 +152,11 @@ async def _periodic_cleanup_loop() -> None:
     in-memory export-job registry (D1): drops expired artifact records +
     unlinks their temp files (the safety net for artifacts never downloaded).
     And sweeps the WS-ticket registry (ADR-084): drops expired-unused
-    tickets (consumed ones are already deleted on use).
+    tickets (consumed ones are already deleted on use).  And sweeps the
+    bulk-extraction job registry (ADR-092): drops terminal jobs whose
+    ``BULK_JOB_TTL`` (24 h) elapsed — each terminal job retains full
+    per-chapter outputs, so this is the safety net against unbounded
+    ``JOBS`` growth over the process lifetime.
     """
     while True:
         await asyncio.sleep(300)
@@ -178,6 +182,14 @@ async def _periodic_cleanup_loop() -> None:
                 logger.info("ws_ticket_sweep", tickets_swept=swept_tickets)
         except Exception:
             logger.warning("ws_ticket_sweep_failed", exc_info=True)
+        try:
+            from narrare.kb.bulk_extraction import registry as bulk_registry
+
+            swept_bulk = bulk_registry.sweep_expired()
+            if swept_bulk > 0:
+                logger.info("bulk_job_sweep", jobs_swept=swept_bulk)
+        except Exception:
+            logger.warning("bulk_job_sweep_failed", exc_info=True)
 
 
 @asynccontextmanager
