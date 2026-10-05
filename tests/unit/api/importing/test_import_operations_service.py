@@ -247,3 +247,26 @@ class TestSchemaStrictness:
         )
         assert adjustments.splits == []
         assert adjustments.merges == []
+
+    def test_splits_list_capped_at_200(self) -> None:
+        # Schema-level hardening: op lists are DoS-bounded at the same scale
+        # as SPLIT_CANDIDATES_MAX (200); 201 entries must be a loud 422 at
+        # the request boundary (dependencies.py), not an unbounded parse.
+        try:
+            ImportCommitAdjustments.model_validate({"splits": [{"index": 0, "at": [1]}] * 201})
+            raise AssertionError("expected ValidationError")
+        except PydanticValidationError:
+            pass
+
+    def test_splits_at_boundary_200_parses(self) -> None:
+        adjustments = ImportCommitAdjustments.model_validate(
+            {"splits": [{"index": 0, "at": [1]}] * 200}
+        )
+        assert len(adjustments.splits) == 200
+
+    def test_merges_list_capped_at_200(self) -> None:
+        try:
+            ImportCommitAdjustments.model_validate({"merges": [{"indices": [0, 1]}] * 201})
+            raise AssertionError("expected ValidationError")
+        except PydanticValidationError:
+            pass

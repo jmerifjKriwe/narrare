@@ -25,9 +25,6 @@ import type {
 /** Mirror of Core candidates.SPLIT_CANDIDATES_MAX (preview enrichment cap). */
 export const SPLIT_CANDIDATES_MAX = 200;
 
-/** Mirror of the schemas' heading/title max_length (headings become part titles). */
-export const TITLE_MAX_LENGTH = 500;
-
 export interface SimulatedRow {
   /** Stable FE key `${origIndex}#${part}` — never sent on the wire. */
   key: string;
@@ -228,7 +225,7 @@ export function simulateOperations(
         key: `${index}#${j}`,
         origIndex: index,
         part: j,
-        title: j === 0 ? item.suggested_title : selected[j - 1].heading.slice(0, TITLE_MAX_LENGTH),
+        title: j === 0 ? item.suggested_title : selected[j - 1].heading,
         wordCount,
         sourceFile: item.source_file,
         isMerged: false,

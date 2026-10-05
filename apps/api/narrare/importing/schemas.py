@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from narrare_core.importing import SPLIT_CANDIDATES_MAX
+
 
 class ImportSplitCandidate(BaseModel):
     """One `###`+ subheading offered as a split point (capped, ≤ 200)."""
@@ -55,8 +57,14 @@ class ImportCommitAdjustments(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    splits: list[ImportSplitOperation] = Field(default_factory=list[ImportSplitOperation])
-    merges: list[ImportMergeOperation] = Field(default_factory=list[ImportMergeOperation])
+    # Op-list cap = SPLIT_CANDIDATES_MAX (200): bounds DoS surface at the same
+    # scale as the offered split points / BULK_EXTRACT_MAX_CHAPTERS.
+    splits: list[ImportSplitOperation] = Field(
+        default_factory=list[ImportSplitOperation], max_length=SPLIT_CANDIDATES_MAX
+    )
+    merges: list[ImportMergeOperation] = Field(
+        default_factory=list[ImportMergeOperation], max_length=SPLIT_CANDIDATES_MAX
+    )
     excluded_indices: list[int] = Field(default_factory=list[int])  # FINAL space
     title_overrides: dict[str, str] = Field(default_factory=dict)  # FINAL space
 

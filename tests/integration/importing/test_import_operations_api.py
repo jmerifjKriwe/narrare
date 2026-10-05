@@ -9,29 +9,16 @@ and ``extra="forbid"`` strictness on the adjustments form field.
 
 from __future__ import annotations
 
-import uuid
 from typing import TYPE_CHECKING
 
 from narrare.novels.models import Novel
+from tests.integration._helpers import extract_user_id
 
 if TYPE_CHECKING:
+    import uuid
+
     from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
-
-
-def _extract_user_id(auth_headers: dict[str, str]) -> uuid.UUID:
-    """Derive the ``auth_headers`` user's id from the JWT sub claim.
-
-    Mirrors the ``_extract_user_id`` helper in ``test_import_commit_api.py`` —
-    the conftest has no dedicated ``user_id`` fixture by design.
-    """
-    import jwt
-
-    from narrare._app.config import get_settings
-
-    token = auth_headers["Authorization"].removeprefix("Bearer ")
-    payload = jwt.decode(token, get_settings().secret_key, algorithms=["HS256"])
-    return uuid.UUID(payload["sub"])
 
 
 async def _create_novel(db_session: AsyncSession, user_id: uuid.UUID) -> Novel:
@@ -88,7 +75,7 @@ class TestCommitWithOperations:
         auth_headers: dict[str, str],
         db_session: AsyncSession,
     ) -> None:
-        novel = await _create_novel(db_session, _extract_user_id(auth_headers))
+        novel = await _create_novel(db_session, extract_user_id(auth_headers))
         adjustments = (
             '{"splits": [{"index": 0, "at": [1]}], "merges": [], '
             '"excluded_indices": [1], "title_overrides": {"0": "Kept Intro"}}'
@@ -113,7 +100,7 @@ class TestCommitWithOperations:
         auth_headers: dict[str, str],
         db_session: AsyncSession,
     ) -> None:
-        novel = await _create_novel(db_session, _extract_user_id(auth_headers))
+        novel = await _create_novel(db_session, extract_user_id(auth_headers))
         files = [
             ("files", ("a.md", b"# Storm\nwind and rain", "text/markdown")),
             ("files", ("b.md", b"# After\nquiet morning", "text/markdown")),
@@ -139,7 +126,7 @@ class TestCommitWithOperations:
     ) -> None:
         # Core canonicalizes a merge's indices (sorted run); the declared
         # order must not change which constituent is "first" ([1, 0] ≡ [0, 1]).
-        novel = await _create_novel(db_session, _extract_user_id(auth_headers))
+        novel = await _create_novel(db_session, extract_user_id(auth_headers))
         files = [
             ("files", ("a.md", b"# Storm\nwind and rain", "text/markdown")),
             ("files", ("b.md", b"# After\nquiet morning", "text/markdown")),
@@ -164,7 +151,7 @@ class TestCommitRejections:
         auth_headers: dict[str, str],
         db_session: AsyncSession,
     ) -> None:
-        novel = await _create_novel(db_session, _extract_user_id(auth_headers))
+        novel = await _create_novel(db_session, extract_user_id(auth_headers))
         response = await client.post(
             "/api/v1/import/commit",
             headers=auth_headers,
@@ -185,7 +172,7 @@ class TestCommitRejections:
     ) -> None:
         # Three chapters so [0, 2] is fully in-range — the contiguity check
         # must be what fires (out-of-range indices are a different error).
-        novel = await _create_novel(db_session, _extract_user_id(auth_headers))
+        novel = await _create_novel(db_session, extract_user_id(auth_headers))
         files = [
             ("files", ("a.md", b"# One\nfirst body", "text/markdown")),
             ("files", ("b.md", b"# Two\nsecond body", "text/markdown")),
@@ -210,7 +197,7 @@ class TestCommitRejections:
         db_session: AsyncSession,
     ) -> None:
         # extra="forbid": version-skew defense — unknown keys are a loud 422.
-        novel = await _create_novel(db_session, _extract_user_id(auth_headers))
+        novel = await _create_novel(db_session, extract_user_id(auth_headers))
         response = await client.post(
             "/api/v1/import/commit",
             headers=auth_headers,
@@ -226,7 +213,7 @@ class TestCommitRejections:
         db_session: AsyncSession,
     ) -> None:
         # Empty op set ⇒ final ≡ original space (v1 identity property).
-        novel = await _create_novel(db_session, _extract_user_id(auth_headers))
+        novel = await _create_novel(db_session, extract_user_id(auth_headers))
         response = await client.post(
             "/api/v1/import/commit",
             headers=auth_headers,
@@ -244,7 +231,7 @@ class TestCommitRejections:
     ) -> None:
         # D2a on BOTH phases: commit must reject what preview cannot offer —
         # .txt chapters are merge-only even when their content has ``###``.
-        novel = await _create_novel(db_session, _extract_user_id(auth_headers))
+        novel = await _create_novel(db_session, extract_user_id(auth_headers))
         files = [
             (
                 "files",
