@@ -10,12 +10,20 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
 
 from pydantic_ai.capabilities import AbstractCapability
 
 from narrare_core.llm.metrics import record_cache_usage, record_failure, record_success
 from narrare_core.llm.result import TokenUsage
+from narrare_core.llm.usage_events import (
+    UsageEvent,
+    emit_usage_event,
+    estimate_cost_usd,
+    usage_novel_id,
+    usage_user_id,
+)
 
 if TYPE_CHECKING:
     from pydantic_ai import RunContext
@@ -118,6 +126,31 @@ class NarrareObservability(AbstractCapability):
                 cache_read_tokens=cache_read,
                 cache_creation_tokens=cache_creation,
             )
+
+        # Emit one billable UsageEvent per model request (ADR-093 decision 4).
+        await emit_usage_event(
+            UsageEvent(
+                timestamp=datetime.now(UTC),
+                intent=self._intent or "unknown",
+                provider=self._provider_name or "unknown",
+                model_id=self._model_id or "unknown",
+                tokens_in=token_usage.prompt_tokens,
+                tokens_out=token_usage.completion_tokens,
+                cache_read_tokens=cache_read,
+                cache_creation_tokens=cache_creation,
+                duration_seconds=elapsed,
+                cost_usd=estimate_cost_usd(
+                    self._provider_name or "unknown",
+                    self._model_id or "unknown",
+                    tokens_in=token_usage.prompt_tokens,
+                    tokens_out=token_usage.completion_tokens,
+                    cache_read_tokens=cache_read,
+                    cache_creation_tokens=cache_creation,
+                ),
+                user_id=usage_user_id.get(),
+                novel_id=usage_novel_id.get(),
+            )
+        )
 
         return response
 
