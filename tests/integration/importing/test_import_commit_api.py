@@ -7,25 +7,11 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from narrare.novels.models import Novel
+from tests.integration._helpers import extract_user_id
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
-
-
-def _extract_user_id(auth_headers: dict[str, str]) -> uuid.UUID:
-    """Derive the ``auth_headers`` user's id from the JWT sub claim.
-
-    Mirrors the ``_extract_user_id`` helper in ``tests/integration/setup/`` —
-    the conftest has no dedicated ``user_id`` fixture by design.
-    """
-    import jwt
-
-    from narrare._app.config import get_settings
-
-    token = auth_headers["Authorization"].removeprefix("Bearer ")
-    payload = jwt.decode(token, get_settings().secret_key, algorithms=["HS256"])
-    return uuid.UUID(payload["sub"])
 
 
 async def _create_second_user(db_session: AsyncSession) -> uuid.UUID:
@@ -70,7 +56,7 @@ class TestCommitEndpoint:
         auth_headers: dict[str, str],
         db_session: AsyncSession,
     ) -> None:
-        novel = await _create_novel(db_session, _extract_user_id(auth_headers))
+        novel = await _create_novel(db_session, extract_user_id(auth_headers))
         response = await client.post(
             "/api/v1/import/commit",
             headers=auth_headers,
@@ -167,7 +153,7 @@ class TestCommitEndpoint:
         auth_headers: dict[str, str],
         db_session: AsyncSession,
     ) -> None:
-        novel = await _create_novel(db_session, _extract_user_id(auth_headers))
+        novel = await _create_novel(db_session, extract_user_id(auth_headers))
         response = await client.post(
             "/api/v1/import/commit",
             headers=auth_headers,

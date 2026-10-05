@@ -116,3 +116,26 @@ class TestPeriodicCleanupLoop:
 
         # First call errored but loop continued to second call
         assert len(results) == 2
+
+    async def test_loop_sweeps_bulk_extraction_registry(self) -> None:
+        """_periodic_cleanup_loop() sweeps the bulk-extraction TTL registry.
+
+        Regression (ADR-092 final review): ``registry.sweep_expired`` existed
+        and was unit-tested but was never wired into the loop, so terminal
+        bulk jobs — each retaining full per-chapter outputs — accumulated in
+        ``JOBS`` for the process lifetime.
+        """
+        with (
+            patch("narrare._app.lifespan.asyncio.sleep", new_callable=AsyncMock),
+            patch("narrare._app.lifespan._run_stale_cleanup", return_value=0),
+            patch(
+                "narrare.kb.bulk_extraction.registry.sweep_expired",
+                side_effect=[2, asyncio.CancelledError()],
+            ) as fake_bulk_sweep,
+            pytest.raises(asyncio.CancelledError),
+        ):
+            await _periodic_cleanup_loop()
+
+        # Swept in iteration 1; the second call raises the cancel that ends
+        # the loop — proving the sweep runs on every iteration.
+        assert fake_bulk_sweep.call_count == 2

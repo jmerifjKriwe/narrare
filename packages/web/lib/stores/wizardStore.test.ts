@@ -213,7 +213,14 @@ describe("importSelection", () => {
     useWizardStore.getState().reset();
     expect(useWizardStore.getState().importSelection).toBeNull();
     const file = new File(["# A\nb"], "a.md");
-    const selection = { files: [file], excludedIndices: [], titleOverrides: {}, includedCount: 1 };
+    const selection = {
+      files: [file],
+      items: [],
+      ops: { splits: {}, merges: [] },
+      excludedKeys: [],
+      titleByKey: {},
+      includedCount: 1,
+    };
     useWizardStore.getState().setImportSelection(selection);
     expect(useWizardStore.getState().importSelection).toEqual(selection);
   });
@@ -221,8 +228,10 @@ describe("importSelection", () => {
   it("reset() clears importSelection", () => {
     useWizardStore.getState().setImportSelection({
       files: [],
-      excludedIndices: [],
-      titleOverrides: {},
+      items: [],
+      ops: { splits: {}, merges: [] },
+      excludedKeys: [],
+      titleByKey: {},
       includedCount: 0,
     });
     useWizardStore.getState().reset();

@@ -1,8 +1,9 @@
 /**
- * Tests for the import modal (commit + invalidation + failure retry path).
+ * Tests for the import modal (commit + invalidation + failure retry path +
+ * the post-commit extraction CTA card, F2 T8 / ADR-092 spec §8.1).
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ImportModal } from "./ImportModal";
 
@@ -29,15 +30,37 @@ vi.mock("@/lib/api/client", () => ({
 
 import { importApi } from "@/lib/api/client";
 
-function renderModal(open = true) {
+const COMMIT_WITH_TWO_CHAPTERS = {
+  novel_id: "novel-1",
+  created_count: 2,
+  first_position: 0,
+  last_position: 1,
+  chapters: [
+    { id: "c1", title: "One", position: 1, word_count: 20 },
+    { id: "c2", title: "Two", position: 2, word_count: 14 },
+  ],
+};
+
+function renderModal(onExtract?: (chapterIds: string[]) => void) {
   const client = new QueryClient();
   const onOpenChange = vi.fn();
   render(
     <QueryClientProvider client={client}>
-      <ImportModal novelId="novel-1" open={open} onOpenChange={onOpenChange} />
+      <ImportModal
+        novelId="novel-1"
+        open={true}
+        onOpenChange={onOpenChange}
+        onExtract={onExtract}
+      />
     </QueryClientProvider>,
   );
   return { onOpenChange, client };
+}
+
+async function commitThroughUi() {
+  const input = screen.getByLabelText(/choose files/i) as HTMLInputElement;
+  fireEvent.change(input, { target: { files: [new File(["# A\nb"], "a.md")] } });
+  fireEvent.click(await screen.findByRole("button", { name: /import/i }));
 }
 
 describe("ImportModal", () => {
@@ -46,29 +69,29 @@ describe("ImportModal", () => {
     sessionStorage.clear();
   });
 
-  it("clears the failure flag and closes on successful commit", async () => {
+  it("clears the failure flag, invalidates, and shows the success cost card after commit", async () => {
     sessionStorage.setItem("narrare:importFailed:novel-1", "1");
-    vi.mocked(importApi.commit).mockResolvedValueOnce({
-      novel_id: "novel-1",
-      created_count: 2,
-      first_position: 0,
-      last_position: 1,
-      chapters: [],
-    });
-    const { onOpenChange, client } = renderModal();
+    vi.mocked(importApi.commit).mockResolvedValueOnce(COMMIT_WITH_TWO_CHAPTERS);
+    const { onOpenChange, client } = renderModal(vi.fn());
     // Invalidation contract: the chapters query of THIS novel is refetched.
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
 
-    // Select a file through the embedded panel
-    const input = screen.getByLabelText(/choose files/i) as HTMLInputElement;
-    fireEvent.change(input, { target: { files: [new File(["# A\nb"], "a.md")] } });
+    await commitThroughUi();
 
-    const confirm = await screen.findByRole("button", { name: /import/i });
-    fireEvent.click(confirm);
+    // Success card (D9a, spec §8.1): cost transparency + both actions, and the
+    // dialog stays open — closing is now the user's explicit choice.
+    expect(await screen.findByTestId("import-success-card")).toBeInTheDocument();
+    expect(screen.getByText("2 chapters imported")).toBeInTheDocument();
+    expect(screen.getByText("2 chapters · 34 words · 2 AI calls")).toBeInTheDocument();
+    expect(screen.getByTestId("import-extract-btn")).toBeInTheDocument();
+    expect(screen.getByTestId("import-notnow-btn")).toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalled();
 
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    // Contract cleanup unchanged by the CTA: failed flag cleared + invalidation.
     expect(sessionStorage.getItem("narrare:importFailed:novel-1")).toBeNull();
     expect(importApi.commit).toHaveBeenCalledWith([expect.any(File)], "novel-1", {
+      splits: [],
+      merges: [],
       excluded_indices: [],
       title_overrides: {},
     });
@@ -77,16 +100,63 @@ describe("ImportModal", () => {
     });
   });
 
+  it("Extract to Knowledge Base closes the modal and hands the chapter ids to the parent", async () => {
+    vi.mocked(importApi.commit).mockResolvedValueOnce(COMMIT_WITH_TWO_CHAPTERS);
+    const onExtract = vi.fn();
+    const { onOpenChange } = renderModal(onExtract);
+
+    await commitThroughUi();
+    fireEvent.click(await screen.findByTestId("import-extract-btn"));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    // Panel seed: exactly the committed chapters, in commit order.
+    expect(onExtract).toHaveBeenCalledWith(["c1", "c2"]);
+  });
+
+  it("Not now closes the modal without starting extraction", async () => {
+    vi.mocked(importApi.commit).mockResolvedValueOnce(COMMIT_WITH_TWO_CHAPTERS);
+    const onExtract = vi.fn();
+    const { onOpenChange } = renderModal(onExtract);
+
+    await commitThroughUi();
+    fireEvent.click(await screen.findByTestId("import-notnow-btn"));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onExtract).not.toHaveBeenCalled();
+  });
+
+  it("hides the Extract CTA for a 0-chapter commit result (plain close only)", async () => {
+    vi.mocked(importApi.commit).mockResolvedValueOnce({
+      novel_id: "novel-1",
+      created_count: 0,
+      first_position: 0,
+      last_position: 0,
+      chapters: [],
+    });
+    const onExtract = vi.fn();
+    const { onOpenChange } = renderModal(onExtract);
+
+    await commitThroughUi();
+
+    // Success card still confirms the (empty) import, but there is nothing
+    // to extract — only the plain close remains.
+    expect(await screen.findByTestId("import-success-card")).toBeInTheDocument();
+    expect(screen.queryByTestId("import-extract-btn")).not.toBeInTheDocument();
+    expect(screen.getByTestId("import-notnow-btn")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("import-notnow-btn"));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onExtract).not.toHaveBeenCalled();
+  });
+
   it("keeps the modal open with the error on commit failure", async () => {
     vi.mocked(importApi.commit).mockRejectedValueOnce(new Error("boom"));
     const { onOpenChange } = renderModal();
 
-    const input = screen.getByLabelText(/choose files/i) as HTMLInputElement;
-    fireEvent.change(input, { target: { files: [new File(["# A\nb"], "a.md")] } });
-
-    fireEvent.click(await screen.findByRole("button", { name: /import/i }));
+    await commitThroughUi();
     expect(await screen.findByText(/boom/)).toBeInTheDocument();
-    // Failure keeps the dialog open for retry — never closes.
+    // Failure keeps the dialog open for retry — never closes, no success card.
     expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("import-success-card")).not.toBeInTheDocument();
   });
 });

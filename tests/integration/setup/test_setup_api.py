@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -18,27 +17,11 @@ from narrare.setup.schemas import (
     Step2NovelResponse,
     Step3StarterResponse,
 )
+from tests.integration._helpers import extract_user_id
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
-
-
-def _extract_user_id(auth_headers: dict[str, str]) -> uuid.UUID:
-    """Extract user_id from the Bearer token in auth headers.
-
-    The ``auth_headers`` fixture creates a JWT whose ``sub`` claim
-    is the user's UUID.  Decoding it avoids needing a separate
-    ``user_id`` fixture that would change the conftest contract.
-    """
-    import jwt as _jwt
-
-    from narrare._app.config import get_settings
-
-    token = auth_headers["Authorization"].removeprefix("Bearer ")
-    settings = get_settings()
-    payload = _jwt.decode(token, settings.secret_key, algorithms=["HS256"])
-    return uuid.UUID(payload["sub"])
 
 
 class TestValidateStep1:
@@ -312,7 +295,7 @@ class TestCompleteSetup:
         self, client: AsyncClient, auth_headers: dict[str, str], db_session: AsyncSession
     ) -> None:
         """complete() creates a user_providers row with encrypted API key."""
-        user_id = _extract_user_id(auth_headers)
+        user_id = extract_user_id(auth_headers)
 
         response = await client.post(
             "/api/v1/setup/complete",
@@ -358,7 +341,7 @@ class TestCompleteSetup:
         self, client: AsyncClient, auth_headers: dict[str, str], db_session: AsyncSession
     ) -> None:
         """complete() creates user_ai_settings with default model."""
-        user_id = _extract_user_id(auth_headers)
+        user_id = extract_user_id(auth_headers)
 
         response = await client.post(
             "/api/v1/setup/complete",

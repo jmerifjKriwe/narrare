@@ -17,5 +17,28 @@
     "body": "Your novel was created, but the chapters could not be imported. You can retry the import here.",
     "retry": "Retry import",
     "dismiss": "Dismiss"
+  },
+  "suggestExtract": {
+    "successTitle": "{count, plural, one {# chapter imported} other {# chapters imported}}",
+    "costLine": "{chapters} chapters · {words} words · {calls} AI calls",
+    "pacingNote": "Runs in the background at your analysis rate.",
+    "start": "Extract to Knowledge Base",
+    "notNow": "Not now",
+    "bannerTitle": "Analyze your imported chapters",
+    "bannerBody": "Scan the imported chapters for entities? {calls} AI calls, one per chapter · {words} words."
+  },
+  "ops": {
+    "split": "Split…",
+    "undoSplit": "Undo split",
+    "splitPoints": "Split points",
+    "splitHint": "Create new chapters at the selected subheadings.",
+    "applySplit": "Split chapter",
+    "cancel": "Cancel",
+    "noSplitPoints": "This chapter has no subheadings to split at.",
+    "mergeWithNext": "Merge with next",
+    "mergeWithPrevious": "Merge with previous",
+    "undoMerge": "Undo merge",
+    "mergedBadge": "Merged {count, plural, one {# chapter} other {# chapters}}",
+    "partBadge": "Part {part}"
   }
 }

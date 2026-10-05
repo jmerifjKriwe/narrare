@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { authApi, importApi, setupApi } from "@/lib/api/client";
 import { useWizardStore } from "@/lib/stores/wizardStore";
+import type { ImportPreviewItem } from "@/types";
 import { WizardShell } from "./WizardShell";
 import { WizardStep1 } from "./WizardStep1";
 import { WizardStep2 } from "./WizardStep2";
@@ -208,8 +209,10 @@ describe("WizardStep2", () => {
       await waitFor(() =>
         expect(useWizardStore.getState().importSelection).toEqual({
           files: [file],
-          excludedIndices: [],
-          titleOverrides: {},
+          items: [{ index: 0, suggested_title: "One", word_count: 12, source_file: "a.md" }],
+          ops: { splits: {}, merges: [] },
+          excludedKeys: [],
+          titleByKey: {},
           includedCount: 1,
         }),
       );
@@ -224,8 +227,10 @@ describe("WizardStep2", () => {
         state: { ...useWizardStore.getState().state, starter: "import" },
         importSelection: {
           files: [new File(["x"], "a.md")],
-          excludedIndices: [],
-          titleOverrides: {},
+          items: [],
+          ops: { splits: {}, merges: [] },
+          excludedKeys: [],
+          titleByKey: {},
           includedCount: 1,
         },
       });
@@ -326,8 +331,10 @@ describe("WizardStep5", () => {
         state: { ...useWizardStore.getState().state, starter: "import" },
         importSelection: {
           files: [new File(["x"], "a.md"), new File(["x"], "b.md"), new File(["x"], "c.md")],
-          excludedIndices: [2],
-          titleOverrides: {},
+          items: [],
+          ops: { splits: {}, merges: [] },
+          excludedKeys: ["2#0"],
+          titleByKey: {},
           includedCount: 2,
         },
       });
@@ -368,14 +375,17 @@ describe("WizardShell completion", () => {
 
   const importSelectionFor = (files: File[]) => ({
     files,
-    excludedIndices: [] as number[],
-    titleOverrides: {} as Record<string, string>,
+    items: [] as ImportPreviewItem[],
+    ops: { splits: {}, merges: [] },
+    excludedKeys: [] as string[],
+    titleByKey: {} as Record<string, string>,
     includedCount: files.length,
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.removeItem("narrare:importFailed:novel-9");
+    sessionStorage.removeItem("narrare:importSuggestExtract:novel-9");
     vi.mocked(authApi.me).mockResolvedValue(fullUser);
     vi.mocked(setupApi.complete).mockResolvedValue({
       novel_id: "novel-9",
@@ -426,6 +436,8 @@ describe("WizardShell completion", () => {
     // Commit receives the picked files + the novel the backend just created.
     await waitFor(() =>
       expect(importApi.commit).toHaveBeenCalledWith([file], "novel-9", {
+        splits: [],
+        merges: [],
         excluded_indices: [],
         title_overrides: {},
       }),
@@ -454,6 +466,137 @@ describe("WizardShell completion", () => {
     await waitFor(() => expect(sessionStorage.getItem("narrare:importFailed:novel-9")).toBe("1"));
     expect(routerPush).toHaveBeenCalledWith("/novel/novel-9");
     expect(useWizardStore.getState().importSelection).toBeNull();
+    // A failed commit must never suggest extraction (F2 T8 flag contract).
+    expect(sessionStorage.getItem("narrare:importSuggestExtract:novel-9")).toBeNull();
+  });
+
+  it("sets the importSuggestExtract flag with the committed ids + word count on success", async () => {
+    const file = new File(["# A\nb"], "a.md");
+    useWizardStore.setState({
+      state: { ...useWizardStore.getState().state, starter: "import" },
+      importSelection: importSelectionFor([file]),
+    });
+    vi.mocked(importApi.commit).mockResolvedValue({
+      novel_id: "novel-9",
+      created_count: 2,
+      first_position: 0,
+      last_position: 1,
+      chapters: [
+        { id: "c1", title: "One", position: 1, word_count: 20 },
+        { id: "c2", title: "Two", position: 2, word_count: 14 },
+      ],
+    });
+
+    renderWithProviders(<WizardShell />);
+    fireEvent.click(await screen.findByTestId("wizard-complete"));
+
+    // Self-contained payload (spec §8.1): the sidebar CTA needs no extra fetch.
+    await waitFor(() =>
+      expect(sessionStorage.getItem("narrare:importSuggestExtract:novel-9")).toBe(
+        JSON.stringify({ chapter_ids: ["c1", "c2"], word_count: 34 }),
+      ),
+    );
+    expect(sessionStorage.getItem("narrare:importFailed:novel-9")).toBeNull();
+    expect(routerPush).toHaveBeenCalledWith("/novel/novel-9");
+  });
+
+  it("does not flip the failure flag when the suggestion write throws after a successful commit", async () => {
+    const file = new File(["# A\nb"], "a.md");
+    useWizardStore.setState({
+      state: { ...useWizardStore.getState().state, starter: "import" },
+      importSelection: importSelectionFor([file]),
+    });
+    vi.mocked(importApi.commit).mockResolvedValue({
+      novel_id: "novel-9",
+      created_count: 2,
+      first_position: 0,
+      last_position: 1,
+      chapters: [
+        { id: "c1", title: "One", position: 1, word_count: 20 },
+        { id: "c2", title: "Two", position: 2, word_count: 14 },
+      ],
+    });
+
+    // Storage refuses the SUGGESTION write (e.g. quota) — the import itself
+    // has already succeeded at that point.
+    const realSetItem = sessionStorage.setItem.bind(sessionStorage);
+    const setItemSpy = vi
+      .spyOn(sessionStorage, "setItem")
+      .mockImplementation((key: string, value: string) => {
+        if (key === "narrare:importSuggestExtract:novel-9") {
+          throw new Error("quota exceeded");
+        }
+        realSetItem(key, value);
+      });
+
+    try {
+      renderWithProviders(<WizardShell />);
+      fireEvent.click(await screen.findByTestId("wizard-complete"));
+
+      await waitFor(() => expect(routerPush).toHaveBeenCalledWith("/novel/novel-9"));
+      // A failed suggestion-write is best-effort: it must NEVER flip the
+      // failure flag for a commit that succeeded (that would offer a retry
+      // and re-commit → duplicate chapters).
+      expect(sessionStorage.getItem("narrare:importFailed:novel-9")).toBeNull();
+      expect(useWizardStore.getState().importSelection).toBeNull();
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
+
+  it("does not set the suggestion flag for an empty commit result", async () => {
+    useWizardStore.setState({
+      state: { ...useWizardStore.getState().state, starter: "import" },
+      importSelection: importSelectionFor([new File(["x"], "a.md")]),
+    });
+    vi.mocked(importApi.commit).mockResolvedValue({
+      novel_id: "novel-9",
+      created_count: 0,
+      first_position: 0,
+      last_position: 0,
+      chapters: [],
+    });
+
+    renderWithProviders(<WizardShell />);
+    fireEvent.click(await screen.findByTestId("wizard-complete"));
+
+    await waitFor(() => expect(routerPush).toHaveBeenCalledWith("/novel/novel-9"));
+    // Nothing was imported → there is nothing to suggest extracting.
+    expect(sessionStorage.getItem("narrare:importSuggestExtract:novel-9")).toBeNull();
+  });
+
+  it("bounds the suggestion payload at 100 chapter ids", async () => {
+    useWizardStore.setState({
+      state: { ...useWizardStore.getState().state, starter: "import" },
+      importSelection: importSelectionFor([new File(["x"], "a.md")]),
+    });
+    const chapters = Array.from({ length: 101 }, (_, i) => ({
+      id: `c${i}`,
+      title: `Chapter ${i}`,
+      position: i,
+      word_count: 1,
+    }));
+    vi.mocked(importApi.commit).mockResolvedValue({
+      novel_id: "novel-9",
+      created_count: 101,
+      first_position: 0,
+      last_position: 100,
+      chapters,
+    });
+
+    renderWithProviders(<WizardShell />);
+    fireEvent.click(await screen.findByTestId("wizard-complete"));
+
+    await waitFor(() =>
+      expect(sessionStorage.getItem("narrare:importSuggestExtract:novel-9")).not.toBeNull(),
+    );
+    const parsed = JSON.parse(
+      sessionStorage.getItem("narrare:importSuggestExtract:novel-9") ?? "",
+    ) as { chapter_ids: string[]; word_count: number };
+    expect(parsed.chapter_ids).toHaveLength(100);
+    expect(parsed.chapter_ids[0]).toBe("c0");
+    expect(parsed.chapter_ids[99]).toBe("c99");
+    expect(parsed.word_count).toBe(100); // summed over the BOUNDED id list
   });
 
   it("does not commit when the starter is not import", async () => {

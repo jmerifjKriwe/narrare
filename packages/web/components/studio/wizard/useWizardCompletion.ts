@@ -2,7 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { importApi, setupApi } from "@/lib/api/client";
+import { buildAdjustments } from "@/lib/importing/simulateOperations";
+import { writeSuggestExtractFlag } from "@/lib/importing/suggestExtractFlag";
 import { useWizardStore } from "@/lib/stores/wizardStore";
+import type { ImportCommitResponse } from "@/types";
 
 /**
  * Runs wizard completion: `setup.complete`, optional import commit, navigation.
@@ -12,6 +15,12 @@ import { useWizardStore } from "@/lib/stores/wizardStore";
  * blocking: the user still lands in the empty novel, and the sidebar banner
  * (flag `narrare:importFailed:{novel_id}`, read by SidebarChapterList) offers
  * a retry via the ImportModal.
+ *
+ * On commit SUCCESS the mirror flag `narrare:importSuggestExtract:{novel_id}`
+ * is set (F2 T8, ADR-092 spec §8.1, D9a): the sidebar offers a bulk KB
+ * extraction of the freshly imported chapters. The payload is self-contained
+ * (chapter ids + word count, bounded — see suggestExtractFlag.ts), so the CTA
+ * needs no extra fetch.
  */
 export function useWizardCompletion(hasProviders: boolean): () => Promise<void> {
   const router = useRouter();
@@ -31,13 +40,28 @@ export function useWizardCompletion(hasProviders: boolean): () => Promise<void> 
     const result = await setupApi.complete(updatedState);
 
     if (updatedState.starter === "import" && importSelection) {
+      let importedChapters: ImportCommitResponse["chapters"] | null = null;
       try {
-        await importApi.commit(importSelection.files, result.novel_id, {
-          excluded_indices: importSelection.excludedIndices,
-          title_overrides: importSelection.titleOverrides,
-        });
+        const commitResult = await importApi.commit(
+          importSelection.files,
+          result.novel_id,
+          buildAdjustments(importSelection),
+        );
+        importedChapters = commitResult.chapters;
       } catch {
         sessionStorage.setItem(`narrare:importFailed:${result.novel_id}`, "1");
+      }
+      // AFTER the failure semantics (T8 fix round): a failed suggestion-write
+      // (e.g. sessionStorage quota) must never flip the failure flag above —
+      // the import itself succeeded, and "Retry import" would re-commit and
+      // duplicate chapters. The banner is a convenience (D9a), not a
+      // guarantee, so the error is swallowed deliberately.
+      if (importedChapters !== null) {
+        try {
+          writeSuggestExtractFlag(result.novel_id, importedChapters);
+        } catch {
+          // best-effort only
+        }
       }
     }
 

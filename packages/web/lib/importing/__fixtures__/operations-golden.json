@@ -1,0 +1,361 @@
+{
+  "cases": [
+    {
+      "name": "identity-no-ops",
+      "chapters": [
+        {
+          "title": "Storm",
+          "content": "wind and rain",
+          "word_count": 3,
+          "status": "final",
+          "source_file": "part1.md"
+        },
+        {
+          "title": "Aftermath",
+          "content": "quiet morning",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "part2.md"
+        }
+      ],
+      "items": [
+        {
+          "index": 0,
+          "suggested_title": "Storm",
+          "word_count": 3,
+          "source_file": "part1.md",
+          "split_candidates": []
+        },
+        {
+          "index": 1,
+          "suggested_title": "Aftermath",
+          "word_count": 2,
+          "source_file": "part2.md",
+          "split_candidates": []
+        }
+      ],
+      "ops": { "splits": [], "merges": [] },
+      "expected": [
+        {
+          "title": "Storm",
+          "content": "wind and rain",
+          "word_count": 3,
+          "status": "final",
+          "source_file": "part1.md"
+        },
+        {
+          "title": "Aftermath",
+          "content": "quiet morning",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "part2.md"
+        }
+      ]
+    },
+    {
+      "name": "split-at-second-candidate",
+      "chapters": [
+        {
+          "title": "The Long Chapter",
+          "content": "alpha beta\n### Scene A\ngamma\n### Scene B\ndelta epsilon",
+          "word_count": 11,
+          "status": "draft",
+          "source_file": "long.md"
+        }
+      ],
+      "items": [
+        {
+          "index": 0,
+          "suggested_title": "The Long Chapter",
+          "word_count": 11,
+          "source_file": "long.md",
+          "split_candidates": [
+            { "ordinal": 0, "heading": "Scene A", "words_before": 2 },
+            { "ordinal": 1, "heading": "Scene B", "words_before": 6 }
+          ]
+        }
+      ],
+      "ops": { "splits": [{ "index": 0, "at": [1] }], "merges": [] },
+      "expected": [
+        {
+          "title": "The Long Chapter",
+          "content": "alpha beta\n### Scene A\ngamma",
+          "word_count": 6,
+          "status": "draft",
+          "source_file": "long.md"
+        },
+        {
+          "title": "Scene B",
+          "content": "delta epsilon",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "long.md"
+        }
+      ]
+    },
+    {
+      "name": "split-skips-unselected-middle-candidate",
+      "chapters": [
+        {
+          "title": "Original",
+          "content": "one two\n### A\na1 a2\n### B\nb1\n### C\nc1 c2 c3",
+          "word_count": 14,
+          "status": "draft",
+          "source_file": "mid.md"
+        }
+      ],
+      "items": [
+        {
+          "index": 0,
+          "suggested_title": "Original",
+          "word_count": 14,
+          "source_file": "mid.md",
+          "split_candidates": [
+            { "ordinal": 0, "heading": "A", "words_before": 2 },
+            { "ordinal": 1, "heading": "B", "words_before": 6 },
+            { "ordinal": 2, "heading": "C", "words_before": 9 }
+          ]
+        }
+      ],
+      "ops": { "splits": [{ "index": 0, "at": [0, 2] }], "merges": [] },
+      "expected": [
+        {
+          "title": "Original",
+          "content": "one two",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "mid.md"
+        },
+        {
+          "title": "A",
+          "content": "a1 a2\n### B\nb1",
+          "word_count": 5,
+          "status": "draft",
+          "source_file": "mid.md"
+        },
+        {
+          "title": "C",
+          "content": "c1 c2 c3",
+          "word_count": 3,
+          "status": "draft",
+          "source_file": "mid.md"
+        }
+      ]
+    },
+    {
+      "name": "merge-contiguous-cross-file",
+      "chapters": [
+        {
+          "title": "Storm",
+          "content": "wind and rain",
+          "word_count": 3,
+          "status": "final",
+          "source_file": "part1.md"
+        },
+        {
+          "title": "Aftermath",
+          "content": "quiet morning",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "part2.md"
+        }
+      ],
+      "items": [
+        {
+          "index": 0,
+          "suggested_title": "Storm",
+          "word_count": 3,
+          "source_file": "part1.md",
+          "split_candidates": []
+        },
+        {
+          "index": 1,
+          "suggested_title": "Aftermath",
+          "word_count": 2,
+          "source_file": "part2.md",
+          "split_candidates": []
+        }
+      ],
+      "ops": { "splits": [], "merges": [{ "indices": [0, 1] }] },
+      "expected": [
+        {
+          "title": "Storm",
+          "content": "wind and rain\n\nquiet morning",
+          "word_count": 5,
+          "status": "final",
+          "source_file": "part1.md"
+        }
+      ]
+    },
+    {
+      "name": "split-and-merge-disjoint",
+      "chapters": [
+        {
+          "title": "Prelude",
+          "content": "p text\n### S1\ns body",
+          "word_count": 6,
+          "status": "draft",
+          "source_file": "a.md"
+        },
+        {
+          "title": "Interlude",
+          "content": "i words",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "b.md"
+        },
+        {
+          "title": "X",
+          "content": "x words",
+          "word_count": 2,
+          "status": "reviewed",
+          "source_file": "c.md"
+        },
+        {
+          "title": "Y",
+          "content": "y words",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "c.md"
+        }
+      ],
+      "items": [
+        {
+          "index": 0,
+          "suggested_title": "Prelude",
+          "word_count": 6,
+          "source_file": "a.md",
+          "split_candidates": [{ "ordinal": 0, "heading": "S1", "words_before": 2 }]
+        },
+        {
+          "index": 1,
+          "suggested_title": "Interlude",
+          "word_count": 2,
+          "source_file": "b.md",
+          "split_candidates": []
+        },
+        {
+          "index": 2,
+          "suggested_title": "X",
+          "word_count": 2,
+          "source_file": "c.md",
+          "split_candidates": []
+        },
+        {
+          "index": 3,
+          "suggested_title": "Y",
+          "word_count": 2,
+          "source_file": "c.md",
+          "split_candidates": []
+        }
+      ],
+      "ops": { "splits": [{ "index": 0, "at": [0] }], "merges": [{ "indices": [2, 3] }] },
+      "expected": [
+        {
+          "title": "Prelude",
+          "content": "p text",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "a.md"
+        },
+        {
+          "title": "S1",
+          "content": "s body",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "a.md"
+        },
+        {
+          "title": "Interlude",
+          "content": "i words",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "b.md"
+        },
+        {
+          "title": "X",
+          "content": "x words\n\ny words",
+          "word_count": 4,
+          "status": "reviewed",
+          "source_file": "c.md"
+        }
+      ]
+    },
+    {
+      "name": "split-drops-empty-first-part",
+      "chapters": [
+        {
+          "title": "Whatever",
+          "content": "### Only\nbody words",
+          "word_count": 4,
+          "status": "draft",
+          "source_file": "a.md"
+        }
+      ],
+      "items": [
+        {
+          "index": 0,
+          "suggested_title": "Whatever",
+          "word_count": 4,
+          "source_file": "a.md",
+          "split_candidates": [{ "ordinal": 0, "heading": "Only", "words_before": 0 }]
+        }
+      ],
+      "ops": { "splits": [{ "index": 0, "at": [0] }], "merges": [] },
+      "expected": [
+        {
+          "title": "Only",
+          "content": "body words",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "a.md"
+        }
+      ]
+    },
+    {
+      "name": "txt-merge-only",
+      "chapters": [
+        {
+          "title": "Chapter 1",
+          "content": "c1 words",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "notes.txt"
+        },
+        {
+          "title": "Chapter 2",
+          "content": "c2 words",
+          "word_count": 2,
+          "status": "draft",
+          "source_file": "notes.txt"
+        }
+      ],
+      "items": [
+        {
+          "index": 0,
+          "suggested_title": "Chapter 1",
+          "word_count": 2,
+          "source_file": "notes.txt",
+          "split_candidates": []
+        },
+        {
+          "index": 1,
+          "suggested_title": "Chapter 2",
+          "word_count": 2,
+          "source_file": "notes.txt",
+          "split_candidates": []
+        }
+      ],
+      "ops": { "splits": [], "merges": [{ "indices": [0, 1] }] },
+      "expected": [
+        {
+          "title": "Chapter 1",
+          "content": "c1 words\n\nc2 words",
+          "word_count": 4,
+          "status": "draft",
+          "source_file": "notes.txt"
+        }
+      ]
+    }
+  ]
+}

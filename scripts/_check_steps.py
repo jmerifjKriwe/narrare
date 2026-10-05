@@ -112,6 +112,21 @@ def build_steps() -> list[Step]:
                     ],
                     None,
                 ),
+                # RULE-10 test-existence gate — same script + `--fail-on-missing`
+                # flags as the CI architecture job (and `just check-architecture`),
+                # so `just check`/`just verify` catch missing-test-file drift
+                # locally instead of only in CI (PR #236 run 37032595571).
+                (
+                    [
+                        "uv",
+                        "run",
+                        "--all-packages",
+                        "python",
+                        "scripts/check_test_coverage_gaps.py",
+                        "--fail-on-missing",
+                    ],
+                    None,
+                ),
             ],
         ),
         Step(

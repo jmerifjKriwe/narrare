@@ -7331,6 +7331,395 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/extract/bulk": {
+      "post": {
+        "tags": [
+          "kb-extraction"
+        ],
+        "summary": "Start Bulk Extraction",
+        "description": "Start a bulk extraction job over the given chapters (spec §4.1).\n\nReturns the job view (201, status ``pending``); the chapter list is\nNOT echoed — the status endpoint carries it.",
+        "operationId": "start_bulk_extraction_api_v1_novels__novel_id__kb_extract_bulk_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkExtractionStartRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkExtractionJobView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/extract/bulk/{job_id}/status": {
+      "get": {
+        "tags": [
+          "kb-extraction"
+        ],
+        "summary": "Get Bulk Extraction Status",
+        "description": "Poll one job: totals plus per-chapter states (spec §4.2).",
+        "operationId": "get_bulk_extraction_status_api_v1_novels__novel_id__kb_extract_bulk__job_id__status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkExtractionStatusView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/extract/bulk/{job_id}/results": {
+      "get": {
+        "tags": [
+          "kb-extraction"
+        ],
+        "summary": "Get Bulk Extraction Results",
+        "description": "Full extraction outputs for the review panel (spec §4.3).\n\nReadable in ANY job state — partial results of a cancelled job are the\nresume baseline; ``output`` is present iff the chapter is ``done``.",
+        "operationId": "get_bulk_extraction_results_api_v1_novels__novel_id__kb_extract_bulk__job_id__results_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkExtractionResultsView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/extract/bulk/{job_id}/cancel": {
+      "post": {
+        "tags": [
+          "kb-extraction"
+        ],
+        "summary": "Cancel Bulk Extraction",
+        "description": "Request a cooperative cancel (spec §4.4); terminal jobs conflict (409).",
+        "operationId": "cancel_bulk_extraction_api_v1_novels__novel_id__kb_extract_bulk__job_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkExtractionJobView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/extract/bulk/{job_id}/resume": {
+      "post": {
+        "tags": [
+          "kb-extraction"
+        ],
+        "summary": "Resume Bulk Extraction",
+        "description": "Reset a cancelled/failed job and re-dispatch its runner (spec §4.5).",
+        "operationId": "resume_bulk_extraction_api_v1_novels__novel_id__kb_extract_bulk__job_id__resume_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkExtractionJobView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/extract/bulk/corpus/estimate": {
+      "get": {
+        "tags": [
+          "kb-extraction"
+        ],
+        "summary": "Get Corpus Pass Estimate",
+        "description": "Honest pre-run estimate over the novel's position-order prefix (§4.3).\n\nA zero-chapter novel yields the honest-0 estimate (200) — only START\nrejects emptiness with a 422.",
+        "operationId": "get_corpus_pass_estimate_api_v1_novels__novel_id__kb_extract_bulk_corpus_estimate_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorpusEstimateView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/extract/bulk/corpus": {
+      "post": {
+        "tags": [
+          "kb-extraction"
+        ],
+        "summary": "Start Corpus Pass",
+        "description": "Start a corpus pass over the START-time prefix (§4.4).\n\nRe-validates server-side (estimate drift → the new prefix, never a\nsilent superset); 409 while another job is active for the novel; 422\nwhen no prefix fits. The runner is dispatched for the created job.",
+        "operationId": "start_corpus_pass_api_v1_novels__novel_id__kb_extract_bulk_corpus_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkExtractionJobView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/extract/apply": {
       "post": {
         "tags": [
@@ -14104,6 +14493,370 @@
         ],
         "title": "Body_preview_import_api_v1_import_preview_post"
       },
+      "BulkChapterState": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "running",
+          "done",
+          "failed"
+        ],
+        "title": "BulkChapterState",
+        "description": "Per-chapter state inside a bulk job (spec §4.2 — normative set)."
+      },
+      "BulkChapterStatusView": {
+        "properties": {
+          "chapter_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Chapter Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Position"
+          },
+          "state": {
+            "$ref": "#/components/schemas/BulkChapterState"
+          },
+          "item_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Count"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "chapter_id",
+          "title",
+          "position",
+          "state"
+        ],
+        "title": "BulkChapterStatusView",
+        "description": "One chapter in the status poll response (spec §4.2)."
+      },
+      "BulkDedupInfo": {
+        "properties": {
+          "analyzed": {
+            "type": "boolean",
+            "title": "Analyzed"
+          },
+          "suggestion_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "analyzed"
+        ],
+        "title": "BulkDedupInfo",
+        "description": "Post-pass duplicate-analysis block (F3 §6.3).\n\n``None`` on explicit jobs (the trigger is corpus-only — invariant 3);\non corpus jobs ``{analyzed: false, suggestion_count: null}`` until the\nrunner's post-pass lands or gives up (RULE-11: visible, never silent)."
+      },
+      "BulkExtractionJobView": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BulkJobStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/BulkExtractionTotals"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "job_id",
+          "novel_id",
+          "status",
+          "created_at",
+          "updated_at",
+          "totals"
+        ],
+        "title": "BulkExtractionJobView",
+        "description": "Job summary returned by start/cancel/resume (spec §4.1/§4.4/§4.5)."
+      },
+      "BulkExtractionResultChapter": {
+        "properties": {
+          "chapter_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Chapter Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Position"
+          },
+          "state": {
+            "$ref": "#/components/schemas/BulkChapterState"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExtractionOutput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "chapter_id",
+          "title",
+          "position",
+          "state"
+        ],
+        "title": "BulkExtractionResultChapter",
+        "description": "One chapter in the results response (spec §4.3)."
+      },
+      "BulkExtractionResultsView": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BulkJobStatus"
+          },
+          "chapters": {
+            "items": {
+              "$ref": "#/components/schemas/BulkExtractionResultChapter"
+            },
+            "type": "array",
+            "title": "Chapters"
+          },
+          "dedup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BulkDedupInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "job_id",
+          "novel_id",
+          "status",
+          "chapters"
+        ],
+        "title": "BulkExtractionResultsView",
+        "description": "Full outputs response (spec §4.3) — review payload for the FE panel."
+      },
+      "BulkExtractionStartRequest": {
+        "properties": {
+          "chapter_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Chapter Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "chapter_ids"
+        ],
+        "title": "BulkExtractionStartRequest",
+        "description": "Request body for the bulk start endpoint (spec §4.1)."
+      },
+      "BulkExtractionStatusView": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BulkJobStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/BulkExtractionTotals"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "chapters": {
+            "items": {
+              "$ref": "#/components/schemas/BulkChapterStatusView"
+            },
+            "type": "array",
+            "title": "Chapters"
+          },
+          "dedup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BulkDedupInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "job_id",
+          "novel_id",
+          "status",
+          "created_at",
+          "updated_at",
+          "totals",
+          "chapters"
+        ],
+        "title": "BulkExtractionStatusView",
+        "description": "Status poll response: the job view plus per-chapter rows (spec §4.2)."
+      },
+      "BulkExtractionTotals": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "done": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Done"
+          },
+          "failed": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Failed"
+          },
+          "remaining": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Remaining"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total",
+          "done",
+          "failed",
+          "remaining"
+        ],
+        "title": "BulkExtractionTotals",
+        "description": "Aggregated per-state counts for one job (spec §4.1/§4.2)."
+      },
+      "BulkJobStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "running",
+          "cancelling",
+          "completed",
+          "cancelled",
+          "failed"
+        ],
+        "title": "BulkJobStatus",
+        "description": "Job-level lifecycle status (spec §4.1 — normative set)."
+      },
       "CalibrationSourceMetadata": {
         "properties": {
           "provider": {
@@ -15325,6 +16078,75 @@
         "title": "ConsistencyIssue",
         "description": "A contradiction or inconsistency found in the worldbuilding."
       },
+      "CorpusEstimateView": {
+        "properties": {
+          "total_chapters": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Chapters"
+          },
+          "total_word_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Word Count"
+          },
+          "selected_chapter_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Selected Chapter Ids"
+          },
+          "chapter_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Chapter Count"
+          },
+          "word_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Word Count"
+          },
+          "ai_calls": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Ai Calls"
+          },
+          "capped": {
+            "type": "boolean",
+            "title": "Capped"
+          },
+          "cap_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "chapters",
+                  "words"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cap Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total_chapters",
+          "total_word_count",
+          "selected_chapter_ids",
+          "chapter_count",
+          "word_count",
+          "ai_calls",
+          "capped"
+        ],
+        "title": "CorpusEstimateView",
+        "description": "Honest pre-run estimate (spec §4.3) — mirrors ``CorpusEstimateData`` 1:1.\n\nThe estimate NEVER understates: ``ai_calls == chapter_count`` (D14a —\ncost transparency is a count of calls), totals cover ALL enumerated\nchapters, and truncation is explicit via ``capped``/``cap_reason``."
+      },
       "CreateChapterRequest": {
         "properties": {
           "title": {
@@ -16153,6 +16975,152 @@
         ],
         "title": "ExtendRequest",
         "description": "Request for chapter extension — insert AI text at cursor position.\n\nThe frontend splits the document at the cursor and sends the text\nsegments.  The backend never receives a numeric offset (design.md D3)."
+      },
+      "ExtractionItem": {
+        "properties": {
+          "item_type": {
+            "type": "string",
+            "enum": [
+              "new_entity",
+              "update_entity",
+              "relationship",
+              "conflict"
+            ],
+            "title": "Item Type"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "source_text": {
+            "type": "string",
+            "title": "Source Text"
+          },
+          "proposed_content": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Content"
+          },
+          "target_entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Entity Id"
+          },
+          "conflict_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflict Description"
+          },
+          "relationship_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Type"
+          },
+          "related_entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Entity Name"
+          },
+          "source_entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Entity Name"
+          },
+          "target_entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Entity Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_type",
+          "name",
+          "confidence",
+          "source_text"
+        ],
+        "title": "ExtractionItem",
+        "description": "A single extraction result from chapter text.\n\nAttributes:\n    item_type: What kind of extraction this is.\n    entity_type: KB entity type (character, location, etc.) for new/update.\n    name: Entity name; for relationship items the predicate\n        (e.g. ``engaged_to``) — legacy outputs carry a label here.\n    confidence: Confidence score 0.0-1.0.\n    source_text: Exact quote from chapter text supporting this extraction.\n    proposed_content: Suggested metadata fields for new/update entities.\n    target_entity_id: ID of existing entity (update_entity mode).\n    conflict_description: What contradicts existing KB data (conflict mode).\n    relationship_type: Type of relationship (engaged_to, member_of, etc.).\n    related_entity_name: Legacy target field; prefer ``target_entity_name``.\n    source_entity_name: Subject entity name (relationship items).\n    target_entity_name: Object entity name (relationship items)."
+      },
+      "ExtractionOutput": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractionItem"
+            },
+            "type": "array",
+            "title": "Results",
+            "default": []
+          },
+          "analysis_notes": {
+            "type": "string",
+            "title": "Analysis Notes",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ExtractionOutput",
+        "description": "Structured output of an ExtractionAgent run.\n\nAttributes:\n    results: List of extracted items from the chapter text.\n    analysis_notes: Agent's overall observations about the text."
       },
       "ExtractionRequest": {
         "properties": {
@@ -16985,6 +17953,13 @@
           "source_file": {
             "type": "string",
             "title": "Source File"
+          },
+          "split_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ImportSplitCandidate"
+            },
+            "type": "array",
+            "title": "Split Candidates"
           }
         },
         "type": "object",
@@ -16995,7 +17970,7 @@
           "source_file"
         ],
         "title": "ImportPreviewItem",
-        "description": "One detected chapter in a preview (index = commit adjustment key)."
+        "description": "One detected chapter in a preview (index = ORIGINAL space key)."
       },
       "ImportPreviewResponse": {
         "properties": {
@@ -17030,6 +18005,34 @@
           "total_word_count"
         ],
         "title": "ImportPreviewResponse"
+      },
+      "ImportSplitCandidate": {
+        "properties": {
+          "ordinal": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Ordinal"
+          },
+          "heading": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Heading"
+          },
+          "words_before": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Words Before"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ordinal",
+          "heading",
+          "words_before"
+        ],
+        "title": "ImportSplitCandidate",
+        "description": "One `###`+ subheading offered as a split point (capped, ≤ 200)."
       },
       "ImproveSuggestionResponse": {
         "properties": {

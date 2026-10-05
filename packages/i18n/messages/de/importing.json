@@ -17,5 +17,28 @@
     "body": "Dein Roman wurde erstellt, aber die Kapitel konnten nicht importiert werden. Du kannst den Import hier erneut versuchen.",
     "retry": "Import erneut versuchen",
     "dismiss": "Verwerfen"
+  },
+  "suggestExtract": {
+    "successTitle": "{count, plural, one {# Kapitel importiert} other {# Kapitel importiert}}",
+    "costLine": "{chapters} Kapitel · {words} Wörter · {calls} KI-Aufrufe",
+    "pacingNote": "Läuft im Hintergrund mit deiner Analysier-Rate.",
+    "start": "In Wissensdatenbank extrahieren",
+    "notNow": "Nicht jetzt",
+    "bannerTitle": "Importierte Kapitel analysieren",
+    "bannerBody": "Die importierten Kapitel nach Entitäten durchsuchen? {calls} KI-Aufrufe, eines pro Kapitel · {words} Wörter."
+  },
+  "ops": {
+    "split": "Teilen…",
+    "undoSplit": "Teilung aufheben",
+    "splitPoints": "Trennstellen",
+    "splitHint": "Erstellt neue Kapitel an den gewählten Zwischenüberschriften.",
+    "applySplit": "Kapitel teilen",
+    "cancel": "Abbrechen",
+    "noSplitPoints": "Dieses Kapitel hat keine Zwischenüberschriften zum Teilen.",
+    "mergeWithNext": "Mit folgendem zusammenführen",
+    "mergeWithPrevious": "Mit vorherigem zusammenführen",
+    "undoMerge": "Zusammenführung aufheben",
+    "mergedBadge": "{count, plural, one {# Kapitel} other {# Kapitel}} zusammengeführt",
+    "partBadge": "Teil {part}"
   }
 }
