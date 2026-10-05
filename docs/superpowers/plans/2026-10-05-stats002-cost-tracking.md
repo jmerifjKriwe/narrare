@@ -447,6 +447,39 @@ git commit -m "feat(core): observability capability emits usage events"
 
 ---
 
+### Task 3b: Core — capability intent wiring (class-identity, gate follow-up)
+
+**Files:**
+- Modify: `packages/core/narrare_core/agents/capabilities/observability.py`
+- Modify: `packages/core/narrare_core/agents/base.py`
+- Test: `tests/unit/core/agents/test_observability_intent.py` (create)
+
+**Interfaces:**
+- Consumes: Task 3's emission (unchanged semantics).
+- Produces: capability-path `UsageEvent.intent` (and the existing `record_success`/`record_failure`/`record_cache_usage` metric labels — same source by construction) carries an agent-class slug instead of `"unknown"`.
+
+Mechanism (Architecture ruling 2026-10-05, Option A):
+1. `observability.py`: constructor field `intent: str = ""` (replaces the dead per-run-only `_intent`); `for_run` builds the per-run copy as `NarrareObservability(intent=self.intent)` (template state preserved; `_start_time` etc. stay per-run); hooks read `self.intent or "unknown"`.
+2. `base.py`: `observability_intent: ClassVar[str | None] = None` override point + a ~8-LOC helper deriving a snake_case slug from `type(self).__name__` with a trailing `"Agent"` suffix stripped (`ChapterSummaryAgent` → `"chapter_summary"`); the `NarrareObservability(...)` construction at base.py:143 passes `intent=self.observability_intent or _derived_slug`.
+3. Tests: TestModel-driven agent run emits the derived slug; a `ClassVar` override wins; bare `NarrareObservability()` construction falls back to `"unknown"`; `for_run` preserves the template intent.
+4. Vocabulary note: capability path emits agent-class slugs (`chapter_summary`), registry path emits `LLMIntent` values — disjoint, both stable; FE intent→label map (Task 15) includes slug keys.
+5. If updating pre-existing tests that assert `intent="unknown"` in metrics pushes the change beyond 3 files, STOP and report PACKAGE_TOO_LARGE (coordinator re-slices).
+
+TDD per house standard; commit: `feat(core): capability path carries class-identity intent`.
+
+### Task 3c: Core — capability provider/model attribution (gate follow-up)
+
+**Files:**
+- Modify: `packages/core/narrare_core/agents/capabilities/observability.py`
+- Modify: `packages/core/narrare_core/agents/base.py`
+- Test: `tests/unit/core/agents/test_observability_model_attribution.py` (create)
+
+**Interfaces:**
+- Consumes: Task 3b's template-state preservation.
+- Produces: capability-path `UsageEvent.provider`/`model_id` (and metric labels) carry real values for all agents, not just WritingDeps-family.
+
+Mechanism: `NarrareAgent.__init__` receives the pydantic-ai `model` object — derive `model_name` (and provider via pydantic-ai's `provider:model_name` parsing; see installed `pydantic_ai.models.__init__` ~:1332 and ~:1601-1604; handle `InstrumentedModel`/wrapper classes by unwrapping; `TestModel` yields its own name — acceptable in tests). Pass `provider_name`/`model_id` onto the capability template like Task 3b's intent; `for_run` keeps the existing deps-based `model_config` extraction as the PREFERRED source (resolved config is more accurate) with the template values as fallback (`deps-extracted or template-value or "unknown"`). Tests: real-model-name attribution without deps; WritingDeps-family still prefers `model_config`; wrapper unwrapping. Same PACKAGE_TOO_LARGE rule. TDD; commit: `feat(core): capability path model/provider attribution`.
+
 ### Task 4: Core — registry emission (`ModelRegistry.run`/`stream`)
 
 **Files:**

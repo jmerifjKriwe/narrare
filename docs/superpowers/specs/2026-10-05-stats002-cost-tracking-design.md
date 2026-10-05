@@ -84,6 +84,17 @@ per-call accounting granularity.
 Failures (`on_model_request_error`) are **not** recorded — they have no usage payload;
 existing metrics already cover them.
 
+**Intent & attribution source (amended 2026-10-05 after the Task 3 review):** the
+capability learns its intent from **agent-class identity** (snake_case slug of the
+class name, `ClassVar`-overridable on `NarrareAgent`) carried on the capability
+template — not from run state; the existing metrics `record_*` labels switch to the
+same source by construction. Capability-path intent vocabulary is agent-class slugs
+(`chapter_summary`), registry-path vocabulary is `LLMIntent` values — disjoint
+populations, both stable keys; the FE intent→label map covers both. Provider/model
+attribution on the capability path rides the `model` object passed to
+`NarrareAgent.__init__` (deps-based `model_config` extraction stays preferred where
+present). Plan tasks 3b/3c implement both.
+
 ### 3.2b Core — `ModelRegistry` emission (gate F1)
 
 `ModelRegistry.run()` and `ModelRegistry.stream()` emit the same `UsageEvent` at
