@@ -462,7 +462,12 @@ Mechanism (Architecture ruling 2026-10-05, Option A):
 1. `observability.py`: constructor field `intent: str = ""` (replaces the dead per-run-only `_intent`); `for_run` builds the per-run copy as `NarrareObservability(intent=self.intent)` (template state preserved; `_start_time` etc. stay per-run); hooks read `self.intent or "unknown"`.
 2. `base.py`: `observability_intent: ClassVar[str | None] = None` override point + a ~8-LOC helper deriving a snake_case slug from `type(self).__name__` with a trailing `"Agent"` suffix stripped (`ChapterSummaryAgent` → `"chapter_summary"`); the `NarrareObservability(...)` construction at base.py:143 passes `intent=self.observability_intent or _derived_slug`.
 3. Tests: TestModel-driven agent run emits the derived slug; a `ClassVar` override wins; bare `NarrareObservability()` construction falls back to `"unknown"`; `for_run` preserves the template intent.
-4. Vocabulary note: capability path emits agent-class slugs (`chapter_summary`), registry path emits `LLMIntent` values — disjoint, both stable; FE intent→label map (Task 15) includes slug keys.
+4. Vocabulary note (corrected 2026-10-05 after Task 3b review): capability path emits
+   agent-class slugs (`chapter_summary`), registry path emits `LLMIntent` values — the
+   populations of CALLS are disjoint (exactly-once per request), but 5 slug keys equal
+   `LLMIntent` values (`chat`, `consistency`, `consistency_triage`, `kb_improve`,
+   `dialogue_coach`) and merge into one bucket each — same-feature merge, desirable;
+   the FE intent→label map (Task 15) treats both key families as ONE namespace.
 5. If updating pre-existing tests that assert `intent="unknown"` in metrics pushes the change beyond 3 files, STOP and report PACKAGE_TOO_LARGE (coordinator re-slices).
 
 TDD per house standard; commit: `feat(core): capability path carries class-identity intent`.
