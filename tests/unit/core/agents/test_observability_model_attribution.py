@@ -173,9 +173,18 @@ class TestAttributionThroughRuns:
         assert events[0].model_id == "glm-4.7"  # was "unknown" before Task 3c
         assert events[0].provider == "test"
 
-    async def test_instrumented_model_run_unwraps(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_wrapped_model_run_unwraps(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """E2E wrapped-model run attributes the underlying model.
+
+        Uses a plain ``WrapperModel``: running an ``InstrumentedModel``
+        emits real OTel spans through the *global* tracer provider, making
+        the test order-dependent on suites that install fake global
+        providers (observed: 1/14347 failure via ``_FakeSpanProcessor``).
+        Real-``InstrumentedModel`` unwrapping is covered hermetically in
+        ``TestDeriveModelAttribution``.
+        """
         agent = ProbeAgent(
-            model=InstrumentedModel(TestModel(model_name="glm-4.7")), deps_type=type(None)
+            model=WrapperModel(TestModel(model_name="glm-4.7")), deps_type=type(None)
         )
         events = await _run_with_sink(agent, monkeypatch)
         assert len(events) == 1
