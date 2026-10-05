@@ -41,21 +41,28 @@ class NarrareObservability(AbstractCapability):
     - ``on_model_request_error``: Failure loggen
     """
 
+    # Template state — set once on the agent's capability instance
+    # (class-identity intent, ADR-093) and preserved into the per-run
+    # copy by ``for_run``.
+    intent: str = ""
+
     # Per-run State (wird in for_run frisch initialisiert)
     _start_time: float = 0.0
-    _intent: str = ""
     _model_id: str = ""
     _provider_name: str = ""
 
     async def for_run(self, ctx: RunContext[Any]) -> NarrareObservability:
         """Frische Instanz pro Run — isoliert Per-Run-State.
 
+        Template state (``intent``) is preserved into the per-run copy;
+        per-run state (``_start_time`` etc.) starts fresh.
+
         Versucht Observability-Kontext aus ``ctx.deps`` zu extrahieren.
         Unterstützt aktuell das ``WritingDeps``-Pattern (``model_config``
         mit ``provider_name`` + ``model_id``). Für andere Deps-Types
         fallen die Werte auf ``"unknown"`` zurück (bisheriges Verhalten).
         """
-        obs = NarrareObservability()
+        obs = NarrareObservability(intent=self.intent)
 
         deps = ctx.deps
         if deps is not None:
@@ -110,7 +117,7 @@ class NarrareObservability(AbstractCapability):
         )
 
         record_success(
-            intent=self._intent or "unknown",
+            intent=self.intent or "unknown",
             model=self._model_id or "unknown",
             provider=self._provider_name or "unknown",
             usage=token_usage,
@@ -120,7 +127,7 @@ class NarrareObservability(AbstractCapability):
         # Record cache metrics
         if cache_read > 0 or cache_creation > 0:
             record_cache_usage(
-                intent=self._intent or "unknown",
+                intent=self.intent or "unknown",
                 model=self._model_id or "unknown",
                 provider=self._provider_name or "unknown",
                 cache_read_tokens=cache_read,
@@ -131,7 +138,7 @@ class NarrareObservability(AbstractCapability):
         await emit_usage_event(
             UsageEvent(
                 timestamp=datetime.now(UTC),
-                intent=self._intent or "unknown",
+                intent=self.intent or "unknown",
                 provider=self._provider_name or "unknown",
                 model_id=self._model_id or "unknown",
                 tokens_in=token_usage.prompt_tokens,
@@ -166,7 +173,7 @@ class NarrareObservability(AbstractCapability):
         error_type = type(error).__name__
 
         record_failure(
-            intent=self._intent or "unknown",
+            intent=self.intent or "unknown",
             model=self._model_id or "unknown",
             provider=self._provider_name or "unknown",
             error_type=error_type,

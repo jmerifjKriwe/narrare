@@ -133,7 +133,7 @@ class TestNarrareObservability:
         """after_model_request extrahiert cache_read/creation aus usage.details."""
         obs = NarrareObservability()
         obs._start_time = 0.0
-        obs._intent = "write"
+        obs.intent = "write"
         obs._model_id = "claude-sonnet-4-5-20251020"
         obs._provider_name = "anthropic"
 
