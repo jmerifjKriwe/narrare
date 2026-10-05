@@ -37,6 +37,7 @@ from narrare_core.agents.capabilities import (
     NarrareObservability,
     NarrareUniversalRules,
 )
+from narrare_core.agents.capabilities.observability import derive_model_attribution
 from narrare_core.agents.error_translator import classify_error
 from narrare_core.agents.history_policy import HistoryPolicy
 
@@ -155,13 +156,19 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
         # defaults to `str` (the pydantic-ai default — forwarding it
         # explicitly is behaviorally identical to omitting it); an explicit
         # None skips the kwarg, which lands on the same pydantic-ai default.
+        # Derive provider/model attribution from the model object once, at
+        # construction (STATS-002 Task 3c) — wrapper models are unwrapped,
+        # so every agent attributes its real model, WritingDeps-family or not.
+        provider_name, model_id = derive_model_attribution(model)
         agent_kwargs: dict[str, Any] = {
             "model": model,
             "deps_type": deps_type,
             "capabilities": [
                 NarrareObservability(
-                    intent=self.observability_intent or self._observability_slug()
-                ),  # immer — class-identity intent (ADR-093)
+                    intent=self.observability_intent or self._observability_slug(),
+                    provider_name=provider_name,
+                    model_id=model_id,
+                ),  # immer — class-identity intent + model attribution (ADR-093)
                 NarrareUniversalRules(),  # immer — ADR-026 Phase 1
                 NarrareMeta(),  # immer — ADR-026 Phase 3
                 *(capabilities or []),

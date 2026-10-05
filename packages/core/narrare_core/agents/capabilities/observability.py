@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
 
 from pydantic_ai.capabilities import AbstractCapability
+from pydantic_ai.models import parse_model_id
 
 from narrare_core.llm.metrics import record_cache_usage, record_failure, record_success
 from narrare_core.llm.result import TokenUsage
@@ -28,7 +29,45 @@ from narrare_core.llm.usage_events import (
 if TYPE_CHECKING:
     from pydantic_ai import RunContext
     from pydantic_ai.messages import ModelResponse
-    from pydantic_ai.models import ModelRequestContext
+    from pydantic_ai.models import Model, ModelRequestContext
+
+
+def derive_model_attribution(model: Model) -> tuple[str, str]:
+    """Derive ``(provider_name, model_id)`` from a pydantic-ai model object.
+
+    Attribution source for the capability path (STATS-002 Task 3c): the
+    model instance handed to ``NarrareAgent.__init__``. Wrapper models
+    (``WrapperModel`` subclasses such as ``InstrumentedModel``) are unwrapped
+    to the underlying model first. The model id comes from ``model_name``;
+    the provider from ``system`` (pydantic-ai's provider namespace, e.g.
+    ``"openai"`` / ``"zai"``), falling back to pydantic-ai's
+    ``provider:model_name`` parsing (``parse_model_id``) when only the
+    prefixed spelling is available. ``TestModel`` yields ``"test"`` —
+    acceptable in tests.
+
+    Args:
+        model: The pydantic-ai model object the agent was constructed with.
+
+    Returns:
+        ``(provider_name, model_id)`` — either component ``""`` when not
+        derivable; callers fall back to ``"unknown"``.
+    """
+    inner: Any = model
+    # Unwrap wrapper models (InstrumentedModel & friends): they may not
+    # forward identity attributes. Bounded to guard against wrap cycles.
+    wraps_seen = 0
+    while wraps_seen < 8:
+        wrapped = getattr(inner, "wrapped", None)
+        if wrapped is None:
+            break
+        inner = wrapped
+        wraps_seen += 1
+
+    model_id = getattr(inner, "model_name", "") or ""
+    provider = getattr(inner, "system", None)
+    if not provider and ":" in model_id:
+        provider, model_id = parse_model_id(model_id)
+    return (provider or "", model_id)
 
 
 @dataclass
@@ -42,9 +81,12 @@ class NarrareObservability(AbstractCapability):
     """
 
     # Template state — set once on the agent's capability instance
-    # (class-identity intent, ADR-093) and preserved into the per-run
-    # copy by ``for_run``.
+    # (class-identity intent, ADR-093; provider/model attribution derived
+    # from the agent's model object, STATS-002 Task 3c) and preserved
+    # into the per-run copy by ``for_run``.
     intent: str = ""
+    provider_name: str = ""
+    model_id: str = ""
 
     # Per-run State (wird in for_run frisch initialisiert)
     _start_time: float = 0.0
@@ -54,15 +96,27 @@ class NarrareObservability(AbstractCapability):
     async def for_run(self, ctx: RunContext[Any]) -> NarrareObservability:
         """Frische Instanz pro Run — isoliert Per-Run-State.
 
-        Template state (``intent``) is preserved into the per-run copy;
-        per-run state (``_start_time`` etc.) starts fresh.
+        Template state (``intent``, ``provider_name``, ``model_id``) is
+        preserved into the per-run copy; per-run state (``_start_time``
+        etc.) starts fresh.
 
-        Versucht Observability-Kontext aus ``ctx.deps`` zu extrahieren.
-        Unterstützt aktuell das ``WritingDeps``-Pattern (``model_config``
-        mit ``provider_name`` + ``model_id``). Für andere Deps-Types
-        fallen die Werte auf ``"unknown"`` zurück (bisheriges Verhalten).
+        Attribution resolution (STATS-002 Task 3c) — for BOTH fields
+        independently: deps-extracted ``model_config`` (PREFERRED — the
+        resolved config is more accurate; only present on WritingDeps-family
+        deps; on pydantic models ``model_config`` is the ConfigDict and
+        yields nothing) > template value (derived from the agent's model
+        object) > ``"unknown"`` (applied by the hooks).
         """
-        obs = NarrareObservability(intent=self.intent)
+        obs = NarrareObservability(
+            intent=self.intent,
+            provider_name=self.provider_name,
+            model_id=self.model_id,
+        )
+        # Fallback base: per-run attribution starts from the template
+        # values; the deps extraction below overrides each field
+        # independently when present.
+        obs._provider_name = self.provider_name
+        obs._model_id = self.model_id
 
         deps = ctx.deps
         if deps is not None:
