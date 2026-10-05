@@ -111,6 +111,23 @@ def test_estimate_cost_cache_math(monkeypatch):
     assert cost == pytest.approx(expected)
 
 
+def test_estimate_cost_cache_tokens_without_cache_rates_fall_back_to_input(monkeypatch):
+    monkeypatch.setattr(
+        "narrare_core.llm.usage_events.get_rates_strict",
+        lambda p, m: {"input": 2.0, "output": 6.0},
+    )
+    # rates carry NO cache keys: cached reads + cache creation bill at the input rate
+    cost = estimate_cost_usd(
+        "zai",
+        "glm-5.3",
+        tokens_in=1_000_000,
+        tokens_out=0,
+        cache_read_tokens=400_000,
+        cache_creation_tokens=100_000,
+    )
+    assert cost == pytest.approx(2.2)  # 1.0M tokens total at $2.0/1M
+
+
 def test_estimate_cost_unknown_model_is_none(monkeypatch):
     monkeypatch.setattr("narrare_core.llm.usage_events.get_rates_strict", lambda p, m: None)
     assert estimate_cost_usd("zai", "mystery", tokens_in=10, tokens_out=10) is None
