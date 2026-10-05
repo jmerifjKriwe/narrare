@@ -551,6 +551,18 @@ git commit -m "feat(core): model registry emits usage events (dual seam, ADR-093
 
 ---
 
+### Task 4a: Core — registry run/stream layer extraction (RULE-04 sub-slice)
+
+Added 2026-10-05 during execution: `gateway.py` stood at exactly its 300-line hard limit pre-Task-4; the irreducible +7 emission wiring trips RULE-04. Sub-slice per coordinator package rules — combined with Task 4 as one delegation/commit with explicit sizing justification (splitting the commit would create a broken intermediate import).
+
+**Files (4, coordinator-approved exception):**
+- Modify: `packages/core/narrare_core/llm/gateway.py` (shrink: run/stream move out)
+- Create: `packages/core/narrare_core/llm/registry_run.py` (mixin with `run()`/`stream()` + their private helpers; `ModelRegistry(RegistryRunMixin, ...)` — public API unchanged)
+- Modify: `packages/core/narrare_core/llm/usage_events.py` (`emit_registry_usage_event` public helper)
+- Test: `tests/unit/core/llm/test_gateway_usage_events.py`
+
+**Requirements:** purely mechanical move (code verbatim, no behavior change); the in-flight emission call sites move WITH the methods; RULE-01b `# narrare: allow-agent` markers move with their lines; `gateway.py` ends well under 300; `registry_run.py` under generic limits; full `tests/unit/core/llm` green; `check_architecture` + python-size gates green. Commit: `feat(core): model registry emits usage events via extracted run/stream layer`.
+
 ### Task 5: API — `UsageRecordRow` + Alembic 0043
 
 **Files:**
