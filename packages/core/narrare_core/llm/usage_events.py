@@ -9,15 +9,19 @@ from __future__ import annotations
 
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Protocol, cast
 
 import structlog
 
 from narrare_core.llm.cost_rates import get_rates_strict
 
 if TYPE_CHECKING:
-    from datetime import datetime
+    from typing import Any
     from uuid import UUID
+
+    from narrare_core.llm.intents import LLMIntent
+    from narrare_core.llm.model_config import ResolvedModelConfig
 
 logger = structlog.get_logger(__name__)
 
@@ -95,3 +99,56 @@ def estimate_cost_usd(
         + tokens_out / 1e6 * rates.get("output", 0.0)
     )
     return round(cost, 6)
+
+
+async def emit_registry_usage_event(
+    *,
+    intent: LLMIntent,
+    config: ResolvedModelConfig,
+    usage: Any,  # pydantic_ai RunUsage
+    duration_seconds: float,
+) -> None:
+    """Emit one ``UsageEvent`` for an ephemeral registry run (ADR-093 D4).
+
+    Second, disjoint emission point next to the observability capability:
+    ``ModelRegistry.run()``/``stream()`` agents carry no capabilities, so
+    without this emitter their calls (name generation, WS writing turns, …)
+    would be invisible to cost tracking. Attribution comes from the resolved
+    ``config`` (exact — no "unknown" fallbacks here); the guarded seam
+    (:func:`emit_usage_event`) never raises into the product run.
+
+    Lives here — at the seam — so ``gateway.py`` stays within its RULE-04
+    file-size limit; the gateway only wires the call sites.
+    """
+    raw_details = getattr(usage, "details", None)
+    if isinstance(raw_details, dict):
+        details = cast("dict[str, Any]", raw_details)
+    else:
+        details: dict[str, Any] = {}
+    cache_read = int(details.get("cache_read_input_tokens", 0) or 0)
+    cache_creation = int(details.get("cache_creation_input_tokens", 0) or 0)
+    tokens_in = usage.input_tokens or 0
+    tokens_out = usage.output_tokens or 0
+    await emit_usage_event(
+        UsageEvent(
+            timestamp=datetime.now(UTC),
+            intent=intent.value,
+            provider=config.provider_name,
+            model_id=config.model_id,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            cache_read_tokens=cache_read,
+            cache_creation_tokens=cache_creation,
+            duration_seconds=duration_seconds,
+            cost_usd=estimate_cost_usd(
+                config.provider_name,
+                config.model_id,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                cache_read_tokens=cache_read,
+                cache_creation_tokens=cache_creation,
+            ),
+            user_id=usage_user_id.get(),
+            novel_id=usage_novel_id.get(),
+        )
+    )

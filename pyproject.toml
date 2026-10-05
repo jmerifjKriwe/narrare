@@ -429,10 +429,10 @@ date = "2026-06-03"
 
 [[tool.narrare.architecture.exceptions.entries]]
 rule = "RULE-01b"
-file = "packages/core/narrare_core/llm/gateway.py"
-reason = "Gateway._make_agent() is the approved boundary crossing."
+file = "packages/core/narrare_core/llm/registry_run.py"
+reason = "ModelRegistry convenience run()/stream() ephemeral Agents (moved from gateway.py, ADR-015 / plan Task 4a)"
 approved_by = "ADR-015"
-date = "2026-05-20"
+date = "2026-10-05"
 
 [[tool.narrare.architecture.exceptions.entries]]
 rule = "RULE-01b"
