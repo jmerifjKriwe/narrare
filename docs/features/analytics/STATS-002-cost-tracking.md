@@ -66,8 +66,8 @@ including an explicit count of unpriced calls instead of silent guesses.
    estimated cost, unpriced badge), a **by feature** table, a **by
    provider/model** table, and a 6-month trend chart.
 4. Feature names come from i18n labels; a few internal intents without a
-   label yet (e.g. `wiki_generation`, `interview_question`) show their raw
-   slug by design until labeled.
+   label yet (e.g. `wiki_generation`, `wiki_chapter`, `interview_question`)
+   show their raw slug by design until labeled.
 
 ## How it works (Technical)
 
@@ -87,12 +87,17 @@ month). All figures user-scoped; month bucketing uses UTC calendar months
 {
   "month": "2026-10",
   "totals": { "calls": 42, "tokens_in": 123456, "tokens_out": 7890,
-              "cost_usd": "1.234500", "unpriced_calls": 3 },
-  "by_intent": [ { "intent": "draft", "calls": 10, "cost_usd": "0.610000",
+              "cost_usd": 1.2345, "unpriced_calls": 3 },
+  "by_intent": [ { "intent": "draft", "calls": 10, "cost_usd": 0.61,
                    "unpriced_calls": 0 } ],
   "by_model": [ { "provider": "zai", "model_id": "glm-5.3", "calls": 30,
-                  "cost_usd": "1.100000", "unpriced_calls": 0 } ],
-  "trend": [ { "month": "2026-05", "cost_usd": "0.900000" } ]
+                  "cost_usd": 1.1, "unpriced_calls": 0 } ],
+  "trend": [ { "month": "2026-05", "cost_usd": 0.9 },
+             { "month": "2026-06", "cost_usd": 0.75 },
+             { "month": "2026-07", "cost_usd": 1.1 },
+             { "month": "2026-08", "cost_usd": 0.95 },
+             { "month": "2026-09", "cost_usd": 1.05 },
+             { "month": "2026-10", "cost_usd": 1.2345 } ]
 }
 ```
 

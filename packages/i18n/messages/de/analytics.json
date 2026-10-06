@@ -55,7 +55,7 @@
       "kb_suggest": "KB-Vorschläge",
       "kb_worldbuild": "KB-Worldbuilding",
       "name_generate": "Namensgenerierung",
-      "outline": "Outline",
+      "outline": "Gliederung",
       "plan": "Planung",
       "pov_detection": "POV-Erkennung",
       "preference_analysis": "Präferenzanalyse",
@@ -72,7 +72,7 @@
       "temporal_extraction": "Zeitliche Extraktion",
       "timeline": "Zeitleiste",
       "title_generate": "Titelgenerierung",
-      "voice": "Stimmanalyse",
+      "voice": "Stimme & Stil",
       "worldbuilding": "Worldbuilding",
       "write": "Schreiben"
     }

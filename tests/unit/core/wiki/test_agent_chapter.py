@@ -14,9 +14,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 from pydantic_ai.models.test import TestModel
+from pydantic_ai.models.wrapper import WrapperModel
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import UsageLimits
 
+from narrare_core.llm.usage_events import UsageEvent, set_usage_event_sink
 from narrare_core.wiki.agent import WikiGenerationAgent
 from narrare_core.wiki.agent_chapter import WikiChapterGenerator
 from narrare_core.wiki.types import WikiChapterOutput, WikiGenerationDeps
@@ -206,3 +208,73 @@ class TestChapterGeneratorSettings:
         assert run_call is not None
         assert run_call.kwargs["model_settings"] is None
         assert run_call.kwargs["usage_limits"] is None
+
+
+# ---------------------------------------------------------------------------
+# C. UsageEvent emission (STATS-002 final-review fix — untracked spend)
+# ---------------------------------------------------------------------------
+
+
+class RecordingSink:
+    """Records UsageEvents (pattern from tests/unit/core/agents/, not imported)."""
+
+    def __init__(self) -> None:
+        self.events: list[UsageEvent] = []
+
+    async def record(self, event: UsageEvent) -> None:
+        self.events.append(event)
+
+
+def _stub_estimate_cost(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stub estimate_cost_usd at the capability's import location (no rates I/O)."""
+    monkeypatch.setattr(
+        "narrare_core.agents.capabilities.observability.estimate_cost_usd",
+        lambda *args, **kwargs: 0.01,
+    )
+
+
+class TestChapterGeneratorUsageEvents:
+    """The internal chapter agent emits tracked UsageEvents (ADR-093 D4)."""
+
+    @pytest.mark.asyncio
+    async def test_generate_chapter_run_emits_exactly_one_usage_event(
+        self, deps_chapter: WikiGenerationDeps, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Live path emits one event: intent ``wiki_chapter``, model attribution.
+
+        ``generate_chapter`` runs only the internal chapter agent (not the
+        outer ``NarrareAgent``), so the tracked population is exactly this
+        capability — no double emission.
+        """
+        _stub_estimate_cost(monkeypatch)
+        agent = WikiGenerationAgent(model=TestModel(model_name="glm-4.7"))
+        sink = RecordingSink()
+        set_usage_event_sink(sink)
+        try:
+            await agent.generate_chapter(deps=deps_chapter)
+        finally:
+            set_usage_event_sink(None)
+
+        assert len(sink.events) == 1
+        event = sink.events[0]
+        assert event.intent == "wiki_chapter"
+        assert event.provider == "test"
+        assert event.model_id == "glm-4.7"
+
+    @pytest.mark.asyncio
+    async def test_generator_attributes_wrapped_held_model(
+        self, deps_chapter: WikiGenerationDeps, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Attribution derives from the held model object — wrappers unwrapped."""
+        _stub_estimate_cost(monkeypatch)
+        generator = WikiChapterGenerator(model=WrapperModel(TestModel(model_name="glm-4.7")))
+        sink = RecordingSink()
+        set_usage_event_sink(sink)
+        try:
+            await generator.generate("Prompt text.", deps_chapter)
+        finally:
+            set_usage_event_sink(None)
+
+        assert len(sink.events) == 1
+        assert sink.events[0].intent == "wiki_chapter"
+        assert sink.events[0].model_id == "glm-4.7"

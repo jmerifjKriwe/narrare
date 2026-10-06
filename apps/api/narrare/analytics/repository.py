@@ -2,7 +2,7 @@
 """Usage-record repository — DB queries only (RULE-06 / RULE-08).
 
 Persistence and month aggregation for ``UsageRecordRow`` (STATS-002).
-Aggregation semantics (spec §3.5): group by
+Aggregation semantics (spec §3.3/§4, plan Task 6): group by
 ``(date_trunc('month', created_at AT TIME ZONE 'UTC'), intent, provider,
 model_id)`` with call counts, token sums, an OPTIONAL cost sum —
 ``COALESCE`` to 0 because a bucket may contain only unpriced calls — and
