@@ -40,8 +40,8 @@ requires: [INFRA-001]
 > (commits `b2aeb9af..a4f2c2ba`) per
 > [ADR-093](../../architecture/decisions/ADR-093-usage-event-sink-cost-persistence.md);
 > design: [cost-tracking spec](../../superpowers/specs/2026-10-05-stats002-cost-tracking-design.md).
-> The status stays in-progress for the deferred slices (budgets, export,
-> embeddings cost — see Status & History).
+> The status stays in-progress for the deferred slices (budgets, export —
+> see Status & History).
 
 ## What it does
 
@@ -104,11 +104,13 @@ month). All figures user-scoped; month bucketing uses UTC calendar months
 **Capture seam (ADR-093):** Core `llm/usage_events.py` defines the DB-free
 `UsageEvent`, the never-raise `UsageEventSink` Protocol, a single process-local
 sink slot (`set_usage_event_sink`/`get_usage_event_sink` — unset ⇒ no-op), and
-the attribution ContextVars. Emission happens at two disjoint points — the
+the attribution ContextVars. Emission happens at three disjoint points — the
 `NarrareObservability` capability (intent = agent-class slug; per model
-request) and the registry run/stream layer (`llm/registry_run.py`, `LLMIntent`
-vocabulary) — so capability-carrying and bare-ephemeral agents are each counted
-exactly once. Emission is wrapped in a catch-all guard: a sink failure is
+request), the registry run/stream layer (`llm/registry_run.py`, `LLMIntent`
+vocabulary), and the embedding provider (`llm/embedding_providers.py`,
+`OpenAIEmbeddingProvider.embed_texts` — one event per API batch,
+`intent="embeddings"`) — so capability-carrying and bare-ephemeral agents are
+each counted exactly once and embedding batches land per API call. Emission is wrapped in a catch-all guard: a sink failure is
 logged and swallowed; the product run is never affected.
 
 **Persistence:** `SqlUsageEventSink` (`analytics/usage_sink.py`) validates and
@@ -165,8 +167,18 @@ Recharts), TanStack Query hook, `analytics.*` i18n (en/de/fr).
   CLI would have to bypass the service layer/user scoping or duplicate HTTP+auth
   plumbing, and the `/analytics` panel + CSV export cover the value. Removed
   from the deferred slices.
+- 2026-10-07 — Embeddings cost implemented (commits `928ff5b4..efa8a060`) as
+  [ADR-093](../../architecture/decisions/ADR-093-usage-event-sink-cost-persistence.md)
+  surface (c) (post-implementation amendment: decision 4 is now **three
+  disjoint emission surfaces**). Emission at `OpenAIEmbeddingProvider.embed_texts`
+  (`packages/core/narrare_core/llm/embedding_providers.py`): one `UsageEvent`
+  per API batch, `intent="embeddings"`, strict write-time cost (unknown
+  embedding models stay unpriced). Budget interplay per
+  [ADR-094](../../architecture/decisions/ADR-094-budget-gate-ai-spend-suspension.md)
+  D1: embeddings count toward totals but are not pre-call gated — v1
+  limitation. Binding spec:
+  [embeddings-cost addendum](../../superpowers/specs/2026-10-07-stats002-embeddings-cost-design.md).
 
 **Deferred slices (registered scope):** budgets/suspension · CSV/PDF export ·
-embeddings cost (different seam, `narrare_core/embeddings/`) ·
 read-time re-pricing · per-series attribution · tracking of mem0-internal and
 setup-validation LLM calls · STATS-001 (second cycle in the same panel).
