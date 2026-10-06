@@ -40,7 +40,7 @@ requires: [INFRA-001]
 > (commits `b2aeb9af..a4f2c2ba`) per
 > [ADR-093](../../architecture/decisions/ADR-093-usage-event-sink-cost-persistence.md);
 > design: [cost-tracking spec](../../superpowers/specs/2026-10-05-stats002-cost-tracking-design.md).
-> The status stays in-progress for the deferred slices (budgets, export, CLI,
+> The status stays in-progress for the deferred slices (budgets, export,
 > embeddings cost — see Status & History).
 
 ## What it does
@@ -161,8 +161,12 @@ Recharts), TanStack Query hook, `analytics.*` i18n (en/de/fr).
 - 2026-10-06 — v1 implemented (commits `b2aeb9af..a4f2c2ba`): Core seam +
   emission, `analytics` API module + endpoint + lifespan wiring, `/analytics`
   FE panel + `analytics.*` i18n. Status → `in-progress`.
+- 2026-10-07 — CLI formally retired (PO decision): no CLI substrate exists, a
+  CLI would have to bypass the service layer/user scoping or duplicate HTTP+auth
+  plumbing, and the `/analytics` panel + CSV export cover the value. Removed
+  from the deferred slices.
 
 **Deferred slices (registered scope):** budgets/suspension · CSV/PDF export ·
-CLI · embeddings cost (different seam, `narrare_core/embeddings/`) ·
+embeddings cost (different seam, `narrare_core/embeddings/`) ·
 read-time re-pricing · per-series attribution · tracking of mem0-internal and
 setup-validation LLM calls · STATS-001 (second cycle in the same panel).

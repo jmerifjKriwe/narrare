@@ -5,6 +5,10 @@
 > `b2aeb9af..c6c6856c` + the docs-closure commit; binding spec
 > `docs/superpowers/specs/2026-10-05-stats002-cost-tracking-design.md`, plan
 > `docs/superpowers/plans/2026-10-05-stats002-cost-tracking.md`)
+> **Amended:** 2026-10-07 — Post-Implementation Amendment: decision 4's dual
+> disjoint emission becomes **three disjoint emission surfaces** (embeddings
+> provider added — STATS-002 deferred slice D, PO-ratified); see the final
+> section
 > **Date:** 2026-10-05
 > **Deciders:** Architecture Agent (architecture-gate ruling 2026-10-05, findings
 > F1–F7); Project Owner (product rulings D1–D4 — those stay recorded in the
@@ -13,7 +17,8 @@
 > (**binding implementation doc** — schemas, wire shapes, migration, tests),
 > ADR-015 (capability architecture), ADR-080 (in-process execution boundary —
 > applied), ADR-084 (WS ticket identity), ADR-092 (`create_task` context
-> inheritance; decision 6 registry rule), `docs/features/analytics/STATS-002-cost-tracking.md`
+> inheritance; decision 6 registry rule), ADR-094 (budget gate — consumes the
+> totals this seam produces), `docs/features/analytics/STATS-002-cost-tracking.md`
 
 ---
 
@@ -273,3 +278,65 @@ docs closure — with no plan task skipped.
       re-pricing (mutates history).
 - [ ] Cost data is ever needed at billing-grade accuracy → new ADR for a
       durability upgrade; do not quietly harden this best-effort sink.
+
+---
+
+## Post-Implementation Amendment (2026-10-07) — Third Emission Surface: Embeddings
+
+**Context.** STATS-002 v1 shipped with a named known-untracked call class:
+embedding API calls (ADR-080 in-process pipeline on the ADR-020 provider
+abstraction). Code inspection closes the design question of *where* capture
+must live: the **only** seam that sees token counts is
+`OpenAIEmbeddingProvider.embed_texts`
+(`narrare_core/llm/embedding_providers.py:176–181`) — the API layer cannot
+emit, because the `EmbeddingProvider` Protocol returns only vectors, so
+tokens are invisible above the provider. The OpenAI SDK's
+`CreateEmbeddingResponse` carries a **required** `usage` object which the
+current code discards, and models.dev prices embedding models (input-only
+rates; output 0), so the existing pure `estimate_cost_usd` works unmodified
+with `tokens_out=0`. Attribution needs no new plumbing: decision 3 already
+lists embedding hooks among the `create_task` context-inheritors.
+
+**Decision (amends decision 4).** "Dual disjoint emission points" becomes
+**three disjoint emission surfaces**: (c)
+`OpenAIEmbeddingProvider.embed_texts` emits one `UsageEvent` **per API batch
+response** (the provider batches ≤100 texts per call — per-batch is the
+correct per-call granularity), with `intent="embeddings"`, `tokens_out=0`
+(embeddings produce no output tokens), cache token counts 0, cost via
+`estimate_cost_usd` under decision 7's strict pricing (models.dev embedding
+rates; unknown model ⇒ `NULL`/unpriced), duration measured per batch, and
+attribution read from the existing `usage_user_id`/`usage_novel_id`
+ContextVars. Emission goes through the guarded seam (`emit_usage_event`) —
+the never-raise contract (decision 1) is **inherited, not reopened**.
+Disjointness holds by construction: the capability and registry surfaces see
+agent runs; the provider surface sees raw embedding API calls, which involve
+no agent — no overlap is possible.
+
+**Usage-omitted edge.** The OpenAI SDK requires `usage`, but a compatible
+gateway may omit it ⇒ **skip emission + debug log**. Skipping silently or
+fabricating a zero would be dishonest; raising would violate decision 1.
+
+**Test provider.** `TestEmbeddingProvider` emits nothing — it makes no API
+call and incurs no cost (correct by construction).
+
+**Honesty consequence.** A month in which embedding usage went untracked
+(usage-omitted edge, or spend that predates this amendment) stays
+**excluded from budget math** (ADR-094): untracked spend is never estimated
+into budgets — the same principle as decision 7's unpriced-`NULL`. It stays
+invisible rather than fabricated.
+
+**Consequences.** `usage_records` gains `intent="embeddings"` rows (the FE
+intent map + one i18n label key, en/de/fr; `by_intent` aggregation already
+isolates them). The STATS-002 feature file's known-untracked list shrinks in
+the same docs slice, which also fixes a path drift: the file names
+`narrare_core/embeddings/` as the seam — the actual emitter is
+`narrare_core/llm/embedding_providers.py` (`embeddings/` is the store
+protocol). Module docstrings claiming "two disjoint points" (e.g.
+`usage_events.py`) are updated with the emission change. Remaining
+untracked, by decision: mem0-internal LLM calls (RULE-01b exception #2) and
+setup provider validation (#13).
+
+**Review trigger added:** a future non-OpenAI embedding provider (local,
+Ollama) must decide per implementation whether it emits — a real metered
+API ⇒ emit; a deterministic/local provider ⇒ do not (the
+`TestEmbeddingProvider` rule).

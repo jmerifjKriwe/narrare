@@ -58,9 +58,8 @@ ui_help_long: |
   - Set realistic word count targets for your genre
   - Use data to optimize your writing schedule
 
-  Available in Analytics panel or via CLI:
-  `narrare analytics stats --novel <id> --period weekly`
-ui_available_in: [analytics, cli]
+  Available in the **Analytics** panel (`/analytics`) in the studio sidebar.
+ui_available_in: [analytics]
 
 service: analytics/service.py
 contract: analytics/contracts.py#AnalyticsServiceProtocol
@@ -156,3 +155,4 @@ class WritingSession:
 
 - `project-init` — Added to registry as planned feature
 - `2026-06-22` — ADR-021 applied: specified as pure Python deterministic computation (no LLM dependency)
+- `2026-10-07` — CLI access formally retired (PO decision): no CLI substrate exists, a CLI would have to bypass the service layer/user scoping or duplicate HTTP+auth plumbing, and the Analytics panel + CSV export cover the value; `ui_available_in` reduced to `[analytics]`.
