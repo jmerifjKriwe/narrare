@@ -167,7 +167,7 @@ Recharts), TanStack Query hook, `analytics.*` i18n (en/de/fr).
   CLI would have to bypass the service layer/user scoping or duplicate HTTP+auth
   plumbing, and the `/analytics` panel + CSV export cover the value. Removed
   from the deferred slices.
-- 2026-10-07 — Embeddings cost implemented (commits `928ff5b4..efa8a060`) as
+- 2026-10-07 — Embeddings cost implemented (commits `a1d12c4d..efa8a060`) as
   [ADR-093](../../architecture/decisions/ADR-093-usage-event-sink-cost-persistence.md)
   surface (c) (post-implementation amendment: decision 4 is now **three
   disjoint emission surfaces**). Emission at `OpenAIEmbeddingProvider.embed_texts`
