@@ -1,7 +1,10 @@
 # ADR-093 — Core Usage-Event Sink Seam & AI Cost Persistence (STATS-002)
 
-> **Status:** 🔄 Proposed (flips to "✅ Implemented" at STATS-002 v1 feature
-> completion per Gate 12)
+> **Status:** ✅ Implemented (per Gate 12 — implementation complete
+> 2026-10-05..06: 18-task SDD on branch `disco-badger`, commits
+> `b2aeb9af..c6c6856c` + the docs-closure commit; binding spec
+> `docs/superpowers/specs/2026-10-05-stats002-cost-tracking-design.md`, plan
+> `docs/superpowers/plans/2026-10-05-stats002-cost-tracking.md`)
 > **Date:** 2026-10-05
 > **Deciders:** Architecture Agent (architecture-gate ruling 2026-10-05, findings
 > F1–F7); Project Owner (product rulings D1–D4 — those stay recorded in the

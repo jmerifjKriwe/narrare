@@ -206,8 +206,11 @@ GET /api/v1/analytics/costs?month=YYYY-MM        (auth required)
 - **Known-untracked spend** (documented honesty): mem0's internal LLM calls
   (`core/memory/mem0_client.py`, RULE-01b exception #2) and setup provider
   validation (exception #13, direct Agent) are not captured in v1.
-- Timezone: month bucketing uses server-local month boundaries (v1 simplification,
-  single-user local-first deployment; documented in the feature file).
+- Timezone: month bucketing uses **UTC calendar months** — session-tz
+  independent; the repository aggregates with `AT TIME ZONE 'UTC'`, pinned by a
+  Berlin regression test (corrected 2026-10-06; supersedes the earlier
+  "server-local month boundaries" simplification). The **default** month (no
+  `month` param) resolves to the current server-local month.
 
 ## 7. Testing Strategy
 
