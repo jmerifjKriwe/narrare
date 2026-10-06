@@ -251,6 +251,15 @@ class TestUsageRecordRepositoryAggWiring:
             "model_id",
         ]
         assert grouped[0].element.name == "date_trunc"
+        # Deterministic UTC bucketing (review finding): the truncation argument
+        # must be `created_at AT TIME ZONE 'UTC'` — not a bare `created_at`,
+        # which date_trunc would cut in the SESSION timezone (a non-UTC
+        # session could then mislabel a month's first rows into the previous
+        # month). Real-PG proof: integration round-trip test.
+        tz_arg = list(grouped[0].element.clauses)[1]
+        assert tz_arg.operator.opstring == "AT TIME ZONE"
+        assert tz_arg.left.name == "created_at"
+        assert tz_arg.right.value == "UTC"
 
     async def test_aggregate_range_orders_by_month_then_cost_desc(self) -> None:
         """ORDER BY = month ascending, then cost sum descending."""

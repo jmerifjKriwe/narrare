@@ -3,11 +3,19 @@
 
 Persistence and month aggregation for ``UsageRecordRow`` (STATS-002).
 Aggregation semantics (spec §3.5): group by
-``(date_trunc('month', created_at), intent, provider, model_id)`` with call
-counts, token sums, an OPTIONAL cost sum — ``COALESCE`` to 0 because a bucket
-may contain only unpriced calls — and ``unpriced_calls`` counted via
-``count(*) FILTER (WHERE cost_usd IS NULL)``. The range is half-open
-``[start, end)`` and every read is scoped to the caller's ``user_id``.
+``(date_trunc('month', created_at AT TIME ZONE 'UTC'), intent, provider,
+model_id)`` with call counts, token sums, an OPTIONAL cost sum —
+``COALESCE`` to 0 because a bucket may contain only unpriced calls — and
+``unpriced_calls`` counted via ``count(*) FILTER (WHERE cost_usd IS NULL)``.
+The range is half-open ``[start, end)`` and every read is scoped to the
+caller's ``user_id``.
+
+**Timezone guarantee: month buckets are UTC calendar months, independent of
+the DB session timezone.** ``date_trunc`` is applied to the naive UTC
+timestamp (``created_at AT TIME ZONE 'UTC'``), so a bucket is derived from a
+row's UTC wall-clock month regardless of the session's ``TIME ZONE`` GUC —
+without the pin, a non-UTC session would truncate in local time and could
+mislabel a month's first rows into the previous month.
 
 SQL semantics are verified against real PostgreSQL in
 ``tests/integration/test_migration_0043_round_trip.py``; the unit tests
@@ -47,7 +55,7 @@ class UsageAggRow:
 
 
 def _bucket_month(value: datetime | date) -> date:
-    """``date_trunc`` yields a timestamp; the contract field is a calendar date."""
+    """``date_trunc`` (UTC-pinned) yields a naive timestamp; the contract field is a date."""
     return value.date() if isinstance(value, datetime) else value
 
 
@@ -97,10 +105,14 @@ class UsageRecordRepository(BaseRepository):
     ) -> list[UsageAggRow]:
         """Monthly cost buckets for one user, half-open ``[start, end)``.
 
-        Rows are ordered by month, then cost (descending). Callers get an
-        empty list when the range contains no usage for the user.
+        Buckets are UTC calendar months (see module docstring), independent
+        of the DB session timezone. Rows are ordered by month, then cost
+        (descending). Callers get an empty list when the range contains no
+        usage for the user.
         """
-        month_bucket = func.date_trunc("month", UsageRecordRow.created_at).label("month")
+        month_bucket = func.date_trunc(
+            "month", UsageRecordRow.created_at.op("AT TIME ZONE")("UTC")
+        ).label("month")
         cost_sum = func.coalesce(func.sum(UsageRecordRow.cost_usd), 0).label("cost_usd")
         stmt = (
             select(
