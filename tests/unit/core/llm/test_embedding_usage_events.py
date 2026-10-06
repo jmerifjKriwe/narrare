@@ -20,6 +20,7 @@ from structlog.testing import capture_logs
 
 from narrare_core.llm.usage_events import (
     UsageEvent,
+    estimate_cost_usd,
     set_usage_context,
     set_usage_event_sink,
 )
@@ -291,3 +292,20 @@ class TestEmbeddingUsageEventEmission:
 
         assert len(result) == 2
         assert recording_sink.events == []
+
+
+# ---------------------------------------------------------------------------
+# Rate math (spec §4 — patching the rates lookup, no models.dev I/O)
+# ---------------------------------------------------------------------------
+
+
+def test_embedding_rate_math(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Spec §4: embedding-model pricing is input-only (models.dev rates)."""
+    monkeypatch.setattr(
+        "narrare_core.llm.usage_events.get_rates_strict",
+        lambda provider, model_id: {"input": 0.02, "output": 0.0},
+    )
+
+    cost = estimate_cost_usd("openai", "text-embedding-3-small", tokens_in=1_000_000, tokens_out=0)
+
+    assert cost == pytest.approx(0.02)
