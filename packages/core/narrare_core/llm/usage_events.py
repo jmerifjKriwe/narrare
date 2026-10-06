@@ -119,36 +119,51 @@ async def emit_registry_usage_event(
 
     Lives here — at the seam — so ``gateway.py`` stays within its RULE-04
     file-size limit; the gateway only wires the call sites.
+
+    FU-1 (STATS-002 hardening): event CONSTRUCTION (details coercion,
+    ``estimate_cost_usd``) runs before the guarded seam call, so a
+    malformed provider payload could raise into the product run. The whole
+    construction + emission is guarded here — never re-raises (ADR-093 D1);
+    ``emit_usage_event``'s own internal guard stays as defense in depth.
     """
-    raw_details = getattr(usage, "details", None)
-    if isinstance(raw_details, dict):
-        details = cast("dict[str, Any]", raw_details)
-    else:
-        details: dict[str, Any] = {}
-    cache_read = int(details.get("cache_read_input_tokens", 0) or 0)
-    cache_creation = int(details.get("cache_creation_input_tokens", 0) or 0)
-    tokens_in = usage.input_tokens or 0
-    tokens_out = usage.output_tokens or 0
-    await emit_usage_event(
-        UsageEvent(
-            timestamp=datetime.now(UTC),
-            intent=intent.value,
-            provider=config.provider_name,
-            model_id=config.model_id,
-            tokens_in=tokens_in,
-            tokens_out=tokens_out,
-            cache_read_tokens=cache_read,
-            cache_creation_tokens=cache_creation,
-            duration_seconds=duration_seconds,
-            cost_usd=estimate_cost_usd(
-                config.provider_name,
-                config.model_id,
+    try:
+        raw_details = getattr(usage, "details", None)
+        if isinstance(raw_details, dict):
+            details = cast("dict[str, Any]", raw_details)
+        else:
+            details: dict[str, Any] = {}
+        cache_read = int(details.get("cache_read_input_tokens", 0) or 0)
+        cache_creation = int(details.get("cache_creation_input_tokens", 0) or 0)
+        tokens_in = usage.input_tokens or 0
+        tokens_out = usage.output_tokens or 0
+        await emit_usage_event(
+            UsageEvent(
+                timestamp=datetime.now(UTC),
+                intent=intent.value,
+                provider=config.provider_name,
+                model_id=config.model_id,
                 tokens_in=tokens_in,
                 tokens_out=tokens_out,
                 cache_read_tokens=cache_read,
                 cache_creation_tokens=cache_creation,
-            ),
-            user_id=usage_user_id.get(),
-            novel_id=usage_novel_id.get(),
+                duration_seconds=duration_seconds,
+                cost_usd=estimate_cost_usd(
+                    config.provider_name,
+                    config.model_id,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    cache_read_tokens=cache_read,
+                    cache_creation_tokens=cache_creation,
+                ),
+                user_id=usage_user_id.get(),
+                novel_id=usage_novel_id.get(),
+            )
         )
-    )
+    except Exception as exc:  # deliberate catch-all — construction must never raise either
+        logger.warning(
+            "usage_event_emission_failed",
+            error=str(exc),
+            intent=intent.value,
+            provider=config.provider_name,
+            model_id=config.model_id,
+        )

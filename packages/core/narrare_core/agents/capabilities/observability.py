@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
 
+import structlog
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.models import parse_model_id
 
@@ -30,6 +31,8 @@ if TYPE_CHECKING:
     from pydantic_ai import RunContext
     from pydantic_ai.messages import ModelResponse
     from pydantic_ai.models import Model, ModelRequestContext
+
+logger = structlog.get_logger(__name__)
 
 
 def derive_model_attribution(model: Model) -> tuple[str, str]:
@@ -151,67 +154,84 @@ class NarrareObservability(AbstractCapability):
         """Success loggen: Dauer, Token-Verbrauch."""
         elapsed = time.monotonic() - self._start_time
 
-        # Extract cache statistics from usage details
-        raw_details = getattr(ctx.usage, "details", None)
-        if isinstance(raw_details, dict):
-            details = cast("dict[str, Any]", raw_details)
-        else:
-            details: dict[str, Any] = {}
-        cache_read = int(details.get("cache_read_input_tokens", 0) or 0)
-        cache_creation = int(details.get("cache_creation_input_tokens", 0) or 0)
+        # FU-1 (STATS-002 hardening): the cache-token coercion and the
+        # ``UsageEvent`` construction (incl. ``estimate_cost_usd``) run
+        # OUTSIDE ``emit_usage_event``'s internal guard, so a malformed
+        # provider payload could raise into the model run (ADR-093 D1
+        # residual gap). The whole telemetry block below is best-effort —
+        # one catch-all guards construction + emission; it never re-raises.
+        # The coerced cache counts feed both the metrics and the event, so
+        # the guard spans from details extraction through emission.
+        try:
+            # Extract cache statistics from usage details
+            raw_details = getattr(ctx.usage, "details", None)
+            if isinstance(raw_details, dict):
+                details = cast("dict[str, Any]", raw_details)
+            else:
+                details: dict[str, Any] = {}
+            cache_read = int(details.get("cache_read_input_tokens", 0) or 0)
+            cache_creation = int(details.get("cache_creation_input_tokens", 0) or 0)
 
-        # Aus ctx.usage die Token extrahieren
-        # ctx.usage is always populated (RunUsage, not Optional)
-        token_usage = TokenUsage(
-            prompt_tokens=ctx.usage.input_tokens or 0,
-            completion_tokens=ctx.usage.output_tokens or 0,
-            total_tokens=ctx.usage.total_tokens or 0,
-            cache_read_tokens=cache_read,
-            cache_creation_tokens=cache_creation,
-        )
-
-        record_success(
-            intent=self.intent or "unknown",
-            model=self._model_id or "unknown",
-            provider=self._provider_name or "unknown",
-            usage=token_usage,
-            duration_seconds=elapsed,
-        )
-
-        # Record cache metrics
-        if cache_read > 0 or cache_creation > 0:
-            record_cache_usage(
-                intent=self.intent or "unknown",
-                model=self._model_id or "unknown",
-                provider=self._provider_name or "unknown",
+            # Aus ctx.usage die Token extrahieren
+            # ctx.usage is always populated (RunUsage, not Optional)
+            token_usage = TokenUsage(
+                prompt_tokens=ctx.usage.input_tokens or 0,
+                completion_tokens=ctx.usage.output_tokens or 0,
+                total_tokens=ctx.usage.total_tokens or 0,
                 cache_read_tokens=cache_read,
                 cache_creation_tokens=cache_creation,
             )
 
-        # Emit one billable UsageEvent per model request (ADR-093 decision 4).
-        await emit_usage_event(
-            UsageEvent(
-                timestamp=datetime.now(UTC),
+            record_success(
                 intent=self.intent or "unknown",
+                model=self._model_id or "unknown",
                 provider=self._provider_name or "unknown",
-                model_id=self._model_id or "unknown",
-                tokens_in=token_usage.prompt_tokens,
-                tokens_out=token_usage.completion_tokens,
-                cache_read_tokens=cache_read,
-                cache_creation_tokens=cache_creation,
+                usage=token_usage,
                 duration_seconds=elapsed,
-                cost_usd=estimate_cost_usd(
-                    self._provider_name or "unknown",
-                    self._model_id or "unknown",
+            )
+
+            # Record cache metrics
+            if cache_read > 0 or cache_creation > 0:
+                record_cache_usage(
+                    intent=self.intent or "unknown",
+                    model=self._model_id or "unknown",
+                    provider=self._provider_name or "unknown",
+                    cache_read_tokens=cache_read,
+                    cache_creation_tokens=cache_creation,
+                )
+
+            # Emit one billable UsageEvent per model request (ADR-093 decision 4).
+            await emit_usage_event(
+                UsageEvent(
+                    timestamp=datetime.now(UTC),
+                    intent=self.intent or "unknown",
+                    provider=self._provider_name or "unknown",
+                    model_id=self._model_id or "unknown",
                     tokens_in=token_usage.prompt_tokens,
                     tokens_out=token_usage.completion_tokens,
                     cache_read_tokens=cache_read,
                     cache_creation_tokens=cache_creation,
-                ),
-                user_id=usage_user_id.get(),
-                novel_id=usage_novel_id.get(),
+                    duration_seconds=elapsed,
+                    cost_usd=estimate_cost_usd(
+                        self._provider_name or "unknown",
+                        self._model_id or "unknown",
+                        tokens_in=token_usage.prompt_tokens,
+                        tokens_out=token_usage.completion_tokens,
+                        cache_read_tokens=cache_read,
+                        cache_creation_tokens=cache_creation,
+                    ),
+                    user_id=usage_user_id.get(),
+                    novel_id=usage_novel_id.get(),
+                )
             )
-        )
+        except Exception as exc:  # deliberate catch-all — telemetry must never raise
+            logger.warning(
+                "usage_event_emission_failed",
+                error=str(exc),
+                intent=self.intent or "unknown",
+                provider=self._provider_name or "unknown",
+                model_id=self._model_id or "unknown",
+            )
 
         return response
 
