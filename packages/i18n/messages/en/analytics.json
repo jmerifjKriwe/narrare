@@ -43,6 +43,7 @@
       "fact_extractor": "Fact extractor",
       "generate": "Generate",
       "inline_suggest": "Inline suggestions",
+      "interview_question": "Interview questions",
       "kb": "Knowledge base",
       "kb_assist": "KB assist",
       "kb_consistency": "KB consistency",
@@ -73,6 +74,8 @@
       "timeline": "Timeline",
       "title_generate": "Title generation",
       "voice": "Voice & style",
+      "wiki_chapter": "Wiki chapter",
+      "wiki_generation": "Wiki generation",
       "worldbuilding": "Worldbuilding",
       "write": "Write"
     }
