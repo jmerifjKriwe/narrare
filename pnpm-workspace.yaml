@@ -38,3 +38,22 @@ overrides:
   # Floor is major-bounded (<3) to prevent drift (#116-class: an open floor would
   # pull a future 3.x major), consistent with undici/js-yaml/ip-address.
   "@hono/node-server": ">=2.0.10 <3"
+  # Dependabot alert #191 / GHSA-p6vx-979v-rg4c (critical): fromJSON() Promise
+  # thenable assimilation invokes plugin-produced callables (>= 0.12.0, <= 1.6.0),
+  # plus alert #190 / GHSA-jp82-f5mq-hwhp (high): memory exhaustion via unchecked
+  # TypedArray length in JSON deserialization (<= 1.6.2). Transitive via solid-js
+  # (@tanstack/query-devtools; seroval-plugins declares seroval ^1.0 — floor
+  # stays within 1.x). First patched: 1.6.3 (#191) / 1.6.3 (#190); one floor
+  # covers both alerts.
+  seroval: ">=1.6.3"
+  # Dependabot alert #189 / GHSA-68fv-2mgg-jv7q (high): event-loop denial of
+  # service through indexed source-map section offsets (>= 1.0.0, < 1.2.2).
+  # Transitive via postcss / css-tree / magicast / @tailwindcss/node —
+  # build-time tooling only. First patched: 1.2.2 (current latest).
+  source-map-js: ">=1.2.2"
+  # Dependabot alert #188 / GHSA-vfj7-8cjw-p6xm (CVE-2026-93687, high): braces
+  # stack-exhaustion DoS through deeply nested patterns (<= 3.0.3). NO upstream
+  # fix exists (3.0.3 is the latest release) — no override is possible. Exposure
+  # is dev/build-time only: transitive via micromatch (chokidar/glob chain);
+  # glob patterns are developer-defined, no attacker-controlled input reaches
+  # braces at runtime. Alert deliberately left open; revisit on upstream release.
