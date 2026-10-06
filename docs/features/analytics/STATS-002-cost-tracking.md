@@ -1,159 +1,168 @@
 ---
 id: STATS-002
 title: "AI Cost Tracking"
-status: planned
+status: in-progress
 area: analytics
 mvp: false
 
-ui_tooltip: "Monitor AI usage costs and set budgets to control expenses."
+ui_tooltip: "See what your AI usage costs each month, broken down by feature and model."
 ui_help_short: |
-  Monitor AI usage costs and set budgets to control expenses. Track token
-  consumption per feature, calculate costs by provider/model, and set
-  spending limits to stay within budget.
+  See your monthly AI spending: calls, tokens, and estimated cost by feature
+  and model. Budgets come later.
 ui_help_long: |
   ## AI Cost Tracking
 
-  Know what your AI assistance costs and control your spending.
+  Every AI call Narrare makes is recorded with its token usage and an
+  estimated cost, so you can answer "what did AI cost me this month, and on
+  what?" Open **Analytics** in the studio sidebar and check the **AI Costs**
+  tab: pick a month, see totals (calls, tokens in/out, estimated cost), a
+  breakdown by feature and by provider/model, and a 6-month trend.
 
-  **Usage Tracking**
-  - Token consumption per feature
-  - Cost calculation by provider/model
-  - Historical usage patterns
-  - Project vs. user-level tracking
-  - Real-time cost updates
+  **Honest boundaries:** cost figures are estimates from per-model pricing
+  data (models.dev). Models without a known price are counted separately as
+  "unpriced" instead of being silently guessed. A few internal paths are not
+  counted yet (memory-layer calls, setup provider validation), and a stream
+  you abandon mid-generation is only counted up to its last completed
+  request. Budgets, spending limits, and export are planned follow-ups — v1
+  is transparency only.
+ui_available_in: [analytics]
 
-  **Budget Management**
-  - Monthly spending limits
-  - Per-feature budget caps
-  - Warning thresholds (80%, 90%, 100%)
-  - Automatic usage suspension at limits
-  - Budget alerts and notifications
-
-  **Cost Analysis**
-  - Cost per word written
-  - Most expensive features
-  - Usage efficiency metrics
-  - Provider cost comparisons
-  - Cost trend over time
-
-  **Reporting**
-  - Daily/weekly/monthly cost summaries
-  - Usage breakdown by feature
-  - Project cost allocation
-  - Export for accounting (CSV, PDF)
-
-  **How it works:**
-  1. All AI calls tracked automatically
-  2. View costs in Settings → Costs:
-     - **Overview**: Current month spending
-     - **Breakdown**: By feature and model
-     - **Trends**: Usage over time
-     - **Projects**: Cost per novel
-  3. Set budgets:
-     - Monthly spending limit
-     - Per-feature caps
-     - Warning thresholds
-  4. Receive alerts when approaching limits
-  5. Usage suspended when budget exhausted (configurable)
-
-  **Best practices:**
-  - Set conservative budgets initially
-  - Monitor costs during heavy usage periods
-  - Use cost-efficient models for routine tasks
-  - Review usage patterns for optimization opportunities
-  - Export costs for reimbursement or tax purposes
-
-  Available in Settings panel or via CLI:
-  `narrare analytics costs --period month --breakdown feature`
-ui_available_in: [settings, cli]
-
-service: cost/service.py
-contract: cost/contracts.py#CostTrackingServiceProtocol
-router: cost/router.py
+service: analytics/service.py
+contract: analytics/contracts.py#CostQueryServiceProtocol
+router: analytics/router.py
 prompt: ~
 requires: [INFRA-001]
 ---
 
 # STATS-002 — AI Cost Tracking
 
+> **Status:** 🔨 In progress — v1 (transparency) implemented 2026-10-06
+> (commits `b2aeb9af..a4f2c2ba`) per
+> [ADR-093](../../architecture/decisions/ADR-093-usage-event-sink-cost-persistence.md);
+> design: [cost-tracking spec](../../superpowers/specs/2026-10-05-stats002-cost-tracking-design.md).
+> The status stays in-progress for the deferred slices (budgets, export, CLI,
+> embeddings cost — see Status & History).
+
 ## What it does
 
-AI usage cost monitoring and budget management. Tracks token consumption per feature, calculates costs by provider and model, and enables spending limits with automatic suspension to control expenses.
+A monthly AI cost overview: one persisted usage record per billable LLM call
+(tokens, duration, estimated cost), an aggregation endpoint, and an
+**Analytics** panel (`/analytics`, **AI Costs** tab) with month totals,
+breakdowns by feature and provider/model, and a 6-month trend. v1 is
+transparency only — no budgets, no suspension, no export.
 
 ## Why it exists
 
-AI costs add up quickly. Writers using AI assistance need visibility into spending: Which features cost the most? Am I staying within budget? Which models are most cost-effective? Cost tracking provides transparency and control over AI expenses.
+AI costs add up quietly. Writers using AI assistance need visibility: Which
+features cost the most? Which models are cost-effective? Am I trending
+higher than last month? v1 answers those questions with honest numbers —
+including an explicit count of unpriced calls instead of silent guesses.
 
 ## How it works (User perspective)
 
-1. All AI calls tracked automatically in background
-2. View costs in Settings → Costs:
-   - **Overview**: Current month spending vs budget
-   - **Breakdown**: Cost by feature and model
-   - **Trends**: Usage over time charts
-   - **Projects**: Cost allocation per novel
-3. Set budgets:
-   - Monthly spending limit
-   - Per-feature caps (optional)
-   - Warning thresholds (80%, 90%, 100%)
-4. Configure behavior:
-   - Suspend usage when limit reached
-   - Continue with warning only
-   - Require confirmation after limit
-5. Receive alerts when approaching limits
-6. Export cost reports for accounting
+1. Use Narrare normally — every billable LLM call is recorded automatically.
+2. Open **Analytics** (studio sidebar) → **AI Costs** tab.
+3. Pick a month (prev/next): you see totals (calls, tokens in/out,
+   estimated cost, unpriced badge), a **by feature** table, a **by
+   provider/model** table, and a 6-month trend chart.
+4. Feature names come from i18n labels; a few internal intents without a
+   label yet (e.g. `wiki_generation`, `wiki_chapter`, `interview_question`)
+   show their raw slug by design until labeled.
 
 ## How it works (Technical)
 
-**Entry point:** `cost/router.py` → GET endpoints at `/api/v1/costs`
-**Service:** `CostTrackingService` in `cost/service.py`
-**Contract:** `CostTrackingServiceProtocol` in `cost/contracts.py`
+**Entry point:** `analytics/router.py` → `GET /api/v1/analytics/costs?month=YYYY-MM`
+(auth required; `month` optional, default = server-local current month;
+invalid ⇒ 422 via app-registered `InvalidMonthError` handler). Router
+delegates immediately (RULE-06).
 
-**Usage record:**
-```python
-class UsageRecord:
-    id: UUID
-    timestamp: datetime
-    feature: str  # Feature that made the call
-    provider: str  # openai, anthropic, etc.
-    model: str  # gpt-4, claude-3-opus, etc.
-    tokens_in: int
-    tokens_out: int
-    cost_usd: float  # Calculated cost
-    project_id: UUID | None
-    user_id: UUID
+**Service:** `analytics/service.py` (`CostQueryService`), contract
+`CostQueryServiceProtocol` in `analytics/contracts.py`. Response
+(`CostMonthReport`): `totals` (calls, tokens, `cost_usd`, `unpriced_calls`),
+`by_intent`, `by_model`, and `trend` (the 6 months ending with the requested
+month). All figures user-scoped; month bucketing uses UTC calendar months
+(session-tz independent).
+
+```json
+{
+  "month": "2026-10",
+  "totals": { "calls": 42, "tokens_in": 123456, "tokens_out": 7890,
+              "cost_usd": 1.2345, "unpriced_calls": 3 },
+  "by_intent": [ { "intent": "draft", "calls": 10, "cost_usd": 0.61,
+                   "unpriced_calls": 0 } ],
+  "by_model": [ { "provider": "zai", "model_id": "glm-5.3", "calls": 30,
+                  "cost_usd": 1.1, "unpriced_calls": 0 } ],
+  "trend": [ { "month": "2026-05", "cost_usd": 0.9 },
+             { "month": "2026-06", "cost_usd": 0.75 },
+             { "month": "2026-07", "cost_usd": 1.1 },
+             { "month": "2026-08", "cost_usd": 0.95 },
+             { "month": "2026-09", "cost_usd": 1.05 },
+             { "month": "2026-10", "cost_usd": 1.2345 } ]
+}
 ```
 
-**Cost calculation:**
-- Provider pricing tables (cached, updated periodically)
-- Token counting at LLM gateway level
-- Real-time cost updates
-- Historical pricing for past usage
+**Capture seam (ADR-093):** Core `llm/usage_events.py` defines the DB-free
+`UsageEvent`, the never-raise `UsageEventSink` Protocol, a single process-local
+sink slot (`set_usage_event_sink`/`get_usage_event_sink` — unset ⇒ no-op), and
+the attribution ContextVars. Emission happens at two disjoint points — the
+`NarrareObservability` capability (intent = agent-class slug; per model
+request) and the registry run/stream layer (`llm/registry_run.py`, `LLMIntent`
+vocabulary) — so capability-carrying and bare-ephemeral agents are each counted
+exactly once. Emission is wrapped in a catch-all guard: a sink failure is
+logged and swallowed; the product run is never affected.
 
-**Cost Data:** AI cost estimates use per-model pricing from [models.dev](https://models.dev). See [Model Data Reference](../../reference/model-data.md) for details on how pricing data is sourced and cached.
+**Persistence:** `SqlUsageEventSink` (`analytics/usage_sink.py`) validates and
+writes via `UsageRecordRepository` into `usage_records` (Alembic `0043`),
+one short-lived session per record, registered once at app startup
+(`_app/lifespan.py`) and unset at shutdown. Rows without a resolved user are
+skipped. Attribution: `usage_user_id` from the auth dependency,
+`usage_novel_id` from the novel path (`analytics/middleware.py`; WS session
+bootstrap sets the same vars — `asyncio.create_task` context copy carries
+attribution into background jobs).
 
-**Budget enforcement:**
-- Check budget before each LLM call
-- Suspend if limit exceeded (configurable)
-- Track near-limit warnings
-- Per-feature and global budgets
+**Pricing:** write-time, strict (`estimate_cost_usd` over the models.dev
+cache — see [Model Data Reference](../../reference/model-data.md)): only
+exact-model rates price a call; unknown models store `cost_usd = NULL` and are
+counted as `unpriced_calls` — never re-priced at read time.
+
+**Frontend:** `/analytics` page (`app/(studio)/analytics/`) with the
+`AnalyticsCostsPanel` (totals card, breakdown tables, `CostTrendChart` via
+Recharts), TanStack Query hook, `analytics.*` i18n (en/de/fr).
 
 ## Constraints & Edge Cases
 
-- Pricing updates may cause cost discrepancies
-- Token counting varies by provider's definition
-- Historical costs may not reflect current pricing
-- Budget suspension is per-user, not per-provider
-- Cannot track costs from external API usage
-- Export formats limited to CSV/PDF
-- No predictive cost estimation (historical only)
+- **Known-untracked spend:** mem0-internal LLM calls (RULE-01b exception #2),
+  setup provider validation (exception #13), and abandoned streams
+  (a `GeneratorExit` mid-stream emits nothing — partial-turn tokens of the
+  final request are uncounted). Documented limitation, not a bug.
+- Costs are estimates; unpriced models appear as counts, never guessed costs.
+- Month bucketing is UTC; the default month is server-local — the displayed
+  month can differ from a session timezone around month boundaries.
+- Sink DB failures are logged and swallowed (cost data is best-effort; a
+  crash mid-insert loses that record).
+- Deleted novels keep their cost rows (`novel_id` `ON DELETE SET NULL`).
+- Records are user-scoped; there is no project/admin aggregation surface.
 
 ## Related Features
 
 - [INFRA-001](../infra/INFRA-001-llm-gateway.md) — LLM usage source
-- [STATS-001](STATS-001-writing-stats.md) — Writing statistics
-- [SETUP-001](../setup/SETUP-001-setup-wizard.md) — Provider configuration
+- [STATS-001](STATS-001-writing-stats.md) — Writing Statistics (joins the
+  same Analytics panel in a later cycle)
+- [SETUP-004](../setup/SETUP-004-provider-config.md) — Provider configuration
+  (its validation calls are not tracked)
 
 ## Status & History
 
-- `project-init` — Added to registry as planned feature
+- `project-init` — Added to registry as planned feature (old spec: budgets,
+  Settings home, CLI — superseded).
+- 2026-10-05 — PO rulings D1–D4 (transparency only; dual emission seam;
+  write-time strict costs; `/analytics` panel home); architecture gate
+  findings F1–F7 folded in; ADR-093 authored.
+- 2026-10-06 — v1 implemented (commits `b2aeb9af..a4f2c2ba`): Core seam +
+  emission, `analytics` API module + endpoint + lifespan wiring, `/analytics`
+  FE panel + `analytics.*` i18n. Status → `in-progress`.
+
+**Deferred slices (registered scope):** budgets/suspension · CSV/PDF export ·
+CLI · embeddings cost (different seam, `narrare_core/embeddings/`) ·
+read-time re-pricing · per-series attribution · tracking of mem0-internal and
+setup-validation LLM calls · STATS-001 (second cycle in the same panel).

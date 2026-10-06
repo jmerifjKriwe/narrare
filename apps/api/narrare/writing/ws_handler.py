@@ -25,6 +25,7 @@ from narrare.writing.ws_payloads import (
     build_session_recovered_payload,
 )
 from narrare.writing.ws_session_context import WritingSessionContext
+from narrare_core.llm.usage_events import set_usage_context
 from narrare_core.writing._enums import ConnectionState
 
 if TYPE_CHECKING:
@@ -117,6 +118,17 @@ class WritingSessionHandler:
                 chapter_id=chapter_id,
                 mode=self._mode,
             )
+
+            # STATS-002 / ADR-093 D3: WS identity arrives via ticket
+            # validation inside the endpoint (ADR-084), so the HTTP
+            # attribution middleware never ran for this scope. Bind usage
+            # attribution ONCE at bootstrap — the handler task's context
+            # persists for the connection, and turn streams spawned via
+            # ``asyncio.ensure_future`` (ws_direction_dispatch) inherit it.
+            # ``project_id`` is the novel scope (glossary: Novel = the
+            # top-level project container). No reset on close, mirroring
+            # the middleware: isolation comes from per-connection contexts.
+            set_usage_context(user_id=user_uuid, novel_id=project_id)
 
             if session_id is None:
                 await self._send_greeting(websocket, context)

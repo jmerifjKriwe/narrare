@@ -31,8 +31,14 @@ def resolve_model_rates(
     load_cache: Callable[[], dict[str, Any] | None],
     fetch_models: Callable[[], dict[str, Any]],
     save_cache: Callable[[dict[str, Any]], None],
+    strict: bool = False,
 ) -> dict[str, float] | None:
-    """Resolve per-model pricing from cache/remote metadata with defaults."""
+    """Resolve per-model pricing from cache/remote metadata with defaults.
+
+    With ``strict=True`` only exact-model metadata rates are accepted:
+    unknown models and fetch failures return ``None`` instead of falling
+    back to ``DEFAULT_RATES``.
+    """
 
     data = load_cache()
     if data is None:
@@ -46,15 +52,16 @@ def resolve_model_rates(
                 provider=provider,
                 model=model_id,
             )
+            if strict:
+                return None
             return DEFAULT_RATES.get(provider)
 
     rates = _rates_from_metadata(provider, model_id, data)
     if rates is not None:
         return rates
 
-    fallback = DEFAULT_RATES.get(provider)
-    if fallback is not None:
-        return fallback
+    if not strict:
+        return DEFAULT_RATES.get(provider)
     return None
 
 
@@ -72,10 +79,17 @@ def _rates_from_metadata(
     if input_rate is None or output_rate is None:
         return None
     try:
-        return {
+        rates: dict[str, float] = {
             "input": float(input_rate),
             "output": float(output_rate),
         }
+        cache_read = cost.get("cache_read")
+        if cache_read is not None:
+            rates["cache_read"] = float(cache_read)
+        cache_write = cost.get("cache_write")
+        if cache_write is not None:
+            rates["cache_write"] = float(cache_write)
+        return rates
     except (TypeError, ValueError) as exc:
         logger.warning(
             "models_cost_metadata_invalid",

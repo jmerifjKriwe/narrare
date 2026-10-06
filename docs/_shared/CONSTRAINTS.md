@@ -1243,7 +1243,7 @@ See ADR-028 for the SSOT decision and checker enforcement specification.
 | 5 | RULE-01b | `packages/core/narrare_core/wiki/agent.py` | WikiGenerationAgent uses RunContext for pydantic_ai internals | architecture-review | 2026-06-03 |
 | 6 | RULE-01b | `packages/core/narrare_core/wiki/agent_chapter.py` | WikiChapterGenerator wraps internal PydanticAgent (ADR-015) | ADR-015 | 2026-06-03 |
 | 11 | RULE-TEST-01 | `tests/unit/api/metrics/test_metrics_router.py` | Mocking SQLAlchemy Engine — no domain contract | architecture-review | 2026-06-03 |
-| 12 | RULE-01b | `packages/core/narrare_core/llm/gateway.py` | Gateway._make_agent() is the approved boundary crossing | ADR-015 | 2026-05-20 |
+| 12 | RULE-01b | `packages/core/narrare_core/llm/registry_run.py` | ModelRegistry convenience run()/stream() ephemeral Agents (moved from gateway.py, ADR-015 / plan Task 4a) | ADR-015 | 2026-10-05 |
 | 13 | RULE-01b | `apps/api/narrare/setup/provider_service.py` | Setup-phase provider validation requires direct pydantic-ai Agent | ADR-015 | 2026-05-20 |
 | 15 | RULE-19 | `apps/api/narrare/metrics/router.py` | Health/readiness check must bypass repository layer to verify raw DB connectivity | platform-review-01 | 2026-06-11 |
 | 16 | RULE-18 | `apps/api/narrare/memory/suggestion_identity.py` | `_SOURCE_ID_HASH_PREFIX_LEN` is a pinned cryptographic stability constant; runtime configurability would break source_id_hash determinism across feedback events | CR-AUFG-07-24 | 2026-06-22 |

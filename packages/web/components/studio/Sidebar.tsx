@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Ruler, StickyNote, Zap } from "lucide-react";
+import { ArrowLeft, Coins, Ruler, StickyNote, Zap } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -24,6 +24,7 @@ interface SidebarProps {
 export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
   const t = useTranslations("studio");
   const tNotes = useTranslations("notes");
+  const tCosts = useTranslations("analytics.costs");
   const params = useParams();
   const pathname = usePathname();
   const logout = useAuthStore((s) => s.logout);
@@ -33,6 +34,9 @@ export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
   // The scratchpad entry sits outside SidebarNav's pathname matching, so it
   // owns its active state — mirroring SidebarNav's active visual language.
   const scratchpadActive = pathname === "/scratchpad";
+  // Analytics is likewise global (STATS-002); startsWith keeps the entry
+  // active on future /analytics/* sub-routes.
+  const analyticsActive = pathname.startsWith("/analytics");
 
   const { data: user } = useQuery({
     queryKey: ["auth", "me"],
@@ -113,6 +117,24 @@ export function Sidebar({ variant = "desktop", onClose }: SidebarProps) {
           data-testid="sidebar-quick-capture-button"
           onClick={() => quickCapture.open()}
         />
+      </div>
+
+      {/* Analytics — global, always available (STATS-002, ADR-093) */}
+      <div className="px-3 pt-1">
+        <Link
+          href="/analytics"
+          data-testid="sidebar-analytics-link"
+          aria-current={analyticsActive ? "page" : undefined}
+          className={`w-full flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-colors ${
+            analyticsActive
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:bg-accent"
+          }`}
+          onClick={handleNavigate}
+        >
+          <Coins className="w-4 h-4" />
+          <span>{tCosts("title")}</span>
+        </Link>
       </div>
 
       {/* Navigation */}

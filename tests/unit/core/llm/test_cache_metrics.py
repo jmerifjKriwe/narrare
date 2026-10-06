@@ -179,7 +179,7 @@ class TestNarrareObservabilityCache:
         """after_model_request extracts cache_read + cache_creation from details."""
         obs = NarrareObservability()
         obs._start_time = 0.0
-        obs._intent = "write"
+        obs.intent = "write"
         obs._model_id = "claude-sonnet-4-5-20251020"
         obs._provider_name = "anthropic"
 
@@ -280,7 +280,7 @@ class TestNarrareObservabilityCache:
         """TokenUsage built in after_model_request includes cache fields."""
         obs = NarrareObservability()
         obs._start_time = 0.0
-        obs._intent = "write"
+        obs.intent = "write"
         obs._model_id = "test-model"
         obs._provider_name = "test-provider"
 

@@ -13,6 +13,8 @@ from pydantic_ai import (
     Agent as PydanticAgent,
 )  # narrare: allow-agent reason="WikiChapterGenerator wraps internal PydanticAgent (ADR-015)"
 
+from narrare_core.agents.capabilities import NarrareObservability
+from narrare_core.agents.capabilities.observability import derive_model_attribution
 from narrare_core.wiki.types import WikiChapterOutput, WikiGenerationDeps
 
 if TYPE_CHECKING:
@@ -81,10 +83,23 @@ class WikiChapterGenerator:
     def _get_agent(self) -> Any:
         """Get or create the internal chapter agent (lazy)."""
         if self._chapter_agent is None:
+            # Provider/model attribution from the held model object — same
+            # helper NarrareAgent.__init__ uses (STATS-002 Task 3c), so this
+            # non-NarrareAgent internal path also emits tracked UsageEvents
+            # (final-review fix). The intent is explicit: the class-identity
+            # slug derivation applies to NarrareAgent subclasses only.
+            provider_name, model_id = derive_model_attribution(self._model)
             kwargs: dict[str, Any] = {
                 "model": self._model,
                 "deps_type": WikiGenerationDeps,
                 "output_type": WikiChapterOutput,
+                "capabilities": [
+                    NarrareObservability(
+                        intent="wiki_chapter",
+                        provider_name=provider_name,
+                        model_id=model_id,
+                    ),
+                ],
             }
             if self._system_prompt is not None:
                 kwargs["system_prompt"] = self._system_prompt

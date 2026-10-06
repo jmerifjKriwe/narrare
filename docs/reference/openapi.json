@@ -4359,6 +4359,62 @@
         }
       }
     },
+    "/api/v1/analytics/costs": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Get Monthly Costs",
+        "description": "Monthly AI cost report for the authenticated user (spec §4).",
+        "operationId": "get_monthly_costs_api_v1_analytics_costs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostMonthReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/adaptive/{project_id}/context": {
       "get": {
         "tags": [
@@ -16146,6 +16202,164 @@
         ],
         "title": "CorpusEstimateView",
         "description": "Honest pre-run estimate (spec §4.3) — mirrors ``CorpusEstimateData`` 1:1.\n\nThe estimate NEVER understates: ``ai_calls == chapter_count`` (D14a —\ncost transparency is a count of calls), totals cover ALL enumerated\nchapters, and truncation is explicit via ``capped``/``cap_reason``."
+      },
+      "CostIntentRow": {
+        "properties": {
+          "intent": {
+            "type": "string",
+            "title": "Intent"
+          },
+          "calls": {
+            "type": "integer",
+            "title": "Calls"
+          },
+          "cost_usd": {
+            "type": "number",
+            "title": "Cost Usd"
+          },
+          "unpriced_calls": {
+            "type": "integer",
+            "title": "Unpriced Calls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent",
+          "calls",
+          "cost_usd",
+          "unpriced_calls"
+        ],
+        "title": "CostIntentRow",
+        "description": "Per-intent breakdown row (sorted by cost, descending)."
+      },
+      "CostModelRow": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "calls": {
+            "type": "integer",
+            "title": "Calls"
+          },
+          "cost_usd": {
+            "type": "number",
+            "title": "Cost Usd"
+          },
+          "unpriced_calls": {
+            "type": "integer",
+            "title": "Unpriced Calls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "model_id",
+          "calls",
+          "cost_usd",
+          "unpriced_calls"
+        ],
+        "title": "CostModelRow",
+        "description": "Per-(provider, model) breakdown row (sorted by cost, descending).\n\nThe same ``model_id`` offered by two providers yields two rows."
+      },
+      "CostMonthReport": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/CostTotals"
+          },
+          "by_intent": {
+            "items": {
+              "$ref": "#/components/schemas/CostIntentRow"
+            },
+            "type": "array",
+            "title": "By Intent"
+          },
+          "by_model": {
+            "items": {
+              "$ref": "#/components/schemas/CostModelRow"
+            },
+            "type": "array",
+            "title": "By Model"
+          },
+          "trend": {
+            "items": {
+              "$ref": "#/components/schemas/CostTrendPoint"
+            },
+            "type": "array",
+            "title": "Trend"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "totals",
+          "by_intent",
+          "by_model",
+          "trend"
+        ],
+        "title": "CostMonthReport",
+        "description": "Monthly AI cost overview: month breakdowns + six-month trend.\n\n``totals``/``by_intent``/``by_model`` are scoped to ``month``; ``trend``\nspans the six months ending with ``month`` (oldest first, zero months\nincluded)."
+      },
+      "CostTotals": {
+        "properties": {
+          "calls": {
+            "type": "integer",
+            "title": "Calls"
+          },
+          "tokens_in": {
+            "type": "integer",
+            "title": "Tokens In"
+          },
+          "tokens_out": {
+            "type": "integer",
+            "title": "Tokens Out"
+          },
+          "cost_usd": {
+            "type": "number",
+            "title": "Cost Usd"
+          },
+          "unpriced_calls": {
+            "type": "integer",
+            "title": "Unpriced Calls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "calls",
+          "tokens_in",
+          "tokens_out",
+          "cost_usd",
+          "unpriced_calls"
+        ],
+        "title": "CostTotals",
+        "description": "Aggregate over all usage recorded in the requested month."
+      },
+      "CostTrendPoint": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "cost_usd": {
+            "type": "number",
+            "title": "Cost Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "cost_usd"
+        ],
+        "title": "CostTrendPoint",
+        "description": "One month of the six-month trend (``month`` is ``YYYY-MM``)."
       },
       "CreateChapterRequest": {
         "properties": {

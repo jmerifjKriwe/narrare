@@ -25,9 +25,10 @@ with_meta() or manual meta-prompt loading.
 
 from __future__ import annotations
 
+import re
 from abc import ABC
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic_ai import Agent
 
@@ -36,6 +37,7 @@ from narrare_core.agents.capabilities import (
     NarrareObservability,
     NarrareUniversalRules,
 )
+from narrare_core.agents.capabilities.observability import derive_model_attribution
 from narrare_core.agents.error_translator import classify_error
 from narrare_core.agents.history_policy import HistoryPolicy
 
@@ -81,6 +83,24 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
         agent = MyAgent(model=model, deps_type=MyDeps, output_type=MyOutput)
         result = await agent.run(prompt, deps=MyDeps(...))
     """
+
+    #: Override point for the capability-path observability intent
+    #: (ADR-093). ``None`` derives a snake_case slug from the concrete
+    #: class name (``ChapterSummaryAgent`` → ``"chapter_summary"``).
+    observability_intent: ClassVar[str | None] = None
+
+    def _observability_slug(self) -> str:
+        """Derive the class-identity intent slug for the capability path.
+
+        Strips a trailing ``"Agent"`` suffix and camelCases the rest:
+        ``ChapterSummaryAgent`` → ``"chapter_summary"``, ``KBAgent`` →
+        ``"kb"``. Acronym prefixes keep their run (``POVDetectionAgent``
+        → ``"pov_detection"``).
+        """
+        name = type(self).__name__.removesuffix("Agent")
+        slug = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
+        slug = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", slug)
+        return slug.lower()
 
     def __init__(
         self,
@@ -136,11 +156,19 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
         # defaults to `str` (the pydantic-ai default — forwarding it
         # explicitly is behaviorally identical to omitting it); an explicit
         # None skips the kwarg, which lands on the same pydantic-ai default.
+        # Derive provider/model attribution from the model object once, at
+        # construction (STATS-002 Task 3c) — wrapper models are unwrapped,
+        # so every agent attributes its real model, WritingDeps-family or not.
+        provider_name, model_id = derive_model_attribution(model)
         agent_kwargs: dict[str, Any] = {
             "model": model,
             "deps_type": deps_type,
             "capabilities": [
-                NarrareObservability(),  # immer
+                NarrareObservability(
+                    intent=self.observability_intent or self._observability_slug(),
+                    provider_name=provider_name,
+                    model_id=model_id,
+                ),  # immer — class-identity intent + model attribution (ADR-093)
                 NarrareUniversalRules(),  # immer — ADR-026 Phase 1
                 NarrareMeta(),  # immer — ADR-026 Phase 3
                 *(capabilities or []),
