@@ -9,10 +9,12 @@ pydantic-ai usage object, and a guarded seam that never breaks the run.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
 import pytest
+from pydantic_ai import Agent
+from structlog.testing import capture_logs
 
 from narrare_core.llm import LLMIntent, ResolvedModelConfig
 from narrare_core.llm.usage_events import (
@@ -217,3 +219,59 @@ class TestStreamEmitsUsageEvent:
         final_chunks = [c for c in chunks if c.is_final]
         assert len(final_chunks) == 1
         assert final_chunks[0].usage is not None
+
+
+def _corrupt_result_usage_details(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make every ``Agent.run`` result carry a malformed usage detail value.
+
+    pydantic-ai drops non-numeric detail values while accumulating usage
+    (``_incr_usage_tokens`` isinstance-guards them), so the corruption must
+    be applied to the finished result's usage object — the same place a
+    real provider payload with a garbage string would surface it at this
+    seam despite the ``dict[str, int]`` annotation.
+    """
+    original_run = Agent.run
+
+    async def run_with_garbage_details(agent: Agent[Any, Any], *args: Any, **kwargs: Any) -> Any:
+        result = await original_run(agent, *args, **kwargs)
+        # Deliberate annotation lie: simulates a runtime-malformed provider
+        # payload (non-numeric detail value) that slips past dict[str, int].
+        result.usage.details["cache_read_input_tokens"] = cast("int", "garbage")
+        return result
+
+    monkeypatch.setattr(Agent, "run", run_with_garbage_details)
+
+
+class TestMalformedUsageDetailsNeverBreakRun:
+    """FU-1 (STATS-002 follow-up): construction runs outside the guarded seam.
+
+    ``emit_registry_usage_event`` coerces ``usage.details`` values and builds
+    the ``UsageEvent`` BEFORE the guarded ``emit_usage_event`` call. A
+    non-numeric detail value (runtime provider payload) must never raise
+    into the product run (ADR-093 D1 residual gap).
+    """
+
+    async def test_run_with_garbage_cache_details_returns_output_emits_no_event(
+        self,
+        registry_with_test_model: ModelRegistry,
+        write_config: ResolvedModelConfig,
+        recording_sink: RecordingSink,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Malformed details → run returns output, sink sees nothing, warning logged."""
+        _patch_estimate_cost(monkeypatch, [])  # isolate rates I/O; cost is never reached
+        _corrupt_result_usage_details(monkeypatch)
+
+        with capture_logs() as logs:
+            output = await registry_with_test_model.run(
+                LLMIntent.NAME_GENERATE,
+                prompt="x",
+                config=write_config,
+            )
+
+        assert output == "Test response from pydantic-ai TestModel."
+        # Sentinel sink: no (half-built) event may arrive.
+        assert recording_sink.events == []
+        failures = [e for e in logs if e.get("event") == "usage_event_emission_failed"]
+        assert len(failures) == 1
+        assert failures[0]["error"]

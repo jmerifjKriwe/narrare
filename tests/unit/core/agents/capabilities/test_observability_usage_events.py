@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
 from pydantic_ai.messages import ModelResponse
+from structlog.testing import capture_logs
 
 from narrare_core.agents.capabilities.observability import NarrareObservability
 from narrare_core.llm.usage_events import (
@@ -252,3 +253,36 @@ class TestUsageEventEmission:
             set_usage_event_sink(None)
 
         assert result is response
+
+    async def test_after_model_request_with_garbage_details_returns_response_and_emits_no_event(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """FU-1: malformed usage.details must never raise into the model run."""
+        _patch_estimate_cost(monkeypatch, [])  # cost is never reached
+        # Deliberate annotation lie: simulates a runtime-malformed provider
+        # payload (non-numeric detail value) that slips past dict[str, int].
+        garbage_details = cast("dict[str, int]", {"cache_read_input_tokens": "garbage"})
+        ctx = _FakeUsageCtx(
+            _FakeUsage(input_tokens=10, output_tokens=5, total_tokens=15, details=garbage_details)
+        )
+        response = ModelResponse(parts=[])
+        sink = RecordingSink()
+        set_usage_event_sink(sink)
+        try:
+            with capture_logs() as logs:
+                obs = NarrareObservability()
+                await obs.before_model_request(cast("Any", ctx), cast("Any", None))
+                result = await obs.after_model_request(
+                    cast("Any", ctx),
+                    request_context=cast("Any", None),
+                    response=response,
+                )
+        finally:
+            set_usage_event_sink(None)
+
+        assert result is response
+        # Sentinel sink: no (half-built) event may arrive.
+        assert sink.events == []
+        failures = [e for e in logs if e.get("event") == "usage_event_emission_failed"]
+        assert len(failures) == 1
+        assert failures[0]["error"]
