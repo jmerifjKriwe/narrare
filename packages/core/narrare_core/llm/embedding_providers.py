@@ -20,6 +20,7 @@ from typing import Protocol, runtime_checkable
 import openai
 import structlog
 
+from narrare_core.llm.usage_events import emit_embedding_batch_usage
 from narrare_core.settings import get_core_settings
 from narrare_core.shared.errors import EmbeddingError
 
@@ -173,12 +174,16 @@ class OpenAIEmbeddingProvider:
             # Process in batches
             for batch_start in range(0, len(texts_to_embed), self._batch_size):
                 batch = texts_to_embed[batch_start : batch_start + self._batch_size]
+                call_started = time.monotonic()
                 response = await client.embeddings.create(
                     input=batch,
                     model=model_name,
                 )
                 for item in sorted(response.data, key=lambda x: x.index):
                     all_embeddings.append(item.embedding)
+                await emit_embedding_batch_usage(
+                    response, model_name=model_name, call_started=call_started
+                )
 
             elapsed = time.monotonic() - start
 

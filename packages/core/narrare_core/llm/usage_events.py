@@ -1,8 +1,9 @@
 """Usage-event sink seam — ADR-093.
 
-Core emits one ``UsageEvent`` per billable LLM call at two disjoint points
-(the observability capability and ``ModelRegistry.run()/stream()``); the app
-registers a DB-writing sink at startup. The seam never raises into a run.
+Core emits one ``UsageEvent`` per billable LLM call at three disjoint points
+(the observability capability, ``ModelRegistry.run()/stream()``, and the
+OpenAI embedding provider); the app registers a DB-writing sink at startup.
+The seam never raises into a run.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from time import monotonic
 from typing import TYPE_CHECKING, Protocol, cast
 
 import structlog
@@ -166,4 +168,98 @@ async def emit_registry_usage_event(
             intent=intent.value,
             provider=config.provider_name,
             model_id=config.model_id,
+        )
+
+
+async def emit_embedding_usage_event(
+    *,
+    model_name: str,
+    tokens_in: int,
+    duration_seconds: float,
+) -> None:
+    """Guarded emission for one embedding API batch call (ADR-093 surface c).
+
+    Third disjoint emission point (ADR-093 Post-Implementation Amendment):
+    ``OpenAIEmbeddingProvider.embed_texts`` is the only seam that sees
+    embedding token counts (the SDK response's ``usage.total_tokens``), so it
+    emits one event per API batch response. Shape per the binding spec:
+    ``intent="embeddings"``, ``provider="openai"`` (the provider class is
+    OpenAI-specific), input-only tokens (``prompt_tokens == total_tokens``
+    for embeddings), strict cost (unknown model ⇒ ``None`` = unpriced),
+    attribution from the ContextVars.
+
+    FU-1 pattern (D-4), mirroring :func:`emit_registry_usage_event`: event
+    construction — including the defensive ``int`` coercion of a possibly
+    runtime-malformed ``total_tokens`` value — and emission run inside the
+    never-raise catch-all; ``emit_usage_event``'s own guard stays as defense
+    in depth.
+    """
+    try:
+        tokens = int(tokens_in)
+        await emit_usage_event(
+            UsageEvent(
+                timestamp=datetime.now(UTC),
+                intent="embeddings",
+                provider="openai",
+                model_id=model_name,
+                tokens_in=tokens,
+                tokens_out=0,
+                cache_read_tokens=0,
+                cache_creation_tokens=0,
+                duration_seconds=duration_seconds,
+                cost_usd=estimate_cost_usd(
+                    "openai",
+                    model_name,
+                    tokens_in=tokens,
+                    tokens_out=0,
+                ),
+                user_id=usage_user_id.get(),
+                novel_id=usage_novel_id.get(),
+            )
+        )
+    except Exception as exc:  # deliberate catch-all — construction must never raise either
+        logger.warning(
+            "usage_event_emission_failed",
+            error=str(exc),
+            intent="embeddings",
+            provider="openai",
+            model_id=model_name,
+        )
+
+
+async def emit_embedding_batch_usage(
+    response: Any,
+    *,
+    model_name: str,
+    call_started: float,
+) -> None:
+    """D-5 guard + per-batch emission for one embedding API batch response.
+
+    Called by ``OpenAIEmbeddingProvider.embed_texts`` right after each
+    ``client.embeddings.create`` response; *call_started* is the per-batch
+    ``time.monotonic()`` timestamp captured around that single API call (the
+    duration is the batch call's, not the whole ``embed_texts`` span). The
+    usage read is defensive (spec D-5): a compatible gateway may omit
+    ``usage`` despite the SDK type, and falsy/missing ``total_tokens`` skips
+    emission with a debug log — no event, no raise. A runtime-malformed
+    ``total_tokens`` value is swallowed by :func:`emit_embedding_usage_event`'s
+    never-raise catch-all.
+
+    Lives here — at the seam — so ``embedding_providers.py`` stays within its
+    RULE-04 file-size limit (same placement rationale as
+    :func:`emit_registry_usage_event` vs. ``gateway.py``).
+    """
+    usage = getattr(response, "usage", None)
+    total_tokens = getattr(usage, "total_tokens", None) if usage is not None else None
+    if total_tokens:
+        await emit_embedding_usage_event(
+            model_name=model_name,
+            tokens_in=total_tokens,
+            duration_seconds=monotonic() - call_started,
+        )
+    else:
+        logger.debug(
+            "embedding_usage_skipped",
+            model=model_name,
+            reason="usage_missing_or_zero",
         )
