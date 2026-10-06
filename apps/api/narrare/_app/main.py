@@ -71,6 +71,14 @@ def create_app(*, test_mode: bool = False) -> FastAPI:
     # --- Request logging ---
     app.add_middleware(RequestLoggingMiddleware)
 
+    # --- Usage attribution (STATS-002 / ADR-093 D3) ---
+    # Added LAST so it wraps outermost (Starlette inserts at the front):
+    # the usage_novel_id ContextVar must be bound before ANY downstream
+    # middleware/handler/task can emit an LLM usage event for this request.
+    from narrare.analytics.middleware import UsageAttributionMiddleware
+
+    app.add_middleware(UsageAttributionMiddleware)
+
     # --- Domain error handler ---
     @app.exception_handler(NarrareError)
     async def _narrare_error_handler(  # pyright: ignore[reportUnusedFunction]
@@ -165,6 +173,18 @@ def create_app(*, test_mode: bool = False) -> FastAPI:
             content={"detail": str(exc), "code": code},
         )
 
+    # --- Analytics invalid-month handler (STATS-002 / ADR-093, spec §4) ---
+    # Decorator form (mirrors the ScopeError handler above) —
+    # ``add_exception_handler`` fails pyright on the narrow exc type.
+    # Regex-valid but unconstructible months (``"0000-01"``, ``"9999-12"``)
+    # pass the Query pattern and are rejected by the service's defensive
+    # validation; this maps them to 422 instead of 500. Registered app-level
+    # so the router stays free of try/except (RULE-06).
+    from narrare.analytics.router import invalid_month_error_handler
+    from narrare.analytics.service import InvalidMonthError
+
+    app.exception_handler(InvalidMonthError)(invalid_month_error_handler)
+
     # --- Unhandled exception handler ---
     @app.exception_handler(Exception)
     async def _unhandled_exception_handler(  # pyright: ignore[reportUnusedFunction]
@@ -210,6 +230,7 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.analysis.router_readability import router as analysis_readability_router
     from narrare.analysis.router_voice_check import router as analysis_voice_check_router
     from narrare.analysis.router_voice_drift import router as analysis_voice_drift_router
+    from narrare.analytics.router import router as analytics_router
     from narrare.auth.router import router as auth_router
     from narrare.auth.router_me import router as auth_me_router
     from narrare.chapters.router import router as chapters_router
@@ -293,6 +314,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(analysis_voice_drift_router, prefix=prefix)
     app.include_router(analysis_author_voice_router, prefix=prefix)
     app.include_router(analysis_author_voice_drift_router, prefix=prefix)
+    app.include_router(analytics_router, prefix=prefix)
     app.include_router(adaptive_router, prefix=prefix)
     app.include_router(ai_assist_router, prefix=prefix)
     app.include_router(embeddings_router)  # Full paths already include /api/v1/admin/embeddings/

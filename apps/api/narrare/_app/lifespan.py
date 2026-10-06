@@ -256,6 +256,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     bind_writing_session_singletons(app)
 
+    # Usage event sink (STATS-002 / ADR-093 D1): every LLM call emitted via
+    # the Core gateway lands in ``usage_records``. Cleared on shutdown below,
+    # after in-flight tasks drained and before the engine is disposed.
+    from narrare._app.database import get_session_factory
+    from narrare.analytics.usage_sink import SqlUsageEventSink
+    from narrare_core.llm.usage_events import set_usage_event_sink
+
+    set_usage_event_sink(SqlUsageEventSink(get_session_factory()))
+    logger.info("usage_event_sink_registered")
+
     # Startup cleanup: remove stale generation requests — skip in test
     # environment (no real data to clean, and it uses the module-level engine).
     if not settings.is_test:
@@ -299,6 +309,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             await drain_inflight_tasks()
         except Exception:
             logger.warning("inflight_drain_failed", exc_info=True)
+
+    # Usage event sink (STATS-002 / ADR-093): clear AFTER in-flight tasks
+    # drained (their emissions stay attributed) and BEFORE the engine is
+    # disposed (no late emission may grab a disposed pool). Unconditional —
+    # the global seam must not leak across app lifecycles.
+    from narrare_core.llm.usage_events import set_usage_event_sink
+
+    set_usage_event_sink(None)
+    logger.info("usage_event_sink_cleared")
 
     # Database engine shutdown — close all pooled connections.
     # Skip in test environment: the test infrastructure handles cleanup
