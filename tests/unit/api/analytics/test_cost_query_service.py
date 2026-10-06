@@ -179,12 +179,17 @@ class TestMonthResolution:
             ("2026-1", "single-digit month"),
             ("20261", "missing separator"),
             ("", "empty string"),
+            # Regex-valid but unconstructible: the six-month trend window
+            # would leave datetime's constructible year range (0001-9999).
+            ("0000-01", "window start before year 1"),
+            ("9999-12", "window end after year 9999"),
+            ("0001-01", "window start in year 0"),
         ],
     )
     async def test_month_report_with_invalid_month_raises_invalid_month_error(
         self, bad_month: str, reason: str
     ) -> None:
-        """Malformed months raise InvalidMonthError before any repo call."""
+        """Malformed or unconstructible months raise InvalidMonthError pre-repo."""
         service, fake = _make_service([])
 
         # match="" would warn (always matches) — assert message content only
@@ -194,6 +199,26 @@ class TestMonthResolution:
             await service.month_report(uuid4(), bad_month)
 
         assert fake.calls == []
+
+    @pytest.mark.parametrize(
+        ("edge_month", "expected_trend_start"),
+        [
+            ("0001-06", "0001-01"),  # earliest constructible six-month window
+            ("9999-01", "9998-08"),  # latest constructible six-month window
+        ],
+    )
+    async def test_month_report_with_constructible_boundary_month_succeeds(
+        self, edge_month: str, expected_trend_start: str
+    ) -> None:
+        """The constructible boundary months must NOT be rejected (guard is
+        window-aware, so years 0001-05 and 9999 within range still report)."""
+        service, fake = _make_service([])
+
+        report = await service.month_report(uuid4(), edge_month)
+
+        assert report.month == edge_month
+        assert report.trend[0].month == expected_trend_start
+        assert len(fake.calls) == 1
 
 
 # ---------------------------------------------------------------------------

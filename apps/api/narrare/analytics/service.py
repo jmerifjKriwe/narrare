@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime
+from datetime import MAXYEAR, MINYEAR, UTC, date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -45,7 +45,8 @@ _MONTH_PATTERN = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 
 
 class InvalidMonthError(ValueError):
-    """The requested month is not a ``YYYY-MM`` string with a 01-12 month."""
+    """The requested month is not a ``YYYY-MM`` string with a 01-12 month, or
+    its trend window is not constructible (edge years outside 0001-9999)."""
 
 
 def _shift_month(year: int, month: int, delta: int) -> tuple[int, int]:
@@ -76,6 +77,28 @@ def _resolve_month(month: str | None) -> tuple[int, int]:
     if _MONTH_PATTERN.match(month) is None:
         raise InvalidMonthError(f"Invalid month {month!r}; expected YYYY-MM (e.g. 2026-03)")
     return int(month[:4]), int(month[5:7])
+
+
+def _validate_window(year: int, month: int, *, trend_months: int) -> None:
+    """Reject months whose trend window is not constructible (Task 7 rider).
+
+    The window ``[month-(trend-1), month+1)`` must stay inside datetime's
+    constructible year range (``MINYEAR``-``MAXYEAR``): regex-valid months
+    like ``0000-01`` (window start year -1) or ``9999-12`` (window end year
+    10000) would otherwise crash with a bare ``ValueError`` at
+    :func:`_month_start` — surfacing as HTTP 500 instead of 422.
+
+    Raises:
+        InvalidMonthError: If either window edge year is out of range.
+    """
+    for offset in (-(trend_months - 1), 1):
+        edge_year, _ = _shift_month(year, month, offset)
+        if not MINYEAR <= edge_year <= MAXYEAR:
+            raise InvalidMonthError(
+                f"Month {_month_label(year, month)} is outside the reportable "
+                f"range: its {trend_months}-month window leaves the constructible "
+                f"year range {MINYEAR:04d}-{MAXYEAR:04d}"
+            )
 
 
 @dataclass
@@ -112,6 +135,7 @@ class CostQueryService:
     async def month_report(self, user_id: uuid.UUID, month: str | None) -> CostMonthReport:
         """Window report ending with the requested (or current) month."""
         year, mon = _resolve_month(month)
+        _validate_window(year, mon, trend_months=self._trend_months)
         first_offset = -(self._trend_months - 1)
         window_start = _month_start(*_shift_month(year, mon, first_offset))
         window_end = _month_start(*_shift_month(year, mon, 1))
