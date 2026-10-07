@@ -111,6 +111,19 @@ MIXED_MEDIA_TYPE_ROUTER = textwrap.dedent("""\
         return StreamingResponse(_rows(), media_type="text/csv")
 """)
 
+UPPERCASE_SSE_ROUTER = textwrap.dedent("""\
+    from fastapi import APIRouter
+    from fastapi.responses import StreamingResponse
+
+    router = APIRouter(prefix="/chat")
+
+    @router.post("")
+    async def chat_stream() -> StreamingResponse:
+        async def event_stream():
+            yield "data: chunk\\n\\n"
+        return StreamingResponse(event_stream(), media_type="TEXT/EVENT-STREAM")
+""")
+
 
 # ---------------------------------------------------------------------------
 # Tests: end-to-end route extraction with media types
@@ -166,6 +179,16 @@ class TestMediaTypeAwareExtraction:
             Path("dual/router.py"),
         )
         assert len(routes) == 1
+
+    def test_uppercase_event_stream_media_type_stays_flagged(self) -> None:
+        """Media types are case-insensitive (RFC 9110) ⇒ uppercase SSE literal is flagged."""
+        routes = _extract_sse_routes(
+            UPPERCASE_SSE_ROUTER,
+            "/chat",
+            Path("chat/router_upper.py"),
+        )
+        assert len(routes) == 1
+        assert routes[0].route == "/api/v1/chat"
 
 
 # ---------------------------------------------------------------------------

@@ -275,10 +275,13 @@ def route_is_sse_stream(media_types: tuple[str, ...]) -> bool:
     ``text/csv`` or ``application/octet-stream``) — a plain file download,
     not SSE. Routes without any statically resolvable media type — or with
     any event-stream-flavored one — stay in scope (fail-closed).
+
+    Matching is case-insensitive: media types are case-insensitive per
+    RFC 9110, so ``TEXT/EVENT-STREAM`` is still recognized as SSE.
     """
     if not media_types:
         return True
-    return any(SSE_MEDIA_TYPE in media_type for media_type in media_types)
+    return any(SSE_MEDIA_TYPE in media_type.lower() for media_type in media_types)
 
 
 def extract_route_decorators(source: str) -> list[RouteDecorator]:
