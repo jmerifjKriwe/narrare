@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import uuid  # noqa: TC003 - needed at runtime for Pydantic model resolution
 from datetime import datetime  # noqa: TC003
+from decimal import Decimal  # noqa: TC003 - needed at runtime for Pydantic model resolution
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -131,6 +133,11 @@ class UserAiSettingsResponse(BaseModel):
     embedding_provider: str = "auto"
     embedding_model: str | None = None
     active_embedding_tier: str | None = None
+    # STATS-002 budgets (ADR-094, spec A-7). monthly_budget_usd mirrors the
+    # nullable NUMERIC(10,2) column (NULL = no budget → gate no-op);
+    # budget_mode defaults to the column default 'warn'.
+    monthly_budget_usd: Decimal | None = None
+    budget_mode: str = "warn"
     updated_at: datetime
 
 
@@ -154,6 +161,21 @@ class UpdateUserAiSettingsRequest(BaseModel):
         default=None,
         max_length=100,
         description="Custom embedding model name (null = use default)",
+    )
+    # STATS-002 budgets (ADR-094, spec A-7): nullable Decimal ≥ 0 mirroring
+    # NUMERIC(10,2) — negative/garbage/overflow ⇒ 422 (pydantic → FastAPI
+    # RequestValidationError). Explicit null = unset (the service
+    # distinguishes it from "not provided" via model_fields_set).
+    monthly_budget_usd: Decimal | None = Field(
+        default=None,
+        ge=0,
+        max_digits=10,
+        decimal_places=2,
+        description="Monthly spend cap in USD (null = no budget)",
+    )
+    budget_mode: Literal["warn", "block"] | None = Field(
+        default=None,
+        description="Enforcement mode: warn (badge only) or block (hard stop)",
     )
 
 

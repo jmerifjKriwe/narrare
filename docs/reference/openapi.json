@@ -25395,6 +25395,39 @@
             ],
             "title": "Embedding Model",
             "description": "Custom embedding model name (null = use default)"
+          },
+          "monthly_budget_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,8}|(?=[\\d.]{1,11}0*$)\\d{0,8}\\.\\d{0,2}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Budget Usd",
+            "description": "Monthly spend cap in USD (null = no budget)"
+          },
+          "budget_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "warn",
+                  "block"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Mode",
+            "description": "Enforcement mode: warn (badge only) or block (hard stop)"
           }
         },
         "type": "object",
@@ -25573,6 +25606,23 @@
               }
             ],
             "title": "Active Embedding Tier"
+          },
+          "monthly_budget_usd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Budget Usd"
+          },
+          "budget_mode": {
+            "type": "string",
+            "title": "Budget Mode",
+            "default": "warn"
           },
           "updated_at": {
             "type": "string",
