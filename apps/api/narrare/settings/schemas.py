@@ -18,12 +18,17 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from narrare.settings.schemas_providers import (  # noqa: F401 — RULE-04 split re-export
-    CreateProviderRequest,  # pyright: ignore[reportUnusedImport]
-    ProviderResponse,  # pyright: ignore[reportUnusedImport]
-    UpdateProviderRequest,  # pyright: ignore[reportUnusedImport]
+from narrare.settings.schemas_providers import (
+    CreateProviderRequest,
+    ProviderResponse,
+    UpdateProviderRequest,
 )
 from narrare.settings.schemas_tones import CustomTone  # noqa: TC001 — used in Pydantic annotation
+
+# RULE-04 split: explicit re-export of the provider schemas so downstream
+# importers of ``narrare.settings.schemas`` stay type-visible for pyright
+# (reportPrivateImportUsage) and ruff (F401) without suppression pragmas.
+__all__ = ["CreateProviderRequest", "ProviderResponse", "UpdateProviderRequest"]
 
 # ---------------------------------------------------------------------------
 # Existing schemas (user settings, project settings)
