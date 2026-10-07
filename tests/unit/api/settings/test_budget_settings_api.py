@@ -26,10 +26,7 @@ if TYPE_CHECKING:
 import pytest
 from pydantic import ValidationError
 
-from narrare.analytics.budget_invalidation import (
-    invalidate_budget_config,
-    set_budget_config_invalidator,
-)
+from narrare.analytics.budget_invalidation import set_budget_config_invalidator
 from narrare.settings.schemas import (
     UpdateUserAiSettingsRequest,
     UserAiSettingsResponse,
@@ -199,52 +196,24 @@ class TestBudgetRequestValidation:
         with pytest.raises(ValidationError):
             UpdateUserAiSettingsRequest(monthly_budget_usd=Decimal("100000000"))
 
-    @pytest.mark.parametrize("value", ["enforce", "WARN", "", "hard_stop"])
-    def test_invalid_budget_mode_is_rejected(self, value: str) -> None:
+    @pytest.mark.parametrize("value", ["enforce", "WARN", "", "hard_stop", None])
+    def test_invalid_budget_mode_is_rejected(self, value: object) -> None:
         with pytest.raises(ValidationError):
             UpdateUserAiSettingsRequest.model_validate({"budget_mode": value})
 
-
-# ======================================================================
-# Invalidation slot (ADR-093 D2 pattern — A5 plugs in here)
-# ======================================================================
-
-
-class TestBudgetInvalidationSlot:
-    def test_invalidate_without_registration_is_noop(self) -> None:
-        """No guard armed (unit tests, CLI, startup) ⇒ no-op, never raises."""
-        set_budget_config_invalidator(None)
-        invalidate_budget_config(uuid.uuid4())
-
-    def test_registered_invalidator_receives_user_id(self) -> None:
-        calls: list[uuid.UUID] = []
-        set_budget_config_invalidator(calls.append)
-        try:
-            uid = uuid.uuid4()
-            invalidate_budget_config(uid)
-            assert calls == [uid]
-        finally:
-            set_budget_config_invalidator(None)
-
-    def test_clearing_slot_restores_noop(self) -> None:
-        calls: list[uuid.UUID] = []
-        set_budget_config_invalidator(calls.append)
-        set_budget_config_invalidator(None)
-        invalidate_budget_config(uuid.uuid4())
-        assert calls == []
-
-    def test_invalidator_exception_propagates(self) -> None:
-        """Mirror the core budget slot: no swallowing (RULE-11)."""
-
-        def _boom(user_id: uuid.UUID) -> None:
-            raise RuntimeError("cache drop failed")
-
-        set_budget_config_invalidator(_boom)
-        try:
-            with pytest.raises(RuntimeError, match="cache drop failed"):
-                invalidate_budget_config(uuid.uuid4())
-        finally:
-            set_budget_config_invalidator(None)
+    def test_explicit_null_budget_mode_is_rejected_but_omission_stays_valid(self) -> None:
+        """Regression (fix round 1): ``PATCH /ai`` with ``{"budget_mode":
+        null``} must 422 at the schema — "unset" is meaningless for
+        budget_mode (NOT NULL column; only ``monthly_budget_usd`` is
+        nullable), and letting it through reaches the DB as an
+        IntegrityError (500). Omitting the field stays valid: pydantic
+        skips field validators for not-provided defaults, so the
+        validator only sees an explicit ``null`` payload."""
+        with pytest.raises(ValidationError):
+            UpdateUserAiSettingsRequest.model_validate({"budget_mode": None})
+        omitted = UpdateUserAiSettingsRequest()
+        assert "budget_mode" not in omitted.model_fields_set
+        assert omitted.budget_mode is None
 
 
 # ======================================================================
@@ -326,6 +295,34 @@ class TestBudgetServiceWrite:
 
         assert result.budget_mode == "block"
         assert invalidation_calls == [user_id]
+
+    async def test_budget_mode_transition_warn_block_warn_invalidates_per_write(
+        self,
+        service: UserAiSettingsService,
+        mock_ai_settings_repo: AsyncMock,
+        user_id: uuid.UUID,
+        invalidation_calls: list[uuid.UUID],
+    ) -> None:
+        """warn → block → warn: each write stores the requested mode and
+        fires the write-through invalidation exactly once per write."""
+        mock_ai_settings_repo.get = AsyncMock()
+        mock_ai_settings_repo.update = AsyncMock()
+        modes: tuple[Literal["warn", "block"], ...] = ("warn", "block", "warn")
+
+        for mode in modes:
+            mock_ai_settings_repo.update.return_value = FakeUserAiSettings(
+                user_id=user_id, budget_mode=mode
+            )
+
+            result = await service.update_settings(
+                user_id, UpdateUserAiSettingsRequest(budget_mode=mode)
+            )
+
+            assert result.budget_mode == mode, f"stored value after writing {mode!r}"
+            _, kwargs = mock_ai_settings_repo.update.call_args
+            assert kwargs["budget_mode"] == mode
+
+        assert invalidation_calls == [user_id, user_id, user_id], "one invalidation per write"
 
     async def test_non_budget_write_does_not_invalidate(
         self,

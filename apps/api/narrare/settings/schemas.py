@@ -3,9 +3,9 @@
 Contains request/response models for all settings endpoints:
 - User settings (display name, language, theme)
 - Project settings (autosave, language, legacy AI fields)
-- AI provider management (create, update, masked response)
 - AI settings (default model, category/intent overrides, token limits)
 - Project AI overrides
+- AI provider management — see schemas_providers.py (RULE-04 split)
 - Custom tones — see schemas_tones.py (RULE-04 split)
 """
 
@@ -16,8 +16,13 @@ from datetime import datetime  # noqa: TC003
 from decimal import Decimal  # noqa: TC003 - needed at runtime for Pydantic model resolution
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from narrare.settings.schemas_providers import (  # noqa: F401 — RULE-04 split re-export
+    CreateProviderRequest,  # pyright: ignore[reportUnusedImport]
+    ProviderResponse,  # pyright: ignore[reportUnusedImport]
+    UpdateProviderRequest,  # pyright: ignore[reportUnusedImport]
+)
 from narrare.settings.schemas_tones import CustomTone  # noqa: TC001 — used in Pydantic annotation
 
 # ---------------------------------------------------------------------------
@@ -71,48 +76,6 @@ class UpdateProjectSettingsRequest(BaseModel):
     # model (the novel falls back to its own author_voice only). ``None`` =
     # "not provided" → omitted from the PATCH (repository uses exclude_none).
     use_series_voice: bool | None = Field(default=None)
-
-
-# ---------------------------------------------------------------------------
-# Provider schemas (Task 10.1)
-# ---------------------------------------------------------------------------
-
-
-class CreateProviderRequest(BaseModel):
-    """Request to register a new AI provider."""
-
-    provider_name: str = Field(
-        max_length=50, description="Provider name, e.g. 'anthropic', 'openrouter'"
-    )
-    api_key: str = Field(min_length=1, description="API key for the provider")
-    base_url: str | None = Field(
-        default=None,
-        max_length=500,
-        description="Custom base URL for OpenAI-compatible providers",
-    )
-
-
-class UpdateProviderRequest(BaseModel):
-    """Request to update an existing provider's credentials or status."""
-
-    api_key: str | None = Field(default=None, min_length=1)
-    base_url: str | None = Field(default=None, max_length=500)
-    is_active: bool | None = None
-
-
-class ProviderResponse(BaseModel):
-    """Provider entry with masked API key — never exposes the full key."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    id: uuid.UUID
-    provider_name: str
-    has_api_key: bool
-    api_key_last4: str
-    base_url: str | None = None
-    is_active: bool
-    created_at: datetime
-    updated_at: datetime
 
 
 # ---------------------------------------------------------------------------
@@ -177,6 +140,24 @@ class UpdateUserAiSettingsRequest(BaseModel):
         default=None,
         description="Enforcement mode: warn (badge only) or block (hard stop)",
     )
+
+    @field_validator("budget_mode")
+    @classmethod
+    def _reject_null_budget_mode(
+        cls, value: Literal["warn", "block"] | None
+    ) -> Literal["warn", "block"] | None:
+        """Explicit ``null`` is not a valid budget_mode ⇒ 422.
+
+        The column is NOT NULL and "unset" is meaningless for the
+        enforcement mode (only ``monthly_budget_usd`` is nullable), so an
+        explicit ``{"budget_mode": null}`` payload would otherwise reach
+        the DB as an IntegrityError (500). Pydantic skips field
+        validators for not-provided defaults, so omitting the field
+        ("not provided" → keep current mode) stays valid.
+        """
+        if value is None:
+            raise ValueError("budget_mode cannot be null — omit the field to keep the current mode")
+        return value
 
 
 class ProjectAiSettingsResponse(BaseModel):
