@@ -11,6 +11,11 @@ Usage:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
 
 class NarrareError(Exception):
     """Base for all Narrare domain errors."""
@@ -73,6 +78,44 @@ class LLMInvalidRequestError(LLMGatewayError):
 
     def __init__(self, message: str = "Invalid request") -> None:
         super().__init__(message, code="INVALID_REQUEST")
+
+
+# ---------------------------------------------------------------------------
+# Budget errors (ADR-094)
+# ---------------------------------------------------------------------------
+
+
+class BudgetExceededError(NarrareError):
+    """User's monthly USD budget is exhausted — the pre-call gate stops the run.
+
+    Raised by the ``BudgetGuard`` seam (``narrare_core.llm.budget``) when a
+    user's current UTC-month spend has reached their monthly budget in
+    ``block`` mode (ADR-094). This is the one controlled inversion of
+    ADR-093 D1's never-raise philosophy — confined to the
+    ``ModelRegistry.get_model()`` gate seam, which raises *before* any spend
+    occurs. The API maps it to HTTP 429 with ``code="BUDGET_EXCEEDED"``.
+
+    Attributes:
+        user_id: the user whose wallet is exhausted.
+        month_spend_usd: spend accumulated in the current UTC month.
+        monthly_budget_usd: the configured monthly budget.
+    """
+
+    def __init__(
+        self,
+        user_id: UUID,
+        *,
+        month_spend_usd: float,
+        monthly_budget_usd: float,
+    ) -> None:
+        super().__init__(
+            f"Monthly budget exceeded for user {user_id}: "
+            f"spent ${month_spend_usd:.2f} of ${monthly_budget_usd:.2f}",
+            code="BUDGET_EXCEEDED",
+        )
+        self.user_id = user_id
+        self.month_spend_usd = month_spend_usd
+        self.monthly_budget_usd = monthly_budget_usd
 
 
 # ---------------------------------------------------------------------------
