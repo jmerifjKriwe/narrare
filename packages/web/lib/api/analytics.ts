@@ -8,7 +8,7 @@
  * 1:1 in snake_case — no FE-side re-casing.
  */
 
-import { fetchApi } from "./core";
+import { fetchApi, fetchApiRaw } from "./core";
 
 /** Aggregate over all usage recorded in the requested month. */
 export interface CostTotals {
@@ -57,8 +57,44 @@ export interface CostMonthReport {
   trend: CostTrendPoint[];
 }
 
+/**
+ * Parse the suggested filename from a Content-Disposition header. Mirrors
+ * lib/api/export.ts (same backend header shape); falls back to the canonical
+ * `narrare-costs-<month>.csv` name built by the export endpoint.
+ */
+function parseCsvFilename(disposition: string | null, month: string): string {
+  if (!disposition) return `narrare-costs-${month}.csv`;
+  const match = /filename="?([^";]+)"?/i.exec(disposition);
+  return match?.[1] ?? `narrare-costs-${month}.csv`;
+}
+
 export const analyticsApi = {
   /** GET /analytics/costs?month=YYYY-MM — month report + six-month trend. */
   costs: (month: string) =>
     fetchApi<CostMonthReport>(`/analytics/costs?month=${encodeURIComponent(month)}`),
+
+  /**
+   * GET /analytics/costs/export?month=YYYY-MM — fetch the month's CSV as a
+   * Blob and trigger a browser download (object-URL `<a download>` click →
+   * revoke; same DOM pattern as useExportPanel's triggerDownload, inlined
+   * here because the binding contract makes this helper the whole download).
+   *
+   * Uses fetchApiRaw (lib/api/core.ts already exposes the native Response —
+   * no wrapper extension needed) for the blob read + auth + 401 refresh.
+   */
+  async downloadCostsCsv(month: string): Promise<void> {
+    const response = await fetchApiRaw(
+      `/analytics/costs/export?month=${encodeURIComponent(month)}`,
+    );
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = parseCsvFilename(response.headers.get("Content-Disposition"), month);
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  },
 };

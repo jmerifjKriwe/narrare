@@ -11,10 +11,11 @@
  * `t.has()` until then).
  */
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { StatusMessage } from "@/components/ui/status-message";
+import { analyticsApi } from "@/lib/api/analytics";
 import { useAnalyticsCosts } from "@/lib/hooks/useAnalyticsCosts";
 import { CostsBreakdownTables } from "./CostsBreakdownTables";
 import { CostTotalsCard } from "./CostTotalsCard";
@@ -73,12 +74,27 @@ function CostsReport({ month }: { readonly month: string }) {
 export function AnalyticsCostsPanel() {
   const t = useTranslations("analytics.costs");
   const [month, setMonth] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Client-local current month set post-mount (ui-principles §8: no new Date()
   // in initial state → no SSR/client mismatch at month rollover).
   useEffect(() => {
     setMonth(currentMonthKey(new Date()));
   }, []);
+
+  // Download failures keep the report usable (button re-enables); the quiet
+  // console is the house UX when no error string is budgeted (spec B-7:
+  // exportCsv is the ONLY new string) — mirrors SentimentResults chart export.
+  const handleExportCsv = () => {
+    if (month === null) return;
+    setIsExporting(true);
+    analyticsApi
+      .downloadCostsCsv(month)
+      .catch((error: unknown) => {
+        console.error("Costs CSV export failed:", error);
+      })
+      .finally(() => setIsExporting(false));
+  };
 
   if (month === null) return <StatusMessage state="loading" />;
 
@@ -88,29 +104,40 @@ export function AnalyticsCostsPanel() {
   return (
     <section className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-label={t("prevMonth")}
+            onClick={() => setMonth(shiftMonth(month, -1))}
+            className={navButton}
+          >
+            <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+          </button>
+          <span
+            data-testid="costs-month-label"
+            aria-live="polite"
+            className="font-mono text-sm font-medium"
+          >
+            {month}
+          </span>
+          <button
+            type="button"
+            aria-label={t("nextMonth")}
+            disabled={month >= currentMonthKey(new Date())}
+            onClick={() => setMonth(shiftMonth(month, 1))}
+            className={`${navButton} disabled:cursor-not-allowed disabled:opacity-50`}
+          >
+            <ChevronRight aria-hidden="true" className="h-4 w-4" />
+          </button>
+        </div>
         <button
           type="button"
-          aria-label={t("prevMonth")}
-          onClick={() => setMonth(shiftMonth(month, -1))}
-          className={navButton}
+          onClick={handleExportCsv}
+          disabled={isExporting}
+          className={`${navButton} inline-flex items-center gap-1.5 px-2.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50`}
         >
-          <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-        </button>
-        <span
-          data-testid="costs-month-label"
-          aria-live="polite"
-          className="font-mono text-sm font-medium"
-        >
-          {month}
-        </span>
-        <button
-          type="button"
-          aria-label={t("nextMonth")}
-          disabled={month >= currentMonthKey(new Date())}
-          onClick={() => setMonth(shiftMonth(month, 1))}
-          className={`${navButton} disabled:cursor-not-allowed disabled:opacity-50`}
-        >
-          <ChevronRight aria-hidden="true" className="h-4 w-4" />
+          <Download aria-hidden="true" className="h-3.5 w-3.5" />
+          {t("exportCsv")}
         </button>
       </div>
       <CostsReport month={month} />
