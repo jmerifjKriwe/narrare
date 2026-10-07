@@ -15,8 +15,9 @@ typically inside ``create_app()`` — before any database operation.
 
 from __future__ import annotations
 
-# ── Analytics (STATS-002 AI cost tracking) ──
+# ── Analytics (STATS-002 AI cost tracking, STATS-001 writing stats) ──
 from narrare.analytics.models import UsageRecordRow  # noqa: F401
+from narrare.analytics.writing_models import WritingActivityEventRow  # noqa: F401
 
 # ── Auth ──
 from narrare.auth.models import User  # noqa: F401
