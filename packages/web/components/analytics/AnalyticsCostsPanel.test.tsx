@@ -9,7 +9,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { CostMonthReport } from "@/lib/api/analytics";
+import type { CostBudgetBlock, CostMonthReport } from "@/lib/api/analytics";
+import { ApiError } from "@/lib/api/core";
 import { AnalyticsCostsPanel } from "./AnalyticsCostsPanel";
 
 vi.mock("next-intl", () => ({
@@ -17,6 +18,14 @@ vi.mock("next-intl", () => ({
     const dict: Record<string, Record<string, string>> = {
       "analytics.costs": { unpriced: "{count} unpriced", exportCsv: "Export CSV" },
       "analytics.costs.intent": { draft: "Draft" },
+      "analytics.budget": {
+        badgeOk: "{percent}% of budget",
+        badgeOver: "Over budget",
+        badgeBlocked: "Budget reached — AI blocked",
+        bannerTitle: "Monthly AI budget reached",
+        bannerBody: "AI calls stay blocked until you raise or remove the budget in Settings.",
+        bannerDismiss: "Dismiss budget banner",
+      },
     };
     const messages = dict[namespace] ?? {};
     const t = (key: string, params?: Record<string, unknown>) => {
@@ -76,10 +85,18 @@ const REPORT: CostMonthReport = {
     month,
     cost_usd: i + 1,
   })),
+  budget: null,
 };
 
-function resolved(report: CostMonthReport) {
-  return { data: report, isPending: false, isError: false, refetch: vi.fn() };
+const BUDGET_OK: CostBudgetBlock = {
+  monthly_budget_usd: 30,
+  budget_mode: "warn",
+  month_spend_usd: 12.5,
+  over_budget: false,
+};
+
+function resolved(report: CostMonthReport, error: unknown = null) {
+  return { data: report, isPending: false, isError: error !== null, error, refetch: vi.fn() };
 }
 
 // Current/previous month, computed the same client-local way as the component.
@@ -141,6 +158,167 @@ describe("AnalyticsCostsPanel", () => {
     expect(screen.getByText("openai / gpt-5")).toBeInTheDocument(); // provider / model_id
     expect(screen.getByTestId("costs-trend-chart")).toHaveAttribute("data-points", "6");
     expect(screen.getByTestId("costs-trend-bar")).toBeInTheDocument();
+  });
+
+  describe("budget badge (STATS-002 budgets, ADR-094)", () => {
+    it("shows no badge when no budget is set (budget: null)", async () => {
+      render(<AnalyticsCostsPanel />);
+
+      await screen.findByTestId("costs-month-label");
+      expect(screen.queryByTestId("costs-budget-badge")).not.toBeInTheDocument();
+    });
+
+    it("shows the neutral OK badge with the spent percentage when under budget", async () => {
+      mockUseAnalyticsCosts.mockImplementation(() =>
+        resolved({ ...REPORT, budget: { ...BUDGET_OK, month_spend_usd: 12.5 } }),
+      );
+      render(<AnalyticsCostsPanel />);
+
+      // 12.5 / 30 → 42% (rounded)
+      expect(await screen.findByTestId("costs-budget-badge")).toHaveTextContent("42% of budget");
+    });
+
+    it("shows the warn badge when over budget in warn mode", async () => {
+      mockUseAnalyticsCosts.mockImplementation(() =>
+        resolved({
+          ...REPORT,
+          budget: { ...BUDGET_OK, month_spend_usd: 35, over_budget: true },
+        }),
+      );
+      render(<AnalyticsCostsPanel />);
+
+      expect(await screen.findByTestId("costs-budget-badge")).toHaveTextContent("Over budget");
+    });
+
+    it("shows the stronger block badge when over budget in block mode", async () => {
+      mockUseAnalyticsCosts.mockImplementation(() =>
+        resolved({
+          ...REPORT,
+          budget: { ...BUDGET_OK, budget_mode: "block", month_spend_usd: 35, over_budget: true },
+        }),
+      );
+      render(<AnalyticsCostsPanel />);
+
+      expect(await screen.findByTestId("costs-budget-badge")).toHaveTextContent(
+        "Budget reached — AI blocked",
+      );
+    });
+  });
+
+  describe("budget-exceeded banner (STATS-002 budgets, ADR-094)", () => {
+    const BLOCKED: CostBudgetBlock = {
+      monthly_budget_usd: 30,
+      budget_mode: "block",
+      month_spend_usd: 35,
+      over_budget: true,
+    };
+
+    it("arms from the DATA (over_budget + block mode) — the production-reachable trigger", async () => {
+      mockUseAnalyticsCosts.mockImplementation(() => resolved({ ...REPORT, budget: BLOCKED }));
+      render(<AnalyticsCostsPanel />);
+
+      const banner = await screen.findByTestId("costs-budget-banner");
+      expect(banner).toHaveAttribute("role", "alert");
+      expect(banner).toHaveTextContent("Monthly AI budget reached");
+      // The banner accompanies the report (query succeeds) — badge still there.
+      expect(screen.getByTestId("costs-budget-badge")).toHaveTextContent(
+        "Budget reached — AI blocked",
+      );
+    });
+
+    it("does not arm from data in warn mode (warn never blocks at the gate)", async () => {
+      mockUseAnalyticsCosts.mockImplementation(() =>
+        resolved({
+          ...REPORT,
+          budget: { ...BLOCKED, budget_mode: "warn" },
+        }),
+      );
+      render(<AnalyticsCostsPanel />);
+
+      await screen.findByTestId("costs-budget-badge");
+      expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument();
+    });
+
+    it("does not arm from data when under budget in block mode", async () => {
+      mockUseAnalyticsCosts.mockImplementation(() =>
+        resolved({
+          ...REPORT,
+          budget: { ...BLOCKED, month_spend_usd: 12.5, over_budget: false },
+        }),
+      );
+      render(<AnalyticsCostsPanel />);
+
+      await screen.findByTestId("costs-budget-badge");
+      expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument();
+    });
+
+    it("renders a dismissible banner when the query fails with 429 BUDGET_EXCEEDED", async () => {
+      const user = userEvent.setup();
+      mockUseAnalyticsCosts.mockImplementation(() =>
+        resolved(REPORT, new ApiError("Monthly budget exceeded", 429, "BUDGET_EXCEEDED")),
+      );
+      render(<AnalyticsCostsPanel />);
+
+      const banner = await screen.findByTestId("costs-budget-banner");
+      expect(banner).toHaveAttribute("role", "alert");
+      expect(banner).toHaveTextContent("Monthly AI budget reached");
+
+      await user.click(screen.getByRole("button", { name: "Dismiss budget banner" }));
+      expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument();
+    });
+
+    it("re-arms after dismissal once the block stop clears and is hit again", async () => {
+      const user = userEvent.setup();
+      mockUseAnalyticsCosts.mockImplementation(() => resolved({ ...REPORT, budget: BLOCKED }));
+      const { rerender } = render(<AnalyticsCostsPanel />);
+      await screen.findByTestId("costs-budget-banner");
+
+      await user.click(screen.getByRole("button", { name: "Dismiss budget banner" }));
+      expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument();
+
+      // Budget raised → spend under the new budget → stop clears (still dismissed).
+      mockUseAnalyticsCosts.mockImplementation(() =>
+        resolved({
+          ...REPORT,
+          budget: { ...BLOCKED, month_spend_usd: 12.5, over_budget: false },
+        }),
+      );
+      rerender(<AnalyticsCostsPanel />);
+      await waitFor(() =>
+        expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument(),
+      );
+
+      // Spend crosses the budget again → fresh stop → banner re-arms.
+      mockUseAnalyticsCosts.mockImplementation(() => resolved({ ...REPORT, budget: BLOCKED }));
+      rerender(<AnalyticsCostsPanel />);
+      expect(await screen.findByTestId("costs-budget-banner")).toBeInTheDocument();
+    });
+
+    it("dismissal survives refetches that still report the stop", async () => {
+      const user = userEvent.setup();
+      mockUseAnalyticsCosts.mockImplementation(() => resolved({ ...REPORT, budget: BLOCKED }));
+      const { rerender } = render(<AnalyticsCostsPanel />);
+      await screen.findByTestId("costs-budget-banner");
+
+      await user.click(screen.getByRole("button", { name: "Dismiss budget banner" }));
+
+      // Fresh data arriving (refetch) with the same stop must NOT re-show it.
+      mockUseAnalyticsCosts.mockImplementation(() =>
+        resolved({ ...REPORT, budget: { ...BLOCKED, month_spend_usd: 36 } }),
+      );
+      rerender(<AnalyticsCostsPanel />);
+      await screen.findByTestId("costs-budget-badge");
+      expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument();
+    });
+
+    it("shows no banner for non-budget errors", async () => {
+      mockUseAnalyticsCosts.mockImplementation(() => resolved(REPORT, new Error("HTTP 500")));
+      render(<AnalyticsCostsPanel />);
+
+      await screen.findByTestId("costs-month-label");
+      await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+      expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument();
+    });
   });
 
   it("handles pending, error (retry refetches), and empty states", async () => {

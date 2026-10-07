@@ -81,5 +81,13 @@
       "worldbuilding": "Worldbuilding",
       "write": "Schreiben"
     }
+  },
+  "budget": {
+    "badgeOk": "{percent}% des Budgets",
+    "badgeOver": "Budget überschritten",
+    "badgeBlocked": "Budget erreicht — KI blockiert",
+    "bannerTitle": "Monatliches KI-Budget erreicht",
+    "bannerBody": "Ihre KI-Nutzung hat das in den KI-Einstellungen festgelegte Monatsbudget erreicht. KI-Aufrufe bleiben blockiert, bis der neue Monat beginnt oder Sie das Budget in den Einstellungen → KI erhöhen oder entfernen.",
+    "bannerDismiss": "Budget-Hinweis ausblenden"
   }
 }

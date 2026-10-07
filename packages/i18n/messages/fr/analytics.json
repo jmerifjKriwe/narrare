@@ -81,5 +81,13 @@
       "worldbuilding": "Construction de l'univers",
       "write": "Écriture"
     }
+  },
+  "budget": {
+    "badgeOk": "{percent}% du budget",
+    "badgeOver": "Budget dépassé",
+    "badgeBlocked": "Budget atteint — IA bloquée",
+    "bannerTitle": "Budget IA mensuel atteint",
+    "bannerBody": "Votre utilisation de l'IA a atteint le budget mensuel défini dans vos paramètres IA. Les appels IA restent bloqués jusqu'au début du nouveau mois, ou jusqu'à ce que vous augmentiez ou supprimiez le budget dans Paramètres → IA.",
+    "bannerDismiss": "Masquer l'avis de budget"
   }
 }

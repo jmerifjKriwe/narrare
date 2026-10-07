@@ -175,12 +175,24 @@ export interface UpdateTokenLimitsRequest {
   ws_timeout?: number;
 }
 
+/**
+ * Budget enforcement mode for the monthly USD budget (STATS-002 budgets,
+ * ADR-094): warn = badge only; block = hard stop (429) at the gate.
+ */
+export type BudgetMode = "warn" | "block";
+
 export interface UserAiSettings {
   user_id: string;
   default_provider_id: string | null;
   default_model: string;
   category_overrides: Record<string, ModelOverride>;
   intent_overrides: Record<string, ModelOverride>;
+  /**
+   * Monthly spend cap in USD (STATS-002 budgets, ADR-094). Wire format is the
+   * backend's Decimal-serialized string (e.g. "25.00"); null = no budget.
+   */
+  monthly_budget_usd: string | null;
+  budget_mode: BudgetMode;
   updated_at: string;
 }
 
@@ -189,6 +201,13 @@ export interface UpdateUserAiSettingsRequest {
   default_model?: string;
   category_overrides?: Record<string, ModelOverride>;
   intent_overrides?: Record<string, ModelOverride>;
+  /**
+   * USD amount ≥ 0 with at most two decimals; explicit null unsets the budget
+   * (backend distinguishes null from not-provided). Never send budget_mode
+   * null — the backend rejects explicit-null mode with 422.
+   */
+  monthly_budget_usd?: number | null;
+  budget_mode?: BudgetMode;
 }
 
 export interface ProjectAiSettings {

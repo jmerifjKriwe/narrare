@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { aiSettingsApi, tokenLimitsApi } from "@/lib/api/client";
 import type { ContextTier, ModelOverride, TokenLimitProfile } from "@/types";
 import { buildTokenLimitsQuery, normalizeTierPercentages } from "./useAiTabDataHelpers";
+import { useBudgetSettingsSave } from "./useBudgetSettingsSave";
 import { useProviderModelCache } from "./useProviderModelCache";
 
 /** All data-fetching, mutations, and handler logic for the AI settings tab. */
@@ -47,6 +48,10 @@ export function useAiTabData() {
     },
     onError: (err) => console.error("Failed to update AI settings:", err),
   });
+
+  // Budget save — dedicated mutation + handlers (see useBudgetSettingsSave).
+  const { handleMonthlyBudgetChange, handleBudgetModeChange, budgetSaveFailed } =
+    useBudgetSettingsSave();
 
   // Token limits mutation
   const updateTokenLimitsMutation = useMutation({
@@ -126,6 +131,9 @@ export function useAiTabData() {
     handleIntentOverridesChange,
     handleTierPercentagesChange,
     handleSystemTimeoutsChange,
+    handleMonthlyBudgetChange,
+    handleBudgetModeChange,
+    budgetSaveFailed,
   };
 }
 

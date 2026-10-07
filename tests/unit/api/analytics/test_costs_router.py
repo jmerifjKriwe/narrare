@@ -28,6 +28,7 @@ from tests.fakes.fake_db_session import FakeDbSession
 
 from narrare._app.dependencies import get_current_user_id
 from narrare.analytics.contracts import (
+    CostBudgetBlock,
     CostMonthReport,
     CostQueryServiceProtocol,
     CostTotals,
@@ -36,6 +37,7 @@ from narrare.analytics.dependencies import get_cost_query_service
 from narrare.analytics.repository import UsageAggRow, UsageRecordRepository
 from narrare.analytics.router import invalid_month_error_handler, router
 from narrare.analytics.service import CostQueryService, InvalidMonthError
+from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -209,4 +211,53 @@ def test_get_cost_query_service_wires_repo_from_session() -> None:
     assert isinstance(
         service._repo,  # pyright: ignore[reportPrivateUsage] — wiring is the unit under test
         UsageRecordRepository,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Budget block serialization (spec A-6 — one round trip for the badge)
+# ---------------------------------------------------------------------------
+
+
+async def test_get_costs_serializes_budget_block_when_set() -> None:
+    """A set budget rides the report JSON: badge data in one round trip."""
+    report = _zeroed_report("2026-10")
+    report.budget = CostBudgetBlock(
+        monthly_budget_usd=10.0,
+        budget_mode="warn",
+        month_spend_usd=12.5,
+        over_budget=True,
+    )
+    fake = _FakeCostQueryService(report)
+
+    async with _client(_make_app(fake)) as ac:
+        response = await ac.get("/analytics/costs")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["budget"] == {
+        "monthly_budget_usd": 10.0,
+        "budget_mode": "warn",
+        "month_spend_usd": 12.5,
+        "over_budget": True,
+    }
+
+
+async def test_get_costs_budget_block_defaults_to_null_when_unset() -> None:
+    """No budget set → ``budget: null`` (spec A-6 None semantics)."""
+    fake = _FakeCostQueryService(_zeroed_report("2026-10"))
+
+    async with _client(_make_app(fake)) as ac:
+        response = await ac.get("/analytics/costs")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["budget"] is None
+
+
+def test_get_cost_query_service_wires_budget_settings_repo() -> None:
+    """Production wiring: the budget overlay reads via the settings repo."""
+    service = get_cost_query_service(cast("AsyncSession", FakeDbSession()))
+
+    assert isinstance(
+        service._budget_settings_repo,  # pyright: ignore[reportPrivateUsage]
+        UserAiSettingsRepository,
     )

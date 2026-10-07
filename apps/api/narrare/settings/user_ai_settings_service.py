@@ -121,6 +121,15 @@ class UserAiSettingsService:
         """
         updates = request.model_dump(exclude_none=True)
 
+        # STATS-002 budgets (spec A-7): explicit null = unset. exclude_none
+        # conflates "not provided" with "explicit null", so budget fields
+        # are re-read from model_fields_set — the only nullable fields on
+        # this PATCH that can be un-set (siblings keep their existing
+        # semantics untouched).
+        for budget_field in ("monthly_budget_usd", "budget_mode"):
+            if budget_field in request.model_fields_set:
+                updates[budget_field] = getattr(request, budget_field)
+
         # Validate default_provider_id if provided
         if "default_provider_id" in updates:
             provider_id = updates["default_provider_id"]
@@ -136,6 +145,14 @@ class UserAiSettingsService:
             await self._validate_override_providers(user_id, updates["intent_overrides"])
 
         settings = await self._ai_settings_repo.update(user_id, **updates)
+
+        # Write-through cache invalidation (spec A-7 / ADR-094): a budget
+        # config change must reach the armed guard's cache immediately.
+        # No-op while no guard is registered (Task A5 arms the slot).
+        if {"monthly_budget_usd", "budget_mode"} & updates.keys():
+            from narrare.analytics.budget_invalidation import invalidate_budget_config
+
+            invalidate_budget_config(user_id)
 
         logger.info(
             "user_ai_settings_updated",

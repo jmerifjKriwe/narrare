@@ -4,8 +4,20 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, func, text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -142,6 +154,23 @@ class UserAiSettings(Base):
         String(20), default="auto", server_default="auto", nullable=False
     )
     embedding_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # STATS-002 budgets (ADR-094, spec A-5): monthly spend cap in USD.
+    # NULL = no budget → the pre-call gate is a no-op. Money is NUMERIC,
+    # never float (mirrors UsageRecordRow.cost_usd).
+    monthly_budget_usd: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # Budget enforcement mode: 'warn' (badge only, default) or 'block'
+    # (hard stop at/over budget). CHECK mirrors ck_notes_note_type
+    # (0041) — declared here AND in migration 0044 (RULE-14).
+    budget_mode: Mapped[str] = mapped_column(
+        Text, default="warn", server_default="warn", nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "budget_mode IN ('warn', 'block')",
+            name="ck_user_ai_settings_budget_mode",
+        ),
     )

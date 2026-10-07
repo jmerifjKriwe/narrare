@@ -467,6 +467,18 @@
         "description": "Verbindungs-Timeout für KI-Operationen",
         "wsTimeout": "WebSocket-Timeout (Sekunden)",
         "wsTimeoutHint": "Minimum 60 Sekunden"
+      },
+      "budget": {
+        "title": "Monatsbudget",
+        "description": "Begrenzen Sie Ihre monatlichen KI-Ausgaben. Leer lassen für kein Budget.",
+        "amountLabel": "Budgetbetrag (USD)",
+        "amountHint": "Nicht-negativer Betrag mit höchstens zwei Nachkommastellen, z. B. 25.00. Feld leeren, um das Budget zu entfernen.",
+        "amountInvalid": "Bitte geben Sie einen nicht-negativen Betrag mit höchstens zwei Nachkommastellen ein (z. B. 25.00).",
+        "amountSaveFailed": "Das Budget konnte nicht gespeichert werden. Prüfe den Betrag und versuche es erneut.",
+        "amountPlaceholder": "Kein Budget",
+        "modeLabel": "Wenn das Budget erreicht ist",
+        "modeWarn": "Nur warnen — KI weiter nutzen",
+        "modeBlock": "KI-Aufrufe für den Rest des Monats blockieren"
       }
     },
     "prompts": {
@@ -1934,11 +1946,12 @@
     "connectionLostRetry": "Erneut verbinden",
     "newSuggestions": "Neue Vorschläge",
     "original": "Original",
-    "quotedOriginal": "„{text}\u201C",
+    "quotedOriginal": "„{text}“",
     "suggested": "Vorschlag",
     "errorApiKey": "Dein API-Schlüssel ist ungültig. Überprüfe deine KI-Einstellungen.",
     "errorTextTooLong": "Der Text ist zu lang für die KI. Kürze die Auswahl und versuche es erneut.",
     "errorRateLimit": "Du hast zu viele Anfragen gesendet. Warte einen Moment.",
+    "errorBudgetExceeded": "Dein monatliches KI-Budget ist erreicht. Erhöhe oder entferne es in den KI-Einstellungen.",
     "errorTimeout": "Die KI braucht zu lange. Versuche es mit weniger Kontext erneut.",
     "errorConnection": "Verbindung verloren. Prüfe deine Internetverbindung.",
     "errorParse": "Die KI-Antwort war fehlerhaft. Versuche es erneut.",

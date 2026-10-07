@@ -9,11 +9,13 @@ export { adaptiveApi } from "./adaptive";
 export { authApi } from "./auth";
 export { chatApi } from "./chat";
 export {
+  ApiError,
   clearAccessToken,
   fetchApi,
   fetchApiRaw,
   fetchApiUpload,
   getAccessToken,
+  isBudgetExceededError,
   logoutApi,
   restoreSession,
   setAccessToken,

@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 // @vitest-environment jsdom
 
+import { HttpResponse, http } from "msw";
+import { server } from "@/mocks/server";
 import {
   authApi,
   chaptersApi,
@@ -11,6 +14,7 @@ import {
   restoreSession,
   setAccessToken,
 } from "./client";
+import { ApiError, fetchApi, isBudgetExceededError } from "./core";
 
 describe("API Client", () => {
   beforeEach(() => {
@@ -281,6 +285,108 @@ describe("API Client", () => {
       expect(user).toHaveProperty("id");
       expect(user).toHaveProperty("email");
       expect(getAccessToken()).toBe("refreshed-access-token");
+    });
+
+    it("throws ApiError (NOT the /login redirect) when the post-refresh retry answers 429 BUDGET_EXCEEDED", async () => {
+      // A6 review fix round 1 #3: the old code turned any non-ok retry into a
+      // generic Error swallowed by the catch → /login redirect + "Session
+      // expired". A real API answer must propagate as ApiError instead.
+      let calls = 0;
+      server.use(
+        http.get("*/api/v1/analytics/costs", () => {
+          calls += 1;
+          if (calls === 1) {
+            return HttpResponse.json({ detail: "Token expired" }, { status: 401 });
+          }
+          return HttpResponse.json(
+            { detail: "Monthly budget exceeded", code: "BUDGET_EXCEEDED" },
+            { status: 429 },
+          );
+        }),
+      );
+      clearAccessToken(); // force the 401 → refresh → retry sequence
+
+      const error = await fetchApi("/analytics/costs?month=2026-10").then(
+        () => null,
+        (e: unknown) => e,
+      );
+
+      expect(calls).toBe(2); // primary 401 + post-refresh retry
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(429);
+      expect((error as ApiError).code).toBe("BUDGET_EXCEEDED");
+      expect((error as ApiError).message).toBe("Monthly budget exceeded");
+    });
+
+    it("still routes a 401-after-refresh retry to the session-expired redirect path", async () => {
+      let calls = 0;
+      server.use(
+        http.get("*/api/v1/analytics/costs", () => {
+          calls += 1;
+          return HttpResponse.json({ detail: "Unauthorized" }, { status: 401 });
+        }),
+      );
+      clearAccessToken();
+
+      const error = await fetchApi("/analytics/costs?month=2026-10").then(
+        () => null,
+        (e: unknown) => e,
+      );
+
+      expect(calls).toBe(2);
+      expect((error as Error).message).toBe("Session expired");
+    });
+  });
+
+  describe("ApiError mapping (status + machine-readable code)", () => {
+    it("should throw ApiError with status and code for coded errors (429 BUDGET_EXCEEDED)", async () => {
+      server.use(
+        http.get("*/api/v1/analytics/costs", () =>
+          HttpResponse.json(
+            { detail: "Monthly budget exceeded", code: "BUDGET_EXCEEDED" },
+            { status: 429 },
+          ),
+        ),
+      );
+
+      const error = await fetchApi("/analytics/costs?month=2026-10").then(
+        () => null,
+        (e: unknown) => e,
+      );
+
+      expect(error).toBeInstanceOf(ApiError);
+      const apiError = error as ApiError;
+      expect(apiError.status).toBe(429);
+      expect(apiError.code).toBe("BUDGET_EXCEEDED");
+      expect(apiError.message).toBe("Monthly budget exceeded");
+      // Still a plain Error — existing instanceof/message handling keeps working.
+      expect(error).toBeInstanceOf(Error);
+      expect(isBudgetExceededError(error)).toBe(true);
+    });
+
+    it("should throw ApiError with null code when the body has no code field", async () => {
+      server.use(
+        http.get("*/api/v1/analytics/costs", () =>
+          HttpResponse.json({ detail: "Boom" }, { status: 500 }),
+        ),
+      );
+
+      const error = await fetchApi("/analytics/costs?month=2026-10").then(
+        () => null,
+        (e: unknown) => e,
+      );
+
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(500);
+      expect((error as ApiError).code).toBeNull();
+      expect(isBudgetExceededError(error)).toBe(false);
+    });
+
+    it("should not flag non-429 or non-budget-coded errors", () => {
+      expect(isBudgetExceededError(new ApiError("x", 429, "OTHER"))).toBe(false);
+      expect(isBudgetExceededError(new ApiError("x", 500, "BUDGET_EXCEEDED"))).toBe(false);
+      expect(isBudgetExceededError(new Error("plain"))).toBe(false);
+      expect(isBudgetExceededError(null)).toBe(false);
     });
   });
 });

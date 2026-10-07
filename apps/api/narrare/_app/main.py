@@ -185,6 +185,32 @@ def create_app(*, test_mode: bool = False) -> FastAPI:
 
     app.exception_handler(InvalidMonthError)(invalid_month_error_handler)
 
+    # --- Budget-exceeded handler (STATS-002 / ADR-094, spec A-2) ---
+    # BudgetExceededError subclasses NarrareError, so without this specific
+    # registration the generic NarrareError mapping above would answer 400.
+    # Starlette resolves handlers by walking type(exc).__mro__ (most specific
+    # first), so the narrower registration wins. 429 because the semantics
+    # are quota exhaustion ("too many requests for this user this month") —
+    # 402 implies payment processing, 403 implies authorization (ADR-094 D4).
+    # Decorator form (InvalidMonthError precedent): ``add_exception_handler``
+    # fails pyright on the narrow exc type.
+    from narrare_core.shared.errors import BudgetExceededError
+
+    @app.exception_handler(BudgetExceededError)
+    async def _budget_exceeded_handler(  # pyright: ignore[reportUnusedFunction]
+        _: Request, exc: BudgetExceededError
+    ) -> JSONResponse:
+        logger.warning(
+            "budget_exceeded",
+            user_id=str(exc.user_id),
+            month_spend_usd=exc.month_spend_usd,
+            monthly_budget_usd=exc.monthly_budget_usd,
+        )
+        return JSONResponse(
+            status_code=429,
+            content={"detail": str(exc), "code": "BUDGET_EXCEEDED"},
+        )
+
     # --- Unhandled exception handler ---
     @app.exception_handler(Exception)
     async def _unhandled_exception_handler(  # pyright: ignore[reportUnusedFunction]

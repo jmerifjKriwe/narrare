@@ -1,14 +1,14 @@
 ---
 id: STATS-002
 title: "AI Cost Tracking"
-status: in-progress
+status: stable
 area: analytics
 mvp: false
 
 ui_tooltip: "See what your AI usage costs each month, broken down by feature and model."
 ui_help_short: |
   See your monthly AI spending: calls, tokens, and estimated cost by feature
-  and model. Budgets come later.
+  and model, with an optional monthly budget.
 ui_help_long: |
   ## AI Cost Tracking
 
@@ -19,14 +19,18 @@ ui_help_long: |
   breakdown by feature and by provider/model, and a 6-month trend; a button
   downloads the selected month as a CSV file.
 
+  Set an optional monthly budget in **Settings → AI**: by default Narrare
+  shows a warning badge on the costs panel once your spend crosses the
+  budget; if you opt in to **Block** mode, further AI calls are stopped with
+  a clear banner until you raise or remove the budget.
+
   **Honest boundaries:** cost figures are estimates from per-model pricing
   data (models.dev). Models without a known price are counted separately as
   "unpriced" instead of being silently guessed. A few internal paths are not
   counted yet (memory-layer calls, setup provider validation), and a stream
   you abandon mid-generation is only counted up to its last completed
-  request. Budgets and spending limits are planned follow-ups — v1
-  is transparency only.
-ui_available_in: [analytics]
+  request.
+ui_available_in: [analytics, settings]
 
 service: analytics/service.py
 contract: analytics/contracts.py#CostQueryServiceProtocol
@@ -37,12 +41,14 @@ requires: [INFRA-001]
 
 # STATS-002 — AI Cost Tracking
 
-> **Status:** 🔨 In progress — v1 (transparency) implemented 2026-10-06
+> **Status:** ✅ Stable — v1 (transparency) implemented 2026-10-06
 > (commits `b2aeb9af..a4f2c2ba`) per
 > [ADR-093](../../architecture/decisions/ADR-093-usage-event-sink-cost-persistence.md);
-> design: [cost-tracking spec](../../superpowers/specs/2026-10-05-stats002-cost-tracking-design.md).
-> The status stays in-progress for the remaining deferred slices (budgets —
-> see Status & History).
+> budgets slice implemented 2026-10-07 (commits `c276a933..3733871c`) per
+> [ADR-094](../../architecture/decisions/ADR-094-budget-gate-ai-spend-suspension.md)
+> — the last major deferred code slice; status → stable 2026-10-07.
+> Design: [cost-tracking spec](../../superpowers/specs/2026-10-05-stats002-cost-tracking-design.md)
+> + [budgets addendum](../../superpowers/specs/2026-10-07-stats002-budgets-design.md).
 
 ## What it does
 
@@ -50,7 +56,9 @@ A monthly AI cost overview: one persisted usage record per billable LLM call
 (tokens, duration, estimated cost), an aggregation endpoint, a month-scoped
 CSV export, and an **Analytics** panel (`/analytics`, **AI Costs** tab) with
 month totals, breakdowns by feature and provider/model, a 6-month trend, and
-a CSV download button. v1 is transparency only — no budgets, no suspension.
+a CSV download button. An optional user-level monthly USD budget warns via a
+badge by default; opting in to block mode stops AI calls once the budget is
+reached, with a clear banner.
 
 ## Why it exists
 
@@ -69,6 +77,11 @@ including an explicit count of unpriced calls instead of silent guesses.
 4. Feature names come from i18n labels; a few internal intents without a
    label yet (e.g. `wiki_generation`, `wiki_chapter`, `interview_question`)
    show their raw slug by design until labeled.
+5. Budget (optional): set a monthly USD budget in **Settings → AI**. In the
+   default **Warn** mode a badge on the totals card flags when spend crosses
+   it; in **Block** mode further AI calls stop with a dismissible banner on
+   the costs panel (it re-arms if the budget is hit again after being
+   raised or removed).
 
 ## How it works (Technical)
 
@@ -89,6 +102,8 @@ month). All figures user-scoped; month bucketing uses UTC calendar months
   "month": "2026-10",
   "totals": { "calls": 42, "tokens_in": 123456, "tokens_out": 7890,
               "cost_usd": 1.2345, "unpriced_calls": 3 },
+  "budget": { "monthly_budget_usd": 5.0, "budget_mode": "warn",
+              "over_budget": false },
   "by_intent": [ { "intent": "draft", "calls": 10, "cost_usd": 0.61,
                    "unpriced_calls": 0 } ],
   "by_model": [ { "provider": "zai", "model_id": "glm-5.3", "calls": 30,
@@ -136,6 +151,21 @@ cache — see [Model Data Reference](../../reference/model-data.md)): only
 exact-model rates price a call; unknown models store `cost_usd = NULL` and are
 counted as `unpriced_calls` — never re-priced at read time.
 
+**Budget gate (ADR-094):** user-level `monthly_budget_usd` + `budget_mode`
+(`warn` | `block`, default `warn`) stored on `user_ai_settings` (Alembic
+`0044`; get-set settings endpoints). In block mode a pre-call gate in
+`ModelRegistry.get_model()` — the single point both ADR-093 LLM emission
+populations acquire models through — raises `BudgetExceededError`, mapped by
+one registered handler to **HTTP 429 `BUDGET_EXCEEDED`** (embeddings count
+toward the month total but are not gated — documented v1 limitation).
+`SqlUsageEventSink` arms the gate with an in-process per-user UTC-month
+running total (startup hydration + per-write increment, no scheduler);
+budget-config changes invalidate in-process (no DB read on the LLM hot
+path). The costs endpoint returns the `budget` block above (`null` when no
+budget is set; `over_budget` uses the same `>=` boundary as the gate),
+which drives the warn badge and the block banner; the FE maps
+`429 BUDGET_EXCEEDED` distinctly from provider rate limits.
+
 **Frontend:** `/analytics` page (`app/(studio)/analytics/`) with the
 `AnalyticsCostsPanel` (totals card, breakdown tables, `CostTrendChart` via
 Recharts), TanStack Query hook, `analytics.*` i18n (en/de/fr).
@@ -153,6 +183,10 @@ Recharts), TanStack Query hook, `analytics.*` i18n (en/de/fr).
   crash mid-insert loses that record).
 - Deleted novels keep their cost rows (`novel_id` `ON DELETE SET NULL`).
 - Records are user-scoped; there is no project/admin aggregation surface.
+- Budget math counts only priced calls toward the USD total (unpriced stay
+  visible as counts, never guessed in); embeddings count toward the total
+  but are not pre-call gated (documented v1 limitation). The call that
+  crosses the budget completes — blocking starts with the next call.
 
 ## Related Features
 
@@ -196,7 +230,20 @@ Recharts), TanStack Query hook, `analytics.*` i18n (en/de/fr).
   (design-sheet ruling): CSV covers data egress, the panel is the
   presentation view, and a cost PDF would widen the RULE-08-guarded renderer
   surface for near-zero value. Removed from the deferred slices.
+- 2026-10-07 — Budgets implemented (commits `c276a933..3733871c`) per
+  [ADR-094](../../architecture/decisions/ADR-094-budget-gate-ai-spend-suspension.md)
+  (✅ Implemented) + spec addendum
+  [budgets design](../../superpowers/specs/2026-10-07-stats002-budgets-design.md):
+  user-level monthly USD budget on `user_ai_settings` (`monthly_budget_usd`
+  + `budget_mode`, Alembic `0044`) with **warn badge default / opt-in hard
+  block** (429 `BUDGET_EXCEEDED`); pre-call gate at
+  `ModelRegistry.get_model()` (both ADR-093 LLM populations; embeddings
+  counted-not-gated — v1 limitation); `SqlUsageEventSink`-armed in-process
+  per-user UTC-month running total (startup hydration + per-write
+  increment); costs endpoint returns the `budget` block; FE badge/banner/
+  settings (`Settings → AI`), i18n en/de/fr. **Status → `stable`** —
+  budgets was the last major deferred code slice.
 
-**Deferred slices (registered scope):** budgets/suspension ·
-read-time re-pricing · per-series attribution · tracking of mem0-internal and
-setup-validation LLM calls · STATS-001 (second cycle in the same panel).
+**Deferred slices (registered scope):** read-time re-pricing ·
+per-series attribution · tracking of mem0-internal and setup-validation
+LLM calls · STATS-001 (second cycle in the same panel).

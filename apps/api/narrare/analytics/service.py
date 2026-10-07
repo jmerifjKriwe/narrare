@@ -25,12 +25,13 @@ import re
 from dataclasses import dataclass, field
 from datetime import MAXYEAR, MINYEAR, UTC, date, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import structlog
 
 from narrare.analytics._csv_format import header_line, usage_record_line
 from narrare.analytics.contracts import (
+    CostBudgetBlock,
     CostIntentRow,
     CostModelRow,
     CostMonthReport,
@@ -41,8 +42,10 @@ from narrare.analytics.contracts import (
 if TYPE_CHECKING:
     import uuid
     from collections.abc import AsyncIterator
+    from typing import Literal
 
     from narrare.analytics.repository import UsageAggRow, UsageRecordRepository
+    from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
 
 logger = structlog.get_logger(__name__)
 
@@ -128,14 +131,24 @@ class CostQueryService:
     """Builds monthly cost reports; implements ``CostQueryServiceProtocol``.
 
     The trend window length is injected (RULE-18: no hardcoded operational
-    constants) and defaults to the spec §4 contract of six months.
+    constants) and defaults to the spec §4 contract of six months. The
+    optional budget settings reader (spec A-6) overlays the warn-badge
+    block; ``None`` (the default) disables the overlay — a read-side
+    concern that never gates anything.
     """
 
-    def __init__(self, repo: UsageRecordRepository, *, trend_months: int = 6) -> None:
+    def __init__(
+        self,
+        repo: UsageRecordRepository,
+        *,
+        trend_months: int = 6,
+        budget_settings_repo: UserAiSettingsRepository | None = None,
+    ) -> None:
         if trend_months < 1:
             raise ValueError("trend_months must be >= 1")
         self._repo = repo
         self._trend_months = trend_months
+        self._budget_settings_repo = budget_settings_repo
 
     async def month_report(self, user_id: uuid.UUID, month: str | None) -> CostMonthReport:
         """Window report ending with the requested (or current) month."""
@@ -198,6 +211,7 @@ class CostQueryService:
                 CostTrendPoint(month=_month_label(key.year, key.month), cost_usd=float(cost))
                 for key, cost in sorted(trend_costs.items())
             ],
+            budget=await self._budget_block(user_id, totals.cost_usd),
         )
         logger.info(
             "cost_month_report_built",
@@ -206,6 +220,31 @@ class CostQueryService:
             buckets=len(rows),
         )
         return report
+
+    async def _budget_block(
+        self, user_id: uuid.UUID, month_spend: Decimal
+    ) -> CostBudgetBlock | None:
+        """Spec A-6 overlay: ``None`` when no budget is set (or no reader).
+
+        ``month_spend`` is the requested month's exact ``Decimal`` total
+        (already computed by the aggregation above) — the badge can never
+        disagree with the block-mode gate: same table, same UTC bucketing,
+        same ``>=`` boundary (ADR-094 D6/D8).
+        """
+        if self._budget_settings_repo is None:
+            return None
+        settings = await self._budget_settings_repo.get(user_id)
+        budget = settings.monthly_budget_usd
+        if budget is None:
+            return None
+        return CostBudgetBlock(
+            monthly_budget_usd=float(budget),
+            # The DB CHECK constraint (ck_user_ai_settings_budget_mode,
+            # migration 0044) guarantees the Literal domain at rest.
+            budget_mode=cast("Literal['warn', 'block']", settings.budget_mode),
+            month_spend_usd=float(month_spend),
+            over_budget=month_spend >= budget,
+        )
 
     def export_csv_headers(self, month: str | None) -> dict[str, str]:
         """Resolve + validate the month; build the CSV download headers.
