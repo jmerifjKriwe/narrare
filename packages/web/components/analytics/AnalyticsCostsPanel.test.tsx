@@ -205,7 +205,53 @@ describe("AnalyticsCostsPanel", () => {
     });
   });
 
-  describe("budget-exceeded banner (429 mapping)", () => {
+  describe("budget-exceeded banner (STATS-002 budgets, ADR-094)", () => {
+    const BLOCKED: CostBudgetBlock = {
+      monthly_budget_usd: 30,
+      budget_mode: "block",
+      month_spend_usd: 35,
+      over_budget: true,
+    };
+
+    it("arms from the DATA (over_budget + block mode) — the production-reachable trigger", async () => {
+      mockUseAnalyticsCosts.mockImplementation(() => resolved({ ...REPORT, budget: BLOCKED }));
+      render(<AnalyticsCostsPanel />);
+
+      const banner = await screen.findByTestId("costs-budget-banner");
+      expect(banner).toHaveAttribute("role", "alert");
+      expect(banner).toHaveTextContent("Monthly AI budget reached");
+      // The banner accompanies the report (query succeeds) — badge still there.
+      expect(screen.getByTestId("costs-budget-badge")).toHaveTextContent(
+        "Budget reached — AI blocked",
+      );
+    });
+
+    it("does not arm from data in warn mode (warn never blocks at the gate)", async () => {
+      mockUseAnalyticsCosts.mockImplementation(() =>
+        resolved({
+          ...REPORT,
+          budget: { ...BLOCKED, budget_mode: "warn" },
+        }),
+      );
+      render(<AnalyticsCostsPanel />);
+
+      await screen.findByTestId("costs-budget-badge");
+      expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument();
+    });
+
+    it("does not arm from data when under budget in block mode", async () => {
+      mockUseAnalyticsCosts.mockImplementation(() =>
+        resolved({
+          ...REPORT,
+          budget: { ...BLOCKED, month_spend_usd: 12.5, over_budget: false },
+        }),
+      );
+      render(<AnalyticsCostsPanel />);
+
+      await screen.findByTestId("costs-budget-badge");
+      expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument();
+    });
+
     it("renders a dismissible banner when the query fails with 429 BUDGET_EXCEEDED", async () => {
       const user = userEvent.setup();
       mockUseAnalyticsCosts.mockImplementation(() =>
@@ -218,6 +264,50 @@ describe("AnalyticsCostsPanel", () => {
       expect(banner).toHaveTextContent("Monthly AI budget reached");
 
       await user.click(screen.getByRole("button", { name: "Dismiss budget banner" }));
+      expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument();
+    });
+
+    it("re-arms after dismissal once the block stop clears and is hit again", async () => {
+      const user = userEvent.setup();
+      mockUseAnalyticsCosts.mockImplementation(() => resolved({ ...REPORT, budget: BLOCKED }));
+      const { rerender } = render(<AnalyticsCostsPanel />);
+      await screen.findByTestId("costs-budget-banner");
+
+      await user.click(screen.getByRole("button", { name: "Dismiss budget banner" }));
+      expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument();
+
+      // Budget raised → spend under the new budget → stop clears (still dismissed).
+      mockUseAnalyticsCosts.mockImplementation(() =>
+        resolved({
+          ...REPORT,
+          budget: { ...BLOCKED, month_spend_usd: 12.5, over_budget: false },
+        }),
+      );
+      rerender(<AnalyticsCostsPanel />);
+      await waitFor(() =>
+        expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument(),
+      );
+
+      // Spend crosses the budget again → fresh stop → banner re-arms.
+      mockUseAnalyticsCosts.mockImplementation(() => resolved({ ...REPORT, budget: BLOCKED }));
+      rerender(<AnalyticsCostsPanel />);
+      expect(await screen.findByTestId("costs-budget-banner")).toBeInTheDocument();
+    });
+
+    it("dismissal survives refetches that still report the stop", async () => {
+      const user = userEvent.setup();
+      mockUseAnalyticsCosts.mockImplementation(() => resolved({ ...REPORT, budget: BLOCKED }));
+      const { rerender } = render(<AnalyticsCostsPanel />);
+      await screen.findByTestId("costs-budget-banner");
+
+      await user.click(screen.getByRole("button", { name: "Dismiss budget banner" }));
+
+      // Fresh data arriving (refetch) with the same stop must NOT re-show it.
+      mockUseAnalyticsCosts.mockImplementation(() =>
+        resolved({ ...REPORT, budget: { ...BLOCKED, month_spend_usd: 36 } }),
+      );
+      rerender(<AnalyticsCostsPanel />);
+      await screen.findByTestId("costs-budget-badge");
       expect(screen.queryByTestId("costs-budget-banner")).not.toBeInTheDocument();
     });
 

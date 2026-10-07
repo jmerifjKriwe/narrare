@@ -14,6 +14,12 @@ export class SSEStreamError extends Error {
     message: string,
     public readonly kind: SSEErrorKind,
     public readonly status?: number,
+    /**
+     * Backend machine-readable error code parsed from a non-ok JSON body
+     * (e.g. 429 + "BUDGET_EXCEEDED", ADR-094) — mirrors `ApiError.code`.
+     * Null for network/parse/stream failures (no HTTP body to parse).
+     */
+    public readonly code?: string | null,
     public readonly cause?: unknown,
   ) {
     super(message);
@@ -46,9 +52,32 @@ function isAbortError(error: unknown): boolean {
 
 export function normalizeSSEError(error: unknown): SSEStreamError {
   if (error instanceof SSEStreamError) return error;
-  if (isAbortError(error)) return new SSEStreamError("Stream aborted", "abort", undefined, error);
-  if (error instanceof Error) return new SSEStreamError(error.message, "network", undefined, error);
-  return new SSEStreamError(String(error), "network", undefined, error);
+  if (isAbortError(error)) {
+    return new SSEStreamError("Stream aborted", "abort", undefined, null, error);
+  }
+  if (error instanceof Error) {
+    return new SSEStreamError(error.message, "network", undefined, null, error);
+  }
+  return new SSEStreamError(String(error), "network", undefined, null, error);
+}
+
+/**
+ * Best-effort extraction of the backend's machine-readable `code` field from
+ * a non-ok JSON error body (e.g. 429 + "BUDGET_EXCEEDED", ADR-094). The body
+ * may be empty or non-JSON (proxy responses) — any read/parse failure yields
+ * null, never throws.
+ */
+async function parseErrorCode(response: Response): Promise<string | null> {
+  try {
+    const body: unknown = await response.json();
+    if (typeof body === "object" && body !== null && "code" in body) {
+      const code = (body as { code: unknown }).code;
+      return typeof code === "string" ? code : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 function buildHeaders(hasBody: boolean): Record<string, string> {
@@ -109,7 +138,7 @@ async function processSSEStream<T>(
         options.onChunk(JSON.parse(event.data) as T);
       } catch (error) {
         options.onError?.(
-          new SSEStreamError("Malformed SSE JSON event", "parse", undefined, error),
+          new SSEStreamError("Malformed SSE JSON event", "parse", undefined, null, error),
         );
       }
     }
@@ -152,7 +181,10 @@ export async function connectSSE<T>({
     });
 
     if (!response.ok) {
-      throw new SSEStreamError(`HTTP ${response.status}`, "http", response.status);
+      // Parse the machine-readable `code` (e.g. "BUDGET_EXCEEDED") so error
+      // mappers can distinguish budget stops from genuine rate limits.
+      const code = await parseErrorCode(response);
+      throw new SSEStreamError(`HTTP ${response.status}`, "http", response.status, code);
     }
 
     const reader = response.body?.getReader();

@@ -286,6 +286,56 @@ describe("API Client", () => {
       expect(user).toHaveProperty("email");
       expect(getAccessToken()).toBe("refreshed-access-token");
     });
+
+    it("throws ApiError (NOT the /login redirect) when the post-refresh retry answers 429 BUDGET_EXCEEDED", async () => {
+      // A6 review fix round 1 #3: the old code turned any non-ok retry into a
+      // generic Error swallowed by the catch → /login redirect + "Session
+      // expired". A real API answer must propagate as ApiError instead.
+      let calls = 0;
+      server.use(
+        http.get("*/api/v1/analytics/costs", () => {
+          calls += 1;
+          if (calls === 1) {
+            return HttpResponse.json({ detail: "Token expired" }, { status: 401 });
+          }
+          return HttpResponse.json(
+            { detail: "Monthly budget exceeded", code: "BUDGET_EXCEEDED" },
+            { status: 429 },
+          );
+        }),
+      );
+      clearAccessToken(); // force the 401 → refresh → retry sequence
+
+      const error = await fetchApi("/analytics/costs?month=2026-10").then(
+        () => null,
+        (e: unknown) => e,
+      );
+
+      expect(calls).toBe(2); // primary 401 + post-refresh retry
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(429);
+      expect((error as ApiError).code).toBe("BUDGET_EXCEEDED");
+      expect((error as ApiError).message).toBe("Monthly budget exceeded");
+    });
+
+    it("still routes a 401-after-refresh retry to the session-expired redirect path", async () => {
+      let calls = 0;
+      server.use(
+        http.get("*/api/v1/analytics/costs", () => {
+          calls += 1;
+          return HttpResponse.json({ detail: "Unauthorized" }, { status: 401 });
+        }),
+      );
+      clearAccessToken();
+
+      const error = await fetchApi("/analytics/costs?month=2026-10").then(
+        () => null,
+        (e: unknown) => e,
+      );
+
+      expect(calls).toBe(2);
+      expect((error as Error).message).toBe("Session expired");
+    });
   });
 
   describe("ApiError mapping (status + machine-readable code)", () => {

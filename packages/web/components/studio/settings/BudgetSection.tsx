@@ -8,13 +8,24 @@ interface BudgetSectionProps {
   readonly aiSettings: UserAiSettings | undefined;
   readonly onBudgetChange: (monthlyBudgetUsd: number | null) => void;
   readonly onBudgetModeChange: (mode: BudgetMode) => void;
+  /** True when the budget PATCH failed server-side — surfaced inline. */
+  readonly saveFailed?: boolean;
 }
 
 /**
- * Accepted amount shapes: non-negative, at most two decimals (mirrors the
- * backend NUMERIC(10,2) / Decimal ge=0 contract — anything else is a 422).
+ * Accepted amount shapes: non-negative, at most two decimals, at most 8
+ * integer digits (mirrors the backend NUMERIC(10,2) / Decimal ge=0 contract
+ * — anything else is a 422). The digit cap pins the maximum to 99999999.99
+ * client-side, so an over-magnitude value shows the invalid hint instead of
+ * dying in a silent 422.
  */
 const AMOUNT_PATTERN = /^\d+(\.\d{1,2})?$/;
+const AMOUNT_MAX_INTEGER_DIGITS = 8;
+
+function isAcceptedAmount(raw: string): boolean {
+  if (!AMOUNT_PATTERN.test(raw)) return false;
+  return raw.split(".")[0].length <= AMOUNT_MAX_INTEGER_DIGITS;
+}
 
 /**
  * Monthly AI budget section (STATS-002 budgets, ADR-094 spec A-8).
@@ -23,12 +34,14 @@ const AMOUNT_PATTERN = /^\d+(\.\d{1,2})?$/;
  * sibling section card markup (DefaultModelSection & co.) and commits the
  * amount on blur/Enter like SystemTimeouts commits its numeric field — no
  * PATCH per keystroke. An empty field commits null (unset); invalid input
- * shows an inline hint and never fires the mutation.
+ * shows an inline hint and never fires the mutation; a failed budget PATCH
+ * surfaces inline via `saveFailed` instead of vanishing into the console.
  */
 export function BudgetSection({
   aiSettings,
   onBudgetChange,
   onBudgetModeChange,
+  saveFailed = false,
 }: BudgetSectionProps) {
   const t = useTranslations("studio");
   const [amountText, setAmountText] = useState("");
@@ -51,7 +64,7 @@ export function BudgetSection({
       onBudgetChange(null); // cleared field = unset budget
       return;
     }
-    if (!AMOUNT_PATTERN.test(raw)) {
+    if (!isAcceptedAmount(raw)) {
       setInvalid(true);
       return;
     }
@@ -88,11 +101,15 @@ export function BudgetSection({
               if (e.key === "Enter") commitAmount();
             }}
             placeholder={t("settings.ai.budget.amountPlaceholder")}
-            aria-invalid={invalid || undefined}
+            aria-invalid={invalid || saveFailed || undefined}
             className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
           />
           {invalid ? (
             <p className="mt-1 text-xs text-destructive">{t("settings.ai.budget.amountInvalid")}</p>
+          ) : saveFailed ? (
+            <p className="mt-1 text-xs text-destructive" role="alert">
+              {t("settings.ai.budget.amountSaveFailed")}
+            </p>
           ) : (
             <p className="mt-1 text-xs text-muted-foreground">
               {t("settings.ai.budget.amountHint")}

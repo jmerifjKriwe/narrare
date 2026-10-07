@@ -10,6 +10,9 @@
 import { describe, expect, it } from "vitest";
 
 import { AI_ERROR_MESSAGE_MAP, mapSSEError } from "@/lib/api/ai-error-mapping";
+import { mapRestApiError } from "@/lib/api/ai-rest-error";
+import { ApiError } from "@/lib/api/core";
+import { SSEStreamError } from "@/lib/api/streaming";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -74,6 +77,44 @@ describe("mapSSEError", () => {
     expect(result!.status).toBe(429);
     expect(result!.i18nKey).toBe("aiActions.errorRateLimit");
     expect(result!.retryable).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // 429 BUDGET_EXCEEDED → budget stop, NOT a rate limit (ADR-094)
+  // -------------------------------------------------------------------------
+
+  it("maps SSE HTTP 429 + code BUDGET_EXCEEDED → errorBudgetExceeded (not retryable)", () => {
+    const error = new SSEStreamError("HTTP 429", "http", 429, "BUDGET_EXCEEDED");
+    const result = mapSSEError(error);
+    expect(result).not.toBeNull();
+    expect(result!.kind).toBe("http");
+    expect(result!.status).toBe(429);
+    expect(result!.i18nKey).toBe("aiActions.errorBudgetExceeded");
+    expect(result!.retryable).toBe(false);
+    expect(result!.userMessage).toBe(AI_ERROR_MESSAGE_MAP["aiActions.errorBudgetExceeded"].de);
+  });
+
+  it("maps REST ApiError 429 + BUDGET_EXCEEDED → errorBudgetExceeded (mapRestApiError)", () => {
+    const error = new ApiError("Monthly budget exceeded", 429, "BUDGET_EXCEEDED");
+    const result = mapRestApiError(error);
+    expect(result).not.toBeNull();
+    expect(result!.kind).toBe("http");
+    expect(result!.status).toBe(429);
+    expect(result!.i18nKey).toBe("aiActions.errorBudgetExceeded");
+    expect(result!.retryable).toBe(false);
+  });
+
+  it("maps REST ApiError 429 without the budget code → errorRateLimit", () => {
+    const result = mapRestApiError(new ApiError("Too many requests", 429, null));
+    expect(result).not.toBeNull();
+    expect(result!.i18nKey).toBe("aiActions.errorRateLimit");
+    expect(result!.retryable).toBe(true);
+  });
+
+  it("maps REST ApiError 500 → errorConnection (status-based fallback)", () => {
+    const result = mapRestApiError(new ApiError("Boom", 500, null));
+    expect(result).not.toBeNull();
+    expect(result!.i18nKey).toBe("aiActions.errorConnection");
   });
 
   it("maps HTTP 408 → errorTimeout", () => {
@@ -194,11 +235,12 @@ describe("mapSSEError", () => {
   // AI_ERROR_MESSAGE_MAP completeness
   // -------------------------------------------------------------------------
 
-  it("AI_ERROR_MESSAGE_MAP has all 8 error keys", () => {
+  it("AI_ERROR_MESSAGE_MAP has all 9 error keys", () => {
     const expectedKeys = [
       "aiActions.errorApiKey",
       "aiActions.errorTextTooLong",
       "aiActions.errorRateLimit",
+      "aiActions.errorBudgetExceeded",
       "aiActions.errorTimeout",
       "aiActions.errorConnection",
       "aiActions.errorParse",

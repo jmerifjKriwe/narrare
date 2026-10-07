@@ -10,6 +10,7 @@
  */
 
 import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
+import { ApiError } from "./core";
 import type { SSEStreamError } from "./streaming";
 
 // ---------------------------------------------------------------------------
@@ -29,6 +30,10 @@ export const AI_ERROR_MESSAGE_MAP: Record<string, { de: string; retryable: boole
   "aiActions.errorRateLimit": {
     de: "Du hast zu viele Anfragen gesendet. Warte einen Moment.",
     retryable: true,
+  },
+  "aiActions.errorBudgetExceeded": {
+    de: "Dein monatliches KI-Budget ist erreicht. Erhöhe oder entferne es in den KI-Einstellungen.",
+    retryable: false,
   },
   "aiActions.errorTimeout": {
     de: "Die KI braucht zu lange. Versuche es mit weniger Kontext erneut.",
@@ -62,8 +67,10 @@ export const AI_ERROR_MESSAGE_MAP: Record<string, { de: string; retryable: boole
  * Mapping rules (§16.5):
  *   - AbortError     → null (swallowed, returns to idle)
  *   - SyntaxError    → data-corrupt error (invalid/unreadable KB data, not retryable)
+ *   - ApiError (REST) → mapped by status + machine `code` (429 BUDGET_EXCEEDED → budget stop)
  *   - kind="http" + 401  → api key invalid
  *   - kind="http" + 413  → text too long
+ *   - kind="http" + 429 + code="BUDGET_EXCEEDED" → monthly budget stop (not a rate limit)
  *   - kind="http" + 429  → rate limit
  *   - kind="http" + 408  → timeout
  *   - kind="http" + 5xx  → connection/server error
@@ -94,6 +101,13 @@ export function mapSSEError(error: unknown): AIErrorResponse | null {
       retryable: false,
       cause: error,
     };
+  }
+
+  // ApiError from fetchApi (REST AI calls): map by HTTP status + machine
+  // `code` exactly like SSEStreamError "http" failures (ADR-094: a 429
+  // BUDGET_EXCEEDED must reach the budget message, not "connection lost").
+  if (error instanceof ApiError) {
+    return mapHTTPStatus(error.status, error.code, error);
   }
 
   // SSEStreamError or any error with a "kind" property
@@ -174,8 +188,11 @@ function mapSSEStreamError(error: SSEStreamError): AIErrorResponse {
 }
 
 function mapHTTPError(error: SSEStreamError): AIErrorResponse {
-  const status = error.status ?? 0;
+  return mapHTTPStatus(error.status ?? 0, error.code ?? null, error);
+}
 
+/** Shared status+code → AIErrorResponse mapping for SSE and REST (ApiError) failures. */
+function mapHTTPStatus(status: number, code: string | null, cause: Error): AIErrorResponse {
   if (status === 401) {
     return {
       kind: "http",
@@ -183,7 +200,7 @@ function mapHTTPError(error: SSEStreamError): AIErrorResponse {
       i18nKey: "aiActions.errorApiKey",
       userMessage: AI_ERROR_MESSAGE_MAP["aiActions.errorApiKey"].de,
       retryable: false,
-      cause: error,
+      cause,
     };
   }
 
@@ -194,18 +211,31 @@ function mapHTTPError(error: SSEStreamError): AIErrorResponse {
       i18nKey: "aiActions.errorTextTooLong",
       userMessage: AI_ERROR_MESSAGE_MAP["aiActions.errorTextTooLong"].de,
       retryable: false,
-      cause: error,
+      cause,
     };
   }
 
   if (status === 429) {
+    // Budget stops are NOT rate limits (ADR-094): the block-mode gate is not
+    // transient — a retry hits the same stop until the budget is raised, so
+    // this is not retryable.
+    if (code === "BUDGET_EXCEEDED") {
+      return {
+        kind: "http",
+        status: 429,
+        i18nKey: "aiActions.errorBudgetExceeded",
+        userMessage: AI_ERROR_MESSAGE_MAP["aiActions.errorBudgetExceeded"].de,
+        retryable: false,
+        cause,
+      };
+    }
     return {
       kind: "http",
       status: 429,
       i18nKey: "aiActions.errorRateLimit",
       userMessage: AI_ERROR_MESSAGE_MAP["aiActions.errorRateLimit"].de,
       retryable: true,
-      cause: error,
+      cause,
     };
   }
 
@@ -216,7 +246,7 @@ function mapHTTPError(error: SSEStreamError): AIErrorResponse {
       i18nKey: "aiActions.errorTimeout",
       userMessage: AI_ERROR_MESSAGE_MAP["aiActions.errorTimeout"].de,
       retryable: true,
-      cause: error,
+      cause,
     };
   }
 
@@ -227,6 +257,6 @@ function mapHTTPError(error: SSEStreamError): AIErrorResponse {
     i18nKey: "aiActions.errorConnection",
     userMessage: AI_ERROR_MESSAGE_MAP["aiActions.errorConnection"].de,
     retryable: true,
-    cause: error,
+    cause,
   };
 }

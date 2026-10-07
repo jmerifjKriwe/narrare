@@ -6,8 +6,11 @@
  * Owns month navigation (prev/next, clamped at the current month, aria-live
  * label) and the loading/error/empty states around the report; presentation
  * is split into CostTotalsCard (totals + budget badge), CostsBreakdownTables
- * and CostTrendChart (RULE-04). A 429 BUDGET_EXCEEDED on the query maps to a
- * dismissible BudgetExceededBanner (STATS-002 budgets, ADR-094). Data via
+ * and CostTrendChart (RULE-04). A block-mode budget stop arms the dismissible
+ * BudgetExceededBanner — derived from the report DATA (`budget.over_budget` +
+ * `budget_mode: "block"`, the production-reachable signal) or, as a
+ * future-proofing fallback, from a 429 BUDGET_EXCEEDED query error (should
+ * the costs endpoint ever sit behind the same gate). Data via
  * `useAnalyticsCosts`; strings via `analytics.costs.*` / `analytics.budget.*`.
  */
 
@@ -37,16 +40,25 @@ function shiftMonth(month: string, delta: number): string {
 function CostsReport({ month }: { readonly month: string }) {
   const t = useTranslations("analytics.costs");
   const { data, isPending, isError, error, refetch } = useAnalyticsCosts(month);
-  // Dismissal survives month switches: the block stop is user-level, not
-  // month-level. Re-arms only when a fresh budget-exceeded error arrives.
+  // Dismissal survives month switches and refetches: the block stop is
+  // user-level, not month-level. Re-arms only when the stop condition goes
+  // away (budget raised/removed) and is hit again.
   const [budgetBannerDismissed, setBudgetBannerDismissed] = useState(false);
-  const budgetExceeded = !isPending && isBudgetExceededError(error);
+  // Primary (production-reachable) trigger: the report DATA says the block
+  // gate is active. Fallback: a 429 BUDGET_EXCEEDED on the query itself.
+  const budgetBlocked =
+    (data?.budget?.over_budget === true && data.budget.budget_mode === "block") ||
+    (!isPending && isBudgetExceededError(error));
+
+  useEffect(() => {
+    if (budgetBlocked) setBudgetBannerDismissed(false);
+  }, [budgetBlocked]);
 
   if (isPending) return <StatusMessage state="loading" />;
 
   return (
     <>
-      {budgetExceeded && !budgetBannerDismissed && (
+      {budgetBlocked && !budgetBannerDismissed && (
         <BudgetExceededBanner onDismiss={() => setBudgetBannerDismissed(true)} />
       )}
       {isError || !data ? (

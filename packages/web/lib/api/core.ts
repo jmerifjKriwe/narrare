@@ -125,6 +125,27 @@ export function isBudgetExceededError(error: unknown): boolean {
   return error instanceof ApiError && error.status === 429 && error.code === "BUDGET_EXCEEDED";
 }
 
+/**
+ * Parse a non-ok response body and throw it as an `ApiError` (ADR-094): the
+ * HTTP status and the machine-readable `code` field survive for programmatic
+ * mapping; the parsed human message stays the displayed text. Shared by the
+ * primary path and the 401-refresh retry so both surface identical errors.
+ */
+async function throwApiError(response: Response): Promise<never> {
+  const err = await response.json().catch(() => ({ detail: response.statusText }));
+  // Machine-readable code (e.g. "BUDGET_EXCEEDED") travels alongside the
+  // human message; non-string code fields are treated as absent.
+  const code = typeof err.code === "string" ? err.code : null;
+  if (typeof err.detail === "string") {
+    throw new ApiError(err.detail, response.status, code);
+  }
+  if (Array.isArray(err.detail)) {
+    const messages = err.detail.map((e: { msg?: string }) => e.msg).filter(Boolean);
+    throw new ApiError(messages.join("; ") || `HTTP ${response.status}`, response.status, code);
+  }
+  throw new ApiError(`HTTP ${response.status}`, response.status, code);
+}
+
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `/api/v1${endpoint}`;
   const headers: Record<string, string> = {
@@ -158,32 +179,31 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     }
     try {
       await refreshAccessToken();
-      headers.Authorization = `Bearer ${_accessToken}`;
-      const retry = await fetch(url, { ...options, headers, credentials: "include" });
-      if (!retry.ok) throw new Error(`HTTP ${retry.status}`);
-      if (retry.status === 204) return undefined as T;
-      return retry.json() as Promise<T>;
     } catch {
       clearAccessToken();
       saveBeforeRedirect();
       window.location.href = "/login";
       throw new Error("Session expired");
     }
+    headers.Authorization = `Bearer ${_accessToken}`;
+    const retry = await fetch(url, { ...options, headers, credentials: "include" });
+    if (retry.status === 401) {
+      // Refresh "succeeded" but the retry is still unauthorized — dead session.
+      clearAccessToken();
+      saveBeforeRedirect();
+      window.location.href = "/login";
+      throw new Error("Session expired");
+    }
+    // Any other non-ok retry is the API's real answer (e.g. 429-after-refresh)
+    // — parse it like the primary path and let the ApiError propagate; a
+    // status like 429 BUDGET_EXCEEDED must never be misrouted to /login.
+    if (!retry.ok) await throwApiError(retry);
+    if (retry.status === 204) return undefined as T;
+    return retry.json() as Promise<T>;
   }
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ detail: response.statusText }));
-    // Machine-readable code (e.g. "BUDGET_EXCEEDED") travels alongside the
-    // human message; non-string code fields are treated as absent.
-    const code = typeof err.code === "string" ? err.code : null;
-    if (typeof err.detail === "string") {
-      throw new ApiError(err.detail, response.status, code);
-    }
-    if (Array.isArray(err.detail)) {
-      const messages = err.detail.map((e: { msg?: string }) => e.msg).filter(Boolean);
-      throw new ApiError(messages.join("; ") || `HTTP ${response.status}`, response.status, code);
-    }
-    throw new ApiError(`HTTP ${response.status}`, response.status, code);
+    await throwApiError(response);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;

@@ -7,8 +7,8 @@
  * The 429 only ever fires in block mode (warn mode never blocks at the
  * `ModelRegistry.get_model()` gate), so one block-mode text is correct:
  * it explains that AI calls are stopped and points to the AI settings.
- * Pure presentation — the panel owns the error mapping (isBudgetExceededError)
- * and the dismissal state (RULE-06/RULE-13).
+ * Pure presentation — the panel derives the trigger (report data, with the
+ * gate error as fallback) and owns the dismissal state (RULE-06/RULE-13).
  */
 
 import { X } from "lucide-react";

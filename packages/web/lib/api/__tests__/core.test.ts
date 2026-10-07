@@ -19,6 +19,7 @@ vi.mock("@/lib/hooks/use-content-recovery", () => ({
 }));
 
 import {
+  ApiError,
   clearAccessToken,
   fetchApi,
   fetchApiRaw,
@@ -149,14 +150,34 @@ describe("core API client", () => {
       expect(getAccessToken()).toBe("fresh-token");
     });
 
-    it("treats a failed retried request as a session expiry", async () => {
+    it("rethrows a failed retried request as ApiError instead of the /login redirect", async () => {
       fetchMock
         .mockResolvedValueOnce(jsonResponse(401, { detail: "expired" }))
         .mockResolvedValueOnce(jsonResponse(200, refreshedToken))
         .mockResolvedValueOnce(jsonResponse(500, { detail: "boom" }));
 
-      // The `!retry.ok` error is caught by the refresh wrapper and surfaced as
-      // a session expiry with a redirect.
+      // A6 review fix round 1 #3: a non-ok retry is the API's real answer —
+      // it propagates as ApiError (status + code parsed like the primary
+      // path) and must NOT be misrouted to the session-expiry redirect
+      // (e.g. a 429-after-refresh is a budget stop, not a dead session).
+      const error = await fetchApi("/test").then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(500);
+      expect((error as ApiError).message).toBe("boom");
+      expect(getAccessToken()).not.toBeNull(); // session is still alive
+      expect(saveBeforeRedirect).not.toHaveBeenCalled();
+      expect(mockLocation.href).toBe("");
+    });
+
+    it("still redirects when the retried request is again 401", async () => {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse(401, { detail: "expired" }))
+        .mockResolvedValueOnce(jsonResponse(200, refreshedToken))
+        .mockResolvedValueOnce(jsonResponse(401, { detail: "still expired" }));
+
       await expect(fetchApi("/test")).rejects.toThrow("Session expired");
       expect(getAccessToken()).toBeNull();
       expect(saveBeforeRedirect).toHaveBeenCalledTimes(1);

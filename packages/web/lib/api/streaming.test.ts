@@ -2,7 +2,7 @@ import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "@/mocks/server";
 import { setAccessToken } from "./client";
-import { connectSSE } from "./streaming";
+import { connectSSE, type SSEStreamError } from "./streaming";
 
 describe("connectSSE", () => {
   // Test data type
@@ -75,6 +75,70 @@ describe("connectSSE", () => {
 
     expect(onError).toHaveBeenCalledTimes(1);
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "HTTP 401" }));
+  });
+
+  // ---------------------------------------------------------------------------
+  // Machine-readable error code from non-ok bodies (ADR-094 budget stop)
+  // ---------------------------------------------------------------------------
+
+  it("surfaces the parsed code from a non-ok JSON body (429 BUDGET_EXCEEDED)", async () => {
+    const onError = vi.fn();
+
+    server.use(
+      http.post("*/api/v1/test/budget-block", () =>
+        HttpResponse.json(
+          { detail: "Monthly budget exceeded", code: "BUDGET_EXCEEDED" },
+          { status: 429 },
+        ),
+      ),
+    );
+
+    await connectSSE({ url: "/test/budget-block", body: {}, onChunk: () => {}, onError });
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    const error = onError.mock.calls[0][0] as SSEStreamError;
+    expect(error.kind).toBe("http");
+    expect(error.status).toBe(429);
+    expect(error.code).toBe("BUDGET_EXCEEDED");
+  });
+
+  it("yields a null code when the error body has no code field", async () => {
+    const onError = vi.fn();
+
+    server.use(
+      http.post("*/api/v1/test/rate-limit", () =>
+        HttpResponse.json({ detail: "Too many requests" }, { status: 429 }),
+      ),
+    );
+
+    await connectSSE({ url: "/test/rate-limit", body: {}, onChunk: () => {}, onError });
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    const error = onError.mock.calls[0][0] as SSEStreamError;
+    expect(error.status).toBe(429);
+    expect(error.code ?? null).toBeNull();
+  });
+
+  it("does not crash on a non-JSON error body (code stays null)", async () => {
+    const onError = vi.fn();
+
+    server.use(
+      http.post(
+        "*/api/v1/test/gateway",
+        () =>
+          new HttpResponse("Bad Gateway", {
+            status: 502,
+            headers: { "Content-Type": "text/plain" },
+          }),
+      ),
+    );
+
+    await connectSSE({ url: "/test/gateway", body: {}, onChunk: () => {}, onError });
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    const error = onError.mock.calls[0][0] as SSEStreamError;
+    expect(error.status).toBe(502);
+    expect(error.code ?? null).toBeNull();
   });
 
   it("should support GET streams without a JSON body", async () => {

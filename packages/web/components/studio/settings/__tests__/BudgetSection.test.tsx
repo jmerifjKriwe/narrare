@@ -140,6 +140,76 @@ describe("BudgetSection", () => {
     },
   );
 
+  it.each(["100000000", "100000000.99", "999999999"])(
+    "rejects over-magnitude %s (> 8 integer digits) instead of inviting a silent 422",
+    async (raw) => {
+      const user = userEvent.setup();
+      render(
+        <BudgetSection
+          aiSettings={makeSettings()}
+          onBudgetChange={onBudgetChange}
+          onBudgetModeChange={onBudgetModeChange}
+        />,
+      );
+
+      const amount = screen.getByLabelText("settings.ai.budget.amountLabel");
+      await user.type(amount, raw);
+      await user.tab();
+
+      expect(onBudgetChange).not.toHaveBeenCalled();
+      expect(screen.getByText("settings.ai.budget.amountInvalid")).toBeInTheDocument();
+    },
+  );
+
+  it("accepts the maximum representable amount 99999999.99", async () => {
+    const user = userEvent.setup();
+    render(
+      <BudgetSection
+        aiSettings={makeSettings()}
+        onBudgetChange={onBudgetChange}
+        onBudgetModeChange={onBudgetModeChange}
+      />,
+    );
+
+    const amount = screen.getByLabelText("settings.ai.budget.amountLabel");
+    await user.type(amount, "99999999.99");
+    await user.tab();
+
+    expect(onBudgetChange).toHaveBeenCalledOnce();
+    expect(onBudgetChange).toHaveBeenCalledWith(99999999.99);
+  });
+
+  it("surfaces a failed budget PATCH inline (saveFailed) instead of console-only", () => {
+    render(
+      <BudgetSection
+        aiSettings={makeSettings({ monthly_budget_usd: "25.00" })}
+        onBudgetChange={onBudgetChange}
+        onBudgetModeChange={onBudgetModeChange}
+        saveFailed
+      />,
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("settings.ai.budget.amountSaveFailed");
+    expect(screen.getByLabelText("settings.ai.budget.amountLabel")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+  });
+
+  it("shows the regular hint when no save failed", () => {
+    render(
+      <BudgetSection
+        aiSettings={makeSettings()}
+        onBudgetChange={onBudgetChange}
+        onBudgetModeChange={onBudgetModeChange}
+      />,
+    );
+
+    expect(screen.getByText("settings.ai.budget.amountHint")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("clears the validation hint once a valid amount is committed", async () => {
     const user = userEvent.setup();
     render(

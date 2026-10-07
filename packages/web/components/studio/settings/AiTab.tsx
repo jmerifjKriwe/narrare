@@ -50,6 +50,7 @@ export function AiTab() {
           aiSettings={aiSettings}
           onBudgetChange={data.handleMonthlyBudgetChange}
           onBudgetModeChange={data.handleBudgetModeChange}
+          saveFailed={data.budgetSaveFailed}
         />
 
         {/* Advanced settings (collapsible — CR-AUFG-07-32 progressive disclosure).
