@@ -263,8 +263,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     from narrare.analytics.usage_sink import SqlUsageEventSink
     from narrare_core.llm.usage_events import set_usage_event_sink
 
-    set_usage_event_sink(SqlUsageEventSink(get_session_factory()))
+    session_factory = get_session_factory()
+    usage_sink = SqlUsageEventSink(session_factory)
+    set_usage_event_sink(usage_sink)
     logger.info("usage_event_sink_registered")
+
+    # Budget guard (STATS-002 / ADR-094 D2/D5): arm the pre-call gate with
+    # the sink's running month total (hydration + slot registration live in
+    # ``analytics/budget_guard.py`` — domain logic, not lifespan wiring).
+    # Skipped in test mode exactly like migrations/cleanup above — API tests
+    # arm guards per-case and a global armed guard would leak between test
+    # lifecycles.
+    if not settings.is_test:
+        from narrare.analytics.budget_guard import arm_budget_guard
+
+        await arm_budget_guard(usage_sink, session_factory)
 
     # Startup cleanup: remove stale generation requests — skip in test
     # environment (no real data to clean, and it uses the module-level engine).
@@ -309,6 +322,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             await drain_inflight_tasks()
         except Exception:
             logger.warning("inflight_drain_failed", exc_info=True)
+
+    # Budget guard (STATS-002 / ADR-094): clear BEFORE the sink below — the
+    # guard reads the sink's running total, so the dependent slot goes first
+    # (a late check between the two clears sees an unarmed guard, never a
+    # guard over a torn-down sink). Unconditional: neither global seam may
+    # leak across app lifecycles (same rationale as the sink clear below).
+    from narrare.analytics.budget_invalidation import set_budget_config_invalidator
+    from narrare_core.llm.budget import set_budget_guard
+
+    set_budget_guard(None)
+    set_budget_config_invalidator(None)
+    logger.info("budget_guard_cleared")
 
     # Usage event sink (STATS-002 / ADR-093): clear AFTER in-flight tasks
     # drained (their emissions stay attributed) and BEFORE the engine is

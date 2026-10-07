@@ -12,8 +12,17 @@ if TYPE_CHECKING:
 
 
 def get_cost_query_service(session: SessionDep) -> CostQueryService:
-    """Production wiring: usage-record repository + cost query service."""
+    """Production wiring: usage-record repository + cost query service.
+
+    The budget overlay (spec A-6) reads the caller's settings through the
+    user-AI-settings repository over the SAME request session — one
+    transaction, no extra connection.
+    """
     from narrare.analytics.repository import UsageRecordRepository
     from narrare.analytics.service import CostQueryService
+    from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
 
-    return CostQueryService(UsageRecordRepository(session))
+    return CostQueryService(
+        UsageRecordRepository(session),
+        budget_settings_repo=UserAiSettingsRepository(session),
+    )

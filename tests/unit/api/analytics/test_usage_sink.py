@@ -180,3 +180,132 @@ class TestSqlUsageEventSink:
 
         assert harness.factory.opened == 1  # own session per event
         assert harness.ops == ["open", "insert", "commit"]  # commit after insert
+
+
+# ---------------------------------------------------------------------------
+# Running month total (STATS-002 / ADR-094 D5 — spec A-4)
+# ---------------------------------------------------------------------------
+
+
+class _MutableClock:
+    """Controllable ``clock`` dependency: fixed time, advanced per test."""
+
+    def __init__(self, initial: datetime) -> None:
+        self.now = initial
+
+    def __call__(self) -> datetime:
+        return self.now
+
+
+_JAN_CLOCK = _MutableClock(datetime(2026, 1, 15, 12, tzinfo=UTC))
+
+
+def _totals_sink(monkeypatch: pytest.MonkeyPatch, clock: _MutableClock) -> SqlUsageEventSink:
+    """Sink with a fake repo/factory (record path) and injectable clock."""
+    ops: list[str] = []
+    inserted: list[Any] = []
+
+    class _FakeRepository:
+        def __init__(self, session: _FakeSession) -> None:
+            del session
+
+        async def insert(self, row: UsageRecordRow) -> None:
+            inserted.append(row)
+
+    monkeypatch.setattr(usage_sink, "UsageRecordRepository", _FakeRepository)
+    factory = _FakeSessionFactory(ops)
+    return SqlUsageEventSink(cast("async_sessionmaker[AsyncSession]", factory), clock=clock)
+
+
+class TestRunningMonthTotal:
+    async def test_month_total_defaults_to_zero_for_unknown_user(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        sink = _totals_sink(monkeypatch, _MutableClock(datetime.now(UTC)))
+
+        assert sink.month_total(uuid4()) == Decimal("0")
+
+    async def test_hydrate_seeds_totals_for_all_users_of_current_month(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        clock = _MutableClock(datetime(2026, 1, 15, tzinfo=UTC))
+        sink = _totals_sink(monkeypatch, clock)
+        user_a, user_b = uuid4(), uuid4()
+
+        sink.hydrate({user_a: Decimal("1.25"), user_b: Decimal("9.75")})
+
+        assert sink.month_total(user_a) == Decimal("1.25")
+        assert sink.month_total(user_b) == Decimal("9.75")
+
+    async def test_record_increments_running_total_after_commit(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        clock = _MutableClock(datetime(2026, 1, 15, tzinfo=UTC))
+        sink = _totals_sink(monkeypatch, clock)
+        user = uuid4()
+        sink.hydrate({user: Decimal("1")})
+
+        await sink.record(_make_event(user_id=user, cost_usd=0.25))
+        await sink.record(_make_event(user_id=user, cost_usd=0.75))
+
+        # 1 (hydrated) + 0.25 + 0.75 — Decimal end-to-end, no float drift.
+        assert sink.month_total(user) == Decimal("2")
+
+    async def test_unpriced_record_does_not_increment(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        clock = _MutableClock(datetime(2026, 1, 15, tzinfo=UTC))
+        sink = _totals_sink(monkeypatch, clock)
+        user = uuid4()
+        sink.hydrate({user: Decimal("1")})
+
+        await sink.record(_make_event(user_id=user, cost_usd=None))
+
+        assert sink.month_total(user) == Decimal("1")
+
+    async def test_first_write_of_new_month_resets_totals(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Write-side rollover: Jan totals vanish on Feb's first write."""
+        clock = _MutableClock(datetime(2026, 1, 31, 23, tzinfo=UTC))
+        sink = _totals_sink(monkeypatch, clock)
+        user_a, user_b = uuid4(), uuid4()
+        sink.hydrate({user_a: Decimal("5"), user_b: Decimal("7")})
+
+        clock.now = datetime(2026, 2, 1, 0, 30, tzinfo=UTC)
+        await sink.record(_make_event(user_id=user_a, cost_usd=0.5))
+
+        assert sink.month_total(user_a) == Decimal("0.5")
+        assert sink.month_total(user_b) == Decimal("0")  # reset by rollover
+
+    async def test_read_of_stale_month_returns_zero_without_write(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Read-side guard (belt and braces): no write since rollover ⇒ zero.
+
+        The sink's read path re-checks the month key itself — last month's
+        totals must never enforce even when no priced write has occurred
+        yet in the new month (spec A-4).
+        """
+        clock = _MutableClock(datetime(2026, 1, 15, tzinfo=UTC))
+        sink = _totals_sink(monkeypatch, clock)
+        user = uuid4()
+        sink.hydrate({user: Decimal("99")})
+
+        clock.now = datetime(2026, 2, 1, 0, 15, tzinfo=UTC)
+
+        assert sink.month_total(user) == Decimal("0")
+
+    async def test_hydrate_rekeys_onto_the_current_month(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Re-hydration after a rollover keys the totals to the NEW month."""
+        clock = _MutableClock(datetime(2026, 1, 31, tzinfo=UTC))
+        sink = _totals_sink(monkeypatch, clock)
+        user = uuid4()
+        sink.hydrate({user: Decimal("99")})
+
+        clock.now = datetime(2026, 2, 2, tzinfo=UTC)
+        sink.hydrate({user: Decimal("3")})
+
+        assert sink.month_total(user) == Decimal("3")

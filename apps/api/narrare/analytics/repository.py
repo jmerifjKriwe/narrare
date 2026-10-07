@@ -60,8 +60,15 @@ def _bucket_month(value: datetime | date) -> date:
     return value.date() if isinstance(value, datetime) else value
 
 
-def _to_decimal(value: Decimal | int) -> Decimal:
-    """Normalize ``COALESCE(sum(cost_usd), 0)``: NUMERIC sums are Decimal, the fallback 0 is int."""
+def _to_decimal(value: Decimal | int | None) -> Decimal:
+    """Normalize ``COALESCE(sum(cost_usd), 0)``: NUMERIC sums are Decimal, the fallback 0 is int.
+
+    ``None`` cannot occur behind the COALESCE; mapping it to 0 keeps the
+    helper total (defensive) instead of asserting an invariant the type
+    system cannot see through the SQL expression.
+    """
+    if value is None:
+        return Decimal("0")
     return value if isinstance(value, Decimal) else Decimal(value)
 
 
@@ -142,6 +149,28 @@ class UsageRecordRepository(BaseRepository):
         )
         result = await self._session.execute(stmt)
         return [_to_agg_row(*row) for row in result.all()]
+
+    async def month_spend_by_user(self, start: datetime) -> dict[uuid.UUID, Decimal]:
+        """Per-user priced spend at/after *start* — guard hydration (ADR-094 D5).
+
+        One GROUP BY over ALL users (no user scoping — the budget guard
+        arms every wallet at once): ``COALESCE(SUM(cost_usd), 0)`` so a
+        user with only unpriced rows surfaces as ``Decimal("0")`` rather
+        than being absent. Priced rows only — SQL ``SUM`` skips NULLs, so
+        unpriced calls never count toward a USD budget (ADR-094 D8
+        honesty). No upper bound: the caller passes the current UTC month
+        start, and the month is open on the write side.
+        """
+        stmt = (
+            select(
+                UsageRecordRow.user_id,
+                func.coalesce(func.sum(UsageRecordRow.cost_usd), 0),
+            )
+            .where(UsageRecordRow.created_at >= start)
+            .group_by(UsageRecordRow.user_id)
+        )
+        result = await self._session.execute(stmt)
+        return {user_id: _to_decimal(total) for user_id, total in result.all()}
 
     async def stream_month(
         self,

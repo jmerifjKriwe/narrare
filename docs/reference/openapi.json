@@ -16257,6 +16257,39 @@
         "title": "CorpusEstimateView",
         "description": "Honest pre-run estimate (spec §4.3) — mirrors ``CorpusEstimateData`` 1:1.\n\nThe estimate NEVER understates: ``ai_calls == chapter_count`` (D14a —\ncost transparency is a count of calls), totals cover ALL enumerated\nchapters, and truncation is explicit via ``capped``/``cap_reason``."
       },
+      "CostBudgetBlock": {
+        "properties": {
+          "monthly_budget_usd": {
+            "type": "number",
+            "title": "Monthly Budget Usd"
+          },
+          "budget_mode": {
+            "type": "string",
+            "enum": [
+              "warn",
+              "block"
+            ],
+            "title": "Budget Mode"
+          },
+          "month_spend_usd": {
+            "type": "number",
+            "title": "Month Spend Usd"
+          },
+          "over_budget": {
+            "type": "boolean",
+            "title": "Over Budget"
+          }
+        },
+        "type": "object",
+        "required": [
+          "monthly_budget_usd",
+          "budget_mode",
+          "month_spend_usd",
+          "over_budget"
+        ],
+        "title": "CostBudgetBlock",
+        "description": "Budget overlay for the costs report (spec A-6, ADR-094 D6/D8).\n\n``CostMonthReport.budget`` is ``None`` when the user set no budget;\npresent otherwise — the warn badge's one-round-trip data.\n``over_budget`` uses the same ``>=`` boundary as the block-mode gate:\none rule, both surfaces. ``budget_mode`` is the settings CHECK domain\n('warn' | 'block' — ADR-094 D7)."
+      },
       "CostIntentRow": {
         "properties": {
           "intent": {
@@ -16349,6 +16382,16 @@
             },
             "type": "array",
             "title": "Trend"
+          },
+          "budget": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CostBudgetBlock"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -16360,7 +16403,7 @@
           "trend"
         ],
         "title": "CostMonthReport",
-        "description": "Monthly AI cost overview: month breakdowns + six-month trend.\n\n``totals``/``by_intent``/``by_model`` are scoped to ``month``; ``trend``\nspans the six months ending with ``month`` (oldest first, zero months\nincluded)."
+        "description": "Monthly AI cost overview: month breakdowns + six-month trend.\n\n``totals``/``by_intent``/``by_model`` are scoped to ``month``; ``trend``\nspans the six months ending with ``month`` (oldest first, zero months\nincluded). ``budget`` overlays the user's budget when one is set."
       },
       "CostTotals": {
         "properties": {

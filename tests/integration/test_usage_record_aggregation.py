@@ -276,3 +276,69 @@ class TestUsageRecordAggregation:
             assert rows[0].cost_usd == Decimal("0.003")
         finally:
             await eng.dispose()
+
+    async def test_month_spend_by_user_hydration_semantics_on_real_pg(self) -> None:
+        """Guard hydration (ADR-094 D5): per-user sums, NULL-skipping, >= start.
+
+        ``month_spend_by_user`` is the budget guard's startup-hydration
+        source: all users at once, priced rows only (SUM skips NULLs —
+        unpriced calls never count toward a USD budget, ADR-094 D8), the
+        ``>= start`` bound inclusive at the month start, and no upper bound
+        (the current month is open on the write side).
+        """
+        run_alembic("upgrade", "head")
+
+        user_a = _uuid.uuid4()
+        user_b = _uuid.uuid4()
+        eng = engine()
+        try:
+            async with eng.begin() as conn:
+                await seed_user(conn, user_a)
+                await seed_user(conn, user_b)
+
+            async with AsyncSession(eng) as session:
+                repo = UsageRecordRepository(session)
+
+                # user_a: priced rows in two months (the guard's window spans
+                # everything at/after the month start), one EXACTLY at start
+                # (proves >=), and an unpriced row that must NOT count.
+                for when, cost in (
+                    (JAN_1, Decimal("0.050")),  # at start — inclusive
+                    (datetime(2026, 1, 10, 12, tzinfo=UTC), Decimal("0.001")),
+                    (datetime(2026, 1, 15, 12, tzinfo=UTC), None),  # skipped
+                    (datetime(2026, 2, 10, 12, tzinfo=UTC), Decimal("0.004")),
+                ):
+                    await repo.insert(
+                        _usage(
+                            user_a,
+                            when=when,
+                            intent="summarize",
+                            provider="anthropic",
+                            model="claude-haiku",
+                            tin=10,
+                            tout=5,
+                            cost=cost,
+                        )
+                    )
+                # user_b interleaves the same month — per-user isolation.
+                await repo.insert(
+                    _usage(
+                        user_b,
+                        when=datetime(2026, 1, 25, 12, tzinfo=UTC),
+                        intent="write",
+                        provider="openai",
+                        model="gpt-x",
+                        tin=90,
+                        tout=9,
+                        cost=Decimal("0.999"),
+                    )
+                )
+
+                from_jan = await repo.month_spend_by_user(JAN_1)
+                from_feb = await repo.month_spend_by_user(datetime(2026, 2, 1, tzinfo=UTC))
+
+            assert from_jan[user_a] == Decimal("0.055")  # 0.050 + 0.001 + 0.004
+            assert from_jan[user_b] == Decimal("0.999")
+            assert from_feb == {user_a: Decimal("0.004")}  # user_b: no rows
+        finally:
+            await eng.dispose()
