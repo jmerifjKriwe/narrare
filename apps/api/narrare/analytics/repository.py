@@ -37,6 +37,7 @@ from narrare.analytics.models import UsageRecordRow
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import AsyncIterator
 
 
 @dataclass(frozen=True)
@@ -141,3 +142,32 @@ class UsageRecordRepository(BaseRepository):
         )
         result = await self._session.execute(stmt)
         return [_to_agg_row(*row) for row in result.all()]
+
+    async def stream_month(
+        self,
+        user_id: uuid.UUID,
+        start: datetime,
+        end: datetime,
+    ) -> AsyncIterator[UsageRecordRow]:
+        """Stream raw usage rows for one window, half-open ``[start, end)``.
+
+        The CSV export source (spec B-4): user-scoped, ``created_at`` order,
+        ``yield_per``-chunked row iteration — rows are pulled lazily from a
+        server-side cursor, so no full-month list is ever held in memory.
+        """
+        stmt = (
+            select(UsageRecordRow)
+            .where(
+                UsageRecordRow.user_id == user_id,
+                UsageRecordRow.created_at >= start,  # [start, end) — half-open
+                UsageRecordRow.created_at < end,
+            )
+            .order_by(UsageRecordRow.created_at.asc())
+            # 500 rows per server-side cursor fetch: constant memory for
+            # month-wide exports (spec B-4). Pinned query-shape literal —
+            # a technical cursor property of THIS query, not a config knob.
+            .execution_options(yield_per=500)
+        )
+        result = await self._session.stream_scalars(stmt)
+        async for row in result:
+            yield row

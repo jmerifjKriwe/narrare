@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.analytics._csv_format import header_line, usage_record_line
 from narrare.analytics.contracts import (
     CostIntentRow,
     CostModelRow,
@@ -36,6 +37,7 @@ from narrare.analytics.contracts import (
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import AsyncIterator
 
     from narrare.analytics.repository import UsageAggRow, UsageRecordRepository
 
@@ -201,3 +203,50 @@ class CostQueryService:
             buckets=len(rows),
         )
         return report
+
+    def export_csv_headers(self, month: str | None) -> dict[str, str]:
+        """Resolve + validate the month; build the CSV download headers.
+
+        Eager on purpose: month validation must run BEFORE the router
+        constructs the ``StreamingResponse`` — once streaming starts, the
+        status code is already sent and an ``InvalidMonthError`` would
+        surface as a broken 200 instead of 422 (house streaming precedent).
+        The costs endpoint's year-window guard is reused (trend window) so
+        BOTH endpoints accept exactly the same months — month semantics
+        identical (global constraint); it subsumes the export window's
+        constructibility.
+
+        Raises:
+            InvalidMonthError: Regex-invalid or year-edge month (→ 422 via
+                the app-registered handler).
+        """
+        year, mon = _resolve_month(month)
+        _validate_window(year, mon, trend_months=self._trend_months)
+        filename = f"narrare-costs-{_month_label(year, mon)}.csv"
+        return {"Content-Disposition": f'attachment; filename="{filename}"'}
+
+    async def export_csv_lines(self, user_id: uuid.UUID, month: str | None) -> AsyncIterator[str]:
+        """Stream the month's usage records as CSV lines (spec B-2..B-5).
+
+        Yields the BOM+header line, then one line per record in
+        ``created_at`` order, pulling rows lazily from the repository
+        stream (spec B-4 — constant memory). Month validation is repeated
+        here so direct callers (bypassing :meth:`export_csv_headers`) also
+        fail fast before the first line is produced.
+
+        Raises:
+            InvalidMonthError: On the first iteration for an invalid month.
+        """
+        year, mon = _resolve_month(month)
+        _validate_window(year, mon, trend_months=self._trend_months)
+        label = _month_label(year, mon)
+        start = _month_start(year, mon)
+        end = _month_start(*_shift_month(year, mon, 1))
+
+        yield header_line()
+
+        rows = 0
+        async for record in self._repo.stream_month(user_id, start, end):
+            rows += 1
+            yield usage_record_line(record)
+        logger.info("cost_csv_export_streamed", user_id=str(user_id), month=label, rows=rows)
