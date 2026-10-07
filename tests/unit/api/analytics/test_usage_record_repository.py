@@ -64,6 +64,38 @@ class _AggSession:
         return _RowsResult(self._rows)
 
 
+class _ScalarsResult:
+    """Async-iterable scalar result — what ``stream_scalars()`` returns."""
+
+    def __init__(self, rows: Sequence[UsageRecordRow]) -> None:
+        self._iterator = iter(rows)
+
+    def __aiter__(self) -> _ScalarsResult:
+        return self
+
+    async def __anext__(self) -> UsageRecordRow:
+        try:
+            return next(self._iterator)
+        except StopIteration as exc:
+            raise StopAsyncIteration from exc
+
+
+class _StreamSession:
+    """Minimal ``AsyncSession`` fake for the streaming query (``stream``).
+
+    Companion to ``_AggSession``: the stream path iterates scalars lazily
+    instead of materializing ``result.all()``.
+    """
+
+    def __init__(self, rows: Sequence[UsageRecordRow]) -> None:
+        self._rows = list(rows)
+        self.statements: list[Any] = []
+
+    async def stream_scalars(self, stmt: Any) -> _ScalarsResult:
+        self.statements.append(stmt)
+        return _ScalarsResult(self._rows)
+
+
 def _make_repo(session: FakeDbSession | _AggSession) -> UsageRecordRepository:
     """Wrap a fake session in a repository.
 
@@ -271,3 +303,69 @@ class TestUsageRecordRepositoryAggWiring:
         ordered = session.statements[0]._order_by_clauses
         assert len(ordered) == 2
         assert str(ordered[1]).endswith("DESC")
+
+
+# ---------------------------------------------------------------------------
+# stream_month (CSV export source, spec B-4 — moved from test_costs_export
+# to stay under the RULE-04 test-file limit; this is its natural home)
+# ---------------------------------------------------------------------------
+
+
+class TestUsageRecordRepositoryStreamMonth:
+    async def test_stream_month_yields_rows_preserving_session_order(self) -> None:
+        """Rows stream out 1:1 in the order the cursor produced them."""
+        rows = [_usage_row(), _usage_row(created_at=datetime(2026, 1, 11))]
+        session = _StreamSession(rows)
+        repo = _make_repo(session)
+
+        streamed = [row async for row in repo.stream_month(uuid4(), _JAN, _FEB)]
+
+        assert streamed == rows
+
+    async def test_stream_month_binds_caller_user_id_exclusively(self) -> None:
+        """Exactly one user_id bind — the CALLER's id (attribution scoping)."""
+        session = _StreamSession([])
+        repo = _make_repo(session)
+        user_id = uuid4()
+
+        await anext(repo.stream_month(user_id, _JAN, _FEB), None)
+
+        params = session.statements[0].compile().params
+        user_binds = {key: value for key, value in params.items() if key.startswith("user_id")}
+        assert list(user_binds.values()) == [user_id]
+
+    async def test_stream_month_bounds_are_half_open(self) -> None:
+        """Range is [start, end): created_at >= start AND created_at < end."""
+        session = _StreamSession([])
+        repo = _make_repo(session)
+
+        await anext(repo.stream_month(uuid4(), _JAN, _FEB), None)
+
+        bounds = [
+            (crit.operator.__name__, crit.right.value)
+            for crit in session.statements[0].whereclause.clauses
+            if crit.left.name == "created_at"
+        ]
+        assert bounds == [("ge", _JAN), ("lt", _FEB)]
+
+    async def test_stream_month_orders_by_created_at_ascending(self) -> None:
+        """ORDER BY = created_at ascending (spec B-4: created_at order)."""
+        session = _StreamSession([])
+        repo = _make_repo(session)
+
+        await anext(repo.stream_month(uuid4(), _JAN, _FEB), None)
+
+        ordered = session.statements[0]._order_by_clauses
+        assert len(ordered) == 1
+        assert "created_at" in str(ordered[0])
+        assert str(ordered[0]).endswith("ASC")
+
+    async def test_stream_month_streams_in_yield_per_chunks(self) -> None:
+        """Chunked row iteration (yield_per) — NOT an unbuffered full fetch."""
+        session = _StreamSession([])
+        repo = _make_repo(session)
+
+        await anext(repo.stream_month(uuid4(), _JAN, _FEB), None)
+
+        options = session.statements[0]._execution_options
+        assert options.get("yield_per") == 500  # repository's pinned chunk

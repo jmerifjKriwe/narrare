@@ -16,6 +16,7 @@
     "empty": "Für diesen Monat ist keine KI-Nutzung aufgezeichnet.",
     "error": "KI-Kosten konnten nicht geladen werden.",
     "retry": "Erneut versuchen",
+    "exportCsv": "CSV exportieren",
     "intent": {
       "analyse": "Analyse",
       "author_voice": "Autorenstimme",

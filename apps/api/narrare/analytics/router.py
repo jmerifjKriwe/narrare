@@ -1,5 +1,5 @@
 # apps/api/narrare/analytics/router.py
-"""Analytics costs route — thin delegation (RULE-06: no business logic here).
+"""Analytics costs routes — thin delegation (RULE-06: no business logic here).
 
 The :func:`invalid_month_error_handler` below must be registered app-level in
 ``_app/main.create_app`` (Task 11 wiring):
@@ -9,6 +9,11 @@ narrow exc type under pyright (``add_exception_handler`` does not). Without
 it, regex-valid but unconstructible months (``0000-01``, ``9999-12``) pass the
 Query pattern, are rejected by the service's defensive validation, and would
 surface as 500 instead of 422.
+
+The CSV export route depends on the concrete ``CostQueryService`` (house
+pattern: chat/series/wiki routers inject concrete services): its streaming
+methods are beyond the read-only ``CostQueryServiceProtocol`` seam, and no
+typed stream protocol was warranted for this one surface.
 """
 
 from __future__ import annotations
@@ -17,12 +22,12 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare.analytics.contracts import CostMonthReport, CostQueryServiceProtocol
 from narrare.analytics.dependencies import get_cost_query_service
-from narrare.analytics.service import InvalidMonthError
+from narrare.analytics.service import CostQueryService, InvalidMonthError
 
 logger = structlog.get_logger(__name__)
 
@@ -37,6 +42,21 @@ async def get_monthly_costs(
 ) -> CostMonthReport:
     """Monthly AI cost report for the authenticated user (spec §4)."""
     return await service.month_report(uuid.UUID(user_id), month)
+
+
+@router.get("/costs/export")
+async def export_costs_csv(
+    user_id: CurrentUserIdDep,
+    month: str | None = Query(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
+    service: CostQueryService = Depends(get_cost_query_service),
+) -> StreamingResponse:
+    """Stream the month's usage records as a CSV download (spec B-1..B-5)."""
+    headers = service.export_csv_headers(month)  # eager validation → 422 pre-stream
+    return StreamingResponse(
+        service.export_csv_lines(uuid.UUID(user_id), month),
+        media_type="text/csv; charset=utf-8",
+        headers=headers,
+    )
 
 
 async def invalid_month_error_handler(_: Request, exc: InvalidMonthError) -> JSONResponse:

@@ -35,6 +35,7 @@ from scripts.architecture.streaming_compliance import (  # noqa: E402
     FrontendConsumer,
     SSEEndpoint,
     extract_route_decorators,
+    route_is_sse_stream,
     url_patterns_match,
 )
 from scripts.architecture.streaming_compliance import (  # noqa: E402
@@ -88,7 +89,10 @@ def _extract_sse_routes(source: str, prefix: str, filepath: Path) -> list[SSEEnd
     """Extract StreamingResponse endpoint routes using AST-based decorator extraction.
 
     Delegates to ``extract_route_decorators()`` for the AST parsing, then
-    filters to functions whose body contains ``StreamingResponse``.
+    filters to functions whose body contains ``StreamingResponse``. Routes
+    with an explicit non-event-stream ``media_type`` (file downloads such as
+    CSV exports) are not SSE endpoints and are excluded; routes without a
+    statically resolvable media type stay flagged (fail-closed).
     """
     endpoints: list[SSEEndpoint] = []
     lines = source.split("\n")
@@ -100,6 +104,13 @@ def _extract_sse_routes(source: str, prefix: str, filepath: Path) -> list[SSEEnd
         # Source range from first decorator to end of function body
         body = "\n".join(lines[rd.decorator_lineno - 1 : rd.func_end_lineno])
         if "StreamingResponse" not in body:
+            continue
+
+        # RULE-20 scope: only event-stream-flavored streaming is an SSE
+        # endpoint. Explicit non-event-stream media types (e.g. text/csv
+        # downloads) are plain file streams, not SSE. Routes without a
+        # statically resolvable media type stay flagged (fail-closed).
+        if not route_is_sse_stream(rd.media_types):
             continue
 
         endpoints.append(

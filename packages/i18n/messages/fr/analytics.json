@@ -16,6 +16,7 @@
     "empty": "Aucune utilisation de l'IA enregistrée pour ce mois.",
     "error": "Échec du chargement des coûts IA.",
     "retry": "Réessayer",
+    "exportCsv": "Exporter en CSV",
     "intent": {
       "analyse": "Analyse",
       "author_voice": "Voix de l'auteur",

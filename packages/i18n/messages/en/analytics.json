@@ -16,6 +16,7 @@
     "empty": "No AI usage recorded for this month.",
     "error": "Failed to load AI costs.",
     "retry": "Retry",
+    "exportCsv": "Export CSV",
     "intent": {
       "analyse": "Analyze",
       "author_voice": "Author voice",

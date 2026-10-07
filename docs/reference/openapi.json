@@ -4415,6 +4415,60 @@
         }
       }
     },
+    "/api/v1/analytics/costs/export": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Export Costs Csv",
+        "description": "Stream the month's usage records as a CSV download (spec B-1..B-5).",
+        "operationId": "export_costs_csv_api_v1_analytics_costs_export_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/adaptive/{project_id}/context": {
       "get": {
         "tags": [

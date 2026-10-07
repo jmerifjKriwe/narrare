@@ -5,7 +5,7 @@
  * SentimentChart test pattern.
  */
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,7 +15,7 @@ import { AnalyticsCostsPanel } from "./AnalyticsCostsPanel";
 vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => {
     const dict: Record<string, Record<string, string>> = {
-      "analytics.costs": { unpriced: "{count} unpriced" },
+      "analytics.costs": { unpriced: "{count} unpriced", exportCsv: "Export CSV" },
       "analytics.costs.intent": { draft: "Draft" },
     };
     const messages = dict[namespace] ?? {};
@@ -39,6 +39,14 @@ const mockUseAnalyticsCosts = vi.fn();
 
 vi.mock("@/lib/hooks/useAnalyticsCosts", () => ({
   useAnalyticsCosts: (month: string) => mockUseAnalyticsCosts(month),
+}));
+
+const mockDownloadCostsCsv = vi.fn();
+
+vi.mock("@/lib/api/analytics", () => ({
+  analyticsApi: {
+    downloadCostsCsv: (month: string) => mockDownloadCostsCsv(month),
+  },
 }));
 
 vi.mock("recharts", () => ({
@@ -84,6 +92,7 @@ describe("AnalyticsCostsPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseAnalyticsCosts.mockImplementation(() => resolved(REPORT));
+    mockDownloadCostsCsv.mockResolvedValue(undefined);
   });
 
   it("defaults to the current month; next is clamped (disabled), prev enabled", async () => {
@@ -154,5 +163,71 @@ describe("AnalyticsCostsPanel", () => {
     rerender(<AnalyticsCostsPanel />);
     expect(await screen.findByText("empty")).toBeInTheDocument();
     expect(screen.queryByTestId("costs-trend-chart")).not.toBeInTheDocument();
+  });
+
+  describe("CSV export", () => {
+    it("renders the export button in the header", async () => {
+      render(<AnalyticsCostsPanel />);
+
+      expect(await screen.findByRole("button", { name: "Export CSV" })).toBeInTheDocument();
+    });
+
+    it("exports the currently selected month", async () => {
+      const user = userEvent.setup();
+      render(<AnalyticsCostsPanel />);
+      await screen.findByTestId("costs-month-label");
+
+      await user.click(screen.getByRole("button", { name: "Export CSV" }));
+
+      expect(mockDownloadCostsCsv).toHaveBeenCalledOnce();
+      expect(mockDownloadCostsCsv).toHaveBeenLastCalledWith(CURRENT);
+    });
+
+    it("re-exports after month navigation (tracks the new selection)", async () => {
+      const user = userEvent.setup();
+      render(<AnalyticsCostsPanel />);
+      await screen.findByTestId("costs-month-label");
+
+      await user.click(screen.getByRole("button", { name: "prevMonth" }));
+      await user.click(screen.getByRole("button", { name: "Export CSV" }));
+
+      expect(mockDownloadCostsCsv).toHaveBeenLastCalledWith(PREV);
+    });
+
+    it("is disabled while the download is in flight, then re-enabled", async () => {
+      let resolveDownload!: () => void;
+      mockDownloadCostsCsv.mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveDownload = resolve;
+          }),
+      );
+      const user = userEvent.setup();
+      render(<AnalyticsCostsPanel />);
+      await screen.findByTestId("costs-month-label");
+
+      const exportButton = screen.getByRole("button", { name: "Export CSV" });
+      await user.click(exportButton);
+      expect(exportButton).toBeDisabled();
+
+      resolveDownload();
+      await waitFor(() => expect(exportButton).toBeEnabled());
+      expect(mockDownloadCostsCsv).toHaveBeenCalledOnce();
+    });
+
+    it("logs a failed export and re-enables the button", async () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      mockDownloadCostsCsv.mockRejectedValue(new Error("HTTP 500"));
+      const user = userEvent.setup();
+      render(<AnalyticsCostsPanel />);
+      await screen.findByTestId("costs-month-label");
+
+      const exportButton = screen.getByRole("button", { name: "Export CSV" });
+      await user.click(exportButton);
+
+      await waitFor(() => expect(exportButton).toBeEnabled());
+      expect(consoleError).toHaveBeenCalledOnce();
+      consoleError.mockRestore();
+    });
   });
 });
