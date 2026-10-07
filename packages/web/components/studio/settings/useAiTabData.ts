@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { aiSettingsApi, tokenLimitsApi } from "@/lib/api/client";
-import type { ContextTier, ModelOverride, TokenLimitProfile } from "@/types";
+import type { BudgetMode, ContextTier, ModelOverride, TokenLimitProfile } from "@/types";
 import { buildTokenLimitsQuery, normalizeTierPercentages } from "./useAiTabDataHelpers";
 import { useProviderModelCache } from "./useProviderModelCache";
 
@@ -100,6 +100,16 @@ export function useAiTabData() {
     updateTokenLimitsMutation.mutate(values);
   }
 
+  /** Monthly budget (STATS-002 budgets, ADR-094): null unsets the budget. */
+  function handleMonthlyBudgetChange(monthlyBudgetUsd: number | null) {
+    updateAiSettingsMutation.mutate({ monthly_budget_usd: monthlyBudgetUsd });
+  }
+
+  /** Enforcement mode change; never sends null (backend rejects with 422). */
+  function handleBudgetModeChange(budgetMode: BudgetMode) {
+    updateAiSettingsMutation.mutate({ budget_mode: budgetMode });
+  }
+
   // Pre-load models for active category overrides
   if (aiSettings?.category_overrides) {
     for (const override of Object.values(aiSettings.category_overrides)) {
@@ -126,6 +136,8 @@ export function useAiTabData() {
     handleIntentOverridesChange,
     handleTierPercentagesChange,
     handleSystemTimeoutsChange,
+    handleMonthlyBudgetChange,
+    handleBudgetModeChange,
   };
 }
 

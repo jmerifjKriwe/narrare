@@ -8,6 +8,7 @@
  * 1:1 in snake_case — no FE-side re-casing.
  */
 
+import type { BudgetMode } from "@/types";
 import { fetchApi, fetchApiRaw } from "./core";
 
 /** Aggregate over all usage recorded in the requested month. */
@@ -18,6 +19,18 @@ export interface CostTotals {
   cost_usd: number;
   /** Calls whose cost was NULL at write time. */
   unpriced_calls: number;
+}
+
+/**
+ * Budget overlay on the costs report (STATS-002 budgets, ADR-094 spec A-6).
+ * Numbers are floats (backend contract converts the settings Decimal);
+ * `over_budget` uses the same `>=` boundary as the block-mode gate.
+ */
+export interface CostBudgetBlock {
+  monthly_budget_usd: number;
+  budget_mode: BudgetMode;
+  month_spend_usd: number;
+  over_budget: boolean;
 }
 
 /** Per-intent breakdown row (sorted by cost, descending). */
@@ -55,6 +68,8 @@ export interface CostMonthReport {
   by_intent: CostIntentRow[];
   by_model: CostModelRow[];
   trend: CostTrendPoint[];
+  /** Budget overlay — null when the user set no budget (badge hidden). */
+  budget: CostBudgetBlock | null;
 }
 
 /**

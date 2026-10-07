@@ -138,6 +138,10 @@ vi.mock("../DefaultModelSection", () => ({
   )),
 }));
 
+vi.mock("../BudgetSection", () => ({
+  BudgetSection: vi.fn(() => <div data-testid="budget-section">budget-section</div>),
+}));
+
 vi.mock("../CategoryOverrides", () => ({
   CategoryOverrides: vi.fn(() => <div data-testid="category-overrides">category-overrides</div>),
 }));
@@ -323,6 +327,7 @@ describe("AiTab", () => {
     // inside a collapsed <details> disclosure (progressive disclosure, CR-AUFG-07-32).
     expect(screen.getByTestId("model-data-status")).toBeDefined();
     expect(screen.getByTestId("default-model-section")).toBeDefined();
+    expect(screen.getByTestId("budget-section")).toBeDefined();
     expect(screen.getByTestId("category-overrides")).toBeDefined();
     expect(screen.getByTestId("intent-overrides")).toBeDefined();
     expect(screen.getByTestId("context-budget")).toBeDefined();

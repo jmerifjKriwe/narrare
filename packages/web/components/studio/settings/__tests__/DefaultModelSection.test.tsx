@@ -47,6 +47,8 @@ const defaultAiSettings: UserAiSettings = {
   default_model: "gpt-4",
   category_overrides: {},
   intent_overrides: {},
+  monthly_budget_usd: null,
+  budget_mode: "warn",
   updated_at: "2026-01-01T00:00:00Z",
 };
 

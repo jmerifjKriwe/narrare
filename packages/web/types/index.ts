@@ -183,6 +183,7 @@ export type {
 } from "./seriesContextPreview";
 export type { SeriesDriftSnapshot } from "./seriesDrift";
 export type {
+  BudgetMode,
   CalibrationMetadata,
   CalibrationStatus,
   ContextTier,

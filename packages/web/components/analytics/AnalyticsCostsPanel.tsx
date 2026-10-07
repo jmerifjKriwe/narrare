@@ -5,10 +5,10 @@
  *
  * Owns month navigation (prev/next, clamped at the current month, aria-live
  * label) and the loading/error/empty states around the report; presentation
- * is split into CostTotalsCard, CostsBreakdownTables and CostTrendChart
- * (RULE-04). Data via `useAnalyticsCosts` (Task 13); strings via
- * `analytics.costs.*` (Task 15 — intent labels fall back to the raw key via
- * `t.has()` until then).
+ * is split into CostTotalsCard (totals + budget badge), CostsBreakdownTables
+ * and CostTrendChart (RULE-04). A 429 BUDGET_EXCEEDED on the query maps to a
+ * dismissible BudgetExceededBanner (STATS-002 budgets, ADR-094). Data via
+ * `useAnalyticsCosts`; strings via `analytics.costs.*` / `analytics.budget.*`.
  */
 
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
@@ -16,7 +16,9 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { StatusMessage } from "@/components/ui/status-message";
 import { analyticsApi } from "@/lib/api/analytics";
+import { isBudgetExceededError } from "@/lib/api/core";
 import { useAnalyticsCosts } from "@/lib/hooks/useAnalyticsCosts";
+import { BudgetExceededBanner } from "./BudgetExceededBanner";
 import { CostsBreakdownTables } from "./CostsBreakdownTables";
 import { CostTotalsCard } from "./CostTotalsCard";
 import { CostTrendChart } from "./CostTrendChart";
@@ -34,36 +36,44 @@ function shiftMonth(month: string, delta: number): string {
 /** Fetches one month's report and renders its states + sub-components. */
 function CostsReport({ month }: { readonly month: string }) {
   const t = useTranslations("analytics.costs");
-  const { data, isPending, isError, refetch } = useAnalyticsCosts(month);
+  const { data, isPending, isError, error, refetch } = useAnalyticsCosts(month);
+  // Dismissal survives month switches: the block stop is user-level, not
+  // month-level. Re-arms only when a fresh budget-exceeded error arrives.
+  const [budgetBannerDismissed, setBudgetBannerDismissed] = useState(false);
+  const budgetExceeded = !isPending && isBudgetExceededError(error);
 
   if (isPending) return <StatusMessage state="loading" />;
-  if (isError || !data) {
-    return (
-      <StatusMessage
-        state="error"
-        message={t("error")}
-        action={
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-accent"
-          >
-            {t("retry")}
-          </button>
-        }
-      />
-    );
-  }
 
   return (
     <>
-      <CostTotalsCard totals={data.totals} />
-      {data.totals.calls === 0 ? (
-        <StatusMessage state="empty" message={t("empty")} />
+      {budgetExceeded && !budgetBannerDismissed && (
+        <BudgetExceededBanner onDismiss={() => setBudgetBannerDismissed(true)} />
+      )}
+      {isError || !data ? (
+        <StatusMessage
+          state="error"
+          message={t("error")}
+          action={
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-accent"
+            >
+              {t("retry")}
+            </button>
+          }
+        />
       ) : (
         <>
-          <CostsBreakdownTables byIntent={data.by_intent} byModel={data.by_model} />
-          <CostTrendChart trend={data.trend} />
+          <CostTotalsCard totals={data.totals} budget={data.budget} />
+          {data.totals.calls === 0 ? (
+            <StatusMessage state="empty" message={t("empty")} />
+          ) : (
+            <>
+              <CostsBreakdownTables byIntent={data.by_intent} byModel={data.by_model} />
+              <CostTrendChart trend={data.trend} />
+            </>
+          )}
         </>
       )}
     </>

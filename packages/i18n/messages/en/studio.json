@@ -467,6 +467,17 @@
         "description": "Connection timeout for AI operations",
         "wsTimeout": "WebSocket Timeout (seconds)",
         "wsTimeoutHint": "Minimum 60 seconds"
+      },
+      "budget": {
+        "title": "Monthly budget",
+        "description": "Cap your monthly AI spending. Leave the amount empty for no budget.",
+        "amountLabel": "Budget amount (USD)",
+        "amountHint": "Non-negative amount with at most two decimals, e.g. 25.00. Clear the field to remove the budget.",
+        "amountInvalid": "Please enter a non-negative amount with at most two decimals (e.g. 25.00).",
+        "amountPlaceholder": "No budget",
+        "modeLabel": "When the budget is reached",
+        "modeWarn": "Warn only — keep calling AI",
+        "modeBlock": "Block AI calls for the rest of the month"
       }
     },
     "prompts": {
@@ -1934,7 +1945,7 @@
     "connectionLostRetry": "Reconnect",
     "newSuggestions": "New Suggestions",
     "original": "Original",
-    "quotedOriginal": "\u201C{text}\u201D",
+    "quotedOriginal": "“{text}”",
     "suggested": "Suggested",
     "errorApiKey": "Your API key is invalid. Check your AI settings.",
     "errorTextTooLong": "The text is too long for the AI. Shorten your selection and try again.",

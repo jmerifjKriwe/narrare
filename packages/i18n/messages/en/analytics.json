@@ -81,5 +81,13 @@
       "worldbuilding": "Worldbuilding",
       "write": "Write"
     }
+  },
+  "budget": {
+    "badgeOk": "{percent}% of budget",
+    "badgeOver": "Over budget",
+    "badgeBlocked": "Budget reached — AI blocked",
+    "bannerTitle": "Monthly AI budget reached",
+    "bannerBody": "Your AI usage has reached the monthly budget set in your AI settings. AI calls stay blocked until the new month starts, or until you raise or remove the budget in Settings → AI.",
+    "bannerDismiss": "Dismiss budget banner"
   }
 }

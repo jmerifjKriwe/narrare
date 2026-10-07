@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { AdvancedAiSettings } from "./AdvancedAiSettings";
+import { BudgetSection } from "./BudgetSection";
 import { DefaultModelSection } from "./DefaultModelSection";
 import { ModelDataStatus } from "./ModelDataStatus";
 import { ProviderList } from "./ProviderList";
@@ -42,6 +43,13 @@ export function AiTab() {
           modelsLoading={modelsLoading}
           onProviderChange={data.handleDefaultProviderChange}
           onModelChange={data.handleDefaultModelChange}
+        />
+
+        {/* Monthly budget (STATS-002 budgets, ADR-094) */}
+        <BudgetSection
+          aiSettings={aiSettings}
+          onBudgetChange={data.handleMonthlyBudgetChange}
+          onBudgetModeChange={data.handleBudgetModeChange}
         />
 
         {/* Advanced settings (collapsible — CR-AUFG-07-32 progressive disclosure).

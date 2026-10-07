@@ -467,6 +467,17 @@
         "description": "Délai de connexion pour les opérations IA",
         "wsTimeout": "Délai WebSocket (secondes)",
         "wsTimeoutHint": "Minimum 60 secondes"
+      },
+      "budget": {
+        "title": "Budget mensuel",
+        "description": "Plafonnez vos dépenses IA mensuelles. Laissez le montant vide pour aucun budget.",
+        "amountLabel": "Montant du budget (USD)",
+        "amountHint": "Montant non négatif avec au plus deux décimales, p. ex. 25.00. Videz le champ pour supprimer le budget.",
+        "amountInvalid": "Veuillez saisir un montant non négatif avec au plus deux décimales (p. ex. 25.00).",
+        "amountPlaceholder": "Aucun budget",
+        "modeLabel": "Une fois le budget atteint",
+        "modeWarn": "Avertir uniquement — continuer à utiliser l'IA",
+        "modeBlock": "Bloquer les appels IA pour le reste du mois"
       }
     },
     "prompts": {
