@@ -26,8 +26,10 @@ from narrare_core.llm._model_settings import (
 )
 from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm._providers.registry import get as get_provider
+from narrare_core.llm.budget import check_budget
 from narrare_core.llm.registry_run import RegistryRunMixin
 from narrare_core.llm.run_limits import profile_to_usage_limits
+from narrare_core.llm.usage_events import usage_user_id
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
@@ -101,6 +103,10 @@ class ModelRegistry(RegistryRunMixin):
             KeyError: If ``config.provider_name`` is not registered in the
                 :mod:`~narrare_core.llm._providers` registry.
         """
+        # ADR-094 pre-call budget gate — may raise BudgetExceededError (the
+        # one controlled inversion of ADR-093 D1; do NOT wrap).
+        check_budget(usage_user_id.get())
+
         # Auto-convert token_limit_profile to UsageLimits if not explicitly set
         if usage_limits is None:
             profile = getattr(config, "token_limit_profile", None) or ""
