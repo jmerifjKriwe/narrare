@@ -16,14 +16,15 @@ ui_help_long: |
   estimated cost, so you can answer "what did AI cost me this month, and on
   what?" Open **Analytics** in the studio sidebar and check the **AI Costs**
   tab: pick a month, see totals (calls, tokens in/out, estimated cost), a
-  breakdown by feature and by provider/model, and a 6-month trend.
+  breakdown by feature and by provider/model, and a 6-month trend; a button
+  downloads the selected month as a CSV file.
 
   **Honest boundaries:** cost figures are estimates from per-model pricing
   data (models.dev). Models without a known price are counted separately as
   "unpriced" instead of being silently guessed. A few internal paths are not
   counted yet (memory-layer calls, setup provider validation), and a stream
   you abandon mid-generation is only counted up to its last completed
-  request. Budgets, spending limits, and export are planned follow-ups — v1
+  request. Budgets and spending limits are planned follow-ups — v1
   is transparency only.
 ui_available_in: [analytics]
 
@@ -40,16 +41,16 @@ requires: [INFRA-001]
 > (commits `b2aeb9af..a4f2c2ba`) per
 > [ADR-093](../../architecture/decisions/ADR-093-usage-event-sink-cost-persistence.md);
 > design: [cost-tracking spec](../../superpowers/specs/2026-10-05-stats002-cost-tracking-design.md).
-> The status stays in-progress for the deferred slices (budgets, export —
+> The status stays in-progress for the remaining deferred slices (budgets —
 > see Status & History).
 
 ## What it does
 
 A monthly AI cost overview: one persisted usage record per billable LLM call
-(tokens, duration, estimated cost), an aggregation endpoint, and an
-**Analytics** panel (`/analytics`, **AI Costs** tab) with month totals,
-breakdowns by feature and provider/model, and a 6-month trend. v1 is
-transparency only — no budgets, no suspension, no export.
+(tokens, duration, estimated cost), an aggregation endpoint, a month-scoped
+CSV export, and an **Analytics** panel (`/analytics`, **AI Costs** tab) with
+month totals, breakdowns by feature and provider/model, a 6-month trend, and
+a CSV download button. v1 is transparency only — no budgets, no suspension.
 
 ## Why it exists
 
@@ -100,6 +101,14 @@ month). All figures user-scoped; month bucketing uses UTC calendar months
              { "month": "2026-10", "cost_usd": 1.2345 } ]
 }
 ```
+
+**CSV export:** `GET /api/v1/analytics/costs/export?month=YYYY-MM` (auth
+required; same month validation ⇒ 422) streams `text/csv; charset=utf-8` as
+an attachment (`narrare-costs-<month>.csv`) — a UTF-8 BOM + header row, then
+one line per usage record in chronological order. Unpriced calls and deleted
+novels (NULL `novel_id`) export as empty cells, never guessed values. The
+panel button downloads the selected month (`analytics.costs.exportCsv`,
+en/de/fr). PDF export was formally rejected — see Status & History.
 
 **Capture seam (ADR-093):** Core `llm/usage_events.py` defines the DB-free
 `UsageEvent`, the never-raise `UsageEventSink` Protocol, a single process-local
@@ -178,7 +187,16 @@ Recharts), TanStack Query hook, `analytics.*` i18n (en/de/fr).
   D1: embeddings count toward totals but are not pre-call gated — v1
   limitation. Binding spec:
   [embeddings-cost addendum](../../superpowers/specs/2026-10-07-stats002-embeddings-cost-design.md).
+- 2026-10-07 — CSV export implemented (commits `9ea8d9e3..b657d81c`) per
+  [csv-export addendum](../../superpowers/specs/2026-10-07-stats002-csv-export-design.md):
+  streaming, month-scoped `GET /api/v1/analytics/costs/export` (repository
+  row stream → service CSV lines → `StreamingResponse`), UTF-8 BOM + header
+  row, empty cells for unpriced/NULL values, panel download button
+  (`analytics.costs.exportCsv`, en/de/fr). **PDF export formally REJECTED**
+  (design-sheet ruling): CSV covers data egress, the panel is the
+  presentation view, and a cost PDF would widen the RULE-08-guarded renderer
+  surface for near-zero value. Removed from the deferred slices.
 
-**Deferred slices (registered scope):** budgets/suspension · CSV/PDF export ·
+**Deferred slices (registered scope):** budgets/suspension ·
 read-time re-pricing · per-series attribution · tracking of mem0-internal and
 setup-validation LLM calls · STATS-001 (second cycle in the same panel).
