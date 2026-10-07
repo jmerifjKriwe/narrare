@@ -224,7 +224,9 @@ class RouteDecorator:
     """A ``@router.<method>`` decorator extracted via AST.
 
     Carries the source-line range so callers can inspect the function body
-    for ``StreamingResponse`` or other markers.
+    for ``StreamingResponse`` or other markers, plus every explicit
+    ``media_type`` string literal found on the route (see
+    ``collect_media_type_literals``).
     """
 
     http_method: str  # e.g. "POST"
@@ -232,6 +234,51 @@ class RouteDecorator:
     decorator_lineno: int  # 1-based line of the first decorator
     func_lineno: int  # 1-based line of the ``def`` / ``async def``
     func_end_lineno: int  # 1-based last line of the function
+    media_types: tuple[str, ...] = ()  # explicit media_type literals on the route
+
+
+# ---------------------------------------------------------------------------
+# Media-type classification (RULE-20 scope)
+# ---------------------------------------------------------------------------
+
+SSE_MEDIA_TYPE = "text/event-stream"
+
+
+def collect_media_type_literals(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> tuple[str, ...]:
+    """Collect explicit ``media_type="..."`` string literals on a route.
+
+    Inspects every call in the route function — its body and decorators — so
+    ``StreamingResponse(..., media_type="text/csv; charset=utf-8")`` is found
+    as well as decorator-level media types. Non-literal values (variables,
+    f-strings) are skipped: classification then stays conservative
+    (fail-closed), because the media type is not statically resolvable.
+    """
+    media_types: list[str] = []
+    for item in ast.walk(node):
+        if not isinstance(item, ast.Call):
+            continue
+        for kw in item.keywords:
+            if kw.arg != "media_type" or not isinstance(kw.value, ast.Constant):
+                continue
+            if isinstance(kw.value.value, str):
+                media_types.append(kw.value.value)
+    return tuple(media_types)
+
+
+def route_is_sse_stream(media_types: tuple[str, ...]) -> bool:
+    """Return whether a ``StreamingResponse`` route is within RULE-20's scope.
+
+    RULE-20 targets server-sent event streams. A route is only excluded when
+    every explicit ``media_type`` literal is a non-event-stream type (e.g.
+    ``text/csv`` or ``application/octet-stream``) — a plain file download,
+    not SSE. Routes without any statically resolvable media type — or with
+    any event-stream-flavored one — stay in scope (fail-closed).
+    """
+    if not media_types:
+        return True
+    return any(SSE_MEDIA_TYPE in media_type for media_type in media_types)
 
 
 def extract_route_decorators(source: str) -> list[RouteDecorator]:
@@ -272,6 +319,7 @@ def extract_route_decorators(source: str) -> list[RouteDecorator]:
                         decorator_lineno=d.lineno,
                         func_lineno=node.lineno,
                         func_end_lineno=node.end_lineno or node.lineno,
+                        media_types=collect_media_type_literals(node),
                     )
                 )
                 break  # first matching router decorator per function
