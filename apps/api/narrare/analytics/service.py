@@ -8,6 +8,9 @@ plus an oldest-first trend (zero months included). Breakdown rows are sorted
 by cost (descending) on the exact ``Decimal`` sums before the boundary
 ``float()`` conversions.
 
+Also streams a month's usage as RFC-4180 CSV (BOM+header line first, rows
+pulled lazily) via ``export_csv_lines``/``export_csv_headers`` (spec B-1..B-5).
+
 Documented simplification (spec §4): ``month=None`` resolves to the current
 SERVER-LOCAL month, while repository buckets are UTC calendar months — near a
 month boundary a server in a non-UTC timezone can attribute edge-of-month

@@ -12,7 +12,8 @@ under the RULE-04 test-file limit).
 - ``GET /analytics/costs/export`` — router harness mirrored from
   ``test_costs_router.py`` (minimal app + overrides + 422 handler):
   200/content-type/disposition, user scoping, 422 malformed + year-edge,
-  401, streaming shape (first chunk is the header line).
+  401, streaming shape (headers precede any row pull; body starts with the
+  header line).
 """
 
 from __future__ import annotations
@@ -35,6 +36,8 @@ from narrare.analytics.service import CostQueryService, InvalidMonthError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence
+
+    from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
     from narrare.analytics.repository import UsageRecordRepository
 
@@ -139,7 +142,7 @@ def _make_app(repo: _FakeStreamRepository, *, authenticate: bool = True) -> Fast
 
 
 @asynccontextmanager
-async def _client(app: FastAPI) -> AsyncIterator[AsyncClient]:
+async def _client(app: ASGIApp) -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
@@ -332,12 +335,36 @@ class TestExportRoute:
         assert repo.calls == []
 
     async def test_export_first_chunk_is_the_bom_header_line(self) -> None:
-        """Streaming shape: the first received chunk is the BOM+header line —
-        the response starts before any data row is consumed (spec B-2/B-4)."""
+        """Streaming shape: response headers are sent before ANY data row is
+        pulled (lazy start pinned at the router boundary) and the body starts
+        with the BOM+header line (spec B-2/B-4).
+
+        httpx 0.28 ``ASGITransport`` runs the app to completion (it buffers the
+        full body) before the client sees the response, so the laziness pin
+        snapshots ``rows_pulled`` when the ASGI ``http.response.start`` message
+        passes through instead of checking inside the stream context.
+        """
         repo = _FakeStreamRepository(_seed_rows())
+        rows_at_response_start: list[int] = []
+
+        def with_rows_snapshot(inner: ASGIApp) -> ASGIApp:
+            async def app(scope: Scope, receive: Receive, send: Send) -> None:
+                async def send_wrapper(message: Message) -> None:
+                    if message["type"] == "http.response.start":
+                        rows_at_response_start.append(repo.rows_pulled)
+                    await send(message)
+
+                await inner(scope, receive, send_wrapper)
+
+            return app
 
         async with (
-            _client(_make_app(repo)) as ac,
+            _client(with_rows_snapshot(_make_app(repo))) as ac,
             ac.stream("GET", "/analytics/costs/export", params={"month": "2026-01"}) as response,
         ):
             assert response.status_code == status.HTTP_200_OK
+
+            await response.aread()
+
+            assert rows_at_response_start == [0]  # headers flew; zero rows pulled
+            assert response.text.startswith(BOM + HEADER_LINE)
