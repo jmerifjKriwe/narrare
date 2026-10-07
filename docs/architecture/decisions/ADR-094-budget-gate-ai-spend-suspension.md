@@ -1,7 +1,11 @@
 # ADR-094 — Budget Gate & AI Spend Suspension (STATS-002)
 
-> **Status:** 🔄 Proposed — product semantics ratified by the Project Owner
-> 2026-10-07; not yet implemented (Gate 12 applies before "✅ Implemented")
+> **Status:** ✅ Implemented (per Gate 12 — implementation complete
+> 2026-10-07: branch `feature/stats002-budgets`, commits
+> `c276a933..3733871c`; binding spec addendum
+> `docs/superpowers/specs/2026-10-07-stats002-budgets-design.md`, plan
+> `docs/superpowers/plans/2026-10-07-stats002-budgets.md` — see the
+> Implementation Report below)
 > **Date:** 2026-10-07
 > **Deciders:** Architecture Agent; Project Owner (ratified semantics:
 > user-level monthly USD budget · warn badge default · opt-in hard block)
@@ -267,6 +271,69 @@ governed settings-surface decision for budgets), RULE-20.
 "✅ Implemented" only when Core guard + gate, arming, storage + migration,
 handler, costs-endpoint badge fields, FE badge/banner/settings, i18n, and
 tests are all complete.
+
+---
+
+## Implementation Report (2026-10-07)
+
+Implemented on branch `feature/stats002-budgets`, commits
+`c276a933..3733871c`, per the binding spec addendum
+`docs/superpowers/specs/2026-10-07-stats002-budgets-design.md` and plan
+`docs/superpowers/plans/2026-10-07-stats002-budgets.md`. Mapping to the
+decisions above:
+
+- **D1/D2/D3 (gate location, slot, attribution):** `narrare_core/llm/budget.py`
+  owns the `BudgetGuard` Protocol, the single-slot
+  `set_budget_guard()`/`get_budget_guard()`, and `check_budget()`;
+  `gateway.py` `get_model()` calls it after profile conversion, before the
+  provider factory; `BudgetExceededError` lives in `shared/errors.py`.
+  Unset guard ⇒ no-op; `usage_user_id=None` ⇒ no check. Embeddings stay
+  counted-not-gated (documented v1 limitation, review trigger unchanged).
+- **D4 (one handler → 429):** `_app/main.py` registers the handler —
+  HTTP 429 with `code: "BUDGET_EXCEEDED"`; the sink's never-raise contract
+  untouched.
+- **D5/D8 (arming without cron, no hot-path reads):** `analytics/budget_guard.py`
+  (`arm_budget_guard` — startup hydration in lifespan, per-write increment
+  in the sink) + `analytics/budget_invalidation.py` (write-through budget
+  config invalidation); unattributed events don't count; `Decimal`
+  end-to-end.
+- **D6/D7 (semantics + storage):** `monthly_budget_usd NUMERIC(10,2) NULL`
+  + `budget_mode` (`warn`/`block`, server default `warn`) on
+  `user_ai_settings` (Alembic `0044`); settings get-set endpoints; an
+  explicit-null `budget_mode` is rejected at the schema level (PATCH
+  semantics pinned by test).
+- **Costs endpoint (warn-badge read side):** `CostMonthReport.budget`
+  (`CostBudgetBlock`: `monthly_budget_usd`, `budget_mode`, `over_budget`) —
+  `over_budget` uses the same `>=` boundary as the gate; `null` when no
+  budget is set.
+- **FE (RULE-17):** totals-card warn badge, dismissible
+  `BudgetExceededBanner`, budget section in Settings → AI
+  (`useBudgetSettingsSave`, RULE-04 split; FE-level amount cap with surfaced
+  save failures); i18n en/de/fr.
+- **Tests (RULE-10):** guard slot no-op, `None`-attribution fast path, gate
+  raise → 429 mapping, arming/month rollover, unpriced exclusion, settings
+  write invalidation, costs budget block, lifespan registration, FE suites.
+
+**Where the implementation refined the decision text (factual, per the
+sections above):**
+
+1. **Banner arming is data-derived.** Decision 4 anticipated the banner
+   surfacing "via existing query-error paths" from the 429. As implemented,
+   the banner arms from the costs-report **data** (`budget.over_budget &&
+   budget_mode === "block"` — the production-reachable signal, since warn
+   mode never raises) with dismiss/re-arm semantics (a dismissal holds until
+   the budget is raised/removed and hit again). The 429 remains the
+   enforcement backstop for call paths outside the panel.
+2. **The 429 mapping needed explicit FE code handling.** `ApiError` carries
+   the machine-readable `code`; both the fetch and the SSE (`connectSSE`)
+   paths parse it, so `429 BUDGET_EXCEEDED` maps to the budget message, a
+   plain 429 stays a rate-limit signal, and a budget 429 after a token
+   refresh is never misrouted to the login redirect. This addresses Review
+   Trigger 5's confusion risk at the mapping layer.
+
+Gate 12 satisfied — Core guard + gate, arming, storage + migration, handler,
+costs-endpoint budget block, FE badge/banner/settings, i18n, and tests all
+complete; INDEX flipped to ✅ Implemented in the same docs pass.
 
 ---
 
