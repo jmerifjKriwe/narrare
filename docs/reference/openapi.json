@@ -21169,6 +21169,16 @@
             "title": "Use Series Voice",
             "default": true
           },
+          "writing_goals": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WritingGoalsPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "updated_at": {
             "type": "string",
             "format": "date-time",
@@ -25289,6 +25299,16 @@
               }
             ],
             "title": "Use Series Voice"
+          },
+          "writing_goals": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WritingGoalsPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -26950,6 +26970,27 @@
         ],
         "title": "WritingGoalProgress",
         "description": "Novel goal overlay — target vs LIVE manuscript words (spec E-4)."
+      },
+      "WritingGoalsPayload": {
+        "properties": {
+          "target_words": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words",
+            "description": "Novel word-count target (null = no target set)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "WritingGoalsPayload",
+        "description": "Novel writing-goal shape, v1 (STATS-001 spec E-4, ADR-095).\n\nThe stored ``project_settings.writing_goals`` JSONB holds exactly this\nobject — v1 ships one key with room to grow. ``extra=\"forbid\"`` keeps\nthe whole-object-replace PATCH strict: unknown keys ⇒ 422, so a typo\ncan never silently no-op. ``target_words`` must be an int ≥ 0 or null\n(garbage ⇒ 422 via pydantic → FastAPI RequestValidationError); the\nanalytics service additionally treats ≤ 0 as \"no goal\" (policy, not\nshape — see ``settings.writing_goals.parse_target_words``)."
       },
       "WritingReport": {
         "properties": {

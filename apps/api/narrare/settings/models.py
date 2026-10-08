@@ -85,6 +85,17 @@ class ProjectSettings(Base):
     use_series_voice: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true"), nullable=False
     )
+    # STATS-001 (spec E-4, ADR-095): novel writing-goal storage. V1 JSONB
+    # shape: {"target_words": int | null} — exactly one documented key
+    # (extra keys rejected at the schema boundary; whole-object replace on
+    # PATCH). NULL column = the novel never had a goal; {"target_words":
+    # null} = explicitly unset — BOTH read as "no goal" (the goal block is
+    # simply absent from GET /analytics/writing). Readers go through
+    # settings.writing_goals.parse_target_words (typed, defensive against
+    # hand-edited rows); the analytics GoalSource reads it strictly
+    # read-only (no auto-create — mirrors author_voice/adaptive_settings
+    # graceful-degradation siblings above).
+    writing_goals: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )

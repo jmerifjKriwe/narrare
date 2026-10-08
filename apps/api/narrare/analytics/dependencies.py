@@ -58,17 +58,20 @@ WritingStatsRecorderDep = Annotated[WritingStatsRecorder, Depends(get_writing_st
 def get_writing_query_service(session: SessionDep) -> WritingQueryService:
     """Production wiring: writing read repository + query service (STATS-001 E4).
 
-    The goal overlay reads through the ``GoalSource`` seam (spec E-4): until
-    E5 lands ``ProjectSettings.writing_goals`` the ``NullGoalSource``
-    placeholder reports "no goal" — E5 swaps exactly this one argument and
-    nothing else changes.
+    The goal overlay reads through the ``GoalSource`` seam (spec E-4/E-5):
+    E5 swapped the ``NullGoalSource`` placeholder for the real
+    ``ProjectSettingsGoalSource`` — the novel's ``writing_goals`` JSONB read
+    strictly read-only over the SAME request session (one transaction, no
+    extra connection, no auto-create).
     """
     from narrare.analytics.writing_repository import WritingStatsQueryRepository
-    from narrare.analytics.writing_service import NullGoalSource, WritingQueryService
+    from narrare.analytics.writing_service import WritingQueryService
+    from narrare.settings.repository import ProjectSettingsRepository
+    from narrare.settings.writing_goals import ProjectSettingsGoalSource
 
     return WritingQueryService(
         WritingStatsQueryRepository(session),
-        goal_source=NullGoalSource(),
+        goal_source=ProjectSettingsGoalSource(ProjectSettingsRepository(session)),
     )
 
 

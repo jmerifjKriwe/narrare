@@ -141,6 +141,10 @@ class _FakeProjectSettingsRepo:
         self.calls.append({"method": "update", "novel_id": novel_id})
         return object()
 
+    async def get_writing_goals(self, novel_id: uuid.UUID) -> dict[str, object] | None:
+        """Read-only ``writing_goals`` read (STATS-001 E5) — unused by complete()."""
+        return None
+
 
 class _FakeProvidersRepo:
     """Minimal fake for UserProvidersRepository used by complete()."""

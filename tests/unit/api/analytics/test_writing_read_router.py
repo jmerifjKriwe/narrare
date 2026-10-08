@@ -38,7 +38,7 @@ from narrare.analytics.dependencies import (
     verify_writing_novel_scope,
 )
 from narrare.analytics.writing_repository import WritingStatsQueryRepository
-from narrare.analytics.writing_service import NullGoalSource, WritingQueryService
+from narrare.analytics.writing_service import WritingQueryService
 from narrare.novels.models import Novel
 from narrare_core.shared.errors import NotFoundError
 
@@ -242,8 +242,15 @@ class TestVerifyWritingNovelScope:
 # ---------------------------------------------------------------------------
 
 
-def test_get_writing_query_service_wires_repo_and_null_goal_source() -> None:
-    """Production wiring: query repository over the session + E5 placeholder."""
+def test_get_writing_query_service_wires_repo_and_project_settings_goal_source() -> None:
+    """Production wiring: query repository + real goal source, same session.
+
+    E5 swapped the ``NullGoalSource`` placeholder for the real
+    ``ProjectSettingsGoalSource`` (project_settings.writing_goals) at this
+    one factory — service/router untouched (the E4 seam contract).
+    """
+    from narrare.settings.writing_goals import ProjectSettingsGoalSource
+
     service = get_writing_query_service(cast("AsyncSession", FakeDbSession()))
 
     assert isinstance(service, WritingQueryService)
@@ -253,5 +260,5 @@ def test_get_writing_query_service_wires_repo_and_null_goal_source() -> None:
     )
     assert isinstance(
         service._goal_source,  # pyright: ignore[reportPrivateUsage] — wiring is the unit under test
-        NullGoalSource,
+        ProjectSettingsGoalSource,
     )
