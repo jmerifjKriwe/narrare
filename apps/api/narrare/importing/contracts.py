@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from fastapi import UploadFile
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from narrare.analytics.writing_stats_recorder import WritingStatsRecorder
     from narrare.chapters.models import Chapter
     from narrare.importing.schemas import (
         ImportCommitAdjustments,
@@ -57,8 +58,14 @@ class ImportServiceProtocol(ImportPreviewerProtocol, ImportCommitterProtocol, Pr
 
 def build_import_service(
     session: AsyncSession,
+    writing_stats_recorder: WritingStatsRecorder | None = None,
 ) -> ImportServiceProtocol:
-    """Default composition root (re-exported seam for tests)."""
+    """Default composition root (re-exported seam for tests).
+
+    ``writing_stats_recorder`` is optional so tests can build the service
+    without the STATS-001 seam; production passes the recorder resolved
+    by ``get_import_service``.
+    """
     from narrare.importing.repository import ImportChapterRepository
     from narrare.importing.service import ImportService
     from narrare.novels.repository import NovelRepository
@@ -67,4 +74,5 @@ def build_import_service(
         session=session,
         chapter_repo=ImportChapterRepository(session),
         novel_repo=NovelRepository(session),
+        writing_stats_recorder=writing_stats_recorder,
     )

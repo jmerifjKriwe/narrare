@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from fastapi import UploadFile
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from narrare.analytics.writing_stats_recorder import WritingStatsRecorder
     from narrare.importing.contracts import ImportChapterRepositoryProtocol
     from narrare.importing.schemas import ImportCommitAdjustments, ImportSplitOperation
     from narrare.novels.contracts import NovelRepositoryProtocol
@@ -54,10 +55,12 @@ class ImportService:
         session: AsyncSession,
         chapter_repo: ImportChapterRepositoryProtocol,
         novel_repo: NovelRepositoryProtocol,
+        writing_stats_recorder: WritingStatsRecorder | None = None,
     ) -> None:
         self._session = session
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
+        self._writing_stats_recorder = writing_stats_recorder
 
     async def preview(self, files: Sequence[UploadFile]) -> ImportPreviewResponse:
         """Guard + parse uploads; NO DB writes (safe to repeat)."""
@@ -211,6 +214,20 @@ class ImportService:
 
         start_position = (await self._chapter_repo.max_position(novel_id)) + 1
         rows = await self._chapter_repo.append_chapters(novel_id, selected, start_position)
+
+        # STATS-001 (ADR-095): ONE signed delta per imported chapter — the
+        # positive word_count each new row contributes, stamped with that
+        # row's fresh id. Day-of-import attribution is inherent: the
+        # recorder stamps created_at from its clock at write time (no
+        # backdating). Never-raises — no try/except here by contract.
+        if self._writing_stats_recorder is not None:
+            for row in rows:
+                await self._writing_stats_recorder.record_delta(
+                    user_id=user_id,
+                    novel_id=novel_id,
+                    chapter_id=row.id,
+                    delta_words=row.word_count,
+                )
 
         logger.info(
             "import_committed",

@@ -23,6 +23,7 @@ from narrare_core.writing.text_reconstructor import reconstruct_text
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from narrare.analytics.writing_stats_recorder import WritingStatsRecorder
     from narrare.chapters.models import Chapter
     from narrare.chapters.repository import ChapterRepository
     from narrare.writing.repository import GenerationRepository
@@ -48,10 +49,12 @@ class CoAuthorApplyService:
         repo: GenerationRepository,
         chapter_repo: ChapterRepository,
         feedback_service: FeedbackCollector | None = None,
+        writing_stats_recorder: WritingStatsRecorder | None = None,
     ) -> None:
         self._repo = repo
         self._chapter_repo = chapter_repo
         self._feedback = feedback_service
+        self._writing_stats_recorder = writing_stats_recorder
 
     # -- Public API ------------------------------------------------------------
 
@@ -102,11 +105,27 @@ class CoAuthorApplyService:
         ]
         reconstructed = reconstruct_text(request.original, accepted_dicts)
         word_count = len(reconstructed.split())
+        # Capture BEFORE the repo write — repositories update the chapter
+        # row in place, so the old word count is unrecoverable afterwards
+        # (same hazard the E3a editor write guards against).
+        old_word_count = chapter.word_count
         updated = await self._chapter_repo.update_content(
             chapter,
             reconstructed,
             word_count,
         )
+
+        # STATS-001 (ADR-095): signed word-count delta for this apply write.
+        # The recorder is never-raises and skips zero deltas internally — no
+        # try/except here by contract. The recorded user id is the UUID on
+        # the gate-validated request row (== caller, proven by Pattern A).
+        if self._writing_stats_recorder is not None:
+            await self._writing_stats_recorder.record_delta(
+                user_id=request_model.user_id,
+                novel_id=novel_id,
+                chapter_id=chapter_id,
+                delta_words=word_count - old_word_count,
+            )
 
         # Feedback for rejected changes (LEARN-001) — recorded against the
         # caller-validated request row (never another user's learning data).

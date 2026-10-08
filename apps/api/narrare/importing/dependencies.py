@@ -8,6 +8,9 @@ from fastapi import Form
 from pydantic import ValidationError as PydanticValidationError
 
 from narrare._app.dependencies import SessionDep  # noqa: TC001 - needed at runtime for FastAPI DI
+from narrare.analytics.dependencies import (  # noqa: TC001 - needed at runtime for FastAPI DI
+    WritingStatsRecorderDep,
+)
 from narrare.importing.contracts import build_import_service
 from narrare.importing.schemas import ImportCommitAdjustments
 from narrare_core.shared.errors import ValidationError
@@ -18,8 +21,17 @@ if TYPE_CHECKING:
 
 def get_import_service(
     session: SessionDep,
+    writing_stats_recorder: WritingStatsRecorderDep,
 ) -> ImportServiceProtocol:
-    return build_import_service(session)
+    """Production wiring incl. the STATS-001 content-write capture seam.
+
+    The recorder is inert for preview (no call sites) and records one
+    delta per imported chapter on commit. Like E3a's chapters routers,
+    FastAPI resolves it via ``WritingStatsRecorderDep``; it opens its own
+    short-lived session per event (RULE-08), never joining the request
+    transaction (ADR-091 append stays atomic).
+    """
+    return build_import_service(session, writing_stats_recorder=writing_stats_recorder)
 
 
 def get_commit_adjustments(
