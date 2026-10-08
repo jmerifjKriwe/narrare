@@ -57,3 +57,11 @@ overrides:
   # is dev/build-time only: transitive via micromatch (chokidar/glob chain);
   # glob patterns are developer-defined, no attacker-controlled input reaches
   # braces at runtime. Alert deliberately left open; revisit on upstream release.
+  # Dependabot alert #193 / CVE-2026-104850: vulnerability in
+  # @modelcontextprotocol/sdk (<= 1.30.1). Transitive via shadcn (devDep,
+  # packages/web) — shadcn 4.21.0 is the latest release and still resolves the
+  # SDK to 1.30.1, so a devDep bump cannot move it (verified 2026-10-08). First
+  # patched: 1.31.0. Floor follows the open-floor pattern (seroval/
+  # source-map-js): the SDK's 1.x line is the current stable major; revisit if
+  # a future major lands.
+  "@modelcontextprotocol/sdk": ">=1.31.0"
