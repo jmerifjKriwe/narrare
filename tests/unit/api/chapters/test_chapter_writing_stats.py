@@ -1,34 +1,41 @@
 """Unit tests — ChapterService x WritingStatsRecorder wiring (STATS-001, E3a).
 
-The editor content-update and version-restore surfaces must call the
-recorder exactly once per successful write with the correct SIGNED delta.
-Delta math is computed BEFORE the repo write because repositories update
-the chapter row in place — the old word count is unrecoverable afterwards.
-Zero deltas are pinned as a call WITH 0 (skipping is the recorder's
-internal job, ADR-095). Delete, the never-raises failure posture, and the
-optional-DI backward compatibility live in
-``test_chapter_writing_stats_delete.py`` (RULE-04 file-size split).
+The editor content-update, version-restore, and create-with-content surfaces
+must call the recorder exactly once per successful write with the correct
+SIGNED delta. Delta math is computed BEFORE the repo write because
+repositories update the chapter row in place — the old word count is
+unrecoverable afterwards. Zero deltas are pinned as a call WITH 0 (skipping
+is the recorder's internal job, ADR-095). Delete, the never-raises failure
+posture, and the optional-DI backward compatibility live in
+``test_chapter_writing_stats_delete.py`` (RULE-04 file-size split); the
+create surface's never-raises pin reuses the shared exploding session
+factory from ``_writing_stats_test_helpers`` (fix round).
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
+from fastapi import HTTPException
 
-from narrare.chapters.schemas import UpdateChapterContentRequest
+from narrare.analytics.writing_stats_recorder import SqlWritingStatsRecorder
+from narrare.chapters.schemas import CreateChapterRequest, UpdateChapterContentRequest
 from narrare.chapters.service import ChapterService
 from narrare_core.shared.errors import NotFoundError
 from tests.factories import make_chapter
 from tests.fakes import FakeChapterRepository, FakeNovelService, FakeWritingStatsRecorder
 from tests.unit.api.chapters._writing_stats_test_helpers import (
+    _ExplodingSessionFactory,
     assert_single_call,
     seed_chapter,
     seed_ownership,
 )
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
     from narrare.chapters.models import Chapter, ChapterVersion
 
 
@@ -246,3 +253,90 @@ class TestRestoreVersionRecordsDelta:
             chapter_id=chapter.id,
             delta_words=0,
         )
+
+
+# ---------------------------------------------------------------------------
+# create (POST /chapters — create-with-content; fix round)
+# ---------------------------------------------------------------------------
+
+
+class TestCreateRecordsDelta:
+    async def test_create_chapter_with_content_records_positive_delta(
+        self,
+        service: ChapterService,
+        recorder: FakeWritingStatsRecorder,
+        fake_novel_service: FakeNovelService,
+    ) -> None:
+        novel_id, user_id = seed_ownership(fake_novel_service)
+
+        created = await service.create(
+            novel_id, user_id, CreateChapterRequest(content="one two three four five")
+        )
+
+        assert_single_call(
+            recorder,
+            user_id=user_id,
+            novel_id=novel_id,
+            chapter_id=created.id,
+            delta_words=5,  # the freshly computed word_count IS the delta
+        )
+
+    async def test_create_chapter_with_empty_content_records_zero_delta_call(
+        self,
+        service: ChapterService,
+        recorder: FakeWritingStatsRecorder,
+        fake_novel_service: FakeNovelService,
+    ) -> None:
+        """Empty create ⇒ still CALLED WITH 0 — the skip is the recorder's job."""
+        novel_id, user_id = seed_ownership(fake_novel_service)
+
+        created = await service.create(novel_id, user_id, CreateChapterRequest())
+
+        assert_single_call(
+            recorder,
+            user_id=user_id,
+            novel_id=novel_id,
+            chapter_id=created.id,
+            delta_words=0,
+        )
+
+    async def test_create_chapter_without_ownership_records_nothing(
+        self,
+        service: ChapterService,
+        recorder: FakeWritingStatsRecorder,
+        fake_novel_service: FakeNovelService,
+    ) -> None:
+        """A failed create (404 on the ownership gate) must not emit a stats event."""
+        novel_id, _user_id = seed_ownership(fake_novel_service)
+
+        # FakeNovelService signals 404 via HTTPException (the production
+        # NovelService raises NotFoundError — both map to 404 at the router);
+        # the exception type is incidental, the pinned fact is: no stats event.
+        with pytest.raises(HTTPException):
+            await service.create(novel_id, uuid.uuid4(), CreateChapterRequest(content="content"))
+
+        assert recorder.calls == []
+
+
+class TestCreateSucceedsWhenRecorderFails:
+    async def test_create_chapter_succeeds_when_recorder_persistence_fails(
+        self,
+        fake_repo: FakeChapterRepository,
+        fake_novel_service: FakeNovelService,
+    ) -> None:
+        """Real SqlWritingStatsRecorder swallows the DB failure; the create wins."""
+        novel_id, user_id = seed_ownership(fake_novel_service)
+        service = ChapterService(
+            repo=fake_repo,
+            novel_service=fake_novel_service,
+            writing_stats_recorder=SqlWritingStatsRecorder(
+                # cast: the sanctioned seam for a fake where async_sessionmaker is declared.
+                cast("async_sessionmaker[AsyncSession]", _ExplodingSessionFactory()),
+            ),
+        )
+
+        created = await service.create(
+            novel_id, user_id, CreateChapterRequest(content="one two three four five")
+        )
+
+        assert created.word_count == 5  # create applied despite recorder failure

@@ -16,7 +16,7 @@ update + version-restore surfaces). This module covers:
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -26,6 +26,7 @@ from narrare.chapters.service import ChapterService
 from narrare_core.shared.errors import NotFoundError
 from tests.fakes import FakeChapterRepository, FakeNovelService, FakeWritingStatsRecorder
 from tests.unit.api.chapters._writing_stats_test_helpers import (
+    _ExplodingSessionFactory,
     assert_single_call,
     seed_chapter,
     seed_ownership,
@@ -110,24 +111,6 @@ class TestDeleteRecordsNegativeDelta:
 # ---------------------------------------------------------------------------
 # Never-raises posture (real recorder behind a failing session factory)
 # ---------------------------------------------------------------------------
-
-
-class _ExplodingSessionFactory:
-    """Stands in for ``async_sessionmaker`` — every session open fails."""
-
-    def __call__(self, *args: Any) -> _ExplodingSessionCtx:
-        return _ExplodingSessionCtx()
-
-
-class _ExplodingSessionCtx:
-    def __enter__(self) -> _ExplodingSessionCtx:
-        raise RuntimeError("db down")
-
-    def __aenter__(self) -> _ExplodingSessionCtx:
-        raise RuntimeError("db down")
-
-    def __aexit__(self, *args: Any) -> None:
-        del args
 
 
 class TestRecorderFailureDoesNotBreakWrite:

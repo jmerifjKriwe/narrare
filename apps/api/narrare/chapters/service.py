@@ -84,6 +84,19 @@ class ChapterService:
                 volume_id = default_volume.id
 
         chapter = await self._repo.create(novel_id, request, position, volume_id=volume_id)
+
+        # STATS-001 (ADR-095): create-with-content is a real write — the freshly
+        # computed word_count IS the signed delta. Empty creates arrive as 0 and
+        # are skipped inside the recorder (zero-skip), never here; same
+        # never-raises posture as the other surfaces — no try/except at call sites.
+        if self._writing_stats_recorder is not None:
+            await self._writing_stats_recorder.record_delta(
+                user_id=user_id,
+                novel_id=novel_id,
+                chapter_id=chapter.id,
+                delta_words=chapter.word_count,
+            )
+
         logger.info("chapter_created", chapter_id=str(chapter.id), novel_id=str(novel_id))
         return chapter
 
