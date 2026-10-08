@@ -1,4 +1,5 @@
 {
+  "sectionLabel": "Analytics",
   "costs": {
     "title": "AI Costs",
     "prevMonth": "Previous month",
@@ -81,6 +82,22 @@
       "worldbuilding": "Worldbuilding",
       "write": "Write"
     }
+  },
+  "writing": {
+    "title": "Writing",
+    "novelLabel": "Novel",
+    "novelAll": "All novels",
+    "today": "Words today",
+    "streakCurrent": "Current streak",
+    "streakLongest": "Longest streak",
+    "streakDays": "{count, plural, one {# day} other {# days}}",
+    "totalWords": "Total words",
+    "chart": "Daily words — last 90 days",
+    "goalTitle": "Writing goal",
+    "goalOf": "{current} of {target} words ({percent}%)",
+    "empty": "No writing activity recorded yet.",
+    "error": "Failed to load writing statistics.",
+    "retry": "Retry"
   },
   "budget": {
     "badgeOk": "{percent}% of budget",

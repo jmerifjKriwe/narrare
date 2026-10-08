@@ -1,4 +1,5 @@
 {
+  "sectionLabel": "Analyses",
   "costs": {
     "title": "Coûts IA",
     "prevMonth": "Mois précédent",
@@ -81,6 +82,22 @@
       "worldbuilding": "Construction de l'univers",
       "write": "Écriture"
     }
+  },
+  "writing": {
+    "title": "Écriture",
+    "novelLabel": "Roman",
+    "novelAll": "Tous les romans",
+    "today": "Mots aujourd’hui",
+    "streakCurrent": "Série en cours",
+    "streakLongest": "Série la plus longue",
+    "streakDays": "{count, plural, one {# jour} other {# jours}}",
+    "totalWords": "Total des mots",
+    "chart": "Mots par jour — 90 derniers jours",
+    "goalTitle": "Objectif d’écriture",
+    "goalOf": "{current} sur {target} mots ({percent}%)",
+    "empty": "Aucune activité d’écriture enregistrée pour le moment.",
+    "error": "Échec du chargement des statistiques d’écriture.",
+    "retry": "Réessayer"
   },
   "budget": {
     "badgeOk": "{percent}% du budget",
