@@ -4415,6 +4415,62 @@
         }
       }
     },
+    "/api/v1/analytics/writing": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Get Writing Report",
+        "description": "Writing report for the authenticated user (STATS-001 spec E-5).\n\nOptional ``novel_id`` narrows dailies/streaks/today/total to one novel\nand adds the goal block; ownership is enforced by the\n``verify_writing_novel_scope`` dependency BEFORE the service runs\n(foreign ≡ unknown → 404).",
+        "operationId": "get_writing_report_api_v1_analytics_writing_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/analytics/costs/export": {
       "get": {
         "tags": [
@@ -26850,6 +26906,110 @@
         ],
         "title": "WorldbuildingSeverity",
         "description": "Severity level for worldbuilding findings."
+      },
+      "WritingDailyPoint": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "words": {
+            "type": "integer",
+            "title": "Words"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "words"
+        ],
+        "title": "WritingDailyPoint",
+        "description": "One UTC day of the report window (``date`` serializes ``YYYY-MM-DD``)."
+      },
+      "WritingGoalProgress": {
+        "properties": {
+          "target_words": {
+            "type": "integer",
+            "title": "Target Words"
+          },
+          "current_words": {
+            "type": "integer",
+            "title": "Current Words"
+          },
+          "progress_pct": {
+            "type": "number",
+            "title": "Progress Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_words",
+          "current_words",
+          "progress_pct"
+        ],
+        "title": "WritingGoalProgress",
+        "description": "Novel goal overlay — target vs LIVE manuscript words (spec E-4)."
+      },
+      "WritingReport": {
+        "properties": {
+          "dailies": {
+            "items": {
+              "$ref": "#/components/schemas/WritingDailyPoint"
+            },
+            "type": "array",
+            "title": "Dailies"
+          },
+          "streaks": {
+            "$ref": "#/components/schemas/WritingStreaks"
+          },
+          "today_words": {
+            "type": "integer",
+            "title": "Today Words"
+          },
+          "total_words": {
+            "type": "integer",
+            "title": "Total Words"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WritingGoalProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "dailies",
+          "streaks",
+          "today_words",
+          "total_words"
+        ],
+        "title": "WritingReport",
+        "description": "``GET /analytics/writing`` response (spec E-5).\n\n``dailies`` spans the last 90 days ending today (UTC days, zero-filled,\noldest first). ``today_words``/``total_words`` are window values —\nevents carry a day-0 boundary (ADR-095), so totals are honest windows,\nnot all-time claims. ``goal`` is present only for a novel-scoped\nrequest whose novel has a target set."
+      },
+      "WritingStreaks": {
+        "properties": {
+          "current": {
+            "type": "integer",
+            "title": "Current"
+          },
+          "longest": {
+            "type": "integer",
+            "title": "Longest"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current",
+          "longest"
+        ],
+        "title": "WritingStreaks",
+        "description": "Consecutive-active-day streaks (spec today-grace rule)."
       },
       "WsTicketResponse": {
         "properties": {
