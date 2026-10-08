@@ -1,8 +1,11 @@
 # ADR-095 — Writing Activity Capture (STATS-001 v1)
 
-> **Status:** 🔄 Proposed — product scope ratified by the Project Owner
-> 2026-10-07 (incl. the writing-goals addition); not yet implemented
-> (Gate 12 applies before "✅ Implemented")
+> **Status:** ✅ Implemented (per Gate 12 — implementation complete
+> 2026-10-08: branch `feature/stats001-writing-stats`, commits
+> `a18856ed..dd9e7c49`; binding spec
+> `docs/superpowers/specs/2026-10-07-stats001-writing-stats-design.md`, plan
+> `docs/superpowers/plans/2026-10-07-stats001-writing-stats.md` — see the
+> Implementation Report below)
 > **Date:** 2026-10-07
 > **Deciders:** Architecture Agent; Project Owner (ratified: delta-event
 > capture · read-time derivation · goals with own storage)
@@ -236,6 +239,114 @@ deltas documented, not hidden), RULE-14 (Alembic migration), RULE-16/17
 "✅ Implemented" only when the table + migration, recorder wiring on all
 four surfaces, read endpoint, goals storage + progress, FE tab, i18n, and
 tests are complete.
+
+---
+
+## Implementation Report (2026-10-08)
+
+Implemented on branch `feature/stats001-writing-stats`, commits
+`a18856ed..dd9e7c49`, per the binding spec
+`docs/superpowers/specs/2026-10-07-stats001-writing-stats-design.md`
+(decisions E-1..E-7) and plan
+`docs/superpowers/plans/2026-10-07-stats001-writing-stats.md`. Mapping to
+the decisions above:
+
+- **D1 (delta-event table):** `analytics/writing_models.py`
+  (`WritingActivityEventRow`) + Alembic `0045` — FK rulings as decided
+  (user RESTRICT, novel/chapter SET NULL), signed `delta_words` without a
+  CHECK, `created_at` stamped by the recorder (no server default), index
+  `(user_id, created_at)` + `novel_id`.
+- **D2 (recorder):** `analytics/writing_stats_recorder.py` —
+  `WritingStatsRecorder` Protocol (RULE-03) + `SqlWritingStatsRecorder`;
+  the never-raise guard lives in the recorder (the single enforcement
+  point — call sites stay guard-free by contract), zero deltas skip before
+  any session opens, explicit attribution (no ContextVars — call sites know
+  the user/novel/chapter), persistence via `WritingActivityEventRepository`
+  (RULE-08) in its own short-lived session.
+- **D3 (surfaces):** chapters `create` (with content), `update_content`,
+  `restore_version`, `delete` (negative delta), co-author apply, and import
+  commit (one event per appended chapter, day-of-import) — see the
+  refinement notes below.
+- **D4 (read side):** `analytics/writing_{repository,service,models}.py` +
+  `WritingQueryServiceProtocol` (contracts) + `GET /api/v1/analytics/writing`
+  (auth; optional `novel_id`, ownership 404 foreign≡unknown).
+- **D5 (goals):** `ProjectSettings.writing_goals` JSONB NULL (Alembic
+  `0046`), v1 shape `{"target_words": int | null}`, PATCH via the
+  project-settings surface (strict request / graceful response), progress =
+  live `SUM(chapters.word_count)` via the `GoalSource` seam
+  (`ProjectSettingsGoalSource` over a strictly read-only
+  `get_writing_goals` repository read — never auto-creates).
+- **D6 (FE):** second "Writing" tab in the `/analytics` `PanelTabs`
+  (`WritingStatsPanel` + `DailyWordsChart`, TanStack Query hook
+  `useAnalyticsWriting`), goal editing in the novel settings "writing" tab
+  (`WritingGoalsTab`), i18n en/de/fr (`analytics.writing.*` +
+  `settings.writing.*`). TS type mirror (RULE-16).
+
+**Where the implementation refined the decision text (factual):**
+
+1. **A sixth capture surface was added during review: chapter
+   create-with-content.** The original enumeration had four surfaces
+   (update/restore/delete/co-author/import); review found `ChapterService.create`
+   accepted `content` and persisted a computed `word_count` without calling
+   the recorder — an incomplete surface enumeration at implementation time,
+   not a design gap. Create now records `delta_words = chapter.word_count`
+   right after a successful `repo.create`; empty creates arrive as 0 and are
+   skipped inside the recorder.
+2. **`restore_version` has its own explicit call site** (recording
+   `restored − current`), rather than relying solely on "routes through the
+   same repository call" — same semantics as decided, wired explicitly.
+3. **Streak basis is event-count, not word-count.** Decision 4's
+   "a day counts as active iff it has ≥1 event" is the implemented contract
+   (review-fixed: an early implementation used a word-sum basis; a day with
+   a net-zero word total from real activity is still an active day).
+4. **The report total is ALL-TIME, not window-bounded.** `total_words` is
+   the all-time signed net `SUM(delta_words)` for the scope; a 90-day number
+   labelled "total" would mislabel it (the window bounds only
+   dailies/streaks/today).
+5. **Demo/sample seeding is ruled OUT of capture (2026-10-08, coordinator
+   ruling).** `setup/demo_loader.py` writes chapters directly to the session
+   (bypassing `ChapterService`), so seeding produces no events — and is
+   *meant* to produce none: system-generated sample content is not user
+   writing activity, unlike user-initiated import.
+6. **Goals-response graceful degradation (review fix).** JSONB is
+   schemaless, so a hand-edited corrupt row (top-level non-dict, wrong-typed
+   target) must degrade to "no goal", never fail a read: the accessor guards
+   with `isinstance(data, dict)`, the settings *response* field is
+   deliberately loose (`object | None`) so reads never 500, while the
+   *request* side stays strict (`extra="forbid"`, 422 on garbage). Unknown
+   v1 keys in hand-edited rows are tolerated on read; app-written rows are
+   guaranteed clean.
+7. **The v1 FE renders the 90-day daily-words bar chart, streak/today/total
+   cards, the novel selector, and the goal progress bar — no calendar
+   heatmap.** Daily totals are already the heatmap's data; rendering it is a
+   later slice (the decision's heatmap mention is data-satisfied, not
+   yet rendered).
+
+**Honest residuals (documented, not hidden — RULE-11):**
+
+- **Day-0 boundary:** events begin at deployment; dailies/streaks/total see
+  nothing earlier (goals deliberately unaffected — decision 5).
+- **Phantom-delta residual (day-0 corollary):** content that predates the
+  ledger — pre-feature chapters and demo-seeded samples — has no positive
+  events, yet deleting or shrinking that content still records its negative
+  delta. A day can therefore show a net-negative entry for words the ledger
+  never saw as positive. Accepted: it is the honest net-accounting behavior
+  of a bounded ledger, and goals (state basis) are unaffected.
+- **Novel-deletion cascade leaves history** (as decided): `novel_id` is
+  SET NULL and the events keep counting in the user-scoped total — the
+  all-time total is lifetime writing activity, not "words in current
+  manuscripts".
+
+Reviews: E3/E4/E5/E8 approved, one fix round each (E3: create-with-content
+surface + DI wiring proofs; E4: event-count streak basis + all-time total;
+E5: corrupt-row graceful degradation; E8: FE goal-editing fix round). FE
+suite at closure: 450 files / 3877 tests green; backend suites green through
+E5; the full final gate runs in the Platform finisher.
+
+Gate 12 satisfied — table + migrations 0045/0046, recorder wiring on all
+six surfaces, read endpoint, goals storage + live progress, FE tab + goal
+editing, i18n, and tests all complete; INDEX flipped to ✅ Implemented in
+the same docs pass.
 
 ---
 
