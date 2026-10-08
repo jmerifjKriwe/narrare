@@ -39,6 +39,8 @@ if TYPE_CHECKING:
     import uuid
     from collections.abc import AsyncIterator
 
+    from narrare.analytics.writing_models import WritingActivityEventRow
+
 
 @dataclass(frozen=True)
 class UsageAggRow:
@@ -200,3 +202,24 @@ class UsageRecordRepository(BaseRepository):
         result = await self._session.stream_scalars(stmt)
         async for row in result:
             yield row
+
+
+class WritingActivityEventRepository(BaseRepository):
+    """Persistence for writing-activity delta events (STATS-001, ADR-095).
+
+    Read-side aggregation (dailies/streaks/heatmap, Task E4) joins this
+    class once implemented — same file, separate class: the usage-record
+    and writing-activity telemetry share the analytics domain but nothing
+    else (RULE-06).
+    """
+
+    async def insert_writing_event(self, row: WritingActivityEventRow) -> None:
+        """Append one signed word-count delta (append-only telemetry).
+
+        Flush without refresh (mirrors :meth:`UsageRecordRepository.insert`):
+        the row carries everything client-side — ``id`` is a Python-side
+        ``default`` and ``created_at`` is recorder-stamped (no server
+        defaults to load back).
+        """
+        self._session.add(row)
+        await self._flush()

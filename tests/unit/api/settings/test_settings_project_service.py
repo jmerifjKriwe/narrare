@@ -59,6 +59,12 @@ class FakeProjectSettingsRepository:
             setattr(settings, field, value)
         return settings
 
+    async def get_writing_goals(self, novel_id: uuid.UUID) -> dict[str, object] | None:
+        """Read-only ``writing_goals`` read (STATS-001 E5) — no auto-create."""
+        self.calls.append(CallRecord("get_writing_goals", kwargs={"novel_id": novel_id}))
+        settings = self._store.get(novel_id)
+        return None if settings is None else settings.writing_goals
+
 
 # ======================================================================
 # Protocol conformance check

@@ -112,3 +112,20 @@ class ProjectSettingsRepository(BaseRepository):
             setattr(settings, field, value)
         await self._flush_and_refresh(settings)
         return settings
+
+    async def get_writing_goals(self, novel_id: uuid.UUID) -> dict[str, object] | None:
+        """Read the novel's raw ``writing_goals`` JSONB (STATS-001 E5).
+
+        Strictly READ-ONLY — unlike :meth:`get` this NEVER auto-creates a
+        settings row: it backs ``GET /analytics/writing``'s goal overlay
+        (via ``settings.writing_goals.ProjectSettingsGoalSource``), and a
+        reporting read must not write (the auto-create is only safe behind
+        the settings router's ownership gate — IDOR remediation S11a).
+        ``None`` = no settings row or NULL column; the v1-shape parsing
+        (``{"target_words": int | null}``) lives in
+        ``settings.writing_goals.parse_target_words``.
+        """
+        result = await self._session.execute(
+            select(ProjectSettings.writing_goals).where(ProjectSettings.novel_id == novel_id)
+        )
+        return result.scalar()

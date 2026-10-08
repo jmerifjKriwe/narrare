@@ -146,7 +146,17 @@ async def get_coauthor_service(
 async def get_coauthor_apply_service(
     session: AsyncSession,
 ) -> CoAuthorApplyService:
-    """Lightweight factory — repos only, no pipeline or model config."""
+    """Lightweight factory — repos only, no pipeline or model config.
+
+    Wires the STATS-001 writing-stats recorder here (the composition
+    point for this service): the endpoint invokes this factory directly
+    rather than through ``Depends``, so the recorder is built from the
+    same production seam ``get_writing_stats_recorder()`` FastAPI
+    resolves for the chapters routers (E3a). It opens its own
+    short-lived session per event (RULE-08) and is never-raises
+    (ADR-095) — a stats failure cannot break the apply write.
+    """
+    from narrare.analytics.dependencies import get_writing_stats_recorder
     from narrare.chapters.repository import ChapterRepository
     from narrare.writing.coauthor_apply_service import CoAuthorApplyService
     from narrare.writing.repository import GenerationRepository
@@ -154,4 +164,5 @@ async def get_coauthor_apply_service(
     return CoAuthorApplyService(
         repo=GenerationRepository(session),
         chapter_repo=ChapterRepository(session),
+        writing_stats_recorder=get_writing_stats_recorder(),
     )

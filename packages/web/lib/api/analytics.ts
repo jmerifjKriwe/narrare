@@ -72,6 +72,41 @@ export interface CostMonthReport {
   budget: CostBudgetBlock | null;
 }
 
+/** One UTC day of the writing window (`date` is `YYYY-MM-DD`, deletes negative). */
+export interface DailyPoint {
+  date: string;
+  words: number;
+}
+
+/** Consecutive-active-day streaks (today-grace rule, spec E-4). */
+export interface Streaks {
+  current: number;
+  longest: number;
+}
+
+/** Novel goal overlay — target vs LIVE manuscript words (spec E-4). */
+export interface GoalBlock {
+  target_words: number;
+  current_words: number;
+  /** One decimal place. */
+  progress_pct: number;
+}
+
+/**
+ * Writing-activity report (STATS-001 spec E-5): `dailies` spans the last
+ * 90 days ending today (UTC days, zero-filled, oldest first); `total_words`
+ * is the all-time net words for the scope (not window-capped). `goal` is
+ * present only for a novel-scoped request whose novel has a target set —
+ * the backend serializes `null` otherwise.
+ */
+export interface WritingReport {
+  dailies: DailyPoint[];
+  streaks: Streaks;
+  today_words: number;
+  total_words: number;
+  goal: GoalBlock | null;
+}
+
 /**
  * Parse the suggested filename from a Content-Disposition header. Mirrors
  * lib/api/export.ts (same backend header shape); falls back to the canonical
@@ -87,6 +122,16 @@ export const analyticsApi = {
   /** GET /analytics/costs?month=YYYY-MM — month report + six-month trend. */
   costs: (month: string) =>
     fetchApi<CostMonthReport>(`/analytics/costs?month=${encodeURIComponent(month)}`),
+
+  /**
+   * GET /analytics/writing[?novel_id=<uuid>] — dailies/streaks/totals; the
+   * goal block appears only for a novel-scoped request. No novel selected →
+   * the request URL carries no query param at all.
+   */
+  writing: (novelId?: string | null) => {
+    const query = novelId ? `?novel_id=${encodeURIComponent(novelId)}` : "";
+    return fetchApi<WritingReport>(`/analytics/writing${query}`);
+  },
 
   /**
    * GET /analytics/costs/export?month=YYYY-MM — fetch the month's CSV as a

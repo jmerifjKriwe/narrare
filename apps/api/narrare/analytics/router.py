@@ -25,8 +25,17 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep
-from narrare.analytics.contracts import CostMonthReport, CostQueryServiceProtocol
-from narrare.analytics.dependencies import get_cost_query_service
+from narrare.analytics.contracts import (
+    CostMonthReport,
+    CostQueryServiceProtocol,
+    WritingQueryServiceProtocol,
+    WritingReport,
+)
+from narrare.analytics.dependencies import (
+    get_cost_query_service,
+    get_writing_query_service,
+    verify_writing_novel_scope,
+)
 from narrare.analytics.service import CostQueryService, InvalidMonthError
 
 logger = structlog.get_logger(__name__)
@@ -42,6 +51,23 @@ async def get_monthly_costs(
 ) -> CostMonthReport:
     """Monthly AI cost report for the authenticated user (spec §4)."""
     return await service.month_report(uuid.UUID(user_id), month)
+
+
+@router.get("/writing", response_model=WritingReport)
+async def get_writing_report(
+    user_id: CurrentUserIdDep,
+    novel_id: uuid.UUID | None = Query(default=None),
+    service: WritingQueryServiceProtocol = Depends(get_writing_query_service),
+    _: None = Depends(verify_writing_novel_scope),
+) -> WritingReport:
+    """Writing report for the authenticated user (STATS-001 spec E-5).
+
+    Optional ``novel_id`` narrows dailies/streaks/today and the all-time
+    total to one novel and adds the goal block; ownership is enforced by the
+    ``verify_writing_novel_scope`` dependency BEFORE the service runs
+    (foreign ≡ unknown → 404).
+    """
+    return await service.writing_report(uuid.UUID(user_id), novel_id)
 
 
 @router.get("/costs/export")

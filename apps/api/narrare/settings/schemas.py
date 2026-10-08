@@ -2,7 +2,8 @@
 
 Contains request/response models for all settings endpoints:
 - User settings (display name, language, theme)
-- Project settings (autosave, language, legacy AI fields)
+- Project settings (autosave, language, legacy AI fields) — see
+  schemas_project_settings.py (RULE-04 split)
 - AI settings (default model, category/intent overrides, token limits)
 - Project AI overrides
 - AI provider management — see schemas_providers.py (RULE-04 split)
@@ -18,6 +19,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from narrare.settings.schemas_project_settings import (
+    ProjectSettingsResponse,
+    UpdateProjectSettingsRequest,
+    WritingGoalsPayload,
+)
 from narrare.settings.schemas_providers import (
     CreateProviderRequest,
     ProviderResponse,
@@ -25,10 +31,18 @@ from narrare.settings.schemas_providers import (
 )
 from narrare.settings.schemas_tones import CustomTone  # noqa: TC001 — used in Pydantic annotation
 
-# RULE-04 split: explicit re-export of the provider schemas so downstream
-# importers of ``narrare.settings.schemas`` stay type-visible for pyright
-# (reportPrivateImportUsage) and ruff (F401) without suppression pragmas.
-__all__ = ["CreateProviderRequest", "ProviderResponse", "UpdateProviderRequest"]
+# RULE-04 split: explicit re-export of the provider + project-settings
+# schemas so downstream importers of ``narrare.settings.schemas`` stay
+# type-visible for pyright (reportPrivateImportUsage) and ruff (F401)
+# without suppression pragmas.
+__all__ = [
+    "CreateProviderRequest",
+    "ProjectSettingsResponse",
+    "ProviderResponse",
+    "UpdateProjectSettingsRequest",
+    "UpdateProviderRequest",
+    "WritingGoalsPayload",
+]
 
 # ---------------------------------------------------------------------------
 # Existing schemas (user settings, project settings)
@@ -52,35 +66,6 @@ class UpdateUserSettingsRequest(BaseModel):
     custom_tones: list[dict[str, object]] | None = Field(
         default=None, description="Full replacement list of custom tones"
     )
-
-
-class ProjectSettingsResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    novel_id: uuid.UUID
-    autosave_interval: int
-    default_language: str
-    ai_provider: str
-    ai_model: str
-    model_overrides: str
-    category_overrides: dict[str, object]
-    intent_overrides: dict[str, object]
-    token_limit_overrides: dict[str, object]
-    # Spec 3: per-novel opt-out flag for the series-voice Delta model (ADR-078).
-    # Read from the ORM column added in migration 0039 (defaults True).
-    use_series_voice: bool = True
-    updated_at: datetime
-
-
-class UpdateProjectSettingsRequest(BaseModel):
-    autosave_interval: int | None = Field(default=None, ge=0, le=3600)
-    default_language: str | None = Field(default=None, min_length=2, max_length=10)
-    ai_provider: str | None = Field(default=None, max_length=50)
-    ai_model: str | None = Field(default=None, max_length=200)
-    model_overrides: str | None = None  # JSON string
-    # Spec 3: per-novel opt-out. ``False`` opts out of the series-voice Delta
-    # model (the novel falls back to its own author_voice only). ``None`` =
-    # "not provided" → omitted from the PATCH (repository uses exclude_none).
-    use_series_voice: bool | None = Field(default=None)
 
 
 # ---------------------------------------------------------------------------

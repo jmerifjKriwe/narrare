@@ -1,4 +1,5 @@
 {
+  "sectionLabel": "Analysen",
   "costs": {
     "title": "KI-Kosten",
     "prevMonth": "Vorheriger Monat",
@@ -81,6 +82,22 @@
       "worldbuilding": "Worldbuilding",
       "write": "Schreiben"
     }
+  },
+  "writing": {
+    "title": "Schreiben",
+    "novelLabel": "Roman",
+    "novelAll": "Alle Romane",
+    "today": "Wörter heute",
+    "streakCurrent": "Aktuelle Streak",
+    "streakLongest": "Längste Streak",
+    "streakDays": "{count, plural, one {# Tag} other {# Tage}}",
+    "totalWords": "Wörter gesamt",
+    "chart": "Tägliche Wörter — letzte 90 Tage",
+    "goalTitle": "Schreibziel",
+    "goalOf": "{current} von {target} Wörtern ({percent}%)",
+    "empty": "Noch keine Schreibaktivität aufgezeichnet.",
+    "error": "Schreibstatistiken konnten nicht geladen werden.",
+    "retry": "Erneut versuchen"
   },
   "budget": {
     "badgeOk": "{percent}% des Budgets",

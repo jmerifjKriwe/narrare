@@ -333,6 +333,10 @@
       "wordsPerDay": "Words per day",
       "projectProgress": "Project progress",
       "projectProgressDescription": "Set an overall goal for your current project",
+      "targetLabel": "Writing goal (words)",
+      "targetPlaceholder": "No target set",
+      "targetInvalid": "Enter a whole number of words (0 or more)",
+      "targetSaveError": "Failed to save writing goal",
       "wordsTotal": "Total words",
       "progress": "Progress"
     },

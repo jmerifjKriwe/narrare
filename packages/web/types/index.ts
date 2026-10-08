@@ -207,6 +207,7 @@ export type {
   UserAiSettings,
   UserProvider,
   UserSettings,
+  WritingGoals,
 } from "./settings";
 export type {
   CreateCustomToneRequest,

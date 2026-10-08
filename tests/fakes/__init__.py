@@ -44,6 +44,7 @@ from tests.fakes.fake_user_providers_repository import FakeUserProvidersReposito
 from tests.fakes.fake_user_settings_repo import FakeUserSettingsRepository
 from tests.fakes.fake_volume_repo import FakeVolumeRepository
 from tests.fakes.fake_wiki_repo import FakeWikiRepository
+from tests.fakes.fake_writing_stats_recorder import FakeWritingStatsRecorder
 
 __all__ = [
     "FakeAuthRepository",
@@ -72,4 +73,5 @@ __all__ = [
     "FakeUserSettingsRepository",
     "FakeVolumeRepository",
     "FakeWikiRepository",
+    "FakeWritingStatsRecorder",
 ]
