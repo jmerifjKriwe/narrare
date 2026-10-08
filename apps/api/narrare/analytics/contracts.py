@@ -142,10 +142,11 @@ class WritingReport(BaseModel):
     """``GET /analytics/writing`` response (spec E-5).
 
     ``dailies`` spans the last 90 days ending today (UTC days, zero-filled,
-    oldest first). ``today_words``/``total_words`` are window values —
-    events carry a day-0 boundary (ADR-095), so totals are honest windows,
-    not all-time claims. ``goal`` is present only for a novel-scoped
-    request whose novel has a target set.
+    oldest first); ``today_words`` is the window's today bucket.
+    ``total_words`` is the all-time net words recorded for the scope
+    (user, or user + novel) — deliberately not window-capped: a 90-day
+    number labelled "total" would mislabel it. ``goal`` is present only
+    for a novel-scoped request whose novel has a target set.
     """
 
     dailies: list[WritingDailyPoint]

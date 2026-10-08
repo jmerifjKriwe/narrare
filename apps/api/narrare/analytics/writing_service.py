@@ -2,24 +2,28 @@
 """Writing query service — read-side derivation for ``GET /analytics/writing``
 (STATS-001 spec E-3/E-5; ADR-095 D4/D5).
 
-Builds a :class:`WritingReport` from the repository's UTC-day net sums:
-zero-filled 90-day dailies (window contract N=90 v1), streaks per the
-today-grace rule, today/window totals, and the novel-scoped goal overlay.
+Builds a :class:`WritingReport` from the repository's UTC-day
+(words, event-count) totals: zero-filled 90-day dailies (window contract
+N=90 v1), streaks per the today-grace rule, today's window bucket, the
+ALL-TIME net total, and the novel-scoped goal overlay.
 
-**Two deliberate bases (ADR-095):** dailies/streaks/today/total derive from
-the *activity events* (honest net deltas, day-0 boundary documented);
-``goal.current_words`` reads *manuscript state* — the live
-``SUM(chapters.word_count)`` — because the events' day-0 boundary would
-hide a novelist's pre-existing words from their own goal progress.
+**Two deliberate bases (ADR-095):** dailies/streaks/today and the
+all-time total derive from the *activity events* (honest net deltas,
+day-0 boundary documented); ``goal.current_words`` reads *manuscript
+state* — the live ``SUM(chapters.word_count)`` — because the events'
+day-0 boundary would hide a novelist's pre-existing words from their own
+goal progress. ``total_words`` is deliberately bounds-free (window-capped
+totals would mislabel the number); only ``dailies``/``streaks``/``today_words``
+are window values.
 
 **Streak semantics (spec today-grace rule).** The current streak counts
 back from today when today is active, else from yesterday — a streak
 survives until the day ENDS; it is 0 when neither today nor yesterday is
 active. The longest streak spans the report window (v1 boundary, not
-all-time). Active-day signal at SUM granularity: a nonzero net sum proves
-≥1 stored event (zero deltas are never persisted); a day whose events
-perfectly cancel out is indistinguishable from silence and counts as
-inactive — a documented approximation of ADR-095's ≥1-event rule.
+all-time). Active day = ≥1 stored event (spec E-3 / ADR-095, exact): the
+repository returns per-day event counts, so a day whose deltas cancel
+(+100/-100) still counts as active; dailies keep the words basis and show
+0 for such a day.
 
 RULE-06: no SQL, no HTTP. The window length and the clock are injected
 (RULE-18) with the spec defaults; the goal target arrives through the
@@ -123,7 +127,8 @@ class WritingQueryService:
 
         The window is the last ``window_days`` UTC days ending today
         (half-open ``[today-(N-1), today+1)``); ``novel_id`` narrows the
-        dailies/streaks/today/total aggregation AND gates the goal block.
+        dailies/streaks/today window AND the all-time total to one novel's
+        events, and gates the goal block.
         """
         today = self._clock().date()
         window_start = today - timedelta(days=self._window_days - 1)
@@ -131,7 +136,7 @@ class WritingQueryService:
         end = start + timedelta(days=self._window_days)
 
         totals = await self._repo.daily_totals(user_id, start, end, novel_id=novel_id)
-        words_by_day = dict(totals)
+        words_by_day = {day: words for day, words, _ in totals}
         dailies = [
             WritingDailyPoint(
                 date=window_start + timedelta(days=offset),
@@ -139,12 +144,14 @@ class WritingQueryService:
             )
             for offset in range(self._window_days)
         ]
-        active = {day for day, words in totals if words != 0}
+        # Streak basis = stored events (spec E-3 / ADR-095), NOT the net sums:
+        # a day whose deltas cancel (+100/-100) still counts as active.
+        active = {day for day, _, events in totals if events >= 1}
         report = WritingReport(
             dailies=dailies,
             streaks=_streaks(active, today),
             today_words=words_by_day.get(today, 0),
-            total_words=sum(words for _, words in totals),
+            total_words=await self._repo.all_time_word_total(user_id, novel_id=novel_id),
             goal=await self._goal_block(novel_id),
         )
         logger.info(

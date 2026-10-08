@@ -1,13 +1,15 @@
 # tests/unit/api/analytics/test_writing_query_service.py
 """Unit tests for ``WritingQueryService`` — writing-report derivation (E4).
 
-The service holds no SQL (RULE-08): streaks/today/total are pure Python over
-the repository's UTC-day net sums, so these tests drive the PUBLIC
+The service holds no SQL (RULE-08): streaks/today are pure Python over
+the repository's UTC-day (net words, event count) totals, total_words over
+the bounds-free all-time sum, so these tests drive the PUBLIC
 ``writing_report`` with an injected clock + a fake repository and pin the
 spec's boundary matrix — zero-filled ordered dailies, default half-open
 window, streak gaps / today-silent grace / year boundary / leap Feb-29 /
-single day, and the goal overlay (None vs set, LIVE word-count basis,
-one-decimal pct rounding). SQL wiring lives in test_writing_read_router.py;
+single day, the ≥1-event streak basis (a canceling day still counts), and
+the goal overlay (None vs set, LIVE word-count basis, one-decimal pct
+rounding). SQL wiring lives in test_writing_read_router.py;
 real-PostgreSQL bucketing semantics in the 0045 round-trip family.
 """
 
@@ -39,24 +41,34 @@ _WINDOW_START = _TODAY - timedelta(days=89)  # default 90-day window start
 
 
 class _FakeRepo:
-    """Canned ``daily_totals``/``novel_word_total``; records window calls."""
+    """Canned ``daily_totals``/``all_time_word_total``/``novel_word_total``."""
 
     def __init__(
-        self, totals: list[tuple[date, int]] | None = None, *, word_total: int = 0
+        self,
+        totals: list[tuple[date, int, int]] | None = None,
+        *,
+        word_total: int = 0,
+        all_time_total: int = 0,
     ) -> None:
         self.totals = totals if totals is not None else []
         self.word_total = word_total
+        self.all_time_total = all_time_total
         self.calls: list[tuple[UUID, datetime, datetime, UUID | None]] = []
+        self.scope_calls: list[tuple[UUID, UUID | None]] = []
 
     async def daily_totals(
         self, user_id: UUID, start: datetime, end: datetime, *, novel_id: UUID | None = None
-    ) -> list[tuple[date, int]]:
+    ) -> list[tuple[date, int, int]]:
         self.calls.append((user_id, start, end, novel_id))
         return self.totals
 
     async def novel_word_total(self, novel_id: UUID) -> int:
         del novel_id
         return self.word_total
+
+    async def all_time_word_total(self, user_id: UUID, *, novel_id: UUID | None = None) -> int:
+        self.scope_calls.append((user_id, novel_id))
+        return self.all_time_total
 
 
 class _FakeGoalSource:
@@ -87,9 +99,9 @@ def _make_service(
     )
 
 
-def _active(days_before_today: tuple[int, ...]) -> list[tuple[date, int]]:
-    """Totals table marking the given offsets-from-today as active (10 net words)."""
-    return [(_TODAY - timedelta(days=offset), 10) for offset in days_before_today]
+def _active(days_before_today: tuple[int, ...]) -> list[tuple[date, int, int]]:
+    """Totals table marking the given offsets-from-today as active (10 words, 1 event)."""
+    return [(_TODAY - timedelta(days=offset), 10, 1) for offset in days_before_today]
 
 
 # ---------------------------------------------------------------------------
@@ -124,9 +136,9 @@ class TestDailiesWindow:
     async def test_totals_are_signed_net_sums_mapped_onto_their_days(self) -> None:
         """Event sums land on their UTC days; absent days stay zero-filled."""
         totals = [
-            (_TODAY, 150),
-            (_TODAY - timedelta(days=1), -50),
-            (_TODAY - timedelta(days=30), 200),
+            (_TODAY, 150, 1),
+            (_TODAY - timedelta(days=1), -50, 2),
+            (_TODAY - timedelta(days=30), 200, 3),
         ]
         report = await _make_service(_FakeRepo(totals)).writing_report(uuid4(), None)
 
@@ -136,26 +148,33 @@ class TestDailiesWindow:
         assert by_date[_TODAY - timedelta(days=30)] == 200
         assert by_date[_TODAY - timedelta(days=2)] == 0  # silent day zero-filled
 
-    async def test_today_and_total_words_come_from_the_window(self) -> None:
-        """today_words is today's bucket; total is the window's signed sum."""
+    async def test_today_words_from_window_but_total_words_is_all_time(self) -> None:
+        """today_words is today's window bucket; total_words is the ALL-TIME
+        event sum (bounds-free repo method — window-capped totals would
+        mislabel the number), NOT the window's signed sum."""
         totals = [
-            (_TODAY, 150),
-            (_TODAY - timedelta(days=1), -50),
-            (_TODAY - timedelta(days=30), 200),
+            (_TODAY, 150, 1),
+            (_TODAY - timedelta(days=1), -50, 2),
+            (_TODAY - timedelta(days=30), 200, 3),
         ]
-        report = await _make_service(_FakeRepo(totals)).writing_report(uuid4(), None)
+        user_id = uuid4()
+        repo = _FakeRepo(totals, all_time_total=1200)
+
+        report = await _make_service(repo).writing_report(user_id, None)
 
         assert report.today_words == 150
-        assert report.total_words == 300  # 150 - 50 + 200 — net honesty (ADR-095)
+        assert report.total_words == 1200  # ≠ window sum (300) — all-time basis
+        assert repo.scope_calls == [(user_id, None)]  # same caller/novel scope
 
     async def test_novel_id_reaches_the_repository_query(self) -> None:
-        """The optional novel filter scopes the aggregation query, not just the goal."""
+        """The optional novel filter scopes the aggregation queries, not just the goal."""
         repo = _FakeRepo()
         novel_id = uuid4()
 
         await _make_service(repo).writing_report(uuid4(), novel_id)
 
         assert repo.calls[0][3] == novel_id
+        assert repo.scope_calls[0][1] == novel_id
 
 
 # ---------------------------------------------------------------------------
@@ -200,10 +219,10 @@ class TestStreaks:
     async def test_streak_survives_the_year_boundary(self) -> None:
         """A run across Dec 31 → Jan 1 is consecutive (calendar-aware timedelta)."""
         totals = [
-            (date(2025, 12, 30), 10),
-            (date(2025, 12, 31), 10),
-            (date(2026, 1, 1), 10),
-            (date(2026, 1, 2), 10),
+            (date(2025, 12, 30), 10, 1),
+            (date(2025, 12, 31), 10, 1),
+            (date(2026, 1, 1), 10, 1),
+            (date(2026, 1, 2), 10, 1),
         ]
         clock = lambda: datetime(2026, 1, 2, 9, 0, tzinfo=UTC)  # noqa: E731 — injected clock
 
@@ -215,9 +234,9 @@ class TestStreaks:
     async def test_streak_counts_leap_february_29(self) -> None:
         """2024 is a leap year: Feb 28 → Feb 29 → Mar 1 is a 3-day run."""
         totals = [
-            (date(2024, 2, 28), 10),
-            (date(2024, 2, 29), 10),
-            (date(2024, 3, 1), 10),
+            (date(2024, 2, 28), 10, 1),
+            (date(2024, 2, 29), 10, 1),
+            (date(2024, 3, 1), 10, 1),
         ]
         clock = lambda: datetime(2024, 3, 1, 8, 0, tzinfo=UTC)  # noqa: E731 — injected clock
 
@@ -225,18 +244,22 @@ class TestStreaks:
 
         assert report.streaks.current == 3
 
-    async def test_net_zero_day_does_not_extend_a_streak(self) -> None:
-        """SUM granularity: a day whose events perfectly cancel (SUM 0 — e.g.
-        +100 write, -100 delete) is indistinguishable from silence (documented
-        approximation of ADR-095's ≥1-event rule) — it breaks the run."""
+    async def test_net_zero_day_with_stored_events_extends_the_streak(self) -> None:
+        """≥1-event rule (spec E-3 / ADR-095, exact since fix round 1): a day
+        whose deltas cancel (+100 write, -100 delete → net 0, 2 events) is
+        ACTIVE and extends the run — dailies keep the words basis and show
+        0 words for it (two deliberate bases)."""
         totals = [
-            (_TODAY - timedelta(days=2), 100),
-            (_TODAY - timedelta(days=1), 0),  # events cancelled out
-            (_TODAY, 5),
+            (_TODAY - timedelta(days=2), 100, 1),
+            (_TODAY - timedelta(days=1), 0, 2),  # canceling deltas, 2 stored events
+            (_TODAY, 5, 1),
         ]
+
         report = await _make_service(_FakeRepo(totals)).writing_report(uuid4(), None)
 
-        assert (report.streaks.current, report.streaks.longest) == (1, 1)
+        assert (report.streaks.current, report.streaks.longest) == (3, 3)
+        by_date = {point.date: point.words for point in report.dailies}
+        assert by_date[_TODAY - timedelta(days=1)] == 0  # bars stay on the words basis
 
 
 # ---------------------------------------------------------------------------

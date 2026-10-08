@@ -4421,7 +4421,7 @@
           "analytics"
         ],
         "summary": "Get Writing Report",
-        "description": "Writing report for the authenticated user (STATS-001 spec E-5).\n\nOptional ``novel_id`` narrows dailies/streaks/today/total to one novel\nand adds the goal block; ownership is enforced by the\n``verify_writing_novel_scope`` dependency BEFORE the service runs\n(foreign ≡ unknown → 404).",
+        "description": "Writing report for the authenticated user (STATS-001 spec E-5).\n\nOptional ``novel_id`` narrows dailies/streaks/today and the all-time\ntotal to one novel and adds the goal block; ownership is enforced by the\n``verify_writing_novel_scope`` dependency BEFORE the service runs\n(foreign ≡ unknown → 404).",
         "operationId": "get_writing_report_api_v1_analytics_writing_get",
         "security": [
           {
@@ -26990,7 +26990,7 @@
           "total_words"
         ],
         "title": "WritingReport",
-        "description": "``GET /analytics/writing`` response (spec E-5).\n\n``dailies`` spans the last 90 days ending today (UTC days, zero-filled,\noldest first). ``today_words``/``total_words`` are window values —\nevents carry a day-0 boundary (ADR-095), so totals are honest windows,\nnot all-time claims. ``goal`` is present only for a novel-scoped\nrequest whose novel has a target set."
+        "description": "``GET /analytics/writing`` response (spec E-5).\n\n``dailies`` spans the last 90 days ending today (UTC days, zero-filled,\noldest first); ``today_words`` is the window's today bucket.\n``total_words`` is the all-time net words recorded for the scope\n(user, or user + novel) — deliberately not window-capped: a 90-day\nnumber labelled \"total\" would mislabel it. ``goal`` is present only\nfor a novel-scoped request whose novel has a target set."
       },
       "WritingStreaks": {
         "properties": {

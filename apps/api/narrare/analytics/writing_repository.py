@@ -2,8 +2,8 @@
 """Writing-stats read repository — UTC-day aggregation (STATS-001 E-3, RULE-08).
 
 Read-side derivation home for ``GET /analytics/writing`` (ADR-095 D4): the
-dailies/streaks window and the goal word-sum are derived at query time over
-``writing_activity_events`` / ``chapters``.
+dailies/streaks window, the all-time report total, and the goal word-sum
+are derived at query time over ``writing_activity_events`` / ``chapters``.
 
 **Module split (RULE-04/RULE-06).** ``repository.py`` hosts the write-side
 ``WritingActivityEventRepository`` (insert telemetry) and sits at its
@@ -53,18 +53,25 @@ class WritingStatsQueryRepository(BaseRepository):
         end: datetime,
         *,
         novel_id: uuid.UUID | None = None,
-    ) -> list[tuple[date, int]]:
-        """Signed net word sums per UTC day for ``[start, end)``, day-ascending.
+    ) -> list[tuple[date, int, int]]:
+        """``(day, net words, event count)`` per UTC day of ``[start, end)``, ascending.
 
         User-scoped; ``novel_id`` optionally narrows to one novel's events.
         Days without events are absent from the result — the service
-        zero-fills the report window.
+        zero-fills the report window. The count carries the streak basis
+        (spec E-3 / ADR-095: an active day is ≥1 stored event, so a day
+        whose deltas cancel to net 0 still counts); the service derives
+        dailies from the words column and streaks from the count column.
         """
         day_bucket = func.date_trunc(
             "day", WritingActivityEventRow.created_at.op("AT TIME ZONE")("UTC")
         ).label("day")
         stmt = (
-            select(day_bucket, func.coalesce(func.sum(WritingActivityEventRow.delta_words), 0))
+            select(
+                day_bucket,
+                func.coalesce(func.sum(WritingActivityEventRow.delta_words), 0),
+                func.count(),
+            )
             .where(
                 WritingActivityEventRow.user_id == user_id,
                 WritingActivityEventRow.created_at >= start,  # [start, end) — half-open
@@ -76,7 +83,30 @@ class WritingStatsQueryRepository(BaseRepository):
         if novel_id is not None:
             stmt = stmt.where(WritingActivityEventRow.novel_id == novel_id)
         result = await self._session.execute(stmt)
-        return [(_bucket_day(day), int(words)) for day, words in result.all()]
+        return [(_bucket_day(day), int(words), int(events)) for day, words, events in result.all()]
+
+    async def all_time_word_total(
+        self, user_id: uuid.UUID, *, novel_id: uuid.UUID | None = None
+    ) -> int:
+        """ALL-TIME signed net ``SUM(delta_words)`` for the scope (report total).
+
+        Bounds-free by design (E4 fix-round-1 ruling): a window-capped
+        "total" would mislabel the number — the 90-day window bounds only
+        the dailies/streaks derivation, never ``total_words``. User-scoped;
+        ``novel_id`` optionally narrows to one novel's events. COALESCE → 0
+        (a user with no events is 0, never NULL).
+        """
+        stmt = select(func.coalesce(func.sum(WritingActivityEventRow.delta_words), 0)).where(
+            WritingActivityEventRow.user_id == user_id
+        )
+        if novel_id is not None:
+            stmt = stmt.where(WritingActivityEventRow.novel_id == novel_id)
+        result = await self._session.execute(stmt)
+        total = result.scalar()
+        # None is impossible behind the COALESCE; mapping it keeps the method
+        # total instead of asserting an invariant the type system cannot see
+        # through the SQL expression (mirrors repository._to_decimal).
+        return 0 if total is None else int(total)
 
     async def novel_word_total(self, novel_id: uuid.UUID) -> int:
         """Live ``SUM(chapters.word_count)`` for one novel (goal progress basis).

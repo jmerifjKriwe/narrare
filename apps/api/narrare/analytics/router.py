@@ -62,8 +62,8 @@ async def get_writing_report(
 ) -> WritingReport:
     """Writing report for the authenticated user (STATS-001 spec E-5).
 
-    Optional ``novel_id`` narrows dailies/streaks/today/total to one novel
-    and adds the goal block; ownership is enforced by the
+    Optional ``novel_id`` narrows dailies/streaks/today and the all-time
+    total to one novel and adds the goal block; ownership is enforced by the
     ``verify_writing_novel_scope`` dependency BEFORE the service runs
     (foreign ≡ unknown → 404).
     """
