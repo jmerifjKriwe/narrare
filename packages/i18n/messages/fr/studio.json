@@ -333,6 +333,10 @@
       "wordsPerDay": "Mots par jour",
       "projectProgress": "Progrès du projet",
       "projectProgressDescription": "Fixez un objectif global pour votre projet actuel",
+      "targetLabel": "Objectif d'écriture (mots)",
+      "targetPlaceholder": "Aucun objectif défini",
+      "targetInvalid": "Entrez un nombre entier de mots (0 ou plus)",
+      "targetSaveError": "Échec de l'enregistrement de l'objectif d'écriture",
       "wordsTotal": "Mots totaux",
       "progress": "Progrès"
     },

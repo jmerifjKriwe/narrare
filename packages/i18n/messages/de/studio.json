@@ -333,6 +333,10 @@
       "wordsPerDay": "Wörter pro Tag",
       "projectProgress": "Projektfortschritt",
       "projectProgressDescription": "Setze ein Gesamtziel für dein aktuelles Projekt",
+      "targetLabel": "Schreibziel (Wörter)",
+      "targetPlaceholder": "Kein Ziel festgelegt",
+      "targetInvalid": "Gib eine ganze Zahl von Wörtern ein (0 oder mehr)",
+      "targetSaveError": "Schreibziel konnte nicht gespeichert werden",
       "wordsTotal": "Wörter gesamt",
       "progress": "Fortschritt"
     },

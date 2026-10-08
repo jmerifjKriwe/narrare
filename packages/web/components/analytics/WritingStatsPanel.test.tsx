@@ -177,6 +177,28 @@ describe("WritingStatsPanel", () => {
     expect(await screen.findByText("No writing activity recorded yet.")).toBeInTheDocument();
     expect(screen.queryByTestId("writing-daily-chart")).not.toBeInTheDocument();
     expect(screen.queryByText("Words today")).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
+  it("renders a fresh goal bar above the empty message (zero-activity onboarding)", async () => {
+    // E7 review: a brand-new novel with a just-set goal has NO activity — the
+    // empty state must still surface the goal bar (the user's whole point),
+    // with the empty message beside it. Cards/chart stay hidden.
+    mockUseAnalyticsWriting.mockImplementation(() =>
+      resolved({
+        dailies: DAILIES.map((day) => ({ ...day, words: 0 })),
+        streaks: { current: 0, longest: 0 },
+        today_words: 0,
+        total_words: 0,
+        goal: { ...GOAL, current_words: 0, progress_pct: 0 },
+      }),
+    );
+    render(<WritingStatsPanel />);
+
+    expect(await screen.findByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
+    expect(screen.getByText("No writing activity recorded yet.")).toBeInTheDocument();
+    expect(screen.queryByText("Words today")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("writing-daily-chart")).not.toBeInTheDocument();
   });
 
   it("handles pending and error (retry refetches) states", async () => {

@@ -22,7 +22,27 @@ export interface ProjectSettings {
    * series voice is skipped at generation-assembly time.
    */
   use_series_voice: boolean;
+  /**
+   * STATS-001 (spec E-4/E-5): the stored v1 writing-goal object — see
+   * {@link WritingGoals}. READ side is deliberately loose: the backend passes
+   * the JSONB value through as an untyped object so a corrupt stored row
+   * degrades instead of failing the GET, hence ``unknown`` here — narrow with
+   * ``parseTargetWords`` (WritingGoalsTab) before reading ``target_words``.
+   * WRITE side (PATCH) is strict: whole-object replace; an explicit
+   * ``{ target_words: null }`` unsets; omitted leaves the goal untouched.
+   */
+  writing_goals: unknown;
   updated_at: string;
+}
+
+/**
+ * STATS-001 v1 writing-goal shape (spec E-4) — the exact JSON stored in
+ * ``project_settings.writing_goals``. v1 ships one key with room to grow;
+ * the PATCH request validates strictly (int ≥ 0 or null, no extra keys ⇒
+ * 422), so the FE must only ever send fully-formed objects of this shape.
+ */
+export interface WritingGoals {
+  target_words: number | null;
 }
 
 // ---------------------------------------------------------------------------

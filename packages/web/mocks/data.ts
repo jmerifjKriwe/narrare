@@ -128,6 +128,9 @@ export function createProjectSettings(overrides: Partial<ProjectSettings> = {}):
     ai_model: "gpt-4o",
     model_overrides: "",
     use_series_voice: true,
+    // STATS-001: the GET always serializes this (null when unset) — loose on
+    // the read side; narrow with parseTargetWords before use.
+    writing_goals: null,
     updated_at: "2026-01-01T00:00:00Z",
     ...overrides,
   };

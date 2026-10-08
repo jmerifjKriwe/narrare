@@ -14,7 +14,9 @@
  * previous scope's report mounted while a selector switch refetches. The
  * empty state fires only when the scope has NO recorded activity at all —
  * the all-time total plus the longest streak also cover activity outside
- * the 90-day window and net-zero write/delete days. Strings via
+ * the 90-day window and net-zero write/delete days. A freshly set goal on
+ * an untouched novel still renders its progress bar above the empty
+ * message (the onboarding moment must not hide the goal). Strings via
  * `analytics.writing.*`.
  */
 
@@ -123,7 +125,17 @@ function WritingReportView({ novelId }: { readonly novelId: string | null }) {
     );
   }
 
-  if (hasNoActivity(data)) return <StatusMessage state="empty" message={t("empty")} />;
+  // E7 review: a just-set goal on a brand-new novel is exactly the empty
+  // state (zero activity) — surface the goal bar above the empty message so
+  // the onboarding moment shows the user's goal instead of hiding it.
+  if (hasNoActivity(data)) {
+    return (
+      <div className="flex flex-col gap-6">
+        {data.goal && <WritingGoalProgress goal={data.goal} />}
+        <StatusMessage state="empty" message={t("empty")} />
+      </div>
+    );
+  }
 
   return (
     <>
