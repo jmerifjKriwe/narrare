@@ -7,6 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare.analytics.dependencies import WritingStatsRecorderDep
 from narrare.chapters.repository import ChapterRepository
 from narrare.chapters.schemas import (
     ChapterResponse,
@@ -26,6 +27,7 @@ router = APIRouter(
 
 def _get_service(
     session: SessionDep,
+    writing_stats_recorder: WritingStatsRecorderDep,
 ) -> ChapterService:
     return ChapterService(
         repo=ChapterRepository(session),
@@ -34,6 +36,7 @@ def _get_service(
             volume_repo=VolumeRepository(session),
         ),
         volume_repo=VolumeRepository(session),
+        writing_stats_recorder=writing_stats_recorder,
     )
 
 

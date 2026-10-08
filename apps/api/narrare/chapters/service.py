@@ -13,6 +13,7 @@ from narrare_core.shared.errors import NotFoundError, ValidationError
 if TYPE_CHECKING:
     import uuid
 
+    from narrare.analytics.writing_stats_recorder import WritingStatsRecorder
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.chapters.models import Chapter, ChapterVersion
     from narrare.chapters.schemas import (
@@ -34,6 +35,7 @@ class ChapterService:
         novel_service: NovelServiceProtocol,
         volume_repo: VolumeRepositoryProtocol | None = None,
         event_publisher: EventPublisher | None = None,
+        writing_stats_recorder: WritingStatsRecorder | None = None,
         *,
         max_content_length: int = 100_000,
     ) -> None:
@@ -41,6 +43,7 @@ class ChapterService:
         self._novel_service = novel_service
         self._volume_repo = volume_repo
         self._event_publisher = event_publisher
+        self._writing_stats_recorder = writing_stats_recorder
         self._max_content_length = max_content_length
 
     async def get(
@@ -97,6 +100,9 @@ class ChapterService:
             )
         chapter = await self.get(chapter_id, novel_id, user_id)
         word_count = request.word_count or count_words(request.content)
+        # Capture BEFORE the repo write — repositories update the chapter row
+        # in place, so the old word count is unrecoverable afterwards.
+        old_word_count = chapter.word_count
 
         # Save current content as version BEFORE updating
         latest = await self._repo.get_latest_version_number(chapter_id)
@@ -106,6 +112,17 @@ class ChapterService:
 
         # Prune old versions (keep last 50)
         await self._repo.prune_versions(chapter_id, keep=50)
+
+        # STATS-001 (ADR-095): signed word-count delta for this editor write.
+        # The recorder is never-raises and skips zero deltas internally — no
+        # try/except here by contract.
+        if self._writing_stats_recorder is not None:
+            await self._writing_stats_recorder.record_delta(
+                user_id=user_id,
+                novel_id=novel_id,
+                chapter_id=chapter_id,
+                delta_words=word_count - old_word_count,
+            )
 
         logger.debug("chapter_content_updated", chapter_id=str(chapter_id), words=word_count)
 
@@ -166,7 +183,19 @@ class ChapterService:
         user_id: uuid.UUID,
     ) -> None:
         chapter = await self.get(chapter_id, novel_id, user_id)
+        # Capture BEFORE the delete — the row is gone afterwards.
+        deleted_word_count = chapter.word_count
         await self._repo.delete(chapter)
+
+        # STATS-001 (ADR-095): deletes are honest negative deltas (net-words).
+        if self._writing_stats_recorder is not None:
+            await self._writing_stats_recorder.record_delta(
+                user_id=user_id,
+                novel_id=novel_id,
+                chapter_id=chapter_id,
+                delta_words=-deleted_word_count,
+            )
+
         logger.info("chapter_deleted", chapter_id=str(chapter_id))
 
     # -- Version methods --
@@ -198,8 +227,22 @@ class ChapterService:
         latest = await self._repo.get_latest_version_number(chapter_id)
         await self._repo.save_version(chapter, latest + 1, source="manual")
 
+        # Capture BEFORE the restore — the repo write overwrites the row in place.
+        current_word_count = chapter.word_count
+
         # Restore content from version
         restored = await self._repo.update_content(chapter, version.content, version.word_count)
+
+        # STATS-001 (ADR-095): restore = signed delta (0 when content is
+        # identical — the recorder skips it internally, no guard here).
+        if self._writing_stats_recorder is not None:
+            await self._writing_stats_recorder.record_delta(
+                user_id=user_id,
+                novel_id=novel_id,
+                chapter_id=chapter_id,
+                delta_words=restored.word_count - current_word_count,
+            )
+
         logger.info(
             "chapter_version_restored",
             chapter_id=str(chapter_id),

@@ -23,6 +23,7 @@ from narrare.chapters.router import _get_service as _get_chapter_service
 from narrare.chapters.router_versions import _get_service as _get_version_service
 from narrare.chapters.service import ChapterService
 from tests.factories import make_chapter as _make_chapter_base
+from tests.fakes import FakeWritingStatsRecorder
 
 _NOW = datetime.now(UTC)
 
@@ -382,10 +383,10 @@ class TestGetVersionServiceFactory:
     def test_get_service_constructs_chapter_service_with_real_deps(self) -> None:
         """_get_service creates a ChapterService with real repository instances.
 
-        Covers router_versions.py:30-37 — the _get_service function body.
+        Covers router_versions.py _get_service — incl. STATS-001 recorder injection.
         """
         session = AsyncMock()
-        service = _get_version_service(session)
+        service = _get_version_service(session, FakeWritingStatsRecorder())
 
         assert isinstance(service, ChapterService)
         assert isinstance(service._repo, ChapterRepository)
@@ -395,3 +396,4 @@ class TestGetVersionServiceFactory:
         assert isinstance(service._novel_service, NovelService)
         # volume_repo should be set (not None)
         assert service._volume_repo is not None
+        assert service._writing_stats_recorder is not None  # STATS-001 recorder wired
