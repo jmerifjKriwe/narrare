@@ -12,10 +12,6 @@ behavior):
 - **Repository round-trip** over the fake upsert session: set → stored,
   unset (``{"target_words": null}``) → stored, and an autosave-only PATCH
   never touches ``writing_goals``.
-- **``parse_target_words``**: pure typed-accessor matrix (NULL column, empty,
-  null target, int, non-int garbage, bool). Shape here — the ≤ 0 "no goal"
-  POLICY stays in the analytics service (separation pinned by
-  ``test_negative_target_passes_through_shape_not_policy``).
 - **``ProjectSettingsGoalSource``**: pure adapter over a fake repository
   (set / NULL / missing row — the ≤ 0 policy stays downstream) + runtime
   ``GoalSource`` conformance; the repository's read-only
@@ -23,6 +19,10 @@ behavior):
 - **Service with the REAL source**: goal block appears in the writing report
   when set, absent when unset (E4 pinned the seam with a fake source; E5
   pins the real one end-to-end at service level over a fake repository).
+- **Corrupt stored rows** (fix round 1): JSONB is schemaless, so reads
+  degrade everywhere — the degrade group (``parse_target_words`` garbage
+  matrix, corrupt-row service + router tests) lives in the sibling
+  ``test_writing_goals_corrupt_rows.py`` (RULE-04).
 
 No real DB: the fake session models the house upsert ``get()`` (mirrors
 ``test_settings_repository_update.py``), ``FakeDbSession`` pins the
@@ -45,7 +45,7 @@ from narrare.settings.schemas import (
     ProjectSettingsResponse,
     UpdateProjectSettingsRequest,
 )
-from narrare.settings.writing_goals import ProjectSettingsGoalSource, parse_target_words
+from narrare.settings.writing_goals import ProjectSettingsGoalSource
 from tests.fakes.fake_db_session import FakeDbSession, FakeResult
 
 if TYPE_CHECKING:
@@ -151,8 +151,13 @@ class TestWritingGoalsPatchSchema:
         request = UpdateProjectSettingsRequest(autosave_interval=60)
         assert request.model_dump(exclude_none=True) == {"autosave_interval": 60}
 
-    def test_response_schema_exposes_the_typed_shape(self) -> None:
-        """GET round-trip: the stored dict validates into the nested payload."""
+    def test_response_schema_passes_the_stored_goal_through(self) -> None:
+        """GET round-trip: the stored object passes through unvalidated.
+
+        The response side is deliberately loose (fix round 1 — strict v1
+        shape lives on the request payload): a corrupt stored row must
+        never fail the read, so the raw dict is emitted as-is.
+        """
         payload = {
             "novel_id": str(_NOVEL_ID),
             "autosave_interval": 30,
@@ -168,8 +173,7 @@ class TestWritingGoalsPatchSchema:
             "updated_at": datetime(2026, 10, 8, tzinfo=UTC).isoformat(),
         }
         response = ProjectSettingsResponse.model_validate(payload)
-        assert response.writing_goals is not None
-        assert response.writing_goals.target_words == 50000
+        assert response.writing_goals == {"target_words": 50000}
 
         unset = ProjectSettingsResponse.model_validate({**payload, "writing_goals": None})
         assert unset.writing_goals is None
@@ -220,49 +224,23 @@ class TestProjectSettingsRepositoryWritingGoals:
 
 
 # ---------------------------------------------------------------------------
-# Typed accessor: parse_target_words (shape, not policy)
-# ---------------------------------------------------------------------------
-
-
-class TestParseTargetWords:
-    """Pure matrix over the v1 JSONB shape ``{"target_words": int | null}``."""
-
-    def test_null_column_reads_as_no_goal(self) -> None:
-        assert parse_target_words(None) is None
-
-    def test_empty_object_reads_as_no_goal(self) -> None:
-        assert parse_target_words({}) is None
-
-    def test_null_target_reads_as_no_goal(self) -> None:
-        assert parse_target_words({"target_words": None}) is None
-
-    def test_int_target_passes_through(self) -> None:
-        assert parse_target_words({"target_words": 50000}) == 50000
-
-    def test_negative_target_passes_through_shape_not_policy(self) -> None:
-        """The accessor reports the stored int; the ≤ 0 no-goal POLICY lives
-        in the analytics service (``_goal_block``). One concern each."""
-        assert parse_target_words({"target_words": -5}) == -5
-
-    @pytest.mark.parametrize("hand_edited", ["50000", 1.5, True, [50000]])
-    def test_non_int_targets_read_as_no_goal(self, hand_edited: Any) -> None:
-        """Hand-edited/foreign rows degrade to "no goal" — never crash the read."""
-        assert parse_target_words({"target_words": hand_edited}) is None
-
-
-# ---------------------------------------------------------------------------
 # ProjectSettingsGoalSource over a fake repository (+ read-only query pin)
 # ---------------------------------------------------------------------------
 
 
 class _FakeGoalsRepo:
-    """ProjectSettingsRepository stand-in recording ``get_writing_goals`` reads."""
+    """ProjectSettingsRepository stand-in recording ``get_writing_goals`` reads.
 
-    def __init__(self, stored: dict[str, object] | None) -> None:
+    ``stored`` is deliberately ``object | None`` — a corrupt JSONB value is
+    exactly what the DB can deliver despite the repository's dict annotation
+    (fix round 1), and the real source must degrade on it.
+    """
+
+    def __init__(self, stored: object | None) -> None:
         self._stored = stored
         self.read_novel_ids: list[Any] = []
 
-    async def get_writing_goals(self, novel_id: Any) -> dict[str, object] | None:
+    async def get_writing_goals(self, novel_id: Any) -> object | None:
         self.read_novel_ids.append(novel_id)
         return self._stored
 
@@ -357,4 +335,15 @@ class TestWritingServiceWithRealGoalSource:
     @pytest.mark.parametrize("stored", [None, {"target_words": None}, {}])
     async def test_goal_block_absent_when_unset(self, stored: Any) -> None:
         report = await self._service(stored).writing_report(uuid4(), _NOVEL_ID)
+        assert report.goal is None
+
+    @pytest.mark.parametrize("corrupt", [50000, "x", [1], True])
+    async def test_goal_block_absent_when_stored_row_is_corrupt(self, corrupt: Any) -> None:
+        """Top-level non-dict JSONB (fix round 1) degrades to "no goal".
+
+        Deliberately passes a non-dict value where the repository contract
+        declares ``dict[str, object] | None`` — corruption is exactly what
+        the DB can deliver despite the annotation.
+        """
+        report = await self._service(corrupt).writing_report(uuid4(), _NOVEL_ID)
         assert report.goal is None

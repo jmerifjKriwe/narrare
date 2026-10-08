@@ -51,7 +51,15 @@ class ProjectSettingsResponse(BaseModel):
     # Read from the ORM column added in migration 0039 (defaults True).
     use_series_voice: bool = True
     # STATS-001 (spec E-4/E-5): the stored v1 goal object; null = no goal.
-    writing_goals: WritingGoalsPayload | None = None
+    # RESPONSE side is a deliberate LOOSE passthrough (fix round 1): JSONB
+    # is schemaless, so a corrupt stored row must degrade, never fail the
+    # read. Typed ``object`` on purpose — even ``dict[str, object] | None``
+    # would let pydantic reject top-level non-dict corruption (50000, "x",
+    # [1], true) and 500 the GET/PATCH; analytics degrades identically via
+    # ``settings.writing_goals.parse_target_words``. Strict v1 validation
+    # lives on the REQUEST side (``WritingGoalsPayload`` on the PATCH
+    # request below).
+    writing_goals: object | None = None
     updated_at: datetime
 
 

@@ -27,7 +27,7 @@ novel without a settings row simply has no goal.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     import uuid
@@ -38,18 +38,23 @@ if TYPE_CHECKING:
 TARGET_WORDS_KEY = "target_words"
 
 
-def parse_target_words(data: dict[str, object] | None) -> int | None:
+def parse_target_words(data: object | None) -> int | None:
     """Typed accessor for the v1 ``writing_goals`` shape.
 
     Returns the stored ``target_words`` int, or ``None`` when there is no
-    goal to report: NULL column, empty object, explicit ``null`` target, or
-    a non-int value (bool excluded explicitly — ``bool ⊂ int``; floats,
-    strings and lists are hand-edited/foreign rows that must degrade to
-    "no goal", never crash the read — RULE-11 honesty at the boundary).
+    goal to report: NULL column, empty object, explicit ``null`` target, a
+    non-int value (bool excluded explicitly — ``bool ⊂ int``; floats,
+    strings and lists are hand-edited/foreign rows), or a top-level
+    non-dict row (JSONB is schemaless — corrupt values reach this accessor
+    straight from the column). All corruption degrades to "no goal", never
+    crashes the read — RULE-11 honesty at the boundary.
     """
-    if not data:
+    if not isinstance(data, dict):
         return None
-    target = data.get(TARGET_WORDS_KEY)
+    # Re-type the narrowed dict: isinstance narrows ``object`` to
+    # ``dict[Unknown, Unknown]``; the v1 contract keys/values are precise.
+    typed = cast("dict[str, object]", data)
+    target = typed.get(TARGET_WORDS_KEY)
     if isinstance(target, bool) or not isinstance(target, int):
         return None
     return target

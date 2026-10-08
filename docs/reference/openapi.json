@@ -21171,13 +21171,12 @@
           },
           "writing_goals": {
             "anyOf": [
-              {
-                "$ref": "#/components/schemas/WritingGoalsPayload"
-              },
+              {},
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Writing Goals"
           },
           "updated_at": {
             "type": "string",

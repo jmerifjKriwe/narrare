@@ -89,9 +89,10 @@ def _streaks(active: set[date], today: date) -> WritingStreaks:
 class NullGoalSource:
     """Default :class:`GoalSource` — reports "no goal" for every novel.
 
-    Placeholder until E5 lands ``ProjectSettings.writing_goals``: E5 swaps
-    exactly this object at the DI factory (``dependencies.py``); the service
-    and router never change.
+    Fallback for the ``goal_source=None`` constructor path: E5 landed
+    ``ProjectSettings.writing_goals`` and the DI factory
+    (``dependencies.py``) wires ``ProjectSettingsGoalSource`` in its
+    place; the service and router never change.
     """
 
     async def target_words(self, novel_id: UUID) -> int | None:

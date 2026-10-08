@@ -169,9 +169,10 @@ class WritingQueryServiceProtocol(Protocol):
 class GoalSource(Protocol):
     """Read seam for a novel's writing-goal target (spec E-4).
 
-    ``None`` = the novel has no goal set. Implemented until E5 lands
-    ``ProjectSettings.writing_goals`` by ``NullGoalSource`` (always
-    ``None``); E5 swaps it at the DI factory without touching consumers.
+    ``None`` = the novel has no goal set. Default ``NullGoalSource``
+    (always ``None``); since E5 the DI factory wires
+    ``ProjectSettingsGoalSource`` (``ProjectSettings.writing_goals``)
+    without touching consumers.
     """
 
     async def target_words(self, novel_id: uuid.UUID) -> int | None: ...
