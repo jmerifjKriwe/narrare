@@ -44,7 +44,7 @@ By default ``OpenAIChatModel`` maps the ``max_tokens`` model setting to
 ``max_completion_tokens``; Z.AI silently ignores that field, which would drop
 runtime output caps (ADR-045) and let generation run unbounded. Upstream's
 ``ZaiProvider.model_profile`` does **not** set this flag (verified against
-pydantic-ai 2.31.0), so Narrare declares the delta here.
+pydantic-ai 2.53.0), so Narrare declares the delta here.
 
 ``supports_thinking=True`` declares the GLM thinking capability: pydantic-ai
 only resolves the unified ``ModelSettings['thinking']`` setting (mapped to
