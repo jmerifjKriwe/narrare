@@ -7,13 +7,15 @@ Status priority (first matching rule wins):
   1. EMPTY      — no stage assignment AND no written content
   2. PLANNED    — has stage assignment but no written content
   3. DEVIATED   — stage assignment differs from suggested stage
-  4. COMPLETED  — all required planned beats are addressed (content exists)
-  5. ON_TRACK   — everything aligned, writing in progress
+  3b. COMPLETED — summary + content (stronger signal)
+  4. COMPLETED  — scene-driven: all scenes COMPLETE and content exists
+                  (legacy: all required planned beats addressed)
+  5. ON_TRACK   — scenes partially worked, or everything aligned
 """
 
 from __future__ import annotations
 
-from narrare_core.planning.models import ChapterOutlineData, SyncStatus
+from narrare_core.planning.models import ChapterOutlineData, SceneStatus, SyncStatus
 
 
 class StructuralSyncChecker:
@@ -53,7 +55,17 @@ class StructuralSyncChecker:
         if outline.has_summary and outline.has_content:
             return SyncStatus.COMPLETED
 
-        # Rule 4: All required beats addressed → COMPLETED
+        # Rule 4 (scene-driven, ADR-096): scenes present ⇒ scene rules
+        if outline.scenes:
+            if (
+                all(s.status is SceneStatus.COMPLETE for s in outline.scenes)
+                and outline.has_content
+            ):
+                return SyncStatus.COMPLETED
+            if any(s.status is not SceneStatus.PLANNED for s in outline.scenes):
+                return SyncStatus.ON_TRACK
+
+        # Legacy rule 4 (frozen during transition; dies with the Core removal task)
         required_beats = [b for b in outline.planned_beats if b.required]
         if required_beats and outline.word_count > 0:
             # Heuristic: if content exists and word count is substantial,

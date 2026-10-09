@@ -7,7 +7,12 @@ from uuid import UUID, uuid4
 import pytest
 
 from narrare_core.planning.adapters.base import BeatDef
-from narrare_core.planning.models import ChapterOutlineData, SyncStatus
+from narrare_core.planning.models import (
+    ChapterOutlineData,
+    ScenePlanData,
+    SceneStatus,
+    SyncStatus,
+)
 from narrare_core.planning.sync import StructuralSyncChecker
 
 # =====================================================================
@@ -330,3 +335,66 @@ class TestSyncEdgeCases:
             SyncStatus.DEVIATED,
             SyncStatus.COMPLETED,
         }
+
+
+# =====================================================================
+# Scene-driven sync dispatch (PLAN-001, ADR-096)
+# =====================================================================
+
+
+def check(outline: ChapterOutlineData, suggested_stage: str) -> SyncStatus:
+    """Thin helper so scene-era tests read like the plan's sketches."""
+    return StructuralSyncChecker().calculate_sync_status(outline, suggested_stage)
+
+
+def _scene(status: SceneStatus, cid: UUID | None = None) -> ScenePlanData:
+    return ScenePlanData(id=cid or uuid4(), position=1, title="S", status=status)
+
+
+def _outline(
+    *,
+    stage: str = "act-1",
+    has_content: bool = False,
+    word_count: int = 0,
+    scenes: tuple[ScenePlanData, ...] = (),
+    beats: tuple[BeatDef, ...] = (),
+) -> ChapterOutlineData:
+    """Scene-era outline helper — `_make_outline` extended with scene kwargs."""
+    return ChapterOutlineData(
+        chapter_id=uuid4(),
+        stage_assignment=stage,
+        planned_beats=list(beats),
+        outline_notes="",
+        has_content=has_content,
+        word_count=word_count,
+        scenes=scenes,
+    )
+
+
+class TestSceneDrivenSync:
+    """Shape dispatch: scenes present ⇒ scene rules, else legacy beat rule."""
+
+    def test_all_complete_scenes_with_content_is_completed(self) -> None:
+        outline = _outline(has_content=True, scenes=(_scene(SceneStatus.COMPLETE),))
+        assert check(outline, "act-1") is SyncStatus.COMPLETED
+
+    def test_partial_scenes_is_on_track(self) -> None:
+        outline = _outline(
+            has_content=True,
+            scenes=(_scene(SceneStatus.COMPLETE), _scene(SceneStatus.IN_PROGRESS)),
+        )
+        assert check(outline, "act-1") is SyncStatus.ON_TRACK
+
+    def test_all_planned_scenes_with_content_falls_back_on_track(self) -> None:
+        outline = _outline(has_content=True, scenes=(_scene(SceneStatus.PLANNED),))
+        assert check(outline, "act-1") is SyncStatus.ON_TRACK
+
+    def test_all_complete_scenes_without_content_is_not_completed(self) -> None:
+        # no content → rule 2 PLANNED fires before scene rules
+        outline = _outline(has_content=False, scenes=(_scene(SceneStatus.COMPLETE),), stage="act-1")
+        assert check(outline, "act-1") is SyncStatus.PLANNED
+
+    def test_no_scenes_legacy_path_unchanged(self) -> None:
+        # beats path still applies while planned_beats exists (transition)
+        outline = _outline(has_content=True, word_count=500, beats=(BeatDef("b", "d", True),))
+        assert check(outline, "act-1") is SyncStatus.COMPLETED

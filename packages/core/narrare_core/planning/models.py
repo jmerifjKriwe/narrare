@@ -24,6 +24,45 @@ class SyncStatus(StrEnum):
     COMPLETED = "completed"
 
 
+class SceneStatus(StrEnum):
+    """Workflow status of a single planned scene (ADR-096 scene substrate)."""
+
+    PLANNED = "planned"
+    IN_PROGRESS = "in_progress"
+    COMPLETE = "complete"
+
+
+@dataclass(frozen=True, slots=True)
+class ScenePresence:
+    """One ``present_characters`` entry, name-resolved at the API boundary."""
+
+    name: str
+    goal: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ScenePlanData:
+    """Snapshot of a single planned scene for sync checking and rendering.
+
+    Names (POV/location/presences) are plain strings on purpose: hybrid KB
+    refs exist so display survives KB deletion — sync and rendering need
+    names, not KB linkage, and resolving them at the API boundary keeps
+    Core free of JSONB ref semantics (spec §3.2).
+    """
+
+    id: UUID
+    position: int
+    title: str
+    pov_character_name: str = ""  # resolved from hybrid ref at the API boundary
+    location_name: str = ""
+    present_characters: tuple[ScenePresence, ...] = ()
+    purpose: str = ""
+    conflict: str = ""
+    resolution: str = ""
+    beats: tuple[str, ...] = ()
+    status: SceneStatus = SceneStatus.PLANNED
+
+
 @dataclass(frozen=True, slots=True)
 class ChapterOutlineData:
     """Snapshot of a single chapter's outline data for sync checking."""
@@ -35,6 +74,9 @@ class ChapterOutlineData:
     has_content: bool  # whether the chapter has actual written content
     word_count: int
     has_summary: bool = False  # whether the chapter has been summarized
+    # Scene substrate (ADR-096): appended after existing fields with a default
+    # so pre-scene constructors stay valid; empty tuple ⇒ legacy beat path.
+    scenes: tuple[ScenePlanData, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +98,9 @@ class StoryboardView:
 
 __all__ = [
     "ChapterOutlineData",
+    "ScenePlanData",
+    "ScenePresence",
+    "SceneStatus",
     "StageAssignment",
     "StoryboardView",
     "SyncStatus",
