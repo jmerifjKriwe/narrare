@@ -165,3 +165,65 @@ class TestRemapPreviewItemContract:
         field_names = set(RemapPreviewItem.model_fields.keys())
         for f in ("chapter_id", "chapter_title", "old_stage", "new_stage"):
             assert f in field_names, f"RemapPreviewItem missing field '{f}'"
+
+
+class TestScenePlanAggregateResponseContract:
+    """ScenePlanAggregateResponse — whole-chapter scene aggregate (PLAN-001)."""
+
+    def test_scene_plan_aggregate_has_required_fields(self) -> None:
+        from narrare.planning.schemas_scenes import ScenePlanAggregateResponse
+
+        field_names = set(ScenePlanAggregateResponse.model_fields.keys())
+        for f in ("chapter_id", "scenes", "version_updated_at"):
+            assert f in field_names, f"ScenePlanAggregateResponse missing field '{f}'"
+
+    def test_scene_plan_aggregate_chapter_id_is_uuid(self) -> None:
+        from narrare.planning.schemas_scenes import ScenePlanAggregateResponse
+
+        ann = ScenePlanAggregateResponse.model_fields["chapter_id"].annotation
+        assert ann is uuid.UUID, f"Expected chapter_id to be UUID, got {ann}"
+
+
+class TestSceneSchemaContract:
+    """SceneSchema — one scene; doubles as the whole-aggregate save item."""
+
+    def test_scene_schema_has_required_fields(self) -> None:
+        from narrare.planning.schemas_scenes import SceneSchema
+
+        field_names = set(SceneSchema.model_fields.keys())
+        for f in (
+            "id",
+            "position",
+            "title",
+            "pov_character_ref",
+            "location_ref",
+            "present_characters",
+            "purpose",
+            "conflict",
+            "resolution",
+            "beats",
+            "status",
+            "created_at",
+            "updated_at",
+        ):
+            assert f in field_names, f"SceneSchema missing field '{f}'"
+
+    def test_scene_schema_status_is_limited_to_spec_values(self) -> None:
+        from narrare.planning.schemas_scenes import SceneSchema
+
+        ann = str(SceneSchema.model_fields["status"].annotation)
+        for value in ("planned", "in_progress", "complete"):
+            assert value in ann, f"SceneSchema.status missing Literal value '{value}': {ann}"
+
+
+class TestScenePlanSaveRequestContract:
+    """ScenePlanSaveRequest — whole-aggregate PUT body."""
+
+    def test_save_request_has_scenes_list(self) -> None:
+        from narrare.planning.schemas_scenes import ScenePlanSaveRequest
+
+        field_names = set(ScenePlanSaveRequest.model_fields.keys())
+        assert "scenes" in field_names, "ScenePlanSaveRequest missing field 'scenes'"
+
+        ann = str(ScenePlanSaveRequest.model_fields["scenes"].annotation)
+        assert "list" in ann.lower(), f"Expected scenes to be list type, got {ann}"

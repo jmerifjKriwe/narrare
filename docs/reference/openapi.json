@@ -2831,6 +2831,134 @@
         }
       }
     },
+    "/api/v1/planning/scenes/{novel_id}/{chapter_id}": {
+      "get": {
+        "tags": [
+          "planning",
+          "planning"
+        ],
+        "summary": "Get Scene Plans",
+        "description": "Return the chapter's scene plans ordered by position (no auto-create).",
+        "operationId": "get_scene_plans_api_v1_planning_scenes__novel_id___chapter_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenePlanAggregateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "planning",
+          "planning"
+        ],
+        "summary": "Save Scene Plans",
+        "description": "Whole-aggregate diff-sync save; returns the fresh aggregate.",
+        "operationId": "save_scene_plans_api_v1_planning_scenes__novel_id___chapter_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenePlanSaveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenePlanAggregateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/planning/storyboard/{novel_id}": {
       "get": {
         "tags": [
@@ -22260,6 +22388,213 @@
         ],
         "title": "SceneNextResponse",
         "description": "Response for next scene generation."
+      },
+      "ScenePlanAggregateResponse": {
+        "properties": {
+          "chapter_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Chapter Id"
+          },
+          "scenes": {
+            "items": {
+              "$ref": "#/components/schemas/SceneSchema"
+            },
+            "type": "array",
+            "title": "Scenes"
+          },
+          "version_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Version Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chapter_id",
+          "scenes",
+          "version_updated_at"
+        ],
+        "title": "ScenePlanAggregateResponse",
+        "description": "Whole-chapter aggregate — scenes ordered by position."
+      },
+      "ScenePlanSaveRequest": {
+        "properties": {
+          "scenes": {
+            "items": {
+              "$ref": "#/components/schemas/SceneSchema"
+            },
+            "type": "array",
+            "title": "Scenes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scenes"
+        ],
+        "title": "ScenePlanSaveRequest",
+        "description": "Whole-aggregate save payload — diff-synced server-side by scene id."
+      },
+      "ScenePresenceSchema": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "goal": {
+            "type": "string",
+            "title": "Goal",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ScenePresenceSchema",
+        "description": "One ``present_characters`` entry."
+      },
+      "SceneRefSchema": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "SceneRefSchema",
+        "description": "Hybrid KB ref (AD-1 pattern) — ``id`` links to the KB entry, ``name``\nkeeps display alive when the entry is dead. ``id=None`` = name-only ref."
+      },
+      "SceneSchema": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Position"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Title",
+            "default": ""
+          },
+          "pov_character_ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SceneRefSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "location_ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SceneRefSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "present_characters": {
+            "items": {
+              "$ref": "#/components/schemas/ScenePresenceSchema"
+            },
+            "type": "array",
+            "title": "Present Characters",
+            "default": []
+          },
+          "purpose": {
+            "type": "string",
+            "title": "Purpose",
+            "default": ""
+          },
+          "conflict": {
+            "type": "string",
+            "title": "Conflict",
+            "default": ""
+          },
+          "resolution": {
+            "type": "string",
+            "title": "Resolution",
+            "default": ""
+          },
+          "beats": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Beats",
+            "default": []
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "in_progress",
+              "complete"
+            ],
+            "title": "Status",
+            "default": "planned"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "position",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SceneSchema",
+        "description": "One scene in a chapter's scene plan."
       },
       "SentenceAnalysis": {
         "properties": {
