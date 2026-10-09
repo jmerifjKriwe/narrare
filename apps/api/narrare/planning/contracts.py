@@ -2,6 +2,7 @@
 
 Defines interfaces for:
 - OutlineRepositoryProtocol: DB queries for chapter outlines
+- ScenePlanRepositoryProtocol: DB queries for chapter scene plans (PLAN-001)
 - SyncCheckerProtocol: structural sync status calculation
 - StoryboardServiceProtocol: business logic for storyboard feature
 - CharacterArcServiceProtocol: character arc generation
@@ -16,6 +17,7 @@ __all__ = [
     "CharacterAgeServiceProtocol",
     "CharacterArcServiceProtocol",
     "OutlineRepositoryProtocol",
+    "ScenePlanRepositoryProtocol",
     "StoryboardServiceProtocol",
     "SyncCheckerProtocol",
     "TemporalConsistencyServiceProtocol",
@@ -43,7 +45,7 @@ from narrare.planning.timeline_contracts import (  # re-export for backward comp
 if TYPE_CHECKING:
     import uuid
 
-    from narrare.planning.models import ChapterOutline
+    from narrare.planning.models import ChapterOutline, ScenePlan
     from narrare.planning.schemas import (
         OutlineResponse,
         OutlineUpdateRequest,
@@ -67,6 +69,18 @@ class OutlineRepositoryProtocol(Protocol):
         outline_notes: str = "",
     ) -> ChapterOutline: ...
     async def update(self, chapter_id: uuid.UUID, **fields: object) -> ChapterOutline: ...
+
+
+@runtime_checkable
+class ScenePlanRepositoryProtocol(Protocol):
+    """Protocol for scene plan persistence (PLAN-001 — ADR-096)."""
+
+    async def list_by_chapter(self, chapter_id: uuid.UUID) -> list[ScenePlan]: ...
+    async def list_by_novel(self, novel_id: uuid.UUID) -> list[ScenePlan]: ...
+    async def get(self, scene_id: uuid.UUID) -> ScenePlan | None: ...
+    async def bulk_replace(
+        self, chapter_id: uuid.UUID, rows: list[ScenePlan]
+    ) -> list[ScenePlan]: ...
 
 
 @runtime_checkable
