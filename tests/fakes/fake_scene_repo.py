@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy.exc import IntegrityError
@@ -31,7 +32,10 @@ class FakeScenePlanRepository:
     through seeded chapters (INNER JOIN mirror — scenes whose chapter was
     never seeded are not returned) and orders by chapter, then scene
     position. Seed chapters via :meth:`seed_chapters` so novel scoping has
-    data to join against. Timestamps are caller-provided (no DB defaults).
+    data to join against. ``bulk_replace`` also mirrors the real flush +
+    refresh server defaults: ``created_at`` is stamped on INSERT (preserved
+    from the stored row on UPDATE) and ``updated_at`` on every save —
+    caller-provided timestamps are never overwritten (T4 fidelity fix).
     """
 
     def __init__(self) -> None:
@@ -99,9 +103,18 @@ class FakeScenePlanRepository:
             del self._scenes[scene_id]
 
         result: list[ScenePlan] = []
+        now = datetime.now(UTC)
         for position, incoming in enumerate(rows, start=1):
+            stored = self._scenes.get(incoming.id)
             incoming.chapter_id = chapter_id
             incoming.position = position
+            # Mirror the real flush + refresh server defaults: created_at is
+            # a server_default set on INSERT (preserved from the stored row
+            # on UPDATE), updated_at fires on every flush via onupdate.
+            if incoming.created_at is None:
+                incoming.created_at = stored.created_at if stored is not None else now
+            if incoming.updated_at is None:
+                incoming.updated_at = now
             self._scenes[incoming.id] = incoming
             result.append(incoming)
         return result
