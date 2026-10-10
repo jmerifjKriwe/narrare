@@ -15,10 +15,12 @@ from narrare.consistency.ref_index_helpers import (
     chapter_ref_values,
     iter_scalar_refs,
     parse_uuid,
-    storyboard_texts,
+    scene_texts,
+    storyboard_notes_texts,
 )
 from narrare.planning.models import ChapterOutline
 from narrare_core.context.integration_contracts import RefIntegrityIssue
+from tests.factories import make_scene_plan
 
 
 def _chapter(*, content: str = "", pov_character_id: str = "") -> Chapter:
@@ -79,31 +81,89 @@ class TestChapterRefValues:
         assert chapter_ref_values(chapter) == []
 
 
-class TestStoryboardTexts:
-    def test_collects_beat_text_and_outline_notes(self) -> None:
-        outline = _outline(
-            planned_beats=[{"text": "Alice meets the dragon"}, {"text": "Bob flees"}],
-            outline_notes="Notes about the guild",
+class TestStoryboardNotesTexts:
+    """PLAN-001 T15 (spec §7): the beat scan is replaced by the scene scan.
+
+    The outline's own free-text notes remain storyboard scan surface;
+    ``planned_beats`` is no longer read anywhere (scene plans superseded
+    it — the column itself drops in T17).
+    """
+
+    def test_collects_outline_notes(self) -> None:
+        outline = _outline(outline_notes="Notes about the guild")
+        texts = storyboard_notes_texts(outline)
+
+        assert texts == [(f"chapter_outlines[{outline.id}].outline_notes", "Notes about the guild")]
+
+    def test_no_notes_returns_empty(self) -> None:
+        assert storyboard_notes_texts(_outline()) == []
+        assert storyboard_notes_texts(_outline(outline_notes="")) == []
+        assert storyboard_notes_texts(_outline(planned_beats=[{"text": "legacy beat"}])) == []
+
+
+class TestSceneTexts:
+    """Scene-plan scan for the ref-index (spec §7) — shared helper via
+    planning's public surface; locations ``scene_plans[{id}].{field}``."""
+
+    def test_scans_all_scene_text_fields_with_locations(self) -> None:
+        scene = make_scene_plan(
+            title="The Ambush at the Gate",
+            purpose="John must reach the gate before dawn.",
+            conflict="Mara blocks the path.",
+            resolution="John talks his way past.",
+            beats=["John reaches the gate", "Mara confronts him"],
+            pov_character_ref={"id": "pov-1", "name": "John Smith"},
+            location_ref={"id": "loc-1", "name": "The Castle"},
+            present_characters=[
+                {"name": "John Smith", "goal": "warn the guard"},
+                {"name": "Mara", "goal": ""},
+            ],
         )
-        texts = storyboard_texts(outline)
-        locations = [loc for loc, _ in texts]
 
-        assert any(".planned_beats[0].text" in loc for loc in locations)
-        assert any(".planned_beats[1].text" in loc for loc in locations)
-        assert any(".outline_notes" in loc for loc in locations)
-        assert len(texts) == 3
+        pairs = dict(scene_texts(scene))
 
-    def test_skips_non_string_beat_text(self) -> None:
-        outline = _outline(planned_beats=[{"text": 123}, {"text": None}])
-        assert storyboard_texts(outline) == []
+        base = f"scene_plans[{scene.id}]"
+        assert pairs[f"{base}.title"] == "The Ambush at the Gate"
+        assert pairs[f"{base}.purpose"] == "John must reach the gate before dawn."
+        assert pairs[f"{base}.conflict"] == "Mara blocks the path."
+        assert pairs[f"{base}.resolution"] == "John talks his way past."
+        assert pairs[f"{base}.beats[0]"] == "John reaches the gate"
+        assert pairs[f"{base}.beats[1]"] == "Mara confronts him"
+        assert pairs[f"{base}.present_characters[0].name"] == "John Smith"
+        assert pairs[f"{base}.present_characters[0].goal"] == "warn the guard"
+        assert pairs[f"{base}.present_characters[1].name"] == "Mara"
+        assert f"{base}.present_characters[1].goal" in pairs
+        assert pairs[f"{base}.pov_character_ref.name"] == "John Smith"
+        assert pairs[f"{base}.location_ref.name"] == "The Castle"
 
-    def test_skips_non_dict_beats(self) -> None:
-        outline = _outline(planned_beats=["not-a-dict", 42, None])  # type: ignore[list-item]
-        assert storyboard_texts(outline) == []
+    def test_empty_core_fields_yield_empty_string_pairs(self) -> None:
+        """Pins the shared T14 contract: the four core fields are always
+        yielded (empty text no-ops the word-split scan downstream)."""
+        scene = make_scene_plan(title="", purpose="", conflict="", resolution="")
 
-    def test_empty_beats_and_notes_returns_empty(self) -> None:
-        assert storyboard_texts(_outline()) == []
-        assert storyboard_texts(_outline(planned_beats=[])) == []
+        pairs = dict(scene_texts(scene))
+
+        base = f"scene_plans[{scene.id}]"
+        assert pairs == {
+            f"{base}.title": "",
+            f"{base}.purpose": "",
+            f"{base}.conflict": "",
+            f"{base}.resolution": "",
+        }
+
+    def test_skips_non_dict_presence_entries(self) -> None:
+        scene = make_scene_plan(present_characters=["garbage", 42])  # type: ignore[list-item]
+        locations = [loc for loc, _ in scene_texts(scene)]
+        assert not any("present_characters" in loc for loc in locations)
+
+    def test_skips_non_string_ref_names(self) -> None:
+        scene = make_scene_plan(
+            pov_character_ref={"id": "pov-1", "name": 123},
+            location_ref="not-a-dict",
+        )
+        locations = [loc for loc, _ in scene_texts(scene)]
+        assert not any("pov_character_ref" in loc for loc in locations)
+        assert not any("location_ref" in loc for loc in locations)
 
 
 class TestParseUuid:

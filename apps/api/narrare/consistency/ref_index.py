@@ -15,7 +15,8 @@ from narrare.consistency.ref_index_helpers import (
     chapter_ref_values,
     iter_scalar_refs,
     parse_uuid,
-    storyboard_texts,
+    scene_texts,
+    storyboard_notes_texts,
 )
 
 if TYPE_CHECKING:
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
 
     from narrare.chapters.models import Chapter
     from narrare.kb.models import KBEntry
-    from narrare.planning.models import ChapterOutline, TimelineEvent
+    from narrare.planning.models import ChapterOutline, ScenePlan, TimelineEvent
     from narrare_core.context.integration_contracts import (
         RefIntegrityIssue,
         RefResolutionStatus,
@@ -44,6 +45,12 @@ class _OutlineRepoProtocol(Protocol):
     async def get_all_for_novel(self, novel_id: uuid.UUID) -> Sequence[ChapterOutline]: ...
 
 
+class _SceneRepoProtocol(Protocol):
+    """Minimal scene-plan read surface for the storyboard scan (spec §7)."""
+
+    async def list_by_novel(self, novel_id: uuid.UUID) -> Sequence[ScenePlan]: ...
+
+
 class _ChapterRepoProtocol(Protocol):
     async def list_by_novel(
         self,
@@ -58,8 +65,10 @@ class CrossFeatureRefIndexImpl:
     Args:
         kb_repo: KB repository used for authoritative entity lookup.
         timeline_repo: Timeline event repository.
-        outline_repo: Storyboard outline repository.
+        outline_repo: Storyboard outline repository (free-text notes scan).
         chapter_repo: Chapter repository for frontmatter refs.
+        scene_repo: Scene-plan repository (spec §7 scene text scan — the
+            planned-beats scan's replacement, PLAN-001 T15).
     """
 
     def __init__(
@@ -69,11 +78,13 @@ class CrossFeatureRefIndexImpl:
         timeline_repo: _TimelineRepoProtocol,
         outline_repo: _OutlineRepoProtocol,
         chapter_repo: _ChapterRepoProtocol,
+        scene_repo: _SceneRepoProtocol,
     ) -> None:
         self._kb_repo = kb_repo
         self._timeline_repo = timeline_repo
         self._outline_repo = outline_repo
         self._chapter_repo = chapter_repo
+        self._scene_repo = scene_repo
 
     async def check_refs(
         self,
@@ -215,14 +226,27 @@ class CrossFeatureRefIndexImpl:
     async def _check_storyboard_refs(self, novel_id: uuid.UUID) -> list[RefIntegrityIssue]:
         """Detect storyboard refs that still name currently deprecated KB entries.
 
-        Storyboard beats are free text, so hard-deleted names cannot be
-        reconstructed without a tombstone store. The write-side rename hook
-        catches old-name occurrences when the old name is still available.
+        PLAN-001 T15 (spec §7): scans the outline's free-text notes and the
+        scene plans' text fields (via the shared ``iter_scene_texts``
+        scan); ``planned_beats`` is no longer read. Storyboard text is
+        free-form, so hard-deleted names cannot be reconstructed without a
+        tombstone store — the write-side rename hook catches old-name
+        occurrences when the old name is still available.
         """
         issues: list[RefIntegrityIssue] = []
         outlines = await self._outline_repo.get_all_for_novel(novel_id)
         for outline in outlines:
-            for text_location, text in storyboard_texts(outline):
+            for text_location, text in storyboard_notes_texts(outline):
+                issue = await self._deprecated_name_issue(
+                    novel_id=novel_id,
+                    text=text,
+                    location=text_location,
+                )
+                if issue is not None:
+                    issues.append(issue)
+        scenes = await self._scene_repo.list_by_novel(novel_id)
+        for scene in scenes:
+            for text_location, text in scene_texts(scene):
                 issue = await self._deprecated_name_issue(
                     novel_id=novel_id,
                     text=text,

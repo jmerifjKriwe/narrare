@@ -6,8 +6,11 @@ wires it from the injected :class:`OutlineRepository` via the
 is targeted. This test closes the gap for real: it asserts that when
 ``StorySuggestService`` runs with a ``chapter_id`` whose outline exists, the
 composed ``PromptContext.extra["chapter_outline"]`` is **NON-EMPTY at
-runtime** and carries the stage/beats/notes — the model genuinely receives
+runtime** and carries the stage/scenes/notes — the model genuinely receives
 it, not a literal ``""``.
+
+PLAN-001 T15 (ADR-096): scenes come from the injected ``ScenePlanRepository``
+and render as numbered blocks (spec §7); ``planned_beats`` is no longer read.
 
 The empty case (no ``chapter_id``) is legitimate RULE-11: story-suggest is a
 project-level tool and a chapter need not be selected. That case stays
@@ -22,13 +25,19 @@ See:
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from narrare.planning.models import ChapterOutline
+from narrare.planning.models import ChapterOutline, ScenePlan
 from narrare_core.llm.model_config import ResolvedModelConfig
+from tests.factories import make_scene_plan
 from tests.fakes import FakeOutlineRepository
+from tests.fakes.fake_scene_repo import FakeScenePlanRepository
+
+if TYPE_CHECKING:
+    from narrare.planning.contracts import ScenePlanRepositoryProtocol
 from tests.unit.api.writing._story_suggest_test_helpers import (
     FakeComposedInvocation,
     FakeComposer,
@@ -44,21 +53,31 @@ from tests.unit.api.writing._story_suggest_test_helpers import (
 
 
 def _make_outline(chapter_id: uuid.UUID) -> ChapterOutline:
-    """Build a ChapterOutline carrying stage + beats + notes."""
+    """Build a ChapterOutline carrying stage + notes (scene-driven since T15)."""
     return ChapterOutline(
         id=uuid.uuid4(),
         chapter_id=chapter_id,
         stage_assignment="act-1",
-        planned_beats=[
-            {"text": "Lyra arrives at the keep"},
-            {"text": "The storm breaks over the valley"},
-        ],
         outline_notes="Establish tension before the betrayal.",
     )
 
 
-def _build_service(outline_repo: object | None) -> object:
-    """Build a StorySuggestService wired with the given outline repo."""
+def _make_scene(chapter_id: uuid.UUID) -> ScenePlan:
+    """Build a ScenePlan row for the targeted chapter."""
+    return make_scene_plan(
+        chapter_id=chapter_id,
+        position=1,
+        title="The Ambush at the Gate",
+        purpose="Lyra must slip past the guard before dawn.",
+        beats=["Lyra reaches the gate", "The horn sounds"],
+    )
+
+
+def _build_service(
+    outline_repo: object | None,
+    scene_repo: ScenePlanRepositoryProtocol | None = None,
+) -> object:
+    """Build a StorySuggestService wired with the given repos."""
     from narrare._app.dependencies_services import StaticModelResolution
     from narrare.writing.story_suggest_service import StorySuggestService
     from narrare_core.llm.model_routing import ResolvedModel
@@ -78,6 +97,7 @@ def _build_service(outline_repo: object | None) -> object:
         ),
         composer=FakeComposer(),  # type: ignore[arg-type]
         outline_repo=outline_repo,  # type: ignore[arg-type]
+        scene_repo=scene_repo,
     )
 
 
@@ -115,12 +135,14 @@ async def _chapter_outline(service: object, request: object) -> str:
 @pytest.mark.asyncio
 async def test_chapter_outline_non_empty_when_chapter_targeted() -> None:
     """A request with a chapter_id whose outline exists renders a non-empty
-    ``chapter_outline`` carrying the stage, beats, and notes — the model
-    receives the data, not a stub."""
+    ``chapter_outline`` carrying the stage, rendered scene blocks, and
+    notes — the model receives the data, not a stub (spec §7)."""
     chapter_id = uuid.uuid4()
     outline_repo = FakeOutlineRepository()
     outline_repo.seed(_make_outline(chapter_id))
-    service = _build_service(outline_repo)
+    scene_repo = FakeScenePlanRepository()
+    scene_repo.seed(_make_scene(chapter_id))
+    service = _build_service(outline_repo, scene_repo)
     request = make_request(chapter_id=chapter_id)
 
     value = await _chapter_outline(service, request)
@@ -128,11 +150,28 @@ async def test_chapter_outline_non_empty_when_chapter_targeted() -> None:
         "chapter_outline must be non-empty at runtime when a chapter is "
         "targeted and its outline exists (§7: fed, not stubbed)."
     )
-    # Real outline data reaches the slot (not proxy padding).
+    # Real outline + scene data reaches the slot (not proxy padding).
     assert "act-1" in value
-    assert "Lyra arrives at the keep" in value
-    assert "The storm breaks" in value
+    assert "Scene 1: The Ambush at the Gate" in value
+    assert "Lyra must slip past the guard" in value
+    assert "1. Lyra reaches the gate" in value
     assert "Establish tension" in value
+
+
+@pytest.mark.asyncio
+async def test_chapter_outline_renders_stage_and_notes_without_scene_repo() -> None:
+    """RULE-11 (documented degradation): no scene repo wired → the scene
+    blocks are omitted; stage + notes still render."""
+    chapter_id = uuid.uuid4()
+    outline_repo = FakeOutlineRepository()
+    outline_repo.seed(_make_outline(chapter_id))
+    service = _build_service(outline_repo, None)
+    request = make_request(chapter_id=chapter_id)
+
+    value = await _chapter_outline(service, request)
+    assert "act-1" in value
+    assert "Establish tension" in value
+    assert "Scene 1:" not in value
 
 
 @pytest.mark.asyncio

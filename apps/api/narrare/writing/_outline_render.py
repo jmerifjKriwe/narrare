@@ -1,13 +1,20 @@
 """Compact chapter-outline rendering for prompt context (RULE-06 helper).
 
 The story-suggest service renders the targeted chapter's outline (stage
-assignment, planned beats, free-form notes) into the ``chapter_outline``
+assignment, planned scenes, free-form notes) into the ``chapter_outline``
 prompt slot so suggestions stay grounded in the established plan. Keeping
 that rendering out of the service keeps the service focused on orchestration
 (RULE-06) and under its size limit (RULE-04).
 
-The :class:`ChapterOutline` model lives in the planning domain; this module
-only reads its fields — it performs no persistence or business logic.
+The :class:`ChapterOutline`/:class:`ScenePlan` models live in the planning
+domain; this module only reads their fields — it performs no persistence
+or business logic.
+
+PLAN-001 T15 (ADR-096, spec §7): scene plans replaced planned beats — the
+slot renders stage + numbered scene blocks (via Core's shared
+:func:`render_scene_for_prompt`, spec §6.3 — one format, no drift with the
+writing pipeline) + notes. ``planned_beats`` is no longer read; the column
+itself drops in T17.
 
 See:
     docs/_shared/CONSTRAINTS.md (RULE-04, RULE-06, RULE-11)
@@ -18,50 +25,75 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+from narrare_core.planning.scene_render import render_scene_for_prompt
+from narrare_core.writing.requests import SceneSpec
+
 if TYPE_CHECKING:
-    from narrare.planning.models import ChapterOutline
+    from collections.abc import Sequence
 
-# Beat dict keys tried in order when extracting beat text. The planned_beats
-# JSONB shape is not locked down across all creators, so the renderer tolerates
-# the common variants and falls back to a minimal stringification.
-_BEAT_TEXT_KEYS: tuple[str, ...] = ("text", "description", "title", "label", "summary")
+    from narrare.planning.models import ChapterOutline, ScenePlan
 
 
-def _extract_beat_text(beat: object) -> str:
-    """Extract a human-readable line from a single planned-beat entry.
+def _ref_name(ref: object) -> str:
+    """Hybrid ``{id, name}`` JSONB ref → display name ('' when absent).
 
-    ``planned_beats`` is JSONB whose entry shape varies across creators, so
-    this tolerates the common dict variants and falls back to a minimal
-    stringification for anything else.
-
-    Args:
-        beat: One beat entry (typically a dict, but JSONB permits anything).
-
-    Returns:
-        The extracted/trimmed text (possibly empty).
+    Refs are user content of arbitrary runtime shape; only a dict carrying
+    a string name resolves (same tolerance as planning's ``_ref_name``).
     """
-    if isinstance(beat, dict):
-        beat_dict = cast("dict[str, object]", beat)
-        for key in _BEAT_TEXT_KEYS:
-            candidate = str(beat_dict.get(key, "") or "").strip()
-            if candidate:
-                return candidate
-        return str(beat_dict).strip()
-    return str(beat).strip()
+    if isinstance(ref, dict):
+        name = cast("dict[object, object]", ref).get("name", "")
+        if isinstance(name, str):
+            return name
+    return ""
 
 
-def render_chapter_outline(outline: ChapterOutline) -> str:
+def _scene_spec(row: ScenePlan) -> SceneSpec:
+    """ORM scene row → Core ``SceneSpec`` view for the shared renderer.
+
+    Names are resolved from the hybrid KB refs at the render boundary;
+    ``present_characters`` JSONB is runtime-shaped, so each entry is
+    narrowed before reading ``name``/``goal`` (backfill tolerance).
+    """
+    presences: list[tuple[str, str]] = []
+    raw_presences: Sequence[object] = cast("Sequence[object]", row.present_characters or [])
+    for presence in raw_presences:
+        if not isinstance(presence, dict):
+            continue
+        presence_mapping = cast("dict[object, object]", presence)
+        name = presence_mapping.get("name", "")
+        goal = presence_mapping.get("goal", "")
+        if isinstance(name, str):
+            presences.append((name, goal if isinstance(goal, str) else ""))
+    return SceneSpec(
+        title=row.title,
+        pov_character_name=_ref_name(row.pov_character_ref),
+        location_name=_ref_name(row.location_ref),
+        present_characters=tuple(presences),
+        purpose=row.purpose,
+        conflict=row.conflict,
+        resolution=row.resolution,
+        beats=tuple(row.beats or ()),
+        status=str(row.status),
+    )
+
+
+def render_chapter_outline(outline: ChapterOutline, scenes: Sequence[ScenePlan] = ()) -> str:
     """Render a chapter outline into a compact, model-readable text block.
 
-    Carries the stage assignment, planned beats (numbered), and free-form
-    notes — omitting any section that is empty so the block stays compact.
+    Carries the stage assignment, one compact block per planned scene
+    (numbered in list order via the Core renderer — spec §6.3/§7), and
+    free-form notes — omitting any section that is empty so the block
+    stays compact.
 
     Args:
         outline: The chapter outline to render.
+        scenes: The chapter's scene plans (position-ordered, as returned
+            by ``ScenePlanRepository.list_by_chapter``).
 
     Returns:
-        A compact multi-line string, or ``""`` when the outline carries no
-        content (RULE-11) so the caller can degrade cleanly.
+        A compact multi-line string, or ``""`` when neither the outline
+        nor the scenes carry content (RULE-11) so the caller can degrade
+        cleanly.
     """
     parts: list[str] = []
 
@@ -69,15 +101,12 @@ def render_chapter_outline(outline: ChapterOutline) -> str:
     if stage:
         parts.append(f"Stage: {stage}")
 
-    beats = outline.planned_beats or []
-    if beats:
-        beat_lines: list[str] = []
-        for index, beat in enumerate(beats, start=1):
-            text = _extract_beat_text(beat)
-            if text:
-                beat_lines.append(f"  {index}. {text}")
-        if beat_lines:
-            parts.append("Beats:\n" + "\n".join(beat_lines))
+    scene_blocks = [
+        render_scene_for_prompt(_scene_spec(scene), number=position)
+        for position, scene in enumerate(scenes, start=1)
+    ]
+    if scene_blocks:
+        parts.append("\n\n".join(scene_blocks))
 
     notes = (outline.outline_notes or "").strip()
     if notes:

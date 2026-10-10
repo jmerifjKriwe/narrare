@@ -37,6 +37,7 @@ from narrare._app.dependencies import (
 from narrare._app.dependencies_services import LazyModelResolution, get_model_routing_resolver
 from narrare.novels.repository import NovelRepository
 from narrare.planning.repository import OutlineRepository
+from narrare.planning.repository_scenes import ScenePlanRepository
 from narrare.writing.story_suggest_service import StorySuggestService
 from narrare_core.llm.intents import LLMIntent
 
@@ -80,5 +81,6 @@ async def get_story_suggest_service(
         model_resolution=model_resolution,
         composer=get_composer(),
         outline_repo=OutlineRepository(session),
+        scene_repo=ScenePlanRepository(session),
         invocation_pipeline=get_invocation_pipeline(),
     )
