@@ -50,7 +50,9 @@
       "temporal_consistency",
       "character_arc",
       "timeline_extraction",
-      "timeline"
+      "timeline",
+      "scene_plan_draft",
+      "scene_plan_refine"
     ],
     "generation": [
       "names"

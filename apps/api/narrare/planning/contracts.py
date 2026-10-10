@@ -17,6 +17,7 @@ __all__ = [
     "CharacterAgeServiceProtocol",
     "CharacterArcServiceProtocol",
     "OutlineRepositoryProtocol",
+    "SceneAIServiceProtocol",
     "ScenePlanRepositoryProtocol",
     "StoryboardServiceProtocol",
     "SyncCheckerProtocol",
@@ -53,6 +54,12 @@ if TYPE_CHECKING:
         StoryboardResponse,
         SyncStatusResponse,
     )
+    from narrare.planning.schemas_scenes import (
+        SceneDraftRequest,
+        SceneDraftResponse,
+        SceneRefineRequest,
+        SceneRefineResponse,
+    )
 
 
 @runtime_checkable
@@ -69,6 +76,36 @@ class OutlineRepositoryProtocol(Protocol):
         outline_notes: str = "",
     ) -> ChapterOutline: ...
     async def update(self, chapter_id: uuid.UUID, **fields: object) -> ChapterOutline: ...
+
+
+@runtime_checkable
+class SceneAIServiceProtocol(Protocol):
+    """Protocol for scene-plan AI draft/refine generators (PLAN-001 T8).
+
+    Zero-write surface: implementations only READ through the injected
+    repositories; proposals are returned to the client and applied via
+    the aggregate PUT (spec §5.2). Degradation contract: no configured
+    AI provider is NOT an error — ``ai_unavailable=True`` responses,
+    HTTP 200 (AI-optional feature).
+    """
+
+    async def draft(
+        self,
+        chapter_id: uuid.UUID,
+        request: SceneDraftRequest,
+        user_id: uuid.UUID,
+        *,
+        novel_id: uuid.UUID,
+    ) -> SceneDraftResponse: ...
+
+    async def refine(
+        self,
+        chapter_id: uuid.UUID,
+        request: SceneRefineRequest,
+        user_id: uuid.UUID,
+        *,
+        novel_id: uuid.UUID,
+    ) -> SceneRefineResponse: ...
 
 
 @runtime_checkable
