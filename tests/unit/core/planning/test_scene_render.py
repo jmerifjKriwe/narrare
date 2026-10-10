@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from narrare_core.planning.models import ScenePlanData, ScenePresence
 from narrare_core.planning.scene_render import render_scene_for_prompt
+from narrare_core.writing.requests import SceneSpec
 
 GOLDEN_FULL = "\n".join(
     [
@@ -97,3 +98,50 @@ class TestRenderSceneForPrompt:
         assert render_scene_for_prompt(scene, number=1) == (
             "Scene 1: T\nCharacters: Mara (wants to stop him); John Smith"
         )
+
+
+class TestRenderSceneForPromptSpecInput:
+    """The renderer accepts writing's SceneSpec (pair presences) structurally."""
+
+    def test_spec_renders_identical_golden_block(self) -> None:
+        spec = SceneSpec(
+            title="The Ambush at the Gate",
+            pov_character_name="John Smith",
+            location_name="The Castle",
+            present_characters=(
+                ("John Smith", "wants to warn the guard"),
+                ("Mara", "wants to stop him"),
+            ),
+            purpose="John must reach the gate before dawn.",
+            conflict="Mara blocks the path; loyalty vs duty.",
+            resolution="John talks his way past but at a cost.",
+            beats=("John reaches the gate", "Mara confronts him", "The horn sounds"),
+        )
+        assert render_scene_for_prompt(spec, number=2) == GOLDEN_FULL
+
+    def test_spec_presences_as_pairs_goal_and_no_goal(self) -> None:
+        spec = SceneSpec(
+            title="T",
+            present_characters=(("Mara", "wants to stop him"), ("John Smith", "")),
+        )
+        assert render_scene_for_prompt(spec, number=1) == (
+            "Scene 1: T\nCharacters: Mara (wants to stop him); John Smith"
+        )
+
+    def test_spec_empty_sections_omitted_and_number_none(self) -> None:
+        spec = SceneSpec(title="Only a title", purpose="p")
+        assert render_scene_for_prompt(spec) == "Only a title\nPurpose: p"
+
+    def test_spec_and_plan_data_render_byte_identical(self) -> None:
+        plan = _full_scene()
+        spec = SceneSpec(
+            title=plan.title,
+            pov_character_name=plan.pov_character_name,
+            location_name=plan.location_name,
+            present_characters=tuple((p.name, p.goal) for p in plan.present_characters),
+            purpose=plan.purpose,
+            conflict=plan.conflict,
+            resolution=plan.resolution,
+            beats=plan.beats,
+        )
+        assert render_scene_for_prompt(spec, number=5) == render_scene_for_prompt(plan, number=5)

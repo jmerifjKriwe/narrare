@@ -16,6 +16,7 @@ from uuid import UUID, uuid4
 from narrare_core.writing._enums import ConnectionState, StreamStatus
 
 if TYPE_CHECKING:
+    from narrare_core.planning.models import ScenePlanData
     from narrare_core.writing._enums import GenerationMode
 
 
@@ -42,6 +43,53 @@ class GenerationRequest:
     tone: str = "balanced"
     writing_language: str = "en"
     id: UUID = field(default_factory=uuid4)
+    # Structured scene plans (PLAN-001 spec §8.1): when non-empty, the
+    # scene-by-scene pipeline renders these directly instead of parsing
+    # ``outline``. Default keeps every pre-scene constructor valid.
+    scenes: tuple[SceneSpec, ...] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SceneSpec:
+    """Structured scene input for scene-by-scene generation (spec §8.1).
+
+    Identity-free plan data — the writer needs names and beats, not KB
+    linkage or database ids. ``present_characters`` holds ``(name, goal)``
+    pairs. Use :func:`scene_spec_from_plan` to adapt a planning
+    ``ScenePlanData`` snapshot; API-layer schemas map into this directly.
+    """
+
+    title: str = ""
+    pov_character_name: str = ""
+    location_name: str = ""
+    present_characters: tuple[tuple[str, str], ...] = ()
+    purpose: str = ""
+    conflict: str = ""
+    resolution: str = ""
+    beats: tuple[str, ...] = ()
+    status: str = "planned"
+
+
+def scene_spec_from_plan(scene: ScenePlanData) -> SceneSpec:
+    """Adapt a planning ``ScenePlanData`` snapshot into a ``SceneSpec``.
+
+    Core-internal adapter (spec §8.1): keeps the API layer free of mapping
+    logic. ``ScenePresence`` entries flatten to ``(name, goal)`` pairs;
+    ``status`` maps to its plain string value.
+    """
+    return SceneSpec(
+        title=scene.title,
+        pov_character_name=scene.pov_character_name,
+        location_name=scene.location_name,
+        present_characters=tuple((p.name, p.goal) for p in scene.present_characters),
+        purpose=scene.purpose,
+        conflict=scene.conflict,
+        resolution=scene.resolution,
+        beats=scene.beats,
+        # str() covers both SceneStatus members (StrEnum → value) and raw
+        # strings sneaking in via unvalidated dataclass construction.
+        status=str(scene.status),
+    )
 
 
 # ---------------------------------------------------------------------------

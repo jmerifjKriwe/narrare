@@ -14,6 +14,7 @@ import structlog
 
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.result import StreamChunk, TokenUsage
+from narrare_core.planning.scene_render import render_scene_for_prompt
 from narrare_core.shared.errors import WritingError
 
 if TYPE_CHECKING:
@@ -39,7 +40,15 @@ async def stream_scene_by_scene(
     base_url: str | None = None,
 ) -> AsyncIterator[StreamChunk]:
     """Generate chapter scene by scene with break markers."""
-    scenes = parse_scenes(request.outline or context.chapter_outline)
+    if request.scenes:
+        # Structured scene plans (PLAN-001 spec §8.1): render each spec
+        # through the shared renderer — parse_scenes() is NOT used on this
+        # path. len(scenes) == len(request.scenes) below.
+        scenes = [
+            render_scene_for_prompt(spec, number=idx) for idx, spec in enumerate(request.scenes, 1)
+        ]
+    else:
+        scenes = parse_scenes(request.outline or context.chapter_outline)
     total_usage = TokenUsage(prompt_tokens=0, completion_tokens=0, total_tokens=0)
 
     for idx, scene_outline in enumerate(scenes, 1):
