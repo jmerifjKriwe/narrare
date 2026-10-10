@@ -22,9 +22,8 @@ if TYPE_CHECKING:
     from narrare.writing.schemas import GenerateRequest
     from narrare.writing.schemas_coauthor import ChangeFeedback
     from narrare_core.memory.protocols import FeedbackCollector, SessionMemoryCollector
-    from narrare_core.writing._enums import GenerationMode
-    from narrare_core.writing.models import GenerationRequest as CoreGenerationRequest
 
+from narrare.writing._pipeline_request_support import scenes_payload
 from narrare_core.memory.models import FeedbackAction, FeedbackEvent
 from narrare_core.shared.errors import NotFoundError, ValidationError
 
@@ -268,11 +267,22 @@ async def create_request_row(
     user_id: str,
     mode: str,
     tone: str,
+    scenes: list[dict[str, object]] | None = None,
 ) -> UUID:
     """Insert a ``generation_request`` row, mapping FK races to 404.
 
     Shared by the SSE-direct writing services (RULE-04); the
     ``IntegrityError`` catch backstops deletions between gate and insert.
+
+    Args:
+        repo: Generation repository (``create_if_no_active``).
+        chapter_id: The chapter requested by the caller.
+        novel_id: The novel the request is scoped to.
+        user_id: Authenticated user id (converted to ``UUID`` here).
+        mode: Generation mode string.
+        tone: Tone string.
+        scenes: Optional structured scene snapshot (PLAN-001 spec §8.2)
+            persisted verbatim; ``None`` = legacy scene-less request.
 
     Raises:
         NotFoundError: If the insert violates a foreign key.
@@ -281,7 +291,9 @@ async def create_request_row(
         The id of the newly created generation request.
     """
     try:
-        return await repo.create_if_no_active(chapter_id, novel_id, UUID(user_id), mode, tone)
+        return await repo.create_if_no_active(
+            chapter_id, novel_id, UUID(user_id), mode, tone, scenes=scenes
+        )
     except IntegrityError as exc:
         raise NotFoundError("Chapter or Novel", identifier=str(chapter_id)) from exc
 
@@ -322,33 +334,13 @@ async def start_generation_request(
     await verify_chapter_access(chapter_repo, novel_repo, chapter_id, novel_id, user_id)
     validate_generation_input(request)
     return await create_request_row(
-        repo, chapter_id, novel_id, user_id, request.mode.value, request.tone
-    )
-
-
-def build_pipeline_request(
-    request_model: GenerationRequest,
-    mode: GenerationMode,
-) -> CoreGenerationRequest:
-    """Build a core GenerationRequest from the ORM model.
-
-    Args:
-        request_model: The persisted generation request.
-        mode: The resolved generation mode enum.
-
-    Returns:
-        A :class:`~narrare_core.writing.models.GenerationRequest` for the
-        pipeline.
-    """
-    from narrare_core.writing.models import GenerationRequest as CoreGenRequest
-
-    return CoreGenRequest(
-        id=request_model.id,
-        chapter_id=request_model.chapter_id,
-        project_id=request_model.novel_id,
-        user_id=request_model.user_id,
-        mode=mode,
-        tone=request_model.tone,
+        repo,
+        chapter_id,
+        novel_id,
+        user_id,
+        request.mode.value,
+        request.tone,
+        scenes=scenes_payload(request),
     )
 
 

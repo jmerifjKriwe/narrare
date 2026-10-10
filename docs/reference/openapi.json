@@ -18151,6 +18151,20 @@
             "minLength": 2,
             "title": "Language",
             "default": "en"
+          },
+          "scenes": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/GenerateSceneSchema"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenes"
           }
         },
         "type": "object",
@@ -18184,6 +18198,67 @@
         ],
         "title": "GenerateResponse",
         "description": "Response after starting generation."
+      },
+      "GenerateSceneSchema": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "pov_character_name": {
+            "type": "string",
+            "title": "Pov Character Name",
+            "default": ""
+          },
+          "location_name": {
+            "type": "string",
+            "title": "Location Name",
+            "default": ""
+          },
+          "present_characters": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Present Characters",
+            "default": []
+          },
+          "purpose": {
+            "type": "string",
+            "title": "Purpose",
+            "default": ""
+          },
+          "conflict": {
+            "type": "string",
+            "title": "Conflict",
+            "default": ""
+          },
+          "resolution": {
+            "type": "string",
+            "title": "Resolution",
+            "default": ""
+          },
+          "beats": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Beats",
+            "default": []
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "planned"
+          }
+        },
+        "type": "object",
+        "title": "GenerateSceneSchema",
+        "description": "One structured scene in a generation request (PLAN-001 spec §8.1).\n\n``status`` is an unvalidated transport string by design (T9\ncarry-forward — Core ``SceneSpec.status`` is a plain ``str``)."
       },
       "GeneratedName": {
         "properties": {
