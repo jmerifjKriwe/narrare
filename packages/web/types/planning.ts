@@ -63,3 +63,91 @@ export interface RemapResponse {
   ai_confidence?: number;
   confirmed: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Scene Plans (PLAN-001) — mirrors planning/schemas_scenes.py field-exactly
+// ---------------------------------------------------------------------------
+
+export type SceneStatus = "planned" | "in_progress" | "complete";
+
+/** Hybrid KB ref (AD-1 pattern) — id null = name-only ref (entry dead/unknown). */
+export interface SceneRef {
+  id: string | null;
+  name: string;
+}
+
+export interface ScenePresence {
+  id: string | null;
+  name: string;
+  goal: string;
+}
+
+export interface ScenePlan {
+  id: string;
+  position: number;
+  title: string;
+  pov_character_ref: SceneRef | null;
+  location_ref: SceneRef | null;
+  present_characters: ScenePresence[];
+  purpose: string;
+  conflict: string;
+  resolution: string;
+  beats: string[];
+  status: SceneStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Whole-chapter aggregate — scenes ordered by position. */
+export interface ScenePlanAggregate {
+  chapter_id: string;
+  scenes: ScenePlan[];
+  version_updated_at: string;
+}
+
+/** Whole-aggregate save payload — diff-synced server-side by scene id. */
+export interface ScenePlanSaveRequest {
+  scenes: ScenePlan[];
+}
+
+/** AI scene proposal — ScenePlan minus identity/status/timestamps. */
+export interface SceneProposal {
+  title: string;
+  pov_character_ref: SceneRef | null;
+  location_ref: SceneRef | null;
+  present_characters: ScenePresence[];
+  purpose: string;
+  conflict: string;
+  resolution: string;
+  beats: string[];
+}
+
+/** Chapter-level AI draft request (all fields optional — server defaults). */
+export interface SceneDraftRequest {
+  structure_type?: string;
+  outline_notes?: string;
+  chapter_summary?: string;
+  neighbor_summaries?: string;
+  instruction?: string;
+  /** 0 = model chooses (3–8 enforced server-side). */
+  scene_count?: number;
+}
+
+export interface SceneDraftResponse {
+  proposals: SceneProposal[];
+  ai_unavailable: boolean;
+}
+
+/** Single-scene AI refine — full scene carried so unsaved drafts are refinable. */
+export interface SceneRefineRequest {
+  scene: ScenePlan;
+  prev_scene_summary?: string;
+  next_scene_summary?: string;
+  chapter_summary?: string;
+  instruction?: string;
+}
+
+export interface SceneRefineResponse {
+  proposal: SceneProposal | null;
+  ai_unavailable: boolean;
+}

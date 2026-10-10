@@ -1,13 +1,18 @@
 import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 import { server } from "@/mocks/server";
+import type { ScenePlan } from "@/types/planning";
 import { setAccessToken } from "../client";
 import {
   confirmRemap,
+  draftScenes,
   getOutline,
+  getScenePlans,
   getStoryboard,
   getSyncStatus,
   previewRemap,
+  refineScene,
+  saveScenePlans,
   updateOutline,
 } from "../planning";
 
@@ -17,12 +22,28 @@ import {
  * Follows the same pattern as client.test.ts and generation.test.ts:
  * - Uses MSW server to intercept requests
  * - Verifies correct URL construction, method, and request body
- * - Tests all 6 API functions
+ * - Tests all 10 API functions
  */
 
 // ---------------------------------------------------------------------------
 // MSW handlers for planning endpoints
 // ---------------------------------------------------------------------------
+
+const sceneFixture: ScenePlan = {
+  id: "s-1",
+  position: 1,
+  title: "The Ambush at the Gate",
+  pov_character_ref: { id: "pov-1", name: "John Smith" },
+  location_ref: { id: "loc-1", name: "The Castle" },
+  present_characters: [{ id: null, name: "Mara", goal: "Stop him" }],
+  purpose: "John must reach the gate before dawn.",
+  conflict: "Mara blocks the path.",
+  resolution: "John talks his way past but at a cost.",
+  beats: ["John reaches the gate", "The horn sounds"],
+  status: "in_progress",
+  created_at: "2026-06-01T00:00:00Z",
+  updated_at: "2026-06-02T00:00:00Z",
+};
 
 const planningHandlers = [
   http.get("*/api/v1/planning/storyboard/:novelId", async () => {
@@ -88,6 +109,57 @@ const planningHandlers = [
       outline_notes: body.outline_notes ?? "",
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-06-01T00:00:00Z",
+    });
+  }),
+
+  http.get("*/api/v1/planning/scenes/:novelId/:chapterId", async ({ params }) => {
+    return HttpResponse.json({
+      chapter_id: params.chapterId,
+      scenes: [sceneFixture],
+      version_updated_at: "2026-06-02T00:00:00Z",
+    });
+  }),
+
+  http.put("*/api/v1/planning/scenes/:novelId/:chapterId", async ({ params, request }) => {
+    const body = (await request.json()) as { scenes?: unknown[] };
+    return HttpResponse.json({
+      chapter_id: params.chapterId,
+      scenes: body.scenes ?? [],
+      version_updated_at: "2026-06-02T00:00:00Z",
+    });
+  }),
+
+  http.post("*/api/v1/planning/scenes/:novelId/:chapterId/draft", async () => {
+    return HttpResponse.json({
+      proposals: [
+        {
+          title: "The Horn at Dusk",
+          pov_character_ref: { id: null, name: "Mara" },
+          location_ref: null,
+          present_characters: [],
+          purpose: "Mara decides to warn the guard.",
+          conflict: "Loyalty against duty.",
+          resolution: "",
+          beats: ["Mara writes the letter"],
+        },
+      ],
+      ai_unavailable: false,
+    });
+  }),
+
+  http.post("*/api/v1/planning/scenes/:novelId/:chapterId/refine", async () => {
+    return HttpResponse.json({
+      proposal: {
+        title: "The Ambush at the Gate (revised)",
+        pov_character_ref: { id: "pov-1", name: "John Smith" },
+        location_ref: null,
+        present_characters: [],
+        purpose: "Sharpened purpose.",
+        conflict: "Sharpened conflict.",
+        resolution: "Sharpened resolution.",
+        beats: ["New beat"],
+      },
+      ai_unavailable: false,
     });
   }),
 
@@ -194,6 +266,84 @@ describe("Planning API client", () => {
     });
   });
 
+  describe("getScenePlans", () => {
+    it("should GET /planning/scenes/:novelId/:chapterId and return the aggregate", async () => {
+      const result = await getScenePlans("novel-1", "ch-1");
+
+      expect(result.chapter_id).toBe("ch-1");
+      expect(result.scenes).toHaveLength(1);
+      expect(result.scenes[0].pov_character_ref).toEqual({ id: "pov-1", name: "John Smith" });
+      expect(result.scenes[0].present_characters[0].name).toBe("Mara");
+      expect(result.scenes[0].status).toBe("in_progress");
+      expect(result.version_updated_at).toBe("2026-06-02T00:00:00Z");
+    });
+  });
+
+  describe("saveScenePlans", () => {
+    it("should PUT /planning/scenes/:novelId/:chapterId with the whole aggregate", async () => {
+      const scenes = [sceneFixture];
+      const result = await saveScenePlans("novel-1", "ch-1", { scenes });
+
+      expect(result.chapter_id).toBe("ch-1");
+      expect(result.scenes).toEqual(scenes);
+    });
+  });
+
+  describe("draftScenes", () => {
+    it("should POST /planning/scenes/:novelId/:chapterId/draft with the request body", async () => {
+      let capturedBody: Record<string, unknown> | undefined;
+      server.use(
+        http.post("*/api/v1/planning/scenes/:novelId/:chapterId/draft", async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ proposals: [], ai_unavailable: false });
+        }),
+      );
+
+      const body = { structure_type: "three_act", instruction: "Draft 4 scenes", scene_count: 4 };
+      const result = await draftScenes("novel-1", "ch-1", body);
+
+      expect(capturedBody).toEqual(body);
+      expect(result.proposals).toEqual([]);
+      expect(result.ai_unavailable).toBe(false);
+    });
+
+    it("should return proposals with no identity fields", async () => {
+      const result = await draftScenes("novel-1", "ch-1", {});
+
+      expect(result.proposals).toHaveLength(1);
+      expect(result.proposals[0].title).toBe("The Horn at Dusk");
+      expect(Object.keys(result.proposals[0])).not.toContain("id");
+      expect(Object.keys(result.proposals[0])).not.toContain("position");
+    });
+  });
+
+  describe("refineScene", () => {
+    it("should POST /planning/scenes/:novelId/:chapterId/refine with scene + instruction", async () => {
+      let capturedBody: Record<string, unknown> | undefined;
+      server.use(
+        http.post("*/api/v1/planning/scenes/:novelId/:chapterId/refine", async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ proposal: null, ai_unavailable: false });
+        }),
+      );
+
+      const body = { scene: sceneFixture, instruction: "Tighten the conflict" };
+      await refineScene("novel-1", "ch-1", body);
+
+      expect(capturedBody).toEqual(body);
+    });
+
+    it("should return the refined proposal", async () => {
+      const result = await refineScene("novel-1", "ch-1", {
+        scene: sceneFixture,
+        instruction: "Tighten the conflict",
+      });
+
+      expect(result.proposal?.title).toBe("The Ambush at the Gate (revised)");
+      expect(result.proposal?.beats).toEqual(["New beat"]);
+    });
+  });
+
   describe("URL construction", () => {
     it("should construct correct storyboard URL", async () => {
       let capturedUrl = "";
@@ -230,6 +380,19 @@ describe("Planning API client", () => {
 
       await getOutline("novel-42", "chapter-99");
       expect(capturedUrl).toContain("/planning/outlines/novel-42/chapter-99");
+    });
+
+    it("should construct correct scene plans URL with novel and chapter IDs", async () => {
+      let capturedUrl = "";
+      server.use(
+        http.get("*/api/v1/planning/scenes/:novelId/:chapterId", ({ request }) => {
+          capturedUrl = new URL(request.url).pathname;
+          return HttpResponse.json({ chapter_id: "ch-x", scenes: [], version_updated_at: "" });
+        }),
+      );
+
+      await getScenePlans("novel-42", "chapter-99");
+      expect(capturedUrl).toContain("/planning/scenes/novel-42/chapter-99");
     });
   });
 });
