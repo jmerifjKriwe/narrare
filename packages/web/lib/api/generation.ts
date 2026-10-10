@@ -41,6 +41,30 @@ export type GenerationMode =
   | "interview_assisted"
   | "interactive_session";
 
+/** One present character in a generation-request scene (name + goal). */
+export interface GenerateScenePresence {
+  name: string;
+  goal: string;
+}
+
+/**
+ * One structured scene in a generation request — field-exact mirror of
+ * `GenerateSceneSchema` (apps/api/narrare/writing/schemas_scenes.py,
+ * RULE-17): identity-free plan data, `status` is an unvalidated transport
+ * string by design (T9 carry-forward, PLAN-001 spec §8.1).
+ */
+export interface GenerateScene {
+  title: string;
+  pov_character_name: string;
+  location_name: string;
+  present_characters: GenerateScenePresence[];
+  purpose: string;
+  conflict: string;
+  resolution: string;
+  beats: string[];
+  status: string;
+}
+
 /** Request body for starting a chapter generation. */
 export interface GenerateRequest {
   mode: GenerationMode;
@@ -49,6 +73,8 @@ export interface GenerateRequest {
   outline?: string | null;
   prompt?: string | null;
   auto_continue?: boolean;
+  /** Structured scene snapshot (PLAN-001 spec §8.1) — persisted verbatim. */
+  scenes?: GenerateScene[] | null;
 }
 
 // ---------------------------------------------------------------------------

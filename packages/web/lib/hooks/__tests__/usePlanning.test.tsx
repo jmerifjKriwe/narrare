@@ -1,8 +1,9 @@
 /**
- * usePlanning hook tests — TanStack Query hooks for storyboard & outlines.
+ * usePlanning hook tests — TanStack Query hooks for storyboard & scenes.
  *
- * Tests: useStoryboard, useChapterOutline, useUpdateOutline, usePreviewRemap,
- * useConfirmRemap — fetch, disabled states, invalidation, and error paths.
+ * Tests: useStoryboard, useUpdateOutline, usePreviewRemap, useConfirmRemap,
+ * useScenePlans, useSaveScenePlans, useDraftScenes, useRefineScene — fetch,
+ * disabled states, invalidation, and error paths.
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,7 +13,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api/planning", () => ({
   getStoryboard: vi.fn(),
-  getOutline: vi.fn(),
   updateOutline: vi.fn(),
   previewRemap: vi.fn(),
   confirmRemap: vi.fn(),
@@ -25,7 +25,6 @@ vi.mock("@/lib/api/planning", () => ({
 import {
   confirmRemap,
   draftScenes,
-  getOutline,
   getScenePlans,
   getStoryboard,
   previewRemap,
@@ -34,7 +33,6 @@ import {
   updateOutline,
 } from "@/lib/api/planning";
 import {
-  useChapterOutline,
   useConfirmRemap,
   useDraftScenes,
   usePreviewRemap,
@@ -46,7 +44,6 @@ import {
 } from "@/lib/hooks/usePlanning";
 
 const mockedGetStoryboard = vi.mocked(getStoryboard);
-const mockedGetOutline = vi.mocked(getOutline);
 const mockedUpdateOutline = vi.mocked(updateOutline);
 const mockedPreviewRemap = vi.mocked(previewRemap);
 const mockedConfirmRemap = vi.mocked(confirmRemap);
@@ -113,30 +110,6 @@ describe("useStoryboard", () => {
 
     expect(result.current.fetchStatus).toBe("idle");
     expect(mockedGetStoryboard).not.toHaveBeenCalled();
-  });
-});
-
-describe("useChapterOutline", () => {
-  it("fetches the outline for a chapter", async () => {
-    mockedGetOutline.mockResolvedValueOnce(outlineFixture);
-
-    const { result } = renderHook(() => useChapterOutline("novel-1", "ch-1"), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    expect(mockedGetOutline).toHaveBeenCalledWith("novel-1", "ch-1");
-    expect(result.current.data).toBe(outlineFixture);
-  });
-
-  it("is disabled when chapterId is null", () => {
-    const { result } = renderHook(() => useChapterOutline("novel-1", null), {
-      wrapper: createWrapper(),
-    });
-
-    expect(result.current.fetchStatus).toBe("idle");
-    expect(mockedGetOutline).not.toHaveBeenCalled();
   });
 });
 

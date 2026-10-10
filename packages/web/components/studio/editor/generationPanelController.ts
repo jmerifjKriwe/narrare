@@ -17,6 +17,7 @@ import { useRef, useState } from "react";
 import type { ContextMeta, GenerateRequest } from "@/lib/api/generation";
 import { useMemoryStatus } from "@/lib/hooks/useMemory";
 import type { TokenUsage } from "@/types";
+import type { ScenePlan } from "@/types/planning";
 import { useGenerationActions } from "./useGenerationActions";
 import { useGenerationConfig } from "./useGenerationConfig";
 import { useGenerationMutations } from "./useGenerationMutations";
@@ -28,6 +29,8 @@ interface ControllerArgs {
   chapterId: string;
   onDraftAccepted: (text: string) => void;
   t: (key: string, params?: Record<string, string | number | Date>) => string;
+  /** Chapter scene plans (spec §8.1), injected from useScenePlans — see useGenerationConfig. */
+  scenePlans?: ScenePlan[] | null;
 }
 
 export function useGenerationPanelController({
@@ -35,8 +38,9 @@ export function useGenerationPanelController({
   chapterId,
   onDraftAccepted,
   t: _t,
+  scenePlans,
 }: ControllerArgs) {
-  const config = useGenerationConfig();
+  const config = useGenerationConfig({ scenePlans });
   const [draftText, setDraftText] = useState("");
   const [requestId, setRequestId] = useState<string | null>(null);
   const [wordCount, setWordCount] = useState(0);
@@ -133,11 +137,13 @@ export function useGenerationPanelController({
     setOutline: config.setOutline,
     setPrompt: config.setPrompt,
     setTone: config.setTone,
+    setUseScenePlans: config.setUseScenePlans,
     setWordTarget: config.setWordTarget,
     showRating: rating.showRating,
     targetNum: config.wordTarget > 0 ? config.wordTarget : 3000,
     tokenUsage,
     tone: config.tone,
+    useScenePlans: config.useScenePlans,
     wordCount,
     wordTarget: config.wordTarget,
   };

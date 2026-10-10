@@ -3,6 +3,7 @@
 import { Loader2, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Dispatch, SetStateAction } from "react";
+import { Switch } from "@/components/ui/switch";
 import type { GenerationMode } from "@/lib/api/generation";
 import { GenerationInputFields } from "./GenerationInputFields";
 
@@ -21,6 +22,13 @@ interface GenerationConfigProps {
   readonly setWordTarget: Dispatch<SetStateAction<number>>;
   readonly tone: string;
   readonly setTone: Dispatch<SetStateAction<string>>;
+  /** Effective "write from scene plans" (default ON while plans exist). */
+  readonly useScenePlans: boolean;
+  readonly setUseScenePlans: Dispatch<SetStateAction<boolean>>;
+  /** Whether the current chapter has scene plans at all (spec §8.1). */
+  readonly hasScenePlans: boolean;
+  /** Opens the editor scene-plan panel ("Plan scenes" link). */
+  readonly onOpenScenePlans: () => void;
   readonly isPending: boolean;
   readonly onGenerate: () => void;
   readonly onStartSession?: (mode: string) => void;
@@ -48,6 +56,10 @@ export function GenerationConfig({
   setWordTarget,
   tone,
   setTone,
+  useScenePlans,
+  setUseScenePlans,
+  hasScenePlans,
+  onOpenScenePlans,
   isPending,
   onGenerate,
   onStartSession,
@@ -77,6 +89,32 @@ export function GenerationConfig({
           </button>
         ))}
       </div>
+
+      {hasScenePlans && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <label
+              htmlFor="gen-use-scene-plans"
+              className="text-xs font-medium text-foreground cursor-pointer"
+            >
+              {t("generationPanel.useScenePlans")}
+            </label>
+            <Switch
+              id="gen-use-scene-plans"
+              checked={useScenePlans}
+              onCheckedChange={setUseScenePlans}
+              aria-label={t("generationPanel.useScenePlans")}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={onOpenScenePlans}
+            className="self-start text-xs text-primary hover:underline"
+          >
+            {t("generationPanel.planScenes")}
+          </button>
+        </div>
+      )}
 
       {showInput && (
         <GenerationInputFields

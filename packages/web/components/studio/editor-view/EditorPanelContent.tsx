@@ -5,6 +5,7 @@ import type { EditorRightPanelId } from "@/lib/stores/editorRightPanelState";
 import type { Chapter, ChapterSummary, VolumeStats } from "@/types";
 import { GenerationPanel } from "../editor/GenerationPanel";
 import { MetadataSidebar } from "../editor/MetadataSidebar";
+import { ScenePlanPanel } from "../editor/ScenePlanPanel";
 import { SessionPanel } from "../editor/SessionPanel";
 import { WikiChapterSummaryPanel } from "../kb/WikiChapterSummaryPanel";
 import { DialogueCoachPanelSlot } from "./DialogueCoachPanelSlot";
@@ -83,6 +84,14 @@ export function EditorPanelContent({
           onDraftAccepted={handleDraftAccepted}
           onClose={() => closePanel("generation")}
           onStartSession={handleStartSession}
+        />
+      );
+    case "scene_plan":
+      return (
+        <ScenePlanPanel
+          novelId={novelId}
+          chapterId={activeChapterId}
+          onClose={() => closePanel("scene_plan")}
         />
       );
     case "metadata":

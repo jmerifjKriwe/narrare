@@ -11,7 +11,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   confirmRemap,
   draftScenes,
-  getOutline,
   getScenePlans,
   getStoryboard,
   previewRemap,
@@ -41,15 +40,6 @@ export function useStoryboard(novelId: string) {
     queryKey: planningKeys.storyboard(novelId),
     queryFn: () => getStoryboard(novelId),
     enabled: !!novelId,
-  });
-}
-
-/** Fetch the outline for a specific chapter. */
-export function useChapterOutline(novelId: string, chapterId: string | null) {
-  return useQuery({
-    queryKey: planningKeys.outline(novelId, chapterId ?? ""),
-    queryFn: () => getOutline(novelId, chapterId!),
-    enabled: !!novelId && !!chapterId,
   });
 }
 

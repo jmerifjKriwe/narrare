@@ -14,6 +14,10 @@ describe("GenerationConfig", () => {
     setWordTarget: vi.fn(),
     tone: "",
     setTone: vi.fn(),
+    useScenePlans: false,
+    setUseScenePlans: vi.fn(),
+    hasScenePlans: false,
+    onOpenScenePlans: vi.fn(),
     isPending: false,
     onGenerate: vi.fn(),
     onStartSession: vi.fn(),
@@ -82,5 +86,60 @@ describe("GenerationConfig", () => {
   it("changes text for generating state", () => {
     render(<GenerationConfig {...defaultProps} isPending={true} />);
     expect(screen.getByText("generationPanel.starting")).toBeDefined();
+  });
+
+  it("renders the scene-plans switch only when the chapter has scene plans", () => {
+    const { rerender } = render(
+      <GenerationConfig {...defaultProps} hasScenePlans={true} useScenePlans={true} />,
+    );
+    expect(screen.getByRole("switch")).toBeDefined();
+
+    rerender(<GenerationConfig {...defaultProps} hasScenePlans={false} />);
+    expect(screen.queryByRole("switch")).toBeNull();
+  });
+
+  it("reflects useScenePlans and reports explicit toggles (spec §8.1)", () => {
+    const setUseScenePlans = vi.fn();
+    const { rerender } = render(
+      <GenerationConfig
+        {...defaultProps}
+        hasScenePlans={true}
+        useScenePlans={true}
+        setUseScenePlans={setUseScenePlans}
+      />,
+    );
+    expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe("true");
+
+    fireEvent.click(screen.getByRole("switch"));
+    expect(setUseScenePlans).toHaveBeenCalledWith(false);
+
+    rerender(
+      <GenerationConfig
+        {...defaultProps}
+        hasScenePlans={true}
+        useScenePlans={false}
+        setUseScenePlans={setUseScenePlans}
+      />,
+    );
+    expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("opens the scene-plan panel from the Plan scenes link", () => {
+    const onOpenScenePlans = vi.fn();
+    render(
+      <GenerationConfig
+        {...defaultProps}
+        hasScenePlans={true}
+        onOpenScenePlans={onOpenScenePlans}
+      />,
+    );
+    fireEvent.click(screen.getByText("generationPanel.planScenes"));
+    expect(onOpenScenePlans).toHaveBeenCalledOnce();
+  });
+
+  it("hides the switch and link when the chapter has no scene plans in any mode", () => {
+    render(<GenerationConfig {...defaultProps} mode="interactive_session" />);
+    expect(screen.queryByRole("switch")).toBeNull();
+    expect(screen.queryByText("generationPanel.planScenes")).toBeNull();
   });
 });

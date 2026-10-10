@@ -26,17 +26,10 @@ export interface SyncStatusResponse {
   status: SyncStatus;
 }
 
-export interface OutlineBeat {
-  title: string;
-  description: string;
-  completed: boolean;
-}
-
 export interface OutlineResponse {
   id: string;
   chapter_id: string;
   stage_assignment: string;
-  planned_beats: OutlineBeat[];
   outline_notes: string;
   created_at: string;
   updated_at: string;
@@ -44,7 +37,6 @@ export interface OutlineResponse {
 
 export interface OutlineUpdateRequest {
   stage_assignment?: string;
-  planned_beats?: OutlineBeat[];
   outline_notes?: string;
 }
 

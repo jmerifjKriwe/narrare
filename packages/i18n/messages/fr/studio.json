@@ -811,6 +811,7 @@
     "modeInteractive": "Interactif",
     "outline": "Plan",
     "outlinePlaceholder": "Décrivez la structure du chapitre ou les points clés de l'intrigue...",
+    "planScenes": "Planifier les scènes",
     "prompt": "Prompt",
     "promptPlaceholder": "De quoi l'IA doit-elle écrire ?",
     "wordTarget": "Objectif de mots",
@@ -843,6 +844,7 @@
     "clearPinnedAction": "Supprimer les épinglés",
     "outlineHelpScene": "Optionnel. Décrivez la structure des scènes, par ex. : « Scène 1 : Arrivée au château. Scène 2 : Négociation avec le roi. » Sans plan, l'IA interprétera librement.",
     "tokensTotal": "Tokens total",
+    "useScenePlans": "Écrire à partir des plans de scènes",
     "tokensPrompt": "Prompt",
     "tokensCompletion": "Completion"
   },
@@ -2060,7 +2062,9 @@
   "planning": {
     "scenes": {
       "title": "Scènes",
+      "closePanel": "Fermer le panneau de plan de scènes",
       "noChapter": "Sélectionnez un chapitre pour planifier ses scènes.",
+      "openFullPlanner": "Ouvrir le planificateur complet",
       "loading": "Chargement des scènes…",
       "empty": "Aucune scène pour l'instant. Ajoutez une scène ou générez un brouillon du chapitre avec l'IA.",
       "addScene": "Ajouter une scène",

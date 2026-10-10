@@ -7,7 +7,9 @@ import { useEffect } from "react";
 import { LearningStatus } from "@/components/studio/learning/LearningStatus";
 import { PhaseCrossfade } from "@/components/ui/phase-crossfade";
 import { isApplyShortcut } from "@/lib/ai-action-shortcuts";
+import { useScenePlans } from "@/lib/hooks/usePlanning";
 import { bannerSlideVariants } from "@/lib/motion-variants";
+import { useEditorStore } from "@/lib/stores/editorStore";
 import { ContextInspector } from "./ContextInspector";
 import { GenerationConfig } from "./GenerationConfig";
 import { GenerationDraft } from "./GenerationDraft";
@@ -32,7 +34,18 @@ export function GenerationPanel({
   onStartSession,
 }: GenerationPanelProps) {
   const t = useTranslations("studio");
-  const controller = useGenerationPanelController({ novelId, chapterId, onDraftAccepted, t });
+  const openRightPanel = useEditorStore((s) => s.openRightPanel);
+  // Scene plans feed the generation request (PLAN-001 spec §8.1); fetched here
+  // and injected into the controller so buildRequest can attach them.
+  const { data: sceneAggregate } = useScenePlans(novelId, chapterId);
+  const scenePlans = sceneAggregate?.scenes ?? null;
+  const controller = useGenerationPanelController({
+    novelId,
+    chapterId,
+    onDraftAccepted,
+    t,
+    scenePlans,
+  });
 
   // Keyboard Shortcuts (KEYBOARD-001, CR-AUFG-07-13)
   // Escape: stop (streaming) / close (review)
@@ -88,6 +101,10 @@ export function GenerationPanel({
               setWordTarget={controller.setWordTarget}
               tone={controller.tone}
               setTone={controller.setTone}
+              useScenePlans={controller.useScenePlans}
+              setUseScenePlans={controller.setUseScenePlans}
+              hasScenePlans={scenePlans !== null && scenePlans.length > 0}
+              onOpenScenePlans={() => openRightPanel("scene_plan", "toolbar")}
               isPending={controller.isLoading}
               onGenerate={controller.handleGenerate}
               onStartSession={onStartSession}

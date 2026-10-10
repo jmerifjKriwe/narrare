@@ -811,6 +811,7 @@
     "modeInteractive": "Interactive",
     "outline": "Outline",
     "outlinePlaceholder": "Describe the chapter structure or key plot points...",
+    "planScenes": "Plan scenes",
     "prompt": "Prompt",
     "promptPlaceholder": "What should the AI write about?",
     "wordTarget": "Word Target",
@@ -843,6 +844,7 @@
     "clearPinnedAction": "Clear Pinned",
     "outlineHelpScene": "Optional. Describe the scene structure, e.g.: \"Scene 1: Arrival at the castle. Scene 2: Negotiation with the king.\" Without an outline, the AI will interpret freely.",
     "tokensTotal": "Tokens total",
+    "useScenePlans": "Write from scene plans",
     "tokensPrompt": "Prompt",
     "tokensCompletion": "Completion"
   },
@@ -2060,7 +2062,9 @@
   "planning": {
     "scenes": {
       "title": "Scenes",
+      "closePanel": "Close scene plan panel",
       "noChapter": "Select a chapter to plan its scenes.",
+      "openFullPlanner": "Open full planner",
       "loading": "Loading scenes…",
       "empty": "No scenes yet. Add a scene or draft the chapter with AI.",
       "addScene": "Add scene",

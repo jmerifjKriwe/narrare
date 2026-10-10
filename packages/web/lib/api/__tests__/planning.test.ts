@@ -89,10 +89,6 @@ const planningHandlers = [
       id: "outline-1",
       chapter_id: params.chapterId,
       stage_assignment: "act-1",
-      planned_beats: [
-        { title: "Opening Hook", description: "Start with action", completed: false },
-        { title: "Meet Protagonist", description: "Introduce main character", completed: true },
-      ],
       outline_notes: "Focus on tension",
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-06-01T00:00:00Z",
@@ -105,7 +101,6 @@ const planningHandlers = [
       id: "outline-1",
       chapter_id: params.chapterId,
       stage_assignment: body.stage_assignment ?? "act-1",
-      planned_beats: body.planned_beats ?? [],
       outline_notes: body.outline_notes ?? "",
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-06-01T00:00:00Z",
@@ -217,8 +212,6 @@ describe("Planning API client", () => {
 
       expect(result.chapter_id).toBe("ch-1");
       expect(result.stage_assignment).toBe("act-1");
-      expect(result.planned_beats).toHaveLength(2);
-      expect(result.planned_beats[0].title).toBe("Opening Hook");
       expect(result.outline_notes).toBe("Focus on tension");
     });
   });
@@ -233,15 +226,14 @@ describe("Planning API client", () => {
       expect(result.stage_assignment).toBe("act-2");
     });
 
-    it("should send planned_beats and notes in request body", async () => {
-      const beats = [{ title: "New Beat", description: "A new beat", completed: false }];
+    it("should send stage and notes in the request body", async () => {
       const result = await updateOutline("novel-1", "ch-1", {
         stage_assignment: "act-1",
-        planned_beats: beats,
         outline_notes: "Updated notes",
       });
 
-      expect(result.planned_beats).toEqual(beats);
+      expect(result.stage_assignment).toBe("act-1");
+      expect(result.outline_notes).toBe("Updated notes");
     });
   });
 
@@ -370,7 +362,6 @@ describe("Planning API client", () => {
             id: "o-1",
             chapter_id: "ch-x",
             stage_assignment: "",
-            planned_beats: [],
             outline_notes: "",
             created_at: "",
             updated_at: "",
