@@ -6,7 +6,6 @@ No HTTP, no database sessions, no LLM calls.
 """
 
 from narrare_core.planning.adapters import (
-    BeatDef,
     StageDef,
     StructureAdapter,
     StructureAdapterRegistry,
@@ -25,7 +24,6 @@ from narrare_core.planning.scene_render import render_scene_for_prompt
 from narrare_core.planning.sync import StructuralSyncChecker
 
 __all__ = [
-    "BeatDef",
     "ChapterOutlineData",
     "ScenePlanData",
     "ScenePresence",

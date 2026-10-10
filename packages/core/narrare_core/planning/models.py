@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 if TYPE_CHECKING:
-    from narrare_core.planning.adapters.base import BeatDef, StageDef
+    from narrare_core.planning.adapters.base import StageDef
 
 
 class SyncStatus(StrEnum):
@@ -65,17 +65,23 @@ class ScenePlanData:
 
 @dataclass(frozen=True, slots=True)
 class ChapterOutlineData:
-    """Snapshot of a single chapter's outline data for sync checking."""
+    """Snapshot of a single chapter's outline data for sync checking.
+
+    Final shape (PLAN-001 / ADR-096): scene-based only — the legacy
+    stored-beats field is gone and a chapter's planned work lives in
+    ``scenes``; structure-template beats remain a separate adapter
+    concept (:class:`~narrare_core.planning.adapters.base.BeatDef`,
+    PLAN-003).
+    """
 
     chapter_id: UUID
     stage_assignment: str  # kebab-case stage ID (empty string if unassigned)
-    planned_beats: list[BeatDef]  # beats the outline committed to
     outline_notes: str
     has_content: bool  # whether the chapter has actual written content
     word_count: int
     has_summary: bool = False  # whether the chapter has been summarized
-    # Scene substrate (ADR-096): appended after existing fields with a default
-    # so pre-scene constructors stay valid; empty tuple ⇒ legacy beat path.
+    # Scene substrate (ADR-096): the chapter's planned scenes, ordered by
+    # position; drives the scene-based sync rules (empty tuple ⇒ none).
     scenes: tuple[ScenePlanData, ...] = ()
 
 

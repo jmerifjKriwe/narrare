@@ -170,7 +170,6 @@ def build_outline_data(
         return ChapterOutlineData(
             chapter_id=chapter.id,
             stage_assignment="",
-            planned_beats=[],  # legacy Core field — removed with the Core de-beat (T16)
             outline_notes="",
             has_content=bool(chapter.content),
             word_count=chapter.word_count,
@@ -180,7 +179,6 @@ def build_outline_data(
     return ChapterOutlineData(
         chapter_id=chapter.id,
         stage_assignment=outline.stage_assignment,
-        planned_beats=[],  # legacy Core field — removed with the Core de-beat (T16)
         outline_notes=outline.outline_notes,
         has_content=bool(chapter.content),
         word_count=chapter.word_count,
