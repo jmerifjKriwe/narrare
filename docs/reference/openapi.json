@@ -14454,30 +14454,6 @@
         "title": "BandSummaryResponse",
         "description": "Response for the band-summary GET/POST/PATCH endpoints.\n\nMirrors the ``BandSummary`` ORM model (``band_summary_models.py``): the\ngenerated ``full_summary`` / ``short_summary`` plus the optional user\n``override`` that takes precedence at assembly time (Spec 2 Task 6)."
       },
-      "BeatSchema": {
-        "properties": {
-          "title": {
-            "type": "string",
-            "title": "Title"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "default": ""
-          },
-          "completed": {
-            "type": "boolean",
-            "title": "Completed",
-            "default": false
-          }
-        },
-        "type": "object",
-        "required": [
-          "title"
-        ],
-        "title": "BeatSchema",
-        "description": "A single beat within a chapter outline."
-      },
       "BetaFeedbackItem": {
         "properties": {
           "category": {
@@ -20892,13 +20868,6 @@
             "type": "string",
             "title": "Stage Assignment"
           },
-          "planned_beats": {
-            "items": {
-              "$ref": "#/components/schemas/BeatSchema"
-            },
-            "type": "array",
-            "title": "Planned Beats"
-          },
           "outline_notes": {
             "type": "string",
             "title": "Outline Notes"
@@ -20919,7 +20888,6 @@
           "id",
           "chapter_id",
           "stage_assignment",
-          "planned_beats",
           "outline_notes",
           "created_at",
           "updated_at"
@@ -20940,20 +20908,6 @@
               }
             ],
             "title": "Stage Assignment"
-          },
-          "planned_beats": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/BeatSchema"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Planned Beats"
           },
           "outline_notes": {
             "anyOf": [

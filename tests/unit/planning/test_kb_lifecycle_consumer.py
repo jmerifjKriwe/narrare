@@ -1,13 +1,12 @@
-"""Unit + behaviour tests for KB-lifecycle consumers in the planning module.
+"""Unit + behaviour tests for the Timeline KB-lifecycle consumer (planning).
 
-Covers:
-* ``TimelineRefConsumerImpl`` — id-based hybrid JSON refs. Rename rewrites
-  the stored name (name is derived, not user content); deprecate marks
-  ``status: deprecated``; delete emits ``RefIntegrityIssue``. No rewrite
-  of user content (there is none on the timeline ref shape).
-* ``StoryboardRefConsumerImpl`` — name-based free text in
-  ``planned_beats[].text`` and ``outline_notes``. NEVER rewrites
-  (RULE-22 §7); only emits ``RefIntegrityIssue``.
+``TimelineRefConsumerImpl`` — id-based hybrid JSON refs. Rename rewrites
+the stored name (name is derived, not user content); deprecate marks
+``status: deprecated``; delete emits ``RefIntegrityIssue``. No rewrite of
+user content (there is none on the timeline ref shape).
+
+The Storyboard consumer tests live in ``test_storyboard_kb_consumer.py``
+(RULE-04 split, PLAN-001 T14).
 """
 
 from __future__ import annotations
@@ -19,14 +18,10 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 from narrare.consistency.ref_integrity_sink import InMemoryRefIntegrityIssueSink
-from narrare.planning.kb_lifecycle_consumer import (
-    StoryboardRefConsumerImpl,
-    TimelineRefConsumerImpl,
-)
-from narrare.planning.models import ChapterOutline, TimelineEvent
+from narrare.planning.kb_lifecycle_consumer import TimelineRefConsumerImpl
+from narrare.planning.models import TimelineEvent
 from narrare_core.context.integration_contracts import (
     KBEntityLifecycleObserver,
-    StoryboardRefConsumer,
     TimelineRefConsumer,
 )
 
@@ -54,17 +49,6 @@ class _FakeTimelineRepo:
         return event
 
 
-class _FakeOutlineRepo:
-    def __init__(self) -> None:
-        self.outlines: dict[UUID, ChapterOutline] = {}
-
-    def seed(self, outline: ChapterOutline) -> None:
-        self.outlines[outline.id] = outline
-
-    async def get_all_for_novel(self, novel_id: UUID) -> Sequence[ChapterOutline]:
-        return list(self.outlines.values())
-
-
 def _timeline_event(
     *,
     character_refs: list[dict[str, object]] | None = None,
@@ -76,19 +60,6 @@ def _timeline_event(
         event_name="Battle",
         character_refs=list(character_refs or []),
         location_ref=location_ref,
-    )
-
-
-def _outline(
-    *,
-    planned_beats: list[dict[str, object]] | None = None,
-    outline_notes: str = "",
-) -> ChapterOutline:
-    return ChapterOutline(
-        id=uuid4(),
-        chapter_id=uuid4(),
-        planned_beats=list(planned_beats or []),
-        outline_notes=outline_notes,
     )
 
 
@@ -268,81 +239,5 @@ class TestTimelineDelete:
         await consumer.on_kb_entity_deleted(
             novel_id=event.novel_id,
             entity_id=uuid4(),
-        )
-        assert sink.issues == []
-
-
-# ---------------------------------------------------------------------------
-# Storyboard consumer — NEVER rewrites, only emits issues
-# ---------------------------------------------------------------------------
-
-
-class TestStoryboardConsumerProtocol:
-    def test_satisfies_core_protocols(self) -> None:
-        consumer = StoryboardRefConsumerImpl(
-            outline_repo=_FakeOutlineRepo(),
-            issue_sink=InMemoryRefIntegrityIssueSink(),
-        )
-        assert isinstance(consumer, KBEntityLifecycleObserver)
-        assert isinstance(consumer, StoryboardRefConsumer)
-        assert consumer.consumer_feature == "storyboard"
-
-
-class TestStoryboardRename:
-    async def test_rename_emits_stale_name_ref_for_each_match(self) -> None:
-        sink = InMemoryRefIntegrityIssueSink()
-        repo = _FakeOutlineRepo()
-        outline = _outline(
-            planned_beats=[{"text": "John confronts the villain."}],
-            outline_notes="John arrives at the castle.",
-        )
-        repo.seed(outline)
-        consumer = StoryboardRefConsumerImpl(repo, sink)
-
-        await consumer.on_kb_entity_renamed(
-            novel_id=uuid4(),
-            entity_id=uuid4(),
-            old_name="John",
-            new_name="Jonathan",
-        )
-
-        # Two matches: one in planned_beats text, one in outline_notes.
-        issues = sink.issues
-        assert len(issues) == 2
-        assert all(i.reason == "stale_name_ref" for i in issues)
-        assert all(i.consumer_feature == "storyboard" for i in issues)
-
-    async def test_rename_does_not_rewrite_user_content(self) -> None:
-        """RULE-22 §7: planned_beats and outline_notes are user content."""
-        sink = InMemoryRefIntegrityIssueSink()
-        repo = _FakeOutlineRepo()
-        original_beats: list[dict[str, object]] = [{"text": "John fights."}]
-        original_notes = "John is here."
-        outline = _outline(planned_beats=original_beats, outline_notes=original_notes)
-        repo.seed(outline)
-        consumer = StoryboardRefConsumerImpl(repo, sink)
-
-        await consumer.on_kb_entity_renamed(
-            novel_id=uuid4(),
-            entity_id=uuid4(),
-            old_name="John",
-            new_name="Jonathan",
-        )
-
-        # CRITICAL: user content is byte-for-byte unchanged.
-        assert outline.planned_beats == [{"text": "John fights."}]
-        assert outline.outline_notes == "John is here."
-
-    async def test_rename_no_match_emits_nothing(self) -> None:
-        sink = InMemoryRefIntegrityIssueSink()
-        repo = _FakeOutlineRepo()
-        repo.seed(_outline(planned_beats=[{"text": "Anna leaves."}], outline_notes=""))
-        consumer = StoryboardRefConsumerImpl(repo, sink)
-
-        await consumer.on_kb_entity_renamed(
-            novel_id=uuid4(),
-            entity_id=uuid4(),
-            old_name="John",
-            new_name="Jonathan",
         )
         assert sink.issues == []

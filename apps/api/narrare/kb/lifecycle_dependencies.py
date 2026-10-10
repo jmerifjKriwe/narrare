@@ -45,6 +45,7 @@ def get_kb_lifecycle_dispatcher(session: SessionDep) -> KBLifecycleDispatcher:
         TimelineRefConsumerImpl,
     )
     from narrare.planning.repository import OutlineRepository
+    from narrare.planning.repository_scenes import ScenePlanRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
 
     issue_sink = LoggingRefIntegrityIssueSink()
@@ -56,6 +57,7 @@ def get_kb_lifecycle_dispatcher(session: SessionDep) -> KBLifecycleDispatcher:
             ),
             StoryboardRefConsumerImpl(
                 outline_repo=OutlineRepository(session),
+                scene_repo=ScenePlanRepository(session),
                 issue_sink=issue_sink,
             ),
             ChapterFrontmatterRefConsumerImpl(

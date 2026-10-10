@@ -85,18 +85,15 @@ class TestCreate:
         self, repo: FakeOutlineRepository
     ) -> None:
         chapter_id = uuid.uuid4()
-        beats = [{"beat": "opening"}, {"beat": "climax"}]
 
         outline = await repo.create(
             chapter_id=chapter_id,
             stage_assignment="act-2",
-            planned_beats=beats,
             outline_notes="Key reveals",
         )
 
         assert outline.chapter_id == chapter_id
         assert outline.stage_assignment == "act-2"
-        assert outline.planned_beats == beats
         assert outline.outline_notes == "Key reveals"
 
     async def test_create_defaults_optional_fields(self, repo: FakeOutlineRepository) -> None:
@@ -107,7 +104,6 @@ class TestCreate:
             stage_assignment="act-1",
         )
 
-        assert outline.planned_beats == []
         assert outline.outline_notes == ""
 
     async def test_create_stores_outline_retrievable_by_chapter_id(

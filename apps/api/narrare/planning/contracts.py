@@ -64,7 +64,11 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class OutlineRepositoryProtocol(Protocol):
-    """Protocol for chapter outline persistence."""
+    """Protocol for chapter outline persistence.
+
+    PLAN-001 T14: outlines carry stage + notes only; scene plans persist
+    through ``ScenePlanRepositoryProtocol``.
+    """
 
     async def get_by_chapter_id(self, chapter_id: uuid.UUID) -> ChapterOutline | None: ...
     async def get_all_for_novel(self, novel_id: uuid.UUID) -> list[ChapterOutline]: ...
@@ -72,7 +76,6 @@ class OutlineRepositoryProtocol(Protocol):
         self,
         chapter_id: uuid.UUID,
         stage_assignment: str,
-        planned_beats: list[dict[str, object]] | None = None,
         outline_notes: str = "",
     ) -> ChapterOutline: ...
     async def update(self, chapter_id: uuid.UUID, **fields: object) -> ChapterOutline: ...

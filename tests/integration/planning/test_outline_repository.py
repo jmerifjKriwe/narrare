@@ -104,18 +104,15 @@ class TestCreate:
         novel = await _create_novel(db_session)
         chapter = await _create_chapter(db_session, novel.id)
 
-        beats: list[dict[str, object]] = [{"title": "Beat 1", "description": "First beat"}]
         outline = await repo.create(
             chapter_id=chapter.id,
             stage_assignment="act-1",
-            planned_beats=beats,
             outline_notes="Some notes",
         )
 
         assert outline.id is not None
         assert outline.chapter_id == chapter.id
         assert outline.stage_assignment == "act-1"
-        assert outline.planned_beats == beats
         assert outline.outline_notes == "Some notes"
         assert outline.created_at is not None
         assert outline.updated_at is not None
@@ -123,7 +120,12 @@ class TestCreate:
     async def test_create_with_defaults(
         self, db_session: AsyncSession, repo: OutlineRepository
     ) -> None:
-        """Create an outline without optional fields — defaults applied."""
+        """Create an outline without optional fields — defaults applied.
+
+        The legacy ``planned_beats`` column is NOT NULL until the T17 drop;
+        ``create`` no longer names it and relies on the ORM column default
+        (empty list).
+        """
         novel = await _create_novel(db_session)
         chapter = await _create_chapter(db_session, novel.id)
 
@@ -132,6 +134,8 @@ class TestCreate:
             stage_assignment="act-2",
         )
 
+        await db_session.flush()
+        await db_session.refresh(outline)
         assert outline.planned_beats == []
         assert outline.outline_notes == ""
 
@@ -245,16 +249,13 @@ class TestUpdate:
             stage_assignment="act-1",
         )
 
-        new_beats: list[dict[str, object]] = [{"title": "New beat", "description": "Updated"}]
         updated = await repo.update(
             chapter.id,
             stage_assignment="resolution",
-            planned_beats=new_beats,
             outline_notes="Updated notes",
         )
 
         assert updated.stage_assignment == "resolution"
-        assert updated.planned_beats == new_beats
         assert updated.outline_notes == "Updated notes"
 
     async def test_update_raises_not_found_for_missing_chapter(

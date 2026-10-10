@@ -131,7 +131,6 @@ def make_chapter_outline(**overrides: Any) -> Any:
             "chapter_id": overrides.pop("chapter_id", uuid.uuid4()),
             "version_id": overrides.pop("version_id", None),
             "stage_assignment": overrides.pop("stage_assignment", "act-1"),
-            "planned_beats": overrides.pop("planned_beats", []),
             "outline_notes": overrides.pop("outline_notes", ""),
             "created_at": overrides.pop("created_at", datetime.now(UTC)),
             "updated_at": overrides.pop("updated_at", datetime.now(UTC)),
@@ -139,6 +138,36 @@ def make_chapter_outline(**overrides: Any) -> Any:
         },
     )
     return outline
+
+
+def make_scene_plan(**overrides: Any) -> Any:
+    """Create a ScenePlan instance with sensible defaults (PLAN-001)."""
+    from datetime import UTC, datetime
+
+    from narrare.planning.models import ScenePlan
+
+    scene = ScenePlan()
+    _set_attrs(
+        scene,
+        {
+            "id": overrides.pop("id", uuid.uuid4()),
+            "chapter_id": overrides.pop("chapter_id", uuid.uuid4()),
+            "position": overrides.pop("position", 1),
+            "title": overrides.pop("title", "Test Scene"),
+            "pov_character_ref": overrides.pop("pov_character_ref", None),
+            "location_ref": overrides.pop("location_ref", None),
+            "present_characters": overrides.pop("present_characters", []),
+            "purpose": overrides.pop("purpose", ""),
+            "conflict": overrides.pop("conflict", ""),
+            "resolution": overrides.pop("resolution", ""),
+            "beats": overrides.pop("beats", []),
+            "status": overrides.pop("status", "planned"),
+            "created_at": overrides.pop("created_at", datetime.now(UTC)),
+            "updated_at": overrides.pop("updated_at", datetime.now(UTC)),
+            **overrides,
+        },
+    )
+    return scene
 
 
 def make_note(**overrides: Any) -> Any:

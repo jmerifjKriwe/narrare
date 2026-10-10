@@ -47,14 +47,18 @@ class OutlineRepository(BaseRepository):
         self,
         chapter_id: uuid.UUID,
         stage_assignment: str,
-        planned_beats: list[dict[str, object]] | None = None,
         outline_notes: str = "",
     ) -> ChapterOutline:
-        """Create a new chapter outline."""
+        """Create a new chapter outline.
+
+        PLAN-001 T14: the beat write path is gone — scene plans
+        (``ScenePlanRepository``) are the substrate. The legacy column is
+        NOT NULL until the T17 drop; the ORM column default persists an
+        empty list.
+        """
         outline = ChapterOutline(
             chapter_id=chapter_id,
             stage_assignment=stage_assignment,
-            planned_beats=planned_beats or [],
             outline_notes=outline_notes,
         )
         self._session.add(outline)

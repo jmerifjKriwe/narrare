@@ -7,12 +7,16 @@ Also tests error cases (404 for non-existent novel/chapter).
 
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING, cast
 
 import pytest
 
+from narrare.planning.models import ScenePlan
+
 if TYPE_CHECKING:
     from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.fixture
@@ -97,6 +101,60 @@ class TestGetSyncStatus:
             assert "chapter_id" in item
             assert "sync_status" in item
 
+    async def test_sync_status_computed_over_scene_plans(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+        novel_with_chapters: dict[str, object],
+        db_session: AsyncSession,
+    ) -> None:
+        """Storyboard sync feeds scene statuses (PLAN-001 T14 — ADR-096).
+
+        Chapter 1 gets an all-complete scene set; with content present the
+        scene-driven sync rule (Core rule 4) reports ``completed`` — the
+        status must come from scene_plans, not from any beats column.
+        """
+        novel_id = cast("str", novel_with_chapters["novel_id"])
+        chapter_ids = cast("list[str]", novel_with_chapters["chapter_ids"])
+        first_chapter_id = uuid.UUID(chapter_ids[0])
+
+        # Auto-create outlines with suggested (aligned) stages so the
+        # scene-driven rule decides, not the deviation rule (remap-test
+        # pattern).
+        sb_resp = await client.get(
+            f"/api/v1/planning/storyboard/{novel_id}",
+            headers=auth_headers,
+        )
+        assert sb_resp.status_code == 200
+
+        db_session.add(
+            ScenePlan(
+                id=uuid.uuid4(),
+                chapter_id=first_chapter_id,
+                position=1,
+                title="Opening",
+                status="complete",
+            )
+        )
+        db_session.add(
+            ScenePlan(
+                id=uuid.uuid4(),
+                chapter_id=first_chapter_id,
+                position=2,
+                title="Turn",
+                status="complete",
+            )
+        )
+        await db_session.flush()
+
+        resp = await client.get(
+            f"/api/v1/planning/storyboard/{novel_id}/sync",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        statuses = {item["chapter_id"]: item["sync_status"] for item in resp.json()}
+        assert statuses[str(first_chapter_id)] == "completed"
+
 
 class TestOutlineCRUD:
     async def test_get_or_create_outline(
@@ -117,6 +175,8 @@ class TestOutlineCRUD:
         data = resp.json()
         assert data["chapter_id"] == chapter_id
         assert data["stage_assignment"]  # auto-assigned
+        # PLAN-001 T14: the wire is beat-free — scenes carry the plan.
+        assert "planned_beats" not in data
 
     async def test_update_outline(
         self,
@@ -130,9 +190,33 @@ class TestOutlineCRUD:
 
         resp = await client.put(
             f"/api/v1/planning/outlines/{novel_id}/{chapter_id}",
+            json={"stage_assignment": "act-2", "outline_notes": "Updated notes"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["stage_assignment"] == "act-2"
+        assert data["outline_notes"] == "Updated notes"
+        assert "planned_beats" not in data
+
+    async def test_update_outline_ignores_planned_beats_payload(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+        novel_with_chapters: dict[str, object],
+    ) -> None:
+        """Legacy clients may still send planned_beats — pydantic ignores
+        unknown fields (house schema behavior); the update succeeds without
+        persisting or echoing beats (PLAN-001 T14 beat-free wire)."""
+        novel_id = novel_with_chapters["novel_id"]
+        chapter_ids = cast("list[str]", novel_with_chapters["chapter_ids"])
+        chapter_id = chapter_ids[0]
+
+        resp = await client.put(
+            f"/api/v1/planning/outlines/{novel_id}/{chapter_id}",
             json={
-                "stage_assignment": "act-2",
-                "outline_notes": "Updated notes",
+                "stage_assignment": "act-1",
+                "outline_notes": "Notes kept",
                 "planned_beats": [
                     {"title": "Beat 1", "description": "First beat", "completed": False}
                 ],
@@ -141,9 +225,8 @@ class TestOutlineCRUD:
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["stage_assignment"] == "act-2"
-        assert data["outline_notes"] == "Updated notes"
-        assert len(data["planned_beats"]) == 1
+        assert data["outline_notes"] == "Notes kept"
+        assert "planned_beats" not in data
 
     async def test_get_outline_nonexistent_chapter_returns_error(
         self,

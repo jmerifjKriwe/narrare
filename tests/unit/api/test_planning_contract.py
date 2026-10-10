@@ -11,7 +11,11 @@ import uuid
 
 
 class TestOutlineResponseContract:
-    """OutlineResponse — full chapter outline with all fields."""
+    """OutlineResponse — full chapter outline with all fields.
+
+    PLAN-001 T14: the wire is beat-free (FE de-beated in T13; the beat
+    substrate is replaced by the scene aggregate — ADR-096).
+    """
 
     def test_outline_response_has_required_fields(self) -> None:
         from narrare.planning.schemas import OutlineResponse
@@ -21,7 +25,6 @@ class TestOutlineResponseContract:
             "id",
             "chapter_id",
             "stage_assignment",
-            "planned_beats",
             "outline_notes",
             "created_at",
             "updated_at",
@@ -35,28 +38,30 @@ class TestOutlineResponseContract:
         ann = OutlineResponse.model_fields["chapter_id"].annotation
         assert ann is uuid.UUID, f"Expected chapter_id to be UUID, got {ann}"
 
-    def test_outline_response_planned_beats_is_list(self) -> None:
+    def test_outline_response_has_no_planned_beats(self) -> None:
         from narrare.planning.schemas import OutlineResponse
 
-        ann = OutlineResponse.model_fields["planned_beats"].annotation
-        assert "list" in str(ann).lower(), f"Expected planned_beats to be list type, got {ann}"
+        assert "planned_beats" not in OutlineResponse.model_fields, (
+            "OutlineResponse must not carry planned_beats (PLAN-001 T14 beat-free wire)"
+        )
 
 
-class TestBeatSchemaContract:
-    """BeatSchema — a single beat within a chapter outline."""
+class TestBeatRemovalContract:
+    """PLAN-001 T14: the beat wire surface is gone (ADR-096 scene substrate)."""
 
-    def test_beat_schema_has_required_fields(self) -> None:
-        from narrare.planning.schemas import BeatSchema
+    def test_beat_schema_removed(self) -> None:
+        import narrare.planning.schemas as planning_schemas
 
-        field_names = set(BeatSchema.model_fields.keys())
-        for f in ("title", "description", "completed"):
-            assert f in field_names, f"BeatSchema missing field '{f}'"
+        assert not hasattr(planning_schemas, "BeatSchema"), (
+            "BeatSchema must be removed from the planning schemas (PLAN-001 T14)"
+        )
 
-    def test_beat_completed_defaults_false(self) -> None:
-        from narrare.planning.schemas import BeatSchema
+    def test_outline_update_request_has_no_planned_beats(self) -> None:
+        from narrare.planning.schemas import OutlineUpdateRequest
 
-        field = BeatSchema.model_fields["completed"]
-        assert field.default is False, f"Expected completed default False, got {field.default}"
+        assert "planned_beats" not in OutlineUpdateRequest.model_fields, (
+            "OutlineUpdateRequest must not accept planned_beats (scenes are the substrate)"
+        )
 
 
 class TestOutlineUpdateRequestContract:
@@ -65,7 +70,7 @@ class TestOutlineUpdateRequestContract:
     def test_outline_update_all_fields_optional(self) -> None:
         from narrare.planning.schemas import OutlineUpdateRequest
 
-        for field_name in ("stage_assignment", "planned_beats", "outline_notes"):
+        for field_name in ("stage_assignment", "outline_notes"):
             field = OutlineUpdateRequest.model_fields[field_name]
             assert field.default is None, (
                 f"{field_name} should default to None, got {field.default!r}"

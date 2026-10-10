@@ -81,6 +81,7 @@ async def get_storyboard_service(
         outline_repo=OutlineRepository(session),
         chapter_repo=ChapterRepository(session),
         novel_repo=NovelRepository(session),
+        scene_repo=ScenePlanRepository(session),
         ai_remap_service=AIRemapService(composer=get_composer()),
         model_registry=get_model_registry(),
         model_resolution=model_resolution,

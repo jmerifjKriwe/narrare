@@ -36,7 +36,12 @@ from narrare_core.llm.intents import LLMIntent
 from narrare_core.planning.remap import AIRemapService
 from narrare_core.prompts.composer import ComposedPrompt
 from tests.factories import make_chapter
-from tests.fakes import FakeChapterRepository, FakeNovelRepository, FakeOutlineRepository
+from tests.fakes import (
+    FakeChapterRepository,
+    FakeNovelRepository,
+    FakeOutlineRepository,
+    FakeScenePlanRepository,
+)
 from tests.unit.api.planning._storyboard_test_helpers import (
     make_resolved_model,
     make_static_resolution,
@@ -343,6 +348,7 @@ class TestServiceRemapAgentWiring:
             outline_repo=FakeOutlineRepository(),
             chapter_repo=chapter_repo,
             novel_repo=novel_repo,
+            scene_repo=FakeScenePlanRepository(),
             ai_remap_service=_fake_composer_service(),
             model_registry=cast("ModelRegistry", registry),
             model_resolution=StaticModelResolution(resolved),
@@ -370,6 +376,7 @@ class TestServiceRemapAgentWiring:
             outline_repo=FakeOutlineRepository(),
             chapter_repo=chapter_repo,
             novel_repo=novel_repo,
+            scene_repo=FakeScenePlanRepository(),
             model_registry=cast("ModelRegistry", registry),
             model_resolution=make_static_resolution(),
         )

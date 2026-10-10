@@ -13,8 +13,13 @@ import pytest
 from narrare.planning.schemas import OutlineUpdateRequest
 from narrare.planning.service import StoryboardService
 from narrare_core.shared.errors import NotFoundError
-from tests.factories import make_chapter, make_chapter_outline, make_novel
-from tests.fakes import FakeChapterRepository, FakeNovelRepository, FakeOutlineRepository
+from tests.factories import make_chapter, make_chapter_outline, make_novel, make_scene_plan
+from tests.fakes import (
+    FakeChapterRepository,
+    FakeNovelRepository,
+    FakeOutlineRepository,
+    FakeScenePlanRepository,
+)
 from tests.unit.api.planning._storyboard_test_helpers import make_static_resolution
 
 # ---------------------------------------------------------------------------
@@ -38,15 +43,22 @@ def novel_repo() -> FakeNovelRepository:
 
 
 @pytest.fixture
+def scene_repo() -> FakeScenePlanRepository:
+    return FakeScenePlanRepository()
+
+
+@pytest.fixture
 def service(
     outline_repo: FakeOutlineRepository,
     chapter_repo: FakeChapterRepository,
     novel_repo: FakeNovelRepository,
+    scene_repo: FakeScenePlanRepository,
 ) -> StoryboardService:
     return StoryboardService(
         outline_repo=outline_repo,
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
+        scene_repo=scene_repo,
         model_resolution=make_static_resolution(),
     )
 
@@ -175,6 +187,99 @@ class TestGetSyncStatus:
         assert len(result) == 2
         for r in result:
             assert r.sync_status == "empty"
+
+
+# ---------------------------------------------------------------------------
+# Scene-driven sync (PLAN-001 T14 — ADR-096)
+# ---------------------------------------------------------------------------
+
+
+class TestSyncOverScenes:
+    """Storyboard sync is computed over scene plans, not planned_beats."""
+
+    async def test_all_complete_scenes_with_content_is_completed(
+        self,
+        service: StoryboardService,
+        novel_repo: FakeNovelRepository,
+        chapter_repo: FakeChapterRepository,
+        outline_repo: FakeOutlineRepository,
+        scene_repo: FakeScenePlanRepository,
+    ) -> None:
+        novel_id, user_id = _seed_novel(novel_repo)
+        chapter_ids = _seed_chapters(chapter_repo, novel_id, 1)
+        ch_id = chapter_ids[0]
+        chapter = await chapter_repo.get(ch_id)
+        assert chapter is not None
+        chapter.content = "Written content."
+        # Single chapter → suggest_stage(1, 1) == 'act-3'; align the stage so
+        # the scene rules (rule 4) decide, not the deviation rule.
+        outline_repo.seed(make_chapter_outline(chapter_id=ch_id, stage_assignment="act-3"))
+        scene_repo.seed_chapters(chapter)
+        scene_repo.seed(
+            make_scene_plan(chapter_id=ch_id, position=1, status="complete"),
+            make_scene_plan(chapter_id=ch_id, position=2, status="complete"),
+        )
+
+        result = await service.get_sync_status(novel_id, user_id)
+
+        assert result[0].sync_status == "completed"
+
+    async def test_partial_scene_progress_is_on_track(
+        self,
+        service: StoryboardService,
+        novel_repo: FakeNovelRepository,
+        chapter_repo: FakeChapterRepository,
+        outline_repo: FakeOutlineRepository,
+        scene_repo: FakeScenePlanRepository,
+    ) -> None:
+        novel_id, user_id = _seed_novel(novel_repo)
+        chapter_ids = _seed_chapters(chapter_repo, novel_id, 1)
+        ch_id = chapter_ids[0]
+        chapter = await chapter_repo.get(ch_id)
+        assert chapter is not None
+        chapter.content = "Written content."
+        # Single chapter → suggest_stage(1, 1) == 'act-3'; align the stage so
+        # the scene rules (rule 4) decide, not the deviation rule.
+        outline_repo.seed(make_chapter_outline(chapter_id=ch_id, stage_assignment="act-3"))
+        scene_repo.seed_chapters(chapter)
+        scene_repo.seed(
+            make_scene_plan(chapter_id=ch_id, position=1, status="complete"),
+            make_scene_plan(chapter_id=ch_id, position=2, status="in_progress"),
+        )
+
+        result = await service.get_sync_status(novel_id, user_id)
+
+        assert result[0].sync_status == "on_track"
+
+    async def test_storyboard_view_reports_scene_driven_status(
+        self,
+        service: StoryboardService,
+        novel_repo: FakeNovelRepository,
+        chapter_repo: FakeChapterRepository,
+        outline_repo: FakeOutlineRepository,
+        scene_repo: FakeScenePlanRepository,
+    ) -> None:
+        novel_id, user_id = _seed_novel(novel_repo)
+        chapter_ids = _seed_chapters(chapter_repo, novel_id, 1)
+        ch_id = chapter_ids[0]
+        chapter = await chapter_repo.get(ch_id)
+        assert chapter is not None
+        chapter.content = "Written content."
+        # Single chapter → suggest_stage(1, 1) == 'act-3'; align the stage so
+        # the scene rules (rule 4) decide, not the deviation rule.
+        outline_repo.seed(make_chapter_outline(chapter_id=ch_id, stage_assignment="act-3"))
+        scene_repo.seed_chapters(chapter)
+        scene_repo.seed(make_scene_plan(chapter_id=ch_id, position=1, status="complete"))
+
+        result = await service.get_storyboard(novel_id, user_id)
+
+        statuses = [
+            c.sync_status
+            for stage in result.stages
+            for c in stage.chapters
+            if c.chapter_id == ch_id
+        ]
+        assert statuses == ["completed"]
 
 
 # ---------------------------------------------------------------------------
